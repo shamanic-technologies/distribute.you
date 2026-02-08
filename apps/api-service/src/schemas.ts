@@ -207,6 +207,22 @@ export const CreateCampaignRequestSchema = z
   .object({
     name: z.string().describe("Campaign name"),
     brandUrl: z.string().optional().describe("Brand website URL to scrape"),
+    personTitles: z.array(z.string()).optional().describe("Target job titles"),
+    organizationLocations: z.array(z.string()).optional().describe("Target locations"),
+    qOrganizationKeywordTags: z.array(z.string()).optional().describe("Target industry keywords"),
+    organizationNumEmployeesRanges: z.array(z.string()).optional().describe("Target company size ranges"),
+    qOrganizationIndustryTagIds: z.array(z.string()).optional().describe("Target industry tag IDs"),
+    qKeywords: z.string().optional().describe("Search keywords"),
+    maxBudgetDailyUsd: z.union([z.string(), z.number()]).optional().describe("Max daily budget in USD"),
+    maxBudgetWeeklyUsd: z.union([z.string(), z.number()]).optional().describe("Max weekly budget in USD"),
+    maxBudgetMonthlyUsd: z.union([z.string(), z.number()]).optional().describe("Max monthly budget in USD"),
+    maxBudgetTotalUsd: z.union([z.string(), z.number()]).optional().describe("Max total budget in USD"),
+    maxLeads: z.number().int().optional().describe("Maximum number of leads to contact"),
+    startDate: z.string().optional().describe("Campaign start date"),
+    endDate: z.string().optional().describe("Campaign end date"),
+    notifyFrequency: z.string().optional().describe("Notification frequency"),
+    notifyChannel: z.string().optional().describe("Notification channel"),
+    notifyDestination: z.string().optional().describe("Notification destination"),
   })
   .openapi("CreateCampaignRequest");
 
