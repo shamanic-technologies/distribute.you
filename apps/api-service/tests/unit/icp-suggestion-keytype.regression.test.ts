@@ -98,6 +98,6 @@ describe("POST /v1/brand/icp-suggestion", () => {
       .send({});
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe("brandUrl is required");
+    expect(res.body.error).toBe("Invalid request");
   });
 });

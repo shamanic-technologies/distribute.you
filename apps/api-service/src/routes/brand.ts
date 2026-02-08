@@ -2,6 +2,7 @@ import { Router } from "express";
 import { authenticate, requireOrg, AuthenticatedRequest } from "../middleware/auth.js";
 import { callExternalService, externalServices } from "../lib/service-client.js";
 import { getRunsBatch, type RunWithCosts } from "@mcpfactory/runs-client";
+import { BrandScrapeRequestSchema, IcpSuggestionRequestSchema } from "../schemas.js";
 
 // Brand service URL (for sales profiles)
 const BRAND_SERVICE_URL = process.env.BRAND_SERVICE_URL || "https://brand.mcpfactory.org";
@@ -14,31 +15,12 @@ const router = Router();
  * Scrape brand information from a URL using scraping-service
  */
 router.post("/brand/scrape", authenticate, async (req: AuthenticatedRequest, res) => {
-  // #swagger.tags = ['Brand']
-  // #swagger.summary = 'Scrape brand info'
-  // #swagger.description = 'Scrape brand information from a URL using the scraping service'
-  // #swagger.security = [{ "bearerAuth": [] }, { "apiKey": [] }]
-  /* #swagger.requestBody = {
-    required: true,
-    content: {
-      "application/json": {
-        schema: {
-          type: "object",
-          required: ["url"],
-          properties: {
-            url: { type: "string", description: "Brand website URL to scrape" },
-            skipCache: { type: "boolean", description: "Skip cached results and force re-scrape" }
-          }
-        }
-      }
-    }
-  } */
   try {
-    const { url, skipCache } = req.body;
-
-    if (!url) {
-      return res.status(400).json({ error: "url is required" });
+    const parsed = BrandScrapeRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid request", details: parsed.error.flatten() });
     }
+    const { url, skipCache } = parsed.data;
 
     const result = await callExternalService(
       externalServices.scraping,
@@ -66,10 +48,6 @@ router.post("/brand/scrape", authenticate, async (req: AuthenticatedRequest, res
  * Get cached brand info by URL
  */
 router.get("/brand/by-url", authenticate, async (req: AuthenticatedRequest, res) => {
-  // #swagger.tags = ['Brand']
-  // #swagger.summary = 'Get brand by URL'
-  // #swagger.description = 'Get cached brand info by website URL'
-  // #swagger.security = [{ "bearerAuth": [] }, { "apiKey": [] }]
   try {
     const url = req.query.url as string;
 
@@ -94,10 +72,6 @@ router.get("/brand/by-url", authenticate, async (req: AuthenticatedRequest, res)
  * Get all brands for the organization (for dashboard)
  */
 router.get("/brands", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
-  // #swagger.tags = ['Brand']
-  // #swagger.summary = 'List brands'
-  // #swagger.description = 'Get all brands for the organization'
-  // #swagger.security = [{ "bearerAuth": [] }, { "apiKey": [] }]
   try {
     const response = await fetch(
       `${BRAND_SERVICE_URL}/brands?clerkOrgId=${req.orgId}`,
@@ -127,10 +101,6 @@ router.get("/brands", authenticate, requireOrg, async (req: AuthenticatedRequest
  * Get a single brand by ID from brand-service
  */
 router.get("/brands/:id", authenticate, async (req: AuthenticatedRequest, res) => {
-  // #swagger.tags = ['Brand']
-  // #swagger.summary = 'Get a brand'
-  // #swagger.description = 'Get a single brand by ID'
-  // #swagger.security = [{ "bearerAuth": [] }, { "apiKey": [] }]
   try {
     const { id } = req.params;
 
@@ -162,10 +132,6 @@ router.get("/brands/:id", authenticate, async (req: AuthenticatedRequest, res) =
  * Get sales profile for a specific brand
  */
 router.get("/brands/:id/sales-profile", authenticate, async (req: AuthenticatedRequest, res) => {
-  // #swagger.tags = ['Brand']
-  // #swagger.summary = 'Get brand sales profile'
-  // #swagger.description = 'Get the sales profile for a specific brand'
-  // #swagger.security = [{ "bearerAuth": [] }, { "apiKey": [] }]
   try {
     const { id } = req.params;
 
@@ -201,10 +167,6 @@ router.get("/brands/:id/sales-profile", authenticate, async (req: AuthenticatedR
  * NOTE: Must be before /:id route to avoid matching "sales-profiles" as an id
  */
 router.get("/brand/sales-profiles", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
-  // #swagger.tags = ['Brand']
-  // #swagger.summary = 'List sales profiles'
-  // #swagger.description = 'Get all sales profiles (brands) for the organization'
-  // #swagger.security = [{ "bearerAuth": [] }, { "apiKey": [] }]
   try {
     const response = await fetch(
       `${BRAND_SERVICE_URL}/sales-profiles?clerkOrgId=${req.orgId}`,
@@ -234,30 +196,12 @@ router.get("/brand/sales-profiles", authenticate, requireOrg, async (req: Authen
  * Get ICP suggestion (Apollo-compatible search params) for a brand URL
  */
 router.post("/brand/icp-suggestion", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
-  // #swagger.tags = ['Brand']
-  // #swagger.summary = 'Get ICP suggestion'
-  // #swagger.description = 'Get AI-generated Ideal Customer Profile suggestion (Apollo-compatible search params) for a brand URL'
-  // #swagger.security = [{ "bearerAuth": [] }, { "apiKey": [] }]
-  /* #swagger.requestBody = {
-    required: true,
-    content: {
-      "application/json": {
-        schema: {
-          type: "object",
-          required: ["brandUrl"],
-          properties: {
-            brandUrl: { type: "string", description: "Brand website URL" }
-          }
-        }
-      }
-    }
-  } */
   try {
-    const { brandUrl } = req.body;
-
-    if (!brandUrl) {
-      return res.status(400).json({ error: "brandUrl is required" });
+    const parsed = IcpSuggestionRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid request", details: parsed.error.flatten() });
     }
+    const { brandUrl } = parsed.data;
 
     const response = await fetch(
       `${BRAND_SERVICE_URL}/icp-suggestion`,
@@ -300,10 +244,6 @@ router.post("/brand/icp-suggestion", authenticate, requireOrg, async (req: Authe
  * enriched with cost data from runs-service.
  */
 router.get("/brands/:id/runs", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
-  // #swagger.tags = ['Brand']
-  // #swagger.summary = 'Get brand runs'
-  // #swagger.description = 'Get extraction runs for a brand (sales-profile, icp-extraction) enriched with cost data'
-  // #swagger.security = [{ "bearerAuth": [] }, { "apiKey": [] }]
   try {
     const { id } = req.params;
 
@@ -367,10 +307,6 @@ router.get("/brands/:id/runs", authenticate, requireOrg, async (req: Authenticat
  * Get brand scrape result by ID
  */
 router.get("/brand/:id", authenticate, async (req: AuthenticatedRequest, res) => {
-  // #swagger.tags = ['Brand']
-  // #swagger.summary = 'Get brand scrape result'
-  // #swagger.description = 'Get brand scrape result by scrape ID'
-  // #swagger.security = [{ "bearerAuth": [] }, { "apiKey": [] }]
   try {
     const { id } = req.params;
 

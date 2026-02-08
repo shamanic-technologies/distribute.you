@@ -3,6 +3,7 @@ import { authenticate, requireOrg, AuthenticatedRequest } from "../middleware/au
 import { callService, services, callExternalService, externalServices } from "../lib/service-client.js";
 import { buildInternalHeaders } from "../lib/internal-headers.js";
 import { getRunsBatch, type RunWithCosts } from "@mcpfactory/runs-client";
+import { CreateCampaignRequestSchema, BatchStatsRequestSchema } from "../schemas.js";
 
 function sendLifecycleEmail(
   eventType: string,
@@ -76,10 +77,6 @@ async function fetchDeliveryStats(
  * - brandId: optional, filter by brand ID from brand-service
  */
 router.get("/campaigns", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
-  // #swagger.tags = ['Campaigns']
-  // #swagger.summary = 'List campaigns'
-  // #swagger.description = 'List all campaigns for the organization, optionally filtered by brand ID'
-  // #swagger.security = [{ "bearerAuth": [] }, { "apiKey": [] }]
   try {
     const brandId = req.query.brandId as string;
     const queryString = brandId ? `?brandId=${brandId}` : "";
@@ -105,28 +102,14 @@ router.get("/campaigns", authenticate, requireOrg, async (req: AuthenticatedRequ
  * If clientUrl is provided, scrapes the company info first and stores in company-service
  */
 router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
-  // #swagger.tags = ['Campaigns']
-  // #swagger.summary = 'Create a campaign'
-  // #swagger.description = 'Create a new outreach campaign. Optionally scrapes brand URL first.'
-  // #swagger.security = [{ "bearerAuth": [] }, { "apiKey": [] }]
-  /* #swagger.requestBody = {
-    required: true,
-    content: {
-      "application/json": {
-        schema: {
-          type: "object",
-          required: ["name"],
-          properties: {
-            name: { type: "string", description: "Campaign name" },
-            brandUrl: { type: "string", description: "Brand website URL to scrape" }
-          }
-        }
-      }
-    }
-  } */
   try {
+    const parsed = CreateCampaignRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid request", details: parsed.error.flatten() });
+    }
+
     // If brandUrl provided, scrape it first so company info is available for runs
-    const { brandUrl } = req.body;
+    const { brandUrl } = parsed.data;
     if (brandUrl) {
       try {
         await callExternalService(
@@ -153,7 +136,7 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
       {
         method: "POST",
         headers: buildInternalHeaders(req),
-        body: { ...req.body, appId: "mcpfactory" },
+        body: { ...parsed.data, appId: "mcpfactory" },
       }
     );
 
@@ -163,7 +146,7 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
       sendLifecycleEmail("campaign_created", req, {
         brandId: campaign.brandId,
         campaignId: campaign.id,
-        campaignName: req.body.name || campaign.name,
+        campaignName: parsed.data.name || campaign.name,
       });
     }
 
@@ -179,10 +162,6 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
  * Get a specific campaign
  */
 router.get("/campaigns/:id", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
-  // #swagger.tags = ['Campaigns']
-  // #swagger.summary = 'Get a campaign'
-  // #swagger.description = 'Get a specific campaign by ID'
-  // #swagger.security = [{ "bearerAuth": [] }, { "apiKey": [] }]
   try {
     const { id } = req.params;
 
@@ -205,10 +184,6 @@ router.get("/campaigns/:id", authenticate, requireOrg, async (req: Authenticated
  * Update a campaign
  */
 router.patch("/campaigns/:id", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
-  // #swagger.tags = ['Campaigns']
-  // #swagger.summary = 'Update a campaign'
-  // #swagger.description = 'Update campaign fields (name, settings, etc.)'
-  // #swagger.security = [{ "bearerAuth": [] }, { "apiKey": [] }]
   try {
     const { id } = req.params;
 
@@ -233,10 +208,6 @@ router.patch("/campaigns/:id", authenticate, requireOrg, async (req: Authenticat
  * Stop a running campaign
  */
 router.post("/campaigns/:id/stop", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
-  // #swagger.tags = ['Campaigns']
-  // #swagger.summary = 'Stop a campaign'
-  // #swagger.description = 'Stop a running campaign'
-  // #swagger.security = [{ "bearerAuth": [] }, { "apiKey": [] }]
   try {
     const { id } = req.params;
 
@@ -271,10 +242,6 @@ router.post("/campaigns/:id/stop", authenticate, requireOrg, async (req: Authent
  * Resume a stopped campaign
  */
 router.post("/campaigns/:id/resume", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
-  // #swagger.tags = ['Campaigns']
-  // #swagger.summary = 'Resume a campaign'
-  // #swagger.description = 'Resume a stopped campaign'
-  // #swagger.security = [{ "bearerAuth": [] }, { "apiKey": [] }]
   try {
     const { id } = req.params;
 
@@ -298,10 +265,6 @@ router.post("/campaigns/:id/resume", authenticate, requireOrg, async (req: Authe
  * Get campaign runs/history
  */
 router.get("/campaigns/:id/runs", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
-  // #swagger.tags = ['Campaigns']
-  // #swagger.summary = 'Get campaign runs'
-  // #swagger.description = 'Get execution history/runs for a campaign'
-  // #swagger.security = [{ "bearerAuth": [] }, { "apiKey": [] }]
   try {
     const { id } = req.params;
 
@@ -324,10 +287,6 @@ router.get("/campaigns/:id/runs", authenticate, requireOrg, async (req: Authenti
  * Get campaign statistics
  */
 router.get("/campaigns/:id/stats", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
-  // #swagger.tags = ['Campaigns']
-  // #swagger.summary = 'Get campaign stats'
-  // #swagger.description = 'Get campaign statistics (leads found, emails sent, etc.)'
-  // #swagger.security = [{ "bearerAuth": [] }, { "apiKey": [] }]
   try {
     const { id } = req.params;
     const orgId = req.orgId!;
@@ -395,15 +354,12 @@ router.get("/campaigns/:id/stats", authenticate, requireOrg, async (req: Authent
  * Get stats for multiple campaigns in one call
  */
 router.post("/campaigns/batch-stats", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
-  // #swagger.tags = ['Campaigns']
-  // #swagger.summary = 'Batch get campaign stats'
-  // #swagger.description = 'Get stats for multiple campaigns in a single request'
-  // #swagger.security = [{ "bearerAuth": [] }, { "apiKey": [] }]
   try {
-    const { campaignIds } = req.body;
-    if (!Array.isArray(campaignIds) || campaignIds.length === 0) {
-      return res.status(400).json({ error: "campaignIds must be a non-empty array" });
+    const parsed = BatchStatsRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid request", details: parsed.error.flatten() });
     }
+    const { campaignIds } = parsed.data;
 
     const orgId = req.orgId!;
 
@@ -474,10 +430,6 @@ router.post("/campaigns/batch-stats", authenticate, requireOrg, async (req: Auth
  * Get detailed debug info for a campaign
  */
 router.get("/campaigns/:id/debug", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
-  // #swagger.tags = ['Campaigns']
-  // #swagger.summary = 'Get campaign debug info'
-  // #swagger.description = 'Get detailed debug information for a campaign'
-  // #swagger.security = [{ "bearerAuth": [] }, { "apiKey": [] }]
   try {
     const { id } = req.params;
 
@@ -500,10 +452,6 @@ router.get("/campaigns/:id/debug", authenticate, requireOrg, async (req: Authent
  * Get all leads for a campaign
  */
 router.get("/campaigns/:id/leads", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
-  // #swagger.tags = ['Campaigns']
-  // #swagger.summary = 'Get campaign leads'
-  // #swagger.description = 'Get all leads for a campaign with enrichment cost data'
-  // #swagger.security = [{ "bearerAuth": [] }, { "apiKey": [] }]
   try {
     const { id } = req.params;
 
@@ -560,10 +508,6 @@ router.get("/campaigns/:id/leads", authenticate, requireOrg, async (req: Authent
  * Get all companies for a campaign, with aggregated enrichment costs
  */
 router.get("/campaigns/:id/companies", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
-  // #swagger.tags = ['Campaigns']
-  // #swagger.summary = 'Get campaign companies'
-  // #swagger.description = 'Get all companies for a campaign with aggregated enrichment costs'
-  // #swagger.security = [{ "bearerAuth": [] }, { "apiKey": [] }]
   try {
     const { id } = req.params;
 
@@ -640,10 +584,6 @@ router.get("/campaigns/:id/companies", authenticate, requireOrg, async (req: Aut
  * Get all generated emails for a campaign (across all runs)
  */
 router.get("/campaigns/:id/emails", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
-  // #swagger.tags = ['Campaigns']
-  // #swagger.summary = 'Get campaign emails'
-  // #swagger.description = 'Get all generated emails for a campaign across all runs, with generation cost data'
-  // #swagger.security = [{ "bearerAuth": [] }, { "apiKey": [] }]
   try {
     const { id } = req.params;
 
