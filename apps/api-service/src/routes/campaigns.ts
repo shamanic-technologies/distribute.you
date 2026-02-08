@@ -149,13 +149,19 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
       }
     }
     
+    // Convert budget numbers to strings (campaign-service expects string type)
+    const body: Record<string, unknown> = { ...parsed.data, appId: "mcpfactory" };
+    for (const key of ["maxBudgetDailyUsd", "maxBudgetWeeklyUsd", "maxBudgetMonthlyUsd", "maxBudgetTotalUsd"]) {
+      if (body[key] != null) body[key] = String(body[key]);
+    }
+
     const result = await callExternalService(
       externalServices.campaign,
       "/campaigns",
       {
         method: "POST",
         headers: buildInternalHeaders(req),
-        body: { ...parsed.data, appId: "mcpfactory" },
+        body,
       }
     );
 
