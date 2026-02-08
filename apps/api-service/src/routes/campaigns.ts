@@ -453,7 +453,31 @@ router.get("/campaigns/:id/leads", authenticate, requireOrg, async (req: Authent
       }
     ) as { leads: Array<Record<string, unknown>> };
 
-    const leads = result.leads || [];
+    const rawLeads = result.leads || [];
+
+    // Flatten enrichment data into each lead to match dashboard expectations.
+    // Lead-service returns: { id, email, servedAt, runId, enrichment: { firstName, lastName, ... } }
+    // Dashboard expects: { id, email, createdAt, firstName, lastName, title, ... }
+    const leads = rawLeads.map((raw) => {
+      const enrichment = (raw.enrichment as Record<string, unknown>) || {};
+      return {
+        id: raw.id,
+        email: raw.email,
+        externalId: raw.externalId,
+        firstName: enrichment.firstName ?? null,
+        lastName: enrichment.lastName ?? null,
+        emailStatus: enrichment.emailStatus ?? null,
+        title: enrichment.title ?? null,
+        organizationName: enrichment.organizationName ?? null,
+        organizationDomain: enrichment.organizationDomain ?? null,
+        organizationIndustry: enrichment.organizationIndustry ?? null,
+        organizationSize: enrichment.organizationSize ?? null,
+        linkedinUrl: enrichment.linkedinUrl ?? null,
+        status: "contacted",
+        createdAt: raw.servedAt ?? null,
+        enrichmentRunId: raw.runId ?? null,
+      };
+    });
 
     // Batch-fetch enrichment run costs from runs-service
     const enrichmentRunIds = leads

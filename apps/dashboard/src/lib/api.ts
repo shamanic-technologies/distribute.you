@@ -353,23 +353,3 @@ export async function listCampaignReplies(token: string, campaignId: string): Pr
   return apiCall<{ replies: Reply[] }>(`/campaigns/${campaignId}/replies`, { token });
 }
 
-export interface CompanyCost {
-  costName: string;
-  quantity: number;
-  totalCostInUsdCents: number;
-}
-
-export interface Company {
-  id: string;
-  name: string;
-  domain: string | null;
-  industry: string | null;
-  employeeCount: string | null;
-  leadsCount: number;
-  totalCostInUsdCents: string | null;
-  costs: CompanyCost[];
-}
-
-export async function listCampaignCompanies(token: string, campaignId: string): Promise<{ companies: Company[] }> {
-  return apiCall<{ companies: Company[] }>(`/campaigns/${campaignId}/companies`, { token });
-}
