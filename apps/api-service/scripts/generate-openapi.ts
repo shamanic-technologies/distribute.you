@@ -1,4 +1,6 @@
-import swaggerAutogen from "swagger-autogen";
+import { OpenApiGeneratorV3 } from "@asteasolutions/zod-to-openapi";
+import { registry } from "../src/schemas.js";
+import * as fs from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 
@@ -6,7 +8,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const projectRoot = join(__dirname, "..");
 
-const doc = {
+const generator = new OpenApiGeneratorV3(registry.definitions);
+
+const document = generator.generateDocument({
+  openapi: "3.0.0",
   info: {
     title: "MCPFactory API Service",
     description:
@@ -18,25 +23,21 @@ const doc = {
       url: process.env.SERVICE_URL || "https://api.mcpfactory.org",
     },
   ],
-  securityDefinitions: {
-    bearerAuth: {
-      type: "apiKey" as const,
-      in: "header" as const,
-      name: "Authorization",
-      description: "Bearer JWT from Clerk or API key (Bearer <token>)",
-    },
-    apiKey: {
-      type: "apiKey" as const,
-      in: "header" as const,
-      name: "X-API-Key",
-      description: "API key for service-to-service communication and MCP clients",
-    },
-  },
-};
+  tags: [
+    { name: "Health", description: "Health check and debug endpoints" },
+    { name: "Webhooks", description: "Webhook receivers" },
+    { name: "Performance", description: "Public performance leaderboard" },
+    { name: "User", description: "Current user information" },
+    { name: "Campaigns", description: "Campaign management" },
+    { name: "Keys", description: "BYOK key management" },
+    { name: "API Keys", description: "API key management" },
+    { name: "Leads", description: "Lead search" },
+    { name: "Qualify", description: "Email reply qualification" },
+    { name: "Brand", description: "Brand scraping and management" },
+    { name: "Activity", description: "User activity tracking" },
+  ],
+});
 
 const outputFile = join(projectRoot, "openapi.json");
-const routes = [join(projectRoot, "src/index.ts")];
-
-swaggerAutogen({ openapi: "3.0.0" })(outputFile, routes, doc).then(() => {
-  console.log("✅ api-service openapi.json generated");
-});
+fs.writeFileSync(outputFile, JSON.stringify(document, null, 2));
+console.log("✅ api-service openapi.json generated");

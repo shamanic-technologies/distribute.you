@@ -12,9 +12,6 @@ const CLERK_WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
  * Handles Clerk events: user.created, session.created
  */
 router.post("/webhooks/clerk", async (req: Request, res: Response) => {
-  // #swagger.tags = ['Webhooks']
-  // #swagger.summary = 'Clerk webhook receiver'
-  // #swagger.description = 'Receives Clerk lifecycle events (user.created, session.created). Verified via svix signature headers.'
   if (!CLERK_WEBHOOK_SECRET) {
     console.error("CLERK_WEBHOOK_SECRET is not configured");
     res.status(500).json({ error: "Webhook not configured" });

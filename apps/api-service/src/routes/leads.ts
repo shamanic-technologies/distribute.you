@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authenticate, requireOrg, AuthenticatedRequest } from "../middleware/auth.js";
 import { callExternalService, externalServices } from "../lib/service-client.js";
+import { LeadSearchRequestSchema } from "../schemas.js";
 
 const router = Router();
 
@@ -9,40 +10,18 @@ const router = Router();
  * Search for leads via lead-service
  */
 router.post("/leads/search", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
-  // #swagger.tags = ['Leads']
-  // #swagger.summary = 'Search for leads'
-  // #swagger.description = 'Search for leads using Apollo-compatible filters (titles, locations, industries, company size)'
-  // #swagger.security = [{ "bearerAuth": [] }, { "apiKey": [] }]
-  /* #swagger.requestBody = {
-    required: true,
-    content: {
-      "application/json": {
-        schema: {
-          type: "object",
-          required: ["person_titles"],
-          properties: {
-            person_titles: { type: "array", items: { type: "string" }, description: "Job titles to search for" },
-            organization_locations: { type: "array", items: { type: "string" }, description: "Company locations filter" },
-            organization_industries: { type: "array", items: { type: "string" }, description: "Industry tag IDs filter" },
-            organization_num_employees_ranges: { type: "array", items: { type: "string" }, description: "Employee count ranges" },
-            per_page: { type: "integer", description: "Results per page (max 100)", default: 10 }
-          }
-        }
-      }
-    }
-  } */
   try {
+    const parsed = LeadSearchRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid request", details: parsed.error.flatten() });
+    }
     const {
       person_titles,
       organization_locations,
       organization_industries,
       organization_num_employees_ranges,
-      per_page = 10,
-    } = req.body;
-
-    if (!person_titles || !Array.isArray(person_titles) || person_titles.length === 0) {
-      return res.status(400).json({ error: "person_titles array is required" });
-    }
+      per_page,
+    } = parsed.data;
 
     const result = await callExternalService(
       externalServices.lead,
