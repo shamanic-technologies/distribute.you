@@ -524,6 +524,9 @@ router.get("/campaigns/:id/leads", authenticate, requireOrg, async (req: Authent
               completedAt: run.completedAt,
               totalCostInUsdCents: run.totalCostInUsdCents,
               costs: run.costs,
+              serviceName: run.serviceName,
+              taskName: run.taskName,
+              descendantRuns: run.descendantRuns ?? [],
             }
           : null,
       };
@@ -585,6 +588,9 @@ router.get("/campaigns/:id/emails", authenticate, requireOrg, async (req: Authen
               completedAt: run.completedAt,
               totalCostInUsdCents: run.totalCostInUsdCents,
               costs: run.costs,
+              serviceName: run.serviceName,
+              taskName: run.taskName,
+              descendantRuns: run.descendantRuns ?? [],
             }
           : null,
       };
