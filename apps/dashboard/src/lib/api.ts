@@ -319,6 +319,7 @@ export interface Email {
   subject: string;
   bodyHtml: string;
   bodyText: string;
+  leadEmail: string;
   leadFirstName: string;
   leadLastName: string;
   leadTitle: string;

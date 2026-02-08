@@ -51,7 +51,7 @@ describe("leads endpoint cost enrichment", () => {
         organizationIndustry: enrichment.organizationIndustry ?? null,
         organizationSize: enrichment.organizationSize ?? null,
         linkedinUrl: enrichment.linkedinUrl ?? null,
-        status: "contacted",
+        status: "found",
         createdAt: raw.servedAt ?? null,
         enrichmentRunId: raw.runId ?? null,
       };
@@ -78,7 +78,7 @@ describe("leads endpoint cost enrichment", () => {
     expect(leadsWithRuns[0].firstName).toBe("John");
     expect(leadsWithRuns[0].organizationName).toBe("Acme");
     expect(leadsWithRuns[0].createdAt).toBe("2025-01-01T00:00:00Z");
-    expect(leadsWithRuns[0].status).toBe("contacted");
+    expect(leadsWithRuns[0].status).toBe("found");
 
     // Lead with valid runId should have enrichmentRun attached
     expect(leadsWithRuns[0].enrichmentRun).not.toBeNull();

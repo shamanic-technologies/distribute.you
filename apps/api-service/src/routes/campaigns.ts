@@ -473,7 +473,7 @@ router.get("/campaigns/:id/leads", authenticate, requireOrg, async (req: Authent
         organizationIndustry: enrichment.organizationIndustry ?? null,
         organizationSize: enrichment.organizationSize ?? null,
         linkedinUrl: enrichment.linkedinUrl ?? null,
-        status: "contacted",
+        status: "found",
         createdAt: raw.servedAt ?? null,
         enrichmentRunId: raw.runId ?? null,
       };

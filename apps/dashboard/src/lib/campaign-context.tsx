@@ -1,14 +1,15 @@
 "use client";
 
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
-import { getCampaign, getCampaignStats, listCampaignEmails, listCampaignLeads, type Campaign, type CampaignStats, type Email, type Lead } from "./api";
+import { getCampaign, getCampaignStats, listCampaignEmails, listCampaignLeads, listCampaignReplies, type Campaign, type CampaignStats, type Email, type Lead, type Reply } from "./api";
 
 interface CampaignContextType {
   campaign: Campaign | null;
   stats: CampaignStats | null;
   emails: Email[];
   leads: Lead[];
+  replies: Reply[];
   loading: boolean;
   setCampaign: (campaign: Campaign | null) => void;
   refreshStats: () => Promise<void>;
@@ -44,11 +45,34 @@ export function CampaignProvider({ children, campaignId }: CampaignProviderProps
     (token) => listCampaignLeads(token, campaignId)
   );
 
-  const loading = campaignLoading || statsLoading || emailsLoading || leadsLoading;
+  const { data: repliesData, isLoading: repliesLoading } = useAuthQuery(
+    ["campaignReplies", campaignId],
+    (token) => listCampaignReplies(token, campaignId)
+  );
+
+  const loading = campaignLoading || statsLoading || emailsLoading || leadsLoading || repliesLoading;
   const campaign = campaignData?.campaign ?? null;
   const stats = statsData ?? null;
   const emails = emailsData?.emails ?? [];
-  const leads = leadsData?.leads ?? [];
+  const replies = repliesData?.replies ?? [];
+  const rawLeads = leadsData?.leads ?? [];
+
+  // Derive lead status from emails and replies
+  const leads = useMemo(() => {
+    const repliedEmails = new Set(replies.map((r) => r.leadEmail.toLowerCase()));
+    const contactedEmails = new Set(emails.map((e) => e.leadEmail?.toLowerCase()).filter(Boolean));
+
+    return rawLeads.map((lead) => {
+      const email = lead.email.toLowerCase();
+      let status = "found";
+      if (repliedEmails.has(email)) {
+        status = "replied";
+      } else if (contactedEmails.has(email)) {
+        status = "contacted";
+      }
+      return { ...lead, status };
+    });
+  }, [rawLeads, emails, replies]);
 
   const refreshStats = async () => {
     await queryClient.invalidateQueries({ queryKey: ["campaignStats", campaignId] });
@@ -58,7 +82,7 @@ export function CampaignProvider({ children, campaignId }: CampaignProviderProps
   const setCampaign = () => {};
 
   return (
-    <CampaignContext.Provider value={{ campaign, stats, emails, leads, loading, setCampaign, refreshStats }}>
+    <CampaignContext.Provider value={{ campaign, stats, emails, leads, replies, loading, setCampaign, refreshStats }}>
       {children}
     </CampaignContext.Provider>
   );
