@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { callExternalService, externalServices } from "../lib/service-client.js";
+import { callExternalService, externalServices, callService, services } from "../lib/service-client.js";
 
 const router = Router();
 
@@ -178,13 +178,94 @@ async function enrichWithDeliveryStats(data: LeaderboardData): Promise<void> {
   }
 }
 
+/** Build leaderboard data from existing service endpoints. */
+async function buildLeaderboardData(): Promise<LeaderboardData> {
+  // 1. Get all campaigns cross-org
+  const { campaigns } = await callExternalService<{
+    campaigns: Array<{
+      id: string;
+      brandId: string | null;
+      brandUrl: string | null;
+      brandDomain: string | null;
+      brandName: string | null;
+    }>;
+  }>(externalServices.campaign, "/campaigns/list");
+
+  // 2. Get cost data per campaign
+  const campaignIds = campaigns.map((c) => c.id);
+  let batchResults: Record<string, { totalCostInUsdCents: string | null }> = {};
+  if (campaignIds.length > 0) {
+    const batchResp = await callExternalService<{
+      results: Record<string, { totalCostInUsdCents: string | null }>;
+    }>(externalServices.campaign, "/campaigns/batch-budget-usage", {
+      method: "POST",
+      body: { campaignIds },
+    });
+    batchResults = batchResp.results || {};
+  }
+
+  // 3. Group campaigns by brandId, sum costs per brand
+  const brandMap = new Map<string, { brandId: string; brandUrl: string | null; brandDomain: string | null; totalCostUsdCents: number }>();
+  for (const c of campaigns) {
+    if (!c.brandId) continue;
+    const costCents = parseFloat(batchResults[c.id]?.totalCostInUsdCents || "0") || 0;
+    const existing = brandMap.get(c.brandId);
+    if (existing) {
+      existing.totalCostUsdCents += costCents;
+    } else {
+      brandMap.set(c.brandId, {
+        brandId: c.brandId,
+        brandUrl: c.brandUrl,
+        brandDomain: c.brandDomain,
+        totalCostUsdCents: costCents,
+      });
+    }
+  }
+
+  const brands: BrandEntry[] = [...brandMap.values()].map((b) => ({
+    brandId: b.brandId,
+    brandUrl: b.brandUrl,
+    brandDomain: b.brandDomain,
+    totalCostUsdCents: b.totalCostUsdCents,
+    emailsSent: 0, emailsOpened: 0, emailsClicked: 0, emailsReplied: 0,
+    openRate: 0, clickRate: 0, replyRate: 0,
+    costPerOpenCents: null, costPerClickCents: null, costPerReplyCents: null,
+  }));
+
+  // 4. Get model stats from emailgen
+  let modelStats: Array<{ model: string; count: number }> = [];
+  try {
+    const modelResp = await callService<{ stats: Array<{ model: string; count: number }> }>(
+      services.emailgen, "/stats/by-model",
+      { method: "POST", body: { appId: "mcpfactory" } }
+    );
+    modelStats = modelResp.stats || [];
+  } catch (err) {
+    console.warn("Failed to fetch model stats:", err);
+  }
+
+  // 5. Distribute total cost to models proportionally by emailsGenerated
+  const totalCostAllBrands = brands.reduce((s, b) => s + b.totalCostUsdCents, 0);
+  const totalGenerated = modelStats.reduce((s, m) => s + m.count, 0);
+
+  const models: ModelEntry[] = modelStats.map((m) => ({
+    model: m.model,
+    emailsGenerated: m.count,
+    totalCostUsdCents: totalGenerated > 0 && totalCostAllBrands > 0
+      ? Math.round(totalCostAllBrands * (m.count / totalGenerated))
+      : 0,
+    emailsSent: 0, emailsOpened: 0, emailsClicked: 0, emailsReplied: 0,
+    openRate: 0, clickRate: 0, replyRate: 0,
+    costPerOpenCents: null, costPerClickCents: null, costPerReplyCents: null,
+  }));
+
+  return { brands, models, hero: null, updatedAt: new Date().toISOString() };
+}
+
 // Public route — no auth required
 router.get("/performance/leaderboard", async (req, res) => {
   try {
-    const data = await callExternalService<LeaderboardData>(
-      externalServices.campaign,
-      "/internal/performance/leaderboard"
-    );
+    const data = await buildLeaderboardData();
 
     // Enrich with combined delivery stats from postmark + instantly
     try {
@@ -195,8 +276,8 @@ router.get("/performance/leaderboard", async (req, res) => {
 
     res.json(data);
   } catch (error) {
-    console.error("Performance leaderboard proxy error:", error);
-    res.status(502).json({ error: "Failed to fetch leaderboard data" });
+    console.error("Performance leaderboard build error:", error);
+    res.status(502).json({ error: "Failed to build leaderboard data" });
   }
 });
 
