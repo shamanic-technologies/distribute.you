@@ -30,15 +30,11 @@ interface SessionData {
 
 const sessions = new Map<string, SessionData>();
 
-// Extract API key from Authorization header
+// Extract API key from Authorization: Bearer <key> header
 function extractApiKey(req: Request): string | null {
   const authHeader = req.headers.authorization;
   if (authHeader?.startsWith("Bearer ")) {
     return authHeader.slice(7);
-  }
-  // Also check query param for simple integration
-  if (req.query.token) {
-    return req.query.token as string;
   }
   return null;
 }
