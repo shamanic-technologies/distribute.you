@@ -406,21 +406,6 @@ registry.registerPath({
 
 registry.registerPath({
   method: "get",
-  path: "/v1/campaigns/{id}/debug",
-  tags: ["Campaigns"],
-  summary: "Get campaign debug info",
-  description: "Get detailed debug information for a campaign",
-  security: authed,
-  request: { params: CampaignIdParam },
-  responses: {
-    200: { description: "Campaign debug data" },
-    401: { description: "Unauthorized", content: errorContent },
-    500: { description: "Internal error", content: errorContent },
-  },
-});
-
-registry.registerPath({
-  method: "get",
   path: "/v1/campaigns/{id}/leads",
   tags: ["Campaigns"],
   summary: "Get campaign leads",
@@ -430,22 +415,6 @@ registry.registerPath({
   request: { params: CampaignIdParam },
   responses: {
     200: { description: "Campaign leads with enrichment run data" },
-    401: { description: "Unauthorized", content: errorContent },
-    500: { description: "Internal error", content: errorContent },
-  },
-});
-
-registry.registerPath({
-  method: "get",
-  path: "/v1/campaigns/{id}/companies",
-  tags: ["Campaigns"],
-  summary: "Get campaign companies",
-  description:
-    "Get all companies for a campaign with aggregated enrichment costs",
-  security: authed,
-  request: { params: CampaignIdParam },
-  responses: {
-    200: { description: "Campaign companies with aggregated costs" },
     401: { description: "Unauthorized", content: errorContent },
     500: { description: "Internal error", content: errorContent },
   },

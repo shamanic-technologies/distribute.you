@@ -83,7 +83,7 @@ router.get("/campaigns", authenticate, requireOrg, async (req: AuthenticatedRequ
     
     const result = await callExternalService(
       externalServices.campaign,
-      `/internal/campaigns${queryString}`,
+      `/campaigns${queryString}`,
       {
         headers: buildInternalHeaders(req),
       }
@@ -132,7 +132,7 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
     
     const result = await callExternalService(
       externalServices.campaign,
-      "/internal/campaigns",
+      "/campaigns",
       {
         method: "POST",
         headers: buildInternalHeaders(req),
@@ -167,7 +167,7 @@ router.get("/campaigns/:id", authenticate, requireOrg, async (req: Authenticated
 
     const result = await callExternalService(
       externalServices.campaign,
-      `/internal/campaigns/${id}`,
+      `/campaigns/${id}`,
       {
         headers: { "x-clerk-org-id": req.orgId! },
       }
@@ -189,7 +189,7 @@ router.patch("/campaigns/:id", authenticate, requireOrg, async (req: Authenticat
 
     const result = await callExternalService(
       externalServices.campaign,
-      `/internal/campaigns/${id}`,
+      `/campaigns/${id}`,
       {
         method: "PATCH",
         headers: { "x-clerk-org-id": req.orgId! },
@@ -213,10 +213,11 @@ router.post("/campaigns/:id/stop", authenticate, requireOrg, async (req: Authent
 
     const result = await callExternalService(
       externalServices.campaign,
-      `/internal/campaigns/${id}/stop`,
+      `/campaigns/${id}`,
       {
-        method: "POST",
+        method: "PATCH",
         headers: { "x-clerk-org-id": req.orgId! },
+        body: { status: "stop" },
       }
     );
 
@@ -247,10 +248,11 @@ router.post("/campaigns/:id/resume", authenticate, requireOrg, async (req: Authe
 
     const result = await callExternalService(
       externalServices.campaign,
-      `/internal/campaigns/${id}/resume`,
+      `/campaigns/${id}`,
       {
-        method: "POST",
+        method: "PATCH",
         headers: { "x-clerk-org-id": req.orgId! },
+        body: { status: "activate" },
       }
     );
     res.json(result);
@@ -270,7 +272,7 @@ router.get("/campaigns/:id/runs", authenticate, requireOrg, async (req: Authenti
 
     const result = await callExternalService(
       externalServices.campaign,
-      `/internal/campaigns/${id}/runs`,
+      `/campaigns/${id}/runs`,
       {
         headers: { "x-clerk-org-id": req.orgId! },
       }
@@ -436,28 +438,6 @@ router.post("/campaigns/batch-stats", authenticate, requireOrg, async (req: Auth
 });
 
 /**
- * GET /v1/campaigns/:id/debug
- * Get detailed debug info for a campaign
- */
-router.get("/campaigns/:id/debug", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
-  try {
-    const { id } = req.params;
-
-    const result = await callExternalService(
-      externalServices.campaign,
-      `/internal/campaigns/${id}/debug`,
-      {
-        headers: { "x-clerk-org-id": req.orgId! },
-      }
-    );
-    res.json(result);
-  } catch (error: any) {
-    console.error("Get campaign debug error:", error);
-    res.status(500).json({ error: error.message || "Failed to get campaign debug info" });
-  }
-});
-
-/**
  * GET /v1/campaigns/:id/leads
  * Get all leads for a campaign
  */
@@ -466,10 +446,10 @@ router.get("/campaigns/:id/leads", authenticate, requireOrg, async (req: Authent
     const { id } = req.params;
 
     const result = await callExternalService(
-      externalServices.campaign,
-      `/internal/campaigns/${id}/leads`,
+      externalServices.lead,
+      `/leads?campaignId=${id}`,
       {
-        headers: { "x-clerk-org-id": req.orgId! },
+        headers: { "x-app-id": "mcpfactory", "x-org-id": req.orgId! },
       }
     ) as { leads: Array<Record<string, unknown>> };
 
@@ -514,82 +494,6 @@ router.get("/campaigns/:id/leads", authenticate, requireOrg, async (req: Authent
 });
 
 /**
- * GET /v1/campaigns/:id/companies
- * Get all companies for a campaign, with aggregated enrichment costs
- */
-router.get("/campaigns/:id/companies", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
-  try {
-    const { id } = req.params;
-
-    const result = await callExternalService(
-      externalServices.campaign,
-      `/internal/campaigns/${id}/companies`,
-      {
-        headers: { "x-clerk-org-id": req.orgId! },
-      }
-    ) as { companies: Array<Record<string, unknown>> };
-
-    const companies = result.companies || [];
-
-    // Collect all enrichmentRunIds across all companies
-    const allRunIds = companies.flatMap(
-      (c) => (c.enrichmentRunIds as string[] | undefined) || []
-    );
-
-    let runMap = new Map<string, RunWithCosts>();
-    if (allRunIds.length > 0) {
-      try {
-        runMap = await getRunsBatch(allRunIds);
-      } catch (err) {
-        console.warn("Failed to fetch company enrichment run costs:", err);
-      }
-    }
-
-    // Aggregate costs per company
-    const companiesWithCosts = companies.map((company) => {
-      const runIds = (company.enrichmentRunIds as string[] | undefined) || [];
-      let totalCostInUsdCents = 0;
-      const costs: Array<{ costName: string; quantity: number; totalCostInUsdCents: number }> = [];
-      const costAgg = new Map<string, { quantity: number; totalCostInUsdCents: number }>();
-
-      for (const runId of runIds) {
-        const run = runMap.get(runId);
-        if (!run) continue;
-        totalCostInUsdCents += parseFloat(run.totalCostInUsdCents) || 0;
-        for (const cost of run.costs) {
-          const existing = costAgg.get(cost.costName);
-          if (existing) {
-            existing.quantity += parseFloat(cost.quantity) || 0;
-            existing.totalCostInUsdCents += parseFloat(cost.totalCostInUsdCents) || 0;
-          } else {
-            costAgg.set(cost.costName, {
-              quantity: parseFloat(cost.quantity) || 0,
-              totalCostInUsdCents: parseFloat(cost.totalCostInUsdCents) || 0,
-            });
-          }
-        }
-      }
-
-      for (const [costName, agg] of costAgg) {
-        costs.push({ costName, ...agg });
-      }
-
-      const { enrichmentRunIds: _, ...companyWithoutRunIds } = company;
-      return {
-        ...companyWithoutRunIds,
-        totalCostInUsdCents: totalCostInUsdCents > 0 ? String(totalCostInUsdCents) : null,
-        costs,
-      };
-    });
-
-    res.json({ companies: companiesWithCosts });
-  } catch (error: any) {
-    console.error("Get campaign companies error:", error);
-    res.status(500).json({ error: error.message || "Failed to get campaign companies" });
-  }
-});
-
-/**
  * GET /v1/campaigns/:id/emails
  * Get all generated emails for a campaign (across all runs)
  */
@@ -597,43 +501,22 @@ router.get("/campaigns/:id/emails", authenticate, requireOrg, async (req: Authen
   try {
     const { id } = req.params;
 
-    // 1. Get all runs for this campaign
-    const runsResult = await callExternalService(
-      externalServices.campaign,
-      `/internal/campaigns/${id}/runs`,
+    // 1. Fetch all generations for this campaign in one call
+    const emailsResult = await callService(
+      services.emailgen,
+      `/generations?campaignId=${id}`,
       {
         headers: { "x-clerk-org-id": req.orgId! },
       }
-    ) as { runs: Array<{ id: string }> };
+    ) as { generations: Array<Record<string, unknown>> };
 
-    const runs = runsResult.runs || [];
-    
-    if (runs.length === 0) {
+    const allEmails = emailsResult.generations || [];
+
+    if (allEmails.length === 0) {
       return res.json({ emails: [] });
     }
 
-    // 2. Get emails for each run from emailgeneration-service
-    const allEmails: Array<Record<string, unknown>> = [];
-    for (const run of runs) {
-      try {
-        const emailsResult = await callService(
-          services.emailgen,
-          `/generations/${run.id}`,
-          {
-            headers: { "x-clerk-org-id": req.orgId! },
-          }
-        ) as { generations: Array<Record<string, unknown>> };
-
-        if (emailsResult.generations) {
-          allEmails.push(...emailsResult.generations);
-        }
-      } catch (err) {
-        // Continue if one run fails
-        console.warn(`Failed to get emails for run ${run.id}:`, err);
-      }
-    }
-
-    // 3. Batch-fetch generation run costs from runs-service
+    // 2. Batch-fetch generation run costs from runs-service
     const generationRunIds = allEmails
       .map((e) => e.generationRunId as string | undefined)
       .filter((id): id is string => !!id);
