@@ -1,9 +1,65 @@
 "use client";
 
-import { useState } from "react";
-import { useParams } from "next/navigation";
-import { useAuthQuery } from "@/lib/use-auth-query";
-import { listCampaignCompanies, type Company } from "@/lib/api";
+import { useState, useMemo } from "react";
+import { type Lead } from "@/lib/api";
+import { useCampaign } from "@/lib/campaign-context";
+
+interface DerivedCompany {
+  name: string;
+  domain: string | null;
+  industry: string | null;
+  employeeCount: string | null;
+  leadsCount: number;
+  totalCostInUsdCents: string | null;
+  costs: Array<{ costName: string; quantity: number; totalCostInUsdCents: number }>;
+}
+
+function deriveCompanies(leads: Lead[]): DerivedCompany[] {
+  const map = new Map<string, { leads: Lead[] }>();
+  for (const lead of leads) {
+    const name = lead.organizationName;
+    if (!name) continue;
+    const entry = map.get(name);
+    if (entry) {
+      entry.leads.push(lead);
+    } else {
+      map.set(name, { leads: [lead] });
+    }
+  }
+
+  return Array.from(map.entries()).map(([name, { leads: companyLeads }]) => {
+    const first = companyLeads[0];
+
+    // Aggregate costs across all leads' enrichment runs
+    let totalCents = 0;
+    const costAgg = new Map<string, { quantity: number; totalCostInUsdCents: number }>();
+    for (const lead of companyLeads) {
+      if (!lead.enrichmentRun) continue;
+      totalCents += parseFloat(lead.enrichmentRun.totalCostInUsdCents) || 0;
+      for (const cost of lead.enrichmentRun.costs) {
+        const existing = costAgg.get(cost.costName);
+        const q = parseFloat(cost.quantity) || 0;
+        const t = parseFloat(cost.totalCostInUsdCents) || 0;
+        if (existing) {
+          existing.quantity += q;
+          existing.totalCostInUsdCents += t;
+        } else {
+          costAgg.set(cost.costName, { quantity: q, totalCostInUsdCents: t });
+        }
+      }
+    }
+
+    return {
+      name,
+      domain: first.organizationDomain,
+      industry: first.organizationIndustry,
+      employeeCount: first.organizationSize,
+      leadsCount: companyLeads.length,
+      totalCostInUsdCents: totalCents > 0 ? String(totalCents) : null,
+      costs: Array.from(costAgg.entries()).map(([costName, agg]) => ({ costName, ...agg })),
+    };
+  });
+}
 
 function formatCostRounded(totalCents: string | null): string | null {
   if (!totalCents) return null;
@@ -20,13 +76,9 @@ function formatCostDetailed(cents: number): string {
 }
 
 export default function CampaignCompaniesPage() {
-  const params = useParams();
-  const { data, isLoading } = useAuthQuery(
-    ["campaignCompanies", params.id],
-    (token) => listCampaignCompanies(token, params.id as string)
-  );
-  const companies = data?.companies ?? [];
-  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  const { leads, loading: isLoading } = useCampaign();
+  const companies = useMemo(() => deriveCompanies(leads), [leads]);
+  const [selectedCompany, setSelectedCompany] = useState<DerivedCompany | null>(null);
 
   if (isLoading) {
     return (
@@ -64,10 +116,10 @@ export default function CampaignCompaniesPage() {
               const cost = formatCostRounded(company.totalCostInUsdCents);
               return (
                 <button
-                  key={company.id}
+                  key={company.name}
                   onClick={() => setSelectedCompany(company)}
                   className={`w-full text-left bg-white rounded-xl border p-4 hover:border-primary-300 hover:shadow-sm transition ${
-                    selectedCompany?.id === company.id ? 'border-primary-500 ring-1 ring-primary-500' : 'border-gray-200'
+                    selectedCompany?.name === company.name ? 'border-primary-500 ring-1 ring-primary-500' : 'border-gray-200'
                   }`}
                 >
                   <div className="flex items-center gap-3">
