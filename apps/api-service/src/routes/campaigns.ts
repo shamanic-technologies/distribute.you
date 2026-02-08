@@ -26,47 +26,66 @@ function sendLifecycleEmail(
 
 const router = Router();
 
-/** Fetch delivery stats from postmark + instantly using filter-based queries. */
+interface EmailSendingStats {
+  sent: number; delivered: number; opened: number; clicked: number;
+  replied: number; bounced: number; unsubscribed: number; recipients: number;
+}
+
+/** Fetch delivery stats from email-sending service + reply classifications from reply-qualification service. */
 async function fetchDeliveryStats(
   filters: { campaignId?: string; brandId?: string },
   orgId: string
 ): Promise<Record<string, number> | null> {
-  const body = { ...filters, appId: "mcpfactory" };
-
-  const [postmarkResult, instantlyResult] = await Promise.all([
-    callExternalService(
-      externalServices.postmark,
+  const [deliveryResult, qualifications] = await Promise.all([
+    callExternalService<{ transactional: EmailSendingStats; broadcast: EmailSendingStats }>(
+      externalServices.emailSending,
       "/stats",
-      { method: "POST", headers: { "x-clerk-org-id": orgId }, body }
+      {
+        method: "POST",
+        headers: { "x-clerk-org-id": orgId },
+        body: { ...filters, appId: "mcpfactory", clerkOrgId: orgId },
+      }
     ).catch((err) => {
-      console.warn("[campaigns] Postmark stats failed:", (err as Error).message);
+      console.warn("[campaigns] Email-sending stats failed:", (err as Error).message);
       return null;
     }),
-    callExternalService(
-      externalServices.instantly,
-      "/stats",
-      { method: "POST", headers: { "x-clerk-org-id": orgId }, body }
-    ).catch((err) => {
-      console.warn("[campaigns] Instantly stats failed:", (err as Error).message);
-      return null;
-    }),
+    filters.campaignId
+      ? callExternalService<Array<{ classification: string }>>(
+          externalServices.replyQualification,
+          `/qualifications?sourceService=mcpfactory&sourceOrgId=${orgId}&sourceRefId=${filters.campaignId}`,
+        ).catch((err) => {
+          console.warn("[campaigns] Reply-qualification stats failed:", (err as Error).message);
+          return null;
+        })
+      : Promise.resolve(null),
   ]);
 
-  const ps = (postmarkResult as any)?.stats;
-  const is = (instantlyResult as any)?.stats;
-  if (!ps && !is) return null;
+  const t = (deliveryResult as any)?.transactional;
+  const b = (deliveryResult as any)?.broadcast;
+  if (!t && !b) return null;
+
+  const sum = (a?: number, c?: number) => (a || 0) + (c || 0);
+
+  // Count reply classifications
+  const counts: Record<string, number> = {};
+  if (Array.isArray(qualifications)) {
+    for (const q of qualifications) {
+      counts[q.classification] = (counts[q.classification] || 0) + 1;
+    }
+  }
 
   return {
-    emailsSent: (ps?.emailsSent || 0) + (is?.emailsSent || 0),
-    emailsOpened: (ps?.emailsOpened || 0) + (is?.emailsOpened || 0),
-    emailsClicked: (ps?.emailsClicked || 0) + (is?.emailsClicked || 0),
-    emailsReplied: (ps?.emailsReplied || 0) + (is?.emailsReplied || 0),
-    emailsBounced: (ps?.emailsBounced || 0) + (is?.emailsBounced || 0),
-    repliesWillingToMeet: (ps?.repliesWillingToMeet || 0) + (is?.repliesWillingToMeet || 0),
-    repliesInterested: (ps?.repliesInterested || 0) + (is?.repliesInterested || 0),
-    repliesNotInterested: (ps?.repliesNotInterested || 0) + (is?.repliesNotInterested || 0),
-    repliesOutOfOffice: (ps?.repliesOutOfOffice || 0) + (is?.repliesOutOfOffice || 0),
-    repliesUnsubscribe: (ps?.repliesUnsubscribe || 0) + (is?.repliesUnsubscribe || 0),
+    emailsSent: sum(t?.sent, b?.sent),
+    emailsDelivered: sum(t?.delivered, b?.delivered),
+    emailsOpened: sum(t?.opened, b?.opened),
+    emailsClicked: sum(t?.clicked, b?.clicked),
+    emailsReplied: sum(t?.replied, b?.replied),
+    emailsBounced: sum(t?.bounced, b?.bounced),
+    repliesWillingToMeet: counts.willing_to_meet || 0,
+    repliesInterested: counts.interested || 0,
+    repliesNotInterested: counts.not_interested || 0,
+    repliesOutOfOffice: counts.out_of_office || 0,
+    repliesUnsubscribe: counts.unsubscribe || 0,
   };
 }
 

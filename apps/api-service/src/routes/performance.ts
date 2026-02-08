@@ -59,40 +59,31 @@ interface LeaderboardData {
   updatedAt: string;
 }
 
-function sumStats(a: DeliveryStats, b: DeliveryStats): DeliveryStats {
-  return {
-    emailsSent: a.emailsSent + b.emailsSent,
-    emailsOpened: a.emailsOpened + b.emailsOpened,
-    emailsClicked: a.emailsClicked + b.emailsClicked,
-    emailsReplied: a.emailsReplied + b.emailsReplied,
-    emailsBounced: a.emailsBounced + b.emailsBounced,
-  };
-}
-
-/** Call a delivery service's /stats endpoint with filter-based query. */
-async function fetchDeliveryStats(
-  service: { url: string; apiKey: string },
-  filters: Record<string, string>
-): Promise<DeliveryStats> {
+/** Fetch combined delivery stats from the unified email-sending service. */
+async function fetchCombinedDeliveryStats(filters: Record<string, string>): Promise<DeliveryStats> {
   try {
-    const result = await callExternalService<{ stats: DeliveryStats }>(
-      service,
+    const result = await callExternalService<{
+      transactional: { sent: number; opened: number; clicked: number; replied: number; bounced: number };
+      broadcast: { sent: number; opened: number; clicked: number; replied: number; bounced: number };
+    }>(
+      externalServices.emailSending,
       "/stats",
       { method: "POST", body: filters }
     );
-    return result.stats || EMPTY_STATS;
+
+    const t = result.transactional;
+    const b = result.broadcast;
+
+    return {
+      emailsSent: (t?.sent || 0) + (b?.sent || 0),
+      emailsOpened: (t?.opened || 0) + (b?.opened || 0),
+      emailsClicked: (t?.clicked || 0) + (b?.clicked || 0),
+      emailsReplied: (t?.replied || 0) + (b?.replied || 0),
+      emailsBounced: (t?.bounced || 0) + (b?.bounced || 0),
+    };
   } catch {
     return EMPTY_STATS;
   }
-}
-
-/** Fetch stats from both Postmark and Instantly, return combined totals. */
-async function fetchCombinedDeliveryStats(filters: Record<string, string>): Promise<DeliveryStats> {
-  const [postmarkStats, instantlyStats] = await Promise.all([
-    fetchDeliveryStats(externalServices.postmark, filters),
-    fetchDeliveryStats(externalServices.instantly, filters),
-  ]);
-  return sumStats(postmarkStats, instantlyStats);
 }
 
 function applyStatsToEntry(
@@ -116,7 +107,7 @@ function applyStatsToEntry(
 }
 
 /**
- * Enrich leaderboard email stats from both postmark-service and instantly-service.
+ * Enrich leaderboard email stats from the unified email-sending service.
  * Uses brandId and appId filters directly — no need to fetch campaigns or runs.
  */
 async function enrichWithDeliveryStats(data: LeaderboardData): Promise<void> {
@@ -267,7 +258,7 @@ router.get("/performance/leaderboard", async (req, res) => {
   try {
     const data = await buildLeaderboardData();
 
-    // Enrich with combined delivery stats from postmark + instantly
+    // Enrich with combined delivery stats from email-sending service
     try {
       await enrichWithDeliveryStats(data);
     } catch (err) {
