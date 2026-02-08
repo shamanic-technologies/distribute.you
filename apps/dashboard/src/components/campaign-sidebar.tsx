@@ -40,9 +40,10 @@ interface CampaignSidebarProps {
   stats?: CampaignStats;
   emailCount?: number;
   leadCount?: number;
+  companyCount?: number;
 }
 
-export function CampaignSidebar({ campaignId, brandId, stats, emailCount, leadCount }: CampaignSidebarProps) {
+export function CampaignSidebar({ campaignId, brandId, stats, emailCount, leadCount, companyCount }: CampaignSidebarProps) {
   const basePath = `/brands/${brandId}/mcp/sales-outreach/campaigns/${campaignId}`;
   const backHref = `/brands/${brandId}/mcp/sales-outreach`;
 
@@ -58,7 +59,7 @@ export function CampaignSidebar({ campaignId, brandId, stats, emailCount, leadCo
       label: "Companies",
       href: `${basePath}/companies`,
       icon: <CompaniesIcon />,
-      badge: leadCount ? Math.round(leadCount / 3) : undefined,
+      badge: companyCount || undefined,
     },
     {
       id: "leads",

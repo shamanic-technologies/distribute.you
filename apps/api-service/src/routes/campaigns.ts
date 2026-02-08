@@ -326,7 +326,7 @@ router.get("/campaigns/:id/runs", authenticate, requireOrg, async (req: Authenti
 router.get("/campaigns/:id/stats", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
   // #swagger.tags = ['Campaigns']
   // #swagger.summary = 'Get campaign stats'
-  // #swagger.description = 'Get campaign statistics (leads found, emails sent, etc.)'
+  // #swagger.description = 'Get campaign statistics (leads served/buffered/skipped, apollo metrics, emails sent/opened/clicked/replied, etc.)'
   // #swagger.security = [{ "bearerAuth": [] }, { "apiKey": [] }]
   try {
     const { id } = req.params;
@@ -355,12 +355,13 @@ router.get("/campaigns/:id/stats", authenticate, requireOrg, async (req: Authent
 
     const stats: Record<string, any> = { campaignId: id };
 
-    // Lead stats from lead-service: { served, buffered, skipped }
+    // Lead stats from lead-service: { served, buffered, skipped, apollo }
     if (leadStats) {
-      const ls = leadStats as { served: number; buffered: number; skipped: number };
+      const ls = leadStats as { served: number; buffered: number; skipped: number; apollo?: { enrichedLeadsCount: number; searchCount: number; fetchedPeopleCount: number; totalMatchingPeople: number } };
       stats.leadsServed = ls.served;
       stats.leadsBuffered = ls.buffered;
       stats.leadsSkipped = ls.skipped;
+      if (ls.apollo) stats.apollo = ls.apollo;
     } else {
       stats.leadsServed = 0;
       stats.leadsBuffered = 0;
@@ -436,12 +437,13 @@ router.post("/campaigns/batch-stats", authenticate, requireOrg, async (req: Auth
     for (const r of results) {
       const merged: Record<string, any> = { campaignId: r.campaignId };
 
-      // Lead stats from lead-service: { served, buffered, skipped }
+      // Lead stats from lead-service: { served, buffered, skipped, apollo }
       if (r.leadStats) {
-        const ls = r.leadStats as { served: number; buffered: number; skipped: number };
+        const ls = r.leadStats as { served: number; buffered: number; skipped: number; apollo?: { enrichedLeadsCount: number; searchCount: number; fetchedPeopleCount: number; totalMatchingPeople: number } };
         merged.leadsServed = ls.served;
         merged.leadsBuffered = ls.buffered;
         merged.leadsSkipped = ls.skipped;
+        if (ls.apollo) merged.apollo = ls.apollo;
       } else {
         merged.leadsServed = 0;
         merged.leadsBuffered = 0;
