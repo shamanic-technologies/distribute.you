@@ -262,6 +262,13 @@ export interface RunCost {
   totalCostInUsdCents: string;
 }
 
+export interface DescendantRun {
+  serviceName: string;
+  taskName: string;
+  costs: RunCost[];
+  ownCostInUsdCents: string;
+}
+
 export interface BrandRun {
   id: string;
   taskName: string;
@@ -307,6 +314,9 @@ export interface Lead {
     completedAt: string | null;
     totalCostInUsdCents: string;
     costs: RunCost[];
+    serviceName: string;
+    taskName: string;
+    descendantRuns: DescendantRun[];
   } | null;
 }
 
@@ -332,6 +342,9 @@ export interface Email {
     completedAt: string | null;
     totalCostInUsdCents: string;
     costs: RunCost[];
+    serviceName: string;
+    taskName: string;
+    descendantRuns: DescendantRun[];
   } | null;
 }
 

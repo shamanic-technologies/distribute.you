@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { type Lead, type RunCost } from "@/lib/api";
+import { type Lead, type RunCost, type DescendantRun } from "@/lib/api";
 import { useCampaign } from "@/lib/campaign-context";
 
 function formatCostRounded(run: Lead["enrichmentRun"]): string | null {
@@ -23,6 +23,99 @@ function formatDuration(startedAt: string, completedAt: string | null): string |
   const ms = new Date(completedAt).getTime() - new Date(startedAt).getTime();
   if (ms < 1000) return `${ms}ms`;
   return `${(ms / 1000).toFixed(1)}s`;
+}
+
+interface CostGroup {
+  serviceName: string;
+  taskName: string;
+  subtotal: string;
+  costs: RunCost[];
+}
+
+function buildCostGroups(
+  ownCosts: RunCost[],
+  serviceName: string,
+  taskName: string,
+  descendantRuns: DescendantRun[]
+): CostGroup[] {
+  const groups: CostGroup[] = [];
+
+  if (ownCosts.length > 0) {
+    const subtotal = ownCosts.reduce((sum, c) => sum + parseFloat(c.totalCostInUsdCents), 0);
+    groups.push({ serviceName, taskName, subtotal: String(subtotal), costs: ownCosts });
+  }
+
+  for (const dr of descendantRuns) {
+    if (dr.costs.length > 0) {
+      groups.push({
+        serviceName: dr.serviceName,
+        taskName: dr.taskName,
+        subtotal: dr.ownCostInUsdCents,
+        costs: dr.costs,
+      });
+    }
+  }
+
+  return groups;
+}
+
+function CostGroupList({
+  costs,
+  serviceName,
+  taskName,
+  descendantRuns,
+}: {
+  costs: RunCost[];
+  serviceName: string;
+  taskName: string;
+  descendantRuns: DescendantRun[];
+}) {
+  const groups = buildCostGroups(costs, serviceName, taskName, descendantRuns);
+
+  if (groups.length === 0) return null;
+
+  // If only one group with no descendants, render flat (backward compatible)
+  if (groups.length === 1 && descendantRuns.length === 0) {
+    return (
+      <div className="space-y-1">
+        {costs.map((cost) => (
+          <div key={cost.costName} className="flex items-center justify-between text-xs text-gray-400">
+            <span className="font-mono">{cost.costName}</span>
+            <span>
+              {Number(cost.quantity).toLocaleString()} × {formatCostDetailed(cost.unitCostInUsdCents)}
+              {" = "}
+              {formatCostDetailed(cost.totalCostInUsdCents)}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {groups.map((group) => (
+        <div key={`${group.serviceName}-${group.taskName}`}>
+          <div className="flex items-center justify-between text-xs font-medium text-gray-600 mb-1">
+            <span>{group.serviceName} / {group.taskName}</span>
+            <span>{formatCostDetailed(group.subtotal)}</span>
+          </div>
+          <div className="space-y-0.5 pl-3 border-l-2 border-gray-100">
+            {group.costs.map((cost) => (
+              <div key={cost.costName} className="flex items-center justify-between text-xs text-gray-400">
+                <span className="font-mono">{cost.costName}</span>
+                <span>
+                  {Number(cost.quantity).toLocaleString()} × {formatCostDetailed(cost.unitCostInUsdCents)}
+                  {" = "}
+                  {formatCostDetailed(cost.totalCostInUsdCents)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default function CampaignLeadsPage() {
@@ -212,7 +305,7 @@ export default function CampaignLeadsPage() {
             {selectedLead.enrichmentRun && (
               <div className="bg-white rounded-lg border border-gray-200 p-4">
                 <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Enrichment Cost</h3>
-                <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
+                <div className="flex items-center gap-2 text-xs text-gray-500 mb-3">
                   <span className={`inline-block w-1.5 h-1.5 rounded-full ${
                     selectedLead.enrichmentRun.status === "completed" ? "bg-green-400" :
                     selectedLead.enrichmentRun.status === "failed" ? "bg-red-400" :
@@ -226,20 +319,12 @@ export default function CampaignLeadsPage() {
                     {formatCostDetailed(selectedLead.enrichmentRun.totalCostInUsdCents)}
                   </span>
                 </div>
-                {selectedLead.enrichmentRun.costs.length > 0 && (
-                  <div className="space-y-1">
-                    {selectedLead.enrichmentRun.costs.map((cost) => (
-                      <div key={cost.costName} className="flex items-center justify-between text-xs text-gray-400">
-                        <span className="font-mono">{cost.costName}</span>
-                        <span>
-                          {Number(cost.quantity).toLocaleString()} × {formatCostDetailed(cost.unitCostInUsdCents)}
-                          {" = "}
-                          {formatCostDetailed(cost.totalCostInUsdCents)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <CostGroupList
+                  costs={selectedLead.enrichmentRun.costs}
+                  serviceName={selectedLead.enrichmentRun.serviceName}
+                  taskName={selectedLead.enrichmentRun.taskName}
+                  descendantRuns={selectedLead.enrichmentRun.descendantRuns}
+                />
               </div>
             )}
 
