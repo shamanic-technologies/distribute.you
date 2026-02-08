@@ -146,10 +146,20 @@ export interface Campaign {
   updatedAt: string;
 }
 
+export interface ApolloStats {
+  enrichedLeadsCount: number;
+  searchCount: number;
+  fetchedPeopleCount: number;
+  totalMatchingPeople: number;
+}
+
 export interface CampaignStats {
   campaignId: string;
   totalCostInUsdCents?: string | null;
-  leadsFound: number;
+  leadsServed: number;
+  leadsBuffered: number;
+  leadsSkipped: number;
+  apollo?: ApolloStats;
   emailsGenerated: number;
   emailsSent: number;
   emailsOpened: number;

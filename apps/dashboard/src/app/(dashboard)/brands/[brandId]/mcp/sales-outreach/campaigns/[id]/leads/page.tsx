@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useParams } from "next/navigation";
-import { useAuthQuery } from "@/lib/use-auth-query";
-import { listCampaignLeads, type Lead, type RunCost } from "@/lib/api";
+import { type Lead, type RunCost } from "@/lib/api";
+import { useCampaign } from "@/lib/campaign-context";
 
 function formatCostRounded(run: Lead["enrichmentRun"]): string | null {
   if (!run) return null;
@@ -27,14 +26,8 @@ function formatDuration(startedAt: string, completedAt: string | null): string |
 }
 
 export default function CampaignLeadsPage() {
-  const params = useParams();
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-
-  const { data, isLoading } = useAuthQuery(
-    ["campaignLeads", params.id],
-    (token) => listCampaignLeads(token, params.id as string)
-  );
-  const leads = data?.leads ?? [];
+  const { leads, loading: isLoading } = useCampaign();
 
   if (isLoading) {
     return (

@@ -31,7 +31,7 @@ export default function BrandMcpSalesOutreachPage() {
   // Aggregate stats
   const totals = Object.values(campaignStats).reduce(
     (acc, s) => ({
-      leadsFound: acc.leadsFound + (s.leadsFound || 0),
+      leadsServed: acc.leadsServed + (s.leadsServed || 0),
       emailsGenerated: acc.emailsGenerated + (s.emailsGenerated || 0),
       emailsSent: acc.emailsSent + (s.emailsSent || 0),
       emailsOpened: acc.emailsOpened + (s.emailsOpened || 0),
@@ -43,7 +43,7 @@ export default function BrandMcpSalesOutreachPage() {
       outOfOffice: acc.outOfOffice + (s.repliesOutOfOffice || 0),
       unsubscribe: acc.unsubscribe + (s.repliesUnsubscribe || 0),
     }),
-    { leadsFound: 0, emailsGenerated: 0, emailsSent: 0, emailsOpened: 0, emailsClicked: 0, emailsReplied: 0,
+    { leadsServed: 0, emailsGenerated: 0, emailsSent: 0, emailsOpened: 0, emailsClicked: 0, emailsReplied: 0,
       willingToMeet: 0, interested: 0, notInterested: 0, outOfOffice: 0, unsubscribe: 0 }
   );
 
@@ -76,7 +76,7 @@ export default function BrandMcpSalesOutreachPage() {
       {campaigns.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
           <FunnelMetrics
-            leadsFound={totals.leadsFound}
+            leadsServed={totals.leadsServed}
             emailsGenerated={totals.emailsGenerated}
             emailsSent={totals.emailsSent}
             emailsOpened={totals.emailsOpened}
@@ -127,7 +127,7 @@ export default function BrandMcpSalesOutreachPage() {
                 </div>
                 {stats && (
                   <div className="flex gap-4 text-xs text-gray-500">
-                    <span>{stats.leadsFound || 0} leads</span>
+                    <span>{stats.leadsServed || 0} leads</span>
                     <span>{stats.emailsGenerated || 0} generated</span>
                     <span>{stats.emailsSent || 0} sent</span>
                     <span>{stats.emailsReplied || 0} replies</span>

@@ -152,7 +152,7 @@ export default function CampaignCompaniesPage() {
                   <p className="font-medium">{selectedCompany.employeeCount ? `${selectedCompany.employeeCount} employees` : "-"}</p>
                 </div>
                 <div>
-                  <span className="text-gray-500">Leads found:</span>
+                  <span className="text-gray-500">Leads:</span>
                   <p className="font-medium">
                     <span className="text-xs bg-primary-50 text-primary-700 px-2 py-1 rounded-full">
                       {selectedCompany.leadsCount} lead{selectedCompany.leadsCount !== 1 ? "s" : ""}

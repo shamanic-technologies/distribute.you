@@ -342,7 +342,7 @@ registry.registerPath({
   tags: ["Campaigns"],
   summary: "Get campaign stats",
   description:
-    "Get campaign statistics (leads found, emails sent/opened/clicked/replied, etc.)",
+    "Get campaign statistics (leads served/buffered/skipped, apollo metrics, emails sent/opened/clicked/replied, etc.)",
   security: authed,
   request: { params: CampaignIdParam },
   responses: {
@@ -353,7 +353,15 @@ registry.registerPath({
           schema: z
             .object({
               campaignId: z.string(),
-              leadsFound: z.number(),
+              leadsServed: z.number(),
+              leadsBuffered: z.number(),
+              leadsSkipped: z.number(),
+              apollo: z.object({
+                enrichedLeadsCount: z.number(),
+                searchCount: z.number(),
+                fetchedPeopleCount: z.number(),
+                totalMatchingPeople: z.number(),
+              }).optional(),
               emailsGenerated: z.number(),
               totalCostUsd: z.number().optional(),
               emailsSent: z.number(),

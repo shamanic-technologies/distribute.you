@@ -70,7 +70,7 @@ export function CampaignCard({ campaign, stats }: CampaignCardProps) {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-gray-100">
         <div>
           <p className="text-xs text-gray-500">Leads</p>
-          <p className="font-medium text-gray-800">{stats?.leadsFound || 0}</p>
+          <p className="font-medium text-gray-800">{stats?.leadsServed || 0}</p>
         </div>
         <div>
           <p className="text-xs text-gray-500">Generated</p>

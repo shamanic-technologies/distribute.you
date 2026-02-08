@@ -93,7 +93,7 @@ export default function CampaignOverviewPage() {
       {stats && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
           <FunnelMetrics 
-            leadsFound={stats.leadsFound || 0}
+            leadsServed={stats.leadsServed || 0}
             emailsGenerated={stats.emailsGenerated || 0}
             emailsSent={stats.emailsSent || 0}
             emailsOpened={stats.emailsOpened || 0}

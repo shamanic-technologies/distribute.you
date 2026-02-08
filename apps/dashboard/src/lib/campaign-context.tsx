@@ -2,12 +2,13 @@
 
 import { createContext, useContext, type ReactNode } from "react";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
-import { getCampaign, getCampaignStats, listCampaignEmails, type Campaign, type CampaignStats, type Email } from "./api";
+import { getCampaign, getCampaignStats, listCampaignEmails, listCampaignLeads, type Campaign, type CampaignStats, type Email, type Lead } from "./api";
 
 interface CampaignContextType {
   campaign: Campaign | null;
   stats: CampaignStats | null;
   emails: Email[];
+  leads: Lead[];
   loading: boolean;
   setCampaign: (campaign: Campaign | null) => void;
   refreshStats: () => Promise<void>;
@@ -38,10 +39,16 @@ export function CampaignProvider({ children, campaignId }: CampaignProviderProps
     (token) => listCampaignEmails(token, campaignId)
   );
 
-  const loading = campaignLoading || statsLoading || emailsLoading;
+  const { data: leadsData, isLoading: leadsLoading } = useAuthQuery(
+    ["campaignLeads", campaignId],
+    (token) => listCampaignLeads(token, campaignId)
+  );
+
+  const loading = campaignLoading || statsLoading || emailsLoading || leadsLoading;
   const campaign = campaignData?.campaign ?? null;
   const stats = statsData ?? null;
   const emails = emailsData?.emails ?? [];
+  const leads = leadsData?.leads ?? [];
 
   const refreshStats = async () => {
     await queryClient.invalidateQueries({ queryKey: ["campaignStats", campaignId] });
@@ -51,7 +58,7 @@ export function CampaignProvider({ children, campaignId }: CampaignProviderProps
   const setCampaign = () => {};
 
   return (
-    <CampaignContext.Provider value={{ campaign, stats, emails, loading, setCampaign, refreshStats }}>
+    <CampaignContext.Provider value={{ campaign, stats, emails, leads, loading, setCampaign, refreshStats }}>
       {children}
     </CampaignContext.Provider>
   );

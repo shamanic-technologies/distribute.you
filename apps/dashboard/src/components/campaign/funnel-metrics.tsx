@@ -1,7 +1,7 @@
 "use client";
 
 interface FunnelMetricsProps {
-  leadsFound: number;
+  leadsServed: number;
   emailsGenerated: number;
   emailsSent: number;
   emailsOpened: number;
@@ -10,7 +10,7 @@ interface FunnelMetricsProps {
 }
 
 export function FunnelMetrics({ 
-  leadsFound, 
+  leadsServed, 
   emailsGenerated,
   emailsSent, 
   emailsOpened, 
@@ -21,8 +21,8 @@ export function FunnelMetrics({
   const emailsReady = emailsGenerated || emailsSent;
   
   const steps = [
-    { label: "Leads", value: leadsFound, rate: null },
-    { label: "Generated", value: emailsGenerated, rate: leadsFound > 0 ? (emailsGenerated / leadsFound * 100) : 0 },
+    { label: "Leads", value: leadsServed, rate: null },
+    { label: "Generated", value: emailsGenerated, rate: leadsServed > 0 ? (emailsGenerated / leadsServed * 100) : 0 },
     { label: "Sent", value: emailsSent, rate: emailsReady > 0 ? (emailsSent / emailsReady * 100) : 0 },
     { label: "Opened", value: emailsOpened, rate: emailsSent > 0 ? (emailsOpened / emailsSent * 100) : 0 },
     { label: "Replied", value: emailsReplied, rate: emailsSent > 0 ? (emailsReplied / emailsSent * 100) : 0 },
