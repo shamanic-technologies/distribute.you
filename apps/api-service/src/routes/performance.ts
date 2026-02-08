@@ -180,9 +180,6 @@ async function enrichWithDeliveryStats(data: LeaderboardData): Promise<void> {
 
 // Public route — no auth required
 router.get("/performance/leaderboard", async (req, res) => {
-  // #swagger.tags = ['Performance']
-  // #swagger.summary = 'Get performance leaderboard'
-  // #swagger.description = 'Returns public performance leaderboard data. No authentication required.'
   try {
     const data = await callExternalService<LeaderboardData>(
       externalServices.campaign,

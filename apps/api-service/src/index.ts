@@ -41,9 +41,6 @@ app.use(express.json());
 // OpenAPI spec endpoint
 const openapiPath = join(__dirname, "..", "openapi.json");
 app.get("/openapi.json", (_req, res) => {
-  // #swagger.tags = ['Health']
-  // #swagger.summary = 'OpenAPI specification'
-  // #swagger.description = 'Returns the OpenAPI 3.0 JSON spec for this service'
   if (existsSync(openapiPath)) {
     const spec = JSON.parse(readFileSync(openapiPath, "utf-8"));
     res.json(spec);

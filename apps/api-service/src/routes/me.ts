@@ -9,10 +9,6 @@ const router = Router();
  * Get current user/org info
  */
 router.get("/me", authenticate, async (req: AuthenticatedRequest, res) => {
-  // #swagger.tags = ['User']
-  // #swagger.summary = 'Get current user info'
-  // #swagger.description = 'Returns the authenticated user and organization details'
-  // #swagger.security = [{ "bearerAuth": [] }, { "apiKey": [] }]
   try {
     const { userId, orgId, authType } = req;
 

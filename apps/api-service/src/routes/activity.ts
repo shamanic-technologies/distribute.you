@@ -9,10 +9,6 @@ const router = Router();
  * Track user activity — fires a lifecycle email (deduped per user per day)
  */
 router.post("/activity", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
-  // #swagger.tags = ['Activity']
-  // #swagger.summary = 'Track user activity'
-  // #swagger.description = 'Records user activity event. Fires a lifecycle email deduped per user per day.'
-  // #swagger.security = [{ "bearerAuth": [] }, { "apiKey": [] }]
   try {
     callExternalService(externalServices.lifecycle, "/send", {
       method: "POST",
