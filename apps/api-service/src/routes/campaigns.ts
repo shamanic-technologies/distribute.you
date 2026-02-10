@@ -98,8 +98,12 @@ async function fetchDeliveryStats(
 router.get("/campaigns", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
   try {
     const brandId = req.query.brandId as string;
-    const queryString = brandId ? `?brandId=${brandId}` : "";
-    
+    const status = req.query.status as string;
+    const params = new URLSearchParams();
+    if (brandId) params.set("brandId", brandId);
+    if (status) params.set("status", status);
+    const queryString = params.toString() ? `?${params.toString()}` : "";
+
     const result = await callExternalService(
       externalServices.campaign,
       `/campaigns${queryString}`,
