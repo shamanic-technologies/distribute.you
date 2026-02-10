@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
+import { BrandLogo } from "@/components/brand-logo";
 
 interface Brand {
   id: string;
@@ -102,9 +103,16 @@ export default function BrandDetailLayout({
             </svg>
             All Brands
           </Link>
-          <h3 className="text-sm font-semibold text-gray-800 truncate">
-            {brand?.name || brand?.domain || "Loading..."}
-          </h3>
+          <div className="flex items-center gap-2">
+            {brand?.domain && (
+              <div className="flex-shrink-0 w-6 h-6 rounded overflow-hidden">
+                <BrandLogo domain={brand.domain} size={24} fallbackClassName="h-4 w-4 text-gray-400" />
+              </div>
+            )}
+            <h3 className="text-sm font-semibold text-gray-800 truncate">
+              {brand?.name || brand?.domain || "Loading..."}
+            </h3>
+          </div>
           {brand?.domain && (
             <p className="text-xs text-gray-400 truncate">{brand.domain}</p>
           )}

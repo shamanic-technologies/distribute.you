@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrand, listCampaignsByBrand, getCampaignBatchStats, type Brand, type Campaign, type CampaignStats } from "@/lib/api";
+import { BrandLogo } from "@/components/brand-logo";
 
 function formatCost(cents: string | null | undefined): string | null {
   if (!cents) return null;
@@ -75,9 +76,14 @@ export default function BrandOverviewPage() {
     <div className="p-4 md:p-8 max-w-4xl">
       {/* Brand Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-gray-900">
-          {brand.name || brand.domain}
-        </h1>
+        <div className="flex items-center gap-3 mb-1">
+          <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center overflow-hidden">
+            <BrandLogo domain={brand.domain} size={28} fallbackClassName="h-6 w-6 text-gray-400" />
+          </div>
+          <h1 className="text-2xl font-semibold text-gray-900">
+            {brand.name || brand.domain}
+          </h1>
+        </div>
         <a
           href={brand.brandUrl}
           target="_blank"
