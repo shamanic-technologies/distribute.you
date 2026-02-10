@@ -4,6 +4,7 @@ import Link from "next/link";
 import { GlobeAltIcon } from "@heroicons/react/24/outline";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { listBrands } from "@/lib/api";
+import { BrandLogo } from "@/components/brand-logo";
 
 export function BrandsList() {
   const { data, isLoading } = useAuthQuery(["brands"], (token) =>
@@ -44,8 +45,8 @@ export function BrandsList() {
               href={`/brands/${brand.id}`}
               className="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-200 hover:border-primary-300 hover:shadow-sm transition-all"
             >
-              <div className="flex-shrink-0 w-10 h-10 bg-primary-50 rounded-lg flex items-center justify-center">
-                <GlobeAltIcon className="h-5 w-5 text-primary-600" />
+              <div className="flex-shrink-0 w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center overflow-hidden">
+                <BrandLogo domain={brand.domain} size={28} fallbackClassName="h-5 w-5 text-primary-600" />
               </div>
               <div className="min-w-0 flex-1">
                 <h3 className="font-medium text-gray-900 truncate">

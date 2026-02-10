@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { GlobeAltIcon } from "@heroicons/react/24/outline";
+import { BrandLogo } from "@/components/brand-logo";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   listBrands,
@@ -95,8 +96,8 @@ export default function BrandsPage() {
               className="block p-6 bg-white rounded-lg border border-gray-200 hover:border-green-300 hover:shadow-md transition-all"
             >
               <div className="flex items-center gap-3 mb-3">
-                <div className="flex-shrink-0 w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                  <GlobeAltIcon className="h-6 w-6 text-green-600" />
+                <div className="flex-shrink-0 w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center overflow-hidden">
+                  <BrandLogo domain={brand.domain} size={28} fallbackClassName="h-6 w-6 text-green-600" />
                 </div>
                 <div>
                   <h3 className="font-medium text-gray-900">
