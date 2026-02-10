@@ -179,6 +179,8 @@ export default function BrandOverviewPage() {
                             px-2 py-0.5 text-xs rounded-full
                             ${campaign.status === "ongoing"
                               ? "bg-green-100 text-green-700"
+                              : campaign.status === "failed"
+                              ? "bg-red-100 text-red-700"
                               : "bg-gray-100 text-gray-600"
                             }
                           `}>

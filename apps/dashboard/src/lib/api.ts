@@ -285,7 +285,7 @@ export async function listBrandRuns(token: string, brandId: string): Promise<{ r
 
 // Campaign by brand
 export async function listCampaignsByBrand(token: string, brandId: string): Promise<{ campaigns: Campaign[] }> {
-  return apiCall<{ campaigns: Campaign[] }>(`/campaigns?brandId=${brandId}`, { token });
+  return apiCall<{ campaigns: Campaign[] }>(`/campaigns?brandId=${brandId}&status=all`, { token });
 }
 
 // Single campaign
