@@ -1,98 +1,67 @@
-# CLAUDE.md
+# Project: MCP Factory
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
-## Project Overview
-
-MCP Factory is a DFY (Done-For-You), BYOK (Bring Your Own Keys) automation platform built on the Model Context Protocol. Users provide a URL + budget, the platform handles lead finding, outreach, email generation, and reporting. Users bring their own API keys (OpenAI, Anthropic, Apollo, etc.).
+DFY (Done-For-You), BYOK (Bring Your Own Keys) automation platform built on the Model Context Protocol. Users provide a URL + budget, the platform handles lead finding, outreach, email generation, and reporting.
 
 ## Commands
 
-### Development
 ```bash
 pnpm dev                    # All services via Turbo
 pnpm dev:dashboard          # Dashboard only (Next.js, port 3001)
 pnpm dev:<service-name>     # Any individual service
-```
-
-### Build & Lint
-```bash
 pnpm build                  # Build all (Turbo-orchestrated)
 pnpm lint                   # Lint all packages
-```
+pnpm generate:readme        # Regenerate README.md from shared/content
 
-### Testing
-```bash
-pnpm --filter @mcpfactory/<package> test          # All tests for a service
-pnpm --filter @mcpfactory/<package> test:unit      # Unit tests only
-pnpm --filter @mcpfactory/<package> vitest run tests/unit/specific.test.ts  # Single test file
+# Per-package testing
+pnpm --filter @mcpfactory/<package> test
+pnpm --filter @mcpfactory/<package> test:unit
+pnpm --filter @mcpfactory/<package> vitest run tests/unit/specific.test.ts
 ```
 
 ## Architecture
 
-**Monorepo** using pnpm workspaces + Turborepo. Three workspace roots: `apps/`, `packages/`, `shared/`.
+**Monorepo** — pnpm workspaces + Turborepo. Three workspace roots: `apps/`, `packages/`, `shared/`.
 
 ### Apps
 
-- **dashboard** (port 3001) — Next.js 15 App Router. Clerk auth with `(dashboard)` route group for protected pages.
-- **docs** — Documentation site (docs.mcpfactory.org)
-- **mcp-service** — MCP server endpoint service
-- **performance-service** — Performance monitoring service
-- **sales-cold-emails-landing** — Marketing landing page (salescoldemail.mcpfactory.org)
+- `apps/api-service/` — Backend API service
+- `apps/dashboard/` (port 3001) — Next.js 15 App Router, Clerk auth
+- `apps/docs/` — Documentation site (docs.mcpfactory.org)
+- `apps/landing/` — Main landing page
+- `apps/mcp-service/` — MCP server endpoint service
+- `apps/performance-service/` — Performance monitoring service
+- `apps/sales-cold-emails-landing/` — Marketing landing page (salescoldemail.mcpfactory.org)
 
 ### Packages (Published MCP Servers)
 
-Each package under `packages/` is a standalone MCP server published to npm. Built with `tsup` for ESM. Uses `@modelcontextprotocol/sdk`.
+Each package is a standalone MCP server published to npm. Built with `tsup` for ESM.
 
-- `mcp-sales-outreach` — @mcpfactory/sales-outreach
-- `mcp-google-ads` — @mcpfactory/google-ads
-- `mcp-influencer-pitch` — @mcpfactory/influencer-pitch
-- `mcp-journalist-pitch` — @mcpfactory/journalist-pitch
-- `mcp-podcaster-pitch` — @mcpfactory/podcaster-pitch
-- `mcp-reddit-ads` — @mcpfactory/reddit-ads
-- `mcp-thought-leader` — @mcpfactory/thought-leader
+- `packages/mcp-sales-outreach/` — @mcpfactory/sales-outreach
+- `packages/mcp-google-ads/` — @mcpfactory/google-ads
+- `packages/mcp-influencer-pitch/` — @mcpfactory/influencer-pitch
+- `packages/mcp-journalist-pitch/` — @mcpfactory/journalist-pitch
+- `packages/mcp-podcaster-pitch/` — @mcpfactory/podcaster-pitch
+- `packages/mcp-reddit-ads/` — @mcpfactory/reddit-ads
+- `packages/mcp-thought-leader/` — @mcpfactory/thought-leader
 
 ### Shared Libraries
 
-- `shared/content/` — **Single source of truth for all marketing/docs content** (see Content Sync Rules below)
+- `shared/auth/` — Shared authentication utilities
+- `shared/content/` — Single source of truth for all marketing/docs content
 - `shared/pictures/` — Shared images and assets
+- `shared/runs-client/` — Client for the runs-service
+- `shared/types/` — Shared TypeScript types
 
-## Tech Stack
+### Content Sync Rules
 
-- **Runtime:** Node.js >=20, TypeScript 5.3 (strict, ES2022, NodeNext modules)
-- **Package manager:** pnpm 9.15.0
-- **Frontend:** Next.js 15, React 18, Tailwind CSS, Clerk
-- **MCP:** @modelcontextprotocol/sdk, tsup builds
-- **Testing:** Vitest
-- **CI:** GitHub Actions (build → parallel test jobs, lint with continue-on-error)
-- **Deploy:** Railway
+All marketing/docs content lives in `shared/content/src/`. Public surfaces import from `@mcpfactory/content`.
 
-## Content Sync Rules
-
-All marketing/docs content lives in `shared/content/src/`. The public surfaces import from `@mcpfactory/content` instead of hardcoding values.
-
-### SSoT module files
-- `shared/content/src/urls.ts` — All public URLs (dashboard, docs, API, GitHub, MCP endpoint)
-- `shared/content/src/mcps.ts` — MCP package definitions (name, description, quota, availability)
-- `shared/content/src/pricing.ts` — Pricing tiers, BYOK cost estimates, rate limits
-- `shared/content/src/features.ts` — Feature descriptions, FAQ, steps, supported AI clients, BYOK providers
+- `shared/content/src/urls.ts` — All public URLs
+- `shared/content/src/mcps.ts` — MCP package definitions
+- `shared/content/src/pricing.ts` — Pricing tiers, BYOK cost estimates
+- `shared/content/src/features.ts` — Feature descriptions, FAQ, supported AI clients
 - `shared/content/src/brand.ts` — Brand name, tagline, hero text
 
-### Public surfaces (import from @mcpfactory/content)
-1. `apps/docs/` — docs.mcpfactory.org
-2. `apps/sales-cold-emails-landing/` — salescoldemail.mcpfactory.org
-3. `README.md` — **GENERATED** (do not edit directly)
+When changing content: update `shared/content/src/`, run `pnpm generate:readme`, verify build, commit regenerated README.md.
 
-### When you change content
-
-If you modify MCP packages, pricing, URLs, features, BYOK providers, or API endpoints:
-
-1. Update the data in `shared/content/src/`
-2. Run `pnpm generate:readme` to regenerate README.md
-3. Verify apps build: `pnpm build`
-4. Commit the regenerated README.md alongside your changes
-
-### Content rules
-- **NEVER** hardcode pricing, MCP names, quotas, or URLs in page components
-- **ALWAYS** import from `@mcpfactory/content`
-- **README.md is GENERATED** — edit `shared/content/` then run `pnpm generate:readme`
+**README.md is GENERATED** — never edit directly.
