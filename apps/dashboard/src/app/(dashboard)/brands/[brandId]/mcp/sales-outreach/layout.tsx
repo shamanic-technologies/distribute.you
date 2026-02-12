@@ -25,16 +25,6 @@ export default function BrandMcpSalesOutreachLayout({
         </svg>
       ),
     },
-    {
-      id: "prompt",
-      label: "Email Prompt",
-      href: `${basePath}/prompt`,
-      icon: (
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-        </svg>
-      ),
-    },
   ];
 
   // Don't show this sidebar when viewing a specific campaign
