@@ -206,12 +206,6 @@ export default function BrandOverviewPage() {
                   >
                     {mcpCampaigns.length > 0 ? "View Campaigns" : "Open MCP"}
                   </Link>
-                  <Link
-                    href={`/brands/${brandId}/mcp/${mcp.slug}/prompt`}
-                    className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition text-sm"
-                  >
-                    Configure Prompt
-                  </Link>
                 </div>
               </div>
             );
