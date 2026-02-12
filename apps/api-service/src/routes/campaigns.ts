@@ -66,9 +66,12 @@ async function fetchDeliveryStats(
 
   const sum = (a?: number, c?: number) => (a || 0) + (c || 0);
 
-  // Count reply classifications
+  const totalReplied = sum(t?.replied, b?.replied);
+
+  // Only count reply classifications when there are actual replies.
+  // The reply-qualification service may return stale/incorrect data.
   const counts: Record<string, number> = {};
-  if (Array.isArray(qualifications)) {
+  if (totalReplied > 0 && Array.isArray(qualifications)) {
     for (const q of qualifications) {
       counts[q.classification] = (counts[q.classification] || 0) + 1;
     }
@@ -79,7 +82,7 @@ async function fetchDeliveryStats(
     emailsDelivered: sum(t?.delivered, b?.delivered),
     emailsOpened: sum(t?.opened, b?.opened),
     emailsClicked: sum(t?.clicked, b?.clicked),
-    emailsReplied: sum(t?.replied, b?.replied),
+    emailsReplied: totalReplied,
     emailsBounced: sum(t?.bounced, b?.bounced),
     repliesWillingToMeet: counts.willing_to_meet || 0,
     repliesInterested: counts.interested || 0,
