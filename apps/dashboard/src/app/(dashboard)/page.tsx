@@ -1,8 +1,8 @@
 import { currentUser } from "@clerk/nextjs/server";
 import Link from "next/link";
-import { LinkButton } from "@/components/link-button";
 import { ApiKeyPreview } from "@/components/api-key-preview";
 import { BrandsList } from "@/components/brands-list";
+import { SalesColdEmailsCard } from "@/components/sales-cold-emails-card";
 
 export default async function DashboardHome() {
   const user = await currentUser();
@@ -27,19 +27,7 @@ export default async function DashboardHome() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-2xl border border-gray-200 p-6">
-          <div className="text-3xl mb-3">📧</div>
-          <h3 className="font-display font-bold text-lg text-gray-800 mb-2">Sales Cold Emails</h3>
-          <p className="text-sm text-gray-600 mb-4">
-            Generate and send personalized cold emails from any URL.
-          </p>
-          <LinkButton
-            href="/setup"
-            className="text-primary-500 hover:text-primary-600 font-medium text-sm"
-          >
-            Get Started →
-          </LinkButton>
-        </div>
+        <SalesColdEmailsCard />
 
         <div className="bg-white rounded-2xl border border-gray-200 p-6 opacity-60">
           <div className="text-3xl mb-3">🎙️</div>
