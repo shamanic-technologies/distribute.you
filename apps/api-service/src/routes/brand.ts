@@ -4,10 +4,6 @@ import { callExternalService, externalServices } from "../lib/service-client.js"
 import { getRunsBatch, type RunWithCosts } from "@mcpfactory/runs-client";
 import { BrandScrapeRequestSchema, IcpSuggestionRequestSchema } from "../schemas.js";
 
-// Brand service URL (for sales profiles)
-const BRAND_SERVICE_URL = process.env.BRAND_SERVICE_URL || "https://brand.mcpfactory.org";
-const BRAND_SERVICE_API_KEY = process.env.BRAND_SERVICE_API_KEY || "";
-
 const router = Router();
 
 /**
@@ -73,22 +69,10 @@ router.get("/brand/by-url", authenticate, async (req: AuthenticatedRequest, res)
  */
 router.get("/brands", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
   try {
-    const response = await fetch(
-      `${BRAND_SERVICE_URL}/brands?clerkOrgId=${req.orgId}`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": BRAND_SERVICE_API_KEY,
-        },
-      }
+    const result = await callExternalService(
+      externalServices.brand,
+      `/brands?clerkOrgId=${req.orgId}`
     );
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: "Unknown error" }));
-      throw new Error(error.error || `Failed to fetch brands: ${response.status}`);
-    }
-
-    const result = await response.json();
     res.json(result);
   } catch (error: any) {
     console.error("Get brands error:", error);
@@ -102,24 +86,10 @@ router.get("/brands", authenticate, requireOrg, async (req: AuthenticatedRequest
  */
 router.get("/brands/:id", authenticate, async (req: AuthenticatedRequest, res) => {
   try {
-    const { id } = req.params;
-
-    const response = await fetch(
-      `${BRAND_SERVICE_URL}/brands/${id}`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": BRAND_SERVICE_API_KEY,
-        },
-      }
+    const result = await callExternalService(
+      externalServices.brand,
+      `/brands/${req.params.id}`
     );
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: "Unknown error" }));
-      throw new Error(error.error || `Failed to fetch brand: ${response.status}`);
-    }
-
-    const result = await response.json();
     res.json(result);
   } catch (error: any) {
     console.error("Get brand by id error:", error);
@@ -133,29 +103,15 @@ router.get("/brands/:id", authenticate, async (req: AuthenticatedRequest, res) =
  */
 router.get("/brands/:id/sales-profile", authenticate, async (req: AuthenticatedRequest, res) => {
   try {
-    const { id } = req.params;
-
-    const response = await fetch(
-      `${BRAND_SERVICE_URL}/brands/${id}/sales-profile`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": BRAND_SERVICE_API_KEY,
-        },
-      }
+    const result = await callExternalService(
+      externalServices.brand,
+      `/brands/${req.params.id}/sales-profile`
     );
-
-    if (!response.ok) {
-      if (response.status === 404) {
-        return res.status(404).json({ error: "Sales profile not found" });
-      }
-      const error = await response.json().catch(() => ({ error: "Unknown error" }));
-      throw new Error(error.error || `Failed to fetch sales profile: ${response.status}`);
-    }
-
-    const result = await response.json();
     res.json(result);
   } catch (error: any) {
+    if (error.message?.includes("404")) {
+      return res.status(404).json({ error: "Sales profile not found" });
+    }
     console.error("Get brand sales profile error:", error);
     res.status(500).json({ error: error.message || "Failed to get sales profile" });
   }
@@ -168,22 +124,10 @@ router.get("/brands/:id/sales-profile", authenticate, async (req: AuthenticatedR
  */
 router.get("/brand/sales-profiles", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
   try {
-    const response = await fetch(
-      `${BRAND_SERVICE_URL}/sales-profiles?clerkOrgId=${req.orgId}`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": BRAND_SERVICE_API_KEY,
-        },
-      }
+    const result = await callExternalService(
+      externalServices.brand,
+      `/sales-profiles?clerkOrgId=${req.orgId}`
     );
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: "Unknown error" }));
-      throw new Error(error.error || `Failed to fetch profiles: ${response.status}`);
-    }
-
-    const result = await response.json();
     res.json(result);
   } catch (error: any) {
     console.error("Get sales profiles error:", error);
@@ -203,28 +147,18 @@ router.post("/brand/icp-suggestion", authenticate, requireOrg, async (req: Authe
     }
     const { brandUrl } = parsed.data;
 
-    const response = await fetch(
-      `${BRAND_SERVICE_URL}/icp-suggestion`,
+    const result = await callExternalService(
+      externalServices.brand,
+      "/icp-suggestion",
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": BRAND_SERVICE_API_KEY,
-        },
-        body: JSON.stringify({
+        body: {
           clerkOrgId: req.orgId,
           url: brandUrl,
           keyType: "byok",
-        }),
+        },
       }
     );
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: "Unknown error" }));
-      throw new Error(error.error || `Failed to get ICP suggestion: ${response.status}`);
-    }
-
-    const result = await response.json();
     res.json(result);
   } catch (error: any) {
     console.error("ICP suggestion error:", error.message);
@@ -248,22 +182,10 @@ router.get("/brands/:id/runs", authenticate, requireOrg, async (req: Authenticat
     const { id } = req.params;
 
     // 1. Get runs list from brand-service
-    const response = await fetch(
-      `${BRAND_SERVICE_URL}/brands/${id}/runs`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": BRAND_SERVICE_API_KEY,
-        },
-      }
+    const data = await callExternalService<{ runs?: Array<{ id: string; taskName: string; status: string; startedAt: string; completedAt: string | null }> }>(
+      externalServices.brand,
+      `/brands/${id}/runs`
     );
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: "Unknown error" }));
-      throw new Error(error.error || `Failed to fetch brand runs: ${response.status}`);
-    }
-
-    const data = await response.json();
     const runs: Array<{ id: string; taskName: string; status: string; startedAt: string; completedAt: string | null }> = data.runs || [];
 
     if (runs.length === 0) {

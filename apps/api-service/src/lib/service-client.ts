@@ -39,6 +39,10 @@ export const externalServices = {
     url: process.env.LIFECYCLE_EMAILS_SERVICE_URL || "http://localhost:3008",
     apiKey: process.env.LIFECYCLE_EMAILS_SERVICE_API_KEY || "",
   },
+  brand: {
+    url: process.env.BRAND_SERVICE_URL || "https://brand.mcpfactory.org",
+    apiKey: process.env.BRAND_SERVICE_API_KEY || "",
+  },
 };
 
 interface ServiceCallOptions {
