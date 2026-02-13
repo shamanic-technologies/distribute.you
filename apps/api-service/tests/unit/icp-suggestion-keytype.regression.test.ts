@@ -71,10 +71,13 @@ describe("POST /v1/brand/icp-suggestion", () => {
   });
 
   it("should return 400 with helpful message when Anthropic BYOK key is missing", async () => {
+    const errorBody = JSON.stringify({ error: "No Anthropic API key found (keyType: byok)" });
     global.fetch = vi.fn().mockImplementation(async (_url: string) => {
       if (typeof _url === "string" && _url.includes("/icp-suggestion")) {
         return {
           ok: false,
+          status: 400,
+          text: () => Promise.resolve(errorBody),
           json: () => Promise.resolve({ error: "No Anthropic API key found (keyType: byok)" }),
         };
       }
