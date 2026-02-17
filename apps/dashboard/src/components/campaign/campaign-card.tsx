@@ -52,19 +52,10 @@ export function CampaignCard({ campaign, stats }: CampaignCardProps) {
         </span>
       </div>
       
-      {/* Targeting tags */}
-      <div className="flex flex-wrap gap-2 mb-3">
-        {campaign.personTitles?.map((title) => (
-          <span key={title} className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
-            {title}
-          </span>
-        ))}
-        {campaign.organizationLocations?.map((loc) => (
-          <span key={loc} className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded">
-            {loc}
-          </span>
-        ))}
-      </div>
+      {/* Target audience */}
+      {campaign.targetAudience && (
+        <p className="text-xs text-gray-500 mb-3 line-clamp-2">{campaign.targetAudience}</p>
+      )}
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-gray-100">
