@@ -134,6 +134,7 @@ export interface Campaign {
   id: string;
   name: string;
   status: string;
+  targetAudience: string | null;
   personTitles: string[] | null;
   organizationLocations: string[] | null;
   maxBudgetDailyUsd: string | null;
