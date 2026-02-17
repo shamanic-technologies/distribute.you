@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getBrandSalesProfile, listBrandRuns, type SalesProfile, type BrandRun, type RunCost } from "@/lib/api";
+import { getBrand, getBrandSalesProfile, listBrandRuns, type SalesProfile, type BrandRun, type RunCost, type Testimonial } from "@/lib/api";
 
 function timeAgo(dateStr: string): string {
   const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
@@ -28,6 +28,12 @@ export default function BrandInfoPage() {
   const params = useParams();
   const brandId = params.brandId as string;
   const [activeTab, setActiveTab] = useState<"current" | "history">("current");
+
+  const { data: brandData } = useAuthQuery(
+    ["brand", brandId],
+    (token) => getBrand(token, brandId)
+  );
+  const brandName = brandData?.brand?.name ?? null;
 
   const { data: profileData, isLoading, error: profileError } = useAuthQuery(
     ["brandSalesProfile", brandId],
@@ -172,8 +178,8 @@ export default function BrandInfoPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              <Section title="Company Name" empty={!profile.companyName}>
-                <p className="text-gray-700 font-medium">{profile.companyName}</p>
+              <Section title="Brand Name" empty={!brandName}>
+                <p className="text-gray-700 font-medium">{brandName}</p>
               </Section>
 
               <Section title="Value Proposition" empty={!profile.valueProposition}>
@@ -204,6 +210,86 @@ export default function BrandInfoPage() {
                 <Tags items={profile.competitors ?? []} variant="gray" />
               </Section>
 
+              <Section title="Leadership" empty={!profile.leadership?.length}>
+                <div className="space-y-3">
+                  {(profile.leadership ?? []).map((member, i) => (
+                    <div key={i} className="border-l-2 border-primary-200 pl-3">
+                      <p className="text-sm font-medium text-gray-800">{member.name}</p>
+                      <p className="text-xs text-gray-500">{member.role}</p>
+                      {member.bio && <p className="text-sm text-gray-600 mt-1">{member.bio}</p>}
+                      {member.notableBackground && (
+                        <p className="text-xs text-gray-500 mt-1 italic">{member.notableBackground}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </Section>
+
+              <Section
+                title="Funding"
+                empty={!profile.funding?.totalRaised && !profile.funding?.rounds?.length && !profile.funding?.notableBackers?.length}
+              >
+                <div className="space-y-3">
+                  {profile.funding?.totalRaised && (
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">Total Raised:</span> {profile.funding.totalRaised}
+                    </p>
+                  )}
+                  {profile.funding?.rounds?.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-700 mb-2">Rounds</h3>
+                      <div className="space-y-2">
+                        {profile.funding.rounds.map((round, i) => (
+                          <div key={i} className="text-sm text-gray-600 border-l-2 border-gray-200 pl-3">
+                            <span className="font-medium">{round.type}</span>
+                            {round.amount && <span> &mdash; {round.amount}</span>}
+                            {round.date && <span className="text-xs text-gray-400 ml-2">({round.date})</span>}
+                            {round.notableInvestors?.length > 0 && (
+                              <p className="text-xs text-gray-500 mt-0.5">Investors: {round.notableInvestors.join(", ")}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {profile.funding?.notableBackers?.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-700 mb-1">Notable Backers</h3>
+                      <Tags items={profile.funding.notableBackers} variant="gray" />
+                    </div>
+                  )}
+                </div>
+              </Section>
+
+              <Section title="Awards & Recognition" empty={!profile.awardsAndRecognition?.length}>
+                <div className="space-y-2">
+                  {(profile.awardsAndRecognition ?? []).map((award, i) => (
+                    <div key={i} className="text-sm border-l-2 border-yellow-200 pl-3">
+                      <p className="font-medium text-gray-800">
+                        {award.title}
+                        {award.year && <span className="text-xs text-gray-400 ml-2">({award.year})</span>}
+                      </p>
+                      {award.issuer && <p className="text-xs text-gray-500">{award.issuer}</p>}
+                      {award.description && <p className="text-gray-600 mt-0.5">{award.description}</p>}
+                    </div>
+                  ))}
+                </div>
+              </Section>
+
+              <Section title="Revenue Milestones" empty={!profile.revenueMilestones?.length}>
+                <div className="space-y-2">
+                  {(profile.revenueMilestones ?? []).map((m, i) => (
+                    <div key={i} className="text-sm border-l-2 border-green-200 pl-3">
+                      <p className="text-gray-800">
+                        <span className="font-medium">{m.metric}:</span> {m.value}
+                        {m.date && <span className="text-xs text-gray-400 ml-2">({m.date})</span>}
+                      </p>
+                      {m.context && <p className="text-xs text-gray-500 mt-0.5">{m.context}</p>}
+                    </div>
+                  ))}
+                </div>
+              </Section>
+
               <Section
                 title="Social Proof"
                 empty={
@@ -221,7 +307,24 @@ export default function BrandInfoPage() {
                 {profile.socialProof?.testimonials?.length > 0 && (
                   <div className="mb-4">
                     <h3 className="text-sm font-medium text-gray-700 mb-2">Testimonials</h3>
-                    <List items={profile.socialProof.testimonials} />
+                    <ul className="space-y-2">
+                      {profile.socialProof.testimonials.map((t, i) => (
+                        <li key={i} className="text-sm text-gray-600 border-l-2 border-primary-200 pl-3">
+                          {typeof t === "string" ? (
+                            <p>{t}</p>
+                          ) : (
+                            <>
+                              <p className="italic">&ldquo;{t.quote}&rdquo;</p>
+                              {(t.name || t.role || t.company) && (
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                  {[t.name, t.role, t.company].filter(Boolean).join(" - ")}
+                                </p>
+                              )}
+                            </>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 )}
                 {profile.socialProof?.results?.length > 0 && (
