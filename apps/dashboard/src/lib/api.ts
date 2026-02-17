@@ -135,13 +135,10 @@ export interface Campaign {
   name: string;
   status: string;
   targetAudience: string | null;
-  personTitles: string[] | null;
-  organizationLocations: string[] | null;
   maxBudgetDailyUsd: string | null;
   maxBudgetWeeklyUsd: string | null;
   maxBudgetMonthlyUsd: string | null;
   maxBudgetTotalUsd: string | null;
-  startDate: string | null;
   endDate: string | null;
   createdAt: string;
   updatedAt: string;

@@ -134,86 +134,44 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
       return res.status(400).json({ error: "Invalid request", details: parsed.error.flatten() });
     }
 
-    const { brandUrl, targetAudience } = parsed.data;
+    const { brandUrl } = parsed.data;
 
-    // 1. Upsert brand to get brandId (also triggers scraping)
-    let brandId: string | undefined;
-    if (brandUrl) {
-      try {
-        const brandResult = await callExternalService<{ brandId: string }>(
-          externalServices.brand,
-          "/brands",
-          {
-            method: "POST",
-            body: {
-              appId: "mcpfactory",
-              clerkOrgId: req.orgId,
-              url: brandUrl,
-              clerkUserId: req.userId,
-            },
-          }
-        );
-        brandId = brandResult.brandId;
-      } catch (brandError: any) {
-        console.warn("Failed to upsert brand (continuing anyway):", brandError.message);
+    // 1. Upsert brand to get brandId
+    const brandResult = await callExternalService<{ brandId: string }>(
+      externalServices.brand,
+      "/brands",
+      {
+        method: "POST",
+        body: {
+          appId: "mcpfactory",
+          clerkOrgId: req.orgId,
+          url: brandUrl,
+          clerkUserId: req.userId,
+        },
       }
+    );
 
-      // Also trigger scraping (fire-and-forget) so brand info is available for email generation
-      callExternalService(
-        externalServices.scraping,
-        "/scrape",
-        {
-          method: "POST",
-          body: {
-            url: brandUrl,
-            sourceService: "mcpfactory",
-            sourceOrgId: req.orgId,
-          },
-        }
-      ).catch((err: any) => console.warn("Failed to scrape brand (continuing anyway):", err.message));
-    }
-
-    // 2. If targetAudience provided but no Apollo fields, resolve via ICP suggestion
-    let resolvedTargeting: Record<string, unknown> = {};
-    const hasApolloFields = parsed.data.personTitles || parsed.data.qOrganizationKeywordTags || parsed.data.organizationLocations;
-    if (targetAudience && brandUrl && !hasApolloFields) {
-      try {
-        const icpResult = await callExternalService<Record<string, unknown>>(
-          externalServices.brand,
-          "/icp-suggestion",
-          {
-            method: "POST",
-            body: {
-              appId: "mcpfactory",
-              clerkOrgId: req.orgId,
-              url: brandUrl,
-              clerkUserId: req.userId,
-              keyType: "byok",
-              targetAudience,
-            },
-          }
-        );
-        // Map ICP suggestion response to campaign-service fields
-        if (icpResult) {
-          const icp = (icpResult as any).icp || icpResult;
-          if (icp.person_titles) resolvedTargeting.personTitles = icp.person_titles;
-          if (icp.q_organization_keyword_tags) resolvedTargeting.qOrganizationKeywordTags = icp.q_organization_keyword_tags;
-          if (icp.organization_locations) resolvedTargeting.organizationLocations = icp.organization_locations;
-          if (icp.organization_num_employees_ranges) resolvedTargeting.organizationNumEmployeesRanges = icp.organization_num_employees_ranges;
-          if (icp.q_organization_industry_tag_ids) resolvedTargeting.qOrganizationIndustryTagIds = icp.q_organization_industry_tag_ids;
-        }
-      } catch (icpError: any) {
-        console.warn("Failed to resolve targetAudience via ICP suggestion (continuing without targeting):", icpError.message);
+    // Trigger scraping (fire-and-forget) so brand info is available for email generation
+    callExternalService(
+      externalServices.scraping,
+      "/scrape",
+      {
+        method: "POST",
+        body: {
+          url: brandUrl,
+          sourceService: "mcpfactory",
+          sourceOrgId: req.orgId,
+        },
       }
-    }
+    ).catch((err: any) => console.warn("[campaigns] Scrape failed (non-blocking):", err.message));
 
-    // 3. Build campaign-service payload
+    // 2. Forward to campaign-service
     const body: Record<string, unknown> = {
       ...parsed.data,
-      ...resolvedTargeting, // Resolved Apollo fields override empty ones
       appId: "mcpfactory",
+      clerkOrgId: req.orgId,
+      brandId: brandResult.brandId,
     };
-    if (brandId) body.brandId = brandId;
 
     // Convert budget numbers to strings (campaign-service expects string type)
     for (const key of ["maxBudgetDailyUsd", "maxBudgetWeeklyUsd", "maxBudgetMonthlyUsd", "maxBudgetTotalUsd"]) {
