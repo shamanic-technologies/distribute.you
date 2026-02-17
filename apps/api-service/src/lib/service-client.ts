@@ -32,8 +32,8 @@ export const externalServices = {
     apiKey: process.env.SCRAPING_SERVICE_API_KEY || "",
   },
   emailSending: {
-    url: process.env.EMAIL_SENDING_SERVICE_URL || "http://localhost:3009",
-    apiKey: process.env.EMAIL_SENDING_SERVICE_API_KEY || "",
+    url: process.env.EMAIL_GATEWAY_SERVICE_URL || "http://localhost:3009",
+    apiKey: process.env.EMAIL_GATEWAY_SERVICE_API_KEY || "",
   },
   lifecycle: {
     url: process.env.LIFECYCLE_EMAILS_SERVICE_URL || "http://localhost:3008",

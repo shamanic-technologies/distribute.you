@@ -27,8 +27,8 @@ process.env.LEAD_SERVICE_URL = "http://localhost:3006";
 process.env.CAMPAIGN_SERVICE_URL = "http://localhost:3004";
 process.env.CAMPAIGN_SERVICE_API_KEY = "test-campaign-service-api-key";
 process.env.CLIENT_SERVICE_URL = "http://localhost:3002";
-process.env.EMAIL_SENDING_SERVICE_URL = "http://localhost:3009";
-process.env.EMAIL_SENDING_SERVICE_API_KEY = "test-email-sending-api-key";
+process.env.EMAIL_GATEWAY_SERVICE_URL = "http://localhost:3009";
+process.env.EMAIL_GATEWAY_SERVICE_API_KEY = "test-email-gateway-api-key";
 
 beforeAll(() => console.log("Test suite starting..."));
 afterAll(() => console.log("Test suite complete."));
