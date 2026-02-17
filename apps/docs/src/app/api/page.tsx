@@ -40,9 +40,11 @@ POST /v1/qualify - Qualify email reply with AI
 Body: { "emailContent": "...", "context": "..." }
 
 ### Campaigns
-POST /v1/campaigns - Create campaign
+POST /v1/campaigns - Create campaign (provide URL, target audience, outcome, budget)
 GET /v1/campaigns - List campaigns
 GET /v1/campaigns/:id/stats - Get campaign stats
+POST /v1/campaigns/:id/stop - Stop a campaign
+POST /v1/campaigns/:id/resume - Resume a stopped campaign
 
 Get API key at: https://dashboard.mcpfactory.org/api-keys`;
 
@@ -228,13 +230,13 @@ Content-Type: application/json
             </tr>
             <tr>
               <td><code>POST</code></td>
-              <td>/campaigns/:id/start</td>
-              <td>Start a campaign</td>
+              <td>/campaigns/:id/stop</td>
+              <td>Stop a campaign</td>
             </tr>
             <tr>
               <td><code>POST</code></td>
-              <td>/campaigns/:id/pause</td>
-              <td>Pause a campaign</td>
+              <td>/campaigns/:id/resume</td>
+              <td>Resume a stopped campaign</td>
             </tr>
           </tbody>
         </table>
@@ -246,12 +248,11 @@ Content-Type: application/json
 
 {
   "name": "Q1 Outreach",
-  "clientUrl": "https://yourbrand.com",
-  "targetTitles": ["CEO", "CTO"],
-  "targetIndustries": ["Software", "SaaS"],
-  "targetLocations": ["United States"],
-  "maxDailyBudgetUsd": 10,
-  "startDate": "2026-02-01"
+  "brandUrl": "https://yourbrand.com",
+  "targetAudience": "CTOs at SaaS startups with 10-50 employees in the US",
+  "targetOutcome": "Book sales demos",
+  "valueForTarget": "Access to enterprise analytics at startup pricing",
+  "maxBudgetDailyUsd": 10
 }`}</code>
         </pre>
 

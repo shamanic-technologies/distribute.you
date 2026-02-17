@@ -37,12 +37,13 @@ Or add to MCP config:
 - Resend: Email sending
 
 ## Usage
-"Launch a cold email campaign for acme.com targeting CTOs at tech startups, $10/day budget, 5 days trial"
+"Launch a cold email campaign for acme.com targeting CTOs at tech startups to book sales demos, $10/day budget"
 
 ## Available Tools
-- launch_campaign: Start new outreach campaign
+- launch_campaign: Start new outreach campaign (target_url, target_audience, target_outcome, value_for_target, budget)
 - get_campaign_results: Get campaign stats
 - pause_campaign / resume_campaign: Control execution
+- list_campaigns: List all campaigns
 - get_stats: Usage and community benchmarks
 
 ## Pricing
@@ -108,8 +109,8 @@ export default function SalesOutreachDocs() {
         <p>In Claude, Cursor, or any MCP-compatible client:</p>
         <pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto">
           <code className="text-gray-800">
-            "Launch a cold email campaign for acme.com targeting CTOs at tech startups,
-            $10/day budget, 5 days trial, daily report to ceo@acme.com"
+            "Launch a cold email campaign for acme.com targeting CTOs at tech startups
+            to book sales demos, $10/day budget"
           </code>
         </pre>
 
@@ -121,16 +122,10 @@ export default function SalesOutreachDocs() {
           <code>{`{
   "target_url": "acme.com",
   "target_audience": "CTOs at tech startups, 10-200 employees",
+  "target_outcome": "Book sales demos",
+  "value_for_target": "Access to enterprise analytics at startup pricing",
   "budget": {
     "max_daily_usd": 10
-  },
-  "schedule": {
-    "frequency": "daily",
-    "trial_days": 5
-  },
-  "reporting": {
-    "frequency": "daily",
-    "email": "ceo@acme.com"
   }
 }`}</code>
         </pre>

@@ -62,28 +62,22 @@ Add to your MCP client config (Cursor, Claude Code, etc.):
 
 In Claude, Cursor, or any MCP client:
 
-> "Launch a cold email campaign for acme.com targeting CTOs at tech startups, $10/day budget, 5 days trial, daily report to ceo@acme.com"
+> "Launch a cold email campaign for acme.com targeting CTOs at tech startups to book sales demos, $10/day budget"
 
 ### Available Tools
 
 #### `launch_campaign`
 
-Start a new outreach campaign.
+Start a new outreach campaign. Requires `target_url`, `target_audience`, `target_outcome`, and `value_for_target`.
 
 ```json
 {
   "target_url": "acme.com",
   "target_audience": "CTOs at tech startups, 10-200 employees",
+  "target_outcome": "Book sales demos",
+  "value_for_target": "Access to enterprise analytics at startup pricing",
   "budget": {
     "max_daily_usd": 10
-  },
-  "schedule": {
-    "frequency": "daily",
-    "trial_days": 5
-  },
-  "reporting": {
-    "frequency": "daily",
-    "email": "ceo@acme.com"
   }
 }
 ```

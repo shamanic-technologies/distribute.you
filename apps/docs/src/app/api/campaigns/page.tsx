@@ -20,49 +20,41 @@ export default function CampaignsApiPage() {
       <div className="prose prose-lg">
         <h2>Create Campaign</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`POST /campaigns
+          <code>{`POST /v1/campaigns
 Content-Type: application/json
-Authorization: Bearer mcpf_live_xxxx
+X-API-Key: YOUR_API_KEY
 
 {
-  "mcp": "sales-outreach",
-  "target_url": "acme.com",
-  "target_audience": "CTOs at SaaS companies, 50-200 employees",
-  "budget": {
-    "max_daily_usd": 10,
-    "max_weekly_usd": 50,
-    "max_monthly_usd": 200
-  },
-  "schedule": {
-    "frequency": "daily",
-    "trial_days": 5,
-    "start_date": "2026-02-01"
-  },
-  "reporting": {
-    "frequency": "daily",
-    "email": "founder@acme.com",
-    "webhook_url": "https://..."
-  }
+  "name": "Q1 Outreach",
+  "brandUrl": "https://acme.com",
+  "targetAudience": "CTOs at SaaS companies, 50-200 employees",
+  "targetOutcome": "Book sales demos",
+  "valueForTarget": "Access to enterprise analytics at startup pricing",
+  "maxBudgetDailyUsd": 10,
+  "maxBudgetWeeklyUsd": 50
 }`}</code>
         </pre>
 
         <h3>Response</h3>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`{
-  "id": "camp_abc123",
-  "status": "starting",
-  "mcp": "sales-outreach",
-  "target_url": "acme.com",
-  "created_at": "2026-01-30T10:00:00Z",
-  "dashboard_url": "https://dashboard.mcpfactory.org/campaigns/camp_abc123"
+  "campaign": {
+    "id": "camp_abc123",
+    "name": "Q1 Outreach",
+    "brandId": "brand_xyz",
+    "status": "ongoing",
+    "targetAudience": "CTOs at SaaS companies, 50-200 employees",
+    "targetOutcome": "Book sales demos",
+    "valueForTarget": "Access to enterprise analytics at startup pricing"
+  }
 }`}</code>
         </pre>
 
         <h2>List Campaigns</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`GET /campaigns
-GET /campaigns?status=running
-GET /campaigns?mcp=sales-outreach`}</code>
+          <code>{`GET /v1/campaigns
+GET /v1/campaigns?status=ongoing
+GET /v1/campaigns?status=stopped`}</code>
         </pre>
 
         <h3>Response</h3>
@@ -71,78 +63,65 @@ GET /campaigns?mcp=sales-outreach`}</code>
   "campaigns": [
     {
       "id": "camp_abc123",
-      "status": "running",
-      "mcp": "sales-outreach",
-      "target_url": "acme.com",
-      "created_at": "2026-01-30T10:00:00Z"
+      "name": "Q1 Outreach",
+      "status": "ongoing",
+      "targetAudience": "CTOs at SaaS companies",
+      "targetOutcome": "Book sales demos",
+      "valueForTarget": "Access to enterprise analytics at startup pricing",
+      "maxBudgetDailyUsd": "10"
     }
-  ],
-  "pagination": {
-    "total": 1,
-    "page": 1,
-    "per_page": 20
-  }
+  ]
 }`}</code>
         </pre>
 
         <h2>Get Campaign</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`GET /campaigns/:id`}</code>
+          <code>{`GET /v1/campaigns/:id`}</code>
         </pre>
 
         <h3>Response</h3>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`{
-  "id": "camp_abc123",
-  "status": "running",
-  "mcp": "sales-outreach",
-  "target_url": "acme.com",
-  "target_audience": "CTOs at SaaS companies",
-  "budget": {
-    "max_daily_usd": 10,
-    "spent_today_usd": 3.45
-  },
-  "schedule": {
-    "frequency": "daily",
-    "trial_days": 5,
-    "days_remaining": 3
-  },
-  "stats": {
-    "emails_sent": 127,
-    "delivered": 119,
-    "opened": 28,
-    "replied": 6,
-    "meetings_booked": 1
-  },
-  "created_at": "2026-01-30T10:00:00Z"
+  "campaign": {
+    "id": "camp_abc123",
+    "name": "Q1 Outreach",
+    "status": "ongoing",
+    "targetAudience": "CTOs at SaaS companies",
+    "targetOutcome": "Book sales demos",
+    "valueForTarget": "Access to enterprise analytics at startup pricing",
+    "maxBudgetDailyUsd": "10",
+    "createdAt": "2026-01-30T10:00:00Z"
+  }
 }`}</code>
         </pre>
 
-        <h2>Pause Campaign</h2>
+        <h2>Stop Campaign</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`POST /campaigns/:id/pause`}</code>
+          <code>{`POST /v1/campaigns/:id/stop`}</code>
         </pre>
 
         <h3>Response</h3>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`{
-  "id": "camp_abc123",
-  "status": "paused",
-  "paused_at": "2026-01-31T15:30:00Z"
+  "campaign": {
+    "id": "camp_abc123",
+    "status": "stopped"
+  }
 }`}</code>
         </pre>
 
         <h2>Resume Campaign</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`POST /campaigns/:id/resume`}</code>
+          <code>{`POST /v1/campaigns/:id/resume`}</code>
         </pre>
 
         <h3>Response</h3>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`{
-  "id": "camp_abc123",
-  "status": "running",
-  "resumed_at": "2026-02-01T09:00:00Z"
+  "campaign": {
+    "id": "camp_abc123",
+    "status": "ongoing"
+  }
 }`}</code>
         </pre>
 
@@ -156,28 +135,12 @@ GET /campaigns?mcp=sales-outreach`}</code>
           </thead>
           <tbody>
             <tr>
-              <td><code>starting</code></td>
-              <td>Campaign is being set up</td>
+              <td><code>ongoing</code></td>
+              <td>Campaign is active and running</td>
             </tr>
             <tr>
-              <td><code>running</code></td>
-              <td>Campaign is active</td>
-            </tr>
-            <tr>
-              <td><code>paused</code></td>
-              <td>Manually paused</td>
-            </tr>
-            <tr>
-              <td><code>budget_paused</code></td>
-              <td>Paused due to budget limit</td>
-            </tr>
-            <tr>
-              <td><code>completed</code></td>
-              <td>Trial period or schedule ended</td>
-            </tr>
-            <tr>
-              <td><code>failed</code></td>
-              <td>Error occurred (check logs)</td>
+              <td><code>stopped</code></td>
+              <td>Campaign has been stopped</td>
             </tr>
           </tbody>
         </table>
