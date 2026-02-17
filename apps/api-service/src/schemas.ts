@@ -203,9 +203,12 @@ registry.registerPath({
 
 // -- Request schemas --
 
+export const CampaignTypeEnum = z.enum(["cold-email-outreach"]).describe("Campaign type — determines which execution pipeline to use");
+
 export const CreateCampaignRequestSchema = z
   .object({
     name: z.string().describe("Campaign name"),
+    type: CampaignTypeEnum.default("cold-email-outreach").describe("Campaign type (defaults to 'cold-email-outreach')"),
     brandUrl: z.string().min(1).describe("Brand website URL"),
     targetAudience: z.string().min(1).describe("Plain text description of who to target (e.g. 'CTOs at SaaS startups with 10-50 employees in the US')"),
     targetOutcome: z.string().min(1).describe("What you want to achieve (e.g. 'Book sales demos', 'Recruit community ambassadors')"),
@@ -256,7 +259,7 @@ registry.registerPath({
   tags: ["Campaigns"],
   summary: "Create a campaign",
   description:
-    "Create a new outreach campaign. Optionally scrapes brand URL first.",
+    "Create a new outreach campaign. The `type` field determines which execution pipeline campaign-service uses.",
   security: authed,
   request: {
     body: {

@@ -26,6 +26,7 @@ X-API-Key: YOUR_API_KEY
 
 {
   "name": "Q1 Outreach",
+  "type": "cold-email-outreach",
   "brandUrl": "https://acme.com",
   "targetAudience": "CTOs at SaaS companies, 50-200 employees",
   "targetOutcome": "Book sales demos",
@@ -41,6 +42,7 @@ X-API-Key: YOUR_API_KEY
   "campaign": {
     "id": "camp_abc123",
     "name": "Q1 Outreach",
+    "type": "cold-email-outreach",
     "brandId": "brand_xyz",
     "status": "ongoing",
     "targetAudience": "CTOs at SaaS companies, 50-200 employees",

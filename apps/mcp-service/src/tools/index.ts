@@ -11,6 +11,7 @@ export const toolDefinitions = {
     description: "Create and immediately start a cold email campaign. Provide a URL, describe your target audience in plain text, and set a budget. The system automatically finds matching leads via AI.",
     schema: z.object({
       name: z.string().describe("Campaign name"),
+      campaign_type: z.enum(["cold-email-outreach"]).default("cold-email-outreach").describe("Campaign type — determines which execution pipeline to use (defaults to 'cold-email-outreach')"),
       brand_url: z.string().describe("Your brand/company URL to promote"),
       target_audience: z.string().describe("Plain text description of your ideal customers (e.g. 'CTOs at SaaS startups with 10-50 employees in the US')"),
       target_outcome: z.string().describe("What you want to achieve with this campaign (e.g. 'Book sales demos', 'Recruit community ambassadors', 'Get press coverage')"),
@@ -148,6 +149,7 @@ async function handleCreateCampaign(args: Record<string, unknown>) {
     method: "POST",
     body: {
       name: args.name,
+      type: args.campaign_type,
       brandUrl: args.brand_url,
       targetAudience: args.target_audience,
       targetOutcome: args.target_outcome,
