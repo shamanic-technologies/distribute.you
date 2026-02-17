@@ -37,6 +37,16 @@ const TOOLS = [
           description:
             "Description of ideal customers in plain text (e.g., 'CTOs at SaaS startups with 10-50 employees in the US')",
         },
+        target_outcome: {
+          type: "string",
+          description:
+            "What you want to achieve (e.g., 'Book sales demos', 'Recruit community ambassadors', 'Get press coverage')",
+        },
+        value_for_target: {
+          type: "string",
+          description:
+            "What the target audience gains from responding (e.g., 'Access to enterprise analytics at startup pricing')",
+        },
         max_leads: {
           type: "number",
           description:
@@ -52,7 +62,7 @@ const TOOLS = [
           description: "BYOK budget limits (at least one required)",
         },
       },
-      required: ["target_url", "target_audience"],
+      required: ["target_url", "target_audience", "target_outcome", "value_for_target"],
     },
   },
   {

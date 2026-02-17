@@ -135,6 +135,8 @@ export interface Campaign {
   name: string;
   status: string;
   targetAudience: string | null;
+  targetOutcome: string | null;
+  valueForTarget: string | null;
   maxBudgetDailyUsd: string | null;
   maxBudgetWeeklyUsd: string | null;
   maxBudgetMonthlyUsd: string | null;

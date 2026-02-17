@@ -90,6 +90,8 @@ describe("POST /v1/campaigns with targetAudience", () => {
         name: "Test Campaign",
         brandUrl: "https://example.com",
         targetAudience: "CTOs at SaaS startups with 10-50 employees in the US",
+        targetOutcome: "Book sales demos",
+        valueForTarget: "Access to enterprise analytics at startup pricing",
         maxBudgetDailyUsd: 10,
       });
 
@@ -102,10 +104,12 @@ describe("POST /v1/campaigns with targetAudience", () => {
     expect(brandCall!.body!.url).toBe("https://example.com");
     expect(brandCall!.body!.clerkOrgId).toBe("org_test456");
 
-    // Verify campaign-service received targetAudience and brandId
+    // Verify campaign-service received all fields
     const campaignCall = fetchCalls.find((c) => c.url.includes("/campaigns") && c.body?.appId === "mcpfactory");
     expect(campaignCall).toBeDefined();
     expect(campaignCall!.body!.targetAudience).toBe("CTOs at SaaS startups with 10-50 employees in the US");
+    expect(campaignCall!.body!.targetOutcome).toBe("Book sales demos");
+    expect(campaignCall!.body!.valueForTarget).toBe("Access to enterprise analytics at startup pricing");
     expect(campaignCall!.body!.brandId).toBe("brand-uuid-123");
     expect(campaignCall!.body!.clerkOrgId).toBe("org_test456");
 
@@ -136,6 +140,8 @@ describe("POST /v1/campaigns with targetAudience", () => {
       .send({
         name: "Test Campaign",
         targetAudience: "CTOs at SaaS companies",
+        targetOutcome: "Book demos",
+        valueForTarget: "Better analytics",
         maxBudgetDailyUsd: 10,
       });
 
@@ -166,6 +172,8 @@ describe("POST /v1/campaigns with targetAudience", () => {
         name: "Budget Test",
         brandUrl: "https://example.com",
         targetAudience: "CEOs at fintech",
+        targetOutcome: "Close deals",
+        valueForTarget: "Better ROI",
         maxBudgetDailyUsd: 25,
         maxBudgetWeeklyUsd: 100,
       });
@@ -194,6 +202,8 @@ describe("POST /v1/campaigns with targetAudience", () => {
         name: "Test",
         brandUrl: "https://example.com",
         targetAudience: "CTOs at SaaS",
+        targetOutcome: "Book demos",
+        valueForTarget: "Better tools",
         maxBudgetDailyUsd: 10,
       });
 

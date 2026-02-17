@@ -52,9 +52,12 @@ export function CampaignCard({ campaign, stats }: CampaignCardProps) {
         </span>
       </div>
       
-      {/* Target audience */}
+      {/* Target audience & outcome */}
       {campaign.targetAudience && (
-        <p className="text-xs text-gray-500 mb-3 line-clamp-2">{campaign.targetAudience}</p>
+        <p className="text-xs text-gray-500 mb-1 line-clamp-2">{campaign.targetAudience}</p>
+      )}
+      {campaign.targetOutcome && (
+        <p className="text-xs text-gray-400 mb-3 line-clamp-1">Outcome: {campaign.targetOutcome}</p>
       )}
 
       {/* Stats grid */}
