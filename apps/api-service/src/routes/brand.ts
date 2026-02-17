@@ -145,21 +145,18 @@ router.post("/brand/icp-suggestion", authenticate, requireOrg, async (req: Authe
     if (!parsed.success) {
       return res.status(400).json({ error: "Invalid request", details: parsed.error.flatten() });
     }
-    const { brandUrl, targetAudience } = parsed.data;
-
-    const body: Record<string, unknown> = {
-      clerkOrgId: req.orgId,
-      url: brandUrl,
-      keyType: "byok",
-    };
-    if (targetAudience) body.targetAudience = targetAudience;
+    const { brandUrl } = parsed.data;
 
     const result = await callExternalService(
       externalServices.brand,
       "/icp-suggestion",
       {
         method: "POST",
-        body,
+        body: {
+          clerkOrgId: req.orgId,
+          url: brandUrl,
+          keyType: "byok",
+        },
       }
     );
     res.json(result);

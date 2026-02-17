@@ -206,25 +206,14 @@ registry.registerPath({
 export const CreateCampaignRequestSchema = z
   .object({
     name: z.string().describe("Campaign name"),
-    brandUrl: z.string().optional().describe("Brand website URL to scrape"),
-    targetAudience: z.string().optional().describe("Plain text description of ideal customers (e.g. 'CTOs at SaaS startups with 10-50 employees in the US'). Resolved to Apollo search params automatically."),
-    // Apollo-specific fields (legacy / advanced usage — prefer targetAudience)
-    personTitles: z.array(z.string()).optional().describe("Target job titles (resolved from targetAudience if not provided)"),
-    organizationLocations: z.array(z.string()).optional().describe("Target locations (resolved from targetAudience if not provided)"),
-    qOrganizationKeywordTags: z.array(z.string()).optional().describe("Target industry keywords (resolved from targetAudience if not provided)"),
-    organizationNumEmployeesRanges: z.array(z.string()).optional().describe("Target company size ranges"),
-    qOrganizationIndustryTagIds: z.array(z.string()).optional().describe("Target industry tag IDs"),
-    qKeywords: z.string().optional().describe("Search keywords"),
+    brandUrl: z.string().min(1).describe("Brand website URL"),
+    targetAudience: z.string().min(1).describe("Plain text description of who to target (e.g. 'CTOs at SaaS startups with 10-50 employees in the US')"),
     maxBudgetDailyUsd: z.union([z.string(), z.number()]).optional().describe("Max daily budget in USD"),
     maxBudgetWeeklyUsd: z.union([z.string(), z.number()]).optional().describe("Max weekly budget in USD"),
     maxBudgetMonthlyUsd: z.union([z.string(), z.number()]).optional().describe("Max monthly budget in USD"),
     maxBudgetTotalUsd: z.union([z.string(), z.number()]).optional().describe("Max total budget in USD"),
     maxLeads: z.number().int().optional().describe("Maximum number of leads to contact"),
-    startDate: z.string().optional().describe("Campaign start date"),
     endDate: z.string().optional().describe("Campaign end date"),
-    notifyFrequency: z.string().optional().describe("Notification frequency"),
-    notifyChannel: z.string().optional().describe("Notification channel"),
-    notifyDestination: z.string().optional().describe("Notification destination"),
   })
   .openapi("CreateCampaignRequest");
 
@@ -751,7 +740,6 @@ export const BrandScrapeRequestSchema = z
 export const IcpSuggestionRequestSchema = z
   .object({
     brandUrl: z.string().min(1).describe("Brand website URL"),
-    targetAudience: z.string().optional().describe("Optional plain text description of target audience to guide ICP generation"),
   })
   .openapi("IcpSuggestionRequest");
 

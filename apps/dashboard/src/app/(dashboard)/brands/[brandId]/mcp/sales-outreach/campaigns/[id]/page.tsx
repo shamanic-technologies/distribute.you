@@ -77,26 +77,12 @@ export default function CampaignOverviewPage() {
 
       {/* Target audience */}
       {campaign.targetAudience && (
-        <div className="mb-4">
+        <div className="mb-6">
           <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
             {campaign.targetAudience}
           </p>
         </div>
       )}
-
-      {/* Targeting tags (resolved from audience or set manually) */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        {campaign.personTitles?.map((title) => (
-          <span key={title} className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
-            {title}
-          </span>
-        ))}
-        {campaign.organizationLocations?.map((loc) => (
-          <span key={loc} className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded">
-            {loc}
-          </span>
-        ))}
-      </div>
 
       {/* Stats */}
       {stats && (
