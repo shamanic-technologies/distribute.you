@@ -169,6 +169,7 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
     const body: Record<string, unknown> = {
       ...parsed.data,
       appId: "mcpfactory",
+      clerkOrgId: req.orgId,
       brandId: brandResult.brandId,
     };
 

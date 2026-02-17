@@ -107,6 +107,7 @@ describe("POST /v1/campaigns with targetAudience", () => {
     expect(campaignCall).toBeDefined();
     expect(campaignCall!.body!.targetAudience).toBe("CTOs at SaaS startups with 10-50 employees in the US");
     expect(campaignCall!.body!.brandId).toBe("brand-uuid-123");
+    expect(campaignCall!.body!.clerkOrgId).toBe("org_test456");
 
     // Verify NO Apollo fields were sent
     expect(campaignCall!.body!.personTitles).toBeUndefined();
