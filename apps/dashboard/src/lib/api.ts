@@ -218,8 +218,48 @@ export async function getBrand(token: string, brandId: string): Promise<{ brand:
 }
 
 // Brand sales profile
+export interface LeadershipMember {
+  name: string;
+  role: string;
+  bio: string | null;
+  notableBackground: string | null;
+}
+
+export interface FundingRound {
+  type: string;
+  amount: string | null;
+  date: string | null;
+  notableInvestors: string[];
+}
+
+export interface FundingInfo {
+  totalRaised: string | null;
+  rounds: FundingRound[];
+  notableBackers: string[];
+}
+
+export interface Award {
+  title: string;
+  issuer: string | null;
+  year: string | null;
+  description: string | null;
+}
+
+export interface RevenueMilestone {
+  metric: string;
+  value: string;
+  date: string | null;
+  context: string | null;
+}
+
+export type Testimonial = string | {
+  quote: string;
+  name: string | null;
+  role: string | null;
+  company: string | null;
+};
+
 export interface SalesProfile {
-  companyName: string | null;
   valueProposition: string | null;
   companyOverview: string | null;
   targetAudience: string | null;
@@ -229,11 +269,15 @@ export interface SalesProfile {
   competitors: string[];
   socialProof: {
     caseStudies: string[];
-    testimonials: string[];
+    testimonials: Testimonial[];
     results: string[];
   };
   callToAction: string | null;
   additionalContext: string | null;
+  leadership: LeadershipMember[];
+  funding: FundingInfo;
+  awardsAndRecognition: Award[];
+  revenueMilestones: RevenueMilestone[];
   extractedAt: string;
 }
 
