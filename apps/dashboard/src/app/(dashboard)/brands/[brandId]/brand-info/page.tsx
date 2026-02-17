@@ -38,10 +38,14 @@ export default function BrandInfoPage() {
 
   const { data: runsData, isLoading: runsLoading } = useAuthQuery(
     ["brandRuns", brandId],
-    (token) => listBrandRuns(token, brandId),
-    { enabled: activeTab === "history" }
+    (token) => listBrandRuns(token, brandId)
   );
   const runs = runsData?.runs ?? [];
+
+  const totalCostUsd = runs.reduce((sum, run) => {
+    const cents = parseFloat(run.totalCostInUsdCents ?? "0");
+    return sum + (isNaN(cents) ? 0 : cents);
+  }, 0) / 100;
 
   if (isLoading) {
     return (
@@ -104,9 +108,14 @@ export default function BrandInfoPage() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-semibold text-gray-900">Brand Info</h1>
         {activeTab === "current" && profile?.extractedAt && (
-          <span className="text-xs text-gray-400">
-            Updated: {new Date(profile.extractedAt).toLocaleDateString()}
-          </span>
+          <div className="text-right">
+            <span className="text-xs text-gray-400 block">
+              Updated: {new Date(profile.extractedAt).toLocaleDateString()}
+            </span>
+            <span className="text-xs text-gray-400 block">
+              Total: {totalCostUsd < 1 ? "<$1" : `$${Math.round(totalCostUsd)}`}
+            </span>
+          </div>
         )}
       </div>
 
