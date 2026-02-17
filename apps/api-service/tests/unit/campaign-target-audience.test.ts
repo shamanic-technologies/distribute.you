@@ -99,9 +99,10 @@ describe("POST /v1/campaigns with targetAudience", () => {
     expect(brandCall!.body!.url).toBe("https://example.com");
     expect(brandCall!.body!.clerkOrgId).toBe("org_test456");
 
-    // Verify campaign-service received all fields
+    // Verify campaign-service received all fields including type
     const campaignCall = fetchCalls.find((c) => c.url.includes("/campaigns") && c.body?.appId === "mcpfactory");
     expect(campaignCall).toBeDefined();
+    expect(campaignCall!.body!.type).toBe("cold-email-outreach");
     expect(campaignCall!.body!.targetAudience).toBe("CTOs at SaaS startups with 10-50 employees in the US");
     expect(campaignCall!.body!.targetOutcome).toBe("Book sales demos");
     expect(campaignCall!.body!.valueForTarget).toBe("Access to enterprise analytics at startup pricing");
