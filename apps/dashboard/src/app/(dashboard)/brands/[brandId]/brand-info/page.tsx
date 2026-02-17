@@ -64,10 +64,14 @@ export default function BrandInfoPage() {
     );
   }
 
-  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  const EmptyPlaceholder = () => (
+    <p className="text-sm text-gray-400 italic">This section has not been populated yet.</p>
+  );
+
+  const Section = ({ title, children, empty }: { title: string; children: React.ReactNode; empty?: boolean }) => (
     <div className="bg-white rounded-lg border border-gray-200 p-4 md:p-6">
       <h2 className="text-lg font-medium text-gray-900 mb-3">{title}</h2>
-      {children}
+      {empty ? <EmptyPlaceholder /> : children}
     </div>
   );
 
@@ -159,90 +163,73 @@ export default function BrandInfoPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {profile.companyName && (
-                <Section title="Company Name">
-                  <p className="text-gray-700 font-medium">{profile.companyName}</p>
-                </Section>
-              )}
+              <Section title="Company Name" empty={!profile.companyName}>
+                <p className="text-gray-700 font-medium">{profile.companyName}</p>
+              </Section>
 
-              {profile.valueProposition && (
-                <Section title="Value Proposition">
-                  <p className="text-gray-700">{profile.valueProposition}</p>
-                </Section>
-              )}
+              <Section title="Value Proposition" empty={!profile.valueProposition}>
+                <p className="text-gray-700">{profile.valueProposition}</p>
+              </Section>
 
-              {profile.companyOverview && (
-                <Section title="Company Overview">
-                  <p className="text-gray-700">{profile.companyOverview}</p>
-                </Section>
-              )}
+              <Section title="Company Overview" empty={!profile.companyOverview}>
+                <p className="text-gray-700">{profile.companyOverview}</p>
+              </Section>
 
-              {profile.targetAudience && (
-                <Section title="Target Audience">
-                  <p className="text-gray-700">{profile.targetAudience}</p>
-                </Section>
-              )}
+              <Section title="Target Audience" empty={!profile.targetAudience}>
+                <p className="text-gray-700">{profile.targetAudience}</p>
+              </Section>
 
-              {profile.customerPainPoints?.length > 0 && (
-                <Section title="Customer Pain Points">
-                  <List items={profile.customerPainPoints} />
-                </Section>
-              )}
+              <Section title="Customer Pain Points" empty={!profile.customerPainPoints?.length}>
+                <List items={profile.customerPainPoints ?? []} />
+              </Section>
 
-              {profile.keyFeatures?.length > 0 && (
-                <Section title="Key Features">
-                  <Tags items={profile.keyFeatures} variant="primary" />
-                </Section>
-              )}
+              <Section title="Key Features" empty={!profile.keyFeatures?.length}>
+                <Tags items={profile.keyFeatures ?? []} variant="primary" />
+              </Section>
 
-              {profile.productDifferentiators?.length > 0 && (
-                <Section title="Product Differentiators">
-                  <List items={profile.productDifferentiators} />
-                </Section>
-              )}
+              <Section title="Product Differentiators" empty={!profile.productDifferentiators?.length}>
+                <List items={profile.productDifferentiators ?? []} />
+              </Section>
 
-              {profile.competitors?.length > 0 && (
-                <Section title="Competitors">
-                  <Tags items={profile.competitors} variant="gray" />
-                </Section>
-              )}
+              <Section title="Competitors" empty={!profile.competitors?.length}>
+                <Tags items={profile.competitors ?? []} variant="gray" />
+              </Section>
 
-              {(profile.socialProof?.caseStudies?.length > 0 ||
-                profile.socialProof?.testimonials?.length > 0 ||
-                profile.socialProof?.results?.length > 0) && (
-                <Section title="Social Proof">
-                  {profile.socialProof.caseStudies?.length > 0 && (
-                    <div className="mb-4">
-                      <h3 className="text-sm font-medium text-gray-700 mb-2">Case Studies</h3>
-                      <List items={profile.socialProof.caseStudies} />
-                    </div>
-                  )}
-                  {profile.socialProof.testimonials?.length > 0 && (
-                    <div className="mb-4">
-                      <h3 className="text-sm font-medium text-gray-700 mb-2">Testimonials</h3>
-                      <List items={profile.socialProof.testimonials} />
-                    </div>
-                  )}
-                  {profile.socialProof.results?.length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-700 mb-2">Results</h3>
-                      <List items={profile.socialProof.results} />
-                    </div>
-                  )}
-                </Section>
-              )}
+              <Section
+                title="Social Proof"
+                empty={
+                  !profile.socialProof?.caseStudies?.length &&
+                  !profile.socialProof?.testimonials?.length &&
+                  !profile.socialProof?.results?.length
+                }
+              >
+                {profile.socialProof?.caseStudies?.length > 0 && (
+                  <div className="mb-4">
+                    <h3 className="text-sm font-medium text-gray-700 mb-2">Case Studies</h3>
+                    <List items={profile.socialProof.caseStudies} />
+                  </div>
+                )}
+                {profile.socialProof?.testimonials?.length > 0 && (
+                  <div className="mb-4">
+                    <h3 className="text-sm font-medium text-gray-700 mb-2">Testimonials</h3>
+                    <List items={profile.socialProof.testimonials} />
+                  </div>
+                )}
+                {profile.socialProof?.results?.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 mb-2">Results</h3>
+                    <List items={profile.socialProof.results} />
+                  </div>
+                )}
+              </Section>
 
-              {profile.callToAction && (
-                <Section title="Call to Action">
-                  <p className="text-gray-700">{profile.callToAction}</p>
-                </Section>
-              )}
+              <Section title="Call to Action" empty={!profile.callToAction}>
+                <p className="text-gray-700">{profile.callToAction}</p>
+              </Section>
 
-              {profile.additionalContext && (
-                <Section title="Additional Context">
-                  <p className="text-gray-700">{profile.additionalContext}</p>
-                </Section>
-              )}
+              <Section title="Additional Context" empty={!profile.additionalContext}>
+                <p className="text-gray-700">{profile.additionalContext}</p>
+              </Section>
             </div>
           )}
         </>
