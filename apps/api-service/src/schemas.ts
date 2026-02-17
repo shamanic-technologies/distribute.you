@@ -208,6 +208,8 @@ export const CreateCampaignRequestSchema = z
     name: z.string().describe("Campaign name"),
     brandUrl: z.string().min(1).describe("Brand website URL"),
     targetAudience: z.string().min(1).describe("Plain text description of who to target (e.g. 'CTOs at SaaS startups with 10-50 employees in the US')"),
+    targetOutcome: z.string().min(1).describe("What you want to achieve (e.g. 'Book sales demos', 'Recruit community ambassadors')"),
+    valueForTarget: z.string().min(1).describe("What the target audience gains from responding"),
     maxBudgetDailyUsd: z.union([z.string(), z.number()]).optional().describe("Max daily budget in USD"),
     maxBudgetWeeklyUsd: z.union([z.string(), z.number()]).optional().describe("Max weekly budget in USD"),
     maxBudgetMonthlyUsd: z.union([z.string(), z.number()]).optional().describe("Max monthly budget in USD"),
