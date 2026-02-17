@@ -8,21 +8,17 @@ export const toolDefinitions = {
     schema: z.object({}),
   },
   mcpfactory_create_campaign: {
-    description: "Create and immediately start a cold email campaign targeting specific leads. Campaign starts in 'ongoing' status.",
+    description: "Create and immediately start a cold email campaign. Provide a URL, describe your target audience in plain text, and set a budget. The system automatically finds matching leads via AI.",
     schema: z.object({
       name: z.string().describe("Campaign name"),
       brand_url: z.string().describe("Your brand/company URL to promote"),
-      target_titles: z.array(z.string()).describe("Job titles to target"),
-      target_industries: z.array(z.string()).optional().describe("Industries to target"),
-      target_locations: z.array(z.string()).optional().describe("Locations to target"),
+      target_audience: z.string().describe("Plain text description of your ideal customers (e.g. 'CTOs at SaaS startups with 10-50 employees in the US')"),
       max_daily_budget_usd: z.number().optional().describe("Maximum daily spend in USD (at least one budget required)"),
       max_weekly_budget_usd: z.number().optional().describe("Maximum weekly spend in USD"),
       max_monthly_budget_usd: z.number().optional().describe("Maximum monthly spend in USD"),
       max_total_budget_usd: z.number().optional().describe("Maximum total spend in USD (campaign stops permanently when reached)"),
       max_leads: z.number().optional().describe("Maximum number of leads to contact (campaign stops permanently when reached)"),
       end_date: z.string().optional().describe("Optional campaign end date (ISO format)"),
-      // Coming soon: reporting frequency
-      // reporting: z.enum(["none", "daily", "weekly", "monthly"]).describe("How often to receive campaign reports"),
     }),
   },
   mcpfactory_list_campaigns: {
@@ -61,7 +57,7 @@ export const toolDefinitions = {
   },
   mcpfactory_suggest_icp: {
     description:
-      "Analyze a brand's website and suggest an Ideal Customer Profile (ICP) with Apollo-compatible search parameters. Use this when the user doesn't know who to target and wants AI-generated targeting suggestions. Returns person_titles, q_organization_keyword_tags, and organization_locations that can be fed directly into mcpfactory_create_campaign.",
+      "Analyze a brand's website and suggest an Ideal Customer Profile (ICP). Use this when the user doesn't know who to target and wants AI-generated targeting suggestions. Returns a description of ideal customers that can be used as the target_audience in mcpfactory_create_campaign.",
     schema: z.object({
       brand_url: z.string().describe("The brand/company URL to analyze for ICP extraction"),
     }),
@@ -151,9 +147,7 @@ async function handleCreateCampaign(args: Record<string, unknown>) {
     body: {
       name: args.name,
       brandUrl: args.brand_url,
-      personTitles: args.target_titles,
-      organizationLocations: args.target_locations,
-      qOrganizationKeywordTags: args.target_industries,
+      targetAudience: args.target_audience,
       maxBudgetDailyUsd: args.max_daily_budget_usd,
       maxBudgetWeeklyUsd: args.max_weekly_budget_usd,
       maxBudgetMonthlyUsd: args.max_monthly_budget_usd,

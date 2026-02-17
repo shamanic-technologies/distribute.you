@@ -207,9 +207,11 @@ export const CreateCampaignRequestSchema = z
   .object({
     name: z.string().describe("Campaign name"),
     brandUrl: z.string().optional().describe("Brand website URL to scrape"),
-    personTitles: z.array(z.string()).optional().describe("Target job titles"),
-    organizationLocations: z.array(z.string()).optional().describe("Target locations"),
-    qOrganizationKeywordTags: z.array(z.string()).optional().describe("Target industry keywords"),
+    targetAudience: z.string().optional().describe("Plain text description of ideal customers (e.g. 'CTOs at SaaS startups with 10-50 employees in the US'). Resolved to Apollo search params automatically."),
+    // Apollo-specific fields (legacy / advanced usage — prefer targetAudience)
+    personTitles: z.array(z.string()).optional().describe("Target job titles (resolved from targetAudience if not provided)"),
+    organizationLocations: z.array(z.string()).optional().describe("Target locations (resolved from targetAudience if not provided)"),
+    qOrganizationKeywordTags: z.array(z.string()).optional().describe("Target industry keywords (resolved from targetAudience if not provided)"),
     organizationNumEmployeesRanges: z.array(z.string()).optional().describe("Target company size ranges"),
     qOrganizationIndustryTagIds: z.array(z.string()).optional().describe("Target industry tag IDs"),
     qKeywords: z.string().optional().describe("Search keywords"),
@@ -749,6 +751,7 @@ export const BrandScrapeRequestSchema = z
 export const IcpSuggestionRequestSchema = z
   .object({
     brandUrl: z.string().min(1).describe("Brand website URL"),
+    targetAudience: z.string().optional().describe("Optional plain text description of target audience to guide ICP generation"),
   })
   .openapi("IcpSuggestionRequest");
 

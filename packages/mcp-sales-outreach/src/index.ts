@@ -24,7 +24,7 @@ const TOOLS = [
   {
     name: "launch_campaign",
     description:
-      "Launch a DFY cold email outreach campaign. Provide a URL and budget, we handle everything else.",
+      "Launch a DFY cold email outreach campaign. Provide a URL, describe your target audience, set a budget — we handle everything else.",
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -35,7 +35,7 @@ const TOOLS = [
         target_audience: {
           type: "string",
           description:
-            "Optional: Description of ideal customers (e.g., 'CTOs at tech startups')",
+            "Description of ideal customers in plain text (e.g., 'CTOs at SaaS startups with 10-50 employees in the US')",
         },
         max_leads: {
           type: "number",
@@ -49,32 +49,10 @@ const TOOLS = [
             max_weekly_usd: { type: "number" },
             max_monthly_usd: { type: "number" },
           },
-          description: "BYOK budget limits",
-        },
-        schedule: {
-          type: "object",
-          properties: {
-            frequency: {
-              type: "string",
-              enum: ["daily", "weekly", "once"],
-            },
-            trial_days: { type: "number" },
-            pause_on_weekend: { type: "boolean" },
-          },
-        },
-        reporting: {
-          type: "object",
-          properties: {
-            frequency: {
-              type: "string",
-              enum: ["daily", "weekly", "on_completion"],
-            },
-            email: { type: "string" },
-            whatsapp: { type: "string" },
-          },
+          description: "BYOK budget limits (at least one required)",
         },
       },
-      required: ["target_url"],
+      required: ["target_url", "target_audience"],
     },
   },
   {

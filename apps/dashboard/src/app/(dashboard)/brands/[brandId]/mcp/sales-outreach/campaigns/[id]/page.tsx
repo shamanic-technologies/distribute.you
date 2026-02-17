@@ -75,7 +75,16 @@ export default function CampaignOverviewPage() {
         </p>
       </div>
 
-      {/* Targeting tags */}
+      {/* Target audience */}
+      {campaign.targetAudience && (
+        <div className="mb-4">
+          <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+            {campaign.targetAudience}
+          </p>
+        </div>
+      )}
+
+      {/* Targeting tags (resolved from audience or set manually) */}
       <div className="flex flex-wrap gap-2 mb-6">
         {campaign.personTitles?.map((title) => (
           <span key={title} className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
