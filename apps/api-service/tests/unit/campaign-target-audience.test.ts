@@ -58,11 +58,6 @@ describe("POST /v1/campaigns with targetAudience", () => {
         };
       }
 
-      // Scraping (fire-and-forget)
-      if (url.includes("/scrape")) {
-        return { ok: true, json: () => Promise.resolve({ id: "scrape-123" }) };
-      }
-
       // Campaign creation
       if (url.includes("/campaigns") && init?.method === "POST") {
         return {
@@ -117,6 +112,10 @@ describe("POST /v1/campaigns with targetAudience", () => {
     expect(campaignCall!.body!.personTitles).toBeUndefined();
     expect(campaignCall!.body!.qOrganizationKeywordTags).toBeUndefined();
     expect(campaignCall!.body!.organizationLocations).toBeUndefined();
+
+    // Verify scraping is NOT called (handled by campaign-service DAG)
+    const scrapeCall = fetchCalls.find((c) => c.url.includes("/scrape"));
+    expect(scrapeCall).toBeUndefined();
   });
 
   it("should reject when targetAudience is missing", async () => {

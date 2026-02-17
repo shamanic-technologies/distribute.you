@@ -151,20 +151,6 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
       }
     );
 
-    // Trigger scraping (fire-and-forget) so brand info is available for email generation
-    callExternalService(
-      externalServices.scraping,
-      "/scrape",
-      {
-        method: "POST",
-        body: {
-          url: brandUrl,
-          sourceService: "mcpfactory",
-          sourceOrgId: req.orgId,
-        },
-      }
-    ).catch((err: any) => console.warn("[campaigns] Scrape failed (non-blocking):", err.message));
-
     // 2. Forward to campaign-service
     const body: Record<string, unknown> = {
       ...parsed.data,
