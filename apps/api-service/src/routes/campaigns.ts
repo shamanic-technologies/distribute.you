@@ -129,14 +129,31 @@ router.get("/campaigns", authenticate, requireOrg, async (req: AuthenticatedRequ
  */
 router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
   try {
+    console.log("[api-service] POST /v1/campaigns — incoming request", {
+      orgId: req.orgId,
+      userId: req.userId,
+      body: { ...req.body, brandUrl: req.body.brandUrl },
+    });
+
     const parsed = CreateCampaignRequestSchema.safeParse(req.body);
     if (!parsed.success) {
+      console.warn("[api-service] POST /v1/campaigns — validation failed", parsed.error.flatten());
       return res.status(400).json({ error: "Invalid request", details: parsed.error.flatten() });
     }
 
     const { brandUrl } = parsed.data;
+    console.log("[api-service] POST /v1/campaigns — parsed OK", {
+      name: parsed.data.name,
+      type: parsed.data.type,
+      brandUrl,
+      targetAudience: parsed.data.targetAudience?.slice(0, 80) + "...",
+      targetOutcome: parsed.data.targetOutcome,
+      valueForTarget: parsed.data.valueForTarget?.slice(0, 80) + "...",
+      maxLeads: parsed.data.maxLeads,
+    });
 
     // 1. Upsert brand to get brandId
+    console.log("[api-service] POST /v1/campaigns — step 1: upserting brand", { brandUrl, orgId: req.orgId });
     const brandResult = await callExternalService<{ brandId: string }>(
       externalServices.brand,
       "/brands",
@@ -150,6 +167,7 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
         },
       }
     );
+    console.log("[api-service] POST /v1/campaigns — step 1 done: brand upserted", { brandId: brandResult.brandId });
 
     // 2. Forward to campaign-service
     const body: Record<string, unknown> = {
@@ -164,6 +182,12 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
       if (body[key] != null) body[key] = String(body[key]);
     }
 
+    console.log("[api-service] POST /v1/campaigns — step 2: forwarding to campaign-service", {
+      brandId: body.brandId,
+      type: body.type,
+      targetOutcome: body.targetOutcome,
+      maxLeads: body.maxLeads,
+    });
     const result = await callExternalService(
       externalServices.campaign,
       "/campaigns",
@@ -173,10 +197,15 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
         body,
       }
     );
+    console.log("[api-service] POST /v1/campaigns — step 2 done: campaign created", {
+      campaignId: (result as any).campaign?.id,
+      status: (result as any).campaign?.status,
+    });
 
     // Fire-and-forget lifecycle email
     const campaign = (result as any).campaign;
     if (campaign?.brandId && campaign?.id) {
+      console.log("[api-service] POST /v1/campaigns — step 3: sending lifecycle email campaign_created");
       sendLifecycleEmail("campaign_created", req, {
         brandId: campaign.brandId,
         campaignId: campaign.id,
@@ -186,7 +215,7 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
 
     res.json(result);
   } catch (error: any) {
-    console.error("Create campaign error:", error.message, error.stack);
+    console.error("[api-service] POST /v1/campaigns — FAILED:", error.message, error.stack);
     res.status(500).json({ error: error.message || "Failed to create campaign" });
   }
 });
