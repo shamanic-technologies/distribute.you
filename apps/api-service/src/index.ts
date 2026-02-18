@@ -13,6 +13,7 @@ import brandRoutes from "./routes/brand.js";
 import leadsRoutes from "./routes/leads.js";
 import activityRoutes from "./routes/activity.js";
 import performanceRoutes from "./routes/performance.js";
+import { registerAppKeys } from "./startup.js";
 import { readFileSync, existsSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
@@ -81,6 +82,9 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 // Listen on :: for Railway private networking (IPv4 & IPv6 support)
 app.listen(Number(PORT), "::", () => {
   console.log(`API Gateway running on port ${PORT}`);
+  registerAppKeys().catch((err) =>
+    console.error("[api-service] App key registration failed:", err.message)
+  );
 });
 
 export default app;
