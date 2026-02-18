@@ -33,9 +33,11 @@ describe("SalesColdEmailsCard component", () => {
     expect(content).toContain("text-gray-400");
   });
 
-  it("should check both anthropic and apollo providers", () => {
+  it("should check all required providers", () => {
     expect(content).toContain("anthropic");
     expect(content).toContain("apollo");
+    expect(content).toContain("instantly");
+    expect(content).toContain("firecrawl");
   });
 });
 

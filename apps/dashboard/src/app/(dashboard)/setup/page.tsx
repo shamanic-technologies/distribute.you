@@ -27,6 +27,18 @@ const PROVIDERS: Record<string, {
     placeholder: "...",
     getKeyUrl: "https://app.apollo.io/#/settings/integrations/api",
   },
+  instantly: {
+    name: "Instantly",
+    description: "Email sending and warm-up",
+    placeholder: "...",
+    getKeyUrl: "https://app.instantly.ai/app/settings/integrations",
+  },
+  firecrawl: {
+    name: "Firecrawl",
+    description: "Web scraping and data extraction",
+    placeholder: "fc-...",
+    getKeyUrl: "https://www.firecrawl.dev/app/api-keys",
+  },
 };
 
 const MCPS = [
@@ -35,7 +47,7 @@ const MCPS = [
     name: "Sales Cold Emails",
     description: "Generate and send personalized cold emails to prospects",
     icon: "📧",
-    requiredProviders: ["anthropic", "apollo"],
+    requiredProviders: ["anthropic", "apollo", "instantly", "firecrawl"],
     isLive: true,
   },
   {

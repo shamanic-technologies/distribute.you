@@ -4,7 +4,7 @@ import { LinkButton } from "@/components/link-button";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { listByokKeys } from "@/lib/api";
 
-const REQUIRED_PROVIDERS = ["anthropic", "apollo"];
+const REQUIRED_PROVIDERS = ["anthropic", "apollo", "instantly", "firecrawl"];
 
 export function SalesColdEmailsCard() {
   const { data, isLoading } = useAuthQuery(["byok-keys"], (token) =>
