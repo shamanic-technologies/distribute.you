@@ -9,6 +9,12 @@ describe("CampaignCostDistribution component", () => {
   );
   const content = fs.readFileSync(componentPath, "utf-8");
 
+  it("should aggregate costs by costName from brand runs", () => {
+    expect(content).toContain("costName");
+    expect(content).toContain("Map<string, number>");
+    expect(content).toContain("run.costs");
+  });
+
   it("should render a donut chart via conic-gradient", () => {
     expect(content).toContain("conic-gradient");
     expect(content).toContain("rounded-full");
@@ -19,19 +25,18 @@ describe("CampaignCostDistribution component", () => {
     expect(content).toContain("font-semibold");
   });
 
-  it("should display campaign names and costs in the legend", () => {
-    expect(content).toContain("seg.name");
-    expect(content).toContain("formatUsdCents(seg.costCents)");
+  it("should display formatted cost names and amounts in legend", () => {
+    expect(content).toContain("formatCostName");
+    expect(content).toContain("formatUsdCents(seg.cents)");
     expect(content).toContain("percentage");
   });
 
-  it("should sort items by cost descending and filter zero-cost items", () => {
-    expect(content).toContain(".sort((a, b) => b.costCents - a.costCents)");
-    expect(content).toContain("costCents > 0");
+  it("should sort segments by cost descending", () => {
+    expect(content).toContain(".sort((a, b) => b.cents - a.cents)");
   });
 
   it("should show empty state when no costs", () => {
-    expect(content).toContain("No costs yet");
+    expect(content).toContain("No cost data yet");
   });
 });
 
@@ -47,8 +52,9 @@ describe("Campaigns list page integrates CampaignCostDistribution", () => {
     expect(content).toContain("campaign-cost-distribution");
   });
 
-  it("should pass campaign names and costs as items", () => {
-    expect(content).toContain("c.name");
-    expect(content).toContain("totalCostInUsdCents");
+  it("should fetch brand runs and pass them to CampaignCostDistribution", () => {
+    expect(content).toContain("listBrandRuns");
+    expect(content).toContain("brandRuns");
+    expect(content).toContain("runs={brandRuns}");
   });
 });
