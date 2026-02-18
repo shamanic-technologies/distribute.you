@@ -202,9 +202,14 @@ router.get("/brands/:id/runs", authenticate, requireOrg, async (req: Authenticat
     }
 
     // 3. Enrich and return sorted by startedAt desc
+    // Flatten costs: include both the run's own costs and all descendant run costs
     const enriched = runs
       .map((run) => {
         const withCosts = runMap.get(run.id);
+        const allCosts = [
+          ...(withCosts?.costs || []),
+          ...(withCosts?.descendantRuns?.flatMap((dr) => dr.costs) || []),
+        ];
         return {
           id: run.id,
           taskName: run.taskName,
@@ -212,7 +217,7 @@ router.get("/brands/:id/runs", authenticate, requireOrg, async (req: Authenticat
           startedAt: withCosts?.startedAt || run.startedAt,
           completedAt: withCosts?.completedAt || run.completedAt,
           totalCostInUsdCents: withCosts?.totalCostInUsdCents || null,
-          costs: withCosts?.costs || [],
+          costs: allCosts,
         };
       })
       .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
