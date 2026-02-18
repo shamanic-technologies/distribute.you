@@ -17,19 +17,12 @@ export function FunnelMetrics({
   emailsClicked,
   emailsReplied
 }: FunnelMetricsProps) {
-  // Cap each funnel step so it never exceeds the previous step.
-  // The email-gateway stats include non-outreach emails (lifecycle, test, etc.)
-  // which can make "Sent" larger than "Generated". Capping ensures a sane funnel.
-  const cappedSent = Math.min(emailsSent, emailsGenerated);
-  const cappedOpened = Math.min(emailsOpened, cappedSent);
-  const cappedReplied = Math.min(emailsReplied, cappedSent);
-
   const steps = [
     { label: "Leads", value: leadsServed, rate: null },
     { label: "Generated", value: emailsGenerated, rate: leadsServed > 0 ? (emailsGenerated / leadsServed * 100) : 0 },
-    { label: "Sent", value: cappedSent, rate: emailsGenerated > 0 ? (cappedSent / emailsGenerated * 100) : 0 },
-    { label: "Opened", value: cappedOpened, rate: cappedSent > 0 ? (cappedOpened / cappedSent * 100) : 0 },
-    { label: "Replied", value: cappedReplied, rate: cappedSent > 0 ? (cappedReplied / cappedSent * 100) : 0 },
+    { label: "Sent", value: emailsSent, rate: emailsGenerated > 0 ? (emailsSent / emailsGenerated * 100) : 0 },
+    { label: "Opened", value: emailsOpened, rate: emailsSent > 0 ? (emailsOpened / emailsSent * 100) : 0 },
+    { label: "Replied", value: emailsReplied, rate: emailsSent > 0 ? (emailsReplied / emailsSent * 100) : 0 },
   ];
 
   const maxValue = Math.max(...steps.map(s => s.value), 1);

@@ -48,35 +48,23 @@ export default function BrandMcpSalesOutreachPage() {
     (acc, s) => ({
       leadsServed: acc.leadsServed + (s.leadsServed || 0),
       emailsGenerated: acc.emailsGenerated + (s.emailsGenerated || 0),
-      emailsSent: acc.emailsSent + (s.emailsSent || 0),
-      emailsOpened: acc.emailsOpened + (s.emailsOpened || 0),
-      emailsClicked: acc.emailsClicked + (s.emailsClicked || 0),
-      emailsReplied: acc.emailsReplied + (s.emailsReplied || 0),
-      willingToMeet: acc.willingToMeet + (s.repliesWillingToMeet || 0),
-      interested: acc.interested + (s.repliesInterested || 0),
-      notInterested: acc.notInterested + (s.repliesNotInterested || 0),
-      outOfOffice: acc.outOfOffice + (s.repliesOutOfOffice || 0),
-      unsubscribe: acc.unsubscribe + (s.repliesUnsubscribe || 0),
       totalCostCents: acc.totalCostCents + (parseFloat(s.totalCostInUsdCents || "0") || 0),
     }),
-    { leadsServed: 0, emailsGenerated: 0, emailsSent: 0, emailsOpened: 0, emailsClicked: 0, emailsReplied: 0,
-      willingToMeet: 0, interested: 0, notInterested: 0, outOfOffice: 0, unsubscribe: 0, totalCostCents: 0 }
+    { leadsServed: 0, emailsGenerated: 0, totalCostCents: 0 }
   );
 
-  // Use brand-level delivery stats if available, otherwise fall back to per-campaign sum.
-  // Note: FunnelMetrics component caps delivery stats at emailsGenerated to prevent
-  // inflated numbers from the email-gateway (which includes lifecycle/test emails).
+  // Delivery stats come exclusively from brand-level endpoint (broadcast/outreach only).
   const totals = {
     ...campaignTotals,
-    emailsSent: brandDelivery?.emailsSent ?? campaignTotals.emailsSent,
-    emailsOpened: brandDelivery?.emailsOpened ?? campaignTotals.emailsOpened,
-    emailsClicked: brandDelivery?.emailsClicked ?? campaignTotals.emailsClicked,
-    emailsReplied: brandDelivery?.emailsReplied ?? campaignTotals.emailsReplied,
-    willingToMeet: brandDelivery?.repliesWillingToMeet ?? campaignTotals.willingToMeet,
-    interested: brandDelivery?.repliesInterested ?? campaignTotals.interested,
-    notInterested: brandDelivery?.repliesNotInterested ?? campaignTotals.notInterested,
-    outOfOffice: brandDelivery?.repliesOutOfOffice ?? campaignTotals.outOfOffice,
-    unsubscribe: brandDelivery?.repliesUnsubscribe ?? campaignTotals.unsubscribe,
+    emailsSent: brandDelivery?.emailsSent ?? 0,
+    emailsOpened: brandDelivery?.emailsOpened ?? 0,
+    emailsClicked: brandDelivery?.emailsClicked ?? 0,
+    emailsReplied: brandDelivery?.emailsReplied ?? 0,
+    willingToMeet: brandDelivery?.repliesWillingToMeet ?? 0,
+    interested: brandDelivery?.repliesInterested ?? 0,
+    notInterested: brandDelivery?.repliesNotInterested ?? 0,
+    outOfOffice: brandDelivery?.repliesOutOfOffice ?? 0,
+    unsubscribe: brandDelivery?.repliesUnsubscribe ?? 0,
   };
 
   function formatCost(cents: string | null | undefined): string | null {

@@ -51,24 +51,23 @@ async function fetchDeliveryStats(
     return null;
   });
 
-  const t = (deliveryResult as any)?.transactional;
+  // Only use broadcast stats (outreach emails via Instantly).
+  // Transactional stats are lifecycle/test emails via Postmark — not relevant.
   const b = (deliveryResult as any)?.broadcast;
-  if (!t && !b) return null;
-
-  const sum = (a?: number, c?: number) => (a || 0) + (c || 0);
+  if (!b) return null;
 
   return {
-    emailsSent: sum(t?.emailsSent, b?.emailsSent),
-    emailsDelivered: sum(t?.emailsDelivered, b?.emailsDelivered),
-    emailsOpened: sum(t?.emailsOpened, b?.emailsOpened),
-    emailsClicked: sum(t?.emailsClicked, b?.emailsClicked),
-    emailsReplied: sum(t?.emailsReplied, b?.emailsReplied),
-    emailsBounced: sum(t?.emailsBounced, b?.emailsBounced),
-    repliesWillingToMeet: sum(t?.repliesWillingToMeet, b?.repliesWillingToMeet),
-    repliesInterested: sum(t?.repliesInterested, b?.repliesInterested),
-    repliesNotInterested: sum(t?.repliesNotInterested, b?.repliesNotInterested),
-    repliesOutOfOffice: sum(t?.repliesOutOfOffice, b?.repliesOutOfOffice),
-    repliesUnsubscribe: sum(t?.repliesUnsubscribe, b?.repliesUnsubscribe),
+    emailsSent: b.emailsSent || 0,
+    emailsDelivered: b.emailsDelivered || 0,
+    emailsOpened: b.emailsOpened || 0,
+    emailsClicked: b.emailsClicked || 0,
+    emailsReplied: b.emailsReplied || 0,
+    emailsBounced: b.emailsBounced || 0,
+    repliesWillingToMeet: b.repliesWillingToMeet || 0,
+    repliesInterested: b.repliesInterested || 0,
+    repliesNotInterested: b.repliesNotInterested || 0,
+    repliesOutOfOffice: b.repliesOutOfOffice || 0,
+    repliesUnsubscribe: b.repliesUnsubscribe || 0,
   };
 }
 

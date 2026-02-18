@@ -5,7 +5,7 @@
  * inflated by a factor of N.
  *
  * Fix: GET /v1/brands/:brandId/delivery-stats makes a single email-gateway call
- * with brandId filter, returning correct totals without duplication.
+ * with brandId filter, returning only broadcast (outreach) stats.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
@@ -71,28 +71,27 @@ describe("GET /v1/brands/:brandId/delivery-stats", () => {
     vi.restoreAllMocks();
   });
 
-  it("should call email-gateway with brandId filter and return aggregated stats", async () => {
+  it("should return only broadcast (outreach) stats, ignoring transactional", async () => {
     const app = createApp();
 
     mockCallExternalService.mockImplementation((_service: any, path: string, opts: any) => {
       if (path === "/stats") {
-        // Verify brandId is in the request body
         expect(opts.body.brandId).toBe("brand-123");
         expect(opts.body.appId).toBe("mcpfactory");
         return Promise.resolve({
           transactional: {
-            emailsSent: 8, emailsDelivered: 7, emailsOpened: 3,
-            emailsClicked: 1, emailsReplied: 2, emailsBounced: 1,
-            repliesWillingToMeet: 1, repliesInterested: 1,
-            repliesNotInterested: 0, repliesOutOfOffice: 0,
-            repliesUnsubscribe: 0, recipients: 8,
+            emailsSent: 50, emailsDelivered: 48, emailsOpened: 30,
+            emailsClicked: 5, emailsReplied: 10, emailsBounced: 2,
+            repliesWillingToMeet: 3, repliesInterested: 2,
+            repliesNotInterested: 1, repliesOutOfOffice: 1,
+            repliesUnsubscribe: 0, recipients: 50,
           },
           broadcast: {
-            emailsSent: 5, emailsDelivered: 4, emailsOpened: 2,
+            emailsSent: 6, emailsDelivered: 6, emailsOpened: 4,
             emailsClicked: 0, emailsReplied: 1, emailsBounced: 0,
             repliesWillingToMeet: 0, repliesInterested: 0,
             repliesNotInterested: 1, repliesOutOfOffice: 0,
-            repliesUnsubscribe: 0, recipients: 5,
+            repliesUnsubscribe: 0, recipients: 6,
           },
         });
       }
@@ -102,11 +101,14 @@ describe("GET /v1/brands/:brandId/delivery-stats", () => {
     const res = await request(app).get("/v1/brands/brand-123/delivery-stats");
 
     expect(res.status).toBe(200);
-    expect(res.body.emailsSent).toBe(13); // 8 + 5
-    expect(res.body.emailsOpened).toBe(5); // 3 + 2
-    expect(res.body.emailsReplied).toBe(3); // 2 + 1
-    expect(res.body.repliesWillingToMeet).toBe(1);
+    // Should return ONLY broadcast stats, not transactional
+    expect(res.body.emailsSent).toBe(6);
+    expect(res.body.emailsOpened).toBe(4);
+    expect(res.body.emailsReplied).toBe(1);
     expect(res.body.repliesNotInterested).toBe(1);
+    // Transactional values (50, 30, 10) must NOT appear
+    expect(res.body.emailsSent).not.toBe(56); // not 50+6
+    expect(res.body.emailsSent).not.toBe(50);
   });
 
   it("should return zeros when email-gateway fails", async () => {
@@ -122,23 +124,45 @@ describe("GET /v1/brands/:brandId/delivery-stats", () => {
     expect(res.body.emailsReplied).toBe(0);
   });
 
-  it("should make exactly one email-gateway call (not N per-campaign calls)", async () => {
+  it("should return zeros when broadcast is null (only transactional exists)", async () => {
     const app = createApp();
 
     mockCallExternalService.mockResolvedValue({
       transactional: {
-        emailsSent: 10, emailsDelivered: 10, emailsOpened: 5,
-        emailsClicked: 2, emailsReplied: 1, emailsBounced: 0,
-        repliesWillingToMeet: 0, repliesInterested: 0,
-        repliesNotInterested: 0, repliesOutOfOffice: 0,
-        repliesUnsubscribe: 0, recipients: 10,
+        emailsSent: 50, emailsDelivered: 48, emailsOpened: 30,
+        emailsClicked: 5, emailsReplied: 10, emailsBounced: 2,
+        repliesWillingToMeet: 3, repliesInterested: 2,
+        repliesNotInterested: 1, repliesOutOfOffice: 1,
+        repliesUnsubscribe: 0, recipients: 50,
       },
       broadcast: null,
     });
 
+    const res = await request(app).get("/v1/brands/brand-123/delivery-stats");
+
+    expect(res.status).toBe(200);
+    // No broadcast = no outreach stats, should be zeros
+    expect(res.body.emailsSent).toBe(0);
+    expect(res.body.emailsOpened).toBe(0);
+    expect(res.body.emailsReplied).toBe(0);
+  });
+
+  it("should make exactly one email-gateway call", async () => {
+    const app = createApp();
+
+    mockCallExternalService.mockResolvedValue({
+      transactional: null,
+      broadcast: {
+        emailsSent: 3, emailsDelivered: 3, emailsOpened: 1,
+        emailsClicked: 0, emailsReplied: 0, emailsBounced: 0,
+        repliesWillingToMeet: 0, repliesInterested: 0,
+        repliesNotInterested: 0, repliesOutOfOffice: 0,
+        repliesUnsubscribe: 0, recipients: 3,
+      },
+    });
+
     await request(app).get("/v1/brands/brand-123/delivery-stats");
 
-    // Should call email-gateway exactly once (not once per campaign)
     const emailGatewayCalls = mockCallExternalService.mock.calls.filter(
       (call: any[]) => call[1] === "/stats"
     );
@@ -146,7 +170,7 @@ describe("GET /v1/brands/:brandId/delivery-stats", () => {
   });
 });
 
-describe("Regression: brand stats must not multiply delivery stats by campaign count", () => {
+describe("Regression: fetchDeliveryStats must use broadcast only", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -155,7 +179,7 @@ describe("Regression: brand stats must not multiply delivery stats by campaign c
     vi.restoreAllMocks();
   });
 
-  it("source code should have the brand-level delivery stats endpoint with brandId filter", () => {
+  it("fetchDeliveryStats should only read broadcast stats in source code", () => {
     const fs = require("fs");
     const path = require("path");
     const content = fs.readFileSync(
@@ -165,11 +189,12 @@ describe("Regression: brand stats must not multiply delivery stats by campaign c
 
     // The endpoint should exist
     expect(content).toContain("/brands/:brandId/delivery-stats");
-    // It should call fetchDeliveryStats with brandId
-    expect(content).toContain("fetchDeliveryStats({ brandId }, orgId)");
+    // Should only use broadcast, not sum transactional + broadcast
+    expect(content).toContain("Only use broadcast stats");
+    expect(content).not.toMatch(/sum\(t\?\.emails/);
   });
 
-  it("dashboard brand page should use brand-level delivery stats endpoint", () => {
+  it("brand page should use brand-level delivery stats without fallback", () => {
     const fs = require("fs");
     const path = require("path");
     const content = fs.readFileSync(
@@ -177,22 +202,8 @@ describe("Regression: brand stats must not multiply delivery stats by campaign c
       "utf-8"
     );
 
-    // Should import and use brand-level delivery stats
     expect(content).toContain("getBrandDeliveryStats");
-    expect(content).toContain("brandDeliveryStats");
-  });
-
-  it("FunnelMetrics should cap delivery stats at emailsGenerated to prevent inflated bars", () => {
-    const fs = require("fs");
-    const path = require("path");
-    const content = fs.readFileSync(
-      path.join(__dirname, "../../../../apps/dashboard/src/components/campaign/funnel-metrics.tsx"),
-      "utf-8"
-    );
-
-    // Should cap sent at generated (email-gateway includes lifecycle/test emails)
-    expect(content).toContain("Math.min(emailsSent, emailsGenerated)");
-    // Should cap opened at sent
-    expect(content).toContain("Math.min(emailsOpened, cappedSent)");
+    // Should NOT fall back to per-campaign sum for delivery stats
+    expect(content).not.toMatch(/brandDelivery\?\.\w+ \?\? campaignTotals\.\w+/);
   });
 });
