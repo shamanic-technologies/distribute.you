@@ -130,7 +130,11 @@ export default function CampaignOverviewPage() {
       {/* Cost breakdown */}
       {(leads.length > 0 || emails.length > 0) && (
         <div className="mb-6">
-          <CostBreakdown leads={leads} emails={emails} />
+          <CostBreakdown
+            leads={leads}
+            emails={emails}
+            statsTotalCents={stats?.totalCostInUsdCents ? parseFloat(stats.totalCostInUsdCents) : null}
+          />
         </div>
       )}
 
