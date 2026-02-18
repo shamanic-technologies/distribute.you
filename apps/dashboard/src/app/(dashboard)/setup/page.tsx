@@ -366,6 +366,9 @@ export default function SetupPage() {
                           <div className="flex gap-2">
                             <input
                               type="password"
+                              autoComplete="off"
+                              data-1p-ignore
+                              data-lpignore="true"
                               placeholder={provider?.placeholder}
                               value={newKeys[providerId] || ""}
                               onChange={(e) => setNewKeys((prev) => ({ ...prev, [providerId]: e.target.value }))}
