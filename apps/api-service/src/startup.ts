@@ -11,29 +11,22 @@ const APP_KEYS: { provider: string; envVar: string }[] = [
 export async function registerAppKeys(): Promise<void> {
   console.log("[api-service] Registering app keys with key-service...");
 
-  const results = await Promise.allSettled(
-    APP_KEYS.map(async ({ provider, envVar }) => {
-      const apiKey = process.env[envVar];
-      if (!apiKey) {
-        console.warn(`[api-service] App key ${provider} skipped: ${envVar} not set`);
-        return;
-      }
-
-      await callExternalService(externalServices.key, "/internal/app-keys", {
-        method: "POST",
-        body: { appId: APP_ID, provider, apiKey },
-      });
-      console.log(`[api-service] App key registered: ${provider}`);
-    })
-  );
-
-  const failed = results.filter((r) => r.status === "rejected");
-  if (failed.length > 0) {
-    for (const f of failed) {
-      console.error("[api-service] App key registration failed:", (f as PromiseRejectedResult).reason?.message);
-    }
+  // Fail fast if any env var is missing
+  const missing = APP_KEYS.filter(({ envVar }) => !process.env[envVar]);
+  if (missing.length > 0) {
+    const names = missing.map(({ envVar }) => envVar).join(", ");
+    throw new Error(`Missing required env vars: ${names}`);
   }
 
-  const succeeded = results.filter((r) => r.status === "fulfilled").length;
-  console.log(`[api-service] App key registration complete: ${succeeded}/${APP_KEYS.length} processed`);
+  // Register all keys — throw on any failure
+  for (const { provider, envVar } of APP_KEYS) {
+    const apiKey = process.env[envVar]!;
+    await callExternalService(externalServices.key, "/internal/app-keys", {
+      method: "POST",
+      body: { appId: APP_ID, provider, apiKey },
+    });
+    console.log(`[api-service] App key registered: ${provider}`);
+  }
+
+  console.log(`[api-service] All ${APP_KEYS.length} app keys registered successfully`);
 }
