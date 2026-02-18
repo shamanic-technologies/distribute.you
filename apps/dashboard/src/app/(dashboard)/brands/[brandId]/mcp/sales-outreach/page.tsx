@@ -4,10 +4,11 @@ import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listCampaignsByBrand, getCampaignBatchStats, type Campaign, type CampaignStats } from "@/lib/api";
+import { listCampaignsByBrand, getCampaignBatchStats, getBrandDeliveryStats, listBrandRuns, type Campaign, type CampaignStats } from "@/lib/api";
 import { SkeletonKeysList } from "@/components/skeleton";
 import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
+import { CampaignCostDistribution } from "@/components/campaign/campaign-cost-distribution";
 
 export default function BrandMcpSalesOutreachPage() {
   const params = useParams();
@@ -28,25 +29,61 @@ export default function BrandMcpSalesOutreachPage() {
   );
   const campaignStats = batchStats ?? {};
 
-  // Aggregate stats
-  const totals = Object.values(campaignStats).reduce(
+  const { data: brandRunsData } = useAuthQuery(
+    ["brandRuns", { brandId }],
+    (token) => listBrandRuns(token, brandId)
+  );
+  const brandRuns = brandRunsData?.runs ?? [];
+
+  // Try brand-level delivery stats (single email-gateway call, needs api-service endpoint)
+  const { data: brandDelivery } = useAuthQuery(
+    ["brandDeliveryStats", brandId],
+    (token) => getBrandDeliveryStats(token, brandId),
+    { retry: false }
+  );
+
+  // Aggregate leads/generated/cost: SUM (these services correctly filter per-campaign)
+  // Aggregate delivery stats: MAX (email-gateway returns duplicated org-wide stats per campaign,
+  // so summing would inflate by N campaigns; max gives the correct unduplicated value)
+  const statsValues = Object.values(campaignStats);
+  const campaignTotals = statsValues.reduce(
     (acc, s) => ({
       leadsServed: acc.leadsServed + (s.leadsServed || 0),
       emailsGenerated: acc.emailsGenerated + (s.emailsGenerated || 0),
-      emailsSent: acc.emailsSent + (s.emailsSent || 0),
-      emailsOpened: acc.emailsOpened + (s.emailsOpened || 0),
-      emailsClicked: acc.emailsClicked + (s.emailsClicked || 0),
-      emailsReplied: acc.emailsReplied + (s.emailsReplied || 0),
-      willingToMeet: acc.willingToMeet + (s.repliesWillingToMeet || 0),
-      interested: acc.interested + (s.repliesInterested || 0),
-      notInterested: acc.notInterested + (s.repliesNotInterested || 0),
-      outOfOffice: acc.outOfOffice + (s.repliesOutOfOffice || 0),
-      unsubscribe: acc.unsubscribe + (s.repliesUnsubscribe || 0),
       totalCostCents: acc.totalCostCents + (parseFloat(s.totalCostInUsdCents || "0") || 0),
     }),
-    { leadsServed: 0, emailsGenerated: 0, emailsSent: 0, emailsOpened: 0, emailsClicked: 0, emailsReplied: 0,
-      willingToMeet: 0, interested: 0, notInterested: 0, outOfOffice: 0, unsubscribe: 0, totalCostCents: 0 }
+    { leadsServed: 0, emailsGenerated: 0, totalCostCents: 0 }
   );
+
+  // For delivery stats: use brand-level endpoint if available, otherwise take max across campaigns
+  const maxDelivery = statsValues.reduce(
+    (acc, s) => ({
+      emailsSent: Math.max(acc.emailsSent, s.emailsSent || 0),
+      emailsOpened: Math.max(acc.emailsOpened, s.emailsOpened || 0),
+      emailsClicked: Math.max(acc.emailsClicked, s.emailsClicked || 0),
+      emailsReplied: Math.max(acc.emailsReplied, s.emailsReplied || 0),
+      willingToMeet: Math.max(acc.willingToMeet, s.repliesWillingToMeet || 0),
+      interested: Math.max(acc.interested, s.repliesInterested || 0),
+      notInterested: Math.max(acc.notInterested, s.repliesNotInterested || 0),
+      outOfOffice: Math.max(acc.outOfOffice, s.repliesOutOfOffice || 0),
+      unsubscribe: Math.max(acc.unsubscribe, s.repliesUnsubscribe || 0),
+    }),
+    { emailsSent: 0, emailsOpened: 0, emailsClicked: 0, emailsReplied: 0,
+      willingToMeet: 0, interested: 0, notInterested: 0, outOfOffice: 0, unsubscribe: 0 }
+  );
+
+  const totals = {
+    ...campaignTotals,
+    emailsSent: brandDelivery?.emailsSent ?? maxDelivery.emailsSent,
+    emailsOpened: brandDelivery?.emailsOpened ?? maxDelivery.emailsOpened,
+    emailsClicked: brandDelivery?.emailsClicked ?? maxDelivery.emailsClicked,
+    emailsReplied: brandDelivery?.emailsReplied ?? maxDelivery.emailsReplied,
+    willingToMeet: brandDelivery?.repliesWillingToMeet ?? maxDelivery.willingToMeet,
+    interested: brandDelivery?.repliesInterested ?? maxDelivery.interested,
+    notInterested: brandDelivery?.repliesNotInterested ?? maxDelivery.notInterested,
+    outOfOffice: brandDelivery?.repliesOutOfOffice ?? maxDelivery.outOfOffice,
+    unsubscribe: brandDelivery?.repliesUnsubscribe ?? maxDelivery.unsubscribe,
+  };
 
   function formatCost(cents: string | null | undefined): string | null {
     if (!cents) return null;
@@ -99,6 +136,13 @@ export default function BrandMcpSalesOutreachPage() {
             outOfOffice={totals.outOfOffice}
             unsubscribe={totals.unsubscribe}
           />
+        </div>
+      )}
+
+      {/* Cost Breakdown by Category */}
+      {brandRuns.length > 0 && (
+        <div className="mb-6">
+          <CampaignCostDistribution runs={brandRuns} />
         </div>
       )}
 

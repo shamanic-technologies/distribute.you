@@ -194,6 +194,24 @@ export async function getCampaignBatchStats(
   return result.stats;
 }
 
+export interface BrandDeliveryStats {
+  emailsSent: number;
+  emailsDelivered: number;
+  emailsOpened: number;
+  emailsClicked: number;
+  emailsReplied: number;
+  emailsBounced: number;
+  repliesWillingToMeet: number;
+  repliesInterested: number;
+  repliesNotInterested: number;
+  repliesOutOfOffice: number;
+  repliesUnsubscribe: number;
+}
+
+export async function getBrandDeliveryStats(token: string, brandId: string): Promise<BrandDeliveryStats> {
+  return apiCall<BrandDeliveryStats>(`/brands/${brandId}/delivery-stats`, { token });
+}
+
 export async function stopCampaign(token: string, campaignId: string): Promise<{ campaign: Campaign }> {
   return apiCall<{ campaign: Campaign }>(`/campaigns/${campaignId}/stop`, { token, method: "POST" });
 }

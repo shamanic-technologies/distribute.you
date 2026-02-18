@@ -635,11 +635,19 @@ router.get("/campaigns/:id/emails", authenticate, requireOrg, async (req: Authen
       }
     }
 
-    // 4. Attach run data to each email
+    // 4. Attach run data to each email, and extract lead info from variablesRaw
+    //    when the dedicated columns are null (emailgen stores lead data in variables_raw).
     const emailsWithRuns = allEmails.map((email) => {
       const run = email.generationRunId ? runMap.get(email.generationRunId as string) : undefined;
+      const vars = (email.variablesRaw as Record<string, unknown>) || {};
       return {
         ...email,
+        leadFirstName: email.leadFirstName || vars.leadFirstName || null,
+        leadLastName: email.leadLastName || vars.leadLastName || null,
+        leadTitle: email.leadTitle || vars.leadTitle || null,
+        leadCompany: email.leadCompany || vars.leadCompanyName || null,
+        leadIndustry: (email as any).leadIndustry || vars.leadCompanyIndustry || null,
+        clientCompanyName: email.clientCompanyName || vars.clientCompanyName || null,
         generationRun: run
           ? {
               status: run.status,
@@ -659,6 +667,36 @@ router.get("/campaigns/:id/emails", authenticate, requireOrg, async (req: Authen
   } catch (error: any) {
     console.error("Get campaign emails error:", error);
     res.status(500).json({ error: error.message || "Failed to get campaign emails" });
+  }
+});
+
+/**
+ * GET /v1/brands/:brandId/delivery-stats
+ * Get delivery stats for all campaigns under a brand (single email-gateway call)
+ */
+router.get("/brands/:brandId/delivery-stats", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { brandId } = req.params;
+    const orgId = req.orgId!;
+
+    const delivery = await fetchDeliveryStats({ brandId }, orgId);
+
+    res.json(delivery ?? {
+      emailsSent: 0,
+      emailsDelivered: 0,
+      emailsOpened: 0,
+      emailsClicked: 0,
+      emailsReplied: 0,
+      emailsBounced: 0,
+      repliesWillingToMeet: 0,
+      repliesInterested: 0,
+      repliesNotInterested: 0,
+      repliesOutOfOffice: 0,
+      repliesUnsubscribe: 0,
+    });
+  } catch (error: any) {
+    console.error("Get brand delivery stats error:", error);
+    res.status(500).json({ error: error.message || "Failed to get brand delivery stats" });
   }
 });
 
