@@ -42,9 +42,10 @@ export default function BrandMcpSalesOutreachPage() {
       notInterested: acc.notInterested + (s.repliesNotInterested || 0),
       outOfOffice: acc.outOfOffice + (s.repliesOutOfOffice || 0),
       unsubscribe: acc.unsubscribe + (s.repliesUnsubscribe || 0),
+      totalCostCents: acc.totalCostCents + (parseFloat(s.totalCostInUsdCents || "0") || 0),
     }),
     { leadsServed: 0, emailsGenerated: 0, emailsSent: 0, emailsOpened: 0, emailsClicked: 0, emailsReplied: 0,
-      willingToMeet: 0, interested: 0, notInterested: 0, outOfOffice: 0, unsubscribe: 0 }
+      willingToMeet: 0, interested: 0, notInterested: 0, outOfOffice: 0, unsubscribe: 0, totalCostCents: 0 }
   );
 
   function formatCost(cents: string | null | undefined): string | null {
@@ -69,7 +70,14 @@ export default function BrandMcpSalesOutreachPage() {
     <div className="p-4 md:p-8">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="font-display text-2xl font-bold text-gray-800 mb-1">Campaigns</h1>
+        <div className="flex items-center justify-between mb-1">
+          <h1 className="font-display text-2xl font-bold text-gray-800">Campaigns</h1>
+          {totals.totalCostCents > 0 && (
+            <span className="text-sm font-semibold text-gray-700">
+              Total cost: {formatCost(String(totals.totalCostCents))}
+            </span>
+          )}
+        </div>
         <p className="text-gray-600">All campaigns for this brand.</p>
       </div>
 
@@ -116,25 +124,27 @@ export default function BrandMcpSalesOutreachPage() {
                 className="block bg-white rounded-xl border border-gray-200 p-4 hover:border-primary-300 hover:shadow-md transition-all"
               >
                 <div className="flex items-start justify-between mb-2">
-                  <div>
+                  <div className="flex items-center gap-2">
                     <h3 className="font-medium text-gray-800">{campaign.name}</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Created {new Date(campaign.createdAt).toLocaleDateString()}
-                    </p>
+                    <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(campaign.status)}`}>
+                      {campaign.status}
+                    </span>
                   </div>
-                  <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(campaign.status)}`}>
-                    {campaign.status}
-                  </span>
+                  {stats && formatCost(stats.totalCostInUsdCents) && (
+                    <span className="text-sm font-semibold text-gray-700">
+                      {formatCost(stats.totalCostInUsdCents)}
+                    </span>
+                  )}
                 </div>
+                <p className="text-xs text-gray-500 mb-2">
+                  Created {new Date(campaign.createdAt).toLocaleDateString()}
+                </p>
                 {stats && (
                   <div className="flex gap-4 text-xs text-gray-500">
                     <span>{stats.leadsServed || 0} leads</span>
                     <span>{stats.emailsGenerated || 0} generated</span>
                     <span>{stats.emailsSent || 0} sent</span>
                     <span>{stats.emailsReplied || 0} replies</span>
-                    {formatCost(stats.totalCostInUsdCents) && (
-                      <span className="text-gray-400">{formatCost(stats.totalCostInUsdCents)}</span>
-                    )}
                   </div>
                 )}
               </Link>
