@@ -27,11 +27,11 @@ function sendLifecycleEmail(
 const router = Router();
 
 interface EmailSendingStats {
-  sent: number; delivered: number; opened: number; clicked: number;
-  replied: number; bounced: number; unsubscribed: number; recipients: number;
+  emailsSent: number; emailsDelivered: number; emailsOpened: number; emailsClicked: number;
+  emailsReplied: number; emailsBounced: number; recipients: number;
 }
 
-/** Fetch delivery stats from email-sending service + reply classifications from reply-qualification service. */
+/** Fetch delivery stats from email-gateway service + reply classifications from reply-qualification service. */
 async function fetchDeliveryStats(
   filters: { campaignId?: string; brandId?: string },
   orgId: string
@@ -46,7 +46,7 @@ async function fetchDeliveryStats(
         body: { ...filters, appId: "mcpfactory", clerkOrgId: orgId },
       }
     ).catch((err) => {
-      console.warn("[campaigns] Email-sending stats failed:", (err as Error).message);
+      console.warn("[campaigns] Email-gateway stats failed:", (err as Error).message);
       return null;
     }),
     filters.campaignId
@@ -66,7 +66,7 @@ async function fetchDeliveryStats(
 
   const sum = (a?: number, c?: number) => (a || 0) + (c || 0);
 
-  const totalReplied = sum(t?.replied, b?.replied);
+  const totalReplied = sum(t?.emailsReplied, b?.emailsReplied);
 
   // Only count reply classifications when there are actual replies.
   // The reply-qualification service may return stale/incorrect data.
@@ -78,12 +78,12 @@ async function fetchDeliveryStats(
   }
 
   return {
-    emailsSent: sum(t?.sent, b?.sent),
-    emailsDelivered: sum(t?.delivered, b?.delivered),
-    emailsOpened: sum(t?.opened, b?.opened),
-    emailsClicked: sum(t?.clicked, b?.clicked),
+    emailsSent: sum(t?.emailsSent, b?.emailsSent),
+    emailsDelivered: sum(t?.emailsDelivered, b?.emailsDelivered),
+    emailsOpened: sum(t?.emailsOpened, b?.emailsOpened),
+    emailsClicked: sum(t?.emailsClicked, b?.emailsClicked),
     emailsReplied: totalReplied,
-    emailsBounced: sum(t?.bounced, b?.bounced),
+    emailsBounced: sum(t?.emailsBounced, b?.emailsBounced),
     repliesWillingToMeet: counts.willing_to_meet || 0,
     repliesInterested: counts.interested || 0,
     repliesNotInterested: counts.not_interested || 0,
@@ -129,7 +129,7 @@ router.get("/campaigns", authenticate, requireOrg, async (req: AuthenticatedRequ
  */
 router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
   try {
-    console.log("[api-service] POST /v1/campaigns — incoming request", {
+    console.log("[api-service] POST /v1/campaigns \u2014 incoming request", {
       orgId: req.orgId,
       userId: req.userId,
       body: { ...req.body, brandUrl: req.body.brandUrl },
@@ -137,12 +137,12 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
 
     const parsed = CreateCampaignRequestSchema.safeParse(req.body);
     if (!parsed.success) {
-      console.warn("[api-service] POST /v1/campaigns — validation failed", parsed.error.flatten());
+      console.warn("[api-service] POST /v1/campaigns \u2014 validation failed", parsed.error.flatten());
       return res.status(400).json({ error: "Invalid request", details: parsed.error.flatten() });
     }
 
     const { brandUrl } = parsed.data;
-    console.log("[api-service] POST /v1/campaigns — parsed OK", {
+    console.log("[api-service] POST /v1/campaigns \u2014 parsed OK", {
       name: parsed.data.name,
       type: parsed.data.type,
       brandUrl,
@@ -153,7 +153,7 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
     });
 
     // 1. Upsert brand to get brandId
-    console.log("[api-service] POST /v1/campaigns — step 1: upserting brand", { brandUrl, orgId: req.orgId });
+    console.log("[api-service] POST /v1/campaigns \u2014 step 1: upserting brand", { brandUrl, orgId: req.orgId });
     const brandResult = await callExternalService<{ brandId: string }>(
       externalServices.brand,
       "/brands",
@@ -167,7 +167,7 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
         },
       }
     );
-    console.log("[api-service] POST /v1/campaigns — step 1 done: brand upserted", { brandId: brandResult.brandId });
+    console.log("[api-service] POST /v1/campaigns \u2014 step 1 done: brand upserted", { brandId: brandResult.brandId });
 
     // 2. Forward to campaign-service
     const body: Record<string, unknown> = {
@@ -183,7 +183,7 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
       if (body[key] != null) body[key] = String(body[key]);
     }
 
-    console.log("[api-service] POST /v1/campaigns — step 2: forwarding to campaign-service", {
+    console.log("[api-service] POST /v1/campaigns \u2014 step 2: forwarding to campaign-service", {
       brandId: body.brandId,
       type: body.type,
       targetOutcome: body.targetOutcome,
@@ -198,7 +198,7 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
         body,
       }
     );
-    console.log("[api-service] POST /v1/campaigns — step 2 done: campaign created", {
+    console.log("[api-service] POST /v1/campaigns \u2014 step 2 done: campaign created", {
       campaignId: (result as any).campaign?.id,
       status: (result as any).campaign?.status,
     });
@@ -206,7 +206,7 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
     // Fire-and-forget lifecycle email
     const campaign = (result as any).campaign;
     if (campaign?.brandId && campaign?.id) {
-      console.log("[api-service] POST /v1/campaigns — step 3: sending lifecycle email campaign_created");
+      console.log("[api-service] POST /v1/campaigns \u2014 step 3: sending lifecycle email campaign_created");
       sendLifecycleEmail("campaign_created", req, {
         brandId: campaign.brandId,
         campaignId: campaign.id,
@@ -216,7 +216,7 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
 
     res.json(result);
   } catch (error: any) {
-    console.error("[api-service] POST /v1/campaigns — FAILED:", error.message, error.stack);
+    console.error("[api-service] POST /v1/campaigns \u2014 FAILED:", error.message, error.stack);
     res.status(500).json({ error: error.message || "Failed to create campaign" });
   }
 });
