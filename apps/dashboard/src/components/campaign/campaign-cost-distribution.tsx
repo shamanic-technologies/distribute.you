@@ -1,12 +1,10 @@
 "use client";
 
-interface CampaignCostItem {
-  name: string;
-  costCents: number;
-}
+import { useMemo } from "react";
+import type { BrandRun } from "@/lib/api";
 
 interface CampaignCostDistributionProps {
-  items: CampaignCostItem[];
+  runs: BrandRun[];
 }
 
 const COLORS = [
@@ -22,33 +20,54 @@ const COLORS = [
   "#84cc16", // lime
 ];
 
+function formatCostName(name: string): string {
+  return name
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function formatUsdCents(cents: number): string {
   const usd = cents / 100;
   if (usd < 0.01) return "<$0.01";
   return `$${usd.toFixed(2)}`;
 }
 
-export function CampaignCostDistribution({ items }: CampaignCostDistributionProps) {
-  const sorted = items
-    .filter((item) => item.costCents > 0)
-    .sort((a, b) => b.costCents - a.costCents);
+export function CampaignCostDistribution({ runs }: CampaignCostDistributionProps) {
+  const segments = useMemo(() => {
+    const map = new Map<string, number>();
 
-  const totalCents = sorted.reduce((sum, item) => sum + item.costCents, 0);
+    for (const run of runs) {
+      for (const cost of run.costs) {
+        const val = parseFloat(cost.totalCostInUsdCents);
+        if (!isNaN(val) && val > 0) {
+          map.set(cost.costName, (map.get(cost.costName) || 0) + val);
+        }
+      }
+    }
 
-  if (sorted.length === 0 || totalCents === 0) {
+    const entries = Array.from(map.entries())
+      .map(([name, cents]) => ({ name, cents }))
+      .sort((a, b) => b.cents - a.cents);
+
+    const total = entries.reduce((sum, e) => sum + e.cents, 0);
+
+    return entries.map((entry, i) => ({
+      ...entry,
+      percentage: total > 0 ? (entry.cents / total) * 100 : 0,
+      color: COLORS[i % COLORS.length],
+    }));
+  }, [runs]);
+
+  const totalCents = segments.reduce((sum, s) => sum + s.cents, 0);
+
+  if (totalCents === 0) {
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="font-medium text-gray-800 mb-4">Cost by Campaign</h3>
-        <p className="text-sm text-gray-500 text-center py-4">No costs yet</p>
+        <h3 className="font-medium text-gray-800 mb-4">Cost Breakdown</h3>
+        <p className="text-sm text-gray-500 text-center py-4">No cost data yet</p>
       </div>
     );
   }
-
-  const segments = sorted.map((item, i) => ({
-    ...item,
-    percentage: (item.costCents / totalCents) * 100,
-    color: COLORS[i % COLORS.length],
-  }));
 
   // Build conic-gradient stops
   let cumulative = 0;
@@ -60,7 +79,7 @@ export function CampaignCostDistribution({ items }: CampaignCostDistributionProp
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6">
-      <h3 className="font-medium text-gray-800 mb-4">Cost by Campaign</h3>
+      <h3 className="font-medium text-gray-800 mb-4">Cost Breakdown</h3>
 
       <div className="flex flex-col sm:flex-row items-center gap-6">
         {/* Donut chart */}
@@ -88,10 +107,10 @@ export function CampaignCostDistribution({ items }: CampaignCostDistributionProp
                 style={{ backgroundColor: seg.color }}
               />
               <span className="text-sm text-gray-700 flex-1 truncate">
-                {seg.name}
+                {formatCostName(seg.name)}
               </span>
               <span className="text-sm font-medium text-gray-800 flex-shrink-0">
-                {formatUsdCents(seg.costCents)}
+                {formatUsdCents(seg.cents)}
               </span>
               <span className="text-xs text-gray-500 w-10 text-right flex-shrink-0">
                 {seg.percentage.toFixed(0)}%
