@@ -358,7 +358,7 @@ router.get("/campaigns/:id/stats", authenticate, requireOrg, async (req: Authent
     const orgId = req.orgId!;
 
     // Fetch stats from all services in parallel using campaignId filter
-    const [leadStats, emailgenStats, delivery] = await Promise.all([
+    const [leadStats, emailgenStats, delivery, budgetUsage] = await Promise.all([
       callExternalService(
         externalServices.lead,
         `/stats?campaignId=${id}`,
@@ -376,6 +376,14 @@ router.get("/campaigns/:id/stats", authenticate, requireOrg, async (req: Authent
         return null;
       }),
       fetchDeliveryStats({ campaignId: id }, orgId),
+      callExternalService<{ results: Record<string, { totalCostInUsdCents: string | null }> }>(
+        externalServices.campaign,
+        "/campaigns/batch-budget-usage",
+        { method: "POST", body: { campaignIds: [id] } }
+      ).catch((err) => {
+        console.warn("[campaigns] Budget usage failed:", (err as Error).message);
+        return null;
+      }),
     ]);
 
     const stats: Record<string, any> = { campaignId: id };
@@ -413,6 +421,11 @@ router.get("/campaigns/:id/stats", authenticate, requireOrg, async (req: Authent
       stats.emailsBounced = 0;
     }
 
+    // Budget usage from campaign-service
+    if (budgetUsage?.results?.[id]) {
+      stats.totalCostInUsdCents = budgetUsage.results[id].totalCostInUsdCents;
+    }
+
     res.json(stats);
   } catch (error: any) {
     console.error("Get campaign stats error:", error);
@@ -434,26 +447,42 @@ router.post("/campaigns/batch-stats", authenticate, requireOrg, async (req: Auth
 
     const orgId = req.orgId!;
 
-    // Fetch stats for each campaign in parallel using campaignId filter
-    const results = await Promise.all(
-      campaignIds.map(async (id: string) => {
-        const [leadStats, emailgenStats, delivery] = await Promise.all([
-          callExternalService(
-            externalServices.lead,
-            `/stats?campaignId=${id}`,
-            { headers: { "x-app-id": "mcpfactory", "x-org-id": orgId } }
-          ).catch(() => null),
-          callService(
-            services.emailgen,
-            "/stats",
-            { method: "POST", body: { campaignId: id, appId: "mcpfactory" }, headers: { "x-clerk-org-id": orgId } }
-          ).catch(() => null),
-          fetchDeliveryStats({ campaignId: id }, orgId),
-        ]);
+    // Fetch budget usage for all campaigns in one batch call
+    const budgetUsagePromise = callExternalService<{
+      results: Record<string, { totalCostInUsdCents: string | null }>;
+    }>(externalServices.campaign, "/campaigns/batch-budget-usage", {
+      method: "POST",
+      body: { campaignIds },
+    }).catch((err) => {
+      console.warn("[campaigns] Batch budget usage failed:", (err as Error).message);
+      return null;
+    });
 
-        return { campaignId: id, leadStats, emailgenStats, delivery };
-      })
-    );
+    // Fetch stats for each campaign in parallel using campaignId filter
+    const [results, budgetUsage] = await Promise.all([
+      Promise.all(
+        campaignIds.map(async (id: string) => {
+          const [leadStats, emailgenStats, delivery] = await Promise.all([
+            callExternalService(
+              externalServices.lead,
+              `/stats?campaignId=${id}`,
+              { headers: { "x-app-id": "mcpfactory", "x-org-id": orgId } }
+            ).catch(() => null),
+            callService(
+              services.emailgen,
+              "/stats",
+              { method: "POST", body: { campaignId: id, appId: "mcpfactory" }, headers: { "x-clerk-org-id": orgId } }
+            ).catch(() => null),
+            fetchDeliveryStats({ campaignId: id }, orgId),
+          ]);
+
+          return { campaignId: id, leadStats, emailgenStats, delivery };
+        })
+      ),
+      budgetUsagePromise,
+    ]);
+
+    const budgetResults = budgetUsage?.results || {};
 
     const stats: Record<string, any> = {};
     for (const r of results) {
@@ -489,6 +518,11 @@ router.post("/campaigns/batch-stats", authenticate, requireOrg, async (req: Auth
         merged.emailsClicked = 0;
         merged.emailsReplied = 0;
         merged.emailsBounced = 0;
+      }
+
+      // Budget usage from campaign-service
+      if (budgetResults[r.campaignId]) {
+        merged.totalCostInUsdCents = budgetResults[r.campaignId].totalCostInUsdCents;
       }
 
       stats[r.campaignId] = merged;
