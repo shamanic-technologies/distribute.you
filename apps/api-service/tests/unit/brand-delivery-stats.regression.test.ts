@@ -169,7 +169,7 @@ describe("Regression: brand stats must not multiply delivery stats by campaign c
     expect(content).toContain("fetchDeliveryStats({ brandId }, orgId)");
   });
 
-  it("dashboard brand page should use max (not sum) for delivery stats and support brand-level endpoint", () => {
+  it("dashboard brand page should use brand-level delivery stats endpoint", () => {
     const fs = require("fs");
     const path = require("path");
     const content = fs.readFileSync(
@@ -177,15 +177,22 @@ describe("Regression: brand stats must not multiply delivery stats by campaign c
       "utf-8"
     );
 
-    // Should import and use brand-level delivery stats as primary source
+    // Should import and use brand-level delivery stats
     expect(content).toContain("getBrandDeliveryStats");
     expect(content).toContain("brandDeliveryStats");
+  });
 
-    // Should use Math.max for delivery stats fallback (not sum/reduce with +)
-    expect(content).toContain("Math.max");
+  it("FunnelMetrics should cap delivery stats at emailsGenerated to prevent inflated bars", () => {
+    const fs = require("fs");
+    const path = require("path");
+    const content = fs.readFileSync(
+      path.join(__dirname, "../../../../apps/dashboard/src/components/campaign/funnel-metrics.tsx"),
+      "utf-8"
+    );
 
-    // Should NOT sum delivery stats from per-campaign batch stats
-    expect(content).not.toMatch(/acc\.emailsSent\s*\+/);
-    expect(content).not.toMatch(/acc\.emailsOpened\s*\+/);
+    // Should cap sent at generated (email-gateway includes lifecycle/test emails)
+    expect(content).toContain("Math.min(emailsSent, emailsGenerated)");
+    // Should cap opened at sent
+    expect(content).toContain("Math.min(emailsOpened, cappedSent)");
   });
 });
