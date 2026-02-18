@@ -635,11 +635,19 @@ router.get("/campaigns/:id/emails", authenticate, requireOrg, async (req: Authen
       }
     }
 
-    // 4. Attach run data to each email
+    // 4. Attach run data to each email, and extract lead info from variablesRaw
+    //    when the dedicated columns are null (emailgen stores lead data in variables_raw).
     const emailsWithRuns = allEmails.map((email) => {
       const run = email.generationRunId ? runMap.get(email.generationRunId as string) : undefined;
+      const vars = (email.variablesRaw as Record<string, unknown>) || {};
       return {
         ...email,
+        leadFirstName: email.leadFirstName || vars.leadFirstName || null,
+        leadLastName: email.leadLastName || vars.leadLastName || null,
+        leadTitle: email.leadTitle || vars.leadTitle || null,
+        leadCompany: email.leadCompany || vars.leadCompanyName || null,
+        leadIndustry: (email as any).leadIndustry || vars.leadCompanyIndustry || null,
+        clientCompanyName: email.clientCompanyName || vars.clientCompanyName || null,
         generationRun: run
           ? {
               status: run.status,
