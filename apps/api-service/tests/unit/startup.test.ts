@@ -61,27 +61,22 @@ describe("registerAppKeys", () => {
     }
   });
 
-  it("should skip keys with missing env vars without crashing", async () => {
+  it("should throw when env vars are missing", async () => {
     delete process.env.ANTHROPIC_API_KEY;
     delete process.env.APOLLO_API_KEY;
     delete process.env.INSTANTLY_API_KEY;
 
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    await expect(registerAppKeys()).rejects.toThrow("Missing required env vars: ANTHROPIC_API_KEY, APOLLO_API_KEY, INSTANTLY_API_KEY");
 
-    await registerAppKeys();
-
+    // No fetch calls should have been made
     const appKeyCalls = fetchCalls.filter((c) => c.url.includes("/internal/app-keys"));
     expect(appKeyCalls).toHaveLength(0);
-
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("ANTHROPIC_API_KEY not set"));
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("APOLLO_API_KEY not set"));
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("INSTANTLY_API_KEY not set"));
   });
 
-  it("should not crash when key-service call fails", async () => {
+  it("should throw when key-service returns an error", async () => {
     process.env.ANTHROPIC_API_KEY = "sk-ant-test";
-    delete process.env.APOLLO_API_KEY;
-    delete process.env.INSTANTLY_API_KEY;
+    process.env.APOLLO_API_KEY = "apollo-test";
+    process.env.INSTANTLY_API_KEY = "instantly-test";
 
     global.fetch = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
       const body = init?.body ? JSON.parse(init.body as string) : undefined;
@@ -97,30 +92,14 @@ describe("registerAppKeys", () => {
       return new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } });
     });
 
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
-    // Should not throw
-    await registerAppKeys();
-
-    expect(errorSpy).toHaveBeenCalledWith(
-      expect.stringContaining("App key registration failed:"),
-      expect.any(String)
-    );
+    await expect(registerAppKeys()).rejects.toThrow();
   });
 
-  it("should register only keys with env vars set", async () => {
+  it("should throw when a single env var is missing", async () => {
     process.env.ANTHROPIC_API_KEY = "sk-ant-test";
     delete process.env.APOLLO_API_KEY;
     process.env.INSTANTLY_API_KEY = "instantly-test";
 
-    await registerAppKeys();
-
-    const appKeyCalls = fetchCalls.filter((c) => c.url.includes("/internal/app-keys"));
-    expect(appKeyCalls).toHaveLength(2);
-
-    const providers = appKeyCalls.map((c) => c.body?.provider);
-    expect(providers).toContain("anthropic");
-    expect(providers).toContain("instantly");
-    expect(providers).not.toContain("apollo");
+    await expect(registerAppKeys()).rejects.toThrow("Missing required env vars: APOLLO_API_KEY");
   });
 });
