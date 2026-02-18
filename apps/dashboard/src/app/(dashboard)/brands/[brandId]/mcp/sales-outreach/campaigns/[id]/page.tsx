@@ -3,6 +3,7 @@
 import { useCampaign } from "@/lib/campaign-context";
 import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
+import { CostBreakdown } from "@/components/campaign/cost-breakdown";
 
 function formatTotalCost(cents: string | null | undefined): string | null {
   if (!cents) return null;
@@ -14,7 +15,7 @@ function formatTotalCost(cents: string | null | undefined): string | null {
 }
 
 export default function CampaignOverviewPage() {
-  const { campaign, stats, loading } = useCampaign();
+  const { campaign, stats, leads, emails, loading } = useCampaign();
 
   if (loading) {
     return (
@@ -123,6 +124,13 @@ export default function CampaignOverviewPage() {
             outOfOffice={stats.repliesOutOfOffice || 0}
             unsubscribe={stats.repliesUnsubscribe || 0}
           />
+        </div>
+      )}
+
+      {/* Cost breakdown */}
+      {(leads.length > 0 || emails.length > 0) && (
+        <div className="mb-6">
+          <CostBreakdown leads={leads} emails={emails} />
         </div>
       )}
 
