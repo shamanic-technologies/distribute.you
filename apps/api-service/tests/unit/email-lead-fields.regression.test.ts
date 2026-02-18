@@ -1,7 +1,8 @@
 /**
- * Regression test: emailgen service stores lead data in variables_raw JSONB
- * but leaves dedicated columns (lead_first_name, lead_last_name, etc.) NULL.
- * The API must extract lead fields from variablesRaw when dedicated fields are null.
+ * Regression test: emailgen service now populates dedicated lead columns
+ * (lead_first_name, lead_last_name, lead_title, lead_company, lead_industry,
+ * client_company_name) from variables during generation.
+ * The API passes these through to the dashboard for the email preview page.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
@@ -57,7 +58,7 @@ function createApp() {
   return app;
 }
 
-describe("Email lead fields: extract from variablesRaw when dedicated columns are null", () => {
+describe("Email lead fields: passed through from emailgen dedicated columns", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -66,10 +67,9 @@ describe("Email lead fields: extract from variablesRaw when dedicated columns ar
     vi.restoreAllMocks();
   });
 
-  it("should populate leadFirstName, leadLastName, leadTitle, leadCompany, leadIndustry from variablesRaw", async () => {
+  it("should return lead fields from emailgen dedicated columns", async () => {
     const app = createApp();
 
-    // emailgen returns generations with null dedicated fields but populated variablesRaw
     mockCallService.mockResolvedValue({
       generations: [
         {
@@ -77,21 +77,14 @@ describe("Email lead fields: extract from variablesRaw when dedicated columns ar
           subject: "Test Email",
           bodyHtml: "<p>Hello</p>",
           bodyText: "Hello",
-          leadFirstName: null,
-          leadLastName: null,
-          leadTitle: null,
-          leadCompany: null,
-          clientCompanyName: null,
+          leadFirstName: "Thomas",
+          leadLastName: "Bailey",
+          leadTitle: "Outreach Director",
+          leadCompany: "ECMC",
+          leadIndustry: "financial services",
+          clientCompanyName: "Sortes",
           generationRunId: null,
           createdAt: "2026-02-18T00:00:00Z",
-          variablesRaw: {
-            leadFirstName: "Thomas",
-            leadLastName: "Bailey",
-            leadTitle: "Outreach Director",
-            leadCompanyName: "ECMC",
-            leadCompanyIndustry: "financial services",
-            clientCompanyName: "Sortes",
-          },
         },
       ],
     });
@@ -112,80 +105,15 @@ describe("Email lead fields: extract from variablesRaw when dedicated columns ar
     expect(email.clientCompanyName).toBe("Sortes");
   });
 
-  it("should prefer dedicated fields over variablesRaw when both are present", async () => {
+  it("should return empty emails array when no generations exist", async () => {
     const app = createApp();
 
-    mockCallService.mockResolvedValue({
-      generations: [
-        {
-          id: "gen-2",
-          subject: "Test Email 2",
-          bodyHtml: "<p>Hi</p>",
-          bodyText: "Hi",
-          leadFirstName: "DirectValue",
-          leadLastName: "DirectLast",
-          leadTitle: "DirectTitle",
-          leadCompany: "DirectCompany",
-          clientCompanyName: "DirectClient",
-          generationRunId: null,
-          createdAt: "2026-02-18T00:00:00Z",
-          variablesRaw: {
-            leadFirstName: "VarFirst",
-            leadLastName: "VarLast",
-            leadTitle: "VarTitle",
-            leadCompanyName: "VarCompany",
-            leadCompanyIndustry: "VarIndustry",
-            clientCompanyName: "VarClient",
-          },
-        },
-      ],
-    });
-
+    mockCallService.mockResolvedValue({ generations: [] });
     mockGetRunsBatch.mockResolvedValue(new Map());
 
     const res = await request(app).get("/v1/campaigns/test-campaign-456/emails");
 
     expect(res.status).toBe(200);
-    const email = res.body.emails[0];
-    expect(email.leadFirstName).toBe("DirectValue");
-    expect(email.leadLastName).toBe("DirectLast");
-    expect(email.leadTitle).toBe("DirectTitle");
-    expect(email.leadCompany).toBe("DirectCompany");
-    expect(email.clientCompanyName).toBe("DirectClient");
-  });
-
-  it("should handle missing variablesRaw gracefully", async () => {
-    const app = createApp();
-
-    mockCallService.mockResolvedValue({
-      generations: [
-        {
-          id: "gen-3",
-          subject: "Test Email 3",
-          bodyHtml: "<p>Hey</p>",
-          bodyText: "Hey",
-          leadFirstName: null,
-          leadLastName: null,
-          leadTitle: null,
-          leadCompany: null,
-          clientCompanyName: null,
-          generationRunId: null,
-          createdAt: "2026-02-18T00:00:00Z",
-        },
-      ],
-    });
-
-    mockGetRunsBatch.mockResolvedValue(new Map());
-
-    const res = await request(app).get("/v1/campaigns/test-campaign-789/emails");
-
-    expect(res.status).toBe(200);
-    const email = res.body.emails[0];
-    expect(email.leadFirstName).toBeNull();
-    expect(email.leadLastName).toBeNull();
-    expect(email.leadTitle).toBeNull();
-    expect(email.leadCompany).toBeNull();
-    expect(email.leadIndustry).toBeNull();
-    expect(email.clientCompanyName).toBeNull();
+    expect(res.body.emails).toEqual([]);
   });
 });
