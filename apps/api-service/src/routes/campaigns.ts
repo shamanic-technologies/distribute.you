@@ -175,6 +175,7 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
       appId: "mcpfactory",
       clerkOrgId: req.orgId,
       brandId: brandResult.brandId,
+      keySource: "byok",
     };
 
     // Convert budget numbers to strings (campaign-service expects string type)
