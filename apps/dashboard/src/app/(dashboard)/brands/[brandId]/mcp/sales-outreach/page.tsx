@@ -8,6 +8,7 @@ import { listCampaignsByBrand, getCampaignBatchStats, type Campaign, type Campai
 import { SkeletonKeysList } from "@/components/skeleton";
 import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
+import { CampaignCostDistribution } from "@/components/campaign/campaign-cost-distribution";
 
 export default function BrandMcpSalesOutreachPage() {
   const params = useParams();
@@ -98,6 +99,18 @@ export default function BrandMcpSalesOutreachPage() {
             notInterested={totals.notInterested}
             outOfOffice={totals.outOfOffice}
             unsubscribe={totals.unsubscribe}
+          />
+        </div>
+      )}
+
+      {/* Cost by Campaign */}
+      {campaigns.length > 0 && totals.totalCostCents > 0 && (
+        <div className="mb-6">
+          <CampaignCostDistribution
+            items={campaigns.map((c) => ({
+              name: c.name,
+              costCents: parseFloat(campaignStats[c.id]?.totalCostInUsdCents || "0") || 0,
+            }))}
           />
         </div>
       )}
