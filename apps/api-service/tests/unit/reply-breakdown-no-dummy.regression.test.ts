@@ -69,27 +69,17 @@ describe("Reply breakdown: no dummy data when 0 replies", () => {
     vi.restoreAllMocks();
   });
 
-  it("should return zero reply classifications when emailsReplied is 0, even if reply-qualification returns data", async () => {
+  it("should return zero reply classifications when emailsReplied is 0", async () => {
     const app = createApp();
 
-    // Email-sending returns 0 replies
     mockCallExternalService.mockImplementation((service: any, path: string) => {
       if (path === "/stats") {
-        // email-sending service — 0 replies
         return Promise.resolve({
-          transactional: { sent: 10, delivered: 8, opened: 3, clicked: 1, replied: 0, bounced: 0, unsubscribed: 0, recipients: 10 },
-          broadcast: { sent: 0, delivered: 0, opened: 0, clicked: 0, replied: 0, bounced: 0, unsubscribed: 0, recipients: 0 },
+          transactional: { emailsSent: 10, emailsDelivered: 8, emailsOpened: 3, emailsClicked: 1, emailsReplied: 0, emailsBounced: 0, repliesWillingToMeet: 0, repliesInterested: 0, repliesNotInterested: 0, repliesOutOfOffice: 0, repliesUnsubscribe: 0, recipients: 10 },
+          broadcast: { emailsSent: 0, emailsDelivered: 0, emailsOpened: 0, emailsClicked: 0, emailsReplied: 0, emailsBounced: 0, repliesWillingToMeet: 0, repliesInterested: 0, repliesNotInterested: 0, repliesOutOfOffice: 0, repliesUnsubscribe: 0, recipients: 0 },
         });
       }
-      if (path.startsWith("/qualifications")) {
-        // reply-qualification returns bogus data
-        return Promise.resolve(
-          Array.from({ length: 42 }, () => ({ classification: "willing_to_meet" }))
-            .concat(Array.from({ length: 42 }, () => ({ classification: "not_interested" })))
-        );
-      }
       if (path.startsWith("/stats?campaignId=")) {
-        // lead-service
         return Promise.resolve({ served: 10, buffered: 0, skipped: 0 });
       }
       return Promise.resolve(null);
@@ -114,18 +104,9 @@ describe("Reply breakdown: no dummy data when 0 replies", () => {
     mockCallExternalService.mockImplementation((service: any, path: string) => {
       if (path === "/stats") {
         return Promise.resolve({
-          transactional: { sent: 10, delivered: 8, opened: 3, clicked: 1, replied: 5, bounced: 0, unsubscribed: 0, recipients: 10 },
-          broadcast: { sent: 0, delivered: 0, opened: 0, clicked: 0, replied: 0, bounced: 0, unsubscribed: 0, recipients: 0 },
+          transactional: { emailsSent: 10, emailsDelivered: 8, emailsOpened: 3, emailsClicked: 1, emailsReplied: 5, emailsBounced: 0, repliesWillingToMeet: 2, repliesInterested: 1, repliesNotInterested: 1, repliesOutOfOffice: 1, repliesUnsubscribe: 0, recipients: 10 },
+          broadcast: { emailsSent: 0, emailsDelivered: 0, emailsOpened: 0, emailsClicked: 0, emailsReplied: 0, emailsBounced: 0, repliesWillingToMeet: 0, repliesInterested: 0, repliesNotInterested: 0, repliesOutOfOffice: 0, repliesUnsubscribe: 0, recipients: 0 },
         });
-      }
-      if (path.startsWith("/qualifications")) {
-        return Promise.resolve([
-          { classification: "willing_to_meet" },
-          { classification: "willing_to_meet" },
-          { classification: "not_interested" },
-          { classification: "interested" },
-          { classification: "out_of_office" },
-        ]);
       }
       if (path.startsWith("/stats?campaignId=")) {
         return Promise.resolve({ served: 10, buffered: 0, skipped: 0 });

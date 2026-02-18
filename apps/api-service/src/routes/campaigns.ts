@@ -26,39 +26,30 @@ function sendLifecycleEmail(
 
 const router = Router();
 
-interface EmailSendingStats {
-  sent: number; delivered: number; opened: number; clicked: number;
-  replied: number; bounced: number; unsubscribed: number; recipients: number;
+interface EmailGatewayStats {
+  emailsSent: number; emailsDelivered: number; emailsOpened: number; emailsClicked: number;
+  emailsReplied: number; emailsBounced: number; repliesWillingToMeet: number;
+  repliesInterested: number; repliesNotInterested: number; repliesOutOfOffice: number;
+  repliesUnsubscribe: number; recipients: number;
 }
 
-/** Fetch delivery stats from email-sending service + reply classifications from reply-qualification service. */
+/** Fetch delivery stats from email-gateway (aggregates transactional + broadcast). */
 async function fetchDeliveryStats(
   filters: { campaignId?: string; brandId?: string },
   orgId: string
 ): Promise<Record<string, number> | null> {
-  const [deliveryResult, qualifications] = await Promise.all([
-    callExternalService<{ transactional: EmailSendingStats; broadcast: EmailSendingStats }>(
-      externalServices.emailSending,
-      "/stats",
-      {
-        method: "POST",
-        headers: { "x-clerk-org-id": orgId },
-        body: { ...filters, appId: "mcpfactory", clerkOrgId: orgId },
-      }
-    ).catch((err) => {
-      console.warn("[campaigns] Email-sending stats failed:", (err as Error).message);
-      return null;
-    }),
-    filters.campaignId
-      ? callExternalService<Array<{ classification: string }>>(
-          externalServices.replyQualification,
-          `/qualifications?sourceService=mcpfactory&sourceOrgId=${orgId}&sourceRefId=${filters.campaignId}`,
-        ).catch((err) => {
-          console.warn("[campaigns] Reply-qualification stats failed:", (err as Error).message);
-          return null;
-        })
-      : Promise.resolve(null),
-  ]);
+  const deliveryResult = await callExternalService<{ transactional: EmailGatewayStats; broadcast: EmailGatewayStats }>(
+    externalServices.emailSending,
+    "/stats",
+    {
+      method: "POST",
+      headers: { "x-clerk-org-id": orgId },
+      body: { ...filters, appId: "mcpfactory", clerkOrgId: orgId },
+    }
+  ).catch((err) => {
+    console.warn("[campaigns] Email-gateway stats failed:", (err as Error).message);
+    return null;
+  });
 
   const t = (deliveryResult as any)?.transactional;
   const b = (deliveryResult as any)?.broadcast;
@@ -66,29 +57,18 @@ async function fetchDeliveryStats(
 
   const sum = (a?: number, c?: number) => (a || 0) + (c || 0);
 
-  const totalReplied = sum(t?.replied, b?.replied);
-
-  // Only count reply classifications when there are actual replies.
-  // The reply-qualification service may return stale/incorrect data.
-  const counts: Record<string, number> = {};
-  if (totalReplied > 0 && Array.isArray(qualifications)) {
-    for (const q of qualifications) {
-      counts[q.classification] = (counts[q.classification] || 0) + 1;
-    }
-  }
-
   return {
-    emailsSent: sum(t?.sent, b?.sent),
-    emailsDelivered: sum(t?.delivered, b?.delivered),
-    emailsOpened: sum(t?.opened, b?.opened),
-    emailsClicked: sum(t?.clicked, b?.clicked),
-    emailsReplied: totalReplied,
-    emailsBounced: sum(t?.bounced, b?.bounced),
-    repliesWillingToMeet: counts.willing_to_meet || 0,
-    repliesInterested: counts.interested || 0,
-    repliesNotInterested: counts.not_interested || 0,
-    repliesOutOfOffice: counts.out_of_office || 0,
-    repliesUnsubscribe: counts.unsubscribe || 0,
+    emailsSent: sum(t?.emailsSent, b?.emailsSent),
+    emailsDelivered: sum(t?.emailsDelivered, b?.emailsDelivered),
+    emailsOpened: sum(t?.emailsOpened, b?.emailsOpened),
+    emailsClicked: sum(t?.emailsClicked, b?.emailsClicked),
+    emailsReplied: sum(t?.emailsReplied, b?.emailsReplied),
+    emailsBounced: sum(t?.emailsBounced, b?.emailsBounced),
+    repliesWillingToMeet: sum(t?.repliesWillingToMeet, b?.repliesWillingToMeet),
+    repliesInterested: sum(t?.repliesInterested, b?.repliesInterested),
+    repliesNotInterested: sum(t?.repliesNotInterested, b?.repliesNotInterested),
+    repliesOutOfOffice: sum(t?.repliesOutOfOffice, b?.repliesOutOfOffice),
+    repliesUnsubscribe: sum(t?.repliesUnsubscribe, b?.repliesUnsubscribe),
   };
 }
 
