@@ -108,6 +108,7 @@ describe("POST /v1/campaigns with targetAudience", () => {
     expect(campaignCall!.body!.valueForTarget).toBe("Access to enterprise analytics at startup pricing");
     expect(campaignCall!.body!.brandId).toBe("brand-uuid-123");
     expect(campaignCall!.body!.clerkOrgId).toBe("org_test456");
+    expect(campaignCall!.body!.keySource).toBe("byok");
 
     // Verify NO Apollo fields were sent
     expect(campaignCall!.body!.personTitles).toBeUndefined();

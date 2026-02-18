@@ -109,7 +109,7 @@ router.get("/campaigns", authenticate, requireOrg, async (req: AuthenticatedRequ
  */
 router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
   try {
-    console.log("[api-service] POST /v1/campaigns — incoming request", {
+    console.log("[api-service] POST /v1/campaigns \u2014 incoming request", {
       orgId: req.orgId,
       userId: req.userId,
       body: { ...req.body, brandUrl: req.body.brandUrl },
@@ -117,12 +117,12 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
 
     const parsed = CreateCampaignRequestSchema.safeParse(req.body);
     if (!parsed.success) {
-      console.warn("[api-service] POST /v1/campaigns — validation failed", parsed.error.flatten());
+      console.warn("[api-service] POST /v1/campaigns \u2014 validation failed", parsed.error.flatten());
       return res.status(400).json({ error: "Invalid request", details: parsed.error.flatten() });
     }
 
     const { brandUrl } = parsed.data;
-    console.log("[api-service] POST /v1/campaigns — parsed OK", {
+    console.log("[api-service] POST /v1/campaigns \u2014 parsed OK", {
       name: parsed.data.name,
       type: parsed.data.type,
       brandUrl,
@@ -133,7 +133,7 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
     });
 
     // 1. Upsert brand to get brandId
-    console.log("[api-service] POST /v1/campaigns — step 1: upserting brand", { brandUrl, orgId: req.orgId });
+    console.log("[api-service] POST /v1/campaigns \u2014 step 1: upserting brand", { brandUrl, orgId: req.orgId });
     const brandResult = await callExternalService<{ brandId: string }>(
       externalServices.brand,
       "/brands",
@@ -147,7 +147,7 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
         },
       }
     );
-    console.log("[api-service] POST /v1/campaigns — step 1 done: brand upserted", { brandId: brandResult.brandId });
+    console.log("[api-service] POST /v1/campaigns \u2014 step 1 done: brand upserted", { brandId: brandResult.brandId });
 
     // 2. Forward to campaign-service
     const body: Record<string, unknown> = {
@@ -155,6 +155,7 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
       appId: "mcpfactory",
       clerkOrgId: req.orgId,
       brandId: brandResult.brandId,
+      keySource: "byok",
     };
 
     // Convert budget numbers to strings (campaign-service expects string type)
@@ -162,7 +163,7 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
       if (body[key] != null) body[key] = String(body[key]);
     }
 
-    console.log("[api-service] POST /v1/campaigns — step 2: forwarding to campaign-service", {
+    console.log("[api-service] POST /v1/campaigns \u2014 step 2: forwarding to campaign-service", {
       brandId: body.brandId,
       type: body.type,
       targetOutcome: body.targetOutcome,
@@ -177,7 +178,7 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
         body,
       }
     );
-    console.log("[api-service] POST /v1/campaigns — step 2 done: campaign created", {
+    console.log("[api-service] POST /v1/campaigns \u2014 step 2 done: campaign created", {
       campaignId: (result as any).campaign?.id,
       status: (result as any).campaign?.status,
     });
@@ -185,7 +186,7 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
     // Fire-and-forget lifecycle email
     const campaign = (result as any).campaign;
     if (campaign?.brandId && campaign?.id) {
-      console.log("[api-service] POST /v1/campaigns — step 3: sending lifecycle email campaign_created");
+      console.log("[api-service] POST /v1/campaigns \u2014 step 3: sending lifecycle email campaign_created");
       sendLifecycleEmail("campaign_created", req, {
         brandId: campaign.brandId,
         campaignId: campaign.id,
@@ -195,7 +196,7 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
 
     res.json(result);
   } catch (error: any) {
-    console.error("[api-service] POST /v1/campaigns — FAILED:", error.message, error.stack);
+    console.error("[api-service] POST /v1/campaigns \u2014 FAILED:", error.message, error.stack);
     res.status(500).json({ error: error.message || "Failed to create campaign" });
   }
 });
@@ -337,7 +338,7 @@ router.get("/campaigns/:id/stats", authenticate, requireOrg, async (req: Authent
     const orgId = req.orgId!;
 
     // Fetch stats from all services in parallel using campaignId filter
-    const [leadStats, emailgenStats, delivery] = await Promise.all([
+    const [leadStats, emailgenStats, delivery, budgetUsage] = await Promise.all([
       callExternalService(
         externalServices.lead,
         `/stats?campaignId=${id}`,
@@ -355,6 +356,14 @@ router.get("/campaigns/:id/stats", authenticate, requireOrg, async (req: Authent
         return null;
       }),
       fetchDeliveryStats({ campaignId: id }, orgId),
+      callExternalService<{ results: Record<string, { totalCostInUsdCents: string | null }> }>(
+        externalServices.campaign,
+        "/campaigns/batch-budget-usage",
+        { method: "POST", body: { campaignIds: [id] } }
+      ).catch((err) => {
+        console.warn("[campaigns] Budget usage failed:", (err as Error).message);
+        return null;
+      }),
     ]);
 
     const stats: Record<string, any> = { campaignId: id };
@@ -392,6 +401,11 @@ router.get("/campaigns/:id/stats", authenticate, requireOrg, async (req: Authent
       stats.emailsBounced = 0;
     }
 
+    // Budget usage from campaign-service
+    if (budgetUsage?.results?.[id]) {
+      stats.totalCostInUsdCents = budgetUsage.results[id].totalCostInUsdCents;
+    }
+
     res.json(stats);
   } catch (error: any) {
     console.error("Get campaign stats error:", error);
@@ -413,26 +427,42 @@ router.post("/campaigns/batch-stats", authenticate, requireOrg, async (req: Auth
 
     const orgId = req.orgId!;
 
-    // Fetch stats for each campaign in parallel using campaignId filter
-    const results = await Promise.all(
-      campaignIds.map(async (id: string) => {
-        const [leadStats, emailgenStats, delivery] = await Promise.all([
-          callExternalService(
-            externalServices.lead,
-            `/stats?campaignId=${id}`,
-            { headers: { "x-app-id": "mcpfactory", "x-org-id": orgId } }
-          ).catch(() => null),
-          callService(
-            services.emailgen,
-            "/stats",
-            { method: "POST", body: { campaignId: id, appId: "mcpfactory" }, headers: { "x-clerk-org-id": orgId } }
-          ).catch(() => null),
-          fetchDeliveryStats({ campaignId: id }, orgId),
-        ]);
+    // Fetch budget usage for all campaigns in one batch call
+    const budgetUsagePromise = callExternalService<{
+      results: Record<string, { totalCostInUsdCents: string | null }>;
+    }>(externalServices.campaign, "/campaigns/batch-budget-usage", {
+      method: "POST",
+      body: { campaignIds },
+    }).catch((err) => {
+      console.warn("[campaigns] Batch budget usage failed:", (err as Error).message);
+      return null;
+    });
 
-        return { campaignId: id, leadStats, emailgenStats, delivery };
-      })
-    );
+    // Fetch stats for each campaign in parallel using campaignId filter
+    const [results, budgetUsage] = await Promise.all([
+      Promise.all(
+        campaignIds.map(async (id: string) => {
+          const [leadStats, emailgenStats, delivery] = await Promise.all([
+            callExternalService(
+              externalServices.lead,
+              `/stats?campaignId=${id}`,
+              { headers: { "x-app-id": "mcpfactory", "x-org-id": orgId } }
+            ).catch(() => null),
+            callService(
+              services.emailgen,
+              "/stats",
+              { method: "POST", body: { campaignId: id, appId: "mcpfactory" }, headers: { "x-clerk-org-id": orgId } }
+            ).catch(() => null),
+            fetchDeliveryStats({ campaignId: id }, orgId),
+          ]);
+
+          return { campaignId: id, leadStats, emailgenStats, delivery };
+        })
+      ),
+      budgetUsagePromise,
+    ]);
+
+    const budgetResults = budgetUsage?.results || {};
 
     const stats: Record<string, any> = {};
     for (const r of results) {
@@ -468,6 +498,11 @@ router.post("/campaigns/batch-stats", authenticate, requireOrg, async (req: Auth
         merged.emailsClicked = 0;
         merged.emailsReplied = 0;
         merged.emailsBounced = 0;
+      }
+
+      // Budget usage from campaign-service
+      if (budgetResults[r.campaignId]) {
+        merged.totalCostInUsdCents = budgetResults[r.campaignId].totalCostInUsdCents;
       }
 
       stats[r.campaignId] = merged;

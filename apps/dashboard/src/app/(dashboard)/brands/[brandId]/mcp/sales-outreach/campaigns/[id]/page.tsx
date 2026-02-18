@@ -55,14 +55,16 @@ export default function CampaignOverviewPage() {
     <div className="p-4 md:p-8">
       {/* Header */}
       <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <h1 className="font-display text-2xl font-bold text-gray-800">{campaign.name}</h1>
-          <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(campaign.status)}`}>
-            {campaign.status}
-          </span>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-3">
+            <h1 className="font-display text-2xl font-bold text-gray-800">{campaign.name}</h1>
+            <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(campaign.status)}`}>
+              {campaign.status}
+            </span>
+          </div>
           {stats && formatTotalCost(stats.totalCostInUsdCents) && (
-            <span className="text-xs px-2 py-1 rounded-full border border-gray-200 bg-gray-50 text-gray-600">
-              Total: {formatTotalCost(stats.totalCostInUsdCents)}
+            <span className="text-sm font-semibold text-gray-700">
+              Total cost: {formatTotalCost(stats.totalCostInUsdCents)}
             </span>
           )}
         </div>
