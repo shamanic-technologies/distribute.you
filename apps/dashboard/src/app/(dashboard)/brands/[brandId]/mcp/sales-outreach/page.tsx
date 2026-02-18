@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listCampaignsByBrand, getCampaignBatchStats, type Campaign, type CampaignStats } from "@/lib/api";
+import { listCampaignsByBrand, getCampaignBatchStats, getBrandDeliveryStats, type Campaign, type CampaignStats } from "@/lib/api";
 import { SkeletonKeysList } from "@/components/skeleton";
 import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
@@ -29,25 +29,35 @@ export default function BrandMcpSalesOutreachPage() {
   );
   const campaignStats = batchStats ?? {};
 
-  // Aggregate stats
-  const totals = Object.values(campaignStats).reduce(
+  // Fetch delivery stats once at brand level (avoids per-campaign duplication from email-gateway)
+  const { data: brandDelivery } = useAuthQuery(
+    ["brandDeliveryStats", brandId],
+    (token) => getBrandDeliveryStats(token, brandId)
+  );
+
+  // Aggregate leads/generated/cost from per-campaign stats (these are correctly per-campaign)
+  const campaignTotals = Object.values(campaignStats).reduce(
     (acc, s) => ({
       leadsServed: acc.leadsServed + (s.leadsServed || 0),
       emailsGenerated: acc.emailsGenerated + (s.emailsGenerated || 0),
-      emailsSent: acc.emailsSent + (s.emailsSent || 0),
-      emailsOpened: acc.emailsOpened + (s.emailsOpened || 0),
-      emailsClicked: acc.emailsClicked + (s.emailsClicked || 0),
-      emailsReplied: acc.emailsReplied + (s.emailsReplied || 0),
-      willingToMeet: acc.willingToMeet + (s.repliesWillingToMeet || 0),
-      interested: acc.interested + (s.repliesInterested || 0),
-      notInterested: acc.notInterested + (s.repliesNotInterested || 0),
-      outOfOffice: acc.outOfOffice + (s.repliesOutOfOffice || 0),
-      unsubscribe: acc.unsubscribe + (s.repliesUnsubscribe || 0),
       totalCostCents: acc.totalCostCents + (parseFloat(s.totalCostInUsdCents || "0") || 0),
     }),
-    { leadsServed: 0, emailsGenerated: 0, emailsSent: 0, emailsOpened: 0, emailsClicked: 0, emailsReplied: 0,
-      willingToMeet: 0, interested: 0, notInterested: 0, outOfOffice: 0, unsubscribe: 0, totalCostCents: 0 }
+    { leadsServed: 0, emailsGenerated: 0, totalCostCents: 0 }
   );
+
+  // Use brand-level delivery stats (single email-gateway call) for sent/opened/replied
+  const totals = {
+    ...campaignTotals,
+    emailsSent: brandDelivery?.emailsSent ?? 0,
+    emailsOpened: brandDelivery?.emailsOpened ?? 0,
+    emailsClicked: brandDelivery?.emailsClicked ?? 0,
+    emailsReplied: brandDelivery?.emailsReplied ?? 0,
+    willingToMeet: brandDelivery?.repliesWillingToMeet ?? 0,
+    interested: brandDelivery?.repliesInterested ?? 0,
+    notInterested: brandDelivery?.repliesNotInterested ?? 0,
+    outOfOffice: brandDelivery?.repliesOutOfOffice ?? 0,
+    unsubscribe: brandDelivery?.repliesUnsubscribe ?? 0,
+  };
 
   function formatCost(cents: string | null | undefined): string | null {
     if (!cents) return null;

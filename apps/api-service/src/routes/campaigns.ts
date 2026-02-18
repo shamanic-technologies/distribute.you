@@ -670,4 +670,34 @@ router.get("/campaigns/:id/emails", authenticate, requireOrg, async (req: Authen
   }
 });
 
+/**
+ * GET /v1/brands/:brandId/delivery-stats
+ * Get delivery stats for all campaigns under a brand (single email-gateway call)
+ */
+router.get("/brands/:brandId/delivery-stats", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { brandId } = req.params;
+    const orgId = req.orgId!;
+
+    const delivery = await fetchDeliveryStats({ brandId }, orgId);
+
+    res.json(delivery ?? {
+      emailsSent: 0,
+      emailsDelivered: 0,
+      emailsOpened: 0,
+      emailsClicked: 0,
+      emailsReplied: 0,
+      emailsBounced: 0,
+      repliesWillingToMeet: 0,
+      repliesInterested: 0,
+      repliesNotInterested: 0,
+      repliesOutOfOffice: 0,
+      repliesUnsubscribe: 0,
+    });
+  } catch (error: any) {
+    console.error("Get brand delivery stats error:", error);
+    res.status(500).json({ error: error.message || "Failed to get brand delivery stats" });
+  }
+});
+
 export default router;
