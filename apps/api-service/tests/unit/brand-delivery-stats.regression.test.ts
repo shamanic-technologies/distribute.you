@@ -169,7 +169,7 @@ describe("Regression: brand stats must not multiply delivery stats by campaign c
     expect(content).toContain("fetchDeliveryStats({ brandId }, orgId)");
   });
 
-  it("dashboard brand page should use getBrandDeliveryStats instead of summing per-campaign delivery", () => {
+  it("dashboard brand page should use max (not sum) for delivery stats and support brand-level endpoint", () => {
     const fs = require("fs");
     const path = require("path");
     const content = fs.readFileSync(
@@ -177,9 +177,12 @@ describe("Regression: brand stats must not multiply delivery stats by campaign c
       "utf-8"
     );
 
-    // Should import and use brand-level delivery stats
+    // Should import and use brand-level delivery stats as primary source
     expect(content).toContain("getBrandDeliveryStats");
     expect(content).toContain("brandDeliveryStats");
+
+    // Should use Math.max for delivery stats fallback (not sum/reduce with +)
+    expect(content).toContain("Math.max");
 
     // Should NOT sum delivery stats from per-campaign batch stats
     expect(content).not.toMatch(/acc\.emailsSent\s*\+/);
