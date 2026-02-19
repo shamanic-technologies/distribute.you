@@ -130,7 +130,7 @@ describe("POST /v1/campaigns with targetAudience", () => {
     expect(scrapeCall).toBeUndefined();
   });
 
-  it("should reject when targetAudience is missing", async () => {
+  it("should reject when targetAudience is missing with clear error", async () => {
     const app = createApp();
     const res = await request(app)
       .post("/v1/campaigns")
@@ -147,10 +147,11 @@ describe("POST /v1/campaigns with targetAudience", () => {
       });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe("Invalid request");
+    expect(res.body.error).toContain("targetAudience");
+    expect(res.body.details.fieldErrors).toHaveProperty("targetAudience");
   });
 
-  it("should reject when brandUrl is missing", async () => {
+  it("should reject when brandUrl is missing with clear error", async () => {
     const app = createApp();
     const res = await request(app)
       .post("/v1/campaigns")
@@ -167,10 +168,11 @@ describe("POST /v1/campaigns with targetAudience", () => {
       });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe("Invalid request");
+    expect(res.body.error).toContain("brandUrl");
+    expect(res.body.details.fieldErrors).toHaveProperty("brandUrl");
   });
 
-  it("should reject when targetAudience is empty string", async () => {
+  it("should reject when targetAudience is empty string with clear error", async () => {
     const app = createApp();
     const res = await request(app)
       .post("/v1/campaigns")
@@ -188,10 +190,11 @@ describe("POST /v1/campaigns with targetAudience", () => {
       });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe("Invalid request");
+    expect(res.body.error).toContain("targetAudience");
+    expect(res.body.details.fieldErrors).toHaveProperty("targetAudience");
   });
 
-  it("should reject when urgency is missing", async () => {
+  it("should reject when urgency is missing with clear error", async () => {
     const app = createApp();
     const res = await request(app)
       .post("/v1/campaigns")
@@ -207,10 +210,11 @@ describe("POST /v1/campaigns with targetAudience", () => {
       });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe("Invalid request");
+    expect(res.body.error).toContain("urgency");
+    expect(res.body.details.fieldErrors).toHaveProperty("urgency");
   });
 
-  it("should reject when socialProof is empty string", async () => {
+  it("should reject when socialProof is empty string with clear error", async () => {
     const app = createApp();
     const res = await request(app)
       .post("/v1/campaigns")
@@ -227,7 +231,8 @@ describe("POST /v1/campaigns with targetAudience", () => {
       });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe("Invalid request");
+    expect(res.body.error).toContain("socialProof");
+    expect(res.body.details.fieldErrors).toHaveProperty("socialProof");
   });
 
   it("should convert budget numbers to strings for campaign-service", async () => {

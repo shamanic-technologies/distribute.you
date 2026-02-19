@@ -68,7 +68,18 @@ In Claude, Cursor, or any MCP client:
 
 #### `launch_campaign`
 
-Start a new outreach campaign. Requires `target_url`, `target_audience`, `target_outcome`, and `value_for_target`.
+Start a new outreach campaign. All persuasion fields are **required** to ensure effective messaging.
+
+| Field | Description |
+|-------|-------------|
+| `target_url` | Your brand/product URL |
+| `target_audience` | Who to target (plain text) |
+| `target_outcome` | What you want to achieve |
+| `value_for_target` | What the prospect gains |
+| `urgency` | Time-based constraint (e.g. "Offer ends March 31st") |
+| `scarcity` | Supply-based constraint (e.g. "Only 10 spots left") |
+| `risk_reversal` | Guarantee removing risk (e.g. "Free trial, no commitment") |
+| `social_proof` | Credibility evidence (e.g. "Backed by 60 sponsors") |
 
 ```json
 {
@@ -76,6 +87,10 @@ Start a new outreach campaign. Requires `target_url`, `target_audience`, `target
   "target_audience": "CTOs at tech startups, 10-200 employees",
   "target_outcome": "Book sales demos",
   "value_for_target": "Access to enterprise analytics at startup pricing",
+  "urgency": "Early-adopter pricing ends March 31st",
+  "scarcity": "Onboarding limited to 20 companies this quarter",
+  "risk_reversal": "14-day free trial, cancel anytime, no commitment",
+  "social_proof": "Used by 500+ SaaS companies including Vercel and Linear",
   "budget": {
     "max_daily_usd": 10
   }

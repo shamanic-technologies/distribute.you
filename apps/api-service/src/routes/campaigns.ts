@@ -116,8 +116,13 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
 
     const parsed = CreateCampaignRequestSchema.safeParse(req.body);
     if (!parsed.success) {
-      console.warn("[api-service] POST /v1/campaigns \u2014 validation failed", parsed.error.flatten());
-      return res.status(400).json({ error: "Invalid request", details: parsed.error.flatten() });
+      const flat = parsed.error.flatten();
+      const missingFields = Object.keys(flat.fieldErrors);
+      console.warn("[api-service] POST /v1/campaigns \u2014 validation failed", flat);
+      return res.status(400).json({
+        error: `Missing or invalid required fields: ${missingFields.join(", ")}. Every campaign requires: name, brandUrl, targetAudience, targetOutcome, valueForTarget, urgency, scarcity, riskReversal, and socialProof.`,
+        details: flat,
+      });
     }
 
     const { brandUrl } = parsed.data;
