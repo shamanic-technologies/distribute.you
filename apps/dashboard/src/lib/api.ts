@@ -137,6 +137,10 @@ export interface Campaign {
   targetAudience: string | null;
   targetOutcome: string | null;
   valueForTarget: string | null;
+  urgency: string | null;
+  scarcity: string | null;
+  riskReversal: string | null;
+  socialProof: string | null;
   maxBudgetDailyUsd: string | null;
   maxBudgetWeeklyUsd: string | null;
   maxBudgetMonthlyUsd: string | null;
