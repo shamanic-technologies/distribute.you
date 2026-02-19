@@ -119,9 +119,27 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
       const flat = parsed.error.flatten();
       const missingFields = Object.keys(flat.fieldErrors);
       console.warn("[api-service] POST /v1/campaigns \u2014 validation failed", flat);
+
+      const fieldGuide: Record<string, { description: string; example: string }> = {
+        name: { description: "A name for your campaign", example: "Q1 SaaS Outreach" },
+        brandUrl: { description: "The URL of the product or service you are promoting", example: "https://acme.com" },
+        targetAudience: { description: "Plain text description of who you want to reach", example: "CTOs at SaaS startups with 10-50 employees in the US" },
+        targetOutcome: { description: "The concrete result you want from this campaign", example: "Book sales demos" },
+        valueForTarget: { description: "What your target audience gains by responding to your email", example: "Access to enterprise analytics at startup pricing" },
+        urgency: { description: "A time-based constraint that motivates the prospect to act now rather than later", example: "Early-adopter pricing ends March 31st" },
+        scarcity: { description: "A supply-based constraint showing limited availability", example: "Only 10 spots available worldwide" },
+        riskReversal: { description: "A guarantee or safety net that removes risk for the prospect — what makes saying yes feel safe", example: "14-day free trial, cancel anytime, no commitment" },
+        socialProof: { description: "Evidence of credibility: testimonials, numbers, notable clients, press, awards", example: "Backed by 60 sponsors including Sequoia and a]6z" },
+      };
+
+      const missingFieldDetails = missingFields
+        .filter((f) => fieldGuide[f])
+        .map((f) => ({ field: f, ...fieldGuide[f], errors: flat.fieldErrors[f as keyof typeof flat.fieldErrors] }));
+
       return res.status(400).json({
-        error: `Missing or invalid required fields: ${missingFields.join(", ")}. Every campaign requires: name, brandUrl, targetAudience, targetOutcome, valueForTarget, urgency, scarcity, riskReversal, and socialProof.`,
-        details: flat,
+        error: `Missing or invalid required fields: ${missingFields.join(", ")}.`,
+        missingFields: missingFieldDetails,
+        hint: "Every campaign requires all of these fields. Even if you're unsure, provide your best answer — it helps the AI generate better emails.",
       });
     }
 
