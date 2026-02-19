@@ -171,73 +171,96 @@ async function enrichWithDeliveryStats(data: LeaderboardData): Promise<void> {
   }
 }
 
-/** Build leaderboard data from existing service endpoints. */
-async function buildLeaderboardData(): Promise<LeaderboardData> {
-  // 1. Get all campaigns cross-org
-  const { campaigns } = await callExternalService<{
-    campaigns: Array<{
-      id: string;
-      brandId: string | null;
-      brandUrl: string | null;
-      brandDomain: string | null;
-      brandName: string | null;
-    }>;
-  }>(externalServices.campaign, "/campaigns/list");
+/** Get all brands across all orgs from brand-service.
+ *  This is more reliable than /campaigns/list which only returns ongoing campaigns. */
+async function fetchAllBrands(): Promise<Array<{ id: string; domain: string | null; name: string | null; brandUrl: string | null }>> {
+  // Get all clerk org IDs from brand-service
+  const { clerkOrgIds } = await callExternalService<{ clerkOrgIds: string[] }>(
+    externalServices.brand, "/clerk-ids"
+  );
 
-  // 2. Get cost data per campaign
-  const campaignIds = campaigns.map((c) => c.id);
-  let batchResults: Record<string, { totalCostInUsdCents: string | null }> = {};
-  if (campaignIds.length > 0) {
-    const batchResp = await callExternalService<{
-      results: Record<string, { totalCostInUsdCents: string | null }>;
-    }>(externalServices.campaign, "/campaigns/batch-budget-usage", {
-      method: "POST",
-      body: { campaignIds },
-    });
-    batchResults = batchResp.results || {};
-  }
+  if (!clerkOrgIds || clerkOrgIds.length === 0) return [];
 
-  // 3. Group campaigns by brandId, sum costs per brand
-  const brandMap = new Map<string, { brandId: string; brandUrl: string | null; brandDomain: string | null; totalCostUsdCents: number }>();
-  for (const c of campaigns) {
-    if (!c.brandId) continue;
-    const costCents = parseFloat(batchResults[c.id]?.totalCostInUsdCents || "0") || 0;
-    const existing = brandMap.get(c.brandId);
-    if (existing) {
-      existing.totalCostUsdCents += costCents;
-    } else {
-      brandMap.set(c.brandId, {
-        brandId: c.brandId,
-        brandUrl: c.brandUrl,
-        brandDomain: c.brandDomain,
-        totalCostUsdCents: costCents,
-      });
+  // Fetch brands for each org in parallel
+  const brandArrays = await Promise.all(
+    clerkOrgIds.map(async (clerkOrgId) => {
+      try {
+        const { brands } = await callExternalService<{
+          brands: Array<{ id: string; domain: string | null; name: string | null; brandUrl: string | null }>;
+        }>(externalServices.brand, `/brands?clerkOrgId=${encodeURIComponent(clerkOrgId)}`);
+        return brands || [];
+      } catch {
+        return [];
+      }
+    })
+  );
+
+  // Deduplicate by brand ID
+  const seen = new Set<string>();
+  const allBrands: Array<{ id: string; domain: string | null; name: string | null; brandUrl: string | null }> = [];
+  for (const arr of brandArrays) {
+    for (const b of arr) {
+      if (!seen.has(b.id)) {
+        seen.add(b.id);
+        allBrands.push(b);
+      }
     }
   }
+  return allBrands;
+}
 
-  const brands: BrandEntry[] = [...brandMap.values()].map((b) => ({
-    brandId: b.brandId,
+/** Build leaderboard data from brand-service + email-gateway + emailgen.
+ *  Uses brand-service as the source of truth for brands (includes all statuses). */
+async function buildLeaderboardData(): Promise<LeaderboardData> {
+  // 1. Get all brands from brand-service and model stats from emailgen in parallel
+  const [allBrands, modelStatsResult, campaignCosts] = await Promise.all([
+    fetchAllBrands(),
+    callService<{ stats: Array<{ model: string; count: number }> }>(
+      services.emailgen, "/stats/by-model",
+      { method: "POST", body: { appId: "mcpfactory" } }
+    ).catch((err) => {
+      console.warn("Failed to fetch model stats:", err);
+      return { stats: [] };
+    }),
+    // Also try to get campaign costs (best-effort, /campaigns/list may only return ongoing)
+    callExternalService<{
+      campaigns: Array<{ id: string; brandId: string | null }>;
+    }>(externalServices.campaign, "/campaigns/list").then(async ({ campaigns }) => {
+      if (!campaigns || campaigns.length === 0) return new Map<string, number>();
+      const ids = campaigns.map((c) => c.id);
+      const batchResp = await callExternalService<{
+        results: Record<string, { totalCostInUsdCents: string | null }>;
+      }>(externalServices.campaign, "/campaigns/batch-budget-usage", {
+        method: "POST",
+        body: { campaignIds: ids },
+      });
+      // Group costs by brandId
+      const costMap = new Map<string, number>();
+      for (const c of campaigns) {
+        if (!c.brandId) continue;
+        const cents = parseFloat(batchResp.results?.[c.id]?.totalCostInUsdCents || "0") || 0;
+        costMap.set(c.brandId, (costMap.get(c.brandId) || 0) + cents);
+      }
+      return costMap;
+    }).catch((err) => {
+      console.warn("Failed to fetch campaign costs:", err);
+      return new Map<string, number>();
+    }),
+  ]);
+
+  // 2. Build brand entries from brand-service data
+  const brands: BrandEntry[] = allBrands.map((b) => ({
+    brandId: b.id,
     brandUrl: b.brandUrl,
-    brandDomain: b.brandDomain,
-    totalCostUsdCents: b.totalCostUsdCents,
+    brandDomain: b.domain,
+    totalCostUsdCents: campaignCosts.get(b.id) || 0,
     emailsSent: 0, emailsOpened: 0, emailsClicked: 0, emailsReplied: 0,
     openRate: 0, clickRate: 0, replyRate: 0,
     costPerOpenCents: null, costPerClickCents: null, costPerReplyCents: null,
   }));
 
-  // 4. Get model stats from emailgen
-  let modelStats: Array<{ model: string; count: number }> = [];
-  try {
-    const modelResp = await callService<{ stats: Array<{ model: string; count: number }> }>(
-      services.emailgen, "/stats/by-model",
-      { method: "POST", body: { appId: "mcpfactory" } }
-    );
-    modelStats = modelResp.stats || [];
-  } catch (err) {
-    console.warn("Failed to fetch model stats:", err);
-  }
-
-  // 5. Distribute total cost to models proportionally by emailsGenerated
+  // 3. Build model entries
+  const modelStats = modelStatsResult.stats || [];
   const totalCostAllBrands = brands.reduce((s, b) => s + b.totalCostUsdCents, 0);
   const totalGenerated = modelStats.reduce((s, m) => s + m.count, 0);
 
