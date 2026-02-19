@@ -47,6 +47,26 @@ const TOOLS = [
           description:
             "What the target audience gains from responding (e.g., 'Access to enterprise analytics at startup pricing')",
         },
+        urgency: {
+          type: "string",
+          description:
+            "Time-based constraint that motivates action now (e.g., 'Recruitment closes in 30 days', 'Price doubles after March 1st')",
+        },
+        scarcity: {
+          type: "string",
+          description:
+            "Supply-based constraint on availability (e.g., 'Only 10 spots available worldwide', 'Limited to 50 participants')",
+        },
+        risk_reversal: {
+          type: "string",
+          description:
+            "Guarantee or safety net that removes risk for the prospect (e.g., 'Free trial for 2 weeks, no commitment', 'Phone screening call before any obligation')",
+        },
+        social_proof: {
+          type: "string",
+          description:
+            "Evidence of credibility and traction (e.g., 'Backed by 60 sponsors including X, Y, Z', '500+ companies already onboarded')",
+        },
         max_leads: {
           type: "number",
           description:
@@ -62,7 +82,7 @@ const TOOLS = [
           description: "BYOK budget limits (at least one required)",
         },
       },
-      required: ["target_url", "target_audience", "target_outcome", "value_for_target"],
+      required: ["target_url", "target_audience", "target_outcome", "value_for_target", "urgency", "scarcity", "risk_reversal", "social_proof"],
     },
   },
   {

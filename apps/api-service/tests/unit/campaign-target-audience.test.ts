@@ -89,6 +89,10 @@ describe("POST /v1/campaigns with targetAudience", () => {
         targetAudience: "CTOs at SaaS startups with 10-50 employees in the US",
         targetOutcome: "Book sales demos",
         valueForTarget: "Access to enterprise analytics at startup pricing",
+        urgency: "Recruitment closes in 30 days",
+        scarcity: "Only 10 spots available worldwide",
+        riskReversal: "Free trial for 2 weeks, no commitment",
+        socialProof: "Backed by 60 sponsors including Acme, Globex",
         maxBudgetDailyUsd: 10,
       });
 
@@ -108,6 +112,10 @@ describe("POST /v1/campaigns with targetAudience", () => {
     expect(campaignCall!.body!.targetAudience).toBe("CTOs at SaaS startups with 10-50 employees in the US");
     expect(campaignCall!.body!.targetOutcome).toBe("Book sales demos");
     expect(campaignCall!.body!.valueForTarget).toBe("Access to enterprise analytics at startup pricing");
+    expect(campaignCall!.body!.urgency).toBe("Recruitment closes in 30 days");
+    expect(campaignCall!.body!.scarcity).toBe("Only 10 spots available worldwide");
+    expect(campaignCall!.body!.riskReversal).toBe("Free trial for 2 weeks, no commitment");
+    expect(campaignCall!.body!.socialProof).toBe("Backed by 60 sponsors including Acme, Globex");
     expect(campaignCall!.body!.brandId).toBe("brand-uuid-123");
     expect(campaignCall!.body!.clerkOrgId).toBe("org_test456");
     expect(campaignCall!.body!.keySource).toBe("byok");
@@ -129,6 +137,12 @@ describe("POST /v1/campaigns with targetAudience", () => {
       .send({
         name: "Test Campaign",
         brandUrl: "https://example.com",
+        targetOutcome: "Book demos",
+        valueForTarget: "Better analytics",
+        urgency: "Ends soon",
+        scarcity: "Limited spots",
+        riskReversal: "Free trial",
+        socialProof: "500+ customers",
         maxBudgetDailyUsd: 10,
       });
 
@@ -145,6 +159,10 @@ describe("POST /v1/campaigns with targetAudience", () => {
         targetAudience: "CTOs at SaaS companies",
         targetOutcome: "Book demos",
         valueForTarget: "Better analytics",
+        urgency: "Ends soon",
+        scarcity: "Limited spots",
+        riskReversal: "Free trial",
+        socialProof: "500+ customers",
         maxBudgetDailyUsd: 10,
       });
 
@@ -160,7 +178,52 @@ describe("POST /v1/campaigns with targetAudience", () => {
         name: "Test Campaign",
         brandUrl: "https://example.com",
         targetAudience: "",
+        targetOutcome: "Book demos",
+        valueForTarget: "Better analytics",
+        urgency: "Ends soon",
+        scarcity: "Limited spots",
+        riskReversal: "Free trial",
+        socialProof: "500+ customers",
         maxBudgetDailyUsd: 10,
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("Invalid request");
+  });
+
+  it("should reject when urgency is missing", async () => {
+    const app = createApp();
+    const res = await request(app)
+      .post("/v1/campaigns")
+      .send({
+        name: "Test Campaign",
+        brandUrl: "https://example.com",
+        targetAudience: "CTOs at SaaS companies",
+        targetOutcome: "Book demos",
+        valueForTarget: "Better analytics",
+        scarcity: "Limited spots",
+        riskReversal: "Free trial",
+        socialProof: "500+ customers",
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("Invalid request");
+  });
+
+  it("should reject when socialProof is empty string", async () => {
+    const app = createApp();
+    const res = await request(app)
+      .post("/v1/campaigns")
+      .send({
+        name: "Test Campaign",
+        brandUrl: "https://example.com",
+        targetAudience: "CTOs",
+        targetOutcome: "Book demos",
+        valueForTarget: "Better analytics",
+        urgency: "Ends soon",
+        scarcity: "Limited spots",
+        riskReversal: "Free trial",
+        socialProof: "",
       });
 
     expect(res.status).toBe(400);
@@ -177,6 +240,10 @@ describe("POST /v1/campaigns with targetAudience", () => {
         targetAudience: "CEOs at fintech",
         targetOutcome: "Close deals",
         valueForTarget: "Better ROI",
+        urgency: "Q1 pricing ends March 31",
+        scarcity: "3 slots left this quarter",
+        riskReversal: "Money-back guarantee",
+        socialProof: "Used by 200+ fintech companies",
         maxBudgetDailyUsd: 25,
         maxBudgetWeeklyUsd: 100,
       });
@@ -207,6 +274,10 @@ describe("POST /v1/campaigns with targetAudience", () => {
         targetAudience: "CTOs at SaaS",
         targetOutcome: "Book demos",
         valueForTarget: "Better tools",
+        urgency: "Ends soon",
+        scarcity: "Limited spots",
+        riskReversal: "Free trial",
+        socialProof: "500+ customers",
         maxBudgetDailyUsd: 10,
       });
 
