@@ -284,8 +284,16 @@ router.post("/campaigns/:id/stop", authenticate, requireOrg, async (req: Authent
       }
     );
 
-    // Fire-and-forget lifecycle email
     const campaign = (result as any).campaign;
+
+    // Close the parent run now that the campaign is stopped
+    if (campaign?.parentRunId) {
+      updateRun(campaign.parentRunId, "completed").catch((err) =>
+        console.warn("[campaigns] Failed to complete parent run:", (err as Error).message)
+      );
+    }
+
+    // Fire-and-forget lifecycle email
     if (campaign?.brandId) {
       sendLifecycleEmail("campaign_stopped", req, {
         brandId: campaign.brandId,

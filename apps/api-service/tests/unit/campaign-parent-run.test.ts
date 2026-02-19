@@ -44,4 +44,8 @@ describe("Campaign routes create parent runs", () => {
   it("should mark parent run as failed if campaign-service call fails", () => {
     expect(content).toContain('updateRun(parentRun.id, "failed")');
   });
+
+  it("should complete parent run when campaign is stopped", () => {
+    expect(content).toContain('updateRun(campaign.parentRunId, "completed")');
+  });
 });
