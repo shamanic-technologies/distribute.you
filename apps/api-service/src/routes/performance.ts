@@ -59,27 +59,29 @@ interface LeaderboardData {
   updatedAt: string;
 }
 
-/** Fetch combined delivery stats from the unified email-sending service. */
-async function fetchCombinedDeliveryStats(filters: Record<string, string>): Promise<DeliveryStats> {
+/** Fetch broadcast delivery stats from the unified email-sending service.
+ *  Only uses broadcast stats (outreach emails via Instantly).
+ *  Transactional stats are lifecycle/test emails via Postmark — not relevant. */
+async function fetchBroadcastDeliveryStats(filters: Record<string, string>): Promise<DeliveryStats> {
   try {
     const result = await callExternalService<{
-      transactional: { sent: number; opened: number; clicked: number; replied: number; bounced: number };
-      broadcast: { sent: number; opened: number; clicked: number; replied: number; bounced: number };
+      transactional: { emailsSent: number; emailsOpened: number; emailsClicked: number; emailsReplied: number; emailsBounced: number };
+      broadcast: { emailsSent: number; emailsOpened: number; emailsClicked: number; emailsReplied: number; emailsBounced: number };
     }>(
       externalServices.emailSending,
       "/stats",
       { method: "POST", body: filters }
     );
 
-    const t = result.transactional;
     const b = result.broadcast;
+    if (!b) return EMPTY_STATS;
 
     return {
-      emailsSent: (t?.sent || 0) + (b?.sent || 0),
-      emailsOpened: (t?.opened || 0) + (b?.opened || 0),
-      emailsClicked: (t?.clicked || 0) + (b?.clicked || 0),
-      emailsReplied: (t?.replied || 0) + (b?.replied || 0),
-      emailsBounced: (t?.bounced || 0) + (b?.bounced || 0),
+      emailsSent: b.emailsSent || 0,
+      emailsOpened: b.emailsOpened || 0,
+      emailsClicked: b.emailsClicked || 0,
+      emailsReplied: b.emailsReplied || 0,
+      emailsBounced: b.emailsBounced || 0,
     };
   } catch {
     return EMPTY_STATS;
@@ -111,21 +113,21 @@ function applyStatsToEntry(
  * Uses brandId and appId filters directly — no need to fetch campaigns or runs.
  */
 async function enrichWithDeliveryStats(data: LeaderboardData): Promise<void> {
-  // Fetch combined delivery stats per brand using brandId filter
+  // Fetch broadcast-only delivery stats per brand using brandId filter
   await Promise.all(
     data.brands.map(async (brand) => {
       if (!brand.brandId) {
         return;
       }
 
-      const stats = await fetchCombinedDeliveryStats({ brandId: brand.brandId, appId: "mcpfactory" });
+      const stats = await fetchBroadcastDeliveryStats({ brandId: brand.brandId, appId: "mcpfactory" });
       if (stats.emailsSent === 0) return;
       applyStatsToEntry(brand, stats);
     })
   );
 
   // Fetch aggregate stats for model leaderboard using appId filter
-  const aggregateStats = await fetchCombinedDeliveryStats({ appId: "mcpfactory" });
+  const aggregateStats = await fetchBroadcastDeliveryStats({ appId: "mcpfactory" });
 
   if (aggregateStats.emailsSent > 0 && data.models.length > 0) {
     // Distribute delivery stats across models proportionally by emailsGenerated
@@ -258,7 +260,7 @@ router.get("/performance/leaderboard", async (req, res) => {
   try {
     const data = await buildLeaderboardData();
 
-    // Enrich with combined delivery stats from email-sending service
+    // Enrich with broadcast delivery stats from email-sending service
     try {
       await enrichWithDeliveryStats(data);
     } catch (err) {
