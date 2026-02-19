@@ -2,7 +2,7 @@ import { Router } from "express";
 import { authenticate, requireOrg, AuthenticatedRequest } from "../middleware/auth.js";
 import { callService, services, callExternalService, externalServices } from "../lib/service-client.js";
 import { buildInternalHeaders } from "../lib/internal-headers.js";
-import { getRunsBatch, type RunWithCosts } from "@mcpfactory/runs-client";
+import { createRun, updateRun, getRunsBatch, type RunWithCosts } from "@mcpfactory/runs-client";
 import { CreateCampaignRequestSchema, BatchStatsRequestSchema } from "../schemas.js";
 
 function sendLifecycleEmail(
@@ -148,13 +148,26 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
     );
     console.log("[api-service] POST /v1/campaigns \u2014 step 1 done: brand upserted", { brandId: brandResult.brandId });
 
-    // 2. Forward to campaign-service
+    // 2. Create parent run so all downstream runs are linked
+    console.log("[api-service] POST /v1/campaigns \u2014 step 2: creating parent run");
+    const parentRun = await createRun({
+      clerkOrgId: req.orgId!,
+      clerkUserId: req.userId,
+      appId: "mcpfactory",
+      brandId: brandResult.brandId,
+      serviceName: "api-service",
+      taskName: "create-campaign",
+    });
+    console.log("[api-service] POST /v1/campaigns \u2014 step 2 done: parent run created", { parentRunId: parentRun.id });
+
+    // 3. Forward to campaign-service with parentRunId
     const body: Record<string, unknown> = {
       ...parsed.data,
       appId: "mcpfactory",
       clerkOrgId: req.orgId,
       brandId: brandResult.brandId,
       keySource: "byok",
+      parentRunId: parentRun.id,
     };
 
     // Convert budget numbers to strings (campaign-service expects string type)
@@ -162,22 +175,29 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
       if (body[key] != null) body[key] = String(body[key]);
     }
 
-    console.log("[api-service] POST /v1/campaigns \u2014 step 2: forwarding to campaign-service", {
+    console.log("[api-service] POST /v1/campaigns \u2014 step 3: forwarding to campaign-service", {
       brandId: body.brandId,
       type: body.type,
       targetOutcome: body.targetOutcome,
       maxLeads: body.maxLeads,
+      parentRunId: parentRun.id,
     });
-    const result = await callExternalService(
-      externalServices.campaign,
-      "/campaigns",
-      {
-        method: "POST",
-        headers: buildInternalHeaders(req),
-        body,
-      }
-    );
-    console.log("[api-service] POST /v1/campaigns \u2014 step 2 done: campaign created", {
+    let result;
+    try {
+      result = await callExternalService(
+        externalServices.campaign,
+        "/campaigns",
+        {
+          method: "POST",
+          headers: buildInternalHeaders(req),
+          body,
+        }
+      );
+    } catch (err) {
+      await updateRun(parentRun.id, "failed").catch(() => {});
+      throw err;
+    }
+    console.log("[api-service] POST /v1/campaigns \u2014 step 3 done: campaign created", {
       campaignId: (result as any).campaign?.id,
       status: (result as any).campaign?.status,
     });
@@ -185,7 +205,7 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
     // Fire-and-forget lifecycle email
     const campaign = (result as any).campaign;
     if (campaign?.brandId && campaign?.id) {
-      console.log("[api-service] POST /v1/campaigns \u2014 step 3: sending lifecycle email campaign_created");
+      console.log("[api-service] POST /v1/campaigns \u2014 step 4: sending lifecycle email campaign_created");
       sendLifecycleEmail("campaign_created", req, {
         brandId: campaign.brandId,
         campaignId: campaign.id,
@@ -289,15 +309,31 @@ router.post("/campaigns/:id/resume", authenticate, requireOrg, async (req: Authe
   try {
     const { id } = req.params;
 
-    const result = await callExternalService(
-      externalServices.campaign,
-      `/campaigns/${id}`,
-      {
-        method: "PATCH",
-        headers: { "x-clerk-org-id": req.orgId! },
-        body: { status: "activate" },
-      }
-    );
+    // Create parent run for the resume/activate operation
+    const parentRun = await createRun({
+      clerkOrgId: req.orgId!,
+      clerkUserId: req.userId,
+      appId: "mcpfactory",
+      campaignId: id,
+      serviceName: "api-service",
+      taskName: "resume-campaign",
+    });
+
+    let result;
+    try {
+      result = await callExternalService(
+        externalServices.campaign,
+        `/campaigns/${id}`,
+        {
+          method: "PATCH",
+          headers: { "x-clerk-org-id": req.orgId! },
+          body: { status: "activate", parentRunId: parentRun.id },
+        }
+      );
+    } catch (err) {
+      await updateRun(parentRun.id, "failed").catch(() => {});
+      throw err;
+    }
     res.json(result);
   } catch (error: any) {
     console.error("Resume campaign error:", error);

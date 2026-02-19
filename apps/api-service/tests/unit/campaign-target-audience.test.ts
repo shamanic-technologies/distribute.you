@@ -28,6 +28,8 @@ vi.mock("../../src/middleware/auth.js", () => ({
 // Mock runs-client
 vi.mock("@mcpfactory/runs-client", () => ({
   getRunsBatch: vi.fn().mockResolvedValue(new Map()),
+  createRun: vi.fn().mockResolvedValue({ id: "parent-run-123" }),
+  updateRun: vi.fn().mockResolvedValue({ id: "parent-run-123", status: "failed" }),
 }));
 
 import campaignRouter from "../../src/routes/campaigns.js";
