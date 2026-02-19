@@ -5,7 +5,6 @@ import type { BrandRun } from "@/lib/api";
 
 interface CampaignCostDistributionProps {
   runs: BrandRun[];
-  statsTotalCents?: number | null;
 }
 
 const COLORS = [
@@ -33,7 +32,7 @@ function formatUsdCents(cents: number): string {
   return `$${usd.toFixed(2)}`;
 }
 
-export function CampaignCostDistribution({ runs, statsTotalCents }: CampaignCostDistributionProps) {
+export function CampaignCostDistribution({ runs }: CampaignCostDistributionProps) {
   const segments = useMemo(() => {
     const map = new Map<string, number>();
 
@@ -46,32 +45,20 @@ export function CampaignCostDistribution({ runs, statsTotalCents }: CampaignCost
       }
     }
 
-    // Add "Other" segment for costs not captured by brand runs
-    // (e.g. campaign execution costs: enrichment, email generation, sending)
-    const categorizedTotal = Array.from(map.values()).reduce((s, v) => s + v, 0);
-    if (statsTotalCents && statsTotalCents > categorizedTotal) {
-      const diff = statsTotalCents - categorizedTotal;
-      if (diff > 0.001) {
-        map.set("Other", diff);
-      }
-    }
-
     const entries = Array.from(map.entries())
       .map(([name, cents]) => ({ name, cents }))
       .sort((a, b) => b.cents - a.cents);
 
-    const total = statsTotalCents && statsTotalCents > 0 ? statsTotalCents : entries.reduce((sum, e) => sum + e.cents, 0);
+    const total = entries.reduce((sum, e) => sum + e.cents, 0);
 
     return entries.map((entry, i) => ({
       ...entry,
       percentage: total > 0 ? (entry.cents / total) * 100 : 0,
       color: COLORS[i % COLORS.length],
     }));
-  }, [runs, statsTotalCents]);
+  }, [runs]);
 
-  const totalCents = statsTotalCents && statsTotalCents > 0
-    ? statsTotalCents
-    : segments.reduce((sum, s) => sum + s.cents, 0);
+  const totalCents = segments.reduce((sum, s) => sum + s.cents, 0);
 
   if (totalCents === 0) {
     return (

@@ -124,7 +124,7 @@ export default function BrandMcpSalesOutreachPage() {
       {/* Cost Breakdown by Category */}
       {brandRuns.length > 0 && (
         <div className="mb-6">
-          <CampaignCostDistribution runs={brandRuns} statsTotalCents={totals.totalCostCents || null} />
+          <CampaignCostDistribution runs={brandRuns} />
         </div>
       )}
 
