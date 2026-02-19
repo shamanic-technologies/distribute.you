@@ -147,6 +147,28 @@ describe("GET /v1/brands/:brandId/delivery-stats", () => {
     expect(res.body.emailsReplied).toBe(0);
   });
 
+  it("should cap emailsOpened at emailsSent (Instantly returns total opens, not unique)", async () => {
+    const app = createApp();
+
+    mockCallExternalService.mockResolvedValue({
+      transactional: null,
+      broadcast: {
+        emailsSent: 9, emailsDelivered: 8, emailsOpened: 12,
+        emailsClicked: 0, emailsReplied: 0, emailsBounced: 1,
+        repliesWillingToMeet: 0, repliesInterested: 0,
+        repliesNotInterested: 0, repliesOutOfOffice: 0,
+        repliesUnsubscribe: 0, recipients: 9,
+      },
+    });
+
+    const res = await request(app).get("/v1/brands/brand-123/delivery-stats");
+
+    expect(res.status).toBe(200);
+    expect(res.body.emailsSent).toBe(9);
+    // 12 opens > 9 sent: must be capped at 9
+    expect(res.body.emailsOpened).toBe(9);
+  });
+
   it("should make exactly one email-gateway call", async () => {
     const app = createApp();
 

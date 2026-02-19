@@ -56,10 +56,15 @@ async function fetchDeliveryStats(
   const b = (deliveryResult as any)?.broadcast;
   if (!b) return null;
 
+  const sent = b.emailsSent || 0;
+  // Instantly returns total open events (not unique opens) — cap at sent.
+  // TODO: fix in instantly-service to use open_count_unique from Instantly API.
+  const opened = Math.min(b.emailsOpened || 0, sent);
+
   return {
-    emailsSent: b.emailsSent || 0,
+    emailsSent: sent,
     emailsDelivered: b.emailsDelivered || 0,
-    emailsOpened: b.emailsOpened || 0,
+    emailsOpened: opened,
     emailsClicked: b.emailsClicked || 0,
     emailsReplied: b.emailsReplied || 0,
     emailsBounced: b.emailsBounced || 0,
