@@ -35,16 +35,14 @@ export default function BrandMcpSalesOutreachPage() {
   );
   const brandRuns = brandRunsData?.runs ?? [];
 
-  // Try brand-level delivery stats (single email-gateway call, needs api-service endpoint)
+  // Fetch delivery stats once at brand level (single email-gateway call)
   const { data: brandDelivery } = useAuthQuery(
     ["brandDeliveryStats", brandId],
     (token) => getBrandDeliveryStats(token, brandId),
     { retry: false }
   );
 
-  // Aggregate leads/generated/cost: SUM (these services correctly filter per-campaign)
-  // Aggregate delivery stats: MAX (email-gateway returns duplicated org-wide stats per campaign,
-  // so summing would inflate by N campaigns; max gives the correct unduplicated value)
+  // Aggregate per-campaign stats (leads/generated/cost are correctly filtered per-campaign)
   const statsValues = Object.values(campaignStats);
   const campaignTotals = statsValues.reduce(
     (acc, s) => ({
@@ -55,34 +53,18 @@ export default function BrandMcpSalesOutreachPage() {
     { leadsServed: 0, emailsGenerated: 0, totalCostCents: 0 }
   );
 
-  // For delivery stats: use brand-level endpoint if available, otherwise take max across campaigns
-  const maxDelivery = statsValues.reduce(
-    (acc, s) => ({
-      emailsSent: Math.max(acc.emailsSent, s.emailsSent || 0),
-      emailsOpened: Math.max(acc.emailsOpened, s.emailsOpened || 0),
-      emailsClicked: Math.max(acc.emailsClicked, s.emailsClicked || 0),
-      emailsReplied: Math.max(acc.emailsReplied, s.emailsReplied || 0),
-      willingToMeet: Math.max(acc.willingToMeet, s.repliesWillingToMeet || 0),
-      interested: Math.max(acc.interested, s.repliesInterested || 0),
-      notInterested: Math.max(acc.notInterested, s.repliesNotInterested || 0),
-      outOfOffice: Math.max(acc.outOfOffice, s.repliesOutOfOffice || 0),
-      unsubscribe: Math.max(acc.unsubscribe, s.repliesUnsubscribe || 0),
-    }),
-    { emailsSent: 0, emailsOpened: 0, emailsClicked: 0, emailsReplied: 0,
-      willingToMeet: 0, interested: 0, notInterested: 0, outOfOffice: 0, unsubscribe: 0 }
-  );
-
+  // Delivery stats come exclusively from brand-level endpoint (broadcast/outreach only).
   const totals = {
     ...campaignTotals,
-    emailsSent: brandDelivery?.emailsSent ?? maxDelivery.emailsSent,
-    emailsOpened: brandDelivery?.emailsOpened ?? maxDelivery.emailsOpened,
-    emailsClicked: brandDelivery?.emailsClicked ?? maxDelivery.emailsClicked,
-    emailsReplied: brandDelivery?.emailsReplied ?? maxDelivery.emailsReplied,
-    willingToMeet: brandDelivery?.repliesWillingToMeet ?? maxDelivery.willingToMeet,
-    interested: brandDelivery?.repliesInterested ?? maxDelivery.interested,
-    notInterested: brandDelivery?.repliesNotInterested ?? maxDelivery.notInterested,
-    outOfOffice: brandDelivery?.repliesOutOfOffice ?? maxDelivery.outOfOffice,
-    unsubscribe: brandDelivery?.repliesUnsubscribe ?? maxDelivery.unsubscribe,
+    emailsSent: brandDelivery?.emailsSent ?? 0,
+    emailsOpened: brandDelivery?.emailsOpened ?? 0,
+    emailsClicked: brandDelivery?.emailsClicked ?? 0,
+    emailsReplied: brandDelivery?.emailsReplied ?? 0,
+    willingToMeet: brandDelivery?.repliesWillingToMeet ?? 0,
+    interested: brandDelivery?.repliesInterested ?? 0,
+    notInterested: brandDelivery?.repliesNotInterested ?? 0,
+    outOfOffice: brandDelivery?.repliesOutOfOffice ?? 0,
+    unsubscribe: brandDelivery?.repliesUnsubscribe ?? 0,
   };
 
   function formatCost(cents: string | null | undefined): string | null {
