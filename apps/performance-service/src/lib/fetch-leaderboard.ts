@@ -56,7 +56,7 @@ export interface LeaderboardData {
 export async function fetchLeaderboard(): Promise<LeaderboardData | null> {
   try {
     const res = await fetch(`${API_SERVICE_URL}/performance/leaderboard`, {
-      next: { revalidate: 3600 },
+      cache: "no-store",
     });
 
     if (!res.ok) {
@@ -78,7 +78,7 @@ export async function fetchLeaderboard(): Promise<LeaderboardData | null> {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ brandIds }),
-            next: { revalidate: 3600 },
+            cache: "no-store",
           });
 
           if (brandsRes.ok) {
