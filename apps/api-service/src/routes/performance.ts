@@ -174,10 +174,11 @@ async function enrichWithDeliveryStats(data: LeaderboardData): Promise<void> {
 /** Get all brands across all orgs from brand-service.
  *  This is more reliable than /campaigns/list which only returns ongoing campaigns. */
 async function fetchAllBrands(): Promise<Array<{ id: string; domain: string | null; name: string | null; brandUrl: string | null }>> {
-  // Get all clerk org IDs from brand-service
-  const { clerkOrgIds } = await callExternalService<{ clerkOrgIds: string[] }>(
+  // Get all clerk org IDs from brand-service (response uses snake_case field name)
+  const resp = await callExternalService<{ clerk_organization_ids: string[] }>(
     externalServices.brand, "/clerk-ids"
   );
+  const clerkOrgIds = resp.clerk_organization_ids;
 
   if (!clerkOrgIds || clerkOrgIds.length === 0) return [];
 

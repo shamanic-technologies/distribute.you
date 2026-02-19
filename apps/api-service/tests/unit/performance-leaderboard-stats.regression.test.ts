@@ -71,7 +71,7 @@ function setupBrandMocks(brands: Array<{ id: string; domain: string | null; name
   return (_service: any, path: string, opts: any) => {
     // Brand-service: /clerk-ids
     if (path === "/clerk-ids") {
-      return Promise.resolve({ clerkOrgIds: ["org-1"] });
+      return Promise.resolve({ clerk_organization_ids: ["org-1"] });
     }
     // Brand-service: /brands?clerkOrgId=...
     if (path.startsWith("/brands?clerkOrgId=")) {
@@ -239,7 +239,7 @@ describe("GET /performance/leaderboard", () => {
     const brands = [{ id: "brand-1", domain: "acme.com", name: "Acme", brandUrl: "https://acme.com" }];
 
     mockCallExternalService.mockImplementation((_service: any, path: string, opts: any) => {
-      if (path === "/clerk-ids") return Promise.resolve({ clerkOrgIds: ["org-1"] });
+      if (path === "/clerk-ids") return Promise.resolve({ clerk_organization_ids: ["org-1"] });
       if (path.startsWith("/brands?clerkOrgId=")) return Promise.resolve({ brands });
       if (path === "/campaigns/list") {
         return Promise.resolve({
