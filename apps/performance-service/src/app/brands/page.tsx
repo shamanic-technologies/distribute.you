@@ -3,7 +3,7 @@ import { URLS } from "@mcpfactory/content";
 import { fetchLeaderboard } from "@/lib/fetch-leaderboard";
 import { BrandLeaderboard } from "@/components/leaderboard-table";
 
-export const revalidate = 3600;
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "Brand Leaderboard",

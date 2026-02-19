@@ -2,7 +2,7 @@ import { URLS } from "@mcpfactory/content";
 import { fetchLeaderboard, formatPercent, formatModelName, formatCostDollars } from "@/lib/fetch-leaderboard";
 import { LeaderboardTabs } from "@/components/leaderboard-tabs";
 
-export const revalidate = 3600;
+export const revalidate = 300;
 
 export default async function HomePage() {
   const data = await fetchLeaderboard();
