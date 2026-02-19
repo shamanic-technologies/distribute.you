@@ -31,6 +31,10 @@ X-API-Key: YOUR_API_KEY
   "targetAudience": "CTOs at SaaS companies, 50-200 employees",
   "targetOutcome": "Book sales demos",
   "valueForTarget": "Access to enterprise analytics at startup pricing",
+  "urgency": "Early-adopter pricing ends March 31st",
+  "scarcity": "Onboarding limited to 20 companies this quarter",
+  "riskReversal": "14-day free trial, cancel anytime, no commitment",
+  "socialProof": "Used by 500+ SaaS companies including Vercel and Linear",
   "maxBudgetDailyUsd": 10,
   "maxBudgetWeeklyUsd": 50
 }`}</code>
@@ -47,7 +51,11 @@ X-API-Key: YOUR_API_KEY
     "status": "ongoing",
     "targetAudience": "CTOs at SaaS companies, 50-200 employees",
     "targetOutcome": "Book sales demos",
-    "valueForTarget": "Access to enterprise analytics at startup pricing"
+    "valueForTarget": "Access to enterprise analytics at startup pricing",
+    "urgency": "Early-adopter pricing ends March 31st",
+    "scarcity": "Onboarding limited to 20 companies this quarter",
+    "riskReversal": "14-day free trial, cancel anytime, no commitment",
+    "socialProof": "Used by 500+ SaaS companies including Vercel and Linear"
   }
 }`}</code>
         </pre>
@@ -70,6 +78,10 @@ GET /v1/campaigns?status=stopped`}</code>
       "targetAudience": "CTOs at SaaS companies",
       "targetOutcome": "Book sales demos",
       "valueForTarget": "Access to enterprise analytics at startup pricing",
+      "urgency": "Early-adopter pricing ends March 31st",
+      "scarcity": "Onboarding limited to 20 companies this quarter",
+      "riskReversal": "14-day free trial, cancel anytime",
+      "socialProof": "Used by 500+ SaaS companies",
       "maxBudgetDailyUsd": "10"
     }
   ]
@@ -91,6 +103,10 @@ GET /v1/campaigns?status=stopped`}</code>
     "targetAudience": "CTOs at SaaS companies",
     "targetOutcome": "Book sales demos",
     "valueForTarget": "Access to enterprise analytics at startup pricing",
+    "urgency": "Early-adopter pricing ends March 31st",
+    "scarcity": "Onboarding limited to 20 companies this quarter",
+    "riskReversal": "14-day free trial, cancel anytime",
+    "socialProof": "Used by 500+ SaaS companies",
     "maxBudgetDailyUsd": "10",
     "createdAt": "2026-01-30T10:00:00Z"
   }

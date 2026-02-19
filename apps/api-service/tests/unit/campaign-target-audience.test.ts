@@ -130,7 +130,7 @@ describe("POST /v1/campaigns with targetAudience", () => {
     expect(scrapeCall).toBeUndefined();
   });
 
-  it("should reject when targetAudience is missing", async () => {
+  it("should reject when targetAudience is missing with didactic error", async () => {
     const app = createApp();
     const res = await request(app)
       .post("/v1/campaigns")
@@ -147,10 +147,15 @@ describe("POST /v1/campaigns with targetAudience", () => {
       });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe("Invalid request");
+    expect(res.body.error).toContain("targetAudience");
+    expect(res.body.hint).toBeDefined();
+    const field = res.body.missingFields.find((f: { field: string }) => f.field === "targetAudience");
+    expect(field).toBeDefined();
+    expect(field.description).toContain("who you want to reach");
+    expect(field.example).toBeDefined();
   });
 
-  it("should reject when brandUrl is missing", async () => {
+  it("should reject when brandUrl is missing with didactic error", async () => {
     const app = createApp();
     const res = await request(app)
       .post("/v1/campaigns")
@@ -167,10 +172,14 @@ describe("POST /v1/campaigns with targetAudience", () => {
       });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe("Invalid request");
+    expect(res.body.error).toContain("brandUrl");
+    const field = res.body.missingFields.find((f: { field: string }) => f.field === "brandUrl");
+    expect(field).toBeDefined();
+    expect(field.description).toContain("URL");
+    expect(field.example).toBeDefined();
   });
 
-  it("should reject when targetAudience is empty string", async () => {
+  it("should reject when targetAudience is empty string with didactic error", async () => {
     const app = createApp();
     const res = await request(app)
       .post("/v1/campaigns")
@@ -188,10 +197,13 @@ describe("POST /v1/campaigns with targetAudience", () => {
       });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe("Invalid request");
+    expect(res.body.error).toContain("targetAudience");
+    const field = res.body.missingFields.find((f: { field: string }) => f.field === "targetAudience");
+    expect(field).toBeDefined();
+    expect(field.description).toBeDefined();
   });
 
-  it("should reject when urgency is missing", async () => {
+  it("should reject when urgency is missing with didactic error including description and example", async () => {
     const app = createApp();
     const res = await request(app)
       .post("/v1/campaigns")
@@ -207,10 +219,14 @@ describe("POST /v1/campaigns with targetAudience", () => {
       });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe("Invalid request");
+    expect(res.body.error).toContain("urgency");
+    const field = res.body.missingFields.find((f: { field: string }) => f.field === "urgency");
+    expect(field).toBeDefined();
+    expect(field.description).toContain("time-based");
+    expect(field.example).toContain("March");
   });
 
-  it("should reject when socialProof is empty string", async () => {
+  it("should reject when socialProof is empty string with didactic error including description and example", async () => {
     const app = createApp();
     const res = await request(app)
       .post("/v1/campaigns")
@@ -227,7 +243,11 @@ describe("POST /v1/campaigns with targetAudience", () => {
       });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe("Invalid request");
+    expect(res.body.error).toContain("socialProof");
+    const field = res.body.missingFields.find((f: { field: string }) => f.field === "socialProof");
+    expect(field).toBeDefined();
+    expect(field.description).toContain("credibility");
+    expect(field.example).toBeDefined();
   });
 
   it("should convert budget numbers to strings for campaign-service", async () => {

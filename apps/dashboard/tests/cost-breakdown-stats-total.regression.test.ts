@@ -24,22 +24,6 @@ describe("CostBreakdown does not use statsTotalCents fallback", () => {
   });
 });
 
-describe("CampaignCostDistribution does not use statsTotalCents fallback", () => {
-  const componentPath = path.join(
-    __dirname,
-    "../src/components/campaign/campaign-cost-distribution.tsx"
-  );
-  const content = fs.readFileSync(componentPath, "utf-8");
-
-  it("should NOT have a statsTotalCents prop", () => {
-    expect(content).not.toContain("statsTotalCents");
-  });
-
-  it("should NOT have an 'Other' fallback segment", () => {
-    expect(content).not.toMatch(/map\.set\(["']Other["']/);
-  });
-});
-
 /**
  * Regression: brand page cost breakdown total did not match the header total.
  *

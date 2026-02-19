@@ -40,7 +40,7 @@ Or add to MCP config:
 "Launch a cold email campaign for acme.com targeting CTOs at tech startups to book sales demos, $10/day budget"
 
 ## Available Tools
-- launch_campaign: Start new outreach campaign (target_url, target_audience, target_outcome, value_for_target, budget)
+- launch_campaign: Start new outreach campaign (target_url, target_audience, target_outcome, value_for_target, urgency, scarcity, risk_reversal, social_proof, budget)
 - get_campaign_results: Get campaign stats
 - pause_campaign / resume_campaign: Control execution
 - list_campaigns: List all campaigns
@@ -124,6 +124,10 @@ export default function SalesOutreachDocs() {
   "target_audience": "CTOs at tech startups, 10-200 employees",
   "target_outcome": "Book sales demos",
   "value_for_target": "Access to enterprise analytics at startup pricing",
+  "urgency": "Early-adopter pricing ends March 31st",
+  "scarcity": "Onboarding limited to 20 companies this quarter",
+  "risk_reversal": "14-day free trial, cancel anytime, no commitment",
+  "social_proof": "Used by 500+ SaaS companies including Vercel and Linear",
   "budget": {
     "max_daily_usd": 10
   }
