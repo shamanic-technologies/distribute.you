@@ -43,6 +43,10 @@ export const externalServices = {
     url: process.env.BRAND_SERVICE_URL || "https://brand.mcpfactory.org",
     apiKey: process.env.BRAND_SERVICE_API_KEY || "",
   },
+  runs: {
+    url: process.env.RUNS_SERVICE_URL || "https://runs.mcpfactory.org",
+    apiKey: process.env.RUNS_SERVICE_API_KEY || "",
+  },
 };
 
 interface ServiceCallOptions {

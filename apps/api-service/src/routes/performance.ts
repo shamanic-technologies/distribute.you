@@ -210,8 +210,8 @@ async function fetchAllBrands(): Promise<Array<{ id: string; domain: string | nu
   return allBrands;
 }
 
-/** Build leaderboard data from brand-service + email-gateway + emailgen.
- *  Uses brand-service as the source of truth for brands (includes all statuses). */
+/** Build leaderboard data from brand-service + runs-service + emailgen.
+ *  Uses brand-service for brands, runs-service for costs, emailgen for model stats. */
 async function buildLeaderboardData(): Promise<LeaderboardData> {
   // 1. Get all brands from brand-service and model stats from emailgen in parallel
   const [allBrands, modelStatsResult, campaignCosts] = await Promise.all([
@@ -223,28 +223,24 @@ async function buildLeaderboardData(): Promise<LeaderboardData> {
       console.warn("Failed to fetch model stats:", err);
       return { stats: [] };
     }),
-    // Also try to get campaign costs (best-effort, /campaigns/list may only return ongoing)
+    // Fetch costs from runs-service (aggregated across all run statuses)
     callExternalService<{
-      campaigns: Array<{ id: string; brandId: string | null }>;
-    }>(externalServices.campaign, "/campaigns/list").then(async ({ campaigns }) => {
-      if (!campaigns || campaigns.length === 0) return new Map<string, number>();
-      const ids = campaigns.map((c) => c.id);
-      const batchResp = await callExternalService<{
-        results: Record<string, { totalCostInUsdCents: string | null }>;
-      }>(externalServices.campaign, "/campaigns/batch-budget-usage", {
-        method: "POST",
-        body: { campaignIds: ids },
-      });
-      // Group costs by brandId
+      groups: Array<{
+        dimensions: { brandId: string };
+        totalCostInUsdCents: number;
+        actualCostInUsdCents: number;
+        runCount: number;
+      }>;
+    }>(externalServices.runs, "/v1/stats/costs?appId=mcpfactory&groupBy=brandId").then((result) => {
       const costMap = new Map<string, number>();
-      for (const c of campaigns) {
-        if (!c.brandId) continue;
-        const cents = parseFloat(batchResp.results?.[c.id]?.totalCostInUsdCents || "0") || 0;
-        costMap.set(c.brandId, (costMap.get(c.brandId) || 0) + cents);
+      for (const g of result.groups || []) {
+        if (g.dimensions.brandId) {
+          costMap.set(g.dimensions.brandId, g.actualCostInUsdCents || 0);
+        }
       }
       return costMap;
     }).catch((err) => {
-      console.warn("Failed to fetch campaign costs:", err);
+      console.warn("Failed to fetch costs from runs-service:", err);
       return new Map<string, number>();
     }),
   ]);

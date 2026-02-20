@@ -7,9 +7,11 @@
  *    lifecycle/test emails via Postmark — only broadcast (Instantly) is relevant.
  * 3. buildLeaderboardData relied on /campaigns/list which only returns ongoing
  *    campaigns, so brands was always empty when all campaigns were stopped.
+ * 4. Campaign costs came from campaign-service which only lists ongoing campaigns.
  *
  * Fix: Use brand-service as source of truth for brands (like dashboard does),
- * use correct field names, only read broadcast stats.
+ * use correct field names, only read broadcast stats,
+ * use runs-service /v1/stats/costs for costs (aggregates across all run statuses).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
@@ -28,6 +30,7 @@ vi.mock("../../src/lib/service-client.js", () => ({
     scraping: { url: "http://mock-scraping", apiKey: "k" },
     lifecycle: { url: "http://mock-lifecycle", apiKey: "k" },
     brand: { url: "http://mock-brand", apiKey: "k" },
+    runs: { url: "http://mock-runs", apiKey: "k" },
   },
   services: {
     emailgen: "http://mock-emailgen",
@@ -66,8 +69,8 @@ function makeGatewayResponse(broadcast: Record<string, number> | null, transacti
   };
 }
 
-/** Helper: set up mocks for the standard brand-service + campaign flow */
-function setupBrandMocks(brands: Array<{ id: string; domain: string | null; name: string | null; brandUrl: string | null }>) {
+/** Helper: set up mocks for the standard brand-service + runs-service flow */
+function setupBrandMocks(brands: Array<{ id: string; domain: string | null; name: string | null; brandUrl: string | null }>, costGroups: Array<{ dimensions: { brandId: string }; actualCostInUsdCents: number }> = []) {
   return (_service: any, path: string, opts: any) => {
     // Brand-service: /clerk-ids
     if (path === "/clerk-ids") {
@@ -77,13 +80,9 @@ function setupBrandMocks(brands: Array<{ id: string; domain: string | null; name
     if (path.startsWith("/brands?clerkOrgId=")) {
       return Promise.resolve({ brands });
     }
-    // Campaign-service: /campaigns/list (returns empty — all stopped)
-    if (path === "/campaigns/list") {
-      return Promise.resolve({ campaigns: [] });
-    }
-    // Campaign-service: /campaigns/batch-budget-usage
-    if (path === "/campaigns/batch-budget-usage") {
-      return Promise.resolve({ results: {} });
+    // Runs-service: /v1/stats/costs
+    if (path.startsWith("/v1/stats/costs")) {
+      return Promise.resolve({ groups: costGroups });
     }
     return null; // Will be handled by per-test overrides
   };
@@ -234,23 +233,18 @@ describe("GET /performance/leaderboard", () => {
     expect(brand.emailsReplied).toBe(0);
   });
 
-  it("should include campaign costs when /campaigns/list has data", async () => {
+  it("should include costs from runs-service /v1/stats/costs", async () => {
     const app = createApp();
     const brands = [{ id: "brand-1", domain: "acme.com", name: "Acme", brandUrl: "https://acme.com" }];
+    const costGroups = [
+      { dimensions: { brandId: "brand-1" }, actualCostInUsdCents: 8000, totalCostInUsdCents: 10000, runCount: 5 },
+    ];
 
+    const brandMock = setupBrandMocks(brands, costGroups);
     mockCallExternalService.mockImplementation((_service: any, path: string, opts: any) => {
-      if (path === "/clerk-ids") return Promise.resolve({ clerk_organization_ids: ["org-1"] });
-      if (path.startsWith("/brands?clerkOrgId=")) return Promise.resolve({ brands });
-      if (path === "/campaigns/list") {
-        return Promise.resolve({
-          campaigns: [{ id: "c1", brandId: "brand-1" }, { id: "c2", brandId: "brand-1" }],
-        });
-      }
-      if (path === "/campaigns/batch-budget-usage") {
-        return Promise.resolve({
-          results: { c1: { totalCostInUsdCents: "5000" }, c2: { totalCostInUsdCents: "3000" } },
-        });
-      }
+      const result = brandMock(_service, path, opts);
+      if (result !== null) return result;
+
       if (path === "/stats") {
         return Promise.resolve(makeGatewayResponse({ emailsSent: 10, emailsDelivered: 9, emailsOpened: 5, emailsClicked: 1, emailsReplied: 2, emailsBounced: 0 }));
       }
@@ -263,7 +257,7 @@ describe("GET /performance/leaderboard", () => {
 
     expect(res.status).toBe(200);
     const brand = res.body.brands[0];
-    // Costs from c1 (5000) + c2 (3000) = 8000
+    // Uses actualCostInUsdCents (8000), not totalCostInUsdCents (10000)
     expect(brand.totalCostUsdCents).toBe(8000);
   });
 });
