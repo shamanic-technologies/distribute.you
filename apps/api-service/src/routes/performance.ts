@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { callExternalService, externalServices } from "../lib/service-client.js";
+import { getWorkflowCategory, getWorkflowDisplayName, type WorkflowCategory } from "@mcpfactory/content";
 
 const router = Router();
 
@@ -38,6 +39,8 @@ interface BrandEntry {
 
 interface WorkflowEntry {
   workflowName: string;
+  displayName: string;
+  category: WorkflowCategory | null;
   runCount: number;
   emailsSent: number;
   emailsOpened: number;
@@ -57,6 +60,7 @@ interface LeaderboardData {
   workflows: WorkflowEntry[];
   hero: unknown;
   updatedAt: string;
+  availableCategories: WorkflowCategory[];
 }
 
 /** Fetch broadcast delivery stats from the unified email-sending service.
@@ -264,16 +268,25 @@ async function buildLeaderboardData(): Promise<LeaderboardData> {
   }));
 
   // 3. Build workflow entries directly from runs-service data (no proportional distribution)
-  const workflows: WorkflowEntry[] = (workflowStatsResult.groups || []).map((g) => ({
-    workflowName: g.dimensions.workflowName || "unknown",
-    runCount: g.runCount || 0,
-    totalCostUsdCents: Math.round(parseFloat(g.actualCostInUsdCents) || 0),
-    emailsSent: 0, emailsOpened: 0, emailsClicked: 0, emailsReplied: 0,
-    openRate: 0, clickRate: 0, replyRate: 0,
-    costPerOpenCents: null, costPerClickCents: null, costPerReplyCents: null,
-  }));
+  const workflows: WorkflowEntry[] = (workflowStatsResult.groups || []).map((g) => {
+    const name = g.dimensions.workflowName || "unknown";
+    return {
+      workflowName: name,
+      displayName: getWorkflowDisplayName(name),
+      category: getWorkflowCategory(name),
+      runCount: g.runCount || 0,
+      totalCostUsdCents: Math.round(parseFloat(g.actualCostInUsdCents) || 0),
+      emailsSent: 0, emailsOpened: 0, emailsClicked: 0, emailsReplied: 0,
+      openRate: 0, clickRate: 0, replyRate: 0,
+      costPerOpenCents: null, costPerClickCents: null, costPerReplyCents: null,
+    };
+  });
 
-  return { brands, workflows, hero: null, updatedAt: new Date().toISOString() };
+  const availableCategories = [...new Set(
+    workflows.map((w) => w.category).filter((c): c is WorkflowCategory => c !== null)
+  )];
+
+  return { brands, workflows, hero: null, updatedAt: new Date().toISOString(), availableCategories };
 }
 
 // Public route — no auth required

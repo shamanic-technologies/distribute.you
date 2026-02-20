@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { WORKFLOW_CATEGORY_LABELS } from "@mcpfactory/content";
 import {
   formatPercent,
   formatCostCents,
@@ -155,9 +156,16 @@ export function WorkflowLeaderboard({ workflows }: { workflows: WorkflowLeaderbo
           {sorted.map((wf) => (
             <tr key={wf.workflowName} className="hover:bg-gray-50">
               <td className="px-4 py-4 whitespace-nowrap">
-                <span className="text-sm font-medium text-gray-900">
-                  {formatWorkflowName(wf.workflowName)}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-900">
+                    {wf.displayName || formatWorkflowName(wf.workflowName)}
+                  </span>
+                  {wf.category && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                      {WORKFLOW_CATEGORY_LABELS[wf.category]}
+                    </span>
+                  )}
+                </div>
               </td>
               <td className="px-4 py-4 text-sm font-medium text-gray-900">{wf.runCount > 0 ? wf.runCount.toLocaleString() : "—"}</td>
               <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(wf.totalCostUsdCents)}</td>

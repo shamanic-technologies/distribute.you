@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { URLS } from "@mcpfactory/content";
 import { fetchLeaderboard } from "@/lib/fetch-leaderboard";
-import { WorkflowLeaderboard } from "@/components/leaderboard-table";
+import { WorkflowLeaderboardFiltered } from "@/components/workflow-leaderboard-filtered";
 
 export const revalidate = 300;
 
@@ -23,6 +23,7 @@ export const metadata: Metadata = {
 export default async function WorkflowsPage() {
   const data = await fetchLeaderboard();
   const workflows = data?.workflows || [];
+  const availableCategories = data?.availableCategories || [];
 
   return (
     <main className="min-h-screen bg-white">
@@ -38,9 +39,10 @@ export default async function WorkflowsPage() {
 
           {workflows.length > 0 ? (
             <>
-              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-                <WorkflowLeaderboard workflows={workflows} />
-              </div>
+              <WorkflowLeaderboardFiltered
+                workflows={workflows}
+                availableCategories={availableCategories}
+              />
               <p className="text-xs text-gray-400 mt-4 text-center">
                 Updated {data?.updatedAt ? new Date(data.updatedAt).toLocaleString() : "hourly"}.
                 All data from real campaigns.
