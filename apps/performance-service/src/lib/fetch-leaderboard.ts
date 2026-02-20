@@ -19,9 +19,9 @@ export interface BrandLeaderboardEntry {
   costPerReplyCents: number | null;
 }
 
-export interface ModelLeaderboardEntry {
-  model: string;
-  emailsGenerated: number;
+export interface WorkflowLeaderboardEntry {
+  workflowName: string;
+  runCount: number;
   emailsSent: number;
   emailsOpened: number;
   emailsClicked: number;
@@ -36,19 +36,19 @@ export interface ModelLeaderboardEntry {
 }
 
 export interface HeroStats {
-  bestConversionModel: {
-    model: string;
+  bestConversionWorkflow: {
+    workflowName: string;
     conversionRate: number;
   };
-  bestValueModel: {
-    model: string;
+  bestValueWorkflow: {
+    workflowName: string;
     conversionsPerDollar: number;
   };
 }
 
 export interface LeaderboardData {
   brands: BrandLeaderboardEntry[];
-  models: ModelLeaderboardEntry[];
+  workflows: WorkflowLeaderboardEntry[];
   hero: HeroStats | null;
   updatedAt: string;
 }
@@ -105,14 +105,12 @@ export async function fetchLeaderboard(): Promise<LeaderboardData | null> {
   }
 }
 
-export function formatModelName(model: string): string {
-  const names: Record<string, string> = {
-    "claude-opus-4-5": "Claude Opus 4.5",
-    "claude-sonnet-4-5": "Claude Sonnet 4.5",
-    "claude-sonnet-4": "Claude Sonnet 4",
-    "claude-haiku-3-5": "Claude Haiku 3.5",
-  };
-  return names[model] || model;
+export function formatWorkflowName(name: string): string {
+  // Fallback: title-case hyphenated names
+  return name
+    .split("-")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 }
 
 export function formatPercent(rate: number): string {

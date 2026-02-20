@@ -1,5 +1,5 @@
 import { URLS } from "@mcpfactory/content";
-import { fetchLeaderboard, formatPercent, formatModelName, formatCostDollars } from "@/lib/fetch-leaderboard";
+import { fetchLeaderboard, formatPercent, formatWorkflowName, formatCostDollars } from "@/lib/fetch-leaderboard";
 import { LeaderboardTabs } from "@/components/leaderboard-tabs";
 
 export const revalidate = 300;
@@ -8,7 +8,7 @@ export default async function HomePage() {
   const data = await fetchLeaderboard();
 
   const brands = data?.brands || [];
-  const models = data?.models || [];
+  const workflows = data?.workflows || [];
   const hero = data?.hero;
 
   // Compute aggregate summary numbers
@@ -16,14 +16,14 @@ export default async function HomePage() {
   const totalOpened = brands.reduce((s, b) => s + b.emailsOpened, 0);
   const totalClicked = brands.reduce((s, b) => s + b.emailsClicked, 0);
   const totalReplied = brands.reduce((s, b) => s + b.emailsReplied, 0);
-  const totalGenerated = models.reduce((s, m) => s + m.emailsGenerated, 0);
+  const totalRuns = workflows.reduce((s, w) => s + w.runCount, 0);
   const totalCostCents = brands.reduce((s, b) => s + b.totalCostUsdCents, 0);
   const avgOpenRate = totalEmails > 0 ? totalOpened / totalEmails : 0;
   const avgClickRate = totalEmails > 0 ? totalClicked / totalEmails : 0;
   const avgReplyRate = totalEmails > 0 ? totalReplied / totalEmails : 0;
 
   const hasEmails = totalEmails > 0;
-  const hasActivity = totalGenerated > 0 || totalCostCents > 0;
+  const hasActivity = totalRuns > 0 || totalCostCents > 0;
   const hasBrands = brands.length > 0;
 
   return (
@@ -47,9 +47,9 @@ export default async function HomePage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto mb-8">
                 <div className="bg-white/80 backdrop-blur rounded-xl p-4 border border-gray-200">
                   <p className="text-3xl font-bold text-gray-800">
-                    {totalGenerated > 0 ? totalGenerated.toLocaleString() : "—"}
+                    {totalRuns > 0 ? totalRuns.toLocaleString() : "—"}
                   </p>
-                  <p className="text-xs text-gray-500 mt-1">Emails Generated</p>
+                  <p className="text-xs text-gray-500 mt-1">Total Runs</p>
                 </div>
                 <div className="bg-white/80 backdrop-blur rounded-xl p-4 border border-gray-200">
                   <p className="text-3xl font-bold text-gray-800">
@@ -87,24 +87,24 @@ export default async function HomePage() {
               )}
 
               {/* Best conversion + best value cards */}
-              {hero && hero.bestConversionModel.conversionRate > 0 && (
+              {hero && hero.bestConversionWorkflow.conversionRate > 0 && (
                 <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto mb-4">
                   <div className="bg-white rounded-2xl p-6 border border-primary-200 shadow-sm">
                     <p className="text-sm text-gray-500 uppercase tracking-wider mb-1">Best Conversion Rate</p>
                     <p className="text-4xl font-bold text-primary-500 mb-1">
-                      {formatPercent(hero.bestConversionModel.conversionRate)}
+                      {formatPercent(hero.bestConversionWorkflow.conversionRate)}
                     </p>
                     <p className="text-xs text-gray-400">
-                      {formatModelName(hero.bestConversionModel.model)} — visits + replies per email
+                      {formatWorkflowName(hero.bestConversionWorkflow.workflowName)} — visits + replies per email
                     </p>
                   </div>
                   <div className="bg-white rounded-2xl p-6 border border-accent-200 shadow-sm">
                     <p className="text-sm text-gray-500 uppercase tracking-wider mb-1">Best Value</p>
                     <p className="text-4xl font-bold text-accent-500 mb-1">
-                      {hero.bestValueModel.conversionsPerDollar === 0 ? "—" : hero.bestValueModel.conversionsPerDollar.toFixed(1)}
+                      {hero.bestValueWorkflow.conversionsPerDollar === 0 ? "—" : hero.bestValueWorkflow.conversionsPerDollar.toFixed(1)}
                     </p>
                     <p className="text-xs text-gray-400">
-                      {formatModelName(hero.bestValueModel.model)} — conversions per $1 spent
+                      {formatWorkflowName(hero.bestValueWorkflow.workflowName)} — conversions per $1 spent
                     </p>
                   </div>
                 </div>
@@ -136,7 +136,7 @@ export default async function HomePage() {
             </h2>
             <p className="text-sm text-gray-500 mb-6">Click column headers to sort.</p>
 
-            <LeaderboardTabs brands={brands} models={models} />
+            <LeaderboardTabs brands={brands} workflows={workflows} />
           </div>
         </section>
       )}

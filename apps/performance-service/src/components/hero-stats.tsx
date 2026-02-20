@@ -1,5 +1,5 @@
 import { URLS } from "@mcpfactory/content";
-import { formatModelName, formatPercent, type HeroStats } from "@/lib/fetch-leaderboard";
+import { formatWorkflowName, formatPercent, type HeroStats } from "@/lib/fetch-leaderboard";
 
 export function HeroStatsSection({ hero }: { hero: HeroStats }) {
   return (
@@ -13,33 +13,33 @@ export function HeroStatsSection({ hero }: { hero: HeroStats }) {
         </h1>
         <p className="text-lg text-gray-600 mb-12 max-w-2xl mx-auto">
           We publish every metric from every campaign. No cherry-picking, no hidden numbers.
-          See exactly how our AI models perform for real clients.
+          See exactly how our workflows perform for real clients.
         </p>
 
         <div className="grid md:grid-cols-2 gap-8 max-w-2xl mx-auto">
           <div className="bg-white rounded-2xl p-8 border border-primary-200 shadow-sm">
             <p className="text-sm text-gray-500 uppercase tracking-wider mb-2">Best Conversion Rate</p>
             <p className="text-5xl font-bold text-primary-500 mb-2">
-              {formatPercent(hero.bestConversionModel.conversionRate)}
+              {formatPercent(hero.bestConversionWorkflow.conversionRate)}
             </p>
             <p className="text-sm text-gray-500">
               visits + replies per email sent
             </p>
             <p className="text-xs text-gray-400 mt-2">
-              Model: {formatModelName(hero.bestConversionModel.model)}
+              Workflow: {formatWorkflowName(hero.bestConversionWorkflow.workflowName)}
             </p>
           </div>
 
           <div className="bg-white rounded-2xl p-8 border border-accent-200 shadow-sm">
             <p className="text-sm text-gray-500 uppercase tracking-wider mb-2">Best Value</p>
             <p className="text-5xl font-bold text-accent-500 mb-2">
-              {hero.bestValueModel.conversionsPerDollar === 0 ? "—" : hero.bestValueModel.conversionsPerDollar.toFixed(1)}
+              {hero.bestValueWorkflow.conversionsPerDollar === 0 ? "—" : hero.bestValueWorkflow.conversionsPerDollar.toFixed(1)}
             </p>
             <p className="text-sm text-gray-500">
               conversions per $1 spent
             </p>
             <p className="text-xs text-gray-400 mt-2">
-              Model: {formatModelName(hero.bestValueModel.model)}
+              Workflow: {formatWorkflowName(hero.bestValueWorkflow.workflowName)}
             </p>
           </div>
         </div>

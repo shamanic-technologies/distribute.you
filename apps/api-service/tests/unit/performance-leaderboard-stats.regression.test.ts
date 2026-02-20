@@ -8,19 +8,18 @@
  * 3. buildLeaderboardData relied on /campaigns/list which only returns ongoing
  *    campaigns, so brands was always empty when all campaigns were stopped.
  * 4. Campaign costs came from campaign-service which only lists ongoing campaigns.
+ * 5. Switched to runs-service public leaderboard endpoint with string cost values.
  *
  * Fix: Use brand-service as source of truth for brands (like dashboard does),
  * use correct field names, only read broadcast stats,
- * use runs-service /v1/stats/costs for costs (aggregates across all run statuses).
+ * use runs-service /v1/stats/public/leaderboard for costs (public, cross-org, string values).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const mockCallExternalService = vi.fn();
-const mockCallService = vi.fn();
 
 vi.mock("../../src/lib/service-client.js", () => ({
   callExternalService: (...args: unknown[]) => mockCallExternalService(...args),
-  callService: (...args: unknown[]) => mockCallService(...args),
   externalServices: {
     emailSending: { url: "http://mock-email", apiKey: "k" },
     campaign: { url: "http://mock-campaign", apiKey: "k" },
@@ -49,13 +48,6 @@ function createApp() {
   return app;
 }
 
-const MOCK_MODEL_STATS = {
-  stats: [
-    { model: "claude-sonnet-4-5", count: 60 },
-    { model: "claude-opus-4-5", count: 40 },
-  ],
-};
-
 function makeGatewayResponse(broadcast: Record<string, number> | null, transactional: Record<string, number> | null = null) {
   return {
     transactional: transactional ?? {
@@ -69,8 +61,22 @@ function makeGatewayResponse(broadcast: Record<string, number> | null, transacti
   };
 }
 
-/** Helper: set up mocks for the standard brand-service + runs-service flow */
-function setupBrandMocks(brands: Array<{ id: string; domain: string | null; name: string | null; brandUrl: string | null }>, costGroups: Array<{ dimensions: { brandId: string }; actualCostInUsdCents: number }> = []) {
+/** Runs-service public leaderboard returns costs as strings */
+interface MockRunsGroup {
+  dimensions: Record<string, string>;
+  totalCostInUsdCents: string;
+  actualCostInUsdCents: string;
+  provisionedCostInUsdCents: string;
+  cancelledCostInUsdCents: string;
+  runCount: number;
+}
+
+/** Helper: set up mocks for brand-service + runs-service public leaderboard */
+function setupMocks(
+  brands: Array<{ id: string; domain: string | null; name: string | null; brandUrl: string | null }>,
+  brandCostGroups: MockRunsGroup[] = [],
+  workflowGroups: MockRunsGroup[] = [],
+) {
   return (_service: any, path: string, opts: any) => {
     // Brand-service: /clerk-ids
     if (path === "/clerk-ids") {
@@ -80,9 +86,15 @@ function setupBrandMocks(brands: Array<{ id: string; domain: string | null; name
     if (path.startsWith("/brands?clerkOrgId=")) {
       return Promise.resolve({ brands });
     }
-    // Runs-service: /v1/stats/costs
-    if (path.startsWith("/v1/stats/costs")) {
-      return Promise.resolve({ groups: costGroups });
+    // Runs-service: /v1/stats/public/leaderboard
+    if (path.startsWith("/v1/stats/public/leaderboard")) {
+      if (path.includes("groupBy=brandId")) {
+        return Promise.resolve({ groups: brandCostGroups });
+      }
+      if (path.includes("groupBy=workflowName")) {
+        return Promise.resolve({ groups: workflowGroups });
+      }
+      return Promise.resolve({ groups: [] });
     }
     return null; // Will be handled by per-test overrides
   };
@@ -97,17 +109,21 @@ describe("GET /performance/leaderboard", () => {
     vi.restoreAllMocks();
   });
 
-  it("should return brands from brand-service even when /campaigns/list returns empty", async () => {
+  it("should return brands from brand-service with workflow stats from runs-service", async () => {
     const app = createApp();
     const brands = [
       { id: "brand-1", domain: "acme.com", name: "Acme", brandUrl: "https://acme.com" },
       { id: "brand-2", domain: "widgets.com", name: "Widgets", brandUrl: "https://widgets.com" },
     ];
+    const workflowGroups: MockRunsGroup[] = [
+      { dimensions: { workflowName: "sales-cold-email-v1" }, totalCostInUsdCents: "5000.0000", actualCostInUsdCents: "4000.0000", provisionedCostInUsdCents: "1000.0000", cancelledCostInUsdCents: "0", runCount: 10 },
+      { dimensions: { workflowName: "journalist-outreach-v1" }, totalCostInUsdCents: "3000.0000", actualCostInUsdCents: "2000.0000", provisionedCostInUsdCents: "1000.0000", cancelledCostInUsdCents: "0", runCount: 5 },
+    ];
 
-    const brandMock = setupBrandMocks(brands);
+    const mock = setupMocks(brands, [], workflowGroups);
     mockCallExternalService.mockImplementation((_service: any, path: string, opts: any) => {
-      const brandResult = brandMock(_service, path, opts);
-      if (brandResult !== null) return brandResult;
+      const result = mock(_service, path, opts);
+      if (result !== null) return result;
 
       // Email-gateway stats
       if (path === "/stats") {
@@ -116,37 +132,26 @@ describe("GET /performance/leaderboard", () => {
           return Promise.resolve(makeGatewayResponse({
             emailsSent: 30, emailsDelivered: 28, emailsOpened: 15,
             emailsClicked: 3, emailsReplied: 5, emailsBounced: 2,
-            repliesWillingToMeet: 0, repliesInterested: 0,
-            repliesNotInterested: 0, repliesOutOfOffice: 0,
-            repliesUnsubscribe: 0, recipients: 30,
           }));
         }
         if (body.brandId === "brand-2") {
           return Promise.resolve(makeGatewayResponse({
             emailsSent: 20, emailsDelivered: 19, emailsOpened: 10,
             emailsClicked: 2, emailsReplied: 3, emailsBounced: 1,
-            repliesWillingToMeet: 0, repliesInterested: 0,
-            repliesNotInterested: 0, repliesOutOfOffice: 0,
-            repliesUnsubscribe: 0, recipients: 20,
           }));
         }
         return Promise.resolve(makeGatewayResponse({
           emailsSent: 50, emailsDelivered: 47, emailsOpened: 25,
           emailsClicked: 5, emailsReplied: 8, emailsBounced: 3,
-          repliesWillingToMeet: 0, repliesInterested: 0,
-          repliesNotInterested: 0, repliesOutOfOffice: 0,
-          repliesUnsubscribe: 0, recipients: 50,
         }));
       }
       return Promise.resolve(null);
     });
 
-    mockCallService.mockResolvedValue(MOCK_MODEL_STATS);
-
     const res = await request(app).get("/performance/leaderboard");
 
     expect(res.status).toBe(200);
-    // Brands should come from brand-service, NOT /campaigns/list
+    // Brands should come from brand-service
     expect(res.body.brands).toHaveLength(2);
 
     const brand1 = res.body.brands.find((b: any) => b.brandId === "brand-1");
@@ -160,21 +165,26 @@ describe("GET /performance/leaderboard", () => {
     expect(brand2).toBeDefined();
     expect(brand2.emailsSent).toBe(20);
 
-    // Model stats should be distributed proportionally
-    const sonnet = res.body.models.find((m: any) => m.model === "claude-sonnet-4-5");
-    expect(sonnet.emailsSent).toBe(30); // 60% of 50
-    const opus = res.body.models.find((m: any) => m.model === "claude-opus-4-5");
-    expect(opus.emailsSent).toBe(20); // 40% of 50
+    // Workflows should come from runs-service public endpoint
+    expect(res.body.workflows).toHaveLength(2);
+    const salesWf = res.body.workflows.find((w: any) => w.workflowName === "sales-cold-email-v1");
+    expect(salesWf).toBeDefined();
+    expect(salesWf.totalCostUsdCents).toBe(4000); // actualCostInUsdCents parsed from string
+    expect(salesWf.runCount).toBe(10);
+
+    // Workflow delivery stats distributed proportionally by cost
+    // sales: 4000/6000 = 66.7%, journalist: 2000/6000 = 33.3%
+    expect(salesWf.emailsSent).toBe(33); // Math.round(50 * 4000/6000)
   });
 
   it("should ignore transactional stats entirely", async () => {
     const app = createApp();
     const brands = [{ id: "brand-1", domain: "acme.com", name: "Acme", brandUrl: "https://acme.com" }];
 
-    const brandMock = setupBrandMocks(brands);
+    const mock = setupMocks(brands);
     mockCallExternalService.mockImplementation((_service: any, path: string, opts: any) => {
-      const brandResult = brandMock(_service, path, opts);
-      if (brandResult !== null) return brandResult;
+      const result = mock(_service, path, opts);
+      if (result !== null) return result;
 
       if (path === "/stats") {
         return Promise.resolve({
@@ -191,8 +201,6 @@ describe("GET /performance/leaderboard", () => {
       return Promise.resolve(null);
     });
 
-    mockCallService.mockResolvedValue({ stats: [{ model: "claude-sonnet-4-5", count: 10 }] });
-
     const res = await request(app).get("/performance/leaderboard");
 
     expect(res.status).toBe(200);
@@ -208,10 +216,10 @@ describe("GET /performance/leaderboard", () => {
     const app = createApp();
     const brands = [{ id: "brand-1", domain: "a.com", name: null, brandUrl: "https://a.com" }];
 
-    const brandMock = setupBrandMocks(brands);
+    const mock = setupMocks(brands);
     mockCallExternalService.mockImplementation((_service: any, path: string, opts: any) => {
-      const brandResult = brandMock(_service, path, opts);
-      if (brandResult !== null) return brandResult;
+      const result = mock(_service, path, opts);
+      if (result !== null) return result;
 
       if (path === "/stats") {
         return Promise.resolve({
@@ -222,8 +230,6 @@ describe("GET /performance/leaderboard", () => {
       return Promise.resolve(null);
     });
 
-    mockCallService.mockResolvedValue({ stats: [{ model: "claude-sonnet-4-5", count: 5 }] });
-
     const res = await request(app).get("/performance/leaderboard");
 
     expect(res.status).toBe(200);
@@ -233,16 +239,19 @@ describe("GET /performance/leaderboard", () => {
     expect(brand.emailsReplied).toBe(0);
   });
 
-  it("should include costs from runs-service /v1/stats/costs", async () => {
+  it("should parseFloat string cost values from runs-service public leaderboard", async () => {
     const app = createApp();
     const brands = [{ id: "brand-1", domain: "acme.com", name: "Acme", brandUrl: "https://acme.com" }];
-    const costGroups = [
-      { dimensions: { brandId: "brand-1" }, actualCostInUsdCents: 8000, totalCostInUsdCents: 10000, runCount: 5 },
+    const brandCostGroups: MockRunsGroup[] = [
+      { dimensions: { brandId: "brand-1" }, totalCostInUsdCents: "10000.5000000000", actualCostInUsdCents: "8000.3000000000", provisionedCostInUsdCents: "2000.2000000000", cancelledCostInUsdCents: "0", runCount: 5 },
+    ];
+    const workflowGroups: MockRunsGroup[] = [
+      { dimensions: { workflowName: "cold-email-v1" }, totalCostInUsdCents: "10000.5000000000", actualCostInUsdCents: "8000.3000000000", provisionedCostInUsdCents: "2000.2000000000", cancelledCostInUsdCents: "0", runCount: 5 },
     ];
 
-    const brandMock = setupBrandMocks(brands, costGroups);
+    const mock = setupMocks(brands, brandCostGroups, workflowGroups);
     mockCallExternalService.mockImplementation((_service: any, path: string, opts: any) => {
-      const result = brandMock(_service, path, opts);
+      const result = mock(_service, path, opts);
       if (result !== null) return result;
 
       if (path === "/stats") {
@@ -251,14 +260,17 @@ describe("GET /performance/leaderboard", () => {
       return Promise.resolve(null);
     });
 
-    mockCallService.mockResolvedValue({ stats: [{ model: "claude-sonnet-4-5", count: 10 }] });
-
     const res = await request(app).get("/performance/leaderboard");
 
     expect(res.status).toBe(200);
     const brand = res.body.brands[0];
-    // Uses actualCostInUsdCents (8000), not totalCostInUsdCents (10000)
+    // parseFloat("8000.3000000000") → 8000.3, Math.round → 8000
     expect(brand.totalCostUsdCents).toBe(8000);
+
+    const wf = res.body.workflows[0];
+    expect(wf.totalCostUsdCents).toBe(8000);
+    expect(wf.workflowName).toBe("cold-email-v1");
+    expect(wf.runCount).toBe(5);
   });
 });
 
@@ -283,7 +295,7 @@ describe("Regression: performance leaderboard must use broadcast-only stats", ()
     expect(content).not.toMatch(/[bt]\.replied\b/);
   });
 
-  it("should use brand-service as data source, not only /campaigns/list", () => {
+  it("should use brand-service and runs-service public leaderboard", () => {
     const fs = require("fs");
     const path = require("path");
     const content = fs.readFileSync(
@@ -294,5 +306,7 @@ describe("Regression: performance leaderboard must use broadcast-only stats", ()
     expect(content).toContain("fetchAllBrands");
     expect(content).toContain("/clerk-ids");
     expect(content).toContain("/brands?clerkOrgId=");
+    expect(content).toContain("/v1/stats/public/leaderboard");
+    expect(content).toContain("parseFloat");
   });
 });
