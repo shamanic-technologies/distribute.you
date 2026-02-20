@@ -136,7 +136,7 @@ export default async function HomePage() {
             </h2>
             <p className="text-sm text-gray-500 mb-6">Click column headers to sort.</p>
 
-            <LeaderboardTabs brands={brands} workflows={workflows} />
+            <LeaderboardTabs brands={brands} workflows={workflows} availableCategories={data?.availableCategories || []} />
           </div>
         </section>
       )}

@@ -1,3 +1,5 @@
+import type { WorkflowCategory } from "@mcpfactory/content";
+
 const API_SERVICE_URL = process.env.API_SERVICE_URL || "http://localhost:3000";
 const BRAND_SERVICE_URL = process.env.BRAND_SERVICE_URL;
 
@@ -21,6 +23,8 @@ export interface BrandLeaderboardEntry {
 
 export interface WorkflowLeaderboardEntry {
   workflowName: string;
+  displayName: string;
+  category: WorkflowCategory | null;
   runCount: number;
   emailsSent: number;
   emailsOpened: number;
@@ -51,6 +55,7 @@ export interface LeaderboardData {
   workflows: WorkflowLeaderboardEntry[];
   hero: HeroStats | null;
   updatedAt: string;
+  availableCategories: WorkflowCategory[];
 }
 
 export async function fetchLeaderboard(): Promise<LeaderboardData | null> {

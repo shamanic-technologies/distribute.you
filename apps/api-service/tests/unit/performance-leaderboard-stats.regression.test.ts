@@ -9,10 +9,12 @@
  *    campaigns, so brands was always empty when all campaigns were stopped.
  * 4. Campaign costs came from campaign-service which only lists ongoing campaigns.
  * 5. Switched to runs-service public leaderboard endpoint with string cost values.
+ * 6. Added workflow category filtering using shared content mapping.
  *
  * Fix: Use brand-service as source of truth for brands (like dashboard does),
  * use correct field names, only read broadcast stats,
  * use runs-service /v1/stats/public/leaderboard for costs (public, cross-org, string values).
+ * Categories come from @mcpfactory/content workflow definitions (prefix matching).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
@@ -172,6 +174,19 @@ describe("GET /performance/leaderboard", () => {
     expect(salesWf.totalCostUsdCents).toBe(4000); // actualCostInUsdCents parsed from string
     expect(salesWf.runCount).toBe(10);
 
+    // Workflow category and display name from shared content mapping
+    expect(salesWf.category).toBe("sales");
+    expect(salesWf.displayName).toBe("Sales Cold Email");
+
+    const journalistWf = res.body.workflows.find((w: any) => w.workflowName === "journalist-outreach-v1");
+    expect(journalistWf).toBeDefined();
+    expect(journalistWf.category).toBe("pr");
+    expect(journalistWf.displayName).toBe("Journalist Outreach");
+
+    // availableCategories should list both categories
+    expect(res.body.availableCategories).toContain("sales");
+    expect(res.body.availableCategories).toContain("pr");
+
     // Workflow delivery stats distributed proportionally by cost
     // sales: 4000/6000 = 66.7%, journalist: 2000/6000 = 33.3%
     expect(salesWf.emailsSent).toBe(33); // Math.round(50 * 4000/6000)
@@ -271,6 +286,34 @@ describe("GET /performance/leaderboard", () => {
     expect(wf.totalCostUsdCents).toBe(8000);
     expect(wf.workflowName).toBe("cold-email-v1");
     expect(wf.runCount).toBe(5);
+    // "cold-email-v1" matches the "cold-email" pattern → category "sales"
+    expect(wf.category).toBe("sales");
+    expect(wf.displayName).toBe("Cold Email");
+  });
+
+  it("should return null category for unknown workflow names", async () => {
+    const app = createApp();
+    const brands = [{ id: "brand-1", domain: "acme.com", name: "Acme", brandUrl: "https://acme.com" }];
+    const workflowGroups: MockRunsGroup[] = [
+      { dimensions: { workflowName: "unknown-workflow-v1" }, totalCostInUsdCents: "1000.0000", actualCostInUsdCents: "1000.0000", provisionedCostInUsdCents: "0", cancelledCostInUsdCents: "0", runCount: 2 },
+    ];
+
+    const mock = setupMocks(brands, [], workflowGroups);
+    mockCallExternalService.mockImplementation((_service: any, path: string, opts: any) => {
+      const result = mock(_service, path, opts);
+      if (result !== null) return result;
+      if (path === "/stats") return Promise.resolve(makeGatewayResponse(null));
+      return Promise.resolve(null);
+    });
+
+    const res = await request(app).get("/performance/leaderboard");
+
+    expect(res.status).toBe(200);
+    const wf = res.body.workflows[0];
+    expect(wf.category).toBeNull();
+    expect(wf.displayName).toBe("Unknown Workflow V1"); // fallback title-case
+    // Unknown categories should not appear in availableCategories
+    expect(res.body.availableCategories).toHaveLength(0);
   });
 });
 
@@ -308,5 +351,19 @@ describe("Regression: performance leaderboard must use broadcast-only stats", ()
     expect(content).toContain("/brands?clerkOrgId=");
     expect(content).toContain("/v1/stats/public/leaderboard");
     expect(content).toContain("parseFloat");
+  });
+
+  it("should use workflow category mapping from shared content", () => {
+    const fs = require("fs");
+    const path = require("path");
+    const content = fs.readFileSync(
+      path.join(__dirname, "../../src/routes/performance.ts"),
+      "utf-8"
+    );
+
+    expect(content).toContain("getWorkflowCategory");
+    expect(content).toContain("getWorkflowDisplayName");
+    expect(content).toContain("@mcpfactory/content");
+    expect(content).toContain("availableCategories");
   });
 });

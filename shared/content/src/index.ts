@@ -18,3 +18,10 @@ export {
 } from "./features.js";
 export type { Feature, Step, FaqItem, SupportedClient, ByokProvider } from "./features.js";
 export { BRAND } from "./brand.js";
+export {
+  WORKFLOW_DEFINITIONS,
+  WORKFLOW_CATEGORY_LABELS,
+  getWorkflowCategory,
+  getWorkflowDisplayName,
+} from "./workflows.js";
+export type { WorkflowCategory, WorkflowDefinition } from "./workflows.js";
