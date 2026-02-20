@@ -1,17 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { BrandLeaderboard, ModelLeaderboard } from "./leaderboard-table";
-import type { BrandLeaderboardEntry, ModelLeaderboardEntry } from "@/lib/fetch-leaderboard";
+import { BrandLeaderboard, WorkflowLeaderboard } from "./leaderboard-table";
+import type { BrandLeaderboardEntry, WorkflowLeaderboardEntry } from "@/lib/fetch-leaderboard";
 
-type Tab = "brands" | "models";
+type Tab = "brands" | "workflows";
 
 export function LeaderboardTabs({
   brands,
-  models,
+  workflows,
 }: {
   brands: BrandLeaderboardEntry[];
-  models: ModelLeaderboardEntry[];
+  workflows: WorkflowLeaderboardEntry[];
 }) {
   const [tab, setTab] = useState<Tab>("brands");
 
@@ -29,14 +29,14 @@ export function LeaderboardTabs({
           By Brand {brands.length > 0 && <span className="text-xs text-gray-400 ml-1">({brands.length})</span>}
         </button>
         <button
-          onClick={() => setTab("models")}
+          onClick={() => setTab("workflows")}
           className={`px-5 py-2 rounded-md text-sm font-medium transition ${
-            tab === "models"
+            tab === "workflows"
               ? "bg-white text-gray-900 shadow-sm"
               : "text-gray-500 hover:text-gray-700"
           }`}
         >
-          By Model {models.length > 0 && <span className="text-xs text-gray-400 ml-1">({models.length})</span>}
+          By Workflow {workflows.length > 0 && <span className="text-xs text-gray-400 ml-1">({workflows.length})</span>}
         </button>
       </div>
 
@@ -47,10 +47,10 @@ export function LeaderboardTabs({
           ) : (
             <div className="text-center py-12 text-gray-500">No brand data yet.</div>
           )
-        ) : models.length > 0 ? (
-          <ModelLeaderboard models={models} />
+        ) : workflows.length > 0 ? (
+          <WorkflowLeaderboard workflows={workflows} />
         ) : (
-          <div className="text-center py-12 text-gray-500">No model data yet.</div>
+          <div className="text-center py-12 text-gray-500">No workflow data yet.</div>
         )}
       </div>
     </div>

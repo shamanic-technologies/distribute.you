@@ -5,14 +5,14 @@ import Image from "next/image";
 import {
   formatPercent,
   formatCostCents,
-  formatModelName,
+  formatWorkflowName,
   type BrandLeaderboardEntry,
-  type ModelLeaderboardEntry,
+  type WorkflowLeaderboardEntry,
 } from "@/lib/fetch-leaderboard";
 
 const LOGO_DEV_TOKEN = process.env.NEXT_PUBLIC_LOGO_DEV_TOKEN;
 
-type SortKey = "openRate" | "clickRate" | "replyRate" | "costPerOpenCents" | "costPerClickCents" | "costPerReplyCents" | "emailsSent" | "totalCostUsdCents" | "emailsGenerated";
+type SortKey = "openRate" | "clickRate" | "replyRate" | "costPerOpenCents" | "costPerClickCents" | "costPerReplyCents" | "emailsSent" | "totalCostUsdCents" | "runCount";
 
 function SortHeader({
   label,
@@ -115,8 +115,8 @@ export function BrandLeaderboard({ brands }: { brands: BrandLeaderboardEntry[] }
   );
 }
 
-export function ModelLeaderboard({ models }: { models: ModelLeaderboardEntry[] }) {
-  const [sortKey, setSortKey] = useState<SortKey>("emailsGenerated");
+export function WorkflowLeaderboard({ workflows }: { workflows: WorkflowLeaderboardEntry[] }) {
+  const [sortKey, setSortKey] = useState<SortKey>("totalCostUsdCents");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   function handleSort(key: SortKey) {
@@ -128,9 +128,9 @@ export function ModelLeaderboard({ models }: { models: ModelLeaderboardEntry[] }
     }
   }
 
-  const sorted = [...models].sort((a, b) => {
-    const av = a[sortKey as keyof ModelLeaderboardEntry] ?? 0;
-    const bv = b[sortKey as keyof ModelLeaderboardEntry] ?? 0;
+  const sorted = [...workflows].sort((a, b) => {
+    const av = a[sortKey as keyof WorkflowLeaderboardEntry] ?? 0;
+    const bv = b[sortKey as keyof WorkflowLeaderboardEntry] ?? 0;
     return sortDir === "desc" ? Number(bv) - Number(av) : Number(av) - Number(bv);
   });
 
@@ -140,9 +140,9 @@ export function ModelLeaderboard({ models }: { models: ModelLeaderboardEntry[] }
         <thead className="bg-gray-50">
           <tr>
             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Model
+              Workflow
             </th>
-            <SortHeader label="Generated" sortKey="emailsGenerated" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+            <SortHeader label="Runs" sortKey="runCount" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
             <SortHeader label="Spent" sortKey="totalCostUsdCents" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
             <SortHeader label="Sent" sortKey="emailsSent" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
             <SortHeader label="% Opens" sortKey="openRate" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
@@ -152,20 +152,20 @@ export function ModelLeaderboard({ models }: { models: ModelLeaderboardEntry[] }
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
-          {sorted.map((model) => (
-            <tr key={model.model} className="hover:bg-gray-50">
+          {sorted.map((wf) => (
+            <tr key={wf.workflowName} className="hover:bg-gray-50">
               <td className="px-4 py-4 whitespace-nowrap">
                 <span className="text-sm font-medium text-gray-900">
-                  {formatModelName(model.model)}
+                  {formatWorkflowName(wf.workflowName)}
                 </span>
               </td>
-              <td className="px-4 py-4 text-sm font-medium text-gray-900">{model.emailsGenerated > 0 ? model.emailsGenerated.toLocaleString() : "—"}</td>
-              <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(model.totalCostUsdCents)}</td>
-              <td className="px-4 py-4 text-sm text-gray-600">{model.emailsSent > 0 ? model.emailsSent.toLocaleString() : "—"}</td>
-              <td className="px-4 py-4 text-sm text-gray-600">{model.emailsSent > 0 ? formatPercent(model.openRate) : "—"}</td>
-              <td className="px-4 py-4 text-sm text-gray-600">{model.emailsSent > 0 ? formatPercent(model.clickRate) : "—"}</td>
-              <td className="px-4 py-4 text-sm text-gray-600">{model.emailsSent > 0 ? formatPercent(model.replyRate) : "—"}</td>
-              <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(model.costPerReplyCents)}</td>
+              <td className="px-4 py-4 text-sm font-medium text-gray-900">{wf.runCount > 0 ? wf.runCount.toLocaleString() : "—"}</td>
+              <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(wf.totalCostUsdCents)}</td>
+              <td className="px-4 py-4 text-sm text-gray-600">{wf.emailsSent > 0 ? wf.emailsSent.toLocaleString() : "—"}</td>
+              <td className="px-4 py-4 text-sm text-gray-600">{wf.emailsSent > 0 ? formatPercent(wf.openRate) : "—"}</td>
+              <td className="px-4 py-4 text-sm text-gray-600">{wf.emailsSent > 0 ? formatPercent(wf.clickRate) : "—"}</td>
+              <td className="px-4 py-4 text-sm text-gray-600">{wf.emailsSent > 0 ? formatPercent(wf.replyRate) : "—"}</td>
+              <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(wf.costPerReplyCents)}</td>
             </tr>
           ))}
         </tbody>

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { callExternalService, externalServices, callService, services } from "../lib/service-client.js";
+import { callExternalService, externalServices } from "../lib/service-client.js";
 
 const router = Router();
 
@@ -36,9 +36,9 @@ interface BrandEntry {
   costPerReplyCents: number | null;
 }
 
-interface ModelEntry {
-  model: string;
-  emailsGenerated: number;
+interface WorkflowEntry {
+  workflowName: string;
+  runCount: number;
   emailsSent: number;
   emailsOpened: number;
   emailsClicked: number;
@@ -54,7 +54,7 @@ interface ModelEntry {
 
 interface LeaderboardData {
   brands: BrandEntry[];
-  models: ModelEntry[];
+  workflows: WorkflowEntry[];
   hero: unknown;
   updatedAt: string;
 }
@@ -126,32 +126,32 @@ async function enrichWithDeliveryStats(data: LeaderboardData): Promise<void> {
     })
   );
 
-  // Fetch aggregate stats for model leaderboard using appId filter
+  // Fetch aggregate stats for workflow leaderboard using appId filter
   const aggregateStats = await fetchBroadcastDeliveryStats({ appId: "mcpfactory" });
 
-  if (aggregateStats.emailsSent > 0 && data.models.length > 0) {
-    // Distribute delivery stats across models proportionally by emailsGenerated
-    const totalGenerated = data.models.reduce((s, m) => s + m.emailsGenerated, 0);
+  if (aggregateStats.emailsSent > 0 && data.workflows.length > 0) {
+    // Distribute delivery stats across workflows proportionally by cost
+    const totalWorkflowCost = data.workflows.reduce((s, w) => s + w.totalCostUsdCents, 0);
 
-    for (const model of data.models) {
-      const ratio = totalGenerated > 0 ? model.emailsGenerated / totalGenerated : 1 / data.models.length;
-      const modelStats: DeliveryStats = {
+    for (const wf of data.workflows) {
+      const ratio = totalWorkflowCost > 0 ? wf.totalCostUsdCents / totalWorkflowCost : 1 / data.workflows.length;
+      const wfStats: DeliveryStats = {
         emailsSent: Math.round(aggregateStats.emailsSent * ratio),
         emailsOpened: Math.round(aggregateStats.emailsOpened * ratio),
         emailsClicked: Math.round(aggregateStats.emailsClicked * ratio),
         emailsReplied: Math.round(aggregateStats.emailsReplied * ratio),
         emailsBounced: Math.round(aggregateStats.emailsBounced * ratio),
       };
-      applyStatsToEntry(model, modelStats);
+      applyStatsToEntry(wf, wfStats);
     }
 
     // Recompute hero stats
-    const withConversion = data.models.map((m) => ({
-      model: m.model,
-      conversionRate: m.emailsSent > 0 ? (m.emailsClicked + m.emailsReplied) / m.emailsSent : 0,
+    const withConversion = data.workflows.map((w) => ({
+      workflowName: w.workflowName,
+      conversionRate: w.emailsSent > 0 ? (w.emailsClicked + w.emailsReplied) / w.emailsSent : 0,
       conversionsPerDollar:
-        m.totalCostUsdCents > 0
-          ? ((m.emailsClicked + m.emailsReplied) / m.totalCostUsdCents) * 100
+        w.totalCostUsdCents > 0
+          ? ((w.emailsClicked + w.emailsReplied) / w.totalCostUsdCents) * 100
           : 0,
     }));
 
@@ -159,12 +159,12 @@ async function enrichWithDeliveryStats(data: LeaderboardData): Promise<void> {
     const bestValue = withConversion.reduce((a, b) => (a.conversionsPerDollar > b.conversionsPerDollar ? a : b));
 
     data.hero = {
-      bestConversionModel: {
-        model: bestConversion.model,
+      bestConversionWorkflow: {
+        workflowName: bestConversion.workflowName,
         conversionRate: Math.round(bestConversion.conversionRate * 10000) / 10000,
       },
-      bestValueModel: {
-        model: bestValue.model,
+      bestValueWorkflow: {
+        workflowName: bestValue.workflowName,
         conversionsPerDollar: Math.round(bestValue.conversionsPerDollar * 100) / 100,
       },
     };
@@ -210,32 +210,39 @@ async function fetchAllBrands(): Promise<Array<{ id: string; domain: string | nu
   return allBrands;
 }
 
-/** Build leaderboard data from brand-service + runs-service + emailgen.
- *  Uses brand-service for brands, runs-service for costs, emailgen for model stats. */
+/** Response shape from runs-service /v1/stats/public/leaderboard (costs are strings). */
+interface RunsStatsGroup {
+  dimensions: Record<string, string>;
+  totalCostInUsdCents: string;
+  actualCostInUsdCents: string;
+  provisionedCostInUsdCents: string;
+  cancelledCostInUsdCents: string;
+  runCount: number;
+}
+
+/** Build leaderboard data from brand-service + runs-service public endpoint.
+ *  Uses brand-service for brands, runs-service for costs + workflows. */
 async function buildLeaderboardData(): Promise<LeaderboardData> {
-  // 1. Get all brands from brand-service and model stats from emailgen in parallel
-  const [allBrands, modelStatsResult, campaignCosts] = await Promise.all([
+  // 1. Get brands + workflow stats + brand costs in parallel
+  const [allBrands, workflowStatsResult, brandCosts] = await Promise.all([
     fetchAllBrands(),
-    callService<{ stats: Array<{ model: string; count: number }> }>(
-      services.emailgen, "/stats/by-model",
-      { method: "POST", body: { appId: "mcpfactory" } }
+    // Workflow stats from runs-service public endpoint
+    callExternalService<{ groups: RunsStatsGroup[] }>(
+      externalServices.runs,
+      "/v1/stats/public/leaderboard?appId=mcpfactory&groupBy=workflowName"
     ).catch((err) => {
-      console.warn("Failed to fetch model stats:", err);
-      return { stats: [] };
+      console.warn("Failed to fetch workflow stats:", err);
+      return { groups: [] as RunsStatsGroup[] };
     }),
-    // Fetch costs from runs-service (aggregated across all run statuses)
-    callExternalService<{
-      groups: Array<{
-        dimensions: { brandId: string };
-        totalCostInUsdCents: number;
-        actualCostInUsdCents: number;
-        runCount: number;
-      }>;
-    }>(externalServices.runs, "/v1/stats/costs?appId=mcpfactory&groupBy=brandId").then((result) => {
+    // Brand costs from runs-service public endpoint
+    callExternalService<{ groups: RunsStatsGroup[] }>(
+      externalServices.runs,
+      "/v1/stats/public/leaderboard?appId=mcpfactory&groupBy=brandId"
+    ).then((result) => {
       const costMap = new Map<string, number>();
       for (const g of result.groups || []) {
         if (g.dimensions.brandId) {
-          costMap.set(g.dimensions.brandId, g.actualCostInUsdCents || 0);
+          costMap.set(g.dimensions.brandId, Math.round(parseFloat(g.actualCostInUsdCents) || 0));
         }
       }
       return costMap;
@@ -250,29 +257,23 @@ async function buildLeaderboardData(): Promise<LeaderboardData> {
     brandId: b.id,
     brandUrl: b.brandUrl,
     brandDomain: b.domain,
-    totalCostUsdCents: campaignCosts.get(b.id) || 0,
+    totalCostUsdCents: brandCosts.get(b.id) || 0,
     emailsSent: 0, emailsOpened: 0, emailsClicked: 0, emailsReplied: 0,
     openRate: 0, clickRate: 0, replyRate: 0,
     costPerOpenCents: null, costPerClickCents: null, costPerReplyCents: null,
   }));
 
-  // 3. Build model entries
-  const modelStats = modelStatsResult.stats || [];
-  const totalCostAllBrands = brands.reduce((s, b) => s + b.totalCostUsdCents, 0);
-  const totalGenerated = modelStats.reduce((s, m) => s + m.count, 0);
-
-  const models: ModelEntry[] = modelStats.map((m) => ({
-    model: m.model,
-    emailsGenerated: m.count,
-    totalCostUsdCents: totalGenerated > 0 && totalCostAllBrands > 0
-      ? Math.round(totalCostAllBrands * (m.count / totalGenerated))
-      : 0,
+  // 3. Build workflow entries directly from runs-service data (no proportional distribution)
+  const workflows: WorkflowEntry[] = (workflowStatsResult.groups || []).map((g) => ({
+    workflowName: g.dimensions.workflowName || "unknown",
+    runCount: g.runCount || 0,
+    totalCostUsdCents: Math.round(parseFloat(g.actualCostInUsdCents) || 0),
     emailsSent: 0, emailsOpened: 0, emailsClicked: 0, emailsReplied: 0,
     openRate: 0, clickRate: 0, replyRate: 0,
     costPerOpenCents: null, costPerClickCents: null, costPerReplyCents: null,
   }));
 
-  return { brands, models, hero: null, updatedAt: new Date().toISOString() };
+  return { brands, workflows, hero: null, updatedAt: new Date().toISOString() };
 }
 
 // Public route — no auth required

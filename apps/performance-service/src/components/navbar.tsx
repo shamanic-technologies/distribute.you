@@ -14,7 +14,7 @@ export function Navbar() {
               By Brand
             </Link>
             <Link href="/models" className="text-gray-600 hover:text-primary-600 transition">
-              By Model
+              By Workflow
             </Link>
             <Link href="/prompts" className="text-gray-600 hover:text-primary-600 transition">
               By Prompt
