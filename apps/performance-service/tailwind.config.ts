@@ -50,6 +50,15 @@ const config: Config = {
         display: ["Fredoka", "system-ui", "-apple-system", "sans-serif"],
         sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
       },
+      keyframes: {
+        "slide-in": {
+          from: { transform: "translateX(100%)" },
+          to: { transform: "translateX(0)" },
+        },
+      },
+      animation: {
+        "slide-in": "slide-in 200ms ease-out",
+      },
     },
   },
   plugins: [],
