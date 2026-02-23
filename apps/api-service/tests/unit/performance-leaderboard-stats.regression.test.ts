@@ -10,10 +10,13 @@
  * 4. Campaign costs came from campaign-service which only lists ongoing campaigns.
  * 5. Switched to runs-service public leaderboard endpoint with string cost values.
  * 6. Workflows use {category}-{channel}-{audienceType}-{signatureName} naming.
+ * 7. Per-workflow email stats via email-gateway groupBy instead of proportional distribution.
+ * 8. Reply qualification stats (repliesInterested) from email-gateway.
  *
  * Fix: Use brand-service as source of truth for brands (like dashboard does),
  * use correct field names, only read broadcast stats,
  * use runs-service /v1/stats/public/leaderboard for costs (public, cross-org, string values).
+ * Per-workflow email stats via email-gateway groupBy: "workflowName".
  * Categories parsed from workflow name format via @mcpfactory/content.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -50,16 +53,30 @@ function createApp() {
   return app;
 }
 
-function makeGatewayResponse(broadcast: Record<string, number> | null, transactional: Record<string, number> | null = null) {
+function makeBroadcastStats(overrides: Partial<Record<string, number>> = {}) {
   return {
-    transactional: transactional ?? {
-      emailsSent: 100, emailsDelivered: 95, emailsOpened: 50,
-      emailsClicked: 10, emailsReplied: 20, emailsBounced: 5,
-      repliesWillingToMeet: 0, repliesInterested: 0,
-      repliesNotInterested: 0, repliesOutOfOffice: 0,
-      repliesUnsubscribe: 0, recipients: 100,
-    },
-    broadcast,
+    emailsSent: 0, emailsDelivered: 0, emailsOpened: 0,
+    emailsClicked: 0, emailsReplied: 0, emailsBounced: 0,
+    repliesWillingToMeet: 0, repliesInterested: 0,
+    repliesNotInterested: 0, repliesOutOfOffice: 0,
+    repliesUnsubscribe: 0, recipients: 0,
+    ...overrides,
+  };
+}
+
+function makeGatewayResponse(broadcast: Record<string, number> | null) {
+  return {
+    transactional: makeBroadcastStats({ emailsSent: 100, emailsOpened: 50 }),
+    broadcast: broadcast ? makeBroadcastStats(broadcast) : null,
+  };
+}
+
+function makeGroupedGatewayResponse(groups: Array<{ key: string; broadcast: Record<string, number> }>) {
+  return {
+    groups: groups.map((g) => ({
+      key: g.key,
+      broadcast: makeBroadcastStats(g.broadcast),
+    })),
   };
 }
 
@@ -111,7 +128,7 @@ describe("GET /performance/leaderboard", () => {
     vi.restoreAllMocks();
   });
 
-  it("should return brands from brand-service with workflow stats from runs-service", async () => {
+  it("should return brands from brand-service with exact per-workflow stats from email-gateway", async () => {
     const app = createApp();
     const brands = [
       { id: "brand-1", domain: "acme.com", name: "Acme", brandUrl: "https://acme.com" },
@@ -130,22 +147,23 @@ describe("GET /performance/leaderboard", () => {
       // Email-gateway stats
       if (path === "/stats") {
         const body = opts?.body || {};
+
+        // Per-workflow grouped response
+        if (body.groupBy === "workflowName") {
+          return Promise.resolve(makeGroupedGatewayResponse([
+            { key: "sales-email-cold-outreach-sienna", broadcast: { emailsSent: 30, emailsOpened: 15, emailsClicked: 3, emailsReplied: 5, repliesWillingToMeet: 2, repliesInterested: 1 } },
+            { key: "sales-email-cold-outreach-darmstadt", broadcast: { emailsSent: 20, emailsOpened: 10, emailsClicked: 2, emailsReplied: 3, repliesWillingToMeet: 1, repliesInterested: 0 } },
+          ]));
+        }
+
+        // Per-brand flat response
         if (body.brandId === "brand-1") {
-          return Promise.resolve(makeGatewayResponse({
-            emailsSent: 30, emailsDelivered: 28, emailsOpened: 15,
-            emailsClicked: 3, emailsReplied: 5, emailsBounced: 2,
-          }));
+          return Promise.resolve(makeGatewayResponse({ emailsSent: 30, emailsOpened: 15, emailsClicked: 3, emailsReplied: 5 }));
         }
         if (body.brandId === "brand-2") {
-          return Promise.resolve(makeGatewayResponse({
-            emailsSent: 20, emailsDelivered: 19, emailsOpened: 10,
-            emailsClicked: 2, emailsReplied: 3, emailsBounced: 1,
-          }));
+          return Promise.resolve(makeGatewayResponse({ emailsSent: 20, emailsOpened: 10, emailsClicked: 2, emailsReplied: 3 }));
         }
-        return Promise.resolve(makeGatewayResponse({
-          emailsSent: 50, emailsDelivered: 47, emailsOpened: 25,
-          emailsClicked: 5, emailsReplied: 8, emailsBounced: 3,
-        }));
+        return Promise.resolve(makeGatewayResponse(null));
       }
       return Promise.resolve(null);
     });
@@ -167,14 +185,19 @@ describe("GET /performance/leaderboard", () => {
     expect(brand2).toBeDefined();
     expect(brand2.emailsSent).toBe(20);
 
-    // Workflows should come from runs-service public endpoint
+    // Workflows should have exact per-workflow stats (not proportional)
     expect(res.body.workflows).toHaveLength(2);
     const siennaWf = res.body.workflows.find((w: any) => w.workflowName === "sales-email-cold-outreach-sienna");
     expect(siennaWf).toBeDefined();
-    expect(siennaWf.totalCostUsdCents).toBe(4000); // actualCostInUsdCents parsed from string
+    expect(siennaWf.totalCostUsdCents).toBe(4000);
     expect(siennaWf.runCount).toBe(10);
+    expect(siennaWf.emailsSent).toBe(30); // Exact, not proportional
+    expect(siennaWf.emailsOpened).toBe(15);
+    expect(siennaWf.emailsReplied).toBe(5);
+    expect(siennaWf.repliesInterested).toBe(3); // willingToMeet(2) + interested(1)
+    expect(siennaWf.interestedRate).toBeGreaterThan(0);
 
-    // New format: category parsed from name, signatureName extracted
+    // Category/signature parsing
     expect(siennaWf.category).toBe("sales");
     expect(siennaWf.displayName).toBe("Sienna");
     expect(siennaWf.signatureName).toBe("sienna");
@@ -182,16 +205,11 @@ describe("GET /performance/leaderboard", () => {
 
     const darmstadtWf = res.body.workflows.find((w: any) => w.workflowName === "sales-email-cold-outreach-darmstadt");
     expect(darmstadtWf).toBeDefined();
-    expect(darmstadtWf.category).toBe("sales");
-    expect(darmstadtWf.displayName).toBe("Darmstadt");
-    expect(darmstadtWf.signatureName).toBe("darmstadt");
+    expect(darmstadtWf.emailsSent).toBe(20); // Exact per-workflow
+    expect(darmstadtWf.repliesInterested).toBe(1); // willingToMeet(1) + interested(0)
 
     // availableCategories
     expect(res.body.availableCategories).toContain("sales");
-
-    // Workflow delivery stats distributed proportionally by cost
-    // sienna: 4000/6000 = 66.7%, darmstadt: 2000/6000 = 33.3%
-    expect(siennaWf.emailsSent).toBe(33); // Math.round(50 * 4000/6000)
   });
 
   it("should ignore transactional stats entirely", async () => {
@@ -204,15 +222,13 @@ describe("GET /performance/leaderboard", () => {
       if (result !== null) return result;
 
       if (path === "/stats") {
+        const body = opts?.body || {};
+        if (body.groupBy === "workflowName") {
+          return Promise.resolve({ groups: [] });
+        }
         return Promise.resolve({
-          transactional: {
-            emailsSent: 500, emailsDelivered: 490, emailsOpened: 300,
-            emailsClicked: 50, emailsReplied: 100, emailsBounced: 10,
-          },
-          broadcast: {
-            emailsSent: 10, emailsDelivered: 9, emailsOpened: 5,
-            emailsClicked: 1, emailsReplied: 2, emailsBounced: 1,
-          },
+          transactional: makeBroadcastStats({ emailsSent: 500, emailsOpened: 300 }),
+          broadcast: makeBroadcastStats({ emailsSent: 10, emailsOpened: 5, emailsClicked: 1, emailsReplied: 2 }),
         });
       }
       return Promise.resolve(null);
@@ -239,8 +255,12 @@ describe("GET /performance/leaderboard", () => {
       if (result !== null) return result;
 
       if (path === "/stats") {
+        const body = opts?.body || {};
+        if (body.groupBy === "workflowName") {
+          return Promise.resolve({ groups: [] });
+        }
         return Promise.resolve({
-          transactional: { emailsSent: 100, emailsOpened: 50, emailsClicked: 10, emailsReplied: 20, emailsBounced: 5 },
+          transactional: makeBroadcastStats({ emailsSent: 100, emailsOpened: 50 }),
           broadcast: null,
         });
       }
@@ -272,7 +292,13 @@ describe("GET /performance/leaderboard", () => {
       if (result !== null) return result;
 
       if (path === "/stats") {
-        return Promise.resolve(makeGatewayResponse({ emailsSent: 10, emailsDelivered: 9, emailsOpened: 5, emailsClicked: 1, emailsReplied: 2, emailsBounced: 0 }));
+        const body = opts?.body || {};
+        if (body.groupBy === "workflowName") {
+          return Promise.resolve(makeGroupedGatewayResponse([
+            { key: "sales-email-cold-outreach-phoenix", broadcast: { emailsSent: 10, emailsOpened: 5, emailsClicked: 1, emailsReplied: 2 } },
+          ]));
+        }
+        return Promise.resolve(makeGatewayResponse({ emailsSent: 10, emailsOpened: 5, emailsClicked: 1, emailsReplied: 2 }));
       }
       return Promise.resolve(null);
     });
@@ -305,7 +331,15 @@ describe("GET /performance/leaderboard", () => {
     mockCallExternalService.mockImplementation((_service: any, path: string, opts: any) => {
       const result = mock(_service, path, opts);
       if (result !== null) return result;
-      if (path === "/stats") return Promise.resolve(makeGatewayResponse({ emailsSent: 10, emailsDelivered: 9, emailsOpened: 5, emailsClicked: 1, emailsReplied: 2, emailsBounced: 0 }));
+      if (path === "/stats") {
+        const body = opts?.body || {};
+        if (body.groupBy === "workflowName") {
+          return Promise.resolve(makeGroupedGatewayResponse([
+            { key: "sales-email-cold-outreach-sienna", broadcast: { emailsSent: 10, emailsOpened: 5, emailsReplied: 2 } },
+          ]));
+        }
+        return Promise.resolve(makeGatewayResponse(null));
+      }
       return Promise.resolve(null);
     });
 
@@ -323,7 +357,7 @@ describe("GET /performance/leaderboard", () => {
     expect(unknown.signatureName).toBeNull();
   });
 
-  it("should return categorySections grouped by sectionKey", async () => {
+  it("should return categorySections with reply qualification stats", async () => {
     const app = createApp();
     const brands = [
       { id: "brand-1", domain: "acme.com", name: "Acme", brandUrl: "https://acme.com" },
@@ -338,7 +372,17 @@ describe("GET /performance/leaderboard", () => {
       const result = mock(_service, path, opts);
       if (result !== null) return result;
       if (path === "/stats") {
-        return Promise.resolve(makeGatewayResponse({ emailsSent: 50, emailsDelivered: 47, emailsOpened: 25, emailsClicked: 5, emailsReplied: 8, emailsBounced: 3 }));
+        const body = opts?.body || {};
+        if (body.groupBy === "workflowName") {
+          return Promise.resolve(makeGroupedGatewayResponse([
+            { key: "sales-email-cold-outreach-sienna", broadcast: { emailsSent: 30, emailsOpened: 15, emailsClicked: 3, emailsReplied: 5, repliesWillingToMeet: 2, repliesInterested: 1 } },
+            { key: "sales-email-cold-outreach-darmstadt", broadcast: { emailsSent: 20, emailsOpened: 10, emailsClicked: 2, emailsReplied: 3, repliesWillingToMeet: 1, repliesInterested: 1 } },
+          ]));
+        }
+        if (body.brandId) {
+          return Promise.resolve(makeGatewayResponse({ emailsSent: 50, emailsOpened: 25, emailsClicked: 5, emailsReplied: 8 }));
+        }
+        return Promise.resolve(makeGatewayResponse(null));
       }
       return Promise.resolve(null);
     });
@@ -356,17 +400,21 @@ describe("GET /performance/leaderboard", () => {
     expect(section.category).toBe("sales");
     expect(section.workflows).toHaveLength(2);
     expect(section.stats.totalCostUsdCents).toBe(6000); // 4000 + 2000
+    expect(section.stats.emailsSent).toBe(50); // 30 + 20
+    expect(section.stats.emailsReplied).toBe(8); // 5 + 3
+    expect(section.stats.repliesInterested).toBe(5); // (2+1) + (1+1)
+    expect(section.stats.interestedRate).toBeGreaterThan(0);
 
     // Workflows should have signatureName
     const sienna = section.workflows.find((w: any) => w.workflowName === "sales-email-cold-outreach-sienna");
     expect(sienna).toBeDefined();
     expect(sienna.signatureName).toBe("sienna");
     expect(sienna.displayName).toBe("Sienna");
-    expect(sienna.sectionKey).toBe("sales-email-cold-outreach");
+    expect(sienna.repliesInterested).toBe(3);
 
     const darmstadt = section.workflows.find((w: any) => w.workflowName === "sales-email-cold-outreach-darmstadt");
     expect(darmstadt).toBeDefined();
-    expect(darmstadt.signatureName).toBe("darmstadt");
+    expect(darmstadt.repliesInterested).toBe(2);
 
     // Brands included in the section
     expect(section.brands).toHaveLength(1);
@@ -383,7 +431,13 @@ describe("GET /performance/leaderboard", () => {
     mockCallExternalService.mockImplementation((_service: any, path: string, opts: any) => {
       const result = mock(_service, path, opts);
       if (result !== null) return result;
-      if (path === "/stats") return Promise.resolve(makeGatewayResponse(null));
+      if (path === "/stats") {
+        const body = opts?.body || {};
+        if (body.groupBy === "workflowName") {
+          return Promise.resolve({ groups: [] });
+        }
+        return Promise.resolve(makeGatewayResponse(null));
+      }
       return Promise.resolve(null);
     });
 
@@ -422,6 +476,20 @@ describe("Regression: performance leaderboard must use broadcast-only stats", ()
     expect(content).not.toMatch(/[bt]\.replied\b/);
   });
 
+  it("should use per-workflow stats via groupBy instead of proportional distribution", () => {
+    const fs = require("fs");
+    const path = require("path");
+    const content = fs.readFileSync(
+      path.join(__dirname, "../../src/routes/performance.ts"),
+      "utf-8"
+    );
+
+    expect(content).toContain("fetchWorkflowDeliveryStats");
+    expect(content).toContain('groupBy: "workflowName"');
+    expect(content).not.toContain("proportionally");
+    expect(content).not.toContain("totalWorkflowCost");
+  });
+
   it("should use brand-service and runs-service public leaderboard", () => {
     const fs = require("fs");
     const path = require("path");
@@ -452,5 +520,18 @@ describe("Regression: performance leaderboard must use broadcast-only stats", ()
     expect(content).toContain("SECTION_LABELS");
     expect(content).toContain("@mcpfactory/content");
     expect(content).toContain("availableCategories");
+  });
+
+  it("should include reply qualification stats", () => {
+    const fs = require("fs");
+    const path = require("path");
+    const content = fs.readFileSync(
+      path.join(__dirname, "../../src/routes/performance.ts"),
+      "utf-8"
+    );
+
+    expect(content).toContain("repliesInterested");
+    expect(content).toContain("interestedRate");
+    expect(content).toContain("repliesWillingToMeet");
   });
 });

@@ -9,9 +9,9 @@ export function StatsBar({ stats }: { stats: CategorySectionStats }) {
       <Divider />
       <Stat label="Reply Rate" value={formatPercent(stats.replyRate)} />
       <Divider />
-      <Stat label="$/Reply" value={formatCostCents(stats.costPerReplyCents)} />
+      <Stat label="Interested" value={formatPercent(stats.interestedRate)} />
       <Divider />
-      <Stat label="Click-Through" value="—" muted />
+      <Stat label="$/Reply" value={formatCostCents(stats.costPerReplyCents)} />
     </div>
   );
 }
