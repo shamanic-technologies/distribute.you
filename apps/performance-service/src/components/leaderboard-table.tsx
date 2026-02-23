@@ -143,13 +143,13 @@ export function WorkflowLeaderboard({ workflows, inSection = false }: { workflow
             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Workflow
             </th>
-            <SortHeader label="Runs" sortKey="runCount" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
-            <SortHeader label="Spent" sortKey="totalCostUsdCents" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
-            <SortHeader label="Sent" sortKey="emailsSent" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
             <SortHeader label="% Opens" sortKey="openRate" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
             <SortHeader label="% Replies" sortKey="replyRate" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
             <SortHeader label="% Interested" sortKey="interestedRate" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+            <SortHeader label="$/Open" sortKey="costPerOpenCents" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
             <SortHeader label="$/Reply" sortKey="costPerReplyCents" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+            <SortHeader label="Spent" sortKey="totalCostUsdCents" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+            <SortHeader label="Sent" sortKey="emailsSent" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
@@ -169,13 +169,13 @@ export function WorkflowLeaderboard({ workflows, inSection = false }: { workflow
                   )}
                 </div>
               </td>
-              <td className="px-4 py-4 text-sm font-medium text-gray-900">{wf.runCount > 0 ? wf.runCount.toLocaleString() : "—"}</td>
-              <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(wf.totalCostUsdCents)}</td>
-              <td className="px-4 py-4 text-sm text-gray-600">{wf.emailsSent > 0 ? wf.emailsSent.toLocaleString() : "—"}</td>
               <td className="px-4 py-4 text-sm text-gray-600">{wf.emailsSent > 0 ? formatPercent(wf.openRate) : "—"}</td>
               <td className="px-4 py-4 text-sm text-gray-600">{wf.emailsSent > 0 ? formatPercent(wf.replyRate) : "—"}</td>
               <td className="px-4 py-4 text-sm font-medium text-gray-900">{wf.emailsSent > 0 ? formatPercent(wf.interestedRate) : "—"}</td>
+              <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(wf.costPerOpenCents)}</td>
               <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(wf.costPerReplyCents)}</td>
+              <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(wf.totalCostUsdCents)}</td>
+              <td className="px-4 py-4 text-sm text-gray-600">{wf.emailsSent > 0 ? wf.emailsSent.toLocaleString() : "—"}</td>
             </tr>
           ))}
         </tbody>
