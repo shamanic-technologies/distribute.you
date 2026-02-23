@@ -11,8 +11,8 @@ export const services = {
 // External services (need API key)
 export const externalServices = {
   emailgen: {
-    url: process.env.EMAILGENERATION_SERVICE_URL || "https://content-generation.mcpfactory.org",
-    apiKey: process.env.EMAILGENERATION_SERVICE_API_KEY || "",
+    url: process.env.CONTENT_GENERATION_SERVICE_URL || "https://content-generation.mcpfactory.org",
+    apiKey: process.env.CONTENT_GENERATION_SERVICE_API_KEY || "",
   },
   lead: {
     url: process.env.LEAD_SERVICE_URL || "http://localhost:3006",
