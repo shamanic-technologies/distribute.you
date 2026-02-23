@@ -22,6 +22,7 @@ vi.mock("../../src/lib/service-client.js", () => ({
     scraping: { url: "http://mock-scraping", apiKey: "k" },
     lifecycle: { url: "http://mock-lifecycle", apiKey: "k" },
     brand: { url: "http://mock-brand", apiKey: "k" },
+    runs: { url: "http://mock-runs", apiKey: "k" },
   },
   services: {
     client: "http://mock-client",

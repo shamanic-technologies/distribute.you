@@ -9,15 +9,16 @@ describe("CostBreakdown component", () => {
   );
   const content = fs.readFileSync(componentPath, "utf-8");
 
-  it("should aggregate costs from both leads and emails", () => {
-    expect(content).toContain("enrichmentRun");
-    expect(content).toContain("generationRun");
-    expect(content).toContain("descendantRuns");
+  it("should accept costBreakdown from runs-service as its data source", () => {
+    expect(content).toContain("costBreakdown: CostByName[]");
   });
 
-  it("should group costs by costName", () => {
-    expect(content).toContain("costName");
-    expect(content).toContain("Map<string, number>");
+  it("should NOT manually aggregate costs from lead/email runs", () => {
+    // The old approach of walking enrichmentRun/generationRun was incomplete
+    // because it missed email sending (Instantly) and transactional (Postmark) costs.
+    expect(content).not.toContain("enrichmentRun");
+    expect(content).not.toContain("generationRun");
+    expect(content).not.toContain("descendantRuns");
   });
 
   it("should render a donut chart via conic-gradient", () => {
@@ -52,14 +53,8 @@ describe("Campaign overview page includes CostBreakdown", () => {
     expect(content).toContain("cost-breakdown");
   });
 
-  it("should pass leads, emails, and statsTotalCents to CostBreakdown", () => {
+  it("should pass costBreakdown from stats to CostBreakdown", () => {
     expect(content).toContain("<CostBreakdown");
-    expect(content).toContain("leads={leads}");
-    expect(content).toContain("emails={emails}");
-    expect(content).toContain("statsTotalCents");
-  });
-
-  it("should destructure leads and emails from campaign context", () => {
-    expect(content).toMatch(/const\s*\{[^}]*leads[^}]*emails[^}]*\}\s*=\s*useCampaign/);
+    expect(content).toContain("costBreakdown={stats.costBreakdown}");
   });
 });

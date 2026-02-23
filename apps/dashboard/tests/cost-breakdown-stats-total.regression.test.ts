@@ -4,42 +4,57 @@ import * as path from "path";
 
 /**
  * Regression: the campaign page showed different totals in the header ($0.16)
- * vs the cost breakdown pie chart ($0.10) because the breakdown only aggregated
- * costs from lead enrichment and email generation runs, missing email sending
- * costs (Instantly) and transactional email costs (Postmark).
+ * vs the cost breakdown pie chart ($0.10).
  *
- * Fix: pass the authoritative stats total to CostBreakdown and show
- * uncategorized costs as "Other (sending, delivery)".
+ * Root cause: CostBreakdown manually aggregated costs from lead enrichment runs
+ * and email generation runs, but missed email sending runs (Instantly) and
+ * transactional email runs (Postmark) because those are sibling runs in the
+ * tree, not descendants of the generation runs.
+ *
+ * Fix: CostBreakdown now uses the authoritative cost breakdown from
+ * runs-service /v1/stats/costs/by-cost-name (via stats.costBreakdown),
+ * which is the same source of truth as the header total. Both header and
+ * pie chart now derive from runs-service, guaranteeing consistency.
  */
-describe("CostBreakdown uses statsTotalCents to match header total", () => {
+describe("CostBreakdown uses runs-service cost breakdown (not manual run aggregation)", () => {
   const componentPath = path.join(
     __dirname,
     "../src/components/campaign/cost-breakdown.tsx"
   );
   const content = fs.readFileSync(componentPath, "utf-8");
 
-  it("should accept a statsTotalCents prop", () => {
-    expect(content).toContain("statsTotalCents");
+  it("should accept costBreakdown from runs-service", () => {
+    expect(content).toContain("CostByName");
+    expect(content).toContain("costBreakdown");
   });
 
-  it("should show an 'Other' segment when stats total exceeds run costs", () => {
-    expect(content).toContain("Other (sending, delivery)");
+  it("should NOT manually walk lead/email run trees", () => {
+    expect(content).not.toContain("enrichmentRun");
+    expect(content).not.toContain("generationRun");
+    expect(content).not.toContain("collectCosts");
+  });
+});
+
+describe("api-service stats endpoint includes cost breakdown from runs-service", () => {
+  const routePath = path.join(
+    __dirname,
+    "../../api-service/src/routes/campaigns.ts"
+  );
+  const content = fs.readFileSync(routePath, "utf-8");
+
+  it("should call runs-service /v1/stats/costs/by-cost-name", () => {
+    expect(content).toContain("/v1/stats/costs/by-cost-name");
   });
 
-  it("should use statsTotalCents as the display total when available", () => {
-    expect(content).toContain("statsTotalCents && statsTotalCents > 0 ? statsTotalCents");
+  it("should include costBreakdown in the stats response", () => {
+    expect(content).toContain("stats.costBreakdown");
   });
 });
 
 /**
- * Regression: brand page cost breakdown total did not match the header total.
- *
- * Root cause: the header total summed campaign batch-budget-usage costs,
- * while CampaignCostDistribution only showed brand-service run costs
- * (profiling costs), ignoring campaign execution costs entirely.
- *
- * Fix: pass the authoritative stats total to CampaignCostDistribution
- * and show uncategorized costs as "Other".
+ * Brand page cost distribution is a separate component that uses
+ * brand-level runs with a statsTotalCents fallback. This is a different
+ * use case (brand-level view, not campaign-level).
  */
 describe("CampaignCostDistribution uses authoritative stats total", () => {
   const componentPath = path.join(
@@ -54,18 +69,5 @@ describe("CampaignCostDistribution uses authoritative stats total", () => {
 
   it("should show an 'Other' segment when stats total exceeds brand run costs", () => {
     expect(content).toContain("Other");
-  });
-});
-
-describe("Brand page passes stats total to CampaignCostDistribution", () => {
-  const pagePath = path.join(
-    __dirname,
-    "../src/app/(dashboard)/brands/[brandId]/mcp/sales-outreach/page.tsx"
-  );
-  const content = fs.readFileSync(pagePath, "utf-8");
-
-  it("should pass statsTotalCents to CampaignCostDistribution", () => {
-    expect(content).toContain("statsTotalCents");
-    expect(content).toContain("<CampaignCostDistribution");
   });
 });

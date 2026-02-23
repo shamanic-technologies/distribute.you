@@ -404,7 +404,7 @@ router.get("/campaigns/:id/stats", authenticate, requireOrg, async (req: Authent
     const orgId = req.orgId!;
 
     // Fetch stats from all services in parallel using campaignId filter
-    const [leadStats, emailgenStats, delivery, budgetUsage] = await Promise.all([
+    const [leadStats, emailgenStats, delivery, budgetUsage, costBreakdown] = await Promise.all([
       callExternalService(
         externalServices.lead,
         `/stats?campaignId=${id}`,
@@ -428,6 +428,14 @@ router.get("/campaigns/:id/stats", authenticate, requireOrg, async (req: Authent
         { method: "POST", body: { campaignIds: [id] } }
       ).catch((err) => {
         console.warn("[campaigns] Budget usage failed:", (err as Error).message);
+        return null;
+      }),
+      // Full cost breakdown by cost name from runs-service (single source of truth)
+      callExternalService<{ costs: Array<{ costName: string; totalCostInUsdCents: string; actualCostInUsdCents: string; provisionedCostInUsdCents: string; totalQuantity: string }> }>(
+        externalServices.runs,
+        `/v1/stats/costs/by-cost-name?clerkOrgId=${encodeURIComponent(orgId)}&appId=mcpfactory&campaignId=${encodeURIComponent(id)}`
+      ).catch((err) => {
+        console.warn("[campaigns] Cost breakdown failed:", (err as Error).message);
         return null;
       }),
     ]);
@@ -470,6 +478,11 @@ router.get("/campaigns/:id/stats", authenticate, requireOrg, async (req: Authent
     // Budget usage from campaign-service
     if (budgetUsage?.results?.[id]) {
       stats.totalCostInUsdCents = budgetUsage.results[id].totalCostInUsdCents;
+    }
+
+    // Cost breakdown by cost name from runs-service
+    if (costBreakdown?.costs) {
+      stats.costBreakdown = costBreakdown.costs;
     }
 
     res.json(stats);
