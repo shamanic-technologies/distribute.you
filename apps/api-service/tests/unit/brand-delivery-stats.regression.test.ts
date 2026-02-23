@@ -18,6 +18,7 @@ vi.mock("../../src/lib/service-client.js", () => ({
   callExternalService: (...args: unknown[]) => mockCallExternalService(...args),
   callService: (...args: unknown[]) => mockCallService(...args),
   externalServices: {
+    emailgen: { url: "http://mock-emailgen", apiKey: "k" },
     emailSending: { url: "http://mock-email", apiKey: "k" },
     replyQualification: { url: "http://mock-rq", apiKey: "k" },
     lead: { url: "http://mock-lead", apiKey: "k" },
@@ -28,7 +29,6 @@ vi.mock("../../src/lib/service-client.js", () => ({
     brand: { url: "http://mock-brand", apiKey: "k" },
   },
   services: {
-    emailgen: "http://mock-emailgen",
     client: "http://mock-client",
   },
 }));
