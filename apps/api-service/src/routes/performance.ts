@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { callExternalService, externalServices } from "../lib/service-client.js";
-import { getWorkflowCategory, getWorkflowDisplayName, type WorkflowCategory } from "@mcpfactory/content";
+import { getWorkflowCategory, getWorkflowDisplayName, CATEGORY_SECTION_LABELS, type WorkflowCategory } from "@mcpfactory/content";
 
 const router = Router();
 
@@ -55,12 +55,32 @@ interface WorkflowEntry {
   costPerReplyCents: number | null;
 }
 
+interface CategorySectionStats {
+  emailsSent: number;
+  emailsOpened: number;
+  emailsReplied: number;
+  totalCostUsdCents: number;
+  openRate: number;
+  replyRate: number;
+  costPerOpenCents: number | null;
+  costPerReplyCents: number | null;
+}
+
+interface CategorySection {
+  category: WorkflowCategory;
+  label: string;
+  stats: CategorySectionStats;
+  workflows: WorkflowEntry[];
+  brands: BrandEntry[];
+}
+
 interface LeaderboardData {
   brands: BrandEntry[];
   workflows: WorkflowEntry[];
   hero: unknown;
   updatedAt: string;
   availableCategories: WorkflowCategory[];
+  categorySections: CategorySection[];
 }
 
 /** Fetch broadcast delivery stats from the unified email-sending service.
@@ -268,25 +288,64 @@ async function buildLeaderboardData(): Promise<LeaderboardData> {
   }));
 
   // 3. Build workflow entries directly from runs-service data (no proportional distribution)
-  const workflows: WorkflowEntry[] = (workflowStatsResult.groups || []).map((g) => {
-    const name = g.dimensions.workflowName || "unknown";
-    return {
-      workflowName: name,
-      displayName: getWorkflowDisplayName(name),
-      category: getWorkflowCategory(name),
-      runCount: g.runCount || 0,
-      totalCostUsdCents: Math.round(parseFloat(g.actualCostInUsdCents) || 0),
-      emailsSent: 0, emailsOpened: 0, emailsClicked: 0, emailsReplied: 0,
-      openRate: 0, clickRate: 0, replyRate: 0,
-      costPerOpenCents: null, costPerClickCents: null, costPerReplyCents: null,
-    };
-  });
+  //    Filter out groups with missing workflowName to avoid "unknown" entries
+  const workflows: WorkflowEntry[] = (workflowStatsResult.groups || [])
+    .filter((g) => g.dimensions.workflowName)
+    .map((g) => {
+      const name = g.dimensions.workflowName;
+      return {
+        workflowName: name,
+        displayName: getWorkflowDisplayName(name),
+        category: getWorkflowCategory(name),
+        runCount: g.runCount || 0,
+        totalCostUsdCents: Math.round(parseFloat(g.actualCostInUsdCents) || 0),
+        emailsSent: 0, emailsOpened: 0, emailsClicked: 0, emailsReplied: 0,
+        openRate: 0, clickRate: 0, replyRate: 0,
+        costPerOpenCents: null, costPerClickCents: null, costPerReplyCents: null,
+      };
+    });
 
   const availableCategories = [...new Set(
     workflows.map((w) => w.category).filter((c): c is WorkflowCategory => c !== null)
   )];
 
-  return { brands, workflows, hero: null, updatedAt: new Date().toISOString(), availableCategories };
+  return { brands, workflows, hero: null, updatedAt: new Date().toISOString(), availableCategories, categorySections: [] };
+}
+
+/** Build per-category sections with aggregated stats from their workflows. */
+function buildCategorySections(data: LeaderboardData): CategorySection[] {
+  const categoryMap = new Map<WorkflowCategory, WorkflowEntry[]>();
+
+  for (const wf of data.workflows) {
+    if (!wf.category) continue;
+    const list = categoryMap.get(wf.category) || [];
+    list.push(wf);
+    categoryMap.set(wf.category, list);
+  }
+
+  return [...categoryMap.entries()].map(([category, workflows]) => {
+    const emailsSent = workflows.reduce((s, w) => s + w.emailsSent, 0);
+    const emailsOpened = workflows.reduce((s, w) => s + w.emailsOpened, 0);
+    const emailsReplied = workflows.reduce((s, w) => s + w.emailsReplied, 0);
+    const totalCostUsdCents = workflows.reduce((s, w) => s + w.totalCostUsdCents, 0);
+
+    return {
+      category,
+      label: CATEGORY_SECTION_LABELS[category] || category,
+      stats: {
+        emailsSent,
+        emailsOpened,
+        emailsReplied,
+        totalCostUsdCents,
+        openRate: emailsSent > 0 ? Math.round((emailsOpened / emailsSent) * 10000) / 10000 : 0,
+        replyRate: emailsSent > 0 ? Math.round((emailsReplied / emailsSent) * 10000) / 10000 : 0,
+        costPerOpenCents: emailsOpened > 0 ? Math.round(totalCostUsdCents / emailsOpened) : null,
+        costPerReplyCents: emailsReplied > 0 ? Math.round(totalCostUsdCents / emailsReplied) : null,
+      },
+      workflows,
+      brands: data.brands, // All brands for now — no per-category brand filtering yet
+    };
+  });
 }
 
 // Public route — no auth required
@@ -300,6 +359,9 @@ router.get("/performance/leaderboard", async (req, res) => {
     } catch (err) {
       console.warn("Failed to enrich leaderboard with delivery stats:", err);
     }
+
+    // Build per-category sections after enrichment so email stats are included
+    data.categorySections = buildCategorySections(data);
 
     res.json(data);
   } catch (error) {

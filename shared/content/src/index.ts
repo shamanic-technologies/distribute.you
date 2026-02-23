@@ -21,6 +21,7 @@ export { BRAND } from "./brand.js";
 export {
   WORKFLOW_DEFINITIONS,
   WORKFLOW_CATEGORY_LABELS,
+  CATEGORY_SECTION_LABELS,
   getWorkflowCategory,
   getWorkflowDisplayName,
 } from "./workflows.js";

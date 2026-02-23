@@ -17,6 +17,7 @@ export interface WorkflowDefinition {
  */
 export const WORKFLOW_DEFINITIONS: WorkflowDefinition[] = [
   { namePattern: "sales-cold-email", displayName: "Sales Cold Email", category: "sales" },
+  { namePattern: "cold-email-outreach", displayName: "Cold Email Outreach", category: "sales" },
   { namePattern: "cold-email", displayName: "Cold Email", category: "sales" },
   { namePattern: "journalist-outreach", displayName: "Journalist Outreach", category: "pr" },
   { namePattern: "journalist-pitch", displayName: "Journalist Pitch", category: "pr" },
@@ -30,6 +31,11 @@ export const WORKFLOW_DEFINITIONS: WorkflowDefinition[] = [
 export const WORKFLOW_CATEGORY_LABELS: Record<WorkflowCategory, string> = {
   sales: "Sales",
   pr: "PR & Media",
+};
+
+export const CATEGORY_SECTION_LABELS: Record<WorkflowCategory, string> = {
+  sales: "Sales Cold Email Outreach",
+  pr: "PR & Media Outreach",
 };
 
 /** Resolve category for a workflow name using prefix matching. Returns null for unknown workflows. */
