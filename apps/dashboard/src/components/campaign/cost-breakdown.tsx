@@ -1,12 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
-import type { Email, Lead, RunCost } from "@/lib/api";
+import type { CostByName } from "@/lib/api";
 
 interface CostBreakdownProps {
-  leads: Lead[];
-  emails: Email[];
-  statsTotalCents?: number | null;
+  costBreakdown: CostByName[];
 }
 
 const COLORS = [
@@ -34,63 +32,26 @@ function formatUsdCents(cents: number): string {
   return `$${usd.toFixed(2)}`;
 }
 
-function collectCosts(map: Map<string, number>, costs: RunCost[]) {
-  for (const c of costs) {
-    const val = parseFloat(c.totalCostInUsdCents);
-    if (!isNaN(val) && val > 0) {
-      map.set(c.costName, (map.get(c.costName) || 0) + val);
-    }
-  }
-}
-
-export function CostBreakdown({ leads, emails, statsTotalCents }: CostBreakdownProps) {
+export function CostBreakdown({ costBreakdown }: CostBreakdownProps) {
   const segments = useMemo(() => {
-    const map = new Map<string, number>();
-
-    for (const lead of leads) {
-      if (lead.enrichmentRun) {
-        collectCosts(map, lead.enrichmentRun.costs);
-        for (const dr of lead.enrichmentRun.descendantRuns) {
-          collectCosts(map, dr.costs);
-        }
-      }
-    }
-
-    for (const email of emails) {
-      if (email.generationRun) {
-        collectCosts(map, email.generationRun.costs);
-        for (const dr of email.generationRun.descendantRuns) {
-          collectCosts(map, dr.costs);
-        }
-      }
-    }
-
-    // Add "Other" segment for costs not captured by lead/email runs
-    // (e.g. email sending costs via Instantly, transactional emails via Postmark)
-    const categorizedTotal = Array.from(map.values()).reduce((s, v) => s + v, 0);
-    if (statsTotalCents && statsTotalCents > categorizedTotal) {
-      const diff = statsTotalCents - categorizedTotal;
-      if (diff > 0.001) {
-        map.set("Other (sending, delivery)", diff);
-      }
-    }
-
-    const entries = Array.from(map.entries())
-      .map(([name, cents]) => ({ name, cents }))
+    const entries = costBreakdown
+      .map((c) => ({
+        name: c.costName,
+        cents: parseFloat(c.totalCostInUsdCents) || 0,
+      }))
+      .filter((e) => e.cents > 0)
       .sort((a, b) => b.cents - a.cents);
 
-    const total = statsTotalCents && statsTotalCents > 0 ? statsTotalCents : entries.reduce((sum, e) => sum + e.cents, 0);
+    const total = entries.reduce((sum, e) => sum + e.cents, 0);
 
     return entries.map((entry, i) => ({
       ...entry,
       percentage: total > 0 ? (entry.cents / total) * 100 : 0,
       color: COLORS[i % COLORS.length],
     }));
-  }, [leads, emails, statsTotalCents]);
+  }, [costBreakdown]);
 
-  const totalCents = statsTotalCents && statsTotalCents > 0
-    ? statsTotalCents
-    : segments.reduce((sum, s) => sum + s.cents, 0);
+  const totalCents = segments.reduce((sum, s) => sum + s.cents, 0);
 
   if (totalCents === 0) {
     return (

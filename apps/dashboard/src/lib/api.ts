@@ -157,9 +157,18 @@ export interface ApolloStats {
   totalMatchingPeople: number;
 }
 
+export interface CostByName {
+  costName: string;
+  totalCostInUsdCents: string;
+  actualCostInUsdCents: string;
+  provisionedCostInUsdCents: string;
+  totalQuantity: string;
+}
+
 export interface CampaignStats {
   campaignId: string;
   totalCostInUsdCents?: string | null;
+  costBreakdown?: CostByName[];
   leadsServed: number;
   leadsBuffered: number;
   leadsSkipped: number;
