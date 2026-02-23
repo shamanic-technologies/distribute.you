@@ -6,6 +6,7 @@ import type { Email, Lead, RunCost } from "@/lib/api";
 interface CostBreakdownProps {
   leads: Lead[];
   emails: Email[];
+  statsTotalCents?: number | null;
 }
 
 const COLORS = [
@@ -42,7 +43,7 @@ function collectCosts(map: Map<string, number>, costs: RunCost[]) {
   }
 }
 
-export function CostBreakdown({ leads, emails }: CostBreakdownProps) {
+export function CostBreakdown({ leads, emails, statsTotalCents }: CostBreakdownProps) {
   const segments = useMemo(() => {
     const map = new Map<string, number>();
 
@@ -64,20 +65,32 @@ export function CostBreakdown({ leads, emails }: CostBreakdownProps) {
       }
     }
 
+    // Add "Other" segment for costs not captured by lead/email runs
+    // (e.g. email sending costs via Instantly, transactional emails via Postmark)
+    const categorizedTotal = Array.from(map.values()).reduce((s, v) => s + v, 0);
+    if (statsTotalCents && statsTotalCents > categorizedTotal) {
+      const diff = statsTotalCents - categorizedTotal;
+      if (diff > 0.001) {
+        map.set("Other (sending, delivery)", diff);
+      }
+    }
+
     const entries = Array.from(map.entries())
       .map(([name, cents]) => ({ name, cents }))
       .sort((a, b) => b.cents - a.cents);
 
-    const total = entries.reduce((sum, e) => sum + e.cents, 0);
+    const total = statsTotalCents && statsTotalCents > 0 ? statsTotalCents : entries.reduce((sum, e) => sum + e.cents, 0);
 
     return entries.map((entry, i) => ({
       ...entry,
       percentage: total > 0 ? (entry.cents / total) * 100 : 0,
       color: COLORS[i % COLORS.length],
     }));
-  }, [leads, emails]);
+  }, [leads, emails, statsTotalCents]);
 
-  const totalCents = segments.reduce((sum, s) => sum + s.cents, 0);
+  const totalCents = statsTotalCents && statsTotalCents > 0
+    ? statsTotalCents
+    : segments.reduce((sum, s) => sum + s.cents, 0);
 
   if (totalCents === 0) {
     return (

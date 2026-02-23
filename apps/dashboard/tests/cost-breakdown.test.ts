@@ -52,10 +52,11 @@ describe("Campaign overview page includes CostBreakdown", () => {
     expect(content).toContain("cost-breakdown");
   });
 
-  it("should pass leads and emails to CostBreakdown", () => {
+  it("should pass leads, emails, and statsTotalCents to CostBreakdown", () => {
     expect(content).toContain("<CostBreakdown");
     expect(content).toContain("leads={leads}");
     expect(content).toContain("emails={emails}");
+    expect(content).toContain("statsTotalCents");
   });
 
   it("should destructure leads and emails from campaign context", () => {

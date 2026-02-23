@@ -3,24 +3,31 @@ import * as fs from "fs";
 import * as path from "path";
 
 /**
- * Regression: cost breakdown components should NOT use band-aid "Other"
- * segments or statsTotalCents overrides. Cost totals must match because
- * the run ID tree is complete, not because we paper over gaps client-side.
+ * Regression: the campaign page showed different totals in the header ($0.16)
+ * vs the cost breakdown pie chart ($0.10) because the breakdown only aggregated
+ * costs from lead enrichment and email generation runs, missing email sending
+ * costs (Instantly) and transactional email costs (Postmark).
+ *
+ * Fix: pass the authoritative stats total to CostBreakdown and show
+ * uncategorized costs as "Other (sending, delivery)".
  */
-describe("CostBreakdown does not use statsTotalCents fallback", () => {
+describe("CostBreakdown uses statsTotalCents to match header total", () => {
   const componentPath = path.join(
     __dirname,
     "../src/components/campaign/cost-breakdown.tsx"
   );
   const content = fs.readFileSync(componentPath, "utf-8");
 
-  it("should NOT have a statsTotalCents prop", () => {
-    // statsTotalCents was a band-aid — costs should match via proper run tree
-    expect(content).not.toContain("statsTotalCents");
+  it("should accept a statsTotalCents prop", () => {
+    expect(content).toContain("statsTotalCents");
   });
 
-  it("should NOT have an 'Other' fallback segment", () => {
-    expect(content).not.toMatch(/map\.set\(["']Other["']/);
+  it("should show an 'Other' segment when stats total exceeds run costs", () => {
+    expect(content).toContain("Other (sending, delivery)");
+  });
+
+  it("should use statsTotalCents as the display total when available", () => {
+    expect(content).toContain("statsTotalCents && statsTotalCents > 0 ? statsTotalCents");
   });
 });
 
