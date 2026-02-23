@@ -22,7 +22,11 @@ export {
   WORKFLOW_DEFINITIONS,
   WORKFLOW_CATEGORY_LABELS,
   CATEGORY_SECTION_LABELS,
+  SECTION_LABELS,
+  parseWorkflowName,
+  getSectionKey,
+  getSignatureName,
   getWorkflowCategory,
   getWorkflowDisplayName,
 } from "./workflows.js";
-export type { WorkflowCategory, WorkflowDefinition } from "./workflows.js";
+export type { WorkflowCategory, WorkflowChannel, WorkflowAudienceType, ParsedWorkflowName, WorkflowDefinition } from "./workflows.js";

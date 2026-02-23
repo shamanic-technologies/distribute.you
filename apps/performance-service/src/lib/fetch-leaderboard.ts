@@ -24,7 +24,9 @@ export interface BrandLeaderboardEntry {
 export interface WorkflowLeaderboardEntry {
   workflowName: string;
   displayName: string;
+  signatureName: string | null;
   category: WorkflowCategory | null;
+  sectionKey: string | null;
   runCount: number;
   emailsSent: number;
   emailsOpened: number;
@@ -63,6 +65,7 @@ export interface CategorySectionStats {
 
 export interface CategorySectionData {
   category: string;
+  sectionKey: string;
   label: string;
   stats: CategorySectionStats;
   workflows: WorkflowLeaderboardEntry[];
