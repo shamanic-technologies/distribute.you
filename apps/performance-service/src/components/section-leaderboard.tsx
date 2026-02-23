@@ -9,7 +9,7 @@ type Tab = "workflow" | "brand";
 export function SectionLeaderboard({
   brands,
   workflows,
-  maxEntries = 5,
+  maxEntries = 3,
 }: {
   brands: BrandLeaderboardEntry[];
   workflows: WorkflowLeaderboardEntry[];
