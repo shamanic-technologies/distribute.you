@@ -291,13 +291,11 @@ describe("GET /performance/leaderboard", () => {
     expect(wf.displayName).toBe("Cold Email");
   });
 
-  it("should exclude workflows with null/empty workflowName from leaderboard", async () => {
+  it("should keep workflows with empty workflowName as 'unknown' with fallback display name", async () => {
     const app = createApp();
     const brands = [{ id: "brand-1", domain: "acme.com", name: "Acme", brandUrl: "https://acme.com" }];
     const workflowGroups: MockRunsGroup[] = [
-      // Valid workflow
       { dimensions: { workflowName: "cold-email-outreach" }, totalCostInUsdCents: "5000.0000", actualCostInUsdCents: "5000.0000", provisionedCostInUsdCents: "0", cancelledCostInUsdCents: "0", runCount: 10 },
-      // NULL workflow name (should be excluded)
       { dimensions: { workflowName: "" }, totalCostInUsdCents: "9000.0000", actualCostInUsdCents: "9000.0000", provisionedCostInUsdCents: "0", cancelledCostInUsdCents: "0", runCount: 100 },
     ];
 
@@ -312,13 +310,13 @@ describe("GET /performance/leaderboard", () => {
     const res = await request(app).get("/performance/leaderboard");
 
     expect(res.status).toBe(200);
-    // Only the valid workflow should appear
-    expect(res.body.workflows).toHaveLength(1);
-    expect(res.body.workflows[0].workflowName).toBe("cold-email-outreach");
-    expect(res.body.workflows[0].displayName).toBe("Cold Email Outreach");
-    expect(res.body.workflows[0].category).toBe("sales");
-    // "unknown" should never appear
-    expect(res.body.workflows.find((w: any) => w.workflowName === "unknown")).toBeUndefined();
+    // Both workflows should appear
+    expect(res.body.workflows).toHaveLength(2);
+    expect(res.body.workflows.find((w: any) => w.workflowName === "cold-email-outreach")).toBeDefined();
+    const unknown = res.body.workflows.find((w: any) => w.workflowName === "unknown");
+    expect(unknown).toBeDefined();
+    expect(unknown.displayName).toBe("Unknown");
+    expect(unknown.category).toBeNull();
   });
 
   it("should return categorySections grouped by workflow category", async () => {
@@ -427,19 +425,6 @@ describe("Regression: performance leaderboard must use broadcast-only stats", ()
     expect(content).toContain("/brands?clerkOrgId=");
     expect(content).toContain("/v1/stats/public/leaderboard");
     expect(content).toContain("parseFloat");
-  });
-
-  it("should filter out null/empty workflowName groups to prevent 'unknown' entries", () => {
-    const fs = require("fs");
-    const path = require("path");
-    const content = fs.readFileSync(
-      path.join(__dirname, "../../src/routes/performance.ts"),
-      "utf-8"
-    );
-
-    // Source must filter before mapping, not default to "unknown"
-    expect(content).toContain(".filter((g) => g.dimensions.workflowName)");
-    expect(content).not.toContain('|| "unknown"');
   });
 
   it("should use workflow category mapping from shared content", () => {

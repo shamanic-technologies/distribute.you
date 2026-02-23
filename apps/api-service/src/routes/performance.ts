@@ -288,11 +288,8 @@ async function buildLeaderboardData(): Promise<LeaderboardData> {
   }));
 
   // 3. Build workflow entries directly from runs-service data (no proportional distribution)
-  //    Filter out groups with missing workflowName to avoid "unknown" entries
-  const workflows: WorkflowEntry[] = (workflowStatsResult.groups || [])
-    .filter((g) => g.dimensions.workflowName)
-    .map((g) => {
-      const name = g.dimensions.workflowName;
+  const workflows: WorkflowEntry[] = (workflowStatsResult.groups || []).map((g) => {
+      const name = g.dimensions.workflowName || "unknown";
       return {
         workflowName: name,
         displayName: getWorkflowDisplayName(name),
