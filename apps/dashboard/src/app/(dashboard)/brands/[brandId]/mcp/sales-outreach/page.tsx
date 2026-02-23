@@ -4,11 +4,11 @@ import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listCampaignsByBrand, getCampaignBatchStats, getBrandDeliveryStats, listBrandRuns, type Campaign, type CampaignStats } from "@/lib/api";
+import { listCampaignsByBrand, getCampaignBatchStats, getBrandDeliveryStats, getBrandCostBreakdown, type Campaign, type CampaignStats } from "@/lib/api";
 import { SkeletonKeysList } from "@/components/skeleton";
 import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
-import { CampaignCostDistribution } from "@/components/campaign/campaign-cost-distribution";
+import { CostBreakdown } from "@/components/campaign/cost-breakdown";
 
 export default function BrandMcpSalesOutreachPage() {
   const params = useParams();
@@ -29,11 +29,11 @@ export default function BrandMcpSalesOutreachPage() {
   );
   const campaignStats = batchStats ?? {};
 
-  const { data: brandRunsData } = useAuthQuery(
-    ["brandRuns", { brandId }],
-    (token) => listBrandRuns(token, brandId)
+  const { data: brandCostData } = useAuthQuery(
+    ["brandCostBreakdown", { brandId }],
+    (token) => getBrandCostBreakdown(token, brandId)
   );
-  const brandRuns = brandRunsData?.runs ?? [];
+  const brandCostBreakdown = brandCostData?.costs ?? [];
 
   // Fetch delivery stats once at brand level (single email-gateway call)
   const { data: brandDelivery } = useAuthQuery(
@@ -122,9 +122,9 @@ export default function BrandMcpSalesOutreachPage() {
       )}
 
       {/* Cost Breakdown by Category */}
-      {brandRuns.length > 0 && (
+      {brandCostBreakdown.length > 0 && (
         <div className="mb-6">
-          <CampaignCostDistribution runs={brandRuns} statsTotalCents={totals.totalCostCents || null} />
+          <CostBreakdown costBreakdown={brandCostBreakdown} />
         </div>
       )}
 

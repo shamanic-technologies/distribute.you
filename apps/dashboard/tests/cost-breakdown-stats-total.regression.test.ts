@@ -52,22 +52,24 @@ describe("api-service stats endpoint includes cost breakdown from runs-service",
 });
 
 /**
- * Brand page cost distribution is a separate component that uses
- * brand-level runs with a statsTotalCents fallback. This is a different
- * use case (brand-level view, not campaign-level).
+ * Brand page also uses runs-service cost breakdown (same as campaign page).
+ * Previously it used CampaignCostDistribution with manual brand-run aggregation,
+ * which produced a large "Other" category. Now it uses the same CostBreakdown
+ * component fed by runs-service /v1/stats/costs/by-cost-name?brandId=X.
  */
-describe("CampaignCostDistribution uses authoritative stats total", () => {
-  const componentPath = path.join(
+describe("Brand page uses runs-service cost breakdown (no Other category)", () => {
+  const pagePath = path.join(
     __dirname,
-    "../src/components/campaign/campaign-cost-distribution.tsx"
+    "../src/app/(dashboard)/brands/[brandId]/mcp/sales-outreach/page.tsx"
   );
-  const content = fs.readFileSync(componentPath, "utf-8");
+  const content = fs.readFileSync(pagePath, "utf-8");
 
-  it("should accept a statsTotalCents prop", () => {
-    expect(content).toContain("statsTotalCents");
+  it("should use CostBreakdown, not CampaignCostDistribution", () => {
+    expect(content).toContain("CostBreakdown");
+    expect(content).not.toContain("CampaignCostDistribution");
   });
 
-  it("should show an 'Other' segment when stats total exceeds brand run costs", () => {
-    expect(content).toContain("Other");
+  it("should fetch cost breakdown from runs-service", () => {
+    expect(content).toContain("getBrandCostBreakdown");
   });
 });
