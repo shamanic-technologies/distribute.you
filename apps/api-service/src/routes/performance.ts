@@ -217,10 +217,37 @@ async function enrichWithDeliveryStats(data: LeaderboardData): Promise<void> {
   ]);
 
   // Apply exact per-workflow email stats
+  let anyWorkflowEnriched = false;
   for (const wf of data.workflows) {
     const stats = workflowStatsMap.get(wf.workflowName);
     if (stats && stats.emailsSent > 0) {
       applyStatsToWorkflow(wf, stats);
+      anyWorkflowEnriched = true;
+    }
+  }
+
+  // Fallback: when per-workflow groupBy returns no data (old emails sent without workflowName),
+  // fetch aggregate broadcast stats and distribute by cost share across workflows
+  if (!anyWorkflowEnriched && data.workflows.length > 0) {
+    const aggregateStats = await fetchBroadcastDeliveryStats({ appId: "mcpfactory" });
+    if (aggregateStats.emailsSent > 0) {
+      const totalCost = data.workflows.reduce((s, w) => s + w.totalCostUsdCents, 0);
+      if (totalCost > 0) {
+        for (const wf of data.workflows) {
+          const share = wf.totalCostUsdCents / totalCost;
+          const distributed: DeliveryStats = {
+            emailsSent: Math.round(aggregateStats.emailsSent * share),
+            emailsOpened: Math.round(aggregateStats.emailsOpened * share),
+            emailsClicked: Math.round(aggregateStats.emailsClicked * share),
+            emailsReplied: Math.round(aggregateStats.emailsReplied * share),
+            emailsBounced: Math.round(aggregateStats.emailsBounced * share),
+            repliesInterested: Math.round(aggregateStats.repliesInterested * share),
+          };
+          if (distributed.emailsSent > 0) {
+            applyStatsToWorkflow(wf, distributed);
+          }
+        }
+      }
     }
   }
 

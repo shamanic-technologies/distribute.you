@@ -420,6 +420,66 @@ describe("GET /performance/leaderboard", () => {
     expect(section.brands).toHaveLength(1);
   });
 
+  it("should fall back to proportional distribution when groupBy returns empty", async () => {
+    const app = createApp();
+    const brands = [
+      { id: "brand-1", domain: "acme.com", name: "Acme", brandUrl: "https://acme.com" },
+    ];
+    // Two workflows with different costs — proportional distribution should split by cost share
+    const workflowGroups: MockRunsGroup[] = [
+      { dimensions: { workflowName: "sales-email-cold-outreach-sienna" }, totalCostInUsdCents: "6000.0000", actualCostInUsdCents: "6000.0000", provisionedCostInUsdCents: "0", cancelledCostInUsdCents: "0", runCount: 30 },
+      { dimensions: { workflowName: "sales-email-cold-outreach-darmstadt" }, totalCostInUsdCents: "4000.0000", actualCostInUsdCents: "4000.0000", provisionedCostInUsdCents: "0", cancelledCostInUsdCents: "0", runCount: 20 },
+    ];
+
+    const mock = setupMocks(brands, [], workflowGroups);
+    mockCallExternalService.mockImplementation((_service: any, path: string, opts: any) => {
+      const result = mock(_service, path, opts);
+      if (result !== null) return result;
+      if (path === "/stats") {
+        const body = opts?.body || {};
+        // groupBy returns empty — simulates old emails without workflowName
+        if (body.groupBy === "workflowName") {
+          return Promise.resolve({ groups: [] });
+        }
+        // Per-brand stats
+        if (body.brandId) {
+          return Promise.resolve(makeGatewayResponse({ emailsSent: 100, emailsOpened: 50, emailsClicked: 10, emailsReplied: 8 }));
+        }
+        // Aggregate stats (fallback)
+        return Promise.resolve(makeGatewayResponse({
+          emailsSent: 100, emailsOpened: 50, emailsClicked: 10, emailsReplied: 8,
+          repliesWillingToMeet: 3, repliesInterested: 2,
+        }));
+      }
+      return Promise.resolve(null);
+    });
+
+    const res = await request(app).get("/performance/leaderboard");
+
+    expect(res.status).toBe(200);
+    // Workflows should get proportional stats based on cost share (60% / 40%)
+    const sienna = res.body.workflows.find((w: any) => w.workflowName === "sales-email-cold-outreach-sienna");
+    expect(sienna).toBeDefined();
+    expect(sienna.emailsSent).toBe(60); // 100 * 0.6
+    expect(sienna.emailsOpened).toBe(30); // 50 * 0.6
+    expect(sienna.emailsReplied).toBe(5); // Math.round(8 * 0.6)
+    expect(sienna.repliesInterested).toBe(3); // Math.round(5 * 0.6)
+    expect(sienna.openRate).toBeGreaterThan(0);
+    expect(sienna.replyRate).toBeGreaterThan(0);
+    expect(sienna.interestedRate).toBeGreaterThan(0);
+
+    const darmstadt = res.body.workflows.find((w: any) => w.workflowName === "sales-email-cold-outreach-darmstadt");
+    expect(darmstadt).toBeDefined();
+    expect(darmstadt.emailsSent).toBe(40); // 100 * 0.4
+    expect(darmstadt.emailsOpened).toBe(20); // 50 * 0.4
+    expect(darmstadt.emailsReplied).toBe(3); // Math.round(8 * 0.4)
+    expect(darmstadt.repliesInterested).toBe(2); // Math.round(5 * 0.4)
+
+    // Category sections should also have stats from the fallback
+    expect(res.body.categorySections.length).toBe(1);
+    expect(res.body.categorySections[0].stats.emailsSent).toBe(100); // 60 + 40
+  });
+
   it("should return null category for non-standard workflow names", async () => {
     const app = createApp();
     const brands = [{ id: "brand-1", domain: "acme.com", name: "Acme", brandUrl: "https://acme.com" }];
@@ -476,7 +536,7 @@ describe("Regression: performance leaderboard must use broadcast-only stats", ()
     expect(content).not.toMatch(/[bt]\.replied\b/);
   });
 
-  it("should use per-workflow stats via groupBy instead of proportional distribution", () => {
+  it("should use per-workflow stats via groupBy with proportional fallback", () => {
     const fs = require("fs");
     const path = require("path");
     const content = fs.readFileSync(
@@ -486,7 +546,7 @@ describe("Regression: performance leaderboard must use broadcast-only stats", ()
 
     expect(content).toContain("fetchWorkflowDeliveryStats");
     expect(content).toContain('groupBy: "workflowName"');
-    expect(content).not.toContain("proportionally");
+    expect(content).toContain("anyWorkflowEnriched");
     expect(content).not.toContain("totalWorkflowCost");
   });
 
