@@ -19,9 +19,7 @@ export {
 export type { Feature, Step, FaqItem, SupportedClient, ByokProvider } from "./features.js";
 export { BRAND } from "./brand.js";
 export {
-  WORKFLOW_DEFINITIONS,
   WORKFLOW_CATEGORY_LABELS,
-  CATEGORY_SECTION_LABELS,
   SECTION_LABELS,
   parseWorkflowName,
   getSectionKey,
@@ -29,4 +27,4 @@ export {
   getWorkflowCategory,
   getWorkflowDisplayName,
 } from "./workflows.js";
-export type { WorkflowCategory, WorkflowChannel, WorkflowAudienceType, ParsedWorkflowName, WorkflowDefinition } from "./workflows.js";
+export type { WorkflowCategory, WorkflowChannel, WorkflowAudienceType, ParsedWorkflowName } from "./workflows.js";

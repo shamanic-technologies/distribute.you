@@ -9,12 +9,12 @@
  *    campaigns, so brands was always empty when all campaigns were stopped.
  * 4. Campaign costs came from campaign-service which only lists ongoing campaigns.
  * 5. Switched to runs-service public leaderboard endpoint with string cost values.
- * 6. Added workflow category filtering using shared content mapping.
+ * 6. Workflows use {category}-{channel}-{audienceType}-{signatureName} naming.
  *
  * Fix: Use brand-service as source of truth for brands (like dashboard does),
  * use correct field names, only read broadcast stats,
  * use runs-service /v1/stats/public/leaderboard for costs (public, cross-org, string values).
- * Categories come from @mcpfactory/content workflow definitions (prefix matching).
+ * Categories parsed from workflow name format via @mcpfactory/content.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
@@ -118,8 +118,8 @@ describe("GET /performance/leaderboard", () => {
       { id: "brand-2", domain: "widgets.com", name: "Widgets", brandUrl: "https://widgets.com" },
     ];
     const workflowGroups: MockRunsGroup[] = [
-      { dimensions: { workflowName: "sales-cold-email-v1" }, totalCostInUsdCents: "5000.0000", actualCostInUsdCents: "4000.0000", provisionedCostInUsdCents: "1000.0000", cancelledCostInUsdCents: "0", runCount: 10 },
-      { dimensions: { workflowName: "journalist-outreach-v1" }, totalCostInUsdCents: "3000.0000", actualCostInUsdCents: "2000.0000", provisionedCostInUsdCents: "1000.0000", cancelledCostInUsdCents: "0", runCount: 5 },
+      { dimensions: { workflowName: "sales-email-cold-outreach-sienna" }, totalCostInUsdCents: "5000.0000", actualCostInUsdCents: "4000.0000", provisionedCostInUsdCents: "1000.0000", cancelledCostInUsdCents: "0", runCount: 10 },
+      { dimensions: { workflowName: "sales-email-cold-outreach-darmstadt" }, totalCostInUsdCents: "3000.0000", actualCostInUsdCents: "2000.0000", provisionedCostInUsdCents: "1000.0000", cancelledCostInUsdCents: "0", runCount: 5 },
     ];
 
     const mock = setupMocks(brands, [], workflowGroups);
@@ -169,29 +169,29 @@ describe("GET /performance/leaderboard", () => {
 
     // Workflows should come from runs-service public endpoint
     expect(res.body.workflows).toHaveLength(2);
-    const salesWf = res.body.workflows.find((w: any) => w.workflowName === "sales-cold-email-v1");
-    expect(salesWf).toBeDefined();
-    expect(salesWf.totalCostUsdCents).toBe(4000); // actualCostInUsdCents parsed from string
-    expect(salesWf.runCount).toBe(10);
+    const siennaWf = res.body.workflows.find((w: any) => w.workflowName === "sales-email-cold-outreach-sienna");
+    expect(siennaWf).toBeDefined();
+    expect(siennaWf.totalCostUsdCents).toBe(4000); // actualCostInUsdCents parsed from string
+    expect(siennaWf.runCount).toBe(10);
 
-    // Legacy workflow: category from prefix matching, no signatureName
-    expect(salesWf.category).toBe("sales");
-    expect(salesWf.displayName).toBe("Sales Cold Email");
-    expect(salesWf.signatureName).toBeNull(); // Legacy format, no signatureName
+    // New format: category parsed from name, signatureName extracted
+    expect(siennaWf.category).toBe("sales");
+    expect(siennaWf.displayName).toBe("Sienna");
+    expect(siennaWf.signatureName).toBe("sienna");
+    expect(siennaWf.sectionKey).toBe("sales-email-cold-outreach");
 
-    const journalistWf = res.body.workflows.find((w: any) => w.workflowName === "journalist-outreach-v1");
-    expect(journalistWf).toBeDefined();
-    expect(journalistWf.category).toBe("pr");
-    expect(journalistWf.displayName).toBe("Journalist Outreach");
-    expect(journalistWf.signatureName).toBeNull();
+    const darmstadtWf = res.body.workflows.find((w: any) => w.workflowName === "sales-email-cold-outreach-darmstadt");
+    expect(darmstadtWf).toBeDefined();
+    expect(darmstadtWf.category).toBe("sales");
+    expect(darmstadtWf.displayName).toBe("Darmstadt");
+    expect(darmstadtWf.signatureName).toBe("darmstadt");
 
-    // availableCategories should list both categories
+    // availableCategories
     expect(res.body.availableCategories).toContain("sales");
-    expect(res.body.availableCategories).toContain("pr");
 
     // Workflow delivery stats distributed proportionally by cost
-    // sales: 4000/6000 = 66.7%, journalist: 2000/6000 = 33.3%
-    expect(salesWf.emailsSent).toBe(33); // Math.round(50 * 4000/6000)
+    // sienna: 4000/6000 = 66.7%, darmstadt: 2000/6000 = 33.3%
+    expect(siennaWf.emailsSent).toBe(33); // Math.round(50 * 4000/6000)
   });
 
   it("should ignore transactional stats entirely", async () => {
@@ -263,7 +263,7 @@ describe("GET /performance/leaderboard", () => {
       { dimensions: { brandId: "brand-1" }, totalCostInUsdCents: "10000.5000000000", actualCostInUsdCents: "8000.3000000000", provisionedCostInUsdCents: "2000.2000000000", cancelledCostInUsdCents: "0", runCount: 5 },
     ];
     const workflowGroups: MockRunsGroup[] = [
-      { dimensions: { workflowName: "cold-email-v1" }, totalCostInUsdCents: "10000.5000000000", actualCostInUsdCents: "8000.3000000000", provisionedCostInUsdCents: "2000.2000000000", cancelledCostInUsdCents: "0", runCount: 5 },
+      { dimensions: { workflowName: "sales-email-cold-outreach-phoenix" }, totalCostInUsdCents: "10000.5000000000", actualCostInUsdCents: "8000.3000000000", provisionedCostInUsdCents: "2000.2000000000", cancelledCostInUsdCents: "0", runCount: 5 },
     ];
 
     const mock = setupMocks(brands, brandCostGroups, workflowGroups);
@@ -286,18 +286,18 @@ describe("GET /performance/leaderboard", () => {
 
     const wf = res.body.workflows[0];
     expect(wf.totalCostUsdCents).toBe(8000);
-    expect(wf.workflowName).toBe("cold-email-v1");
+    expect(wf.workflowName).toBe("sales-email-cold-outreach-phoenix");
     expect(wf.runCount).toBe(5);
-    // "cold-email-v1" matches the "cold-email" pattern → category "sales"
     expect(wf.category).toBe("sales");
-    expect(wf.displayName).toBe("Cold Email");
+    expect(wf.signatureName).toBe("phoenix");
+    expect(wf.displayName).toBe("Phoenix");
   });
 
-  it("should keep workflows with empty workflowName as 'unknown' with fallback display name", async () => {
+  it("should keep workflows with empty workflowName as 'unknown'", async () => {
     const app = createApp();
     const brands = [{ id: "brand-1", domain: "acme.com", name: "Acme", brandUrl: "https://acme.com" }];
     const workflowGroups: MockRunsGroup[] = [
-      { dimensions: { workflowName: "cold-email-outreach" }, totalCostInUsdCents: "5000.0000", actualCostInUsdCents: "5000.0000", provisionedCostInUsdCents: "0", cancelledCostInUsdCents: "0", runCount: 10 },
+      { dimensions: { workflowName: "sales-email-cold-outreach-sienna" }, totalCostInUsdCents: "5000.0000", actualCostInUsdCents: "5000.0000", provisionedCostInUsdCents: "0", cancelledCostInUsdCents: "0", runCount: 10 },
       { dimensions: { workflowName: "" }, totalCostInUsdCents: "9000.0000", actualCostInUsdCents: "9000.0000", provisionedCostInUsdCents: "0", cancelledCostInUsdCents: "0", runCount: 100 },
     ];
 
@@ -312,26 +312,25 @@ describe("GET /performance/leaderboard", () => {
     const res = await request(app).get("/performance/leaderboard");
 
     expect(res.status).toBe(200);
-    // Both workflows should appear
     expect(res.body.workflows).toHaveLength(2);
-    expect(res.body.workflows.find((w: any) => w.workflowName === "cold-email-outreach")).toBeDefined();
+    const sienna = res.body.workflows.find((w: any) => w.workflowName === "sales-email-cold-outreach-sienna");
+    expect(sienna).toBeDefined();
+    expect(sienna.signatureName).toBe("sienna");
     const unknown = res.body.workflows.find((w: any) => w.workflowName === "unknown");
     expect(unknown).toBeDefined();
     expect(unknown.displayName).toBe("Unknown");
     expect(unknown.category).toBeNull();
+    expect(unknown.signatureName).toBeNull();
   });
 
-  it("should return categorySections grouped by sectionKey for new-format workflows", async () => {
+  it("should return categorySections grouped by sectionKey", async () => {
     const app = createApp();
     const brands = [
       { id: "brand-1", domain: "acme.com", name: "Acme", brandUrl: "https://acme.com" },
     ];
     const workflowGroups: MockRunsGroup[] = [
-      // New format: {category}-{channel}-{audienceType}-{signatureName}
       { dimensions: { workflowName: "sales-email-cold-outreach-sienna" }, totalCostInUsdCents: "4000.0000", actualCostInUsdCents: "4000.0000", provisionedCostInUsdCents: "0", cancelledCostInUsdCents: "0", runCount: 10 },
       { dimensions: { workflowName: "sales-email-cold-outreach-darmstadt" }, totalCostInUsdCents: "2000.0000", actualCostInUsdCents: "2000.0000", provisionedCostInUsdCents: "0", cancelledCostInUsdCents: "0", runCount: 5 },
-      // Legacy format (same sectionKey via legacy map)
-      { dimensions: { workflowName: "cold-email-outreach" }, totalCostInUsdCents: "3000.0000", actualCostInUsdCents: "3000.0000", provisionedCostInUsdCents: "0", cancelledCostInUsdCents: "0", runCount: 50 },
     ];
 
     const mock = setupMocks(brands, [], workflowGroups);
@@ -348,17 +347,17 @@ describe("GET /performance/leaderboard", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.categorySections).toBeDefined();
-    // All 3 workflows share the same sectionKey "sales-email-cold-outreach"
+    // Both workflows share the same sectionKey "sales-email-cold-outreach"
     expect(res.body.categorySections.length).toBe(1);
 
     const section = res.body.categorySections[0];
     expect(section.sectionKey).toBe("sales-email-cold-outreach");
     expect(section.label).toBe("Sales Cold Email Outreach");
     expect(section.category).toBe("sales");
-    expect(section.workflows).toHaveLength(3);
-    expect(section.stats.totalCostUsdCents).toBe(9000); // 4000 + 2000 + 3000
+    expect(section.workflows).toHaveLength(2);
+    expect(section.stats.totalCostUsdCents).toBe(6000); // 4000 + 2000
 
-    // New format workflows should have signatureName
+    // Workflows should have signatureName
     const sienna = section.workflows.find((w: any) => w.workflowName === "sales-email-cold-outreach-sienna");
     expect(sienna).toBeDefined();
     expect(sienna.signatureName).toBe("sienna");
@@ -369,18 +368,11 @@ describe("GET /performance/leaderboard", () => {
     expect(darmstadt).toBeDefined();
     expect(darmstadt.signatureName).toBe("darmstadt");
 
-    // Legacy workflow should have sectionKey but no signatureName
-    const legacy = section.workflows.find((w: any) => w.workflowName === "cold-email-outreach");
-    expect(legacy).toBeDefined();
-    expect(legacy.signatureName).toBeNull();
-    expect(legacy.sectionKey).toBe("sales-email-cold-outreach");
-    expect(legacy.displayName).toBe("Cold Email Outreach");
-
     // Brands included in the section
     expect(section.brands).toHaveLength(1);
   });
 
-  it("should return null category for unknown workflow names", async () => {
+  it("should return null category for non-standard workflow names", async () => {
     const app = createApp();
     const brands = [{ id: "brand-1", domain: "acme.com", name: "Acme", brandUrl: "https://acme.com" }];
     const workflowGroups: MockRunsGroup[] = [
@@ -403,9 +395,8 @@ describe("GET /performance/leaderboard", () => {
     expect(wf.sectionKey).toBeNull();
     expect(wf.signatureName).toBeNull();
     expect(wf.displayName).toBe("Unknown Workflow V1"); // fallback title-case
-    // Unknown categories should not appear in availableCategories
+    // Non-standard workflows should not appear in availableCategories or sections
     expect(res.body.availableCategories).toHaveLength(0);
-    // Unknown workflows should not appear in any section
     expect(res.body.categorySections).toHaveLength(0);
   });
 });
@@ -446,7 +437,7 @@ describe("Regression: performance leaderboard must use broadcast-only stats", ()
     expect(content).toContain("parseFloat");
   });
 
-  it("should use workflow category mapping from shared content", () => {
+  it("should use workflow name parsing from shared content", () => {
     const fs = require("fs");
     const path = require("path");
     const content = fs.readFileSync(
