@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { callExternalService, externalServices } from "../lib/service-client.js";
-import { getWorkflowCategory, getWorkflowDisplayName, CATEGORY_SECTION_LABELS, type WorkflowCategory } from "@mcpfactory/content";
+import { getWorkflowCategory, getWorkflowDisplayName, getSectionKey, getSignatureName, SECTION_LABELS, type WorkflowCategory } from "@mcpfactory/content";
 
 const router = Router();
 
@@ -40,7 +40,9 @@ interface BrandEntry {
 interface WorkflowEntry {
   workflowName: string;
   displayName: string;
+  signatureName: string | null;
   category: WorkflowCategory | null;
+  sectionKey: string | null;
   runCount: number;
   emailsSent: number;
   emailsOpened: number;
@@ -68,6 +70,7 @@ interface CategorySectionStats {
 
 interface CategorySection {
   category: WorkflowCategory;
+  sectionKey: string;
   label: string;
   stats: CategorySectionStats;
   workflows: WorkflowEntry[];
@@ -293,7 +296,9 @@ async function buildLeaderboardData(): Promise<LeaderboardData> {
       return {
         workflowName: name,
         displayName: getWorkflowDisplayName(name),
+        signatureName: getSignatureName(name),
         category: getWorkflowCategory(name),
+        sectionKey: getSectionKey(name),
         runCount: g.runCount || 0,
         totalCostUsdCents: Math.round(parseFloat(g.actualCostInUsdCents) || 0),
         emailsSent: 0, emailsOpened: 0, emailsClicked: 0, emailsReplied: 0,
@@ -309,26 +314,32 @@ async function buildLeaderboardData(): Promise<LeaderboardData> {
   return { brands, workflows, hero: null, updatedAt: new Date().toISOString(), availableCategories, categorySections: [] };
 }
 
-/** Build per-category sections with aggregated stats from their workflows. */
+/** Build per-section groups with aggregated stats from their workflows.
+ *  Groups by sectionKey ({category}-{channel}-{audienceType}) instead of just category. */
 function buildCategorySections(data: LeaderboardData): CategorySection[] {
-  const categoryMap = new Map<WorkflowCategory, WorkflowEntry[]>();
+  const sectionMap = new Map<string, WorkflowEntry[]>();
 
   for (const wf of data.workflows) {
-    if (!wf.category) continue;
-    const list = categoryMap.get(wf.category) || [];
+    const key = wf.sectionKey;
+    if (!key) continue;
+    const list = sectionMap.get(key) || [];
     list.push(wf);
-    categoryMap.set(wf.category, list);
+    sectionMap.set(key, list);
   }
 
-  return [...categoryMap.entries()].map(([category, workflows]) => {
+  return [...sectionMap.entries()].map(([sectionKey, workflows]) => {
     const emailsSent = workflows.reduce((s, w) => s + w.emailsSent, 0);
     const emailsOpened = workflows.reduce((s, w) => s + w.emailsOpened, 0);
     const emailsReplied = workflows.reduce((s, w) => s + w.emailsReplied, 0);
     const totalCostUsdCents = workflows.reduce((s, w) => s + w.totalCostUsdCents, 0);
+    // Derive category from the first workflow (all workflows in same section share the same category)
+    const category = workflows[0].category!;
+    const label = SECTION_LABELS[sectionKey] || sectionKey.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 
     return {
       category,
-      label: CATEGORY_SECTION_LABELS[category] || category,
+      sectionKey,
+      label,
       stats: {
         emailsSent,
         emailsOpened,
@@ -340,7 +351,7 @@ function buildCategorySections(data: LeaderboardData): CategorySection[] {
         costPerReplyCents: emailsReplied > 0 ? Math.round(totalCostUsdCents / emailsReplied) : null,
       },
       workflows,
-      brands: data.brands, // All brands for now — no per-category brand filtering yet
+      brands: data.brands, // All brands for now — no per-section brand filtering yet
     };
   });
 }

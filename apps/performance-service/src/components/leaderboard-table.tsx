@@ -116,7 +116,7 @@ export function BrandLeaderboard({ brands }: { brands: BrandLeaderboardEntry[] }
   );
 }
 
-export function WorkflowLeaderboard({ workflows }: { workflows: WorkflowLeaderboardEntry[] }) {
+export function WorkflowLeaderboard({ workflows, inSection = false }: { workflows: WorkflowLeaderboardEntry[]; inSection?: boolean }) {
   const [sortKey, setSortKey] = useState<SortKey>("totalCostUsdCents");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
@@ -158,9 +158,11 @@ export function WorkflowLeaderboard({ workflows }: { workflows: WorkflowLeaderbo
               <td className="px-4 py-4 whitespace-nowrap">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-gray-900">
-                    {wf.displayName || formatWorkflowName(wf.workflowName)}
+                    {inSection && wf.signatureName
+                      ? wf.signatureName.charAt(0).toUpperCase() + wf.signatureName.slice(1)
+                      : wf.displayName || formatWorkflowName(wf.workflowName)}
                   </span>
-                  {wf.category && (
+                  {!inSection && wf.category && (
                     <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
                       {WORKFLOW_CATEGORY_LABELS[wf.category]}
                     </span>
