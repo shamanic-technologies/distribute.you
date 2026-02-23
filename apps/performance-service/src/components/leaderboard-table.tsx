@@ -39,8 +39,8 @@ function SortHeader({
   );
 }
 
-export function BrandLeaderboard({ brands }: { brands: BrandLeaderboardEntry[] }) {
-  const [sortKey, setSortKey] = useState<SortKey>("totalCostUsdCents");
+export function BrandLeaderboard({ brands, maxEntries }: { brands: BrandLeaderboardEntry[]; maxEntries?: number }) {
+  const [sortKey, setSortKey] = useState<SortKey>("costPerReplyCents");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   function handleSort(key: SortKey) {
@@ -58,6 +58,8 @@ export function BrandLeaderboard({ brands }: { brands: BrandLeaderboardEntry[] }
     return sortDir === "desc" ? Number(bv) - Number(av) : Number(av) - Number(bv);
   });
 
+  const visible = maxEntries ? sorted.slice(0, maxEntries) : sorted;
+
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full divide-y divide-gray-200">
@@ -66,18 +68,16 @@ export function BrandLeaderboard({ brands }: { brands: BrandLeaderboardEntry[] }
             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Brand
             </th>
-            <SortHeader label="Spent" sortKey="totalCostUsdCents" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
-            <SortHeader label="Emails" sortKey="emailsSent" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
             <SortHeader label="% Opens" sortKey="openRate" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
-            <SortHeader label="% Visits" sortKey="clickRate" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+            <SortHeader label="% Clicks" sortKey="clickRate" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
             <SortHeader label="% Replies" sortKey="replyRate" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
             <SortHeader label="$/Open" sortKey="costPerOpenCents" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
-            <SortHeader label="$/Visit" sortKey="costPerClickCents" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+            <SortHeader label="$/Click" sortKey="costPerClickCents" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
             <SortHeader label="$/Reply" sortKey="costPerReplyCents" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
-          {sorted.map((brand, i) => (
+          {visible.map((brand, i) => (
             <tr key={brand.brandId || brand.brandDomain || i} className="hover:bg-gray-50">
               <td className="px-4 py-4 whitespace-nowrap">
                 <div className="flex items-center gap-3">
@@ -100,11 +100,9 @@ export function BrandLeaderboard({ brands }: { brands: BrandLeaderboardEntry[] }
                   </span>
                 </div>
               </td>
-              <td className="px-4 py-4 text-sm font-medium text-gray-900">{formatCostCents(brand.totalCostUsdCents)}</td>
-              <td className="px-4 py-4 text-sm text-gray-600">{brand.emailsSent > 0 ? brand.emailsSent.toLocaleString() : "—"}</td>
               <td className="px-4 py-4 text-sm text-gray-600">{brand.emailsSent > 0 ? formatPercent(brand.openRate) : "—"}</td>
               <td className="px-4 py-4 text-sm text-gray-600">{brand.emailsSent > 0 ? formatPercent(brand.clickRate) : "—"}</td>
-              <td className="px-4 py-4 text-sm font-medium text-gray-900">{brand.emailsSent > 0 ? formatPercent(brand.replyRate) : "—"}</td>
+              <td className="px-4 py-4 text-sm text-gray-600">{brand.emailsSent > 0 ? formatPercent(brand.replyRate) : "—"}</td>
               <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(brand.costPerOpenCents)}</td>
               <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(brand.costPerClickCents)}</td>
               <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(brand.costPerReplyCents)}</td>
@@ -116,8 +114,8 @@ export function BrandLeaderboard({ brands }: { brands: BrandLeaderboardEntry[] }
   );
 }
 
-export function WorkflowLeaderboard({ workflows, inSection = false }: { workflows: WorkflowLeaderboardEntry[]; inSection?: boolean }) {
-  const [sortKey, setSortKey] = useState<SortKey>("openRate");
+export function WorkflowLeaderboard({ workflows, inSection = false, maxEntries }: { workflows: WorkflowLeaderboardEntry[]; inSection?: boolean; maxEntries?: number }) {
+  const [sortKey, setSortKey] = useState<SortKey>("costPerReplyCents");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [selected, setSelected] = useState<WorkflowLeaderboardEntry | null>(null);
 
@@ -135,6 +133,8 @@ export function WorkflowLeaderboard({ workflows, inSection = false }: { workflow
     const bv = b[sortKey as keyof WorkflowLeaderboardEntry] ?? 0;
     return sortDir === "desc" ? Number(bv) - Number(av) : Number(av) - Number(bv);
   });
+
+  const visible = maxEntries ? sorted.slice(0, maxEntries) : sorted;
 
   return (
     <>
@@ -154,7 +154,7 @@ export function WorkflowLeaderboard({ workflows, inSection = false }: { workflow
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {sorted.map((wf) => (
+            {visible.map((wf) => (
               <tr
                 key={wf.workflowName}
                 className={`hover:bg-gray-50 cursor-pointer ${selected?.workflowName === wf.workflowName ? "bg-primary-50" : ""}`}
