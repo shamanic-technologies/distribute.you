@@ -30,12 +30,12 @@ export function SectionLeaderboard({
 
       {tab === "workflow" ? (
         workflows.length > 0 ? (
-          <WorkflowLeaderboard workflows={workflows.slice(0, maxEntries)} inSection />
+          <WorkflowLeaderboard workflows={workflows} maxEntries={maxEntries} inSection />
         ) : (
           <p className="text-sm text-gray-500 py-4">No workflow data yet.</p>
         )
       ) : brands.length > 0 ? (
-        <BrandLeaderboard brands={brands.slice(0, maxEntries)} />
+        <BrandLeaderboard brands={brands} maxEntries={maxEntries} />
       ) : (
         <p className="text-sm text-gray-500 py-4">No brand data yet.</p>
       )}
