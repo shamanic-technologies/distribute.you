@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { authenticate, requireOrg, AuthenticatedRequest } from "../middleware/auth.js";
-import { callService, services, callExternalService, externalServices } from "../lib/service-client.js";
+import { callExternalService, externalServices } from "../lib/service-client.js";
 import { buildInternalHeaders } from "../lib/internal-headers.js";
 import { createRun, updateRun, getRunsBatch, type RunWithCosts } from "@mcpfactory/runs-client";
 import { CreateCampaignRequestSchema, BatchStatsRequestSchema } from "../schemas.js";
@@ -413,8 +413,8 @@ router.get("/campaigns/:id/stats", authenticate, requireOrg, async (req: Authent
         console.warn("[campaigns] Lead-service stats failed:", (err as Error).message);
         return null;
       }),
-      callService(
-        services.emailgen,
+      callExternalService(
+        externalServices.emailgen,
         "/stats",
         { method: "POST", body: { campaignId: id, appId: "mcpfactory" }, headers: { "x-clerk-org-id": orgId } }
       ).catch((err) => {
@@ -514,8 +514,8 @@ router.post("/campaigns/batch-stats", authenticate, requireOrg, async (req: Auth
               `/stats?campaignId=${id}`,
               { headers: { "x-app-id": "mcpfactory", "x-org-id": orgId } }
             ).catch(() => null),
-            callService(
-              services.emailgen,
+            callExternalService(
+              externalServices.emailgen,
               "/stats",
               { method: "POST", body: { campaignId: id, appId: "mcpfactory" }, headers: { "x-clerk-org-id": orgId } }
             ).catch(() => null),
@@ -673,8 +673,8 @@ router.get("/campaigns/:id/emails", authenticate, requireOrg, async (req: Authen
     const { id } = req.params;
 
     // 1. Fetch all generations for this campaign in one call
-    const emailsResult = await callService(
-      services.emailgen,
+    const emailsResult = await callExternalService(
+      externalServices.emailgen,
       `/generations?campaignId=${id}`,
       {
         headers: { "x-clerk-org-id": req.orgId! },

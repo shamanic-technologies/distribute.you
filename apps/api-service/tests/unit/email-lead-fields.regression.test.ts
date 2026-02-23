@@ -15,6 +15,7 @@ vi.mock("../../src/lib/service-client.js", () => ({
   callExternalService: (...args: unknown[]) => mockCallExternalService(...args),
   callService: (...args: unknown[]) => mockCallService(...args),
   externalServices: {
+    emailgen: { url: "http://mock-emailgen", apiKey: "k" },
     emailSending: { url: "http://mock-email", apiKey: "k" },
     replyQualification: { url: "http://mock-rq", apiKey: "k" },
     lead: { url: "http://mock-lead", apiKey: "k" },
@@ -24,7 +25,6 @@ vi.mock("../../src/lib/service-client.js", () => ({
     lifecycle: { url: "http://mock-lifecycle", apiKey: "k" },
   },
   services: {
-    emailgen: "http://mock-emailgen",
     client: "http://mock-client",
   },
 }));
@@ -70,23 +70,28 @@ describe("Email lead fields: passed through from emailgen dedicated columns", ()
   it("should return lead fields from emailgen dedicated columns", async () => {
     const app = createApp();
 
-    mockCallService.mockResolvedValue({
-      generations: [
-        {
-          id: "gen-1",
-          subject: "Test Email",
-          bodyHtml: "<p>Hello</p>",
-          bodyText: "Hello",
-          leadFirstName: "Thomas",
-          leadLastName: "Bailey",
-          leadTitle: "Outreach Director",
-          leadCompany: "ECMC",
-          leadIndustry: "financial services",
-          clientCompanyName: "Sortes",
-          generationRunId: null,
-          createdAt: "2026-02-18T00:00:00Z",
-        },
-      ],
+    mockCallExternalService.mockImplementation((service: any, path: string) => {
+      if (service.url === "http://mock-emailgen" && path.startsWith("/generations")) {
+        return Promise.resolve({
+          generations: [
+            {
+              id: "gen-1",
+              subject: "Test Email",
+              bodyHtml: "<p>Hello</p>",
+              bodyText: "Hello",
+              leadFirstName: "Thomas",
+              leadLastName: "Bailey",
+              leadTitle: "Outreach Director",
+              leadCompany: "ECMC",
+              leadIndustry: "financial services",
+              clientCompanyName: "Sortes",
+              generationRunId: null,
+              createdAt: "2026-02-18T00:00:00Z",
+            },
+          ],
+        });
+      }
+      return Promise.resolve(null);
     });
 
     mockGetRunsBatch.mockResolvedValue(new Map());
@@ -108,7 +113,12 @@ describe("Email lead fields: passed through from emailgen dedicated columns", ()
   it("should return empty emails array when no generations exist", async () => {
     const app = createApp();
 
-    mockCallService.mockResolvedValue({ generations: [] });
+    mockCallExternalService.mockImplementation((service: any, path: string) => {
+      if (service.url === "http://mock-emailgen" && path.startsWith("/generations")) {
+        return Promise.resolve({ generations: [] });
+      }
+      return Promise.resolve(null);
+    });
     mockGetRunsBatch.mockResolvedValue(new Map());
 
     const res = await request(app).get("/v1/campaigns/test-campaign-456/emails");
