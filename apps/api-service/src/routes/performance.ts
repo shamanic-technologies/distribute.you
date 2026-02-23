@@ -453,6 +453,11 @@ router.get("/performance/leaderboard", async (req, res) => {
       console.warn("Failed to enrich leaderboard with delivery stats:", err);
     }
 
+    // Filter out brands with no activity (no cost and no emails sent)
+    data.brands = data.brands.filter(
+      (b) => b.totalCostUsdCents > 0 || b.emailsSent > 0
+    );
+
     // Build per-category sections after enrichment so email stats are included
     data.categorySections = buildCategorySections(data);
 
