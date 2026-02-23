@@ -291,6 +291,82 @@ describe("GET /performance/leaderboard", () => {
     expect(wf.displayName).toBe("Cold Email");
   });
 
+  it("should exclude workflows with null/empty workflowName from leaderboard", async () => {
+    const app = createApp();
+    const brands = [{ id: "brand-1", domain: "acme.com", name: "Acme", brandUrl: "https://acme.com" }];
+    const workflowGroups: MockRunsGroup[] = [
+      // Valid workflow
+      { dimensions: { workflowName: "cold-email-outreach" }, totalCostInUsdCents: "5000.0000", actualCostInUsdCents: "5000.0000", provisionedCostInUsdCents: "0", cancelledCostInUsdCents: "0", runCount: 10 },
+      // NULL workflow name (should be excluded)
+      { dimensions: { workflowName: "" }, totalCostInUsdCents: "9000.0000", actualCostInUsdCents: "9000.0000", provisionedCostInUsdCents: "0", cancelledCostInUsdCents: "0", runCount: 100 },
+    ];
+
+    const mock = setupMocks(brands, [], workflowGroups);
+    mockCallExternalService.mockImplementation((_service: any, path: string, opts: any) => {
+      const result = mock(_service, path, opts);
+      if (result !== null) return result;
+      if (path === "/stats") return Promise.resolve(makeGatewayResponse({ emailsSent: 10, emailsDelivered: 9, emailsOpened: 5, emailsClicked: 1, emailsReplied: 2, emailsBounced: 0 }));
+      return Promise.resolve(null);
+    });
+
+    const res = await request(app).get("/performance/leaderboard");
+
+    expect(res.status).toBe(200);
+    // Only the valid workflow should appear
+    expect(res.body.workflows).toHaveLength(1);
+    expect(res.body.workflows[0].workflowName).toBe("cold-email-outreach");
+    expect(res.body.workflows[0].displayName).toBe("Cold Email Outreach");
+    expect(res.body.workflows[0].category).toBe("sales");
+    // "unknown" should never appear
+    expect(res.body.workflows.find((w: any) => w.workflowName === "unknown")).toBeUndefined();
+  });
+
+  it("should return categorySections grouped by workflow category", async () => {
+    const app = createApp();
+    const brands = [
+      { id: "brand-1", domain: "acme.com", name: "Acme", brandUrl: "https://acme.com" },
+    ];
+    const workflowGroups: MockRunsGroup[] = [
+      { dimensions: { workflowName: "sales-cold-email-v1" }, totalCostInUsdCents: "4000.0000", actualCostInUsdCents: "4000.0000", provisionedCostInUsdCents: "0", cancelledCostInUsdCents: "0", runCount: 10 },
+      { dimensions: { workflowName: "journalist-outreach-v1" }, totalCostInUsdCents: "2000.0000", actualCostInUsdCents: "2000.0000", provisionedCostInUsdCents: "0", cancelledCostInUsdCents: "0", runCount: 5 },
+    ];
+
+    const mock = setupMocks(brands, [], workflowGroups);
+    mockCallExternalService.mockImplementation((_service: any, path: string, opts: any) => {
+      const result = mock(_service, path, opts);
+      if (result !== null) return result;
+      if (path === "/stats") {
+        const body = opts?.body || {};
+        if (body.brandId) {
+          return Promise.resolve(makeGatewayResponse({ emailsSent: 50, emailsDelivered: 47, emailsOpened: 25, emailsClicked: 5, emailsReplied: 8, emailsBounced: 3 }));
+        }
+        return Promise.resolve(makeGatewayResponse({ emailsSent: 50, emailsDelivered: 47, emailsOpened: 25, emailsClicked: 5, emailsReplied: 8, emailsBounced: 3 }));
+      }
+      return Promise.resolve(null);
+    });
+
+    const res = await request(app).get("/performance/leaderboard");
+
+    expect(res.status).toBe(200);
+    expect(res.body.categorySections).toBeDefined();
+    expect(res.body.categorySections.length).toBe(2);
+
+    const salesSection = res.body.categorySections.find((s: any) => s.category === "sales");
+    expect(salesSection).toBeDefined();
+    expect(salesSection.label).toBe("Sales Cold Email Outreach");
+    expect(salesSection.workflows).toHaveLength(1);
+    expect(salesSection.workflows[0].workflowName).toBe("sales-cold-email-v1");
+    expect(salesSection.stats).toBeDefined();
+    expect(salesSection.stats.totalCostUsdCents).toBe(4000);
+    // Brands are included in all sections for now
+    expect(salesSection.brands).toHaveLength(1);
+
+    const prSection = res.body.categorySections.find((s: any) => s.category === "pr");
+    expect(prSection).toBeDefined();
+    expect(prSection.label).toBe("PR & Media Outreach");
+    expect(prSection.workflows).toHaveLength(1);
+  });
+
   it("should return null category for unknown workflow names", async () => {
     const app = createApp();
     const brands = [{ id: "brand-1", domain: "acme.com", name: "Acme", brandUrl: "https://acme.com" }];
@@ -351,6 +427,19 @@ describe("Regression: performance leaderboard must use broadcast-only stats", ()
     expect(content).toContain("/brands?clerkOrgId=");
     expect(content).toContain("/v1/stats/public/leaderboard");
     expect(content).toContain("parseFloat");
+  });
+
+  it("should filter out null/empty workflowName groups to prevent 'unknown' entries", () => {
+    const fs = require("fs");
+    const path = require("path");
+    const content = fs.readFileSync(
+      path.join(__dirname, "../../src/routes/performance.ts"),
+      "utf-8"
+    );
+
+    // Source must filter before mapping, not default to "unknown"
+    expect(content).toContain(".filter((g) => g.dimensions.workflowName)");
+    expect(content).not.toContain('|| "unknown"');
   });
 
   it("should use workflow category mapping from shared content", () => {

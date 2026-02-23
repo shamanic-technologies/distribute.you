@@ -50,12 +50,32 @@ export interface HeroStats {
   };
 }
 
+export interface CategorySectionStats {
+  emailsSent: number;
+  emailsOpened: number;
+  emailsReplied: number;
+  totalCostUsdCents: number;
+  openRate: number;
+  replyRate: number;
+  costPerOpenCents: number | null;
+  costPerReplyCents: number | null;
+}
+
+export interface CategorySectionData {
+  category: string;
+  label: string;
+  stats: CategorySectionStats;
+  workflows: WorkflowLeaderboardEntry[];
+  brands: BrandLeaderboardEntry[];
+}
+
 export interface LeaderboardData {
   brands: BrandLeaderboardEntry[];
   workflows: WorkflowLeaderboardEntry[];
   hero: HeroStats | null;
   updatedAt: string;
   availableCategories: WorkflowCategory[];
+  categorySections: CategorySectionData[];
 }
 
 export async function fetchLeaderboard(): Promise<LeaderboardData | null> {
