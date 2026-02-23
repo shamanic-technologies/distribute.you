@@ -251,6 +251,7 @@ async function enrichWithDeliveryStats(data: LeaderboardData): Promise<void> {
     }
   }
 
+
   // Recompute hero stats
   const withStats = data.workflows.filter((w) => w.emailsSent > 0);
   if (withStats.length > 0) {
