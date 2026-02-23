@@ -877,6 +877,22 @@ registry.registerPath({
 
 registry.registerPath({
   method: "get",
+  path: "/v1/brands/{id}/cost-breakdown",
+  tags: ["Brand"],
+  summary: "Get brand cost breakdown",
+  description:
+    "Get cost breakdown by cost name for all runs associated with a brand, from runs-service",
+  security: authed,
+  request: { params: BrandIdParam },
+  responses: {
+    200: { description: "Cost breakdown by cost name" },
+    401: { description: "Unauthorized", content: errorContent },
+    500: { description: "Internal error", content: errorContent },
+  },
+});
+
+registry.registerPath({
+  method: "get",
   path: "/v1/brands/{id}/runs",
   tags: ["Brand"],
   summary: "Get brand runs",

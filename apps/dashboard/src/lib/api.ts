@@ -225,6 +225,10 @@ export async function getBrandDeliveryStats(token: string, brandId: string): Pro
   return apiCall<BrandDeliveryStats>(`/brands/${brandId}/delivery-stats`, { token });
 }
 
+export async function getBrandCostBreakdown(token: string, brandId: string): Promise<{ costs: CostByName[] }> {
+  return apiCall<{ costs: CostByName[] }>(`/brands/${brandId}/cost-breakdown`, { token });
+}
+
 export async function stopCampaign(token: string, campaignId: string): Promise<{ campaign: Campaign }> {
   return apiCall<{ campaign: Campaign }>(`/campaigns/${campaignId}/stop`, { token, method: "POST" });
 }

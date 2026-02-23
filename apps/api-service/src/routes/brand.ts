@@ -173,6 +173,36 @@ router.post("/brand/icp-suggestion", authenticate, requireOrg, async (req: Authe
 });
 
 /**
+ * GET /v1/brands/:id/cost-breakdown
+ * Get cost breakdown by cost name for all runs associated with a brand.
+ * Uses runs-service as the single source of truth.
+ */
+router.get("/brands/:id/cost-breakdown", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { id } = req.params;
+    const orgId = req.orgId!;
+
+    const data = await callExternalService<{
+      costs: Array<{
+        costName: string;
+        totalCostInUsdCents: string;
+        actualCostInUsdCents: string;
+        provisionedCostInUsdCents: string;
+        totalQuantity: string;
+      }>;
+    }>(
+      externalServices.runs,
+      `/v1/stats/costs/by-cost-name?clerkOrgId=${encodeURIComponent(orgId)}&appId=mcpfactory&brandId=${encodeURIComponent(id)}`
+    );
+
+    res.json({ costs: data.costs || [] });
+  } catch (error: any) {
+    console.error("Get brand cost breakdown error:", error);
+    res.status(500).json({ error: error.message || "Failed to get brand cost breakdown" });
+  }
+});
+
+/**
  * GET /v1/brands/:id/runs
  * Get extraction runs for a brand (sales-profile, icp-extraction) from brand-service,
  * enriched with cost data from runs-service.

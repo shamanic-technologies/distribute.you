@@ -2258,6 +2258,60 @@
         }
       }
     },
+    "/v1/brands/{id}/cost-breakdown": {
+      "get": {
+        "tags": [
+          "Brand"
+        ],
+        "summary": "Get brand cost breakdown",
+        "description": "Get cost breakdown by cost name for all runs associated with a brand, from runs-service",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Brand ID"
+            },
+            "required": true,
+            "description": "Brand ID",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cost breakdown by cost name"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/brands/{id}/runs": {
       "get": {
         "tags": [
