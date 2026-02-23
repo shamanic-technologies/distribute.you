@@ -10,6 +10,7 @@ interface DeliveryStats {
   emailsClicked: number;
   emailsReplied: number;
   emailsBounced: number;
+  repliesInterested: number;
 }
 
 const EMPTY_STATS: DeliveryStats = {
@@ -18,6 +19,7 @@ const EMPTY_STATS: DeliveryStats = {
   emailsClicked: 0,
   emailsReplied: 0,
   emailsBounced: 0,
+  repliesInterested: 0,
 };
 
 interface BrandEntry {
@@ -48,10 +50,12 @@ interface WorkflowEntry {
   emailsOpened: number;
   emailsClicked: number;
   emailsReplied: number;
+  repliesInterested: number;
   totalCostUsdCents: number;
   openRate: number;
   clickRate: number;
   replyRate: number;
+  interestedRate: number;
   costPerOpenCents: number | null;
   costPerClickCents: number | null;
   costPerReplyCents: number | null;
@@ -61,9 +65,11 @@ interface CategorySectionStats {
   emailsSent: number;
   emailsOpened: number;
   emailsReplied: number;
+  repliesInterested: number;
   totalCostUsdCents: number;
   openRate: number;
   replyRate: number;
+  interestedRate: number;
   costPerOpenCents: number | null;
   costPerReplyCents: number | null;
 }
@@ -86,96 +92,144 @@ interface LeaderboardData {
   categorySections: CategorySection[];
 }
 
+interface BroadcastStatsResponse {
+  emailsSent: number;
+  emailsOpened: number;
+  emailsClicked: number;
+  emailsReplied: number;
+  emailsBounced: number;
+  repliesWillingToMeet: number;
+  repliesInterested: number;
+  repliesNotInterested: number;
+  repliesOutOfOffice: number;
+  repliesUnsubscribe: number;
+}
+
+function toBroadcastDeliveryStats(b: BroadcastStatsResponse | undefined | null): DeliveryStats {
+  if (!b) return EMPTY_STATS;
+  return {
+    emailsSent: b.emailsSent || 0,
+    emailsOpened: b.emailsOpened || 0,
+    emailsClicked: b.emailsClicked || 0,
+    emailsReplied: b.emailsReplied || 0,
+    emailsBounced: b.emailsBounced || 0,
+    repliesInterested: (b.repliesWillingToMeet || 0) + (b.repliesInterested || 0),
+  };
+}
+
 /** Fetch broadcast delivery stats from the unified email-sending service.
  *  Only uses broadcast stats (outreach emails via Instantly).
  *  Transactional stats are lifecycle/test emails via Postmark — not relevant. */
 async function fetchBroadcastDeliveryStats(filters: Record<string, string>): Promise<DeliveryStats> {
   try {
     const result = await callExternalService<{
-      transactional: { emailsSent: number; emailsOpened: number; emailsClicked: number; emailsReplied: number; emailsBounced: number };
-      broadcast: { emailsSent: number; emailsOpened: number; emailsClicked: number; emailsReplied: number; emailsBounced: number };
+      transactional: BroadcastStatsResponse;
+      broadcast: BroadcastStatsResponse;
     }>(
       externalServices.emailSending,
       "/stats",
       { method: "POST", body: filters }
     );
 
-    const b = result.broadcast;
-    if (!b) return EMPTY_STATS;
-
-    return {
-      emailsSent: b.emailsSent || 0,
-      emailsOpened: b.emailsOpened || 0,
-      emailsClicked: b.emailsClicked || 0,
-      emailsReplied: b.emailsReplied || 0,
-      emailsBounced: b.emailsBounced || 0,
-    };
+    return toBroadcastDeliveryStats(result.broadcast);
   } catch {
     return EMPTY_STATS;
   }
 }
 
-function applyStatsToEntry(
-  entry: { emailsSent: number; emailsOpened: number; emailsClicked: number; emailsReplied: number; totalCostUsdCents: number; openRate: number; clickRate: number; replyRate: number; costPerOpenCents: number | null; costPerClickCents: number | null; costPerReplyCents: number | null },
-  stats: DeliveryStats
-) {
-  entry.emailsSent = stats.emailsSent;
-  entry.emailsOpened = stats.emailsOpened;
-  entry.emailsClicked = stats.emailsClicked;
-  entry.emailsReplied = stats.emailsReplied;
+/** Fetch broadcast delivery stats grouped by workflow name. Returns a map of workflowName → stats. */
+async function fetchWorkflowDeliveryStats(): Promise<Map<string, DeliveryStats>> {
+  try {
+    const result = await callExternalService<{
+      groups: Array<{ key: string; broadcast: BroadcastStatsResponse }>;
+    }>(
+      externalServices.emailSending,
+      "/stats",
+      { method: "POST", body: { appId: "mcpfactory", type: "broadcast", groupBy: "workflowName" } }
+    );
+
+    const map = new Map<string, DeliveryStats>();
+    for (const group of result.groups || []) {
+      if (group.key) {
+        map.set(group.key, toBroadcastDeliveryStats(group.broadcast));
+      }
+    }
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
+function applyStatsToBrand(brand: BrandEntry, stats: DeliveryStats) {
+  brand.emailsSent = stats.emailsSent;
+  brand.emailsOpened = stats.emailsOpened;
+  brand.emailsClicked = stats.emailsClicked;
+  brand.emailsReplied = stats.emailsReplied;
 
   const sent = stats.emailsSent;
-  entry.openRate = sent > 0 ? Math.round((stats.emailsOpened / sent) * 10000) / 10000 : 0;
-  entry.clickRate = sent > 0 ? Math.round((stats.emailsClicked / sent) * 10000) / 10000 : 0;
-  entry.replyRate = sent > 0 ? Math.round((stats.emailsReplied / sent) * 10000) / 10000 : 0;
+  brand.openRate = sent > 0 ? Math.round((stats.emailsOpened / sent) * 10000) / 10000 : 0;
+  brand.clickRate = sent > 0 ? Math.round((stats.emailsClicked / sent) * 10000) / 10000 : 0;
+  brand.replyRate = sent > 0 ? Math.round((stats.emailsReplied / sent) * 10000) / 10000 : 0;
 
-  const cost = entry.totalCostUsdCents;
-  entry.costPerOpenCents = stats.emailsOpened > 0 ? Math.round(cost / stats.emailsOpened) : null;
-  entry.costPerClickCents = stats.emailsClicked > 0 ? Math.round(cost / stats.emailsClicked) : null;
-  entry.costPerReplyCents = stats.emailsReplied > 0 ? Math.round(cost / stats.emailsReplied) : null;
+  const cost = brand.totalCostUsdCents;
+  brand.costPerOpenCents = stats.emailsOpened > 0 ? Math.round(cost / stats.emailsOpened) : null;
+  brand.costPerClickCents = stats.emailsClicked > 0 ? Math.round(cost / stats.emailsClicked) : null;
+  brand.costPerReplyCents = stats.emailsReplied > 0 ? Math.round(cost / stats.emailsReplied) : null;
+}
+
+function applyStatsToWorkflow(wf: WorkflowEntry, stats: DeliveryStats) {
+  wf.emailsSent = stats.emailsSent;
+  wf.emailsOpened = stats.emailsOpened;
+  wf.emailsClicked = stats.emailsClicked;
+  wf.emailsReplied = stats.emailsReplied;
+  wf.repliesInterested = stats.repliesInterested;
+
+  const sent = stats.emailsSent;
+  wf.openRate = sent > 0 ? Math.round((stats.emailsOpened / sent) * 10000) / 10000 : 0;
+  wf.clickRate = sent > 0 ? Math.round((stats.emailsClicked / sent) * 10000) / 10000 : 0;
+  wf.replyRate = sent > 0 ? Math.round((stats.emailsReplied / sent) * 10000) / 10000 : 0;
+  wf.interestedRate = sent > 0 ? Math.round((stats.repliesInterested / sent) * 10000) / 10000 : 0;
+
+  const cost = wf.totalCostUsdCents;
+  wf.costPerOpenCents = stats.emailsOpened > 0 ? Math.round(cost / stats.emailsOpened) : null;
+  wf.costPerClickCents = stats.emailsClicked > 0 ? Math.round(cost / stats.emailsClicked) : null;
+  wf.costPerReplyCents = stats.emailsReplied > 0 ? Math.round(cost / stats.emailsReplied) : null;
 }
 
 /**
  * Enrich leaderboard email stats from the unified email-sending service.
- * Uses brandId and appId filters directly — no need to fetch campaigns or runs.
+ * Uses per-brand stats via brandId filter and per-workflow stats via groupBy.
  */
 async function enrichWithDeliveryStats(data: LeaderboardData): Promise<void> {
-  // Fetch broadcast-only delivery stats per brand using brandId filter
-  await Promise.all(
-    data.brands.map(async (brand) => {
-      if (!brand.brandId) {
-        return;
-      }
+  // Fetch per-brand and per-workflow stats in parallel
+  const [, workflowStatsMap] = await Promise.all([
+    // Per-brand stats
+    Promise.all(
+      data.brands.map(async (brand) => {
+        if (!brand.brandId) return;
+        const stats = await fetchBroadcastDeliveryStats({ brandId: brand.brandId, appId: "mcpfactory" });
+        if (stats.emailsSent === 0) return;
+        applyStatsToBrand(brand, stats);
+      })
+    ),
+    // Per-workflow stats via groupBy (single call instead of proportional distribution)
+    fetchWorkflowDeliveryStats(),
+  ]);
 
-      const stats = await fetchBroadcastDeliveryStats({ brandId: brand.brandId, appId: "mcpfactory" });
-      if (stats.emailsSent === 0) return;
-      applyStatsToEntry(brand, stats);
-    })
-  );
-
-  // Fetch aggregate stats for workflow leaderboard using appId filter
-  const aggregateStats = await fetchBroadcastDeliveryStats({ appId: "mcpfactory" });
-
-  if (aggregateStats.emailsSent > 0 && data.workflows.length > 0) {
-    // Distribute delivery stats across workflows proportionally by cost
-    const totalWorkflowCost = data.workflows.reduce((s, w) => s + w.totalCostUsdCents, 0);
-
-    for (const wf of data.workflows) {
-      const ratio = totalWorkflowCost > 0 ? wf.totalCostUsdCents / totalWorkflowCost : 1 / data.workflows.length;
-      const wfStats: DeliveryStats = {
-        emailsSent: Math.round(aggregateStats.emailsSent * ratio),
-        emailsOpened: Math.round(aggregateStats.emailsOpened * ratio),
-        emailsClicked: Math.round(aggregateStats.emailsClicked * ratio),
-        emailsReplied: Math.round(aggregateStats.emailsReplied * ratio),
-        emailsBounced: Math.round(aggregateStats.emailsBounced * ratio),
-      };
-      applyStatsToEntry(wf, wfStats);
+  // Apply exact per-workflow email stats
+  for (const wf of data.workflows) {
+    const stats = workflowStatsMap.get(wf.workflowName);
+    if (stats && stats.emailsSent > 0) {
+      applyStatsToWorkflow(wf, stats);
     }
+  }
 
-    // Recompute hero stats
-    const withConversion = data.workflows.map((w) => ({
+  // Recompute hero stats
+  const withStats = data.workflows.filter((w) => w.emailsSent > 0);
+  if (withStats.length > 0) {
+    const withConversion = withStats.map((w) => ({
       workflowName: w.workflowName,
-      conversionRate: w.emailsSent > 0 ? (w.emailsClicked + w.emailsReplied) / w.emailsSent : 0,
+      conversionRate: (w.emailsClicked + w.emailsReplied) / w.emailsSent,
       conversionsPerDollar:
         w.totalCostUsdCents > 0
           ? ((w.emailsClicked + w.emailsReplied) / w.totalCostUsdCents) * 100
@@ -301,8 +355,8 @@ async function buildLeaderboardData(): Promise<LeaderboardData> {
         sectionKey: getSectionKey(name),
         runCount: g.runCount || 0,
         totalCostUsdCents: Math.round(parseFloat(g.actualCostInUsdCents) || 0),
-        emailsSent: 0, emailsOpened: 0, emailsClicked: 0, emailsReplied: 0,
-        openRate: 0, clickRate: 0, replyRate: 0,
+        emailsSent: 0, emailsOpened: 0, emailsClicked: 0, emailsReplied: 0, repliesInterested: 0,
+        openRate: 0, clickRate: 0, replyRate: 0, interestedRate: 0,
         costPerOpenCents: null, costPerClickCents: null, costPerReplyCents: null,
       };
     });
@@ -331,6 +385,7 @@ function buildCategorySections(data: LeaderboardData): CategorySection[] {
     const emailsSent = workflows.reduce((s, w) => s + w.emailsSent, 0);
     const emailsOpened = workflows.reduce((s, w) => s + w.emailsOpened, 0);
     const emailsReplied = workflows.reduce((s, w) => s + w.emailsReplied, 0);
+    const repliesInterested = workflows.reduce((s, w) => s + w.repliesInterested, 0);
     const totalCostUsdCents = workflows.reduce((s, w) => s + w.totalCostUsdCents, 0);
     // Derive category from the first workflow (all workflows in same section share the same category)
     const category = workflows[0].category!;
@@ -344,9 +399,11 @@ function buildCategorySections(data: LeaderboardData): CategorySection[] {
         emailsSent,
         emailsOpened,
         emailsReplied,
+        repliesInterested,
         totalCostUsdCents,
         openRate: emailsSent > 0 ? Math.round((emailsOpened / emailsSent) * 10000) / 10000 : 0,
         replyRate: emailsSent > 0 ? Math.round((emailsReplied / emailsSent) * 10000) / 10000 : 0,
+        interestedRate: emailsSent > 0 ? Math.round((repliesInterested / emailsSent) * 10000) / 10000 : 0,
         costPerOpenCents: emailsOpened > 0 ? Math.round(totalCostUsdCents / emailsOpened) : null,
         costPerReplyCents: emailsReplied > 0 ? Math.round(totalCostUsdCents / emailsReplied) : null,
       },

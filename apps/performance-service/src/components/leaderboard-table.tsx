@@ -13,7 +13,7 @@ import {
 
 const LOGO_DEV_TOKEN = process.env.NEXT_PUBLIC_LOGO_DEV_TOKEN;
 
-type SortKey = "openRate" | "clickRate" | "replyRate" | "costPerOpenCents" | "costPerClickCents" | "costPerReplyCents" | "emailsSent" | "totalCostUsdCents" | "runCount";
+type SortKey = "openRate" | "clickRate" | "replyRate" | "interestedRate" | "costPerOpenCents" | "costPerClickCents" | "costPerReplyCents" | "emailsSent" | "totalCostUsdCents" | "runCount";
 
 function SortHeader({
   label,
@@ -147,8 +147,8 @@ export function WorkflowLeaderboard({ workflows, inSection = false }: { workflow
             <SortHeader label="Spent" sortKey="totalCostUsdCents" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
             <SortHeader label="Sent" sortKey="emailsSent" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
             <SortHeader label="% Opens" sortKey="openRate" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
-            <SortHeader label="% Visits" sortKey="clickRate" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
             <SortHeader label="% Replies" sortKey="replyRate" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+            <SortHeader label="% Interested" sortKey="interestedRate" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
             <SortHeader label="$/Reply" sortKey="costPerReplyCents" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
           </tr>
         </thead>
@@ -173,8 +173,8 @@ export function WorkflowLeaderboard({ workflows, inSection = false }: { workflow
               <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(wf.totalCostUsdCents)}</td>
               <td className="px-4 py-4 text-sm text-gray-600">{wf.emailsSent > 0 ? wf.emailsSent.toLocaleString() : "—"}</td>
               <td className="px-4 py-4 text-sm text-gray-600">{wf.emailsSent > 0 ? formatPercent(wf.openRate) : "—"}</td>
-              <td className="px-4 py-4 text-sm text-gray-600">{wf.emailsSent > 0 ? formatPercent(wf.clickRate) : "—"}</td>
               <td className="px-4 py-4 text-sm text-gray-600">{wf.emailsSent > 0 ? formatPercent(wf.replyRate) : "—"}</td>
+              <td className="px-4 py-4 text-sm font-medium text-gray-900">{wf.emailsSent > 0 ? formatPercent(wf.interestedRate) : "—"}</td>
               <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(wf.costPerReplyCents)}</td>
             </tr>
           ))}
