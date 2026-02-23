@@ -1,8 +1,10 @@
 "use client";
 
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, type ReactNode } from "react";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { getCampaign, getCampaignStats, listCampaignEmails, listCampaignLeads, type Campaign, type CampaignStats, type Email, type Lead } from "./api";
+
+const POLL_INTERVAL = 5_000;
 
 interface CampaignContextType {
   campaign: Campaign | null;
@@ -21,44 +23,56 @@ interface CampaignProviderProps {
   campaignId: string;
 }
 
+const EMPTY_EMAILS: Email[] = [];
+const EMPTY_LEADS: Lead[] = [];
+const noop = () => {};
+
 export function CampaignProvider({ children, campaignId }: CampaignProviderProps) {
   const queryClient = useQueryClient();
 
+  const pollOptions = { refetchInterval: POLL_INTERVAL };
+
   const { data: campaignData, isLoading: campaignLoading } = useAuthQuery(
     ["campaign", campaignId],
-    (token) => getCampaign(token, campaignId)
+    (token) => getCampaign(token, campaignId),
+    pollOptions,
   );
 
   const { data: statsData, isLoading: statsLoading } = useAuthQuery(
     ["campaignStats", campaignId],
-    (token) => getCampaignStats(token, campaignId)
+    (token) => getCampaignStats(token, campaignId),
+    pollOptions,
   );
 
   const { data: emailsData, isLoading: emailsLoading } = useAuthQuery(
     ["campaignEmails", campaignId],
-    (token) => listCampaignEmails(token, campaignId)
+    (token) => listCampaignEmails(token, campaignId),
+    pollOptions,
   );
 
   const { data: leadsData, isLoading: leadsLoading } = useAuthQuery(
     ["campaignLeads", campaignId],
-    (token) => listCampaignLeads(token, campaignId)
+    (token) => listCampaignLeads(token, campaignId),
+    pollOptions,
   );
 
   const loading = campaignLoading || statsLoading || emailsLoading || leadsLoading;
   const campaign = campaignData?.campaign ?? null;
   const stats = statsData ?? null;
-  const emails = emailsData?.emails ?? [];
-  const leads = leadsData?.leads ?? [];
+  const emails = emailsData?.emails ?? EMPTY_EMAILS;
+  const leads = leadsData?.leads ?? EMPTY_LEADS;
 
-  const refreshStats = async () => {
+  const refreshStats = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ["campaignStats", campaignId] });
-  };
+  }, [queryClient, campaignId]);
 
-  // setCampaign is kept for interface compat but is a no-op (queries manage state)
-  const setCampaign = () => {};
+  const value = useMemo<CampaignContextType>(
+    () => ({ campaign, stats, emails, leads, loading, setCampaign: noop, refreshStats }),
+    [campaign, stats, emails, leads, loading, refreshStats],
+  );
 
   return (
-    <CampaignContext.Provider value={{ campaign, stats, emails, leads, loading, setCampaign, refreshStats }}>
+    <CampaignContext.Provider value={value}>
       {children}
     </CampaignContext.Provider>
   );
