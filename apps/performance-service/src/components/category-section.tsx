@@ -4,7 +4,7 @@ import type { CategorySectionData } from "@/lib/fetch-leaderboard";
 
 export function CategorySection({
   section,
-  maxEntries = 5,
+  maxEntries = 3,
 }: {
   section: CategorySectionData;
   maxEntries?: number;

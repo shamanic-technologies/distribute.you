@@ -248,8 +248,12 @@ describe("GET /performance/leaderboard", () => {
   it("should return zeros when broadcast is null", async () => {
     const app = createApp();
     const brands = [{ id: "brand-1", domain: "a.com", name: null, brandUrl: "https://a.com" }];
+    // Brand needs cost so it passes the inactive filter
+    const brandCostGroups: MockRunsGroup[] = [
+      { dimensions: { brandId: "brand-1" }, totalCostInUsdCents: "100.0000", actualCostInUsdCents: "100.0000", provisionedCostInUsdCents: "0", cancelledCostInUsdCents: "0", runCount: 1 },
+    ];
 
-    const mock = setupMocks(brands);
+    const mock = setupMocks(brands, brandCostGroups);
     mockCallExternalService.mockImplementation((_service: any, path: string, opts: any) => {
       const result = mock(_service, path, opts);
       if (result !== null) return result;
@@ -480,6 +484,57 @@ describe("GET /performance/leaderboard", () => {
     expect(res.body.categorySections[0].stats.emailsSent).toBe(100); // 60 + 40
   });
 
+  it("should filter out brands with no cost and no email activity", async () => {
+    const app = createApp();
+    const brands = [
+      { id: "active-brand", domain: "active.com", name: "Active", brandUrl: "https://active.com" },
+      { id: "inactive-brand", domain: "inactive.com", name: "Inactive", brandUrl: "https://inactive.com" },
+      { id: "cost-only-brand", domain: "costonly.com", name: "CostOnly", brandUrl: "https://costonly.com" },
+    ];
+    const brandCostGroups: MockRunsGroup[] = [
+      { dimensions: { brandId: "active-brand" }, totalCostInUsdCents: "500.0000", actualCostInUsdCents: "500.0000", provisionedCostInUsdCents: "0", cancelledCostInUsdCents: "0", runCount: 3 },
+      { dimensions: { brandId: "cost-only-brand" }, totalCostInUsdCents: "200.0000", actualCostInUsdCents: "200.0000", provisionedCostInUsdCents: "0", cancelledCostInUsdCents: "0", runCount: 1 },
+      // inactive-brand has no cost entry
+    ];
+    const workflowGroups: MockRunsGroup[] = [
+      { dimensions: { workflowName: "sales-email-cold-outreach-sienna" }, totalCostInUsdCents: "700.0000", actualCostInUsdCents: "700.0000", provisionedCostInUsdCents: "0", cancelledCostInUsdCents: "0", runCount: 4 },
+    ];
+
+    const mock = setupMocks(brands, brandCostGroups, workflowGroups);
+    mockCallExternalService.mockImplementation((_service: any, path: string, opts: any) => {
+      const result = mock(_service, path, opts);
+      if (result !== null) return result;
+      if (path === "/stats") {
+        const body = opts?.body || {};
+        if (body.groupBy === "workflowName") {
+          return Promise.resolve(makeGroupedGatewayResponse([
+            { key: "sales-email-cold-outreach-sienna", broadcast: { emailsSent: 10, emailsOpened: 5, emailsClicked: 1, emailsReplied: 1 } },
+          ]));
+        }
+        if (body.brandId === "active-brand") {
+          return Promise.resolve(makeGatewayResponse({ emailsSent: 10, emailsOpened: 5, emailsClicked: 1, emailsReplied: 1 }));
+        }
+        // inactive-brand and cost-only-brand: no email stats
+        return Promise.resolve(makeGatewayResponse(null));
+      }
+      return Promise.resolve(null);
+    });
+
+    const res = await request(app).get("/performance/leaderboard");
+    expect(res.status).toBe(200);
+
+    // inactive-brand has no cost AND no email stats → filtered out
+    // cost-only-brand has cost but no email stats → kept (has activity via cost)
+    // active-brand has both → kept
+    expect(res.body.brands).toHaveLength(2);
+    expect(res.body.brands.map((b: any) => b.brandId)).toContain("active-brand");
+    expect(res.body.brands.map((b: any) => b.brandId)).toContain("cost-only-brand");
+    expect(res.body.brands.map((b: any) => b.brandId)).not.toContain("inactive-brand");
+
+    // Section brands should also be filtered
+    expect(res.body.categorySections[0].brands).toHaveLength(2);
+  });
+
   it("should return null category for non-standard workflow names", async () => {
     const app = createApp();
     const brands = [{ id: "brand-1", domain: "acme.com", name: "Acme", brandUrl: "https://acme.com" }];
@@ -580,6 +635,17 @@ describe("Regression: performance leaderboard must use broadcast-only stats", ()
     expect(content).toContain("SECTION_LABELS");
     expect(content).toContain("@mcpfactory/content");
     expect(content).toContain("availableCategories");
+  });
+
+  it("should filter inactive brands before building sections", () => {
+    const fs = require("fs");
+    const path = require("path");
+    const content = fs.readFileSync(
+      path.join(__dirname, "../../src/routes/performance.ts"),
+      "utf-8"
+    );
+
+    expect(content).toContain("b.totalCostUsdCents > 0 || b.emailsSent > 0");
   });
 
   it("should include reply qualification stats", () => {
