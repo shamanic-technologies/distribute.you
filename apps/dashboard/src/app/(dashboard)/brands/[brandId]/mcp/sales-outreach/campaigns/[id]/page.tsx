@@ -165,6 +165,7 @@ export default function CampaignOverviewPage() {
           <CostBreakdown
             leads={leads}
             emails={emails}
+            statsTotalCents={stats?.totalCostInUsdCents ? parseFloat(stats.totalCostInUsdCents) : null}
           />
         </div>
       )}
