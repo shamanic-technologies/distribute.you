@@ -252,30 +252,21 @@ async function enrichWithDeliveryStats(data: LeaderboardData): Promise<void> {
   }
 
 
-  // Recompute hero stats
-  const withStats = data.workflows.filter((w) => w.emailsSent > 0);
-  if (withStats.length > 0) {
-    const withConversion = withStats.map((w) => ({
-      workflowName: w.workflowName,
-      conversionRate: (w.emailsClicked + w.emailsReplied) / w.emailsSent,
-      conversionsPerDollar:
-        w.totalCostUsdCents > 0
-          ? ((w.emailsClicked + w.emailsReplied) / w.totalCostUsdCents) * 100
-          : 0,
-    }));
+  // Recompute hero stats: best $/open and $/reply across brands
+  const brandsWithCostPerOpen = data.brands.filter((b) => b.costPerOpenCents !== null && b.costPerOpenCents > 0);
+  const brandsWithCostPerReply = data.brands.filter((b) => b.costPerReplyCents !== null && b.costPerReplyCents > 0);
 
-    const bestConversion = withConversion.reduce((a, b) => (a.conversionRate > b.conversionRate ? a : b));
-    const bestValue = withConversion.reduce((a, b) => (a.conversionsPerDollar > b.conversionsPerDollar ? a : b));
+  if (brandsWithCostPerOpen.length > 0 || brandsWithCostPerReply.length > 0) {
+    const bestOpen = brandsWithCostPerOpen.length > 0
+      ? brandsWithCostPerOpen.reduce((a, b) => (a.costPerOpenCents! < b.costPerOpenCents! ? a : b))
+      : null;
+    const bestReply = brandsWithCostPerReply.length > 0
+      ? brandsWithCostPerReply.reduce((a, b) => (a.costPerReplyCents! < b.costPerReplyCents! ? a : b))
+      : null;
 
     data.hero = {
-      bestConversionWorkflow: {
-        workflowName: bestConversion.workflowName,
-        conversionRate: Math.round(bestConversion.conversionRate * 10000) / 10000,
-      },
-      bestValueWorkflow: {
-        workflowName: bestValue.workflowName,
-        conversionsPerDollar: Math.round(bestValue.conversionsPerDollar * 100) / 100,
-      },
+      bestCostPerOpen: bestOpen ? { brandDomain: bestOpen.brandDomain, costPerOpenCents: bestOpen.costPerOpenCents! } : null,
+      bestCostPerReply: bestReply ? { brandDomain: bestReply.brandDomain, costPerReplyCents: bestReply.costPerReplyCents! } : null,
     };
   }
 }
