@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getBrand, listCampaignsByBrand, getCampaignBatchStats, type Brand, type Campaign, type CampaignStats } from "@/lib/api";
+import { getBrand, listCampaignsByBrand, getBrandCostBreakdown, type Brand, type Campaign } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
 
 function formatCost(cents: string | null | undefined): string | null {
@@ -42,14 +42,17 @@ export default function BrandOverviewPage() {
   );
   const campaigns = campaignsData?.campaigns ?? [];
 
-  const campaignIds = useMemo(() => campaigns.map(c => c.id), [campaigns]);
-
-  const { data: batchStats } = useAuthQuery(
-    ["campaignBatchStats", { brandId }, campaignIds],
-    (token) => getCampaignBatchStats(token, campaignIds),
-    { enabled: campaignIds.length > 0 }
+  const { data: costBreakdown } = useAuthQuery(
+    ["brandCostBreakdown", brandId],
+    (token) => getBrandCostBreakdown(token, brandId)
   );
-  const campaignStats = batchStats ?? {};
+  const brandTotalCostCents = useMemo(() => {
+    if (!costBreakdown?.costs?.length) return 0;
+    return costBreakdown.costs.reduce(
+      (sum, c) => sum + (parseFloat(c.actualCostInUsdCents) || 0),
+      0
+    );
+  }, [costBreakdown]);
 
   if (brandLoading) {
     return (
@@ -142,32 +145,20 @@ export default function BrandOverviewPage() {
                 </div>
 
                 {/* Campaign Stats */}
-                {(() => {
-                  let mcpTotalCost = 0;
-                  for (const c of mcpCampaigns) {
-                    const s = campaignStats[c.id];
-                    if (s?.totalCostInUsdCents) {
-                      mcpTotalCost += parseFloat(s.totalCostInUsdCents) || 0;
-                    }
-                  }
-                  const costStr = mcpTotalCost > 0 ? String(mcpTotalCost) : null;
-                  return (
-                    <div className="flex items-center gap-6 mb-4 text-sm">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                        <span className="text-gray-600">{activeCampaigns.length} active</span>
-                      </div>
-                      <div className="text-gray-400">
-                        {mcpCampaigns.length} total campaigns
-                      </div>
-                      {formatCost(costStr) && (
-                        <div className="text-gray-400">
-                          Total: {formatCost(costStr)}
-                        </div>
-                      )}
+                <div className="flex items-center gap-6 mb-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                    <span className="text-gray-600">{activeCampaigns.length} active</span>
+                  </div>
+                  <div className="text-gray-400">
+                    {mcpCampaigns.length} total campaigns
+                  </div>
+                  {formatCost(String(brandTotalCostCents)) && (
+                    <div className="text-gray-400">
+                      Total: {formatCost(String(brandTotalCostCents))}
                     </div>
-                  );
-                })()}
+                  )}
+                </div>
 
                 {/* Recent Campaigns Preview */}
                 {mcpCampaigns.length > 0 && (
