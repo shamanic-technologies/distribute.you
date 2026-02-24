@@ -1,4 +1,3 @@
-import { StatsBar } from "./stats-bar";
 import { SectionLeaderboard } from "./section-leaderboard";
 import type { CategorySectionData } from "@/lib/fetch-leaderboard";
 
@@ -15,14 +14,11 @@ export function CategorySection({
         <h2 className="font-display text-xl font-bold mb-4 text-gray-800">
           {section.label}
         </h2>
-        <StatsBar stats={section.stats} />
-        <div className="mt-6">
-          <SectionLeaderboard
-            brands={section.brands}
-            workflows={section.workflows}
-            maxEntries={maxEntries}
-          />
-        </div>
+        <SectionLeaderboard
+          brands={section.brands}
+          workflows={section.workflows}
+          maxEntries={maxEntries}
+        />
       </div>
     </section>
   );
