@@ -1,9 +1,60 @@
 "use client";
 
+import { useState } from "react";
 import { useCampaign } from "@/lib/campaign-context";
 import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
+
+function timeAgo(date: string | Date): string {
+  const now = Date.now();
+  const then = new Date(date).getTime();
+  const seconds = Math.floor((now - then) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  const years = Math.floor(months / 12);
+  return `${years}y ago`;
+}
+
+function formatExactDate(date: string | Date): string {
+  return new Date(date).toLocaleString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZoneName: "short",
+  });
+}
+
+function InfoTooltip({ text }: { text: string }) {
+  const [show, setShow] = useState(false);
+  return (
+    <span className="relative inline-flex items-center ml-1">
+      <span
+        className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] font-medium cursor-default select-none"
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+      >
+        i
+      </span>
+      {show && (
+        <span className="absolute left-5 top-1/2 -translate-y-1/2 z-50 whitespace-nowrap bg-gray-800 text-white text-xs rounded px-2 py-1 shadow-lg">
+          {text}
+        </span>
+      )}
+    </span>
+  );
+}
 
 function formatTotalCost(cents: string | null | undefined): string | null {
   if (!cents) return null;
@@ -69,12 +120,9 @@ export default function CampaignOverviewPage() {
             </span>
           )}
         </div>
-        <p className="text-gray-600 text-sm">
-          Created {new Date(campaign.createdAt).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric"
-          })}
+        <p className="text-gray-600 text-sm inline-flex items-center">
+          Created {timeAgo(campaign.createdAt)}
+          <InfoTooltip text={formatExactDate(campaign.createdAt)} />
         </p>
       </div>
 
