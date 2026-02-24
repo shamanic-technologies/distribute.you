@@ -30,13 +30,18 @@ const noop = () => {};
 export function CampaignProvider({ children, campaignId }: CampaignProviderProps) {
   const queryClient = useQueryClient();
 
-  const pollOptions = { refetchInterval: POLL_INTERVAL };
-
   const { data: campaignData, isLoading: campaignLoading } = useAuthQuery(
     ["campaign", campaignId],
     (token) => getCampaign(token, campaignId),
-    pollOptions,
+    { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false },
   );
+
+  // Only poll secondary data while the campaign is active
+  const isActive = campaignData?.campaign?.status === "ongoing";
+  const pollOptions = {
+    refetchInterval: isActive ? POLL_INTERVAL : false as const,
+    refetchIntervalInBackground: false,
+  };
 
   const { data: statsData, isLoading: statsLoading } = useAuthQuery(
     ["campaignStats", campaignId],

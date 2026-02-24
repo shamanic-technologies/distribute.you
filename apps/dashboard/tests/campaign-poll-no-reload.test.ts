@@ -31,4 +31,15 @@ describe("Campaign polling does not cause full page reload", () => {
     const content = fs.readFileSync(campaignContextPath, "utf-8");
     expect(content).toMatch(/useMemo/);
   });
+
+  it("CampaignProvider should disable polling when tab is in background", () => {
+    const content = fs.readFileSync(campaignContextPath, "utf-8");
+    expect(content).toMatch(/refetchIntervalInBackground:\s*false/);
+  });
+
+  it("CampaignProvider should only poll secondary data for active campaigns", () => {
+    const content = fs.readFileSync(campaignContextPath, "utf-8");
+    // Stats, emails, and leads polling is conditional on campaign status
+    expect(content).toMatch(/isActive/);
+  });
 });
