@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listCampaignsByBrand, getCampaignBatchStats, getBrandDeliveryStats, getBrandCostBreakdown, type Campaign, type CampaignStats } from "@/lib/api";
+import { listCampaignsByBrand, getCampaignBatchStats, getBrandDeliveryStats, getBrandCostBreakdown } from "@/lib/api";
 import { SkeletonKeysList } from "@/components/skeleton";
 import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
@@ -42,20 +42,26 @@ export default function BrandMcpSalesOutreachPage() {
     { retry: false }
   );
 
-  // Aggregate per-campaign stats (leads/generated/cost are correctly filtered per-campaign)
+  // Aggregate per-campaign stats (leads/generated from campaign-service, cost from runs-service)
   const statsValues = Object.values(campaignStats);
   const campaignTotals = statsValues.reduce(
     (acc, s) => ({
       leadsServed: acc.leadsServed + (s.leadsServed || 0),
       emailsGenerated: acc.emailsGenerated + (s.emailsGenerated || 0),
-      totalCostCents: acc.totalCostCents + (parseFloat(s.totalCostInUsdCents || "0") || 0),
     }),
-    { leadsServed: 0, emailsGenerated: 0, totalCostCents: 0 }
+    { leadsServed: 0, emailsGenerated: 0 }
+  );
+
+  // Total cost from runs-service cost breakdown (single source of truth)
+  const totalCostCents = brandCostBreakdown.reduce(
+    (sum, c) => sum + (parseFloat(c.totalCostInUsdCents) || 0),
+    0
   );
 
   // Delivery stats come exclusively from brand-level endpoint (broadcast/outreach only).
   const totals = {
     ...campaignTotals,
+    totalCostCents,
     emailsSent: brandDelivery?.emailsSent ?? 0,
     emailsOpened: brandDelivery?.emailsOpened ?? 0,
     emailsClicked: brandDelivery?.emailsClicked ?? 0,

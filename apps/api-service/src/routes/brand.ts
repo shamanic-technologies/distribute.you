@@ -173,6 +173,43 @@ router.post("/brand/icp-suggestion", authenticate, requireOrg, async (req: Authe
 });
 
 /**
+ * GET /v1/brands/costs
+ * Get total costs grouped by brandId from runs-service.
+ * Returns a map of brandId -> totalCostInUsdCents.
+ */
+router.get("/brands/costs", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+  try {
+    const orgId = req.orgId!;
+
+    const data = await callExternalService<{
+      groups: Array<{
+        dimensions: { brandId: string | null };
+        totalCostInUsdCents: string;
+        actualCostInUsdCents: string;
+        provisionedCostInUsdCents: string;
+        cancelledCostInUsdCents: string;
+        runCount: number;
+      }>;
+    }>(
+      externalServices.runs,
+      `/v1/stats/costs?clerkOrgId=${encodeURIComponent(orgId)}&appId=mcpfactory&groupBy=brandId`
+    );
+
+    const costs: Record<string, string> = {};
+    for (const group of data.groups || []) {
+      if (group.dimensions.brandId) {
+        costs[group.dimensions.brandId] = group.totalCostInUsdCents;
+      }
+    }
+
+    res.json({ costs });
+  } catch (error: any) {
+    console.error("Get brands costs error:", error);
+    res.status(500).json({ error: error.message || "Failed to get brands costs" });
+  }
+});
+
+/**
  * GET /v1/brands/:id/cost-breakdown
  * Get cost breakdown by cost name for all runs associated with a brand.
  * Uses runs-service as the single source of truth.

@@ -1,22 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
 import Link from "next/link";
 import { GlobeAltIcon } from "@heroicons/react/24/outline";
 import { BrandLogo } from "@/components/brand-logo";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import {
-  listBrands,
-  listCampaigns,
-  getCampaignBatchStats,
-  type Brand,
-  type Campaign,
-  type CampaignStats,
-} from "@/lib/api";
-
-interface CampaignWithBrand extends Campaign {
-  brandId: string | null;
-}
+import { listBrands, getBrandsCosts } from "@/lib/api";
 
 function formatCost(cents: string | null | undefined): string | null {
   if (!cents) return null;
@@ -34,33 +22,11 @@ export default function BrandsPage() {
   );
   const brands = brandsData?.brands ?? [];
 
-  const { data: campaignsData } = useAuthQuery(["campaigns"], (token) =>
-    listCampaigns(token)
+  const { data: costsData } = useAuthQuery(
+    ["brandsCosts"],
+    (token) => getBrandsCosts(token)
   );
-  const campaigns = (campaignsData?.campaigns ?? []) as CampaignWithBrand[];
-
-  const campaignIds = useMemo(() => campaigns.map((c) => c.id), [campaigns]);
-
-  const { data: batchStats } = useAuthQuery(
-    ["campaignBatchStats", campaignIds],
-    (token) => getCampaignBatchStats(token, campaignIds),
-    { enabled: campaignIds.length > 0 }
-  );
-
-  const brandCosts = useMemo(() => {
-    if (!batchStats || !campaigns.length) return {};
-    const costs: Record<string, number> = {};
-    for (const campaign of campaigns) {
-      if (!campaign.brandId) continue;
-      const stats = batchStats[campaign.id];
-      if (stats?.totalCostInUsdCents) {
-        costs[campaign.brandId] =
-          (costs[campaign.brandId] || 0) +
-          (parseFloat(stats.totalCostInUsdCents) || 0);
-      }
-    }
-    return costs;
-  }, [batchStats, campaigns]);
+  const brandCosts = costsData?.costs ?? {};
 
   if (brandsLoading) {
     return (
@@ -108,9 +74,9 @@ export default function BrandsPage() {
               </div>
               <div className="flex items-center justify-between">
                 <p className="text-xs text-gray-400 truncate">{brand.brandUrl}</p>
-                {formatCost(brandCosts[brand.id] > 0 ? String(brandCosts[brand.id]) : null) && (
+                {formatCost(brandCosts[brand.id]) && (
                   <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 ml-2 flex-shrink-0">
-                    {formatCost(String(brandCosts[brand.id]))}
+                    {formatCost(brandCosts[brand.id])}
                   </span>
                 )}
               </div>

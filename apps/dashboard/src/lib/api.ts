@@ -250,6 +250,10 @@ export async function listBrands(token: string): Promise<{ brands: Brand[] }> {
   return apiCall<{ brands: Brand[] }>("/brands", { token });
 }
 
+export async function getBrandsCosts(token: string): Promise<{ costs: Record<string, string> }> {
+  return apiCall<{ costs: Record<string, string> }>("/brands/costs", { token });
+}
+
 export async function getBrand(token: string, brandId: string): Promise<{ brand: Brand }> {
   return apiCall<{ brand: Brand }>(`/brands/${brandId}`, { token });
 }
