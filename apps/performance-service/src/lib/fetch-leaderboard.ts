@@ -44,14 +44,8 @@ export interface WorkflowLeaderboardEntry {
 }
 
 export interface HeroStats {
-  bestConversionWorkflow: {
-    workflowName: string;
-    conversionRate: number;
-  };
-  bestValueWorkflow: {
-    workflowName: string;
-    conversionsPerDollar: number;
-  };
+  bestCostPerOpen: { brandDomain: string | null; costPerOpenCents: number } | null;
+  bestCostPerReply: { brandDomain: string | null; costPerReplyCents: number } | null;
 }
 
 export interface CategorySectionStats {
