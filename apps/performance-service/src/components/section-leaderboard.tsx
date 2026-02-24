@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { StatsBar } from "./stats-bar";
 import { BrandLeaderboard, WorkflowLeaderboard } from "./leaderboard-table";
+import { computeBestStats } from "@/lib/best-stats";
 import type { BrandLeaderboardEntry, WorkflowLeaderboardEntry } from "@/lib/fetch-leaderboard";
 
 type Tab = "workflow" | "brand";
@@ -17,6 +19,11 @@ export function SectionLeaderboard({
 }) {
   const [tab, setTab] = useState<Tab>("workflow");
 
+  const bestStats = useMemo(
+    () => computeBestStats(workflows, brands, tab),
+    [workflows, brands, tab],
+  );
+
   return (
     <div>
       <div className="flex gap-1 mb-4">
@@ -28,17 +35,21 @@ export function SectionLeaderboard({
         </TabButton>
       </div>
 
-      {tab === "workflow" ? (
-        workflows.length > 0 ? (
-          <WorkflowLeaderboard workflows={workflows} maxEntries={maxEntries} inSection />
+      <StatsBar stats={bestStats} />
+
+      <div className="mt-4">
+        {tab === "workflow" ? (
+          workflows.length > 0 ? (
+            <WorkflowLeaderboard workflows={workflows} maxEntries={maxEntries} inSection />
+          ) : (
+            <p className="text-sm text-gray-500 py-4">No workflow data yet.</p>
+          )
+        ) : brands.length > 0 ? (
+          <BrandLeaderboard brands={brands} maxEntries={maxEntries} />
         ) : (
-          <p className="text-sm text-gray-500 py-4">No workflow data yet.</p>
-        )
-      ) : brands.length > 0 ? (
-        <BrandLeaderboard brands={brands} maxEntries={maxEntries} />
-      ) : (
-        <p className="text-sm text-gray-500 py-4">No brand data yet.</p>
-      )}
+          <p className="text-sm text-gray-500 py-4">No brand data yet.</p>
+        )}
+      </div>
     </div>
   );
 }
