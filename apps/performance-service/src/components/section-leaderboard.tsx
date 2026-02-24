@@ -17,7 +17,7 @@ export function SectionLeaderboard({
   workflows: WorkflowLeaderboardEntry[];
   maxEntries?: number;
 }) {
-  const [tab, setTab] = useState<Tab>("workflow");
+  const [tab, setTab] = useState<Tab>("brand");
 
   const bestStats = useMemo(
     () => computeBestStats(workflows, brands, tab),
@@ -27,11 +27,11 @@ export function SectionLeaderboard({
   return (
     <div>
       <div className="flex gap-1 mb-4">
-        <TabButton active={tab === "workflow"} onClick={() => setTab("workflow")}>
-          By Workflow
-        </TabButton>
         <TabButton active={tab === "brand"} onClick={() => setTab("brand")}>
           By Brand
+        </TabButton>
+        <TabButton active={tab === "workflow"} onClick={() => setTab("workflow")}>
+          By Workflow
         </TabButton>
       </div>
 
