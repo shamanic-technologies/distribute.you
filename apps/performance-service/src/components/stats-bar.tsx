@@ -11,8 +11,6 @@ export function StatsBar({ stats }: { stats: CategorySectionStats }) {
       <Divider />
       <Stat label="Reply Rate" value={formatPercent(stats.replyRate)} />
       <Divider />
-      <Stat label="Interested" value={formatPercent(stats.interestedRate)} />
-      <Divider />
       <Stat label="$/Reply" value={formatCostCents(stats.costPerReplyCents)} />
     </div>
   );
