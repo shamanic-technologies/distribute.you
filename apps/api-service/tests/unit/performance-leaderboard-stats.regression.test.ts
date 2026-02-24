@@ -535,6 +535,59 @@ describe("GET /performance/leaderboard", () => {
     expect(res.body.categorySections[0].brands).toHaveLength(2);
   });
 
+  it("should return hero stats with best $/open and $/reply by brand", async () => {
+    const app = createApp();
+    const brands = [
+      { id: "brand-1", domain: "acme.com", name: "Acme", brandUrl: "https://acme.com" },
+      { id: "brand-2", domain: "widgets.com", name: "Widgets", brandUrl: "https://widgets.com" },
+    ];
+    const brandCostGroups: MockRunsGroup[] = [
+      { dimensions: { brandId: "brand-1" }, totalCostInUsdCents: "500.0000", actualCostInUsdCents: "500.0000", provisionedCostInUsdCents: "0", cancelledCostInUsdCents: "0", runCount: 3 },
+      { dimensions: { brandId: "brand-2" }, totalCostInUsdCents: "800.0000", actualCostInUsdCents: "800.0000", provisionedCostInUsdCents: "0", cancelledCostInUsdCents: "0", runCount: 5 },
+    ];
+    const workflowGroups: MockRunsGroup[] = [
+      { dimensions: { workflowName: "sales-email-cold-outreach-sienna" }, totalCostInUsdCents: "1300.0000", actualCostInUsdCents: "1300.0000", provisionedCostInUsdCents: "0", cancelledCostInUsdCents: "0", runCount: 8 },
+    ];
+
+    const mock = setupMocks(brands, brandCostGroups, workflowGroups);
+    mockCallExternalService.mockImplementation((_service: any, path: string, opts: any) => {
+      const result = mock(_service, path, opts);
+      if (result !== null) return result;
+      if (path === "/stats") {
+        const body = opts?.body || {};
+        if (body.groupBy === "workflowName") {
+          return Promise.resolve(makeGroupedGatewayResponse([
+            { key: "sales-email-cold-outreach-sienna", broadcast: { emailsSent: 50, emailsOpened: 25, emailsClicked: 5, emailsReplied: 8 } },
+          ]));
+        }
+        // brand-1: 20 sent, 10 opened, 4 replied → costPerOpen=500/10=50, costPerReply=500/4=125
+        if (body.brandId === "brand-1") {
+          return Promise.resolve(makeGatewayResponse({ emailsSent: 20, emailsOpened: 10, emailsClicked: 2, emailsReplied: 4 }));
+        }
+        // brand-2: 30 sent, 15 opened, 3 replied → costPerOpen=800/15≈53, costPerReply=800/3≈267
+        if (body.brandId === "brand-2") {
+          return Promise.resolve(makeGatewayResponse({ emailsSent: 30, emailsOpened: 15, emailsClicked: 3, emailsReplied: 3 }));
+        }
+        return Promise.resolve(makeGatewayResponse(null));
+      }
+      return Promise.resolve(null);
+    });
+
+    const res = await request(app).get("/performance/leaderboard");
+    expect(res.status).toBe(200);
+    expect(res.body.hero).toBeDefined();
+
+    // Best $/open: brand-1 has 50 cents/open vs brand-2 has ~53 → brand-1 wins
+    expect(res.body.hero.bestCostPerOpen).toBeDefined();
+    expect(res.body.hero.bestCostPerOpen.brandDomain).toBe("acme.com");
+    expect(res.body.hero.bestCostPerOpen.costPerOpenCents).toBe(50);
+
+    // Best $/reply: brand-1 has 125 cents/reply vs brand-2 has ~267 → brand-1 wins
+    expect(res.body.hero.bestCostPerReply).toBeDefined();
+    expect(res.body.hero.bestCostPerReply.brandDomain).toBe("acme.com");
+    expect(res.body.hero.bestCostPerReply.costPerReplyCents).toBe(125);
+  });
+
   it("should return null category for non-standard workflow names", async () => {
     const app = createApp();
     const brands = [{ id: "brand-1", domain: "acme.com", name: "Acme", brandUrl: "https://acme.com" }];

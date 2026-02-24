@@ -9,14 +9,13 @@ import { URLS, MCP_PACKAGES, LANDING_PRICING, SUPPORTED_CLIENTS } from "@mcpfact
 export const revalidate = 3600;
 
 interface HeroStats {
-  bestConversionModel: { model: string; conversionRate: number };
-  bestValueModel: { model: string; conversionsPerDollar: number };
+  bestCostPerOpen: { brandDomain: string | null; costPerOpenCents: number } | null;
+  bestCostPerReply: { brandDomain: string | null; costPerReplyCents: number } | null;
 }
 
-const MODEL_NAMES: Record<string, string> = {
-  "claude-opus-4-5": "Claude Opus 4.5",
-  "claude-sonnet-4-5": "Claude Sonnet 4.5",
-};
+function formatCostCents(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
+}
 
 async function getHeroStats(): Promise<HeroStats | null> {
   try {
@@ -149,7 +148,7 @@ export default async function Home() {
       </section>
 
       {/* Live Performance Stats */}
-      {heroStats && (
+      {heroStats && (heroStats.bestCostPerOpen || heroStats.bestCostPerReply) && (
         <section className="py-12 px-4 bg-gradient-to-b from-white to-primary-50 border-t border-primary-100">
           <div className="max-w-4xl mx-auto text-center">
             <p className="text-sm text-gray-500 uppercase tracking-wider mb-2">Real Performance Data</p>
@@ -159,21 +158,21 @@ export default async function Home() {
             <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto mb-6">
               <div className="bg-white rounded-xl p-6 border border-primary-200 shadow-sm">
                 <p className="text-4xl font-bold text-primary-500 mb-1">
-                  {heroStats.bestConversionModel.conversionRate === 0 ? "TBD" : `${(heroStats.bestConversionModel.conversionRate * 100).toFixed(1)}%`}
+                  {heroStats.bestCostPerOpen ? formatCostCents(heroStats.bestCostPerOpen.costPerOpenCents) : "TBD"}
                 </p>
-                <p className="text-sm text-gray-600 mb-1">Best Conversion Rate</p>
-                <p className="text-xs text-gray-400">
-                  {MODEL_NAMES[heroStats.bestConversionModel.model] || heroStats.bestConversionModel.model}
-                </p>
+                <p className="text-sm text-gray-600 mb-1">Best $/Open</p>
+                {heroStats.bestCostPerOpen?.brandDomain && (
+                  <p className="text-xs text-gray-400">{heroStats.bestCostPerOpen.brandDomain}</p>
+                )}
               </div>
               <div className="bg-white rounded-xl p-6 border border-accent-200 shadow-sm">
                 <p className="text-4xl font-bold text-accent-500 mb-1">
-                  {heroStats.bestValueModel.conversionsPerDollar === 0 ? "TBD" : heroStats.bestValueModel.conversionsPerDollar.toFixed(1)}
+                  {heroStats.bestCostPerReply ? formatCostCents(heroStats.bestCostPerReply.costPerReplyCents) : "TBD"}
                 </p>
-                <p className="text-sm text-gray-600 mb-1">Conversions per $1</p>
-                <p className="text-xs text-gray-400">
-                  {MODEL_NAMES[heroStats.bestValueModel.model] || heroStats.bestValueModel.model}
-                </p>
+                <p className="text-sm text-gray-600 mb-1">Best $/Reply</p>
+                {heroStats.bestCostPerReply?.brandDomain && (
+                  <p className="text-xs text-gray-400">{heroStats.bestCostPerReply.brandDomain}</p>
+                )}
               </div>
             </div>
             <a
