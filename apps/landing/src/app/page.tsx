@@ -6,7 +6,7 @@ import { StatusIndicator } from "@/components/status-indicator";
 import { Navbar } from "@/components/navbar";
 import { URLS, MCP_PACKAGES, LANDING_PRICING, SUPPORTED_CLIENTS } from "@mcpfactory/content";
 
-export const revalidate = 3600;
+export const revalidate = 300;
 
 interface HeroStats {
   bestCostPerOpen: { brandDomain: string | null; costPerOpenCents: number } | null;
