@@ -19,7 +19,7 @@ router.get("/workflows", authenticate, requireOrg, async (req: AuthenticatedRequ
     if (req.query.audienceType) params.set("audienceType", req.query.audienceType as string);
 
     const result = await callExternalService(
-      externalServices.windmill,
+      externalServices.workflow,
       `/workflows?${params.toString()}`
     );
 
@@ -37,7 +37,7 @@ router.get("/workflows", authenticate, requireOrg, async (req: AuthenticatedRequ
 router.get("/workflows/:id", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
   try {
     const workflow = await callExternalService(
-      externalServices.windmill,
+      externalServices.workflow,
       `/workflows/${req.params.id}`
     );
 
