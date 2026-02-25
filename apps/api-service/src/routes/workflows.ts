@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authenticate, requireOrg, AuthenticatedRequest } from "../middleware/auth.js";
 import { callExternalService, externalServices } from "../lib/service-client.js";
+import { GenerateWorkflowRequestSchema } from "../schemas.js";
 
 const router = Router();
 
@@ -46,6 +47,44 @@ router.get("/workflows/:id", authenticate, requireOrg, async (req: Authenticated
   } catch (error: any) {
     console.error("Get workflow error:", error.message);
     res.status(500).json({ error: error.message || "Failed to get workflow" });
+  }
+});
+
+/**
+ * POST /v1/workflows/generate
+ * Generate a workflow DAG from natural language via workflow-service
+ */
+router.post("/workflows/generate", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+  try {
+    const parsed = GenerateWorkflowRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: "Invalid request",
+        details: parsed.error.flatten(),
+      });
+    }
+
+    const { description, hints } = parsed.data;
+
+    const result = await callExternalService(
+      externalServices.workflow,
+      "/workflows/generate",
+      {
+        method: "POST",
+        body: {
+          appId: "mcpfactory",
+          orgId: req.orgId,
+          description,
+          hints,
+        },
+      }
+    );
+
+    res.json(result);
+  } catch (error: any) {
+    console.error("Generate workflow error:", error.message);
+    const status = error.message?.includes("422") ? 422 : 500;
+    res.status(status).json({ error: error.message || "Failed to generate workflow" });
   }
 });
 

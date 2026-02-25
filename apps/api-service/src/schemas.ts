@@ -923,6 +923,151 @@ registry.registerPath({
 });
 
 // ===================================================================
+// WORKFLOWS
+// ===================================================================
+
+registry.registerPath({
+  method: "get",
+  path: "/v1/workflows",
+  tags: ["Workflows"],
+  summary: "List workflows",
+  description:
+    "List available workflows from the workflow-service, optionally filtered by category, channel, or audience type",
+  security: authed,
+  request: {
+    query: z.object({
+      appId: z.string().optional().describe("Application ID (defaults to 'mcpfactory')"),
+      category: z.string().optional().describe("Filter by category (e.g. 'sales', 'pr')"),
+      channel: z.string().optional().describe("Filter by channel (e.g. 'email')"),
+      audienceType: z.string().optional().describe("Filter by audience type (e.g. 'cold-outreach')"),
+    }),
+  },
+  responses: {
+    200: { description: "List of workflows" },
+    401: { description: "Unauthorized", content: errorContent },
+    500: { description: "Internal error", content: errorContent },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/v1/workflows/{id}",
+  tags: ["Workflows"],
+  summary: "Get a workflow",
+  description: "Get a single workflow with full DAG definition",
+  security: authed,
+  request: {
+    params: z.object({ id: z.string().describe("Workflow ID") }),
+  },
+  responses: {
+    200: { description: "Workflow with DAG" },
+    401: { description: "Unauthorized", content: errorContent },
+    500: { description: "Internal error", content: errorContent },
+  },
+});
+
+export const GenerateWorkflowRequestSchema = z
+  .object({
+    description: z
+      .string()
+      .min(10)
+      .describe(
+        "Natural language description of the desired workflow. Be specific about steps, services, and data flow."
+      ),
+    hints: z
+      .object({
+        services: z.array(z.string()).optional().describe("Scope generation to these services"),
+        nodeTypes: z.array(z.string()).optional().describe("Suggest specific node types"),
+        expectedInputs: z
+          .array(z.string())
+          .optional()
+          .describe("Expected flow_input field names (e.g. campaignId, email)"),
+      })
+      .optional()
+      .describe("Optional hints to guide DAG generation"),
+  })
+  .openapi("GenerateWorkflowRequest");
+
+registry.registerPath({
+  method: "post",
+  path: "/v1/workflows/generate",
+  tags: ["Workflows"],
+  summary: "Generate a workflow DAG",
+  description:
+    "Uses AI to generate a workflow DAG from a natural language description. The generated workflow is validated and deployed automatically.",
+  security: authed,
+  request: {
+    body: {
+      content: {
+        "application/json": { schema: GenerateWorkflowRequestSchema },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Generated and deployed workflow",
+      content: {
+        "application/json": {
+          schema: z
+            .object({
+              workflow: z.object({
+                id: z.string().describe("Workflow ID"),
+                name: z.string().describe("Auto-generated workflow name"),
+                category: z.string().describe("Workflow category"),
+                channel: z.string().describe("Communication channel"),
+                audienceType: z.string().describe("Audience type"),
+                signature: z.string().describe("SHA-256 hash of the canonical DAG"),
+                signatureName: z.string().describe("Human-readable name for this DAG variant"),
+                action: z.enum(["created", "updated"]).describe("Whether the workflow was created or updated"),
+              }),
+              dag: z.object({
+                nodes: z.array(z.any()).describe("DAG nodes"),
+                edges: z.array(z.any()).describe("DAG edges"),
+              }),
+              generatedDescription: z.string().describe("AI-generated description of the workflow"),
+            })
+            .openapi("GenerateWorkflowResponse"),
+        },
+      },
+    },
+    400: { description: "Invalid request", content: errorContent },
+    401: { description: "Unauthorized", content: errorContent },
+    422: {
+      description: "Could not generate a valid DAG",
+      content: errorContent,
+    },
+    500: { description: "Internal error", content: errorContent },
+  },
+});
+
+// ===================================================================
+// CAMPAIGNS SSE STREAM
+// ===================================================================
+
+registry.registerPath({
+  method: "get",
+  path: "/v1/campaigns/{id}/stream",
+  tags: ["Campaigns"],
+  summary: "Stream campaign updates (SSE)",
+  description:
+    "Server-Sent Events endpoint that pushes real-time campaign updates (new leads, emails, status changes). Connect with EventSource.",
+  security: authed,
+  request: { params: CampaignIdParam },
+  responses: {
+    200: {
+      description: "SSE stream of campaign events",
+      content: {
+        "text/event-stream": {
+          schema: z.string().describe("Server-Sent Events stream"),
+        },
+      },
+    },
+    401: { description: "Unauthorized", content: errorContent },
+    500: { description: "Internal error", content: errorContent },
+  },
+});
+
+// ===================================================================
 // ACTIVITY
 // ===================================================================
 
