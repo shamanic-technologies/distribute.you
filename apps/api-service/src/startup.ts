@@ -8,6 +8,7 @@ const APP_KEYS: { provider: string; envVar: string }[] = [
   { provider: "instantly", envVar: "INSTANTLY_API_KEY" },
   { provider: "firecrawl", envVar: "FIRECRAWL_API_KEY" },
   { provider: "gemini", envVar: "GEMINI_API_KEY" },
+  { provider: "postmark", envVar: "POSTMARK_API_KEY" },
 ];
 
 export async function registerAppKeys(): Promise<void> {
