@@ -11,10 +11,9 @@ const router = Router();
  */
 router.get("/workflows", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
   try {
-    const appId = (req.query.appId as string) || "mcpfactory";
     const params = new URLSearchParams();
-    params.set("orgId", appId);
-    params.set("appId", appId);
+    params.set("orgId", req.orgId!);
+    params.set("appId", (req.query.appId as string) || "mcpfactory");
 
     if (req.query.category) params.set("category", req.query.category as string);
     if (req.query.channel) params.set("channel", req.query.channel as string);
