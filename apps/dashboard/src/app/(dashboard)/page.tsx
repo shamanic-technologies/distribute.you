@@ -1,4 +1,5 @@
 import { currentUser } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { ApiKeyPreview } from "@/components/api-key-preview";
 import { BrandsList } from "@/components/brands-list";
@@ -19,21 +20,58 @@ interface LeaderboardWorkflow {
   costPerReplyCents: number | null;
 }
 
-async function getTopWorkflows(): Promise<LeaderboardWorkflow[]> {
+async function getLeaderboardWorkflows(): Promise<LeaderboardWorkflow[]> {
   try {
     const res = await fetch(`${API_URL}/performance/leaderboard`, {
       next: { revalidate: 300 },
     });
     if (!res.ok) return [];
     const data = await res.json();
-    const workflows: LeaderboardWorkflow[] = data.workflows ?? [];
-    return workflows
-      .filter((w) => w.costPerReplyCents !== null)
-      .sort((a, b) => a.costPerReplyCents! - b.costPerReplyCents!)
-      .slice(0, 3);
+    return (data.workflows ?? []).filter(
+      (w: LeaderboardWorkflow) => w.costPerReplyCents !== null
+    );
   } catch {
     return [];
   }
+}
+
+async function getUserWorkflowNames(token: string): Promise<Set<string>> {
+  try {
+    const res = await fetch(`${API_URL}/v1/campaigns`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return new Set();
+    const data = await res.json();
+    const names = new Set<string>();
+    for (const c of data.campaigns ?? []) {
+      if (c.workflowName) names.add(c.workflowName);
+    }
+    return names;
+  } catch {
+    return new Set();
+  }
+}
+
+function pickTopWorkflows(
+  allWorkflows: LeaderboardWorkflow[],
+  userWorkflowNames: Set<string>
+): LeaderboardWorkflow[] {
+  const byBestCost = (a: LeaderboardWorkflow, b: LeaderboardWorkflow) =>
+    a.costPerReplyCents! - b.costPerReplyCents!;
+
+  // User's workflows first (sorted by cost per reply asc)
+  const userWfs = allWorkflows
+    .filter((w) => userWorkflowNames.has(w.workflowName))
+    .sort(byBestCost);
+
+  if (userWfs.length >= 3) return userWfs.slice(0, 3);
+
+  // Fill remaining slots with top performers the user hasn't used
+  const remaining = allWorkflows
+    .filter((w) => !userWorkflowNames.has(w.workflowName))
+    .sort(byBestCost);
+
+  return [...userWfs, ...remaining].slice(0, 3);
 }
 
 function formatCostPerReply(cents: number): string {
@@ -41,10 +79,18 @@ function formatCostPerReply(cents: number): string {
 }
 
 export default async function DashboardHome() {
-  const [user, topWorkflows] = await Promise.all([
+  const [user, { getToken }, allWorkflows] = await Promise.all([
     currentUser(),
-    getTopWorkflows(),
+    auth(),
+    getLeaderboardWorkflows(),
   ]);
+
+  const token = await getToken();
+  const userWorkflowNames = token
+    ? await getUserWorkflowNames(token)
+    : new Set<string>();
+
+  const topWorkflows = pickTopWorkflows(allWorkflows, userWorkflowNames);
 
   return (
     <div className="p-4 md:p-8">
@@ -88,6 +134,11 @@ export default async function DashboardHome() {
                 {i === 0 && (
                   <div className="absolute top-0 right-0 bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl">
                     Best
+                  </div>
+                )}
+                {userWorkflowNames.has(wf.workflowName) && (
+                  <div className="absolute top-0 left-0 bg-primary-500 text-white text-xs font-bold px-3 py-1 rounded-br-xl">
+                    Your workflow
                   </div>
                 )}
                 <div className="text-sm font-medium text-gray-400 uppercase tracking-wide mb-2">
