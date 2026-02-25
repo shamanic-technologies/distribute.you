@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrand, listCampaignsByBrand, getCampaignBatchStats, type Brand, type Campaign, type CampaignStats } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
-import { WORKFLOW_DEFINITIONS, getSectionKey } from "@mcpfactory/content";
+import { getSectionKey, getWorkflowDisplayName, SECTION_LABELS } from "@mcpfactory/content";
 
 function formatCost(cents: string | null | undefined): string | null {
   if (!cents) return null;
@@ -17,10 +17,11 @@ function formatCost(cents: string | null | undefined): string | null {
   return `$${usd.toFixed(2)}`;
 }
 
-const WORKFLOW_ICONS: Record<string, string> = {
-  envelope: "\u{1F4E7}",
-  newspaper: "\u{1F4F0}",
-};
+interface WorkflowSection {
+  sectionKey: string;
+  label: string;
+  campaigns: Campaign[];
+}
 
 export default function BrandOverviewPage() {
   const params = useParams();
@@ -47,17 +48,24 @@ export default function BrandOverviewPage() {
   );
   const campaignStats = batchStats ?? {};
 
-  // Group campaigns by workflow section
-  const campaignsBySection = useMemo(() => {
-    const map: Record<string, Campaign[]> = {};
+  // Build workflow sections from actual campaigns
+  const workflowSections = useMemo(() => {
+    const map = new Map<string, Campaign[]>();
     for (const c of campaigns) {
-      // Derive sectionKey from workflowName, fallback to first workflow definition
       const key = c.workflowName ? getSectionKey(c.workflowName) : null;
-      const section = key ?? "sales-email-cold-outreach";
-      if (!map[section]) map[section] = [];
-      map[section].push(c);
+      const section = key ?? "unknown";
+      if (!map.has(section)) map.set(section, []);
+      map.get(section)!.push(c);
     }
-    return map;
+    const sections: WorkflowSection[] = [];
+    for (const [sectionKey, sectionCampaigns] of map) {
+      sections.push({
+        sectionKey,
+        label: SECTION_LABELS[sectionKey] ?? getWorkflowDisplayName(sectionCampaigns[0]?.workflowName ?? sectionKey),
+        campaigns: sectionCampaigns,
+      });
+    }
+    return sections;
   }, [campaigns]);
 
   if (brandLoading) {
@@ -125,65 +133,69 @@ export default function BrandOverviewPage() {
       {/* Workflows Section */}
       <div className="mb-6">
         <h2 className="text-lg font-medium text-gray-900 mb-4">Workflows</h2>
-        <div className="space-y-4">
-          {WORKFLOW_DEFINITIONS.map(wf => {
-            const wfCampaigns = campaignsBySection[wf.sectionKey] ?? [];
-            const activeCampaigns = wfCampaigns.filter(c => c.status === "ongoing");
+        {workflowSections.length === 0 ? (
+          <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
+            <p className="text-gray-500 mb-4">No campaigns yet for this brand.</p>
+            <Link
+              href="/workflows"
+              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition text-sm font-medium"
+            >
+              Explore Workflows
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {workflowSections.map(({ sectionKey, label, campaigns: wfCampaigns }) => {
+              const activeCampaigns = wfCampaigns.filter(c => c.status === "ongoing");
 
-            return (
-              <div
-                key={wf.sectionKey}
-                className="bg-white rounded-lg border border-gray-200 p-5"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-primary-50 rounded-lg flex items-center justify-center text-lg">
-                      {WORKFLOW_ICONS[wf.icon] ?? wf.icon}
-                    </div>
+              return (
+                <div
+                  key={sectionKey}
+                  className="bg-white rounded-lg border border-gray-200 p-5"
+                >
+                  <div className="flex items-start justify-between mb-4">
                     <div>
-                      <h3 className="font-medium text-gray-900">{wf.label}</h3>
-                      <p className="text-sm text-gray-500">{wf.description}</p>
+                      <h3 className="font-medium text-gray-900">{label}</h3>
+                      <p className="text-sm text-gray-500 capitalize">{sectionKey.replace(/-/g, " ")}</p>
                     </div>
                   </div>
-                </div>
 
-                {/* Campaign Stats */}
-                {(() => {
-                  let totalCost = 0;
-                  for (const c of wfCampaigns) {
-                    const s = campaignStats[c.id];
-                    if (s?.totalCostInUsdCents) {
-                      totalCost += parseFloat(s.totalCostInUsdCents) || 0;
+                  {/* Campaign Stats */}
+                  {(() => {
+                    let totalCost = 0;
+                    for (const c of wfCampaigns) {
+                      const s = campaignStats[c.id];
+                      if (s?.totalCostInUsdCents) {
+                        totalCost += parseFloat(s.totalCostInUsdCents) || 0;
+                      }
                     }
-                  }
-                  const costStr = totalCost > 0 ? String(totalCost) : null;
-                  return (
-                    <div className="flex items-center gap-6 mb-4 text-sm">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                        <span className="text-gray-600">{activeCampaigns.length} active</span>
-                      </div>
-                      <div className="text-gray-400">
-                        {wfCampaigns.length} total campaigns
-                      </div>
-                      {formatCost(costStr) && (
-                        <div className="text-gray-400">
-                          Total: {formatCost(costStr)}
+                    const costStr = totalCost > 0 ? String(totalCost) : null;
+                    return (
+                      <div className="flex items-center gap-6 mb-4 text-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                          <span className="text-gray-600">{activeCampaigns.length} active</span>
                         </div>
-                      )}
-                    </div>
-                  );
-                })()}
+                        <div className="text-gray-400">
+                          {wfCampaigns.length} total campaigns
+                        </div>
+                        {formatCost(costStr) && (
+                          <div className="text-gray-400">
+                            Total: {formatCost(costStr)}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
 
-                {/* Recent Campaigns Preview */}
-                {wfCampaigns.length > 0 && (
+                  {/* Recent Campaigns Preview */}
                   <div className="border-t border-gray-100 pt-4 mb-4">
                     <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Recent Campaigns</p>
                     <div className="space-y-2">
                       {wfCampaigns.slice(0, 3).map(campaign => (
                         <Link
                           key={campaign.id}
-                          href={`/brands/${brandId}/workflows/${wf.sectionKey}/campaigns/${campaign.id}`}
+                          href={`/brands/${brandId}/workflows/${sectionKey}/campaigns/${campaign.id}`}
                           className="flex items-center justify-between py-1.5 px-2 -mx-2 rounded hover:bg-gray-50 transition"
                         >
                           <span className="text-sm text-gray-700 truncate">{campaign.name}</span>
@@ -202,21 +214,21 @@ export default function BrandOverviewPage() {
                       ))}
                     </div>
                   </div>
-                )}
 
-                {/* Actions */}
-                <div className="flex items-center gap-3">
-                  <Link
-                    href={`/brands/${brandId}/workflows/${wf.sectionKey}`}
-                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition text-sm font-medium"
-                  >
-                    {wfCampaigns.length > 0 ? "View Campaigns" : "Open Workflow"}
-                  </Link>
+                  {/* Actions */}
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href={`/brands/${brandId}/workflows/${sectionKey}`}
+                      className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition text-sm font-medium"
+                    >
+                      View Campaigns
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
