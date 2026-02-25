@@ -528,6 +528,134 @@
           "brandUrl"
         ]
       },
+      "GenerateWorkflowResponse": {
+        "type": "object",
+        "properties": {
+          "workflow": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Workflow ID"
+              },
+              "name": {
+                "type": "string",
+                "description": "Auto-generated workflow name"
+              },
+              "category": {
+                "type": "string",
+                "description": "Workflow category"
+              },
+              "channel": {
+                "type": "string",
+                "description": "Communication channel"
+              },
+              "audienceType": {
+                "type": "string",
+                "description": "Audience type"
+              },
+              "signature": {
+                "type": "string",
+                "description": "SHA-256 hash of the canonical DAG"
+              },
+              "signatureName": {
+                "type": "string",
+                "description": "Human-readable name for this DAG variant"
+              },
+              "action": {
+                "type": "string",
+                "enum": [
+                  "created",
+                  "updated"
+                ],
+                "description": "Whether the workflow was created or updated"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "category",
+              "channel",
+              "audienceType",
+              "signature",
+              "signatureName",
+              "action"
+            ]
+          },
+          "dag": {
+            "type": "object",
+            "properties": {
+              "nodes": {
+                "type": "array",
+                "items": {
+                  "nullable": true
+                },
+                "description": "DAG nodes"
+              },
+              "edges": {
+                "type": "array",
+                "items": {
+                  "nullable": true
+                },
+                "description": "DAG edges"
+              }
+            },
+            "required": [
+              "nodes",
+              "edges"
+            ]
+          },
+          "generatedDescription": {
+            "type": "string",
+            "description": "AI-generated description of the workflow"
+          }
+        },
+        "required": [
+          "workflow",
+          "dag",
+          "generatedDescription"
+        ]
+      },
+      "GenerateWorkflowRequest": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "minLength": 10,
+            "description": "Natural language description of the desired workflow. Be specific about steps, services, and data flow."
+          },
+          "hints": {
+            "type": "object",
+            "properties": {
+              "services": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Scope generation to these services"
+              },
+              "nodeTypes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Suggest specific node types"
+              },
+              "expectedInputs": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Expected flow_input field names (e.g. campaignId, email)"
+              }
+            },
+            "description": "Optional hints to guide DAG generation"
+          }
+        },
+        "required": [
+          "description"
+        ]
+      },
       "ActivityResponse": {
         "type": "object",
         "properties": {
@@ -2394,6 +2522,284 @@
         "responses": {
           "200": {
             "description": "Brand scrape result"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workflows": {
+      "get": {
+        "tags": [
+          "Workflows"
+        ],
+        "summary": "List workflows",
+        "description": "List available workflows from the workflow-service, optionally filtered by category, channel, or audience type",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Application ID (defaults to 'mcpfactory')"
+            },
+            "required": false,
+            "description": "Application ID (defaults to 'mcpfactory')",
+            "name": "appId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Filter by category (e.g. 'sales', 'pr')"
+            },
+            "required": false,
+            "description": "Filter by category (e.g. 'sales', 'pr')",
+            "name": "category",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Filter by channel (e.g. 'email')"
+            },
+            "required": false,
+            "description": "Filter by channel (e.g. 'email')",
+            "name": "channel",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Filter by audience type (e.g. 'cold-outreach')"
+            },
+            "required": false,
+            "description": "Filter by audience type (e.g. 'cold-outreach')",
+            "name": "audienceType",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of workflows"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workflows/{id}": {
+      "get": {
+        "tags": [
+          "Workflows"
+        ],
+        "summary": "Get a workflow",
+        "description": "Get a single workflow with full DAG definition",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Workflow ID"
+            },
+            "required": true,
+            "description": "Workflow ID",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Workflow with DAG"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workflows/generate": {
+      "post": {
+        "tags": [
+          "Workflows"
+        ],
+        "summary": "Generate a workflow DAG",
+        "description": "Uses AI to generate a workflow DAG from a natural language description. The generated workflow is validated and deployed automatically.",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateWorkflowRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Generated and deployed workflow",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerateWorkflowResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Could not generate a valid DAG",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/campaigns/{id}/stream": {
+      "get": {
+        "tags": [
+          "Campaigns"
+        ],
+        "summary": "Stream campaign updates (SSE)",
+        "description": "Server-Sent Events endpoint that pushes real-time campaign updates (new leads, emails, status changes). Connect with EventSource.",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Campaign ID"
+            },
+            "required": true,
+            "description": "Campaign ID",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SSE stream of campaign events",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string",
+                  "description": "Server-Sent Events stream"
+                }
+              }
+            }
           },
           "401": {
             "description": "Unauthorized",

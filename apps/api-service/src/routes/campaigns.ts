@@ -816,4 +816,114 @@ router.get("/brands/:brandId/delivery-stats", authenticate, requireOrg, async (r
   }
 });
 
+/**
+ * GET /v1/campaigns/:id/stream
+ * SSE endpoint — pushes campaign updates (leads, emails, stats) in real-time.
+ * Falls back to server-side polling every 5s against downstream services.
+ */
+router.get("/campaigns/:id/stream", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+  const { id } = req.params;
+  const orgId = req.orgId!;
+
+  // SSE headers
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+    "X-Accel-Buffering": "no", // disable nginx buffering
+  });
+  res.flushHeaders();
+
+  // Send a comment to keep the connection alive immediately
+  res.write(": connected\n\n");
+
+  let lastLeadCount = -1;
+  let lastEmailCount = -1;
+  let lastStatus = "";
+  let closed = false;
+
+  const POLL_INTERVAL_MS = 5_000;
+
+  const poll = async () => {
+    if (closed) return;
+
+    try {
+      const [campaign, leadStats, emailgenStats, delivery] = await Promise.all([
+        callExternalService<{ campaign: { status: string } }>(
+          externalServices.campaign,
+          `/campaigns/${id}`,
+          { headers: { "x-clerk-org-id": orgId } }
+        ).catch(() => null),
+        callExternalService<{ served: number; buffered: number; skipped: number }>(
+          externalServices.lead,
+          `/stats?campaignId=${id}`,
+          { headers: { "x-app-id": "mcpfactory", "x-org-id": orgId } }
+        ).catch(() => null),
+        callExternalService<{ stats?: { emailsGenerated?: number } }>(
+          externalServices.emailgen,
+          "/stats",
+          { method: "POST", body: { campaignId: id, appId: "mcpfactory" }, headers: { "x-clerk-org-id": orgId } }
+        ).catch(() => null),
+        fetchDeliveryStats({ campaignId: id }, orgId),
+      ]);
+
+      if (closed) return;
+
+      const currentStatus = campaign?.campaign?.status ?? "";
+      const currentLeads = leadStats?.served ?? 0;
+      const eg = (emailgenStats as any)?.stats || emailgenStats;
+      const currentEmails = eg?.emailsGenerated ?? 0;
+
+      // Emit only when something changed
+      const changed =
+        currentStatus !== lastStatus ||
+        currentLeads !== lastLeadCount ||
+        currentEmails !== lastEmailCount;
+
+      if (changed) {
+        const payload = {
+          campaignId: id,
+          status: currentStatus,
+          leadsServed: currentLeads,
+          leadsBuffered: leadStats?.buffered ?? 0,
+          leadsSkipped: leadStats?.skipped ?? 0,
+          emailsGenerated: currentEmails,
+          emailsSent: (delivery as any)?.emailsSent ?? 0,
+          emailsOpened: (delivery as any)?.emailsOpened ?? 0,
+          emailsReplied: (delivery as any)?.emailsReplied ?? 0,
+        };
+
+        res.write(`event: update\ndata: ${JSON.stringify(payload)}\n\n`);
+
+        lastStatus = currentStatus;
+        lastLeadCount = currentLeads;
+        lastEmailCount = currentEmails;
+      }
+
+      // Stop streaming once campaign is in a terminal state
+      if (currentStatus === "completed" || currentStatus === "failed" || currentStatus === "stopped") {
+        res.write(`event: done\ndata: ${JSON.stringify({ reason: currentStatus })}\n\n`);
+        res.end();
+        closed = true;
+        return;
+      }
+    } catch (err) {
+      if (!closed) {
+        res.write(`event: error\ndata: ${JSON.stringify({ error: "poll failed" })}\n\n`);
+      }
+    }
+
+    if (!closed) {
+      timer = setTimeout(poll, POLL_INTERVAL_MS);
+    }
+  };
+
+  let timer: ReturnType<typeof setTimeout> = setTimeout(poll, 0);
+
+  req.on("close", () => {
+    closed = true;
+    clearTimeout(timer);
+  });
+});
+
 export default router;
