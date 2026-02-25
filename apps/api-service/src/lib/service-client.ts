@@ -50,6 +50,10 @@ export const externalServices = {
     url: process.env.RUNS_SERVICE_URL || "https://runs.mcpfactory.org",
     apiKey: process.env.RUNS_SERVICE_API_KEY || "",
   },
+  windmill: {
+    url: process.env.WINDMILL_SERVICE_URL || "https://windmill.mcpfactory.org",
+    apiKey: process.env.WINDMILL_SERVICE_API_KEY || "",
+  },
 };
 
 interface ServiceCallOptions {
