@@ -28,7 +28,7 @@ export default function CampaignRepliesPage() {
   const { data, isLoading } = useAuthQuery(
     ["campaignReplies", params.id],
     (token) => listCampaignReplies(token, params.id as string),
-    { refetchInterval: 5_000 },
+    { refetchInterval: 5_000, refetchIntervalInBackground: false },
   );
   const replies = data?.replies ?? [];
 

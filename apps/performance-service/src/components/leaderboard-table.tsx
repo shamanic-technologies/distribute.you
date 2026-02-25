@@ -13,7 +13,7 @@ import {
 
 const LOGO_DEV_TOKEN = process.env.NEXT_PUBLIC_LOGO_DEV_TOKEN;
 
-type SortKey = "openRate" | "clickRate" | "replyRate" | "interestedRate" | "costPerOpenCents" | "costPerClickCents" | "costPerReplyCents" | "emailsSent" | "totalCostUsdCents" | "runCount";
+type SortKey = "openRate" | "clickRate" | "replyRate" | "costPerOpenCents" | "costPerClickCents" | "costPerReplyCents" | "emailsSent" | "totalCostUsdCents" | "runCount";
 
 function SortHeader({
   label,
@@ -211,7 +211,6 @@ function WorkflowDetailPanel({ workflow: wf, onClose }: { workflow: WorkflowLead
             <DetailStat label="Total Spent" value={formatCostCents(wf.totalCostUsdCents)} />
             <DetailStat label="Emails Sent" value={wf.emailsSent > 0 ? wf.emailsSent.toLocaleString() : "—"} />
             <DetailStat label="Runs" value={wf.runCount > 0 ? wf.runCount.toLocaleString() : "—"} />
-            <DetailStat label="Interested" value={wf.emailsSent > 0 ? formatPercent(wf.interestedRate) : "—"} />
           </div>
 
           <div>

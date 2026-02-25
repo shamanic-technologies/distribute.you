@@ -32,12 +32,10 @@ export interface WorkflowLeaderboardEntry {
   emailsOpened: number;
   emailsClicked: number;
   emailsReplied: number;
-  repliesInterested: number;
   totalCostUsdCents: number;
   openRate: number;
   clickRate: number;
   replyRate: number;
-  interestedRate: number;
   costPerOpenCents: number | null;
   costPerClickCents: number | null;
   costPerReplyCents: number | null;
@@ -52,11 +50,9 @@ export interface CategorySectionStats {
   emailsSent: number;
   emailsOpened: number;
   emailsReplied: number;
-  repliesInterested: number;
   totalCostUsdCents: number;
   openRate: number;
   replyRate: number;
-  interestedRate: number;
   costPerOpenCents: number | null;
   costPerReplyCents: number | null;
 }

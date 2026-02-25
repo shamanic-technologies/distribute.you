@@ -10,6 +10,23 @@ import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
 
+function timeAgo(date: string | Date): string {
+  const now = Date.now();
+  const then = new Date(date).getTime();
+  const seconds = Math.floor((now - then) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  const years = Math.floor(months / 12);
+  return `${years}y ago`;
+}
+
 export default function WorkflowCampaignsPage() {
   const params = useParams();
   const brandId = params.brandId as string;
@@ -170,7 +187,7 @@ export default function WorkflowCampaignsPage() {
                   )}
                 </div>
                 <p className="text-xs text-gray-500 mb-2">
-                  Created {new Date(campaign.createdAt).toLocaleDateString()}
+                  Created {timeAgo(campaign.createdAt)}
                 </p>
                 {stats && (
                   <div className="flex gap-4 text-xs text-gray-500">

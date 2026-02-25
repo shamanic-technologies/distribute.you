@@ -14,12 +14,10 @@ function makeWorkflow(overrides: Partial<WorkflowLeaderboardEntry> = {}): Workfl
     emailsOpened: 20,
     emailsClicked: 5,
     emailsReplied: 3,
-    repliesInterested: 1,
     totalCostUsdCents: 500,
     openRate: 0.2,
     clickRate: 0.05,
     replyRate: 0.03,
-    interestedRate: 0.01,
     costPerOpenCents: 25,
     costPerClickCents: 100,
     costPerReplyCents: 167,
@@ -69,43 +67,40 @@ describe("computeBestStats", () => {
   describe("workflow tab", () => {
     it("picks max rates and min costs across workflows", () => {
       const workflows = [
-        makeWorkflow({ openRate: 0.15, replyRate: 0.02, interestedRate: 0.005, costPerOpenCents: 30, costPerReplyCents: 200 }),
-        makeWorkflow({ openRate: 0.25, replyRate: 0.05, interestedRate: 0.02, costPerOpenCents: 20, costPerReplyCents: 150 }),
-        makeWorkflow({ openRate: 0.10, replyRate: 0.08, interestedRate: 0.01, costPerOpenCents: 50, costPerReplyCents: 100 }),
+        makeWorkflow({ openRate: 0.15, replyRate: 0.02, costPerOpenCents: 30, costPerReplyCents: 200 }),
+        makeWorkflow({ openRate: 0.25, replyRate: 0.05, costPerOpenCents: 20, costPerReplyCents: 150 }),
+        makeWorkflow({ openRate: 0.10, replyRate: 0.08, costPerOpenCents: 50, costPerReplyCents: 100 }),
       ];
 
       const result = computeBestStats(workflows, [], "workflow");
 
       expect(result.openRate).toBe(0.25);
       expect(result.replyRate).toBe(0.08);
-      expect(result.interestedRate).toBe(0.02);
       expect(result.costPerOpenCents).toBe(20);
       expect(result.costPerReplyCents).toBe(100);
     });
 
     it("ignores workflows with zero emailsSent for rates", () => {
       const workflows = [
-        makeWorkflow({ emailsSent: 0, openRate: 0, replyRate: 0, interestedRate: 0, costPerOpenCents: null, costPerReplyCents: null }),
-        makeWorkflow({ emailsSent: 50, openRate: 0.10, replyRate: 0.04, interestedRate: 0.01, costPerOpenCents: 40, costPerReplyCents: 120 }),
+        makeWorkflow({ emailsSent: 0, openRate: 0, replyRate: 0, costPerOpenCents: null, costPerReplyCents: null }),
+        makeWorkflow({ emailsSent: 50, openRate: 0.10, replyRate: 0.04, costPerOpenCents: 40, costPerReplyCents: 120 }),
       ];
 
       const result = computeBestStats(workflows, [], "workflow");
 
       expect(result.openRate).toBe(0.10);
       expect(result.replyRate).toBe(0.04);
-      expect(result.interestedRate).toBe(0.01);
     });
 
     it("returns zeros when no workflows have emails", () => {
       const workflows = [
-        makeWorkflow({ emailsSent: 0, openRate: 0, replyRate: 0, interestedRate: 0 }),
+        makeWorkflow({ emailsSent: 0, openRate: 0, replyRate: 0 }),
       ];
 
       const result = computeBestStats(workflows, [], "workflow");
 
       expect(result.openRate).toBe(0);
       expect(result.replyRate).toBe(0);
-      expect(result.interestedRate).toBe(0);
     });
 
     it("returns null costs when all costs are null", () => {
@@ -133,14 +128,6 @@ describe("computeBestStats", () => {
       expect(result.replyRate).toBe(0.06);
       expect(result.costPerOpenCents).toBe(18);
       expect(result.costPerReplyCents).toBe(90);
-    });
-
-    it("always returns 0 for interestedRate (brands don't have it)", () => {
-      const brands = [makeBrand({ openRate: 0.20 })];
-
-      const result = computeBestStats([], brands, "brand");
-
-      expect(result.interestedRate).toBe(0);
     });
 
     it("ignores brands with zero emailsSent for rates", () => {

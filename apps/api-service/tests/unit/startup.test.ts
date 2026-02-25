@@ -45,17 +45,21 @@ describe("registerAppKeys", () => {
     process.env.APOLLO_API_KEY = "apollo-test";
     process.env.INSTANTLY_API_KEY = "instantly-test";
     process.env.FIRECRAWL_API_KEY = "fc-test";
+    process.env.GEMINI_API_KEY = "gemini-test";
+    process.env.POSTMARK_API_KEY = "postmark-test";
 
     await registerAppKeys();
 
     const appKeyCalls = fetchCalls.filter((c) => c.url.includes("/internal/app-keys"));
-    expect(appKeyCalls).toHaveLength(4);
+    expect(appKeyCalls).toHaveLength(6);
 
     const providers = appKeyCalls.map((c) => c.body?.provider);
     expect(providers).toContain("anthropic");
     expect(providers).toContain("apollo");
     expect(providers).toContain("instantly");
     expect(providers).toContain("firecrawl");
+    expect(providers).toContain("gemini");
+    expect(providers).toContain("postmark");
 
     // All should have appId = mcpfactory
     for (const call of appKeyCalls) {
@@ -68,8 +72,10 @@ describe("registerAppKeys", () => {
     delete process.env.APOLLO_API_KEY;
     delete process.env.INSTANTLY_API_KEY;
     delete process.env.FIRECRAWL_API_KEY;
+    delete process.env.GEMINI_API_KEY;
+    delete process.env.POSTMARK_API_KEY;
 
-    await expect(registerAppKeys()).rejects.toThrow("Missing required env vars: ANTHROPIC_API_KEY, APOLLO_API_KEY, INSTANTLY_API_KEY, FIRECRAWL_API_KEY");
+    await expect(registerAppKeys()).rejects.toThrow("Missing required env vars: ANTHROPIC_API_KEY, APOLLO_API_KEY, INSTANTLY_API_KEY, FIRECRAWL_API_KEY, GEMINI_API_KEY, POSTMARK_API_KEY");
 
     // No fetch calls should have been made
     const appKeyCalls = fetchCalls.filter((c) => c.url.includes("/internal/app-keys"));
@@ -81,6 +87,8 @@ describe("registerAppKeys", () => {
     process.env.APOLLO_API_KEY = "apollo-test";
     process.env.INSTANTLY_API_KEY = "instantly-test";
     process.env.FIRECRAWL_API_KEY = "fc-test";
+    process.env.GEMINI_API_KEY = "gemini-test";
+    process.env.POSTMARK_API_KEY = "postmark-test";
 
     global.fetch = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
       const body = init?.body ? JSON.parse(init.body as string) : undefined;
@@ -104,6 +112,8 @@ describe("registerAppKeys", () => {
     delete process.env.APOLLO_API_KEY;
     process.env.INSTANTLY_API_KEY = "instantly-test";
     process.env.FIRECRAWL_API_KEY = "fc-test";
+    process.env.GEMINI_API_KEY = "gemini-test";
+    process.env.POSTMARK_API_KEY = "postmark-test";
 
     await expect(registerAppKeys()).rejects.toThrow("Missing required env vars: APOLLO_API_KEY");
   });

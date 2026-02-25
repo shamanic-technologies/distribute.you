@@ -408,7 +408,7 @@ router.get("/campaigns/:id/stats", authenticate, requireOrg, async (req: Authent
     const orgId = req.orgId!;
 
     // Fetch stats from all services in parallel using campaignId filter
-    const [leadStats, emailgenStats, delivery, budgetUsage, costBreakdown] = await Promise.all([
+    const [leadStats, emailgenStats, delivery, budgetUsage, costBreakdown, leadsFromRuns] = await Promise.all([
       callExternalService(
         externalServices.lead,
         `/stats?campaignId=${id}`,
@@ -442,6 +442,14 @@ router.get("/campaigns/:id/stats", authenticate, requireOrg, async (req: Authent
         console.warn("[campaigns] Cost breakdown failed:", (err as Error).message);
         return null;
       }),
+      // Lead-serve run count from runs-service (source of truth for leadsServed)
+      callExternalService<{ groups: Array<{ dimensions: Record<string, string | null>; runCount: number }> }>(
+        externalServices.runs,
+        `/v1/stats/costs?clerkOrgId=${encodeURIComponent(orgId)}&appId=mcpfactory&campaignId=${encodeURIComponent(id)}&taskName=lead-serve&groupBy=serviceName`
+      ).catch((err) => {
+        console.warn("[campaigns] Lead-serve runs stats failed:", (err as Error).message);
+        return null;
+      }),
     ]);
 
     const stats: Record<string, any> = { campaignId: id };
@@ -457,6 +465,12 @@ router.get("/campaigns/:id/stats", authenticate, requireOrg, async (req: Authent
       stats.leadsServed = 0;
       stats.leadsBuffered = 0;
       stats.leadsSkipped = 0;
+    }
+
+    // Override leadsServed from runs-service (source of truth — lead-service
+    // tracking can lag behind the actual number of completed lead-serve runs)
+    if (leadsFromRuns?.groups?.length) {
+      stats.leadsServed = leadsFromRuns.groups[0].runCount;
     }
 
     // Emailgen stats
@@ -510,7 +524,7 @@ router.post("/campaigns/batch-stats", authenticate, requireOrg, async (req: Auth
 
     const orgId = req.orgId!;
 
-    // Fetch budget usage for all campaigns in one batch call
+    // Fetch budget usage and lead-serve run counts in bulk (one call each)
     const budgetUsagePromise = callExternalService<{
       results: Record<string, { totalCostInUsdCents: string | null }>;
     }>(externalServices.campaign, "/campaigns/batch-budget-usage", {
@@ -521,8 +535,19 @@ router.post("/campaigns/batch-stats", authenticate, requireOrg, async (req: Auth
       return null;
     });
 
+    // Lead-serve run counts per campaign from runs-service (source of truth)
+    const leadsFromRunsPromise = callExternalService<{
+      groups: Array<{ dimensions: Record<string, string | null>; runCount: number }>;
+    }>(
+      externalServices.runs,
+      `/v1/stats/costs?clerkOrgId=${encodeURIComponent(orgId)}&appId=mcpfactory&taskName=lead-serve&groupBy=campaignId`
+    ).catch((err) => {
+      console.warn("[campaigns] Batch lead-serve runs stats failed:", (err as Error).message);
+      return null;
+    });
+
     // Fetch stats for each campaign in parallel using campaignId filter
-    const [results, budgetUsage] = await Promise.all([
+    const [results, budgetUsage, leadsFromRuns] = await Promise.all([
       Promise.all(
         campaignIds.map(async (id: string) => {
           const [leadStats, emailgenStats, delivery] = await Promise.all([
@@ -543,9 +568,19 @@ router.post("/campaigns/batch-stats", authenticate, requireOrg, async (req: Auth
         })
       ),
       budgetUsagePromise,
+      leadsFromRunsPromise,
     ]);
 
     const budgetResults = budgetUsage?.results || {};
+
+    // Build a map of campaignId → lead-serve run count
+    const leadsRunCountMap = new Map<string, number>();
+    if (leadsFromRuns?.groups) {
+      for (const g of leadsFromRuns.groups) {
+        const cid = g.dimensions.campaignId;
+        if (cid) leadsRunCountMap.set(cid, g.runCount);
+      }
+    }
 
     const stats: Record<string, any> = {};
     for (const r of results) {
@@ -562,6 +597,12 @@ router.post("/campaigns/batch-stats", authenticate, requireOrg, async (req: Auth
         merged.leadsServed = 0;
         merged.leadsBuffered = 0;
         merged.leadsSkipped = 0;
+      }
+
+      // Override leadsServed from runs-service (source of truth)
+      const leadsRunCount = leadsRunCountMap.get(r.campaignId);
+      if (leadsRunCount !== undefined) {
+        merged.leadsServed = leadsRunCount;
       }
 
       // Emailgen stats

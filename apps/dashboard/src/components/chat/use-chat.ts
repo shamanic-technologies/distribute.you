@@ -72,6 +72,7 @@ export function useChat({ apiKey }: UseChatOptions) {
           },
           body: JSON.stringify({
             message: content.trim(),
+            appId: "mcpfactory",
             sessionId: sessionIdRef.current,
           }),
           signal: controller.signal,
