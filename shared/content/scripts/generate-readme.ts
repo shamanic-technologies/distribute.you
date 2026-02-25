@@ -11,21 +11,14 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "../../../");
 
 // Import from source directly (not dist) so we can run without building
-import { MCP_PACKAGES, getMcpsByCategory } from "../src/mcps.js";
+import { WORKFLOW_DEFINITIONS } from "../src/workflows.js";
 import { LANDING_PRICING, BYOK_COST_ESTIMATES } from "../src/pricing.js";
 import { URLS } from "../src/urls.js";
 import { BRAND } from "../src/brand.js";
 
 function generateRootReadme(): string {
-  const outreachMcps = getMcpsByCategory("outreach");
-  const adsMcps = getMcpsByCategory("ads");
-
-  const outreachTable = outreachMcps
-    .map((m) => `| \`${m.npmPackage}\` | ${m.description} | ${m.freeQuota} |`)
-    .join("\n");
-
-  const adsTable = adsMcps
-    .map((m) => `| \`${m.npmPackage}\` | ${m.description} | ${m.freeQuota} |`)
+  const workflowTable = WORKFLOW_DEFINITIONS
+    .map((w) => `| ${w.label} | ${w.description} | ${w.category} | ${w.channel} |`)
     .join("\n");
 
   return `# ${BRAND.name}
@@ -46,34 +39,23 @@ ${BRAND.name} provides Done-For-You (DFY) automation tools via the Model Context
 
 ## Pricing
 
-**Free · BYOK** — ${LANDING_PRICING.free.display}. Generous quota per MCP (500-1000 actions).
+**Free · BYOK** — ${LANDING_PRICING.free.display}. Generous quota per workflow.
 
-## Available MCPs
+## Available Workflows
 
-### URL to Revenue (Outreach)
-
-| MCP | What it does | Free Quota |
-|-----|--------------|------------|
-${outreachTable}
-
-### URL to Ads (Campaigns)
-
-| MCP | What it does | Free Quota |
-|-----|--------------|------------|
-${adsTable}
+| Workflow | What it does | Category | Channel |
+|----------|--------------|----------|---------|
+${workflowTable}
 
 ## Quick Start
 
 \`\`\`bash
-# Install any MCP
-npx @mcpfactory/sales-outreach
-
-# Or add to your MCP config
+# Add MCP Factory to your MCP config
 {
   "mcpServers": {
-    "sales-outreach": {
+    "mcpfactory": {
       "command": "npx",
-      "args": ["@mcpfactory/sales-outreach"],
+      "args": ["@mcpfactory/mcp-service"],
       "env": {
         "MCPFACTORY_API_KEY": "your-api-key"
       }
@@ -97,7 +79,7 @@ That's it. We handle:
 6. A/B testing & optimization
 7. Daily reports with dashboard link
 
-## Common Features (All MCPs)
+## Common Features
 
 ### Budget Control
 \`\`\`
@@ -134,7 +116,7 @@ Tool: get_campaign_results
 
 ## Transparency
 
-Each MCP includes a \`get_stats\` tool showing:
+Each workflow includes a \`get_stats\` tool showing:
 - Your usage & estimated BYOK costs (${BYOK_COST_ESTIMATES.totalPerEmail})
 - Community benchmarks (delivery rates, open rates, reply rates)
 - Average cost per action
@@ -148,15 +130,15 @@ This project is 100% open source. ${BRAND.license} License.
 \`\`\`
 mcpfactory/
 ├── apps/
-│   ├── dashboard/     # ${URLS.dashboard.replace("https://", "")}
-│   └── landing/       # ${URLS.landing.replace("https://", "")}
-├── packages/
-${MCP_PACKAGES.map((m) => `│   ├── mcp-${m.slug}/`).join("\n")}
+│   ├── api-service/    # Backend API
+│   ├── dashboard/      # ${URLS.dashboard.replace("https://", "")}
+│   ├── docs/           # Documentation
+│   ├── landing/        # ${URLS.landing.replace("https://", "")}
+│   └── mcp-service/    # MCP server endpoint
 └── shared/
     ├── types/
     ├── auth/
-    ├── byok/
-    └── content/       # SSoT for all content (this generates README.md)
+    └── content/         # SSoT for all content (this generates README.md)
 \`\`\`
 
 ## Contributing

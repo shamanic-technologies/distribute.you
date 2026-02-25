@@ -37,15 +37,16 @@ const RepliesIcon = () => (
 interface CampaignSidebarProps {
   campaignId: string;
   brandId: string;
+  sectionKey: string;
   stats?: CampaignStats;
   emailCount?: number;
   leadCount?: number;
   companyCount?: number;
 }
 
-export function CampaignSidebar({ campaignId, brandId, stats, emailCount, leadCount, companyCount }: CampaignSidebarProps) {
-  const basePath = `/brands/${brandId}/mcp/sales-outreach/campaigns/${campaignId}`;
-  const backHref = `/brands/${brandId}/mcp/sales-outreach`;
+export function CampaignSidebar({ campaignId, brandId, sectionKey, stats, emailCount, leadCount, companyCount }: CampaignSidebarProps) {
+  const basePath = `/brands/${brandId}/workflows/${sectionKey}/campaigns/${campaignId}`;
+  const backHref = `/brands/${brandId}/workflows/${sectionKey}`;
 
   const items = [
     {

@@ -198,7 +198,7 @@ describe("Regression: fetchDeliveryStats must use broadcast only", () => {
     const fs = require("fs");
     const path = require("path");
     const content = fs.readFileSync(
-      path.join(__dirname, "../../../../apps/dashboard/src/app/(dashboard)/brands/[brandId]/mcp/sales-outreach/page.tsx"),
+      path.join(__dirname, "../../../../apps/dashboard/src/app/(dashboard)/brands/[brandId]/workflows/[sectionKey]/page.tsx"),
       "utf-8"
     );
 

@@ -1,4 +1,4 @@
-import { URLS, MCP_PACKAGES } from "@mcpfactory/content";
+import { URLS, WORKFLOW_DEFINITIONS } from "@mcpfactory/content";
 
 export default function DocsHome() {
   return (
@@ -25,18 +25,14 @@ export default function DocsHome() {
           <li>Start automating from Claude, Cursor, or any MCP-compatible client</li>
         </ol>
 
-        <h2>Available MCPs</h2>
+        <h2>Available Workflows</h2>
         <ul>
-          {MCP_PACKAGES.map((mcp) => (
-            <li key={mcp.slug}>
-              {mcp.isAvailable ? (
-                <a href={`/${mcp.slug}`}>
-                  <strong>{mcp.name}</strong>
-                </a>
-              ) : (
-                <strong>{mcp.name}</strong>
-              )}
-              {!mcp.isAvailable && " (Coming Soon)"} - {mcp.description}
+          {WORKFLOW_DEFINITIONS.map((wf) => (
+            <li key={wf.sectionKey}>
+              <a href={`/${wf.sectionKey}`}>
+                <strong>{wf.label}</strong>
+              </a>
+              {" - "}{wf.description}
             </li>
           ))}
         </ul>

@@ -44,7 +44,7 @@ describe("CostBreakdown component", () => {
 describe("Campaign overview page includes CostBreakdown", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/brands/[brandId]/mcp/sales-outreach/campaigns/[id]/page.tsx"
+    "../src/app/(dashboard)/brands/[brandId]/workflows/[sectionKey]/campaigns/[id]/page.tsx"
   );
   const content = fs.readFileSync(pagePath, "utf-8");
 

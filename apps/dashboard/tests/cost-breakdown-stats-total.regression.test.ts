@@ -60,7 +60,7 @@ describe("api-service stats endpoint includes cost breakdown from runs-service",
 describe("Brand page uses runs-service cost breakdown (no Other category)", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/brands/[brandId]/mcp/sales-outreach/page.tsx"
+    "../src/app/(dashboard)/brands/[brandId]/workflows/[sectionKey]/page.tsx"
   );
   const content = fs.readFileSync(pagePath, "utf-8");
 

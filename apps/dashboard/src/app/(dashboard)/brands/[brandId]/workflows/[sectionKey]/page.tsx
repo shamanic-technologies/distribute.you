@@ -27,9 +27,10 @@ function timeAgo(date: string | Date): string {
   return `${years}y ago`;
 }
 
-export default function BrandMcpSalesOutreachPage() {
+export default function WorkflowCampaignsPage() {
   const params = useParams();
   const brandId = params.brandId as string;
+  const sectionKey = params.sectionKey as string;
 
   const { data: campaignsData, isLoading } = useAuthQuery(
     ["campaigns", { brandId }],
@@ -160,7 +161,7 @@ export default function BrandMcpSalesOutreachPage() {
             <div className="text-4xl mb-4">📤</div>
             <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No campaigns yet</h3>
             <p className="text-gray-600 text-sm max-w-md mx-auto mb-4">
-              Use the MCP from Claude, Cursor, or any MCP-compatible client to create campaigns for this brand.
+              Use the MCP Factory tool in Claude, Cursor, or any MCP-compatible client to create campaigns for this brand.
             </p>
           </div>
         ) : (
@@ -169,7 +170,7 @@ export default function BrandMcpSalesOutreachPage() {
             return (
               <Link
                 key={campaign.id}
-                href={`/brands/${brandId}/mcp/sales-outreach/campaigns/${campaign.id}`}
+                href={`/brands/${brandId}/workflows/${sectionKey}/campaigns/${campaign.id}`}
                 className="block bg-white rounded-xl border border-gray-200 p-4 hover:border-primary-300 hover:shadow-md transition-all"
               >
                 <div className="flex items-start justify-between mb-2">

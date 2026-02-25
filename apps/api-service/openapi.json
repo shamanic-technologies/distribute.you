@@ -166,13 +166,10 @@
             "type": "string",
             "description": "Campaign name"
           },
-          "type": {
+          "workflowName": {
             "type": "string",
-            "enum": [
-              "cold-email-outreach"
-            ],
-            "default": "cold-email-outreach",
-            "description": "Campaign type (defaults to 'cold-email-outreach')"
+            "minLength": 1,
+            "description": "Workflow name (e.g. 'sales-email-cold-outreach-sienna'). Determines which execution pipeline to use."
           },
           "brandUrl": {
             "type": "string",
@@ -269,6 +266,7 @@
         },
         "required": [
           "name",
+          "workflowName",
           "brandUrl",
           "targetAudience",
           "targetOutcome",
@@ -797,7 +795,7 @@
           "Campaigns"
         ],
         "summary": "Create a campaign",
-        "description": "Create a new outreach campaign. The `type` field determines which execution pipeline campaign-service uses.",
+        "description": "Create a new outreach campaign. The `workflowName` field determines which execution pipeline campaign-service uses.",
         "security": [
           {
             "bearerAuth": []

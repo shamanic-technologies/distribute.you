@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useParams } from "next/navigation";
+import { SECTION_LABELS } from "@mcpfactory/content";
 
-export default function BrandMcpSalesOutreachLayout({
+export default function WorkflowSectionLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -11,8 +12,10 @@ export default function BrandMcpSalesOutreachLayout({
   const pathname = usePathname();
   const params = useParams();
   const brandId = params.brandId as string;
+  const sectionKey = params.sectionKey as string;
 
-  const basePath = `/brands/${brandId}/mcp/sales-outreach`;
+  const label = SECTION_LABELS[sectionKey] ?? sectionKey;
+  const basePath = `/brands/${brandId}/workflows/${sectionKey}`;
 
   const SIDEBAR_ITEMS = [
     {
@@ -29,7 +32,7 @@ export default function BrandMcpSalesOutreachLayout({
 
   // Don't show this sidebar when viewing a specific campaign
   const isInCampaign = pathname.includes("/campaigns/") && pathname.split("/campaigns/")[1]?.length > 0;
-  
+
   if (isInCampaign) {
     return <>{children}</>;
   }
@@ -39,8 +42,8 @@ export default function BrandMcpSalesOutreachLayout({
       {/* Desktop sidebar */}
       <aside className="hidden md:flex w-56 bg-white border-r border-gray-200 flex-col flex-shrink-0">
         <div className="px-4 py-3 border-b border-gray-100">
-          <Link 
-            href={`/brands/${brandId}`} 
+          <Link
+            href={`/brands/${brandId}`}
             className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 mb-2 transition"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -49,13 +52,13 @@ export default function BrandMcpSalesOutreachLayout({
             Brand
           </Link>
           <h3 className="text-sm font-semibold text-gray-800">
-            Sales Cold Emails
+            {label}
           </h3>
         </div>
         <nav className="flex-1 p-2 space-y-1">
           {SIDEBAR_ITEMS.map((item) => {
-            const isActive = item.id === "campaigns" 
-              ? pathname === item.href 
+            const isActive = item.id === "campaigns"
+              ? pathname === item.href
               : pathname.startsWith(item.href);
             return (
               <Link
@@ -63,8 +66,8 @@ export default function BrandMcpSalesOutreachLayout({
                 href={item.href}
                 className={`
                   flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition
-                  ${isActive 
-                    ? "bg-primary-50 text-primary-700 font-medium border border-primary-200" 
+                  ${isActive
+                    ? "bg-primary-50 text-primary-700 font-medium border border-primary-200"
                     : "text-gray-600 hover:bg-gray-50 hover:text-gray-800"
                   }
                 `}
@@ -88,13 +91,13 @@ export default function BrandMcpSalesOutreachLayout({
             </svg>
             Brand
           </Link>
-          <span className="text-sm font-semibold text-gray-800">Sales Cold Emails</span>
+          <span className="text-sm font-semibold text-gray-800">{label}</span>
           <div className="w-8" />
         </div>
         <nav className="flex gap-1 overflow-x-auto pb-1">
           {SIDEBAR_ITEMS.map((item) => {
-            const isActive = item.id === "campaigns" 
-              ? pathname === item.href 
+            const isActive = item.id === "campaigns"
+              ? pathname === item.href
               : pathname.startsWith(item.href);
             return (
               <Link
@@ -102,8 +105,8 @@ export default function BrandMcpSalesOutreachLayout({
                 href={item.href}
                 className={`
                   flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition
-                  ${isActive 
-                    ? "bg-primary-100 text-primary-700 font-medium" 
+                  ${isActive
+                    ? "bg-primary-100 text-primary-700 font-medium"
                     : "bg-gray-100 text-gray-600"
                   }
                 `}

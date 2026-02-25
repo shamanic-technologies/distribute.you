@@ -134,6 +134,7 @@ export interface Campaign {
   id: string;
   name: string;
   status: string;
+  workflowName: string | null;
   targetAudience: string | null;
   targetOutcome: string | null;
   valueForTarget: string | null;
