@@ -18,12 +18,12 @@ router.get("/workflows", authenticate, requireOrg, async (req: AuthenticatedRequ
     if (req.query.channel) params.set("channel", req.query.channel as string);
     if (req.query.audienceType) params.set("audienceType", req.query.audienceType as string);
 
-    const workflows = await callExternalService(
+    const result = await callExternalService(
       externalServices.windmill,
       `/workflows?${params.toString()}`
     );
 
-    res.json({ workflows });
+    res.json(result);
   } catch (error: any) {
     console.error("List workflows error:", error.message);
     res.status(500).json({ error: error.message || "Failed to list workflows" });
