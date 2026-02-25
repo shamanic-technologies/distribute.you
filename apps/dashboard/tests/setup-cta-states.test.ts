@@ -2,55 +2,17 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
-describe("SalesColdEmailsCard component", () => {
-  const componentPath = path.join(
-    __dirname,
-    "../src/components/sales-cold-emails-card.tsx"
-  );
-  const content = fs.readFileSync(componentPath, "utf-8");
-
-  it("should fetch BYOK keys to determine setup state", () => {
-    expect(content).toContain("listByokKeys");
-    expect(content).toContain("useAuthQuery");
-  });
-
-  it("should show 'Get Started' when no keys are configured", () => {
-    expect(content).toContain("Get Started");
-  });
-
-  it("should show 'Complete setup' when some keys are configured", () => {
-    expect(content).toContain("Complete setup");
-  });
-
-  it("should show 'View setup' when all keys are configured", () => {
-    expect(content).toContain("View setup");
-  });
-
-  it("should use orange styling for Get Started and Complete setup, grey for View setup", () => {
-    // Orange CTA for actionable states
-    expect(content).toContain("text-primary-500");
-    // Grey styling for completed state
-    expect(content).toContain("text-gray-400");
-  });
-
-  it("should check all required providers", () => {
-    expect(content).toContain("anthropic");
-    expect(content).toContain("apollo");
-    expect(content).toContain("instantly");
-    expect(content).toContain("firecrawl");
-  });
-});
-
-describe("Dashboard page uses SalesColdEmailsCard", () => {
-  it("should import and render SalesColdEmailsCard instead of static markup", () => {
+describe("Dashboard page uses WORKFLOW_DEFINITIONS", () => {
+  it("should import and render workflow cards from @mcpfactory/content", () => {
     const pagePath = path.join(
       __dirname,
       "../src/app/(dashboard)/page.tsx"
     );
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("SalesColdEmailsCard");
-    // Should NOT have the old static "Get Started" link
-    expect(content).not.toContain("Get Started →");
+    expect(content).toContain("WORKFLOW_DEFINITIONS");
+    expect(content).toContain("WORKFLOW_DEFINITIONS.map");
+    // Should NOT have the old SalesColdEmailsCard component
+    expect(content).not.toContain("SalesColdEmailsCard");
   });
 });
 

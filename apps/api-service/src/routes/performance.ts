@@ -65,9 +65,11 @@ interface CategorySectionStats {
   emailsSent: number;
   emailsOpened: number;
   emailsReplied: number;
+  repliesInterested: number;
   totalCostUsdCents: number;
   openRate: number;
   replyRate: number;
+  interestedRate: number;
   costPerOpenCents: number | null;
   costPerReplyCents: number | null;
 }
@@ -402,6 +404,7 @@ function buildCategorySections(data: LeaderboardData): CategorySection[] {
     const emailsSent = workflows.reduce((s, w) => s + w.emailsSent, 0);
     const emailsOpened = workflows.reduce((s, w) => s + w.emailsOpened, 0);
     const emailsReplied = workflows.reduce((s, w) => s + w.emailsReplied, 0);
+    const repliesInterested = workflows.reduce((s, w) => s + w.repliesInterested, 0);
     const totalCostUsdCents = workflows.reduce((s, w) => s + w.totalCostUsdCents, 0);
     // Derive category from the first workflow (all workflows in same section share the same category)
     const category = workflows[0].category!;
@@ -415,9 +418,11 @@ function buildCategorySections(data: LeaderboardData): CategorySection[] {
         emailsSent,
         emailsOpened,
         emailsReplied,
+        repliesInterested,
         totalCostUsdCents,
         openRate: emailsSent > 0 ? Math.round((emailsOpened / emailsSent) * 10000) / 10000 : 0,
         replyRate: emailsSent > 0 ? Math.round((emailsReplied / emailsSent) * 10000) / 10000 : 0,
+        interestedRate: emailsSent > 0 ? Math.round((repliesInterested / emailsSent) * 10000) / 10000 : 0,
         costPerOpenCents: emailsOpened > 0 ? Math.round(totalCostUsdCents / emailsOpened) : null,
         costPerReplyCents: emailsReplied > 0 ? Math.round(totalCostUsdCents / emailsReplied) : null,
       },
