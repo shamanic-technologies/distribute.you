@@ -26,9 +26,9 @@ describe("Workflow proxy routes", () => {
     expect(content).toContain("requireOrg");
   });
 
-  it("should proxy GET /workflows with orgId", () => {
+  it("should proxy GET /workflows with appId as orgId", () => {
     expect(content).toContain('"/workflows"');
-    expect(content).toContain("req.orgId");
+    expect(content).toContain('params.set("orgId", appId)');
     expect(content).toContain("externalServices.workflow");
   });
 
