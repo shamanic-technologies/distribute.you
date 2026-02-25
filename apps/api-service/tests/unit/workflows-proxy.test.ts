@@ -6,14 +6,14 @@ describe("Workflow proxy route configuration", () => {
   const serviceClientPath = path.join(__dirname, "../../src/lib/service-client.ts");
   const serviceClientContent = fs.readFileSync(serviceClientPath, "utf-8");
 
-  it("should have windmill in externalServices", () => {
-    expect(serviceClientContent).toContain("windmill:");
-    expect(serviceClientContent).toContain("WINDMILL_SERVICE_URL");
-    expect(serviceClientContent).toContain("WINDMILL_SERVICE_API_KEY");
+  it("should have workflow in externalServices", () => {
+    expect(serviceClientContent).toContain("workflow:");
+    expect(serviceClientContent).toContain("WORKFLOW_SERVICE_URL");
+    expect(serviceClientContent).toContain("WORKFLOW_SERVICE_API_KEY");
   });
 
-  it("should use windmill.mcpfactory.org as default URL", () => {
-    expect(serviceClientContent).toContain("windmill.mcpfactory.org");
+  it("should use workflow.mcpfactory.org as default URL", () => {
+    expect(serviceClientContent).toContain("workflow.mcpfactory.org");
   });
 });
 
@@ -29,7 +29,7 @@ describe("Workflow proxy routes", () => {
   it("should proxy GET /workflows with orgId", () => {
     expect(content).toContain('"/workflows"');
     expect(content).toContain("req.orgId");
-    expect(content).toContain("externalServices.windmill");
+    expect(content).toContain("externalServices.workflow");
   });
 
   it("should proxy GET /workflows/:id", () => {
