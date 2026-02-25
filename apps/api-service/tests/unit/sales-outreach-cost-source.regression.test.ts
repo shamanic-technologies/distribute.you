@@ -11,7 +11,7 @@ import * as path from "path";
 describe("sales-outreach page cost source consistency", () => {
   const pagePath = path.join(
     __dirname,
-    "../../../dashboard/src/app/(dashboard)/brands/[brandId]/mcp/sales-outreach/page.tsx"
+    "../../../dashboard/src/app/(dashboard)/brands/[brandId]/workflows/[sectionKey]/page.tsx"
   );
   const content = fs.readFileSync(pagePath, "utf-8");
 

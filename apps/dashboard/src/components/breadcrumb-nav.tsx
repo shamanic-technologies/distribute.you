@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useOrganization, useOrganizationList, useAuth } from "@clerk/nextjs";
 import { useState, useRef, useEffect, useCallback } from "react";
+import { WORKFLOW_DEFINITIONS, SECTION_LABELS } from "@mcpfactory/content";
 
 interface Brand {
   id: string;
@@ -15,11 +16,6 @@ interface Campaign {
   id: string;
   name: string;
 }
-
-// MCP definitions
-const MCP_LIST = [
-  { slug: "sales-outreach", name: "Sales Cold Emails" },
-];
 
 // Caches
 const brandListCache: { data: Brand[] | null; timestamp: number } = { data: null, timestamp: 0 };
@@ -47,20 +43,20 @@ export function BreadcrumbNav() {
   // Parse pathname
   const pathParts = pathname.split("/").filter(Boolean);
   const brandId = pathParts[0] === "brands" && pathParts[1] ? pathParts[1] : null;
-  const mcpSlug = brandId && pathParts[2] === "mcp" && pathParts[3] ? pathParts[3] : null;
-  const campaignId = mcpSlug && pathParts[4] === "campaigns" && pathParts[5] ? pathParts[5] : null;
+  const sectionKey = brandId && pathParts[2] === "workflows" && pathParts[3] ? pathParts[3] : null;
+  const campaignId = sectionKey && pathParts[4] === "campaigns" && pathParts[5] ? pathParts[5] : null;
 
   // Get current page type (to preserve when switching)
   const getPageSuffix = useCallback(() => {
     if (pathParts[2] === "brand-info") return "/brand-info";
-    if (mcpSlug && pathParts[4] === "prompt") return `/mcp/${mcpSlug}/prompt`;
-    if (mcpSlug && campaignId) {
+    if (sectionKey && pathParts[4] === "prompt") return `/workflows/${sectionKey}/prompt`;
+    if (sectionKey && campaignId) {
       const subpage = pathParts[6] || "";
-      return `/mcp/${mcpSlug}/campaigns/${campaignId}${subpage ? "/" + subpage : ""}`;
+      return `/workflows/${sectionKey}/campaigns/${campaignId}${subpage ? "/" + subpage : ""}`;
     }
-    if (mcpSlug) return `/mcp/${mcpSlug}`;
+    if (sectionKey) return `/workflows/${sectionKey}`;
     return "";
-  }, [pathParts, mcpSlug, campaignId]);
+  }, [pathParts, sectionKey, campaignId]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -158,11 +154,9 @@ export function BreadcrumbNav() {
 
   const handleBrandSwitch = (newBrandId: string) => {
     setOpenDropdown(null);
-    // Preserve page type when switching brands
     const suffix = getPageSuffix();
-    // But we can't keep campaign-specific pages
     if (suffix.includes("/campaigns/")) {
-      router.push(`/brands/${newBrandId}/mcp/${mcpSlug}`);
+      router.push(`/brands/${newBrandId}/workflows/${sectionKey}`);
     } else if (suffix) {
       router.push(`/brands/${newBrandId}${suffix}`);
     } else {
@@ -170,22 +164,21 @@ export function BreadcrumbNav() {
     }
   };
 
-  const handleMcpSwitch = (newMcpSlug: string) => {
+  const handleWorkflowSwitch = (newSectionKey: string) => {
     setOpenDropdown(null);
-    router.push(`/brands/${brandId}/mcp/${newMcpSlug}`);
+    router.push(`/brands/${brandId}/workflows/${newSectionKey}`);
   };
 
   const handleCampaignSwitch = (newCampaignId: string) => {
     setOpenDropdown(null);
-    // Preserve subpage when switching campaigns
     const subpage = pathParts[6] || "";
-    router.push(`/brands/${brandId}/mcp/${mcpSlug}/campaigns/${newCampaignId}${subpage ? "/" + subpage : ""}`);
+    router.push(`/brands/${brandId}/workflows/${sectionKey}/campaigns/${newCampaignId}${subpage ? "/" + subpage : ""}`);
   };
 
   // Get current names
   const currentBrand = brands.find((b) => b.id === brandId);
   const currentCampaign = campaigns.find((c) => c.id === campaignId);
-  const currentMcp = MCP_LIST.find((m) => m.slug === mcpSlug);
+  const currentWorkflowLabel = sectionKey ? (SECTION_LABELS[sectionKey] ?? sectionKey) : null;
 
   // Chevron icon
   const Chevron = ({ open }: { open: boolean }) => (
@@ -286,32 +279,32 @@ export function BreadcrumbNav() {
         </>
       )}
 
-      {/* MCP */}
-      {mcpSlug && (
+      {/* WORKFLOW */}
+      {sectionKey && (
         <>
           <Sep />
           <div className="relative flex items-center">
-            <Link href={`/brands/${brandId}/mcp/${mcpSlug}`} className="px-2 py-1 rounded-md hover:bg-gray-100 transition font-medium text-gray-800">
-              {currentMcp?.name || mcpSlug}
+            <Link href={`/brands/${brandId}/workflows/${sectionKey}`} className="px-2 py-1 rounded-md hover:bg-gray-100 transition font-medium text-gray-800">
+              {currentWorkflowLabel}
             </Link>
-            <button onClick={() => toggleDropdown("mcp")} className="p-1 hover:bg-gray-100 rounded transition">
-              <Chevron open={openDropdown === "mcp"} />
+            <button onClick={() => toggleDropdown("workflow")} className="p-1 hover:bg-gray-100 rounded transition">
+              <Chevron open={openDropdown === "workflow"} />
             </button>
-            {openDropdown === "mcp" && (
+            {openDropdown === "workflow" && (
               <div className="absolute left-0 top-full mt-1 w-56 bg-white rounded-lg border border-gray-200 shadow-xl py-1 z-50">
                 <div className="px-3 py-2 border-b border-gray-100">
-                  <p className="text-xs text-gray-500 font-medium">Switch MCP</p>
+                  <p className="text-xs text-gray-500 font-medium">Switch workflow</p>
                 </div>
-                {MCP_LIST.map((m) => (
+                {WORKFLOW_DEFINITIONS.map((wf) => (
                   <button
-                    key={m.slug}
-                    onClick={() => handleMcpSwitch(m.slug)}
+                    key={wf.sectionKey}
+                    onClick={() => handleWorkflowSwitch(wf.sectionKey)}
                     className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition ${
-                      mcpSlug === m.slug ? "bg-primary-50 text-primary-700" : "text-gray-700 hover:bg-gray-50"
+                      sectionKey === wf.sectionKey ? "bg-primary-50 text-primary-700" : "text-gray-700 hover:bg-gray-50"
                     }`}
                   >
-                    <span className="truncate">{m.name}</span>
-                    {mcpSlug === m.slug && (
+                    <span className="truncate">{wf.label}</span>
+                    {sectionKey === wf.sectionKey && (
                       <svg className="w-4 h-4 text-primary-600 ml-auto flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
@@ -329,7 +322,7 @@ export function BreadcrumbNav() {
         <>
           <Sep />
           <div className="relative flex items-center">
-            <Link href={`/brands/${brandId}/mcp/${mcpSlug}/campaigns/${campaignId}`} className="px-2 py-1 rounded-md hover:bg-gray-100 transition font-medium text-gray-800">
+            <Link href={`/brands/${brandId}/workflows/${sectionKey}/campaigns/${campaignId}`} className="px-2 py-1 rounded-md hover:bg-gray-100 transition font-medium text-gray-800">
               {currentCampaign?.name || "Campaign"}
             </Link>
             <button onClick={() => toggleDropdown("campaign")} className="p-1 hover:bg-gray-100 rounded transition">
@@ -375,7 +368,7 @@ export function BreadcrumbNav() {
           <span className="px-2 py-1 text-gray-600">Brand Info</span>
         </>
       )}
-      {mcpSlug && pathParts[4] === "prompt" && (
+      {sectionKey && pathParts[4] === "prompt" && (
         <>
           <Sep />
           <span className="px-2 py-1 text-gray-600">Email Prompt</span>

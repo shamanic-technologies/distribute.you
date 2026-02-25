@@ -2,6 +2,50 @@ export type WorkflowCategory = "sales" | "pr";
 export type WorkflowChannel = "email";
 export type WorkflowAudienceType = "cold-outreach";
 
+/** Static workflow section definitions (replaces MCP_PACKAGES). */
+export interface WorkflowDefinition {
+  /** Section key, e.g. "sales-email-cold-outreach" */
+  sectionKey: string;
+  /** Human-readable label */
+  label: string;
+  /** Short description for cards/lists */
+  description: string;
+  category: WorkflowCategory;
+  channel: WorkflowChannel;
+  audienceType: WorkflowAudienceType;
+  /** Icon identifier for UI */
+  icon: string;
+}
+
+export const WORKFLOW_DEFINITIONS: WorkflowDefinition[] = [
+  {
+    sectionKey: "sales-email-cold-outreach",
+    label: "Sales Cold Email Outreach",
+    description:
+      "Find leads, generate personalized cold emails, send & optimize.",
+    category: "sales",
+    channel: "email",
+    audienceType: "cold-outreach",
+    icon: "envelope",
+  },
+  {
+    sectionKey: "pr-email-cold-outreach",
+    label: "PR & Media Email Outreach",
+    description:
+      "Pitch journalists and media contacts for press coverage.",
+    category: "pr",
+    channel: "email",
+    audienceType: "cold-outreach",
+    icon: "newspaper",
+  },
+];
+
+export const getWorkflowDefinition = (sectionKey: string) =>
+  WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === sectionKey);
+
+export const getWorkflowDefinitionsByCategory = (cat: WorkflowCategory) =>
+  WORKFLOW_DEFINITIONS.filter((w) => w.category === cat);
+
 export interface ParsedWorkflowName {
   category: WorkflowCategory;
   channel: WorkflowChannel;

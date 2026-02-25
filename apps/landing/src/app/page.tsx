@@ -1,10 +1,10 @@
 import Image from "next/image";
 import { WaitlistForm } from "@/components/waitlist-form";
-import { McpCard } from "@/components/mcp-card";
+
 import { LinkButton } from "@/components/link-button";
 import { StatusIndicator } from "@/components/status-indicator";
 import { Navbar } from "@/components/navbar";
-import { URLS, MCP_PACKAGES, LANDING_PRICING, SUPPORTED_CLIENTS } from "@mcpfactory/content";
+import { URLS, WORKFLOW_DEFINITIONS, LANDING_PRICING, SUPPORTED_CLIENTS } from "@mcpfactory/content";
 
 export const revalidate = 300;
 
@@ -213,12 +213,12 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* MCPs Grid */}
+      {/* Workflows Grid */}
       <section className="py-16 px-4 bg-gradient-to-b from-white to-secondary-50">
         <div className="max-w-6xl mx-auto">
-          <h2 className="font-display text-3xl font-bold text-center mb-4 text-gray-800">Available MCPs</h2>
+          <h2 className="font-display text-3xl font-bold text-center mb-4 text-gray-800">Available Workflows</h2>
           <p className="text-gray-600 text-center mb-8 max-w-2xl mx-auto">
-            Install any MCP and start automating. Works with all major AI clients.
+            Connect MCP Factory and start automating. Works with all major AI clients.
           </p>
 
           {/* Supported AI clients */}
@@ -238,8 +238,17 @@ export default async function Home() {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {MCP_PACKAGES.map((mcp) => (
-              <McpCard key={mcp.npmPackage} name={mcp.name} package={mcp.npmPackage} description={mcp.description} freeQuota={mcp.freeQuota} isAvailable={mcp.isAvailable} />
+            {WORKFLOW_DEFINITIONS.map((wf) => (
+              <div key={wf.sectionKey} className="bg-white rounded-2xl border border-primary-200 ring-2 ring-primary-100 hover:ring-primary-200 p-6 hover:shadow-xl transition-all duration-300">
+                <h3 className="font-display font-bold text-lg text-gray-800 mb-2">{wf.label}</h3>
+                <p className="text-gray-600 text-sm mb-4">{wf.description}</p>
+                <LinkButton
+                  href={URLS.signUp}
+                  className="text-sm bg-primary-500 text-white px-4 py-1.5 rounded-full hover:bg-primary-600 font-medium shadow-sm hover:shadow-md"
+                >
+                  Get Started
+                </LinkButton>
+              </div>
             ))}
           </div>
         </div>

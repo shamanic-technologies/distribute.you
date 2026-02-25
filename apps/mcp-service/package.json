@@ -13,6 +13,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@mcpfactory/content": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.25.0",
     "@sentry/node": "^8.0.0",
     "cors": "^2.8.5",

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MCP_PACKAGES } from "@mcpfactory/content";
+import { WORKFLOW_DEFINITIONS } from "@mcpfactory/content";
 
 const NAV_ITEMS = [
   {
@@ -37,11 +37,11 @@ const NAV_ITEMS = [
     ],
   },
   {
-    title: "MCPs",
-    items: MCP_PACKAGES.map((mcp) => ({
-      name: mcp.name,
-      href: `/${mcp.slug}`,
-      available: mcp.isAvailable,
+    title: "Workflows",
+    items: WORKFLOW_DEFINITIONS.map((wf) => ({
+      name: wf.label,
+      href: `/${wf.sectionKey}`,
+      available: true,
     })),
   },
 ];

@@ -7,9 +7,10 @@ import { useCampaign } from "@/lib/campaign-context";
 
 interface Props {
   brandId: string;
+  sectionKey: string;
 }
 
-export function BrandCampaignSidebarWrapper({ brandId }: Props) {
+export function WorkflowCampaignSidebarWrapper({ brandId, sectionKey }: Props) {
   const params = useParams();
   const { stats, emails, leads } = useCampaign();
   const campaignId = params.id as string;
@@ -19,5 +20,5 @@ export function BrandCampaignSidebarWrapper({ brandId }: Props) {
     return names.size;
   }, [leads]);
 
-  return <CampaignSidebar campaignId={campaignId} brandId={brandId} stats={stats ?? undefined} emailCount={emails.length} leadCount={leads.length} companyCount={companyCount} />;
+  return <CampaignSidebar campaignId={campaignId} brandId={brandId} sectionKey={sectionKey} stats={stats ?? undefined} emailCount={emails.length} leadCount={leads.length} companyCount={companyCount} />;
 }

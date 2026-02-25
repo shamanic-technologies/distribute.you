@@ -7,11 +7,17 @@ export const toolDefinitions = {
     description: "Check MCPFactory connection status and configuration",
     schema: z.object({}),
   },
+  mcpfactory_list_workflows: {
+    description: "List all available workflows with their descriptions and categories",
+    schema: z.object({
+      category: z.enum(["sales", "pr"]).optional().describe("Filter by workflow category"),
+    }),
+  },
   mcpfactory_create_campaign: {
     description: "Create and immediately start a cold email campaign. Provide a URL, describe your target audience in plain text, and set a budget. The system automatically finds matching leads via AI.",
     schema: z.object({
       name: z.string().describe("Campaign name"),
-      campaign_type: z.enum(["cold-email-outreach"]).default("cold-email-outreach").describe("Campaign type — determines which execution pipeline to use (defaults to 'cold-email-outreach')"),
+      workflow_name: z.string().describe("Workflow name (e.g. 'sales-email-cold-outreach-sienna'). Use mcpfactory_list_workflows to see available workflows."),
       brand_url: z.string().describe("Your brand/company URL to promote"),
       target_audience: z.string().describe("Plain text description of your ideal customers (e.g. 'CTOs at SaaS startups with 10-50 employees in the US')"),
       target_outcome: z.string().describe("What you want to achieve with this campaign (e.g. 'Book sales demos', 'Recruit community ambassadors', 'Get press coverage')"),
@@ -80,6 +86,9 @@ export async function handleToolCall(
     case "mcpfactory_status":
       return handleStatus();
 
+    case "mcpfactory_list_workflows":
+      return handleListWorkflows(args);
+
     case "mcpfactory_create_campaign":
       return handleCreateCampaign(args);
 
@@ -143,6 +152,24 @@ async function handleStatus() {
   };
 }
 
+async function handleListWorkflows(args: Record<string, unknown>) {
+  const { WORKFLOW_DEFINITIONS, getWorkflowDefinitionsByCategory } = await import("@mcpfactory/content");
+  const category = args.category as string | undefined;
+  const workflows = category
+    ? getWorkflowDefinitionsByCategory(category as "sales" | "pr")
+    : WORKFLOW_DEFINITIONS;
+  return {
+    workflows: workflows.map((wf) => ({
+      sectionKey: wf.sectionKey,
+      label: wf.label,
+      description: wf.description,
+      category: wf.category,
+      channel: wf.channel,
+      audienceType: wf.audienceType,
+    })),
+  };
+}
+
 async function handleCreateCampaign(args: Record<string, unknown>) {
   // Validate at least one budget is provided (max_leads is optional, not a replacement for budget)
   if (!args.max_daily_budget_usd && !args.max_weekly_budget_usd && !args.max_monthly_budget_usd && !args.max_total_budget_usd) {
@@ -153,7 +180,7 @@ async function handleCreateCampaign(args: Record<string, unknown>) {
     method: "POST",
     body: {
       name: args.name,
-      type: args.campaign_type,
+      workflowName: args.workflow_name,
       brandUrl: args.brand_url,
       targetAudience: args.target_audience,
       targetOutcome: args.target_outcome,

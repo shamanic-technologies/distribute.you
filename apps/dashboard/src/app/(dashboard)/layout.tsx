@@ -13,9 +13,8 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { isOpen, close } = useMobileSidebar();
   
-  // Hide main sidebar when inside an MCP or brand (each has its own contextual sidebar)
+  // Hide main sidebar when inside a brand (each has its own contextual sidebar)
   const pathParts = pathname.split("/").filter(Boolean);
-  const isInsideMcp = pathParts[0] === "mcp" && pathParts[1];
   const isInsideBrand = pathParts[0] === "brands" && pathParts[1];
 
   return (
@@ -41,7 +40,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         </div>
         
         {/* Desktop sidebar */}
-        {!isInsideMcp && !isInsideBrand && (
+        {!isInsideBrand && (
           <div className="hidden md:flex h-full">
             <Sidebar />
           </div>

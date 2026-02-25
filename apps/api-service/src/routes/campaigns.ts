@@ -146,7 +146,7 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
     const { brandUrl } = parsed.data;
     console.log("[api-service] POST /v1/campaigns \u2014 parsed OK", {
       name: parsed.data.name,
-      type: parsed.data.type,
+      workflowName: parsed.data.workflowName,
       brandUrl,
       targetAudience: parsed.data.targetAudience?.slice(0, 80) + "...",
       targetOutcome: parsed.data.targetOutcome,
@@ -184,8 +184,12 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
     console.log("[api-service] POST /v1/campaigns \u2014 step 2 done: parent run created", { parentRunId: parentRun.id });
 
     // 3. Forward to campaign-service with parentRunId
+    // Derive `type` from workflowName for campaign-service backward compat
+    const { workflowName, ...restData } = parsed.data;
     const body: Record<string, unknown> = {
-      ...parsed.data,
+      ...restData,
+      workflowName,
+      type: "cold-email-outreach",
       appId: "mcpfactory",
       clerkOrgId: req.orgId,
       brandId: brandResult.brandId,
@@ -200,7 +204,7 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
 
     console.log("[api-service] POST /v1/campaigns \u2014 step 3: forwarding to campaign-service", {
       brandId: body.brandId,
-      type: body.type,
+      workflowName: body.workflowName,
       targetOutcome: body.targetOutcome,
       maxLeads: body.maxLeads,
       parentRunId: parentRun.id,

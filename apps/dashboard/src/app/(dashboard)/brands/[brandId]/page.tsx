@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrand, listCampaignsByBrand, getCampaignBatchStats, type Brand, type Campaign, type CampaignStats } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
+import { WORKFLOW_DEFINITIONS, getSectionKey } from "@mcpfactory/content";
 
 function formatCost(cents: string | null | undefined): string | null {
   if (!cents) return null;
@@ -16,15 +17,10 @@ function formatCost(cents: string | null | undefined): string | null {
   return `$${usd.toFixed(2)}`;
 }
 
-// Available MCPs
-const MCPS = [
-  {
-    slug: "sales-outreach",
-    name: "Sales Cold Emails",
-    description: "Automated cold email campaigns to reach prospects",
-    icon: "📧",
-  },
-];
+const WORKFLOW_ICONS: Record<string, string> = {
+  envelope: "\u{1F4E7}",
+  newspaper: "\u{1F4F0}",
+};
 
 export default function BrandOverviewPage() {
   const params = useParams();
@@ -51,6 +47,19 @@ export default function BrandOverviewPage() {
   );
   const campaignStats = batchStats ?? {};
 
+  // Group campaigns by workflow section
+  const campaignsBySection = useMemo(() => {
+    const map: Record<string, Campaign[]> = {};
+    for (const c of campaigns) {
+      // Derive sectionKey from workflowName, fallback to first workflow definition
+      const key = c.workflowName ? getSectionKey(c.workflowName) : null;
+      const section = key ?? "sales-email-cold-outreach";
+      if (!map[section]) map[section] = [];
+      map[section].push(c);
+    }
+    return map;
+  }, [campaigns]);
+
   if (brandLoading) {
     return (
       <div className="p-4 md:p-8">
@@ -69,8 +78,6 @@ export default function BrandOverviewPage() {
       </div>
     );
   }
-
-  const ongoingCampaigns = campaigns.filter(c => c.status === "ongoing");
 
   return (
     <div className="p-4 md:p-8 max-w-4xl">
@@ -115,42 +122,41 @@ export default function BrandOverviewPage() {
         </div>
       </Link>
 
-      {/* MCPs Section */}
+      {/* Workflows Section */}
       <div className="mb-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">MCPs</h2>
+        <h2 className="text-lg font-medium text-gray-900 mb-4">Workflows</h2>
         <div className="space-y-4">
-          {MCPS.map(mcp => {
-            // For now all campaigns are from sales-outreach MCP
-            const mcpCampaigns = mcp.slug === "sales-outreach" ? campaigns : [];
-            const activeCampaigns = mcpCampaigns.filter(c => c.status === "ongoing");
+          {WORKFLOW_DEFINITIONS.map(wf => {
+            const wfCampaigns = campaignsBySection[wf.sectionKey] ?? [];
+            const activeCampaigns = wfCampaigns.filter(c => c.status === "ongoing");
 
             return (
               <div
-                key={mcp.slug}
+                key={wf.sectionKey}
                 className="bg-white rounded-lg border border-gray-200 p-5"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-primary-50 rounded-lg flex items-center justify-center text-lg">
-                      {mcp.icon}
+                      {WORKFLOW_ICONS[wf.icon] ?? wf.icon}
                     </div>
                     <div>
-                      <h3 className="font-medium text-gray-900">{mcp.name}</h3>
-                      <p className="text-sm text-gray-500">{mcp.description}</p>
+                      <h3 className="font-medium text-gray-900">{wf.label}</h3>
+                      <p className="text-sm text-gray-500">{wf.description}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Campaign Stats */}
                 {(() => {
-                  let mcpTotalCost = 0;
-                  for (const c of mcpCampaigns) {
+                  let totalCost = 0;
+                  for (const c of wfCampaigns) {
                     const s = campaignStats[c.id];
                     if (s?.totalCostInUsdCents) {
-                      mcpTotalCost += parseFloat(s.totalCostInUsdCents) || 0;
+                      totalCost += parseFloat(s.totalCostInUsdCents) || 0;
                     }
                   }
-                  const costStr = mcpTotalCost > 0 ? String(mcpTotalCost) : null;
+                  const costStr = totalCost > 0 ? String(totalCost) : null;
                   return (
                     <div className="flex items-center gap-6 mb-4 text-sm">
                       <div className="flex items-center gap-2">
@@ -158,7 +164,7 @@ export default function BrandOverviewPage() {
                         <span className="text-gray-600">{activeCampaigns.length} active</span>
                       </div>
                       <div className="text-gray-400">
-                        {mcpCampaigns.length} total campaigns
+                        {wfCampaigns.length} total campaigns
                       </div>
                       {formatCost(costStr) && (
                         <div className="text-gray-400">
@@ -170,14 +176,14 @@ export default function BrandOverviewPage() {
                 })()}
 
                 {/* Recent Campaigns Preview */}
-                {mcpCampaigns.length > 0 && (
+                {wfCampaigns.length > 0 && (
                   <div className="border-t border-gray-100 pt-4 mb-4">
                     <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Recent Campaigns</p>
                     <div className="space-y-2">
-                      {mcpCampaigns.slice(0, 3).map(campaign => (
+                      {wfCampaigns.slice(0, 3).map(campaign => (
                         <Link
                           key={campaign.id}
-                          href={`/brands/${brandId}/mcp/${mcp.slug}/campaigns/${campaign.id}`}
+                          href={`/brands/${brandId}/workflows/${wf.sectionKey}/campaigns/${campaign.id}`}
                           className="flex items-center justify-between py-1.5 px-2 -mx-2 rounded hover:bg-gray-50 transition"
                         >
                           <span className="text-sm text-gray-700 truncate">{campaign.name}</span>
@@ -201,10 +207,10 @@ export default function BrandOverviewPage() {
                 {/* Actions */}
                 <div className="flex items-center gap-3">
                   <Link
-                    href={`/brands/${brandId}/mcp/${mcp.slug}`}
+                    href={`/brands/${brandId}/workflows/${wf.sectionKey}`}
                     className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition text-sm font-medium"
                   >
-                    {mcpCampaigns.length > 0 ? "View Campaigns" : "Open MCP"}
+                    {wfCampaigns.length > 0 ? "View Campaigns" : "Open Workflow"}
                   </Link>
                 </div>
               </div>

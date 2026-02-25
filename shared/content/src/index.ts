@@ -1,6 +1,4 @@
 export { URLS } from "./urls.js";
-export { MCP_PACKAGES, getAvailableMcps, getMcpsByCategory, getMcpBySlug } from "./mcps.js";
-export type { McpPackage, McpCategory } from "./mcps.js";
 export {
   SALES_PRICING_TIERS,
   LANDING_PRICING,
@@ -19,6 +17,9 @@ export {
 export type { Feature, Step, FaqItem, SupportedClient, ByokProvider } from "./features.js";
 export { BRAND } from "./brand.js";
 export {
+  WORKFLOW_DEFINITIONS,
+  getWorkflowDefinition,
+  getWorkflowDefinitionsByCategory,
   WORKFLOW_CATEGORY_LABELS,
   SECTION_LABELS,
   parseWorkflowName,
@@ -27,4 +28,10 @@ export {
   getWorkflowCategory,
   getWorkflowDisplayName,
 } from "./workflows.js";
-export type { WorkflowCategory, WorkflowChannel, WorkflowAudienceType, ParsedWorkflowName } from "./workflows.js";
+export type {
+  WorkflowDefinition,
+  WorkflowCategory,
+  WorkflowChannel,
+  WorkflowAudienceType,
+  ParsedWorkflowName,
+} from "./workflows.js";
