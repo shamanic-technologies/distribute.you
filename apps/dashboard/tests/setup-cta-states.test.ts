@@ -2,16 +2,18 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
-describe("Dashboard page uses WORKFLOW_DEFINITIONS", () => {
-  it("should import and render workflow cards from @mcpfactory/content", () => {
+describe("Dashboard page fetches real workflows from leaderboard", () => {
+  it("should fetch top workflows from performance leaderboard and render them", () => {
     const pagePath = path.join(
       __dirname,
       "../src/app/(dashboard)/page.tsx"
     );
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("WORKFLOW_DEFINITIONS");
-    expect(content).toContain("WORKFLOW_DEFINITIONS.map");
-    // Should NOT have the old SalesColdEmailsCard component
+    expect(content).toContain("performance/leaderboard");
+    expect(content).toContain("costPerReplyCents");
+    expect(content).toContain("topWorkflows");
+    // Should NOT have the old static WORKFLOW_DEFINITIONS
+    expect(content).not.toContain("WORKFLOW_DEFINITIONS");
     expect(content).not.toContain("SalesColdEmailsCard");
   });
 });
