@@ -450,3 +450,47 @@ export async function listCampaignReplies(token: string, campaignId: string): Pr
   return apiCall<{ replies: Reply[] }>(`/campaigns/${campaignId}/replies`, { token });
 }
 
+// Workflows
+export interface DAGNode {
+  id: string;
+  type: string;
+  config?: Record<string, unknown>;
+  inputMapping?: Record<string, string>;
+  retries?: number;
+}
+
+export interface DAGEdge {
+  from: string;
+  to: string;
+  condition?: string;
+}
+
+export interface DAG {
+  nodes: DAGNode[];
+  edges: DAGEdge[];
+  onError?: string;
+}
+
+export interface Workflow {
+  id: string;
+  appId: string;
+  name: string;
+  displayName: string | null;
+  description: string | null;
+  category: string;
+  channel: string;
+  audienceType: string;
+  signatureName: string;
+  dag: DAG | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function listWorkflows(token: string): Promise<{ workflows: Workflow[] }> {
+  return apiCall<{ workflows: Workflow[] }>("/workflows", { token });
+}
+
+export async function getWorkflow(token: string, workflowId: string): Promise<Workflow> {
+  return apiCall<Workflow>(`/workflows/${workflowId}`, { token });
+}
+

@@ -12,6 +12,7 @@ import qualifyRoutes from "./routes/qualify.js";
 import brandRoutes from "./routes/brand.js";
 import leadsRoutes from "./routes/leads.js";
 import activityRoutes from "./routes/activity.js";
+import workflowsRoutes from "./routes/workflows.js";
 import performanceRoutes from "./routes/performance.js";
 import { registerAppKeys } from "./startup.js";
 import { readFileSync, existsSync } from "fs";
@@ -64,6 +65,7 @@ app.use("/v1", qualifyRoutes);
 app.use("/v1", brandRoutes);
 app.use("/v1", leadsRoutes);
 app.use("/v1", activityRoutes);
+app.use("/v1", workflowsRoutes);
 
 // 404 handler
 app.use((req, res) => {
