@@ -71,7 +71,7 @@ describe("registerAppKeys", () => {
     }
   });
 
-  it("should throw when env vars are missing", async () => {
+  it("should skip all keys when env vars are missing (no crash)", async () => {
     delete process.env.ANTHROPIC_API_KEY;
     delete process.env.APOLLO_API_KEY;
     delete process.env.INSTANTLY_API_KEY;
@@ -81,7 +81,7 @@ describe("registerAppKeys", () => {
     delete process.env.STRIPE_SECRET_KEY;
     delete process.env.STRIPE_WEBHOOK_SECRET;
 
-    await expect(registerAppKeys()).rejects.toThrow("Missing required env vars: ANTHROPIC_API_KEY, APOLLO_API_KEY, INSTANTLY_API_KEY, FIRECRAWL_API_KEY, GEMINI_API_KEY, POSTMARK_API_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET");
+    await registerAppKeys(); // should NOT throw
 
     // No fetch calls should have been made
     const appKeyCalls = fetchCalls.filter((c) => c.url.includes("/internal/app-keys"));
@@ -115,7 +115,7 @@ describe("registerAppKeys", () => {
     await expect(registerAppKeys()).rejects.toThrow();
   });
 
-  it("should throw when a single env var is missing", async () => {
+  it("should skip missing keys and register the rest", async () => {
     process.env.ANTHROPIC_API_KEY = "sk-ant-test";
     delete process.env.APOLLO_API_KEY;
     process.env.INSTANTLY_API_KEY = "instantly-test";
@@ -125,6 +125,13 @@ describe("registerAppKeys", () => {
     process.env.STRIPE_SECRET_KEY = "sk_test_stripe";
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
 
-    await expect(registerAppKeys()).rejects.toThrow("Missing required env vars: APOLLO_API_KEY");
+    await registerAppKeys(); // should NOT throw
+
+    const appKeyCalls = fetchCalls.filter((c) => c.url.includes("/internal/app-keys"));
+    expect(appKeyCalls).toHaveLength(7); // 8 total - 1 missing = 7
+
+    const providers = appKeyCalls.map((c) => c.body?.provider);
+    expect(providers).not.toContain("apollo");
+    expect(providers).toContain("anthropic");
   });
 });
