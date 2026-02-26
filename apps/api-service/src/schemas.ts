@@ -966,6 +966,59 @@ registry.registerPath({
   },
 });
 
+registry.registerPath({
+  method: "get",
+  path: "/v1/workflows/best",
+  tags: ["Workflows"],
+  summary: "Get best-performing workflow",
+  description:
+    "Returns the workflow with the lowest cost per outcome, filtered by category, channel, audience type, and objective",
+  security: authed,
+  request: {
+    query: z.object({
+      appId: z.string().optional().describe("Application ID (defaults to 'mcpfactory')"),
+      category: z.string().optional().describe("Filter by category (e.g. 'sales')"),
+      channel: z.string().optional().describe("Filter by channel (e.g. 'email')"),
+      audienceType: z.string().optional().describe("Filter by audience type (e.g. 'cold-outreach')"),
+      objective: z.string().optional().describe("Optimization objective ('replies' or 'clicks')"),
+    }),
+  },
+  responses: {
+    200: {
+      description: "Best-performing workflow with DAG and stats",
+      content: {
+        "application/json": {
+          schema: z
+            .object({
+              workflow: z.object({
+                id: z.string(),
+                name: z.string(),
+                category: z.string(),
+                channel: z.string(),
+                audienceType: z.string(),
+                signature: z.string(),
+                signatureName: z.string(),
+              }),
+              dag: z.object({
+                nodes: z.array(z.any()),
+                edges: z.array(z.any()),
+              }),
+              stats: z.object({
+                totalCostInUsdCents: z.number(),
+                totalOutcomes: z.number(),
+                costPerOutcome: z.number(),
+                completedRuns: z.number(),
+              }),
+            })
+            .openapi("BestWorkflowResponse"),
+        },
+      },
+    },
+    401: { description: "Unauthorized", content: errorContent },
+    500: { description: "Internal error", content: errorContent },
+  },
+});
+
 export const GenerateWorkflowRequestSchema = z
   .object({
     description: z

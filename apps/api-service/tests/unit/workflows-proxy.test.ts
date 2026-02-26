@@ -37,6 +37,29 @@ describe("Workflow proxy routes", () => {
     expect(content).toContain("req.params.id");
   });
 
+  it("should proxy GET /workflows/best", () => {
+    expect(content).toContain('"/workflows/best"');
+    expect(content).toContain("/workflows/best?");
+  });
+
+  it("should define /workflows/best before /workflows/:id to avoid param capture", () => {
+    const bestIndex = content.indexOf('"/workflows/best"');
+    const idIndex = content.indexOf('"/workflows/:id"');
+    expect(bestIndex).toBeLessThan(idIndex);
+  });
+
+  it("should forward query params on /workflows/best", () => {
+    // Extract the best workflow handler block
+    const bestStart = content.indexOf('"/workflows/best"');
+    const bestEnd = content.indexOf('"/workflows/:id"');
+    const bestBlock = content.slice(bestStart, bestEnd);
+
+    expect(bestBlock).toContain("category");
+    expect(bestBlock).toContain("channel");
+    expect(bestBlock).toContain("audienceType");
+    expect(bestBlock).toContain("objective");
+  });
+
   it("should default appId to mcpfactory", () => {
     expect(content).toContain("mcpfactory");
   });
