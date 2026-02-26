@@ -12,7 +12,7 @@ router.get("/me", authenticate, async (req: AuthenticatedRequest, res) => {
   try {
     const { userId, orgId, authType } = req;
 
-    // Get user info from client-service
+    // Get user info from client-service using internal ID
     let user = null;
     if (userId) {
       try {
@@ -22,11 +22,20 @@ router.get("/me", authenticate, async (req: AuthenticatedRequest, res) => {
         );
         user = result.user;
       } catch {
-        // User might not exist yet
+        // User might not exist yet — try by-clerk fallback
+        try {
+          const result = await callService<{ user: any }>(
+            services.client,
+            `/users/by-clerk/${userId}`
+          );
+          user = result.user;
+        } catch {
+          // User not found in either lookup
+        }
       }
     }
 
-    // Get org info from client-service
+    // Get org info from client-service using internal ID
     let org = null;
     if (orgId) {
       try {
@@ -36,7 +45,16 @@ router.get("/me", authenticate, async (req: AuthenticatedRequest, res) => {
         );
         org = result.org;
       } catch {
-        // Org might not exist yet
+        // Org might not exist yet — try by-clerk fallback
+        try {
+          const result = await callService<{ org: any }>(
+            services.client,
+            `/orgs/by-clerk/${orgId}`
+          );
+          org = result.org;
+        } catch {
+          // Org not found in either lookup
+        }
       }
     }
 

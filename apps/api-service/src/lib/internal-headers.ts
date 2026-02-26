@@ -3,7 +3,7 @@ import { AuthenticatedRequest } from "../middleware/auth.js";
 /**
  * Build headers for internal service-to-service calls
  * Convention:
- * - x-org-id: Always required
+ * - x-org-id: Always required (internal UUID from client-service)
  * - x-user-id: Optional (provided if available)
  */
 export function buildInternalHeaders(req: AuthenticatedRequest): Record<string, string> {

@@ -44,7 +44,7 @@ async function fetchDeliveryStats(
     {
       method: "POST",
       headers: { "x-org-id": orgId },
-      body: { ...filters, appId: "mcpfactory", orgId: orgId },
+      body: { ...filters, appId: "mcpfactory", orgId },
     }
   ).catch((err) => {
     console.warn("[campaigns] Email-gateway stats failed:", (err as Error).message);

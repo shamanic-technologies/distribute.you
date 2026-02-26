@@ -1094,3 +1094,48 @@ registry.registerPath({
     500: { description: "Internal error", content: errorContent },
   },
 });
+
+// ===================================================================
+// AUTH / PROVISIONING
+// ===================================================================
+
+export const ProvisionRequestSchema = z
+  .object({
+    appId: z.string().min(1).describe("Application ID (e.g. 'sales-cold-emails')"),
+    email: z.string().email().describe("Email address of the user to provision"),
+  })
+  .openapi("ProvisionRequest");
+
+export const ProvisionResponseSchema = z
+  .object({
+    apiKey: z.string().describe("API key for the provisioned user (mcpf_... format)"),
+    userId: z.string().uuid().describe("Internal user ID"),
+    orgId: z.string().uuid().describe("Internal organization ID"),
+  })
+  .openapi("ProvisionResponse");
+
+registry.registerPath({
+  method: "post",
+  path: "/v1/auth/provision",
+  tags: ["Auth"],
+  summary: "Provision a user and API key",
+  description:
+    "Public endpoint — no authentication required. Creates or finds an anonymous user for the given appId + email, then returns an API key for that user's organization. Idempotent: calling with the same appId + email returns the existing user and key.",
+  request: {
+    body: {
+      content: {
+        "application/json": { schema: ProvisionRequestSchema },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Provisioned user with API key",
+      content: {
+        "application/json": { schema: ProvisionResponseSchema },
+      },
+    },
+    400: { description: "Invalid request body", content: errorContent },
+    502: { description: "Upstream service error", content: errorContent },
+  },
+});

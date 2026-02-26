@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyToken } from "@clerk/backend";
-import { callExternalService, externalServices, callService, services } from "../lib/service-client.js";
+import { callService, services, callExternalService, externalServices } from "../lib/service-client.js";
 
 export interface AuthenticatedRequest extends Request {
   userId?: string;
@@ -10,8 +10,8 @@ export interface AuthenticatedRequest extends Request {
 
 /**
  * Authenticate via Clerk JWT or API Key
- * - Bearer token: Clerk JWT (from dashboard) — resolved to internal UUIDs via client-service
- * - X-API-Key: API key (from MCP/external clients) — key-service returns internal UUIDs
+ * - Bearer token: Clerk JWT (from dashboard) → resolved to internal UUIDs via client-service
+ * - X-API-Key: API key (from MCP/external clients) → resolved to internal UUIDs via key-service
  */
 export async function authenticate(
   req: AuthenticatedRequest,
@@ -26,7 +26,7 @@ export async function authenticate(
     if (apiKey) {
       const validation = await validateApiKey(apiKey);
       if (validation) {
-        req.userId = validation.userId || undefined; // null -> undefined for optional field
+        req.userId = validation.userId || undefined;
         req.orgId = validation.orgId;
         req.authType = "api_key";
         return next();
@@ -48,17 +48,9 @@ export async function authenticate(
       const clerkOrgId = payload.org_id || orgClaim?.id;
 
       // Resolve Clerk IDs to internal UUIDs via client-service
-      const [userResult, orgResult] = await Promise.all([
-        clerkUserId
-          ? callService<{ user: { id: string } }>(services.client, `/users/by-clerk/${clerkUserId}`).catch(() => null)
-          : null,
-        clerkOrgId
-          ? callService<{ org: { id: string } }>(services.client, `/orgs/by-clerk/${clerkOrgId}`).catch(() => null)
-          : null,
-      ]);
-
-      req.userId = userResult?.user?.id;
-      req.orgId = orgResult?.org?.id;
+      const resolved = await resolveClerkIds(clerkUserId, clerkOrgId);
+      req.userId = resolved.userId || clerkUserId;
+      req.orgId = resolved.orgId || clerkOrgId;
       req.authType = "jwt";
 
       return next();
@@ -69,6 +61,40 @@ export async function authenticate(
     console.error("Auth error:", error);
     return res.status(401).json({ error: "Invalid authentication" });
   }
+}
+
+/**
+ * Resolve Clerk IDs to internal UUIDs via client-service.
+ * Falls back to Clerk IDs if client-service is unavailable.
+ */
+async function resolveClerkIds(
+  clerkUserId: string,
+  clerkOrgId?: string
+): Promise<{ userId: string | null; orgId: string | null }> {
+  let userId: string | null = null;
+  let orgId: string | null = null;
+
+  try {
+    const [userResult, orgResult] = await Promise.all([
+      callService<{ user: { id: string } }>(
+        services.client,
+        `/users/by-clerk/${clerkUserId}`
+      ).catch(() => null),
+      clerkOrgId
+        ? callService<{ org: { id: string } }>(
+            services.client,
+            `/orgs/by-clerk/${clerkOrgId}`
+          ).catch(() => null)
+        : null,
+    ]);
+
+    if (userResult?.user?.id) userId = userResult.user.id;
+    if (orgResult?.org?.id) orgId = orgResult.org.id;
+  } catch (error) {
+    console.warn("[auth] Failed to resolve Clerk IDs via client-service:", (error as Error).message);
+  }
+
+  return { userId, orgId };
 }
 
 /**
