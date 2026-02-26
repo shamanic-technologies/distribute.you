@@ -698,19 +698,26 @@
       "ProvisionRequest": {
         "type": "object",
         "properties": {
-          "appId": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Application ID (e.g. 'sales-cold-emails')"
-          },
           "email": {
             "type": "string",
             "format": "email",
             "description": "Email address of the user to provision"
+          },
+          "firstName": {
+            "type": "string",
+            "description": "User's first name"
+          },
+          "lastName": {
+            "type": "string",
+            "description": "User's last name"
+          },
+          "profilePicture": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL to user's profile picture"
           }
         },
         "required": [
-          "appId",
           "email"
         ]
       }
@@ -2926,7 +2933,7 @@
           "Auth"
         ],
         "summary": "Provision a user and API key",
-        "description": "Public endpoint — no authentication required. Creates or finds an anonymous user for the given appId + email, then returns an API key for that user's organization. Idempotent: calling with the same appId + email returns the existing user and key.",
+        "description": "Public endpoint — no authentication required. Creates or finds an anonymous user for the given email, then returns an API key for that user's organization. Optionally accepts firstName, lastName, and profilePicture. Idempotent: calling with the same email returns the existing user and key.",
         "requestBody": {
           "content": {
             "application/json": {

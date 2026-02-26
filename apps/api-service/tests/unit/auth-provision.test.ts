@@ -25,9 +25,16 @@ describe("POST /v1/auth/provision route", () => {
     expect(content).toContain("safeParse");
   });
 
-  it("should call client-service POST /anonymous-users", () => {
+  it("should call client-service POST /anonymous-users with hardcoded appId", () => {
     expect(content).toContain("services.client");
     expect(content).toContain("/anonymous-users");
+    expect(content).toContain('appId: "mcpfactory"');
+  });
+
+  it("should forward optional firstName, lastName, and profilePicture", () => {
+    expect(content).toContain("firstName");
+    expect(content).toContain("lastName");
+    expect(content).toContain("profilePicture");
   });
 
   it("should call key-service POST /internal/api-keys/session", () => {
@@ -60,9 +67,19 @@ describe("ProvisionRequestSchema and ProvisionResponseSchema", () => {
   const schemaPath = path.join(__dirname, "../../src/schemas.ts");
   const content = fs.readFileSync(schemaPath, "utf-8");
 
-  it("should define ProvisionRequestSchema with appId and email", () => {
+  it("should define ProvisionRequestSchema with email and optional profile fields", () => {
     expect(content).toContain("ProvisionRequestSchema");
     expect(content).toContain('"ProvisionRequest"');
+    expect(content).toContain("email:");
+    expect(content).toContain("firstName:");
+    expect(content).toContain("lastName:");
+    expect(content).toContain("profilePicture:");
+    // appId should NOT be in the public schema
+    const schemaBlock = content.slice(
+      content.indexOf("ProvisionRequestSchema"),
+      content.indexOf(".openapi(\"ProvisionRequest\")")
+    );
+    expect(schemaBlock).not.toContain("appId");
   });
 
   it("should define ProvisionResponseSchema with apiKey, userId, orgId", () => {
