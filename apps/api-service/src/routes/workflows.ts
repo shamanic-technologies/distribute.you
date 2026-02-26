@@ -33,6 +33,32 @@ router.get("/workflows", authenticate, requireOrg, requireUser, async (req: Auth
 });
 
 /**
+ * GET /v1/workflows/best
+ * Get the best-performing workflow from workflow-service (lowest cost per outcome)
+ */
+router.get("/workflows/best", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
+  try {
+    const params = new URLSearchParams();
+    params.set("appId", (req.query.appId as string) || "mcpfactory");
+
+    if (req.query.category) params.set("category", req.query.category as string);
+    if (req.query.channel) params.set("channel", req.query.channel as string);
+    if (req.query.audienceType) params.set("audienceType", req.query.audienceType as string);
+    if (req.query.objective) params.set("objective", req.query.objective as string);
+
+    const result = await callExternalService(
+      externalServices.workflow,
+      `/workflows/best?${params.toString()}`
+    );
+
+    res.json(result);
+  } catch (error: any) {
+    console.error("Get best workflow error:", error.message);
+    res.status(500).json({ error: error.message || "Failed to get best workflow" });
+  }
+});
+
+/**
  * GET /v1/workflows/:id
  * Get a single workflow with full DAG from workflow-service
  */
