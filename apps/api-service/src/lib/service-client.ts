@@ -3,13 +3,17 @@
  * No auth needed for internal services (Railway private networking)
  */
 
-// Internal services (no auth - private network)
+// Internal services (no auth - private network, Clerk bearer auth)
 export const services = {
   client: process.env.CLIENT_SERVICE_URL || "http://localhost:3002",
 };
 
 // External services (need API key)
 export const externalServices = {
+  client: {
+    url: process.env.CLIENT_SERVICE_URL || "http://localhost:3002",
+    apiKey: process.env.CLIENT_SERVICE_API_KEY || "",
+  },
   emailgen: {
     url: process.env.CONTENT_GENERATION_SERVICE_URL || "https://content-generation.mcpfactory.org",
     apiKey: process.env.CONTENT_GENERATION_SERVICE_API_KEY || "",
