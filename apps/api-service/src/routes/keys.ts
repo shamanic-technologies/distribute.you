@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authenticate, requireOrg, AuthenticatedRequest } from "../middleware/auth.js";
+import { authenticate, requireOrg, requireUser, AuthenticatedRequest } from "../middleware/auth.js";
 import { callExternalService, externalServices } from "../lib/service-client.js";
 import { AddByokKeyRequestSchema, CreateApiKeyRequestSchema } from "../schemas.js";
 
@@ -9,7 +9,7 @@ const router = Router();
  * GET /v1/keys
  * List BYOK keys for the organization
  */
-router.get("/keys", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+router.get("/keys", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const result = await callExternalService(
       externalServices.key,
@@ -26,7 +26,7 @@ router.get("/keys", authenticate, requireOrg, async (req: AuthenticatedRequest, 
  * POST /v1/keys
  * Add a BYOK key
  */
-router.post("/keys", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+router.post("/keys", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const parsed = AddByokKeyRequestSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -53,7 +53,7 @@ router.post("/keys", authenticate, requireOrg, async (req: AuthenticatedRequest,
  * DELETE /v1/keys/:provider
  * Remove a BYOK key
  */
-router.delete("/keys/:provider", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+router.delete("/keys/:provider", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const { provider } = req.params;
 
@@ -101,7 +101,7 @@ router.get("/internal/keys/:provider/decrypt", async (req, res) => {
  * POST /v1/api-keys/session
  * Get or create a session API key for Foxy chat
  */
-router.post("/api-keys/session", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+router.post("/api-keys/session", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const result = await callExternalService(
       externalServices.key,
@@ -122,7 +122,7 @@ router.post("/api-keys/session", authenticate, requireOrg, async (req: Authentic
  * POST /v1/api-keys
  * Generate a new API key for the organization
  */
-router.post("/api-keys", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+router.post("/api-keys", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const parsed = CreateApiKeyRequestSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -149,7 +149,7 @@ router.post("/api-keys", authenticate, requireOrg, async (req: AuthenticatedRequ
  * GET /v1/api-keys
  * List API keys for the organization
  */
-router.get("/api-keys", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+router.get("/api-keys", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const result = await callExternalService(
       externalServices.key,
@@ -166,7 +166,7 @@ router.get("/api-keys", authenticate, requireOrg, async (req: AuthenticatedReque
  * DELETE /v1/api-keys/:id
  * Revoke an API key
  */
-router.delete("/api-keys/:id", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+router.delete("/api-keys/:id", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
 

@@ -40,6 +40,7 @@ vi.mock("../../src/middleware/auth.js", () => ({
     next();
   },
   requireOrg: (_req: any, _res: any, next: any) => next(),
+  requireUser: (_req: any, _res: any, next: any) => next(),
   AuthenticatedRequest: {},
 }));
 

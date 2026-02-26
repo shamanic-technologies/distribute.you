@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authenticate, requireOrg, AuthenticatedRequest } from "../middleware/auth.js";
+import { authenticate, requireOrg, requireUser, AuthenticatedRequest } from "../middleware/auth.js";
 import { callExternalService, externalServices } from "../lib/service-client.js";
 import { getRunsBatch, type RunWithCosts } from "@mcpfactory/runs-client";
 import { BrandScrapeRequestSchema, IcpSuggestionRequestSchema } from "../schemas.js";
@@ -73,7 +73,7 @@ router.get("/brand/by-url", authenticate, async (req: AuthenticatedRequest, res)
  * GET /v1/brands
  * Get all brands for the organization (for dashboard)
  */
-router.get("/brands", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+router.get("/brands", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const result = await callExternalService(
       externalServices.brand,
@@ -128,7 +128,7 @@ router.get("/brands/:id/sales-profile", authenticate, async (req: AuthenticatedR
  * Get all sales profiles (brands) for the organization
  * NOTE: Must be before /:id route to avoid matching "sales-profiles" as an id
  */
-router.get("/brand/sales-profiles", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+router.get("/brand/sales-profiles", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const result = await callExternalService(
       externalServices.brand,
@@ -145,7 +145,7 @@ router.get("/brand/sales-profiles", authenticate, requireOrg, async (req: Authen
  * POST /v1/brand/icp-suggestion
  * Get ICP suggestion (Apollo-compatible search params) for a brand URL
  */
-router.post("/brand/icp-suggestion", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+router.post("/brand/icp-suggestion", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const parsed = IcpSuggestionRequestSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -188,7 +188,7 @@ router.post("/brand/icp-suggestion", authenticate, requireOrg, async (req: Authe
  * Get total costs grouped by brandId from runs-service.
  * Returns a map of brandId -> totalCostInUsdCents.
  */
-router.get("/brands/costs", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+router.get("/brands/costs", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const orgId = req.orgId!;
 
@@ -225,7 +225,7 @@ router.get("/brands/costs", authenticate, requireOrg, async (req: AuthenticatedR
  * Get cost breakdown by cost name for all runs associated with a brand.
  * Uses runs-service as the single source of truth.
  */
-router.get("/brands/:id/cost-breakdown", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+router.get("/brands/:id/cost-breakdown", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
     const orgId = req.orgId!;
@@ -255,7 +255,7 @@ router.get("/brands/:id/cost-breakdown", authenticate, requireOrg, async (req: A
  * Get extraction runs for a brand (sales-profile, icp-extraction) from brand-service,
  * enriched with cost data from runs-service.
  */
-router.get("/brands/:id/runs", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+router.get("/brands/:id/runs", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
 

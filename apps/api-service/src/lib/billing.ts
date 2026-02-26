@@ -1,23 +1,20 @@
 import { callExternalService, externalServices } from "./service-client.js";
 
-interface BillingModeResponse {
-  billingMode: "byok" | "pay-as-you-go";
+interface BalanceResponse {
+  balance_cents: number;
+  billing_mode: "trial" | "byok" | "payg";
+  depleted: boolean;
 }
 
 /**
  * Resolve the keySource for an org by calling billing-service.
- * Falls back to "app" (platform keys) if billing-service is unreachable.
+ * Throws if billing-service is unreachable — never silently defaults.
  */
 export async function fetchKeySource(orgId: string): Promise<"app" | "byok"> {
-  try {
-    const result = await callExternalService<BillingModeResponse>(
-      externalServices.billing,
-      `/orgs/${encodeURIComponent(orgId)}/billing-mode`,
-      { headers: { "x-app-id": "mcpfactory" } }
-    );
-    return result.billingMode === "byok" ? "byok" : "app";
-  } catch (err) {
-    console.warn("[billing] Failed to fetch billing mode, defaulting to 'app':", (err as Error).message);
-    return "app";
-  }
+  const result = await callExternalService<BalanceResponse>(
+    externalServices.billing,
+    "/v1/accounts/balance",
+    { headers: { "x-app-id": "mcpfactory", "x-org-id": orgId } }
+  );
+  return result.billing_mode === "byok" ? "byok" : "app";
 }

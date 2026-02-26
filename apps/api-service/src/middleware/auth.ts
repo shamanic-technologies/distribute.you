@@ -155,3 +155,18 @@ export function requireOrg(
   }
   next();
 }
+
+/**
+ * Require user context — must be used after authenticate.
+ * Returns 401 if userId was not resolved during authentication.
+ */
+export function requireUser(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  if (!req.userId) {
+    return res.status(401).json({ error: "User identity required" });
+  }
+  next();
+}
