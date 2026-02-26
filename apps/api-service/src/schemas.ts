@@ -1101,8 +1101,14 @@ registry.registerPath({
 
 export const ProvisionRequestSchema = z
   .object({
-    appId: z.string().min(1).describe("Application ID (e.g. 'sales-cold-emails')"),
     email: z.string().email().describe("Email address of the user to provision"),
+    firstName: z.string().optional().describe("User's first name"),
+    lastName: z.string().optional().describe("User's last name"),
+    profilePicture: z
+      .string()
+      .url()
+      .optional()
+      .describe("URL to user's profile picture"),
   })
   .openapi("ProvisionRequest");
 
@@ -1120,7 +1126,7 @@ registry.registerPath({
   tags: ["Auth"],
   summary: "Provision a user and API key",
   description:
-    "Public endpoint — no authentication required. Creates or finds an anonymous user for the given appId + email, then returns an API key for that user's organization. Idempotent: calling with the same appId + email returns the existing user and key.",
+    "Public endpoint — no authentication required. Creates or finds an anonymous user for the given email, then returns an API key for that user's organization. Optionally accepts firstName, lastName, and profilePicture. Idempotent: calling with the same email returns the existing user and key.",
   request: {
     body: {
       content: {

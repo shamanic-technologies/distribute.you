@@ -15,7 +15,7 @@ const router = Router();
  * Public endpoint (no auth) — provisions an anonymous user + org via
  * client-service, then creates/retrieves a session API key via key-service.
  *
- * Body: { appId: string, email: string }
+ * Body: { email: string, firstName?: string, lastName?: string, profilePicture?: string }
  * Returns: { apiKey, userId, orgId }
  */
 router.post("/auth/provision", async (req: Request, res: Response) => {
@@ -29,7 +29,7 @@ router.post("/auth/provision", async (req: Request, res: Response) => {
       });
     }
 
-    const { appId, email } = parsed.data;
+    const { email, firstName, lastName, profilePicture } = parsed.data;
 
     // 2. Create or find anonymous user via client-service (internal, no auth)
     let clientResult: {
@@ -41,7 +41,13 @@ router.post("/auth/provision", async (req: Request, res: Response) => {
     try {
       clientResult = await callService(services.client, "/anonymous-users", {
         method: "POST",
-        body: { appId, email },
+        body: {
+          appId: "mcpfactory",
+          email,
+          ...(firstName && { firstName }),
+          ...(lastName && { lastName }),
+          ...(profilePicture && { metadata: { profilePicture } }),
+        },
       });
     } catch (error: any) {
       console.error("[auth/provision] client-service error:", error.message);
