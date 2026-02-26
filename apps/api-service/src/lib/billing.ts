@@ -12,7 +12,8 @@ export async function fetchKeySource(orgId: string): Promise<"app" | "byok"> {
   try {
     const result = await callExternalService<BillingModeResponse>(
       externalServices.billing,
-      `/orgs/${encodeURIComponent(orgId)}/billing-mode`
+      `/orgs/${encodeURIComponent(orgId)}/billing-mode`,
+      { headers: { "x-app-id": "mcpfactory" } }
     );
     return result.billingMode === "byok" ? "byok" : "app";
   } catch (err) {
