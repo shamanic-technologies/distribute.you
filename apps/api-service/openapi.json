@@ -1642,11 +1642,11 @@
           {
             "schema": {
               "type": "string",
-              "description": "Clerk organization ID"
+              "description": "Organization ID"
             },
             "required": true,
-            "description": "Clerk organization ID",
-            "name": "clerkOrgId",
+            "description": "Organization ID",
+            "name": "orgId",
             "in": "query"
           }
         ],
@@ -1655,7 +1655,7 @@
             "description": "Decrypted key"
           },
           "400": {
-            "description": "Missing clerkOrgId",
+            "description": "Missing orgId query parameter",
             "content": {
               "application/json": {
                 "schema": {

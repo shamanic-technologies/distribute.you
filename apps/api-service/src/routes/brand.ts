@@ -71,7 +71,7 @@ router.get("/brands", authenticate, requireOrg, async (req: AuthenticatedRequest
   try {
     const result = await callExternalService(
       externalServices.brand,
-      `/brands?clerkOrgId=${req.orgId}`
+      `/brands?orgId=${req.orgId}`
     );
     res.json(result);
   } catch (error: any) {
@@ -126,7 +126,7 @@ router.get("/brand/sales-profiles", authenticate, requireOrg, async (req: Authen
   try {
     const result = await callExternalService(
       externalServices.brand,
-      `/sales-profiles?clerkOrgId=${req.orgId}`
+      `/sales-profiles?orgId=${req.orgId}`
     );
     res.json(result);
   } catch (error: any) {
@@ -153,7 +153,7 @@ router.post("/brand/icp-suggestion", authenticate, requireOrg, async (req: Authe
       {
         method: "POST",
         body: {
-          clerkOrgId: req.orgId,
+          orgId: req.orgId,
           url: brandUrl,
           keyType: "byok",
         },
@@ -192,7 +192,7 @@ router.get("/brands/costs", authenticate, requireOrg, async (req: AuthenticatedR
       }>;
     }>(
       externalServices.runs,
-      `/v1/stats/costs?clerkOrgId=${encodeURIComponent(orgId)}&appId=mcpfactory&groupBy=brandId`
+      `/v1/stats/costs?orgId=${encodeURIComponent(orgId)}&appId=mcpfactory&groupBy=brandId`
     );
 
     const costs: Record<string, string> = {};
@@ -229,7 +229,7 @@ router.get("/brands/:id/cost-breakdown", authenticate, requireOrg, async (req: A
       }>;
     }>(
       externalServices.runs,
-      `/v1/stats/costs/by-cost-name?clerkOrgId=${encodeURIComponent(orgId)}&appId=mcpfactory&brandId=${encodeURIComponent(id)}`
+      `/v1/stats/costs/by-cost-name?orgId=${encodeURIComponent(orgId)}&appId=mcpfactory&brandId=${encodeURIComponent(id)}`
     );
 
     res.json({ costs: data.costs || [] });

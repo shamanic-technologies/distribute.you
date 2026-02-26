@@ -18,7 +18,7 @@ router.get("/me", authenticate, async (req: AuthenticatedRequest, res) => {
       try {
         const result = await callService<{ user: any }>(
           services.client,
-          `/users/by-clerk/${userId}`
+          `/users/${userId}`
         );
         user = result.user;
       } catch {
@@ -32,7 +32,7 @@ router.get("/me", authenticate, async (req: AuthenticatedRequest, res) => {
       try {
         const result = await callService<{ org: any }>(
           services.client,
-          `/orgs/by-clerk/${orgId}`
+          `/orgs/${orgId}`
         );
         org = result.org;
       } catch {

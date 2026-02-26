@@ -530,12 +530,12 @@ registry.registerPath({
       provider: z.string().describe("Provider name"),
     }),
     query: z.object({
-      clerkOrgId: z.string().describe("Clerk organization ID"),
+      orgId: z.string().describe("Organization ID"),
     }),
   },
   responses: {
     200: { description: "Decrypted key" },
-    400: { description: "Missing clerkOrgId", content: errorContent },
+    400: { description: "Missing orgId query parameter", content: errorContent },
     404: { description: "Key not found", content: errorContent },
     500: { description: "Internal error", content: errorContent },
   },

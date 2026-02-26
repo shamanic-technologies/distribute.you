@@ -274,21 +274,21 @@ async function enrichWithDeliveryStats(data: LeaderboardData): Promise<void> {
 /** Get all brands across all orgs from brand-service.
  *  This is more reliable than /campaigns/list which only returns ongoing campaigns. */
 async function fetchAllBrands(): Promise<Array<{ id: string; domain: string | null; name: string | null; brandUrl: string | null }>> {
-  // Get all clerk org IDs from brand-service (response uses snake_case field name)
-  const resp = await callExternalService<{ clerk_organization_ids: string[] }>(
-    externalServices.brand, "/clerk-ids"
+  // Get all org IDs from brand-service
+  const resp = await callExternalService<{ organization_ids: string[] }>(
+    externalServices.brand, "/org-ids"
   );
-  const clerkOrgIds = resp.clerk_organization_ids;
+  const orgIds = resp.organization_ids;
 
-  if (!clerkOrgIds || clerkOrgIds.length === 0) return [];
+  if (!orgIds || orgIds.length === 0) return [];
 
   // Fetch brands for each org in parallel
   const brandArrays = await Promise.all(
-    clerkOrgIds.map(async (clerkOrgId) => {
+    orgIds.map(async (orgId) => {
       try {
         const { brands } = await callExternalService<{
           brands: Array<{ id: string; domain: string | null; name: string | null; brandUrl: string | null }>;
-        }>(externalServices.brand, `/brands?clerkOrgId=${encodeURIComponent(clerkOrgId)}`);
+        }>(externalServices.brand, `/brands?orgId=${encodeURIComponent(orgId)}`);
         return brands || [];
       } catch {
         return [];

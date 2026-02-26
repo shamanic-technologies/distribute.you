@@ -143,13 +143,13 @@ describe("Campaign stats: emailsGenerated from content-generation service", () =
     expect(res.body.emailsSent).toBe(1);
   });
 
-  it("should pass x-clerk-org-id header to content-generation", async () => {
+  it("should pass x-org-id header to content-generation", async () => {
     const app = createApp();
 
     mockCallExternalService.mockImplementation((service: any, path: string, opts: any) => {
       if (service.url === "http://mock-emailgen" && path === "/stats") {
         // Verify the org header is passed
-        expect(opts.headers["x-clerk-org-id"]).toBe("org1");
+        expect(opts.headers["x-org-id"]).toBe("org1");
         return Promise.resolve({ stats: { emailsGenerated: 2 } });
       }
       if (path === "/campaigns/batch-budget-usage") {

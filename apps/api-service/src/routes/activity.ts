@@ -15,8 +15,8 @@ router.post("/activity", authenticate, requireOrg, async (req: AuthenticatedRequ
       body: {
         appId: "mcpfactory",
         eventType: "user_active",
-        clerkUserId: req.userId,
-        clerkOrgId: req.orgId,
+        userId: req.userId,
+        orgId: req.orgId,
       },
     }).catch((err) => console.warn("[activity] Lifecycle email failed:", err.message));
 

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyToken } from "@clerk/backend";
-import { callExternalService, externalServices } from "../lib/service-client.js";
+import { callExternalService, externalServices, callService, services } from "../lib/service-client.js";
 
 export interface AuthenticatedRequest extends Request {
   userId?: string;
@@ -10,8 +10,8 @@ export interface AuthenticatedRequest extends Request {
 
 /**
  * Authenticate via Clerk JWT or API Key
- * - Bearer token: Clerk JWT (from dashboard)
- * - X-API-Key: API key (from MCP/external clients)
+ * - Bearer token: Clerk JWT (from dashboard) — resolved to internal UUIDs via client-service
+ * - X-API-Key: API key (from MCP/external clients) — key-service returns internal UUIDs
  */
 export async function authenticate(
   req: AuthenticatedRequest,
@@ -37,17 +37,30 @@ export async function authenticate(
     // Try Clerk JWT (for dashboard)
     if (authHeader?.startsWith("Bearer ")) {
       const token = authHeader.split(" ")[1];
-      
+
       const payload = await verifyToken(token, {
         secretKey: process.env.CLERK_SECRET_KEY!,
       });
 
-      req.userId = payload.sub;
+      const clerkUserId = payload.sub;
       // Handle both JWT v1 (org_id) and v2 (o.id) formats
       const orgClaim = payload.o as { id?: string } | undefined;
-      req.orgId = payload.org_id || orgClaim?.id;
+      const clerkOrgId = payload.org_id || orgClaim?.id;
+
+      // Resolve Clerk IDs to internal UUIDs via client-service
+      const [userResult, orgResult] = await Promise.all([
+        clerkUserId
+          ? callService<{ user: { id: string } }>(services.client, `/users/by-clerk/${clerkUserId}`).catch(() => null)
+          : null,
+        clerkOrgId
+          ? callService<{ org: { id: string } }>(services.client, `/orgs/by-clerk/${clerkOrgId}`).catch(() => null)
+          : null,
+      ]);
+
+      req.userId = userResult?.user?.id;
+      req.orgId = orgResult?.org?.id;
       req.authType = "jwt";
-      
+
       return next();
     }
 
@@ -60,15 +73,14 @@ export async function authenticate(
 
 /**
  * Validate API key against keys-service
- * Returns clerkOrgId and clerkUserId (if org has single member)
+ * Returns orgId and userId (internal UUIDs from client-service)
  */
 async function validateApiKey(apiKey: string): Promise<{ userId: string | null; orgId: string } | null> {
   try {
     const result = await callExternalService<{
       valid: boolean;
       orgId?: string;
-      clerkOrgId?: string;
-      clerkUserId?: string | null;
+      userId?: string | null;
     }>(
       externalServices.key,
       "/validate",
@@ -79,10 +91,10 @@ async function validateApiKey(apiKey: string): Promise<{ userId: string | null; 
       }
     );
 
-    if (result.valid && result.clerkOrgId) {
+    if (result.valid && result.orgId) {
       return {
-        userId: result.clerkUserId || null,
-        orgId: result.clerkOrgId,
+        userId: result.userId || null,
+        orgId: result.orgId,
       };
     }
     return null;
