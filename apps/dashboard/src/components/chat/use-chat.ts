@@ -28,9 +28,11 @@ export interface InputRequest {
 
 interface UseChatOptions {
   apiKey: string | null;
+  orgId: string | null;
+  userId: string | null;
 }
 
-export function useChat({ apiKey }: UseChatOptions) {
+export function useChat({ apiKey, orgId, userId }: UseChatOptions) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -38,7 +40,7 @@ export function useChat({ apiKey }: UseChatOptions) {
 
   const sendMessage = useCallback(
     async (content: string) => {
-      if (!apiKey || !content.trim()) return;
+      if (!apiKey || !orgId || !userId || !content.trim()) return;
 
       // Add user message
       const userMsg: ChatMessage = {
@@ -69,6 +71,8 @@ export function useChat({ apiKey }: UseChatOptions) {
           headers: {
             "Content-Type": "application/json",
             "X-API-Key": apiKey,
+            "x-org-id": orgId,
+            "x-user-id": userId,
           },
           body: JSON.stringify({
             message: content.trim(),
@@ -184,7 +188,7 @@ export function useChat({ apiKey }: UseChatOptions) {
         setIsLoading(false);
       }
     },
-    [apiKey]
+    [apiKey, orgId, userId]
   );
 
   const reset = useCallback(() => {

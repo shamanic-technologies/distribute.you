@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@clerk/nextjs";
-import { getOrCreateSessionKey } from "@/lib/api";
+import { getOrCreateSessionKey, getMe } from "@/lib/api";
 import { useChat } from "./use-chat";
 import { ChatMessages } from "./chat-messages";
 import { ChatInput } from "./chat-input";
@@ -11,9 +11,11 @@ export function ChatWidget() {
   const { getToken } = useAuth();
   const [isOpen, setIsOpen] = useState(true);
   const [apiKey, setApiKey] = useState<string | null>(null);
+  const [orgId, setOrgId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [keyLoading, setKeyLoading] = useState(true);
 
-  const { messages, isLoading, sendMessage } = useChat({ apiKey });
+  const { messages, isLoading, sendMessage } = useChat({ apiKey, orgId, userId });
 
   // Fetch or create a Default API key on mount
   useEffect(() => {
@@ -24,12 +26,18 @@ export function ChatWidget() {
         const token = await getToken();
         if (!token || cancelled) return;
 
-        const result = await getOrCreateSessionKey(token);
-        if (!cancelled && result.key) {
-          setApiKey(result.key);
+        const [keyResult, meResult] = await Promise.all([
+          getOrCreateSessionKey(token),
+          getMe(token),
+        ]);
+
+        if (!cancelled) {
+          if (keyResult.key) setApiKey(keyResult.key);
+          setOrgId(meResult.orgId);
+          setUserId(meResult.userId);
         }
       } catch (err) {
-        console.error("Failed to get API key:", err);
+        console.error("Failed to initialize chat:", err);
       } finally {
         if (!cancelled) setKeyLoading(false);
       }
