@@ -1,7 +1,5 @@
 import { Router, Request, Response } from "express";
 import {
-  callService,
-  services,
   callExternalService,
   externalServices,
 } from "../lib/service-client.js";
@@ -31,7 +29,7 @@ router.post("/auth/provision", async (req: Request, res: Response) => {
 
     const { email, firstName, lastName, profilePicture } = parsed.data;
 
-    // 2. Create or find anonymous user via client-service (internal, no auth)
+    // 2. Create or find anonymous user via client-service
     let clientResult: {
       user: { id: string; email: string };
       org: { id: string; clerkOrgId?: string };
@@ -39,16 +37,20 @@ router.post("/auth/provision", async (req: Request, res: Response) => {
     };
 
     try {
-      clientResult = await callService(services.client, "/anonymous-users", {
-        method: "POST",
-        body: {
-          appId: "mcpfactory",
-          email,
-          ...(firstName && { firstName }),
-          ...(lastName && { lastName }),
-          ...(profilePicture && { metadata: { profilePicture } }),
+      clientResult = await callExternalService(
+        externalServices.client,
+        "/anonymous-users",
+        {
+          method: "POST",
+          body: {
+            appId: "mcpfactory",
+            email,
+            ...(firstName && { firstName }),
+            ...(lastName && { lastName }),
+            ...(profilePicture && { metadata: { profilePicture } }),
+          },
         },
-      });
+      );
     } catch (error: any) {
       console.error("[auth/provision] client-service error:", error.message);
       return res

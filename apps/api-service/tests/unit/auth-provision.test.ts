@@ -25,8 +25,9 @@ describe("POST /v1/auth/provision route", () => {
     expect(content).toContain("safeParse");
   });
 
-  it("should call client-service POST /anonymous-users with hardcoded appId", () => {
-    expect(content).toContain("services.client");
+  it("should call client-service POST /anonymous-users with hardcoded appId and API key auth", () => {
+    expect(content).toContain("externalServices.client");
+    expect(content).toContain("callExternalService");
     expect(content).toContain("/anonymous-users");
     expect(content).toContain('appId: "mcpfactory"');
   });
