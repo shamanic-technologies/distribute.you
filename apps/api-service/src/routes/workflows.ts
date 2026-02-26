@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authenticate, requireOrg, AuthenticatedRequest } from "../middleware/auth.js";
+import { authenticate, requireOrg, requireUser, AuthenticatedRequest } from "../middleware/auth.js";
 import { callExternalService, externalServices } from "../lib/service-client.js";
 import { GenerateWorkflowRequestSchema } from "../schemas.js";
 import { fetchKeySource } from "../lib/billing.js";
@@ -10,7 +10,7 @@ const router = Router();
  * GET /v1/workflows
  * List workflows for the authenticated org from workflow-service
  */
-router.get("/workflows", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+router.get("/workflows", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const params = new URLSearchParams();
     params.set("orgId", req.orgId!);
@@ -36,7 +36,7 @@ router.get("/workflows", authenticate, requireOrg, async (req: AuthenticatedRequ
  * GET /v1/workflows/:id
  * Get a single workflow with full DAG from workflow-service
  */
-router.get("/workflows/:id", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+router.get("/workflows/:id", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const workflow = await callExternalService(
       externalServices.workflow,
@@ -54,7 +54,7 @@ router.get("/workflows/:id", authenticate, requireOrg, async (req: Authenticated
  * POST /v1/workflows/generate
  * Generate a workflow DAG from natural language via workflow-service
  */
-router.post("/workflows/generate", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+router.post("/workflows/generate", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const parsed = GenerateWorkflowRequestSchema.safeParse(req.body);
     if (!parsed.success) {

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authenticate, requireOrg, AuthenticatedRequest } from "../middleware/auth.js";
+import { authenticate, requireOrg, requireUser, AuthenticatedRequest } from "../middleware/auth.js";
 import { callExternalService, externalServices } from "../lib/service-client.js";
 
 const router = Router();
@@ -8,7 +8,7 @@ const router = Router();
  * POST /v1/activity
  * Track user activity — fires a lifecycle email (deduped per user per day)
  */
-router.post("/activity", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+router.post("/activity", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     callExternalService(externalServices.lifecycle, "/send", {
       method: "POST",

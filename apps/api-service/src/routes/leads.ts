@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authenticate, requireOrg, AuthenticatedRequest } from "../middleware/auth.js";
+import { authenticate, requireOrg, requireUser, AuthenticatedRequest } from "../middleware/auth.js";
 import { callExternalService, externalServices } from "../lib/service-client.js";
 import { LeadSearchRequestSchema } from "../schemas.js";
 import { fetchKeySource } from "../lib/billing.js";
@@ -10,7 +10,7 @@ const router = Router();
  * POST /v1/leads/search
  * Search for leads via lead-service
  */
-router.post("/leads/search", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+router.post("/leads/search", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const parsed = LeadSearchRequestSchema.safeParse(req.body);
     if (!parsed.success) {

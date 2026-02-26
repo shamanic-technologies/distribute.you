@@ -52,3 +52,15 @@ describe("Auth middleware — no Clerk ID leaks", () => {
     expect(content).toContain("Identity resolution failed");
   });
 });
+
+describe("Auth middleware — requireUser export", () => {
+  const content = fs.readFileSync(authPath, "utf-8");
+
+  it("should export requireUser middleware", () => {
+    expect(content).toContain("export function requireUser");
+  });
+
+  it("should return 401 when userId is missing", () => {
+    expect(content).toContain("User identity required");
+  });
+});

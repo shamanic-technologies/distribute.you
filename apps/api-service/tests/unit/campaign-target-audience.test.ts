@@ -23,6 +23,10 @@ vi.mock("../../src/middleware/auth.js", () => ({
     if (!req.orgId) return res.status(400).json({ error: "Organization context required" });
     next();
   },
+  requireUser: (req: any, res: any, next: any) => {
+    if (!req.userId) return res.status(401).json({ error: "User identity required" });
+    next();
+  },
   AuthenticatedRequest: {},
 }));
 

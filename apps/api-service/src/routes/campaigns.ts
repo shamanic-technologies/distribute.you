@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authenticate, requireOrg, AuthenticatedRequest } from "../middleware/auth.js";
+import { authenticate, requireOrg, requireUser, AuthenticatedRequest } from "../middleware/auth.js";
 import { callExternalService, externalServices } from "../lib/service-client.js";
 import { buildInternalHeaders } from "../lib/internal-headers.js";
 import { createRun, updateRun, getRunsBatch, type RunWithCosts } from "@mcpfactory/runs-client";
@@ -78,7 +78,7 @@ async function fetchDeliveryStats(
  * Query params:
  * - brandId: optional, filter by brand ID from brand-service
  */
-router.get("/campaigns", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+router.get("/campaigns", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const brandId = req.query.brandId as string;
     const status = req.query.status as string;
@@ -107,7 +107,7 @@ router.get("/campaigns", authenticate, requireOrg, async (req: AuthenticatedRequ
  * 
  * If clientUrl is provided, scrapes the company info first and stores in company-service
  */
-router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+router.post("/campaigns", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     console.log("[api-service] POST /v1/campaigns \u2014 incoming request", {
       orgId: req.orgId,
@@ -256,7 +256,7 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
  * GET /v1/campaigns/:id
  * Get a specific campaign
  */
-router.get("/campaigns/:id", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+router.get("/campaigns/:id", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
 
@@ -278,7 +278,7 @@ router.get("/campaigns/:id", authenticate, requireOrg, async (req: Authenticated
  * PATCH /v1/campaigns/:id
  * Update a campaign
  */
-router.patch("/campaigns/:id", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+router.patch("/campaigns/:id", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
 
@@ -302,7 +302,7 @@ router.patch("/campaigns/:id", authenticate, requireOrg, async (req: Authenticat
  * POST /v1/campaigns/:id/stop
  * Stop a running campaign
  */
-router.post("/campaigns/:id/stop", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+router.post("/campaigns/:id/stop", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
 
@@ -345,7 +345,7 @@ router.post("/campaigns/:id/stop", authenticate, requireOrg, async (req: Authent
  * POST /v1/campaigns/:id/resume
  * Resume a stopped campaign
  */
-router.post("/campaigns/:id/resume", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+router.post("/campaigns/:id/resume", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
 
@@ -388,7 +388,7 @@ router.post("/campaigns/:id/resume", authenticate, requireOrg, async (req: Authe
  * GET /v1/campaigns/:id/runs
  * Get campaign runs/history
  */
-router.get("/campaigns/:id/runs", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+router.get("/campaigns/:id/runs", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
 
@@ -410,7 +410,7 @@ router.get("/campaigns/:id/runs", authenticate, requireOrg, async (req: Authenti
  * GET /v1/campaigns/:id/stats
  * Get campaign statistics
  */
-router.get("/campaigns/:id/stats", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+router.get("/campaigns/:id/stats", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
     const orgId = req.orgId!;
@@ -522,7 +522,7 @@ router.get("/campaigns/:id/stats", authenticate, requireOrg, async (req: Authent
  * POST /v1/campaigns/batch-stats
  * Get stats for multiple campaigns in one call
  */
-router.post("/campaigns/batch-stats", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+router.post("/campaigns/batch-stats", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const parsed = BatchStatsRequestSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -651,7 +651,7 @@ router.post("/campaigns/batch-stats", authenticate, requireOrg, async (req: Auth
  * GET /v1/campaigns/:id/leads
  * Get all leads for a campaign
  */
-router.get("/campaigns/:id/leads", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+router.get("/campaigns/:id/leads", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
 
@@ -734,7 +734,7 @@ router.get("/campaigns/:id/leads", authenticate, requireOrg, async (req: Authent
  * GET /v1/campaigns/:id/emails
  * Get all generated emails for a campaign (across all runs)
  */
-router.get("/campaigns/:id/emails", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+router.get("/campaigns/:id/emails", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
 
@@ -798,7 +798,7 @@ router.get("/campaigns/:id/emails", authenticate, requireOrg, async (req: Authen
  * GET /v1/brands/:brandId/delivery-stats
  * Get delivery stats for all campaigns under a brand (single email-gateway call)
  */
-router.get("/brands/:brandId/delivery-stats", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+router.get("/brands/:brandId/delivery-stats", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const { brandId } = req.params;
     const orgId = req.orgId!;
@@ -829,7 +829,7 @@ router.get("/brands/:brandId/delivery-stats", authenticate, requireOrg, async (r
  * SSE endpoint — pushes campaign updates (leads, emails, stats) in real-time.
  * Falls back to server-side polling every 5s against downstream services.
  */
-router.get("/campaigns/:id/stream", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
+router.get("/campaigns/:id/stream", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   const { id } = req.params;
   const orgId = req.orgId!;
 

@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 vi.mock("../../src/middleware/auth.js", () => ({
   authenticate: vi.fn(),
   requireOrg: vi.fn(),
+  requireUser: vi.fn(),
   AuthenticatedRequest: {},
 }));
 
