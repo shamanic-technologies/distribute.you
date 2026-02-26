@@ -3,9 +3,8 @@ import request from "supertest";
 import express from "express";
 
 /**
- * Regression test: POST /v1/brand/icp-suggestion must pass keyType: "byok"
- * to brand-service. Without it, brand-service cannot look up the org's
- * Anthropic BYOK key and returns "No Anthropic API key found (keyType: byok)".
+ * Regression test: POST /v1/brand/icp-suggestion must resolve keySource
+ * from billing-service and forward it to brand-service.
  *
  * Also verifies that a missing-key error returns 400 with a helpful message
  * instead of a generic 500.
@@ -31,6 +30,12 @@ vi.mock("@mcpfactory/runs-client", () => ({
   getRunsBatch: vi.fn().mockResolvedValue(new Map()),
 }));
 
+// Mock billing module
+const mockFetchKeySource = vi.fn().mockResolvedValue("byok");
+vi.mock("../../src/lib/billing.js", () => ({
+  fetchKeySource: (...args: unknown[]) => mockFetchKeySource(...args),
+}));
+
 import brandRouter from "../../src/routes/brand.js";
 
 function createBrandApp() {
@@ -43,9 +48,10 @@ function createBrandApp() {
 describe("POST /v1/brand/icp-suggestion", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockFetchKeySource.mockResolvedValue("byok");
   });
 
-  it("should include keyType: byok in the request body to brand-service", async () => {
+  it("should resolve keySource from billing-service and forward to brand-service", async () => {
     let capturedBody: Record<string, unknown> | undefined;
 
     global.fetch = vi.fn().mockImplementation(async (_url: string, init?: RequestInit) => {
@@ -65,9 +71,36 @@ describe("POST /v1/brand/icp-suggestion", () => {
       .send({ brandUrl: "https://example.com" });
 
     expect(capturedBody).toBeDefined();
-    expect(capturedBody!.keyType).toBe("byok");
+    expect(capturedBody!.keySource).toBe("byok");
+    expect(capturedBody!.appId).toBe("mcpfactory");
     expect(capturedBody!.url).toBe("https://example.com");
     expect(capturedBody!.orgId).toBe("org_test456");
+    expect(mockFetchKeySource).toHaveBeenCalledWith("org_test456");
+  });
+
+  it("should forward keySource 'app' when billing-service returns payg", async () => {
+    mockFetchKeySource.mockResolvedValue("app");
+
+    let capturedBody: Record<string, unknown> | undefined;
+
+    global.fetch = vi.fn().mockImplementation(async (_url: string, init?: RequestInit) => {
+      if (typeof _url === "string" && _url.includes("/icp-suggestion")) {
+        capturedBody = JSON.parse(init?.body as string);
+        return {
+          ok: true,
+          json: () => Promise.resolve({ icp: { person_titles: ["CTO"] } }),
+        };
+      }
+      return { ok: true, json: () => Promise.resolve({}) };
+    });
+
+    const app = createBrandApp();
+    await request(app)
+      .post("/v1/brand/icp-suggestion")
+      .send({ brandUrl: "https://example.com" });
+
+    expect(capturedBody).toBeDefined();
+    expect(capturedBody!.keySource).toBe("app");
   });
 
   it("should return 400 with helpful message when Anthropic BYOK key is missing", async () => {

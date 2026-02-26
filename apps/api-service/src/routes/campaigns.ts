@@ -359,6 +359,9 @@ router.post("/campaigns/:id/resume", authenticate, requireOrg, async (req: Authe
       taskName: "resume-campaign",
     });
 
+    // Resolve keySource from billing-service
+    const keySource = await fetchKeySource(req.orgId!);
+
     let result;
     try {
       result = await callExternalService(
@@ -367,7 +370,7 @@ router.post("/campaigns/:id/resume", authenticate, requireOrg, async (req: Authe
         {
           method: "PATCH",
           headers: { "x-org-id": req.orgId! },
-          body: { status: "activate", parentRunId: parentRun.id },
+          body: { status: "activate", parentRunId: parentRun.id, keySource },
         }
       );
     } catch (err) {
