@@ -47,11 +47,13 @@ describe("registerAppKeys", () => {
     process.env.FIRECRAWL_API_KEY = "fc-test";
     process.env.GEMINI_API_KEY = "gemini-test";
     process.env.POSTMARK_API_KEY = "postmark-test";
+    process.env.STRIPE_SECRET_KEY = "sk_test_stripe";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
 
     await registerAppKeys();
 
     const appKeyCalls = fetchCalls.filter((c) => c.url.includes("/internal/app-keys"));
-    expect(appKeyCalls).toHaveLength(6);
+    expect(appKeyCalls).toHaveLength(8);
 
     const providers = appKeyCalls.map((c) => c.body?.provider);
     expect(providers).toContain("anthropic");
@@ -60,6 +62,8 @@ describe("registerAppKeys", () => {
     expect(providers).toContain("firecrawl");
     expect(providers).toContain("gemini");
     expect(providers).toContain("postmark");
+    expect(providers).toContain("stripe");
+    expect(providers).toContain("stripe-webhook");
 
     // All should have appId = mcpfactory
     for (const call of appKeyCalls) {
@@ -74,8 +78,10 @@ describe("registerAppKeys", () => {
     delete process.env.FIRECRAWL_API_KEY;
     delete process.env.GEMINI_API_KEY;
     delete process.env.POSTMARK_API_KEY;
+    delete process.env.STRIPE_SECRET_KEY;
+    delete process.env.STRIPE_WEBHOOK_SECRET;
 
-    await expect(registerAppKeys()).rejects.toThrow("Missing required env vars: ANTHROPIC_API_KEY, APOLLO_API_KEY, INSTANTLY_API_KEY, FIRECRAWL_API_KEY, GEMINI_API_KEY, POSTMARK_API_KEY");
+    await expect(registerAppKeys()).rejects.toThrow("Missing required env vars: ANTHROPIC_API_KEY, APOLLO_API_KEY, INSTANTLY_API_KEY, FIRECRAWL_API_KEY, GEMINI_API_KEY, POSTMARK_API_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET");
 
     // No fetch calls should have been made
     const appKeyCalls = fetchCalls.filter((c) => c.url.includes("/internal/app-keys"));
@@ -89,6 +95,8 @@ describe("registerAppKeys", () => {
     process.env.FIRECRAWL_API_KEY = "fc-test";
     process.env.GEMINI_API_KEY = "gemini-test";
     process.env.POSTMARK_API_KEY = "postmark-test";
+    process.env.STRIPE_SECRET_KEY = "sk_test_stripe";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
 
     global.fetch = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
       const body = init?.body ? JSON.parse(init.body as string) : undefined;
@@ -114,6 +122,8 @@ describe("registerAppKeys", () => {
     process.env.FIRECRAWL_API_KEY = "fc-test";
     process.env.GEMINI_API_KEY = "gemini-test";
     process.env.POSTMARK_API_KEY = "postmark-test";
+    process.env.STRIPE_SECRET_KEY = "sk_test_stripe";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
 
     await expect(registerAppKeys()).rejects.toThrow("Missing required env vars: APOLLO_API_KEY");
   });

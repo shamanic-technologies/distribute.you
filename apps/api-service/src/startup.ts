@@ -9,6 +9,8 @@ const APP_KEYS: { provider: string; envVar: string }[] = [
   { provider: "firecrawl", envVar: "FIRECRAWL_API_KEY" },
   { provider: "gemini", envVar: "GEMINI_API_KEY" },
   { provider: "postmark", envVar: "POSTMARK_API_KEY" },
+  { provider: "stripe", envVar: "STRIPE_SECRET_KEY" },
+  { provider: "stripe-webhook", envVar: "STRIPE_WEBHOOK_SECRET" },
 ];
 
 export async function registerAppKeys(): Promise<void> {
