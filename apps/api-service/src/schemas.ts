@@ -535,7 +535,7 @@ registry.registerPath({
   },
   responses: {
     200: { description: "Decrypted key" },
-    400: { description: "Missing orgId", content: errorContent },
+    400: { description: "Missing orgId query parameter", content: errorContent },
     404: { description: "Key not found", content: errorContent },
     500: { description: "Internal error", content: errorContent },
   },

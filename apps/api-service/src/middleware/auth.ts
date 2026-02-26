@@ -10,8 +10,8 @@ export interface AuthenticatedRequest extends Request {
 
 /**
  * Authenticate via Clerk JWT or API Key
- * - Bearer token: Clerk JWT (from dashboard) → resolved to internal IDs via client-service
- * - X-API-Key: API key (from MCP/external clients) → resolved via key-service
+ * - Bearer token: Clerk JWT (from dashboard) → resolved to internal UUIDs via client-service
+ * - X-API-Key: API key (from MCP/external clients) → resolved to internal UUIDs via key-service
  */
 export async function authenticate(
   req: AuthenticatedRequest,
@@ -47,7 +47,7 @@ export async function authenticate(
       const orgClaim = payload.o as { id?: string } | undefined;
       const clerkOrgId = payload.org_id || orgClaim?.id;
 
-      // Resolve Clerk IDs to internal IDs via client-service
+      // Resolve Clerk IDs to internal UUIDs via client-service
       const resolved = await resolveClerkIds(clerkUserId, clerkOrgId);
       req.userId = resolved.userId || clerkUserId;
       req.orgId = resolved.orgId || clerkOrgId;
@@ -99,15 +99,14 @@ async function resolveClerkIds(
 
 /**
  * Validate API key against keys-service
- * Returns orgId and userId (internal IDs when available)
+ * Returns orgId and userId (internal UUIDs from client-service)
  */
 async function validateApiKey(apiKey: string): Promise<{ userId: string | null; orgId: string } | null> {
   try {
     const result = await callExternalService<{
       valid: boolean;
       orgId?: string;
-      clerkOrgId?: string;
-      clerkUserId?: string | null;
+      userId?: string | null;
     }>(
       externalServices.key,
       "/validate",
@@ -118,10 +117,10 @@ async function validateApiKey(apiKey: string): Promise<{ userId: string | null; 
       }
     );
 
-    if (result.valid && (result.clerkOrgId || result.orgId)) {
+    if (result.valid && result.orgId) {
       return {
-        userId: result.clerkUserId || null,
-        orgId: result.clerkOrgId || result.orgId!,
+        userId: result.userId || null,
+        orgId: result.orgId,
       };
     }
     return null;

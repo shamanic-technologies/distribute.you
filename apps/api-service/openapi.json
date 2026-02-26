@@ -1702,7 +1702,7 @@
             "description": "Decrypted key"
           },
           "400": {
-            "description": "Missing orgId",
+            "description": "Missing orgId query parameter",
             "content": {
               "application/json": {
                 "schema": {
