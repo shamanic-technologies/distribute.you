@@ -58,6 +58,10 @@ export const externalServices = {
     url: process.env.WORKFLOW_SERVICE_URL || "https://workflow.mcpfactory.org",
     apiKey: process.env.WORKFLOW_SERVICE_API_KEY || "",
   },
+  billing: {
+    url: process.env.BILLING_SERVICE_URL || "http://localhost:3020",
+    apiKey: process.env.BILLING_SERVICE_API_KEY || "",
+  },
 };
 
 interface ServiceCallOptions {

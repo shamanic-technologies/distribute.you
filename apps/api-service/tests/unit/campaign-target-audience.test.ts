@@ -6,7 +6,8 @@ import express from "express";
  * Tests for campaign creation with targetAudience field.
  * The api-service:
  * 1. Upserts brand via brand-service to get brandId
- * 2. Forwards targetAudience + brandId + budget to campaign-service
+ * 2. Resolves keySource from billing-service
+ * 3. Forwards targetAudience + brandId + budget to campaign-service
  * No ICP resolution — that's campaign-service's job.
  */
 
@@ -32,6 +33,12 @@ vi.mock("@mcpfactory/runs-client", () => ({
   updateRun: vi.fn().mockResolvedValue({ id: "parent-run-123", status: "failed" }),
 }));
 
+// Mock billing module — default to "byok"
+const mockFetchKeySource = vi.fn().mockResolvedValue("byok");
+vi.mock("../../src/lib/billing.js", () => ({
+  fetchKeySource: (...args: unknown[]) => mockFetchKeySource(...args),
+}));
+
 import campaignRouter from "../../src/routes/campaigns.js";
 
 function createApp() {
@@ -46,6 +53,7 @@ describe("POST /v1/campaigns with targetAudience", () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockFetchKeySource.mockResolvedValue("byok");
     fetchCalls = [];
 
     global.fetch = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
@@ -130,6 +138,60 @@ describe("POST /v1/campaigns with targetAudience", () => {
     // Verify scraping is NOT called (handled by campaign-service DAG)
     const scrapeCall = fetchCalls.find((c) => c.url.includes("/scrape"));
     expect(scrapeCall).toBeUndefined();
+  });
+
+  it("should resolve keySource from billing-service and forward to campaign-service", async () => {
+    mockFetchKeySource.mockResolvedValue("app");
+
+    const app = createApp();
+    const res = await request(app)
+      .post("/v1/campaigns")
+      .send({
+        name: "App Key Campaign",
+        workflowName: "sales-email-cold-outreach-sienna",
+        brandUrl: "https://example.com",
+        targetAudience: "CTOs at SaaS startups",
+        targetOutcome: "Book sales demos",
+        valueForTarget: "Access to enterprise analytics",
+        urgency: "Recruitment closes in 30 days",
+        scarcity: "Only 10 spots available",
+        riskReversal: "Free trial for 2 weeks",
+        socialProof: "Backed by 60 sponsors",
+        maxBudgetDailyUsd: 10,
+      });
+
+    expect(res.status).toBe(200);
+    expect(mockFetchKeySource).toHaveBeenCalledWith("org_test456");
+
+    const campaignCall = fetchCalls.find((c) => c.url.includes("/campaigns") && c.body?.appId === "mcpfactory");
+    expect(campaignCall).toBeDefined();
+    expect(campaignCall!.body!.keySource).toBe("app");
+  });
+
+  it("should default to 'app' keySource when billing-service is unreachable", async () => {
+    mockFetchKeySource.mockResolvedValue("app"); // billing.ts fallback
+
+    const app = createApp();
+    const res = await request(app)
+      .post("/v1/campaigns")
+      .send({
+        name: "Fallback Campaign",
+        workflowName: "sales-email-cold-outreach-sienna",
+        brandUrl: "https://example.com",
+        targetAudience: "CTOs at SaaS startups",
+        targetOutcome: "Book sales demos",
+        valueForTarget: "Access to enterprise analytics",
+        urgency: "Recruitment closes in 30 days",
+        scarcity: "Only 10 spots available",
+        riskReversal: "Free trial for 2 weeks",
+        socialProof: "Backed by 60 sponsors",
+        maxBudgetDailyUsd: 10,
+      });
+
+    expect(res.status).toBe(200);
+
+    const campaignCall = fetchCalls.find((c) => c.url.includes("/campaigns") && c.body?.appId === "mcpfactory");
+    expect(campaignCall!.body!.keySource).toBe("app");
   });
 
   it("should reject when targetAudience is missing with didactic error", async () => {

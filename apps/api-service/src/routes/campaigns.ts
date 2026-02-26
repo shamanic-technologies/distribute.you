@@ -4,6 +4,7 @@ import { callExternalService, externalServices } from "../lib/service-client.js"
 import { buildInternalHeaders } from "../lib/internal-headers.js";
 import { createRun, updateRun, getRunsBatch, type RunWithCosts } from "@mcpfactory/runs-client";
 import { CreateCampaignRequestSchema, BatchStatsRequestSchema } from "../schemas.js";
+import { fetchKeySource } from "../lib/billing.js";
 
 function sendLifecycleEmail(
   eventType: string,
@@ -183,7 +184,11 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
     });
     console.log("[api-service] POST /v1/campaigns \u2014 step 2 done: parent run created", { parentRunId: parentRun.id });
 
-    // 3. Forward to campaign-service with parentRunId
+    // 3. Resolve keySource from billing-service (byok vs pay-as-you-go)
+    const keySource = await fetchKeySource(req.orgId!);
+    console.log("[api-service] POST /v1/campaigns — step 3: resolved keySource from billing-service", { keySource });
+
+    // 4. Forward to campaign-service with parentRunId
     // Derive `type` from workflowName for campaign-service backward compat
     const { workflowName, ...restData } = parsed.data;
     const body: Record<string, unknown> = {
@@ -193,7 +198,7 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
       appId: "mcpfactory",
       orgId: req.orgId,
       brandId: brandResult.brandId,
-      keySource: "byok",
+      keySource,
       parentRunId: parentRun.id,
     };
 
