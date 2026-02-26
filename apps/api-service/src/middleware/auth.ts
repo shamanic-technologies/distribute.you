@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyToken } from "@clerk/backend";
-import { callService, services, callExternalService, externalServices } from "../lib/service-client.js";
+import { callExternalService, externalServices } from "../lib/service-client.js";
 
 export interface AuthenticatedRequest extends Request {
   userId?: string;
@@ -49,8 +49,14 @@ export async function authenticate(
 
       // Resolve Clerk IDs to internal UUIDs via client-service
       const resolved = await resolveClerkIds(clerkUserId, clerkOrgId);
-      req.userId = resolved.userId || clerkUserId;
-      req.orgId = resolved.orgId || clerkOrgId;
+
+      if (!resolved.userId && !resolved.orgId) {
+        console.error("[auth] Failed to resolve Clerk IDs — client-service unavailable or returned empty");
+        return res.status(502).json({ error: "Identity resolution failed" });
+      }
+
+      req.userId = resolved.userId || undefined;
+      req.orgId = resolved.orgId || undefined;
       req.authType = "jwt";
 
       return next();
@@ -65,7 +71,7 @@ export async function authenticate(
 
 /**
  * Resolve Clerk IDs to internal UUIDs via client-service.
- * Falls back to Clerk IDs if client-service is unavailable.
+ * Returns null values if client-service is unavailable — callers must handle this.
  */
 async function resolveClerkIds(
   clerkUserId: string,
@@ -76,22 +82,28 @@ async function resolveClerkIds(
 
   try {
     const [userResult, orgResult] = await Promise.all([
-      callService<{ user: { id: string } }>(
-        services.client,
+      callExternalService<{ user: { id: string } }>(
+        externalServices.client,
         `/users/by-clerk/${clerkUserId}`
-      ).catch(() => null),
+      ).catch((err) => {
+        console.error("[auth] Failed to resolve Clerk user:", err.message);
+        return null;
+      }),
       clerkOrgId
-        ? callService<{ org: { id: string } }>(
-            services.client,
+        ? callExternalService<{ org: { id: string } }>(
+            externalServices.client,
             `/orgs/by-clerk/${clerkOrgId}`
-          ).catch(() => null)
+          ).catch((err) => {
+            console.error("[auth] Failed to resolve Clerk org:", err.message);
+            return null;
+          })
         : null,
     ]);
 
     if (userResult?.user?.id) userId = userResult.user.id;
     if (orgResult?.org?.id) orgId = orgResult.org.id;
   } catch (error) {
-    console.warn("[auth] Failed to resolve Clerk IDs via client-service:", (error as Error).message);
+    console.error("[auth] Failed to resolve Clerk IDs via client-service:", (error as Error).message);
   }
 
   return { userId, orgId };
