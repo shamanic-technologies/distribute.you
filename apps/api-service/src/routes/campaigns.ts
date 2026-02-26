@@ -17,8 +17,8 @@ function sendLifecycleEmail(
       eventType,
       brandId,
       campaignId,
-      clerkOrgId: req.orgId,
-      clerkUserId: req.userId,
+      orgId: req.orgId,
+      userId: req.userId,
       metadata,
     },
   }).catch((err) => console.warn(`[campaigns] Lifecycle email ${eventType} failed:`, err.message));
@@ -43,8 +43,8 @@ async function fetchDeliveryStats(
     "/stats",
     {
       method: "POST",
-      headers: { "x-clerk-org-id": orgId },
-      body: { ...filters, appId: "mcpfactory", clerkOrgId: orgId },
+      headers: { "x-org-id": orgId },
+      body: { ...filters, appId: "mcpfactory", orgId },
     }
   ).catch((err) => {
     console.warn("[campaigns] Email-gateway stats failed:", (err as Error).message);
@@ -163,9 +163,9 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
         method: "POST",
         body: {
           appId: "mcpfactory",
-          clerkOrgId: req.orgId,
+          orgId: req.orgId,
           url: brandUrl,
-          clerkUserId: req.userId,
+          userId: req.userId,
         },
       }
     );
@@ -174,8 +174,8 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
     // 2. Create parent run so all downstream runs are linked
     console.log("[api-service] POST /v1/campaigns \u2014 step 2: creating parent run");
     const parentRun = await createRun({
-      clerkOrgId: req.orgId!,
-      clerkUserId: req.userId,
+      orgId: req.orgId!,
+      userId: req.userId,
       appId: "mcpfactory",
       brandId: brandResult.brandId,
       serviceName: "api-service",
@@ -191,7 +191,7 @@ router.post("/campaigns", authenticate, requireOrg, async (req: AuthenticatedReq
       workflowName,
       type: "cold-email-outreach",
       appId: "mcpfactory",
-      clerkOrgId: req.orgId,
+      orgId: req.orgId,
       brandId: brandResult.brandId,
       keySource: "byok",
       parentRunId: parentRun.id,
@@ -259,7 +259,7 @@ router.get("/campaigns/:id", authenticate, requireOrg, async (req: Authenticated
       externalServices.campaign,
       `/campaigns/${id}`,
       {
-        headers: { "x-clerk-org-id": req.orgId! },
+        headers: { "x-org-id": req.orgId! },
       }
     );
     res.json(result);
@@ -282,7 +282,7 @@ router.patch("/campaigns/:id", authenticate, requireOrg, async (req: Authenticat
       `/campaigns/${id}`,
       {
         method: "PATCH",
-        headers: { "x-clerk-org-id": req.orgId! },
+        headers: { "x-org-id": req.orgId! },
         body: req.body,
       }
     );
@@ -306,7 +306,7 @@ router.post("/campaigns/:id/stop", authenticate, requireOrg, async (req: Authent
       `/campaigns/${id}`,
       {
         method: "PATCH",
-        headers: { "x-clerk-org-id": req.orgId! },
+        headers: { "x-org-id": req.orgId! },
         body: { status: "stop" },
       }
     );
@@ -346,8 +346,8 @@ router.post("/campaigns/:id/resume", authenticate, requireOrg, async (req: Authe
 
     // Create parent run for the resume/activate operation
     const parentRun = await createRun({
-      clerkOrgId: req.orgId!,
-      clerkUserId: req.userId,
+      orgId: req.orgId!,
+      userId: req.userId,
       appId: "mcpfactory",
       campaignId: id,
       serviceName: "api-service",
@@ -361,7 +361,7 @@ router.post("/campaigns/:id/resume", authenticate, requireOrg, async (req: Authe
         `/campaigns/${id}`,
         {
           method: "PATCH",
-          headers: { "x-clerk-org-id": req.orgId! },
+          headers: { "x-org-id": req.orgId! },
           body: { status: "activate", parentRunId: parentRun.id },
         }
       );
@@ -388,7 +388,7 @@ router.get("/campaigns/:id/runs", authenticate, requireOrg, async (req: Authenti
       externalServices.campaign,
       `/campaigns/${id}/runs`,
       {
-        headers: { "x-clerk-org-id": req.orgId! },
+        headers: { "x-org-id": req.orgId! },
       }
     );
     res.json(result);
@@ -420,7 +420,7 @@ router.get("/campaigns/:id/stats", authenticate, requireOrg, async (req: Authent
       callExternalService(
         externalServices.emailgen,
         "/stats",
-        { method: "POST", body: { campaignId: id, appId: "mcpfactory" }, headers: { "x-clerk-org-id": orgId } }
+        { method: "POST", body: { campaignId: id, appId: "mcpfactory" }, headers: { "x-org-id": orgId } }
       ).catch((err) => {
         console.warn("[campaigns] Emailgen stats failed:", (err as Error).message);
         return null;
@@ -437,7 +437,7 @@ router.get("/campaigns/:id/stats", authenticate, requireOrg, async (req: Authent
       // Full cost breakdown by cost name from runs-service (single source of truth)
       callExternalService<{ costs: Array<{ costName: string; totalCostInUsdCents: string; actualCostInUsdCents: string; provisionedCostInUsdCents: string; totalQuantity: string }> }>(
         externalServices.runs,
-        `/v1/stats/costs/by-cost-name?clerkOrgId=${encodeURIComponent(orgId)}&appId=mcpfactory&campaignId=${encodeURIComponent(id)}`
+        `/v1/stats/costs/by-cost-name?orgId=${encodeURIComponent(orgId)}&appId=mcpfactory&campaignId=${encodeURIComponent(id)}`
       ).catch((err) => {
         console.warn("[campaigns] Cost breakdown failed:", (err as Error).message);
         return null;
@@ -445,7 +445,7 @@ router.get("/campaigns/:id/stats", authenticate, requireOrg, async (req: Authent
       // Lead-serve run count from runs-service (source of truth for leadsServed)
       callExternalService<{ groups: Array<{ dimensions: Record<string, string | null>; runCount: number }> }>(
         externalServices.runs,
-        `/v1/stats/costs?clerkOrgId=${encodeURIComponent(orgId)}&appId=mcpfactory&campaignId=${encodeURIComponent(id)}&taskName=lead-serve&groupBy=serviceName`
+        `/v1/stats/costs?orgId=${encodeURIComponent(orgId)}&appId=mcpfactory&campaignId=${encodeURIComponent(id)}&taskName=lead-serve&groupBy=serviceName`
       ).catch((err) => {
         console.warn("[campaigns] Lead-serve runs stats failed:", (err as Error).message);
         return null;
@@ -540,7 +540,7 @@ router.post("/campaigns/batch-stats", authenticate, requireOrg, async (req: Auth
       groups: Array<{ dimensions: Record<string, string | null>; runCount: number }>;
     }>(
       externalServices.runs,
-      `/v1/stats/costs?clerkOrgId=${encodeURIComponent(orgId)}&appId=mcpfactory&taskName=lead-serve&groupBy=campaignId`
+      `/v1/stats/costs?orgId=${encodeURIComponent(orgId)}&appId=mcpfactory&taskName=lead-serve&groupBy=campaignId`
     ).catch((err) => {
       console.warn("[campaigns] Batch lead-serve runs stats failed:", (err as Error).message);
       return null;
@@ -559,7 +559,7 @@ router.post("/campaigns/batch-stats", authenticate, requireOrg, async (req: Auth
             callExternalService(
               externalServices.emailgen,
               "/stats",
-              { method: "POST", body: { campaignId: id, appId: "mcpfactory" }, headers: { "x-clerk-org-id": orgId } }
+              { method: "POST", body: { campaignId: id, appId: "mcpfactory" }, headers: { "x-org-id": orgId } }
             ).catch(() => null),
             fetchDeliveryStats({ campaignId: id }, orgId),
           ]);
@@ -735,7 +735,7 @@ router.get("/campaigns/:id/emails", authenticate, requireOrg, async (req: Authen
       externalServices.emailgen,
       `/generations?campaignId=${id}`,
       {
-        headers: { "x-clerk-org-id": req.orgId! },
+        headers: { "x-org-id": req.orgId! },
       }
     ) as { generations: Array<Record<string, unknown>> };
 
@@ -852,7 +852,7 @@ router.get("/campaigns/:id/stream", authenticate, requireOrg, async (req: Authen
         callExternalService<{ campaign: { status: string } }>(
           externalServices.campaign,
           `/campaigns/${id}`,
-          { headers: { "x-clerk-org-id": orgId } }
+          { headers: { "x-org-id": orgId } }
         ).catch(() => null),
         callExternalService<{ served: number; buffered: number; skipped: number }>(
           externalServices.lead,
@@ -862,7 +862,7 @@ router.get("/campaigns/:id/stream", authenticate, requireOrg, async (req: Authen
         callExternalService<{ stats?: { emailsGenerated?: number } }>(
           externalServices.emailgen,
           "/stats",
-          { method: "POST", body: { campaignId: id, appId: "mcpfactory" }, headers: { "x-clerk-org-id": orgId } }
+          { method: "POST", body: { campaignId: id, appId: "mcpfactory" }, headers: { "x-org-id": orgId } }
         ).catch(() => null),
         fetchDeliveryStats({ campaignId: id }, orgId),
       ]);

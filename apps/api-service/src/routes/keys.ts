@@ -13,7 +13,7 @@ router.get("/keys", authenticate, requireOrg, async (req: AuthenticatedRequest, 
   try {
     const result = await callExternalService(
       externalServices.key,
-      `/internal/keys?clerkOrgId=${req.orgId}`
+      `/internal/keys?orgId=${req.orgId}`
     );
     res.json(result);
   } catch (error: any) {
@@ -39,7 +39,7 @@ router.post("/keys", authenticate, requireOrg, async (req: AuthenticatedRequest,
       "/internal/keys",
       {
         method: "POST",
-        body: { clerkOrgId: req.orgId, provider, apiKey },
+        body: { orgId: req.orgId, provider, apiKey },
       }
     );
     res.json(result);
@@ -59,7 +59,7 @@ router.delete("/keys/:provider", authenticate, requireOrg, async (req: Authentic
 
     const result = await callExternalService(
       externalServices.key,
-      `/internal/keys/${provider}?clerkOrgId=${req.orgId}`,
+      `/internal/keys/${provider}?orgId=${req.orgId}`,
       { method: "DELETE" }
     );
     res.json(result);
@@ -77,15 +77,15 @@ router.delete("/keys/:provider", authenticate, requireOrg, async (req: Authentic
 router.get("/internal/keys/:provider/decrypt", async (req, res) => {
   try {
     const { provider } = req.params;
-    const clerkOrgId = req.query.clerkOrgId as string;
+    const orgId = req.query.orgId as string;
 
-    if (!clerkOrgId) {
-      return res.status(400).json({ error: "clerkOrgId required" });
+    if (!orgId) {
+      return res.status(400).json({ error: "orgId required" });
     }
 
     const result = await callExternalService(
       externalServices.key,
-      `/internal/keys/${provider}/decrypt?clerkOrgId=${clerkOrgId}`
+      `/internal/keys/${provider}/decrypt?orgId=${orgId}`
     );
     res.json(result);
   } catch (error: any) {
@@ -108,7 +108,7 @@ router.post("/api-keys/session", authenticate, requireOrg, async (req: Authentic
       "/internal/api-keys/session",
       {
         method: "POST",
-        body: { clerkOrgId: req.orgId },
+        body: { orgId: req.orgId },
       }
     );
     res.json(result);
@@ -135,7 +135,7 @@ router.post("/api-keys", authenticate, requireOrg, async (req: AuthenticatedRequ
       "/internal/api-keys",
       {
         method: "POST",
-        body: { clerkOrgId: req.orgId, name },
+        body: { orgId: req.orgId, name },
       }
     );
     res.json(result);
@@ -153,7 +153,7 @@ router.get("/api-keys", authenticate, requireOrg, async (req: AuthenticatedReque
   try {
     const result = await callExternalService(
       externalServices.key,
-      `/internal/api-keys?clerkOrgId=${req.orgId}`
+      `/internal/api-keys?orgId=${req.orgId}`
     );
     res.json(result);
   } catch (error: any) {
@@ -175,7 +175,7 @@ router.delete("/api-keys/:id", authenticate, requireOrg, async (req: Authenticat
       `/internal/api-keys/${id}`,
       {
         method: "DELETE",
-        body: { clerkOrgId: req.orgId },
+        body: { orgId: req.orgId },
       }
     );
     res.json(result);

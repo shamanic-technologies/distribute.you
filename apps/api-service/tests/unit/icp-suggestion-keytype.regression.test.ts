@@ -67,7 +67,7 @@ describe("POST /v1/brand/icp-suggestion", () => {
     expect(capturedBody).toBeDefined();
     expect(capturedBody!.keyType).toBe("byok");
     expect(capturedBody!.url).toBe("https://example.com");
-    expect(capturedBody!.clerkOrgId).toBe("org_test456");
+    expect(capturedBody!.orgId).toBe("org_test456");
   });
 
   it("should return 400 with helpful message when Anthropic BYOK key is missing", async () => {
