@@ -2,6 +2,7 @@ import { Router } from "express";
 import { authenticate, AuthenticatedRequest } from "../middleware/auth.js";
 import { callExternalService, externalServices } from "../lib/service-client.js";
 import { QualifyRequestSchema } from "../schemas.js";
+import { fetchKeySource } from "../lib/billing.js";
 
 const router = Router();
 
@@ -30,6 +31,9 @@ router.post("/qualify", authenticate, async (req: AuthenticatedRequest, res) => 
     // Use orgId from auth if not provided
     const orgId = sourceOrgId || req.orgId;
 
+    // Resolve keySource from billing-service (default to "app" if no orgId)
+    const keySource = orgId ? await fetchKeySource(orgId) : "app";
+
     const result = await callExternalService(
       externalServices.replyQualification,
       "/qualify",
@@ -44,6 +48,9 @@ router.post("/qualify", authenticate, async (req: AuthenticatedRequest, res) => 
           subject,
           bodyText,
           bodyHtml,
+          appId: "mcpfactory",
+          userId: req.userId,
+          keySource,
           byokApiKey,
         },
       }

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { authenticate, requireOrg, AuthenticatedRequest } from "../middleware/auth.js";
 import { callExternalService, externalServices } from "../lib/service-client.js";
 import { LeadSearchRequestSchema } from "../schemas.js";
+import { fetchKeySource } from "../lib/billing.js";
 
 const router = Router();
 
@@ -23,6 +24,9 @@ router.post("/leads/search", authenticate, requireOrg, async (req: Authenticated
       per_page,
     } = parsed.data;
 
+    // Resolve keySource from billing-service
+    const keySource = await fetchKeySource(req.orgId!);
+
     const result = await callExternalService(
       externalServices.lead,
       "/search",
@@ -35,6 +39,10 @@ router.post("/leads/search", authenticate, requireOrg, async (req: Authenticated
           qOrganizationIndustryTagIds: organization_industries,
           organizationNumEmployeesRanges: organization_num_employees_ranges,
           perPage: Math.min(per_page, 100),
+          appId: "mcpfactory",
+          orgId: req.orgId,
+          userId: req.userId,
+          keySource,
         },
       }
     );

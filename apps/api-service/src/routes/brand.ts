@@ -3,6 +3,7 @@ import { authenticate, requireOrg, AuthenticatedRequest } from "../middleware/au
 import { callExternalService, externalServices } from "../lib/service-client.js";
 import { getRunsBatch, type RunWithCosts } from "@mcpfactory/runs-client";
 import { BrandScrapeRequestSchema, IcpSuggestionRequestSchema } from "../schemas.js";
+import { fetchKeySource } from "../lib/billing.js";
 
 const router = Router();
 
@@ -18,6 +19,9 @@ router.post("/brand/scrape", authenticate, async (req: AuthenticatedRequest, res
     }
     const { url, skipCache } = parsed.data;
 
+    // Resolve keySource from billing-service (default to "app" if no orgId)
+    const keySource = req.orgId ? await fetchKeySource(req.orgId) : "app";
+
     const result = await callExternalService(
       externalServices.scraping,
       "/scrape",
@@ -27,6 +31,8 @@ router.post("/brand/scrape", authenticate, async (req: AuthenticatedRequest, res
           url,
           sourceService: "mcpfactory",
           sourceOrgId: req.orgId,
+          userId: req.userId,
+          keySource,
           skipCache,
         },
       }
@@ -147,6 +153,9 @@ router.post("/brand/icp-suggestion", authenticate, requireOrg, async (req: Authe
     }
     const { brandUrl } = parsed.data;
 
+    // Resolve keySource from billing-service
+    const keySource = await fetchKeySource(req.orgId!);
+
     const result = await callExternalService(
       externalServices.brand,
       "/icp-suggestion",
@@ -154,8 +163,10 @@ router.post("/brand/icp-suggestion", authenticate, requireOrg, async (req: Authe
         method: "POST",
         body: {
           orgId: req.orgId,
+          userId: req.userId,
+          appId: "mcpfactory",
+          keySource,
           url: brandUrl,
-          keyType: "byok",
         },
       }
     );

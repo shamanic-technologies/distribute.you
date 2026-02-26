@@ -2,6 +2,7 @@ import { Router } from "express";
 import { authenticate, requireOrg, AuthenticatedRequest } from "../middleware/auth.js";
 import { callExternalService, externalServices } from "../lib/service-client.js";
 import { GenerateWorkflowRequestSchema } from "../schemas.js";
+import { fetchKeySource } from "../lib/billing.js";
 
 const router = Router();
 
@@ -65,6 +66,9 @@ router.post("/workflows/generate", authenticate, requireOrg, async (req: Authent
 
     const { description, hints } = parsed.data;
 
+    // Resolve keySource from billing-service
+    const keySource = await fetchKeySource(req.orgId!);
+
     const result = await callExternalService(
       externalServices.workflow,
       "/workflows/generate",
@@ -73,6 +77,8 @@ router.post("/workflows/generate", authenticate, requireOrg, async (req: Authent
         body: {
           appId: "mcpfactory",
           orgId: req.orgId,
+          userId: req.userId,
+          keySource,
           description,
           hints,
         },
