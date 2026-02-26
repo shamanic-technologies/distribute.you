@@ -59,9 +59,6 @@ router.post("/auth/provision", async (req: Request, res: Response) => {
     }
 
     // 3. Get or create session API key via key-service
-    //    Use org.id (internal UUID) — key-service accepts this as clerkOrgId for now
-    const orgIdForKey = clientResult.org.clerkOrgId || clientResult.org.id;
-
     let keyResult: { key: string; id: string };
 
     try {
@@ -70,7 +67,7 @@ router.post("/auth/provision", async (req: Request, res: Response) => {
         "/internal/api-keys/session",
         {
           method: "POST",
-          body: { clerkOrgId: orgIdForKey },
+          body: { orgId: clientResult.org.id },
         },
       );
     } catch (error: any) {
