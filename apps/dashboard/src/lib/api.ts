@@ -33,12 +33,10 @@ export interface UserInfo {
   authType: string;
   user: {
     id: string;
-    clerkUserId: string;
     createdAt: string;
   } | null;
   org: {
     id: string;
-    clerkOrgId: string;
     plan: string;
     createdAt: string;
   } | null;

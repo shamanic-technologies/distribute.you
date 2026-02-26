@@ -55,8 +55,8 @@ export type RunWithOwnCost = Run & {
 };
 
 export type CreateRunParams = {
-  clerkOrgId: string;
-  clerkUserId?: string;
+  orgId: string;
+  userId?: string;
   appId: string;
   brandId?: string;
   campaignId?: string;
@@ -71,8 +71,8 @@ export type CostItem = {
 };
 
 export type ListRunsParams = {
-  clerkOrgId: string;
-  clerkUserId?: string;
+  orgId: string;
+  userId?: string;
   appId?: string;
   brandId?: string;
   campaignId?: string;

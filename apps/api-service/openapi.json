@@ -54,6 +54,10 @@
     {
       "name": "Activity",
       "description": "User activity tracking"
+    },
+    {
+      "name": "Auth",
+      "description": "User provisioning and authentication"
     }
   ],
   "components": {
@@ -665,6 +669,49 @@
         },
         "required": [
           "ok"
+        ]
+      },
+      "ProvisionResponse": {
+        "type": "object",
+        "properties": {
+          "apiKey": {
+            "type": "string",
+            "description": "API key for the provisioned user (mcpf_... format)"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Internal user ID"
+          },
+          "orgId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Internal organization ID"
+          }
+        },
+        "required": [
+          "apiKey",
+          "userId",
+          "orgId"
+        ]
+      },
+      "ProvisionRequest": {
+        "type": "object",
+        "properties": {
+          "appId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Application ID (e.g. 'sales-cold-emails')"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address of the user to provision"
+          }
+        },
+        "required": [
+          "appId",
+          "email"
         ]
       }
     },
@@ -1642,11 +1689,11 @@
           {
             "schema": {
               "type": "string",
-              "description": "Clerk organization ID"
+              "description": "Organization ID"
             },
             "required": true,
-            "description": "Clerk organization ID",
-            "name": "clerkOrgId",
+            "description": "Organization ID",
+            "name": "orgId",
             "in": "query"
           }
         ],
@@ -1655,7 +1702,7 @@
             "description": "Decrypted key"
           },
           "400": {
-            "description": "Missing clerkOrgId",
+            "description": "Missing orgId",
             "content": {
               "application/json": {
                 "schema": {
@@ -2862,6 +2909,56 @@
           },
           "500": {
             "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/provision": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Provision a user and API key",
+        "description": "Public endpoint — no authentication required. Creates or finds an anonymous user for the given appId + email, then returns an API key for that user's organization. Idempotent: calling with the same appId + email returns the existing user and key.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProvisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Provisioned user with API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvisionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream service error",
             "content": {
               "application/json": {
                 "schema": {

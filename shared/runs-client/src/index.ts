@@ -60,8 +60,8 @@ export interface RunWithOwnCost extends Run {
 }
 
 export interface CreateRunParams {
-  clerkOrgId: string;
-  clerkUserId?: string;
+  orgId: string;
+  userId?: string;
   appId: string;
   brandId?: string;
   campaignId?: string;
@@ -76,8 +76,8 @@ export interface CostItem {
 }
 
 export interface ListRunsParams {
-  clerkOrgId: string;
-  clerkUserId?: string;
+  orgId: string;
+  userId?: string;
   appId?: string;
   brandId?: string;
   campaignId?: string;
@@ -186,8 +186,8 @@ export async function listRuns(
   params: ListRunsParams
 ): Promise<{ runs: RunWithOwnCost[]; limit: number; offset: number }> {
   const searchParams = new URLSearchParams();
-  searchParams.set("clerkOrgId", params.clerkOrgId);
-  if (params.clerkUserId) searchParams.set("clerkUserId", params.clerkUserId);
+  searchParams.set("orgId", params.orgId);
+  if (params.userId) searchParams.set("userId", params.userId);
   if (params.appId) searchParams.set("appId", params.appId);
   if (params.brandId) searchParams.set("brandId", params.brandId);
   if (params.campaignId) searchParams.set("campaignId", params.campaignId);

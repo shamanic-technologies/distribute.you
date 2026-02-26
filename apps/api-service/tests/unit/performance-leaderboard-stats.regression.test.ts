@@ -101,8 +101,8 @@ function setupMocks(
     if (path === "/clerk-ids") {
       return Promise.resolve({ clerk_organization_ids: ["org-1"] });
     }
-    // Brand-service: /brands?clerkOrgId=...
-    if (path.startsWith("/brands?clerkOrgId=")) {
+    // Brand-service: /brands?orgId=...
+    if (path.startsWith("/brands?orgId=")) {
       return Promise.resolve({ brands });
     }
     // Runs-service: /v1/stats/public/leaderboard
@@ -668,7 +668,7 @@ describe("Regression: performance leaderboard must use broadcast-only stats", ()
 
     expect(content).toContain("fetchAllBrands");
     expect(content).toContain("/clerk-ids");
-    expect(content).toContain("/brands?clerkOrgId=");
+    expect(content).toContain("/brands?orgId=");
     expect(content).toContain("/v1/stats/public/leaderboard");
     expect(content).toContain("parseFloat");
   });

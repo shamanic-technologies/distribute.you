@@ -104,7 +104,7 @@ describe("POST /v1/campaigns with targetAudience", () => {
     const brandCall = fetchCalls.find((c) => c.url.includes("/brands") && c.body?.appId === "mcpfactory");
     expect(brandCall).toBeDefined();
     expect(brandCall!.body!.url).toBe("https://example.com");
-    expect(brandCall!.body!.clerkOrgId).toBe("org_test456");
+    expect(brandCall!.body!.orgId).toBe("org_test456");
 
     // Verify campaign-service received all fields including workflowName and derived type
     const campaignCall = fetchCalls.find((c) => c.url.includes("/campaigns") && c.body?.appId === "mcpfactory");
@@ -119,7 +119,7 @@ describe("POST /v1/campaigns with targetAudience", () => {
     expect(campaignCall!.body!.riskReversal).toBe("Free trial for 2 weeks, no commitment");
     expect(campaignCall!.body!.socialProof).toBe("Backed by 60 sponsors including Acme, Globex");
     expect(campaignCall!.body!.brandId).toBe("brand-uuid-123");
-    expect(campaignCall!.body!.clerkOrgId).toBe("org_test456");
+    expect(campaignCall!.body!.orgId).toBe("org_test456");
     expect(campaignCall!.body!.keySource).toBe("byok");
 
     // Verify NO Apollo fields were sent
