@@ -35,6 +35,8 @@ const document = generator.generateDocument({
     { name: "Qualify", description: "Email reply qualification" },
     { name: "Brand", description: "Brand scraping and management" },
     { name: "Activity", description: "User activity tracking" },
+    { name: "Chat", description: "AI chat with SSE streaming" },
+    { name: "Billing", description: "Billing, credits, and checkout" },
   ],
 });
 

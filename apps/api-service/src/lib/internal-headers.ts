@@ -13,5 +13,8 @@ export function buildInternalHeaders(req: AuthenticatedRequest): Record<string, 
   if (req.userId) {
     headers["x-user-id"] = req.userId;
   }
+  if (req.appId) {
+    headers["x-app-id"] = req.appId;
+  }
   return headers;
 }

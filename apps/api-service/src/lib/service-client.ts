@@ -56,6 +56,10 @@ export const externalServices = {
     url: process.env.BILLING_SERVICE_URL || "http://localhost:3020",
     apiKey: process.env.BILLING_SERVICE_API_KEY || "",
   },
+  chat: {
+    url: process.env.CHAT_SERVICE_URL || "http://localhost:3021",
+    apiKey: process.env.CHAT_SERVICE_API_KEY || "",
+  },
 };
 
 interface ServiceCallOptions {
@@ -99,5 +103,61 @@ export async function callExternalService<T>(
   } catch (error: any) {
     console.error(`[callExternalService] Fetch error for ${path}:`, error.message);
     throw error;
+  }
+}
+
+/**
+ * Stream an external service SSE response directly to the Express response.
+ * Does NOT buffer or parse — pipes chunks through for real-time streaming.
+ */
+export async function streamExternalService(
+  service: { url: string; apiKey: string },
+  path: string,
+  options: ServiceCallOptions & { expressRes: import("express").Response }
+): Promise<void> {
+  const { method = "POST", body, headers = {}, expressRes } = options;
+  const url = `${service.url}${path}`;
+
+  const response = await fetch(url, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      "X-API-Key": service.apiKey,
+      ...headers,
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    expressRes.status(response.status).json({ error: errorText || `Upstream error: ${response.status}` });
+    return;
+  }
+
+  expressRes.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    "Connection": "keep-alive",
+    "X-Accel-Buffering": "no",
+  });
+  expressRes.flushHeaders();
+
+  const reader = response.body?.getReader();
+  if (!reader) {
+    expressRes.write(`data: ${JSON.stringify({ error: "No response body" })}\n\n`);
+    expressRes.end();
+    return;
+  }
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      expressRes.write(value);
+    }
+  } catch (err) {
+    console.error("[streamExternalService] Stream error:", (err as Error).message);
+  } finally {
+    expressRes.end();
   }
 }

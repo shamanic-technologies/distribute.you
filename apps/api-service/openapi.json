@@ -54,6 +54,14 @@
     {
       "name": "Activity",
       "description": "User activity tracking"
+    },
+    {
+      "name": "Chat",
+      "description": "AI chat with SSE streaming"
+    },
+    {
+      "name": "Billing",
+      "description": "Billing, credits, and checkout"
     }
   ],
   "components": {
@@ -768,6 +776,133 @@
         },
         "required": [
           "ok"
+        ]
+      },
+      "ChatConfigRequest": {
+        "type": "object",
+        "properties": {
+          "systemPrompt": {
+            "type": "string",
+            "minLength": 1,
+            "description": "System prompt for the AI assistant"
+          },
+          "mcpServerUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "MCP server URL for tool calling"
+          },
+          "mcpKeyName": {
+            "type": "string",
+            "minLength": 1,
+            "description": "MCP key name for auth resolution"
+          }
+        },
+        "required": [
+          "systemPrompt"
+        ]
+      },
+      "ChatMessageRequest": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "description": "User message text"
+          },
+          "sessionId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Session ID for conversation continuity"
+          },
+          "context": {
+            "type": "object",
+            "additionalProperties": {
+              "nullable": true
+            },
+            "description": "Additional context for the AI"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "SwitchBillingModeRequest": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "byok",
+              "payg"
+            ],
+            "description": "Billing mode to switch to"
+          },
+          "reload_amount_cents": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": true,
+            "description": "Auto-reload amount in cents (for payg mode)"
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "DeductCreditsRequest": {
+        "type": "object",
+        "properties": {
+          "amount_cents": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": true,
+            "description": "Amount to deduct in cents"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Reason for the deduction"
+          },
+          "app_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "App ID"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "User ID"
+          }
+        },
+        "required": [
+          "amount_cents",
+          "description",
+          "app_id"
+        ]
+      },
+      "CreateCheckoutSessionRequest": {
+        "type": "object",
+        "properties": {
+          "success_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL to redirect after successful payment"
+          },
+          "cancel_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL to redirect on cancellation"
+          },
+          "reload_amount_cents": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": true,
+            "description": "Amount to reload in cents"
+          }
+        },
+        "required": [
+          "success_url",
+          "cancel_url",
+          "reload_amount_cents"
         ]
       }
     },
@@ -2954,6 +3089,437 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/chat/config": {
+      "put": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Register chat app config",
+        "description": "Register or update app configuration for chat (system prompt, MCP server). Requires app key authentication.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatConfigRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Config registered"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "App key required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/chat": {
+      "post": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Stream chat response (SSE)",
+        "description": "Send a message and receive a streamed AI response via Server-Sent Events.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatMessageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "SSE stream of chat events (tokens, tool calls, buttons)",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string",
+                  "description": "Server-Sent Events stream"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/accounts": {
+      "get": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Get billing account",
+        "description": "Get or create the billing account for the organization",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Billing account data"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/accounts/balance": {
+      "get": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Get account balance",
+        "description": "Quick check of current balance, billing mode, and depletion status",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Balance info"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/accounts/transactions": {
+      "get": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Get transaction history",
+        "description": "List billing transactions for the organization",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Transaction list"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/accounts/mode": {
+      "patch": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Switch billing mode",
+        "description": "Switch between billing modes (byok, payg)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SwitchBillingModeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Mode switched"
+          },
+          "400": {
+            "description": "Invalid transition",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/credits/deduct": {
+      "post": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Deduct credits",
+        "description": "Deduct credits from the organization's billing account",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeductCreditsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Credits deducted"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/checkout-sessions": {
+      "post": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Create Stripe checkout session",
+        "description": "Create a Stripe checkout session for purchasing credits",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCheckoutSessionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Checkout session created with URL"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/webhooks/stripe/{appId}": {
+      "post": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Stripe webhook",
+        "description": "Stripe webhook endpoint. No authentication — Stripe validates via signature header.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "App ID"
+            },
+            "required": true,
+            "description": "App ID",
+            "name": "appId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Webhook processed"
+          },
+          "400": {
+            "description": "Invalid signature",
             "content": {
               "application/json": {
                 "schema": {
