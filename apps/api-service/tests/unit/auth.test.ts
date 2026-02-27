@@ -3,67 +3,86 @@ import * as fs from "fs";
 import * as path from "path";
 
 const authPath = path.join(__dirname, "../../src/middleware/auth.ts");
+const content = fs.readFileSync(authPath, "utf-8");
 
-describe("Auth middleware", () => {
-  it("should support Bearer token authentication", () => {
-    const authHeader = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...";
-    expect(authHeader.startsWith("Bearer ")).toBe(true);
+describe("Auth middleware — Bearer key authentication", () => {
+  it("should only accept Bearer token authentication", () => {
+    expect(content).toContain('authorization');
+    expect(content).toContain('startsWith("Bearer ")');
   });
 
-  it("should support X-API-Key authentication", () => {
-    const headers = { "x-api-key": "mcp_test_key_123" };
-    expect(headers["x-api-key"]).toBeDefined();
+  it("should not support X-API-Key header authentication", () => {
+    expect(content).not.toContain('"x-api-key"');
+    expect(content).not.toContain("X-API-Key");
   });
 
-  it("should extract token from Bearer header", () => {
-    const authHeader = "Bearer test-token-123";
-    const token = authHeader.split(" ")[1];
-    expect(token).toBe("test-token-123");
+  it("should not use Clerk JWT verification", () => {
+    expect(content).not.toContain("verifyToken");
+    expect(content).not.toContain("@clerk/backend");
+    expect(content).not.toContain("clerkJwt");
   });
 });
 
-/**
- * Clerk ID resolution uses client-service sync endpoints (POST /users/sync,
- * POST /orgs/sync) — idempotent get-or-create. This guarantees every Clerk
- * user gets an internal UUID on first request, no webhook dependency.
- */
-describe("Auth middleware — Clerk ID resolution via sync", () => {
-  const content = fs.readFileSync(authPath, "utf-8");
-
-  it("should use POST /users/sync to resolve Clerk user to internal UUID", () => {
-    expect(content).toContain('"/users/sync"');
-    expect(content).toContain("syncUser");
+describe("Auth middleware — key-service validation", () => {
+  it("should validate keys via key-service /validate", () => {
+    expect(content).toContain('"/validate"');
+    expect(content).toContain("callExternalService");
+    expect(content).toContain("externalServices.key");
   });
 
-  it("should use POST /orgs/sync to resolve Clerk org to internal UUID", () => {
-    expect(content).toContain('"/orgs/sync"');
-    expect(content).toContain("syncOrg");
+  it("should distinguish app keys from user keys", () => {
+    expect(content).toContain('"app"');
+    expect(content).toContain('"user"');
+    expect(content).toContain("validation.type");
+  });
+});
+
+describe("Auth middleware — app key identity resolution", () => {
+  it("should read external IDs from x-org-id and x-user-id headers", () => {
+    expect(content).toContain('"x-org-id"');
+    expect(content).toContain('"x-user-id"');
   });
 
-  it("should forward the Clerk JWT to client-service sync endpoints", () => {
-    expect(content).toContain("callService");
-    expect(content).toContain("services.client");
-    expect(content).toContain('Authorization: `Bearer ${clerkJwt}`');
+  it("should require both x-org-id and x-user-id for app keys", () => {
+    expect(content).toContain("App key authentication requires x-org-id and x-user-id headers");
   });
 
-  it("should NOT use by-clerk lookup endpoints (sync replaces them)", () => {
-    expect(content).not.toContain("/users/by-clerk/");
-    expect(content).not.toContain("/orgs/by-clerk/");
+  it("should resolve external IDs via client-service POST /resolve", () => {
+    expect(content).toContain('"/resolve"');
+    expect(content).toContain("externalServices.client");
+    expect(content).toContain("method: \"POST\"");
   });
 
-  it("should NOT fall back to raw Clerk IDs when resolution fails", () => {
-    expect(content).not.toContain("|| clerkUserId");
-    expect(content).not.toContain("|| clerkOrgId");
+  it("should send appId, externalOrgId, externalUserId to client-service", () => {
+    expect(content).toContain("appId");
+    expect(content).toContain("externalOrgId");
+    expect(content).toContain("externalUserId");
   });
 
-  it("should return 502 when identity resolution fails entirely", () => {
+  it("should return 502 when identity resolution fails", () => {
     expect(content).toContain("502");
     expect(content).toContain("Identity resolution failed");
   });
+
+  it("should set authType to app_key for app key authentication", () => {
+    expect(content).toContain('"app_key"');
+  });
 });
 
-describe("Auth middleware — requireUser export", () => {
-  const content = fs.readFileSync(authPath, "utf-8");
+describe("Auth middleware — user key authentication", () => {
+  it("should use orgId directly from key-service for user keys", () => {
+    expect(content).toContain("validation.orgId");
+  });
+
+  it("should set authType to user_key for user key authentication", () => {
+    expect(content).toContain('"user_key"');
+  });
+});
+
+describe("Auth middleware — requireOrg and requireUser exports", () => {
+  it("should export requireOrg middleware", () => {
+    expect(content).toContain("export function requireOrg");
+  });
 
   it("should export requireUser middleware", () => {
     expect(content).toContain("export function requireUser");
@@ -71,5 +90,9 @@ describe("Auth middleware — requireUser export", () => {
 
   it("should return 401 when userId is missing", () => {
     expect(content).toContain("User identity required");
+  });
+
+  it("should return 400 when orgId is missing", () => {
+    expect(content).toContain("Organization context required");
   });
 });

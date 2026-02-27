@@ -3,7 +3,6 @@ import * as Sentry from "@sentry/node";
 import express from "express";
 import cors from "cors";
 import healthRoutes from "./routes/health.js";
-import webhookRoutes from "./routes/webhooks.js";
 import campaignsRoutes from "./routes/campaigns.js";
 import keysRoutes from "./routes/keys.js";
 import searchRoutes from "./routes/search.js";
@@ -13,7 +12,6 @@ import brandRoutes from "./routes/brand.js";
 import leadsRoutes from "./routes/leads.js";
 import activityRoutes from "./routes/activity.js";
 import workflowsRoutes from "./routes/workflows.js";
-import authRoutes from "./routes/auth.js";
 import performanceRoutes from "./routes/performance.js";
 import { registerAppKeys } from "./startup.js";
 import { readFileSync, existsSync } from "fs";
@@ -54,7 +52,6 @@ app.get("/openapi.json", (_req, res) => {
 
 // Public routes
 app.use(healthRoutes);
-app.use(webhookRoutes);
 app.use(performanceRoutes);
 
 // Authenticated routes
@@ -67,7 +64,6 @@ app.use("/v1", brandRoutes);
 app.use("/v1", leadsRoutes);
 app.use("/v1", activityRoutes);
 app.use("/v1", workflowsRoutes);
-app.use("/v1", authRoutes);
 
 // 404 handler
 app.use((req, res) => {

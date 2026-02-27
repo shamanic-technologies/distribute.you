@@ -63,16 +63,9 @@
   "components": {
     "securitySchemes": {
       "bearerAuth": {
-        "type": "apiKey",
-        "in": "header",
-        "name": "Authorization",
-        "description": "Bearer JWT from Clerk (dashboard)"
-      },
-      "apiKey": {
-        "type": "apiKey",
-        "in": "header",
-        "name": "X-API-Key",
-        "description": "API key for MCP clients and service-to-service communication"
+        "type": "http",
+        "scheme": "bearer",
+        "description": "App key (mcpf_app_*) or user key (mcpf_*) via Authorization: Bearer header"
       }
     },
     "schemas": {
@@ -126,17 +119,6 @@
           "error"
         ]
       },
-      "WebhookResponse": {
-        "type": "object",
-        "properties": {
-          "received": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "received"
-        ]
-      },
       "MeResponse": {
         "type": "object",
         "properties": {
@@ -149,17 +131,9 @@
           "authType": {
             "type": "string",
             "enum": [
-              "jwt",
-              "api_key"
+              "app_key",
+              "user_key"
             ]
-          },
-          "user": {
-            "nullable": true,
-            "description": "User object from client-service"
-          },
-          "org": {
-            "nullable": true,
-            "description": "Organization object from client-service"
           }
         }
       },
@@ -759,56 +733,6 @@
         "required": [
           "ok"
         ]
-      },
-      "ProvisionResponse": {
-        "type": "object",
-        "properties": {
-          "apiKey": {
-            "type": "string",
-            "description": "API key for the provisioned user (mcpf_... format)"
-          },
-          "userId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "Internal user ID"
-          },
-          "orgId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "Internal organization ID"
-          }
-        },
-        "required": [
-          "apiKey",
-          "userId",
-          "orgId"
-        ]
-      },
-      "ProvisionRequest": {
-        "type": "object",
-        "properties": {
-          "email": {
-            "type": "string",
-            "format": "email",
-            "description": "Email address of the user to provision"
-          },
-          "firstName": {
-            "type": "string",
-            "description": "User's first name"
-          },
-          "lastName": {
-            "type": "string",
-            "description": "User's last name"
-          },
-          "profilePicture": {
-            "type": "string",
-            "format": "uri",
-            "description": "URL to user's profile picture"
-          }
-        },
-        "required": [
-          "email"
-        ]
       }
     },
     "parameters": {}
@@ -894,47 +818,6 @@
         }
       }
     },
-    "/webhooks/clerk": {
-      "post": {
-        "tags": [
-          "Webhooks"
-        ],
-        "summary": "Clerk webhook receiver",
-        "description": "Receives Clerk lifecycle events (user.created, session.created). Verified via svix signature headers.",
-        "responses": {
-          "200": {
-            "description": "Webhook received",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WebhookResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid signature or missing headers",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Webhook not configured",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/performance/leaderboard": {
       "get": {
         "tags": [
@@ -969,9 +852,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "responses": {
@@ -1018,9 +898,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "parameters": [
@@ -1070,9 +947,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "requestBody": {
@@ -1121,9 +995,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "parameters": [
@@ -1173,9 +1044,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "parameters": [
@@ -1227,9 +1095,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "parameters": [
@@ -1281,9 +1146,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "parameters": [
@@ -1335,9 +1197,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "parameters": [
@@ -1389,9 +1248,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "parameters": [
@@ -1450,9 +1306,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "requestBody": {
@@ -1511,9 +1364,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "parameters": [
@@ -1565,9 +1415,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "parameters": [
@@ -1619,9 +1466,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "responses": {
@@ -1659,9 +1503,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "requestBody": {
@@ -1720,9 +1561,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "parameters": [
@@ -1840,9 +1678,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "responses": {
@@ -1880,9 +1715,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "requestBody": {
@@ -1931,9 +1763,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "parameters": [
@@ -1985,9 +1814,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "responses": {
@@ -2027,9 +1853,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "requestBody": {
@@ -2088,9 +1911,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "requestBody": {
@@ -2149,9 +1969,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "requestBody": {
@@ -2210,9 +2027,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "parameters": [
@@ -2274,9 +2088,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "responses": {
@@ -2316,9 +2127,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "parameters": [
@@ -2370,9 +2178,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "parameters": [
@@ -2434,9 +2239,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "responses": {
@@ -2476,9 +2278,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "requestBody": {
@@ -2537,9 +2336,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "parameters": [
@@ -2591,9 +2387,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "parameters": [
@@ -2645,9 +2438,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "parameters": [
@@ -2699,9 +2489,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "parameters": [
@@ -2783,9 +2570,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "parameters": [
@@ -2837,9 +2621,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "parameters": [
@@ -2938,9 +2719,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "requestBody": {
@@ -3016,9 +2794,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "parameters": [
@@ -3078,9 +2853,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "apiKey": []
           }
         ],
         "responses": {
@@ -3106,56 +2878,6 @@
           },
           "500": {
             "description": "Internal error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/auth/provision": {
-      "post": {
-        "tags": [
-          "Auth"
-        ],
-        "summary": "Provision a user and API key",
-        "description": "Public endpoint — no authentication required. Creates or finds an anonymous user for the given email, then returns an API key for that user's organization. Optionally accepts firstName, lastName, and profilePicture. Idempotent: calling with the same email returns the existing user and key.",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ProvisionRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Provisioned user with API key",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProvisionResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request body",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "Upstream service error",
             "content": {
               "application/json": {
                 "schema": {

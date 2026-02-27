@@ -1,21 +1,17 @@
 import { Request, Response, NextFunction } from "express";
-import { verifyToken } from "@clerk/backend";
-import { callExternalService, callService, externalServices, services } from "../lib/service-client.js";
-
-/** client-service sync response shapes */
-interface UserSyncResponse { user: { id: string }; created: boolean }
-interface OrgSyncResponse { org: { id: string }; created: boolean }
+import { callExternalService, externalServices } from "../lib/service-client.js";
 
 export interface AuthenticatedRequest extends Request {
   userId?: string;
   orgId?: string;
-  authType?: "jwt" | "api_key";
+  authType?: "app_key" | "user_key";
 }
 
 /**
- * Authenticate via Clerk JWT or API Key
- * - Bearer token: Clerk JWT (from dashboard) → resolved to internal UUIDs via client-service
- * - X-API-Key: API key (from MCP/external clients) → resolved to internal UUIDs via key-service
+ * Authenticate via API key (app key or user key)
+ * - App key (mcpf_app_*): resolved via key-service → appId, then external IDs
+ *   from x-org-id/x-user-id headers resolved to internal UUIDs via client-service
+ * - User key (mcpf_*): resolved via key-service → orgId (internal UUID directly)
  */
 export async function authenticate(
   req: AuthenticatedRequest,
@@ -24,49 +20,50 @@ export async function authenticate(
 ) {
   try {
     const authHeader = req.headers.authorization;
-    const apiKey = req.headers["x-api-key"] as string | undefined;
 
-    // Try API Key first (for MCP clients)
-    if (apiKey) {
-      const validation = await validateApiKey(apiKey);
-      if (validation) {
-        req.userId = validation.userId || undefined;
-        req.orgId = validation.orgId;
-        req.authType = "api_key";
-        return next();
-      }
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Missing authentication" });
+    }
+
+    const key = authHeader.slice(7);
+
+    // Validate key with key-service
+    const validation = await validateKey(key);
+    if (!validation) {
       return res.status(401).json({ error: "Invalid API key" });
     }
 
-    // Try Clerk JWT (for dashboard)
-    if (authHeader?.startsWith("Bearer ")) {
-      const token = authHeader.split(" ")[1];
+    // App key: resolve external IDs to internal UUIDs via client-service
+    if (validation.type === "app") {
+      const externalOrgId = req.headers["x-org-id"] as string | undefined;
+      const externalUserId = req.headers["x-user-id"] as string | undefined;
 
-      const payload = await verifyToken(token, {
-        secretKey: process.env.CLERK_SECRET_KEY!,
-      });
+      if (!externalOrgId || !externalUserId) {
+        return res.status(400).json({
+          error: "App key authentication requires x-org-id and x-user-id headers",
+        });
+      }
 
-      const clerkUserId = payload.sub;
-      // Handle both JWT v1 (org_id) and v2 (o.id) formats
-      const orgClaim = payload.o as { id?: string } | undefined;
-      const clerkOrgId = payload.org_id || orgClaim?.id;
+      const resolved = await resolveExternalIds(
+        validation.appId!,
+        externalOrgId,
+        externalUserId,
+      );
 
-      // Sync Clerk IDs to internal UUIDs via client-service (idempotent get-or-create)
-      const resolved = await resolveClerkIds(token, clerkOrgId);
-
-      if (!resolved.userId && !resolved.orgId) {
-        console.error("[auth] Failed to resolve Clerk IDs — client-service unavailable or returned empty");
+      if (!resolved) {
         return res.status(502).json({ error: "Identity resolution failed" });
       }
 
-      req.userId = resolved.userId || undefined;
-      req.orgId = resolved.orgId || undefined;
-      req.authType = "jwt";
-
+      req.orgId = resolved.orgId;
+      req.userId = resolved.userId;
+      req.authType = "app_key";
       return next();
     }
 
-    return res.status(401).json({ error: "Missing authentication" });
+    // User key: orgId is already an internal UUID
+    req.orgId = validation.orgId;
+    req.authType = "user_key";
+    return next();
   } catch (error) {
     console.error("Auth error:", error);
     return res.status(401).json({ error: "Invalid authentication" });
@@ -74,90 +71,56 @@ export async function authenticate(
 }
 
 /**
- * Resolve Clerk IDs to internal UUIDs via client-service sync endpoints.
- * POST /users/sync and /orgs/sync are idempotent get-or-create — they return
- * the internal UUID whether the user/org already exists or is brand new.
- * This guarantees every Clerk user gets an internal identity on first request.
+ * Validate API key against key-service /validate
  */
-async function resolveClerkIds(
-  clerkJwt: string,
-  clerkOrgId?: string
-): Promise<{ userId: string | null; orgId: string | null }> {
-  let userId: string | null = null;
-  let orgId: string | null = null;
-
+async function validateKey(apiKey: string): Promise<{
+  type: "app" | "user";
+  appId?: string;
+  orgId?: string;
+} | null> {
   try {
-    const [userResult, orgResult] = await Promise.all([
-      syncUser(clerkJwt),
-      clerkOrgId ? syncOrg(clerkJwt) : null,
-    ]);
+    const result = await callExternalService<{
+      valid: boolean;
+      type: "app" | "user";
+      appId?: string;
+      orgId?: string;
+    }>(
+      externalServices.key,
+      "/validate",
+      { headers: { Authorization: `Bearer ${apiKey}` } }
+    );
 
-    if (userResult?.user?.id) userId = userResult.user.id;
-    if (orgResult?.org?.id) orgId = orgResult.org.id;
+    if (!result.valid) return null;
+    return result;
   } catch (error) {
-    console.error("[auth] Failed to resolve Clerk IDs via client-service:", (error as Error).message);
-  }
-
-  return { userId, orgId };
-}
-
-/** Sync user via client-service POST /users/sync (idempotent get-or-create) */
-async function syncUser(clerkJwt: string): Promise<UserSyncResponse | null> {
-  try {
-    return await callService<UserSyncResponse>(
-      services.client,
-      "/users/sync",
-      { method: "POST", headers: { Authorization: `Bearer ${clerkJwt}` } }
-    );
-  } catch (err: any) {
-    console.error("[auth] User sync failed:", err.message);
-    return null;
-  }
-}
-
-/** Sync org via client-service POST /orgs/sync (idempotent get-or-create) */
-async function syncOrg(clerkJwt: string): Promise<OrgSyncResponse | null> {
-  try {
-    return await callService<OrgSyncResponse>(
-      services.client,
-      "/orgs/sync",
-      { method: "POST", headers: { Authorization: `Bearer ${clerkJwt}` } }
-    );
-  } catch (err: any) {
-    console.error("[auth] Org sync failed:", err.message);
+    console.error("API key validation error:", error);
     return null;
   }
 }
 
 /**
- * Validate API key against keys-service
- * Returns orgId and userId (internal UUIDs from client-service)
+ * Resolve external org/user IDs to internal UUIDs via client-service POST /resolve
  */
-async function validateApiKey(apiKey: string): Promise<{ userId: string | null; orgId: string } | null> {
+async function resolveExternalIds(
+  appId: string,
+  externalOrgId: string,
+  externalUserId: string,
+): Promise<{ orgId: string; userId: string } | null> {
   try {
     const result = await callExternalService<{
-      valid: boolean;
-      orgId?: string;
-      userId?: string | null;
+      orgId: string;
+      userId: string;
     }>(
-      externalServices.key,
-      "/validate",
+      externalServices.client,
+      "/resolve",
       {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-        },
+        method: "POST",
+        body: { appId, externalOrgId, externalUserId },
       }
     );
-
-    if (result.valid && result.orgId) {
-      return {
-        userId: result.userId || null,
-        orgId: result.orgId,
-      };
-    }
-    return null;
+    return result;
   } catch (error) {
-    console.error("API key validation error:", error);
+    console.error("[auth] Failed to resolve external IDs:", (error as Error).message);
     return null;
   }
 }
