@@ -57,6 +57,7 @@ describe("fetchKeySource", () => {
 
     const billingCall = fetchCalls.find((c) => c.url.includes("/v1/accounts"));
     expect(billingCall).toBeDefined();
+    expect(billingCall!.url).not.toContain("/v1/accounts/balance");
     expect(billingCall!.headers!["x-app-id"]).toBe("mcpfactory");
     expect(billingCall!.headers!["x-org-id"]).toBe("org-123");
   });
