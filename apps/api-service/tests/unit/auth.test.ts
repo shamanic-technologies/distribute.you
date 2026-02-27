@@ -33,12 +33,16 @@ describe("Auth middleware", () => {
 describe("Auth middleware — no Clerk ID leaks", () => {
   const content = fs.readFileSync(authPath, "utf-8");
 
-  it("should use callExternalService (with API key) for client-service calls", () => {
+  it("should use callExternalService (with API key) for client-service lookups", () => {
     expect(content).toContain("callExternalService");
     expect(content).toContain("externalServices.client");
-    // Must NOT use no-auth callService for client-service identity resolution
-    expect(content).not.toContain("services.client");
-    expect(content).not.toMatch(/\bcallService\b/);
+  });
+
+  it("should use callService with Bearer JWT for sync fallback (not no-auth)", () => {
+    // Sync endpoints require Clerk JWT — callService is used with explicit Authorization header
+    expect(content).toContain("services.client");
+    expect(content).toContain("callService");
+    expect(content).toContain('Authorization: `Bearer ${clerkJwt}`');
   });
 
   it("should NOT fall back to raw Clerk IDs when resolution fails", () => {
@@ -50,6 +54,28 @@ describe("Auth middleware — no Clerk ID leaks", () => {
   it("should return 502 when identity resolution fails entirely", () => {
     expect(content).toContain("502");
     expect(content).toContain("Identity resolution failed");
+  });
+});
+
+describe("Auth middleware — auto-sync on 404", () => {
+  const content = fs.readFileSync(authPath, "utf-8");
+
+  it("should call /users/sync when by-clerk lookup returns 404", () => {
+    expect(content).toContain('"/users/sync"');
+    expect(content).toContain("auto-syncing via client-service");
+  });
+
+  it("should call /orgs/sync when by-clerk lookup returns 404", () => {
+    expect(content).toContain('"/orgs/sync"');
+  });
+
+  it("should only sync when error is 404 (not on other errors)", () => {
+    expect(content).toContain('includes("404")');
+  });
+
+  it("should only sync when JWT is available", () => {
+    // Without JWT, sync endpoints can't authenticate
+    expect(content).toContain("!clerkJwt");
   });
 });
 
