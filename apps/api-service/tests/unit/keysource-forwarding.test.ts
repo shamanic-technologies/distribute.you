@@ -93,13 +93,13 @@ describe("POST /v1/campaigns/:id/resume — keySource forwarding", () => {
     expect(patchCall!.body!.status).toBe("activate");
   });
 
-  it("should forward keySource 'app' when billing returns payg/trial", async () => {
-    mockFetchKeySource.mockResolvedValue("app");
+  it("should forward keySource 'platform' when billing returns payg/trial", async () => {
+    mockFetchKeySource.mockResolvedValue("platform");
     const app = createApp(campaignRouter);
     await request(app).post("/v1/campaigns/camp-123/resume").send({});
 
     const patchCall = fetchCalls.find((c) => c.url.includes("/campaigns/camp-123") && c.method === "PATCH");
-    expect(patchCall!.body!.keySource).toBe("app");
+    expect(patchCall!.body!.keySource).toBe("platform");
   });
 });
 
@@ -124,15 +124,15 @@ describe("POST /v1/workflows/generate — keySource forwarding", () => {
     expect(generateCall!.body!.userId).toBe("user_test123");
   });
 
-  it("should forward keySource 'app' when billing returns payg/trial", async () => {
-    mockFetchKeySource.mockResolvedValue("app");
+  it("should forward keySource 'platform' when billing returns payg/trial", async () => {
+    mockFetchKeySource.mockResolvedValue("platform");
     const app = createApp(workflowRouter);
     await request(app)
       .post("/v1/workflows/generate")
       .send({ description: "Generate a cold outreach workflow for SaaS founders" });
 
     const generateCall = fetchCalls.find((c) => c.url.includes("/workflows/generate") && c.method === "POST");
-    expect(generateCall!.body!.keySource).toBe("app");
+    expect(generateCall!.body!.keySource).toBe("platform");
   });
 });
 
@@ -157,15 +157,15 @@ describe("POST /v1/leads/search — keySource forwarding", () => {
     expect(searchCall!.body!.userId).toBe("user_test123");
   });
 
-  it("should forward keySource 'app' when billing returns payg/trial", async () => {
-    mockFetchKeySource.mockResolvedValue("app");
+  it("should forward keySource 'platform' when billing returns payg/trial", async () => {
+    mockFetchKeySource.mockResolvedValue("platform");
     const app = createApp(leadRouter);
     await request(app)
       .post("/v1/leads/search")
       .send({ person_titles: ["CTO"] });
 
     const searchCall = fetchCalls.find((c) => c.url.includes("/search") && c.method === "POST");
-    expect(searchCall!.body!.keySource).toBe("app");
+    expect(searchCall!.body!.keySource).toBe("platform");
   });
 });
 
@@ -193,8 +193,8 @@ describe("POST /v1/qualify — keySource forwarding", () => {
     expect(qualifyCall!.body!.userId).toBe("user_test123");
   });
 
-  it("should forward keySource 'app' when billing returns payg/trial", async () => {
-    mockFetchKeySource.mockResolvedValue("app");
+  it("should forward keySource 'platform' when billing returns payg/trial", async () => {
+    mockFetchKeySource.mockResolvedValue("platform");
     const app = createApp(qualifyRouter);
     await request(app)
       .post("/v1/qualify")
@@ -205,7 +205,7 @@ describe("POST /v1/qualify — keySource forwarding", () => {
       });
 
     const qualifyCall = fetchCalls.find((c) => c.url.includes("/qualify") && c.method === "POST");
-    expect(qualifyCall!.body!.keySource).toBe("app");
+    expect(qualifyCall!.body!.keySource).toBe("platform");
   });
 });
 
@@ -228,14 +228,14 @@ describe("POST /v1/brand/scrape — keySource forwarding", () => {
     expect(scrapeCall!.body!.userId).toBe("user_test123");
   });
 
-  it("should forward keySource 'app' when billing returns payg/trial", async () => {
-    mockFetchKeySource.mockResolvedValue("app");
+  it("should forward keySource 'platform' when billing returns payg/trial", async () => {
+    mockFetchKeySource.mockResolvedValue("platform");
     const app = createApp(brandRouter);
     await request(app)
       .post("/v1/brand/scrape")
       .send({ url: "https://example.com" });
 
     const scrapeCall = fetchCalls.find((c) => c.url.includes("/scrape") && c.method === "POST");
-    expect(scrapeCall!.body!.keySource).toBe("app");
+    expect(scrapeCall!.body!.keySource).toBe("platform");
   });
 });

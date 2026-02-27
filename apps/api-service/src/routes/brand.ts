@@ -19,8 +19,8 @@ router.post("/brand/scrape", authenticate, async (req: AuthenticatedRequest, res
     }
     const { url, skipCache } = parsed.data;
 
-    // Resolve keySource from billing-service (default to "app" if no orgId)
-    const keySource = req.orgId ? await fetchKeySource(req.orgId) : "app";
+    // Resolve keySource from billing-service (default to "platform" if no orgId)
+    const keySource = req.orgId ? await fetchKeySource(req.orgId) : "platform";
 
     const result = await callExternalService(
       externalServices.scraping,

@@ -31,8 +31,8 @@ router.post("/qualify", authenticate, async (req: AuthenticatedRequest, res) => 
     // Use orgId from auth if not provided
     const orgId = sourceOrgId || req.orgId;
 
-    // Resolve keySource from billing-service (default to "app" if no orgId)
-    const keySource = orgId ? await fetchKeySource(orgId) : "app";
+    // Resolve keySource from billing-service (default to "platform" if no orgId)
+    const keySource = orgId ? await fetchKeySource(orgId) : "platform";
 
     const result = await callExternalService(
       externalServices.replyQualification,

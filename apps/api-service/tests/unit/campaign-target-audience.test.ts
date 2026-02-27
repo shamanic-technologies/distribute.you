@@ -145,13 +145,13 @@ describe("POST /v1/campaigns with targetAudience", () => {
   });
 
   it("should resolve keySource from billing-service and forward to campaign-service", async () => {
-    mockFetchKeySource.mockResolvedValue("app");
+    mockFetchKeySource.mockResolvedValue("platform");
 
     const app = createApp();
     const res = await request(app)
       .post("/v1/campaigns")
       .send({
-        name: "App Key Campaign",
+        name: "Platform Key Campaign",
         workflowName: "sales-email-cold-outreach-sienna",
         brandUrl: "https://example.com",
         targetAudience: "CTOs at SaaS startups",
@@ -169,11 +169,11 @@ describe("POST /v1/campaigns with targetAudience", () => {
 
     const campaignCall = fetchCalls.find((c) => c.url.includes("/campaigns") && c.body?.appId === "mcpfactory");
     expect(campaignCall).toBeDefined();
-    expect(campaignCall!.body!.keySource).toBe("app");
+    expect(campaignCall!.body!.keySource).toBe("platform");
   });
 
-  it("should default to 'app' keySource when billing-service is unreachable", async () => {
-    mockFetchKeySource.mockResolvedValue("app"); // billing.ts fallback
+  it("should default to 'platform' keySource when billing-service is unreachable", async () => {
+    mockFetchKeySource.mockResolvedValue("platform"); // billing.ts fallback
 
     const app = createApp();
     const res = await request(app)
@@ -195,7 +195,7 @@ describe("POST /v1/campaigns with targetAudience", () => {
     expect(res.status).toBe(200);
 
     const campaignCall = fetchCalls.find((c) => c.url.includes("/campaigns") && c.body?.appId === "mcpfactory");
-    expect(campaignCall!.body!.keySource).toBe("app");
+    expect(campaignCall!.body!.keySource).toBe("platform");
   });
 
   it("should reject when targetAudience is missing with didactic error", async () => {
