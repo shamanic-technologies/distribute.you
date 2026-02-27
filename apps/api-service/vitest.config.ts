@@ -13,8 +13,9 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      // Mock workspace package that may not be built in CI
+      // Mock workspace packages that may not be built in CI
       "@mcpfactory/runs-client": path.resolve(__dirname, "tests/__mocks__/runs-client.ts"),
+      "@mcpfactory/content": path.resolve(__dirname, "tests/__mocks__/content.ts"),
     },
   },
 });
