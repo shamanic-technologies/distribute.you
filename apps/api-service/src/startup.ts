@@ -16,16 +16,14 @@ const APP_KEYS: { provider: string; envVar: string }[] = [
 export async function registerAppKeys(): Promise<void> {
   console.log("[api-service] Registering app keys with key-service...");
 
-  // Warn about missing env vars but don't crash — allows partial deploys
+  // Crash on missing env vars — all keys are required
   const missing = APP_KEYS.filter(({ envVar }) => !process.env[envVar]);
   if (missing.length > 0) {
     const names = missing.map(({ envVar }) => envVar).join(", ");
-    console.warn(`[api-service] Skipping ${missing.length} app keys with missing env vars: ${names}`);
+    throw new Error(`Missing required env vars: ${names}`);
   }
 
-  // Register all keys that have env vars set — throw on registration failure
-  const present = APP_KEYS.filter(({ envVar }) => process.env[envVar]);
-  for (const { provider, envVar } of present) {
+  for (const { provider, envVar } of APP_KEYS) {
     const apiKey = process.env[envVar]!;
     await callExternalService(externalServices.key, "/internal/app-keys", {
       method: "POST",
@@ -34,5 +32,5 @@ export async function registerAppKeys(): Promise<void> {
     console.log(`[api-service] App key registered: ${provider}`);
   }
 
-  console.log(`[api-service] ${present.length}/${APP_KEYS.length} app keys registered successfully`);
+  console.log(`[api-service] ${APP_KEYS.length}/${APP_KEYS.length} app keys registered successfully`);
 }
