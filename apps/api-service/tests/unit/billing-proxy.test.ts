@@ -47,9 +47,10 @@ describe("Billing proxy routes", () => {
     expect(authMatches!.length).toBe(7); // 6 routes + 1 import
   });
 
-  it("should use buildInternalHeaders for all authenticated endpoints", () => {
+  it("should use billingHeaders (with x-key-source) for all authenticated endpoints", () => {
     expect(content).toContain("buildInternalHeaders");
-    const headerMatches = content.match(/buildInternalHeaders\(req\)/g);
+    expect(content).toContain('"x-key-source": "platform"');
+    const headerMatches = content.match(/billingHeaders\(req\)/g);
     expect(headerMatches).not.toBeNull();
     expect(headerMatches!.length).toBe(6);
   });

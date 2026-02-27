@@ -20,7 +20,7 @@ export async function fetchKeySource(orgId: string): Promise<KeySource> {
   const result = await callExternalService<BillingAccount>(
     externalServices.billing,
     "/v1/accounts",
-    { headers: { "x-app-id": "mcpfactory", "x-org-id": orgId } }
+    { headers: { "x-app-id": "mcpfactory", "x-org-id": orgId, "x-key-source": "platform" } }
   );
   if (result.billingMode === "byok") return "byok";
   return "platform";

@@ -52,7 +52,7 @@ describe("fetchKeySource", () => {
     vi.restoreAllMocks();
   });
 
-  it("should call GET /v1/accounts (upsert) with x-app-id and x-org-id headers", async () => {
+  it("should call GET /v1/accounts (upsert) with required headers including x-key-source", async () => {
     await fetchKeySource("org-123");
 
     const billingCall = fetchCalls.find((c) => c.url.includes("/v1/accounts"));
@@ -60,6 +60,7 @@ describe("fetchKeySource", () => {
     expect(billingCall!.url).not.toContain("/v1/accounts/balance");
     expect(billingCall!.headers!["x-app-id"]).toBe("mcpfactory");
     expect(billingCall!.headers!["x-org-id"]).toBe("org-123");
+    expect(billingCall!.headers!["x-key-source"]).toBe("platform");
   });
 
   it("should return 'platform' for trial billing mode", async () => {
