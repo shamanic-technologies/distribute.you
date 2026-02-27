@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { Webhook } from "svix";
-import { callService, services, callExternalService, externalServices } from "../lib/service-client.js";
+import { callExternalService, externalServices } from "../lib/service-client.js";
 
 const router = Router();
 
@@ -8,17 +8,18 @@ const CLERK_WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
 
 /**
  * Resolve a Clerk user ID to an internal user ID via client-service.
- * Falls back to the Clerk ID if resolution fails.
+ * Uses the by-clerk lookup (API key auth). Returns null if user not found.
  */
-async function resolveUserId(clerkUserId: string): Promise<string> {
+async function resolveUserId(clerkUserId: string): Promise<string | null> {
   try {
-    const result = await callService<{ user: { id: string } }>(
-      services.client,
+    const result = await callExternalService<{ user: { id: string } }>(
+      externalServices.client,
       `/users/by-clerk/${clerkUserId}`
     );
     return result.user.id;
   } catch {
-    return clerkUserId;
+    console.error(`[webhooks] Failed to resolve Clerk user ${clerkUserId} — skipping`);
+    return null;
   }
 }
 
@@ -62,41 +63,28 @@ router.post("/webhooks/clerk", async (req: Request, res: Response) => {
 
   try {
     if (eventType === "user.created") {
-      const clerkUserId = event.data.id as string;
-      const userId = await resolveUserId(clerkUserId);
+      const userId = await resolveUserId(event.data.id as string);
+      if (!userId) return;
 
-      // Fire welcome email + signup notification in parallel
       await Promise.allSettled([
         callExternalService(externalServices.lifecycle, "/send", {
           method: "POST",
-          body: {
-            appId: "mcpfactory",
-            eventType: "welcome",
-            userId,
-          },
+          body: { appId: "mcpfactory", eventType: "welcome", userId },
         }),
         callExternalService(externalServices.lifecycle, "/send", {
           method: "POST",
-          body: {
-            appId: "mcpfactory",
-            eventType: "signup_notification",
-            userId,
-          },
+          body: { appId: "mcpfactory", eventType: "signup_notification", userId },
         }),
       ]);
     }
 
     if (eventType === "session.created") {
-      const clerkUserId = event.data.user_id as string;
-      const userId = await resolveUserId(clerkUserId);
+      const userId = await resolveUserId(event.data.user_id as string);
+      if (!userId) return;
 
       callExternalService(externalServices.lifecycle, "/send", {
         method: "POST",
-        body: {
-          appId: "mcpfactory",
-          eventType: "signin_notification",
-          userId,
-        },
+        body: { appId: "mcpfactory", eventType: "signin_notification", userId },
       }).catch((err) => console.warn("[webhooks/clerk] signin_notification failed:", err.message));
     }
   } catch (err: any) {

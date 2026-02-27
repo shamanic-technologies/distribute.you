@@ -32,7 +32,7 @@ router.post("/auth/provision", async (req: Request, res: Response) => {
     // 2. Create or find anonymous user via client-service
     let clientResult: {
       user: { id: string; email: string };
-      org: { id: string; clerkOrgId?: string };
+      org: { id: string };
       created: boolean;
     };
 
