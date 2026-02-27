@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyToken } from "@clerk/backend";
-import { callExternalService, externalServices } from "../lib/service-client.js";
+import { callExternalService, callService, externalServices, services } from "../lib/service-client.js";
 
 export interface AuthenticatedRequest extends Request {
   userId?: string;
@@ -47,8 +47,8 @@ export async function authenticate(
       const orgClaim = payload.o as { id?: string } | undefined;
       const clerkOrgId = payload.org_id || orgClaim?.id;
 
-      // Resolve Clerk IDs to internal UUIDs via client-service
-      const resolved = await resolveClerkIds(clerkUserId, clerkOrgId);
+      // Resolve Clerk IDs to internal UUIDs via client-service (auto-syncs if not found)
+      const resolved = await resolveClerkIds(clerkUserId, clerkOrgId, token);
 
       if (!resolved.userId && !resolved.orgId) {
         console.error("[auth] Failed to resolve Clerk IDs — client-service unavailable or returned empty");
@@ -71,33 +71,21 @@ export async function authenticate(
 
 /**
  * Resolve Clerk IDs to internal UUIDs via client-service.
- * Returns null values if client-service is unavailable — callers must handle this.
+ * Tries lookup first (GET /by-clerk/...), then auto-syncs via POST /users/sync
+ * or POST /orgs/sync if the user/org doesn't exist yet.
  */
 async function resolveClerkIds(
   clerkUserId: string,
-  clerkOrgId?: string
+  clerkOrgId?: string,
+  clerkJwt?: string
 ): Promise<{ userId: string | null; orgId: string | null }> {
   let userId: string | null = null;
   let orgId: string | null = null;
 
   try {
     const [userResult, orgResult] = await Promise.all([
-      callExternalService<{ user: { id: string } }>(
-        externalServices.client,
-        `/users/by-clerk/${clerkUserId}`
-      ).catch((err) => {
-        console.error("[auth] Failed to resolve Clerk user:", err.message);
-        return null;
-      }),
-      clerkOrgId
-        ? callExternalService<{ org: { id: string } }>(
-            externalServices.client,
-            `/orgs/by-clerk/${clerkOrgId}`
-          ).catch((err) => {
-            console.error("[auth] Failed to resolve Clerk org:", err.message);
-            return null;
-          })
-        : null,
+      resolveUser(clerkUserId, clerkJwt),
+      clerkOrgId ? resolveOrg(clerkOrgId, clerkJwt) : null,
     ]);
 
     if (userResult?.user?.id) userId = userResult.user.id;
@@ -107,6 +95,70 @@ async function resolveClerkIds(
   }
 
   return { userId, orgId };
+}
+
+/** Lookup user by Clerk ID; on 404, auto-provision via /users/sync */
+async function resolveUser(
+  clerkUserId: string,
+  clerkJwt?: string
+): Promise<{ user: { id: string } } | null> {
+  try {
+    return await callExternalService<{ user: { id: string } }>(
+      externalServices.client,
+      `/users/by-clerk/${clerkUserId}`
+    );
+  } catch (lookupErr: any) {
+    if (!lookupErr.message?.includes("404") || !clerkJwt) {
+      console.error("[auth] Failed to resolve Clerk user:", lookupErr.message);
+      return null;
+    }
+    // User not in client-service yet — auto-sync
+    try {
+      console.log(`[auth] User ${clerkUserId} not found, auto-syncing via client-service`);
+      const syncResult = await callService<{ user: { id: string }; created: boolean }>(
+        services.client,
+        "/users/sync",
+        { method: "POST", headers: { Authorization: `Bearer ${clerkJwt}` } }
+      );
+      console.log(`[auth] User synced: ${syncResult.user.id} (created=${syncResult.created})`);
+      return { user: syncResult.user };
+    } catch (syncErr: any) {
+      console.error("[auth] User sync failed:", syncErr.message);
+      return null;
+    }
+  }
+}
+
+/** Lookup org by Clerk ID; on 404, auto-provision via /orgs/sync */
+async function resolveOrg(
+  clerkOrgId: string,
+  clerkJwt?: string
+): Promise<{ org: { id: string } } | null> {
+  try {
+    return await callExternalService<{ org: { id: string } }>(
+      externalServices.client,
+      `/orgs/by-clerk/${clerkOrgId}`
+    );
+  } catch (lookupErr: any) {
+    if (!lookupErr.message?.includes("404") || !clerkJwt) {
+      console.error("[auth] Failed to resolve Clerk org:", lookupErr.message);
+      return null;
+    }
+    // Org not in client-service yet — auto-sync
+    try {
+      console.log(`[auth] Org ${clerkOrgId} not found, auto-syncing via client-service`);
+      const syncResult = await callService<{ org: { id: string }; created: boolean }>(
+        services.client,
+        "/orgs/sync",
+        { method: "POST", headers: { Authorization: `Bearer ${clerkJwt}` } }
+      );
+      console.log(`[auth] Org synced: ${syncResult.org.id} (created=${syncResult.created})`);
+      return { org: syncResult.org };
+    } catch (syncErr: any) {
+      console.error("[auth] Org sync failed:", syncErr.message);
+      return null;
+    }
+  }
 }
 
 /**
