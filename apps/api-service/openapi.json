@@ -16,8 +16,8 @@
       "description": "Health check and debug endpoints"
     },
     {
-      "name": "Webhooks",
-      "description": "Webhook receivers"
+      "name": "Apps",
+      "description": "App registration"
     },
     {
       "name": "Performance",
@@ -54,10 +54,6 @@
     {
       "name": "Activity",
       "description": "User activity tracking"
-    },
-    {
-      "name": "Auth",
-      "description": "User provisioning and authentication"
     }
   ],
   "components": {
@@ -117,6 +113,39 @@
         },
         "required": [
           "error"
+        ]
+      },
+      "RegisterAppResponse": {
+        "type": "object",
+        "properties": {
+          "appId": {
+            "type": "string",
+            "description": "The registered app ID"
+          },
+          "apiKey": {
+            "type": "string",
+            "description": "API key (only returned on first creation — save it)"
+          },
+          "message": {
+            "type": "string",
+            "description": "Status message"
+          }
+        },
+        "required": [
+          "appId"
+        ]
+      },
+      "RegisterAppRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Unique app name (lowercase, alphanumeric with hyphens)"
+          }
+        },
+        "required": [
+          "name"
         ]
       },
       "MeResponse": {
@@ -369,6 +398,13 @@
           "apiKey": {
             "type": "string",
             "description": "The API key value"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "app"
+            ],
+            "description": "Key scope: 'app' for app-level key (no org/user needed). Omit for org-level BYOK."
           }
         },
         "required": [
@@ -807,6 +843,56 @@
           },
           "404": {
             "description": "Spec not generated yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/apps/register": {
+      "post": {
+        "tags": [
+          "Apps"
+        ],
+        "summary": "Register an app",
+        "description": "Register a new app and receive an API key. Idempotent: returns existing appId if already registered. The API key is only shown on first creation.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterAppRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "App registered (or already exists)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterAppResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1498,8 +1584,8 @@
         "tags": [
           "Keys"
         ],
-        "summary": "Add a BYOK key",
-        "description": "Store a new BYOK API key for a provider (e.g. openai, anthropic, apollo)",
+        "summary": "Add a provider key",
+        "description": "Store a provider API key. Use scope:'app' for app-level keys (no org/user needed). Omit scope for org-level BYOK keys.",
         "security": [
           {
             "bearerAuth": []

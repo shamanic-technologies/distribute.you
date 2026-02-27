@@ -24,15 +24,41 @@ router.get("/keys", authenticate, requireOrg, requireUser, async (req: Authentic
 
 /**
  * POST /v1/keys
- * Add a BYOK key
+ * Add a provider key. Supports:
+ * - scope: "app" → app-scoped key (requires app key auth, no org/user needed)
+ * - no scope → BYOK org-scoped key (requires org + user context)
  */
-router.post("/keys", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
+router.post("/keys", authenticate, async (req: AuthenticatedRequest, res) => {
   try {
     const parsed = AddByokKeyRequestSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ error: "Invalid request", details: parsed.error.flatten() });
     }
-    const { provider, apiKey } = parsed.data;
+    const { provider, apiKey, scope } = parsed.data;
+
+    if (scope === "app") {
+      if (!req.appId) {
+        return res.status(403).json({ error: "App-scoped keys require app key authentication" });
+      }
+
+      const result = await callExternalService(
+        externalServices.key,
+        "/internal/app-keys",
+        {
+          method: "POST",
+          body: { appId: req.appId, provider, apiKey },
+        }
+      );
+      return res.json(result);
+    }
+
+    // Default: BYOK key (requires org + user)
+    if (!req.orgId) {
+      return res.status(400).json({ error: "Organization context required" });
+    }
+    if (!req.userId) {
+      return res.status(401).json({ error: "User identity required" });
+    }
 
     const result = await callExternalService(
       externalServices.key,

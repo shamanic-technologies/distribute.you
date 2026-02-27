@@ -113,6 +113,46 @@ registry.registerPath({
 });
 
 // ===================================================================
+// APPS
+// ===================================================================
+
+export const RegisterAppRequestSchema = z
+  .object({
+    name: z.string().min(1).describe("Unique app name (lowercase, alphanumeric with hyphens)"),
+  })
+  .openapi("RegisterAppRequest");
+
+export const RegisterAppResponseSchema = z
+  .object({
+    appId: z.string().describe("The registered app ID"),
+    apiKey: z.string().optional().describe("API key (only returned on first creation — save it)"),
+    message: z.string().optional().describe("Status message"),
+  })
+  .openapi("RegisterAppResponse");
+
+registry.registerPath({
+  method: "post",
+  path: "/v1/apps/register",
+  tags: ["Apps"],
+  summary: "Register an app",
+  description:
+    "Register a new app and receive an API key. Idempotent: returns existing appId if already registered. The API key is only shown on first creation.",
+  request: {
+    body: {
+      content: { "application/json": { schema: RegisterAppRequestSchema } },
+    },
+  },
+  responses: {
+    200: {
+      description: "App registered (or already exists)",
+      content: { "application/json": { schema: RegisterAppResponseSchema } },
+    },
+    400: { description: "Invalid request", content: errorContent },
+    500: { description: "Internal error", content: errorContent },
+  },
+});
+
+// ===================================================================
 // PERFORMANCE
 // ===================================================================
 
@@ -423,6 +463,10 @@ export const AddByokKeyRequestSchema = z
       .string()
       .describe("Provider name (e.g. openai, anthropic, apollo)"),
     apiKey: z.string().describe("The API key value"),
+    scope: z
+      .enum(["app"])
+      .optional()
+      .describe("Key scope: 'app' for app-level key (no org/user needed). Omit for org-level BYOK."),
   })
   .openapi("AddByokKeyRequest");
 
@@ -445,9 +489,9 @@ registry.registerPath({
   method: "post",
   path: "/v1/keys",
   tags: ["Keys"],
-  summary: "Add a BYOK key",
+  summary: "Add a provider key",
   description:
-    "Store a new BYOK API key for a provider (e.g. openai, anthropic, apollo)",
+    "Store a provider API key. Use scope:'app' for app-level keys (no org/user needed). Omit scope for org-level BYOK keys.",
   security: authed,
   request: {
     body: {
