@@ -5,8 +5,8 @@ import { buildInternalHeaders } from "../lib/internal-headers.js";
 
 const router = Router();
 
-// PUT /v1/chat/config — register app chat config (app-level, no org/user needed)
-router.put("/chat/config", authenticate, async (req: AuthenticatedRequest, res) => {
+// PUT /v1/chat/config — register app chat config
+router.put("/chat/config", authenticate, requireOrg, requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     if (!req.appId) {
       return res.status(403).json({ error: "App key authentication required for config registration" });

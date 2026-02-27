@@ -22,15 +22,15 @@ describe("Chat proxy routes", () => {
     expect(content).toContain("router.post");
   });
 
-  it("should use authenticate-only on config (no requireOrg/requireUser)", () => {
+  it("should use authenticate, requireOrg, requireUser on config", () => {
     // Extract the config route definition
     const configSection = content.slice(
       content.indexOf('"/chat/config"'),
       content.indexOf('"/chat"', content.indexOf('"/chat/config"') + 20),
     );
     expect(configSection).toContain("authenticate");
-    expect(configSection).not.toContain("requireOrg");
-    expect(configSection).not.toContain("requireUser");
+    expect(configSection).toContain("requireOrg");
+    expect(configSection).toContain("requireUser");
   });
 
   it("should check req.appId on config and return 403 if missing", () => {
