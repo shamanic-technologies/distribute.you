@@ -14,6 +14,9 @@ import activityRoutes from "./routes/activity.js";
 import workflowsRoutes from "./routes/workflows.js";
 import performanceRoutes from "./routes/performance.js";
 import appsRoutes from "./routes/apps.js";
+import chatRoutes from "./routes/chat.js";
+import billingRoutes from "./routes/billing.js";
+import { stripeWebhookHandler } from "./routes/billing.js";
 import { registerAppKeys } from "./startup.js";
 import { readFileSync, existsSync } from "fs";
 import { fileURLToPath } from "url";
@@ -37,6 +40,13 @@ app.use(cors({
   ],
   credentials: true,
 }));
+
+// Stripe webhook must be mounted BEFORE express.json() — needs raw body for signature verification
+app.post(
+  "/v1/billing/webhooks/stripe/:appId",
+  express.raw({ type: "application/json" }),
+  stripeWebhookHandler,
+);
 
 app.use(express.json());
 
@@ -68,6 +78,8 @@ app.use("/v1", brandRoutes);
 app.use("/v1", leadsRoutes);
 app.use("/v1", activityRoutes);
 app.use("/v1", workflowsRoutes);
+app.use("/v1", chatRoutes);
+app.use("/v1", billingRoutes);
 
 // 404 handler
 app.use((req, res) => {

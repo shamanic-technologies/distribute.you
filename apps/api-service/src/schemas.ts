@@ -1155,3 +1155,234 @@ registry.registerPath({
   },
 });
 
+// ===================================================================
+// CHAT
+// ===================================================================
+
+export const ChatConfigRequestSchema = z
+  .object({
+    systemPrompt: z.string().min(1).describe("System prompt for the AI assistant"),
+    mcpServerUrl: z.string().url().optional().describe("MCP server URL for tool calling"),
+    mcpKeyName: z.string().min(1).optional().describe("MCP key name for auth resolution"),
+  })
+  .openapi("ChatConfigRequest");
+
+export const ChatMessageRequestSchema = z
+  .object({
+    message: z.string().min(1).describe("User message text"),
+    sessionId: z.string().uuid().optional().describe("Session ID for conversation continuity"),
+    context: z.record(z.unknown()).optional().describe("Additional context for the AI"),
+  })
+  .openapi("ChatMessageRequest");
+
+registry.registerPath({
+  method: "put",
+  path: "/v1/chat/config",
+  tags: ["Chat"],
+  summary: "Register chat app config",
+  description:
+    "Register or update app configuration for chat (system prompt, MCP server). Requires app key authentication.",
+  security: authed,
+  request: {
+    body: {
+      content: { "application/json": { schema: ChatConfigRequestSchema } },
+    },
+  },
+  responses: {
+    200: { description: "Config registered" },
+    401: { description: "Unauthorized", content: errorContent },
+    403: { description: "App key required", content: errorContent },
+    500: { description: "Internal error", content: errorContent },
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/v1/chat",
+  tags: ["Chat"],
+  summary: "Stream chat response (SSE)",
+  description:
+    "Send a message and receive a streamed AI response via Server-Sent Events.",
+  security: authed,
+  request: {
+    body: {
+      content: { "application/json": { schema: ChatMessageRequestSchema } },
+    },
+  },
+  responses: {
+    200: {
+      description: "SSE stream of chat events (tokens, tool calls, buttons)",
+      content: {
+        "text/event-stream": {
+          schema: z.string().describe("Server-Sent Events stream"),
+        },
+      },
+    },
+    401: { description: "Unauthorized", content: errorContent },
+    500: { description: "Internal error", content: errorContent },
+  },
+});
+
+// ===================================================================
+// BILLING
+// ===================================================================
+
+export const SwitchBillingModeRequestSchema = z
+  .object({
+    mode: z.enum(["byok", "payg"]).describe("Billing mode to switch to"),
+    reload_amount_cents: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe("Auto-reload amount in cents (for payg mode)"),
+  })
+  .openapi("SwitchBillingModeRequest");
+
+export const DeductCreditsRequestSchema = z
+  .object({
+    amount_cents: z.number().int().positive().describe("Amount to deduct in cents"),
+    description: z.string().min(1).describe("Reason for the deduction"),
+    app_id: z.string().min(1).describe("App ID"),
+    user_id: z.string().uuid().optional().describe("User ID"),
+  })
+  .openapi("DeductCreditsRequest");
+
+export const CreateCheckoutSessionRequestSchema = z
+  .object({
+    success_url: z.string().url().describe("URL to redirect after successful payment"),
+    cancel_url: z.string().url().describe("URL to redirect on cancellation"),
+    reload_amount_cents: z
+      .number()
+      .int()
+      .positive()
+      .describe("Amount to reload in cents"),
+  })
+  .openapi("CreateCheckoutSessionRequest");
+
+registry.registerPath({
+  method: "get",
+  path: "/v1/billing/accounts",
+  tags: ["Billing"],
+  summary: "Get billing account",
+  description: "Get or create the billing account for the organization",
+  security: authed,
+  responses: {
+    200: { description: "Billing account data" },
+    401: { description: "Unauthorized", content: errorContent },
+    500: { description: "Internal error", content: errorContent },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/v1/billing/accounts/balance",
+  tags: ["Billing"],
+  summary: "Get account balance",
+  description:
+    "Quick check of current balance, billing mode, and depletion status",
+  security: authed,
+  responses: {
+    200: { description: "Balance info" },
+    401: { description: "Unauthorized", content: errorContent },
+    500: { description: "Internal error", content: errorContent },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/v1/billing/accounts/transactions",
+  tags: ["Billing"],
+  summary: "Get transaction history",
+  description: "List billing transactions for the organization",
+  security: authed,
+  responses: {
+    200: { description: "Transaction list" },
+    401: { description: "Unauthorized", content: errorContent },
+    500: { description: "Internal error", content: errorContent },
+  },
+});
+
+registry.registerPath({
+  method: "patch",
+  path: "/v1/billing/accounts/mode",
+  tags: ["Billing"],
+  summary: "Switch billing mode",
+  description: "Switch between billing modes (byok, payg)",
+  security: authed,
+  request: {
+    body: {
+      content: {
+        "application/json": { schema: SwitchBillingModeRequestSchema },
+      },
+    },
+  },
+  responses: {
+    200: { description: "Mode switched" },
+    400: { description: "Invalid transition", content: errorContent },
+    401: { description: "Unauthorized", content: errorContent },
+    500: { description: "Internal error", content: errorContent },
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/v1/billing/credits/deduct",
+  tags: ["Billing"],
+  summary: "Deduct credits",
+  description: "Deduct credits from the organization's billing account",
+  security: authed,
+  request: {
+    body: {
+      content: {
+        "application/json": { schema: DeductCreditsRequestSchema },
+      },
+    },
+  },
+  responses: {
+    200: { description: "Credits deducted" },
+    401: { description: "Unauthorized", content: errorContent },
+    500: { description: "Internal error", content: errorContent },
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/v1/billing/checkout-sessions",
+  tags: ["Billing"],
+  summary: "Create Stripe checkout session",
+  description: "Create a Stripe checkout session for purchasing credits",
+  security: authed,
+  request: {
+    body: {
+      content: {
+        "application/json": { schema: CreateCheckoutSessionRequestSchema },
+      },
+    },
+  },
+  responses: {
+    200: { description: "Checkout session created with URL" },
+    401: { description: "Unauthorized", content: errorContent },
+    500: { description: "Internal error", content: errorContent },
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/v1/billing/webhooks/stripe/{appId}",
+  tags: ["Billing"],
+  summary: "Stripe webhook",
+  description:
+    "Stripe webhook endpoint. No authentication — Stripe validates via signature header.",
+  request: {
+    params: z.object({
+      appId: z.string().describe("App ID"),
+    }),
+  },
+  responses: {
+    200: { description: "Webhook processed" },
+    400: { description: "Invalid signature", content: errorContent },
+    500: { description: "Internal error", content: errorContent },
+  },
+});
+

@@ -21,6 +21,10 @@ process.env.CLIENT_SERVICE_URL = "http://localhost:3002";
 process.env.CLIENT_SERVICE_API_KEY = "test-client-service-api-key";
 process.env.EMAIL_GATEWAY_SERVICE_URL = "http://localhost:3009";
 process.env.EMAIL_GATEWAY_SERVICE_API_KEY = "test-email-gateway-api-key";
+process.env.CHAT_SERVICE_URL = "http://localhost:3021";
+process.env.CHAT_SERVICE_API_KEY = "test-chat-service-api-key";
+process.env.BILLING_SERVICE_URL = "http://localhost:3020";
+process.env.BILLING_SERVICE_API_KEY = "test-billing-service-api-key";
 
 beforeAll(() => console.log("Test suite starting..."));
 afterAll(() => console.log("Test suite complete."));
