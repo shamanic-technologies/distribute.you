@@ -20,12 +20,16 @@ router.get("/billing/accounts", authenticate, requireOrg, async (req: Authentica
 });
 
 // GET /v1/billing/accounts/balance — quick balance check
+// Ensures account exists (upsert) before querying balance
 router.get("/billing/accounts/balance", authenticate, requireOrg, async (req: AuthenticatedRequest, res) => {
   try {
+    const headers = buildInternalHeaders(req);
+    // Ensure billing account exists (auto-creates if missing)
+    await callExternalService(externalServices.billing, "/v1/accounts", { headers });
     const result = await callExternalService(
       externalServices.billing,
       "/v1/accounts/balance",
-      { headers: buildInternalHeaders(req) }
+      { headers }
     );
     res.json(result);
   } catch (error: any) {
