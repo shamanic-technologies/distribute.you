@@ -13,6 +13,7 @@ import leadsRoutes from "./routes/leads.js";
 import activityRoutes from "./routes/activity.js";
 import workflowsRoutes from "./routes/workflows.js";
 import performanceRoutes from "./routes/performance.js";
+import appsRoutes from "./routes/apps.js";
 import { registerAppKeys } from "./startup.js";
 import { readFileSync, existsSync } from "fs";
 import { fileURLToPath } from "url";
@@ -53,6 +54,9 @@ app.get("/openapi.json", (_req, res) => {
 // Public routes
 app.use(healthRoutes);
 app.use(performanceRoutes);
+
+// Public API routes
+app.use("/v1", appsRoutes);
 
 // Authenticated routes
 app.use("/v1", meRoutes);

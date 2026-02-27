@@ -43,8 +43,17 @@ describe("Auth middleware — app key identity resolution", () => {
     expect(content).toContain('"x-user-id"');
   });
 
-  it("should require both x-org-id and x-user-id for app keys", () => {
-    expect(content).toContain("App key authentication requires x-org-id and x-user-id headers");
+  it("should make x-org-id and x-user-id optional for app keys", () => {
+    expect(content).not.toContain("App key authentication requires x-org-id and x-user-id headers");
+  });
+
+  it("should set appId on the request for app key authentication", () => {
+    expect(content).toContain("req.appId");
+    expect(content).toContain("appId?: string");
+  });
+
+  it("should only resolve external IDs when both headers are provided", () => {
+    expect(content).toContain("if (externalOrgId && externalUserId)");
   });
 
   it("should resolve external IDs via client-service POST /resolve", () => {

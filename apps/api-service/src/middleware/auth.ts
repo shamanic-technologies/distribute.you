@@ -4,6 +4,7 @@ import { callExternalService, externalServices } from "../lib/service-client.js"
 export interface AuthenticatedRequest extends Request {
   userId?: string;
   orgId?: string;
+  appId?: string;
   authType?: "app_key" | "user_key";
 }
 
@@ -33,30 +34,29 @@ export async function authenticate(
       return res.status(401).json({ error: "Invalid API key" });
     }
 
-    // App key: resolve external IDs to internal UUIDs via client-service
+    // App key: set appId, optionally resolve external IDs
     if (validation.type === "app") {
+      req.appId = validation.appId;
+      req.authType = "app_key";
+
       const externalOrgId = req.headers["x-org-id"] as string | undefined;
       const externalUserId = req.headers["x-user-id"] as string | undefined;
 
-      if (!externalOrgId || !externalUserId) {
-        return res.status(400).json({
-          error: "App key authentication requires x-org-id and x-user-id headers",
-        });
+      if (externalOrgId && externalUserId) {
+        const resolved = await resolveExternalIds(
+          validation.appId!,
+          externalOrgId,
+          externalUserId,
+        );
+
+        if (!resolved) {
+          return res.status(502).json({ error: "Identity resolution failed" });
+        }
+
+        req.orgId = resolved.orgId;
+        req.userId = resolved.userId;
       }
 
-      const resolved = await resolveExternalIds(
-        validation.appId!,
-        externalOrgId,
-        externalUserId,
-      );
-
-      if (!resolved) {
-        return res.status(502).json({ error: "Identity resolution failed" });
-      }
-
-      req.orgId = resolved.orgId;
-      req.userId = resolved.userId;
-      req.authType = "app_key";
       return next();
     }
 
