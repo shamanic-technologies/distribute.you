@@ -12,7 +12,7 @@ vi.mock("@mcpfactory/runs-client", () => ({
   getRunsBatch: vi.fn().mockResolvedValue(new Map()),
 }));
 
-import { registerAppKeys } from "../../src/startup.js";
+import { registerPlatformKeys } from "../../src/startup.js";
 
 function setAllEnvVars() {
   process.env.ANTHROPIC_API_KEY = "sk-ant-test";
@@ -36,7 +36,7 @@ function deleteAllEnvVars() {
   delete process.env.STRIPE_WEBHOOK_SECRET;
 }
 
-describe("registerAppKeys", () => {
+describe("registerPlatformKeys", () => {
   let fetchCalls: Array<{ url: string; body?: Record<string, unknown> }>;
   const originalEnv = { ...process.env };
 
@@ -48,8 +48,8 @@ describe("registerAppKeys", () => {
       const body = init?.body ? JSON.parse(init.body as string) : undefined;
       fetchCalls.push({ url, body });
 
-      if (url.includes("/internal/app-keys")) {
-        return new Response(JSON.stringify({ provider: body?.provider, maskedKey: "sk-...xxx", message: "App key saved" }), {
+      if (url.includes("/internal/platform-keys")) {
+        return new Response(JSON.stringify({ provider: body?.provider, maskedKey: "sk-...xxx", message: "Platform key saved" }), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         });
@@ -63,15 +63,15 @@ describe("registerAppKeys", () => {
     process.env = { ...originalEnv };
   });
 
-  it("should register all keys when env vars are set", async () => {
+  it("should register all platform keys without appId", async () => {
     setAllEnvVars();
 
-    await registerAppKeys();
+    await registerPlatformKeys();
 
-    const appKeyCalls = fetchCalls.filter((c) => c.url.includes("/internal/app-keys"));
-    expect(appKeyCalls).toHaveLength(8);
+    const platformKeyCalls = fetchCalls.filter((c) => c.url.includes("/internal/platform-keys"));
+    expect(platformKeyCalls).toHaveLength(8);
 
-    const providers = appKeyCalls.map((c) => c.body?.provider);
+    const providers = platformKeyCalls.map((c) => c.body?.provider);
     expect(providers).toContain("anthropic");
     expect(providers).toContain("apollo");
     expect(providers).toContain("instantly");
@@ -81,14 +81,14 @@ describe("registerAppKeys", () => {
     expect(providers).toContain("stripe");
     expect(providers).toContain("stripe-webhook");
 
-    for (const call of appKeyCalls) {
-      expect(call.body?.appId).toBe("mcpfactory");
+    for (const call of platformKeyCalls) {
+      expect(call.body).not.toHaveProperty("appId");
     }
   });
 
   it("should throw when all env vars are missing", async () => {
     deleteAllEnvVars();
-    await expect(registerAppKeys()).rejects.toThrow("Missing required env vars");
+    await expect(registerPlatformKeys()).rejects.toThrow("Missing required env vars");
   });
 
   it("should throw when key-service returns an error", async () => {
@@ -98,7 +98,7 @@ describe("registerAppKeys", () => {
       const body = init?.body ? JSON.parse(init.body as string) : undefined;
       fetchCalls.push({ url, body });
 
-      if (url.includes("/internal/app-keys")) {
+      if (url.includes("/internal/platform-keys")) {
         return new Response(JSON.stringify({ error: "Service unavailable" }), {
           status: 503,
           headers: { "Content-Type": "application/json" },
@@ -108,13 +108,13 @@ describe("registerAppKeys", () => {
       return new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } });
     });
 
-    await expect(registerAppKeys()).rejects.toThrow();
+    await expect(registerPlatformKeys()).rejects.toThrow();
   });
 
   it("should throw when a single env var is missing", async () => {
     setAllEnvVars();
     delete process.env.STRIPE_SECRET_KEY;
 
-    await expect(registerAppKeys()).rejects.toThrow("STRIPE_SECRET_KEY");
+    await expect(registerPlatformKeys()).rejects.toThrow("STRIPE_SECRET_KEY");
   });
 });

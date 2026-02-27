@@ -17,7 +17,7 @@ import appsRoutes from "./routes/apps.js";
 import chatRoutes from "./routes/chat.js";
 import billingRoutes from "./routes/billing.js";
 import { stripeWebhookHandler } from "./routes/billing.js";
-import { registerAppKeys } from "./startup.js";
+import { registerPlatformKeys } from "./startup.js";
 import { readFileSync, existsSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
@@ -98,8 +98,8 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 // Listen on :: for Railway private networking (IPv4 & IPv6 support)
 app.listen(Number(PORT), "::", () => {
   console.log(`API Gateway running on port ${PORT}`);
-  registerAppKeys().catch((err) => {
-    console.error("[api-service] FATAL: App key registration failed:", err.message);
+  registerPlatformKeys().catch((err) => {
+    console.error("[api-service] FATAL: Platform key registration failed:", err.message);
     process.exit(1);
   });
 });
