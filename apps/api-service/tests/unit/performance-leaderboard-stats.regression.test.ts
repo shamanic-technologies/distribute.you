@@ -26,6 +26,7 @@ const mockCallExternalService = vi.fn();
 vi.mock("../../src/lib/service-client.js", () => ({
   callExternalService: (...args: unknown[]) => mockCallExternalService(...args),
   externalServices: {
+    client: { url: "http://mock-client", apiKey: "k" },
     emailgen: { url: "http://mock-emailgen", apiKey: "k" },
     emailSending: { url: "http://mock-email", apiKey: "k" },
     campaign: { url: "http://mock-campaign", apiKey: "k" },
@@ -36,9 +37,6 @@ vi.mock("../../src/lib/service-client.js", () => ({
     lifecycle: { url: "http://mock-lifecycle", apiKey: "k" },
     brand: { url: "http://mock-brand", apiKey: "k" },
     runs: { url: "http://mock-runs", apiKey: "k" },
-  },
-  services: {
-    client: "http://mock-client",
   },
 }));
 

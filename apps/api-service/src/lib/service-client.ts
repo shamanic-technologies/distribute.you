@@ -1,14 +1,8 @@
 /**
- * Internal service client for calling other mcpfactory services
- * No auth needed for internal services (Railway private networking)
+ * Service client for calling other mcpfactory services
+ * All services require API key authentication via X-API-Key header
  */
 
-// Internal services (no auth - private network, Clerk bearer auth)
-export const services = {
-  client: process.env.CLIENT_SERVICE_URL || "http://localhost:3002",
-};
-
-// External services (need API key)
 export const externalServices = {
   client: {
     url: process.env.CLIENT_SERVICE_URL || "http://localhost:3002",
@@ -68,33 +62,6 @@ interface ServiceCallOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   headers?: Record<string, string>;
-}
-
-// Call internal service (no auth)
-export async function callService<T>(
-  serviceUrl: string,
-  path: string,
-  options: ServiceCallOptions = {}
-): Promise<T> {
-  const { method = "GET", body, headers = {} } = options;
-
-  const url = `${serviceUrl}${path}`;
-
-  const response = await fetch(url, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      ...headers,
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: "Unknown error" }));
-    throw new Error(error.error || `Service call failed: ${response.status}`);
-  }
-
-  return response.json();
 }
 
 // Call external service (with API key)

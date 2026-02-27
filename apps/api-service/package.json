@@ -15,13 +15,11 @@
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^7.3.0",
-    "@clerk/backend": "^1.0.0",
     "@mcpfactory/content": "workspace:*",
     "@mcpfactory/runs-client": "workspace:*",
     "@sentry/node": "^8.0.0",
     "cors": "^2.8.5",
     "express": "^4.21.0",
-    "svix": "^1.84.1",
     "zod": "^3.24.2"
   },
   "devDependencies": {

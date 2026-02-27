@@ -11,20 +11,12 @@ export const registry = new OpenAPIRegistry();
 // Security schemes
 // ---------------------------------------------------------------------------
 registry.registerComponent("securitySchemes", "bearerAuth", {
-  type: "apiKey",
-  in: "header",
-  name: "Authorization",
-  description: "Bearer JWT from Clerk (dashboard)",
+  type: "http",
+  scheme: "bearer",
+  description: "App key (mcpf_app_*) or user key (mcpf_*) via Authorization: Bearer header",
 });
 
-registry.registerComponent("securitySchemes", "apiKey", {
-  type: "apiKey",
-  in: "header",
-  name: "X-API-Key",
-  description: "API key for MCP clients and service-to-service communication",
-});
-
-const authed: Record<string, string[]>[] = [{ bearerAuth: [] }, { apiKey: [] }];
+const authed: Record<string, string[]>[] = [{ bearerAuth: [] }];
 
 // ---------------------------------------------------------------------------
 // Common schemas
@@ -121,33 +113,6 @@ registry.registerPath({
 });
 
 // ===================================================================
-// WEBHOOKS
-// ===================================================================
-
-registry.registerPath({
-  method: "post",
-  path: "/webhooks/clerk",
-  tags: ["Webhooks"],
-  summary: "Clerk webhook receiver",
-  description:
-    "Receives Clerk lifecycle events (user.created, session.created). Verified via svix signature headers.",
-  responses: {
-    200: {
-      description: "Webhook received",
-      content: {
-        "application/json": {
-          schema: z
-            .object({ received: z.boolean() })
-            .openapi("WebhookResponse"),
-        },
-      },
-    },
-    400: { description: "Invalid signature or missing headers", content: errorContent },
-    500: { description: "Webhook not configured", content: errorContent },
-  },
-});
-
-// ===================================================================
 // PERFORMANCE
 // ===================================================================
 
@@ -184,9 +149,7 @@ registry.registerPath({
             .object({
               userId: z.string().optional(),
               orgId: z.string().optional(),
-              authType: z.enum(["jwt", "api_key"]).optional(),
-              user: z.any().describe("User object from client-service"),
-              org: z.any().describe("Organization object from client-service"),
+              authType: z.enum(["app_key", "user_key"]).optional(),
             })
             .openapi("MeResponse"),
         },
@@ -1148,53 +1111,3 @@ registry.registerPath({
   },
 });
 
-// ===================================================================
-// AUTH / PROVISIONING
-// ===================================================================
-
-export const ProvisionRequestSchema = z
-  .object({
-    email: z.string().email().describe("Email address of the user to provision"),
-    firstName: z.string().optional().describe("User's first name"),
-    lastName: z.string().optional().describe("User's last name"),
-    profilePicture: z
-      .string()
-      .url()
-      .optional()
-      .describe("URL to user's profile picture"),
-  })
-  .openapi("ProvisionRequest");
-
-export const ProvisionResponseSchema = z
-  .object({
-    apiKey: z.string().describe("API key for the provisioned user (mcpf_... format)"),
-    userId: z.string().uuid().describe("Internal user ID"),
-    orgId: z.string().uuid().describe("Internal organization ID"),
-  })
-  .openapi("ProvisionResponse");
-
-registry.registerPath({
-  method: "post",
-  path: "/v1/auth/provision",
-  tags: ["Auth"],
-  summary: "Provision a user and API key",
-  description:
-    "Public endpoint — no authentication required. Creates or finds an anonymous user for the given email, then returns an API key for that user's organization. Optionally accepts firstName, lastName, and profilePicture. Idempotent: calling with the same email returns the existing user and key.",
-  request: {
-    body: {
-      content: {
-        "application/json": { schema: ProvisionRequestSchema },
-      },
-    },
-  },
-  responses: {
-    200: {
-      description: "Provisioned user with API key",
-      content: {
-        "application/json": { schema: ProvisionResponseSchema },
-      },
-    },
-    400: { description: "Invalid request body", content: errorContent },
-    502: { description: "Upstream service error", content: errorContent },
-  },
-});
