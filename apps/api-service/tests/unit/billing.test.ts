@@ -13,7 +13,7 @@ vi.mock("@mcpfactory/runs-client", () => ({
 
 import { fetchKeySource } from "../../src/lib/billing.js";
 
-function mockAccountResponse(billingMode: string) {
+function mockBillingAccountResponse(billingMode: string) {
   return new Response(
     JSON.stringify({
       id: "acc-1",
@@ -41,7 +41,7 @@ describe("fetchKeySource", () => {
       fetchCalls.push({ url, headers });
 
       if (url.includes("/v1/accounts")) {
-        return mockAccountResponse("trial");
+        return mockBillingAccountResponse("trial");
       }
 
       return new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } });
@@ -52,7 +52,7 @@ describe("fetchKeySource", () => {
     vi.restoreAllMocks();
   });
 
-  it("should call GET /v1/accounts (get-or-create) with x-app-id and x-org-id headers", async () => {
+  it("should call GET /v1/accounts (upsert) with x-app-id and x-org-id headers", async () => {
     await fetchKeySource("org-123");
 
     const billingCall = fetchCalls.find((c) => c.url.includes("/v1/accounts"));
@@ -62,20 +62,20 @@ describe("fetchKeySource", () => {
     expect(billingCall!.headers!["x-org-id"]).toBe("org-123");
   });
 
-  it("should return 'app' for trial billing mode", async () => {
+  it("should return 'platform' for trial billing mode", async () => {
     const result = await fetchKeySource("org-123");
-    expect(result).toBe("app");
+    expect(result).toBe("platform");
   });
 
-  it("should return 'app' for payg billing mode", async () => {
-    global.fetch = vi.fn().mockResolvedValue(mockAccountResponse("payg"));
+  it("should return 'platform' for payg billing mode", async () => {
+    global.fetch = vi.fn().mockResolvedValue(mockBillingAccountResponse("payg"));
 
     const result = await fetchKeySource("org-123");
-    expect(result).toBe("app");
+    expect(result).toBe("platform");
   });
 
   it("should return 'byok' for byok billing mode", async () => {
-    global.fetch = vi.fn().mockResolvedValue(mockAccountResponse("byok"));
+    global.fetch = vi.fn().mockResolvedValue(mockBillingAccountResponse("byok"));
 
     const result = await fetchKeySource("org-123");
     expect(result).toBe("byok");

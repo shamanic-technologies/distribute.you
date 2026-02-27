@@ -82,8 +82,8 @@ describe("POST /v1/brand/icp-suggestion", () => {
     expect(mockFetchKeySource).toHaveBeenCalledWith("org_test456");
   });
 
-  it("should forward keySource 'app' when billing-service returns payg", async () => {
-    mockFetchKeySource.mockResolvedValue("app");
+  it("should forward keySource 'platform' when billing-service returns payg", async () => {
+    mockFetchKeySource.mockResolvedValue("platform");
 
     let capturedBody: Record<string, unknown> | undefined;
 
@@ -104,7 +104,7 @@ describe("POST /v1/brand/icp-suggestion", () => {
       .send({ brandUrl: "https://example.com" });
 
     expect(capturedBody).toBeDefined();
-    expect(capturedBody!.keySource).toBe("app");
+    expect(capturedBody!.keySource).toBe("platform");
   });
 
   it("should return 400 with helpful message when Anthropic BYOK key is missing", async () => {
