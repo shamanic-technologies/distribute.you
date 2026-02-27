@@ -1,8 +1,6 @@
 import { callExternalService, externalServices } from "./lib/service-client.js";
 
-const APP_ID = "mcpfactory";
-
-const APP_KEYS: { provider: string; envVar: string }[] = [
+const PLATFORM_KEYS: { provider: string; envVar: string }[] = [
   { provider: "anthropic", envVar: "ANTHROPIC_API_KEY" },
   { provider: "apollo", envVar: "APOLLO_API_KEY" },
   { provider: "instantly", envVar: "INSTANTLY_API_KEY" },
@@ -13,24 +11,24 @@ const APP_KEYS: { provider: string; envVar: string }[] = [
   { provider: "stripe-webhook", envVar: "STRIPE_WEBHOOK_SECRET" },
 ];
 
-export async function registerAppKeys(): Promise<void> {
-  console.log("[api-service] Registering app keys with key-service...");
+export async function registerPlatformKeys(): Promise<void> {
+  console.log("[api-service] Registering platform keys with key-service...");
 
   // Crash on missing env vars — all keys are required
-  const missing = APP_KEYS.filter(({ envVar }) => !process.env[envVar]);
+  const missing = PLATFORM_KEYS.filter(({ envVar }) => !process.env[envVar]);
   if (missing.length > 0) {
     const names = missing.map(({ envVar }) => envVar).join(", ");
     throw new Error(`Missing required env vars: ${names}`);
   }
 
-  for (const { provider, envVar } of APP_KEYS) {
+  for (const { provider, envVar } of PLATFORM_KEYS) {
     const apiKey = process.env[envVar]!;
-    await callExternalService(externalServices.key, "/internal/app-keys", {
+    await callExternalService(externalServices.key, "/internal/platform-keys", {
       method: "POST",
-      body: { appId: APP_ID, provider, apiKey },
+      body: { provider, apiKey },
     });
-    console.log(`[api-service] App key registered: ${provider}`);
+    console.log(`[api-service] Platform key registered: ${provider}`);
   }
 
-  console.log(`[api-service] ${APP_KEYS.length}/${APP_KEYS.length} app keys registered successfully`);
+  console.log(`[api-service] ${PLATFORM_KEYS.length}/${PLATFORM_KEYS.length} platform keys registered successfully`);
 }
