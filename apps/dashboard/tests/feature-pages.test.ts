@@ -29,10 +29,16 @@ describe("Feature overview page", () => {
     expect(content).toContain("implemented");
   });
 
-  it("should use leaderboard data for implemented features", () => {
+  it("should use listCampaigns for implemented features", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("fetchSectionLeaderboard");
-    expect(content).toContain("WorkflowLeaderboardEntry");
+    expect(content).toContain("listCampaigns");
+    expect(content).toContain("getCampaignBatchStats");
+  });
+
+  it("should link to create campaign page", () => {
+    const content = fs.readFileSync(pagePath, "utf-8");
+    expect(content).toContain("Create Campaign");
+    expect(content).toContain("/new");
   });
 });
 
