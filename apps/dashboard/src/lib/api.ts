@@ -540,3 +540,65 @@ export async function getBestWorkflow(
   return apiCall("/workflows/best", { token });
 }
 
+// Leaderboard (public performance data)
+export interface WorkflowLeaderboardEntry {
+  workflowName: string;
+  displayName: string;
+  signatureName: string | null;
+  category: string | null;
+  sectionKey: string | null;
+  runCount: number;
+  emailsSent: number;
+  emailsOpened: number;
+  emailsClicked: number;
+  emailsReplied: number;
+  totalCostUsdCents: number;
+  openRate: number;
+  clickRate: number;
+  replyRate: number;
+  costPerOpenCents: number | null;
+  costPerClickCents: number | null;
+  costPerReplyCents: number | null;
+}
+
+export async function fetchSectionLeaderboard(sectionKey: string): Promise<WorkflowLeaderboardEntry[]> {
+  try {
+    const res = await fetch(`${API_URL}/performance/leaderboard`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    const section = data.categorySections?.find(
+      (s: { sectionKey: string }) => s.sectionKey === sectionKey
+    );
+    return section?.workflows ?? [];
+  } catch {
+    return [];
+  }
+}
+
+// Create campaign
+export async function createCampaign(
+  params: {
+    name: string;
+    workflowName: string;
+    brandUrl: string;
+    targetAudience: string;
+    targetOutcome: string;
+    valueForTarget: string;
+    urgency: string;
+    scarcity: string;
+    riskReversal: string;
+    socialProof: string;
+    maxBudgetDailyUsd?: string;
+    maxBudgetWeeklyUsd?: string;
+    maxBudgetMonthlyUsd?: string;
+    maxBudgetTotalUsd?: string;
+  },
+  token?: string
+): Promise<{ campaign: Campaign }> {
+  return apiCall<{ campaign: Campaign }>("/campaigns", {
+    token,
+    method: "POST",
+    body: params as unknown as Record<string, unknown>,
+  });
+}
+
