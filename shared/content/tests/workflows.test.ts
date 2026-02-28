@@ -26,6 +26,7 @@ describe("WORKFLOW_DEFINITIONS", () => {
       expect(wf.channel).toBeTruthy();
       expect(wf.audienceType).toBeTruthy();
       expect(wf.icon).toBeTruthy();
+      expect(typeof wf.implemented).toBe("boolean");
     }
   });
 
@@ -55,10 +56,10 @@ describe("getWorkflowDefinitionsByCategory", () => {
     expect(sales.every((w) => w.category === "sales")).toBe(true);
   });
 
-  it("filters by pr", () => {
-    const pr = getWorkflowDefinitionsByCategory("pr");
-    expect(pr.length).toBeGreaterThanOrEqual(1);
-    expect(pr.every((w) => w.category === "pr")).toBe(true);
+  it("filters by journalists", () => {
+    const journalists = getWorkflowDefinitionsByCategory("journalists");
+    expect(journalists.length).toBeGreaterThanOrEqual(1);
+    expect(journalists.every((w) => w.category === "journalists")).toBe(true);
   });
 });
 
@@ -74,14 +75,14 @@ describe("parseWorkflowName", () => {
     });
   });
 
-  it("parses pr workflow name", () => {
-    const result = parseWorkflowName("pr-email-cold-outreach-sequoia");
+  it("parses journalists workflow name", () => {
+    const result = parseWorkflowName("journalists-email-cold-outreach-sequoia");
     expect(result).toEqual({
-      category: "pr",
+      category: "journalists",
       channel: "email",
       audienceType: "cold-outreach",
       signatureName: "sequoia",
-      sectionKey: "pr-email-cold-outreach",
+      sectionKey: "journalists-email-cold-outreach",
     });
   });
 
@@ -90,6 +91,8 @@ describe("parseWorkflowName", () => {
     expect(parseWorkflowName("")).toBeNull();
     expect(parseWorkflowName("foo-bar")).toBeNull();
     expect(parseWorkflowName("unknown-email-cold-outreach-sienna")).toBeNull();
+    // "pr" is no longer a known category
+    expect(parseWorkflowName("pr-email-cold-outreach-sequoia")).toBeNull();
   });
 });
 
@@ -116,7 +119,7 @@ describe("getSignatureName", () => {
 describe("getWorkflowCategory", () => {
   it("returns category for valid workflow name", () => {
     expect(getWorkflowCategory("sales-email-cold-outreach-sienna")).toBe("sales");
-    expect(getWorkflowCategory("pr-email-cold-outreach-sequoia")).toBe("pr");
+    expect(getWorkflowCategory("journalists-email-cold-outreach-sequoia")).toBe("journalists");
   });
 
   it("returns null for invalid names", () => {
@@ -137,6 +140,6 @@ describe("getWorkflowDisplayName", () => {
 describe("WORKFLOW_CATEGORY_LABELS", () => {
   it("has labels for all categories", () => {
     expect(WORKFLOW_CATEGORY_LABELS.sales).toBe("Sales");
-    expect(WORKFLOW_CATEGORY_LABELS.pr).toBe("PR & Media");
+    expect(WORKFLOW_CATEGORY_LABELS.journalists).toBe("Journalists");
   });
 });
