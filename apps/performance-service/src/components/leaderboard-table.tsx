@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { WORKFLOW_CATEGORY_LABELS } from "@mcpfactory/content";
+import { WORKFLOW_CATEGORY_LABELS } from "@distribute/content";
 import {
   formatPercent,
   formatCostCents,

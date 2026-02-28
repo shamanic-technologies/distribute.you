@@ -46,7 +46,7 @@ jobs:
         run: pnpm install
 
       - name: Run dashboard tests
-        run: pnpm --filter @mcpfactory/dashboard test
+        run: pnpm --filter @distribute/dashboard test
 
   lint:
     runs-on: ubuntu-latest

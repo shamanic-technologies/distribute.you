@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { URLS } from "@mcpfactory/content";
+import { URLS } from "@distribute/content";
 
 const SITE_URL = URLS.landing;
 const SITE_NAME = "distribute";

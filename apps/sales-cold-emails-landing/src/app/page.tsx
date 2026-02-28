@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { URLS } from "@mcpfactory/content";
+import { URLS } from "@distribute/content";
 
 const SALES_FEATURES = [
   { icon: "🎯", title: "Find Qualified Leads", description: "Search 275M+ contacts via Apollo. Target by role, company size, industry, and more." },

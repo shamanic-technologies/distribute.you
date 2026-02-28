@@ -23,12 +23,12 @@ importers:
       '@clerk/nextjs':
         specifier: ^5.0.0
         version: 5.7.5(next@15.5.11(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@distribute/content':
+        specifier: workspace:*
+        version: link:../../shared/content
       '@heroicons/react':
         specifier: ^2.1.0
         version: 2.2.0(react@18.3.1)
-      '@mcpfactory/content':
-        specifier: workspace:*
-        version: link:../../shared/content
       '@tanstack/react-query':
         specifier: ^5.90.20
         version: 5.90.20(react@18.3.1)
@@ -81,7 +81,7 @@ importers:
 
   apps/docs:
     dependencies:
-      '@mcpfactory/content':
+      '@distribute/content':
         specifier: workspace:*
         version: link:../../shared/content
       '@mdx-js/loader':
@@ -136,7 +136,7 @@ importers:
 
   apps/landing:
     dependencies:
-      '@mcpfactory/content':
+      '@distribute/content':
         specifier: workspace:*
         version: link:../../shared/content
       next:
@@ -176,7 +176,7 @@ importers:
 
   apps/performance-service:
     dependencies:
-      '@mcpfactory/content':
+      '@distribute/content':
         specifier: workspace:*
         version: link:../../shared/content
       next:
@@ -216,7 +216,7 @@ importers:
 
   apps/sales-cold-emails-landing:
     dependencies:
-      '@mcpfactory/content':
+      '@distribute/content':
         specifier: workspace:*
         version: link:../../shared/content
       next:

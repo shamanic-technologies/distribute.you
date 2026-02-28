@@ -6,8 +6,8 @@ import { PerformancePreview } from "@/components/performance-preview";
 import { ExpertStrategies } from "@/components/expert-strategies";
 import { StatusIndicator } from "@/components/status-indicator";
 import { fetchLeaderboardPreview } from "@/lib/fetch-leaderboard";
-import { URLS, DISTRIBUTION_FEATURES, DISTRIBUTION_STEPS } from "@mcpfactory/content";
-import type { FeatureColor } from "@mcpfactory/content";
+import { URLS, DISTRIBUTION_FEATURES, DISTRIBUTION_STEPS } from "@distribute/content";
+import type { FeatureColor } from "@distribute/content";
 
 export const revalidate = 300;
 

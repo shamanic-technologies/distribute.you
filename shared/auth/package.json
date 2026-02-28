@@ -1,5 +1,5 @@
 {
-  "name": "@mcpfactory/auth",
+  "name": "@distribute/auth",
   "version": "0.1.0",
   "description": "API key validation for MCP Factory",
   "main": "dist/index.js",

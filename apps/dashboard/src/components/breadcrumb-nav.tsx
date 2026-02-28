@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useOrganization, useOrganizationList, useAuth } from "@clerk/nextjs";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { WORKFLOW_DEFINITIONS, SECTION_LABELS } from "@mcpfactory/content";
+import { WORKFLOW_DEFINITIONS, SECTION_LABELS } from "@distribute/content";
 import { useOrg } from "@/lib/org-context";
 
 interface Brand {

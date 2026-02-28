@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { LinkButton } from "./link-button";
-import { URLS } from "@mcpfactory/content";
+import { URLS } from "@distribute/content";
 
 export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);

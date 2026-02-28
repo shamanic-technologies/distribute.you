@@ -1,4 +1,4 @@
-import { URLS } from "@mcpfactory/content";
+import { URLS } from "@distribute/content";
 import { fetchLeaderboard } from "@/lib/fetch-leaderboard";
 import { CategorySection } from "@/components/category-section";
 

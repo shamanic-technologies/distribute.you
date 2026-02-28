@@ -11,19 +11,19 @@
   },
   "scripts": {
     "dev": "turbo dev",
-    "dev:dashboard": "pnpm --filter @mcpfactory/dashboard dev",
-    "dev:docs": "pnpm --filter @mcpfactory/docs dev",
-    "dev:landing": "pnpm --filter @mcpfactory/landing dev",
-    "dev:performance-service": "pnpm --filter @mcpfactory/performance-service dev",
-    "dev:sales-cold-emails-landing": "pnpm --filter @mcpfactory/sales-cold-emails-landing dev",
+    "dev:dashboard": "pnpm --filter @distribute/dashboard dev",
+    "dev:docs": "pnpm --filter @distribute/docs dev",
+    "dev:landing": "pnpm --filter @distribute/landing dev",
+    "dev:performance-service": "pnpm --filter @distribute/performance-service dev",
+    "dev:sales-cold-emails-landing": "pnpm --filter @distribute/sales-cold-emails-landing dev",
     "build": "turbo build",
-    "build:dashboard": "pnpm --filter @mcpfactory/dashboard build",
-    "build:docs": "pnpm --filter @mcpfactory/docs build",
-    "build:landing": "pnpm --filter @mcpfactory/landing build",
+    "build:dashboard": "pnpm --filter @distribute/dashboard build",
+    "build:docs": "pnpm --filter @distribute/docs build",
+    "build:landing": "pnpm --filter @distribute/landing build",
     "lint": "turbo lint",
     "clean": "turbo clean",
     "publish-packages": "turbo build --filter='./packages/*' && changeset publish",
-    "generate:readme": "pnpm --filter @mcpfactory/content generate:readme"
+    "generate:readme": "pnpm --filter @distribute/content generate:readme"
   },
   "devDependencies": {
     "turbo": "^2.0.0",

@@ -13,9 +13,9 @@ pnpm lint                   # Lint all packages
 pnpm generate:readme        # Regenerate README.md from shared/content
 
 # Per-package testing
-pnpm --filter @mcpfactory/<package> test
-pnpm --filter @mcpfactory/<package> test:unit
-pnpm --filter @mcpfactory/<package> vitest run tests/unit/specific.test.ts
+pnpm --filter @distribute/<package> test
+pnpm --filter @distribute/<package> test:unit
+pnpm --filter @distribute/<package> vitest run tests/unit/specific.test.ts
 ```
 
 ## Architecture
@@ -39,13 +39,13 @@ pnpm --filter @mcpfactory/<package> vitest run tests/unit/specific.test.ts
 
 Each package is a standalone MCP server published to npm. Built with `tsup` for ESM.
 
-- `packages/mcp-sales-outreach/` — @mcpfactory/sales-outreach
-- `packages/mcp-google-ads/` — @mcpfactory/google-ads
-- `packages/mcp-influencer-pitch/` — @mcpfactory/influencer-pitch
-- `packages/mcp-journalist-pitch/` — @mcpfactory/journalist-pitch
-- `packages/mcp-podcaster-pitch/` — @mcpfactory/podcaster-pitch
-- `packages/mcp-reddit-ads/` — @mcpfactory/reddit-ads
-- `packages/mcp-thought-leader/` — @mcpfactory/thought-leader
+- `packages/mcp-sales-outreach/` — @distribute/sales-outreach
+- `packages/mcp-google-ads/` — @distribute/google-ads
+- `packages/mcp-influencer-pitch/` — @distribute/influencer-pitch
+- `packages/mcp-journalist-pitch/` — @distribute/journalist-pitch
+- `packages/mcp-podcaster-pitch/` — @distribute/podcaster-pitch
+- `packages/mcp-reddit-ads/` — @distribute/reddit-ads
+- `packages/mcp-thought-leader/` — @distribute/thought-leader
 
 ### Shared Libraries
 
@@ -57,7 +57,7 @@ Each package is a standalone MCP server published to npm. Built with `tsup` for 
 
 ### Content Sync Rules
 
-All marketing/docs content lives in `shared/content/src/`. Public surfaces import from `@mcpfactory/content`.
+All marketing/docs content lives in `shared/content/src/`. Public surfaces import from `@distribute/content`.
 
 - `shared/content/src/urls.ts` — All public URLs
 - `shared/content/src/mcps.ts` — MCP package definitions

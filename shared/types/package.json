@@ -1,5 +1,5 @@
 {
-  "name": "@mcpfactory/types",
+  "name": "@distribute/types",
   "version": "0.1.0",
   "description": "Shared TypeScript types for MCP Factory",
   "main": "dist/index.js",

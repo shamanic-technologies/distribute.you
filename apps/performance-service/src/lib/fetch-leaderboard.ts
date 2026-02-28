@@ -1,4 +1,4 @@
-import type { WorkflowCategory } from "@mcpfactory/content";
+import type { WorkflowCategory } from "@distribute/content";
 
 const API_SERVICE_URL = process.env.API_SERVICE_URL || "http://localhost:3000";
 const BRAND_SERVICE_URL = process.env.BRAND_SERVICE_URL;

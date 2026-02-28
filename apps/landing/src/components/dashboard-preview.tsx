@@ -1,4 +1,4 @@
-import type { FeatureColor } from "@mcpfactory/content";
+import type { FeatureColor } from "@distribute/content";
 
 const SIDEBAR_COLORS: Record<FeatureColor, { activeBg: string; activeText: string; dot: string }> = {
   emerald: { activeBg: "bg-emerald-500/10", activeText: "text-emerald-400", dot: "bg-emerald-400" },

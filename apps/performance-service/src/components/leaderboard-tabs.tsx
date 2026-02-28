@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { WORKFLOW_CATEGORY_LABELS, type WorkflowCategory } from "@mcpfactory/content";
+import { WORKFLOW_CATEGORY_LABELS, type WorkflowCategory } from "@distribute/content";
 import { BrandLeaderboard, WorkflowLeaderboard } from "./leaderboard-table";
 import type { BrandLeaderboardEntry, WorkflowLeaderboardEntry } from "@/lib/fetch-leaderboard";
 

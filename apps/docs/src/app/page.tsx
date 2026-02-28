@@ -1,4 +1,4 @@
-import { URLS, WORKFLOW_DEFINITIONS } from "@mcpfactory/content";
+import { URLS, WORKFLOW_DEFINITIONS } from "@distribute/content";
 
 export default function DocsHome() {
   return (

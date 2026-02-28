@@ -76,9 +76,9 @@ export default function CursorSkillPage() {
 Use this skill to launch automated distribution campaigns.
 
 ## Available MCPs
-- @mcpfactory/sales-outreach - Cold email campaigns
-- @mcpfactory/influencer-pitch - Influencer outreach
-- @mcpfactory/journalist-pitch - Press outreach
+- @distribute/sales-outreach - Cold email campaigns
+- @distribute/influencer-pitch - Influencer outreach
+- @distribute/journalist-pitch - Press outreach
 
 ## Usage
 When the user asks to launch a campaign, outreach, or 

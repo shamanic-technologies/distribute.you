@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { LinkButton } from "./link-button";
-import { URLS } from "@mcpfactory/content";
+import { URLS } from "@distribute/content";
 
 export function Header() {
   return (

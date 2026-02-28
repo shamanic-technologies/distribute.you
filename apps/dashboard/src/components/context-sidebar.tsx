@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { WORKFLOW_DEFINITIONS } from "@mcpfactory/content";
+import { WORKFLOW_DEFINITIONS } from "@distribute/content";
 
 interface SidebarItem {
   id: string;

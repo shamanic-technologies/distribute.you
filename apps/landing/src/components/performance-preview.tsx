@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { URLS } from "@mcpfactory/content";
+import { URLS } from "@distribute/content";
 import type { BrandEntry, WorkflowEntry } from "@/lib/fetch-leaderboard";
 import { formatPercent, formatCostCents } from "@/lib/fetch-leaderboard";
 

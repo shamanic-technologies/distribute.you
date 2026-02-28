@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { URLS } from "@mcpfactory/content";
+import { URLS } from "@distribute/content";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = URLS.performance;
