@@ -9,6 +9,7 @@ interface SidebarItem {
   label: string;
   href: string;
   icon: React.ReactNode;
+  comingSoon?: boolean;
 }
 
 function SidebarLink({ item, isActive }: { item: SidebarItem; isActive: boolean }) {
@@ -17,16 +18,23 @@ function SidebarLink({ item, isActive }: { item: SidebarItem; isActive: boolean 
       href={item.href}
       className={`
         flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition
-        ${isActive
-          ? "bg-brand-50 text-brand-700 font-medium border border-brand-200"
-          : "text-gray-600 hover:bg-gray-50 hover:text-gray-800"
+        ${item.comingSoon
+          ? "text-gray-400 opacity-60 hover:opacity-80"
+          : isActive
+            ? "bg-brand-50 text-brand-700 font-medium border border-brand-200"
+            : "text-gray-600 hover:bg-gray-50 hover:text-gray-800"
         }
       `}
     >
-      <span className={`w-5 h-5 ${isActive ? "text-brand-600" : "text-gray-400"}`}>
+      <span className={`w-5 h-5 ${item.comingSoon ? "text-gray-300" : isActive ? "text-brand-600" : "text-gray-400"}`}>
         {item.icon}
       </span>
       <span className="flex-1">{item.label}</span>
+      {item.comingSoon && (
+        <span className="text-[10px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full whitespace-nowrap">
+          Coming soon
+        </span>
+      )}
     </Link>
   );
 }
@@ -173,6 +181,7 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
     label: wf.label,
     href: `/features/${wf.sectionKey}`,
     icon: getFeatureIcon(wf.sectionKey),
+    comingSoon: !wf.implemented,
   }));
 
   return (

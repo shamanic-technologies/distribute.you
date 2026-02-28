@@ -55,6 +55,14 @@ describe("Context sidebar", () => {
     expect(content).toContain('"Brand Info"');
     expect(content).toContain("features/");
   });
+
+  it("should grey out coming soon features with a tag", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    expect(content).toContain("comingSoon");
+    expect(content).toContain("Coming soon");
+    expect(content).toContain("opacity-60");
+    expect(content).toContain("!wf.implemented");
+  });
 });
 
 describe("Old sidebar removed", () => {
