@@ -11,7 +11,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@clerk/nextjs": "^5.0.0",
+    "@clerk/nextjs": "^6.0.0",
     "@distribute/content": "workspace:*",
     "@heroicons/react": "^2.1.0",
     "@tanstack/react-query": "^5.90.20",
