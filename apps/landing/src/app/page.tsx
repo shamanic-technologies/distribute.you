@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { HeroForm } from "@/components/hero-form";
 import { LinkButton } from "@/components/link-button";
 import { Navbar } from "@/components/navbar";
@@ -357,6 +358,7 @@ export default async function Home() {
       <footer className="bg-gray-950 text-gray-500 py-10 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <div className="flex items-center justify-center gap-2 mb-3">
+            <Image src="/logo-head.jpg" alt="distribute" width={24} height={24} className="rounded-lg" />
             <span className="font-display font-bold text-white text-lg">distribute</span>
             <span className="text-[10px] text-brand-400 font-medium bg-brand-500/10 px-1.5 py-0.5 rounded">.you</span>
           </div>

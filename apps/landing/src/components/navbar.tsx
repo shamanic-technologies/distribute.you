@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { LinkButton } from "./link-button";
 import { URLS } from "@distribute/content";
 
@@ -12,6 +13,7 @@ export function Navbar() {
       <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
         {/* Logo */}
         <a href="/" className="flex items-center gap-2">
+          <Image src="/logo-head.jpg" alt="distribute" width={28} height={28} className="rounded-lg" />
           <span className="font-display font-bold text-xl text-gray-900">distribute</span>
           <span className="text-[10px] text-brand-500 font-medium bg-brand-50 px-1.5 py-0.5 rounded">.you</span>
         </a>
