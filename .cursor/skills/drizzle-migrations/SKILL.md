@@ -1,7 +1,7 @@
 # Drizzle Migrations Skill
 
 ## When to Use
-Use this skill when you need to create database migrations for any service in mcpfactory that uses Drizzle ORM.
+Use this skill when you need to create database migrations for any service in distribute that uses Drizzle ORM.
 
 ## Migration Process
 

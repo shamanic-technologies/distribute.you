@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
         "X-API-Key": LIFECYCLE_EMAILS_SERVICE_API_KEY,
       },
       body: JSON.stringify({
-        appId: "mcpfactory",
+        appId: "distribute",
         eventType: "waitlist",
         recipientEmail: email,
       }),

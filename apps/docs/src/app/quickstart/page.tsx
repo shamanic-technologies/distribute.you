@@ -29,7 +29,7 @@ Dashboard → API Keys:
 ### Cursor (.cursor/mcp.json):
 {
   "mcpServers": {
-    "mcpfactory": {
+    "distribute": {
       "url": "https://mcp.distribute.you/mcp",
       "headers": {
         "Authorization": "Bearer YOUR_API_KEY"
@@ -42,7 +42,7 @@ Dashboard → API Keys:
 Settings → Connectors → Add: https://mcp.distribute.you/mcp
 
 ## 5. Test Connection
-Ask: "Check my MCPFactory connection status"
+Ask: "Check my distribute connection status"
 
 ## 6. Launch Campaign
 Example prompt: "Launch a cold email campaign for mybrand.com, targeting CTOs at SaaS companies. $10/day budget, 5 days trial."`;
@@ -105,7 +105,7 @@ export default function QuickstartPage() {
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`{
   "mcpServers": {
-    "mcpfactory": {
+    "distribute": {
       "url": "https://mcp.distribute.you/mcp",
       "headers": {
         "Authorization": "Bearer YOUR_API_KEY"
@@ -117,9 +117,9 @@ export default function QuickstartPage() {
 
         <h2>5. Test the Connection</h2>
         <p>In your AI client, ask:</p>
-        <blockquote>&quot;Check my MCPFactory connection status&quot;</blockquote>
+        <blockquote>&quot;Check my distribute connection status&quot;</blockquote>
         <p>
-          The AI will call <code>mcpfactory_status</code> and confirm your
+          The AI will call <code>distribute_status</code> and confirm your
           connection is working.
         </p>
 

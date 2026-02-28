@@ -26,7 +26,7 @@ https://mcp.distribute.you/mcp
 Add to .cursor/mcp.json:
 {
   "mcpServers": {
-    "mcpfactory": {
+    "distribute": {
       "url": "https://mcp.distribute.you/mcp",
       "headers": {
         "Authorization": "Bearer YOUR_API_KEY"
@@ -36,15 +36,15 @@ Add to .cursor/mcp.json:
 }
 
 ## Available Tools
-- mcpfactory_status: Check connection status
-- mcpfactory_create_campaign: Create cold email campaign
-- mcpfactory_list_campaigns: List campaigns
-- mcpfactory_stop_campaign: Stop a running campaign
-- mcpfactory_resume_campaign: Resume a stopped campaign
-- mcpfactory_campaign_stats: Get campaign stats
-- mcpfactory_campaign_debug: Get detailed campaign debug info
-- mcpfactory_list_brands: List your brands
-- mcpfactory_suggest_icp: Suggest ideal customer profile for a brand URL
+- distribute_status: Check connection status
+- distribute_create_campaign: Create cold email campaign
+- distribute_list_campaigns: List campaigns
+- distribute_stop_campaign: Stop a running campaign
+- distribute_resume_campaign: Resume a stopped campaign
+- distribute_campaign_stats: Get campaign stats
+- distribute_campaign_debug: Get detailed campaign debug info
+- distribute_list_brands: List your brands
+- distribute_suggest_icp: Suggest ideal customer profile for a brand URL
 
 ## Authentication
 Include API key as Bearer token:
@@ -112,7 +112,7 @@ export default function McpUsagePage() {
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`{
   "mcpServers": {
-    "mcpfactory": {
+    "distribute": {
       "url": "https://mcp.distribute.you/mcp",
       "headers": {
         "Authorization": "Bearer YOUR_API_KEY"
@@ -129,7 +129,7 @@ export default function McpUsagePage() {
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`{
   "mcpServers": {
-    "mcpfactory": {
+    "distribute": {
       "url": "https://mcp.distribute.you/mcp",
       "headers": {
         "Authorization": "Bearer YOUR_API_KEY"
@@ -149,39 +149,39 @@ export default function McpUsagePage() {
           </thead>
           <tbody>
             <tr>
-              <td><code>mcpfactory_status</code></td>
+              <td><code>distribute_status</code></td>
               <td>Check connection status and configuration</td>
             </tr>
             <tr>
-              <td><code>mcpfactory_create_campaign</code></td>
+              <td><code>distribute_create_campaign</code></td>
               <td>Create a cold email campaign</td>
             </tr>
             <tr>
-              <td><code>mcpfactory_list_campaigns</code></td>
+              <td><code>distribute_list_campaigns</code></td>
               <td>List all your campaigns</td>
             </tr>
             <tr>
-              <td><code>mcpfactory_stop_campaign</code></td>
+              <td><code>distribute_stop_campaign</code></td>
               <td>Stop a running campaign</td>
             </tr>
             <tr>
-              <td><code>mcpfactory_resume_campaign</code></td>
+              <td><code>distribute_resume_campaign</code></td>
               <td>Resume a stopped campaign</td>
             </tr>
             <tr>
-              <td><code>mcpfactory_campaign_stats</code></td>
+              <td><code>distribute_campaign_stats</code></td>
               <td>Get campaign statistics</td>
             </tr>
             <tr>
-              <td><code>mcpfactory_campaign_debug</code></td>
+              <td><code>distribute_campaign_debug</code></td>
               <td>Get detailed campaign debug info</td>
             </tr>
             <tr>
-              <td><code>mcpfactory_list_brands</code></td>
+              <td><code>distribute_list_brands</code></td>
               <td>List all your brands</td>
             </tr>
             <tr>
-              <td><code>mcpfactory_suggest_icp</code></td>
+              <td><code>distribute_suggest_icp</code></td>
               <td>Suggest ideal customer profile for a brand URL</td>
             </tr>
           </tbody>

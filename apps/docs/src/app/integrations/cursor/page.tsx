@@ -18,7 +18,7 @@ Add to .cursor/mcp.json (project) or ~/.cursor/mcp.json (global):
 
 {
   "mcpServers": {
-    "mcpfactory": {
+    "distribute": {
       "url": "https://mcp.distribute.you/mcp",
       "headers": {
         "Authorization": "Bearer YOUR_API_KEY"
@@ -30,18 +30,18 @@ Add to .cursor/mcp.json (project) or ~/.cursor/mcp.json (global):
 Restart Cursor after saving.
 
 ## Available Tools
-- mcpfactory_status: Check connection
-- mcpfactory_create_campaign: Launch campaign
-- mcpfactory_list_campaigns: List campaigns
-- mcpfactory_stop_campaign: Stop a campaign
-- mcpfactory_resume_campaign: Resume a campaign
-- mcpfactory_campaign_stats: Get performance
-- mcpfactory_list_brands: List your brands
-- mcpfactory_suggest_icp: Suggest ideal customer profile for a brand URL
+- distribute_status: Check connection
+- distribute_create_campaign: Launch campaign
+- distribute_list_campaigns: List campaigns
+- distribute_stop_campaign: Stop a campaign
+- distribute_resume_campaign: Resume a campaign
+- distribute_campaign_stats: Get performance
+- distribute_list_brands: List your brands
+- distribute_suggest_icp: Suggest ideal customer profile for a brand URL
 
 ## Example Prompts
 "Launch a cold email campaign for mybrand.com targeting CTOs at SaaS companies. $10/day budget."
-"Check my MCPFactory connection status"
+"Check my distribute connection status"
 "What's the status of my sales campaign?"
 
 ## Get API Key
@@ -68,7 +68,7 @@ export default function CursorIntegrationPage() {
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`{
   "mcpServers": {
-    "mcpfactory": {
+    "distribute": {
       "url": "https://mcp.distribute.you/mcp",
       "headers": {
         "Authorization": "Bearer YOUR_API_KEY"
@@ -86,9 +86,9 @@ export default function CursorIntegrationPage() {
         <h2>Test Your Connection</h2>
         <p>In Cursor&apos;s AI chat, ask:</p>
         <pre className="bg-gray-100 p-4 rounded-lg">
-          <code className="text-gray-800">&quot;Check my MCPFactory connection status&quot;</code>
+          <code className="text-gray-800">&quot;Check my distribute connection status&quot;</code>
         </pre>
-        <p>Cursor will call the <code>mcpfactory_status</code> tool and confirm your setup.</p>
+        <p>Cursor will call the <code>distribute_status</code> tool and confirm your setup.</p>
 
         <h2>Available Tools</h2>
         <table>
@@ -100,35 +100,35 @@ export default function CursorIntegrationPage() {
           </thead>
           <tbody>
             <tr>
-              <td><code>mcpfactory_status</code></td>
+              <td><code>distribute_status</code></td>
               <td>Check connection and configuration</td>
             </tr>
             <tr>
-              <td><code>mcpfactory_create_campaign</code></td>
+              <td><code>distribute_create_campaign</code></td>
               <td>Launch a cold email campaign</td>
             </tr>
             <tr>
-              <td><code>mcpfactory_list_campaigns</code></td>
+              <td><code>distribute_list_campaigns</code></td>
               <td>List all your campaigns</td>
             </tr>
             <tr>
-              <td><code>mcpfactory_stop_campaign</code></td>
+              <td><code>distribute_stop_campaign</code></td>
               <td>Stop a running campaign</td>
             </tr>
             <tr>
-              <td><code>mcpfactory_resume_campaign</code></td>
+              <td><code>distribute_resume_campaign</code></td>
               <td>Resume a stopped campaign</td>
             </tr>
             <tr>
-              <td><code>mcpfactory_campaign_stats</code></td>
+              <td><code>distribute_campaign_stats</code></td>
               <td>Get campaign performance metrics</td>
             </tr>
             <tr>
-              <td><code>mcpfactory_list_brands</code></td>
+              <td><code>distribute_list_brands</code></td>
               <td>List all your brands</td>
             </tr>
             <tr>
-              <td><code>mcpfactory_suggest_icp</code></td>
+              <td><code>distribute_suggest_icp</code></td>
               <td>Suggest ideal customer profile for a brand URL</td>
             </tr>
           </tbody>

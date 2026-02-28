@@ -18,13 +18,13 @@ Cursor Skills extend AI assistant capabilities. The distribute skill enables lau
 ## Installation
 
 ### Global Skill
-Create: ~/.cursor/skills/mcpfactory/SKILL.md
+Create: ~/.cursor/skills/distribute/SKILL.md
 
 ### MCP Configuration
 Add to .cursor/mcp.json:
 {
   "mcpServers": {
-    "mcpfactory": {
+    "distribute": {
       "url": "https://mcp.distribute.you/mcp",
       "headers": {
         "Authorization": "Bearer YOUR_API_KEY"
@@ -68,7 +68,7 @@ export default function CursorSkillPage() {
 
         <h3>Option 1: Global Skill</h3>
         <p>
-          Create a file at <code>~/.cursor/skills/mcpfactory/SKILL.md</code>:
+          Create a file at <code>~/.cursor/skills/distribute/SKILL.md</code>:
         </p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`# distribute Skill
@@ -85,7 +85,7 @@ When the user asks to launch a campaign, outreach, or
 generate leads, use the appropriate distribute tool.
 
 ## Configuration
-Ensure MCPFACTORY_API_KEY is set in your MCP config.
+Ensure DISTRIBUTE_API_KEY is set in your MCP config.
 
 ## Example Prompts
 - "Launch a cold email campaign for acme.com"
@@ -95,7 +95,7 @@ Ensure MCPFACTORY_API_KEY is set in your MCP config.
 
         <h3>Option 2: Project Skill</h3>
         <p>
-          Create a <code>.cursor/skills/mcpfactory/SKILL.md</code> in your
+          Create a <code>.cursor/skills/distribute/SKILL.md</code> in your
           project root for project-specific configuration.
         </p>
 
@@ -106,7 +106,7 @@ Ensure MCPFACTORY_API_KEY is set in your MCP config.
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`{
   "mcpServers": {
-    "mcpfactory": {
+    "distribute": {
       "url": "https://mcp.distribute.you/mcp",
       "headers": {
         "Authorization": "Bearer YOUR_API_KEY"
@@ -176,7 +176,7 @@ How many emails sent, opened, replied?"`}</code>
 
         <h3>API key errors</h3>
         <p>
-          Verify your <code>MCPFACTORY_API_KEY</code> is valid at{" "}
+          Verify your <code>DISTRIBUTE_API_KEY</code> is valid at{" "}
           <a href="https://dashboard.distribute.you/api-keys">dashboard.distribute.you/api-keys</a>.
         </p>
 
