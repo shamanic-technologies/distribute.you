@@ -13,11 +13,11 @@ body {
 }
 
 .gradient-bg {
-  background: linear-gradient(135deg, #f0f9ff 0%, #fdf4ff 50%, #f0fdf4 100%);
+  background: linear-gradient(135deg, #ecfdf5 0%, #ecfeff 20%, #eff6ff 40%, #f5f3ff 60%, #fdf2f8 80%, #fffbeb 100%);
 }
 
 .gradient-text {
-  background: linear-gradient(135deg, #0ea5e9 0%, #d946ef 100%);
+  background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
