@@ -563,7 +563,7 @@ export interface WorkflowLeaderboardEntry {
 
 export async function fetchSectionLeaderboard(sectionKey: string): Promise<WorkflowLeaderboardEntry[]> {
   try {
-    const res = await fetch(`${API_URL}/performance/leaderboard`);
+    const res = await fetch("/api/performance/leaderboard");
     if (!res.ok) return [];
     const data = await res.json();
     const section = data.categorySections?.find(
