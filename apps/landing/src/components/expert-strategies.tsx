@@ -1,30 +1,28 @@
+import Image from "next/image";
+
 const EXPERT_CATEGORIES = [
   {
     feature: "Welcome Emails",
     color: {
-      bg: "bg-emerald-100",
-      text: "text-emerald-600",
-      border: "border-emerald-200",
       dot: "bg-emerald-400",
-      avatar: "bg-emerald-50 text-emerald-700 border-emerald-200",
     },
     experts: [
       {
         name: "Ryan Deiss",
         title: "DigitalMarketer",
-        initials: "RD",
+        photo: "/experts/ryan-deiss.jpg",
         strategy: "Indoctrination Sequence — a multi-step welcome flow that turns new subscribers into engaged buyers within 48 hours.",
       },
       {
         name: "Pat Flynn",
         title: "Smart Passive Income",
-        initials: "PF",
+        photo: "/experts/pat-flynn.jpg",
         strategy: "Value-first onboarding — lead with free wins and quick results before any pitch, building trust through generosity.",
       },
       {
         name: "André Chaperon",
         title: "AutoResponder Madness",
-        initials: "AC",
+        photo: "/experts/andre-chaperon.jpg",
         strategy: "Story-based email sequences — narrative-driven emails that create emotional investment and dramatically increase engagement.",
       },
     ],
@@ -32,29 +30,25 @@ const EXPERT_CATEGORIES = [
   {
     feature: "Cold Outreach",
     color: {
-      bg: "bg-cyan-100",
-      text: "text-cyan-600",
-      border: "border-cyan-200",
       dot: "bg-cyan-400",
-      avatar: "bg-cyan-50 text-cyan-700 border-cyan-200",
     },
     experts: [
       {
         name: "Alex Hormozi",
         title: "$100M Leads",
-        initials: "AH",
+        photo: "/experts/alex-hormozi.jpg",
         strategy: "Volume meets value — high-volume outreach with irresistible offers that make prospects feel stupid saying no.",
       },
       {
         name: "Patrick Dang",
         title: "Sales Psychology",
-        initials: "PD",
+        photo: "/experts/patrick-dang.jpg",
         strategy: "Consultative cold email — open with genuine curiosity about the prospect's challenges, then position as the natural solution.",
       },
       {
         name: "Kyle Coleman",
         title: "CMO @ Copy.ai",
-        initials: "KC",
+        photo: "/experts/kyle-coleman.jpg",
         strategy: "Hyper-personalized B2B outreach — use signals and intent data to craft emails that feel like they were written just for that person.",
       },
     ],
@@ -62,29 +56,25 @@ const EXPERT_CATEGORIES = [
   {
     feature: "Webinar Lifecycle",
     color: {
-      bg: "bg-blue-100",
-      text: "text-blue-600",
-      border: "border-blue-200",
       dot: "bg-blue-400",
-      avatar: "bg-blue-50 text-blue-700 border-blue-200",
     },
     experts: [
       {
         name: "Russell Brunson",
         title: "ClickFunnels",
-        initials: "RB",
+        photo: "/experts/russell-brunson.jpg",
         strategy: "The Perfect Webinar — a proven framework that generated $14M in its first year through structured storytelling and stack offers.",
       },
       {
         name: "Amy Porterfield",
         title: "Digital Course Academy",
-        initials: "AP",
+        photo: "/experts/amy-porterfield.jpg",
         strategy: "List-to-launch webinars — nurture your audience with value-packed live sessions that naturally convert into course enrollments.",
       },
       {
         name: "Jeff Walker",
         title: "Product Launch Formula",
-        initials: "JW",
+        photo: "/experts/jeff-walker.jpg",
         strategy: "Sideways sales letter — a multi-day launch sequence that builds anticipation, delivers value, and creates urgency through scarcity.",
       },
     ],
@@ -122,11 +112,13 @@ export function ExpertStrategies() {
                   className="bg-white rounded-xl p-5 border border-gray-200 hover:shadow-sm transition-all duration-200"
                 >
                   <div className="flex items-center gap-3 mb-3">
-                    <div
-                      className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold border ${category.color.avatar}`}
-                    >
-                      {expert.initials}
-                    </div>
+                    <Image
+                      src={expert.photo}
+                      alt={expert.name}
+                      width={36}
+                      height={36}
+                      className="w-9 h-9 rounded-full object-cover"
+                    />
                     <div>
                       <div className="font-medium text-gray-900 text-sm">
                         {expert.name}
