@@ -2,22 +2,17 @@
 
 import { useState } from "react";
 import { URLS } from "@mcpfactory/content";
+import type { BrandEntry, WorkflowEntry } from "@/lib/fetch-leaderboard";
+import { formatPercent, formatCostCents } from "@/lib/fetch-leaderboard";
 
 type Tab = "brands" | "workflows";
 
-const BRAND_DATA = [
-  { name: "Acme SaaS", domain: "acme.com", emails: 4280, openRate: 38.1, clickRate: 12.4, costPerOpen: 0.02 },
-  { name: "Nebula AI", domain: "nebula.ai", emails: 3150, openRate: 35.7, clickRate: 10.8, costPerOpen: 0.03 },
-  { name: "Startly", domain: "startly.io", emails: 2890, openRate: 31.2, clickRate: 9.1, costPerOpen: 0.04 },
-];
+interface PerformancePreviewProps {
+  brands: BrandEntry[];
+  workflows: WorkflowEntry[];
+}
 
-const WORKFLOW_DATA = [
-  { name: "aurora-v3", category: "Welcome Emails", runs: 1240, openRate: 34.2, replyRate: 8.1, costPerReply: 0.12 },
-  { name: "nova-v2", category: "Welcome Emails", runs: 980, openRate: 31.8, replyRate: 7.4, costPerReply: 0.15 },
-  { name: "sienna-v1", category: "Cold Outreach", runs: 870, openRate: 28.5, replyRate: 6.2, costPerReply: 0.18 },
-];
-
-export function PerformancePreview() {
+export function PerformancePreview({ brands, workflows }: PerformancePreviewProps) {
   const [tab, setTab] = useState<Tab>("brands");
 
   return (
@@ -34,7 +29,7 @@ export function PerformancePreview() {
             }`}
           >
             Brands
-            <span className="ml-1.5 text-xs text-gray-400">{BRAND_DATA.length}</span>
+            <span className="ml-1.5 text-xs text-gray-400">{brands.length}</span>
           </button>
           <button
             onClick={() => setTab("workflows")}
@@ -45,7 +40,7 @@ export function PerformancePreview() {
             }`}
           >
             Workflows
-            <span className="ml-1.5 text-xs text-gray-400">{WORKFLOW_DATA.length}</span>
+            <span className="ml-1.5 text-xs text-gray-400">{workflows.length}</span>
           </button>
         </div>
         <a
@@ -74,30 +69,35 @@ export function PerformancePreview() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {BRAND_DATA.map((brand, i) => (
-                <tr key={brand.domain} className={`${i === 0 ? "bg-brand-50/30" : ""} hover:bg-gray-50 transition`}>
-                  <td className={`px-4 py-3 font-mono text-xs ${i === 0 ? "text-brand-600 font-bold" : "text-gray-400"}`}>
-                    {i + 1}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-6 h-6 rounded bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500 uppercase">
-                        {brand.name.charAt(0)}
+              {brands.map((brand, i) => {
+                const displayName = brand.brandName || brand.brandDomain || "Unknown";
+                return (
+                  <tr key={brand.brandDomain ?? i} className={`${i === 0 ? "bg-brand-50/30" : ""} hover:bg-gray-50 transition`}>
+                    <td className={`px-4 py-3 font-mono text-xs ${i === 0 ? "text-brand-600 font-bold" : "text-gray-400"}`}>
+                      {i + 1}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-6 h-6 rounded bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500 uppercase">
+                          {displayName.charAt(0)}
+                        </div>
+                        <div>
+                          <div className={`font-medium ${i === 0 ? "text-gray-900" : "text-gray-700"}`}>{displayName}</div>
+                          {brand.brandDomain && brand.brandName && (
+                            <div className="text-xs text-gray-400">{brand.brandDomain}</div>
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <div className={`font-medium ${i === 0 ? "text-gray-900" : "text-gray-700"}`}>{brand.name}</div>
-                        <div className="text-xs text-gray-400">{brand.domain}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-right text-gray-500 font-mono text-xs">{brand.emails.toLocaleString()}</td>
-                  <td className={`px-4 py-3 text-right font-mono text-xs ${i === 0 ? "text-gray-900 font-medium" : "text-gray-500"}`}>
-                    {brand.openRate}%
-                  </td>
-                  <td className="px-4 py-3 text-right text-gray-500 font-mono text-xs">{brand.clickRate}%</td>
-                  <td className="px-4 py-3 text-right text-gray-500 font-mono text-xs">${brand.costPerOpen.toFixed(2)}</td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-4 py-3 text-right text-gray-500 font-mono text-xs">{brand.emailsSent.toLocaleString()}</td>
+                    <td className={`px-4 py-3 text-right font-mono text-xs ${i === 0 ? "text-gray-900 font-medium" : "text-gray-500"}`}>
+                      {formatPercent(brand.openRate)}
+                    </td>
+                    <td className="px-4 py-3 text-right text-gray-500 font-mono text-xs">{formatPercent(brand.clickRate)}</td>
+                    <td className="px-4 py-3 text-right text-gray-500 font-mono text-xs">{formatCostCents(brand.costPerOpenCents)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         ) : (
@@ -114,27 +114,27 @@ export function PerformancePreview() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {WORKFLOW_DATA.map((wf, i) => (
-                <tr key={wf.name} className={`${i === 0 ? "bg-brand-50/30" : ""} hover:bg-gray-50 transition`}>
+              {workflows.map((wf, i) => (
+                <tr key={wf.workflowName} className={`${i === 0 ? "bg-brand-50/30" : ""} hover:bg-gray-50 transition`}>
                   <td className={`px-4 py-3 font-mono text-xs ${i === 0 ? "text-brand-600 font-bold" : "text-gray-400"}`}>
                     {i + 1}
                   </td>
                   <td className="px-4 py-3">
                     <span className={`font-mono text-xs ${i === 0 ? "text-gray-900 font-medium" : "text-gray-700"}`}>
-                      {wf.name}
+                      {wf.displayName || wf.workflowName}
                     </span>
                   </td>
                   <td className="px-4 py-3">
                     <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
-                      {wf.category}
+                      {wf.category || "—"}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right text-gray-500 font-mono text-xs">{wf.runs.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-right text-gray-500 font-mono text-xs">{wf.runCount.toLocaleString()}</td>
                   <td className={`px-4 py-3 text-right font-mono text-xs ${i === 0 ? "text-gray-900 font-medium" : "text-gray-500"}`}>
-                    {wf.openRate}%
+                    {formatPercent(wf.openRate)}
                   </td>
-                  <td className="px-4 py-3 text-right text-gray-500 font-mono text-xs">{wf.replyRate}%</td>
-                  <td className="px-4 py-3 text-right text-gray-500 font-mono text-xs">${wf.costPerReply.toFixed(2)}</td>
+                  <td className="px-4 py-3 text-right text-gray-500 font-mono text-xs">{formatPercent(wf.replyRate)}</td>
+                  <td className="px-4 py-3 text-right text-gray-500 font-mono text-xs">{formatCostCents(wf.costPerReplyCents)}</td>
                 </tr>
               ))}
             </tbody>

@@ -1,0 +1,70 @@
+const API_SERVICE_URL = process.env.API_SERVICE_URL || "http://localhost:3000";
+
+export interface BrandEntry {
+  brandDomain: string | null;
+  brandName?: string | null;
+  emailsSent: number;
+  openRate: number;
+  clickRate: number;
+  costPerOpenCents: number | null;
+}
+
+export interface WorkflowEntry {
+  workflowName: string;
+  displayName: string;
+  category: string | null;
+  runCount: number;
+  openRate: number;
+  replyRate: number;
+  costPerReplyCents: number | null;
+}
+
+export interface LeaderboardPreview {
+  brands: BrandEntry[];
+  workflows: WorkflowEntry[];
+}
+
+export async function fetchLeaderboardPreview(): Promise<LeaderboardPreview | null> {
+  try {
+    const res = await fetch(`${API_SERVICE_URL}/performance/leaderboard`, {
+      next: { revalidate: 300 },
+    });
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+
+    const brands: BrandEntry[] = (data.brands || []).slice(0, 3).map((b: Record<string, unknown>) => ({
+      brandDomain: b.brandDomain as string | null,
+      brandName: b.brandName as string | null,
+      emailsSent: b.emailsSent as number,
+      openRate: b.openRate as number,
+      clickRate: b.clickRate as number,
+      costPerOpenCents: b.costPerOpenCents as number | null,
+    }));
+
+    const workflows: WorkflowEntry[] = (data.workflows || []).slice(0, 3).map((w: Record<string, unknown>) => ({
+      workflowName: w.workflowName as string,
+      displayName: w.displayName as string,
+      category: w.category as string | null,
+      runCount: w.runCount as number,
+      openRate: w.openRate as number,
+      replyRate: w.replyRate as number,
+      costPerReplyCents: w.costPerReplyCents as number | null,
+    }));
+
+    return { brands, workflows };
+  } catch {
+    return null;
+  }
+}
+
+export function formatPercent(rate: number): string {
+  if (rate === 0) return "—";
+  return `${(rate * 100).toFixed(1)}%`;
+}
+
+export function formatCostCents(cents: number | null): string {
+  if (cents === null || cents === 0) return "—";
+  return `$${(cents / 100).toFixed(2)}`;
+}

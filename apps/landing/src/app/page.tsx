@@ -5,8 +5,11 @@ import { DashboardPreview } from "@/components/dashboard-preview";
 import { PerformancePreview } from "@/components/performance-preview";
 import { ExpertStrategies } from "@/components/expert-strategies";
 import { StatusIndicator } from "@/components/status-indicator";
+import { fetchLeaderboardPreview } from "@/lib/fetch-leaderboard";
 import { URLS, DISTRIBUTION_FEATURES, DISTRIBUTION_STEPS } from "@mcpfactory/content";
 import type { FeatureColor } from "@mcpfactory/content";
+
+export const revalidate = 300;
 
 const FEATURE_COLOR_CLASSES: Record<FeatureColor, { bg: string; text: string; border: string; dot: string; hover: string }> = {
   emerald: { bg: "bg-emerald-100", text: "text-emerald-600", border: "border-emerald-200", dot: "bg-emerald-400", hover: "group-hover:text-emerald-600" },
@@ -17,7 +20,8 @@ const FEATURE_COLOR_CLASSES: Record<FeatureColor, { bg: string; text: string; bo
   amber: { bg: "bg-amber-100", text: "text-amber-600", border: "border-amber-200", dot: "bg-amber-400", hover: "group-hover:text-amber-600" },
 };
 
-export default function Home() {
+export default async function Home() {
+  const leaderboard = await fetchLeaderboardPreview();
   return (
     <main className="min-h-screen">
       <Navbar />
@@ -234,20 +238,22 @@ export default function Home() {
       </section>
 
       {/* Performance Leaderboard */}
-      <section className="py-20 px-4">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-10">
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
-              Real performance, real data
-            </h2>
-            <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-              Every workflow and every brand is ranked by actual metrics.
-              All data is public — no black boxes.
-            </p>
+      {leaderboard && (leaderboard.brands.length > 0 || leaderboard.workflows.length > 0) && (
+        <section className="py-20 px-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-10">
+              <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+                Real performance, real data
+              </h2>
+              <p className="text-gray-500 text-lg max-w-2xl mx-auto">
+                Every workflow and every brand is ranked by actual metrics.
+                All data is public — no black boxes.
+              </p>
+            </div>
+            <PerformancePreview brands={leaderboard.brands} workflows={leaderboard.workflows} />
           </div>
-          <PerformancePreview />
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* How it works */}
       <section id="how-it-works" className="py-20 px-4">
