@@ -41,7 +41,7 @@ Header Value: Bearer mcpf_live_xxxx`}</code>
         <p>Use <strong>Webhooks by Zapier → Custom Request</strong>:</p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`Method: POST
-URL: https://api.mcpfactory.org/campaigns
+URL: https://api.distribute.you/campaigns
 Headers:
   Authorization: Bearer mcpf_live_xxxx
   Content-Type: application/json

@@ -19,7 +19,7 @@ Add to .cursor/mcp.json (project) or ~/.cursor/mcp.json (global):
 {
   "mcpServers": {
     "mcpfactory": {
-      "url": "https://mcp.mcpfactory.org/mcp",
+      "url": "https://mcp.distribute.you/mcp",
       "headers": {
         "Authorization": "Bearer YOUR_API_KEY"
       }
@@ -45,7 +45,7 @@ Restart Cursor after saving.
 "What's the status of my sales campaign?"
 
 ## Get API Key
-https://dashboard.mcpfactory.org/api-keys`;
+https://dashboard.distribute.you/api-keys`;
 
 export default function CursorIntegrationPage() {
   return (
@@ -69,7 +69,7 @@ export default function CursorIntegrationPage() {
           <code>{`{
   "mcpServers": {
     "mcpfactory": {
-      "url": "https://mcp.mcpfactory.org/mcp",
+      "url": "https://mcp.distribute.you/mcp",
       "headers": {
         "Authorization": "Bearer YOUR_API_KEY"
       }
@@ -79,7 +79,7 @@ export default function CursorIntegrationPage() {
         </pre>
         <p>
           Replace <code>YOUR_API_KEY</code> with your distribute API key from{" "}
-          <a href="https://dashboard.mcpfactory.org/api-keys">your dashboard</a>.
+          <a href="https://dashboard.distribute.you/api-keys">your dashboard</a>.
         </p>
         <p><strong>Restart Cursor</strong> after saving the configuration.</p>
 
@@ -176,7 +176,7 @@ How many emails sent, opened, and replied?"`}</code>
         <ul>
           <li>Verify your API key is correct</li>
           <li>Ensure the Authorization header format is <code>Bearer YOUR_KEY</code></li>
-          <li>Check your key at <a href="https://dashboard.mcpfactory.org/api-keys">dashboard.mcpfactory.org/api-keys</a></li>
+          <li>Check your key at <a href="https://dashboard.distribute.you/api-keys">dashboard.distribute.you/api-keys</a></li>
         </ul>
 
         <h2>Next Steps</h2>

@@ -31,7 +31,7 @@ src/
 
 ## Deployment
 
-Deploy to Vercel as `docs.mcpfactory.org`.
+Deploy to Vercel as `docs.distribute.you`.
 
 ## License
 

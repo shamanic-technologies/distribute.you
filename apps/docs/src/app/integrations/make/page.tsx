@@ -47,7 +47,7 @@ export default function MakeIntegrationPage() {
           Add an <strong>HTTP → Make a request</strong> module:
         </p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`URL: https://api.mcpfactory.org/campaigns
+          <code>{`URL: https://api.distribute.you/campaigns
 Method: POST
 Headers:
   Content-Type: application/json

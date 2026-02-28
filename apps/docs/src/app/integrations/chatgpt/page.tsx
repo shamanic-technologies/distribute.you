@@ -20,7 +20,7 @@ const LLM_INSTRUCTIONS = `# distribute + ChatGPT Integration
 ## Setup Steps
 1. Open ChatGPT Settings → Connectors
 2. Click "Add Custom Connector"
-3. Enter MCP URL: https://mcp.mcpfactory.org/mcp
+3. Enter MCP URL: https://mcp.distribute.you/mcp
 4. Add Authorization header: Bearer YOUR_API_KEY
 5. Save and enable the connector
 
@@ -40,7 +40,7 @@ const LLM_INSTRUCTIONS = `# distribute + ChatGPT Integration
 "What's the status of my sales campaign?"
 
 ## Get API Key
-https://dashboard.mcpfactory.org/api-keys`;
+https://dashboard.distribute.you/api-keys`;
 
 export default function ChatGPTIntegrationPage() {
   return (
@@ -68,7 +68,7 @@ export default function ChatGPTIntegrationPage() {
           <li>
             Enter the MCP URL:
             <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg">
-              <code>https://mcp.mcpfactory.org/mcp</code>
+              <code>https://mcp.distribute.you/mcp</code>
             </pre>
           </li>
           <li>
@@ -151,14 +151,14 @@ How many emails sent, opened, and replied?"`}</code>
         <h3>Connector not working</h3>
         <ul>
           <li>Verify you have a ChatGPT Plus/Pro/Team subscription</li>
-          <li>Check that the MCP URL is exactly: <code>https://mcp.mcpfactory.org/mcp</code></li>
+          <li>Check that the MCP URL is exactly: <code>https://mcp.distribute.you/mcp</code></li>
           <li>Ensure your API key is valid</li>
         </ul>
 
         <h3>Authorization errors</h3>
         <ul>
           <li>Make sure the header is <code>Authorization: Bearer YOUR_KEY</code></li>
-          <li>Verify your API key at <a href="https://dashboard.mcpfactory.org/api-keys">dashboard.mcpfactory.org/api-keys</a></li>
+          <li>Verify your API key at <a href="https://dashboard.distribute.you/api-keys">dashboard.distribute.you/api-keys</a></li>
         </ul>
 
         <h2>Next Steps</h2>
