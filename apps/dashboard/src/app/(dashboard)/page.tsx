@@ -1,4 +1,4 @@
-import { currentUser } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { ApiKeyPreview } from "@/components/api-key-preview";
 
@@ -36,9 +36,15 @@ async function getLeaderboardWorkflows(): Promise<LeaderboardWorkflow[]> {
 async function getUserWorkflowNames(): Promise<Set<string>> {
   const apiKey = process.env.DISTRIBUTE_API_KEY;
   if (!apiKey) return new Set();
+  const { userId, orgId } = await auth();
+  if (!userId || !orgId) return new Set();
   try {
     const res = await fetch(`${API_URL}/v1/campaigns`, {
-      headers: { Authorization: `Bearer ${apiKey}` },
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "x-org-id": orgId,
+        "x-user-id": userId,
+      },
     });
     if (!res.ok) return new Set();
     const data = await res.json();
