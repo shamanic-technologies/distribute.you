@@ -1,20 +1,32 @@
 const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 
 interface ApiOptions {
-  token: string;
+  token?: string;
   method?: "GET" | "POST" | "PUT" | "DELETE";
   body?: Record<string, unknown>;
 }
 
-async function apiCall<T>(endpoint: string, options: ApiOptions): Promise<T> {
-  const { token, method = "GET", body } = options;
+/**
+ * Unified API call function.
+ * - With token: direct call to external API (server-side usage)
+ * - Without token: routes through /api/v1 proxy (client-side, auth via Clerk cookies)
+ */
+async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
+  const { token, method = "GET", body } = options ?? {};
 
-  const response = await fetch(`${API_URL}/v1${endpoint}`, {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  let url: string;
+
+  if (token) {
+    url = `${API_URL}/v1${endpoint}`;
+    headers.Authorization = `Bearer ${token}`;
+  } else {
+    url = `/api/v1${endpoint}`;
+  }
+
+  const response = await fetch(url, {
     method,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   });
 
@@ -66,32 +78,32 @@ export interface ByokKey {
 }
 
 // User/Org info
-export async function getMe(token: string): Promise<UserInfo> {
+export async function getMe(token?: string): Promise<UserInfo> {
   return apiCall<UserInfo>("/me", { token });
 }
 
 // API Keys
-export async function listApiKeys(token: string): Promise<{ keys: ApiKey[] }> {
+export async function listApiKeys(token?: string): Promise<{ keys: ApiKey[] }> {
   return apiCall<{ keys: ApiKey[] }>("/api-keys", { token });
 }
 
-export async function createApiKey(token: string, name?: string): Promise<NewApiKey> {
+export async function createApiKey(name?: string, token?: string): Promise<NewApiKey> {
   return apiCall<NewApiKey>("/api-keys", { token, method: "POST", body: { name } });
 }
 
-export async function deleteApiKey(token: string, id: string): Promise<{ message: string }> {
+export async function deleteApiKey(id: string, token?: string): Promise<{ message: string }> {
   return apiCall<{ message: string }>(`/api-keys/${id}`, { token, method: "DELETE" });
 }
 
 // BYOK Keys
-export async function listByokKeys(token: string): Promise<{ keys: ByokKey[] }> {
+export async function listByokKeys(token?: string): Promise<{ keys: ByokKey[] }> {
   return apiCall<{ keys: ByokKey[] }>("/keys", { token });
 }
 
 export async function setByokKey(
-  token: string,
   provider: string,
-  apiKey: string
+  apiKey: string,
+  token?: string
 ): Promise<{ provider: string; maskedKey: string }> {
   return apiCall<{ provider: string; maskedKey: string }>("/keys", {
     token,
@@ -101,8 +113,8 @@ export async function setByokKey(
 }
 
 export async function deleteByokKey(
-  token: string,
-  provider: string
+  provider: string,
+  token?: string
 ): Promise<{ message: string }> {
   return apiCall<{ message: string }>(`/keys/${provider}`, {
     token,
@@ -118,12 +130,12 @@ export interface SessionApiKey {
   name: string;
 }
 
-export async function getOrCreateSessionKey(token: string): Promise<SessionApiKey> {
+export async function getOrCreateSessionKey(token?: string): Promise<SessionApiKey> {
   return apiCall<SessionApiKey>("/api-keys/session", { token, method: "POST" });
 }
 
 // Activity tracking
-export async function trackActivity(token: string): Promise<{ ok: boolean }> {
+export async function trackActivity(token?: string): Promise<{ ok: boolean }> {
   return apiCall<{ ok: boolean }>("/activity", { token, method: "POST" });
 }
 
@@ -186,17 +198,17 @@ export interface CampaignStats {
   repliesUnsubscribe?: number;
 }
 
-export async function listCampaigns(token: string): Promise<{ campaigns: Campaign[] }> {
+export async function listCampaigns(token?: string): Promise<{ campaigns: Campaign[] }> {
   return apiCall<{ campaigns: Campaign[] }>("/campaigns", { token });
 }
 
-export async function getCampaignStats(token: string, campaignId: string): Promise<CampaignStats> {
+export async function getCampaignStats(campaignId: string, token?: string): Promise<CampaignStats> {
   return apiCall<CampaignStats>(`/campaigns/${campaignId}/stats`, { token });
 }
 
 export async function getCampaignBatchStats(
-  token: string,
-  campaignIds: string[]
+  campaignIds: string[],
+  token?: string
 ): Promise<Record<string, CampaignStats>> {
   const result = await apiCall<{ stats: Record<string, CampaignStats> }>("/campaigns/batch-stats", {
     token,
@@ -220,19 +232,19 @@ export interface BrandDeliveryStats {
   repliesUnsubscribe: number;
 }
 
-export async function getBrandDeliveryStats(token: string, brandId: string): Promise<BrandDeliveryStats> {
+export async function getBrandDeliveryStats(brandId: string, token?: string): Promise<BrandDeliveryStats> {
   return apiCall<BrandDeliveryStats>(`/brands/${brandId}/delivery-stats`, { token });
 }
 
-export async function getBrandCostBreakdown(token: string, brandId: string): Promise<{ costs: CostByName[] }> {
+export async function getBrandCostBreakdown(brandId: string, token?: string): Promise<{ costs: CostByName[] }> {
   return apiCall<{ costs: CostByName[] }>(`/brands/${brandId}/cost-breakdown`, { token });
 }
 
-export async function stopCampaign(token: string, campaignId: string): Promise<{ campaign: Campaign }> {
+export async function stopCampaign(campaignId: string, token?: string): Promise<{ campaign: Campaign }> {
   return apiCall<{ campaign: Campaign }>(`/campaigns/${campaignId}/stop`, { token, method: "POST" });
 }
 
-export async function resumeCampaign(token: string, campaignId: string): Promise<{ campaign: Campaign }> {
+export async function resumeCampaign(campaignId: string, token?: string): Promise<{ campaign: Campaign }> {
   return apiCall<{ campaign: Campaign }>(`/campaigns/${campaignId}/resume`, { token, method: "POST" });
 }
 
@@ -245,15 +257,15 @@ export interface Brand {
   createdAt: string;
 }
 
-export async function listBrands(token: string): Promise<{ brands: Brand[] }> {
+export async function listBrands(token?: string): Promise<{ brands: Brand[] }> {
   return apiCall<{ brands: Brand[] }>("/brands", { token });
 }
 
-export async function getBrandsCosts(token: string): Promise<{ costs: Record<string, string> }> {
+export async function getBrandsCosts(token?: string): Promise<{ costs: Record<string, string> }> {
   return apiCall<{ costs: Record<string, string> }>("/brands/costs", { token });
 }
 
-export async function getBrand(token: string, brandId: string): Promise<{ brand: Brand }> {
+export async function getBrand(brandId: string, token?: string): Promise<{ brand: Brand }> {
   return apiCall<{ brand: Brand }>(`/brands/${brandId}`, { token });
 }
 
@@ -322,8 +334,8 @@ export interface SalesProfile {
 }
 
 export async function getBrandSalesProfile(
-  token: string,
-  brandId: string
+  brandId: string,
+  token?: string
 ): Promise<{ profile: SalesProfile | null }> {
   try {
     return await apiCall<{ profile: SalesProfile }>(`/brands/${brandId}/sales-profile`, { token });
@@ -361,17 +373,17 @@ export interface BrandRun {
   costs: RunCost[];
 }
 
-export async function listBrandRuns(token: string, brandId: string): Promise<{ runs: BrandRun[] }> {
+export async function listBrandRuns(brandId: string, token?: string): Promise<{ runs: BrandRun[] }> {
   return apiCall<{ runs: BrandRun[] }>(`/brands/${brandId}/runs`, { token });
 }
 
 // Campaign by brand
-export async function listCampaignsByBrand(token: string, brandId: string): Promise<{ campaigns: Campaign[] }> {
+export async function listCampaignsByBrand(brandId: string, token?: string): Promise<{ campaigns: Campaign[] }> {
   return apiCall<{ campaigns: Campaign[] }>(`/campaigns?brandId=${brandId}&status=all`, { token });
 }
 
 // Single campaign
-export async function getCampaign(token: string, campaignId: string): Promise<{ campaign: Campaign }> {
+export async function getCampaign(campaignId: string, token?: string): Promise<{ campaign: Campaign }> {
   return apiCall<{ campaign: Campaign }>(`/campaigns/${campaignId}`, { token });
 }
 
@@ -402,7 +414,7 @@ export interface Lead {
   } | null;
 }
 
-export async function listCampaignLeads(token: string, campaignId: string): Promise<{ leads: Lead[] }> {
+export async function listCampaignLeads(campaignId: string, token?: string): Promise<{ leads: Lead[] }> {
   return apiCall<{ leads: Lead[] }>(`/campaigns/${campaignId}/leads`, { token });
 }
 
@@ -430,7 +442,7 @@ export interface Email {
   } | null;
 }
 
-export async function listCampaignEmails(token: string, campaignId: string): Promise<{ emails: Email[] }> {
+export async function listCampaignEmails(campaignId: string, token?: string): Promise<{ emails: Email[] }> {
   return apiCall<{ emails: Email[] }>(`/campaigns/${campaignId}/emails`, { token });
 }
 
@@ -444,7 +456,7 @@ export interface Reply {
   receivedAt: string;
 }
 
-export async function listCampaignReplies(token: string, campaignId: string): Promise<{ replies: Reply[] }> {
+export async function listCampaignReplies(campaignId: string, token?: string): Promise<{ replies: Reply[] }> {
   return apiCall<{ replies: Reply[] }>(`/campaigns/${campaignId}/replies`, { token });
 }
 
@@ -484,19 +496,19 @@ export interface Workflow {
   updatedAt: string;
 }
 
-export async function listWorkflows(token: string): Promise<{ workflows: Workflow[] }> {
+export async function listWorkflows(token?: string): Promise<{ workflows: Workflow[] }> {
   return apiCall<{ workflows: Workflow[] }>("/workflows", { token });
 }
 
-export async function getWorkflow(token: string, workflowId: string): Promise<Workflow> {
+export async function getWorkflow(workflowId: string, token?: string): Promise<Workflow> {
   return apiCall<Workflow>(`/workflows/${workflowId}`, { token });
 }
 
 // Create brand
 export async function createBrand(
-  token: string,
   name: string,
-  domain: string
+  domain: string,
+  token?: string
 ): Promise<{ brand: Brand }> {
   return apiCall<{ brand: Brand }>("/brands", {
     token,
@@ -520,7 +532,7 @@ export interface WorkflowPerformance {
 }
 
 export async function getBestWorkflow(
-  token: string
+  token?: string
 ): Promise<{
   workflow: { id: string; name: string; category: string; channel: string; audienceType: string; signatureName: string };
   stats: { totalCostInUsdCents: number; totalOutcomes: number; costPerOutcome: number; completedRuns: number };

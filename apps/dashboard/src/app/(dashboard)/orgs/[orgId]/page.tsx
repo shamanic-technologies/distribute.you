@@ -12,7 +12,7 @@ export default function OrgPage() {
 
   const { data, isLoading } = useAuthQuery(
     ["brands"],
-    (token) => listBrands(token)
+    () => listBrands()
   );
   const brands = data?.brands ?? [];
 

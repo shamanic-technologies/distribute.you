@@ -14,7 +14,7 @@ interface WorkflowSelectionTableProps {
 export function WorkflowSelectionTable({ sectionKey, onSelect, selectedWorkflowId }: WorkflowSelectionTableProps) {
   const { data, isLoading } = useAuthQuery(
     ["workflows"],
-    (token) => listWorkflows(token)
+    () => listWorkflows()
   );
 
   const workflows = useMemo(() => {

@@ -21,7 +21,7 @@ export function WorkflowDetailPanel({
 }) {
   const { data: workflow, isLoading } = useAuthQuery(
     ["workflow", workflowId],
-    (token) => getWorkflow(token, workflowId)
+    () => getWorkflow(workflowId)
   );
 
   // Escape key to close

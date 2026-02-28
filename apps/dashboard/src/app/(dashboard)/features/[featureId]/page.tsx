@@ -37,7 +37,7 @@ export default function FeatureOverviewPage() {
 
   const { data, isLoading } = useAuthQuery(
     ["workflows"],
-    (token) => listWorkflows(token),
+    () => listWorkflows(),
     { enabled: featureDef?.implemented === true }
   );
 

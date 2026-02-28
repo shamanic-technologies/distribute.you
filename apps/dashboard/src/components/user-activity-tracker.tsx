@@ -9,21 +9,17 @@ import { trackActivity } from "@/lib/api";
  * The lifecycle-emails-service dedupes per user per day.
  */
 export function UserActivityTracker() {
-  const { getToken, isSignedIn } = useAuth();
+  const { isSignedIn } = useAuth();
   const hasFired = useRef(false);
 
   useEffect(() => {
     if (!isSignedIn || hasFired.current) return;
     hasFired.current = true;
 
-    getToken().then((token) => {
-      if (token) {
-        trackActivity(token).catch(() => {
-          // Silent fail — activity tracking is best-effort
-        });
-      }
+    trackActivity().catch(() => {
+      // Silent fail — activity tracking is best-effort
     });
-  }, [isSignedIn, getToken]);
+  }, [isSignedIn]);
 
   return null;
 }

@@ -32,7 +32,7 @@ export function CampaignProvider({ children, campaignId }: CampaignProviderProps
 
   const { data: campaignData, isLoading: campaignLoading } = useAuthQuery(
     ["campaign", campaignId],
-    (token) => getCampaign(token, campaignId),
+    () => getCampaign(campaignId),
     { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false },
   );
 
@@ -45,19 +45,19 @@ export function CampaignProvider({ children, campaignId }: CampaignProviderProps
 
   const { data: statsData, isLoading: statsLoading } = useAuthQuery(
     ["campaignStats", campaignId],
-    (token) => getCampaignStats(token, campaignId),
+    () => getCampaignStats(campaignId),
     pollOptions,
   );
 
   const { data: emailsData, isLoading: emailsLoading } = useAuthQuery(
     ["campaignEmails", campaignId],
-    (token) => listCampaignEmails(token, campaignId),
+    () => listCampaignEmails(campaignId),
     pollOptions,
   );
 
   const { data: leadsData, isLoading: leadsLoading } = useAuthQuery(
     ["campaignLeads", campaignId],
-    (token) => listCampaignLeads(token, campaignId),
+    () => listCampaignLeads(campaignId),
     pollOptions,
   );
 

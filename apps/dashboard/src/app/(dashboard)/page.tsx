@@ -1,5 +1,4 @@
 import { currentUser } from "@clerk/nextjs/server";
-import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { ApiKeyPreview } from "@/components/api-key-preview";
 
@@ -34,10 +33,12 @@ async function getLeaderboardWorkflows(): Promise<LeaderboardWorkflow[]> {
   }
 }
 
-async function getUserWorkflowNames(token: string): Promise<Set<string>> {
+async function getUserWorkflowNames(): Promise<Set<string>> {
+  const apiKey = process.env.DISTRIBUTE_API_KEY;
+  if (!apiKey) return new Set();
   try {
     const res = await fetch(`${API_URL}/v1/campaigns`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${apiKey}` },
     });
     if (!res.ok) return new Set();
     const data = await res.json();
@@ -78,16 +79,12 @@ function formatCostPerReply(cents: number): string {
 }
 
 export default async function DashboardHome() {
-  const [user, { getToken }, allWorkflows] = await Promise.all([
+  const [user, allWorkflows] = await Promise.all([
     currentUser(),
-    auth(),
     getLeaderboardWorkflows(),
   ]);
 
-  const token = await getToken();
-  const userWorkflowNames = token
-    ? await getUserWorkflowNames(token)
-    : new Set<string>();
+  const userWorkflowNames = await getUserWorkflowNames();
 
   const topWorkflows = pickTopWorkflows(allWorkflows, userWorkflowNames);
 

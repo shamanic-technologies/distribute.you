@@ -36,7 +36,7 @@ export default function WorkflowCampaignsPage() {
 
   const { data: campaignsData, isLoading } = useAuthQuery(
     ["campaigns", { brandId }],
-    (token) => listCampaignsByBrand(token, brandId)
+    () => listCampaignsByBrand(brandId)
   );
   const campaigns = campaignsData?.campaigns ?? [];
 
@@ -44,21 +44,21 @@ export default function WorkflowCampaignsPage() {
 
   const { data: batchStats } = useAuthQuery(
     ["campaignBatchStats", { brandId }, campaignIds],
-    (token) => getCampaignBatchStats(token, campaignIds),
+    () => getCampaignBatchStats(campaignIds),
     { enabled: campaignIds.length > 0 }
   );
   const campaignStats = batchStats ?? {};
 
   const { data: brandCostData } = useAuthQuery(
     ["brandCostBreakdown", { brandId }],
-    (token) => getBrandCostBreakdown(token, brandId)
+    () => getBrandCostBreakdown(brandId)
   );
   const brandCostBreakdown = brandCostData?.costs ?? [];
 
   // Fetch delivery stats once at brand level (single email-gateway call)
   const { data: brandDelivery } = useAuthQuery(
     ["brandDeliveryStats", brandId],
-    (token) => getBrandDeliveryStats(token, brandId),
+    () => getBrandDeliveryStats(brandId),
     { retry: false }
   );
 
