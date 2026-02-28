@@ -9,6 +9,7 @@ import { SkeletonKeysList } from "@/components/skeleton";
 import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
+import { WorkflowSelectionTable } from "@/components/workflow-selection-table";
 
 function timeAgo(date: string | Date): string {
   const now = Date.now();
@@ -30,6 +31,7 @@ function timeAgo(date: string | Date): string {
 export default function WorkflowCampaignsPage() {
   const params = useParams();
   const brandId = params.brandId as string;
+  const orgId = params.orgId as string;
   const sectionKey = params.sectionKey as string;
 
   const { data: campaignsData, isLoading } = useAuthQuery(
@@ -124,6 +126,11 @@ export default function WorkflowCampaignsPage() {
         <p className="text-gray-600">All campaigns for this brand.</p>
       </div>
 
+      {/* Workflow Selection */}
+      <div className="mb-6">
+        <WorkflowSelectionTable sectionKey={sectionKey} />
+      </div>
+
       {/* Stats Overview */}
       {campaigns.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
@@ -158,7 +165,7 @@ export default function WorkflowCampaignsPage() {
           <SkeletonKeysList />
         ) : campaigns.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-            <div className="text-4xl mb-4">📤</div>
+            <div className="text-4xl mb-4">&#128228;</div>
             <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No campaigns yet</h3>
             <p className="text-gray-600 text-sm max-w-md mx-auto mb-4">
               Use the distribute tool in Claude, Cursor, or any MCP-compatible client to create campaigns for this brand.
@@ -170,7 +177,7 @@ export default function WorkflowCampaignsPage() {
             return (
               <Link
                 key={campaign.id}
-                href={`/brands/${brandId}/workflows/${sectionKey}/campaigns/${campaign.id}`}
+                href={`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}/campaigns/${campaign.id}`}
                 className="block bg-white rounded-xl border border-gray-200 p-4 hover:border-primary-300 hover:shadow-md transition-all"
               >
                 <div className="flex items-start justify-between mb-2">

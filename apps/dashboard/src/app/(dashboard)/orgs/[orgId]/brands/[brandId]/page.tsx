@@ -26,6 +26,7 @@ interface WorkflowSection {
 export default function BrandOverviewPage() {
   const params = useParams();
   const brandId = params.brandId as string;
+  const orgId = params.orgId as string;
 
   const { data: brandData, isLoading: brandLoading } = useAuthQuery(
     ["brand", brandId],
@@ -111,13 +112,13 @@ export default function BrandOverviewPage() {
 
       {/* Brand Info Card */}
       <Link
-        href={`/brands/${brandId}/brand-info`}
+        href={`/orgs/${orgId}/brands/${brandId}/brand-info`}
         className="block bg-white rounded-lg border border-gray-200 p-5 mb-6 hover:border-primary-300 hover:shadow-sm transition group"
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-lg">
-              ℹ️
+              &#8505;&#65039;
             </div>
             <div>
               <h3 className="font-medium text-gray-900 group-hover:text-primary-600 transition">Brand Info</h3>
@@ -195,7 +196,7 @@ export default function BrandOverviewPage() {
                       {wfCampaigns.slice(0, 3).map(campaign => (
                         <Link
                           key={campaign.id}
-                          href={`/brands/${brandId}/workflows/${sectionKey}/campaigns/${campaign.id}`}
+                          href={`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}/campaigns/${campaign.id}`}
                           className="flex items-center justify-between py-1.5 px-2 -mx-2 rounded hover:bg-gray-50 transition"
                         >
                           <span className="text-sm text-gray-700 truncate">{campaign.name}</span>
@@ -218,7 +219,7 @@ export default function BrandOverviewPage() {
                   {/* Actions */}
                   <div className="flex items-center gap-3">
                     <Link
-                      href={`/brands/${brandId}/workflows/${sectionKey}`}
+                      href={`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}`}
                       className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition text-sm font-medium"
                     >
                       View Campaigns

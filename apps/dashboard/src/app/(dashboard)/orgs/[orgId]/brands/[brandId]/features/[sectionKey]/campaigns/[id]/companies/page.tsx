@@ -106,7 +106,7 @@ export default function CampaignCompaniesPage() {
 
         {companies.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-            <div className="text-4xl mb-4">🏢</div>
+            <div className="text-4xl mb-4">&#127970;</div>
             <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No companies yet</h3>
             <p className="text-gray-600 text-sm">Companies will appear here once leads are found.</p>
           </div>
@@ -132,7 +132,7 @@ export default function CampaignCompaniesPage() {
                       <p className="font-medium text-gray-800 truncate">{company.name}</p>
                       <div className="flex items-center justify-between mt-1">
                         <p className="text-sm text-gray-500 truncate">
-                          {company.industry || "No industry"} • {company.leadsCount} lead{company.leadsCount !== 1 ? "s" : ""}
+                          {company.industry || "No industry"} \u2022 {company.leadsCount} lead{company.leadsCount !== 1 ? "s" : ""}
                         </p>
                         {cost && (
                           <span className="text-xs text-gray-400 ml-2 shrink-0">{cost}</span>

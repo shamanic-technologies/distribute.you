@@ -148,7 +148,7 @@ export default function CampaignLeadsPage() {
 
         {leads.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-            <div className="text-4xl mb-4">👥</div>
+            <div className="text-4xl mb-4">&#128101;</div>
             <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No leads yet</h3>
             <p className="text-gray-600 text-sm">Leads will appear here once the campaign runs.</p>
           </div>
@@ -184,7 +184,7 @@ export default function CampaignLeadsPage() {
                   </div>
                   <div className="flex items-center justify-between mt-1">
                     <p className="text-sm text-gray-500 truncate">
-                      {lead.title || "No title"} {lead.organizationName ? `• ${lead.organizationName}` : ""}
+                      {lead.title || "No title"} {lead.organizationName ? `\u2022 ${lead.organizationName}` : ""}
                     </p>
                     {cost && (
                       <span className="text-xs text-gray-400 ml-2 shrink-0">{cost}</span>
@@ -313,7 +313,7 @@ export default function CampaignLeadsPage() {
                   }`} />
                   <span>{selectedLead.enrichmentRun.status}</span>
                   {formatDuration(selectedLead.enrichmentRun.startedAt, selectedLead.enrichmentRun.completedAt) && (
-                    <span>• {formatDuration(selectedLead.enrichmentRun.startedAt, selectedLead.enrichmentRun.completedAt)}</span>
+                    <span>\u2022 {formatDuration(selectedLead.enrichmentRun.startedAt, selectedLead.enrichmentRun.completedAt)}</span>
                   )}
                   <span className="ml-auto font-medium text-gray-700">
                     {formatCostDetailed(selectedLead.enrichmentRun.totalCostInUsdCents)}
