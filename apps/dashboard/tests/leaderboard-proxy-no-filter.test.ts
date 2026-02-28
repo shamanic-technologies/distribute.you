@@ -27,10 +27,11 @@ describe("Leaderboard proxy must not send filtering headers", () => {
     expect(content).not.toMatch(/"x-user-id"/);
   });
 
-  it("should NOT send Authorization header to the API", () => {
-    // The leaderboard endpoint should work without auth, like performance.distribute.you
-    expect(content).not.toMatch(/Authorization.*Bearer/);
-    expect(content).not.toContain("DISTRIBUTE_API_KEY");
+  it("should send Authorization for API auth (Bearer token only)", () => {
+    // The public API requires a Bearer token, but that's for authentication —
+    // not for filtering. The key distinction: no x-org-id / x-user-id.
+    expect(content).toContain("DISTRIBUTE_API_KEY");
+    expect(content).toMatch(/Authorization/);
   });
 
   it("should call the performance/leaderboard endpoint", () => {
