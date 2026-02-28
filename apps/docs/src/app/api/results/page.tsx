@@ -2,9 +2,9 @@ import { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Results API",
-  description: "Retrieve campaign statistics, replies, usage data, and community benchmarks via the MCP Factory API.",
+  description: "Retrieve campaign statistics, replies, usage data, and community benchmarks via the distribute API.",
   openGraph: {
-    title: "Results API | MCP Factory Docs",
+    title: "Results API | distribute Docs",
     description: "Campaign results and statistics endpoints.",
   },
 };

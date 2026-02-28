@@ -2,10 +2,10 @@ import { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Campaigns API",
-  description: "Create, list, pause, and resume campaigns via the MCP Factory REST API. Full endpoint reference with examples.",
+  description: "Create, list, pause, and resume campaigns via the distribute REST API. Full endpoint reference with examples.",
   openGraph: {
-    title: "Campaigns API | MCP Factory Docs",
-    description: "Campaign management endpoints for MCP Factory.",
+    title: "Campaigns API | distribute Docs",
+    description: "Campaign management endpoints for distribute.",
   },
 };
 

@@ -1,4 +1,4 @@
-# MCP Factory Docs - https://docs.mcpfactory.org
+# distribute Docs - https://docs.mcpfactory.org
 User-agent: *
 Allow: /
 

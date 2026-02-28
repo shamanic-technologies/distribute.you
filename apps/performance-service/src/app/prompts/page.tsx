@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description:
     "Coming soon: compare prompt versions and see which ones generate the most effective cold emails.",
   openGraph: {
-    title: "Prompt Leaderboard — MCP Factory Performance",
+    title: "Prompt Leaderboard — distribute Performance",
     description:
       "Coming soon: compare prompt versions and see which ones generate the most effective cold emails.",
     url: `${URLS.performance}/prompts`,

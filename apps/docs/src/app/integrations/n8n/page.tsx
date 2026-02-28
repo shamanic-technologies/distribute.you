@@ -2,10 +2,10 @@ import { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "n8n Integration",
-  description: "Build automated workflows with MCP Factory and n8n. HTTP requests, webhooks, and example workflows.",
+  description: "Build automated workflows with distribute and n8n. HTTP requests, webhooks, and example workflows.",
   openGraph: {
-    title: "n8n Integration | MCP Factory Docs",
-    description: "Automate MCP Factory campaigns with n8n workflows.",
+    title: "n8n Integration | distribute Docs",
+    description: "Automate distribute campaigns with n8n workflows.",
   },
 };
 
@@ -14,13 +14,13 @@ export default function N8nIntegrationPage() {
     <div className="max-w-3xl mx-auto px-8 py-12">
       <h1 className="text-4xl font-bold mb-4">n8n Integration</h1>
       <p className="text-xl text-gray-600 mb-8">
-        Build automated workflows with MCP Factory using n8n.
+        Build automated workflows with distribute using n8n.
       </p>
 
       <div className="prose prose-lg">
         <h2>Overview</h2>
         <p>
-          n8n is a powerful workflow automation tool. Integrate MCP Factory to
+          n8n is a powerful workflow automation tool. Integrate distribute to
           trigger campaigns from any event and receive results via webhooks.
         </p>
 

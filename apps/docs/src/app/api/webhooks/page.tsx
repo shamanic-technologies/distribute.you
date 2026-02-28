@@ -4,8 +4,8 @@ export const metadata: Metadata = {
   title: "Webhooks",
   description: "Receive real-time notifications for campaign events. Webhook events, payload structure, and signature verification.",
   openGraph: {
-    title: "Webhooks | MCP Factory Docs",
-    description: "Real-time webhook notifications for MCP Factory.",
+    title: "Webhooks | distribute Docs",
+    description: "Real-time webhook notifications for distribute.",
   },
 };
 
@@ -183,7 +183,7 @@ X-MCPFactory-Signature: sha256=xxxxx
         <h2>Verifying Signatures</h2>
         <p>
           All webhooks include an <code>X-MCPFactory-Signature</code> header.
-          Verify it to ensure the request is from MCP Factory:
+          Verify it to ensure the request is from distribute:
         </p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`import crypto from 'crypto';

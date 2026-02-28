@@ -7,7 +7,7 @@ export function Navbar() {
       <div className="max-w-6xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-6">
           <Link href="/" className="font-display font-bold text-xl text-gray-800">
-            MCP Factory <span className="text-primary-500">Performance</span>
+            distribute <span className="text-primary-500">Performance</span>
           </Link>
           <div className="hidden md:flex items-center gap-4 text-sm">
             <Link href="/brands" className="text-gray-600 hover:text-primary-600 transition">

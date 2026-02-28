@@ -3,17 +3,17 @@ import { CopyForLLM } from "@/components/copy-for-llm";
 
 export const metadata: Metadata = {
   title: "Cursor Skill",
-  description: "Use MCP Factory as a Cursor skill for AI-assisted sales and marketing automation. Installation and example prompts.",
+  description: "Use distribute as a Cursor skill for AI-assisted distribution automation. Installation and example prompts.",
   openGraph: {
-    title: "Cursor Skill | MCP Factory Docs",
-    description: "Install MCP Factory as a Cursor skill.",
+    title: "Cursor Skill | distribute Docs",
+    description: "Install distribute as a Cursor skill.",
   },
 };
 
-const LLM_INSTRUCTIONS = `# MCP Factory Cursor Skill
+const LLM_INSTRUCTIONS = `# distribute Cursor Skill
 
 ## What is a Cursor Skill?
-Cursor Skills extend AI assistant capabilities. MCP Factory skill enables launching and managing automated campaigns from Cursor IDE.
+Cursor Skills extend AI assistant capabilities. The distribute skill enables launching and managing automated campaigns from Cursor IDE.
 
 ## Installation
 
@@ -53,14 +53,14 @@ export default function CursorSkillPage() {
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
       <p className="text-xl text-gray-600 mb-8">
-        Use MCP Factory as a Cursor skill for AI-assisted sales and marketing automation.
+        Use distribute as a Cursor skill for AI-assisted distribution automation.
       </p>
 
       <div className="prose prose-lg">
         <h2>What is a Cursor Skill?</h2>
         <p>
           Cursor Skills are specialized instructions that extend your AI
-          assistant&apos;s capabilities. The MCP Factory skill enables your Cursor
+          assistant&apos;s capabilities. The distribute skill enables your Cursor
           agent to launch and manage automated campaigns directly from your IDE.
         </p>
 
@@ -71,9 +71,9 @@ export default function CursorSkillPage() {
           Create a file at <code>~/.cursor/skills/mcpfactory/SKILL.md</code>:
         </p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`# MCP Factory Skill
+          <code>{`# distribute Skill
 
-Use this skill to launch automated sales and marketing campaigns.
+Use this skill to launch automated distribution campaigns.
 
 ## Available MCPs
 - @mcpfactory/sales-outreach - Cold email campaigns
@@ -82,7 +82,7 @@ Use this skill to launch automated sales and marketing campaigns.
 
 ## Usage
 When the user asks to launch a campaign, outreach, or 
-generate leads, use the appropriate MCP Factory tool.
+generate leads, use the appropriate distribute tool.
 
 ## Configuration
 Ensure MCPFACTORY_API_KEY is set in your MCP config.
@@ -153,7 +153,7 @@ How many emails sent, opened, replied?"`}</code>
             details you provide, the better the results
           </li>
           <li>
-            <strong>Always set budget limits</strong> - Prevent unexpected BYOK
+            <strong>Always set budget limits</strong> - Prevent unexpected API
             costs
           </li>
           <li>
@@ -180,9 +180,9 @@ How many emails sent, opened, replied?"`}</code>
           <a href="https://dashboard.mcpfactory.org/api-keys">dashboard.mcpfactory.org/api-keys</a>.
         </p>
 
-        <h3>BYOK key missing</h3>
+        <h3>API key missing</h3>
         <p>
-          Configure required BYOK keys in your dashboard before launching
+          Configure required API keys in your dashboard before launching
           campaigns.
         </p>
       </div>

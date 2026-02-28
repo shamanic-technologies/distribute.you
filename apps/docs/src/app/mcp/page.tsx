@@ -4,14 +4,14 @@ import { URLS } from "@mcpfactory/content";
 
 export const metadata: Metadata = {
   title: "MCP Usage Guide",
-  description: "Learn how to use MCP Factory tools from ChatGPT, Claude, Cursor, or any MCP-compatible client. Configuration and best practices.",
+  description: "Learn how to use distribute tools from ChatGPT, Claude, Cursor, or any MCP-compatible client. Configuration and best practices.",
   openGraph: {
-    title: "MCP Usage Guide | MCP Factory Docs",
-    description: "Complete guide to using MCP Factory from any MCP client.",
+    title: "MCP Usage Guide | distribute Docs",
+    description: "Complete guide to using distribute from any MCP client.",
   },
 };
 
-const LLM_INSTRUCTIONS = `# MCP Factory - MCP Usage Guide
+const LLM_INSTRUCTIONS = `# distribute - MCP Usage Guide
 
 ## MCP Endpoint
 https://mcp.mcpfactory.org/mcp
@@ -60,7 +60,7 @@ export default function McpUsagePage() {
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
       <p className="text-xl text-gray-600 mb-8">
-        How to use MCP Factory tools from any MCP-compatible client.
+        How to use distribute tools from any MCP-compatible client.
       </p>
 
       <div className="prose prose-lg">
@@ -68,7 +68,7 @@ export default function McpUsagePage() {
         <p>
           The <strong>Model Context Protocol (MCP)</strong> is an open standard
           that allows AI assistants to connect to external tools and data
-          sources. MCP Factory provides a suite of DFY automation tools
+          sources. distribute provides a suite of automated distribution tools
           accessible via MCP.
         </p>
 
@@ -228,11 +228,11 @@ Run for 5 days as a trial."`}</code>
             </tr>
             <tr>
               <td><code>byok_missing</code></td>
-              <td>Required BYOK key not configured</td>
+              <td>Required API key not configured in your dashboard</td>
             </tr>
             <tr>
               <td><code>byok_invalid</code></td>
-              <td>BYOK key is invalid or expired</td>
+              <td>Configured API key is invalid or expired</td>
             </tr>
             <tr>
               <td><code>budget_exceeded</code></td>

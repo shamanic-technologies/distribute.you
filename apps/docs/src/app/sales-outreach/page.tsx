@@ -1,8 +1,8 @@
 import { Metadata } from "next";
 import { CopyForLLM } from "@/components/copy-for-llm";
 const DOCS_PRICING = {
-  free: { price: "$0", emails: "Unlimited (BYOK)", detail: "Free + BYOK costs" },
-  estimatedByokCost: "~$0.02/email",
+  free: { price: "$0", emails: "Unlimited", detail: "Free + your API costs" },
+  estimatedApiCost: "~$0.02/email",
 };
 const BYOK_COST_ESTIMATES = { totalPerEmail: "~$0.02/email" };
 const BYOK_PROVIDERS = [
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   title: "Sales Outreach MCP",
   description: "Cold email campaigns from your URL. Find leads, generate emails, send & optimize automatically with the Sales Outreach MCP.",
   openGraph: {
-    title: "Sales Outreach MCP | MCP Factory",
+    title: "Sales Outreach MCP | distribute",
     description: "Automate cold email campaigns with AI. Just provide your URL and budget.",
   },
 };
@@ -40,7 +40,7 @@ Or add to MCP config:
   }
 }
 
-## BYOK Keys Required
+## API Keys Required
 - OpenAI or Anthropic: Email generation
 - Apollo: Lead finding & enrichment
 - Resend: Email sending
@@ -56,7 +56,7 @@ Or add to MCP config:
 - get_stats: Usage and community benchmarks
 
 ## Pricing
-- Free + BYOK: $0, you only pay your API costs (~$0.02/email)`;
+- Free: $0, you only pay your API costs (~$0.02/email)`;
 
 export default function SalesOutreachDocs() {
   return (
@@ -95,8 +95,8 @@ export default function SalesOutreachDocs() {
 }`}</code>
         </pre>
 
-        <h2>BYOK Keys Required</h2>
-        <p>Configure these in your MCP Factory dashboard:</p>
+        <h2>API Keys Required</h2>
+        <p>Configure these in your distribute dashboard:</p>
         <table>
           <thead>
             <tr>
@@ -191,10 +191,10 @@ export default function SalesOutreachDocs() {
 
         <h2>Pricing</h2>
         <p>
-          <strong>Free · BYOK</strong> — {DOCS_PRICING.free.detail}. {DOCS_PRICING.free.emails}.
+          <strong>Free</strong> — {DOCS_PRICING.free.detail}. {DOCS_PRICING.free.emails}.
         </p>
         <p>
-          <strong>Estimated BYOK cost:</strong> {BYOK_COST_ESTIMATES.totalPerEmail} (OpenAI + Apollo + Resend)
+          <strong>Estimated API cost:</strong> {BYOK_COST_ESTIMATES.totalPerEmail} (OpenAI + Apollo + Resend)
         </p>
       </div>
     </div>

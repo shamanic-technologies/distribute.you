@@ -3,18 +3,18 @@ import "./globals.css";
 import { DocsLayout } from "@/components/docs-layout";
 
 const SITE_URL = "https://docs.mcpfactory.org";
-const SITE_NAME = "MCP Factory Documentation";
-const SITE_DESCRIPTION = "Complete documentation for MCP Factory - AI-powered sales automation via MCP. Integration guides for ChatGPT, Claude, Cursor, n8n, Zapier, and Make.com.";
+const SITE_NAME = "distribute Documentation";
+const SITE_DESCRIPTION = "Complete documentation for distribute - AI-powered distribution automation via MCP. Integration guides for ChatGPT, Claude, Cursor, n8n, Zapier, and Make.com.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "MCP Factory Documentation",
-    template: "%s | MCP Factory Docs",
+    default: "distribute Documentation",
+    template: "%s | distribute Docs",
   },
   description: SITE_DESCRIPTION,
   keywords: [
-    "MCP Factory",
+    "distribute",
     "documentation",
     "API",
     "MCP",
@@ -25,14 +25,13 @@ export const metadata: Metadata = {
     "n8n",
     "Zapier",
     "Make.com",
-    "sales automation",
+    "distribution automation",
     "cold email",
     "lead generation",
-    "BYOK",
-    "AI sales",
+    "AI distribution",
   ],
-  authors: [{ name: "MCP Factory" }],
-  creator: "MCP Factory",
+  authors: [{ name: "distribute" }],
+  creator: "distribute",
   formatDetection: {
     email: false,
     address: false,
@@ -43,21 +42,21 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: "MCP Factory Documentation",
-    description: "Learn how to use MCP Factory - installation, API reference, and integrations.",
+    title: "distribute Documentation",
+    description: "Learn how to use distribute - installation, API reference, and integrations.",
     images: [
       {
         url: "https://mcpfactory.org/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "MCP Factory Documentation",
+        alt: "distribute Documentation",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "MCP Factory Documentation",
-    description: "Complete guides and API reference for MCP Factory.",
+    title: "distribute Documentation",
+    description: "Complete guides and API reference for distribute.",
     images: ["https://mcpfactory.org/og-image.jpg"],
   },
   robots: {
@@ -84,10 +83,11 @@ export const metadata: Metadata = {
 const organizationJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
-  name: "MCP Factory",
-  url: "https://mcpfactory.org",
+  name: "distribute",
+  url: "https://distribute.eu",
   logo: "https://mcpfactory.org/logo-head.jpg",
   sameAs: [
+    "https://twitter.com/distribute_eu",
     "https://github.com/mcpfactory",
   ],
 };
@@ -95,23 +95,23 @@ const organizationJsonLd = {
 const softwareJsonLd = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  name: "MCP Factory",
+  name: "distribute",
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
-  description: "AI-powered sales automation platform using Model Context Protocol (MCP). Launch cold email campaigns, find leads, and automate outreach from ChatGPT, Claude, or Cursor.",
-  url: "https://mcpfactory.org",
+  description: "AI-powered distribution automation platform using Model Context Protocol (MCP). Launch cold email campaigns, find leads, and automate outreach from ChatGPT, Claude, or Cursor.",
+  url: "https://distribute.eu",
   offers: {
     "@type": "Offer",
     price: "0",
     priceCurrency: "USD",
-    description: "Free tier available with BYOK pricing",
+    description: "Free tier available — bring your own API keys",
   },
   featureList: [
     "Cold email campaign automation",
     "Lead search via Apollo",
     "AI-powered email generation",
     "ChatGPT integration",
-    "Claude integration", 
+    "Claude integration",
     "Cursor IDE integration",
     "Webhook notifications",
     "REST API access",
@@ -126,8 +126,8 @@ const websiteJsonLd = {
   description: SITE_DESCRIPTION,
   publisher: {
     "@type": "Organization",
-    name: "MCP Factory",
-    url: "https://mcpfactory.org",
+    name: "distribute",
+    url: "https://distribute.eu",
   },
 };
 
@@ -138,8 +138,8 @@ const breadcrumbJsonLd = {
     {
       "@type": "ListItem",
       position: 1,
-      name: "MCP Factory",
-      item: "https://mcpfactory.org",
+      name: "distribute",
+      item: "https://distribute.eu",
     },
     {
       "@type": "ListItem",
@@ -156,15 +156,15 @@ const faqJsonLd = {
   mainEntity: [
     {
       "@type": "Question",
-      name: "What is MCP Factory?",
+      name: "What is distribute?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "MCP Factory is an AI-powered sales automation platform that uses the Model Context Protocol (MCP) to enable AI assistants like ChatGPT, Claude, and Cursor to launch and manage cold email campaigns, find leads, and automate outreach.",
+        text: "distribute is an AI-powered distribution automation platform that uses the Model Context Protocol (MCP) to enable AI assistants like ChatGPT, Claude, and Cursor to launch and manage cold email campaigns, find leads, and automate outreach.",
       },
     },
     {
       "@type": "Question",
-      name: "How do I connect MCP Factory to ChatGPT?",
+      name: "How do I connect distribute to ChatGPT?",
       acceptedAnswer: {
         "@type": "Answer",
         text: "Go to ChatGPT Settings → Connectors → Add Custom Connector. Enter the MCP URL: https://mcp.mcpfactory.org/mcp and add your API key as a Bearer token in the Authorization header.",
@@ -172,15 +172,15 @@ const faqJsonLd = {
     },
     {
       "@type": "Question",
-      name: "How do I connect MCP Factory to Claude?",
+      name: "How do I connect distribute to Claude?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "For Claude.ai, go to Settings → Integrations → Add more. Enter 'MCP Factory' as the name and https://mcp.mcpfactory.org/mcp as the URL. For Claude Desktop, edit the claude_desktop_config.json file.",
+        text: "For Claude.ai, go to Settings → Integrations → Add more. Enter 'distribute' as the name and https://mcp.mcpfactory.org/mcp as the URL. For Claude Desktop, edit the claude_desktop_config.json file.",
       },
     },
     {
       "@type": "Question",
-      name: "How do I connect MCP Factory to Cursor?",
+      name: "How do I connect distribute to Cursor?",
       acceptedAnswer: {
         "@type": "Answer",
         text: "Add the MCP configuration to your .cursor/mcp.json file with the URL https://mcp.mcpfactory.org/mcp and your API key in the Authorization header. Restart Cursor after saving.",
@@ -188,10 +188,10 @@ const faqJsonLd = {
     },
     {
       "@type": "Question",
-      name: "What is BYOK pricing?",
+      name: "Can I use my own API keys?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "BYOK (Bring Your Own Key) means you use your own API keys for underlying services like OpenAI, Anthropic, and Apollo. You pay those providers directly at their rates, giving you full control over costs and usage.",
+        text: "Yes. distribute lets you use your own API keys for underlying services like OpenAI, Anthropic, and Apollo. You pay those providers directly at their rates, giving you full control over costs and usage.",
       },
     },
   ],

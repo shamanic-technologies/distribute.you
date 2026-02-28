@@ -10,13 +10,13 @@ const SALES_PRICING_TIERS = [
 import "./globals.css";
 
 const SITE_URL = URLS.salesLanding;
-const SITE_NAME = "Sales Cold Emails | MCP Factory";
-const SITE_DESCRIPTION = "Done-for-you cold email with your own API keys. You give us your URL + target audience. We handle lead finding, email generation, sending, and optimization. 100% open-source.";
+const SITE_NAME = "Sales Cold Emails | distribute";
+const SITE_DESCRIPTION = "Cold email automation with your own API keys. You give us your URL + target audience. We handle lead finding, email generation, sending, and optimization. 100% open-source.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Sales Cold Emails - Open Source Cold Email Automation | MCP Factory",
+    default: "Sales Cold Emails - Open Source Cold Email Automation | distribute",
     template: "%s | Sales Cold Emails",
   },
   description: SITE_DESCRIPTION,
@@ -39,14 +39,12 @@ export const metadata: Metadata = {
     "MCP",
     "Model Context Protocol",
     "open source",
-    "BYOK",
-    "bring your own key",
-    "DFY",
-    "done for you",
+    "bring your own API keys",
+    "your own API keys",
   ],
-  authors: [{ name: "MCP Factory" }],
-  creator: "MCP Factory",
-  publisher: "MCP Factory",
+  authors: [{ name: "distribute" }],
+  creator: "distribute",
+  publisher: "distribute",
   formatDetection: {
     email: false,
     address: false,
@@ -57,8 +55,8 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: "Sales Cold Emails - Done For You, Bring Your Own Keys",
-    description: "Done-for-you cold email with your own API keys. You give us your URL, we handle everything. 100% open-source.",
+    title: "Sales Cold Emails - The Stripe for Distribution",
+    description: "Cold email automation with your own API keys. You give us your URL, we handle everything. 100% open-source.",
     images: [
       {
         url: `${URLS.landing}/og-image.jpg`,
@@ -70,10 +68,10 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Sales Cold Emails - Done For You, Bring Your Own Keys",
-    description: "Done-for-you cold email with your own API keys. You give us your URL, we handle everything. 100% open-source.",
+    title: "Sales Cold Emails - The Stripe for Distribution",
+    description: "Cold email automation with your own API keys. You give us your URL, we handle everything. 100% open-source.",
     images: [`${URLS.landing}/og-image.jpg`],
-    creator: "@mcpfactory",
+    creator: "@distribute_eu",
   },
   robots: {
     index: true,
@@ -99,7 +97,7 @@ export const metadata: Metadata = {
 const softwareJsonLd = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  name: "Sales Cold Emails by MCP Factory",
+  name: "Sales Cold Emails by distribute",
   applicationCategory: "BusinessApplication",
   applicationSubCategory: "Email Marketing Software",
   operatingSystem: "Web",
@@ -125,7 +123,7 @@ const softwareJsonLd = {
   ],
   provider: {
     "@type": "Organization",
-    name: "MCP Factory",
+    name: "distribute",
     url: URLS.landing,
   },
 };
@@ -139,15 +137,15 @@ const faqJsonLd = {
       name: "What is AI cold email automation?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "AI cold email automation uses artificial intelligence to find leads, generate personalized emails, and send them at scale. MCP Factory connects to ChatGPT, Claude, or Cursor so you can launch campaigns with simple prompts like 'Send cold emails to CTOs at SaaS companies'.",
+        text: "AI cold email automation uses artificial intelligence to find leads, generate personalized emails, and send them at scale. distribute connects to ChatGPT, Claude, or Cursor so you can launch campaigns with simple prompts like 'Send cold emails to CTOs at SaaS companies'.",
       },
     },
     {
       "@type": "Question",
-      name: "How does MCP Factory cold email work?",
+      name: "How does distribute cold email work?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "You connect MCP Factory to your AI assistant (ChatGPT, Claude, or Cursor), provide your website URL and target audience, and the AI handles everything: finding leads via Apollo, generating personalized emails, sending them, and optimizing based on results.",
+        text: "You connect distribute to your AI assistant (ChatGPT, Claude, or Cursor), provide your website URL and target audience, and the AI handles everything: finding leads via Apollo, generating personalized emails, sending them, and optimizing based on results.",
       },
     },
     {
@@ -155,7 +153,7 @@ const faqJsonLd = {
       name: "How much does cold email automation cost?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: `MCP Factory offers ${SALES_PRICING_TIERS[0].emails} free emails to start. Plans: ${SALES_PRICING_TIERS.filter((t) => t.price > 0).map((t) => `${t.name} $${t.price}/mo (${t.emails} emails)`).join(", ")}. Plus BYOK costs: Apollo ~$0.01/lead, Anthropic ~$0.01/email.`,
+        text: `distribute offers ${SALES_PRICING_TIERS[0].emails} free emails to start. Plans: ${SALES_PRICING_TIERS.filter((t) => t.price > 0).map((t) => `${t.name} $${t.price}/mo (${t.emails} emails)`).join(", ")}. Plus your own API key costs: Apollo ~$0.01/lead, Anthropic ~$0.01/email.`,
       },
     },
     {
@@ -163,7 +161,7 @@ const faqJsonLd = {
       name: "Can I use my own email domain?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Yes! MCP Factory sends emails from your own domain for maximum deliverability. You connect your email provider and we handle the sending, tracking, and optimization.",
+        text: "Yes! distribute sends emails from your own domain for maximum deliverability. You connect your email provider and we handle the sending, tracking, and optimization.",
       },
     },
     {
@@ -171,7 +169,7 @@ const faqJsonLd = {
       name: "Is AI cold email effective?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "AI-generated cold emails typically see 2-3x higher response rates than templates because each email is personalized to the recipient's company, role, and recent activities. MCP Factory automatically A/B tests subject lines and content to continuously improve.",
+        text: "AI-generated cold emails typically see 2-3x higher response rates than templates because each email is personalized to the recipient's company, role, and recent activities. distribute automatically A/B tests subject lines and content to continuously improve.",
       },
     },
   ],
@@ -199,7 +197,7 @@ const howToJsonLd = {
       "@type": "HowToStep",
       position: 2,
       name: "Connect Your AI",
-      text: "Add MCP Factory to ChatGPT, Claude, or Cursor using our MCP URL",
+      text: "Add distribute to ChatGPT, Claude, or Cursor using our MCP URL",
     },
     {
       "@type": "HowToStep",

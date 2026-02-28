@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   description:
     "Compare outreach workflows head-to-head. Which workflow delivers the best results? Costs, runs, and performance metrics.",
   openGraph: {
-    title: "Workflow Leaderboard — MCP Factory Performance",
+    title: "Workflow Leaderboard — distribute Performance",
     description:
       "Compare outreach workflows by real campaign performance. Which workflow generates the best open rates, replies, and conversions?",
     url: `${URLS.performance}/models`,

@@ -2,10 +2,10 @@ import { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Zapier Integration",
-  description: "Connect MCP Factory to 5,000+ apps with Zapier. Triggers, actions, and example Zaps for campaign automation.",
+  description: "Connect distribute to 5,000+ apps with Zapier. Triggers, actions, and example Zaps for campaign automation.",
   openGraph: {
-    title: "Zapier Integration | MCP Factory Docs",
-    description: "Automate MCP Factory campaigns with Zapier.",
+    title: "Zapier Integration | distribute Docs",
+    description: "Automate distribute campaigns with Zapier.",
   },
 };
 
@@ -14,20 +14,20 @@ export default function ZapierIntegrationPage() {
     <div className="max-w-3xl mx-auto px-8 py-12">
       <h1 className="text-4xl font-bold mb-4">Zapier Integration</h1>
       <p className="text-xl text-gray-600 mb-8">
-        Connect MCP Factory to 5,000+ apps with Zapier.
+        Connect distribute to 5,000+ apps with Zapier.
       </p>
 
       <div className="prose prose-lg">
         <h2>Overview</h2>
         <p>
-          Use Zapier to trigger MCP Factory campaigns from any app and send
+          Use Zapier to trigger distribute campaigns from any app and send
           results to your favorite tools (Slack, HubSpot, Google Sheets, etc.).
         </p>
 
         <h2>Setup with Webhooks by Zapier</h2>
         <p>
           Use the <strong>Webhooks by Zapier</strong> app for custom HTTP
-          requests to MCP Factory.
+          requests to distribute.
         </p>
 
         <h3>Step 1: Authentication</h3>
