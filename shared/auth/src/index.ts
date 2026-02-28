@@ -1,4 +1,4 @@
-// API key validation for MCP Factory
+// API key validation for distribute
 // TODO: Implement when backend is ready
 
 export interface ApiKeyValidation {
@@ -20,5 +20,5 @@ export async function validateApiKey(apiKey: string): Promise<ApiKeyValidation> 
 }
 
 export function getApiKeyFromEnv(): string | undefined {
-  return process.env.MCPFACTORY_API_KEY;
+  return process.env.DISTRIBUTE_API_KEY;
 }

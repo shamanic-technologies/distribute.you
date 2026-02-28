@@ -3,7 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 /**
- * Regression test for https://github.com/shamanic-technologies/mcpfactory/issues/190
+ * Regression test for https://github.com/shamanic-technologies/distribute.you/issues/190
  *
  * chat-service POST /chat requires `appId` in the request body.
  * Without it, the request fails with a 400 validation error.

@@ -30,7 +30,7 @@ const LLM_INSTRUCTIONS = `# distribute + Claude Integration
 Edit ~/Library/Application Support/Claude/claude_desktop_config.json:
 {
   "mcpServers": {
-    "mcpfactory": {
+    "distribute": {
       "command": "npx",
       "args": ["-y", "mcp-remote", "https://mcp.distribute.you/mcp"],
       "env": {
@@ -41,17 +41,17 @@ Edit ~/Library/Application Support/Claude/claude_desktop_config.json:
 }
 
 ## Claude Code Setup
-claude mcp add mcpfactory --transport http https://mcp.distribute.you/mcp
+claude mcp add distribute --transport http https://mcp.distribute.you/mcp
 
 ## Available Tools
-- mcpfactory_status: Check connection
-- mcpfactory_create_campaign: Launch campaign
-- mcpfactory_list_campaigns: List campaigns
-- mcpfactory_stop_campaign: Stop a campaign
-- mcpfactory_resume_campaign: Resume a campaign
-- mcpfactory_campaign_stats: Get performance
-- mcpfactory_list_brands: List your brands
-- mcpfactory_suggest_icp: Suggest ideal customer profile for a brand URL
+- distribute_status: Check connection
+- distribute_create_campaign: Launch campaign
+- distribute_list_campaigns: List campaigns
+- distribute_stop_campaign: Stop a campaign
+- distribute_resume_campaign: Resume a campaign
+- distribute_campaign_stats: Get performance
+- distribute_list_brands: List your brands
+- distribute_suggest_icp: Suggest ideal customer profile for a brand URL
 
 ## Get API Key
 https://dashboard.distribute.you/api-keys`;
@@ -99,7 +99,7 @@ export default function ClaudeIntegrationPage() {
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`{
   "mcpServers": {
-    "mcpfactory": {
+    "distribute": {
       "command": "npx",
       "args": ["-y", "mcp-remote", "https://mcp.distribute.you/mcp"],
       "env": {
@@ -114,16 +114,16 @@ export default function ClaudeIntegrationPage() {
         <h2>Claude Code Setup</h2>
         <p>Add distribute using the CLI:</p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>claude mcp add mcpfactory --transport http https://mcp.distribute.you/mcp</code>
+          <code>claude mcp add distribute --transport http https://mcp.distribute.you/mcp</code>
         </pre>
         <p>
-          Then configure your API key, or set the <code>MCPFACTORY_API_KEY</code> environment variable.
+          Then configure your API key, or set the <code>DISTRIBUTE_API_KEY</code> environment variable.
         </p>
 
         <h2>Test Your Connection</h2>
         <p>Ask Claude:</p>
         <pre className="bg-gray-100 p-4 rounded-lg">
-          <code className="text-gray-800">&quot;Check my MCPFactory connection status&quot;</code>
+          <code className="text-gray-800">&quot;Check my distribute connection status&quot;</code>
         </pre>
 
         <h2>Available Tools</h2>
@@ -136,35 +136,35 @@ export default function ClaudeIntegrationPage() {
           </thead>
           <tbody>
             <tr>
-              <td><code>mcpfactory_status</code></td>
+              <td><code>distribute_status</code></td>
               <td>Check connection and configuration</td>
             </tr>
             <tr>
-              <td><code>mcpfactory_create_campaign</code></td>
+              <td><code>distribute_create_campaign</code></td>
               <td>Launch a cold email campaign</td>
             </tr>
             <tr>
-              <td><code>mcpfactory_list_campaigns</code></td>
+              <td><code>distribute_list_campaigns</code></td>
               <td>List all your campaigns</td>
             </tr>
             <tr>
-              <td><code>mcpfactory_stop_campaign</code></td>
+              <td><code>distribute_stop_campaign</code></td>
               <td>Stop a running campaign</td>
             </tr>
             <tr>
-              <td><code>mcpfactory_resume_campaign</code></td>
+              <td><code>distribute_resume_campaign</code></td>
               <td>Resume a stopped campaign</td>
             </tr>
             <tr>
-              <td><code>mcpfactory_campaign_stats</code></td>
+              <td><code>distribute_campaign_stats</code></td>
               <td>Get campaign performance metrics</td>
             </tr>
             <tr>
-              <td><code>mcpfactory_list_brands</code></td>
+              <td><code>distribute_list_brands</code></td>
               <td>List all your brands</td>
             </tr>
             <tr>
-              <td><code>mcpfactory_suggest_icp</code></td>
+              <td><code>distribute_suggest_icp</code></td>
               <td>Suggest ideal customer profile for a brand URL</td>
             </tr>
           </tbody>

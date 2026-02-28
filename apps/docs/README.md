@@ -1,8 +1,8 @@
-# MCP Factory Documentation
+# distribute Documentation
 
-Public documentation for MCP Factory - The DFY, BYOK MCP Platform.
+Public documentation for distribute - The DFY, BYOK MCP Platform.
 
-Part of the [mcpfactory](https://github.com/shamanic-technologies/mcpfactory) monorepo.
+Part of the [distribute.you](https://github.com/shamanic-technologies/distribute.you) monorepo.
 
 ## Development
 

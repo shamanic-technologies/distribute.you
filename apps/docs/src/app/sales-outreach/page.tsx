@@ -34,7 +34,7 @@ Or add to MCP config:
       "command": "npx",
       "args": ["@distribute/sales-outreach"],
       "env": {
-        "MCPFACTORY_API_KEY": "your-api-key"
+        "DISTRIBUTE_API_KEY": "your-api-key"
       }
     }
   }
@@ -88,7 +88,7 @@ export default function SalesOutreachDocs() {
       "command": "npx",
       "args": ["@distribute/sales-outreach"],
       "env": {
-        "MCPFACTORY_API_KEY": "your-api-key"
+        "DISTRIBUTE_API_KEY": "your-api-key"
       }
     }
   }

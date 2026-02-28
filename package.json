@@ -1,13 +1,13 @@
 {
-  "name": "mcpfactory",
+  "name": "distribute",
   "version": "0.1.0",
   "private": true,
   "description": "The DFY, BYOK MCP Platform",
-  "author": "MCP Factory",
+  "author": "distribute",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/shamanic-technologies/mcpfactory.git"
+    "url": "https://github.com/shamanic-technologies/distribute.you.git"
   },
   "scripts": {
     "dev": "turbo dev",

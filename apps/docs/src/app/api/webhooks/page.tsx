@@ -34,7 +34,7 @@ export default function WebhooksApiPage() {
   "mcp": "sales-outreach",
   "target_url": "acme.com",
   "reporting": {
-    "webhook_url": "https://your-server.com/webhooks/mcpfactory"
+    "webhook_url": "https://your-server.com/webhooks/distribute"
   }
 }`}</code>
         </pre>
@@ -48,9 +48,9 @@ export default function WebhooksApiPage() {
         <h2>Webhook Payload</h2>
         <p>All webhooks are sent as HTTP POST with JSON body:</p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`POST https://your-server.com/webhooks/mcpfactory
+          <code>{`POST https://your-server.com/webhooks/distribute
 Content-Type: application/json
-X-MCPFactory-Signature: sha256=xxxxx
+X-Distribute-Signature: sha256=xxxxx
 
 {
   "id": "evt_abc123",
@@ -182,7 +182,7 @@ X-MCPFactory-Signature: sha256=xxxxx
 
         <h2>Verifying Signatures</h2>
         <p>
-          All webhooks include an <code>X-MCPFactory-Signature</code> header.
+          All webhooks include an <code>X-Distribute-Signature</code> header.
           Verify it to ensure the request is from distribute:
         </p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
