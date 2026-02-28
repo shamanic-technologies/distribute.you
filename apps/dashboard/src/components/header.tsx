@@ -59,6 +59,14 @@ export function Header() {
           >
             Docs
           </a>
+          <a
+            href="https://api.distribute.you/docs"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-gray-500 hover:text-brand-600 transition hidden sm:block"
+          >
+            API
+          </a>
 
           <div className="relative" ref={menuRef}>
             <button
