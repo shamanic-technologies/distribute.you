@@ -19,6 +19,13 @@ async function proxyRequest(
       { status: 500 }
     );
   }
+  if (!clerkOrgId) {
+    return NextResponse.json(
+      { error: "No active organization. Please complete onboarding." },
+      { status: 403 }
+    );
+  }
+
   const { path } = await segmentData.params;
   const url = new URL(`/v1/${path.join("/")}`, API_URL);
   req.nextUrl.searchParams.forEach((value, key) => {
@@ -28,11 +35,9 @@ async function proxyRequest(
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${API_KEY}`,
+    "x-org-id": clerkOrgId,
     "x-user-id": clerkUserId,
   };
-  if (clerkOrgId) {
-    headers["x-org-id"] = clerkOrgId;
-  }
 
   const body =
     req.method !== "GET" && req.method !== "HEAD"
