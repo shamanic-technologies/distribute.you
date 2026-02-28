@@ -27,6 +27,7 @@ function formatCost(cents: string | null | undefined): string | null {
 export default function BrandInfoPage() {
   const params = useParams();
   const brandId = params.brandId as string;
+  const orgId = params.orgId as string;
   const [activeTab, setActiveTab] = useState<"current" | "history">("current");
 
   const { data: brandData } = useAuthQuery(
@@ -358,7 +359,7 @@ export default function BrandInfoPage() {
             </div>
           ) : runs.length === 0 ? (
             <div className="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-8 text-center">
-              <div className="text-4xl mb-4">📋</div>
+              <div className="text-4xl mb-4">&#128203;</div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">No runs yet</h3>
               <p className="text-gray-500 text-sm">
                 Run history will appear here after campaigns execute.

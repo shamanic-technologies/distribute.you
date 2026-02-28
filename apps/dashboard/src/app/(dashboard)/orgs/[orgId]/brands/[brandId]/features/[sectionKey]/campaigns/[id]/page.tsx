@@ -36,7 +36,7 @@ export default function CampaignOverviewPage() {
     return (
       <div className="p-4 md:p-8">
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-          <div className="text-4xl mb-4">❌</div>
+          <div className="text-4xl mb-4">&#10060;</div>
           <h3 className="font-display font-bold text-lg text-gray-800 mb-2">Campaign not found</h3>
           <p className="text-gray-600 text-sm">This campaign does not exist or you don&apos;t have access.</p>
         </div>
@@ -141,7 +141,7 @@ export default function CampaignOverviewPage() {
       {/* Stats */}
       {stats && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-          <FunnelMetrics 
+          <FunnelMetrics
             leadsServed={stats.leadsServed || 0}
             emailsGenerated={stats.emailsGenerated || 0}
             emailsSent={stats.emailsSent || 0}

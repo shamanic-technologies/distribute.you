@@ -55,7 +55,7 @@ export default function CampaignEmailsPage() {
 
         {emails.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-            <div className="text-4xl mb-4">📧</div>
+            <div className="text-4xl mb-4">&#128231;</div>
             <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No emails yet</h3>
             <p className="text-gray-600 text-sm">Emails will appear here once generated.</p>
           </div>
@@ -74,7 +74,7 @@ export default function CampaignEmailsPage() {
                   <p className="font-medium text-gray-800 truncate">{email.subject}</p>
                   <div className="flex items-center justify-between mt-1">
                     <p className="text-sm text-gray-500 truncate">
-                      To: {email.leadFirstName} {email.leadLastName} • {email.leadCompany}
+                      To: {email.leadFirstName} {email.leadLastName} \u2022 {email.leadCompany}
                     </p>
                     {cost && (
                       <span className="text-xs text-gray-400 ml-2 shrink-0">{cost}</span>
@@ -167,7 +167,7 @@ export default function CampaignEmailsPage() {
                   }`} />
                   <span>{selectedEmail.generationRun.status}</span>
                   {formatDuration(selectedEmail.generationRun.startedAt, selectedEmail.generationRun.completedAt) && (
-                    <span>• {formatDuration(selectedEmail.generationRun.startedAt, selectedEmail.generationRun.completedAt)}</span>
+                    <span>\u2022 {formatDuration(selectedEmail.generationRun.startedAt, selectedEmail.generationRun.completedAt)}</span>
                   )}
                   <span className="ml-auto font-medium text-gray-700">
                     {formatCostDetailed(selectedEmail.generationRun.totalCostInUsdCents)}

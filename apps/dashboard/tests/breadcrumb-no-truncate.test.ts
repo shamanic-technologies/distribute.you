@@ -14,7 +14,7 @@ describe("BreadcrumbNav truncation", () => {
     // Find the brand Link element (contains /brands/${brandId})
     // Regex captures the className of the Link whose href includes /brands/
     const brandLinkRegex =
-      /Link\s+href=\{`\/brands\/\$\{brandId\}`\}\s+className="([^"]*)"/;
+      /Link\s+href=\{`\/orgs\/\$\{orgId\}\/brands\/\$\{brandId\}`\}\s+className="([^"]*)"/;
     const match = content.match(brandLinkRegex);
     expect(match, "brand Link element should exist in breadcrumb").toBeTruthy();
     const className = match![1];
@@ -25,7 +25,7 @@ describe("BreadcrumbNav truncation", () => {
   it("should not truncate the campaign name link in the breadcrumb", () => {
     // Find the campaign Link element (contains /campaigns/${campaignId})
     const campaignLinkRegex =
-      /Link\s+href=\{`\/brands\/\$\{brandId\}\/workflows\/\$\{sectionKey\}\/campaigns\/\$\{campaignId\}`\}\s+className="([^"]*)"/;
+      /Link\s+href=\{`\/orgs\/\$\{orgId\}\/brands\/\$\{brandId\}\/features\/\$\{sectionKey\}\/campaigns\/\$\{campaignId\}`\}\s+className="([^"]*)"/;
     const match = content.match(campaignLinkRegex);
     expect(
       match,

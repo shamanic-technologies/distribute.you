@@ -2,7 +2,6 @@ import { currentUser } from "@clerk/nextjs/server";
 import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { ApiKeyPreview } from "@/components/api-key-preview";
-import { BrandsList } from "@/components/brands-list";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.distribute.you";
 
@@ -106,9 +105,30 @@ export default async function DashboardHome() {
         <ApiKeyPreview />
       </div>
 
-      {/* Brands Section */}
+      {/* Organizations Section */}
       <div className="mb-8">
-        <BrandsList />
+        <h2 className="font-display text-lg font-bold text-gray-800 mb-4">
+          Organizations
+        </h2>
+        <Link
+          href="/orgs"
+          className="block bg-white rounded-2xl border border-gray-200 p-6 hover:border-primary-300 hover:shadow-md transition-all"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-primary-50 rounded-xl flex items-center justify-center">
+              <svg className="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="font-medium text-gray-900">View Organizations</h3>
+              <p className="text-sm text-gray-500">Manage your organizations and brands</p>
+            </div>
+            <svg className="w-5 h-5 text-gray-400 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+        </Link>
       </div>
 
       {/* Top Workflows by Cost per Reply */}
@@ -176,24 +196,6 @@ export default async function DashboardHome() {
           </div>
         </div>
       )}
-
-      <div className="mt-8 bg-primary-50 rounded-2xl border border-primary-200 p-6">
-        <h3 className="font-display font-bold text-lg text-primary-800 mb-2">Quick Setup</h3>
-        <ol className="space-y-2 text-sm text-primary-700">
-          <li className="flex items-start gap-2">
-            <span className="bg-primary-200 text-primary-800 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">1</span>
-            <span>Configure API provider keys in <Link href="/setup" className="underline">Setup</Link></span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="bg-primary-200 text-primary-800 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">2</span>
-            <span>Create your API key above or in <Link href="/api-keys" className="underline">API Keys</Link></span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="bg-primary-200 text-primary-800 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">3</span>
-            <span>Use distribute in Claude, Cursor, or any MCP-compatible client</span>
-          </li>
-        </ol>
-      </div>
     </div>
   );
 }

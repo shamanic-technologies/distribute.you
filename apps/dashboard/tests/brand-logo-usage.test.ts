@@ -18,14 +18,10 @@ describe("BrandLogo component", () => {
   it("should be used in all brand listing pages instead of a hardcoded icon", () => {
     const brandFiles = [
       path.join(__dirname, "../src/components/brands-list.tsx"),
-      path.join(__dirname, "../src/app/(dashboard)/brands/page.tsx"),
+      path.join(__dirname, "../src/app/(dashboard)/orgs/[orgId]/page.tsx"),
       path.join(
         __dirname,
-        "../src/app/(dashboard)/brands/[brandId]/page.tsx"
-      ),
-      path.join(
-        __dirname,
-        "../src/app/(dashboard)/brands/[brandId]/layout.tsx"
+        "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx"
       ),
     ];
 

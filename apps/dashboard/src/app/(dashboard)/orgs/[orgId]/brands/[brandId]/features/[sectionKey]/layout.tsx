@@ -12,10 +12,12 @@ export default function WorkflowSectionLayout({
   const pathname = usePathname();
   const params = useParams();
   const brandId = params.brandId as string;
+  const orgId = params.orgId as string;
   const sectionKey = params.sectionKey as string;
 
   const label = SECTION_LABELS[sectionKey] ?? sectionKey;
-  const basePath = `/brands/${brandId}/workflows/${sectionKey}`;
+  const basePath = `/orgs/${orgId}/brands/${brandId}/features/${sectionKey}`;
+  const backToOrgBrandHref = `/orgs/${orgId}/brands/${brandId}`;
 
   const SIDEBAR_ITEMS = [
     {
@@ -43,7 +45,7 @@ export default function WorkflowSectionLayout({
       <aside className="hidden md:flex w-56 bg-white border-r border-gray-200 flex-col flex-shrink-0">
         <div className="px-4 py-3 border-b border-gray-100">
           <Link
-            href={`/brands/${brandId}`}
+            href={backToOrgBrandHref}
             className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 mb-2 transition"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -85,7 +87,7 @@ export default function WorkflowSectionLayout({
       {/* Mobile top bar */}
       <div className="md:hidden bg-white border-b border-gray-200 px-4 py-2">
         <div className="flex items-center justify-between mb-2">
-          <Link href={`/brands/${brandId}`} className="text-xs text-gray-400 flex items-center gap-1">
+          <Link href={backToOrgBrandHref} className="text-xs text-gray-400 flex items-center gap-1">
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>

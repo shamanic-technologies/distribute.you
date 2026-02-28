@@ -23,6 +23,7 @@ const CLASSIFICATION_LABELS: Record<string, string> = {
 
 export default function CampaignRepliesPage() {
   const params = useParams();
+  const orgId = params.orgId as string;
   const [filter, setFilter] = useState<string | null>(null);
 
   const { data, isLoading } = useAuthQuery(
@@ -32,8 +33,8 @@ export default function CampaignRepliesPage() {
   );
   const replies = data?.replies ?? [];
 
-  const filteredReplies = filter 
-    ? replies.filter(r => r.classification === filter) 
+  const filteredReplies = filter
+    ? replies.filter(r => r.classification === filter)
     : replies;
 
   const classificationCounts = replies.reduce((acc, r) => {
@@ -80,8 +81,8 @@ export default function CampaignRepliesPage() {
               key={cls}
               onClick={() => setFilter(cls)}
               className={`text-xs px-3 py-1.5 rounded-full border transition ${
-                filter === cls 
-                  ? "bg-gray-800 text-white border-gray-800" 
+                filter === cls
+                  ? "bg-gray-800 text-white border-gray-800"
                   : CLASSIFICATION_COLORS[cls] || "bg-gray-100 text-gray-600 border-gray-200"
               }`}
             >
@@ -93,13 +94,13 @@ export default function CampaignRepliesPage() {
 
       {filteredReplies.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-          <div className="text-4xl mb-4">💬</div>
+          <div className="text-4xl mb-4">&#128172;</div>
           <h3 className="font-display font-bold text-lg text-gray-800 mb-2">
             {filter ? "No replies with this classification" : "No replies yet"}
           </h3>
           <p className="text-gray-600 text-sm">
-            {filter 
-              ? "Try selecting a different filter." 
+            {filter
+              ? "Try selecting a different filter."
               : "Replies will appear here when leads respond."
             }
           </p>

@@ -31,12 +31,12 @@ describe("Workflows page", () => {
 describe("Workflows sidebar link", () => {
   const sidebarPath = path.join(
     __dirname,
-    "../src/components/sidebar.tsx"
+    "../src/components/context-sidebar.tsx"
   );
   const content = fs.readFileSync(sidebarPath, "utf-8");
 
   it("should have a Workflows navigation link", () => {
-    expect(content).toContain('href="/workflows"');
+    expect(content).toContain('href: "/workflows"');
     expect(content).toContain("Workflows");
   });
 });
