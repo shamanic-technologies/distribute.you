@@ -161,7 +161,7 @@ export default function WorkflowCampaignsPage() {
             <div className="text-4xl mb-4">📤</div>
             <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No campaigns yet</h3>
             <p className="text-gray-600 text-sm max-w-md mx-auto mb-4">
-              Use the MCP Factory tool in Claude, Cursor, or any MCP-compatible client to create campaigns for this brand.
+              Use the distribute tool in Claude, Cursor, or any MCP-compatible client to create campaigns for this brand.
             </p>
           </div>
         ) : (

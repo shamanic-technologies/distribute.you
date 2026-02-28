@@ -110,7 +110,7 @@ export async function deleteByokKey(
   });
 }
 
-// Session API Key (Foxy chat)
+// Session API Key (distribute assistant chat)
 export interface SessionApiKey {
   id: string;
   key: string;

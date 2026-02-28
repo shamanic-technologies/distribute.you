@@ -3,25 +3,25 @@ import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
 const SITE_URL = "https://dashboard.mcpfactory.org";
-const SITE_NAME = "MCP Factory Dashboard";
+const SITE_NAME = "distribute Dashboard";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Dashboard | MCP Factory",
-    template: "%s | MCP Factory Dashboard",
+    default: "Dashboard | distribute",
+    template: "%s | distribute Dashboard",
   },
-  description: "Manage your BYOK keys, campaigns, usage, and billing. Configure your MCP Factory automations.",
+  description: "Manage your API keys, campaigns, usage, and billing. Configure your distribute automations.",
   keywords: [
-    "MCP Factory",
+    "distribute",
     "dashboard",
-    "BYOK",
     "campaigns",
     "automation",
     "API keys",
+    "distribution",
   ],
-  authors: [{ name: "MCP Factory" }],
-  creator: "MCP Factory",
+  authors: [{ name: "distribute" }],
+  creator: "distribute",
   formatDetection: {
     email: false,
     address: false,
@@ -32,21 +32,21 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: "MCP Factory Dashboard",
-    description: "Manage your BYOK keys, campaigns, and usage.",
+    title: "distribute Dashboard",
+    description: "Manage your API keys, campaigns, and usage.",
     images: [
       {
         url: "https://mcpfactory.org/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "MCP Factory Dashboard",
+        alt: "distribute Dashboard",
       },
     ],
   },
   twitter: {
     card: "summary",
-    title: "MCP Factory Dashboard",
-    description: "Manage your MCP Factory automations.",
+    title: "distribute Dashboard",
+    description: "Manage your distribute automations.",
   },
   robots: {
     index: false,
@@ -62,15 +62,15 @@ export const metadata: Metadata = {
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
-  name: "MCP Factory Dashboard",
+  name: "distribute Dashboard",
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
-  description: "Dashboard to manage BYOK keys, campaigns, and automation settings.",
+  description: "Dashboard to manage API keys, campaigns, and distribution automation settings.",
   url: SITE_URL,
   provider: {
     "@type": "Organization",
-    name: "MCP Factory",
-    url: "https://mcpfactory.org",
+    name: "distribute",
+    url: "https://distribute.eu",
   },
 };
 

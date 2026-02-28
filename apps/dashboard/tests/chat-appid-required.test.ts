@@ -69,10 +69,10 @@ describe("chat-service config registration at cold start", () => {
     expect(content).toContain("PUT");
   });
 
-  it("should include the Foxy system prompt", () => {
+  it("should include the distribute assistant system prompt", () => {
     const content = fs.readFileSync(instrumentationPath, "utf-8");
     expect(content).toContain("systemPrompt");
-    expect(content).toContain("Foxy");
+    expect(content).toContain("distribute assistant");
   });
 
   it("should use X-API-Key auth (not Bearer)", () => {

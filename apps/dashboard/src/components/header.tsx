@@ -40,8 +40,8 @@ export function Header() {
           </button>
           
           <Link href="/" className="flex items-center gap-2 pr-4 border-r border-gray-200">
-            <Image src="/logo-head.jpg" alt="MCP Factory" width={28} height={28} className="rounded-md" />
-            <span className="font-display font-bold text-lg text-primary-600 hidden sm:block">MCP Factory</span>
+            <Image src="/logo-head.jpg" alt="distribute" width={28} height={28} className="rounded-md" />
+            <span className="font-display font-bold text-lg text-primary-600 hidden sm:block">distribute</span>
           </Link>
 
           <div className="hidden sm:block min-w-0 flex-1">

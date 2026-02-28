@@ -1,6 +1,6 @@
 /**
  * Next.js instrumentation — runs once on server cold start.
- * Registers the MCP Factory app config with chat-service (idempotent).
+ * Registers the distribute app config with chat-service (idempotent).
  */
 export async function register() {
   // Only run on the server (not during build or edge runtime)
@@ -11,7 +11,7 @@ export async function register() {
 
   if (!chatServiceUrl || !chatServiceApiKey) {
     console.warn(
-      "[dashboard] CHAT_SERVICE_URL or CHAT_SERVICE_API_KEY not set — skipping chat config registration"
+      "[distribute] CHAT_SERVICE_URL or CHAT_SERVICE_API_KEY not set — skipping chat config registration"
     );
     return;
   }
@@ -33,26 +33,26 @@ export async function register() {
     if (!res.ok) {
       const body = await res.text();
       console.error(
-        `[dashboard] Chat config registration failed: ${res.status} — ${body}`
+        `[distribute] Chat config registration failed: ${res.status} — ${body}`
       );
       return;
     }
 
-    console.log("[dashboard] Chat app config registered with chat-service");
+    console.log("[distribute] Chat app config registered with chat-service");
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(
-      `[dashboard] Chat config registration error: ${message}`
+      `[distribute] Chat config registration error: ${message}`
     );
   }
 }
 
-const FOXY_SYSTEM_PROMPT = `You are Foxy, the MCP Factory AI assistant. You help users set up and manage their automated outreach campaigns.
+const FOXY_SYSTEM_PROMPT = `You are the distribute assistant. You help users set up and manage their automated distribution campaigns.
 
 You can help with:
 - Creating and managing sales cold email campaigns
-- Setting up API keys and BYOK (Bring Your Own Keys) credentials
-- Configuring MCP servers for use with AI coding tools (Cursor, Claude Code, etc.)
+- Setting up API keys and connecting your own API provider keys
+- Configuring distribute for use with AI coding tools (Cursor, Claude Code, etc.)
 - Understanding campaign performance and costs
 - Explaining how workflows work
 
