@@ -27,7 +27,7 @@ describe('Dashboard API Gateway Usage - CRITICAL', () => {
     return files;
   }
 
-  it('should NOT call BRAND_SERVICE_URL directly (use NEXT_PUBLIC_API_URL instead)', () => {
+  it('should NOT call BRAND_SERVICE_URL directly (use NEXT_PUBLIC_DISTRIBUTE_API_URL instead)', () => {
     const files = getAllTsxFiles(appDir);
     const violations: { file: string; line: number }[] = [];
     
@@ -49,11 +49,11 @@ describe('Dashboard API Gateway Usage - CRITICAL', () => {
     
     expect(
       violations,
-      `Files calling brand-service directly:\n${violations.map(v => `  ${v.file}:${v.line}`).join('\n')}\n\nUse NEXT_PUBLIC_API_URL/v1/brands/... instead`
+      `Files calling brand-service directly:\n${violations.map(v => `  ${v.file}:${v.line}`).join('\n')}\n\nUse NEXT_PUBLIC_DISTRIBUTE_API_URL/v1/brands/... instead`
     ).toHaveLength(0);
   });
 
-  it('should use NEXT_PUBLIC_API_URL for brand-related fetches', () => {
+  it('should use NEXT_PUBLIC_DISTRIBUTE_API_URL for brand-related fetches', () => {
     const brandsDir = path.join(appDir, '(dashboard)/brands');
     if (!fs.existsSync(brandsDir)) {
       return; // Skip if brands folder doesn't exist
@@ -70,7 +70,7 @@ describe('Dashboard API Gateway Usage - CRITICAL', () => {
       // Check if file has fetch calls
       if (content.includes('fetch(')) {
         // Good: uses API_URL for brand endpoints
-        if (content.includes('NEXT_PUBLIC_API_URL') && content.includes('/v1/brands')) {
+        if (content.includes('NEXT_PUBLIC_DISTRIBUTE_API_URL') && content.includes('/v1/brands')) {
           correctUsage.push(relPath);
         }
         
@@ -115,7 +115,7 @@ describe('Dashboard API Gateway Usage - CRITICAL', () => {
     
     expect(
       violations,
-      `Files calling campaign-service directly for brand filtering:\n${violations.map(v => `  ${v.file}:${v.line}\n    ${v.code}`).join('\n')}\n\nUse NEXT_PUBLIC_API_URL instead`
+      `Files calling campaign-service directly for brand filtering:\n${violations.map(v => `  ${v.file}:${v.line}\n    ${v.code}`).join('\n')}\n\nUse NEXT_PUBLIC_DISTRIBUTE_API_URL instead`
     ).toHaveLength(0);
   });
 });

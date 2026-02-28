@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { ApiKeyPreview } from "@/components/api-key-preview";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.distribute.you";
+const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 
 interface LeaderboardWorkflow {
   workflowName: string;
