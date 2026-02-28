@@ -492,3 +492,97 @@ export async function getWorkflow(token: string, workflowId: string): Promise<Wo
   return apiCall<Workflow>(`/workflows/${workflowId}`, { token });
 }
 
+// App registration
+export interface App {
+  id: string;
+  name: string;
+  type: "agency" | "company";
+  createdAt: string;
+}
+
+export interface RegisterAppResponse {
+  appId: string;
+  apiKey?: string;
+  message?: string;
+}
+
+export async function registerApp(
+  token: string,
+  name: string,
+  type: "agency" | "company"
+): Promise<RegisterAppResponse> {
+  return apiCall<RegisterAppResponse>("/apps/register", {
+    token,
+    method: "POST",
+    body: { name, type },
+  });
+}
+
+// Get current app
+export async function getApp(token: string): Promise<{ app: App | null }> {
+  try {
+    return await apiCall<{ app: App }>("/apps/me", { token });
+  } catch {
+    return { app: null };
+  }
+}
+
+// Organizations
+export interface Org {
+  id: string;
+  name: string;
+  plan: string;
+  createdAt: string;
+}
+
+export async function listOrgs(token: string): Promise<{ orgs: Org[] }> {
+  return apiCall<{ orgs: Org[] }>("/orgs", { token });
+}
+
+export async function createOrg(
+  token: string,
+  name: string
+): Promise<{ org: Org }> {
+  return apiCall<{ org: Org }>("/orgs", {
+    token,
+    method: "POST",
+    body: { name },
+  });
+}
+
+// Create brand
+export async function createBrand(
+  token: string,
+  name: string,
+  domain: string
+): Promise<{ brand: Brand }> {
+  return apiCall<{ brand: Brand }>("/brands", {
+    token,
+    method: "POST",
+    body: { name, domain },
+  });
+}
+
+// Workflow performance
+export interface WorkflowPerformance {
+  workflowId: string;
+  workflowName: string;
+  displayName: string;
+  signatureName: string;
+  sectionKey: string;
+  runCount: number;
+  emailsSent: number;
+  emailsReplied: number;
+  replyRate: number;
+  costPerReplyCents: number | null;
+}
+
+export async function getBestWorkflow(
+  token: string
+): Promise<{
+  workflow: { id: string; name: string; category: string; channel: string; audienceType: string; signatureName: string };
+  stats: { totalCostInUsdCents: number; totalOutcomes: number; costPerOutcome: number; completedRuns: number };
+}> {
+  return apiCall("/workflows/best", { token });
+}
+
