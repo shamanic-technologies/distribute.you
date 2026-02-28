@@ -31,7 +31,7 @@ function SortHeader({
   const active = currentSort === sortKey;
   return (
     <th
-      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-primary-600 select-none"
+      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-brand-600 select-none"
       onClick={() => onSort(sortKey)}
     >
       {label} {active ? (currentDir === "desc" ? "↓" : "↑") : ""}
@@ -91,7 +91,7 @@ export function BrandLeaderboard({ brands, maxEntries }: { brands: BrandLeaderbo
                       unoptimized
                     />
                   ) : (
-                    <div className="w-7 h-7 bg-primary-100 rounded flex items-center justify-center text-primary-600 text-sm font-bold">
+                    <div className="w-7 h-7 bg-brand-100 rounded flex items-center justify-center text-brand-600 text-sm font-bold">
                       {(brand.brandName || brand.brandDomain || "?")[0].toUpperCase()}
                     </div>
                   )}
@@ -157,7 +157,7 @@ export function WorkflowLeaderboard({ workflows, inSection = false, maxEntries }
             {visible.map((wf) => (
               <tr
                 key={wf.workflowName}
-                className={`hover:bg-gray-50 cursor-pointer ${selected?.workflowName === wf.workflowName ? "bg-primary-50" : ""}`}
+                className={`hover:bg-gray-50 cursor-pointer ${selected?.workflowName === wf.workflowName ? "bg-brand-50" : ""}`}
                 onClick={() => setSelected(selected?.workflowName === wf.workflowName ? null : wf)}
               >
                 <td className="px-4 py-4 whitespace-nowrap">

@@ -26,7 +26,7 @@ export function WorkflowLeaderboardFiltered({
             onClick={() => setCategoryFilter("all")}
             className={`px-3 py-1 rounded-full text-xs font-medium transition ${
               categoryFilter === "all"
-                ? "bg-primary-100 text-primary-700 border border-primary-200"
+                ? "bg-brand-100 text-brand-700 border border-brand-200"
                 : "bg-gray-100 text-gray-500 hover:text-gray-700 border border-transparent"
             }`}
           >
@@ -38,7 +38,7 @@ export function WorkflowLeaderboardFiltered({
               onClick={() => setCategoryFilter(cat)}
               className={`px-3 py-1 rounded-full text-xs font-medium transition ${
                 categoryFilter === cat
-                  ? "bg-primary-100 text-primary-700 border border-primary-200"
+                  ? "bg-brand-100 text-brand-700 border border-brand-200"
                   : "bg-gray-100 text-gray-500 hover:text-gray-700 border border-transparent"
               }`}
             >

@@ -13,7 +13,7 @@ export default async function HomePage() {
       {/* Hero */}
       <section className="py-12 md:py-16 px-4 gradient-bg">
         <div className="max-w-6xl mx-auto text-center">
-          <div className="inline-block bg-accent-100 text-accent-700 px-4 py-1.5 rounded-full text-sm font-medium mb-6 border border-accent-200">
+          <div className="inline-block bg-emerald-100 text-emerald-700 px-4 py-1.5 rounded-full text-sm font-medium mb-6 border border-emerald-200">
             100% Transparent
           </div>
           <h1 className="font-display text-4xl md:text-5xl font-bold mb-4 text-gray-800">
@@ -60,13 +60,13 @@ export default async function HomePage() {
           <div className="flex flex-wrap gap-4 justify-center text-sm">
             <a
               href={URLS.signUp}
-              className="px-6 py-3 bg-primary-500 text-white rounded-full hover:bg-primary-600 transition font-medium"
+              className="px-6 py-3 bg-brand-500 text-white rounded-full hover:bg-brand-600 transition font-medium"
             >
               Start a Campaign
             </a>
             <a
               href={URLS.docs}
-              className="px-6 py-3 bg-white border border-gray-200 text-gray-700 rounded-full hover:border-primary-300 transition font-medium"
+              className="px-6 py-3 bg-white border border-gray-200 text-gray-700 rounded-full hover:border-brand-300 transition font-medium"
             >
               Read the Docs
             </a>
