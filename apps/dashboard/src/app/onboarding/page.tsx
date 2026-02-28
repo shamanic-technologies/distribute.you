@@ -1,14 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useOrganizationList } from "@clerk/nextjs";
 
 type AccountType = "agency" | "company";
 type Step = "value-prop" | "type-selection" | "name-input";
 
 export default function OnboardingPage() {
-  const router = useRouter();
   const { createOrganization, setActive } = useOrganizationList();
   const [step, setStep] = useState<Step>("value-prop");
   const [accountType, setAccountType] = useState<AccountType | null>(null);
@@ -28,7 +26,7 @@ export default function OnboardingPage() {
     try {
       const org = await createOrganization({ name: name.trim() });
       await setActive({ organization: org.id });
-      router.push("/");
+      window.location.href = "/";
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {

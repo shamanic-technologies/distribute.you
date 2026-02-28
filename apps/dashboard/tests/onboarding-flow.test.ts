@@ -52,7 +52,7 @@ describe("Onboarding flow", () => {
 
   it("should redirect to / after org creation", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain('router.push("/")');
+    expect(content).toContain('window.location.href = "/"');
   });
 });
 
