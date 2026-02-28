@@ -1,5 +1,5 @@
-# MCP Factory - https://mcpfactory.org
+# distribute - https://distribute.you
 User-agent: *
 Allow: /
 
-Sitemap: https://mcpfactory.org/sitemap.xml
+Sitemap: https://distribute.you/sitemap.xml

@@ -28,7 +28,7 @@ Use the search bar: `service:performance-service` to filter errors by service.
 
 ## Better Stack (Status Page)
 
-Public status page at `status.mcpfactory.org`.
+Public status page at `status.distribute.you`.
 
 ### Setup Steps
 
@@ -36,17 +36,17 @@ Public status page at `status.mcpfactory.org`.
 2. Go to Uptime → Monitors
 3. Add each endpoint (see below)
 4. Go to Status Pages → Create
-5. Add custom domain: `status.mcpfactory.org`
+5. Add custom domain: `status.distribute.you`
 6. Add DNS CNAME record pointing to Better Stack
 
 ### Endpoints to Monitor
 
 | Name | URL | Method | Expected Status |
 |------|-----|--------|-----------------|
-| MCP Service | `https://mcp.mcpfactory.org/health` | GET | 200 |
-| Dashboard | `https://dashboard.mcpfactory.org` | GET | 200 |
-| Docs | `https://docs.mcpfactory.org` | GET | 200 |
-| Sales Landing | `https://salescoldemail.mcpfactory.org` | GET | 200 |
+| MCP Service | `https://mcp.distribute.you/health` | GET | 200 |
+| Dashboard | `https://dashboard.distribute.you` | GET | 200 |
+| Docs | `https://docs.distribute.you` | GET | 200 |
+| Sales Landing | `https://salescoldemail.distribute.you` | GET | 200 |
 
 ### Custom Domain Setup
 
@@ -75,4 +75,4 @@ To auto-create incidents from Sentry alerts:
 |------|---------|-----|
 | Sentry | Error tracking | https://sentry.io |
 | Better Stack | Uptime + Status page | https://betterstack.com |
-| Status Page | Public status | https://status.mcpfactory.org |
+| Status Page | Public status | https://status.distribute.you |

@@ -4,7 +4,7 @@
 
 > Your distribution, automated.
 
-[mcpfactory.org](https://mcpfactory.org) | [Dashboard](https://dashboard.mcpfactory.org)
+[distribute.you](https://distribute.you) | [Dashboard](https://dashboard.distribute.you)
 
 ## What is distribute?
 
@@ -28,7 +28,7 @@ distribute is the Stripe for Distribution. Create an account, give us your URL �
 
 ## Quick Start
 
-1. Create an account at [dashboard.mcpfactory.org](https://dashboard.mcpfactory.org)
+1. Create an account at [dashboard.distribute.you](https://dashboard.distribute.you)
 2. Add your URL
 3. Enable the distribution features you need
 4. We handle the rest — the best-performing AI workflow runs automatically
@@ -38,9 +38,9 @@ distribute is the Stripe for Distribution. Create an account, give us your URL �
 ```
 distribute/
 ├── apps/
-│   ├── dashboard/      # dashboard.mcpfactory.org
+│   ├── dashboard/      # dashboard.distribute.you
 │   ├── docs/           # Documentation
-│   └── landing/        # mcpfactory.org
+│   └── landing/        # distribute.you
 └── shared/
     ├── types/
     ├── auth/
