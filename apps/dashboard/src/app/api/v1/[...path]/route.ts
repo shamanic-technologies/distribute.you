@@ -4,61 +4,6 @@ import { NextRequest, NextResponse } from "next/server";
 const API_URL =
   process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 const API_KEY = process.env.DISTRIBUTE_API_KEY;
-const CLIENT_SERVICE_URL =
-  process.env.CLIENT_SERVICE_URL || "https://client.mcpfactory.org";
-const CLIENT_SERVICE_API_KEY = process.env.CLIENT_SERVICE_API_KEY;
-
-/**
- * In-memory cache for Clerk → internal identity resolution.
- * Key: `${clerkOrgId}:${clerkUserId}`, Value: { orgId, userId, expiresAt }
- */
-const identityCache = new Map<
-  string,
-  { orgId: string; userId: string; expiresAt: number }
->();
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-
-async function resolveIdentity(
-  clerkOrgId: string,
-  clerkUserId: string
-): Promise<{ orgId: string; userId: string }> {
-  const cacheKey = `${clerkOrgId}:${clerkUserId}`;
-  const cached = identityCache.get(cacheKey);
-  if (cached && cached.expiresAt > Date.now()) {
-    return { orgId: cached.orgId, userId: cached.userId };
-  }
-
-  if (!CLIENT_SERVICE_API_KEY) {
-    throw new Error("CLIENT_SERVICE_API_KEY not configured");
-  }
-
-  const res = await fetch(`${CLIENT_SERVICE_URL}/resolve`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": CLIENT_SERVICE_API_KEY,
-    },
-    body: JSON.stringify({
-      appId: "mcpfactory",
-      externalOrgId: clerkOrgId,
-      externalUserId: clerkUserId,
-    }),
-  });
-
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Identity resolution failed: ${res.status} — ${body}`);
-  }
-
-  const data = await res.json();
-  identityCache.set(cacheKey, {
-    orgId: data.orgId,
-    userId: data.userId,
-    expiresAt: Date.now() + CACHE_TTL_MS,
-  });
-
-  return { orgId: data.orgId, userId: data.userId };
-}
 
 async function proxyRequest(
   req: NextRequest,
@@ -81,21 +26,6 @@ async function proxyRequest(
     );
   }
 
-  // Resolve Clerk IDs → internal UUIDs via client-service
-  let orgId: string;
-  let userId: string;
-  try {
-    const identity = await resolveIdentity(clerkOrgId, clerkUserId);
-    orgId = identity.orgId;
-    userId = identity.userId;
-  } catch (err) {
-    console.error("[proxy] Identity resolution error:", err);
-    return NextResponse.json(
-      { error: "Identity resolution failed" },
-      { status: 502 }
-    );
-  }
-
   const { path } = await segmentData.params;
   const url = new URL(`/v1/${path.join("/")}`, API_URL);
   req.nextUrl.searchParams.forEach((value, key) => {
@@ -105,8 +35,8 @@ async function proxyRequest(
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${API_KEY}`,
-    "x-org-id": orgId,
-    "x-user-id": userId,
+    "x-org-id": clerkOrgId,
+    "x-user-id": clerkUserId,
   };
 
   const body =
