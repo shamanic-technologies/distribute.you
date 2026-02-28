@@ -1,6 +1,8 @@
 import { Metadata } from "next";
 import { CopyForLLM } from "@/components/copy-for-llm";
-import { URLS, API_RATE_LIMITS } from "@mcpfactory/content";
+import { URLS } from "@mcpfactory/content";
+
+const API_RATE_LIMITS = { free: "100 requests/minute" };
 
 export const metadata: Metadata = {
   title: "API Reference",

@@ -1,6 +1,15 @@
 import { Metadata } from "next";
 import { CopyForLLM } from "@/components/copy-for-llm";
-import { DOCS_PRICING, BYOK_COST_ESTIMATES, BYOK_PROVIDERS } from "@mcpfactory/content";
+const DOCS_PRICING = {
+  free: { price: "$0", emails: "Unlimited (BYOK)", detail: "Free + BYOK costs" },
+  estimatedByokCost: "~$0.02/email",
+};
+const BYOK_COST_ESTIMATES = { totalPerEmail: "~$0.02/email" };
+const BYOK_PROVIDERS = [
+  { name: "OpenAI or Anthropic", purpose: "Email generation" },
+  { name: "Apollo", purpose: "Lead finding & enrichment" },
+  { name: "Resend", purpose: "Email sending" },
+];
 
 export const metadata: Metadata = {
   title: "Sales Outreach MCP",

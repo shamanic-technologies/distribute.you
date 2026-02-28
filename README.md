@@ -1,22 +1,23 @@
-# MCP Factory
+# distribute
 
-**The DFY, BYOK MCP Platform**
+**The Stripe for Distribution**
 
-> From URL to Revenue
+> Your distribution, automated.
 
 [mcpfactory.org](https://mcpfactory.org) | [Dashboard](https://dashboard.mcpfactory.org)
 
-## What is MCP Factory?
+## What is distribute?
 
-MCP Factory provides Done-For-You (DFY) automation tools via the Model Context Protocol (MCP).
+distribute is the Stripe for Distribution. Create an account, give us your URL — we automate your entire distribution layer with AI workflows ranked by real performance data.
 
-**DFY means:** You provide a URL + budget. We handle everything else - lead finding, content generation, outreach, optimization, and reporting.
+## Distribution Features
 
-**BYOK means:** Bring Your Own Keys. You use your own API keys (OpenAI, Anthropic, Apollo, etc.), so you only pay for what you use. No hidden markups.
-
-## Pricing
-
-**Free · BYOK** — $0 — you only pay your API costs. Generous quota per workflow.
+- **Welcome Emails** — Personalized welcome emails that match your brand. Zero configuration needed. _(Live)_
+- **Cold Outreach** — Find leads, generate personalized emails, send and optimize automatically. _(Live)_
+- **Webinar Lifecycle** — Registration confirmations, reminders, follow-ups. The full flow, automated. _(Coming soon)_
+- **Lifecycle Campaigns** — Onboarding sequences, re-engagement, and win-back flows that run on autopilot. _(Coming soon)_
+- **Downsell & Retention** — Smart follow-ups when users disengage. Reduce churn without lifting a finger. _(Coming soon)_
+- **Social Distribution** — Your content, repurposed and distributed across every social channel. _(Coming soon)_
 
 ## Available Workflows
 
@@ -27,86 +28,15 @@ MCP Factory provides Done-For-You (DFY) automation tools via the Model Context P
 
 ## Quick Start
 
-```bash
-# Add MCP Factory to your MCP config
-{
-  "mcpServers": {
-    "mcpfactory": {
-      "command": "npx",
-      "args": ["@mcpfactory/mcp-service"],
-      "env": {
-        "MCPFACTORY_API_KEY": "your-api-key"
-      }
-    }
-  }
-}
-```
-
-## Usage Example
-
-In Claude, Cursor, or any MCP-compatible client:
-
-> "Launch a cold email campaign for acme.com, $10/day budget, 5 days trial, daily report to ceo@acme.com"
-
-That's it. We handle:
-1. Scraping & analyzing your URL
-2. Identifying ideal customer profile
-3. Finding relevant leads
-4. Generating personalized emails
-5. Sending with proper deliverability
-6. A/B testing & optimization
-7. Daily reports with dashboard link
-
-## Common Features
-
-### Budget Control
-```
-"budget": {
-  "max_daily_usd": 10,
-  "max_weekly_usd": 50,
-  "max_monthly_usd": 150
-}
-```
-
-### Scheduling
-```
-"schedule": {
-  "frequency": "daily",
-  "trial_days": 5,
-  "pause_on_weekend": true
-}
-```
-
-### Reporting
-```
-"reporting": {
-  "frequency": "daily",
-  "channels": ["email", "whatsapp"],
-  "email": "you@company.com"
-}
-```
-
-### Results via MCP
-```
-Tool: get_campaign_results
-→ Returns stats, costs, dashboard URL, next run time
-```
-
-## Transparency
-
-Each workflow includes a `get_stats` tool showing:
-- Your usage & estimated BYOK costs (~$0.02/email)
-- Community benchmarks (delivery rates, open rates, reply rates)
-- Average cost per action
-
-## Open Source
-
-This project is 100% open source. MIT License.
+1. Create an account at [dashboard.mcpfactory.org](https://dashboard.mcpfactory.org)
+2. Add your URL
+3. Enable the distribution features you need
+4. We handle the rest — the best-performing AI workflow runs automatically
 
 ## Monorepo Structure
 
 ```
-mcpfactory/
+distribute/
 ├── apps/
 │   ├── dashboard/      # dashboard.mcpfactory.org
 │   ├── docs/           # Documentation
@@ -116,11 +46,6 @@ mcpfactory/
     ├── auth/
     └── content/         # SSoT for all content (this generates README.md)
 ```
-
-### Extracted Services
-
-- [api-service](https://github.com/shamanic-technologies/api-service) — Backend API
-- [mcp](https://github.com/shamanic-technologies/mcp) — MCP server endpoint
 
 ## Contributing
 
