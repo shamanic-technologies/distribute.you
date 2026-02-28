@@ -25,6 +25,12 @@ export function Header() {
             Home
           </a>
           <a
+            href={URLS.apiDocs}
+            className="text-sm text-gray-600 hover:text-brand-600 transition"
+          >
+            API Reference
+          </a>
+          <a
             href={URLS.github}
             target="_blank"
             rel="noopener noreferrer"

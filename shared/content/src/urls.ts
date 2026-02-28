@@ -4,6 +4,7 @@ export const URLS = {
   docs: "https://docs.distribute.you",
   salesLanding: "https://salescoldemail.distribute.you",
   api: "https://api.distribute.you",
+  apiDocs: "https://api.distribute.you/docs",
   mcp: "https://mcp.distribute.you/mcp",
   github: "https://github.com/shamanic-technologies/distribute.you",
   twitter: "https://twitter.com/distribute_you",

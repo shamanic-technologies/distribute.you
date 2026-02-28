@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { WORKFLOW_DEFINITIONS } from "@distribute/content";
+import { WORKFLOW_DEFINITIONS, URLS } from "@distribute/content";
 
 const NAV_ITEMS = [
   {
@@ -21,6 +21,7 @@ const NAV_ITEMS = [
       { name: "Campaigns", href: "/api/campaigns" },
       { name: "Results", href: "/api/results" },
       { name: "Webhooks", href: "/api/webhooks" },
+      { name: "Interactive Docs \u2197", href: URLS.apiDocs, external: true },
     ],
   },
   {
@@ -61,11 +62,14 @@ export function Sidebar() {
               {section.items.map((item) => {
                 const isActive = pathname === item.href;
                 const isAvailable = "available" in item ? item.available : true;
-                
+                const isExternal = "external" in item && item.external;
+                const LinkComponent = isExternal ? "a" : Link;
+                const linkProps = isExternal ? { href: item.href, target: "_blank", rel: "noopener noreferrer" } : { href: item.href };
+
                 return (
                   <li key={item.href}>
-                    <Link
-                      href={item.href}
+                    <LinkComponent
+                      {...linkProps}
                       className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition ${
                         isActive
                           ? "bg-brand-100 text-brand-700 font-medium border border-brand-200"
@@ -83,7 +87,7 @@ export function Sidebar() {
                       {!isAvailable && (
                         <span className="text-xs text-gray-400 ml-auto">Soon</span>
                       )}
-                    </Link>
+                    </LinkComponent>
                   </li>
                 );
               })}

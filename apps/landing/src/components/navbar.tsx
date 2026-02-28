@@ -44,6 +44,12 @@ export function Navbar() {
             Docs
           </a>
           <a
+            href={URLS.apiDocs}
+            className="text-gray-500 hover:text-gray-900 text-sm transition"
+          >
+            API
+          </a>
+          <a
             href={URLS.signIn}
             className="text-gray-500 hover:text-gray-900 text-sm transition"
           >
@@ -109,6 +115,12 @@ export function Navbar() {
               className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm"
             >
               Docs
+            </a>
+            <a
+              href={URLS.apiDocs}
+              className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm"
+            >
+              API
             </a>
             <a
               href={URLS.signIn}

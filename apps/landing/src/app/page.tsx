@@ -366,6 +366,7 @@ export default async function Home() {
           <div className="flex flex-wrap justify-center gap-6 text-sm">
             <a href={URLS.performance} className="hover:text-gray-300 transition">Performance</a>
             <a href={URLS.docs} className="hover:text-gray-300 transition">Docs</a>
+            <a href={URLS.apiDocs} className="hover:text-gray-300 transition">API</a>
             <a href={URLS.github} target="_blank" rel="noopener noreferrer" className="hover:text-gray-300 transition">GitHub</a>
             <a href="#" className="hover:text-gray-300 transition">Privacy</a>
           </div>

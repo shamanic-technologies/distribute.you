@@ -57,9 +57,24 @@ export default function ApiOverviewPage() {
         <h1 className="text-4xl font-bold">API Reference</h1>
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
-      <p className="text-xl text-gray-600 mb-8">
+      <p className="text-xl text-gray-600 mb-4">
         Direct REST API access to distribute services.
       </p>
+
+      <div className="bg-brand-50 border border-brand-200 rounded-lg p-4 mb-8 flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-brand-800">Interactive API Reference</p>
+          <p className="text-sm text-brand-600">Try endpoints directly in the browser with our Scalar-powered docs.</p>
+        </div>
+        <a
+          href={URLS.apiDocs}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm bg-brand-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-brand-600 transition whitespace-nowrap"
+        >
+          Open API Docs
+        </a>
+      </div>
 
       <div className="prose prose-lg">
         <h2>Base URL</h2>
