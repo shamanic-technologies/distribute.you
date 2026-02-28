@@ -77,15 +77,15 @@ export function ChatWidget() {
                 <div className="w-8 h-8 rounded-full overflow-hidden">
                   <img
                     src="/favicon.jpg"
-                    alt="Foxy"
+                    alt="distribute assistant"
                     className="w-full h-full object-cover"
                   />
                 </div>
                 <div>
                   <p className="font-display font-semibold text-sm text-gray-900">
-                    Foxy
+                    distribute
                   </p>
-                  <p className="text-xs text-gray-500">MCP Factory Assistant</p>
+                  <p className="text-xs text-gray-500">distribute assistant</p>
                 </div>
               </div>
             </div>
@@ -108,7 +108,7 @@ export function ChatWidget() {
         </>
       )}
 
-      {/* FAB — Foxy icon when closed, X when open (rendered last to stay on top) */}
+      {/* FAB — icon when closed, X when open (rendered last to stay on top) */}
       <button
         onClick={() => setIsOpen((prev) => !prev)}
         className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-primary-500 text-white shadow-lg hover:bg-primary-600 hover:shadow-xl transition-all flex items-center justify-center"
@@ -124,7 +124,7 @@ export function ChatWidget() {
           </svg>
         ) : (
           <div className="w-9 h-9 rounded-full overflow-hidden">
-            <img src="/favicon.jpg" alt="Foxy" className="w-full h-full object-cover" />
+            <img src="/favicon.jpg" alt="distribute assistant" className="w-full h-full object-cover" />
           </div>
         )}
       </button>

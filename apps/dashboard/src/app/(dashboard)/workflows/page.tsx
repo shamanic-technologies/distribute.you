@@ -59,7 +59,7 @@ export default function WorkflowsPage() {
           </div>
           <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No workflows yet</h3>
           <p className="text-gray-600 text-sm max-w-md mx-auto">
-            Workflows will appear here once campaigns are created via the MCP Factory tool.
+            Workflows will appear here once campaigns are created via the distribute tool.
           </p>
         </div>
       ) : (

@@ -30,7 +30,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
               handleSubmit();
             }
           }}
-          placeholder="Ask Foxy anything..."
+          placeholder="Ask anything..."
           disabled={disabled}
           className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-transparent disabled:opacity-50"
         />

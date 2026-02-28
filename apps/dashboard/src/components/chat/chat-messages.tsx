@@ -108,15 +108,15 @@ export function ChatMessages({ messages, onButtonClick }: ChatMessagesProps) {
 
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-4">
-      {/* Welcome message from Foxy */}
+      {/* Welcome message */}
       {messages.length === 0 && (
         <div>
           <div className="flex justify-start">
             <div className="w-7 h-7 rounded-full overflow-hidden mr-2 flex-shrink-0 mt-1">
-              <img src="/favicon.jpg" alt="Foxy" className="w-full h-full object-cover" />
+              <img src="/favicon.jpg" alt="distribute assistant" className="w-full h-full object-cover" />
             </div>
             <div className="max-w-[80%] rounded-xl px-3 py-2 text-sm bg-gray-100 text-gray-900">
-              Hey! I&apos;m Foxy, your MCP Factory assistant. How can I help?
+              Hey! I&apos;m the distribute assistant. How can I help?
             </div>
           </div>
           <div className="flex flex-wrap gap-2 mt-2 ml-9">
@@ -142,7 +142,7 @@ export function ChatMessages({ messages, onButtonClick }: ChatMessagesProps) {
           >
             {msg.role === "assistant" && (
               <div className="w-7 h-7 rounded-full overflow-hidden mr-2 flex-shrink-0 mt-1">
-                <img src="/favicon.jpg" alt="Foxy" className="w-full h-full object-cover" />
+                <img src="/favicon.jpg" alt="distribute assistant" className="w-full h-full object-cover" />
               </div>
             )}
             <div

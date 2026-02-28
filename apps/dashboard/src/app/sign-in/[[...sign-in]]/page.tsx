@@ -44,10 +44,10 @@ export default function SignInPage() {
       <div className="w-full max-w-md p-8">
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
-            <Image src="/logo.jpg" alt="MCP Factory" width={64} height={64} className="rounded-xl" />
+            <Image src="/logo.jpg" alt="distribute" width={64} height={64} className="rounded-xl" />
           </div>
           <h1 className="font-display text-2xl font-bold text-gray-800">Welcome back</h1>
-          <p className="text-gray-600 mt-1">Sign in to your MCP Factory dashboard</p>
+          <p className="text-gray-600 mt-1">Sign in to your distribute dashboard</p>
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
