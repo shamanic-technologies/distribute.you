@@ -1,4 +1,6 @@
-const API_SERVICE_URL = process.env.API_SERVICE_URL || "http://localhost:3000";
+const API_URL =
+  process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
+const API_KEY = process.env.DISTRIBUTE_API_KEY;
 
 export interface BrandEntry {
   brandDomain: string | null;
@@ -32,7 +34,11 @@ export interface LeaderboardPreview {
 
 export async function fetchLeaderboardPreview(): Promise<LeaderboardPreview | null> {
   try {
-    const res = await fetch(`${API_SERVICE_URL}/performance/leaderboard`, {
+    const headers: Record<string, string> = { Accept: "application/json" };
+    if (API_KEY) headers.Authorization = `Bearer ${API_KEY}`;
+
+    const res = await fetch(`${API_URL}/performance/leaderboard`, {
+      headers,
       next: { revalidate: 300 },
     });
 
