@@ -23,7 +23,7 @@ const LLM_INSTRUCTIONS = `# distribute + Claude Integration
 2. Click "Add more"
 3. Enter:
    - Name: distribute
-   - URL: https://mcp.mcpfactory.org/mcp
+   - URL: https://mcp.distribute.you/mcp
 4. Enable tools in chat
 
 ## Claude Desktop Setup
@@ -32,7 +32,7 @@ Edit ~/Library/Application Support/Claude/claude_desktop_config.json:
   "mcpServers": {
     "mcpfactory": {
       "command": "npx",
-      "args": ["-y", "mcp-remote", "https://mcp.mcpfactory.org/mcp"],
+      "args": ["-y", "mcp-remote", "https://mcp.distribute.you/mcp"],
       "env": {
         "MCP_HEADERS": "Authorization:Bearer YOUR_API_KEY"
       }
@@ -41,7 +41,7 @@ Edit ~/Library/Application Support/Claude/claude_desktop_config.json:
 }
 
 ## Claude Code Setup
-claude mcp add mcpfactory --transport http https://mcp.mcpfactory.org/mcp
+claude mcp add mcpfactory --transport http https://mcp.distribute.you/mcp
 
 ## Available Tools
 - mcpfactory_status: Check connection
@@ -54,7 +54,7 @@ claude mcp add mcpfactory --transport http https://mcp.mcpfactory.org/mcp
 - mcpfactory_suggest_icp: Suggest ideal customer profile for a brand URL
 
 ## Get API Key
-https://dashboard.mcpfactory.org/api-keys`;
+https://dashboard.distribute.you/api-keys`;
 
 export default function ClaudeIntegrationPage() {
   return (
@@ -84,7 +84,7 @@ export default function ClaudeIntegrationPage() {
             Enter the integration details:
             <ul>
               <li><strong>Integration name:</strong> distribute</li>
-              <li><strong>Integration URL:</strong> <code>https://mcp.mcpfactory.org/mcp</code></li>
+              <li><strong>Integration URL:</strong> <code>https://mcp.distribute.you/mcp</code></li>
             </ul>
           </li>
           <li>Save and enable the integration</li>
@@ -101,7 +101,7 @@ export default function ClaudeIntegrationPage() {
   "mcpServers": {
     "mcpfactory": {
       "command": "npx",
-      "args": ["-y", "mcp-remote", "https://mcp.mcpfactory.org/mcp"],
+      "args": ["-y", "mcp-remote", "https://mcp.distribute.you/mcp"],
       "env": {
         "MCP_HEADERS": "Authorization:Bearer YOUR_API_KEY"
       }
@@ -114,7 +114,7 @@ export default function ClaudeIntegrationPage() {
         <h2>Claude Code Setup</h2>
         <p>Add distribute using the CLI:</p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>claude mcp add mcpfactory --transport http https://mcp.mcpfactory.org/mcp</code>
+          <code>claude mcp add mcpfactory --transport http https://mcp.distribute.you/mcp</code>
         </pre>
         <p>
           Then configure your API key, or set the <code>MCPFACTORY_API_KEY</code> environment variable.
@@ -198,7 +198,7 @@ How many emails sent, opened, and replied?"`}</code>
         <ul>
           <li>Check your API key is valid</li>
           <li>Ensure the Bearer token format is correct</li>
-          <li>Verify at <a href="https://dashboard.mcpfactory.org/api-keys">dashboard.mcpfactory.org/api-keys</a></li>
+          <li>Verify at <a href="https://dashboard.distribute.you/api-keys">dashboard.distribute.you/api-keys</a></li>
         </ul>
 
         <h2>Next Steps</h2>

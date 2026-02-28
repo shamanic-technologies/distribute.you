@@ -1,7 +1,7 @@
 import { MetadataRoute } from "next";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = "https://docs.mcpfactory.org";
+  const baseUrl = "https://docs.distribute.you";
 
   const routes = [
     "",

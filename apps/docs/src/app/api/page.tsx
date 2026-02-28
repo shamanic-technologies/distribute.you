@@ -16,11 +16,11 @@ export const metadata: Metadata = {
 const LLM_INSTRUCTIONS = `# distribute REST API Reference
 
 ## Base URL
-https://api.mcpfactory.org/v1
+https://api.distribute.you/v1
 
 ## Authentication
 All requests require X-API-Key header:
-curl https://api.mcpfactory.org/v1/me -H "X-API-Key: YOUR_API_KEY"
+curl https://api.distribute.you/v1/me -H "X-API-Key: YOUR_API_KEY"
 
 ## Endpoints
 
@@ -48,7 +48,7 @@ GET /v1/campaigns/:id/stats - Get campaign stats
 POST /v1/campaigns/:id/stop - Stop a campaign
 POST /v1/campaigns/:id/resume - Resume a stopped campaign
 
-Get API key at: https://dashboard.mcpfactory.org/api-keys`;
+Get API key at: https://dashboard.distribute.you/api-keys`;
 
 export default function ApiOverviewPage() {
   return (
@@ -64,13 +64,13 @@ export default function ApiOverviewPage() {
       <div className="prose prose-lg">
         <h2>Base URL</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg">
-          <code>https://api.mcpfactory.org/v1</code>
+          <code>https://api.distribute.you/v1</code>
         </pre>
 
         <h2>Authentication</h2>
         <p>All requests require your API key in the header:</p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`curl https://api.mcpfactory.org/v1/campaigns \\
+          <code>{`curl https://api.distribute.you/v1/campaigns \\
   -H "X-API-Key: YOUR_API_KEY"`}</code>
         </pre>
         <p>

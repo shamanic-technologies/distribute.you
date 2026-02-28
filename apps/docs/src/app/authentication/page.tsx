@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 const LLM_INSTRUCTIONS = `# distribute Authentication
 
 ## 1. Create Account
-Sign up at: https://dashboard.mcpfactory.org/sign-up
+Sign up at: https://dashboard.distribute.you/sign-up
 
 ## 2. Get API Key
 Dashboard → API Keys
@@ -51,8 +51,8 @@ export default function AuthenticationPage() {
         <h2>1. Create an Account</h2>
         <p>
           Sign up at{" "}
-          <a href="https://dashboard.mcpfactory.org/sign-up">
-            dashboard.mcpfactory.org
+          <a href="https://dashboard.distribute.you/sign-up">
+            dashboard.distribute.you
           </a>{" "}
           to get started. You can use email or Google OAuth.
         </p>
@@ -82,7 +82,7 @@ export default function AuthenticationPage() {
         <h3>For REST API</h3>
         <p>Include in the X-API-Key header:</p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`curl https://api.mcpfactory.org/v1/me \\
+          <code>{`curl https://api.distribute.you/v1/me \\
   -H "X-API-Key: YOUR_API_KEY"`}</code>
         </pre>
 
@@ -133,7 +133,7 @@ export default function AuthenticationPage() {
         <h2>5. Verify Setup</h2>
         <p>Test your configuration:</p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`curl https://api.mcpfactory.org/v1/me \\
+          <code>{`curl https://api.distribute.you/v1/me \\
   -H "X-API-Key: YOUR_API_KEY"`}</code>
         </pre>
         <p>You should see your account details and organization info.</p>

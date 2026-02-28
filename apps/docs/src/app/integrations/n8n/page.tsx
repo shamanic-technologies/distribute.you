@@ -37,7 +37,7 @@ export default function N8nIntegrationPage() {
         <p>Use the HTTP Request node to launch a campaign:</p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`Method: POST
-URL: https://api.mcpfactory.org/campaigns
+URL: https://api.distribute.you/campaigns
 Headers:
   Content-Type: application/json
 Body:
@@ -173,7 +173,7 @@ Body:
         <h2>Get Campaign Stats</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`Method: GET
-URL: https://api.mcpfactory.org/campaigns/{{ $json.campaign_id }}/stats
+URL: https://api.distribute.you/campaigns/{{ $json.campaign_id }}/stats
 
 Response:
 {
@@ -195,10 +195,10 @@ Response:
         <h2>Pause/Resume Campaigns</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`// Pause
-POST https://api.mcpfactory.org/campaigns/{{ $json.campaign_id }}/pause
+POST https://api.distribute.you/campaigns/{{ $json.campaign_id }}/pause
 
 // Resume
-POST https://api.mcpfactory.org/campaigns/{{ $json.campaign_id }}/resume`}</code>
+POST https://api.distribute.you/campaigns/{{ $json.campaign_id }}/resume`}</code>
         </pre>
       </div>
     </div>

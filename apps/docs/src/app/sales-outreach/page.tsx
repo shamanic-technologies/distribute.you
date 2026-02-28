@@ -165,7 +165,7 @@ export default function SalesOutreachDocs() {
     "total_byok_usd": 4.23,
     "budget_remaining_usd": 5.77
   },
-  "dashboard_url": "https://dashboard.mcpfactory.org/campaigns/camp_abc123"
+  "dashboard_url": "https://dashboard.distribute.you/campaigns/camp_abc123"
 }`}</code>
         </pre>
 

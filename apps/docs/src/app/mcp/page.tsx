@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 const LLM_INSTRUCTIONS = `# distribute - MCP Usage Guide
 
 ## MCP Endpoint
-https://mcp.mcpfactory.org/mcp
+https://mcp.distribute.you/mcp
 
 ## Supported Clients
 - ChatGPT (Pro, Plus, Team, Enterprise)
@@ -27,7 +27,7 @@ Add to .cursor/mcp.json:
 {
   "mcpServers": {
     "mcpfactory": {
-      "url": "https://mcp.mcpfactory.org/mcp",
+      "url": "https://mcp.distribute.you/mcp",
       "headers": {
         "Authorization": "Bearer YOUR_API_KEY"
       }
@@ -50,7 +50,7 @@ Add to .cursor/mcp.json:
 Include API key as Bearer token:
 Authorization: Bearer YOUR_API_KEY
 
-Get your API key at: https://dashboard.mcpfactory.org/api-keys`;
+Get your API key at: https://dashboard.distribute.you/api-keys`;
 
 export default function McpUsagePage() {
   return (
@@ -74,7 +74,7 @@ export default function McpUsagePage() {
 
         <h2>MCP Endpoint</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg">
-          <code>https://mcp.mcpfactory.org/mcp</code>
+          <code>https://mcp.distribute.you/mcp</code>
         </pre>
 
         <h2>Supported Clients</h2>
@@ -93,7 +93,7 @@ export default function McpUsagePage() {
         <ol>
           <li>Go to <strong>Settings → Connectors</strong></li>
           <li>Click <strong>Add Custom Connector</strong></li>
-          <li>Enter the MCP URL: <code>https://mcp.mcpfactory.org/mcp</code></li>
+          <li>Enter the MCP URL: <code>https://mcp.distribute.you/mcp</code></li>
           <li>Add your API key in the Authorization header</li>
         </ol>
 
@@ -101,7 +101,7 @@ export default function McpUsagePage() {
         <ol>
           <li>Go to <strong>Settings → Connectors</strong></li>
           <li>Click <strong>Add</strong></li>
-          <li>Enter the MCP URL: <code>https://mcp.mcpfactory.org/mcp</code></li>
+          <li>Enter the MCP URL: <code>https://mcp.distribute.you/mcp</code></li>
           <li>Configure authentication with your API key</li>
         </ol>
 
@@ -113,7 +113,7 @@ export default function McpUsagePage() {
           <code>{`{
   "mcpServers": {
     "mcpfactory": {
-      "url": "https://mcp.mcpfactory.org/mcp",
+      "url": "https://mcp.distribute.you/mcp",
       "headers": {
         "Authorization": "Bearer YOUR_API_KEY"
       }
@@ -130,7 +130,7 @@ export default function McpUsagePage() {
           <code>{`{
   "mcpServers": {
     "mcpfactory": {
-      "url": "https://mcp.mcpfactory.org/mcp",
+      "url": "https://mcp.distribute.you/mcp",
       "headers": {
         "Authorization": "Bearer YOUR_API_KEY"
       }

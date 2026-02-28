@@ -30,7 +30,7 @@ Dashboard → API Keys:
 {
   "mcpServers": {
     "mcpfactory": {
-      "url": "https://mcp.mcpfactory.org/mcp",
+      "url": "https://mcp.distribute.you/mcp",
       "headers": {
         "Authorization": "Bearer YOUR_API_KEY"
       }
@@ -39,7 +39,7 @@ Dashboard → API Keys:
 }
 
 ### ChatGPT/Claude:
-Settings → Connectors → Add: https://mcp.mcpfactory.org/mcp
+Settings → Connectors → Add: https://mcp.distribute.you/mcp
 
 ## 5. Test Connection
 Ask: "Check my MCPFactory connection status"
@@ -89,14 +89,14 @@ export default function QuickstartPage() {
         <h3>ChatGPT</h3>
         <ol>
           <li>Go to Settings → Connectors</li>
-          <li>Add custom connector with URL: <code>https://mcp.mcpfactory.org/mcp</code></li>
+          <li>Add custom connector with URL: <code>https://mcp.distribute.you/mcp</code></li>
           <li>Add your API key for authentication</li>
         </ol>
 
         <h3>Claude.ai</h3>
         <ol>
           <li>Go to Settings → Connectors</li>
-          <li>Add the MCP URL: <code>https://mcp.mcpfactory.org/mcp</code></li>
+          <li>Add the MCP URL: <code>https://mcp.distribute.you/mcp</code></li>
           <li>Configure your API key</li>
         </ol>
 
@@ -106,7 +106,7 @@ export default function QuickstartPage() {
           <code>{`{
   "mcpServers": {
     "mcpfactory": {
-      "url": "https://mcp.mcpfactory.org/mcp",
+      "url": "https://mcp.distribute.you/mcp",
       "headers": {
         "Authorization": "Bearer YOUR_API_KEY"
       }
