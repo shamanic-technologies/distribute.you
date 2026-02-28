@@ -2,8 +2,8 @@
 
 import { useState, useCallback, useRef } from "react";
 
-const CHAT_SERVICE_URL =
-  process.env.NEXT_PUBLIC_CHAT_SERVICE_URL || "https://chat.distribute.you";
+const API_URL =
+  process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 
 export interface ChatMessage {
   id: string;
@@ -66,7 +66,7 @@ export function useChat({ apiKey, orgId, userId }: UseChatOptions) {
       abortRef.current = controller;
 
       try {
-        const res = await fetch(`${CHAT_SERVICE_URL}/chat`, {
+        const res = await fetch(`${API_URL}/v1/chat`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

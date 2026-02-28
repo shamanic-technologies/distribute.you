@@ -1,32 +1,30 @@
 /**
  * Next.js instrumentation — runs once on server cold start.
- * Registers the distribute app config with chat-service (idempotent).
+ * Registers the distribute app chat config via API service (idempotent).
  */
 export async function register() {
   // Only run on the server (not during build or edge runtime)
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
 
-  const chatServiceUrl = process.env.CHAT_SERVICE_URL;
-  const chatServiceApiKey = process.env.CHAT_SERVICE_API_KEY;
+  const apiUrl = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
+  const apiKey = process.env.DISTRIBUTE_API_KEY;
 
-  if (!chatServiceUrl || !chatServiceApiKey) {
+  if (!apiKey) {
     console.warn(
-      "[distribute] CHAT_SERVICE_URL or CHAT_SERVICE_API_KEY not set — skipping chat config registration"
+      "[distribute] DISTRIBUTE_API_KEY not set — skipping chat config registration"
     );
     return;
   }
 
   try {
-    const res = await fetch(`${chatServiceUrl}/apps/mcpfactory/config`, {
+    const res = await fetch(`${apiUrl}/v1/chat/config`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        "X-API-Key": chatServiceApiKey,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         systemPrompt: FOXY_SYSTEM_PROMPT,
-        mcpServerUrl: process.env.MCP_SERVICE_URL || undefined,
-        mcpKeyName: "mcpfactory",
       }),
     });
 
@@ -38,7 +36,7 @@ export async function register() {
       return;
     }
 
-    console.log("[distribute] Chat app config registered with chat-service");
+    console.log("[distribute] Chat app config registered via API service");
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(

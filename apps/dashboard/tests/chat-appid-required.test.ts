@@ -8,7 +8,7 @@ import * as path from "path";
  * chat-service POST /chat requires `appId` in the request body.
  * Without it, the request fails with a 400 validation error.
  */
-describe("chat-service appId requirement", () => {
+describe("chat via API service", () => {
   const useChatPath = path.join(
     __dirname,
     "../src/components/chat/use-chat.ts"
@@ -18,15 +18,16 @@ describe("chat-service appId requirement", () => {
     const content = fs.readFileSync(useChatPath, "utf-8");
     expect(content).toContain('appId: "distribute"');
   });
-});
 
-describe("chat-service auth headers", () => {
-  const useChatPath = path.join(
-    __dirname,
-    "../src/components/chat/use-chat.ts"
-  );
+  it("should route chat through API service (not chat-service directly)", () => {
+    const content = fs.readFileSync(useChatPath, "utf-8");
+    expect(content).toContain("NEXT_PUBLIC_DISTRIBUTE_API_URL");
+    expect(content).toContain("/v1/chat");
+    expect(content).not.toContain("CHAT_SERVICE_URL");
+    expect(content).not.toContain("chat.distribute.you");
+  });
 
-  it("should send x-org-id and x-user-id headers to chat-service", () => {
+  it("should send x-org-id and x-user-id headers", () => {
     const content = fs.readFileSync(useChatPath, "utf-8");
     expect(content).toContain('"x-org-id"');
     expect(content).toContain('"x-user-id"');
@@ -53,7 +54,7 @@ describe("chat widget fetches org/user identity", () => {
   });
 });
 
-describe("chat-service config registration at cold start", () => {
+describe("chat config registration at cold start (via API service)", () => {
   const instrumentationPath = path.join(
     __dirname,
     "../instrumentation.ts"
@@ -63,21 +64,28 @@ describe("chat-service config registration at cold start", () => {
     expect(fs.existsSync(instrumentationPath)).toBe(true);
   });
 
-  it("should register app config via PUT /apps/mcpfactory/config", () => {
+  it("should register chat config via PUT /v1/chat/config on API service", () => {
     const content = fs.readFileSync(instrumentationPath, "utf-8");
-    expect(content).toContain("/apps/mcpfactory/config");
+    expect(content).toContain("/v1/chat/config");
     expect(content).toContain("PUT");
+  });
+
+  it("should use DISTRIBUTE_API_KEY for auth", () => {
+    const content = fs.readFileSync(instrumentationPath, "utf-8");
+    expect(content).toContain("DISTRIBUTE_API_KEY");
+    expect(content).toContain("Authorization");
+  });
+
+  it("should NOT reference chat-service directly", () => {
+    const content = fs.readFileSync(instrumentationPath, "utf-8");
+    expect(content).not.toContain("CHAT_SERVICE_URL");
+    expect(content).not.toContain("CHAT_SERVICE_API_KEY");
+    expect(content).not.toContain("X-API-Key");
   });
 
   it("should include the distribute assistant system prompt", () => {
     const content = fs.readFileSync(instrumentationPath, "utf-8");
     expect(content).toContain("systemPrompt");
     expect(content).toContain("distribute assistant");
-  });
-
-  it("should use X-API-Key auth (not Bearer)", () => {
-    const content = fs.readFileSync(instrumentationPath, "utf-8");
-    expect(content).toContain("X-API-Key");
-    expect(content).not.toContain("Authorization");
   });
 });
