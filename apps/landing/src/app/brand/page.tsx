@@ -78,7 +78,7 @@ export default function BrandPage() {
               Home
             </Link>
             <a
-              href="https://docs.mcpfactory.org"
+              href="https://docs.distribute.you"
               className="text-gray-600 hover:text-primary-600 text-sm transition"
             >
               Docs
@@ -188,8 +188,8 @@ export default function BrandPage() {
         <div className="max-w-4xl mx-auto text-center">
           <p className="text-sm">
             Questions? Contact us at{" "}
-            <a href="mailto:hello@mcpfactory.org" className="text-primary-400 hover:text-primary-300">
-              hello@mcpfactory.org
+            <a href="mailto:hello@distribute.you" className="text-primary-400 hover:text-primary-300">
+              hello@distribute.you
             </a>
           </p>
         </div>

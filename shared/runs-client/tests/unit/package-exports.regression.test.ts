@@ -38,10 +38,10 @@ describe('runs-client package exports', () => {
  * Default must point to the production URL like other external services.
  */
 describe('runs-client default URL', () => {
-  it('compiled output should default to runs.mcpfactory.org, not localhost', () => {
+  it('compiled output should default to runs.distribute.you, not localhost', () => {
     const distPath = path.join(__dirname, '../../dist/index.js');
     const compiled = fs.readFileSync(distPath, 'utf-8');
-    expect(compiled).toContain('https://runs.mcpfactory.org');
+    expect(compiled).toContain('https://runs.distribute.you');
     expect(compiled).not.toContain('localhost:3006');
   });
 });

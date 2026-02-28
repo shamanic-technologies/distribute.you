@@ -57,7 +57,7 @@ export const metadata: Metadata = {
     title: "distribute — Your distribution, automated",
     description: "The Stripe for Distribution. AI-powered welcome emails, outreach, webinar flows. Zero configuration.",
     images: ["/og-image.jpg"],
-    creator: "@distribute_eu",
+    creator: "@distribute_you",
   },
   robots: {
     index: true,
@@ -118,7 +118,7 @@ const organizationJsonLd = {
   ],
   contactPoint: {
     "@type": "ContactPoint",
-    email: "support@distribute.eu",
+    email: "support@distribute.you",
     contactType: "customer service",
   },
 };

@@ -1,1 +1,1 @@
-// Pricing content will be defined as distribute.eu pricing evolves.
+// Pricing content will be defined as distribute.you pricing evolves.

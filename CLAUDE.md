@@ -25,10 +25,10 @@ pnpm --filter @mcpfactory/<package> vitest run tests/unit/specific.test.ts
 ### Apps
 
 - `apps/dashboard/` (port 3001) — Next.js 15 App Router, Clerk auth
-- `apps/docs/` — Documentation site (docs.mcpfactory.org)
+- `apps/docs/` — Documentation site (docs.distribute.you)
 - `apps/landing/` — Main landing page
 - `apps/performance-service/` — Performance monitoring service
-- `apps/sales-cold-emails-landing/` — Marketing landing page (salescoldemail.mcpfactory.org)
+- `apps/sales-cold-emails-landing/` — Marketing landing page (salescoldemail.distribute.you)
 
 ### Extracted Services (separate repos)
 

@@ -3,7 +3,7 @@
  * Centralized run tracking and cost management
  */
 
-const RUNS_SERVICE_URL = process.env.RUNS_SERVICE_URL || "https://runs.mcpfactory.org";
+const RUNS_SERVICE_URL = process.env.RUNS_SERVICE_URL || "https://runs.distribute.you";
 const RUNS_SERVICE_API_KEY = process.env.RUNS_SERVICE_API_KEY || "";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
