@@ -284,10 +284,18 @@ describe("Create campaign page", () => {
       expect(content).toContain("profileToFormData");
     });
 
-    it("should show loading state while fetching profile", () => {
+    it("should show loading spinner while fetching profile", () => {
       expect(content).toContain("isLoadingProfile");
       expect(content).toContain("profile-loading");
-      expect(content).toContain("animate-pulse");
+      expect(content).toContain("Loading brand profile");
+      expect(content).toContain("animate-spin");
+    });
+
+    it("should only show form AFTER profile is loaded, not before", () => {
+      // Form should not be shown while loading — setShowForm(true) is inside the finally block
+      expect(content).toContain("setShowForm(true)");
+      // The form is gated on !isLoadingProfile
+      expect(content).toContain("showForm && !isLoadingProfile");
     });
 
     it("should map profile fields to form data", () => {

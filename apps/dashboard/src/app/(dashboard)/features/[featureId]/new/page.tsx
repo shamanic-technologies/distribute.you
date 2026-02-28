@@ -261,24 +261,30 @@ export default function CreateCampaignPage() {
   // Campaign actions
   const handleGo = useCallback(async () => {
     if (!effectiveSelection || !budgetAmount || !resolvedBrandUrl) return;
-    setShowForm(true);
     setCreateError(null);
-    setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
 
-    // Auto-fill from sales profile if we have an existing brand
+    // For existing brands: fetch profile first, THEN show form pre-filled
     if (selectedBrandId) {
       setIsLoadingProfile(true);
       try {
         const { profile } = await getBrandSalesProfile(selectedBrandId);
         if (profile) {
           setFormData(profileToFormData(profile, resolvedBrandUrl));
+        } else {
+          setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
         }
       } catch {
-        // Profile fetch failed — form stays empty, user fills manually
+        setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
       } finally {
         setIsLoadingProfile(false);
+        setShowForm(true);
       }
+      return;
     }
+
+    // New brand URL: no profile to fetch, show form immediately
+    setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
+    setShowForm(true);
   }, [effectiveSelection, budgetAmount, resolvedBrandUrl, selectedBrandId]);
 
   const handleCreateCampaign = useCallback(async () => {
@@ -541,8 +547,18 @@ export default function CreateCampaignPage() {
         </div>
       </div>
 
-      {/* Campaign creation form (expanded when Go is clicked) */}
-      {showForm && (
+      {/* Loading indicator while fetching sales profile */}
+      {isLoadingProfile && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5 mb-4" data-testid="profile-loading">
+          <div className="flex items-center gap-3">
+            <div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm text-gray-600">Loading brand profile...</span>
+          </div>
+        </div>
+      )}
+
+      {/* Campaign creation form (shown after profile is loaded) */}
+      {showForm && !isLoadingProfile && (
         <div className="bg-white rounded-xl border border-gray-200 p-5 mb-4" data-testid="campaign-form">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
@@ -551,38 +567,27 @@ export default function CreateCampaignPage() {
             </div>
             <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">&times;</button>
           </div>
-          {isLoadingProfile ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3" data-testid="profile-loading">
-              {FORM_FIELDS.map((field) => (
-                <div key={field.key}>
-                  <label className="block text-xs text-gray-500 mb-1">{field.label}</label>
-                  <div className="w-full h-10 bg-gray-100 rounded-lg animate-pulse" />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {FORM_FIELDS.map((field) => (
-                <div key={field.key}>
-                  <label className="block text-xs text-gray-500 mb-1">{field.label}</label>
-                  <input
-                    type="text"
-                    value={formData[field.key]}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                    placeholder={field.placeholder}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300"
-                  />
-                </div>
-              ))}
-            </div>
-          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {FORM_FIELDS.map((field) => (
+              <div key={field.key}>
+                <label className="block text-xs text-gray-500 mb-1">{field.label}</label>
+                <input
+                  type="text"
+                  value={formData[field.key]}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                  placeholder={field.placeholder}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300"
+                />
+              </div>
+            ))}
+          </div>
           {createError && (
             <p className="mt-3 text-sm text-red-600">{createError}</p>
           )}
           <div className="mt-4 flex items-center gap-3">
             <button
               onClick={handleCreateCampaign}
-              disabled={isCreating || isLoadingProfile}
+              disabled={isCreating}
               className="px-5 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition disabled:opacity-50"
             >
               {isCreating ? "Creating..." : "Start Campaign"}
