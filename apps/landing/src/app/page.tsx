@@ -1,5 +1,5 @@
-import { WaitlistForm } from "@/components/waitlist-form";
 import { HeroForm } from "@/components/hero-form";
+import { LinkButton } from "@/components/link-button";
 import { Navbar } from "@/components/navbar";
 import { DashboardPreview } from "@/components/dashboard-preview";
 import { PerformancePreview } from "@/components/performance-preview";
@@ -329,16 +329,21 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Waitlist */}
-      <section id="waitlist" className="py-20 px-4 bg-gray-900">
+      {/* CTA */}
+      <section className="py-20 px-4 bg-gray-900">
         <div className="max-w-xl mx-auto text-center">
           <h2 className="font-display text-3xl font-bold mb-3 text-white">
-            Get early access
+            Get started for free
           </h2>
           <p className="text-gray-400 mb-8">
-            Be the first to automate your distribution. Early access includes lifetime pricing.
+            No markup, no contracts. You only pay the raw cost of AI, APIs, and tools.
           </p>
-          <WaitlistForm />
+          <LinkButton
+            href={URLS.signUp}
+            className="inline-block bg-white text-gray-900 px-8 py-3 rounded-lg font-medium hover:bg-gray-100 transition text-sm"
+          >
+            Get Started Free
+          </LinkButton>
         </div>
       </section>
 
