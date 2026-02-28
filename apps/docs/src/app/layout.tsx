@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { DocsLayout } from "@/components/docs-layout";
 
-const SITE_URL = "https://docs.mcpfactory.org";
+const SITE_URL = "https://docs.distribute.you";
 const SITE_NAME = "distribute Documentation";
 const SITE_DESCRIPTION = "Complete documentation for distribute - AI-powered distribution automation via MCP. Integration guides for ChatGPT, Claude, Cursor, n8n, Zapier, and Make.com.";
 
@@ -46,7 +46,7 @@ export const metadata: Metadata = {
     description: "Learn how to use distribute - installation, API reference, and integrations.",
     images: [
       {
-        url: "https://mcpfactory.org/og-image.jpg",
+        url: "https://distribute.you/og-image.jpg",
         width: 1200,
         height: 630,
         alt: "distribute Documentation",
@@ -57,7 +57,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "distribute Documentation",
     description: "Complete guides and API reference for distribute.",
-    images: ["https://mcpfactory.org/og-image.jpg"],
+    images: ["https://distribute.you/og-image.jpg"],
   },
   robots: {
     index: true,
@@ -84,8 +84,8 @@ const organizationJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: "distribute",
-  url: "https://distribute.eu",
-  logo: "https://mcpfactory.org/logo-head.jpg",
+  url: "https://distribute.you",
+  logo: "https://distribute.you/logo-head.jpg",
   sameAs: [
     "https://twitter.com/distribute_eu",
     "https://github.com/mcpfactory",
@@ -99,7 +99,7 @@ const softwareJsonLd = {
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   description: "AI-powered distribution automation platform using Model Context Protocol (MCP). Launch cold email campaigns, find leads, and automate outreach from ChatGPT, Claude, or Cursor.",
-  url: "https://distribute.eu",
+  url: "https://distribute.you",
   offers: {
     "@type": "Offer",
     price: "0",
@@ -127,7 +127,7 @@ const websiteJsonLd = {
   publisher: {
     "@type": "Organization",
     name: "distribute",
-    url: "https://distribute.eu",
+    url: "https://distribute.you",
   },
 };
 
@@ -139,7 +139,7 @@ const breadcrumbJsonLd = {
       "@type": "ListItem",
       position: 1,
       name: "distribute",
-      item: "https://distribute.eu",
+      item: "https://distribute.you",
     },
     {
       "@type": "ListItem",
@@ -167,7 +167,7 @@ const faqJsonLd = {
       name: "How do I connect distribute to ChatGPT?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Go to ChatGPT Settings → Connectors → Add Custom Connector. Enter the MCP URL: https://mcp.mcpfactory.org/mcp and add your API key as a Bearer token in the Authorization header.",
+        text: "Go to ChatGPT Settings → Connectors → Add Custom Connector. Enter the MCP URL: https://mcp.distribute.you/mcp and add your API key as a Bearer token in the Authorization header.",
       },
     },
     {
@@ -175,7 +175,7 @@ const faqJsonLd = {
       name: "How do I connect distribute to Claude?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "For Claude.ai, go to Settings → Integrations → Add more. Enter 'distribute' as the name and https://mcp.mcpfactory.org/mcp as the URL. For Claude Desktop, edit the claude_desktop_config.json file.",
+        text: "For Claude.ai, go to Settings → Integrations → Add more. Enter 'distribute' as the name and https://mcp.distribute.you/mcp as the URL. For Claude Desktop, edit the claude_desktop_config.json file.",
       },
     },
     {
@@ -183,7 +183,7 @@ const faqJsonLd = {
       name: "How do I connect distribute to Cursor?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Add the MCP configuration to your .cursor/mcp.json file with the URL https://mcp.mcpfactory.org/mcp and your API key in the Authorization header. Restart Cursor after saving.",
+        text: "Add the MCP configuration to your .cursor/mcp.json file with the URL https://mcp.distribute.you/mcp and your API key in the Authorization header. Restart Cursor after saving.",
       },
     },
     {

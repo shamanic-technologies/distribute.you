@@ -1,5 +1,5 @@
-# distribute Docs - https://docs.mcpfactory.org
+# distribute Docs - https://docs.distribute.you
 User-agent: *
 Allow: /
 
-Sitemap: https://docs.mcpfactory.org/sitemap.xml
+Sitemap: https://docs.distribute.you/sitemap.xml

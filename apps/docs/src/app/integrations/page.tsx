@@ -14,8 +14,8 @@ export const metadata: Metadata = {
 const LLM_INSTRUCTIONS = `# distribute Integrations
 
 ## AI Clients (MCP Protocol)
-- ChatGPT: Settings → Connectors → Add https://mcp.mcpfactory.org/mcp
-- Claude.ai: Settings → Integrations → Add https://mcp.mcpfactory.org/mcp
+- ChatGPT: Settings → Connectors → Add https://mcp.distribute.you/mcp
+- Claude.ai: Settings → Integrations → Add https://mcp.distribute.you/mcp
 - Claude Desktop: Edit claude_desktop_config.json
 - Cursor: Add to .cursor/mcp.json
 
@@ -30,10 +30,10 @@ const LLM_INSTRUCTIONS = `# distribute Integrations
 3. Webhooks: Real-time event notifications
 
 ## MCP Endpoint
-https://mcp.mcpfactory.org/mcp
+https://mcp.distribute.you/mcp
 
 ## API Base URL
-https://api.mcpfactory.org/v1`;
+https://api.distribute.you/v1`;
 
 const AI_CLIENTS = [
   {
@@ -161,7 +161,7 @@ export default function IntegrationsPage() {
         <h2>Need Help?</h2>
         <p>
           If you need help integrating distribute with your stack, reach out at{" "}
-          <a href="mailto:support@mcpfactory.org">support@mcpfactory.org</a>.
+          <a href="mailto:support@distribute.you">support@distribute.you</a>.
         </p>
       </div>
     </div>

@@ -25,7 +25,7 @@ Add to .cursor/mcp.json:
 {
   "mcpServers": {
     "mcpfactory": {
-      "url": "https://mcp.mcpfactory.org/mcp",
+      "url": "https://mcp.distribute.you/mcp",
       "headers": {
         "Authorization": "Bearer YOUR_API_KEY"
       }
@@ -107,7 +107,7 @@ Ensure MCPFACTORY_API_KEY is set in your MCP config.
           <code>{`{
   "mcpServers": {
     "mcpfactory": {
-      "url": "https://mcp.mcpfactory.org/mcp",
+      "url": "https://mcp.distribute.you/mcp",
       "headers": {
         "Authorization": "Bearer YOUR_API_KEY"
       }
@@ -177,7 +177,7 @@ How many emails sent, opened, replied?"`}</code>
         <h3>API key errors</h3>
         <p>
           Verify your <code>MCPFACTORY_API_KEY</code> is valid at{" "}
-          <a href="https://dashboard.mcpfactory.org/api-keys">dashboard.mcpfactory.org/api-keys</a>.
+          <a href="https://dashboard.distribute.you/api-keys">dashboard.distribute.you/api-keys</a>.
         </p>
 
         <h3>API key missing</h3>
