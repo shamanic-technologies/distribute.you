@@ -1,5 +1,5 @@
-# distribute Performance - https://performance.mcpfactory.org
+# distribute Performance - https://performance.distribute.you
 User-agent: *
 Allow: /
 
-Sitemap: https://performance.mcpfactory.org/sitemap.xml
+Sitemap: https://performance.distribute.you/sitemap.xml

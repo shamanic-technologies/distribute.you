@@ -11,7 +11,7 @@ const SALES_FEATURES = [
 ];
 
 const SALES_STEPS = [
-  { number: 1, title: "Connect Your AI", description: "Add distribute to ChatGPT, Claude, or Cursor", code: "https://mcp.mcpfactory.org/mcp" },
+  { number: 1, title: "Connect Your AI", description: "Add distribute to ChatGPT, Claude, or Cursor", code: "https://mcp.distribute.you/mcp" },
   { number: 2, title: "Describe Your Campaign", description: "Tell the AI who to target and what to say", example: '"Send cold emails to CTOs at B2B SaaS companies about our dev tool"' },
   { number: 3, title: "We Handle The Rest", description: "Finds leads, writes emails, sends, and optimizes" },
   { number: 4, title: "You Get Meetings", description: "Reply to interested prospects and close deals" },
@@ -72,7 +72,7 @@ export default async function Home() {
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Image
-              src="https://mcpfactory.org/logo-head.jpg"
+              src="https://distribute.you/logo-head.jpg"
               alt="distribute"
               width={36}
               height={36}
@@ -454,7 +454,7 @@ export default async function Home() {
         <div className="max-w-4xl mx-auto text-center">
           <div className="flex items-center justify-center gap-2 mb-4">
             <Image
-              src="https://mcpfactory.org/logo-head.jpg"
+              src="https://distribute.you/logo-head.jpg"
               alt="distribute"
               width={32}
               height={32}
