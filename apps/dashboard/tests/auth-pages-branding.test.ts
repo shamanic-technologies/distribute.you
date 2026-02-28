@@ -60,9 +60,9 @@ describe("Onboarding page should not reference mcpfactory", () => {
   );
   const content = fs.readFileSync(onboardingPath, "utf-8");
 
-  it("should use createOrg from api.ts and not reference mcpfactory", () => {
-    expect(content).toContain("createOrg");
-    expect(content).toContain('@/lib/api');
+  it("should use Clerk SDK for org creation and not reference mcpfactory", () => {
+    expect(content).toContain("createOrganization");
+    expect(content).toContain("@clerk/nextjs");
     expect(content).not.toContain("mcpfactory");
   });
 });

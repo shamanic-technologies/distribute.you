@@ -33,10 +33,12 @@ describe("Onboarding flow", () => {
     expect(content).toContain("Create Workspace");
   });
 
-  it("should call createOrg from api.ts (not /apps/register)", () => {
+  it("should use Clerk SDK to create org (not api.ts or /apps/register)", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("createOrg");
-    expect(content).toContain('from "@/lib/api"');
+    expect(content).toContain("useOrganizationList");
+    expect(content).toContain("createOrganization");
+    expect(content).toContain("setActive");
+    expect(content).toContain('@clerk/nextjs');
     expect(content).not.toContain("/apps/register");
   });
 

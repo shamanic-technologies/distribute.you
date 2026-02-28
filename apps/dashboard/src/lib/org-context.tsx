@@ -1,11 +1,10 @@
 "use client";
 
 import { createContext, useContext, type ReactNode } from "react";
-import { useAuthQuery } from "./use-auth-query";
-import { listOrgs, type Org } from "./api";
+import { useOrganization } from "@clerk/nextjs";
 
 interface OrgContextValue {
-  org: Org | null;
+  org: { id: string; name: string } | null;
   isLoading: boolean;
   hasOrg: boolean;
   isError: boolean;
@@ -19,16 +18,16 @@ const OrgContext = createContext<OrgContextValue>({
 });
 
 export function OrgContextProvider({ children }: { children: ReactNode }) {
-  const { data, isLoading, isError } = useAuthQuery(
-    ["orgs"],
-    (token) => listOrgs(token),
-    { retry: 2 }
-  );
+  const { organization, isLoaded } = useOrganization();
 
-  const org = data?.orgs?.[0] ?? null;
+  const org = organization
+    ? { id: organization.id, name: organization.name }
+    : null;
 
   return (
-    <OrgContext.Provider value={{ org, isLoading, hasOrg: org !== null, isError }}>
+    <OrgContext.Provider
+      value={{ org, isLoading: !isLoaded, hasOrg: org !== null, isError: false }}
+    >
       {children}
     </OrgContext.Provider>
   );

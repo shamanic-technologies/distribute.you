@@ -4,10 +4,10 @@ import * as path from "path";
 
 /**
  * Org names are now display names (not slugs). The onboarding page sends
- * the user's input as-is via createOrg() — no client-side slugification.
+ * the user's input as-is via Clerk's createOrganization() — no client-side slugification.
  *
  * Previous behavior: client slugified the name before sending to /apps/register.
- * New behavior: name.trim() is sent directly; the backend handles any normalization.
+ * New behavior: name.trim() is sent directly to Clerk; no slugification needed.
  */
 describe("Onboarding sends org name as display name (no slugification)", () => {
   const pagePath = path.join(__dirname, "../src/app/onboarding/page.tsx");
@@ -19,7 +19,7 @@ describe("Onboarding sends org name as display name (no slugification)", () => {
     expect(content).not.toMatch(/replace\(\/\[.+\]\/g/);
   });
 
-  it("should call createOrg with the trimmed name", () => {
-    expect(content).toContain("createOrg(token, name.trim())");
+  it("should pass the trimmed name to createOrganization", () => {
+    expect(content).toContain("name: name.trim()");
   });
 });

@@ -3,14 +3,14 @@ import * as fs from "fs";
 import * as path from "path";
 
 /**
- * Regression test: Dashboard must NOT redirect to onboarding when the API errors.
+ * Regression test: Dashboard must NOT redirect to onboarding when Clerk errors.
  *
  * Root cause: The old app context caught ALL errors and returned { app: null },
- * so any API failure (CORS, network, auth) was treated as "no app registered"
+ * so any failure was treated as "no app registered"
  * → redirect to /onboarding → which also fails → redirect back → infinite loop.
  *
  * Fix:
- * 1. OrgContextProvider exposes isError from React Query.
+ * 1. OrgContextProvider exposes isError.
  * 2. DashboardContent only redirects to onboarding when !hasOrg && !isError.
  *    On error, it shows a retry screen instead of redirecting.
  */
