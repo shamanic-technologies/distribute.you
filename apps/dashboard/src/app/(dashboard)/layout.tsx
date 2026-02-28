@@ -11,7 +11,8 @@ import { ChatWidget } from "@/components/chat/chat-widget";
 import { QueryProvider } from "@/lib/query-provider";
 import { AppContextProvider, useApp } from "@/lib/app-context";
 
-function OnboardingRedirect() {
+function DashboardContent({ children }: { children: React.ReactNode }) {
+  const { isOpen, close } = useMobileSidebar();
   const { hasApp, isLoading } = useApp();
   const router = useRouter();
 
@@ -21,17 +22,15 @@ function OnboardingRedirect() {
     }
   }, [isLoading, hasApp, router]);
 
-  return null;
-}
-
-function DashboardContent({ children }: { children: React.ReactNode }) {
-  const { isOpen, close } = useMobileSidebar();
+  // Don't render dashboard chrome while checking onboarding status
+  if (isLoading || !hasApp) {
+    return <div className="h-screen bg-gray-50" />;
+  }
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
       <OrgActivator />
       <UserActivityTracker />
-      <OnboardingRedirect />
       <Header />
       <div className="flex flex-1 overflow-hidden relative">
         {/* Mobile sidebar overlay */}
