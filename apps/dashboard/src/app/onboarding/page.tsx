@@ -38,7 +38,7 @@ export default function OnboardingPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ name: name.trim().toLowerCase().replace(/\s+/g, "-"), type: accountType }),
+        body: JSON.stringify({ name: name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""), type: accountType }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({ error: "Registration failed" }));
