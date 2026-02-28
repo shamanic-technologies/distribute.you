@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useMemo } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { WORKFLOW_DEFINITIONS } from "@distribute/content";
 import { useAuthQuery } from "@/lib/use-auth-query";
@@ -50,6 +50,7 @@ const STATUS_STYLES: Record<string, string> = {
 
 export default function FeatureCampaignsPage() {
   const params = useParams();
+  const router = useRouter();
   const featureId = params.featureId as string;
 
   const featureDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === featureId);
@@ -67,6 +68,13 @@ export default function FeatureCampaignsPage() {
       (c) => c.workflowName?.startsWith(featureId)
     );
   }, [campaignsData?.campaigns, featureId]);
+
+  // Redirect to create page when there are no campaigns
+  useEffect(() => {
+    if (!isLoading && campaignsData && featureCampaigns.length === 0 && featureDef?.implemented) {
+      router.replace(`/features/${featureId}/new`);
+    }
+  }, [isLoading, campaignsData, featureCampaigns.length, featureDef?.implemented, featureId, router]);
 
   const campaignIds = useMemo(
     () => featureCampaigns.map((c) => c.id),

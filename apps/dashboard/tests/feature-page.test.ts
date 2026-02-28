@@ -35,6 +35,24 @@ describe("Feature campaigns list page", () => {
     });
   });
 
+  describe("Auto-redirect to create page when no campaigns", () => {
+    it("should import useRouter for redirect", () => {
+      expect(content).toContain("useRouter");
+    });
+
+    it("should import useEffect for redirect logic", () => {
+      expect(content).toContain("useEffect");
+    });
+
+    it("should redirect to /new when campaigns are loaded and empty", () => {
+      expect(content).toContain("router.replace(`/features/${featureId}/new`)");
+    });
+
+    it("should only redirect after loading is complete and data is available", () => {
+      expect(content).toContain("!isLoading && campaignsData && featureCampaigns.length === 0");
+    });
+  });
+
   describe("Create Campaign link", () => {
     it("should have create-campaign-link test id", () => {
       expect(content).toContain("create-campaign-link");
@@ -102,9 +120,11 @@ describe("Create campaign page", () => {
     expect(content).toContain('"use client"');
   });
 
-  it("should have back link to campaigns", () => {
+  it("should have back link to campaigns only when campaigns exist", () => {
     expect(content).toContain("Back to campaigns");
     expect(content).toContain("/features/${featureId}");
+    // Back link is conditionally shown based on activeCampaigns.length
+    expect(content).toContain("activeCampaigns.length > 0");
   });
 
   describe("Performance table columns", () => {

@@ -375,16 +375,18 @@ export default function CreateCampaignPage() {
 
   return (
     <div className="p-4 md:p-8">
-      {/* Back link */}
-      <Link
-        href={`/features/${featureId}`}
-        className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-4 transition"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
-        Back to campaigns
-      </Link>
+      {/* Back link — only show if there are campaigns to go back to */}
+      {activeCampaigns.length > 0 && (
+        <Link
+          href={`/features/${featureId}`}
+          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-4 transition"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Back to campaigns
+        </Link>
+      )}
 
       {/* Header */}
       <div className="mb-6">
