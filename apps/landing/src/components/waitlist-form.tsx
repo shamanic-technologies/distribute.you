@@ -11,7 +11,7 @@ export function WaitlistForm() {
     e.preventDefault();
     setStatus("loading");
     setErrorMessage("");
-    
+
     try {
       const response = await fetch("/api/waitlist", {
         method: "POST",
@@ -34,10 +34,9 @@ export function WaitlistForm() {
 
   if (status === "success") {
     return (
-      <div className="bg-accent-50 border border-accent-200 rounded-2xl p-6 text-center">
-        <div className="text-3xl mb-2">🎉</div>
-        <p className="text-accent-700 font-medium">You&apos;re on the list!</p>
-        <p className="text-accent-600 text-sm">We&apos;ll notify you when we launch.</p>
+      <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-6 text-center">
+        <p className="text-green-400 font-medium">You&apos;re on the list!</p>
+        <p className="text-green-400/70 text-sm mt-1">We&apos;ll notify you when we launch.</p>
       </div>
     );
   }
@@ -51,18 +50,18 @@ export function WaitlistForm() {
           onChange={(e) => setEmail(e.target.value)}
           placeholder="your@email.com"
           required
-          className="flex-1 px-4 py-3 rounded-full border border-gray-200 focus:border-primary-300 focus:ring-2 focus:ring-primary-100 outline-none transition shadow-sm"
+          className="flex-1 px-4 py-3 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:border-primary-500 focus:ring-1 focus:ring-primary-500/30 outline-none transition"
         />
         <button
           type="submit"
           disabled={status === "loading"}
-          className="px-6 py-3 bg-primary-500 text-white rounded-full font-medium hover:bg-primary-600 transition disabled:opacity-50 shadow-md hover:shadow-lg"
+          className="px-6 py-3 bg-white text-gray-900 rounded-lg font-medium hover:bg-gray-100 transition disabled:opacity-50"
         >
-          {status === "loading" ? "Joining..." : "Join Waitlist"}
+          {status === "loading" ? "Joining..." : "Get Access"}
         </button>
       </form>
       {status === "error" && (
-        <p className="text-red-500 text-sm mt-2 text-center">{errorMessage}</p>
+        <p className="text-red-400 text-sm mt-2 text-center">{errorMessage}</p>
       )}
     </div>
   );

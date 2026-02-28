@@ -13,8 +13,10 @@ export {
   SALES_FAQ,
   SUPPORTED_CLIENTS,
   BYOK_PROVIDERS,
+  DISTRIBUTION_FEATURES,
+  DISTRIBUTION_STEPS,
 } from "./features.js";
-export type { Feature, Step, FaqItem, SupportedClient, ByokProvider } from "./features.js";
+export type { Feature, Step, FaqItem, SupportedClient, ByokProvider, DistributionFeature, DistributionStep } from "./features.js";
 export { BRAND } from "./brand.js";
 export {
   WORKFLOW_DEFINITIONS,
