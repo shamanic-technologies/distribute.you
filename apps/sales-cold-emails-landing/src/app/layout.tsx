@@ -59,7 +59,7 @@ export const metadata: Metadata = {
     description: "Cold email automation with your own API keys. You give us your URL, we handle everything. 100% open-source.",
     images: [
       {
-        url: `${URLS.landing}/og-image.jpg`,
+        url: "/og-image.jpg",
         width: 1200,
         height: 630,
         alt: "Sales Cold Emails",
@@ -70,7 +70,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Sales Cold Emails - The Stripe for Distribution",
     description: "Cold email automation with your own API keys. You give us your URL, we handle everything. 100% open-source.",
-    images: [`${URLS.landing}/og-image.jpg`],
+    images: ["/og-image.jpg"],
     creator: "@distribute_you",
   },
   robots: {
@@ -85,13 +85,42 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: `${URLS.landing}/favicon.jpg`,
-    shortcut: `${URLS.landing}/favicon.jpg`,
-    apple: `${URLS.landing}/favicon.jpg`,
+    icon: "/favicon.jpg",
+    shortcut: "/favicon.jpg",
+    apple: "/favicon.jpg",
   },
   alternates: {
     canonical: SITE_URL,
   },
+};
+
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "distribute",
+  url: URLS.landing,
+  logo: `${URLS.landing}/logo-head.jpg`,
+  description: "The Stripe for Distribution",
+  sameAs: [URLS.github, URLS.twitter],
+};
+
+const breadcrumbJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    {
+      "@type": "ListItem",
+      position: 1,
+      name: "distribute",
+      item: URLS.landing,
+    },
+    {
+      "@type": "ListItem",
+      position: 2,
+      name: "Sales Cold Emails",
+      item: SITE_URL,
+    },
+  ],
 };
 
 const softwareJsonLd = {
@@ -228,6 +257,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareJsonLd) }}

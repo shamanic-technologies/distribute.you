@@ -46,7 +46,7 @@ export const metadata: Metadata = {
     description: "Learn how to use distribute - installation, API reference, and integrations.",
     images: [
       {
-        url: "https://distribute.you/og-image.jpg",
+        url: "/og-image.jpg",
         width: 1200,
         height: 630,
         alt: "distribute Documentation",
@@ -57,7 +57,8 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "distribute Documentation",
     description: "Complete guides and API reference for distribute.",
-    images: ["https://distribute.you/og-image.jpg"],
+    images: ["/og-image.jpg"],
+    creator: "@distribute_you",
   },
   robots: {
     index: true,
