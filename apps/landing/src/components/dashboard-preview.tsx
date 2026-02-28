@@ -1,9 +1,20 @@
+import type { FeatureColor } from "@mcpfactory/content";
+
+const SIDEBAR_COLORS: Record<FeatureColor, { activeBg: string; activeText: string; dot: string }> = {
+  emerald: { activeBg: "bg-emerald-500/10", activeText: "text-emerald-400", dot: "bg-emerald-400" },
+  cyan: { activeBg: "bg-cyan-500/10", activeText: "text-cyan-400", dot: "bg-cyan-400" },
+  blue: { activeBg: "bg-blue-500/10", activeText: "text-blue-400", dot: "bg-blue-400" },
+  violet: { activeBg: "bg-violet-500/10", activeText: "text-violet-400", dot: "bg-violet-400" },
+  pink: { activeBg: "bg-pink-500/10", activeText: "text-pink-400", dot: "bg-pink-400" },
+  amber: { activeBg: "bg-amber-500/10", activeText: "text-amber-400", dot: "bg-amber-400" },
+};
+
 export function DashboardPreview() {
-  const features = [
-    { name: "Welcome Emails", active: true },
-    { name: "Cold Outreach", active: true },
-    { name: "Webinar Lifecycle", active: false },
-    { name: "Lifecycle Campaigns", active: false },
+  const features: { name: string; active: boolean; color: FeatureColor }[] = [
+    { name: "Welcome Emails", active: true, color: "emerald" },
+    { name: "Cold Outreach", active: true, color: "cyan" },
+    { name: "Webinar Lifecycle", active: false, color: "blue" },
+    { name: "Lifecycle Campaigns", active: false, color: "violet" },
   ];
 
   const workflows = [
@@ -38,23 +49,26 @@ export function DashboardPreview() {
           <div className="w-48 border-r border-gray-800 bg-gray-900/50 p-4 hidden md:block">
             <div className="font-semibold text-white text-sm mb-4 tracking-tight">distribute</div>
             <div className="space-y-1">
-              {features.map((f) => (
-                <div
-                  key={f.name}
-                  className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs ${
-                    f.active
-                      ? "bg-primary-500/10 text-primary-400"
-                      : "text-gray-500"
-                  }`}
-                >
+              {features.map((f) => {
+                const colors = SIDEBAR_COLORS[f.color];
+                return (
                   <div
-                    className={`w-1.5 h-1.5 rounded-full ${
-                      f.active ? "bg-primary-400" : "bg-gray-600"
+                    key={f.name}
+                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs ${
+                      f.active
+                        ? `${colors.activeBg} ${colors.activeText}`
+                        : "text-gray-500"
                     }`}
-                  />
-                  {f.name}
-                </div>
-              ))}
+                  >
+                    <div
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        f.active ? colors.dot : "bg-gray-600"
+                      }`}
+                    />
+                    {f.name}
+                  </div>
+                );
+              })}
             </div>
             <div className="mt-6 pt-4 border-t border-gray-800">
               <div className="text-[10px] text-gray-600 uppercase tracking-wider mb-2">
@@ -118,13 +132,13 @@ export function DashboardPreview() {
                   <div
                     key={wf.rank}
                     className={`flex items-center gap-3 px-4 py-2 text-xs ${
-                      wf.rank === 1 ? "bg-primary-500/5" : ""
+                      wf.rank === 1 ? "bg-emerald-500/5" : ""
                     }`}
                   >
                     <span
                       className={`w-5 text-center font-mono ${
                         wf.rank === 1
-                          ? "text-primary-400 font-bold"
+                          ? "text-emerald-400 font-bold"
                           : "text-gray-600"
                       }`}
                     >
@@ -142,7 +156,7 @@ export function DashboardPreview() {
                         <div
                           className={`h-1.5 rounded-full ${
                             wf.rank === 1
-                              ? "bg-primary-400"
+                              ? "bg-emerald-400"
                               : "bg-gray-600"
                           }`}
                           style={{ width: `${wf.bar}%` }}
@@ -163,8 +177,8 @@ export function DashboardPreview() {
         </div>
       </div>
 
-      {/* Glow effect behind dashboard */}
-      <div className="absolute -inset-4 bg-gradient-to-r from-primary-500/10 via-secondary-500/10 to-accent-500/10 rounded-2xl blur-3xl -z-10" />
+      {/* Glow effect behind dashboard — rainbow */}
+      <div className="absolute -inset-4 bg-gradient-to-r from-emerald-500/10 via-violet-500/10 to-pink-500/10 rounded-2xl blur-3xl -z-10" />
     </div>
   );
 }

@@ -4,6 +4,16 @@ import { Navbar } from "@/components/navbar";
 import { DashboardPreview } from "@/components/dashboard-preview";
 import { StatusIndicator } from "@/components/status-indicator";
 import { URLS, DISTRIBUTION_FEATURES, DISTRIBUTION_STEPS } from "@mcpfactory/content";
+import type { FeatureColor } from "@mcpfactory/content";
+
+const FEATURE_COLOR_CLASSES: Record<FeatureColor, { bg: string; text: string; border: string; dot: string; hover: string }> = {
+  emerald: { bg: "bg-emerald-100", text: "text-emerald-600", border: "border-emerald-200", dot: "bg-emerald-400", hover: "group-hover:text-emerald-600" },
+  cyan: { bg: "bg-cyan-100", text: "text-cyan-600", border: "border-cyan-200", dot: "bg-cyan-400", hover: "group-hover:text-cyan-600" },
+  blue: { bg: "bg-blue-100", text: "text-blue-600", border: "border-blue-200", dot: "bg-blue-400", hover: "group-hover:text-blue-600" },
+  violet: { bg: "bg-violet-100", text: "text-violet-600", border: "border-violet-200", dot: "bg-violet-400", hover: "group-hover:text-violet-600" },
+  pink: { bg: "bg-pink-100", text: "text-pink-600", border: "border-pink-200", dot: "bg-pink-400", hover: "group-hover:text-pink-600" },
+  amber: { bg: "bg-amber-100", text: "text-amber-600", border: "border-amber-200", dot: "bg-amber-400", hover: "group-hover:text-amber-600" },
+};
 
 export default function Home() {
   return (
@@ -14,7 +24,7 @@ export default function Home() {
       <section className="pt-20 pb-8 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 bg-gray-50 border border-gray-200 text-gray-600 px-4 py-1.5 rounded-full text-sm mb-8">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary-400" />
+            <span className="w-1.5 h-1.5 rounded-full bg-brand-400" />
             The Stripe for Distribution
           </div>
 
@@ -60,8 +70,8 @@ export default function Home() {
           </p>
           <div className="grid md:grid-cols-3 gap-6 text-left">
             <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
-              <div className="w-8 h-8 bg-primary-100 rounded-lg flex items-center justify-center mb-3">
-                <svg className="w-4 h-4 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center mb-3">
+                <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               </div>
@@ -71,8 +81,8 @@ export default function Home() {
               </p>
             </div>
             <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
-              <div className="w-8 h-8 bg-secondary-100 rounded-lg flex items-center justify-center mb-3">
-                <svg className="w-4 h-4 text-secondary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center mb-3">
+                <svg className="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
               </div>
@@ -82,8 +92,8 @@ export default function Home() {
               </p>
             </div>
             <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
-              <div className="w-8 h-8 bg-accent-100 rounded-lg flex items-center justify-center mb-3">
-                <svg className="w-4 h-4 text-accent-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-8 h-8 bg-cyan-100 rounded-lg flex items-center justify-center mb-3">
+                <svg className="w-4 h-4 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
@@ -110,36 +120,42 @@ export default function Home() {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {DISTRIBUTION_FEATURES.map((feature) => (
-              <div
-                key={feature.id}
-                className="bg-white rounded-xl p-5 border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all duration-200 group"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <h3 className="font-semibold text-gray-900 group-hover:text-primary-600 transition">
-                    {feature.title}
-                  </h3>
-                  {feature.status === "live" ? (
-                    <span className="text-[10px] font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full border border-green-100">
-                      Live
-                    </span>
-                  ) : (
-                    <span className="text-[10px] font-medium text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">
-                      Soon
-                    </span>
-                  )}
+            {DISTRIBUTION_FEATURES.map((feature) => {
+              const colors = FEATURE_COLOR_CLASSES[feature.color];
+              return (
+                <div
+                  key={feature.id}
+                  className="bg-white rounded-xl p-5 border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all duration-200 group"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${colors.dot}`} />
+                      <h3 className={`font-semibold text-gray-900 ${colors.hover} transition`}>
+                        {feature.title}
+                      </h3>
+                    </div>
+                    {feature.status === "live" ? (
+                      <span className="text-[10px] font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full border border-green-100">
+                        Live
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-medium text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">
+                        Soon
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-500 mb-3 leading-relaxed">
+                    {feature.description}
+                  </p>
+                  <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    Ranked by {feature.metric}
+                  </div>
                 </div>
-                <p className="text-sm text-gray-500 mb-3 leading-relaxed">
-                  {feature.description}
-                </p>
-                <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                  Ranked by {feature.metric}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
@@ -174,13 +190,13 @@ export default function Home() {
                   key={wf.name}
                   className={`flex items-center justify-between px-4 py-3 rounded-lg ${
                     wf.selected
-                      ? "bg-white border-2 border-primary-200 shadow-sm"
+                      ? "bg-white border-2 border-emerald-200 shadow-sm"
                       : "bg-white border border-gray-200"
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     {wf.selected && (
-                      <div className="w-5 h-5 bg-primary-500 rounded-full flex items-center justify-center">
+                      <div className="w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
                         <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                         </svg>
@@ -190,7 +206,7 @@ export default function Home() {
                       {wf.name}
                     </span>
                     {wf.selected && (
-                      <span className="text-[10px] text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full font-medium">
+                      <span className="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full font-medium">
                         Auto-selected
                       </span>
                     )}
@@ -249,28 +265,32 @@ export default function Home() {
                 step: "Brand Service",
                 desc: "Reads your URL, extracts your brand voice, colors, and messaging.",
                 detail: "acme.com → modern, B2B SaaS, blue palette, professional tone",
+                color: "bg-emerald-400",
               },
               {
                 step: "Content Generation",
                 desc: "Drafts a welcome email template matching your brand.",
                 detail: "Subject: \"Welcome to Acme — here's what to do first\"",
+                color: "bg-cyan-400",
               },
               {
                 step: "Auto-trigger",
                 desc: "Fires automatically when a new user signs up.",
                 detail: "Webhook: user.created → send welcome email",
+                color: "bg-blue-400",
               },
               {
                 step: "Metrics",
                 desc: "We track open rates, clicks, and optimize continuously.",
                 detail: "34.2% open rate — top 10% across all accounts",
+                color: "bg-violet-400",
               },
             ].map((item, i) => (
               <div key={i} className="flex gap-4 items-start">
                 <div className="w-px bg-gray-200 ml-3 flex-shrink-0 hidden md:block" style={{ minHeight: '100%' }} />
                 <div className="bg-white rounded-xl p-5 border border-gray-200 flex-1">
                   <div className="flex items-center gap-2 mb-1.5">
-                    <div className="w-2 h-2 rounded-full bg-primary-400" />
+                    <div className={`w-2 h-2 rounded-full ${item.color}`} />
                     <h4 className="font-semibold text-gray-900 text-sm">{item.step}</h4>
                   </div>
                   <p className="text-sm text-gray-500 mb-2">{item.desc}</p>
@@ -302,7 +322,7 @@ export default function Home() {
         <div className="max-w-4xl mx-auto text-center">
           <div className="flex items-center justify-center gap-2 mb-3">
             <span className="font-display font-bold text-white text-lg">distribute</span>
-            <span className="text-[10px] text-primary-400 font-medium bg-primary-500/10 px-1.5 py-0.5 rounded">.you</span>
+            <span className="text-[10px] text-brand-400 font-medium bg-brand-500/10 px-1.5 py-0.5 rounded">.you</span>
           </div>
           <p className="text-sm text-gray-600 mb-4">The Stripe for Distribution</p>
           <div className="flex flex-wrap justify-center gap-6 text-sm">

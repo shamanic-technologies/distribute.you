@@ -10,13 +10,20 @@ describe("DISTRIBUTION_FEATURES", () => {
   });
 
   it("each feature has required fields", () => {
+    const validColors = ["emerald", "cyan", "blue", "violet", "pink", "amber"];
     for (const f of DISTRIBUTION_FEATURES) {
       expect(f.id).toBeTruthy();
       expect(f.title).toBeTruthy();
       expect(f.description).toBeTruthy();
       expect(f.metric).toBeTruthy();
       expect(["live", "coming-soon"]).toContain(f.status);
+      expect(validColors).toContain(f.color);
     }
+  });
+
+  it("each feature has a unique color", () => {
+    const colors = DISTRIBUTION_FEATURES.map((f) => f.color);
+    expect(new Set(colors).size).toBe(colors.length);
   });
 
   it("has at least one live feature", () => {
