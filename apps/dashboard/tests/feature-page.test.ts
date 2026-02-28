@@ -120,6 +120,36 @@ describe("Feature page redesign", () => {
     });
   });
 
+  describe("Sort direction", () => {
+    it("should sort cost metrics ascending by default (lower is better)", () => {
+      expect(content).toContain("defaultSortDir");
+      expect(content).toContain('COST_METRICS');
+      expect(content).toContain('"asc"');
+    });
+
+    it("should sort rate metrics descending by default (higher is better)", () => {
+      expect(content).toContain('"desc"');
+    });
+
+    it("should include all cost metrics in COST_METRICS set", () => {
+      expect(content).toContain("costPerOpenCents");
+      expect(content).toContain("costPerClickCents");
+      expect(content).toContain("costPerReplyCents");
+    });
+
+    it("should use defaultSortDir when changing metric via dropdown", () => {
+      expect(content).toContain("setSortDir(defaultSortDir(key))");
+    });
+
+    it("should use defaultSortDir when changing metric via header click", () => {
+      expect(content).toContain("setSortDir(defaultSortDir(key))");
+    });
+
+    it("should initialize sort direction as asc for default costPerReplyCents metric", () => {
+      expect(content).toContain('useState<"asc" | "desc">("asc")');
+    });
+  });
+
   describe("Data source", () => {
     it("should use fetchSectionLeaderboard for data", () => {
       expect(content).toContain("fetchSectionLeaderboard");

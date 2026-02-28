@@ -28,6 +28,12 @@ const METRIC_OPTIONS: MetricOption[] = [
   { label: "% Clicks", sortKey: "clickRate" },
 ];
 
+// Cost metrics: lower is better → default asc. Rate metrics: higher is better → default desc.
+const COST_METRICS: Set<SortKey> = new Set(["costPerOpenCents", "costPerClickCents", "costPerReplyCents"]);
+function defaultSortDir(key: SortKey): "asc" | "desc" {
+  return COST_METRICS.has(key) ? "asc" : "desc";
+}
+
 const BUDGET_FREQUENCIES: { value: BudgetFrequency; label: string }[] = [
   { value: "one-off", label: "One-off" },
   { value: "daily", label: "Daily" },
@@ -127,7 +133,7 @@ export default function FeatureOverviewPage() {
   // State
   const [mode, setMode] = useState<Mode>("autopilot");
   const [metric, setMetric] = useState<SortKey>("costPerReplyCents");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [selectedWorkflow, setSelectedWorkflow] = useState<string | null>(null);
   const [budgetAmount, setBudgetAmount] = useState("");
   const [budgetFrequency, setBudgetFrequency] = useState<BudgetFrequency>("monthly");
@@ -164,7 +170,7 @@ export default function FeatureOverviewPage() {
         setSortDir((d) => (d === "desc" ? "asc" : "desc"));
         return prev;
       }
-      setSortDir("desc");
+      setSortDir(defaultSortDir(key));
       return key;
     });
   }, []);
@@ -326,8 +332,9 @@ export default function FeatureOverviewPage() {
             <select
               value={metric}
               onChange={(e) => {
-                setMetric(e.target.value as SortKey);
-                setSortDir("desc");
+                const key = e.target.value as SortKey;
+                setMetric(key);
+                setSortDir(defaultSortDir(key));
               }}
               className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-300"
             >
