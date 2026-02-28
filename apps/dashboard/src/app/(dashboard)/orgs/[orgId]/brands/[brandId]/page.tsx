@@ -30,13 +30,13 @@ export default function BrandOverviewPage() {
 
   const { data: brandData, isLoading: brandLoading } = useAuthQuery(
     ["brand", brandId],
-    (token) => getBrand(token, brandId)
+    () => getBrand(brandId)
   );
   const brand = brandData?.brand ?? null;
 
   const { data: campaignsData } = useAuthQuery(
     ["campaigns", { brandId }],
-    (token) => listCampaignsByBrand(token, brandId)
+    () => listCampaignsByBrand(brandId)
   );
   const campaigns = campaignsData?.campaigns ?? [];
 
@@ -44,7 +44,7 @@ export default function BrandOverviewPage() {
 
   const { data: batchStats } = useAuthQuery(
     ["campaignBatchStats", { brandId }, campaignIds],
-    (token) => getCampaignBatchStats(token, campaignIds),
+    () => getCampaignBatchStats(campaignIds),
     { enabled: campaignIds.length > 0 }
   );
   const campaignStats = batchStats ?? {};

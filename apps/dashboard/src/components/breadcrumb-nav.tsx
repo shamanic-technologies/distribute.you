@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useOrganization, useOrganizationList, useAuth } from "@clerk/nextjs";
+import { useOrganization, useOrganizationList } from "@clerk/nextjs";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { WORKFLOW_DEFINITIONS, SECTION_LABELS } from "@distribute/content";
 import { useOrg } from "@/lib/org-context";
@@ -26,7 +26,6 @@ const CACHE_TTL = 60000;
 export function BreadcrumbNav() {
   const pathname = usePathname();
   const router = useRouter();
-  const { getToken } = useAuth();
   const { organization } = useOrganization();
   const { userMemberships, setActive } = useOrganizationList({
     userMemberships: { infinite: true },
@@ -63,12 +62,7 @@ export function BreadcrumbNav() {
     }
     setLoading((l) => ({ ...l, brands: true }));
     try {
-      const token = await getToken();
-      if (!token) return;
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you"}/v1/brands`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await fetch("/api/v1/brands");
       if (res.ok) {
         const data = await res.json();
         const list = data.brands || [];
@@ -81,7 +75,7 @@ export function BreadcrumbNav() {
     } finally {
       setLoading((l) => ({ ...l, brands: false }));
     }
-  }, [getToken]);
+  }, []);
 
   const fetchCampaigns = useCallback(async () => {
     if (!brandId) return;
@@ -92,12 +86,7 @@ export function BreadcrumbNav() {
     }
     setLoading((l) => ({ ...l, campaigns: true }));
     try {
-      const token = await getToken();
-      if (!token) return;
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you"}/v1/campaigns?brandId=${brandId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await fetch(`/api/v1/campaigns?brandId=${brandId}`);
       if (res.ok) {
         const data = await res.json();
         const list = data.campaigns || [];
@@ -109,7 +98,7 @@ export function BreadcrumbNav() {
     } finally {
       setLoading((l) => ({ ...l, campaigns: false }));
     }
-  }, [brandId, getToken]);
+  }, [brandId]);
 
   useEffect(() => {
     if (brandId) fetchBrands();

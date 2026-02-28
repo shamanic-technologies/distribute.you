@@ -7,8 +7,8 @@ import { listBrands } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
 
 export function BrandsList() {
-  const { data, isLoading } = useAuthQuery(["brands"], (token) =>
-    listBrands(token)
+  const { data, isLoading } = useAuthQuery(["brands"], () =>
+    listBrands()
   );
   const brands = data?.brands ?? [];
 

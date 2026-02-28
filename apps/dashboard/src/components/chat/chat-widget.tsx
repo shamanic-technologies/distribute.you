@@ -1,14 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@clerk/nextjs";
 import { getOrCreateSessionKey, getMe } from "@/lib/api";
 import { useChat } from "./use-chat";
 import { ChatMessages } from "./chat-messages";
 import { ChatInput } from "./chat-input";
 
 export function ChatWidget() {
-  const { getToken } = useAuth();
   const [isOpen, setIsOpen] = useState(true);
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [orgId, setOrgId] = useState<string | null>(null);
@@ -23,12 +21,9 @@ export function ChatWidget() {
 
     (async () => {
       try {
-        const token = await getToken();
-        if (!token || cancelled) return;
-
         const [keyResult, meResult] = await Promise.all([
-          getOrCreateSessionKey(token),
-          getMe(token),
+          getOrCreateSessionKey(),
+          getMe(),
         ]);
 
         if (!cancelled) {
@@ -46,7 +41,7 @@ export function ChatWidget() {
     return () => {
       cancelled = true;
     };
-  }, [getToken]);
+  }, []);
 
   const handleButtonClick = useCallback(
     (value: string) => {

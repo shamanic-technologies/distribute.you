@@ -32,20 +32,20 @@ export default function BrandInfoPage() {
 
   const { data: brandData } = useAuthQuery(
     ["brand", brandId],
-    (token) => getBrand(token, brandId)
+    () => getBrand(brandId)
   );
   const brandName = brandData?.brand?.name ?? null;
 
   const { data: profileData, isLoading, error: profileError } = useAuthQuery(
     ["brandSalesProfile", brandId],
-    (token) => getBrandSalesProfile(token, brandId)
+    () => getBrandSalesProfile(brandId)
   );
   const profile = profileData?.profile ?? null;
   const error = profileError?.message ?? null;
 
   const { data: runsData, isLoading: runsLoading } = useAuthQuery(
     ["brandRuns", brandId],
-    (token) => listBrandRuns(token, brandId)
+    () => listBrandRuns(brandId)
   );
   const runs = runsData?.runs ?? [];
 
