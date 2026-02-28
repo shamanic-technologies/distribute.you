@@ -43,26 +43,19 @@ describe("API proxy route", () => {
     expect(content).toContain("path.join");
   });
 
-  it("should resolve Clerk IDs to internal UUIDs via client-service", () => {
-    const content = fs.readFileSync(proxyPath, "utf-8");
-    expect(content).toContain("CLIENT_SERVICE_URL");
-    expect(content).toContain("CLIENT_SERVICE_API_KEY");
-    expect(content).toContain("/resolve");
-    expect(content).toContain("externalOrgId");
-    expect(content).toContain("externalUserId");
-  });
-
-  it("should forward x-org-id and x-user-id headers", () => {
+  it("should forward Clerk IDs as x-org-id and x-user-id headers", () => {
     const content = fs.readFileSync(proxyPath, "utf-8");
     expect(content).toContain('"x-org-id"');
     expect(content).toContain('"x-user-id"');
-  });
-
-  it("should extract orgId from Clerk auth()", () => {
-    const content = fs.readFileSync(proxyPath, "utf-8");
-    expect(content).toContain("orgId");
     expect(content).toContain("clerkOrgId");
     expect(content).toContain("clerkUserId");
+  });
+
+  it("should not call client-service directly", () => {
+    const content = fs.readFileSync(proxyPath, "utf-8");
+    expect(content).not.toContain("CLIENT_SERVICE_URL");
+    expect(content).not.toContain("CLIENT_SERVICE_API_KEY");
+    expect(content).not.toContain("/resolve");
   });
 });
 
