@@ -353,6 +353,21 @@ export async function getBrandSalesProfile(
   }
 }
 
+export async function fetchSalesProfileFromUrl(
+  url: string,
+  token?: string
+): Promise<{ profile: SalesProfile | null; brandId: string | null }> {
+  try {
+    const res = await apiCall<{ profile: SalesProfile; brandId: string }>(
+      `/brand/sales-profile`,
+      { token, method: "POST", body: { url } }
+    );
+    return { profile: res.profile, brandId: res.brandId };
+  } catch {
+    return { profile: null, brandId: null };
+  }
+}
+
 // Brand runs
 export interface RunCost {
   costName: string;

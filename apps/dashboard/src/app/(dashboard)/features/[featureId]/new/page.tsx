@@ -11,6 +11,7 @@ import {
   listCampaigns,
   listBrands,
   getBrandSalesProfile,
+  fetchSalesProfileFromUrl,
   stopCampaign,
   resumeCampaign,
   type WorkflowLeaderboardEntry,
@@ -262,10 +263,10 @@ export default function CreateCampaignPage() {
   const handleGo = useCallback(async () => {
     if (!effectiveSelection || !budgetAmount || !resolvedBrandUrl) return;
     setCreateError(null);
+    setIsLoadingProfile(true);
 
-    // For existing brands: fetch profile first, THEN show form pre-filled
+    // For existing brands: fetch profile by brand ID
     if (selectedBrandId) {
-      setIsLoadingProfile(true);
       try {
         const { profile } = await getBrandSalesProfile(selectedBrandId);
         if (profile) {
@@ -282,9 +283,20 @@ export default function CreateCampaignPage() {
       return;
     }
 
-    // New brand URL: no profile to fetch, show form immediately
-    setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
-    setShowForm(true);
+    // New brand URL: scrape + extract profile via LLM, then show form pre-filled
+    try {
+      const { profile } = await fetchSalesProfileFromUrl(resolvedBrandUrl);
+      if (profile) {
+        setFormData(profileToFormData(profile, resolvedBrandUrl));
+      } else {
+        setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
+      }
+    } catch {
+      setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
+    } finally {
+      setIsLoadingProfile(false);
+      setShowForm(true);
+    }
   }, [effectiveSelection, budgetAmount, resolvedBrandUrl, selectedBrandId]);
 
   const handleCreateCampaign = useCallback(async () => {

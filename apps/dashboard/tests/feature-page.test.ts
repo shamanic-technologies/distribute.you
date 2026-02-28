@@ -300,6 +300,11 @@ describe("Create campaign page", () => {
       expect(content).toContain("getBrandSalesProfile");
     });
 
+    it("should fetch sales profile from URL for new brands", () => {
+      expect(content).toContain("fetchSalesProfileFromUrl");
+      expect(content).toContain("fetchSalesProfileFromUrl(resolvedBrandUrl)");
+    });
+
     it("should have profileToFormData mapping function", () => {
       expect(content).toContain("profileToFormData");
     });
@@ -366,5 +371,12 @@ describe("API leaderboard function", () => {
 
   it("should have brandId in Campaign type", () => {
     expect(content).toContain("brandId: string | null");
+  });
+
+  it("should have fetchSalesProfileFromUrl function", () => {
+    expect(content).toContain("fetchSalesProfileFromUrl");
+    expect(content).toContain("/brand/sales-profile");
+    expect(content).toContain('method: "POST"');
+    expect(content).toContain("body: { url }");
   });
 });
