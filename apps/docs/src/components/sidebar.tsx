@@ -50,7 +50,7 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-64 border-r border-secondary-100 bg-gradient-to-b from-white to-secondary-50/30 p-4 flex-shrink-0 overflow-y-auto">
+    <aside className="w-64 border-r border-gray-100 bg-gradient-to-b from-white to-gray-50/30 p-4 flex-shrink-0 overflow-y-auto">
       <nav className="space-y-6">
         {NAV_ITEMS.map((section) => (
           <div key={section.title}>
@@ -68,20 +68,20 @@ export function Sidebar() {
                       href={item.href}
                       className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition ${
                         isActive
-                          ? "bg-primary-100 text-primary-700 font-medium border border-primary-200"
-                          : "text-gray-700 hover:bg-secondary-50 hover:text-primary-600"
+                          ? "bg-brand-100 text-brand-700 font-medium border border-brand-200"
+                          : "text-gray-700 hover:bg-gray-50 hover:text-brand-600"
                       }`}
                     >
                       {"available" in item && (
                         <span
                           className={`w-2 h-2 rounded-full ${
-                            isAvailable ? "bg-primary-500" : "bg-gray-300"
+                            isAvailable ? "bg-brand-500" : "bg-gray-300"
                           }`}
                         />
                       )}
                       {item.name}
                       {!isAvailable && (
-                        <span className="text-xs text-secondary-400 ml-auto">Soon</span>
+                        <span className="text-xs text-gray-400 ml-auto">Soon</span>
                       )}
                     </Link>
                   </li>

@@ -63,8 +63,8 @@ export default function SalesOutreachDocs() {
     <div className="max-w-3xl mx-auto px-8 py-12">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <span className="w-3 h-3 rounded-full bg-primary-500" />
-          <span className="text-sm text-primary-600 font-medium">Available</span>
+          <span className="w-3 h-3 rounded-full bg-brand-500" />
+          <span className="text-sm text-brand-600 font-medium">Available</span>
         </div>
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
