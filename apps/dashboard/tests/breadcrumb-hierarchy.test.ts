@@ -5,10 +5,10 @@ import * as path from "path";
 describe("Breadcrumb hierarchy", () => {
   const breadcrumbPath = path.join(__dirname, "../src/components/breadcrumb-nav.tsx");
 
-  it("should import useApp for app name", () => {
+  it("should import useOrg for org name", () => {
     const content = fs.readFileSync(breadcrumbPath, "utf-8");
-    expect(content).toContain("useApp");
-    expect(content).toContain("@/lib/app-context");
+    expect(content).toContain("useOrg");
+    expect(content).toContain("@/lib/org-context");
   });
 
   it("should parse org/brand/feature/campaign from new path structure", () => {
@@ -20,9 +20,9 @@ describe("Breadcrumb hierarchy", () => {
     expect(content).toContain('"campaigns"');
   });
 
-  it("should show app name as first breadcrumb", () => {
+  it("should show org name as first breadcrumb", () => {
     const content = fs.readFileSync(breadcrumbPath, "utf-8");
-    expect(content).toContain("app?.name");
+    expect(content).toContain("org?.name");
   });
 
   it("should use /orgs/ path prefix for brand links", () => {

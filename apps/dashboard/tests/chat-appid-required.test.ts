@@ -14,9 +14,9 @@ describe("chat-service appId requirement", () => {
     "../src/components/chat/use-chat.ts"
   );
 
-  it("should include appId: 'mcpfactory' in the POST /chat request body", () => {
+  it("should include appId: 'distribute' in the POST /chat request body", () => {
     const content = fs.readFileSync(useChatPath, "utf-8");
-    expect(content).toContain('appId: "mcpfactory"');
+    expect(content).toContain('appId: "distribute"');
   });
 });
 

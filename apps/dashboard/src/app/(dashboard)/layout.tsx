@@ -9,21 +9,18 @@ import { UserActivityTracker } from "@/components/user-activity-tracker";
 import { MobileSidebarProvider, useMobileSidebar } from "@/components/mobile-sidebar-context";
 import { ChatWidget } from "@/components/chat/chat-widget";
 import { QueryProvider } from "@/lib/query-provider";
-import { AppContextProvider, useApp } from "@/lib/app-context";
+import { OrgContextProvider, useOrg } from "@/lib/org-context";
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { isOpen, close } = useMobileSidebar();
-  const { hasApp, isLoading, isError } = useApp();
+  const { hasOrg, isLoading, isError } = useOrg();
   const router = useRouter();
 
   useEffect(() => {
-    // Only redirect to onboarding when we're SURE the user has no app.
-    // If the API errored (CORS, network, auth), do NOT redirect — that
-    // would cause an infinite loop between dashboard and onboarding.
-    if (!isLoading && !hasApp && !isError) {
+    if (!isLoading && !hasOrg && !isError) {
       router.push("/onboarding");
     }
-  }, [isLoading, hasApp, isError, router]);
+  }, [isLoading, hasOrg, isError, router]);
 
   if (isError) {
     return (
@@ -42,8 +39,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Don't render dashboard chrome while checking onboarding status
-  if (isLoading || !hasApp) {
+  if (isLoading || !hasOrg) {
     return <div className="h-screen bg-gray-50" />;
   }
 
@@ -89,9 +85,9 @@ export default function DashboardLayout({
   return (
     <QueryProvider>
       <MobileSidebarProvider>
-        <AppContextProvider>
+        <OrgContextProvider>
           <DashboardContent>{children}</DashboardContent>
-        </AppContextProvider>
+        </OrgContextProvider>
       </MobileSidebarProvider>
     </QueryProvider>
   );

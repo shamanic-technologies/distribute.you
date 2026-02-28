@@ -33,15 +33,24 @@ describe("Onboarding flow", () => {
     expect(content).toContain("Create Workspace");
   });
 
-  it("should call the app registration endpoint", () => {
+  it("should call createOrg from api.ts (not /apps/register)", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("/v1/apps/register");
+    expect(content).toContain("createOrg");
+    expect(content).toContain('from "@/lib/api"');
+    expect(content).not.toContain("/apps/register");
   });
 
-  it("should show API key on success", () => {
+  it("should NOT show API keys after onboarding", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("apiKey");
-    expect(content).toContain("Copy");
+    expect(content).not.toContain("apiKey");
+    expect(content).not.toMatch(/Copy.*key/i);
+    // No "success" step type — onboarding redirects straight to /
+    expect(content).not.toContain('"success"');
+  });
+
+  it("should redirect to / after org creation", () => {
+    const content = fs.readFileSync(pagePath, "utf-8");
+    expect(content).toContain('router.push("/")');
   });
 });
 

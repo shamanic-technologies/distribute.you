@@ -3,11 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
+import { createOrg } from "@/lib/api";
 
 type AccountType = "agency" | "company";
-type Step = "value-prop" | "type-selection" | "name-input" | "success";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.distribute.you";
+type Step = "value-prop" | "type-selection" | "name-input";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -15,10 +14,8 @@ export default function OnboardingPage() {
   const [step, setStep] = useState<Step>("value-prop");
   const [accountType, setAccountType] = useState<AccountType | null>(null);
   const [name, setName] = useState("");
-  const [apiKey, setApiKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   const handleTypeSelect = (type: AccountType) => {
     setAccountType(type);
@@ -32,33 +29,12 @@ export default function OnboardingPage() {
     try {
       const token = await getToken();
       if (!token) throw new Error("Not authenticated");
-      const res = await fetch(`${API_URL}/v1/apps/register`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ name: name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""), type: accountType }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({ error: "Registration failed" }));
-        throw new Error(data.error || "Registration failed");
-      }
-      const data = await res.json();
-      setApiKey(data.apiKey || null);
-      setStep("success");
+      await createOrg(token, name.trim());
+      router.push("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {
       setSubmitting(false);
-    }
-  };
-
-  const handleCopy = () => {
-    if (apiKey) {
-      navigator.clipboard.writeText(apiKey);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -172,90 +148,49 @@ export default function OnboardingPage() {
     );
   }
 
-  // Step 3: Name Input
-  if (step === "name-input") {
-    return (
-      <div className="bg-white rounded-2xl border border-gray-200 p-8 md:p-12">
-        <button
-          onClick={() => setStep("type-selection")}
-          className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 mb-6 transition"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          Back
-        </button>
-        <h2 className="font-display text-2xl font-bold text-gray-900 mb-2">
-          {accountType === "agency" ? "What's your agency name?" : "What's your company name?"}
-        </h2>
-        <p className="text-gray-500 mb-6">
-          This will be used to set up your workspace.
-        </p>
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 mb-4 text-sm">
-            {error}
-          </div>
-        )}
-        <div className="space-y-4">
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={accountType === "agency" ? "e.g. Growth Partners" : "e.g. Acme Inc"}
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-            autoFocus
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && name.trim()) handleSubmit();
-            }}
-          />
-          <button
-            onClick={handleSubmit}
-            disabled={!name.trim() || submitting}
-            className="w-full px-6 py-3 bg-brand-600 text-white rounded-xl hover:bg-brand-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {submitting ? "Setting up..." : "Create Workspace"}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Step 4: Success
+  // Step 3: Name Input — redirects to dashboard on success
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-8 md:p-12 text-center">
-      <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-        <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+    <div className="bg-white rounded-2xl border border-gray-200 p-8 md:p-12">
+      <button
+        onClick={() => setStep("type-selection")}
+        className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 mb-6 transition"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>
-      </div>
+        Back
+      </button>
       <h2 className="font-display text-2xl font-bold text-gray-900 mb-2">
-        You&apos;re all set!
+        {accountType === "agency" ? "What's your agency name?" : "What's your company name?"}
       </h2>
       <p className="text-gray-500 mb-6">
-        Your workspace has been created successfully.
+        This will be used to set up your workspace.
       </p>
-      {apiKey && (
-        <div className="bg-gray-50 rounded-xl p-4 mb-6 text-left">
-          <p className="text-xs text-gray-500 font-medium mb-2">Your API Key (save it — shown only once)</p>
-          <div className="flex items-center gap-2">
-            <code className="flex-1 text-sm font-mono bg-white px-3 py-2 rounded-lg border border-gray-200 truncate">
-              {apiKey}
-            </code>
-            <button
-              onClick={handleCopy}
-              className="px-3 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition text-sm"
-            >
-              {copied ? "Copied!" : "Copy"}
-            </button>
-          </div>
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 mb-4 text-sm">
+          {error}
         </div>
       )}
-      <button
-        onClick={() => router.push("/")}
-        className="px-8 py-3 bg-brand-600 text-white rounded-xl hover:bg-brand-700 transition font-medium"
-      >
-        Go to Dashboard
-      </button>
+      <div className="space-y-4">
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder={accountType === "agency" ? "e.g. Growth Partners" : "e.g. Acme Inc"}
+          className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+          autoFocus
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && name.trim()) handleSubmit();
+          }}
+        />
+        <button
+          onClick={handleSubmit}
+          disabled={!name.trim() || submitting}
+          className="w-full px-6 py-3 bg-brand-600 text-white rounded-xl hover:bg-brand-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {submitting ? "Setting up..." : "Create Workspace"}
+        </button>
+      </div>
     </div>
   );
 }

@@ -492,46 +492,6 @@ export async function getWorkflow(token: string, workflowId: string): Promise<Wo
   return apiCall<Workflow>(`/workflows/${workflowId}`, { token });
 }
 
-// App registration
-export interface App {
-  id: string;
-  name: string;
-  type: "agency" | "company";
-  createdAt: string;
-}
-
-export interface RegisterAppResponse {
-  appId: string;
-  apiKey?: string;
-  message?: string;
-}
-
-export async function registerApp(
-  token: string,
-  name: string,
-  type: "agency" | "company"
-): Promise<RegisterAppResponse> {
-  return apiCall<RegisterAppResponse>("/apps/register", {
-    token,
-    method: "POST",
-    body: { name, type },
-  });
-}
-
-// Get current app — returns { app: null } only for 404 (no app registered).
-// Other errors (network, CORS, auth) are re-thrown so callers can distinguish
-// "no app" from "API is broken" and avoid redirect loops.
-export async function getApp(token: string): Promise<{ app: App | null }> {
-  try {
-    return await apiCall<{ app: App }>("/apps/me", { token });
-  } catch (err) {
-    if (err instanceof Error && err.message.includes("Not found")) {
-      return { app: null };
-    }
-    throw err;
-  }
-}
-
 // Organizations
 export interface Org {
   id: string;
