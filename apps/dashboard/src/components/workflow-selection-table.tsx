@@ -70,7 +70,7 @@ export function WorkflowSelectionTable({ sectionKey, onSelect, selectedWorkflowI
                 className={`
                   border-b border-gray-50 cursor-pointer transition
                   ${isSelected
-                    ? "bg-primary-50"
+                    ? "bg-brand-50"
                     : "hover:bg-gray-50"
                   }
                 `}
@@ -78,9 +78,9 @@ export function WorkflowSelectionTable({ sectionKey, onSelect, selectedWorkflowI
                 <td className="px-5 py-3">
                   <div className="flex items-center gap-2">
                     {isSelected && (
-                      <div className="w-2 h-2 bg-primary-500 rounded-full flex-shrink-0" />
+                      <div className="w-2 h-2 bg-brand-500 rounded-full flex-shrink-0" />
                     )}
-                    <span className={`text-sm font-medium ${isSelected ? "text-primary-700" : "text-gray-900"}`}>
+                    <span className={`text-sm font-medium ${isSelected ? "text-brand-700" : "text-gray-900"}`}>
                       {getWorkflowDisplayName(wf.name)}
                     </span>
                     {idx === 0 && (
@@ -101,7 +101,7 @@ export function WorkflowSelectionTable({ sectionKey, onSelect, selectedWorkflowI
                 </td>
                 <td className="px-5 py-3 text-right">
                   {isSelected && (
-                    <svg className="w-4 h-4 text-primary-600 inline" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-4 h-4 text-brand-600 inline" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
                   )}

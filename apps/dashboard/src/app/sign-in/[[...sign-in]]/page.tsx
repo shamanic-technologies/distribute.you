@@ -58,19 +58,19 @@ export default function SignInPage() {
         </div>
         <div className="flex items-center gap-6 text-sm text-gray-500">
           <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
             Zero config
           </div>
           <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
             No markup pricing
           </div>
           <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
             Data-driven
@@ -85,7 +85,7 @@ export default function SignInPage() {
           <div className="lg:hidden flex justify-center mb-6">
             <Link href="https://distribute.you" className="flex items-center gap-2">
               <Image src="/logo-head.jpg" alt="distribute" width={32} height={32} className="rounded-lg" />
-              <span className="font-display font-bold text-lg text-primary-600">distribute</span>
+              <span className="font-display font-bold text-lg text-brand-600">distribute</span>
             </Link>
           </div>
 
@@ -118,7 +118,7 @@ export default function SignInPage() {
 
             <div className="mt-6 text-center text-sm text-gray-500">
               Don&apos;t have an account?{" "}
-              <Link href="/sign-up" className="text-primary-500 hover:text-primary-600 font-medium">
+              <Link href="/sign-up" className="text-brand-500 hover:text-brand-600 font-medium">
                 Sign up
               </Link>
             </div>

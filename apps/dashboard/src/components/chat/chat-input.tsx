@@ -32,12 +32,12 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           }}
           placeholder="Ask anything..."
           disabled={disabled}
-          className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-transparent disabled:opacity-50"
+          className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-transparent disabled:opacity-50"
         />
         <button
           onClick={handleSubmit}
           disabled={disabled || !value.trim()}
-          className="p-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          className="p-2 rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"

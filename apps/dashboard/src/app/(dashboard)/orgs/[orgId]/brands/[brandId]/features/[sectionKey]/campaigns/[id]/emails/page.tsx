@@ -67,8 +67,8 @@ export default function CampaignEmailsPage() {
                 <button
                   key={email.id}
                   onClick={() => setSelectedEmail(email)}
-                  className={`w-full text-left bg-white rounded-xl border p-4 hover:border-primary-300 hover:shadow-sm transition ${
-                    selectedEmail?.id === email.id ? 'border-primary-500 ring-1 ring-primary-500' : 'border-gray-200'
+                  className={`w-full text-left bg-white rounded-xl border p-4 hover:border-brand-300 hover:shadow-sm transition ${
+                    selectedEmail?.id === email.id ? 'border-brand-500 ring-1 ring-brand-500' : 'border-gray-200'
                   }`}
                 >
                   <p className="font-medium text-gray-800 truncate">{email.subject}</p>

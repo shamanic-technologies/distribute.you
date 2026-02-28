@@ -102,7 +102,7 @@ export default function ApiKeysPage() {
               <button
                 onClick={handleCreate}
                 disabled={creating}
-                className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50 text-sm font-medium"
+                className="bg-brand-600 text-white px-4 py-2 rounded-lg hover:bg-brand-700 disabled:opacity-50 text-sm font-medium"
               >
                 {creating ? "Creating..." : "Create Key"}
               </button>

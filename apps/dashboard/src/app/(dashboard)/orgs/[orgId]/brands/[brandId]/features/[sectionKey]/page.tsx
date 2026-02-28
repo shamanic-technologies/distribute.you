@@ -178,7 +178,7 @@ export default function WorkflowCampaignsPage() {
               <Link
                 key={campaign.id}
                 href={`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}/campaigns/${campaign.id}`}
-                className="block bg-white rounded-xl border border-gray-200 p-4 hover:border-primary-300 hover:shadow-md transition-all"
+                className="block bg-white rounded-xl border border-gray-200 p-4 hover:border-brand-300 hover:shadow-md transition-all"
               >
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2">

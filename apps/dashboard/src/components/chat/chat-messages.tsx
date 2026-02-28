@@ -81,13 +81,13 @@ function InputWidget({
             }
           }}
           placeholder={request.placeholder}
-          className={`flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-transparent ${
+          className={`flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-transparent ${
             error ? "border-red-300" : "border-gray-200"
           }`}
         />
         <button
           onClick={handleSubmit}
-          className="px-3 py-2 rounded-lg bg-primary-500 text-white text-sm font-medium hover:bg-primary-600 transition"
+          className="px-3 py-2 rounded-lg bg-brand-500 text-white text-sm font-medium hover:bg-brand-600 transition"
         >
           Submit
         </button>
@@ -124,7 +124,7 @@ export function ChatMessages({ messages, onButtonClick }: ChatMessagesProps) {
               <button
                 key={label}
                 onClick={() => onButtonClick(label)}
-                className="px-3 py-1.5 text-xs font-medium rounded-full border border-primary-200 text-primary-600 bg-white hover:bg-primary-50 transition"
+                className="px-3 py-1.5 text-xs font-medium rounded-full border border-brand-200 text-brand-600 bg-white hover:bg-brand-50 transition"
               >
                 {label}
               </button>
@@ -148,7 +148,7 @@ export function ChatMessages({ messages, onButtonClick }: ChatMessagesProps) {
             <div
               className={`max-w-[80%] rounded-xl px-3 py-2 text-sm ${
                 msg.role === "user"
-                  ? "bg-primary-500 text-white"
+                  ? "bg-brand-500 text-white"
                   : "bg-gray-100 text-gray-900"
               }`}
             >
@@ -173,7 +173,7 @@ export function ChatMessages({ messages, onButtonClick }: ChatMessagesProps) {
                 <button
                   key={btn.value}
                   onClick={() => onButtonClick(btn.value)}
-                  className="px-3 py-1.5 text-xs font-medium rounded-full border border-primary-200 text-primary-600 bg-white hover:bg-primary-50 transition"
+                  className="px-3 py-1.5 text-xs font-medium rounded-full border border-brand-200 text-brand-600 bg-white hover:bg-brand-50 transition"
                 >
                   {btn.label}
                 </button>

@@ -66,8 +66,8 @@ export default function OnboardingPage() {
   if (step === "value-prop") {
     return (
       <div className="bg-white rounded-2xl border border-gray-200 p-8 md:p-12 text-center">
-        <div className="w-16 h-16 bg-primary-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
-          <svg className="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="w-16 h-16 bg-brand-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+          <svg className="w-8 h-8 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
         </div>
@@ -82,8 +82,8 @@ export default function OnboardingPage() {
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 text-left">
           <div className="bg-gray-50 rounded-xl p-4">
-            <div className="w-8 h-8 bg-primary-100 rounded-lg flex items-center justify-center mb-2">
-              <svg className="w-4 h-4 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-8 h-8 bg-brand-100 rounded-lg flex items-center justify-center mb-2">
+              <svg className="w-4 h-4 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
@@ -91,8 +91,8 @@ export default function OnboardingPage() {
             <p className="text-xs text-gray-500">Automated lead finding, outreach, emails & reporting</p>
           </div>
           <div className="bg-gray-50 rounded-xl p-4">
-            <div className="w-8 h-8 bg-primary-100 rounded-lg flex items-center justify-center mb-2">
-              <svg className="w-4 h-4 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-8 h-8 bg-brand-100 rounded-lg flex items-center justify-center mb-2">
+              <svg className="w-4 h-4 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
               </svg>
             </div>
@@ -100,8 +100,8 @@ export default function OnboardingPage() {
             <p className="text-xs text-gray-500">Choose strategies, set budgets, monitor results in real time</p>
           </div>
           <div className="bg-gray-50 rounded-xl p-4">
-            <div className="w-8 h-8 bg-primary-100 rounded-lg flex items-center justify-center mb-2">
-              <svg className="w-4 h-4 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-8 h-8 bg-brand-100 rounded-lg flex items-center justify-center mb-2">
+              <svg className="w-4 h-4 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </div>
@@ -111,7 +111,7 @@ export default function OnboardingPage() {
         </div>
         <button
           onClick={() => setStep("type-selection")}
-          className="px-8 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition font-medium text-lg"
+          className="px-8 py-3 bg-brand-600 text-white rounded-xl hover:bg-brand-700 transition font-medium text-lg"
         >
           Get Started
         </button>
@@ -141,7 +141,7 @@ export default function OnboardingPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <button
             onClick={() => handleTypeSelect("agency")}
-            className="text-left bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-primary-400 hover:shadow-md transition group"
+            className="text-left bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-brand-400 hover:shadow-md transition group"
           >
             <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-purple-200 transition">
               <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -155,7 +155,7 @@ export default function OnboardingPage() {
           </button>
           <button
             onClick={() => handleTypeSelect("company")}
-            className="text-left bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-primary-400 hover:shadow-md transition group"
+            className="text-left bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-brand-400 hover:shadow-md transition group"
           >
             <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-teal-200 transition">
               <svg className="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -202,7 +202,7 @@ export default function OnboardingPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={accountType === "agency" ? "e.g. Growth Partners" : "e.g. Acme Inc"}
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
             autoFocus
             onKeyDown={(e) => {
               if (e.key === "Enter" && name.trim()) handleSubmit();
@@ -211,7 +211,7 @@ export default function OnboardingPage() {
           <button
             onClick={handleSubmit}
             disabled={!name.trim() || submitting}
-            className="w-full px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full px-6 py-3 bg-brand-600 text-white rounded-xl hover:bg-brand-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? "Setting up..." : "Create Workspace"}
           </button>
@@ -252,7 +252,7 @@ export default function OnboardingPage() {
       )}
       <button
         onClick={() => router.push("/")}
-        className="px-8 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition font-medium"
+        className="px-8 py-3 bg-brand-600 text-white rounded-xl hover:bg-brand-700 transition font-medium"
       >
         Go to Dashboard
       </button>

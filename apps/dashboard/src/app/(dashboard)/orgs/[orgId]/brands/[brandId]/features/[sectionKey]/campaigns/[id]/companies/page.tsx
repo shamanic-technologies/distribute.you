@@ -118,8 +118,8 @@ export default function CampaignCompaniesPage() {
                 <button
                   key={company.name}
                   onClick={() => setSelectedCompany(company)}
-                  className={`w-full text-left bg-white rounded-xl border p-4 hover:border-primary-300 hover:shadow-sm transition ${
-                    selectedCompany?.name === company.name ? 'border-primary-500 ring-1 ring-primary-500' : 'border-gray-200'
+                  className={`w-full text-left bg-white rounded-xl border p-4 hover:border-brand-300 hover:shadow-sm transition ${
+                    selectedCompany?.name === company.name ? 'border-brand-500 ring-1 ring-brand-500' : 'border-gray-200'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -187,7 +187,7 @@ export default function CampaignCompaniesPage() {
                       href={`https://${selectedCompany.domain}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm text-primary-500 hover:underline"
+                      className="text-sm text-brand-500 hover:underline"
                     >
                       {selectedCompany.domain}
                     </a>
@@ -206,7 +206,7 @@ export default function CampaignCompaniesPage() {
                 <div>
                   <span className="text-gray-500">Leads:</span>
                   <p className="font-medium">
-                    <span className="text-xs bg-primary-50 text-primary-700 px-2 py-1 rounded-full">
+                    <span className="text-xs bg-brand-50 text-brand-700 px-2 py-1 rounded-full">
                       {selectedCompany.leadsCount} lead{selectedCompany.leadsCount !== 1 ? "s" : ""}
                     </span>
                   </p>

@@ -69,12 +69,12 @@ export default function WorkflowSectionLayout({
                 className={`
                   flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition
                   ${isActive
-                    ? "bg-primary-50 text-primary-700 font-medium border border-primary-200"
+                    ? "bg-brand-50 text-brand-700 font-medium border border-brand-200"
                     : "text-gray-600 hover:bg-gray-50 hover:text-gray-800"
                   }
                 `}
               >
-                <span className={`${isActive ? "text-primary-600" : "text-gray-400"}`}>
+                <span className={`${isActive ? "text-brand-600" : "text-gray-400"}`}>
                   {item.icon}
                 </span>
                 <span>{item.label}</span>
@@ -108,7 +108,7 @@ export default function WorkflowSectionLayout({
                 className={`
                   flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition
                   ${isActive
-                    ? "bg-primary-100 text-primary-700 font-medium"
+                    ? "bg-brand-100 text-brand-700 font-medium"
                     : "bg-gray-100 text-gray-600"
                   }
                 `}

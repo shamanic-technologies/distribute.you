@@ -37,11 +37,11 @@ export function FunnelMetrics({
             {/* Bar */}
             <div className="relative h-32 flex items-end justify-center mb-2">
               <div
-                className="w-full max-w-16 bg-primary-100 rounded-t transition-all"
+                className="w-full max-w-16 bg-brand-100 rounded-t transition-all"
                 style={{ height: `${(step.value / maxValue) * 100}%`, minHeight: "8px" }}
               >
                 <div
-                  className="w-full bg-primary-500 rounded-t transition-all"
+                  className="w-full bg-brand-500 rounded-t transition-all"
                   style={{
                     height: i === 0 ? "100%" : `${steps[i-1].value > 0 ? (step.value / steps[i-1].value) * 100 : 0}%`,
                     minHeight: "4px"
@@ -58,7 +58,7 @@ export function FunnelMetrics({
 
             {/* Rate */}
             {step.rate !== null && (
-              <p className="text-xs text-primary-600 font-medium">
+              <p className="text-xs text-brand-600 font-medium">
                 {step.rate.toFixed(1)}%
               </p>
             )}

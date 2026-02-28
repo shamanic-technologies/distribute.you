@@ -25,7 +25,7 @@ export function BrandsList() {
     <div>
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-display font-bold text-lg text-gray-800">Your Brands</h2>
-        <Link href="/brands" className="text-sm text-primary-500 hover:text-primary-600">
+        <Link href="/brands" className="text-sm text-brand-500 hover:text-brand-600">
           View all →
         </Link>
       </div>
@@ -43,11 +43,11 @@ export function BrandsList() {
             <Link
               key={brand.id}
               href={`/brands/${brand.id}`}
-              className="flex flex-col gap-3 p-4 bg-white rounded-xl border border-gray-200 hover:border-primary-300 hover:shadow-sm transition-all"
+              className="flex flex-col gap-3 p-4 bg-white rounded-xl border border-gray-200 hover:border-brand-300 hover:shadow-sm transition-all"
             >
               <div className="flex items-center gap-3">
                 <div className="flex-shrink-0 w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center overflow-hidden">
-                  <BrandLogo domain={brand.domain} size={28} fallbackClassName="h-5 w-5 text-primary-600" />
+                  <BrandLogo domain={brand.domain} size={28} fallbackClassName="h-5 w-5 text-brand-600" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <h3 className="font-medium text-gray-900 truncate">
@@ -56,7 +56,7 @@ export function BrandsList() {
                   <p className="text-xs text-gray-500 truncate">{brand.domain}</p>
                 </div>
               </div>
-              <span className="text-primary-500 hover:text-primary-600 font-medium text-sm">
+              <span className="text-brand-500 hover:text-brand-600 font-medium text-sm">
                 View campaigns →
               </span>
             </Link>

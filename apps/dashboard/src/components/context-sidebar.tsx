@@ -18,12 +18,12 @@ function SidebarLink({ item, isActive }: { item: SidebarItem; isActive: boolean 
       className={`
         flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition
         ${isActive
-          ? "bg-primary-50 text-primary-700 font-medium border border-primary-200"
+          ? "bg-brand-50 text-brand-700 font-medium border border-brand-200"
           : "text-gray-600 hover:bg-gray-50 hover:text-gray-800"
         }
       `}
     >
-      <span className={`w-5 h-5 ${isActive ? "text-primary-600" : "text-gray-400"}`}>
+      <span className={`w-5 h-5 ${isActive ? "text-brand-600" : "text-gray-400"}`}>
         {item.icon}
       </span>
       <span className="flex-1">{item.label}</span>

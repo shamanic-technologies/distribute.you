@@ -93,7 +93,7 @@ export function ChatWidget() {
             {/* Messages */}
             {keyLoading ? (
               <div className="flex-1 flex items-center justify-center">
-                <div className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                <div className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
               </div>
             ) : (
               <ChatMessages
@@ -111,7 +111,7 @@ export function ChatWidget() {
       {/* FAB — icon when closed, X when open (rendered last to stay on top) */}
       <button
         onClick={() => setIsOpen((prev) => !prev)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-primary-500 text-white shadow-lg hover:bg-primary-600 hover:shadow-xl transition-all flex items-center justify-center"
+        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-brand-500 text-white shadow-lg hover:bg-brand-600 hover:shadow-xl transition-all flex items-center justify-center"
       >
         {isOpen ? (
           <svg
