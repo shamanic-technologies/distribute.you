@@ -63,7 +63,7 @@ export const metadata: Metadata = {
     description:
       "100% transparent campaign performance data. Real open rates, reply rates, and cost-per-action.",
     images: ["/og-image.jpg"],
-    creator: "@distribute_eu",
+    creator: "@distribute_you",
   },
   robots: {
     index: true,
