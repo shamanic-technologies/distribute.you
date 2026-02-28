@@ -42,13 +42,13 @@ describe("Workflows sidebar link", () => {
 });
 
 describe("Dashboard does not call workflow-service directly", () => {
-  it("should not hardcode windmill.mcpfactory.org in dashboard source", () => {
+  it("should not hardcode windmill.distribute.you in dashboard source", () => {
     const srcDir = path.join(__dirname, "../src");
     const files = walkDir(srcDir);
     for (const file of files) {
       if (!file.endsWith(".ts") && !file.endsWith(".tsx")) continue;
       const content = fs.readFileSync(file, "utf-8");
-      expect(content).not.toContain("windmill.mcpfactory.org");
+      expect(content).not.toContain("windmill.distribute.you");
     }
   });
 });

@@ -52,7 +52,7 @@ export function Header() {
         {/* Right: Docs + User menu */}
         <div className="flex items-center gap-3">
           <a
-            href="https://docs.mcpfactory.org"
+            href="https://docs.distribute.you"
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm text-gray-500 hover:text-primary-600 transition hidden sm:block"

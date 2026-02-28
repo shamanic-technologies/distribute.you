@@ -87,7 +87,7 @@ export default function SignInPage() {
 
         <p className="mt-6 text-center text-xs text-gray-400">
           By signing in, you agree to our{" "}
-          <a href="https://mcpfactory.org/terms" className="underline hover:text-gray-600">
+          <a href="https://distribute.you/terms" className="underline hover:text-gray-600">
             Terms of Service
           </a>
         </p>

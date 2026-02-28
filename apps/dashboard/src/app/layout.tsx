@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
-const SITE_URL = "https://dashboard.mcpfactory.org";
+const SITE_URL = "https://dashboard.distribute.you";
 const SITE_NAME = "distribute Dashboard";
 
 export const metadata: Metadata = {
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     description: "Manage your API keys, campaigns, and usage.",
     images: [
       {
-        url: "https://mcpfactory.org/og-image.jpg",
+        url: "https://distribute.you/og-image.jpg",
         width: 1200,
         height: 630,
         alt: "distribute Dashboard",
@@ -70,7 +70,7 @@ const jsonLd = {
   provider: {
     "@type": "Organization",
     name: "distribute",
-    url: "https://distribute.eu",
+    url: "https://distribute.you",
   },
 };
 

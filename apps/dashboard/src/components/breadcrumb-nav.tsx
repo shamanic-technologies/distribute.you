@@ -80,7 +80,7 @@ export function BreadcrumbNav() {
       const token = await getToken();
       if (!token) return;
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "https://api.mcpfactory.org"}/v1/brands`,
+        `${process.env.NEXT_PUBLIC_API_URL || "https://api.distribute.you"}/v1/brands`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (res.ok) {
@@ -110,7 +110,7 @@ export function BreadcrumbNav() {
       const token = await getToken();
       if (!token) return;
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "https://api.mcpfactory.org"}/v1/campaigns?brandId=${brandId}`,
+        `${process.env.NEXT_PUBLIC_API_URL || "https://api.distribute.you"}/v1/campaigns?brandId=${brandId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (res.ok) {

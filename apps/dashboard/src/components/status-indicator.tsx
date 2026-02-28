@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-const STATUS_PAGE_URL = "https://status.mcpfactory.org";
+const STATUS_PAGE_URL = "https://status.distribute.you";
 
 export function StatusIndicator() {
   const [status, setStatus] = useState<"operational" | "degraded" | "down" | "loading">("loading");

@@ -41,7 +41,7 @@ describe('Dashboard API Gateway Usage - CRITICAL', () => {
           violations.push({ file: path.relative(appDir, file), line: index + 1 });
         }
         // Also check for hardcoded brand service URL
-        if (line.includes('brand.mcpfactory.org') && !line.includes('//')) {
+        if (line.includes('brand.distribute.you') && !line.includes('//')) {
           violations.push({ file: path.relative(appDir, file), line: index + 1 });
         }
       });

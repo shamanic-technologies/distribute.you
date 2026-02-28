@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef } from "react";
 
 const CHAT_SERVICE_URL =
-  process.env.NEXT_PUBLIC_CHAT_SERVICE_URL || "https://chat.mcpfactory.org";
+  process.env.NEXT_PUBLIC_CHAT_SERVICE_URL || "https://chat.distribute.you";
 
 export interface ChatMessage {
   id: string;

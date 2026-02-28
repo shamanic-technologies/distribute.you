@@ -153,7 +153,7 @@ export default function ApiKeysPage() {
 {`{
   "mcpServers": {
     "mcpfactory": {
-      "url": "https://mcp.mcpfactory.org/mcp",
+      "url": "https://mcp.distribute.you/mcp",
       "headers": {
         "Authorization": "Bearer YOUR_API_KEY"
       }
@@ -165,7 +165,7 @@ export default function ApiKeysPage() {
               <div>
                 <p className="font-medium text-gray-700 mb-2">For REST API:</p>
                 <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-xs">
-{`curl https://api.mcpfactory.org/v1/me \\
+{`curl https://api.distribute.you/v1/me \\
   -H "X-API-Key: YOUR_API_KEY"`}
                 </pre>
               </div>
