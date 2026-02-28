@@ -25,11 +25,11 @@ h1, h2, h3, .font-display {
   }
 
   .gradient-bg {
-    background: linear-gradient(135deg, #fdf4ff 0%, #fff7ed 50%, #f0fdfa 100%);
+    background: linear-gradient(135deg, #fdf2f8 0%, #ede9fe 50%, #ecfdf5 100%);
   }
 
   .gradient-text {
-    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+    background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;

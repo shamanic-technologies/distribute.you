@@ -191,7 +191,7 @@ export default function RootLayout({
         <footer className="bg-gray-900 text-gray-400 py-8 px-4">
           <div className="max-w-4xl mx-auto text-center text-sm">
             <p className="mb-2">
-              <a href={URLS.landing} className="hover:text-primary-400 transition">
+              <a href={URLS.landing} className="hover:text-brand-400 transition">
                 distribute
               </a>
               {" — "}

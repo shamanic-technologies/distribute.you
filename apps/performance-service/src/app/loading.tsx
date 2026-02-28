@@ -86,7 +86,7 @@ export default function HomeLoading() {
       {/* Hero — static, renders immediately */}
       <section className="py-12 md:py-16 px-4 gradient-bg">
         <div className="max-w-6xl mx-auto text-center">
-          <div className="inline-block bg-accent-100 text-accent-700 px-4 py-1.5 rounded-full text-sm font-medium mb-6 border border-accent-200">
+          <div className="inline-block bg-emerald-100 text-emerald-700 px-4 py-1.5 rounded-full text-sm font-medium mb-6 border border-emerald-200">
             100% Transparent
           </div>
           <h1 className="font-display text-4xl md:text-5xl font-bold mb-4 text-gray-800">
