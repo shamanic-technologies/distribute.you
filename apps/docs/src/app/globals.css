@@ -37,18 +37,18 @@ h1, h2, h3, .font-display {
 }
 
 .prose a {
-  color: #f97316;
+  color: #ec4899;
   text-decoration: none;
 }
 
 .prose a:hover {
-  color: #ea580c;
+  color: #db2777;
   text-decoration: underline;
 }
 
 .prose code {
-  color: #c2410c;
-  background-color: #fff7ed;
+  color: #be185d;
+  background-color: #fdf2f8;
   padding: 0.2em 0.4em;
   border-radius: 0.25rem;
   font-size: 0.875em;

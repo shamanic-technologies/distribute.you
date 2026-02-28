@@ -100,7 +100,7 @@ export default function IntegrationsPage() {
           <Link
             key={integration.name}
             href={integration.href}
-            className="block p-6 border border-gray-200 rounded-lg hover:border-primary-500 hover:shadow-md transition"
+            className="block p-6 border border-gray-200 rounded-lg hover:border-brand-500 hover:shadow-md transition"
           >
             <div className="flex items-start gap-4">
               <span className="text-3xl">{integration.icon}</span>
@@ -121,7 +121,7 @@ export default function IntegrationsPage() {
           <Link
             key={integration.name}
             href={integration.href}
-            className="block p-6 border border-gray-200 rounded-lg hover:border-primary-500 hover:shadow-md transition"
+            className="block p-6 border border-gray-200 rounded-lg hover:border-brand-500 hover:shadow-md transition"
           >
             <div className="flex items-start gap-4">
               <span className="text-3xl">{integration.icon}</span>
