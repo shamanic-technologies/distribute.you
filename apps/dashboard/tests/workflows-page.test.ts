@@ -2,29 +2,13 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
-describe("Workflows page", () => {
-  const pagePath = path.join(
-    __dirname,
-    "../src/app/(dashboard)/workflows/page.tsx"
-  );
-  const content = fs.readFileSync(pagePath, "utf-8");
-
-  it("should import listWorkflows from api", () => {
-    expect(content).toContain("listWorkflows");
-    expect(content).toContain("@/lib/api");
-  });
-
-  it("should render WorkflowCard components", () => {
-    expect(content).toContain("WorkflowCard");
-  });
-
-  it("should render WorkflowDetailPanel when a workflow is selected", () => {
-    expect(content).toContain("WorkflowDetailPanel");
-    expect(content).toContain("selectedWorkflowId");
-  });
-
-  it("should show empty state when no workflows", () => {
-    expect(content).toContain("No workflows yet");
+describe("Workflows page should not exist", () => {
+  it("should have deleted the workflows page", () => {
+    const pagePath = path.join(
+      __dirname,
+      "../src/app/(dashboard)/workflows/page.tsx"
+    );
+    expect(fs.existsSync(pagePath)).toBe(false);
   });
 });
 
