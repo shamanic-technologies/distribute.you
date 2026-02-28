@@ -1,98 +1,10 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { currentUser } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { ApiKeyPreview } from "@/components/api-key-preview";
-
-const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
-
-interface LeaderboardWorkflow {
-  workflowName: string;
-  displayName: string;
-  signatureName: string | null;
-  category: string | null;
-  sectionKey: string | null;
-  runCount: number;
-  emailsSent: number;
-  emailsReplied: number;
-  totalCostUsdCents: number;
-  replyRate: number;
-  costPerReplyCents: number | null;
-}
-
-async function getLeaderboardWorkflows(): Promise<LeaderboardWorkflow[]> {
-  try {
-    const res = await fetch(`${API_URL}/performance/leaderboard`, {
-      next: { revalidate: 300 },
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return (data.workflows ?? []).filter(
-      (w: LeaderboardWorkflow) => w.costPerReplyCents !== null
-    );
-  } catch {
-    return [];
-  }
-}
-
-async function getUserWorkflowNames(): Promise<Set<string>> {
-  const apiKey = process.env.DISTRIBUTE_API_KEY;
-  if (!apiKey) return new Set();
-  const { userId, orgId } = await auth();
-  if (!userId || !orgId) return new Set();
-  try {
-    const res = await fetch(`${API_URL}/v1/campaigns`, {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "x-org-id": orgId,
-        "x-user-id": userId,
-      },
-    });
-    if (!res.ok) return new Set();
-    const data = await res.json();
-    const names = new Set<string>();
-    for (const c of data.campaigns ?? []) {
-      if (c.workflowName) names.add(c.workflowName);
-    }
-    return names;
-  } catch {
-    return new Set();
-  }
-}
-
-function pickTopWorkflows(
-  allWorkflows: LeaderboardWorkflow[],
-  userWorkflowNames: Set<string>
-): LeaderboardWorkflow[] {
-  const byBestCost = (a: LeaderboardWorkflow, b: LeaderboardWorkflow) =>
-    a.costPerReplyCents! - b.costPerReplyCents!;
-
-  // User's workflows first (sorted by cost per reply asc)
-  const userWfs = allWorkflows
-    .filter((w) => userWorkflowNames.has(w.workflowName))
-    .sort(byBestCost);
-
-  if (userWfs.length >= 3) return userWfs.slice(0, 3);
-
-  // Fill remaining slots with top performers the user hasn't used
-  const remaining = allWorkflows
-    .filter((w) => !userWorkflowNames.has(w.workflowName))
-    .sort(byBestCost);
-
-  return [...userWfs, ...remaining].slice(0, 3);
-}
-
-function formatCostPerReply(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
-}
+import { WORKFLOW_DEFINITIONS } from "@distribute/content";
 
 export default async function DashboardHome() {
-  const [user, allWorkflows] = await Promise.all([
-    currentUser(),
-    getLeaderboardWorkflows(),
-  ]);
-
-  const userWorkflowNames = await getUserWorkflowNames();
-
-  const topWorkflows = pickTopWorkflows(allWorkflows, userWorkflowNames);
+  const user = await currentUser();
 
   return (
     <div className="p-4 md:p-8">
@@ -100,7 +12,7 @@ export default async function DashboardHome() {
         <h1 className="font-display text-2xl font-bold text-gray-800">
           Welcome{user?.firstName ? `, ${user.firstName}` : ""}
         </h1>
-        <p className="text-gray-600">Select a workflow to get started.</p>
+        <p className="text-gray-600">Select a feature to get started.</p>
       </div>
 
       {/* API Key Section */}
@@ -134,71 +46,38 @@ export default async function DashboardHome() {
         </Link>
       </div>
 
-      {/* Top Workflows by Cost per Reply */}
-      {topWorkflows.length > 0 && (
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-display text-lg font-bold text-gray-800">
-              Top Workflows
-            </h2>
+      {/* Features Section */}
+      <div className="mb-8">
+        <h2 className="font-display text-lg font-bold text-gray-800 mb-4">
+          Features
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="features-grid">
+          {WORKFLOW_DEFINITIONS.map((feature) => (
             <Link
-              href="/workflows"
-              className="text-brand-500 hover:text-brand-600 font-medium text-sm"
+              key={feature.sectionKey}
+              href={`/features/${feature.sectionKey}`}
+              className={`block bg-white rounded-2xl border border-gray-200 p-6 transition-all ${
+                feature.implemented
+                  ? "hover:border-brand-300 hover:shadow-md"
+                  : "opacity-75"
+              }`}
+              data-testid="feature-card"
             >
-              View all &rarr;
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {topWorkflows.map((wf, i) => (
-              <div
-                key={wf.workflowName}
-                className="bg-white rounded-2xl border border-gray-200 p-6 relative overflow-hidden"
-              >
-                {i === 0 && (
-                  <div className="absolute top-0 right-0 bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl">
-                    Best
-                  </div>
-                )}
-                {userWorkflowNames.has(wf.workflowName) && (
-                  <div className="absolute top-0 left-0 bg-brand-500 text-white text-xs font-bold px-3 py-1 rounded-br-xl">
-                    Your workflow
-                  </div>
-                )}
-                <div className="text-sm font-medium text-gray-400 uppercase tracking-wide mb-2">
-                  {wf.category ?? "workflow"}
-                </div>
-                <h3 className="font-display font-bold text-lg text-gray-800 mb-1">
-                  {wf.displayName}
+              <div className="flex items-start justify-between mb-2">
+                <h3 className="font-display font-bold text-lg text-gray-800">
+                  {feature.label}
                 </h3>
-                {wf.signatureName && (
-                  <p className="text-xs text-gray-400 mb-4">
-                    Variant: {wf.signatureName}
-                  </p>
+                {!feature.implemented && (
+                  <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-500 border border-gray-200 whitespace-nowrap">
+                    Coming Soon
+                  </span>
                 )}
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="bg-gray-50 rounded-xl p-3">
-                    <div className="text-xs text-gray-500 mb-1">$/Reply</div>
-                    <div className="text-xl font-bold text-gray-800">
-                      {formatCostPerReply(wf.costPerReplyCents!)}
-                    </div>
-                  </div>
-                  <div className="bg-gray-50 rounded-xl p-3">
-                    <div className="text-xs text-gray-500 mb-1">Reply Rate</div>
-                    <div className="text-xl font-bold text-gray-800">
-                      {wf.replyRate.toFixed(1)}%
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4 text-xs text-gray-500">
-                  <span>{wf.emailsSent.toLocaleString()} sent</span>
-                  <span>{wf.emailsReplied.toLocaleString()} replies</span>
-                  <span>{wf.runCount} runs</span>
-                </div>
               </div>
-            ))}
-          </div>
+              <p className="text-sm text-gray-600">{feature.description}</p>
+            </Link>
+          ))}
         </div>
-      )}
+      </div>
     </div>
   );
 }

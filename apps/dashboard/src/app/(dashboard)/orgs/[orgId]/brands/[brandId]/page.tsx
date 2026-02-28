@@ -131,17 +131,17 @@ export default function BrandOverviewPage() {
         </div>
       </Link>
 
-      {/* Workflows Section */}
+      {/* Features Section */}
       <div className="mb-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Workflows</h2>
+        <h2 className="text-lg font-medium text-gray-900 mb-4">Features</h2>
         {workflowSections.length === 0 ? (
           <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
             <p className="text-gray-500 mb-4">No campaigns yet for this brand.</p>
             <Link
-              href="/workflows"
+              href="/features/sales-email-cold-outreach"
               className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition text-sm font-medium"
             >
-              Explore Workflows
+              Explore Features
             </Link>
           </div>
         ) : (
