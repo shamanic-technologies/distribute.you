@@ -1,7 +1,7 @@
 import { MetadataRoute } from "next";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = "https://salescoldemail.mcpfactory.org";
+  const baseUrl = "https://salescoldemail.distribute.you";
 
   return [
     {

@@ -96,7 +96,7 @@ const organizationJsonLd = {
   sameAs: [URLS.github, URLS.twitter],
   contactPoint: {
     "@type": "ContactPoint",
-    email: "support@mcpfactory.org",
+    email: "support@distribute.you",
     contactType: "customer service",
   },
 };

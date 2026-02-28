@@ -6,6 +6,6 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: "*",
       allow: "/",
     },
-    sitemap: "https://salescoldemail.mcpfactory.org/sitemap.xml",
+    sitemap: "https://salescoldemail.distribute.you/sitemap.xml",
   };
 }

@@ -26,7 +26,7 @@ export function Navbar() {
             href={URLS.landing}
             className="text-gray-500 hover:text-primary-600 transition"
           >
-            mcpfactory.org
+            distribute.you
           </a>
           <a
             href={URLS.signUp}
