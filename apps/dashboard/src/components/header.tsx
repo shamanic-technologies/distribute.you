@@ -41,7 +41,7 @@ export function Header() {
           
           <Link href="/" className="flex items-center gap-2 pr-4 border-r border-gray-200">
             <Image src="/logo-head.jpg" alt="distribute" width={28} height={28} className="rounded-md" />
-            <span className="font-display font-bold text-lg text-primary-600 hidden sm:block">distribute</span>
+            <span className="font-display font-bold text-lg text-brand-600 hidden sm:block">distribute</span>
           </Link>
 
           <div className="hidden sm:block min-w-0 flex-1">
@@ -55,7 +55,7 @@ export function Header() {
             href="https://docs.distribute.you"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm text-gray-500 hover:text-primary-600 transition hidden sm:block"
+            className="text-sm text-gray-500 hover:text-brand-600 transition hidden sm:block"
           >
             Docs
           </a>
@@ -74,8 +74,8 @@ export function Header() {
                   className="rounded-full"
                 />
               ) : (
-                <div className="w-7 h-7 bg-primary-100 rounded-full flex items-center justify-center">
-                  <span className="text-primary-600 font-medium text-sm">
+                <div className="w-7 h-7 bg-brand-100 rounded-full flex items-center justify-center">
+                  <span className="text-brand-600 font-medium text-sm">
                     {user?.firstName?.[0] || "U"}
                   </span>
                 </div>

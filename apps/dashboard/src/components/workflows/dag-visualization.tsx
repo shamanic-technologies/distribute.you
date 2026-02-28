@@ -185,7 +185,7 @@ function DAGNodeCard({ node, isErrorHandler }: { node: DAGNode; isErrorHandler: 
           {mappings.map(([key, value]) => (
             <div key={key} className="flex items-baseline gap-1.5 text-xs">
               <span className="text-gray-500 font-medium">{key}:</span>
-              <span className="text-primary-600 font-mono truncate">{value}</span>
+              <span className="text-brand-600 font-mono truncate">{value}</span>
             </div>
           ))}
         </div>
@@ -212,7 +212,7 @@ function Connector({ condition }: { condition?: string }) {
   return (
     <div className="flex flex-col items-center py-1">
       <div className="w-0.5 h-3 bg-gradient-to-b from-gray-300 to-gray-200" />
-      <div className="w-2 h-2 bg-primary-400 rounded-full shadow-sm animate-pulse" />
+      <div className="w-2 h-2 bg-brand-400 rounded-full shadow-sm animate-pulse" />
       <div className="w-0.5 h-3 bg-gradient-to-b from-gray-200 to-gray-300" />
       {condition && (
         <div className="absolute mt-1 ml-8 text-[10px] text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded max-w-[200px] truncate">

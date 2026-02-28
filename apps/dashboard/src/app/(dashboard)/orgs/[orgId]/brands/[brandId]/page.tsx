@@ -104,7 +104,7 @@ export default function BrandOverviewPage() {
           href={brand.brandUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm text-primary-600 hover:underline"
+          className="text-sm text-brand-600 hover:underline"
         >
           {brand.brandUrl}
         </a>
@@ -113,7 +113,7 @@ export default function BrandOverviewPage() {
       {/* Brand Info Card */}
       <Link
         href={`/orgs/${orgId}/brands/${brandId}/brand-info`}
-        className="block bg-white rounded-lg border border-gray-200 p-5 mb-6 hover:border-primary-300 hover:shadow-sm transition group"
+        className="block bg-white rounded-lg border border-gray-200 p-5 mb-6 hover:border-brand-300 hover:shadow-sm transition group"
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -121,11 +121,11 @@ export default function BrandOverviewPage() {
               &#8505;&#65039;
             </div>
             <div>
-              <h3 className="font-medium text-gray-900 group-hover:text-primary-600 transition">Brand Info</h3>
+              <h3 className="font-medium text-gray-900 group-hover:text-brand-600 transition">Brand Info</h3>
               <p className="text-sm text-gray-500">Company details, value proposition, sales profile</p>
             </div>
           </div>
-          <svg className="w-5 h-5 text-gray-400 group-hover:text-primary-600 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 text-gray-400 group-hover:text-brand-600 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </div>
@@ -139,7 +139,7 @@ export default function BrandOverviewPage() {
             <p className="text-gray-500 mb-4">No campaigns yet for this brand.</p>
             <Link
               href="/workflows"
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition text-sm font-medium"
+              className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition text-sm font-medium"
             >
               Explore Workflows
             </Link>
@@ -220,7 +220,7 @@ export default function BrandOverviewPage() {
                   <div className="flex items-center gap-3">
                     <Link
                       href={`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}`}
-                      className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition text-sm font-medium"
+                      className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition text-sm font-medium"
                     >
                       View Campaigns
                     </Link>

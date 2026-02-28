@@ -185,8 +185,8 @@ export function BreadcrumbNav() {
           <Sep />
           <div className="relative flex items-center">
             <Link href={`/orgs/${orgId}`} className="px-2 py-1 rounded-md hover:bg-gray-100 transition flex items-center gap-1.5">
-              <div className="w-5 h-5 bg-primary-100 rounded flex items-center justify-center">
-                <span className="text-primary-600 font-semibold text-xs">{organization?.name?.[0] || "O"}</span>
+              <div className="w-5 h-5 bg-brand-100 rounded flex items-center justify-center">
+                <span className="text-brand-600 font-semibold text-xs">{organization?.name?.[0] || "O"}</span>
               </div>
               <span className="font-medium text-gray-800 max-w-[120px] truncate">{organization?.name || "Org"}</span>
             </Link>
@@ -203,15 +203,15 @@ export function BreadcrumbNav() {
                     key={m.organization.id}
                     onClick={() => handleOrgSwitch(m.organization.id)}
                     className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition ${
-                      organization?.id === m.organization.id ? "bg-primary-50 text-primary-700" : "text-gray-700 hover:bg-gray-50"
+                      organization?.id === m.organization.id ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
                     }`}
                   >
-                    <div className="w-6 h-6 bg-primary-100 rounded flex items-center justify-center flex-shrink-0">
-                      <span className="text-primary-600 font-semibold text-xs">{m.organization.name[0]}</span>
+                    <div className="w-6 h-6 bg-brand-100 rounded flex items-center justify-center flex-shrink-0">
+                      <span className="text-brand-600 font-semibold text-xs">{m.organization.name[0]}</span>
                     </div>
                     <span className="truncate">{m.organization.name}</span>
                     {organization?.id === m.organization.id && (
-                      <svg className="w-4 h-4 text-primary-600 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                      <svg className="w-4 h-4 text-brand-600 ml-auto" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
                     )}
@@ -249,12 +249,12 @@ export function BreadcrumbNav() {
                       key={b.id}
                       onClick={() => handleBrandSwitch(b.id)}
                       className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition ${
-                        brandId === b.id ? "bg-primary-50 text-primary-700" : "text-gray-700 hover:bg-gray-50"
+                        brandId === b.id ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
                       }`}
                     >
                       <span className="truncate">{b.name || b.domain}</span>
                       {brandId === b.id && (
-                        <svg className="w-4 h-4 text-primary-600 ml-auto flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <svg className="w-4 h-4 text-brand-600 ml-auto flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                         </svg>
                       )}
@@ -288,12 +288,12 @@ export function BreadcrumbNav() {
                     key={wf.sectionKey}
                     onClick={() => handleFeatureSwitch(wf.sectionKey)}
                     className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition ${
-                      sectionKey === wf.sectionKey ? "bg-primary-50 text-primary-700" : "text-gray-700 hover:bg-gray-50"
+                      sectionKey === wf.sectionKey ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
                     }`}
                   >
                     <span className="truncate">{wf.label}</span>
                     {sectionKey === wf.sectionKey && (
-                      <svg className="w-4 h-4 text-primary-600 ml-auto flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <svg className="w-4 h-4 text-brand-600 ml-auto flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
                     )}
@@ -331,12 +331,12 @@ export function BreadcrumbNav() {
                       key={c.id}
                       onClick={() => handleCampaignSwitch(c.id)}
                       className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition ${
-                        campaignId === c.id ? "bg-primary-50 text-primary-700" : "text-gray-700 hover:bg-gray-50"
+                        campaignId === c.id ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
                       }`}
                     >
                       <span className="truncate">{c.name}</span>
                       {campaignId === c.id && (
-                        <svg className="w-4 h-4 text-primary-600 ml-auto flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <svg className="w-4 h-4 text-brand-600 ml-auto flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                         </svg>
                       )}

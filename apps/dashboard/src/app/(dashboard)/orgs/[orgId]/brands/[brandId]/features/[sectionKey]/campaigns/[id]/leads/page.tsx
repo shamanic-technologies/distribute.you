@@ -160,8 +160,8 @@ export default function CampaignLeadsPage() {
                 <button
                   key={lead.id}
                   onClick={() => setSelectedLead(lead)}
-                  className={`w-full text-left bg-white rounded-xl border p-4 hover:border-primary-300 hover:shadow-sm transition ${
-                    selectedLead?.id === lead.id ? 'border-primary-500 ring-1 ring-primary-500' : 'border-gray-200'
+                  className={`w-full text-left bg-white rounded-xl border p-4 hover:border-brand-300 hover:shadow-sm transition ${
+                    selectedLead?.id === lead.id ? 'border-brand-500 ring-1 ring-brand-500' : 'border-gray-200'
                   }`}
                 >
                   <div className="flex items-center gap-2">

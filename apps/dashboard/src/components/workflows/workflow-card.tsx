@@ -20,7 +20,7 @@ function timeAgo(date: string | Date): string {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  sales: "bg-primary-100 text-primary-700 border-primary-200",
+  sales: "bg-brand-100 text-brand-700 border-brand-200",
   pr: "bg-purple-100 text-purple-700 border-purple-200",
 };
 
@@ -41,8 +41,8 @@ export function WorkflowCard({
       onClick={onClick}
       className={`
         text-left w-full bg-white rounded-xl border p-5
-        hover:border-primary-300 hover:shadow-md transition-all cursor-pointer
-        ${isSelected ? "border-primary-400 shadow-md ring-2 ring-primary-100" : "border-gray-200"}
+        hover:border-brand-300 hover:shadow-md transition-all cursor-pointer
+        ${isSelected ? "border-brand-400 shadow-md ring-2 ring-brand-100" : "border-gray-200"}
       `}
     >
       <div className="flex items-start justify-between mb-2">

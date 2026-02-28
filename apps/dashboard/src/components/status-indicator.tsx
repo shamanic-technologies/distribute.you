@@ -38,7 +38,7 @@ export function StatusIndicator() {
       href={STATUS_PAGE_URL}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex items-center gap-2 px-3 py-2 text-xs text-gray-500 hover:text-primary-600 transition"
+      className="flex items-center gap-2 px-3 py-2 text-xs text-gray-500 hover:text-brand-600 transition"
     >
       <span className={`w-2 h-2 ${config.color} rounded-full`} />
       {config.text}

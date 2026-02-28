@@ -6,7 +6,7 @@ import { getWorkflow } from "@/lib/api";
 import { DAGVisualization } from "./dag-visualization";
 
 const CATEGORY_COLORS: Record<string, string> = {
-  sales: "bg-primary-100 text-primary-700",
+  sales: "bg-brand-100 text-brand-700",
   pr: "bg-purple-100 text-purple-700",
 };
 
@@ -105,7 +105,7 @@ export function WorkflowDetailPanel({
         <div className="flex-1 overflow-y-auto p-5">
           {isLoading ? (
             <div className="flex items-center justify-center h-48">
-              <div className="w-8 h-8 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+              <div className="w-8 h-8 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" />
             </div>
           ) : !workflow ? (
             <div className="text-center text-gray-400 py-12">

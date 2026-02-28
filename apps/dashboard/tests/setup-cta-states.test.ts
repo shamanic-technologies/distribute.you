@@ -26,6 +26,6 @@ describe("BrandsList shows 'View campaigns' CTA", () => {
     );
     const content = fs.readFileSync(componentPath, "utf-8");
     expect(content).toContain("View campaigns");
-    expect(content).toContain("text-primary-500");
+    expect(content).toContain("text-brand-500");
   });
 });

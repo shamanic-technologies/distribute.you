@@ -90,7 +90,7 @@ export default function BrandInfoPage() {
     <ul className="space-y-1">
       {items.map((item, i) => (
         <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
-          <span className="text-primary-500 mt-1">-</span>
+          <span className="text-brand-500 mt-1">-</span>
           {item}
         </li>
       ))}
@@ -104,7 +104,7 @@ export default function BrandInfoPage() {
           key={i}
           className={`text-xs px-2 py-0.5 rounded ${
             variant === "primary"
-              ? "bg-primary-50 text-primary-700"
+              ? "bg-brand-50 text-brand-700"
               : "bg-gray-100 text-gray-600"
           }`}
         >
@@ -136,7 +136,7 @@ export default function BrandInfoPage() {
           onClick={() => setActiveTab("current")}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
             activeTab === "current"
-              ? "border-primary-600 text-primary-600"
+              ? "border-brand-600 text-brand-600"
               : "border-transparent text-gray-500 hover:text-gray-700"
           }`}
         >
@@ -146,7 +146,7 @@ export default function BrandInfoPage() {
           onClick={() => setActiveTab("history")}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
             activeTab === "history"
-              ? "border-primary-600 text-primary-600"
+              ? "border-brand-600 text-brand-600"
               : "border-transparent text-gray-500 hover:text-gray-700"
           }`}
         >
@@ -214,7 +214,7 @@ export default function BrandInfoPage() {
               <Section title="Leadership" empty={!profile.leadership?.length}>
                 <div className="space-y-3">
                   {(profile.leadership ?? []).map((member, i) => (
-                    <div key={i} className="border-l-2 border-primary-200 pl-3">
+                    <div key={i} className="border-l-2 border-brand-200 pl-3">
                       <p className="text-sm font-medium text-gray-800">{member.name}</p>
                       <p className="text-xs text-gray-500">{member.role}</p>
                       {member.bio && <p className="text-sm text-gray-600 mt-1">{member.bio}</p>}
@@ -310,7 +310,7 @@ export default function BrandInfoPage() {
                     <h3 className="text-sm font-medium text-gray-700 mb-2">Testimonials</h3>
                     <ul className="space-y-2">
                       {profile.socialProof.testimonials.map((t, i) => (
-                        <li key={i} className="text-sm text-gray-600 border-l-2 border-primary-200 pl-3">
+                        <li key={i} className="text-sm text-gray-600 border-l-2 border-brand-200 pl-3">
                           {typeof t === "string" ? (
                             <p>{t}</p>
                           ) : (

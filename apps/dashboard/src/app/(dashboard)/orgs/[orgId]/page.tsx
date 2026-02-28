@@ -53,14 +53,14 @@ export default function OrgPage() {
             <Link
               key={brand.id}
               href={`/orgs/${orgId}/brands/${brand.id}`}
-              className="bg-white rounded-xl border border-gray-200 p-5 hover:border-primary-300 hover:shadow-sm transition group"
+              className="bg-white rounded-xl border border-gray-200 p-5 hover:border-brand-300 hover:shadow-sm transition group"
             >
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center overflow-hidden">
                   <BrandLogo domain={brand.domain} size={28} fallbackClassName="h-6 w-6 text-gray-400" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h3 className="font-medium text-gray-900 group-hover:text-primary-600 transition truncate">
+                  <h3 className="font-medium text-gray-900 group-hover:text-brand-600 transition truncate">
                     {brand.name || brand.domain}
                   </h3>
                   <p className="text-xs text-gray-400 truncate">{brand.domain}</p>
@@ -68,7 +68,7 @@ export default function OrgPage() {
               </div>
               <div className="flex items-center justify-between text-xs text-gray-400">
                 <span>Created {new Date(brand.createdAt).toLocaleDateString()}</span>
-                <svg className="w-4 h-4 text-gray-300 group-hover:text-primary-400 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-gray-300 group-hover:text-brand-400 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </div>
