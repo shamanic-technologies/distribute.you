@@ -2,6 +2,7 @@ import { WaitlistForm } from "@/components/waitlist-form";
 import { HeroForm } from "@/components/hero-form";
 import { Navbar } from "@/components/navbar";
 import { DashboardPreview } from "@/components/dashboard-preview";
+import { PerformancePreview } from "@/components/performance-preview";
 import { StatusIndicator } from "@/components/status-indicator";
 import { URLS, DISTRIBUTION_FEATURES, DISTRIBUTION_STEPS } from "@mcpfactory/content";
 import type { FeatureColor } from "@mcpfactory/content";
@@ -224,8 +225,24 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Performance Leaderboard */}
+      <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-10">
+            <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+              Real performance, real data
+            </h2>
+            <p className="text-gray-500 text-lg max-w-2xl mx-auto">
+              Every workflow and every brand is ranked by actual metrics.
+              All data is public — no black boxes.
+            </p>
+          </div>
+          <PerformancePreview />
+        </div>
+      </section>
+
       {/* How it works */}
-      <section id="how-it-works" className="py-20 px-4 bg-gray-50 border-y border-gray-100">
+      <section id="how-it-works" className="py-20 px-4">
         <div className="max-w-4xl mx-auto">
           <h2 className="font-display text-3xl md:text-4xl font-bold text-center mb-14 text-gray-900">
             Three steps. That&apos;s it.
@@ -326,6 +343,7 @@ export default function Home() {
           </div>
           <p className="text-sm text-gray-600 mb-4">The Stripe for Distribution</p>
           <div className="flex flex-wrap justify-center gap-6 text-sm">
+            <a href={URLS.performance} className="hover:text-gray-300 transition">Performance</a>
             <a href={URLS.docs} className="hover:text-gray-300 transition">Docs</a>
             <a href={URLS.github} target="_blank" rel="noopener noreferrer" className="hover:text-gray-300 transition">GitHub</a>
             <a href="#" className="hover:text-gray-300 transition">Privacy</a>
