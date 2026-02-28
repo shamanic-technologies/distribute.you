@@ -6,16 +6,22 @@ export interface BrandEntry {
   emailsSent: number;
   openRate: number;
   clickRate: number;
+  replyRate: number;
   costPerOpenCents: number | null;
+  costPerClickCents: number | null;
+  costPerReplyCents: number | null;
 }
 
 export interface WorkflowEntry {
   workflowName: string;
   displayName: string;
   category: string | null;
-  runCount: number;
+  emailsSent: number;
   openRate: number;
+  clickRate: number;
   replyRate: number;
+  costPerOpenCents: number | null;
+  costPerClickCents: number | null;
   costPerReplyCents: number | null;
 }
 
@@ -40,16 +46,22 @@ export async function fetchLeaderboardPreview(): Promise<LeaderboardPreview | nu
       emailsSent: b.emailsSent as number,
       openRate: b.openRate as number,
       clickRate: b.clickRate as number,
+      replyRate: b.replyRate as number,
       costPerOpenCents: b.costPerOpenCents as number | null,
+      costPerClickCents: b.costPerClickCents as number | null,
+      costPerReplyCents: b.costPerReplyCents as number | null,
     }));
 
     const workflows: WorkflowEntry[] = (data.workflows || []).slice(0, 3).map((w: Record<string, unknown>) => ({
       workflowName: w.workflowName as string,
       displayName: w.displayName as string,
       category: w.category as string | null,
-      runCount: w.runCount as number,
+      emailsSent: w.emailsSent as number,
       openRate: w.openRate as number,
+      clickRate: w.clickRate as number,
       replyRate: w.replyRate as number,
+      costPerOpenCents: w.costPerOpenCents as number | null,
+      costPerClickCents: w.costPerClickCents as number | null,
       costPerReplyCents: w.costPerReplyCents as number | null,
     }));
 
