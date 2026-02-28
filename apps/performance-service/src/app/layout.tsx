@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { URLS } from "@distribute/content";
 import { Navbar } from "@/components/navbar";
 import "./globals.css";
@@ -190,13 +191,14 @@ export default function RootLayout({
         {children}
         <footer className="bg-gray-900 text-gray-400 py-8 px-4">
           <div className="max-w-4xl mx-auto text-center text-sm">
-            <p className="mb-2">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <Image src="/logo-head.jpg" alt="distribute" width={20} height={20} className="rounded" />
               <a href={URLS.landing} className="hover:text-brand-400 transition">
                 distribute
               </a>
-              {" — "}
-              The Stripe for Distribution
-            </p>
+              <span>—</span>
+              <span>The Stripe for Distribution</span>
+            </div>
             <p className="text-xs">
               All data is from real campaigns. Updated hourly.{" "}
               <a href={URLS.github} className="underline hover:text-gray-300">
