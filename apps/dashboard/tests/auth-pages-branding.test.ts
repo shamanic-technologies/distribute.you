@@ -60,8 +60,9 @@ describe("Onboarding page should not reference mcpfactory", () => {
   );
   const content = fs.readFileSync(onboardingPath, "utf-8");
 
-  it("should use api.distribute.you not api.mcpfactory.org", () => {
-    expect(content).toContain("api.distribute.you");
+  it("should use createOrg from api.ts and not reference mcpfactory", () => {
+    expect(content).toContain("createOrg");
+    expect(content).toContain('@/lib/api');
     expect(content).not.toContain("mcpfactory");
   });
 });

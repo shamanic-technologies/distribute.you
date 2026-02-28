@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useOrganization, useOrganizationList, useAuth } from "@clerk/nextjs";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { WORKFLOW_DEFINITIONS, SECTION_LABELS } from "@mcpfactory/content";
-import { useApp } from "@/lib/app-context";
+import { useOrg } from "@/lib/org-context";
 
 interface Brand {
   id: string;
@@ -31,7 +31,7 @@ export function BreadcrumbNav() {
   const { userMemberships, setActive } = useOrganizationList({
     userMemberships: { infinite: true },
   });
-  const { app } = useApp();
+  const { org } = useOrg();
 
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -176,7 +176,7 @@ export function BreadcrumbNav() {
     <nav className="flex items-center text-sm min-w-0" ref={dropdownRef}>
       {/* APP */}
       <Link href="/" className="px-2 py-1 rounded-md hover:bg-gray-100 transition font-medium text-gray-800 truncate max-w-[140px]">
-        {app?.name || "Dashboard"}
+        {org?.name || "Dashboard"}
       </Link>
 
       {/* ORG */}

@@ -10,7 +10,7 @@ import * as path from "path";
  * redirected via useEffect after the API call resolved. Meanwhile, the Header, sidebar,
  * and other dashboard UI rendered normally — causing a visible flash before redirect.
  *
- * Fix: The onboarding check is now inline in DashboardContent. When isLoading or !hasApp,
+ * Fix: The onboarding check is now inline in DashboardContent. When isLoading or !hasOrg,
  * we return an empty div instead of rendering the full dashboard layout.
  */
 describe("Dashboard layout should not flash before onboarding redirect", () => {
@@ -24,16 +24,15 @@ describe("Dashboard layout should not flash before onboarding redirect", () => {
     expect(content).not.toMatch(/function OnboardingRedirect/);
   });
 
-  it("should gate dashboard rendering on app loading state", () => {
-    expect(content).toMatch(/if\s*\(isLoading\s*\|\|\s*!hasApp\)/);
+  it("should gate dashboard rendering on org loading state", () => {
+    expect(content).toMatch(/if\s*\(isLoading\s*\|\|\s*!hasOrg\)/);
   });
 
-  it("should use useApp() in DashboardContent directly", () => {
-    // The useApp() call should be inside DashboardContent, not a separate component
+  it("should use useOrg() in DashboardContent directly", () => {
     const dashboardContentMatch = content.match(
       /function DashboardContent[\s\S]*?^}/m
     );
     expect(dashboardContentMatch).not.toBeNull();
-    expect(dashboardContentMatch![0]).toContain("useApp()");
+    expect(dashboardContentMatch![0]).toContain("useOrg()");
   });
 });
