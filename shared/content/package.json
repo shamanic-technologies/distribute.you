@@ -1,5 +1,5 @@
 {
-  "name": "@mcpfactory/content",
+  "name": "@distribute/content",
   "version": "0.1.0",
   "description": "Single source of truth for MCP Factory content (pricing, MCPs, URLs, features)",
   "main": "dist/index.js",

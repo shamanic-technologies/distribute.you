@@ -24,7 +24,7 @@ jobs:
         run: pnpm install
 
       - name: Build content package
-        run: pnpm --filter @mcpfactory/content build
+        run: pnpm --filter @distribute/content build
 
       - name: Generate README and check for drift
         run: |

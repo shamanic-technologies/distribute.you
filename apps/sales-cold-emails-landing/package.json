@@ -1,5 +1,5 @@
 {
-  "name": "@mcpfactory/sales-cold-emails-landing",
+  "name": "@distribute/sales-cold-emails-landing",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@mcpfactory/content": "workspace:*",
+    "@distribute/content": "workspace:*",
     "next": "^15.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"

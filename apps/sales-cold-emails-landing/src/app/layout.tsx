@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { URLS } from "@mcpfactory/content";
+import { URLS } from "@distribute/content";
 
 const SALES_PRICING_TIERS = [
   { name: "Free", price: 0, period: "one-time", emails: "500" },

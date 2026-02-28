@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { LinkButton } from "./link-button";
 import { Sidebar } from "./sidebar";
-import { URLS } from "@mcpfactory/content";
+import { URLS } from "@distribute/content";
 
 export function DocsLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);

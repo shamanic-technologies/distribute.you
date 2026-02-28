@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { listWorkflows, type Workflow } from "@/lib/api";
-import { parseWorkflowName, getWorkflowDisplayName } from "@mcpfactory/content";
+import { parseWorkflowName, getWorkflowDisplayName } from "@distribute/content";
 
 interface WorkflowSelectionTableProps {
   sectionKey: string;

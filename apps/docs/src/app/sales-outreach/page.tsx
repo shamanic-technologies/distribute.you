@@ -25,14 +25,14 @@ const LLM_INSTRUCTIONS = `# Sales Outreach MCP
 Cold email campaigns from your URL. Find leads, generate emails, send & optimize.
 
 ## Installation
-npx @mcpfactory/sales-outreach
+npx @distribute/sales-outreach
 
 Or add to MCP config:
 {
   "mcpServers": {
     "sales-outreach": {
       "command": "npx",
-      "args": ["@mcpfactory/sales-outreach"],
+      "args": ["@distribute/sales-outreach"],
       "env": {
         "MCPFACTORY_API_KEY": "your-api-key"
       }
@@ -77,7 +77,7 @@ export default function SalesOutreachDocs() {
       <div className="prose prose-lg">
         <h2>Installation</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>npx @mcpfactory/sales-outreach</code>
+          <code>npx @distribute/sales-outreach</code>
         </pre>
 
         <p>Or add to your MCP config:</p>
@@ -86,7 +86,7 @@ export default function SalesOutreachDocs() {
   "mcpServers": {
     "sales-outreach": {
       "command": "npx",
-      "args": ["@mcpfactory/sales-outreach"],
+      "args": ["@distribute/sales-outreach"],
       "env": {
         "MCPFACTORY_API_KEY": "your-api-key"
       }

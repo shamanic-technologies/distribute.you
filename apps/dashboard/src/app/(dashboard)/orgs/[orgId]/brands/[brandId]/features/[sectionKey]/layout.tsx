@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useParams } from "next/navigation";
-import { SECTION_LABELS } from "@mcpfactory/content";
+import { SECTION_LABELS } from "@distribute/content";
 
 export default function WorkflowSectionLayout({
   children,

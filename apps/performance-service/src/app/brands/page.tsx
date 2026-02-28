@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { URLS } from "@mcpfactory/content";
+import { URLS } from "@distribute/content";
 import { fetchLeaderboard } from "@/lib/fetch-leaderboard";
 import { BrandLeaderboard } from "@/components/leaderboard-table";
 

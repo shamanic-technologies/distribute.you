@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { URLS } from "@mcpfactory/content";
+import { URLS } from "@distribute/content";
 
 export function Navbar() {
   return (

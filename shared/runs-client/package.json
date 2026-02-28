@@ -1,5 +1,5 @@
 {
-  "name": "@mcpfactory/runs-client",
+  "name": "@distribute/runs-client",
   "version": "0.1.0",
   "description": "HTTP client for runs-service (run tracking & cost management)",
   "main": "dist/index.js",

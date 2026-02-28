@@ -17,7 +17,7 @@ describe("Context sidebar", () => {
   it("should import WORKFLOW_DEFINITIONS from content package", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
     expect(content).toContain("WORKFLOW_DEFINITIONS");
-    expect(content).toContain("@mcpfactory/content");
+    expect(content).toContain("@distribute/content");
   });
 
   it("should handle all navigation levels", () => {

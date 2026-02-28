@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { URLS } from "@mcpfactory/content";
+import { URLS } from "@distribute/content";
 import { Navbar } from "@/components/navbar";
 import "./globals.css";
 
