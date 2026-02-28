@@ -252,11 +252,13 @@ export default function CreateCampaignPage() {
 
   // Resolve the brand URL from either the selected brand or the new URL input
   const resolvedBrandUrl = useMemo(() => {
-    if (selectedBrandId) {
-      const brand = brands.find((b) => b.id === selectedBrandId);
-      return brand?.brandUrl ?? "";
-    }
-    return newBrandUrl;
+    const raw = selectedBrandId
+      ? brands.find((b) => b.id === selectedBrandId)?.brandUrl ?? ""
+      : newBrandUrl;
+    const trimmed = raw.trim();
+    if (!trimmed) return "";
+    if (!/^https?:\/\//i.test(trimmed)) return `https://${trimmed}`;
+    return trimmed;
   }, [selectedBrandId, brands, newBrandUrl]);
 
   // Campaign actions

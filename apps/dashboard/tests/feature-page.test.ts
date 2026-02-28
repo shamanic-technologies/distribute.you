@@ -293,6 +293,11 @@ describe("Create campaign page", () => {
       expect(content).toContain('type="url"');
       expect(content).toContain("https://example.com");
     });
+
+    it("should auto-prepend https:// to URLs missing a protocol", () => {
+      expect(content).toContain('`https://${trimmed}`');
+      expect(content).toContain("/^https?:\\/\\//i");
+    });
   });
 
   describe("Auto-fill from sales profile", () => {
