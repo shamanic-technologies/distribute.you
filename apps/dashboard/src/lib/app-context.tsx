@@ -8,24 +8,27 @@ interface AppContextValue {
   app: App | null;
   isLoading: boolean;
   hasApp: boolean;
+  isError: boolean;
 }
 
 const AppContext = createContext<AppContextValue>({
   app: null,
   isLoading: true,
   hasApp: false,
+  isError: false,
 });
 
 export function AppContextProvider({ children }: { children: ReactNode }) {
-  const { data, isLoading } = useAuthQuery(
+  const { data, isLoading, isError } = useAuthQuery(
     ["app"],
-    (token) => getApp(token)
+    (token) => getApp(token),
+    { retry: 2 }
   );
 
   const app = data?.app ?? null;
 
   return (
-    <AppContext.Provider value={{ app, isLoading, hasApp: app !== null }}>
+    <AppContext.Provider value={{ app, isLoading, hasApp: app !== null, isError }}>
       {children}
     </AppContext.Provider>
   );
