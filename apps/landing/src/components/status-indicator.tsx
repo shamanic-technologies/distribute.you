@@ -43,7 +43,7 @@ export function StatusIndicator() {
       href={STATUS_PAGE_URL}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex items-center gap-2 hover:text-primary-400 transition text-sm"
+      className="inline-flex items-center gap-2 hover:text-brand-400 transition text-sm"
     >
       <span className={`w-2 h-2 ${config.color} rounded-full animate-pulse`} />
       {config.text}

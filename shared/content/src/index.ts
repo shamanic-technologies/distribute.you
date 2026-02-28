@@ -3,7 +3,7 @@ export {
   DISTRIBUTION_FEATURES,
   DISTRIBUTION_STEPS,
 } from "./features.js";
-export type { DistributionFeature, DistributionStep } from "./features.js";
+export type { DistributionFeature, DistributionStep, FeatureColor } from "./features.js";
 export { BRAND } from "./brand.js";
 export {
   WORKFLOW_DEFINITIONS,

@@ -13,7 +13,7 @@ export function Navbar() {
         {/* Logo */}
         <a href="/" className="flex items-center gap-2">
           <span className="font-display font-bold text-xl text-gray-900">distribute</span>
-          <span className="text-[10px] text-primary-500 font-medium bg-primary-50 px-1.5 py-0.5 rounded">.you</span>
+          <span className="text-[10px] text-brand-500 font-medium bg-brand-50 px-1.5 py-0.5 rounded">.you</span>
         </a>
 
         {/* Desktop nav */}

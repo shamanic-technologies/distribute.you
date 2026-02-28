@@ -1,9 +1,12 @@
+export type FeatureColor = "emerald" | "cyan" | "blue" | "violet" | "pink" | "amber";
+
 export interface DistributionFeature {
   id: string;
   title: string;
   description: string;
   metric: string;
   status: "live" | "coming-soon";
+  color: FeatureColor;
 }
 
 export const DISTRIBUTION_FEATURES: DistributionFeature[] = [
@@ -13,6 +16,7 @@ export const DISTRIBUTION_FEATURES: DistributionFeature[] = [
     description: "Personalized welcome emails that match your brand. Zero configuration needed.",
     metric: "Open Rate",
     status: "live",
+    color: "emerald",
   },
   {
     id: "cold-outreach",
@@ -20,6 +24,7 @@ export const DISTRIBUTION_FEATURES: DistributionFeature[] = [
     description: "Find leads, generate personalized emails, send and optimize automatically.",
     metric: "Reply Rate",
     status: "live",
+    color: "cyan",
   },
   {
     id: "webinar-lifecycle",
@@ -27,6 +32,7 @@ export const DISTRIBUTION_FEATURES: DistributionFeature[] = [
     description: "Registration confirmations, reminders, follow-ups. The full flow, automated.",
     metric: "Attendance Rate",
     status: "coming-soon",
+    color: "blue",
   },
   {
     id: "lifecycle-campaigns",
@@ -34,6 +40,7 @@ export const DISTRIBUTION_FEATURES: DistributionFeature[] = [
     description: "Onboarding sequences, re-engagement, and win-back flows that run on autopilot.",
     metric: "Conversion Rate",
     status: "coming-soon",
+    color: "violet",
   },
   {
     id: "downsell-retention",
@@ -41,6 +48,7 @@ export const DISTRIBUTION_FEATURES: DistributionFeature[] = [
     description: "Smart follow-ups when users disengage. Reduce churn without lifting a finger.",
     metric: "Retention Rate",
     status: "coming-soon",
+    color: "pink",
   },
   {
     id: "social-distribution",
@@ -48,6 +56,7 @@ export const DISTRIBUTION_FEATURES: DistributionFeature[] = [
     description: "Your content, repurposed and distributed across every social channel.",
     metric: "Engagement Rate",
     status: "coming-soon",
+    color: "amber",
   },
 ];
 
