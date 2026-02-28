@@ -29,10 +29,10 @@ describe("Feature overview page", () => {
     expect(content).toContain("implemented");
   });
 
-  it("should list workflows for implemented features", () => {
+  it("should use leaderboard data for implemented features", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("listWorkflows");
-    expect(content).toContain("WorkflowCard");
+    expect(content).toContain("fetchSectionLeaderboard");
+    expect(content).toContain("WorkflowLeaderboardEntry");
   });
 });
 
