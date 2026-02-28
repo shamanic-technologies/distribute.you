@@ -1,8 +1,8 @@
 import { WaitlistForm } from "@/components/waitlist-form";
+import { HeroForm } from "@/components/hero-form";
 import { Navbar } from "@/components/navbar";
 import { DashboardPreview } from "@/components/dashboard-preview";
 import { StatusIndicator } from "@/components/status-indicator";
-import { LinkButton } from "@/components/link-button";
 import { URLS, DISTRIBUTION_FEATURES, DISTRIBUTION_STEPS } from "@mcpfactory/content";
 
 export default function Home() {
@@ -32,26 +32,10 @@ export default function Home() {
             </span>
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-3 justify-center mb-6">
-            <LinkButton
-              href={URLS.signUp}
-              className="px-8 py-3.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 font-medium text-base shadow-sm transition"
-            >
-              Get Early Access
-            </LinkButton>
-            <a
-              href="#how-it-works"
-              className="inline-flex items-center justify-center px-6 py-3.5 text-gray-600 hover:text-gray-900 font-medium text-base transition"
-            >
-              See how it works
-              <svg className="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </a>
-          </div>
+          <HeroForm signUpUrl={URLS.signUp} />
 
-          <p className="text-sm text-gray-400">
-            Free to start. You only pay for the AI costs.
+          <p className="text-sm text-gray-400 mt-6">
+            Free to start. No markup — you only pay the raw cost of AI, APIs, and tools.
           </p>
         </div>
       </section>
@@ -103,9 +87,9 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h3 className="font-semibold text-gray-900 text-sm mb-1">Pay only for AI</h3>
+              <h3 className="font-semibold text-gray-900 text-sm mb-1">Zero markup</h3>
               <p className="text-sm text-gray-500">
-                No platform markup. You pay the raw AI cost. Full transparency on every dollar.
+                We pass through every cost at raw price — AI, APIs, email tools, ad platforms. No markup, ever.
               </p>
             </div>
           </div>
@@ -318,7 +302,7 @@ export default function Home() {
         <div className="max-w-4xl mx-auto text-center">
           <div className="flex items-center justify-center gap-2 mb-3">
             <span className="font-display font-bold text-white text-lg">distribute</span>
-            <span className="text-[10px] text-primary-400 font-medium bg-primary-500/10 px-1.5 py-0.5 rounded">.eu</span>
+            <span className="text-[10px] text-primary-400 font-medium bg-primary-500/10 px-1.5 py-0.5 rounded">.you</span>
           </div>
           <p className="text-sm text-gray-600 mb-4">The Stripe for Distribution</p>
           <div className="flex flex-wrap justify-center gap-6 text-sm">
