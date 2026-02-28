@@ -4,14 +4,14 @@ import { URLS } from "@mcpfactory/content";
 
 export const metadata: Metadata = {
   title: "Quick Start",
-  description: "Get started with MCP Factory in 5 minutes. Connect from ChatGPT, Claude, or Cursor and launch your first campaign.",
+  description: "Get started with distribute in 5 minutes. Connect from ChatGPT, Claude, or Cursor and launch your first campaign.",
   openGraph: {
-    title: "Quick Start | MCP Factory Docs",
-    description: "Get started with MCP Factory in 5 minutes.",
+    title: "Quick Start | distribute Docs",
+    description: "Get started with distribute in 5 minutes.",
   },
 };
 
-const LLM_INSTRUCTIONS = `# MCP Factory Quick Start
+const LLM_INSTRUCTIONS = `# distribute Quick Start
 
 ## 1. Create Account
 Sign up at: https://{URLS.signUp.replace("https://", "")}
@@ -19,7 +19,7 @@ Sign up at: https://{URLS.signUp.replace("https://", "")}
 ## 2. Get API Key
 Dashboard → API Keys
 
-## 3. Configure BYOK Keys (Optional)
+## 3. Configure Your API Keys (Optional)
 Dashboard → API Keys:
 - Apollo: For lead search
 - Anthropic: For AI email generation
@@ -55,7 +55,7 @@ export default function QuickstartPage() {
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
       <p className="text-xl text-gray-600 mb-8">
-        Get up and running with MCP Factory in 5 minutes.
+        Get up and running with distribute in 5 minutes.
       </p>
 
       <div className="prose prose-lg">
@@ -71,10 +71,10 @@ export default function QuickstartPage() {
         <h2>2. Get Your API Key</h2>
         <p>
           In the dashboard, go to{" "}
-          <strong>API Keys</strong> and copy your MCP Factory API key.
+          <strong>API Keys</strong> and copy your distribute API key.
         </p>
 
-        <h2>3. Configure BYOK Keys (Optional)</h2>
+        <h2>3. Configure Your API Keys (Optional)</h2>
         <p>
           For advanced features, add your own API keys in{" "}
           <strong>API Keys</strong>:

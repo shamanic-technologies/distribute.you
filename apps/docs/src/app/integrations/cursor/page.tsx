@@ -3,15 +3,15 @@ import { CopyForLLM } from "@/components/copy-for-llm";
 
 export const metadata: Metadata = {
   title: "Cursor Integration",
-  description: "Connect MCP Factory to Cursor IDE. Launch sales campaigns and automate outreach directly from your code editor.",
+  description: "Connect distribute to Cursor IDE. Launch campaigns and automate distribution directly from your code editor.",
   openGraph: {
-    title: "Cursor Integration | MCP Factory",
-    description: "Use MCP Factory tools directly in Cursor IDE.",
+    title: "Cursor Integration | distribute",
+    description: "Use distribute tools directly in Cursor IDE.",
   },
-  keywords: ["Cursor", "Cursor IDE", "MCP", "sales automation", "lead generation", "cold email", "AI coding"],
+  keywords: ["Cursor", "Cursor IDE", "MCP", "distribution automation", "lead generation", "cold email", "AI coding"],
 };
 
-const LLM_INSTRUCTIONS = `# MCP Factory + Cursor Integration
+const LLM_INSTRUCTIONS = `# distribute + Cursor Integration
 
 ## Setup
 Add to .cursor/mcp.json (project) or ~/.cursor/mcp.json (global):
@@ -55,7 +55,7 @@ export default function CursorIntegrationPage() {
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
       <p className="text-xl text-gray-600 mb-8">
-        Connect MCP Factory to Cursor IDE and launch campaigns from your code editor.
+        Connect distribute to Cursor IDE and launch campaigns from your code editor.
       </p>
 
       <div className="prose prose-lg">
@@ -78,7 +78,7 @@ export default function CursorIntegrationPage() {
 }`}</code>
         </pre>
         <p>
-          Replace <code>YOUR_API_KEY</code> with your MCP Factory API key from{" "}
+          Replace <code>YOUR_API_KEY</code> with your distribute API key from{" "}
           <a href="https://dashboard.mcpfactory.org/api-keys">your dashboard</a>.
         </p>
         <p><strong>Restart Cursor</strong> after saving the configuration.</p>
@@ -158,7 +158,7 @@ How many emails sent, opened, and replied?"`}</code>
 
         <h2>Advanced: Cursor Skills</h2>
         <p>
-          For more advanced usage, you can also install MCP Factory as a{" "}
+          For more advanced usage, you can also install distribute as a{" "}
           <a href="/integrations/cursor-skill">Cursor Skill</a> which provides
           additional context and guidance to the AI.
         </p>

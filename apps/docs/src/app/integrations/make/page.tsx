@@ -2,10 +2,10 @@ import { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Make.com Integration",
-  description: "Create visual automation scenarios with MCP Factory and Make.com. HTTP modules, webhooks, and example scenarios.",
+  description: "Create visual automation scenarios with distribute and Make.com. HTTP modules, webhooks, and example scenarios.",
   openGraph: {
-    title: "Make.com Integration | MCP Factory Docs",
-    description: "Automate MCP Factory campaigns with Make.com.",
+    title: "Make.com Integration | distribute Docs",
+    description: "Automate distribute campaigns with Make.com.",
   },
 };
 
@@ -14,14 +14,14 @@ export default function MakeIntegrationPage() {
     <div className="max-w-3xl mx-auto px-8 py-12">
       <h1 className="text-4xl font-bold mb-4">Make.com Integration</h1>
       <p className="text-xl text-gray-600 mb-8">
-        Create visual automation scenarios with MCP Factory and Make.com.
+        Create visual automation scenarios with distribute and Make.com.
       </p>
 
       <div className="prose prose-lg">
         <h2>Overview</h2>
         <p>
           Make.com (formerly Integromat) is a visual automation platform.
-          Connect MCP Factory to build complex scenarios with branching logic
+          Connect distribute to build complex scenarios with branching logic
           and data transformations.
         </p>
 
@@ -250,7 +250,7 @@ Request content:
 
         <h2>Rate Limits</h2>
         <p>
-          MCP Factory allows 100 requests/minute on Free, 1,000/minute on Pro.
+          distribute allows 100 requests/minute on Free, 1,000/minute on Pro.
           Use Make.com&apos;s built-in rate limiting to stay within bounds.
         </p>
       </div>

@@ -3,15 +3,15 @@ import { CopyForLLM } from "@/components/copy-for-llm";
 
 export const metadata: Metadata = {
   title: "Claude Integration",
-  description: "Connect MCP Factory to Claude. Use Claude.ai, Claude Desktop, or Claude Code to launch sales campaigns and automate outreach.",
+  description: "Connect distribute to Claude. Use Claude.ai, Claude Desktop, or Claude Code to launch campaigns and automate distribution.",
   openGraph: {
-    title: "Claude Integration | MCP Factory",
-    description: "Use MCP Factory tools directly in Claude.",
+    title: "Claude Integration | distribute",
+    description: "Use distribute tools directly in Claude.",
   },
-  keywords: ["Claude", "Anthropic", "MCP", "sales automation", "lead generation", "cold email", "Claude Desktop"],
+  keywords: ["Claude", "Anthropic", "MCP", "distribution automation", "lead generation", "cold email", "Claude Desktop"],
 };
 
-const LLM_INSTRUCTIONS = `# MCP Factory + Claude Integration
+const LLM_INSTRUCTIONS = `# distribute + Claude Integration
 
 ## Supported Claude Clients
 - Claude.ai (web)
@@ -22,7 +22,7 @@ const LLM_INSTRUCTIONS = `# MCP Factory + Claude Integration
 1. Go to Settings → Integrations
 2. Click "Add more"
 3. Enter:
-   - Name: MCP Factory
+   - Name: distribute
    - URL: https://mcp.mcpfactory.org/mcp
 4. Enable tools in chat
 
@@ -64,7 +64,7 @@ export default function ClaudeIntegrationPage() {
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
       <p className="text-xl text-gray-600 mb-8">
-        Connect MCP Factory to Claude and launch campaigns from Anthropic&apos;s AI assistant.
+        Connect distribute to Claude and launch campaigns from Anthropic&apos;s AI assistant.
       </p>
 
       <div className="prose prose-lg">
@@ -83,12 +83,12 @@ export default function ClaudeIntegrationPage() {
           <li>
             Enter the integration details:
             <ul>
-              <li><strong>Integration name:</strong> MCP Factory</li>
+              <li><strong>Integration name:</strong> distribute</li>
               <li><strong>Integration URL:</strong> <code>https://mcp.mcpfactory.org/mcp</code></li>
             </ul>
           </li>
           <li>Save and enable the integration</li>
-          <li>In new chats, make sure to enable the MCP Factory tools</li>
+          <li>In new chats, make sure to enable the distribute tools</li>
         </ol>
 
         <h2>Claude Desktop Setup</h2>
@@ -112,7 +112,7 @@ export default function ClaudeIntegrationPage() {
         <p>Restart Claude Desktop after saving.</p>
 
         <h2>Claude Code Setup</h2>
-        <p>Add MCP Factory using the CLI:</p>
+        <p>Add distribute using the CLI:</p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>claude mcp add mcpfactory --transport http https://mcp.mcpfactory.org/mcp</code>
         </pre>

@@ -34,9 +34,9 @@ export function DocsLayout({ children }: { children: React.ReactNode }) {
             </button>
             
             <Link href="/" className="flex items-center gap-2">
-              <Image src="/logo-head.jpg" alt="MCP Factory" width={32} height={32} className="rounded-md" />
+              <Image src="/logo-head.jpg" alt="distribute" width={32} height={32} className="rounded-md" />
               <span className="font-display font-bold text-lg text-primary-600">
-                MCP Factory
+                distribute
               </span>
               <span className="text-gray-400 font-light hidden sm:inline">Docs</span>
             </Link>

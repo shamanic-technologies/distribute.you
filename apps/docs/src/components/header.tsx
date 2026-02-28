@@ -9,9 +9,9 @@ export function Header() {
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo-head.jpg" alt="MCP Factory" width={32} height={32} className="rounded-md" />
+            <Image src="/logo-head.jpg" alt="distribute" width={32} height={32} className="rounded-md" />
             <span className="font-display font-bold text-lg text-primary-600">
-              MCP Factory
+              distribute
             </span>
             <span className="text-gray-400 font-light">Docs</span>
           </Link>

@@ -1,4 +1,4 @@
-# MCP Factory Performance - https://performance.mcpfactory.org
+# distribute Performance - https://performance.mcpfactory.org
 User-agent: *
 Allow: /
 

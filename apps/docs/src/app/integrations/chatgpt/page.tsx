@@ -3,19 +3,19 @@ import { CopyForLLM } from "@/components/copy-for-llm";
 
 export const metadata: Metadata = {
   title: "ChatGPT Integration",
-  description: "Connect MCP Factory to ChatGPT. Launch sales campaigns, find leads, and automate outreach directly from OpenAI's ChatGPT.",
+  description: "Connect distribute to ChatGPT. Launch campaigns, find leads, and automate outreach directly from OpenAI's ChatGPT.",
   openGraph: {
-    title: "ChatGPT Integration | MCP Factory",
-    description: "Use MCP Factory tools directly in ChatGPT.",
+    title: "ChatGPT Integration | distribute",
+    description: "Use distribute tools directly in ChatGPT.",
   },
-  keywords: ["ChatGPT", "MCP", "sales automation", "lead generation", "cold email", "OpenAI"],
+  keywords: ["ChatGPT", "MCP", "distribution automation", "lead generation", "cold email", "OpenAI"],
 };
 
-const LLM_INSTRUCTIONS = `# MCP Factory + ChatGPT Integration
+const LLM_INSTRUCTIONS = `# distribute + ChatGPT Integration
 
 ## Requirements
 - ChatGPT Plus, Pro, Team, or Enterprise subscription
-- MCP Factory API key
+- distribute API key
 
 ## Setup Steps
 1. Open ChatGPT Settings → Connectors
@@ -50,14 +50,14 @@ export default function ChatGPTIntegrationPage() {
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
       <p className="text-xl text-gray-600 mb-8">
-        Connect MCP Factory to ChatGPT and launch campaigns directly from OpenAI&apos;s interface.
+        Connect distribute to ChatGPT and launch campaigns directly from OpenAI&apos;s interface.
       </p>
 
       <div className="prose prose-lg">
         <h2>Requirements</h2>
         <ul>
           <li><strong>ChatGPT Plus, Pro, Team, or Enterprise</strong> subscription</li>
-          <li><strong>MCP Factory API key</strong> from your dashboard</li>
+          <li><strong>distribute API key</strong> from your dashboard</li>
         </ul>
 
         <h2>Setup Steps</h2>

@@ -54,7 +54,7 @@ export default async function HomePage() {
           </h2>
           <p className="text-gray-600 mb-6">
             Most outreach platforms hide their real numbers. We don&apos;t.
-            Every campaign that runs through MCP Factory contributes to these public leaderboards.
+            Every campaign that runs through distribute contributes to these public leaderboards.
             This means you can make informed decisions based on real data, not marketing claims.
           </p>
           <div className="flex flex-wrap gap-4 justify-center text-sm">

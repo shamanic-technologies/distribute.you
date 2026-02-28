@@ -11,7 +11,7 @@ const SALES_FEATURES = [
 ];
 
 const SALES_STEPS = [
-  { number: 1, title: "Connect Your AI", description: "Add MCP Factory to ChatGPT, Claude, or Cursor", code: "https://mcp.mcpfactory.org/mcp" },
+  { number: 1, title: "Connect Your AI", description: "Add distribute to ChatGPT, Claude, or Cursor", code: "https://mcp.mcpfactory.org/mcp" },
   { number: 2, title: "Describe Your Campaign", description: "Tell the AI who to target and what to say", example: '"Send cold emails to CTOs at B2B SaaS companies about our dev tool"' },
   { number: 3, title: "We Handle The Rest", description: "Finds leads, writes emails, sends, and optimizes" },
   { number: 4, title: "You Get Meetings", description: "Reply to interested prospects and close deals" },
@@ -19,8 +19,8 @@ const SALES_STEPS = [
 
 const SALES_FAQ = [
   { question: "Is this really open source?", answer: "Yes! 100% open source under MIT license. You can self-host it, fork it, or contribute. Check out the GitHub repo." },
-  { question: "How many emails can I send?", answer: "Free: 500 emails (one-time). Hobby: 3,000/month. Standard: 100,000/month. Growth: 500,000/month. Plus BYOK costs for leads and AI." },
-  { question: "What are BYOK costs?", answer: "BYOK = Bring Your Own Key. You pay Apollo for leads (~$0.01/lead) and Anthropic for AI (~$0.01/email) directly at their rates. Full transparency, no markup." },
+  { question: "How many emails can I send?", answer: "Free: 500 emails (one-time). Hobby: 3,000/month. Standard: 100,000/month. Growth: 500,000/month. Plus your own API key costs for leads and AI." },
+  { question: "What are the API key costs?", answer: "You pay Apollo for leads (~$0.01/lead) and Anthropic for AI (~$0.01/email) directly at their rates using your own API keys. Full transparency, no markup." },
   { question: "Will my emails land in spam?", answer: "We use best practices: proper warmup, optimal send times, throttling, and your own domain. Most users see 95%+ inbox placement." },
   { question: "What AI assistants work with this?", answer: "ChatGPT (Plus, Pro, Team), Claude (Web, Desktop, Code), and Cursor IDE. Any MCP-compatible client works." },
 ];
@@ -73,7 +73,7 @@ export default async function Home() {
           <div className="flex items-center gap-2">
             <Image
               src="https://mcpfactory.org/logo-head.jpg"
-              alt="MCP Factory"
+              alt="distribute"
               width={36}
               height={36}
               className="rounded-lg"
@@ -134,8 +134,8 @@ export default async function Home() {
             <span className="text-gray-800">That Actually Work</span>
           </h1>
           <p className="text-xl text-gray-600 mb-4 max-w-2xl mx-auto">
-            <span className="font-semibold text-primary-600">Done For You</span>, with{" "}
-            <span className="font-semibold text-accent-600">Your Own API Keys</span>.
+            <span className="font-semibold text-primary-600">The Stripe for Distribution</span>, with{" "}
+            <span className="font-semibold text-accent-600">your own API keys</span>.
           </p>
           <p className="text-lg text-gray-500 mb-8 max-w-2xl mx-auto">
             You give us your URL + target audience. We handle lead finding, email generation,
@@ -229,7 +229,7 @@ export default async function Home() {
         </section>
       )}
 
-      {/* DFY + BYOK */}
+      {/* What makes us different */}
       <section className="py-16 px-4 bg-white">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12 text-gray-800">
@@ -241,9 +241,9 @@ export default async function Home() {
               <div className="w-14 h-14 bg-primary-100 rounded-xl flex items-center justify-center mb-4 border border-primary-200">
                 <span className="text-3xl">🎯</span>
               </div>
-              <h3 className="font-bold text-xl mb-2 text-gray-800">Done For You</h3>
+              <h3 className="font-bold text-xl mb-2 text-gray-800">We do the work</h3>
               <p className="text-gray-600 mb-4">
-                Competitors give you tools. We do the work.
+                Competitors give you tools. distribute does the work.
               </p>
               <div className="text-sm text-gray-500 space-y-1">
                 <p>You say: <span className="font-mono bg-white/80 px-2 py-0.5 rounded text-primary-700">&quot;Target CTOs at SaaS companies&quot;</span></p>
@@ -255,7 +255,7 @@ export default async function Home() {
               <div className="w-14 h-14 bg-accent-100 rounded-xl flex items-center justify-center mb-4 border border-accent-200">
                 <span className="text-3xl">🔑</span>
               </div>
-              <h3 className="font-bold text-xl mb-2 text-gray-800">Bring Your Own Keys</h3>
+              <h3 className="font-bold text-xl mb-2 text-gray-800">Your own API keys</h3>
               <p className="text-gray-600 mb-4">
                 Use your own API keys. Pay only for what you use.
               </p>
@@ -393,7 +393,7 @@ export default async function Home() {
           </div>
 
           <p className="text-center text-gray-500 mt-8 text-sm">
-            + BYOK costs: Apollo ({BYOK_COST_ESTIMATES.apolloPerLead}) + Anthropic ({BYOK_COST_ESTIMATES.anthropicPerEmail})
+            + Your own API key costs: Apollo ({BYOK_COST_ESTIMATES.apolloPerLead}) + Anthropic ({BYOK_COST_ESTIMATES.anthropicPerEmail})
           </p>
         </div>
       </section>
@@ -455,12 +455,12 @@ export default async function Home() {
           <div className="flex items-center justify-center gap-2 mb-4">
             <Image
               src="https://mcpfactory.org/logo-head.jpg"
-              alt="MCP Factory"
+              alt="distribute"
               width={32}
               height={32}
               className="rounded-md"
             />
-            <span className="font-bold text-white text-lg">MCP Factory</span>
+            <span className="font-bold text-white text-lg">distribute</span>
           </div>
           <p className="text-sm mb-4">Open-source cold email automation</p>
           <div className="flex justify-center gap-6 text-sm">
@@ -479,7 +479,7 @@ export default async function Home() {
               GitHub
             </a>
           </div>
-          <p className="text-xs mt-6">© 2025 MCP Factory. MIT License. 100% Open Source.</p>
+          <p className="text-xs mt-6">© 2025 distribute. MIT License. 100% Open Source.</p>
         </div>
       </footer>
     </main>

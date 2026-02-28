@@ -3,14 +3,14 @@ import { CopyForLLM } from "@/components/copy-for-llm";
 
 export const metadata: Metadata = {
   title: "Authentication",
-  description: "Set up your MCP Factory API keys and configure BYOK credentials for Apollo, Anthropic, and more.",
+  description: "Set up your distribute API keys and configure your own API credentials for Apollo, Anthropic, and more.",
   openGraph: {
-    title: "Authentication | MCP Factory Docs",
-    description: "Configure API keys and BYOK credentials.",
+    title: "Authentication | distribute Docs",
+    description: "Configure API keys and credentials.",
   },
 };
 
-const LLM_INSTRUCTIONS = `# MCP Factory Authentication
+const LLM_INSTRUCTIONS = `# distribute Authentication
 
 ## 1. Create Account
 Sign up at: https://dashboard.mcpfactory.org/sign-up
@@ -27,14 +27,14 @@ Authorization: Bearer mcpf_YOUR_KEY
 ### For REST API:
 X-API-Key: mcpf_YOUR_KEY
 
-## 4. BYOK Keys (Optional)
+## 4. Your Own API Keys (Optional)
 Dashboard → API Keys
 
 Supported providers:
 - Apollo: For lead search (get key at apollo.io)
 - Anthropic: For AI email generation (get key at console.anthropic.com)
 
-BYOK keys are encrypted with AES-256-GCM.`;
+Keys are encrypted with AES-256-GCM.`;
 
 export default function AuthenticationPage() {
   return (
@@ -44,7 +44,7 @@ export default function AuthenticationPage() {
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
       <p className="text-xl text-gray-600 mb-8">
-        Set up your API keys and BYOK credentials to start using MCP Factory.
+        Set up your API keys and configure your own provider credentials to start using distribute.
       </p>
 
       <div className="prose prose-lg">
@@ -60,7 +60,7 @@ export default function AuthenticationPage() {
         <h2>2. Get Your API Key</h2>
         <p>
           After signing in, go to{" "}
-          <strong>API Keys</strong> to generate your MCP Factory API
+          <strong>API Keys</strong> to generate your distribute API
           key.
         </p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
@@ -86,9 +86,9 @@ export default function AuthenticationPage() {
   -H "X-API-Key: YOUR_API_KEY"`}</code>
         </pre>
 
-        <h2>4. Configure BYOK Keys (Optional)</h2>
+        <h2>4. Configure Your API Keys (Optional)</h2>
         <p>
-          MCP Factory can use your own API keys for underlying services. Go to{" "}
+          distribute can use your own API keys for underlying services. Go to{" "}
           <strong>API Keys</strong> to configure them.
         </p>
 
@@ -123,7 +123,7 @@ export default function AuthenticationPage() {
           </tbody>
         </table>
 
-        <h3>Benefits of BYOK</h3>
+        <h3>Benefits of Using Your Own Keys</h3>
         <ul>
           <li>Use your own API credits and pricing</li>
           <li>Higher rate limits</li>

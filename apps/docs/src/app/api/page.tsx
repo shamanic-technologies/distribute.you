@@ -6,14 +6,14 @@ const API_RATE_LIMITS = { free: "100 requests/minute" };
 
 export const metadata: Metadata = {
   title: "API Reference",
-  description: "Complete REST API reference for MCP Factory. Endpoints for campaigns, leads, company scraping, and more.",
+  description: "Complete REST API reference for distribute. Endpoints for campaigns, leads, company scraping, and more.",
   openGraph: {
-    title: "API Reference | MCP Factory Docs",
-    description: "REST API documentation for MCP Factory.",
+    title: "API Reference | distribute Docs",
+    description: "REST API documentation for distribute.",
   },
 };
 
-const LLM_INSTRUCTIONS = `# MCP Factory REST API Reference
+const LLM_INSTRUCTIONS = `# distribute REST API Reference
 
 ## Base URL
 https://api.mcpfactory.org/v1
@@ -58,7 +58,7 @@ export default function ApiOverviewPage() {
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
       <p className="text-xl text-gray-600 mb-8">
-        Direct REST API access to MCP Factory services.
+        Direct REST API access to distribute services.
       </p>
 
       <div className="prose prose-lg">

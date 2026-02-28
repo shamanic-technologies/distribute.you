@@ -8,11 +8,11 @@ export const revalidate = 300;
 export const metadata: Metadata = {
   title: "Brand Leaderboard",
   description:
-    "See how each brand performs with MCP Factory cold email campaigns. Open rates, website visits, replies, and cost per action.",
+    "See how each brand performs with distribute cold email campaigns. Open rates, website visits, replies, and cost per action.",
   openGraph: {
-    title: "Brand Leaderboard — MCP Factory Performance",
+    title: "Brand Leaderboard — distribute Performance",
     description:
-      "Compare brand performance across MCP Factory cold email campaigns. Real open rates, visit rates, reply rates, and cost per action.",
+      "Compare brand performance across distribute cold email campaigns. Real open rates, visit rates, reply rates, and cost per action.",
     url: `${URLS.performance}/brands`,
   },
   alternates: {
@@ -32,7 +32,7 @@ export default async function BrandsPage() {
             Brand Leaderboard
           </h1>
           <p className="text-gray-600 mb-8">
-            Performance data for every brand running campaigns through MCP Factory.
+            Performance data for every brand running campaigns through distribute.
             Click column headers to sort.
           </p>
 

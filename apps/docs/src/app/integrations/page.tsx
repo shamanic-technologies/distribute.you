@@ -4,14 +4,14 @@ import { CopyForLLM } from "@/components/copy-for-llm";
 
 export const metadata: Metadata = {
   title: "Integrations",
-  description: "Connect MCP Factory to ChatGPT, Claude, Cursor, n8n, Zapier, Make.com, and more. Automate workflows with MCP and REST API.",
+  description: "Connect distribute to ChatGPT, Claude, Cursor, n8n, Zapier, Make.com, and more. Automate workflows with MCP and REST API.",
   openGraph: {
-    title: "Integrations | MCP Factory Docs",
-    description: "Connect MCP Factory to your favorite tools.",
+    title: "Integrations | distribute Docs",
+    description: "Connect distribute to your favorite tools.",
   },
 };
 
-const LLM_INSTRUCTIONS = `# MCP Factory Integrations
+const LLM_INSTRUCTIONS = `# distribute Integrations
 
 ## AI Clients (MCP Protocol)
 - ChatGPT: Settings → Connectors → Add https://mcp.mcpfactory.org/mcp
@@ -25,7 +25,7 @@ const LLM_INSTRUCTIONS = `# MCP Factory Integrations
 - Make.com: Use HTTP module
 
 ## Integration Methods
-1. MCP Protocol (Recommended): Full DFY automation from AI clients
+1. MCP Protocol (Recommended): Full automation from AI clients
 2. REST API: Direct HTTP calls from any platform
 3. Webhooks: Real-time event notifications
 
@@ -38,25 +38,25 @@ https://api.mcpfactory.org/v1`;
 const AI_CLIENTS = [
   {
     name: "ChatGPT",
-    description: "Connect MCP Factory to OpenAI's ChatGPT (Plus, Pro, Team, Enterprise).",
+    description: "Connect distribute to OpenAI's ChatGPT (Plus, Pro, Team, Enterprise).",
     href: "/integrations/chatgpt",
     icon: "🤖",
   },
   {
     name: "Claude",
-    description: "Use MCP Factory with Claude.ai, Claude Desktop, or Claude Code.",
+    description: "Use distribute with Claude.ai, Claude Desktop, or Claude Code.",
     href: "/integrations/claude",
     icon: "🧠",
   },
   {
     name: "Cursor",
-    description: "Connect MCP Factory to Cursor IDE for AI-assisted workflows.",
+    description: "Connect distribute to Cursor IDE for AI-assisted workflows.",
     href: "/integrations/cursor",
     icon: "🖥️",
   },
   {
     name: "Cursor Skill",
-    description: "Advanced: Install MCP Factory as a Cursor skill with custom instructions.",
+    description: "Advanced: Install distribute as a Cursor skill with custom instructions.",
     href: "/integrations/cursor-skill",
     icon: "⚙️",
   },
@@ -71,7 +71,7 @@ const AUTOMATION_PLATFORMS = [
   },
   {
     name: "Zapier",
-    description: "Connect MCP Factory to 5,000+ apps with Zapier automations.",
+    description: "Connect distribute to 5,000+ apps with Zapier automations.",
     href: "/integrations/zapier",
     icon: "⚡",
   },
@@ -91,7 +91,7 @@ export default function IntegrationsPage() {
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
       <p className="text-xl text-gray-600 mb-8">
-        Connect MCP Factory to your favorite tools and platforms.
+        Connect distribute to your favorite tools and platforms.
       </p>
 
       <h2 className="text-2xl font-semibold mb-4">AI Clients</h2>
@@ -138,12 +138,12 @@ export default function IntegrationsPage() {
 
       <div className="prose prose-lg mt-12">
         <h2>Integration Methods</h2>
-        <p>MCP Factory can be integrated in three ways:</p>
+        <p>distribute can be integrated in three ways:</p>
 
         <h3>1. MCP Protocol (Recommended)</h3>
         <p>
           Use our MCPs directly from Claude, Cursor, or any MCP-compatible
-          client. This is the most powerful option with full DFY automation.
+          client. This is the most powerful option with full automation.
         </p>
 
         <h3>2. REST API</h3>
@@ -160,7 +160,7 @@ export default function IntegrationsPage() {
 
         <h2>Need Help?</h2>
         <p>
-          If you need help integrating MCP Factory with your stack, reach out at{" "}
+          If you need help integrating distribute with your stack, reach out at{" "}
           <a href="mailto:support@mcpfactory.org">support@mcpfactory.org</a>.
         </p>
       </div>

@@ -30,7 +30,7 @@ export default function BrandsLoading() {
             Brand Leaderboard
           </h1>
           <p className="text-gray-600 mb-8">
-            Performance data for every brand running campaigns through MCP Factory.
+            Performance data for every brand running campaigns through distribute.
             Click column headers to sort.
           </p>
 
