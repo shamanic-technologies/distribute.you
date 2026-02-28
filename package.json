@@ -11,11 +11,9 @@
   },
   "scripts": {
     "dev": "turbo dev",
-    "dev:api-service": "pnpm --filter @mcpfactory/api-service dev",
     "dev:dashboard": "pnpm --filter @mcpfactory/dashboard dev",
     "dev:docs": "pnpm --filter @mcpfactory/docs dev",
     "dev:landing": "pnpm --filter @mcpfactory/landing dev",
-    "dev:mcp-service": "pnpm --filter @mcpfactory/mcp-service dev",
     "dev:performance-service": "pnpm --filter @mcpfactory/performance-service dev",
     "dev:sales-cold-emails-landing": "pnpm --filter @mcpfactory/sales-cold-emails-landing dev",
     "build": "turbo build",

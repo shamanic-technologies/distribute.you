@@ -32,19 +32,3 @@ describe("Brand campaigns page uses runs-service cost breakdown (no 'Other' cate
   });
 });
 
-describe("api-service brand cost-breakdown endpoint", () => {
-  const routePath = path.join(
-    __dirname,
-    "../../api-service/src/routes/brand.ts"
-  );
-  const content = fs.readFileSync(routePath, "utf-8");
-
-  it("should have a /brands/:id/cost-breakdown route", () => {
-    expect(content).toContain('"/brands/:id/cost-breakdown"');
-  });
-
-  it("should call runs-service /v1/stats/costs/by-cost-name with brandId", () => {
-    expect(content).toContain("/v1/stats/costs/by-cost-name");
-    expect(content).toContain("brandId");
-  });
-});

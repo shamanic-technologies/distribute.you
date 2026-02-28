@@ -16,39 +16,24 @@ MCP Factory provides Done-For-You (DFY) automation tools via the Model Context P
 
 ## Pricing
 
-**Free · BYOK** — $0 — you only pay your API costs. Generous quota per MCP (500-1000 actions).
+**Free · BYOK** — $0 — you only pay your API costs. Generous quota per workflow.
 
-## Available MCPs
+## Available Workflows
 
-### URL to Revenue (Outreach)
-
-| MCP | What it does | Free Quota |
-|-----|--------------|------------|
-| `@mcpfactory/sales-outreach` | Cold email campaigns from your URL. Find leads, generate emails, send & optimize. | 1,000 emails |
-| `@mcpfactory/influencer-pitch` | Find and pitch relevant influencers automatically. | 500 pitches |
-| `@mcpfactory/thought-leader` | Get featured in publications as an industry expert. | 500 pitches |
-| `@mcpfactory/podcaster-pitch` | Get booked as a guest on relevant podcasts. | 500 pitches |
-| `@mcpfactory/journalist-pitch` | Pitch journalists about your announcements. | 500 pitches |
-
-### URL to Ads (Campaigns)
-
-| MCP | What it does | Free Quota |
-|-----|--------------|------------|
-| `@mcpfactory/google-ads` | Create and optimize Google Ads campaigns automatically. | 100 campaigns |
-| `@mcpfactory/reddit-ads` | Create and optimize Reddit Ads campaigns automatically. | 100 campaigns |
+| Workflow | What it does | Category | Channel |
+|----------|--------------|----------|---------|
+| Sales Cold Email Outreach | Find leads, generate personalized cold emails, send & optimize. | sales | email |
+| PR & Media Email Outreach | Pitch journalists and media contacts for press coverage. | pr | email |
 
 ## Quick Start
 
 ```bash
-# Install any MCP
-npx @mcpfactory/sales-outreach
-
-# Or add to your MCP config
+# Add MCP Factory to your MCP config
 {
   "mcpServers": {
-    "sales-outreach": {
+    "mcpfactory": {
       "command": "npx",
-      "args": ["@mcpfactory/sales-outreach"],
+      "args": ["@mcpfactory/mcp-service"],
       "env": {
         "MCPFACTORY_API_KEY": "your-api-key"
       }
@@ -72,7 +57,7 @@ That's it. We handle:
 6. A/B testing & optimization
 7. Daily reports with dashboard link
 
-## Common Features (All MCPs)
+## Common Features
 
 ### Budget Control
 ```
@@ -109,7 +94,7 @@ Tool: get_campaign_results
 
 ## Transparency
 
-Each MCP includes a `get_stats` tool showing:
+Each workflow includes a `get_stats` tool showing:
 - Your usage & estimated BYOK costs (~$0.02/email)
 - Community benchmarks (delivery rates, open rates, reply rates)
 - Average cost per action
@@ -123,22 +108,19 @@ This project is 100% open source. MIT License.
 ```
 mcpfactory/
 ├── apps/
-│   ├── dashboard/     # dashboard.mcpfactory.org
-│   └── landing/       # mcpfactory.org
-├── packages/
-│   ├── mcp-sales-outreach/
-│   ├── mcp-influencer-pitch/
-│   ├── mcp-thought-leader/
-│   ├── mcp-podcaster-pitch/
-│   ├── mcp-journalist-pitch/
-│   ├── mcp-google-ads/
-│   ├── mcp-reddit-ads/
+│   ├── dashboard/      # dashboard.mcpfactory.org
+│   ├── docs/           # Documentation
+│   └── landing/        # mcpfactory.org
 └── shared/
     ├── types/
     ├── auth/
-    ├── byok/
-    └── content/       # SSoT for all content (this generates README.md)
+    └── content/         # SSoT for all content (this generates README.md)
 ```
+
+### Extracted Services
+
+- [api-service](https://github.com/shamanic-technologies/api-service) — Backend API
+- [mcp](https://github.com/shamanic-technologies/mcp) — MCP server endpoint
 
 ## Contributing
 
