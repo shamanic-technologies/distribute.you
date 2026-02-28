@@ -7,7 +7,7 @@ import { useAuth } from "@clerk/nextjs";
 type AccountType = "agency" | "company";
 type Step = "value-prop" | "type-selection" | "name-input" | "success";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.mcpfactory.org";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.distribute.you";
 
 export default function OnboardingPage() {
   const router = useRouter();
