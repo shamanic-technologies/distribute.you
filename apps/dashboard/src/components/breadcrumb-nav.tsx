@@ -38,12 +38,16 @@ export function BreadcrumbNav() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState<Record<string, boolean>>({});
 
-  // Parse new path structure: /orgs/[orgId]/brands/[brandId]/features/[sectionKey]/campaigns/[id]
+  // Parse path structure: /orgs/[orgId]/brands/[brandId]/features/[sectionKey]/campaigns/[id]
+  // Also handles app-level: /features/[featureId] and /features/[featureId]/new
   const pathParts = pathname.split("/").filter(Boolean);
   const orgId = pathParts[0] === "orgs" && pathParts[1] ? pathParts[1] : null;
   const brandId = orgId && pathParts[2] === "brands" && pathParts[3] ? pathParts[3] : null;
   const sectionKey = brandId && pathParts[4] === "features" && pathParts[5] ? pathParts[5] : null;
   const campaignId = sectionKey && pathParts[6] === "campaigns" && pathParts[7] ? pathParts[7] : null;
+  // App-level feature path: /features/[featureId] or /features/[featureId]/new
+  const appFeatureId = !orgId && pathParts[0] === "features" && pathParts[1] ? pathParts[1] : null;
+  const appFeatureSubpage = appFeatureId && pathParts[2] ? pathParts[2] : null;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -148,6 +152,12 @@ export function BreadcrumbNav() {
   const currentBrand = brands.find((b) => b.id === brandId);
   const currentCampaign = campaigns.find((c) => c.id === campaignId);
   const currentFeatureLabel = sectionKey ? (SECTION_LABELS[sectionKey] ?? sectionKey) : null;
+  const appFeatureLabel = appFeatureId ? (SECTION_LABELS[appFeatureId] ?? appFeatureId) : null;
+
+  const handleAppFeatureSwitch = (newFeatureId: string) => {
+    setOpenDropdown(null);
+    router.push(`/features/${newFeatureId}`);
+  };
 
   const Chevron = ({ open }: { open: boolean }) => (
     <svg className={`w-3 h-3 text-gray-400 transition ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -167,6 +177,51 @@ export function BreadcrumbNav() {
       <Link href="/" className="px-2 py-1 rounded-md hover:bg-gray-100 transition font-medium text-gray-800 truncate max-w-[140px]">
         {org?.name || "Dashboard"}
       </Link>
+
+      {/* APP-LEVEL FEATURE */}
+      {appFeatureId && (
+        <>
+          <Sep />
+          <div className="relative flex items-center">
+            <Link href={`/features/${appFeatureId}`} className="px-2 py-1 rounded-md hover:bg-gray-100 transition font-medium text-gray-800 truncate max-w-[200px]">
+              {appFeatureLabel}
+            </Link>
+            <button onClick={() => toggleDropdown("appFeature")} className="p-1 hover:bg-gray-100 rounded transition">
+              <Chevron open={openDropdown === "appFeature"} />
+            </button>
+            {openDropdown === "appFeature" && (
+              <div className="absolute left-0 top-full mt-1 w-56 bg-white rounded-lg border border-gray-200 shadow-xl py-1 z-50">
+                <div className="px-3 py-2 border-b border-gray-100">
+                  <p className="text-xs text-gray-500 font-medium">Switch feature</p>
+                </div>
+                {WORKFLOW_DEFINITIONS.map((wf) => (
+                  <button
+                    key={wf.sectionKey}
+                    onClick={() => handleAppFeatureSwitch(wf.sectionKey)}
+                    className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition ${
+                      appFeatureId === wf.sectionKey ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    <span className="truncate">{wf.label}</span>
+                    {appFeatureId === wf.sectionKey && (
+                      <svg className="w-4 h-4 text-brand-600 ml-auto flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {/* Subpage label (e.g. "New" for create campaign) */}
+          {appFeatureSubpage === "new" && (
+            <>
+              <Sep />
+              <span className="px-2 py-1 text-gray-600">Create Campaign</span>
+            </>
+          )}
+        </>
+      )}
 
       {/* ORG */}
       {orgId && (

@@ -145,6 +145,8 @@ export interface Campaign {
   name: string;
   status: string;
   workflowName: string | null;
+  brandId: string | null;
+  brandUrl: string | null;
   targetAudience: string | null;
   targetOutcome: string | null;
   valueForTarget: string | null;
