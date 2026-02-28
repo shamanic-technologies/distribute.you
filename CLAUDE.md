@@ -24,13 +24,16 @@ pnpm --filter @mcpfactory/<package> vitest run tests/unit/specific.test.ts
 
 ### Apps
 
-- `apps/api-service/` — Backend API service
 - `apps/dashboard/` (port 3001) — Next.js 15 App Router, Clerk auth
 - `apps/docs/` — Documentation site (docs.mcpfactory.org)
 - `apps/landing/` — Main landing page
-- `apps/mcp-service/` — MCP server endpoint service
 - `apps/performance-service/` — Performance monitoring service
 - `apps/sales-cold-emails-landing/` — Marketing landing page (salescoldemail.mcpfactory.org)
+
+### Extracted Services (separate repos)
+
+- [shamanic-technologies/api-service](https://github.com/shamanic-technologies/api-service) — Backend API service
+- [shamanic-technologies/mcp](https://github.com/shamanic-technologies/mcp) — MCP server endpoint service
 
 ### Packages (Published MCP Servers)
 

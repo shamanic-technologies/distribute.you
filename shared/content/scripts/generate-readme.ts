@@ -130,16 +130,19 @@ This project is 100% open source. ${BRAND.license} License.
 \`\`\`
 mcpfactory/
 ├── apps/
-│   ├── api-service/    # Backend API
 │   ├── dashboard/      # ${URLS.dashboard.replace("https://", "")}
 │   ├── docs/           # Documentation
-│   ├── landing/        # ${URLS.landing.replace("https://", "")}
-│   └── mcp-service/    # MCP server endpoint
+│   └── landing/        # ${URLS.landing.replace("https://", "")}
 └── shared/
     ├── types/
     ├── auth/
     └── content/         # SSoT for all content (this generates README.md)
 \`\`\`
+
+### Extracted Services
+
+- [api-service](https://github.com/shamanic-technologies/api-service) — Backend API
+- [mcp](https://github.com/shamanic-technologies/mcp) — MCP server endpoint
 
 ## Contributing
 

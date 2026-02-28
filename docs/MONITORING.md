@@ -15,13 +15,14 @@ All services are configured with Sentry. One project, multiple services identifi
 
 | Service | Tag |
 |---------|-----|
-| mcp-service | `service:mcp-service` |
 | performance-service | `service:performance-service` |
 | dashboard | `service:dashboard` |
 
+> **Note:** api-service and mcp-service have been extracted to their own repos. See [api-service](https://github.com/shamanic-technologies/api-service) and [mcp](https://github.com/shamanic-technologies/mcp).
+
 ### Filtering in Sentry
 
-Use the search bar: `service:mcp-service` to filter errors by service.
+Use the search bar: `service:performance-service` to filter errors by service.
 
 ---
 

@@ -35,22 +35,6 @@ describe("CostBreakdown uses runs-service cost breakdown (not manual run aggrega
   });
 });
 
-describe("api-service stats endpoint includes cost breakdown from runs-service", () => {
-  const routePath = path.join(
-    __dirname,
-    "../../api-service/src/routes/campaigns.ts"
-  );
-  const content = fs.readFileSync(routePath, "utf-8");
-
-  it("should call runs-service /v1/stats/costs/by-cost-name", () => {
-    expect(content).toContain("/v1/stats/costs/by-cost-name");
-  });
-
-  it("should include costBreakdown in the stats response", () => {
-    expect(content).toContain("stats.costBreakdown");
-  });
-});
-
 /**
  * Brand page also uses runs-service cost breakdown (same as campaign page).
  * Previously it used CampaignCostDistribution with manual brand-run aggregation,
