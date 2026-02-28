@@ -1,4 +1,4 @@
-export type WorkflowCategory = "sales" | "pr";
+export type WorkflowCategory = "sales" | "journalists" | "webinars" | "welcome";
 export type WorkflowChannel = "email";
 export type WorkflowAudienceType = "cold-outreach";
 
@@ -15,6 +15,8 @@ export interface WorkflowDefinition {
   audienceType: WorkflowAudienceType;
   /** Icon identifier for UI */
   icon: string;
+  /** Whether workflows exist for this feature in the backend */
+  implemented: boolean;
 }
 
 export const WORKFLOW_DEFINITIONS: WorkflowDefinition[] = [
@@ -27,16 +29,40 @@ export const WORKFLOW_DEFINITIONS: WorkflowDefinition[] = [
     channel: "email",
     audienceType: "cold-outreach",
     icon: "envelope",
+    implemented: true,
   },
   {
-    sectionKey: "pr-email-cold-outreach",
-    label: "PR & Media Email Outreach",
+    sectionKey: "journalists-email-cold-outreach",
+    label: "Journalists Cold Email Outreach",
     description:
       "Pitch journalists and media contacts for press coverage.",
-    category: "pr",
+    category: "journalists",
     channel: "email",
     audienceType: "cold-outreach",
     icon: "newspaper",
+    implemented: false,
+  },
+  {
+    sectionKey: "webinars",
+    label: "Webinars",
+    description:
+      "Welcome emails, heat-up sequences, reminders, and post-webinar thank you emails.",
+    category: "webinars",
+    channel: "email",
+    audienceType: "cold-outreach",
+    icon: "calendar",
+    implemented: false,
+  },
+  {
+    sectionKey: "welcome-email",
+    label: "Welcome Email",
+    description:
+      "Automated welcome email for new signups and contacts.",
+    category: "welcome",
+    channel: "email",
+    audienceType: "cold-outreach",
+    icon: "envelope",
+    implemented: false,
   },
 ];
 
@@ -56,16 +82,20 @@ export interface ParsedWorkflowName {
 
 export const WORKFLOW_CATEGORY_LABELS: Record<WorkflowCategory, string> = {
   sales: "Sales",
-  pr: "PR & Media",
+  journalists: "Journalists",
+  webinars: "Webinars",
+  welcome: "Welcome",
 };
 
 /** Section labels keyed by sectionKey ({category}-{channel}-{audienceType}). */
 export const SECTION_LABELS: Record<string, string> = {
   "sales-email-cold-outreach": "Sales Cold Email Outreach",
-  "pr-email-cold-outreach": "PR & Media Email Outreach",
+  "journalists-email-cold-outreach": "Journalists Cold Email Outreach",
+  "webinars": "Webinars",
+  "welcome-email": "Welcome Email",
 };
 
-const KNOWN_CATEGORIES = new Set<string>(["sales", "pr"]);
+const KNOWN_CATEGORIES = new Set<string>(["sales", "journalists", "webinars", "welcome"]);
 const KNOWN_CHANNELS = new Set<string>(["email"]);
 const TWO_WORD_AUDIENCE_TYPES = new Set<string>(["cold-outreach"]);
 

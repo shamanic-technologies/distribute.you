@@ -7,7 +7,9 @@ import { DAGVisualization } from "./dag-visualization";
 
 const CATEGORY_COLORS: Record<string, string> = {
   sales: "bg-brand-100 text-brand-700",
-  pr: "bg-purple-100 text-purple-700",
+  journalists: "bg-purple-100 text-purple-700",
+  webinars: "bg-teal-100 text-teal-700",
+  welcome: "bg-emerald-100 text-emerald-700",
 };
 
 export function WorkflowDetailPanel({

@@ -28,16 +28,16 @@ describe("Workflows page", () => {
   });
 });
 
-describe("Workflows sidebar link", () => {
+describe("Features sidebar links (replaces Workflows)", () => {
   const sidebarPath = path.join(
     __dirname,
     "../src/components/context-sidebar.tsx"
   );
   const content = fs.readFileSync(sidebarPath, "utf-8");
 
-  it("should have a Workflows navigation link", () => {
-    expect(content).toContain('href: "/workflows"');
-    expect(content).toContain("Workflows");
+  it("should have feature links instead of Workflows link", () => {
+    expect(content).toContain("/features/");
+    expect(content).not.toContain('href: "/workflows"');
   });
 });
 
