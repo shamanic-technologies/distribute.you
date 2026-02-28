@@ -1,5 +1,12 @@
 import type { Metadata } from "next";
-import { URLS, SALES_PRICING_TIERS } from "@mcpfactory/content";
+import { URLS } from "@mcpfactory/content";
+
+const SALES_PRICING_TIERS = [
+  { name: "Free", price: 0, period: "one-time", emails: "500" },
+  { name: "Hobby", price: 16, period: "/month", emails: "3,000" },
+  { name: "Standard", price: 83, period: "/month", emails: "100,000" },
+  { name: "Growth", price: 333, period: "/month", emails: "500,000" },
+];
 import "./globals.css";
 
 const SITE_URL = URLS.salesLanding;

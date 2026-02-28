@@ -10,15 +10,18 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "../../../");
 
-// Import from source directly (not dist) so we can run without building
 import { WORKFLOW_DEFINITIONS } from "../src/workflows.js";
-import { LANDING_PRICING, BYOK_COST_ESTIMATES } from "../src/pricing.js";
 import { URLS } from "../src/urls.js";
 import { BRAND } from "../src/brand.js";
+import { DISTRIBUTION_FEATURES } from "../src/features.js";
 
 function generateRootReadme(): string {
   const workflowTable = WORKFLOW_DEFINITIONS
     .map((w) => `| ${w.label} | ${w.description} | ${w.category} | ${w.channel} |`)
+    .join("\n");
+
+  const featureList = DISTRIBUTION_FEATURES
+    .map((f) => `- **${f.title}** — ${f.description} _(${f.status === "live" ? "Live" : "Coming soon"})_`)
     .join("\n");
 
   return `# ${BRAND.name}
@@ -31,15 +34,11 @@ function generateRootReadme(): string {
 
 ## What is ${BRAND.name}?
 
-${BRAND.name} provides Done-For-You (DFY) automation tools via the Model Context Protocol (MCP).
+${BRAND.name} is the Stripe for Distribution. Create an account, give us your URL — we automate your entire distribution layer with AI workflows ranked by real performance data.
 
-**DFY means:** You provide a URL + budget. We handle everything else - lead finding, content generation, outreach, optimization, and reporting.
+## Distribution Features
 
-**BYOK means:** Bring Your Own Keys. You use your own API keys (OpenAI, Anthropic, Apollo, etc.), so you only pay for what you use. No hidden markups.
-
-## Pricing
-
-**Free · BYOK** — ${LANDING_PRICING.free.display}. Generous quota per workflow.
+${featureList}
 
 ## Available Workflows
 
@@ -49,86 +48,15 @@ ${workflowTable}
 
 ## Quick Start
 
-\`\`\`bash
-# Add MCP Factory to your MCP config
-{
-  "mcpServers": {
-    "mcpfactory": {
-      "command": "npx",
-      "args": ["@mcpfactory/mcp-service"],
-      "env": {
-        "MCPFACTORY_API_KEY": "your-api-key"
-      }
-    }
-  }
-}
-\`\`\`
-
-## Usage Example
-
-In Claude, Cursor, or any MCP-compatible client:
-
-> "Launch a cold email campaign for acme.com, $10/day budget, 5 days trial, daily report to ceo@acme.com"
-
-That's it. We handle:
-1. Scraping & analyzing your URL
-2. Identifying ideal customer profile
-3. Finding relevant leads
-4. Generating personalized emails
-5. Sending with proper deliverability
-6. A/B testing & optimization
-7. Daily reports with dashboard link
-
-## Common Features
-
-### Budget Control
-\`\`\`
-"budget": {
-  "max_daily_usd": 10,
-  "max_weekly_usd": 50,
-  "max_monthly_usd": 150
-}
-\`\`\`
-
-### Scheduling
-\`\`\`
-"schedule": {
-  "frequency": "daily",
-  "trial_days": 5,
-  "pause_on_weekend": true
-}
-\`\`\`
-
-### Reporting
-\`\`\`
-"reporting": {
-  "frequency": "daily",
-  "channels": ["email", "whatsapp"],
-  "email": "you@company.com"
-}
-\`\`\`
-
-### Results via MCP
-\`\`\`
-Tool: get_campaign_results
-→ Returns stats, costs, dashboard URL, next run time
-\`\`\`
-
-## Transparency
-
-Each workflow includes a \`get_stats\` tool showing:
-- Your usage & estimated BYOK costs (${BYOK_COST_ESTIMATES.totalPerEmail})
-- Community benchmarks (delivery rates, open rates, reply rates)
-- Average cost per action
-
-## Open Source
-
-This project is 100% open source. ${BRAND.license} License.
+1. Create an account at [${URLS.dashboard.replace("https://", "")}](${URLS.dashboard})
+2. Add your URL
+3. Enable the distribution features you need
+4. We handle the rest — the best-performing AI workflow runs automatically
 
 ## Monorepo Structure
 
 \`\`\`
-mcpfactory/
+distribute/
 ├── apps/
 │   ├── dashboard/      # ${URLS.dashboard.replace("https://", "")}
 │   ├── docs/           # Documentation
@@ -138,11 +66,6 @@ mcpfactory/
     ├── auth/
     └── content/         # SSoT for all content (this generates README.md)
 \`\`\`
-
-### Extracted Services
-
-- [api-service](https://github.com/shamanic-technologies/api-service) — Backend API
-- [mcp](https://github.com/shamanic-technologies/mcp) — MCP server endpoint
 
 ## Contributing
 

@@ -2,11 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   DISTRIBUTION_FEATURES,
   DISTRIBUTION_STEPS,
-  SALES_FEATURES,
-  SALES_STEPS,
-  SALES_FAQ,
-  SUPPORTED_CLIENTS,
-  BYOK_PROVIDERS,
 } from "../src/features.js";
 
 describe("DISTRIBUTION_FEATURES", () => {
@@ -51,27 +46,5 @@ describe("DISTRIBUTION_STEPS", () => {
       expect(step.title).toBeTruthy();
       expect(step.description).toBeTruthy();
     }
-  });
-});
-
-describe("existing exports still work", () => {
-  it("SALES_FEATURES is still exported", () => {
-    expect(SALES_FEATURES.length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("SALES_STEPS is still exported", () => {
-    expect(SALES_STEPS.length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("SALES_FAQ is still exported", () => {
-    expect(SALES_FAQ.length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("SUPPORTED_CLIENTS is still exported", () => {
-    expect(SUPPORTED_CLIENTS.length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("BYOK_PROVIDERS is still exported", () => {
-    expect(BYOK_PROVIDERS.length).toBeGreaterThanOrEqual(1);
   });
 });

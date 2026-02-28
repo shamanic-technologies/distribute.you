@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import { CopyForLLM } from "@/components/copy-for-llm";
-import { URLS, SUPPORTED_CLIENTS } from "@mcpfactory/content";
+import { URLS } from "@mcpfactory/content";
 
 export const metadata: Metadata = {
   title: "MCP Usage Guide",
