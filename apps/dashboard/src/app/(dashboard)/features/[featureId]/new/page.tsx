@@ -179,9 +179,15 @@ export default function CreateCampaignPage() {
   const sorted = useMemo(() => {
     if (!leaderboard) return [];
     return [...leaderboard].sort((a, b) => {
-      const av = a[metric] ?? 0;
-      const bv = b[metric] ?? 0;
-      return sortDir === "desc" ? Number(bv) - Number(av) : Number(av) - Number(bv);
+      const aRaw = a[metric];
+      const bRaw = b[metric];
+      const aNull = aRaw === null || aRaw === 0;
+      const bNull = bRaw === null || bRaw === 0;
+      // Null/zero values always sort to the bottom regardless of direction
+      if (aNull && bNull) return 0;
+      if (aNull) return 1;
+      if (bNull) return -1;
+      return sortDir === "desc" ? Number(bRaw) - Number(aRaw) : Number(aRaw) - Number(bRaw);
     });
   }, [leaderboard, metric, sortDir]);
 
