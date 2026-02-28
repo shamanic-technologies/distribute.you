@@ -103,6 +103,7 @@ const jsonLd = {
     url: SITE_URL,
     sameAs: [
       URLS.github,
+      URLS.twitter,
     ],
   },
 };
@@ -115,6 +116,7 @@ const organizationJsonLd = {
   description: "The Stripe for Distribution",
   sameAs: [
     URLS.github,
+    URLS.twitter,
   ],
   contactPoint: {
     "@type": "ContactPoint",
