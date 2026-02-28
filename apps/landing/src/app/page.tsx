@@ -3,6 +3,7 @@ import { HeroForm } from "@/components/hero-form";
 import { Navbar } from "@/components/navbar";
 import { DashboardPreview } from "@/components/dashboard-preview";
 import { PerformancePreview } from "@/components/performance-preview";
+import { ExpertStrategies } from "@/components/expert-strategies";
 import { StatusIndicator } from "@/components/status-indicator";
 import { URLS, DISTRIBUTION_FEATURES, DISTRIBUTION_STEPS } from "@mcpfactory/content";
 import type { FeatureColor } from "@mcpfactory/content";
@@ -225,8 +226,15 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Performance Leaderboard */}
+      {/* Expert Strategies */}
       <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
+        <div className="max-w-5xl mx-auto">
+          <ExpertStrategies />
+        </div>
+      </section>
+
+      {/* Performance Leaderboard */}
+      <section className="py-20 px-4">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-10">
             <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
