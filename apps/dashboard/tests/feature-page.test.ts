@@ -254,6 +254,49 @@ describe("Create campaign page", () => {
     });
   });
 
+  describe("Brand selector", () => {
+    it("should have brand-selector test id", () => {
+      expect(content).toContain("brand-selector");
+    });
+
+    it("should fetch brands via listBrands", () => {
+      expect(content).toContain("listBrands");
+    });
+
+    it("should allow selecting existing brand or entering new URL", () => {
+      expect(content).toContain("selectedBrandId");
+      expect(content).toContain("newBrandUrl");
+      expect(content).toContain("__new__");
+    });
+
+    it("should show new brand URL input", () => {
+      expect(content).toContain('type="url"');
+      expect(content).toContain("https://example.com");
+    });
+  });
+
+  describe("Auto-fill from sales profile", () => {
+    it("should fetch sales profile on Go with existing brand", () => {
+      expect(content).toContain("getBrandSalesProfile");
+    });
+
+    it("should have profileToFormData mapping function", () => {
+      expect(content).toContain("profileToFormData");
+    });
+
+    it("should show loading state while fetching profile", () => {
+      expect(content).toContain("isLoadingProfile");
+      expect(content).toContain("profile-loading");
+      expect(content).toContain("animate-pulse");
+    });
+
+    it("should map profile fields to form data", () => {
+      expect(content).toContain("profile.targetAudience");
+      expect(content).toContain("profile.callToAction");
+      expect(content).toContain("profile.valueProposition");
+    });
+  });
+
   describe("Campaign creation", () => {
     it("should have campaign creation form", () => {
       expect(content).toContain("campaign-form");
