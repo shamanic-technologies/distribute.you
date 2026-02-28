@@ -2,15 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@clerk/nextjs";
-import { createOrg } from "@/lib/api";
+import { useOrganizationList } from "@clerk/nextjs";
 
 type AccountType = "agency" | "company";
 type Step = "value-prop" | "type-selection" | "name-input";
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { getToken } = useAuth();
+  const { createOrganization, setActive } = useOrganizationList();
   const [step, setStep] = useState<Step>("value-prop");
   const [accountType, setAccountType] = useState<AccountType | null>(null);
   const [name, setName] = useState("");
@@ -23,13 +22,12 @@ export default function OnboardingPage() {
   };
 
   const handleSubmit = async () => {
-    if (!name.trim() || !accountType) return;
+    if (!name.trim() || !accountType || !createOrganization || !setActive) return;
     setSubmitting(true);
     setError(null);
     try {
-      const token = await getToken();
-      if (!token) throw new Error("Not authenticated");
-      await createOrg(token, name.trim());
+      const org = await createOrganization({ name: name.trim() });
+      await setActive({ organization: org.id });
       router.push("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");

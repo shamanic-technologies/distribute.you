@@ -492,29 +492,6 @@ export async function getWorkflow(token: string, workflowId: string): Promise<Wo
   return apiCall<Workflow>(`/workflows/${workflowId}`, { token });
 }
 
-// Organizations
-export interface Org {
-  id: string;
-  name: string;
-  plan: string;
-  createdAt: string;
-}
-
-export async function listOrgs(token: string): Promise<{ orgs: Org[] }> {
-  return apiCall<{ orgs: Org[] }>("/orgs", { token });
-}
-
-export async function createOrg(
-  token: string,
-  name: string
-): Promise<{ org: Org }> {
-  return apiCall<{ org: Org }>("/orgs", {
-    token,
-    method: "POST",
-    body: { name },
-  });
-}
-
 // Create brand
 export async function createBrand(
   token: string,
