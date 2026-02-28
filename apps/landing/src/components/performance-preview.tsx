@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { URLS } from "@mcpfactory/content";
 import type { BrandEntry, WorkflowEntry } from "@/lib/fetch-leaderboard";
 import { formatPercent, formatCostCents } from "@/lib/fetch-leaderboard";
+
+const LOGO_DEV_TOKEN = process.env.NEXT_PUBLIC_LOGO_DEV_TOKEN;
 
 type Tab = "brands" | "workflows";
 
@@ -76,9 +79,20 @@ export function PerformancePreview({ brands, workflows }: PerformancePreviewProp
                   <tr key={brand.brandDomain ?? i} className={`${i === 0 ? "bg-brand-50/30" : ""} hover:bg-gray-50 transition`}>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-6 h-6 rounded bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500 uppercase">
-                          {displayName.charAt(0)}
-                        </div>
+                        {brand.brandDomain && LOGO_DEV_TOKEN ? (
+                          <Image
+                            src={`https://img.logo.dev/${brand.brandDomain}?token=${LOGO_DEV_TOKEN}&size=64`}
+                            alt={brand.brandDomain}
+                            width={24}
+                            height={24}
+                            className="rounded"
+                            unoptimized
+                          />
+                        ) : (
+                          <div className="w-6 h-6 rounded bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500 uppercase">
+                            {displayName.charAt(0)}
+                          </div>
+                        )}
                         <span className={`font-medium text-sm ${i === 0 ? "text-gray-900" : "text-gray-700"}`}>{displayName}</span>
                       </div>
                     </td>
