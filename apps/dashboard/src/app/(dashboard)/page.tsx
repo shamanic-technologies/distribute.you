@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ApiKeyPreview } from "@/components/api-key-preview";
 import { BrandsList } from "@/components/brands-list";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.mcpfactory.org";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.distribute.you";
 
 interface LeaderboardWorkflow {
   workflowName: string;

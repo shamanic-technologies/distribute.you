@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.mcpfactory.org";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.distribute.you";
 
 interface ApiOptions {
   token: string;
