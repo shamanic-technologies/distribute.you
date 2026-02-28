@@ -332,6 +332,9 @@ export interface SalesProfile {
   funding: FundingInfo;
   awardsAndRecognition: Award[];
   revenueMilestones: RevenueMilestone[];
+  urgency: { elements: string[]; summary: string | null } | null;
+  scarcity: { elements: string[]; summary: string | null } | null;
+  riskReversal: { guarantees: string[]; trialInfo: string | null; refundPolicy: string | null } | null;
   extractedAt: string;
 }
 

@@ -9,10 +9,14 @@ import {
   fetchSectionLeaderboard,
   createCampaign,
   listCampaigns,
+  listBrands,
+  getBrandSalesProfile,
   stopCampaign,
   resumeCampaign,
   type WorkflowLeaderboardEntry,
   type Campaign,
+  type Brand,
+  type SalesProfile,
 } from "@/lib/api";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -113,7 +117,6 @@ const EMPTY_FORM: CampaignFormData = {
 };
 
 const FORM_FIELDS: { key: keyof CampaignFormData; label: string; placeholder: string }[] = [
-  { key: "brandUrl", label: "Brand URL", placeholder: "https://example.com" },
   { key: "targetAudience", label: "Target Audience", placeholder: "CTOs at SaaS startups with 10-50 employees" },
   { key: "targetOutcome", label: "Target Outcome", placeholder: "Book sales demos" },
   { key: "valueForTarget", label: "Value for Target", placeholder: "What do they gain from responding?" },
@@ -122,6 +125,30 @@ const FORM_FIELDS: { key: keyof CampaignFormData; label: string; placeholder: st
   { key: "riskReversal", label: "Risk Reversal", placeholder: "Free trial, no commitment" },
   { key: "socialProof", label: "Social Proof", placeholder: "500+ companies already onboarded" },
 ];
+
+// ─── Profile → form mapping ─────────────────────────────────────────────────
+
+function profileToFormData(profile: SalesProfile, brandUrl: string): CampaignFormData {
+  const socialParts: string[] = [];
+  if (profile.socialProof?.results?.length) socialParts.push(...profile.socialProof.results);
+  if (profile.socialProof?.caseStudies?.length) socialParts.push(...profile.socialProof.caseStudies);
+
+  const riskParts: string[] = [];
+  if (profile.riskReversal?.trialInfo) riskParts.push(profile.riskReversal.trialInfo);
+  if (profile.riskReversal?.guarantees?.length) riskParts.push(...profile.riskReversal.guarantees);
+  if (profile.riskReversal?.refundPolicy) riskParts.push(profile.riskReversal.refundPolicy);
+
+  return {
+    brandUrl,
+    targetAudience: profile.targetAudience ?? "",
+    targetOutcome: profile.callToAction ?? "",
+    valueForTarget: profile.valueProposition ?? "",
+    urgency: profile.urgency?.summary ?? "",
+    scarcity: profile.scarcity?.summary ?? "",
+    riskReversal: riskParts.join(". ") || "",
+    socialProof: socialParts.slice(0, 3).join(". ") || "",
+  };
+}
 
 // ─── Main Page ──────────────────────────────────────────────────────────────
 
@@ -143,6 +170,11 @@ export default function CreateCampaignPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
+  // Brand state
+  const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
+  const [newBrandUrl, setNewBrandUrl] = useState("");
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+
   // Fetch leaderboard data
   const { data: leaderboard, isLoading } = useAuthQuery(
     ["section-leaderboard", featureId],
@@ -156,6 +188,14 @@ export default function CreateCampaignPage() {
     () => listCampaigns(),
     { enabled: featureDef?.implemented === true }
   );
+
+  // Fetch brands for this org
+  const { data: brandsData } = useAuthQuery(
+    ["brands"],
+    () => listBrands(),
+    { enabled: featureDef?.implemented === true }
+  );
+  const brands = brandsData?.brands ?? [];
 
   const activeCampaigns = useMemo(() => {
     if (!campaignsData?.campaigns) return [];
@@ -209,16 +249,45 @@ export default function CreateCampaignPage() {
     };
   }, [mode, selectedWorkflow, sorted]);
 
+  // Resolve the brand URL from either the selected brand or the new URL input
+  const resolvedBrandUrl = useMemo(() => {
+    if (selectedBrandId) {
+      const brand = brands.find((b) => b.id === selectedBrandId);
+      return brand?.brandUrl ?? "";
+    }
+    return newBrandUrl;
+  }, [selectedBrandId, brands, newBrandUrl]);
+
   // Campaign actions
-  const handleGo = useCallback(() => {
-    if (!effectiveSelection || !budgetAmount) return;
+  const handleGo = useCallback(async () => {
+    if (!effectiveSelection || !budgetAmount || !resolvedBrandUrl) return;
     setShowForm(true);
     setCreateError(null);
-  }, [effectiveSelection, budgetAmount]);
+    setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
+
+    // Auto-fill from sales profile if we have an existing brand
+    if (selectedBrandId) {
+      setIsLoadingProfile(true);
+      try {
+        const { profile } = await getBrandSalesProfile(selectedBrandId);
+        if (profile) {
+          setFormData(profileToFormData(profile, resolvedBrandUrl));
+        }
+      } catch {
+        // Profile fetch failed — form stays empty, user fills manually
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    }
+  }, [effectiveSelection, budgetAmount, resolvedBrandUrl, selectedBrandId]);
 
   const handleCreateCampaign = useCallback(async () => {
     if (!effectiveSelection || !budgetAmount) return;
 
+    if (!formData.brandUrl.trim()) {
+      setCreateError("Missing: Brand URL");
+      return;
+    }
     const missing = FORM_FIELDS.filter((f) => !formData[f.key].trim());
     if (missing.length > 0) {
       setCreateError(`Missing: ${missing.map((f) => f.label).join(", ")}`);
@@ -364,6 +433,57 @@ export default function CreateCampaignPage() {
 
           <div className="hidden sm:block h-6 w-px bg-gray-200" />
 
+          {/* Brand selector */}
+          <div className="flex items-center gap-2" data-testid="brand-selector">
+            <span className="text-xs text-gray-500 uppercase tracking-wider">Brand:</span>
+            {brands.length > 0 && selectedBrandId !== "__new__" ? (
+              <select
+                value={selectedBrandId ?? ""}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "__new__") {
+                    setSelectedBrandId(null);
+                    // Use sentinel so we show the URL input
+                    setSelectedBrandId("__new__" as string);
+                  } else {
+                    setSelectedBrandId(val || null);
+                    setNewBrandUrl("");
+                  }
+                }}
+                className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-300 max-w-[200px]"
+              >
+                <option value="">Select a brand...</option>
+                {brands.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name || b.domain || b.brandUrl}
+                  </option>
+                ))}
+                <option value="__new__">+ New brand</option>
+              </select>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="url"
+                  value={newBrandUrl}
+                  onChange={(e) => setNewBrandUrl(e.target.value)}
+                  placeholder="https://example.com"
+                  className="w-48 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300"
+                />
+                {brands.length > 0 && (
+                  <button
+                    onClick={() => { setSelectedBrandId(null); setNewBrandUrl(""); }}
+                    className="text-xs text-gray-400 hover:text-gray-600"
+                    title="Back to brand list"
+                  >
+                    &times;
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="hidden sm:block h-6 w-px bg-gray-200" />
+
           {/* Budget */}
           <div className="flex items-center gap-2" data-testid="budget-controls">
             <span className="text-xs text-gray-500 uppercase tracking-wider">Budget:</span>
@@ -395,7 +515,7 @@ export default function CreateCampaignPage() {
           {/* Go button */}
           <button
             onClick={handleGo}
-            disabled={!effectiveSelection || !budgetAmount}
+            disabled={!effectiveSelection || !budgetAmount || !resolvedBrandUrl}
             className="px-5 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
             data-testid="go-button"
           >
@@ -425,30 +545,44 @@ export default function CreateCampaignPage() {
       {showForm && (
         <div className="bg-white rounded-xl border border-gray-200 p-5 mb-4" data-testid="campaign-form">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-gray-700">Campaign Details</h3>
+            <div className="flex items-center gap-3">
+              <h3 className="text-sm font-medium text-gray-700">Campaign Details</h3>
+              <span className="text-xs text-gray-400 truncate max-w-[300px]">{formData.brandUrl}</span>
+            </div>
             <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">&times;</button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {FORM_FIELDS.map((field) => (
-              <div key={field.key}>
-                <label className="block text-xs text-gray-500 mb-1">{field.label}</label>
-                <input
-                  type="text"
-                  value={formData[field.key]}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                  placeholder={field.placeholder}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300"
-                />
-              </div>
-            ))}
-          </div>
+          {isLoadingProfile ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3" data-testid="profile-loading">
+              {FORM_FIELDS.map((field) => (
+                <div key={field.key}>
+                  <label className="block text-xs text-gray-500 mb-1">{field.label}</label>
+                  <div className="w-full h-10 bg-gray-100 rounded-lg animate-pulse" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {FORM_FIELDS.map((field) => (
+                <div key={field.key}>
+                  <label className="block text-xs text-gray-500 mb-1">{field.label}</label>
+                  <input
+                    type="text"
+                    value={formData[field.key]}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                    placeholder={field.placeholder}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
           {createError && (
             <p className="mt-3 text-sm text-red-600">{createError}</p>
           )}
           <div className="mt-4 flex items-center gap-3">
             <button
               onClick={handleCreateCampaign}
-              disabled={isCreating}
+              disabled={isCreating || isLoadingProfile}
               className="px-5 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition disabled:opacity-50"
             >
               {isCreating ? "Creating..." : "Start Campaign"}
