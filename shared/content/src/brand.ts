@@ -1,11 +1,11 @@
 export const BRAND = {
-  name: "MCP Factory",
-  tagline: "The DFY, BYOK MCP Platform",
-  hero: "From URL to Revenue",
+  name: "distribute",
+  tagline: "The Stripe for Distribution",
+  hero: "Your distribution, automated.",
   license: "MIT",
   isOpenSource: true,
   social: {
-    twitter: "@mcpfactory",
+    twitter: "@distribute_eu",
     github: "shamanic-technologies/mcpfactory",
   },
 } as const;

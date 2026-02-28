@@ -3,38 +3,34 @@ import "./globals.css";
 import { URLS } from "@mcpfactory/content";
 
 const SITE_URL = URLS.landing;
-const SITE_NAME = "MCP Factory";
-const SITE_DESCRIPTION = "From URL to Revenue. Done-For-You automation via Model Context Protocol. You give us your URL + budget, we handle lead finding, outreach, optimization, and reporting.";
+const SITE_NAME = "distribute";
+const SITE_DESCRIPTION = "The Stripe for Distribution. Create an account, give us your URL — we automate welcome emails, outreach, webinar flows, and every touchpoint. AI workflows ranked by real performance data.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "MCP Factory - The DFY, BYOK MCP Platform",
-    template: "%s | MCP Factory",
+    default: "distribute — Your distribution, automated",
+    template: "%s | distribute",
   },
   description: SITE_DESCRIPTION,
   keywords: [
-    "MCP",
-    "Model Context Protocol",
-    "automation",
-    "cold email",
-    "outreach",
-    "sales automation",
-    "BYOK",
-    "DFY",
-    "done for you",
-    "bring your own key",
-    "AI automation",
-    "lead generation",
-    "ChatGPT",
-    "Claude",
-    "Cursor",
-    "AI sales",
+    "distribution automation",
+    "marketing automation",
+    "welcome emails",
     "email automation",
+    "AI workflows",
+    "cold outreach",
+    "webinar automation",
+    "lifecycle marketing",
+    "growth automation",
+    "distribution platform",
+    "Stripe for distribution",
+    "automated marketing",
+    "solopreneur tools",
   ],
-  authors: [{ name: "MCP Factory" }],
-  creator: "MCP Factory",
-  publisher: "MCP Factory",
+  authors: [{ name: "distribute" }],
+  creator: "distribute",
+  publisher: "distribute",
   formatDetection: {
     email: false,
     address: false,
@@ -45,23 +41,23 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: "MCP Factory - From URL to Revenue",
-    description: "The DFY, BYOK MCP Platform. You give us your URL + budget. We give you customers.",
+    title: "distribute — Your distribution, automated",
+    description: "The Stripe for Distribution. AI workflows handle your welcome emails, outreach, and lifecycle campaigns. You just build your product.",
     images: [
       {
         url: "/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "MCP Factory - From URL to Revenue",
+        alt: "distribute — Your distribution, automated",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "MCP Factory - From URL to Revenue",
-    description: "The DFY, BYOK MCP Platform. Done-For-You automation via MCP.",
+    title: "distribute — Your distribution, automated",
+    description: "The Stripe for Distribution. AI-powered welcome emails, outreach, webinar flows. Zero configuration.",
     images: ["/og-image.jpg"],
-    creator: "@mcpfactory",
+    creator: "@distribute_eu",
   },
   robots: {
     index: true,
@@ -87,7 +83,7 @@ export const metadata: Metadata = {
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  name: "MCP Factory",
+  name: "distribute",
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   description: SITE_DESCRIPTION,
@@ -95,25 +91,18 @@ const jsonLd = {
   offers: [
     {
       "@type": "Offer",
-      name: "Free BYOK",
+      name: "Free",
       price: "0",
       priceCurrency: "USD",
-      description: "Free — bring your own API keys, pay only your API costs",
+      description: "Free to start — you only pay AI costs",
     },
   ],
-  aggregateRating: {
-    "@type": "AggregateRating",
-    ratingValue: "4.8",
-    ratingCount: "127",
-  },
   provider: {
     "@type": "Organization",
-    name: "MCP Factory",
+    name: "distribute",
     url: SITE_URL,
-    logo: `${SITE_URL}/logo-head.jpg`,
     sameAs: [
       URLS.github,
-      URLS.twitter,
     ],
   },
 };
@@ -121,16 +110,15 @@ const jsonLd = {
 const organizationJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
-  name: "MCP Factory",
+  name: "distribute",
   url: SITE_URL,
-  logo: `${SITE_URL}/logo-head.jpg`,
-  description: "The DFY, BYOK MCP Platform",
+  description: "The Stripe for Distribution",
   sameAs: [
     URLS.github,
   ],
   contactPoint: {
     "@type": "ContactPoint",
-    email: "support@mcpfactory.org",
+    email: "support@distribute.eu",
     contactType: "customer service",
   },
 };
@@ -138,54 +126,37 @@ const organizationJsonLd = {
 const websiteJsonLd = {
   "@context": "https://schema.org",
   "@type": "WebSite",
-  name: "MCP Factory",
+  name: "distribute",
   url: SITE_URL,
   description: SITE_DESCRIPTION,
-  potentialAction: {
-    "@type": "SearchAction",
-    target: `${SITE_URL}/?q={search_term_string}`,
-    "query-input": "required name=search_term_string",
-  },
 };
 
 const howToJsonLd = {
   "@context": "https://schema.org",
   "@type": "HowTo",
-  name: "How to Launch a Sales Campaign with MCP Factory",
-  description: "Launch automated cold email campaigns using AI from ChatGPT, Claude, or Cursor",
+  name: "How to Automate Your Distribution with distribute",
+  description: "Set up automated welcome emails, outreach, and lifecycle campaigns in three steps",
   step: [
     {
       "@type": "HowToStep",
       position: 1,
-      name: "Sign up",
-      text: "Create an account at dashboard.mcpfactory.org/sign-up",
+      name: "Add your URL",
+      text: "Create an account and provide your website URL. We analyze your brand, tone, and visual identity.",
     },
     {
       "@type": "HowToStep",
       position: 2,
-      name: "Get API Key",
-      text: "Go to Settings → API Key and copy your MCP Factory API key",
+      name: "Enable features",
+      text: "Toggle the distribution features you need: welcome emails, cold outreach, webinar lifecycle, and more.",
     },
     {
       "@type": "HowToStep",
       position: 3,
-      name: "Configure BYOK Keys",
-      text: "Add your Apollo and Anthropic keys in Settings → Keys",
-    },
-    {
-      "@type": "HowToStep",
-      position: 4,
-      name: "Connect AI Client",
-      text: `Add MCP Factory to ChatGPT, Claude, or Cursor using the MCP URL: ${URLS.mcp}`,
-    },
-    {
-      "@type": "HowToStep",
-      position: 5,
-      name: "Launch Campaign",
-      text: "Ask your AI: 'Launch a cold email campaign for mybrand.com targeting CTOs at SaaS companies'",
+      name: "We handle the rest",
+      text: "The best-performing AI workflow runs automatically. You just watch the metrics in your dashboard.",
     },
   ],
-  totalTime: "PT5M",
+  totalTime: "PT2M",
 };
 
 export default function RootLayout({
