@@ -5,7 +5,7 @@ export const BRAND = {
   license: "MIT",
   isOpenSource: true,
   social: {
-    twitter: "@distribute_eu",
-    github: "shamanic-technologies/mcpfactory",
+    twitter: "@distribute_you",
+    github: "shamanic-technologies/distribute.you",
   },
 } as const;

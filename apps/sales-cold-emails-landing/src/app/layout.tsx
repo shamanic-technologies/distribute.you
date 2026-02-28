@@ -71,7 +71,7 @@ export const metadata: Metadata = {
     title: "Sales Cold Emails - The Stripe for Distribution",
     description: "Cold email automation with your own API keys. You give us your URL, we handle everything. 100% open-source.",
     images: [`${URLS.landing}/og-image.jpg`],
-    creator: "@distribute_eu",
+    creator: "@distribute_you",
   },
   robots: {
     index: true,

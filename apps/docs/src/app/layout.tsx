@@ -87,8 +87,8 @@ const organizationJsonLd = {
   url: "https://distribute.you",
   logo: "https://distribute.you/logo-head.jpg",
   sameAs: [
-    "https://twitter.com/distribute_eu",
-    "https://github.com/mcpfactory",
+    "https://twitter.com/distribute_you",
+    "https://github.com/shamanic-technologies/distribute.you",
   ],
 };
 
