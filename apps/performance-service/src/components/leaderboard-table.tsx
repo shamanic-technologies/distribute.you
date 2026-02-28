@@ -10,7 +10,7 @@ import {
   type BrandLeaderboardEntry,
   type WorkflowLeaderboardEntry,
 } from "@/lib/fetch-leaderboard";
-import { defaultDir, type SortKey } from "@/lib/sort-direction";
+import { defaultDir, compareForSort, type SortKey } from "@/lib/sort-direction";
 
 const LOGO_DEV_TOKEN = process.env.NEXT_PUBLIC_LOGO_DEV_TOKEN;
 
@@ -51,11 +51,9 @@ export function BrandLeaderboard({ brands, maxEntries }: { brands: BrandLeaderbo
     }
   }
 
-  const sorted = [...brands].sort((a, b) => {
-    const av = a[sortKey as keyof BrandLeaderboardEntry] ?? 0;
-    const bv = b[sortKey as keyof BrandLeaderboardEntry] ?? 0;
-    return sortDir === "desc" ? Number(bv) - Number(av) : Number(av) - Number(bv);
-  });
+  const sorted = [...brands].sort((a, b) =>
+    compareForSort(a[sortKey as keyof BrandLeaderboardEntry], b[sortKey as keyof BrandLeaderboardEntry], sortDir),
+  );
 
   const visible = maxEntries ? sorted.slice(0, maxEntries) : sorted;
 
@@ -127,11 +125,9 @@ export function WorkflowLeaderboard({ workflows, inSection = false, maxEntries }
     }
   }
 
-  const sorted = [...workflows].sort((a, b) => {
-    const av = a[sortKey as keyof WorkflowLeaderboardEntry] ?? 0;
-    const bv = b[sortKey as keyof WorkflowLeaderboardEntry] ?? 0;
-    return sortDir === "desc" ? Number(bv) - Number(av) : Number(av) - Number(bv);
-  });
+  const sorted = [...workflows].sort((a, b) =>
+    compareForSort(a[sortKey as keyof WorkflowLeaderboardEntry], b[sortKey as keyof WorkflowLeaderboardEntry], sortDir),
+  );
 
   const visible = maxEntries ? sorted.slice(0, maxEntries) : sorted;
 
