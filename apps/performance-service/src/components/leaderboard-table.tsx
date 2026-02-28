@@ -10,10 +10,9 @@ import {
   type BrandLeaderboardEntry,
   type WorkflowLeaderboardEntry,
 } from "@/lib/fetch-leaderboard";
+import { defaultDir, type SortKey } from "@/lib/sort-direction";
 
 const LOGO_DEV_TOKEN = process.env.NEXT_PUBLIC_LOGO_DEV_TOKEN;
-
-type SortKey = "openRate" | "clickRate" | "replyRate" | "costPerOpenCents" | "costPerClickCents" | "costPerReplyCents" | "emailsSent" | "totalCostUsdCents" | "runCount";
 
 function SortHeader({
   label,
@@ -41,14 +40,14 @@ function SortHeader({
 
 export function BrandLeaderboard({ brands, maxEntries }: { brands: BrandLeaderboardEntry[]; maxEntries?: number }) {
   const [sortKey, setSortKey] = useState<SortKey>("costPerReplyCents");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   function handleSort(key: SortKey) {
     if (key === sortKey) {
       setSortDir(sortDir === "desc" ? "asc" : "desc");
     } else {
       setSortKey(key);
-      setSortDir("desc");
+      setSortDir(defaultDir(key));
     }
   }
 
@@ -116,7 +115,7 @@ export function BrandLeaderboard({ brands, maxEntries }: { brands: BrandLeaderbo
 
 export function WorkflowLeaderboard({ workflows, inSection = false, maxEntries }: { workflows: WorkflowLeaderboardEntry[]; inSection?: boolean; maxEntries?: number }) {
   const [sortKey, setSortKey] = useState<SortKey>("costPerReplyCents");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [selected, setSelected] = useState<WorkflowLeaderboardEntry | null>(null);
 
   function handleSort(key: SortKey) {
@@ -124,7 +123,7 @@ export function WorkflowLeaderboard({ workflows, inSection = false, maxEntries }
       setSortDir(sortDir === "desc" ? "asc" : "desc");
     } else {
       setSortKey(key);
-      setSortDir("desc");
+      setSortDir(defaultDir(key));
     }
   }
 
