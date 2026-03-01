@@ -35,14 +35,22 @@ describe("Context sidebar", () => {
     expect(content).toContain("return null");
   });
 
-  it("should have app-level items (Home, API Keys) and feature links", () => {
+  it("should have app-level items (Home) and feature links", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
     expect(content).toContain('"Home"');
-    expect(content).toContain('"API Keys"');
-    expect(content).toContain('href: "/api-keys"');
     // Features section with links to /features/
     expect(content).toContain("Features");
     expect(content).toContain("/features/");
+  });
+
+  it("should NOT have API Keys at app level", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    expect(content).not.toContain('href: "/api-keys"');
+  });
+
+  it("should have API Keys at org level", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    expect(content).toContain('`/orgs/${orgId}/api-keys`');
   });
 
   it("should NOT have a Workflows link in app-level sidebar", () => {
