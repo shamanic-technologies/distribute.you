@@ -71,6 +71,28 @@ describe("Context sidebar", () => {
     expect(content).toContain("opacity-60");
     expect(content).toContain("!wf.implemented");
   });
+  it("should NOT have 'All Organizations' back link in org sidebar", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    expect(content).not.toContain('"All Organizations"');
+  });
+
+  it("should have Brands link at org level", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    expect(content).toContain('`/orgs/${orgId}/brands`');
+  });
+
+  it("should have Features section in org sidebar with WORKFLOW_DEFINITIONS", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    // OrgLevelSidebar maps WORKFLOW_DEFINITIONS to featureItems
+    expect(content).toContain("featureItems");
+    expect(content).toContain('/features/${wf.sectionKey}');
+  });
+
+  it("should have brand back link point to brands page", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    expect(content).toContain('backLabel="Brands"');
+    expect(content).toContain('`/orgs/${orgId}/brands`');
+  });
 });
 
 describe("Old sidebar removed", () => {
