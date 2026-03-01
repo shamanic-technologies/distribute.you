@@ -219,20 +219,44 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
 
 // Org Level Sidebar
 function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string }) {
-  const items: SidebarItem[] = [
+  const topItems: SidebarItem[] = [
     { id: "overview", label: "Overview", href: `/orgs/${orgId}`, icon: <HomeIcon /> },
-    { id: "api-keys", label: "API Keys", href: `/orgs/${orgId}/api-keys`, icon: <KeyIcon /> },
+    { id: "brands", label: "Brands", href: `/orgs/${orgId}/brands`, icon: <BrandIcon /> },
   ];
 
+  const featureItems: SidebarItem[] = WORKFLOW_DEFINITIONS.map((wf) => ({
+    id: wf.sectionKey,
+    label: wf.label,
+    href: `/features/${wf.sectionKey}`,
+    icon: getFeatureIcon(wf.sectionKey),
+    comingSoon: !wf.implemented,
+  }));
+
   return (
-    <SidebarSection title="Organization" backHref="/" backLabel="All Organizations">
-      {items.map((item) => (
+    <SidebarSection title="Organization">
+      {topItems.map((item) => (
         <SidebarLink
           key={item.id}
           item={item}
           isActive={item.id === "overview" ? pathname === item.href : pathname.startsWith(item.href)}
         />
       ))}
+      <div className="pt-2 mt-2 border-t border-gray-100">
+        <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Features</h4>
+        {featureItems.map((item) => (
+          <SidebarLink
+            key={item.id}
+            item={item}
+            isActive={pathname.startsWith(item.href)}
+          />
+        ))}
+      </div>
+      <div className="pt-2 mt-2 border-t border-gray-100">
+        <SidebarLink
+          item={{ id: "api-keys", label: "API Keys", href: `/orgs/${orgId}/api-keys`, icon: <KeyIcon /> }}
+          isActive={pathname.startsWith(`/orgs/${orgId}/api-keys`)}
+        />
+      </div>
     </SidebarSection>
   );
 }
@@ -252,7 +276,7 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
   ];
 
   return (
-    <SidebarSection title="Brand" backHref={`/orgs/${orgId}`} backLabel="Organization">
+    <SidebarSection title="Brand" backHref={`/orgs/${orgId}/brands`} backLabel="Brands">
       {items.map((item) => (
         <SidebarLink
           key={item.id}

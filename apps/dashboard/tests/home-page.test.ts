@@ -26,6 +26,48 @@ describe("Home page", () => {
   });
 });
 
+describe("Org overview page", () => {
+  const pagePath = path.join(
+    __dirname,
+    "../src/app/(dashboard)/orgs/[orgId]/page.tsx"
+  );
+  const content = fs.readFileSync(pagePath, "utf-8");
+
+  it("should be a client component", () => {
+    expect(content).toContain('"use client"');
+  });
+
+  it("should show Overview heading", () => {
+    expect(content).toContain("Overview");
+  });
+
+  it("should fetch brands for summary", () => {
+    expect(content).toContain("listBrands");
+  });
+
+  it("should fetch campaigns for summary", () => {
+    expect(content).toContain("listCampaigns");
+  });
+
+  it("should import WORKFLOW_DEFINITIONS for features section", () => {
+    expect(content).toContain("WORKFLOW_DEFINITIONS");
+    expect(content).toContain("@distribute/content");
+  });
+
+  it("should link to brands page", () => {
+    expect(content).toContain("`/orgs/${orgId}/brands`");
+  });
+
+  it("should have Features and Recent Campaigns sections", () => {
+    expect(content).toContain("Features");
+    expect(content).toContain("Recent Campaigns");
+  });
+
+  it("should show quick stats with StatCard", () => {
+    expect(content).toContain("StatCard");
+  });
+});
+
 describe("Brand overview page", () => {
   const pagePath = path.join(
     __dirname,
