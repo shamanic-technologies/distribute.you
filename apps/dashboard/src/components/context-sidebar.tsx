@@ -184,7 +184,6 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
 function AppLevelSidebar({ pathname }: { pathname: string }) {
   const topItems: SidebarItem[] = [
     { id: "home", label: "Home", href: "/", icon: <HomeIcon /> },
-    { id: "api-keys", label: "API Keys", href: "/api-keys", icon: <KeyIcon /> },
   ];
 
   const featureItems: SidebarItem[] = WORKFLOW_DEFINITIONS.map((wf) => ({
@@ -222,6 +221,7 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
 function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string }) {
   const items: SidebarItem[] = [
     { id: "overview", label: "Overview", href: `/orgs/${orgId}`, icon: <HomeIcon /> },
+    { id: "api-keys", label: "API Keys", href: `/orgs/${orgId}/api-keys`, icon: <KeyIcon /> },
   ];
 
   return (

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useOrganization, useOrganizationList } from "@clerk/nextjs";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { WORKFLOW_DEFINITIONS, SECTION_LABELS } from "@distribute/content";
-import { useOrg } from "@/lib/org-context";
 
 interface Brand {
   id: string;
@@ -30,8 +29,6 @@ export function BreadcrumbNav() {
   const { userMemberships, setActive } = useOrganizationList({
     userMemberships: { infinite: true },
   });
-  const { org } = useOrg();
-
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -173,10 +170,55 @@ export function BreadcrumbNav() {
 
   return (
     <nav className="flex items-center text-sm min-w-0" ref={dropdownRef}>
-      {/* APP */}
-      <Link href="/" className="px-2 py-1 rounded-md hover:bg-gray-100 transition font-medium text-gray-800 truncate max-w-[140px]">
-        {org?.name || "Dashboard"}
-      </Link>
+      {/* ORG — always shown as root */}
+      <div className="relative flex items-center">
+        <Link href={organization ? `/orgs/${organization.id}` : "/"} className="px-2 py-1 rounded-md hover:bg-gray-100 transition flex items-center gap-1.5">
+          <div className="w-5 h-5 bg-brand-100 rounded flex items-center justify-center">
+            <span className="text-brand-600 font-semibold text-xs">{organization?.name?.[0] || "O"}</span>
+          </div>
+          <span className="font-medium text-gray-800 max-w-[140px] truncate">{organization?.name || "Dashboard"}</span>
+        </Link>
+        <button onClick={() => toggleDropdown("org")} className="p-1 hover:bg-gray-100 rounded transition">
+          <Chevron open={openDropdown === "org"} />
+        </button>
+        {openDropdown === "org" && (
+          <div className="absolute left-0 top-full mt-1 w-56 bg-white rounded-lg border border-gray-200 shadow-xl py-1 z-50">
+            <div className="px-3 py-2 border-b border-gray-100">
+              <p className="text-xs text-gray-500 font-medium">Switch organization</p>
+            </div>
+            {userMemberships?.data?.map((m) => (
+              <button
+                key={m.organization.id}
+                onClick={() => handleOrgSwitch(m.organization.id)}
+                className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition ${
+                  organization?.id === m.organization.id ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <div className="w-6 h-6 bg-brand-100 rounded flex items-center justify-center flex-shrink-0">
+                  <span className="text-brand-600 font-semibold text-xs">{m.organization.name[0]}</span>
+                </div>
+                <span className="truncate">{m.organization.name}</span>
+                {organization?.id === m.organization.id && (
+                  <svg className="w-4 h-4 text-brand-600 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </button>
+            ))}
+            <div className="border-t border-gray-100 mt-1 pt-1">
+              <button
+                onClick={() => { setOpenDropdown(null); router.push("/onboarding"); }}
+                className="w-full text-left px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 flex items-center gap-2 transition"
+              >
+                <div className="w-6 h-6 border-2 border-dashed border-gray-300 rounded flex items-center justify-center flex-shrink-0">
+                  <span className="text-gray-400 text-xs font-bold">+</span>
+                </div>
+                <span>New organization</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* APP-LEVEL FEATURE */}
       {appFeatureId && (
@@ -220,50 +262,6 @@ export function BreadcrumbNav() {
               <span className="px-2 py-1 text-gray-600">Create Campaign</span>
             </>
           )}
-        </>
-      )}
-
-      {/* ORG */}
-      {orgId && (
-        <>
-          <Sep />
-          <div className="relative flex items-center">
-            <Link href={`/orgs/${orgId}`} className="px-2 py-1 rounded-md hover:bg-gray-100 transition flex items-center gap-1.5">
-              <div className="w-5 h-5 bg-brand-100 rounded flex items-center justify-center">
-                <span className="text-brand-600 font-semibold text-xs">{organization?.name?.[0] || "O"}</span>
-              </div>
-              <span className="font-medium text-gray-800 max-w-[120px] truncate">{organization?.name || "Org"}</span>
-            </Link>
-            <button onClick={() => toggleDropdown("org")} className="p-1 hover:bg-gray-100 rounded transition">
-              <Chevron open={openDropdown === "org"} />
-            </button>
-            {openDropdown === "org" && (
-              <div className="absolute left-0 top-full mt-1 w-56 bg-white rounded-lg border border-gray-200 shadow-xl py-1 z-50">
-                <div className="px-3 py-2 border-b border-gray-100">
-                  <p className="text-xs text-gray-500 font-medium">Switch organization</p>
-                </div>
-                {userMemberships?.data?.map((m) => (
-                  <button
-                    key={m.organization.id}
-                    onClick={() => handleOrgSwitch(m.organization.id)}
-                    className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition ${
-                      organization?.id === m.organization.id ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
-                    }`}
-                  >
-                    <div className="w-6 h-6 bg-brand-100 rounded flex items-center justify-center flex-shrink-0">
-                      <span className="text-brand-600 font-semibold text-xs">{m.organization.name[0]}</span>
-                    </div>
-                    <span className="truncate">{m.organization.name}</span>
-                    {organization?.id === m.organization.id && (
-                      <svg className="w-4 h-4 text-brand-600 ml-auto" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
         </>
       )}
 

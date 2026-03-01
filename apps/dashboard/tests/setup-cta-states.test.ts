@@ -2,19 +2,19 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
-describe("Dashboard page shows features from WORKFLOW_DEFINITIONS", () => {
-  it("should use WORKFLOW_DEFINITIONS instead of performance leaderboard", () => {
+describe("Dashboard home page redirects to active org", () => {
+  it("should redirect to /orgs/{activeOrgId}", () => {
     const pagePath = path.join(
       __dirname,
       "../src/app/(dashboard)/page.tsx"
     );
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("WORKFLOW_DEFINITIONS");
-    expect(content).toContain("@distribute/content");
-    // Should NOT have the old leaderboard fetching
+    expect(content).toContain("useOrganization");
+    expect(content).toContain("router.replace");
+    expect(content).toContain("/orgs/");
+    // Should NOT have old content page elements
+    expect(content).not.toContain("WORKFLOW_DEFINITIONS");
     expect(content).not.toContain("performance/leaderboard");
-    expect(content).not.toContain("costPerReplyCents");
-    expect(content).not.toContain("topWorkflows");
   });
 });
 
