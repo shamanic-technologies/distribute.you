@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
-describe("Provider Keys page", () => {
+describe("Provider Keys page (redirect to unified keys)", () => {
   const pagePath = path.join(
     __dirname,
     "../src/app/(dashboard)/orgs/[orgId]/provider-keys/page.tsx"
@@ -17,21 +17,32 @@ describe("Provider Keys page", () => {
     expect(content).toContain('"use client"');
   });
 
-  it("should import BYOK key functions from api", () => {
+  it("should redirect to unified api-keys page", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
+    expect(content).toContain("router.replace");
+    expect(content).toContain("api-keys");
+  });
+});
+
+describe("Unified API Keys page has provider keys section", () => {
+  const pagePath = path.join(
+    __dirname,
+    "../src/app/(dashboard)/orgs/[orgId]/api-keys/page.tsx"
+  );
+  const content = fs.readFileSync(pagePath, "utf-8");
+
+  it("should import BYOK key functions from api", () => {
     expect(content).toContain("listByokKeys");
     expect(content).toContain("setByokKey");
     expect(content).toContain("deleteByokKey");
   });
 
   it("should fetch workflows to discover known providers", () => {
-    const content = fs.readFileSync(pagePath, "utf-8");
     expect(content).toContain("listWorkflows");
     expect(content).toContain("requiredProviders");
   });
 
   it("should show configured vs not-configured status", () => {
-    const content = fs.readFileSync(pagePath, "utf-8");
     expect(content).toContain("configured");
     expect(content).toContain("Not configured");
     expect(content).toContain("bg-green-500");
@@ -39,46 +50,39 @@ describe("Provider Keys page", () => {
   });
 
   it("should have add/rotate and remove actions", () => {
-    const content = fs.readFileSync(pagePath, "utf-8");
     expect(content).toContain("Add Key");
     expect(content).toContain("Rotate");
     expect(content).toContain("Remove");
   });
 
   it("should have inline edit form with password input", () => {
-    const content = fs.readFileSync(pagePath, "utf-8");
     expect(content).toContain('type="password"');
-    expect(content).toContain("handleSave");
-    expect(content).toContain("cancelEditing");
+    expect(content).toContain("handleSaveProvider");
+    expect(content).toContain("cancelEditingProvider");
   });
 
   it("should use useAuthQuery for data fetching", () => {
-    const content = fs.readFileSync(pagePath, "utf-8");
     expect(content).toContain("useAuthQuery");
   });
 
-  it("should invalidate byokKeys query after save and delete", () => {
-    const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain('queryKey: ["byokKeys"]');
-    expect(content).toContain("invalidateQueries");
+  it("should have Platform API Key section", () => {
+    expect(content).toContain("Platform API Key");
+    expect(content).toContain("Create New API Key");
   });
 
-  it("should have a link to API Keys page", () => {
-    const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("api-keys");
-    expect(content).toContain("Manage API Keys");
+  it("should have Provider Keys section", () => {
+    expect(content).toContain("Provider Keys");
+    expect(content).toContain("BYOK");
   });
 
-  it("should show error and success messages", () => {
-    const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("error");
-    expect(content).toContain("successMessage");
+  it("should show error and success messages for providers", () => {
+    expect(content).toContain("providerError");
+    expect(content).toContain("providerSuccess");
     expect(content).toContain("bg-red-50");
     expect(content).toContain("bg-green-50");
   });
 
   it("should use delete confirmation dialog", () => {
-    const content = fs.readFileSync(pagePath, "utf-8");
     expect(content).toContain("confirm(");
   });
 });

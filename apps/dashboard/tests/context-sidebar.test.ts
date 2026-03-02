@@ -94,10 +94,16 @@ describe("Context sidebar", () => {
     expect(content).toContain('`/orgs/${orgId}/brands`');
   });
 
-  it("should have Provider Keys at org level", () => {
+  it("should have unified Keys entry at org level", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    expect(content).toContain('`/orgs/${orgId}/provider-keys`');
-    expect(content).toContain('"Provider Keys"');
+    expect(content).toContain('"Keys"');
+    expect(content).toContain('`/orgs/${orgId}/api-keys`');
+  });
+
+  it("should have Workflows link in app feature sidebar", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    expect(content).toContain('"Workflows"');
+    expect(content).toContain('`${basePath}/workflows`');
   });
 });
 
