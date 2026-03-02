@@ -270,26 +270,41 @@ function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string 
 // Brand Level Sidebar
 function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandId: string; pathname: string }) {
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
-  const items: SidebarItem[] = [
+  const topItems: SidebarItem[] = [
     { id: "overview", label: "Overview", href: basePath, icon: <HomeIcon /> },
     { id: "brand-info", label: "Brand Info", href: `${basePath}/brand-info`, icon: <InfoIcon /> },
-    ...WORKFLOW_DEFINITIONS.map((wf) => ({
-      id: wf.sectionKey,
-      label: wf.label,
-      href: `${basePath}/features/${wf.sectionKey}`,
-      icon: getFeatureIcon(wf.sectionKey),
-    })),
+    { id: "campaigns", label: "Campaigns", href: `${basePath}/campaigns`, icon: <EnvelopeIcon /> },
+    { id: "create", label: "Create Campaign", href: `${basePath}/campaigns/new`, icon: <PlusIcon /> },
+    { id: "workflows", label: "Workflows", href: `${basePath}/workflows`, icon: <WorkflowIcon /> },
   ];
+
+  const featureItems: SidebarItem[] = WORKFLOW_DEFINITIONS.map((wf) => ({
+    id: wf.sectionKey,
+    label: wf.label,
+    href: `${basePath}/features/${wf.sectionKey}`,
+    icon: getFeatureIcon(wf.sectionKey),
+    comingSoon: !wf.implemented,
+  }));
 
   return (
     <SidebarSection title="Brand" backHref={`/orgs/${orgId}/brands`} backLabel="Brands">
-      {items.map((item) => (
+      {topItems.map((item) => (
         <SidebarLink
           key={item.id}
           item={item}
-          isActive={item.id === "overview" ? pathname === item.href : pathname.startsWith(item.href)}
+          isActive={item.id === "overview" ? pathname === item.href : item.id === "campaigns" ? pathname === item.href : pathname.startsWith(item.href)}
         />
       ))}
+      <div className="pt-2 mt-2 border-t border-gray-100">
+        <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Features</h4>
+        {featureItems.map((item) => (
+          <SidebarLink
+            key={item.id}
+            item={item}
+            isActive={pathname.startsWith(item.href)}
+          />
+        ))}
+      </div>
     </SidebarSection>
   );
 }

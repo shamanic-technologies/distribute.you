@@ -398,6 +398,24 @@ export function BreadcrumbNav() {
           <span className="px-2 py-1 text-gray-600">Brand Info</span>
         </>
       )}
+      {brandId && orgId && !sectionKey && pathParts[4] === "campaigns" && !pathParts[5] && (
+        <>
+          <Sep />
+          <span className="px-2 py-1 text-gray-600">Campaigns</span>
+        </>
+      )}
+      {brandId && orgId && !sectionKey && pathParts[4] === "campaigns" && pathParts[5] === "new" && (
+        <>
+          <Sep />
+          <span className="px-2 py-1 text-gray-600">Create Campaign</span>
+        </>
+      )}
+      {brandId && orgId && !sectionKey && pathParts[4] === "workflows" && (
+        <>
+          <Sep />
+          <span className="px-2 py-1 text-gray-600">Workflows</span>
+        </>
+      )}
       {sectionKey && pathParts[8] === "prompt" && (
         <>
           <Sep />
