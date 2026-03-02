@@ -11,6 +11,17 @@ interface ApiOptions {
  * - With token: direct call to external API (server-side usage)
  * - Without token: routes through /api/v1 proxy (client-side, auth via Clerk cookies)
  */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly body: Record<string, unknown>
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
   const { token, method = "GET", body } = options ?? {};
 
@@ -31,8 +42,12 @@ async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: "Request failed" }));
-    throw new Error(error.error || "Request failed");
+    const errorBody = await response.json().catch(() => ({ error: "Request failed" }));
+    throw new ApiError(
+      errorBody.error || errorBody.message || "Request failed",
+      response.status,
+      errorBody
+    );
   }
 
   return response.json();
@@ -512,8 +527,23 @@ export interface Workflow {
   audienceType: string;
   signatureName: string;
   dag: DAG | null;
+  requiredProviders: string[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface WorkflowSummary {
+  workflowName: string;
+  summary: string;
+  requiredProviders: string[];
+  steps: string[];
+}
+
+export interface WorkflowKeyStatus {
+  workflowName: string;
+  ready: boolean;
+  keys: { provider: string; configured: boolean; maskedKey: string | null }[];
+  missing: string[];
 }
 
 export async function listWorkflows(token?: string): Promise<{ workflows: Workflow[] }> {
@@ -522,6 +552,14 @@ export async function listWorkflows(token?: string): Promise<{ workflows: Workfl
 
 export async function getWorkflow(workflowId: string, token?: string): Promise<Workflow> {
   return apiCall<Workflow>(`/workflows/${workflowId}`, { token });
+}
+
+export async function getWorkflowSummary(workflowId: string, token?: string): Promise<WorkflowSummary> {
+  return apiCall<WorkflowSummary>(`/workflows/${workflowId}/summary`, { token });
+}
+
+export async function getWorkflowKeyStatus(workflowId: string, token?: string): Promise<WorkflowKeyStatus> {
+  return apiCall<WorkflowKeyStatus>(`/workflows/${workflowId}/key-status`, { token });
 }
 
 // Create brand

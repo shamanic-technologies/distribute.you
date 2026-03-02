@@ -5,20 +5,25 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { WORKFLOW_DEFINITIONS } from "@distribute/content";
 import { useAuthQuery } from "@/lib/use-auth-query";
+import { useOrg } from "@/lib/org-context";
 import {
   fetchSectionLeaderboard,
   createCampaign,
   listCampaigns,
   listBrands,
+  listByokKeys,
+  listWorkflows,
   getBrandSalesProfile,
   fetchSalesProfileFromUrl,
   stopCampaign,
   resumeCampaign,
+  ApiError,
   type WorkflowLeaderboardEntry,
   type Campaign,
   type Brand,
   type SalesProfile,
 } from "@/lib/api";
+import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-panel";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -157,10 +162,12 @@ export default function CreateCampaignPage() {
   const params = useParams();
   const featureId = params.featureId as string;
 
+  const { org } = useOrg();
   const featureDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === featureId);
 
   // State
   const [mode, setMode] = useState<Mode>("autopilot");
+  const [detailWorkflowId, setDetailWorkflowId] = useState<string | null>(null);
   const [metric, setMetric] = useState<SortKey>("costPerReplyCents");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [selectedWorkflow, setSelectedWorkflow] = useState<string | null>(null);
@@ -197,6 +204,41 @@ export default function CreateCampaignPage() {
     { enabled: featureDef?.implemented === true }
   );
   const brands = brandsData?.brands ?? [];
+
+  // Fetch BYOK keys and workflows to check for missing provider keys
+  const { data: byokKeysData } = useAuthQuery(
+    ["byokKeys"],
+    () => listByokKeys(),
+    { enabled: featureDef?.implemented === true }
+  );
+  const { data: workflowsData } = useAuthQuery(
+    ["workflows"],
+    () => listWorkflows(),
+    { enabled: featureDef?.implemented === true }
+  );
+
+  // Compute missing provider keys for this feature's workflows
+  const missingProviders = useMemo(() => {
+    const workflows = workflowsData?.workflows ?? [];
+    const featureWorkflows = workflows.filter((w) => w.name.startsWith(featureId));
+    const requiredSet = new Set<string>();
+    for (const wf of featureWorkflows) {
+      for (const p of wf.requiredProviders ?? []) {
+        requiredSet.add(p);
+      }
+    }
+    const configuredSet = new Set((byokKeysData?.keys ?? []).map((k) => k.provider));
+    return [...requiredSet].filter((p) => !configuredSet.has(p));
+  }, [workflowsData, byokKeysData, featureId]);
+
+  // Map workflow names to IDs for detail panel
+  const workflowNameToId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const wf of workflowsData?.workflows ?? []) {
+      map.set(wf.name, wf.id);
+    }
+    return map;
+  }, [workflowsData]);
 
   const activeCampaigns = useMemo(() => {
     if (!campaignsData?.campaigns) return [];
@@ -334,7 +376,14 @@ export default function CreateCampaignPage() {
       setFormData(EMPTY_FORM);
       refetchCampaigns();
     } catch (err) {
-      setCreateError(err instanceof Error ? err.message : "Failed to create campaign");
+      if (err instanceof ApiError && err.body.error === "missing_keys") {
+        const missing = (err.body.missing as string[]) ?? [];
+        setCreateError(
+          `Missing provider keys: ${missing.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(", ")}. Configure them in Provider Keys settings before creating a campaign.`
+        );
+      } else {
+        setCreateError(err instanceof Error ? err.message : "Failed to create campaign");
+      }
     } finally {
       setIsCreating(false);
     }
@@ -407,6 +456,30 @@ export default function CreateCampaignPage() {
         <h1 className="font-display text-2xl font-bold text-gray-800">Create Campaign</h1>
         <p className="text-gray-600">Select a workflow and configure your campaign for {featureDef.label}.</p>
       </div>
+
+      {/* Missing provider keys warning */}
+      {missingProviders.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-4 flex items-start gap-3">
+          <svg className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+          <div className="flex-1">
+            <p className="text-sm text-amber-800">
+              <span className="font-medium">Missing provider keys:</span>{" "}
+              {missingProviders.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(", ")}.
+              {" "}Configure them to run campaigns with your own keys.
+            </p>
+            {org && (
+              <Link
+                href={`/orgs/${org.id}/provider-keys`}
+                className="text-sm text-amber-700 hover:text-amber-900 underline mt-1 inline-block"
+              >
+                Configure Provider Keys
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Controls */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
@@ -665,6 +738,7 @@ export default function CreateCampaignPage() {
                     isSelected={true}
                     selectable={false}
                     onSelect={() => {}}
+                    onShowDetail={workflowNameToId.get(wf.workflowName) ? () => setDetailWorkflowId(workflowNameToId.get(wf.workflowName)!) : undefined}
                   />
                 ))}
                 {/* Separator in manual mode when a row is pinned */}
@@ -683,12 +757,21 @@ export default function CreateCampaignPage() {
                     isSelected={wf.workflowName === effectiveSelection}
                     selectable={mode === "manual"}
                     onSelect={() => setSelectedWorkflow(wf.workflowName)}
+                    onShowDetail={workflowNameToId.get(wf.workflowName) ? () => setDetailWorkflowId(workflowNameToId.get(wf.workflowName)!) : undefined}
                   />
                 ))}
               </tbody>
             </table>
           </div>
         </div>
+      )}
+
+      {/* Workflow detail panel */}
+      {detailWorkflowId && (
+        <WorkflowDetailPanel
+          workflowId={detailWorkflowId}
+          onClose={() => setDetailWorkflowId(null)}
+        />
       )}
     </div>
   );
@@ -701,11 +784,13 @@ function WorkflowRow({
   isSelected,
   selectable,
   onSelect,
+  onShowDetail,
 }: {
   wf: WorkflowLeaderboardEntry;
   isSelected: boolean;
   selectable: boolean;
   onSelect: () => void;
+  onShowDetail?: () => void;
 }) {
   const name = wf.signatureName
     ? wf.signatureName.charAt(0).toUpperCase() + wf.signatureName.slice(1)
@@ -728,6 +813,17 @@ function WorkflowRow({
             <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
               {wf.category}
             </span>
+          )}
+          {onShowDetail && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onShowDetail(); }}
+              className="p-1 text-gray-400 hover:text-brand-600 transition"
+              title="View workflow details"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
           )}
         </div>
       </td>

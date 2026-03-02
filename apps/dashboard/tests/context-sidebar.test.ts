@@ -93,6 +93,12 @@ describe("Context sidebar", () => {
     expect(content).toContain('backLabel="Brands"');
     expect(content).toContain('`/orgs/${orgId}/brands`');
   });
+
+  it("should have Provider Keys at org level", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    expect(content).toContain('`/orgs/${orgId}/provider-keys`');
+    expect(content).toContain('"Provider Keys"');
+  });
 });
 
 describe("Old sidebar removed", () => {
