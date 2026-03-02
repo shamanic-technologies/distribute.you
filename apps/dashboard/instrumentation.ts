@@ -2,7 +2,7 @@
  * Next.js instrumentation — runs once on server cold start.
  * Registers:
  *  1. Chat config via API service (idempotent)
- *  2. App keys (e.g. Stripe) via key-service (idempotent)
+ *  2. App keys (e.g. Stripe) via API service (idempotent)
  */
 export async function register() {
   // Only run on the server (not during build or edge runtime)
@@ -52,15 +52,14 @@ async function registerChatConfig() {
   }
 }
 
-const APP_ID = "distribute-frontend";
-
 async function registerAppKeys() {
-  const keyServiceUrl = process.env.KEY_SERVICE_URL;
-  const keyServiceApiKey = process.env.KEY_SERVICE_API_KEY;
+  const apiUrl =
+    process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
+  const apiKey = process.env.DISTRIBUTE_API_KEY;
 
-  if (!keyServiceUrl || !keyServiceApiKey) {
+  if (!apiKey) {
     console.warn(
-      "[distribute] KEY_SERVICE_URL or KEY_SERVICE_API_KEY not set — skipping app key registration"
+      "[distribute] DISTRIBUTE_API_KEY not set — skipping app key registration"
     );
     return;
   }
@@ -70,8 +69,8 @@ async function registerAppKeys() {
   ];
 
   for (const { provider, envVar } of keys) {
-    const apiKey = process.env[envVar];
-    if (!apiKey) {
+    const secret = process.env[envVar];
+    if (!secret) {
       console.warn(
         `[distribute] ${envVar} not set — skipping ${provider} app key registration`
       );
@@ -79,13 +78,17 @@ async function registerAppKeys() {
     }
 
     try {
-      const res = await fetch(`${keyServiceUrl}/internal/app-keys`, {
+      const res = await fetch(`${apiUrl}/v1/keys`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-api-key": keyServiceApiKey,
+          Authorization: `Bearer ${apiKey}`,
         },
-        body: JSON.stringify({ appId: APP_ID, provider, apiKey }),
+        body: JSON.stringify({
+          keySource: "app",
+          provider,
+          apiKey: secret,
+        }),
       });
 
       if (!res.ok) {
@@ -96,7 +99,9 @@ async function registerAppKeys() {
         continue;
       }
 
-      console.log(`[distribute] ${provider} app key registered via key-service`);
+      console.log(
+        `[distribute] ${provider} app key registered via API service`
+      );
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       console.error(
