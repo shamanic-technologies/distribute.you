@@ -1,12 +1,19 @@
 /**
  * Next.js instrumentation — runs once on server cold start.
- * Registers the distribute app chat config via API service (idempotent).
+ * Registers:
+ *  1. Chat config via API service (idempotent)
+ *  2. App keys (e.g. Stripe) via key-service (idempotent)
  */
 export async function register() {
   // Only run on the server (not during build or edge runtime)
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
 
-  const apiUrl = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
+  await Promise.allSettled([registerChatConfig(), registerAppKeys()]);
+}
+
+async function registerChatConfig() {
+  const apiUrl =
+    process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
   const apiKey = process.env.DISTRIBUTE_API_KEY;
 
   if (!apiKey) {
@@ -42,6 +49,60 @@ export async function register() {
     console.error(
       `[distribute] Chat config registration error: ${message}`
     );
+  }
+}
+
+const APP_ID = "distribute-frontend";
+
+async function registerAppKeys() {
+  const keyServiceUrl = process.env.KEY_SERVICE_URL;
+  const keyServiceApiKey = process.env.KEY_SERVICE_API_KEY;
+
+  if (!keyServiceUrl || !keyServiceApiKey) {
+    console.warn(
+      "[distribute] KEY_SERVICE_URL or KEY_SERVICE_API_KEY not set — skipping app key registration"
+    );
+    return;
+  }
+
+  const keys: { provider: string; envVar: string }[] = [
+    { provider: "stripe", envVar: "STRIPE_SECRET_KEY" },
+  ];
+
+  for (const { provider, envVar } of keys) {
+    const apiKey = process.env[envVar];
+    if (!apiKey) {
+      console.warn(
+        `[distribute] ${envVar} not set — skipping ${provider} app key registration`
+      );
+      continue;
+    }
+
+    try {
+      const res = await fetch(`${keyServiceUrl}/internal/app-keys`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": keyServiceApiKey,
+        },
+        body: JSON.stringify({ appId: APP_ID, provider, apiKey }),
+      });
+
+      if (!res.ok) {
+        const body = await res.text();
+        console.error(
+          `[distribute] ${provider} app key registration failed: ${res.status} — ${body}`
+        );
+        continue;
+      }
+
+      console.log(`[distribute] ${provider} app key registered via key-service`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(
+        `[distribute] ${provider} app key registration error: ${message}`
+      );
+    }
   }
 }
 
