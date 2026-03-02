@@ -1,42 +1,73 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useParams } from "next/navigation";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
-import { listApiKeys, createApiKey, deleteApiKey, type ApiKey, type NewApiKey } from "@/lib/api";
+import {
+  listApiKeys,
+  createApiKey,
+  deleteApiKey,
+  listByokKeys,
+  setByokKey,
+  deleteByokKey,
+  listWorkflows,
+  type ApiKey,
+  type NewApiKey,
+  type ByokKey,
+} from "@/lib/api";
 import { SkeletonApiKey } from "@/components/skeleton";
 
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+interface ProviderRow {
+  provider: string;
+  configured: boolean;
+  maskedKey: string | null;
+  updatedAt: string | null;
+}
+
 export default function OrgApiKeysPage() {
+  const params = useParams();
+  const orgId = params.orgId as string;
+  void orgId; // used in the future if needed
   const queryClient = useQueryClient();
-  const { data, isLoading } = useAuthQuery(["apiKeys"], () => listApiKeys());
-  const keys: ApiKey[] = data?.keys ?? [];
+
+  // ─── Platform API Keys ──────────────────────────────────────────────────
+  const { data: apiKeysData, isLoading: apiKeysLoading } = useAuthQuery(
+    ["apiKeys"],
+    () => listApiKeys()
+  );
+  const keys: ApiKey[] = apiKeysData?.keys ?? [];
 
   const [newKey, setNewKey] = useState<NewApiKey | null>(null);
   const [creating, setCreating] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [apiKeyError, setApiKeyError] = useState<string | null>(null);
 
   async function handleCreate() {
     setCreating(true);
-    setError(null);
+    setApiKeyError(null);
     setNewKey(null);
     try {
       const data = await createApiKey("Dashboard Key");
       setNewKey(data);
       await queryClient.invalidateQueries({ queryKey: ["apiKeys"] });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create key");
+      setApiKeyError(err instanceof Error ? err.message : "Failed to create key");
     } finally {
       setCreating(false);
     }
   }
 
-  async function handleDelete(id: string) {
+  async function handleDeleteApiKey(id: string) {
     if (!confirm("Delete this API key? It will stop working immediately.")) return;
     try {
       await deleteApiKey(id);
       await queryClient.invalidateQueries({ queryKey: ["apiKeys"] });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete key");
+      setApiKeyError(err instanceof Error ? err.message : "Failed to delete key");
     }
   }
 
@@ -46,47 +77,150 @@ export default function OrgApiKeysPage() {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  // ─── Provider Keys (BYOK) ──────────────────────────────────────────────
+  const { data: byokData, isLoading: byokLoading } = useAuthQuery(
+    ["byokKeys"],
+    () => listByokKeys()
+  );
+  const { data: workflowsData, isLoading: workflowsLoading } = useAuthQuery(
+    ["workflows"],
+    () => listWorkflows()
+  );
+
+  const configuredKeys: ByokKey[] = byokData?.keys ?? [];
+
+  const providers: ProviderRow[] = useMemo(() => {
+    const providerSet = new Set<string>();
+    for (const wf of workflowsData?.workflows ?? []) {
+      for (const p of wf.requiredProviders ?? []) {
+        providerSet.add(p);
+      }
+    }
+    for (const k of configuredKeys) {
+      providerSet.add(k.provider);
+    }
+    const keyMap = new Map(configuredKeys.map((k) => [k.provider, k]));
+    return [...providerSet].sort().map((provider) => {
+      const key = keyMap.get(provider);
+      return {
+        provider,
+        configured: !!key,
+        maskedKey: key?.maskedKey ?? null,
+        updatedAt: key?.updatedAt ?? null,
+      };
+    });
+  }, [workflowsData, configuredKeys]);
+
+  const [editingProvider, setEditingProvider] = useState<string | null>(null);
+  const [providerKeyInput, setProviderKeyInput] = useState("");
+  const [savingProvider, setSavingProvider] = useState(false);
+  const [providerError, setProviderError] = useState<string | null>(null);
+  const [providerSuccess, setProviderSuccess] = useState<string | null>(null);
+
+  async function handleSaveProvider(provider: string) {
+    if (!providerKeyInput.trim()) return;
+    setSavingProvider(true);
+    setProviderError(null);
+    setProviderSuccess(null);
+    try {
+      await setByokKey(provider, providerKeyInput.trim());
+      await queryClient.invalidateQueries({ queryKey: ["byokKeys"] });
+      setEditingProvider(null);
+      setProviderKeyInput("");
+      setProviderSuccess(`${capitalize(provider)} key saved successfully.`);
+      setTimeout(() => setProviderSuccess(null), 3000);
+    } catch (err) {
+      setProviderError(err instanceof Error ? err.message : "Failed to save key");
+    } finally {
+      setSavingProvider(false);
+    }
+  }
+
+  async function handleDeleteProvider(provider: string) {
+    if (!confirm(`Remove your ${capitalize(provider)} key? Workflows using this provider will stop working.`)) return;
+    setProviderError(null);
+    setProviderSuccess(null);
+    try {
+      await deleteByokKey(provider);
+      await queryClient.invalidateQueries({ queryKey: ["byokKeys"] });
+      setProviderSuccess(`${capitalize(provider)} key removed.`);
+      setTimeout(() => setProviderSuccess(null), 3000);
+    } catch (err) {
+      setProviderError(err instanceof Error ? err.message : "Failed to delete key");
+    }
+  }
+
+  function startEditingProvider(provider: string) {
+    setEditingProvider(provider);
+    setProviderKeyInput("");
+    setProviderError(null);
+  }
+
+  function cancelEditingProvider() {
+    setEditingProvider(null);
+    setProviderKeyInput("");
+    setProviderError(null);
+  }
+
+  const isLoading = apiKeysLoading || byokLoading || workflowsLoading;
+
+  if (isLoading) {
+    return (
+      <div className="p-4 md:p-8">
+        <div className="mb-6">
+          <h1 className="font-display text-2xl font-bold text-gray-800">Keys</h1>
+          <p className="text-gray-600">Manage API and provider keys for this organization.</p>
+        </div>
+        <SkeletonApiKey />
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 md:p-8">
       <div className="mb-6">
-        <h1 className="font-display text-2xl font-bold text-gray-800">API Keys</h1>
-        <p className="text-gray-600">Manage API keys for this organization.</p>
+        <h1 className="font-display text-2xl font-bold text-gray-800">Keys</h1>
+        <p className="text-gray-600">Manage API and provider keys for this organization.</p>
       </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 text-sm">
-          {error}
-        </div>
-      )}
+      {/* ─── Section 1: Platform API Key ────────────────────────────────── */}
+      <div className="mb-10">
+        <h2 className="text-lg font-medium text-gray-900 mb-1">Platform API Key</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Use this key to connect to Distribute via the API or MCP clients.
+        </p>
 
-      {newKey && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-5 mb-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <h3 className="font-medium text-green-800 mb-2">New API Key Created</h3>
-              <p className="text-sm text-green-700 mb-3">
-                Copy this key now. It won&apos;t be shown again.
-              </p>
-              <div className="bg-white rounded-lg p-3 border border-green-200">
-                <code className="font-mono text-sm text-gray-800 break-all">
-                  {newKey.key}
-                </code>
-              </div>
-            </div>
-            <button
-              onClick={() => handleCopy(newKey.key)}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm font-medium"
-            >
-              {copied ? "Copied!" : "Copy"}
-            </button>
+        {apiKeyError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
+            {apiKeyError}
           </div>
-        </div>
-      )}
+        )}
 
-      {isLoading ? (
-        <SkeletonApiKey />
-      ) : (
-        <div className="space-y-6 max-w-2xl">
+        {newKey && (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-5 mb-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="font-medium text-green-800 mb-2">New API Key Created</h3>
+                <p className="text-sm text-green-700 mb-3">
+                  Copy this key now. It won&apos;t be shown again.
+                </p>
+                <div className="bg-white rounded-lg p-3 border border-green-200">
+                  <code className="font-mono text-sm text-gray-800 break-all">
+                    {newKey.key}
+                  </code>
+                </div>
+              </div>
+              <button
+                onClick={() => handleCopy(newKey.key)}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm font-medium"
+              >
+                {copied ? "Copied!" : "Copy"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-4 max-w-2xl">
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <div className="flex items-center justify-between">
               <div>
@@ -103,12 +237,9 @@ export default function OrgApiKeysPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <h3 className="font-medium text-gray-800 mb-4">Your API Keys</h3>
-
-            {keys.length === 0 ? (
-              <p className="text-gray-500 text-sm">No API keys yet. Create one to get started.</p>
-            ) : (
+          {keys.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <h3 className="font-medium text-gray-800 mb-4">Your API Keys</h3>
               <div className="space-y-3">
                 {keys.map((key) => (
                   <div
@@ -127,7 +258,7 @@ export default function OrgApiKeysPage() {
                       </div>
                     </div>
                     <button
-                      onClick={() => handleDelete(key.id)}
+                      onClick={() => handleDeleteApiKey(key.id)}
                       className="text-red-500 hover:text-red-600 text-sm font-medium"
                     >
                       Delete
@@ -135,8 +266,8 @@ export default function OrgApiKeysPage() {
                   </div>
                 ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <h3 className="font-medium text-gray-800 mb-4">How to Use</h3>
@@ -166,7 +297,120 @@ export default function OrgApiKeysPage() {
             </div>
           </div>
         </div>
-      )}
+      </div>
+
+      {/* ─── Section 2: Provider Keys (BYOK) ────────────────────────────── */}
+      <div>
+        <h2 className="text-lg font-medium text-gray-900 mb-1">Provider Keys</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Manage your own API keys for external providers (BYOK). These are used when running workflows with your own keys.
+        </p>
+
+        {providerError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
+            {providerError}
+          </div>
+        )}
+        {providerSuccess && (
+          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4 text-sm">
+            {providerSuccess}
+          </div>
+        )}
+
+        {providers.length === 0 ? (
+          <div className="bg-white rounded-xl border border-gray-200 p-8 text-center max-w-2xl">
+            <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+              <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+              </svg>
+            </div>
+            <p className="text-gray-500 text-sm">
+              No providers found. Provider keys will appear here when workflows that require external API keys are deployed.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3 max-w-2xl">
+            {providers.map((row) => (
+              <div
+                key={row.provider}
+                className="bg-white rounded-xl border border-gray-200 p-5"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                        row.configured ? "bg-green-500" : "bg-gray-300"
+                      }`}
+                    />
+                    <div>
+                      <h3 className="font-medium text-gray-800">{capitalize(row.provider)}</h3>
+                      {row.configured && row.maskedKey ? (
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          <code className="font-mono">{row.maskedKey}</code>
+                          {row.updatedAt && (
+                            <> · Updated {new Date(row.updatedAt).toLocaleDateString()}</>
+                          )}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-400 mt-0.5">Not configured</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {editingProvider !== row.provider && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => startEditingProvider(row.provider)}
+                        className="text-sm font-medium text-brand-600 hover:text-brand-700"
+                      >
+                        {row.configured ? "Rotate" : "Add Key"}
+                      </button>
+                      {row.configured && (
+                        <button
+                          onClick={() => handleDeleteProvider(row.provider)}
+                          className="text-sm font-medium text-red-500 hover:text-red-600"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {editingProvider === row.provider && (
+                  <div className="mt-4 flex items-center gap-2">
+                    <input
+                      type="password"
+                      value={providerKeyInput}
+                      onChange={(e) => setProviderKeyInput(e.target.value)}
+                      placeholder={`Enter your ${capitalize(row.provider)} API key`}
+                      className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSaveProvider(row.provider);
+                        if (e.key === "Escape") cancelEditingProvider();
+                      }}
+                    />
+                    <button
+                      onClick={() => handleSaveProvider(row.provider)}
+                      disabled={savingProvider || !providerKeyInput.trim()}
+                      className="px-4 py-2 text-sm font-medium bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50"
+                    >
+                      {savingProvider ? "Saving..." : "Save"}
+                    </button>
+                    <button
+                      onClick={cancelEditingProvider}
+                      className="px-3 py-2 text-sm text-gray-500 hover:text-gray-700"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

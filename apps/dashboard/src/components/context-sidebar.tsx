@@ -259,12 +259,8 @@ function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string 
       </div>
       <div className="pt-2 mt-2 border-t border-gray-100">
         <SidebarLink
-          item={{ id: "provider-keys", label: "Provider Keys", href: `/orgs/${orgId}/provider-keys`, icon: <ProviderKeyIcon /> }}
-          isActive={pathname.startsWith(`/orgs/${orgId}/provider-keys`)}
-        />
-        <SidebarLink
-          item={{ id: "api-keys", label: "API Keys", href: `/orgs/${orgId}/api-keys`, icon: <KeyIcon /> }}
-          isActive={pathname.startsWith(`/orgs/${orgId}/api-keys`)}
+          item={{ id: "api-keys", label: "Keys", href: `/orgs/${orgId}/api-keys`, icon: <KeyIcon /> }}
+          isActive={pathname.startsWith(`/orgs/${orgId}/api-keys`) || pathname.startsWith(`/orgs/${orgId}/provider-keys`)}
         />
       </div>
     </SidebarSection>
@@ -336,8 +332,9 @@ function AppFeatureLevelSidebar({ featureId, pathname }: {
   const title = wfDef?.label ?? featureId;
 
   const items: SidebarItem[] = [
-    { id: "campaigns", label: "Campaigns", href: basePath, icon: <WorkflowIcon /> },
+    { id: "campaigns", label: "Campaigns", href: basePath, icon: <EnvelopeIcon /> },
     { id: "create", label: "Create Campaign", href: `${basePath}/new`, icon: <PlusIcon /> },
+    { id: "workflows", label: "Workflows", href: `${basePath}/workflows`, icon: <WorkflowIcon /> },
   ];
 
   return (
