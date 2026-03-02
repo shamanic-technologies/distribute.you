@@ -1,20 +1,49 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listBrands } from "@/lib/api";
+import { listBrands, fetchSalesProfileFromUrl } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
 
 export default function BrandsPage() {
   const params = useParams();
   const orgId = params.orgId as string;
+  const router = useRouter();
 
-  const { data, isLoading } = useAuthQuery(
+  const [showCreate, setShowCreate] = useState(false);
+  const [brandUrl, setBrandUrl] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+
+  const { data, isLoading, refetch } = useAuthQuery(
     ["brands"],
     () => listBrands()
   );
   const brands = data?.brands ?? [];
+
+  const handleCreateBrand = async () => {
+    const trimmed = brandUrl.trim();
+    if (!trimmed) return;
+    const url = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    setIsCreating(true);
+    setCreateError(null);
+    try {
+      const result = await fetchSalesProfileFromUrl(url);
+      await refetch();
+      if (result.brandId) {
+        router.push(`/orgs/${orgId}/brands/${result.brandId}`);
+      } else {
+        setShowCreate(false);
+        setBrandUrl("");
+      }
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : "Failed to create brand");
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -35,7 +64,45 @@ export default function BrandsPage() {
     <div className="p-4 md:p-8 max-w-4xl">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold text-gray-900">Brands</h1>
+        <button
+          onClick={() => setShowCreate(true)}
+          className="px-4 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition flex items-center gap-2"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          Create Brand
+        </button>
       </div>
+
+      {showCreate && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-medium text-gray-700">New Brand</h3>
+            <button onClick={() => { setShowCreate(false); setBrandUrl(""); setCreateError(null); }} className="text-gray-400 hover:text-gray-600 text-lg leading-none">&times;</button>
+          </div>
+          <p className="text-sm text-gray-500 mb-3">Enter a website URL to create a brand. We'll automatically extract the brand profile.</p>
+          <div className="flex items-center gap-3">
+            <input
+              type="url"
+              value={brandUrl}
+              onChange={(e) => setBrandUrl(e.target.value)}
+              placeholder="https://example.com"
+              className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300"
+              onKeyDown={(e) => { if (e.key === "Enter") handleCreateBrand(); }}
+              disabled={isCreating}
+            />
+            <button
+              onClick={handleCreateBrand}
+              disabled={isCreating || !brandUrl.trim()}
+              className="px-5 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {isCreating ? "Creating..." : "Create"}
+            </button>
+          </div>
+          {createError && <p className="mt-2 text-sm text-red-600">{createError}</p>}
+        </div>
+      )}
 
       {brands.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
