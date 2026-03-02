@@ -23,15 +23,17 @@ describe("Feature workflows page", () => {
     expect(content).toContain("@distribute/content");
   });
 
-  it("should fetch workflows from API", () => {
+  it("should use leaderboard data for all available workflows", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("listWorkflows");
+    expect(content).toContain("fetchSectionLeaderboard");
+    expect(content).toContain("section-leaderboard");
     expect(content).toContain("useAuthQuery");
   });
 
-  it("should filter workflows by featureId", () => {
+  it("should also fetch deployed workflows for detail panel IDs", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("w.name.startsWith(featureId)");
+    expect(content).toContain("listWorkflows");
+    expect(content).toContain("workflowNameToId");
   });
 
   it("should use WorkflowDetailPanel for detail view", () => {
@@ -40,17 +42,18 @@ describe("Feature workflows page", () => {
     expect(content).toContain("detailWorkflowId");
   });
 
-  it("should have workflow rows with display info", () => {
+  it("should display performance stats per workflow", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("displayName");
-    expect(content).toContain("signatureName");
-    expect(content).toContain("requiredProviders");
-    expect(content).toContain("description");
+    expect(content).toContain("emailsSent");
+    expect(content).toContain("openRate");
+    expect(content).toContain("replyRate");
+    expect(content).toContain("costPerReplyCents");
+    expect(content).toContain("runCount");
   });
 
-  it("should show empty state when no workflows", () => {
+  it("should show empty state when no workflows available", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("No workflows deployed");
+    expect(content).toContain("No workflows available");
   });
 
   it("should have a loading state", () => {
