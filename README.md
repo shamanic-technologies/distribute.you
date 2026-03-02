@@ -24,7 +24,9 @@ distribute is the Stripe for Distribution. Create an account, give us your URL â
 | Workflow | What it does | Category | Channel |
 |----------|--------------|----------|---------|
 | Sales Cold Email Outreach | Find leads, generate personalized cold emails, send & optimize. | sales | email |
-| PR & Media Email Outreach | Pitch journalists and media contacts for press coverage. | pr | email |
+| Journalists Cold Email Outreach | Pitch journalists and media contacts for press coverage. | journalists | email |
+| Webinars | Welcome emails, heat-up sequences, reminders, and post-webinar thank you emails. | webinars | email |
+| Welcome Email | Automated welcome email for new signups and contacts. | welcome | email |
 
 ## Quick Start
 
