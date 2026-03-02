@@ -30,10 +30,10 @@ describe("Feature workflows page", () => {
     expect(content).toContain("useAuthQuery");
   });
 
-  it("should also fetch deployed workflows for detail panel IDs", () => {
+  it("should also fetch deployed workflows and merge both sources", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
     expect(content).toContain("listWorkflows");
-    expect(content).toContain("workflowNameToId");
+    expect(content).toContain("workflowIdMap");
   });
 
   it("should use WorkflowDetailPanel for detail view", () => {
@@ -51,14 +51,20 @@ describe("Feature workflows page", () => {
     expect(content).toContain("runCount");
   });
 
-  it("should show empty state when no workflows available", () => {
+  it("should show error state when unable to load workflows", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("No workflows available");
+    expect(content).toContain("Unable to load workflows");
   });
 
   it("should have a loading state", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
     expect(content).toContain("isLoading");
     expect(content).toContain("animate-pulse");
+  });
+
+  it("should use unified WorkflowRowData type merging both sources", () => {
+    const content = fs.readFileSync(pagePath, "utf-8");
+    expect(content).toContain("WorkflowRowData");
+    expect(content).toContain("deployedByName");
   });
 });
