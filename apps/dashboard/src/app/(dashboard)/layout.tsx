@@ -7,7 +7,6 @@ import { Header } from "@/components/header";
 import { OrgActivator } from "@/components/org-activator";
 import { UserActivityTracker } from "@/components/user-activity-tracker";
 import { MobileSidebarProvider, useMobileSidebar } from "@/components/mobile-sidebar-context";
-import { ChatWidget } from "@/components/chat/chat-widget";
 import { QueryProvider } from "@/lib/query-provider";
 import { OrgContextProvider, useOrg } from "@/lib/org-context";
 
@@ -72,7 +71,6 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
-      <ChatWidget />
     </div>
   );
 }

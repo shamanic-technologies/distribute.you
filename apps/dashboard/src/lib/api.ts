@@ -137,18 +137,6 @@ export async function deleteByokKey(
   });
 }
 
-// Session API Key (distribute assistant chat)
-export interface SessionApiKey {
-  id: string;
-  key: string;
-  keyPrefix: string;
-  name: string;
-}
-
-export async function getOrCreateSessionKey(token?: string): Promise<SessionApiKey> {
-  return apiCall<SessionApiKey>("/api-keys/session", { token, method: "POST" });
-}
-
 // Activity tracking
 export async function trackActivity(token?: string): Promise<{ ok: boolean }> {
   return apiCall<{ ok: boolean }>("/activity", { token, method: "POST" });
