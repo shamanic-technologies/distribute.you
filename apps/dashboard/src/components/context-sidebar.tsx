@@ -276,7 +276,6 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
   const topItems: SidebarItem[] = [
     { id: "overview", label: "Overview", href: basePath, icon: <HomeIcon /> },
     { id: "brand-info", label: "Brand Info", href: `${basePath}/brand-info`, icon: <InfoIcon /> },
-    { id: "workflows", label: "Workflows", href: `${basePath}/workflows`, icon: <WorkflowIcon /> },
   ];
 
   const featureItems: SidebarItem[] = WORKFLOW_DEFINITIONS.map((wf) => ({
@@ -324,6 +323,7 @@ function FeatureLevelSidebar({ orgId, brandId, sectionKey, pathname }: {
   const items: SidebarItem[] = [
     { id: "campaigns", label: "Campaigns", href: basePath, icon: <EnvelopeIcon /> },
     { id: "create", label: "Create Campaign", href: `${basePath}/campaigns/new`, icon: <PlusIcon /> },
+    { id: "workflows", label: "Workflows", href: `${basePath}/workflows`, icon: <WorkflowIcon /> },
   ];
 
   return (
