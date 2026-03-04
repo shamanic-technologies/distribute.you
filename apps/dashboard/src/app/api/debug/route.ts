@@ -9,7 +9,7 @@ export async function GET() {
   let authError: string | null = null;
   try {
     const { userId, orgId } = await auth();
-    authResult = { userId, orgId };
+    authResult = { userId: userId ?? null, orgId: orgId ?? null };
   } catch (err) {
     authError = err instanceof Error ? err.message : String(err);
   }
