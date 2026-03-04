@@ -15,6 +15,7 @@ async function proxyRequest(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     if (!API_KEY) {
+      console.error("[api-proxy] DISTRIBUTE_API_KEY env var is not set");
       return NextResponse.json(
         { error: "API key not configured" },
         { status: 500 }
