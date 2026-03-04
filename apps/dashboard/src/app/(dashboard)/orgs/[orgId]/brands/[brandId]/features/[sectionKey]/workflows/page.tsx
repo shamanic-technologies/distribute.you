@@ -1,28 +1,110 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listWorkflows, type Workflow } from "@/lib/api";
+import {
+  listWorkflows,
+  fetchSectionLeaderboard,
+  type WorkflowLeaderboardEntry,
+} from "@/lib/api";
 import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-panel";
 import { WORKFLOW_DEFINITIONS } from "@distribute/content";
+
+type SortKey = "openRate" | "clickRate" | "replyRate" | "costPerOpenCents" | "costPerClickCents" | "costPerReplyCents";
+
+const COST_METRICS: Set<SortKey> = new Set(["costPerOpenCents", "costPerClickCents", "costPerReplyCents"]);
+function defaultSortDir(key: SortKey): "asc" | "desc" {
+  return COST_METRICS.has(key) ? "asc" : "desc";
+}
+
+function formatPercent(rate: number): string {
+  if (rate === 0) return "\u2014";
+  return `${(rate * 100).toFixed(1)}%`;
+}
+
+function formatCostCents(cents: number | null): string {
+  if (cents === null || cents === 0) return "\u2014";
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
+function SortHeader({
+  label,
+  sortKey,
+  currentSort,
+  currentDir,
+  onSort,
+}: {
+  label: string;
+  sortKey: SortKey;
+  currentSort: SortKey;
+  currentDir: "asc" | "desc";
+  onSort: (key: SortKey) => void;
+}) {
+  const active = currentSort === sortKey;
+  return (
+    <th
+      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-brand-600 select-none"
+      onClick={() => onSort(sortKey)}
+    >
+      {label} {active ? (currentDir === "desc" ? "\u2193" : "\u2191") : ""}
+    </th>
+  );
+}
 
 export default function FeatureWorkflowsPage() {
   const params = useParams();
   const sectionKey = params.sectionKey as string;
   const [detailWorkflowId, setDetailWorkflowId] = useState<string | null>(null);
+  const [metric, setMetric] = useState<SortKey>("costPerReplyCents");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const wfDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === sectionKey);
 
-  const { data: workflowsData, isLoading } = useAuthQuery(
+  const { data: workflowsData } = useAuthQuery(
     ["workflows"],
-    () => listWorkflows()
+    () => listWorkflows(),
+    { enabled: wfDef?.implemented === true }
   );
 
-  const featureWorkflows = useMemo(() => {
-    const all = workflowsData?.workflows ?? [];
-    return all.filter((w) => w.name.startsWith(sectionKey));
-  }, [workflowsData?.workflows, sectionKey]);
+  const { data: leaderboard, isLoading } = useAuthQuery(
+    ["section-leaderboard", sectionKey],
+    () => fetchSectionLeaderboard(sectionKey),
+    { enabled: wfDef?.implemented === true }
+  );
+
+  const workflowNameToId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const wf of workflowsData?.workflows ?? []) {
+      map.set(wf.name, wf.id);
+    }
+    return map;
+  }, [workflowsData]);
+
+  const handleSort = useCallback((key: SortKey) => {
+    setMetric((prev) => {
+      if (prev === key) {
+        setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+        return prev;
+      }
+      setSortDir(defaultSortDir(key));
+      return key;
+    });
+  }, []);
+
+  const sorted = useMemo(() => {
+    if (!leaderboard) return [];
+    return [...leaderboard].sort((a, b) => {
+      const aRaw = a[metric];
+      const bRaw = b[metric];
+      const aNull = aRaw === null || aRaw === 0;
+      const bNull = bRaw === null || bRaw === 0;
+      if (aNull && bNull) return 0;
+      if (aNull) return 1;
+      if (bNull) return -1;
+      return sortDir === "desc" ? Number(bRaw) - Number(aRaw) : Number(aRaw) - Number(bRaw);
+    });
+  }, [leaderboard, metric, sortDir]);
 
   return (
     <div className="p-4 md:p-8">
@@ -34,35 +116,53 @@ export default function FeatureWorkflowsPage() {
       </div>
 
       {isLoading ? (
-        <div className="space-y-3 max-w-3xl">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 animate-pulse">
-              <div className="h-5 bg-gray-100 rounded w-1/3 mb-3" />
-              <div className="h-4 bg-gray-100 rounded w-1/2" />
-            </div>
-          ))}
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="animate-pulse p-6 space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-12 bg-gray-100 rounded" />
+            ))}
+          </div>
         </div>
-      ) : featureWorkflows.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center max-w-3xl">
+      ) : sorted.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
           <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h4v4H4zM10 14h4v4h-4zM16 6h4v4h-4zM6 10v4l4 0M18 10v4l-4 0" />
             </svg>
           </div>
-          <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No workflows deployed</h3>
+          <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No performance data yet</h3>
           <p className="text-gray-600 text-sm max-w-md mx-auto">
-            Workflows will appear here once they are deployed.
+            Performance data will appear here as campaigns run.
           </p>
         </div>
       ) : (
-        <div className="space-y-3 max-w-3xl">
-          {featureWorkflows.map((workflow) => (
-            <WorkflowRow
-              key={workflow.id}
-              workflow={workflow}
-              onShowDetail={() => setDetailWorkflowId(workflow.id)}
-            />
-          ))}
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Workflow
+                  </th>
+                  <SortHeader label="% Opens" sortKey="openRate" currentSort={metric} currentDir={sortDir} onSort={handleSort} />
+                  <SortHeader label="% Clicks" sortKey="clickRate" currentSort={metric} currentDir={sortDir} onSort={handleSort} />
+                  <SortHeader label="% Replies" sortKey="replyRate" currentSort={metric} currentDir={sortDir} onSort={handleSort} />
+                  <SortHeader label="$/Open" sortKey="costPerOpenCents" currentSort={metric} currentDir={sortDir} onSort={handleSort} />
+                  <SortHeader label="$/Click" sortKey="costPerClickCents" currentSort={metric} currentDir={sortDir} onSort={handleSort} />
+                  <SortHeader label="$/Reply" sortKey="costPerReplyCents" currentSort={metric} currentDir={sortDir} onSort={handleSort} />
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {sorted.map((wf) => (
+                  <WorkflowRow
+                    key={wf.workflowName}
+                    wf={wf}
+                    onShowDetail={workflowNameToId.get(wf.workflowName) ? () => setDetailWorkflowId(workflowNameToId.get(wf.workflowName)!) : undefined}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -77,55 +177,45 @@ export default function FeatureWorkflowsPage() {
 }
 
 function WorkflowRow({
-  workflow,
+  wf,
   onShowDetail,
 }: {
-  workflow: Workflow;
-  onShowDetail: () => void;
+  wf: WorkflowLeaderboardEntry;
+  onShowDetail?: () => void;
 }) {
-  const displayName = workflow.displayName || workflow.name;
-  const providerCount = workflow.requiredProviders?.length ?? 0;
+  const name = wf.signatureName
+    ? wf.signatureName.charAt(0).toUpperCase() + wf.signatureName.slice(1)
+    : wf.displayName || wf.workflowName;
 
   return (
-    <button
-      onClick={onShowDetail}
-      className="w-full text-left bg-white rounded-xl border border-gray-200 p-4 hover:border-brand-300 hover:shadow-md transition-all"
-    >
-      <div className="flex items-start justify-between">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-medium text-gray-800 truncate">{displayName}</h3>
-            {workflow.signatureName && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 flex-shrink-0">
-                {workflow.signatureName}
-              </span>
-            )}
-          </div>
-          {workflow.description && (
-            <p className="text-sm text-gray-500 line-clamp-2">{workflow.description}</p>
+    <tr className="hover:bg-gray-50 transition">
+      <td className="px-4 py-4 whitespace-nowrap">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-gray-900">{name}</span>
+          {wf.category && (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+              {wf.category}
+            </span>
           )}
-          <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
-            <span>{workflow.channel}</span>
-            <span>&middot;</span>
-            <span>{workflow.audienceType}</span>
-            {workflow.dag && (
-              <>
-                <span>&middot;</span>
-                <span>{workflow.dag.nodes.length} steps</span>
-              </>
-            )}
-            {providerCount > 0 && (
-              <>
-                <span>&middot;</span>
-                <span>{providerCount} provider{providerCount > 1 ? "s" : ""}</span>
-              </>
-            )}
-          </div>
+          {onShowDetail && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onShowDetail(); }}
+              className="p-1 text-gray-400 hover:text-brand-600 transition"
+              title="View workflow details"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
+          )}
         </div>
-        <svg className="w-5 h-5 text-gray-300 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
-      </div>
-    </button>
+      </td>
+      <td className="px-4 py-4 text-sm text-gray-600">{wf.emailsSent > 0 ? formatPercent(wf.openRate) : "\u2014"}</td>
+      <td className="px-4 py-4 text-sm text-gray-600">{wf.emailsSent > 0 ? formatPercent(wf.clickRate) : "\u2014"}</td>
+      <td className="px-4 py-4 text-sm text-gray-600">{wf.emailsSent > 0 ? formatPercent(wf.replyRate) : "\u2014"}</td>
+      <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(wf.costPerOpenCents)}</td>
+      <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(wf.costPerClickCents)}</td>
+      <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(wf.costPerReplyCents)}</td>
+    </tr>
   );
 }
