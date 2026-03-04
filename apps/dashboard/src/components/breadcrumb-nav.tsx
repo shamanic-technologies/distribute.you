@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useOrganization, useOrganizationList } from "@clerk/nextjs";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { WORKFLOW_DEFINITIONS, SECTION_LABELS } from "@distribute/content";
+import { BrandLogo } from "./brand-logo";
 
 interface Brand {
   id: string;
@@ -156,6 +157,35 @@ export function BreadcrumbNav() {
     router.push(`/features/${newFeatureId}`);
   };
 
+  const FeatureIcon = ({ sectionKey: sk }: { sectionKey: string }) => {
+    if (sk.startsWith("sales") || sk.startsWith("welcome")) {
+      return (
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-4 h-4 text-gray-500 flex-shrink-0">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        </svg>
+      );
+    }
+    if (sk.startsWith("journalists")) {
+      return (
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-4 h-4 text-gray-500 flex-shrink-0">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+        </svg>
+      );
+    }
+    if (sk.startsWith("webinar")) {
+      return (
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-4 h-4 text-gray-500 flex-shrink-0">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      );
+    }
+    return (
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-4 h-4 text-gray-500 flex-shrink-0">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h4v4H4zM10 14h4v4h-4zM16 6h4v4h-4zM6 10v4l4 0M18 10v4l-4 0" />
+      </svg>
+    );
+  };
+
   const Chevron = ({ open }: { open: boolean }) => (
     <svg className={`w-3 h-3 text-gray-400 transition ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -270,7 +300,8 @@ export function BreadcrumbNav() {
         <>
           <Sep />
           <div className="relative flex items-center">
-            <Link href={`/orgs/${orgId}/brands/${brandId}`} className="px-2 py-1 rounded-md hover:bg-gray-100 transition font-medium text-gray-800">
+            <Link href={`/orgs/${orgId}/brands/${brandId}`} className="px-2 py-1 rounded-md hover:bg-gray-100 transition font-medium text-gray-800 flex items-center gap-1.5">
+              {currentBrand?.domain && <BrandLogo domain={currentBrand.domain} size={16} className="rounded-sm flex-shrink-0" fallbackClassName="w-4 h-4 text-gray-400 flex-shrink-0" />}
               {currentBrand?.name || currentBrand?.domain || "Brand"}
             </Link>
             <button onClick={() => toggleDropdown("brand")} className="p-1 hover:bg-gray-100 rounded transition">
@@ -294,6 +325,7 @@ export function BreadcrumbNav() {
                         brandId === b.id ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
                       }`}
                     >
+                      <BrandLogo domain={b.domain} size={18} className="rounded-sm flex-shrink-0" fallbackClassName="w-[18px] h-[18px] text-gray-400 flex-shrink-0" />
                       <span className="truncate">{b.name || b.domain}</span>
                       {brandId === b.id && (
                         <svg className="w-4 h-4 text-brand-600 ml-auto flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -314,7 +346,8 @@ export function BreadcrumbNav() {
         <>
           <Sep />
           <div className="relative flex items-center">
-            <Link href={`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}`} className="px-2 py-1 rounded-md hover:bg-gray-100 transition font-medium text-gray-800">
+            <Link href={`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}`} className="px-2 py-1 rounded-md hover:bg-gray-100 transition font-medium text-gray-800 flex items-center gap-1.5">
+              <FeatureIcon sectionKey={sectionKey} />
               {currentFeatureLabel}
             </Link>
             <button onClick={() => toggleDropdown("feature")} className="p-1 hover:bg-gray-100 rounded transition">
@@ -333,6 +366,7 @@ export function BreadcrumbNav() {
                       sectionKey === wf.sectionKey ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
                     }`}
                   >
+                    <FeatureIcon sectionKey={wf.sectionKey} />
                     <span className="truncate">{wf.label}</span>
                     {sectionKey === wf.sectionKey && (
                       <svg className="w-4 h-4 text-brand-600 ml-auto flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
