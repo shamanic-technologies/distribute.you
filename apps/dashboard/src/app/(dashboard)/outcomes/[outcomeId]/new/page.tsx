@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { WORKFLOW_DEFINITIONS } from "@distribute/content";
+import { WORKFLOW_DEFINITIONS, OUTCOME_LABELS } from "@distribute/content";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { useOrg } from "@/lib/org-context";
 import {
@@ -164,6 +164,7 @@ export default function CreateCampaignPage() {
 
   const { org } = useOrg();
   const outcomeDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === outcomeId);
+  const outcomeLabel = outcomeDef?.targetOutcomes[0] ? OUTCOME_LABELS[outcomeDef.targetOutcomes[0]] : outcomeId;
 
   // State
   const [mode, setMode] = useState<Mode>("autopilot");
@@ -445,7 +446,7 @@ export default function CreateCampaignPage() {
     return (
       <div className="p-4 md:p-8">
         <div className="mb-6">
-          <h1 className="font-display text-2xl font-bold text-gray-800">{outcomeDef.label}</h1>
+          <h1 className="font-display text-2xl font-bold text-gray-800">{outcomeLabel}</h1>
           <p className="text-gray-600">{outcomeDef.description}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
@@ -456,7 +457,7 @@ export default function CreateCampaignPage() {
           </div>
           <h3 className="font-display font-bold text-lg text-gray-800 mb-2">Coming Soon</h3>
           <p className="text-gray-600 text-sm max-w-md mx-auto">
-            {outcomeDef.label} is not yet available. We&apos;re working on it and will notify you when it&apos;s ready.
+            {outcomeLabel} is not yet available. We&apos;re working on it and will notify you when it&apos;s ready.
           </p>
         </div>
       </div>
@@ -483,7 +484,7 @@ export default function CreateCampaignPage() {
       {/* Header */}
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-gray-800">Create Campaign</h1>
-        <p className="text-gray-600">Select a workflow and configure your campaign for {outcomeDef.label}.</p>
+        <p className="text-gray-600">Select a workflow and configure your campaign for {outcomeLabel}.</p>
       </div>
 
       {/* Missing provider keys warning */}
