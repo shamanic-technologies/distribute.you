@@ -274,23 +274,52 @@ export default function CreateCampaignPage() {
     });
   }, [leaderboard, metric, sortDir]);
 
-  // In autopilot, first row is always selected
+  // Available workflows for this outcome (used as fallback when no leaderboard data)
+  const outcomeWorkflows = useMemo(() => {
+    return (workflowsData?.workflows ?? []).filter((w) => w.name.startsWith(outcomeId));
+  }, [workflowsData, outcomeId]);
+
+  // Build display rows: leaderboard data if available, otherwise workflows with no metrics
+  const displayRows = useMemo(() => {
+    if (sorted.length > 0) return sorted;
+    return outcomeWorkflows.map((w): WorkflowLeaderboardEntry => ({
+      workflowName: w.name,
+      displayName: w.displayName ?? w.name,
+      signatureName: w.signatureName ?? null,
+      category: w.category ?? null,
+      sectionKey: outcomeId,
+      runCount: 0,
+      emailsSent: 0,
+      emailsOpened: 0,
+      emailsClicked: 0,
+      emailsReplied: 0,
+      totalCostUsdCents: 0,
+      openRate: 0,
+      clickRate: 0,
+      replyRate: 0,
+      costPerOpenCents: null,
+      costPerClickCents: null,
+      costPerReplyCents: null,
+    }));
+  }, [sorted, outcomeWorkflows]);
+
+  // In autopilot, first row is always selected (leaderboard or fallback workflow)
   const effectiveSelection = mode === "autopilot"
-    ? sorted[0]?.workflowName ?? null
+    ? displayRows[0]?.workflowName ?? null
     : selectedWorkflow;
 
   // In manual mode, separate selected from rest
   const { topRows, restRows } = useMemo(() => {
     if (mode === "autopilot" || !selectedWorkflow) {
-      return { topRows: [], restRows: sorted };
+      return { topRows: [], restRows: displayRows };
     }
-    const selected = sorted.find((w) => w.workflowName === selectedWorkflow);
-    const rest = sorted.filter((w) => w.workflowName !== selectedWorkflow);
+    const selected = displayRows.find((w) => w.workflowName === selectedWorkflow);
+    const rest = displayRows.filter((w) => w.workflowName !== selectedWorkflow);
     return {
       topRows: selected ? [selected] : [],
       restRows: rest,
     };
-  }, [mode, selectedWorkflow, sorted]);
+  }, [mode, selectedWorkflow, displayRows]);
 
   // Resolve the brand URL from either the selected brand or the new URL input
   const resolvedBrandUrl = useMemo(() => {
@@ -700,7 +729,7 @@ export default function CreateCampaignPage() {
             ))}
           </div>
         </div>
-      ) : sorted.length === 0 ? (
+      ) : displayRows.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
           <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
