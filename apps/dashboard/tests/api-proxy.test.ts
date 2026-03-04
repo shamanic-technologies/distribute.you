@@ -15,9 +15,9 @@ describe("API proxy route", () => {
     expect(fs.existsSync(proxyPath)).toBe(true);
   });
 
-  it("should use DISTRIBUTE_API_KEY for auth", () => {
+  it("should use API_SERVICE_API_KEY for auth", () => {
     const content = fs.readFileSync(proxyPath, "utf-8");
-    expect(content).toContain("DISTRIBUTE_API_KEY");
+    expect(content).toContain("API_SERVICE_API_KEY");
     expect(content).toContain("Authorization");
     expect(content).toContain("Bearer");
   });
