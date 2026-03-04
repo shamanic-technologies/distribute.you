@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getBrand, getBrandSalesProfile, listBrandRuns, fetchSalesProfileFromUrl, type SalesProfile, type BrandRun, type RunCost, type Testimonial } from "@/lib/api";
+import { getBrand, getBrandSalesProfile, listBrandRuns, generateSalesProfile, type SalesProfile, type BrandRun, type RunCost, type Testimonial } from "@/lib/api";
 
 function timeAgo(dateStr: string): string {
   const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
@@ -31,6 +31,7 @@ export default function BrandInfoPage() {
   const orgId = params.orgId as string;
   const [activeTab, setActiveTab] = useState<"current" | "history">("current");
   const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const { data: brandData } = useAuthQuery(
@@ -62,10 +63,13 @@ export default function BrandInfoPage() {
   const handleGenerate = async () => {
     if (!brandUrl || generating) return;
     setGenerating(true);
+    setGenerateError(null);
     try {
-      await fetchSalesProfileFromUrl(brandUrl, undefined, { skipCache: !!profile });
+      await generateSalesProfile(brandUrl, { skipCache: !!profile });
       await queryClient.invalidateQueries({ queryKey: ["brandSalesProfile", brandId] });
       await queryClient.invalidateQueries({ queryKey: ["brandRuns", brandId] });
+    } catch (err) {
+      setGenerateError(err instanceof Error ? err.message : "Generation failed");
     } finally {
       setGenerating(false);
     }
@@ -157,6 +161,15 @@ export default function BrandInfoPage() {
           )}
         </div>
       </div>
+
+      {generateError && (
+        <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-center justify-between">
+          <p className="text-sm text-red-600">{generateError}</p>
+          <button onClick={() => setGenerateError(null)} className="text-red-400 hover:text-red-600 text-sm ml-4">
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 mb-6 border-b border-gray-200">

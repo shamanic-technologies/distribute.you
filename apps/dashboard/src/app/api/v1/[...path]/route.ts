@@ -1,6 +1,8 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 
+export const maxDuration = 60;
+
 const API_URL =
   process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 const API_KEY = process.env.ADMIN_DISTRIBUTE_API_KEY;

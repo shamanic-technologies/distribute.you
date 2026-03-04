@@ -372,6 +372,16 @@ export async function fetchSalesProfileFromUrl(
   }
 }
 
+export async function generateSalesProfile(
+  url: string,
+  options?: { skipCache?: boolean }
+): Promise<{ profile: SalesProfile; brandId: string }> {
+  return apiCall<{ profile: SalesProfile; brandId: string }>(
+    `/brand/sales-profile`,
+    { method: "POST", body: { url, skipCache: options?.skipCache } }
+  );
+}
+
 // Brand runs
 export interface RunCost {
   costName: string;
