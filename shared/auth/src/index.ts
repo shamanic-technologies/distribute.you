@@ -20,5 +20,5 @@ export async function validateApiKey(apiKey: string): Promise<ApiKeyValidation> 
 }
 
 export function getApiKeyFromEnv(): string | undefined {
-  return process.env.DISTRIBUTE_API_KEY;
+  return process.env.ADMIN_DISTRIBUTE_API_KEY;
 }
