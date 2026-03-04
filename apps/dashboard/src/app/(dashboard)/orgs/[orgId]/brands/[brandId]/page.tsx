@@ -131,17 +131,17 @@ export default function BrandOverviewPage() {
         </div>
       </Link>
 
-      {/* Features Section */}
+      {/* Outcomes Section */}
       <div className="mb-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Features</h2>
+        <h2 className="text-lg font-medium text-gray-900 mb-4">Outcomes</h2>
         {workflowSections.length === 0 ? (
           <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
             <p className="text-gray-500 mb-4">No campaigns yet for this brand.</p>
             <Link
-              href="/features/sales-email-cold-outreach"
+              href="/outcomes/sales-email-cold-outreach"
               className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition text-sm font-medium"
             >
-              Explore Features
+              Explore Outcomes
             </Link>
           </div>
         ) : (
@@ -196,7 +196,7 @@ export default function BrandOverviewPage() {
                       {wfCampaigns.slice(0, 3).map(campaign => (
                         <Link
                           key={campaign.id}
-                          href={`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}/campaigns/${campaign.id}`}
+                          href={`/orgs/${orgId}/brands/${brandId}/outcomes/${sectionKey}/campaigns/${campaign.id}`}
                           className="flex items-center justify-between py-1.5 px-2 -mx-2 rounded hover:bg-gray-50 transition"
                         >
                           <span className="text-sm text-gray-700 truncate">{campaign.name}</span>
@@ -219,7 +219,7 @@ export default function BrandOverviewPage() {
                   {/* Actions */}
                   <div className="flex items-center gap-3">
                     <Link
-                      href={`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}`}
+                      href={`/orgs/${orgId}/brands/${brandId}/outcomes/${sectionKey}`}
                       className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition text-sm font-medium"
                     >
                       View Campaigns

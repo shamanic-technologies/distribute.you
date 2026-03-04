@@ -7,12 +7,12 @@ import { PerformancePreview } from "@/components/performance-preview";
 import { ExpertStrategies } from "@/components/expert-strategies";
 import { StatusIndicator } from "@/components/status-indicator";
 import { fetchLeaderboardPreview } from "@/lib/fetch-leaderboard";
-import { URLS, DISTRIBUTION_FEATURES, DISTRIBUTION_STEPS } from "@distribute/content";
-import type { FeatureColor } from "@distribute/content";
+import { URLS, DISTRIBUTION_OUTCOMES, DISTRIBUTION_STEPS } from "@distribute/content";
+import type { OutcomeColor } from "@distribute/content";
 
 export const revalidate = 300;
 
-const FEATURE_COLOR_CLASSES: Record<FeatureColor, { bg: string; text: string; border: string; dot: string; hover: string }> = {
+const OUTCOME_COLOR_CLASSES: Record<OutcomeColor, { bg: string; text: string; border: string; dot: string; hover: string }> = {
   emerald: { bg: "bg-emerald-100", text: "text-emerald-600", border: "border-emerald-200", dot: "bg-emerald-400", hover: "group-hover:text-emerald-600" },
   cyan: { bg: "bg-cyan-100", text: "text-cyan-600", border: "border-cyan-200", dot: "bg-cyan-400", hover: "group-hover:text-cyan-600" },
   blue: { bg: "bg-blue-100", text: "text-blue-600", border: "border-blue-200", dot: "bg-blue-400", hover: "group-hover:text-blue-600" },
@@ -113,7 +113,7 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Feature Categories */}
+      {/* Outcome Categories */}
       <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
@@ -121,27 +121,27 @@ export default async function Home() {
               One platform, every touchpoint
             </h2>
             <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-              Each feature has hundreds of AI workflows competing on real metrics.
+              Each outcome has hundreds of AI workflows competing on real metrics.
               The best one runs by default.
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {DISTRIBUTION_FEATURES.map((feature) => {
-              const colors = FEATURE_COLOR_CLASSES[feature.color];
+            {DISTRIBUTION_OUTCOMES.map((outcome) => {
+              const colors = OUTCOME_COLOR_CLASSES[outcome.color];
               return (
                 <div
-                  key={feature.id}
+                  key={outcome.id}
                   className="bg-white rounded-xl p-5 border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all duration-200 group"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <div className={`w-2 h-2 rounded-full ${colors.dot}`} />
                       <h3 className={`font-semibold text-gray-900 ${colors.hover} transition`}>
-                        {feature.title}
+                        {outcome.title}
                       </h3>
                     </div>
-                    {feature.status === "live" ? (
+                    {outcome.status === "live" ? (
                       <span className="text-[10px] font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full border border-green-100">
                         Live
                       </span>
@@ -152,13 +152,13 @@ export default async function Home() {
                     )}
                   </div>
                   <p className="text-sm text-gray-500 mb-3 leading-relaxed">
-                    {feature.description}
+                    {outcome.description}
                   </p>
                   <div className="flex items-center gap-1.5 text-xs text-gray-400">
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
-                    Ranked by {feature.metric}
+                    Ranked by {outcome.metric}
                   </div>
                 </div>
               );
@@ -174,7 +174,7 @@ export default async function Home() {
             Thousands of workflows. One winner.
           </h2>
           <p className="text-gray-500 text-lg mb-6 leading-relaxed">
-            Every distribution feature runs on AI workflows. Each workflow is a
+            Every distribution outcome runs on AI workflows. Each workflow is a
             different approach — different prompts, different sequences, different
             timing. We rank them by real performance data and the best one runs
             by default.

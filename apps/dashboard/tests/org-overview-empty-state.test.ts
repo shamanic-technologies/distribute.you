@@ -20,6 +20,6 @@ describe("Org overview page empty state", () => {
   });
 
   it("should link to campaign creation for the CTA", () => {
-    expect(content).toContain("/features/sales-email-cold-outreach/new");
+    expect(content).toContain("/outcomes/sales-email-cold-outreach/new");
   });
 });

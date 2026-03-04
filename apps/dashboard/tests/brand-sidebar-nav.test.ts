@@ -21,8 +21,8 @@ describe("Brand sidebar navigation", () => {
     expect(content).toContain('`${basePath}/workflows`');
   });
 
-  it("should have Features section with coming soon badges in brand sidebar", () => {
-    expect(content).toContain("featureItems");
+  it("should have Outcomes section with coming soon badges in brand sidebar", () => {
+    expect(content).toContain("outcomeItems");
     expect(content).toContain("comingSoon: !wf.implemented");
   });
 

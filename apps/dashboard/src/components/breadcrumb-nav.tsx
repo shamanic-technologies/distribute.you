@@ -35,16 +35,16 @@ export function BreadcrumbNav() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState<Record<string, boolean>>({});
 
-  // Parse path structure: /orgs/[orgId]/brands/[brandId]/features/[sectionKey]/campaigns/[id]
-  // Also handles app-level: /features/[featureId] and /features/[featureId]/new
+  // Parse path structure: /orgs/[orgId]/brands/[brandId]/outcomes/[sectionKey]/campaigns/[id]
+  // Also handles app-level: /outcomes/[outcomeId] and /outcomes/[outcomeId]/new
   const pathParts = pathname.split("/").filter(Boolean);
   const orgId = pathParts[0] === "orgs" && pathParts[1] ? pathParts[1] : null;
   const brandId = orgId && pathParts[2] === "brands" && pathParts[3] ? pathParts[3] : null;
-  const sectionKey = brandId && pathParts[4] === "features" && pathParts[5] ? pathParts[5] : null;
+  const sectionKey = brandId && pathParts[4] === "outcomes" && pathParts[5] ? pathParts[5] : null;
   const campaignId = sectionKey && pathParts[6] === "campaigns" && pathParts[7] ? pathParts[7] : null;
-  // App-level feature path: /features/[featureId] or /features/[featureId]/new
-  const appFeatureId = !orgId && pathParts[0] === "features" && pathParts[1] ? pathParts[1] : null;
-  const appFeatureSubpage = appFeatureId && pathParts[2] ? pathParts[2] : null;
+  // App-level outcome path: /outcomes/[outcomeId] or /outcomes/[outcomeId]/new
+  const appOutcomeId = !orgId && pathParts[0] === "outcomes" && pathParts[1] ? pathParts[1] : null;
+  const appOutcomeSubpage = appOutcomeId && pathParts[2] ? pathParts[2] : null;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -131,10 +131,10 @@ export function BreadcrumbNav() {
     }
   };
 
-  const handleFeatureSwitch = (newSectionKey: string) => {
+  const handleOutcomeSwitch = (newSectionKey: string) => {
     setOpenDropdown(null);
     if (orgId && brandId) {
-      router.push(`/orgs/${orgId}/brands/${brandId}/features/${newSectionKey}`);
+      router.push(`/orgs/${orgId}/brands/${brandId}/outcomes/${newSectionKey}`);
     }
   };
 
@@ -142,18 +142,18 @@ export function BreadcrumbNav() {
     setOpenDropdown(null);
     if (orgId && brandId && sectionKey) {
       const subpage = pathParts[8] || "";
-      router.push(`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}/campaigns/${newCampaignId}${subpage ? "/" + subpage : ""}`);
+      router.push(`/orgs/${orgId}/brands/${brandId}/outcomes/${sectionKey}/campaigns/${newCampaignId}${subpage ? "/" + subpage : ""}`);
     }
   };
 
   const currentBrand = brands.find((b) => b.id === brandId);
   const currentCampaign = campaigns.find((c) => c.id === campaignId);
-  const currentFeatureLabel = sectionKey ? (SECTION_LABELS[sectionKey] ?? sectionKey) : null;
-  const appFeatureLabel = appFeatureId ? (SECTION_LABELS[appFeatureId] ?? appFeatureId) : null;
+  const currentOutcomeLabel = sectionKey ? (SECTION_LABELS[sectionKey] ?? sectionKey) : null;
+  const appOutcomeLabel = appOutcomeId ? (SECTION_LABELS[appOutcomeId] ?? appOutcomeId) : null;
 
-  const handleAppFeatureSwitch = (newFeatureId: string) => {
+  const handleAppOutcomeSwitch = (newOutcomeId: string) => {
     setOpenDropdown(null);
-    router.push(`/features/${newFeatureId}`);
+    router.push(`/outcomes/${newOutcomeId}`);
   };
 
   const Chevron = ({ open }: { open: boolean }) => (
@@ -220,32 +220,32 @@ export function BreadcrumbNav() {
         )}
       </div>
 
-      {/* APP-LEVEL FEATURE */}
-      {appFeatureId && (
+      {/* APP-LEVEL OUTCOME */}
+      {appOutcomeId && (
         <>
           <Sep />
           <div className="relative flex items-center">
-            <Link href={`/features/${appFeatureId}`} className="px-2 py-1 rounded-md hover:bg-gray-100 transition font-medium text-gray-800 truncate max-w-[200px]">
-              {appFeatureLabel}
+            <Link href={`/outcomes/${appOutcomeId}`} className="px-2 py-1 rounded-md hover:bg-gray-100 transition font-medium text-gray-800 truncate max-w-[200px]">
+              {appOutcomeLabel}
             </Link>
-            <button onClick={() => toggleDropdown("appFeature")} className="p-1 hover:bg-gray-100 rounded transition">
-              <Chevron open={openDropdown === "appFeature"} />
+            <button onClick={() => toggleDropdown("appOutcome")} className="p-1 hover:bg-gray-100 rounded transition">
+              <Chevron open={openDropdown === "appOutcome"} />
             </button>
-            {openDropdown === "appFeature" && (
+            {openDropdown === "appOutcome" && (
               <div className="absolute left-0 top-full mt-1 w-56 bg-white rounded-lg border border-gray-200 shadow-xl py-1 z-50">
                 <div className="px-3 py-2 border-b border-gray-100">
-                  <p className="text-xs text-gray-500 font-medium">Switch feature</p>
+                  <p className="text-xs text-gray-500 font-medium">Switch outcome</p>
                 </div>
                 {WORKFLOW_DEFINITIONS.map((wf) => (
                   <button
                     key={wf.sectionKey}
-                    onClick={() => handleAppFeatureSwitch(wf.sectionKey)}
+                    onClick={() => handleAppOutcomeSwitch(wf.sectionKey)}
                     className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition ${
-                      appFeatureId === wf.sectionKey ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
+                      appOutcomeId === wf.sectionKey ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
                     }`}
                   >
                     <span className="truncate">{wf.label}</span>
-                    {appFeatureId === wf.sectionKey && (
+                    {appOutcomeId === wf.sectionKey && (
                       <svg className="w-4 h-4 text-brand-600 ml-auto flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
@@ -256,7 +256,7 @@ export function BreadcrumbNav() {
             )}
           </div>
           {/* Subpage label (e.g. "New" for create campaign) */}
-          {appFeatureSubpage === "new" && (
+          {appOutcomeSubpage === "new" && (
             <>
               <Sep />
               <span className="px-2 py-1 text-gray-600">Create Campaign</span>
@@ -309,26 +309,26 @@ export function BreadcrumbNav() {
         </>
       )}
 
-      {/* FEATURE */}
+      {/* OUTCOME */}
       {sectionKey && orgId && brandId && (
         <>
           <Sep />
           <div className="relative flex items-center">
-            <Link href={`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}`} className="px-2 py-1 rounded-md hover:bg-gray-100 transition font-medium text-gray-800">
-              {currentFeatureLabel}
+            <Link href={`/orgs/${orgId}/brands/${brandId}/outcomes/${sectionKey}`} className="px-2 py-1 rounded-md hover:bg-gray-100 transition font-medium text-gray-800">
+              {currentOutcomeLabel}
             </Link>
-            <button onClick={() => toggleDropdown("feature")} className="p-1 hover:bg-gray-100 rounded transition">
-              <Chevron open={openDropdown === "feature"} />
+            <button onClick={() => toggleDropdown("outcome")} className="p-1 hover:bg-gray-100 rounded transition">
+              <Chevron open={openDropdown === "outcome"} />
             </button>
-            {openDropdown === "feature" && (
+            {openDropdown === "outcome" && (
               <div className="absolute left-0 top-full mt-1 w-56 bg-white rounded-lg border border-gray-200 shadow-xl py-1 z-50">
                 <div className="px-3 py-2 border-b border-gray-100">
-                  <p className="text-xs text-gray-500 font-medium">Switch feature</p>
+                  <p className="text-xs text-gray-500 font-medium">Switch outcome</p>
                 </div>
                 {WORKFLOW_DEFINITIONS.map((wf) => (
                   <button
                     key={wf.sectionKey}
-                    onClick={() => handleFeatureSwitch(wf.sectionKey)}
+                    onClick={() => handleOutcomeSwitch(wf.sectionKey)}
                     className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition ${
                       sectionKey === wf.sectionKey ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
                     }`}
@@ -352,7 +352,7 @@ export function BreadcrumbNav() {
         <>
           <Sep />
           <div className="relative flex items-center">
-            <Link href={`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}/campaigns/${campaignId}`} className="px-2 py-1 rounded-md hover:bg-gray-100 transition font-medium text-gray-800">
+            <Link href={`/orgs/${orgId}/brands/${brandId}/outcomes/${sectionKey}/campaigns/${campaignId}`} className="px-2 py-1 rounded-md hover:bg-gray-100 transition font-medium text-gray-800">
               {currentCampaign?.name || "Campaign"}
             </Link>
             <button onClick={() => toggleDropdown("campaign")} className="p-1 hover:bg-gray-100 rounded transition">

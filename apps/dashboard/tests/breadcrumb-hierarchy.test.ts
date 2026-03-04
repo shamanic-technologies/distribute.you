@@ -23,11 +23,11 @@ describe("Breadcrumb hierarchy", () => {
     expect(content).toContain("/onboarding");
   });
 
-  it("should parse org/brand/feature/campaign from path structure", () => {
+  it("should parse org/brand/outcome/campaign from path structure", () => {
     const content = fs.readFileSync(breadcrumbPath, "utf-8");
     expect(content).toContain('"orgs"');
     expect(content).toContain('"brands"');
-    expect(content).toContain('"features"');
+    expect(content).toContain('"outcomes"');
     expect(content).toContain('"campaigns"');
   });
 
@@ -36,9 +36,9 @@ describe("Breadcrumb hierarchy", () => {
     expect(content).toContain("/orgs/${orgId}/brands/");
   });
 
-  it("should use features instead of workflows in paths", () => {
+  it("should use outcomes instead of workflows in paths", () => {
     const content = fs.readFileSync(breadcrumbPath, "utf-8");
-    expect(content).toContain("/features/${sectionKey}");
+    expect(content).toContain("/outcomes/${sectionKey}");
     expect(content).not.toContain('href={`/brands/');
   });
 });

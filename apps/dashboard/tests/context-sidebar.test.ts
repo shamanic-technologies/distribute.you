@@ -25,7 +25,7 @@ describe("Context sidebar", () => {
     expect(content).toContain('"app"');
     expect(content).toContain('"org"');
     expect(content).toContain('"brand"');
-    expect(content).toContain('"feature"');
+    expect(content).toContain('"outcome"');
     expect(content).toContain('"campaign"');
   });
 
@@ -35,12 +35,12 @@ describe("Context sidebar", () => {
     expect(content).toContain("return null");
   });
 
-  it("should have app-level items (Home) and feature links", () => {
+  it("should have app-level items (Home) and outcome links", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
     expect(content).toContain('"Home"');
-    // Features section with links to /features/
-    expect(content).toContain("Features");
-    expect(content).toContain("/features/");
+    // Outcomes section with links to /outcomes/
+    expect(content).toContain("Outcomes");
+    expect(content).toContain("/outcomes/");
   });
 
   it("should NOT have API Keys at app level", () => {
@@ -58,10 +58,10 @@ describe("Context sidebar", () => {
     expect(content).not.toContain('href: "/workflows"');
   });
 
-  it("should have brand-level items with feature links", () => {
+  it("should have brand-level items with outcome links", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
     expect(content).toContain('"Brand Info"');
-    expect(content).toContain("features/");
+    expect(content).toContain("outcomes/");
   });
 
   it("should grey out coming soon features with a tag", () => {
@@ -81,11 +81,11 @@ describe("Context sidebar", () => {
     expect(content).toContain('`/orgs/${orgId}/brands`');
   });
 
-  it("should have Features section in org sidebar with WORKFLOW_DEFINITIONS", () => {
+  it("should have Outcomes section in org sidebar with WORKFLOW_DEFINITIONS", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    // OrgLevelSidebar maps WORKFLOW_DEFINITIONS to featureItems
-    expect(content).toContain("featureItems");
-    expect(content).toContain('/features/${wf.sectionKey}');
+    // OrgLevelSidebar maps WORKFLOW_DEFINITIONS to outcomeItems
+    expect(content).toContain("outcomeItems");
+    expect(content).toContain('/outcomes/${wf.sectionKey}');
   });
 
   it("should have brand back link point to brands page", () => {
@@ -100,7 +100,7 @@ describe("Context sidebar", () => {
     expect(content).toContain('`/orgs/${orgId}/api-keys`');
   });
 
-  it("should have Workflows link in app feature sidebar", () => {
+  it("should have Workflows link in app outcome sidebar", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
     expect(content).toContain('"Workflows"');
     expect(content).toContain('`${basePath}/workflows`');

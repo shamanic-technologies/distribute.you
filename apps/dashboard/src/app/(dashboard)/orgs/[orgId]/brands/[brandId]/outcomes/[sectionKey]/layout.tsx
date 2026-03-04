@@ -16,7 +16,7 @@ export default function WorkflowSectionLayout({
   const sectionKey = params.sectionKey as string;
 
   const label = SECTION_LABELS[sectionKey] ?? sectionKey;
-  const basePath = `/orgs/${orgId}/brands/${brandId}/features/${sectionKey}`;
+  const basePath = `/orgs/${orgId}/brands/${brandId}/outcomes/${sectionKey}`;
   const backToOrgBrandHref = `/orgs/${orgId}/brands/${brandId}`;
 
   const SIDEBAR_ITEMS = [

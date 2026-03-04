@@ -25,7 +25,7 @@ describe("BreadcrumbNav truncation", () => {
   it("should not truncate the campaign name link in the breadcrumb", () => {
     // Find the campaign Link element (contains /campaigns/${campaignId})
     const campaignLinkRegex =
-      /Link\s+href=\{`\/orgs\/\$\{orgId\}\/brands\/\$\{brandId\}\/features\/\$\{sectionKey\}\/campaigns\/\$\{campaignId\}`\}\s+className="([^"]*)"/;
+      /Link\s+href=\{`\/orgs\/\$\{orgId\}\/brands\/\$\{brandId\}\/outcomes\/\$\{sectionKey\}\/campaigns\/\$\{campaignId\}`\}\s+className="([^"]*)"/;
     const match = content.match(campaignLinkRegex);
     expect(
       match,

@@ -1,9 +1,9 @@
 export { URLS } from "./urls.js";
 export {
-  DISTRIBUTION_FEATURES,
+  DISTRIBUTION_OUTCOMES,
   DISTRIBUTION_STEPS,
-} from "./features.js";
-export type { DistributionFeature, DistributionStep, FeatureColor } from "./features.js";
+} from "./outcomes.js";
+export type { DistributionOutcome, DistributionStep, OutcomeColor } from "./outcomes.js";
 export { BRAND } from "./brand.js";
 export {
   WORKFLOW_DEFINITIONS,

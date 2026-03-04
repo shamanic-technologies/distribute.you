@@ -5,7 +5,7 @@ import * as path from "path";
 describe("Campaign overview page shows total cost", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[sectionKey]/campaigns/[id]/page.tsx"
+    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/outcomes/[sectionKey]/campaigns/[id]/page.tsx"
   );
   const content = fs.readFileSync(pagePath, "utf-8");
 
