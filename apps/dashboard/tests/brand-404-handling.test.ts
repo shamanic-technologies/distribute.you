@@ -70,8 +70,9 @@ describe("Brand info page handles missing brand", () => {
     expect(brandInfoContent).toMatch(/if\s*\(\s*!brand\s*\)/);
   });
 
-  it("should derive brandUrl from brand, not brandData", () => {
-    expect(brandInfoContent).toMatch(/brand\?\.brandUrl/);
-    expect(brandInfoContent).not.toMatch(/brandData\?\.brand\?\.brandUrl/);
+  it("should use brand (not brandUrl) for Generate button guard", () => {
+    // Generate button and handler should depend on brand existing, not brandUrl
+    expect(brandInfoContent).not.toMatch(/brandUrl\s*&&\s*\(/);
+    expect(brandInfoContent).toContain("brand && (");
   });
 });
