@@ -13,6 +13,7 @@ export {
   getWorkflowDefinitionsByOutcome,
   WORKFLOW_CATEGORY_LABELS,
   SECTION_LABELS,
+  OUTCOME_LABELS,
   parseWorkflowName,
   getSectionKey,
   getSignatureName,
