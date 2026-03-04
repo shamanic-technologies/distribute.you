@@ -40,13 +40,16 @@ export default function BrandInfoPage() {
   );
   const brandName = brandData?.brand?.name ?? null;
 
-  const { data: profileData, error: profileError } = useAuthQuery(
+  const { data: profileData, error: profileError, isPending: profilePending } = useAuthQuery(
     ["brandSalesProfile", brandId],
     () => getBrandSalesProfile(brandId)
   );
   const profile = profileData?.profile ?? null;
   const profileCached = profileData?.cached ?? false;
-  const error = profileError?.message ?? null;
+  // 404 means "no profile yet" — not an error worth surfacing
+  const isProfileNotFound = profileError?.message?.toLowerCase().includes("not found") ||
+    profileError?.message?.toLowerCase().includes("404");
+  const error = isProfileNotFound ? null : (profileError?.message ?? null);
 
   const { data: runsData } = useAuthQuery(
     ["brandRuns", brandId],
@@ -76,7 +79,7 @@ export default function BrandInfoPage() {
     }
   };
 
-  if (!profileData) {
+  if (profilePending) {
     return (
       <div className="p-4 md:p-8">
         <div className="animate-pulse space-y-4">
