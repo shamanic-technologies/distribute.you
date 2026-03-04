@@ -2,6 +2,13 @@ export type WorkflowCategory = "sales" | "journalists" | "webinars" | "welcome";
 export type WorkflowChannel = "email";
 export type WorkflowAudienceType = "cold-outreach";
 
+/** Measurable outcome types that workflows can target. */
+export type OutcomeType =
+  | "interested-replies"
+  | "press-coverage"
+  | "webinar-attendance"
+  | "welcome-engagement";
+
 /** Static workflow section definitions (replaces MCP_PACKAGES). */
 export interface WorkflowDefinition {
   /** Section key, e.g. "sales-email-cold-outreach" */
@@ -17,6 +24,10 @@ export interface WorkflowDefinition {
   icon: string;
   /** Whether workflows exist for this feature in the backend */
   implemented: boolean;
+  /** Outcomes this workflow can deliver */
+  targetOutcomes: OutcomeType[];
+  /** Free-form tags for filtering (e.g. "email", "outbound") */
+  tags: string[];
 }
 
 export const WORKFLOW_DEFINITIONS: WorkflowDefinition[] = [
@@ -30,6 +41,8 @@ export const WORKFLOW_DEFINITIONS: WorkflowDefinition[] = [
     audienceType: "cold-outreach",
     icon: "envelope",
     implemented: true,
+    targetOutcomes: ["interested-replies"],
+    tags: ["email", "outbound", "cold"],
   },
   {
     sectionKey: "journalists-email-cold-outreach",
@@ -41,6 +54,8 @@ export const WORKFLOW_DEFINITIONS: WorkflowDefinition[] = [
     audienceType: "cold-outreach",
     icon: "newspaper",
     implemented: false,
+    targetOutcomes: ["press-coverage"],
+    tags: ["email", "outbound", "cold", "pr"],
   },
   {
     sectionKey: "webinars",
@@ -52,6 +67,8 @@ export const WORKFLOW_DEFINITIONS: WorkflowDefinition[] = [
     audienceType: "cold-outreach",
     icon: "calendar",
     implemented: false,
+    targetOutcomes: ["webinar-attendance"],
+    tags: ["email", "lifecycle"],
   },
   {
     sectionKey: "welcome-email",
@@ -63,6 +80,8 @@ export const WORKFLOW_DEFINITIONS: WorkflowDefinition[] = [
     audienceType: "cold-outreach",
     icon: "envelope",
     implemented: false,
+    targetOutcomes: ["welcome-engagement"],
+    tags: ["email", "lifecycle", "onboarding"],
   },
 ];
 
@@ -71,6 +90,12 @@ export const getWorkflowDefinition = (sectionKey: string) =>
 
 export const getWorkflowDefinitionsByCategory = (cat: WorkflowCategory) =>
   WORKFLOW_DEFINITIONS.filter((w) => w.category === cat);
+
+export const getWorkflowDefinitionsByTag = (tag: string) =>
+  WORKFLOW_DEFINITIONS.filter((w) => w.tags.includes(tag));
+
+export const getWorkflowDefinitionsByOutcome = (outcome: OutcomeType) =>
+  WORKFLOW_DEFINITIONS.filter((w) => w.targetOutcomes.includes(outcome));
 
 export interface ParsedWorkflowName {
   category: WorkflowCategory;
