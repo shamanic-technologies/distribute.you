@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 const API_URL =
   process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
-const API_KEY = process.env.DISTRIBUTE_API_KEY;
+const API_KEY = process.env.API_SERVICE_API_KEY;
 
 export async function GET() {
   // Require login to access the dashboard, but only send the Bearer token

@@ -30,7 +30,7 @@ describe("Leaderboard proxy must not send filtering headers", () => {
   it("should send Authorization for API auth (Bearer token only)", () => {
     // The public API requires a Bearer token, but that's for authentication —
     // not for filtering. The key distinction: no x-org-id / x-user-id.
-    expect(content).toContain("DISTRIBUTE_API_KEY");
+    expect(content).toContain("API_SERVICE_API_KEY");
     expect(content).toMatch(/Authorization/);
   });
 
