@@ -1,15 +1,15 @@
-export type OutcomeColor = "emerald" | "cyan" | "blue" | "violet" | "pink" | "amber";
+export type FeatureColor = "emerald" | "cyan" | "blue" | "violet" | "pink" | "amber";
 
-export interface DistributionOutcome {
+export interface DistributionFeature {
   id: string;
   title: string;
   description: string;
   metric: string;
   status: "live" | "coming-soon";
-  color: OutcomeColor;
+  color: FeatureColor;
 }
 
-export const DISTRIBUTION_OUTCOMES: DistributionOutcome[] = [
+export const DISTRIBUTION_FEATURES: DistributionFeature[] = [
   {
     id: "welcome-emails",
     title: "Welcome Emails",
@@ -74,7 +74,7 @@ export const DISTRIBUTION_STEPS: DistributionStep[] = [
   },
   {
     number: 2,
-    title: "Enable outcomes",
+    title: "Enable features",
     description: "Welcome emails, outreach, webinar flows — toggle what you need.",
   },
   {

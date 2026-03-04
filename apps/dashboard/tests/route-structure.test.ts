@@ -16,12 +16,12 @@ describe("New route structure", () => {
     expect(fs.existsSync(path.join(appDir, "(dashboard)/orgs/[orgId]/brands/[brandId]/brand-info/page.tsx"))).toBe(true);
   });
 
-  it("should have outcome routes (renamed from workflows)", () => {
-    expect(fs.existsSync(path.join(appDir, "(dashboard)/orgs/[orgId]/brands/[brandId]/outcomes/[sectionKey]/page.tsx"))).toBe(true);
+  it("should have feature routes (renamed from workflows)", () => {
+    expect(fs.existsSync(path.join(appDir, "(dashboard)/orgs/[orgId]/brands/[brandId]/features/[sectionKey]/page.tsx"))).toBe(true);
   });
 
-  it("should have campaign routes under outcomes", () => {
-    const campaignDir = "(dashboard)/orgs/[orgId]/brands/[brandId]/outcomes/[sectionKey]/campaigns/[id]";
+  it("should have campaign routes under features", () => {
+    const campaignDir = "(dashboard)/orgs/[orgId]/brands/[brandId]/features/[sectionKey]/campaigns/[id]";
     expect(fs.existsSync(path.join(appDir, campaignDir, "page.tsx"))).toBe(true);
     expect(fs.existsSync(path.join(appDir, campaignDir, "leads/page.tsx"))).toBe(true);
     expect(fs.existsSync(path.join(appDir, campaignDir, "emails/page.tsx"))).toBe(true);

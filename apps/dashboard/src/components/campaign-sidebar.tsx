@@ -46,8 +46,8 @@ interface CampaignSidebarProps {
 }
 
 export function CampaignSidebar({ campaignId, orgId, brandId, sectionKey, stats, emailCount, leadCount, companyCount }: CampaignSidebarProps) {
-  const basePath = `/orgs/${orgId}/brands/${brandId}/outcomes/${sectionKey}/campaigns/${campaignId}`;
-  const backHref = `/orgs/${orgId}/brands/${brandId}/outcomes/${sectionKey}`;
+  const basePath = `/orgs/${orgId}/brands/${brandId}/features/${sectionKey}/campaigns/${campaignId}`;
+  const backHref = `/orgs/${orgId}/brands/${brandId}/features/${sectionKey}`;
 
   const items = [
     {

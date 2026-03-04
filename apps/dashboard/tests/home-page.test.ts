@@ -58,8 +58,8 @@ describe("Org overview page", () => {
     expect(content).toContain("`/orgs/${orgId}/brands`");
   });
 
-  it("should have Outcomes and Recent Campaigns sections", () => {
-    expect(content).toContain("Outcomes");
+  it("should have Features and Recent Campaigns sections", () => {
+    expect(content).toContain("Features");
     expect(content).toContain("Recent Campaigns");
   });
 
@@ -79,11 +79,11 @@ describe("Brand overview page", () => {
     expect(content).not.toContain('href="/workflows"');
   });
 
-  it("should have Outcomes section header", () => {
-    expect(content).toContain("Outcomes");
+  it("should have Features section header", () => {
+    expect(content).toContain("Features");
   });
 
-  it("should link to Explore Outcomes", () => {
-    expect(content).toContain("Explore Outcomes");
+  it("should link to Explore Features", () => {
+    expect(content).toContain("Explore Features");
   });
 });

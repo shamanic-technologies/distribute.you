@@ -91,6 +91,18 @@ const KeyIcon = () => (
   </svg>
 );
 
+const ProviderKeyIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+  </svg>
+);
+
+const OrgIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+  </svg>
+);
+
 const BrandIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
@@ -133,7 +145,7 @@ const PlusIcon = () => (
   </svg>
 );
 
-function getOutcomeIcon(sectionKey: string): React.ReactNode {
+function getFeatureIcon(sectionKey: string): React.ReactNode {
   if (sectionKey.startsWith("sales")) return <EnvelopeIcon />;
   if (sectionKey.startsWith("journalists")) return <NewspaperIcon />;
   if (sectionKey.startsWith("webinar")) return <CalendarIcon />;
@@ -142,34 +154,34 @@ function getOutcomeIcon(sectionKey: string): React.ReactNode {
 }
 
 interface NavigationLevel {
-  type: "app" | "appOutcome" | "org" | "brand" | "outcome" | "campaign";
+  type: "app" | "appFeature" | "org" | "brand" | "feature" | "campaign";
   orgId?: string;
   brandId?: string;
   sectionKey?: string;
   campaignId?: string;
-  outcomeId?: string;
+  featureId?: string;
 }
 
 function getNavigationLevel(segments: string[]): NavigationLevel {
-  // /orgs/[orgId]/brands/[brandId]/outcomes/[sectionKey]/campaigns/[id]
+  // /orgs/[orgId]/brands/[brandId]/features/[sectionKey]/campaigns/[id]
   if (segments[0] === "orgs" && segments[1]) {
     const orgId = segments[1];
     if (segments[2] === "brands" && segments[3]) {
       const brandId = segments[3];
-      if (segments[4] === "outcomes" && segments[5]) {
+      if (segments[4] === "features" && segments[5]) {
         const sectionKey = segments[5];
         if (segments[6] === "campaigns" && segments[7]) {
           return { type: "campaign", orgId, brandId, sectionKey, campaignId: segments[7] };
         }
-        return { type: "outcome", orgId, brandId, sectionKey };
+        return { type: "feature", orgId, brandId, sectionKey };
       }
       return { type: "brand", orgId, brandId };
     }
     return { type: "org", orgId };
   }
-  // App-level outcome: /outcomes/[outcomeId] or /outcomes/[outcomeId]/new
-  if (segments[0] === "outcomes" && segments[1]) {
-    return { type: "appOutcome", outcomeId: segments[1] };
+  // App-level feature: /features/[featureId] or /features/[featureId]/new
+  if (segments[0] === "features" && segments[1]) {
+    return { type: "appFeature", featureId: segments[1] };
   }
   return { type: "app" };
 }
@@ -180,11 +192,11 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
     { id: "home", label: "Home", href: "/", icon: <HomeIcon /> },
   ];
 
-  const outcomeItems: SidebarItem[] = WORKFLOW_DEFINITIONS.map((wf) => ({
+  const featureItems: SidebarItem[] = WORKFLOW_DEFINITIONS.map((wf) => ({
     id: wf.sectionKey,
     label: wf.label,
-    href: `/outcomes/${wf.sectionKey}`,
-    icon: getOutcomeIcon(wf.sectionKey),
+    href: `/features/${wf.sectionKey}`,
+    icon: getFeatureIcon(wf.sectionKey),
     comingSoon: !wf.implemented,
   }));
 
@@ -198,8 +210,8 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
         />
       ))}
       <div className="pt-2 mt-2 border-t border-gray-100">
-        <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Outcomes</h4>
-        {outcomeItems.map((item) => (
+        <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Features</h4>
+        {featureItems.map((item) => (
           <SidebarLink
             key={item.id}
             item={item}
@@ -218,11 +230,11 @@ function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string 
     { id: "brands", label: "Brands", href: `/orgs/${orgId}/brands`, icon: <BrandIcon /> },
   ];
 
-  const outcomeItems: SidebarItem[] = WORKFLOW_DEFINITIONS.map((wf) => ({
+  const featureItems: SidebarItem[] = WORKFLOW_DEFINITIONS.map((wf) => ({
     id: wf.sectionKey,
     label: wf.label,
-    href: `/outcomes/${wf.sectionKey}`,
-    icon: getOutcomeIcon(wf.sectionKey),
+    href: `/features/${wf.sectionKey}`,
+    icon: getFeatureIcon(wf.sectionKey),
     comingSoon: !wf.implemented,
   }));
 
@@ -236,8 +248,8 @@ function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string 
         />
       ))}
       <div className="pt-2 mt-2 border-t border-gray-100">
-        <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Outcomes</h4>
-        {outcomeItems.map((item) => (
+        <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Features</h4>
+        {featureItems.map((item) => (
           <SidebarLink
             key={item.id}
             item={item}
@@ -266,11 +278,11 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
     { id: "workflows", label: "Workflows", href: `${basePath}/workflows`, icon: <WorkflowIcon /> },
   ];
 
-  const outcomeItems: SidebarItem[] = WORKFLOW_DEFINITIONS.map((wf) => ({
+  const featureItems: SidebarItem[] = WORKFLOW_DEFINITIONS.map((wf) => ({
     id: wf.sectionKey,
     label: wf.label,
-    href: `${basePath}/outcomes/${wf.sectionKey}`,
-    icon: getOutcomeIcon(wf.sectionKey),
+    href: `${basePath}/features/${wf.sectionKey}`,
+    icon: getFeatureIcon(wf.sectionKey),
     comingSoon: !wf.implemented,
   }));
 
@@ -284,8 +296,8 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
         />
       ))}
       <div className="pt-2 mt-2 border-t border-gray-100">
-        <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Outcomes</h4>
-        {outcomeItems.map((item) => (
+        <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Features</h4>
+        {featureItems.map((item) => (
           <SidebarLink
             key={item.id}
             item={item}
@@ -297,14 +309,14 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
   );
 }
 
-// Outcome Level Sidebar — shows outcome-specific sub-menus
-function OutcomeLevelSidebar({ orgId, brandId, sectionKey, pathname }: {
+// Feature Level Sidebar — shows feature-specific sub-menus
+function FeatureLevelSidebar({ orgId, brandId, sectionKey, pathname }: {
   orgId: string;
   brandId: string;
   sectionKey: string;
   pathname: string;
 }) {
-  const basePath = `/orgs/${orgId}/brands/${brandId}/outcomes/${sectionKey}`;
+  const basePath = `/orgs/${orgId}/brands/${brandId}/features/${sectionKey}`;
   const wfDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === sectionKey);
   const title = wfDef?.label ?? sectionKey;
 
@@ -325,14 +337,14 @@ function OutcomeLevelSidebar({ orgId, brandId, sectionKey, pathname }: {
   );
 }
 
-// App-level Outcome Sidebar — shows outcome-specific sub-menus at /outcomes/[outcomeId]
-function AppOutcomeLevelSidebar({ outcomeId, pathname }: {
-  outcomeId: string;
+// App-level Feature Sidebar — shows feature-specific sub-menus at /features/[featureId]
+function AppFeatureLevelSidebar({ featureId, pathname }: {
+  featureId: string;
   pathname: string;
 }) {
-  const basePath = `/outcomes/${outcomeId}`;
-  const wfDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === outcomeId);
-  const title = wfDef?.label ?? outcomeId;
+  const basePath = `/features/${featureId}`;
+  const wfDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === featureId);
+  const title = wfDef?.label ?? featureId;
 
   const items: SidebarItem[] = [
     { id: "campaigns", label: "Campaigns", href: basePath, icon: <EnvelopeIcon /> },
@@ -361,14 +373,14 @@ export function ContextSidebar() {
   switch (level.type) {
     case "app":
       return <AppLevelSidebar pathname={pathname} />;
-    case "appOutcome":
-      return <AppOutcomeLevelSidebar outcomeId={level.outcomeId!} pathname={pathname} />;
+    case "appFeature":
+      return <AppFeatureLevelSidebar featureId={level.featureId!} pathname={pathname} />;
     case "org":
       return <OrgLevelSidebar orgId={level.orgId!} pathname={pathname} />;
     case "brand":
       return <BrandLevelSidebar orgId={level.orgId!} brandId={level.brandId!} pathname={pathname} />;
-    case "outcome":
-      return <OutcomeLevelSidebar orgId={level.orgId!} brandId={level.brandId!} sectionKey={level.sectionKey!} pathname={pathname} />;
+    case "feature":
+      return <FeatureLevelSidebar orgId={level.orgId!} brandId={level.brandId!} sectionKey={level.sectionKey!} pathname={pathname} />;
     case "campaign":
       // Campaign level defers to CampaignSidebar in the campaign layout
       return null;

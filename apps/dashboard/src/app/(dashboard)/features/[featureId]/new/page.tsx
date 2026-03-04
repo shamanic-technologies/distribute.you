@@ -160,10 +160,10 @@ function profileToFormData(profile: SalesProfile, brandUrl: string): CampaignFor
 
 export default function CreateCampaignPage() {
   const params = useParams();
-  const outcomeId = params.outcomeId as string;
+  const featureId = params.featureId as string;
 
   const { org } = useOrg();
-  const outcomeDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === outcomeId);
+  const featureDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === featureId);
 
   // State
   const [mode, setMode] = useState<Mode>("autopilot");
@@ -185,23 +185,23 @@ export default function CreateCampaignPage() {
 
   // Fetch leaderboard data
   const { data: leaderboard, isLoading } = useAuthQuery(
-    ["section-leaderboard", outcomeId],
-    () => fetchSectionLeaderboard(outcomeId),
-    { enabled: outcomeDef?.implemented === true }
+    ["section-leaderboard", featureId],
+    () => fetchSectionLeaderboard(featureId),
+    { enabled: featureDef?.implemented === true }
   );
 
   // Fetch active campaigns for this feature
   const { data: campaignsData, refetch: refetchCampaigns } = useAuthQuery(
     ["campaigns"],
     () => listCampaigns(),
-    { enabled: outcomeDef?.implemented === true }
+    { enabled: featureDef?.implemented === true }
   );
 
   // Fetch brands for this org
   const { data: brandsData } = useAuthQuery(
     ["brands"],
     () => listBrands(),
-    { enabled: outcomeDef?.implemented === true }
+    { enabled: featureDef?.implemented === true }
   );
   const brands = brandsData?.brands ?? [];
 
@@ -209,27 +209,27 @@ export default function CreateCampaignPage() {
   const { data: byokKeysData } = useAuthQuery(
     ["byokKeys"],
     () => listByokKeys(),
-    { enabled: outcomeDef?.implemented === true }
+    { enabled: featureDef?.implemented === true }
   );
   const { data: workflowsData } = useAuthQuery(
     ["workflows"],
     () => listWorkflows(),
-    { enabled: outcomeDef?.implemented === true }
+    { enabled: featureDef?.implemented === true }
   );
 
   // Compute missing provider keys for this feature's workflows
   const missingProviders = useMemo(() => {
     const workflows = workflowsData?.workflows ?? [];
-    const outcomeWorkflows = workflows.filter((w) => w.name.startsWith(outcomeId));
+    const featureWorkflows = workflows.filter((w) => w.name.startsWith(featureId));
     const requiredSet = new Set<string>();
-    for (const wf of outcomeWorkflows) {
+    for (const wf of featureWorkflows) {
       for (const p of wf.requiredProviders ?? []) {
         requiredSet.add(p);
       }
     }
     const configuredSet = new Set((byokKeysData?.keys ?? []).map((k) => k.provider));
     return [...requiredSet].filter((p) => !configuredSet.has(p));
-  }, [workflowsData, byokKeysData, outcomeId]);
+  }, [workflowsData, byokKeysData, featureId]);
 
   // Map workflow names to IDs for detail panel
   const workflowNameToId = useMemo(() => {
@@ -243,9 +243,9 @@ export default function CreateCampaignPage() {
   const activeCampaigns = useMemo(() => {
     if (!campaignsData?.campaigns) return [];
     return campaignsData.campaigns.filter(
-      (c) => c.workflowName?.startsWith(outcomeId)
+      (c) => c.workflowName?.startsWith(featureId)
     );
-  }, [campaignsData?.campaigns, outcomeId]);
+  }, [campaignsData?.campaigns, featureId]);
 
   // Sort logic
   const handleSort = useCallback((key: SortKey) => {
@@ -430,23 +430,23 @@ export default function CreateCampaignPage() {
 
   // ─── Not found / Coming soon ────────────────────────────────────────────
 
-  if (!outcomeDef) {
+  if (!featureDef) {
     return (
       <div className="p-4 md:p-8">
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-          <h3 className="font-display font-bold text-lg text-gray-800 mb-2">Outcome not found</h3>
-          <p className="text-gray-600 text-sm">The outcome &quot;{outcomeId}&quot; does not exist.</p>
+          <h3 className="font-display font-bold text-lg text-gray-800 mb-2">Feature not found</h3>
+          <p className="text-gray-600 text-sm">The feature &quot;{featureId}&quot; does not exist.</p>
         </div>
       </div>
     );
   }
 
-  if (!outcomeDef.implemented) {
+  if (!featureDef.implemented) {
     return (
       <div className="p-4 md:p-8">
         <div className="mb-6">
-          <h1 className="font-display text-2xl font-bold text-gray-800">{outcomeDef.label}</h1>
-          <p className="text-gray-600">{outcomeDef.description}</p>
+          <h1 className="font-display text-2xl font-bold text-gray-800">{featureDef.label}</h1>
+          <p className="text-gray-600">{featureDef.description}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
           <div className="w-16 h-16 bg-brand-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -456,7 +456,7 @@ export default function CreateCampaignPage() {
           </div>
           <h3 className="font-display font-bold text-lg text-gray-800 mb-2">Coming Soon</h3>
           <p className="text-gray-600 text-sm max-w-md mx-auto">
-            {outcomeDef.label} is not yet available. We&apos;re working on it and will notify you when it&apos;s ready.
+            {featureDef.label} is not yet available. We&apos;re working on it and will notify you when it&apos;s ready.
           </p>
         </div>
       </div>
@@ -470,7 +470,7 @@ export default function CreateCampaignPage() {
       {/* Back link — only show if there are campaigns to go back to */}
       {activeCampaigns.length > 0 && (
         <Link
-          href={`/outcomes/${outcomeId}`}
+          href={`/features/${featureId}`}
           className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-4 transition"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -483,7 +483,7 @@ export default function CreateCampaignPage() {
       {/* Header */}
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-gray-800">Create Campaign</h1>
-        <p className="text-gray-600">Select a workflow and configure your campaign for {outcomeDef.label}.</p>
+        <p className="text-gray-600">Select a workflow and configure your campaign for {featureDef.label}.</p>
       </div>
 
       {/* Missing provider keys warning */}
@@ -738,7 +738,7 @@ export default function CreateCampaignPage() {
           </div>
           <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No performance data yet</h3>
           <p className="text-gray-600 text-sm max-w-md mx-auto">
-            Performance data will appear here as campaigns run with workflows from this outcome.
+            Performance data will appear here as campaigns run with workflows from this feature.
           </p>
         </div>
       ) : (
