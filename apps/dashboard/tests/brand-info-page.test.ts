@@ -24,9 +24,9 @@ describe("Brand info page", () => {
   });
 
   describe("Regenerate button", () => {
-    it("should show button when brandUrl exists (Generate or Regenerate)", () => {
-      // Button shows when brandUrl is available — displays "Generate" if no profile, "Regenerate" if profile exists
-      expect(content).toContain("brandUrl && (");
+    it("should show button when brand exists (Generate or Regenerate)", () => {
+      // Button shows when brand is loaded — displays "Generate" if no profile, "Regenerate" if profile exists
+      expect(content).toContain("brand && (");
       expect(content).toContain('"Generate"');
     });
 

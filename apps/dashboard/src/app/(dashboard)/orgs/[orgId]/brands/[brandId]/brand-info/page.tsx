@@ -60,10 +60,8 @@ export default function BrandInfoPage() {
     return sum + (isNaN(cents) ? 0 : cents);
   }, 0) / 100;
 
-  const brandUrl = brand?.brandUrl ?? null;
-
   const handleGenerate = async () => {
-    if (!brandUrl || generating) return;
+    if (!brand || generating) return;
     setGenerating(true);
     setGenerateError(null);
     try {
@@ -164,7 +162,7 @@ export default function BrandInfoPage() {
               </span>
             </div>
           )}
-          {activeTab === "current" && brandUrl && (
+          {activeTab === "current" && brand && (
             <button
               onClick={handleGenerate}
               disabled={generating}
