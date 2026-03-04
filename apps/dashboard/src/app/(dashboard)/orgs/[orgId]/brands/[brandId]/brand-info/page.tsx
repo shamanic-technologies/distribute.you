@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getBrand, getBrandSalesProfile, listBrandRuns, refreshBrandSalesProfile, type SalesProfile, type BrandRun, type RunCost, type Testimonial } from "@/lib/api";
+import { getBrand, getBrandSalesProfile, listBrandRuns, createBrandSalesProfile, refreshBrandSalesProfile, type SalesProfile, type BrandRun, type RunCost, type Testimonial } from "@/lib/api";
 
 function timeAgo(dateStr: string): string {
   const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
@@ -69,11 +69,15 @@ export default function BrandInfoPage() {
     setGenerating(true);
     setGenerateError(null);
     try {
-      await refreshBrandSalesProfile(brandId);
+      if (profile) {
+        await refreshBrandSalesProfile(brandId);
+      } else {
+        await createBrandSalesProfile(brandId);
+      }
       await queryClient.invalidateQueries({ queryKey: ["brandSalesProfile", brandId] });
       await queryClient.invalidateQueries({ queryKey: ["brandRuns", brandId] });
     } catch (err) {
-      setGenerateError(err instanceof Error ? err.message : "Regeneration failed");
+      setGenerateError(err instanceof Error ? err.message : "Generation failed");
     } finally {
       setGenerating(false);
     }
@@ -154,13 +158,13 @@ export default function BrandInfoPage() {
               </span>
             </div>
           )}
-          {activeTab === "current" && brandUrl && profile && (
+          {activeTab === "current" && brandUrl && (
             <button
               onClick={handleGenerate}
               disabled={generating}
               className="px-4 py-2 text-sm font-medium rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
-              {generating ? "Regenerating..." : "Regenerate"}
+              {generating ? (profile ? "Regenerating..." : "Generating...") : (profile ? "Regenerate" : "Generate")}
             </button>
           )}
         </div>
