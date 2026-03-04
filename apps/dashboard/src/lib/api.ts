@@ -270,8 +270,14 @@ export async function getBrandsCosts(token?: string): Promise<{ costs: Record<st
   return apiCall<{ costs: Record<string, string> }>("/brands/costs", { token });
 }
 
-export async function getBrand(brandId: string, token?: string): Promise<{ brand: Brand }> {
-  return apiCall<{ brand: Brand }>(`/brands/${brandId}`, { token });
+/** GET /brands/:brandId — returns brand or null if not found (404/500 from missing brand) */
+export async function getBrand(brandId: string, token?: string): Promise<{ brand: Brand } | null> {
+  try {
+    return await apiCall<{ brand: Brand }>(`/brands/${brandId}`, { token });
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 404 || err.status === 500)) return null;
+    throw err;
+  }
 }
 
 // Brand sales profile
@@ -415,8 +421,14 @@ export interface BrandRun {
   costs: RunCost[];
 }
 
+/** GET /brands/:brandId/runs — returns runs or empty list if brand not found (404/500) */
 export async function listBrandRuns(brandId: string, token?: string): Promise<{ runs: BrandRun[] }> {
-  return apiCall<{ runs: BrandRun[] }>(`/brands/${brandId}/runs`, { token });
+  try {
+    return await apiCall<{ runs: BrandRun[] }>(`/brands/${brandId}/runs`, { token });
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 404 || err.status === 500)) return { runs: [] };
+    throw err;
+  }
 }
 
 // Campaign by brand
