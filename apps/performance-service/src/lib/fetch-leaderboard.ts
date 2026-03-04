@@ -2,7 +2,7 @@ import type { WorkflowCategory } from "@distribute/content";
 
 const API_URL =
   process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
-const API_KEY = process.env.DISTRIBUTE_API_KEY;
+const API_KEY = process.env.ADMIN_DISTRIBUTE_API_KEY;
 const BRAND_SERVICE_URL = process.env.BRAND_SERVICE_URL;
 
 export interface BrandLeaderboardEntry {

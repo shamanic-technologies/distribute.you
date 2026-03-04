@@ -1,6 +1,6 @@
 const API_URL =
   process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
-const API_KEY = process.env.DISTRIBUTE_API_KEY;
+const API_KEY = process.env.ADMIN_DISTRIBUTE_API_KEY;
 
 export interface BrandEntry {
   brandDomain: string | null;
