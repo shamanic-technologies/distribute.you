@@ -171,6 +171,9 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
       if (segments[4] === "features" && segments[5]) {
         const sectionKey = segments[5];
         if (segments[6] === "campaigns" && segments[7]) {
+          if (segments[7] === "new") {
+            return { type: "feature", orgId, brandId, sectionKey };
+          }
           return { type: "campaign", orgId, brandId, sectionKey, campaignId: segments[7] };
         }
         return { type: "feature", orgId, brandId, sectionKey };
@@ -320,7 +323,7 @@ function FeatureLevelSidebar({ orgId, brandId, sectionKey, pathname }: {
 
   const items: SidebarItem[] = [
     { id: "campaigns", label: "Campaigns", href: basePath, icon: <EnvelopeIcon /> },
-    { id: "create", label: "Create Campaign", href: `/orgs/${orgId}/brands/${brandId}/campaigns/new`, icon: <PlusIcon /> },
+    { id: "create", label: "Create Campaign", href: `${basePath}/campaigns/new`, icon: <PlusIcon /> },
   ];
 
   return (
