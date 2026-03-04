@@ -9,8 +9,6 @@ export {
   WORKFLOW_DEFINITIONS,
   getWorkflowDefinition,
   getWorkflowDefinitionsByCategory,
-  getWorkflowDefinitionsByTag,
-  getWorkflowDefinitionsByOutcome,
   WORKFLOW_CATEGORY_LABELS,
   SECTION_LABELS,
   parseWorkflowName,
@@ -24,6 +22,5 @@ export type {
   WorkflowCategory,
   WorkflowChannel,
   WorkflowAudienceType,
-  OutcomeType,
   ParsedWorkflowName,
 } from "./workflows.js";

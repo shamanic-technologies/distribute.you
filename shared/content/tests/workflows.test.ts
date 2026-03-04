@@ -3,8 +3,6 @@ import {
   WORKFLOW_DEFINITIONS,
   getWorkflowDefinition,
   getWorkflowDefinitionsByCategory,
-  getWorkflowDefinitionsByTag,
-  getWorkflowDefinitionsByOutcome,
   parseWorkflowName,
   getSectionKey,
   getSignatureName,
@@ -29,10 +27,6 @@ describe("WORKFLOW_DEFINITIONS", () => {
       expect(wf.audienceType).toBeTruthy();
       expect(wf.icon).toBeTruthy();
       expect(typeof wf.implemented).toBe("boolean");
-      expect(Array.isArray(wf.targetOutcomes)).toBe(true);
-      expect(wf.targetOutcomes.length).toBeGreaterThanOrEqual(1);
-      expect(Array.isArray(wf.tags)).toBe(true);
-      expect(wf.tags.length).toBeGreaterThanOrEqual(1);
     }
   });
 
@@ -140,42 +134,6 @@ describe("getWorkflowDisplayName", () => {
 
   it("title-cases the raw name for invalid format", () => {
     expect(getWorkflowDisplayName("my-custom-thing")).toBe("My Custom Thing");
-  });
-});
-
-describe("getWorkflowDefinitionsByTag", () => {
-  it("filters by email tag", () => {
-    const email = getWorkflowDefinitionsByTag("email");
-    expect(email.length).toBeGreaterThanOrEqual(1);
-    expect(email.every((w) => w.tags.includes("email"))).toBe(true);
-  });
-
-  it("filters by outbound tag", () => {
-    const outbound = getWorkflowDefinitionsByTag("outbound");
-    expect(outbound.length).toBeGreaterThanOrEqual(1);
-    expect(outbound.every((w) => w.tags.includes("outbound"))).toBe(true);
-  });
-
-  it("returns empty for unknown tag", () => {
-    expect(getWorkflowDefinitionsByTag("nonexistent")).toHaveLength(0);
-  });
-});
-
-describe("getWorkflowDefinitionsByOutcome", () => {
-  it("finds workflows targeting interested-replies", () => {
-    const replies = getWorkflowDefinitionsByOutcome("interested-replies");
-    expect(replies.length).toBeGreaterThanOrEqual(1);
-    expect(replies.every((w) => w.targetOutcomes.includes("interested-replies"))).toBe(true);
-  });
-
-  it("finds workflows targeting press-coverage", () => {
-    const press = getWorkflowDefinitionsByOutcome("press-coverage");
-    expect(press.length).toBeGreaterThanOrEqual(1);
-    expect(press[0].sectionKey).toBe("journalists-email-cold-outreach");
-  });
-
-  it("returns empty for unknown outcome", () => {
-    expect(getWorkflowDefinitionsByOutcome("interested-replies")).not.toHaveLength(0);
   });
 });
 
