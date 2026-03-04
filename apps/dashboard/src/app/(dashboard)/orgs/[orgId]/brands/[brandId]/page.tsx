@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrand, listCampaignsByBrand, getCampaignBatchStats, type Brand, type Campaign, type CampaignStats } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
-import { getSectionKey, getWorkflowDisplayName, SECTION_LABELS } from "@distribute/content";
+import { getSectionKey, getWorkflowDisplayName, SECTION_LABELS, WORKFLOW_DEFINITIONS } from "@distribute/content";
 
 function formatCost(cents: string | null | undefined): string | null {
   if (!cents) return null;
@@ -15,6 +15,35 @@ function formatCost(cents: string | null | undefined): string | null {
   const usd = val / 100;
   if (usd < 0.01) return "<$0.01";
   return `$${usd.toFixed(2)}`;
+}
+
+function FeatureIcon({ sectionKey, className }: { sectionKey: string; className?: string }) {
+  if (sectionKey.startsWith("sales") || sectionKey.startsWith("welcome")) {
+    return (
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className={className}>
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+      </svg>
+    );
+  }
+  if (sectionKey.startsWith("journalists")) {
+    return (
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className={className}>
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+      </svg>
+    );
+  }
+  if (sectionKey.startsWith("webinar")) {
+    return (
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className={className}>
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      </svg>
+    );
+  }
+  return (
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className={className}>
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h4v4H4zM10 14h4v4h-4zM16 6h4v4h-4zM6 10v4l4 0M18 10v4l-4 0" />
+    </svg>
+  );
 }
 
 interface WorkflowSection {
@@ -134,102 +163,62 @@ export default function BrandOverviewPage() {
       {/* Features Section */}
       <div className="mb-6">
         <h2 className="text-lg font-medium text-gray-900 mb-4">Features</h2>
-        {workflowSections.length === 0 ? (
-          <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
-            <p className="text-gray-500 mb-4">No campaigns yet for this brand.</p>
-            <Link
-              href="/features/sales-email-cold-outreach"
-              className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition text-sm font-medium"
-            >
-              Explore Features
-            </Link>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {workflowSections.map(({ sectionKey, label, campaigns: wfCampaigns }) => {
-              const activeCampaigns = wfCampaigns.filter(c => c.status === "ongoing");
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {WORKFLOW_DEFINITIONS.map((wf) => {
+            const section = workflowSections.find(s => s.sectionKey === wf.sectionKey);
+            const activeCampaigns = section?.campaigns.filter(c => c.status === "ongoing") ?? [];
 
+            if (wf.implemented) {
               return (
-                <div
-                  key={sectionKey}
-                  className="bg-white rounded-lg border border-gray-200 p-5"
+                <Link
+                  key={wf.sectionKey}
+                  href={`/orgs/${orgId}/brands/${brandId}/features/${wf.sectionKey}`}
+                  className="bg-white rounded-lg border border-gray-200 p-5 hover:border-brand-300 hover:shadow-sm transition group"
                 >
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h3 className="font-medium text-gray-900">{label}</h3>
-                      <p className="text-sm text-gray-500 capitalize">{sectionKey.replace(/-/g, " ")}</p>
-                    </div>
-                  </div>
-
-                  {/* Campaign Stats */}
-                  {(() => {
-                    let totalCost = 0;
-                    for (const c of wfCampaigns) {
-                      const s = campaignStats[c.id];
-                      if (s?.totalCostInUsdCents) {
-                        totalCost += parseFloat(s.totalCostInUsdCents) || 0;
-                      }
-                    }
-                    const costStr = totalCost > 0 ? String(totalCost) : null;
-                    return (
-                      <div className="flex items-center gap-6 mb-4 text-sm">
-                        <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                          <span className="text-gray-600">{activeCampaigns.length} active</span>
-                        </div>
-                        <div className="text-gray-400">
-                          {wfCampaigns.length} total campaigns
-                        </div>
-                        {formatCost(costStr) && (
-                          <div className="text-gray-400">
-                            Total: {formatCost(costStr)}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-
-                  {/* Recent Campaigns Preview */}
-                  <div className="border-t border-gray-100 pt-4 mb-4">
-                    <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Recent Campaigns</p>
-                    <div className="space-y-2">
-                      {wfCampaigns.slice(0, 3).map(campaign => (
-                        <Link
-                          key={campaign.id}
-                          href={`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}/campaigns/${campaign.id}`}
-                          className="flex items-center justify-between py-1.5 px-2 -mx-2 rounded hover:bg-gray-50 transition"
-                        >
-                          <span className="text-sm text-gray-700 truncate">{campaign.name}</span>
-                          <span className={`
-                            px-2 py-0.5 text-xs rounded-full
-                            ${campaign.status === "ongoing"
-                              ? "bg-green-100 text-green-700"
-                              : campaign.status === "failed"
-                              ? "bg-red-100 text-red-700"
-                              : "bg-gray-100 text-gray-600"
-                            }
-                          `}>
-                            {campaign.status}
+                  <div className="flex items-start gap-3">
+                    <FeatureIcon sectionKey={wf.sectionKey} className="w-8 h-8 text-brand-600" />
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-gray-900 group-hover:text-brand-600 transition">{wf.label}</h3>
+                      <p className="text-sm text-gray-500 mt-1">{wf.description}</p>
+                      {section && (
+                        <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                            {activeCampaigns.length} active
                           </span>
-                        </Link>
-                      ))}
+                          <span>{section.campaigns.length} total</span>
+                        </div>
+                      )}
                     </div>
+                    <svg className="w-5 h-5 text-gray-300 group-hover:text-brand-600 transition flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
                   </div>
+                </Link>
+              );
+            }
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-3">
-                    <Link
-                      href={`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}`}
-                      className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition text-sm font-medium"
-                    >
-                      View Campaigns
-                    </Link>
+            return (
+              <div
+                key={wf.sectionKey}
+                className="bg-gray-50 rounded-lg border border-gray-200 p-5 opacity-60"
+              >
+                <div className="flex items-start gap-3">
+                  <FeatureIcon sectionKey={wf.sectionKey} className="w-8 h-8 text-gray-300" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-medium text-gray-400">{wf.label}</h3>
+                      <span className="text-[10px] bg-gray-200 text-gray-400 px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                        Coming soon
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-400 mt-1">{wf.description}</p>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
