@@ -4,7 +4,28 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useOrganization, useOrganizationList } from "@clerk/nextjs";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { WORKFLOW_DEFINITIONS, SECTION_LABELS } from "@distribute/content";
+import { WORKFLOW_DEFINITIONS, OUTCOME_LABELS } from "@distribute/content";
+import type { OutcomeType } from "@distribute/content";
+
+/** Resolve outcome label for a sectionKey. */
+function getOutcomeLabel(sectionKey: string): string {
+  const wf = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === sectionKey);
+  const outcome = wf?.targetOutcomes[0];
+  return outcome ? OUTCOME_LABELS[outcome] : sectionKey;
+}
+
+/** Deduplicated outcome entries for dropdown switchers. */
+function getUniqueOutcomes(): { sectionKey: string; label: string; implemented: boolean }[] {
+  const seen = new Set<OutcomeType>();
+  const items: { sectionKey: string; label: string; implemented: boolean }[] = [];
+  for (const wf of WORKFLOW_DEFINITIONS) {
+    const outcome = wf.targetOutcomes[0];
+    if (!outcome || seen.has(outcome)) continue;
+    seen.add(outcome);
+    items.push({ sectionKey: wf.sectionKey, label: OUTCOME_LABELS[outcome], implemented: wf.implemented });
+  }
+  return items;
+}
 
 interface Brand {
   id: string;
@@ -148,8 +169,8 @@ export function BreadcrumbNav() {
 
   const currentBrand = brands.find((b) => b.id === brandId);
   const currentCampaign = campaigns.find((c) => c.id === campaignId);
-  const currentOutcomeLabel = sectionKey ? (SECTION_LABELS[sectionKey] ?? sectionKey) : null;
-  const appOutcomeLabel = appOutcomeId ? (SECTION_LABELS[appOutcomeId] ?? appOutcomeId) : null;
+  const currentOutcomeLabel = sectionKey ? getOutcomeLabel(sectionKey) : null;
+  const appOutcomeLabel = appOutcomeId ? getOutcomeLabel(appOutcomeId) : null;
 
   const handleAppOutcomeSwitch = (newOutcomeId: string) => {
     setOpenDropdown(null);
@@ -236,16 +257,16 @@ export function BreadcrumbNav() {
                 <div className="px-3 py-2 border-b border-gray-100">
                   <p className="text-xs text-gray-500 font-medium">Switch outcome</p>
                 </div>
-                {WORKFLOW_DEFINITIONS.map((wf) => (
+                {getUniqueOutcomes().map((o) => (
                   <button
-                    key={wf.sectionKey}
-                    onClick={() => handleAppOutcomeSwitch(wf.sectionKey)}
+                    key={o.sectionKey}
+                    onClick={() => handleAppOutcomeSwitch(o.sectionKey)}
                     className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition ${
-                      appOutcomeId === wf.sectionKey ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
+                      appOutcomeId === o.sectionKey ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
                     }`}
                   >
-                    <span className="truncate">{wf.label}</span>
-                    {appOutcomeId === wf.sectionKey && (
+                    <span className="truncate">{o.label}</span>
+                    {appOutcomeId === o.sectionKey && (
                       <svg className="w-4 h-4 text-brand-600 ml-auto flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
@@ -325,16 +346,16 @@ export function BreadcrumbNav() {
                 <div className="px-3 py-2 border-b border-gray-100">
                   <p className="text-xs text-gray-500 font-medium">Switch outcome</p>
                 </div>
-                {WORKFLOW_DEFINITIONS.map((wf) => (
+                {getUniqueOutcomes().map((o) => (
                   <button
-                    key={wf.sectionKey}
-                    onClick={() => handleOutcomeSwitch(wf.sectionKey)}
+                    key={o.sectionKey}
+                    onClick={() => handleOutcomeSwitch(o.sectionKey)}
                     className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition ${
-                      sectionKey === wf.sectionKey ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
+                      sectionKey === o.sectionKey ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
                     }`}
                   >
-                    <span className="truncate">{wf.label}</span>
-                    {sectionKey === wf.sectionKey && (
+                    <span className="truncate">{o.label}</span>
+                    {sectionKey === o.sectionKey && (
                       <svg className="w-4 h-4 text-brand-600 ml-auto flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
