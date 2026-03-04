@@ -276,8 +276,8 @@ export default function CreateCampaignPage() {
 
   // Available workflows for this outcome (used as fallback when no leaderboard data)
   const outcomeWorkflows = useMemo(() => {
-    return (workflowsData?.workflows ?? []).filter((w) => w.name.startsWith(outcomeId));
-  }, [workflowsData, outcomeId]);
+    return (workflowsData?.workflows ?? []).filter((w) => w.name.startsWith(featureId));
+  }, [workflowsData, featureId]);
 
   // Build display rows: leaderboard data if available, otherwise workflows with no metrics
   const displayRows = useMemo(() => {
@@ -287,7 +287,7 @@ export default function CreateCampaignPage() {
       displayName: w.displayName ?? w.name,
       signatureName: w.signatureName ?? null,
       category: w.category ?? null,
-      sectionKey: outcomeId,
+      sectionKey: featureId,
       runCount: 0,
       emailsSent: 0,
       emailsOpened: 0,
