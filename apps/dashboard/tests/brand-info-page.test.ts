@@ -13,18 +13,13 @@ describe("Brand info page", () => {
     expect(content).toContain('"use client"');
   });
 
-  describe("Sales profile fetching (get-or-create)", () => {
+  describe("Sales profile fetching", () => {
     it("should use getBrandSalesProfile to fetch profile", () => {
       expect(content).toContain("getBrandSalesProfile(brandId)");
     });
 
     it("should extract cached field from profile response", () => {
       expect(content).toContain("profileData?.cached");
-    });
-
-    it("should not handle 404 — endpoint is get-or-create", () => {
-      expect(content).not.toContain("not found");
-      expect(content).not.toContain("404");
     });
   });
 
@@ -38,9 +33,8 @@ describe("Brand info page", () => {
       expect(content).toContain('"Regenerating..."');
     });
 
-    it("should use generateSalesProfile with skipCache for regeneration", () => {
-      expect(content).toContain("generateSalesProfile");
-      expect(content).toContain("skipCache: true");
+    it("should use refreshBrandSalesProfile for regeneration", () => {
+      expect(content).toContain("refreshBrandSalesProfile");
     });
 
     it("should invalidate queries after regeneration", () => {
@@ -59,14 +53,13 @@ describe("API getBrandSalesProfile function", () => {
     expect(content).toContain("profile: SalesProfile; cached: boolean; brandId: string");
   });
 
-  it("should NOT have 404 fallback — endpoint is get-or-create", () => {
-    // getBrandSalesProfile should not catch 404 errors
-    const fnMatch = content.match(
-      /export async function getBrandSalesProfile[\s\S]*?^}/m
-    );
-    expect(fnMatch).toBeTruthy();
-    const fnBody = fnMatch![0];
-    expect(fnBody).not.toContain("not found");
-    expect(fnBody).not.toContain("null");
+  it("should have createBrandSalesProfile for triggering extraction", () => {
+    expect(content).toContain("export async function createBrandSalesProfile");
+    expect(content).toContain('method: "POST"');
+  });
+
+  it("should have refreshBrandSalesProfile for re-extraction", () => {
+    expect(content).toContain("export async function refreshBrandSalesProfile");
+    expect(content).toContain('method: "PUT"');
   });
 });

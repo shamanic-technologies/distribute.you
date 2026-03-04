@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getBrand, getBrandSalesProfile, listBrandRuns, generateSalesProfile, type SalesProfile, type BrandRun, type RunCost, type Testimonial } from "@/lib/api";
+import { getBrand, getBrandSalesProfile, listBrandRuns, refreshBrandSalesProfile, type SalesProfile, type BrandRun, type RunCost, type Testimonial } from "@/lib/api";
 
 function timeAgo(dateStr: string): string {
   const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
@@ -66,7 +66,7 @@ export default function BrandInfoPage() {
     setGenerating(true);
     setGenerateError(null);
     try {
-      await generateSalesProfile(brandUrl, { skipCache: true });
+      await refreshBrandSalesProfile(brandId);
       await queryClient.invalidateQueries({ queryKey: ["brandSalesProfile", brandId] });
       await queryClient.invalidateQueries({ queryKey: ["brandRuns", brandId] });
     } catch (err) {

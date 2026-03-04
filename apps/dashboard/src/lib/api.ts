@@ -341,6 +341,7 @@ export interface SalesProfile {
   extractedAt: string;
 }
 
+/** GET /brands/:brandId/sales-profile — returns profile or throws 404 if none exists */
 export async function getBrandSalesProfile(
   brandId: string,
   token?: string
@@ -351,29 +352,36 @@ export async function getBrandSalesProfile(
   );
 }
 
-export async function fetchSalesProfileFromUrl(
-  url: string,
-  token?: string,
-  options?: { skipCache?: boolean }
-): Promise<{ profile: SalesProfile | null; brandId: string | null }> {
-  try {
-    const res = await apiCall<{ profile: SalesProfile; brandId: string }>(
-      `/brand/sales-profile`,
-      { token, method: "POST", body: { url, skipCache: options?.skipCache } }
-    );
-    return { profile: res.profile, brandId: res.brandId };
-  } catch {
-    return { profile: null, brandId: null };
-  }
-}
-
-export async function generateSalesProfile(
-  url: string,
-  options?: { skipCache?: boolean }
+/** POST /brands/:brandId/sales-profile — triggers AI extraction (409 if already exists) */
+export async function createBrandSalesProfile(
+  brandId: string,
+  token?: string
 ): Promise<{ profile: SalesProfile; brandId: string }> {
   return apiCall<{ profile: SalesProfile; brandId: string }>(
-    `/brand/sales-profile`,
-    { method: "POST", body: { url, skipCache: options?.skipCache } }
+    `/brands/${brandId}/sales-profile`,
+    { token, method: "POST" }
+  );
+}
+
+/** PUT /brands/:brandId/sales-profile — forces re-extraction */
+export async function refreshBrandSalesProfile(
+  brandId: string,
+  token?: string
+): Promise<{ profile: SalesProfile; brandId: string }> {
+  return apiCall<{ profile: SalesProfile; brandId: string }>(
+    `/brands/${brandId}/sales-profile`,
+    { token, method: "PUT" }
+  );
+}
+
+/** POST /brands — upsert brand by URL, returns brandId */
+export async function upsertBrand(
+  url: string,
+  token?: string
+): Promise<{ brandId: string; domain: string | null; name: string | null; created: boolean }> {
+  return apiCall<{ brandId: string; domain: string | null; name: string | null; created: boolean }>(
+    `/brands`,
+    { token, method: "POST", body: { url } }
   );
 }
 
