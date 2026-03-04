@@ -382,6 +382,6 @@ describe("API leaderboard function", () => {
     expect(content).toContain("fetchSalesProfileFromUrl");
     expect(content).toContain("/brand/sales-profile");
     expect(content).toContain('method: "POST"');
-    expect(content).toContain("body: { url }");
+    expect(content).toContain("body: { url,");
   });
 });

@@ -45,6 +45,7 @@ export default function BrandInfoPage() {
     () => getBrandSalesProfile(brandId)
   );
   const profile = profileData?.profile ?? null;
+  const profileCached = profileData?.cached ?? false;
   const error = profileError?.message ?? null;
 
   const { data: runsData } = useAuthQuery(
@@ -65,11 +66,11 @@ export default function BrandInfoPage() {
     setGenerating(true);
     setGenerateError(null);
     try {
-      await generateSalesProfile(brandUrl, { skipCache: !!profile });
+      await generateSalesProfile(brandUrl, { skipCache: true });
       await queryClient.invalidateQueries({ queryKey: ["brandSalesProfile", brandId] });
       await queryClient.invalidateQueries({ queryKey: ["brandRuns", brandId] });
     } catch (err) {
-      setGenerateError(err instanceof Error ? err.message : "Generation failed");
+      setGenerateError(err instanceof Error ? err.message : "Regeneration failed");
     } finally {
       setGenerating(false);
     }
@@ -150,13 +151,13 @@ export default function BrandInfoPage() {
               </span>
             </div>
           )}
-          {activeTab === "current" && brandUrl && (
+          {activeTab === "current" && brandUrl && profile && (
             <button
               onClick={handleGenerate}
               disabled={generating}
               className="px-4 py-2 text-sm font-medium rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
-              {generating ? "Generating..." : profile ? "Regenerate" : "Generate"}
+              {generating ? "Regenerating..." : "Regenerate"}
             </button>
           )}
         </div>
