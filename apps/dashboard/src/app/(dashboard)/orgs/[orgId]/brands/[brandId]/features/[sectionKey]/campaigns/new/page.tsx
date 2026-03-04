@@ -283,17 +283,17 @@ export default function FeatureCreateCampaignPage() {
     setCreateError(null);
     setIsLoadingProfile(true);
     try {
-      // Try GET first — returns profile or 404
-      const { profile } = await getBrandSalesProfile(brandId);
-      setFormData(profileToFormData(profile, resolvedBrandUrl));
-    } catch {
-      // No profile yet — trigger extraction via POST and wait
-      try {
+      // Try GET first — returns null if no profile yet
+      const existing = await getBrandSalesProfile(brandId);
+      if (existing) {
+        setFormData(profileToFormData(existing.profile, resolvedBrandUrl));
+      } else {
+        // No profile yet — trigger extraction via POST and wait
         const { profile } = await createBrandSalesProfile(brandId);
         setFormData(profileToFormData(profile, resolvedBrandUrl));
-      } catch {
-        setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
       }
+    } catch {
+      setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
     } finally {
       setIsLoadingProfile(false);
       setShowForm(true);

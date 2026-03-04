@@ -270,9 +270,9 @@ export default function BrandCreateCampaignPage() {
     setCreateError(null);
     setIsLoadingProfile(true);
     try {
-      const { profile } = await getBrandSalesProfile(brandId);
-      if (profile) {
-        setFormData(profileToFormData(profile, resolvedBrandUrl));
+      const existing = await getBrandSalesProfile(brandId);
+      if (existing?.profile) {
+        setFormData(profileToFormData(existing.profile, resolvedBrandUrl));
       } else {
         setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
       }

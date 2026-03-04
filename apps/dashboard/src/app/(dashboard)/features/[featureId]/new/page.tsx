@@ -347,15 +347,15 @@ export default function CreateCampaignPage() {
 
     // GET profile, fallback to POST extraction
     try {
-      const { profile } = await getBrandSalesProfile(brandId);
-      setFormData(profileToFormData(profile, resolvedBrandUrl));
-    } catch {
-      try {
+      const existing = await getBrandSalesProfile(brandId);
+      if (existing) {
+        setFormData(profileToFormData(existing.profile, resolvedBrandUrl));
+      } else {
         const { profile } = await createBrandSalesProfile(brandId);
         setFormData(profileToFormData(profile, resolvedBrandUrl));
-      } catch {
-        setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
       }
+    } catch {
+      setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
     } finally {
       setIsLoadingProfile(false);
       setShowForm(true);
