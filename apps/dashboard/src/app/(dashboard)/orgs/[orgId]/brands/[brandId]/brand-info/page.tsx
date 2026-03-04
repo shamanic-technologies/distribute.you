@@ -40,7 +40,7 @@ export default function BrandInfoPage() {
   );
   const brandName = brandData?.brand?.name ?? null;
 
-  const { data: profileData, error: profileError, isPending: profilePending } = useAuthQuery(
+  const { data: profileData, error: profileError, isLoading: profileLoading } = useAuthQuery(
     ["brandSalesProfile", brandId],
     () => getBrandSalesProfile(brandId)
   );
@@ -51,7 +51,7 @@ export default function BrandInfoPage() {
     profileError?.message?.toLowerCase().includes("404");
   const error = isProfileNotFound ? null : (profileError?.message ?? null);
 
-  const { data: runsData } = useAuthQuery(
+  const { data: runsData, isLoading: runsLoading } = useAuthQuery(
     ["brandRuns", brandId],
     () => listBrandRuns(brandId)
   );
@@ -83,7 +83,7 @@ export default function BrandInfoPage() {
     }
   };
 
-  if (profilePending) {
+  if (profileLoading) {
     return (
       <div className="p-4 md:p-8">
         <div className="animate-pulse space-y-4">
@@ -400,7 +400,7 @@ export default function BrandInfoPage() {
       {/* Update History Tab */}
       {activeTab === "history" && (
         <>
-          {!runsData ? (
+          {runsLoading ? (
             <div className="animate-pulse space-y-3">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="h-16 bg-gray-100 rounded-lg" />
