@@ -305,6 +305,11 @@ describe("Create campaign page", () => {
       expect(content).toContain("getBrandSalesProfile");
     });
 
+    it("should fallback to POST extraction when GET fails for existing brands", () => {
+      // When getBrandSalesProfile (GET) fails, should try fetchSalesProfileFromUrl (POST)
+      expect(content).toContain("fetchSalesProfileFromUrl(resolvedBrandUrl)");
+    });
+
     it("should fetch sales profile from URL for new brands", () => {
       expect(content).toContain("fetchSalesProfileFromUrl");
       expect(content).toContain("fetchSalesProfileFromUrl(resolvedBrandUrl)");
@@ -317,7 +322,7 @@ describe("Create campaign page", () => {
     it("should show loading spinner while fetching profile", () => {
       expect(content).toContain("isLoadingProfile");
       expect(content).toContain("profile-loading");
-      expect(content).toContain("Loading brand profile");
+      expect(content).toContain("Analyzing brand profile");
       expect(content).toContain("animate-spin");
     });
 

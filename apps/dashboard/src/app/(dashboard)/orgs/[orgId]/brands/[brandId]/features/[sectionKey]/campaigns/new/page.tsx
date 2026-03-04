@@ -14,6 +14,7 @@ import {
   listByokKeys,
   listWorkflows,
   getBrandSalesProfile,
+  fetchSalesProfileFromUrl,
   stopCampaign,
   resumeCampaign,
   ApiError,
@@ -276,14 +277,23 @@ export default function FeatureCreateCampaignPage() {
     setCreateError(null);
     setIsLoadingProfile(true);
     try {
+      // Try cached GET first
       const { profile } = await getBrandSalesProfile(brandId);
       if (profile) {
         setFormData(profileToFormData(profile, resolvedBrandUrl));
       } else {
-        setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
+        // No cached profile — trigger extraction via POST and wait
+        const { profile: extracted } = await fetchSalesProfileFromUrl(resolvedBrandUrl);
+        setFormData(extracted ? profileToFormData(extracted, resolvedBrandUrl) : { ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
       }
     } catch {
-      setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
+      // GET failed (e.g. 404) — trigger extraction via POST and wait
+      try {
+        const { profile: extracted } = await fetchSalesProfileFromUrl(resolvedBrandUrl);
+        setFormData(extracted ? profileToFormData(extracted, resolvedBrandUrl) : { ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
+      } catch {
+        setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
+      }
     } finally {
       setIsLoadingProfile(false);
       setShowForm(true);
@@ -504,7 +514,7 @@ export default function FeatureCreateCampaignPage() {
         <div className="bg-white rounded-xl border border-gray-200 p-5 mb-4">
           <div className="flex items-center gap-3">
             <div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm text-gray-600">Loading brand profile...</span>
+            <span className="text-sm text-gray-600">Analyzing brand profile...</span>
           </div>
         </div>
       )}

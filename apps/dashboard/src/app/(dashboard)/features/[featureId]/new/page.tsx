@@ -330,13 +330,19 @@ export default function CreateCampaignPage() {
     setCreateError(null);
     setIsLoadingProfile(true);
 
-    // For existing brands: fetch profile by brand ID (get-or-create — always returns a profile)
+    // For existing brands: fetch profile by brand ID, fallback to extraction via POST
     if (selectedBrandId) {
       try {
         const { profile } = await getBrandSalesProfile(selectedBrandId);
         setFormData(profileToFormData(profile, resolvedBrandUrl));
       } catch {
-        setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
+        // GET failed — trigger extraction via POST and wait
+        try {
+          const { profile } = await fetchSalesProfileFromUrl(resolvedBrandUrl);
+          setFormData(profile ? profileToFormData(profile, resolvedBrandUrl) : { ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
+        } catch {
+          setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
+        }
       } finally {
         setIsLoadingProfile(false);
         setShowForm(true);
@@ -658,7 +664,7 @@ export default function CreateCampaignPage() {
         <div className="bg-white rounded-xl border border-gray-200 p-5 mb-4" data-testid="profile-loading">
           <div className="flex items-center gap-3">
             <div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm text-gray-600">Loading brand profile...</span>
+            <span className="text-sm text-gray-600">Analyzing brand profile...</span>
           </div>
         </div>
       )}
