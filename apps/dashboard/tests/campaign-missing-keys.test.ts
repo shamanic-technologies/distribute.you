@@ -24,16 +24,15 @@ describe("Campaign creation — missing keys handling", () => {
     expect(content).toContain("Missing provider keys");
   });
 
-  it("should fetch BYOK keys to compute missing providers", () => {
+  it("should use getWorkflowKeyStatus to check missing providers", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("listByokKeys");
-    expect(content).toContain("byokKeysData");
+    expect(content).toContain("getWorkflowKeyStatus");
+    expect(content).toContain("keyStatusData");
   });
 
-  it("should fetch workflows to get requiredProviders", () => {
+  it("should fetch workflows for workflow listing", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
     expect(content).toContain("listWorkflows");
-    expect(content).toContain("requiredProviders");
   });
 
   it("should show warning banner when providers are missing", () => {
