@@ -358,12 +358,13 @@ export async function getBrandSalesProfile(
 
 export async function fetchSalesProfileFromUrl(
   url: string,
-  token?: string
+  token?: string,
+  options?: { skipCache?: boolean }
 ): Promise<{ profile: SalesProfile | null; brandId: string | null }> {
   try {
     const res = await apiCall<{ profile: SalesProfile; brandId: string }>(
       `/brand/sales-profile`,
-      { token, method: "POST", body: { url } }
+      { token, method: "POST", body: { url, skipCache: options?.skipCache } }
     );
     return { profile: res.profile, brandId: res.brandId };
   } catch {
