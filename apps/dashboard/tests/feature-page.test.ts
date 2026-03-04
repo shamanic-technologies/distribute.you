@@ -2,10 +2,10 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
-describe("Outcome campaigns list page", () => {
+describe("Feature campaigns list page", () => {
   const pagePath = path.resolve(
     __dirname,
-    "../src/app/(dashboard)/outcomes/[outcomeId]/page.tsx"
+    "../src/app/(dashboard)/features/[featureId]/page.tsx"
   );
   const content = fs.readFileSync(pagePath, "utf-8");
 
@@ -30,8 +30,8 @@ describe("Outcome campaigns list page", () => {
       expect(content).toContain("getCampaignBatchStats");
     });
 
-    it("should filter campaigns by outcomeId", () => {
-      expect(content).toContain("workflowName?.startsWith(outcomeId)");
+    it("should filter campaigns by featureId", () => {
+      expect(content).toContain("workflowName?.startsWith(featureId)");
     });
   });
 
@@ -45,11 +45,11 @@ describe("Outcome campaigns list page", () => {
     });
 
     it("should redirect to /new when campaigns are loaded and empty", () => {
-      expect(content).toContain("router.replace(`/outcomes/${outcomeId}/new`)");
+      expect(content).toContain("router.replace(`/features/${featureId}/new`)");
     });
 
     it("should only redirect after loading is complete and data is available", () => {
-      expect(content).toContain("!isLoading && campaignsData && outcomeCampaigns.length === 0");
+      expect(content).toContain("!isLoading && campaignsData && featureCampaigns.length === 0");
     });
   });
 
@@ -59,7 +59,7 @@ describe("Outcome campaigns list page", () => {
     });
 
     it("should link to /new subpage", () => {
-      expect(content).toContain("/outcomes/${outcomeId}/new");
+      expect(content).toContain("/features/${featureId}/new");
     });
 
     it("should show Create Campaign text", () => {
@@ -112,7 +112,7 @@ describe("Outcome campaigns list page", () => {
 describe("Create campaign page", () => {
   const pagePath = path.resolve(
     __dirname,
-    "../src/app/(dashboard)/outcomes/[outcomeId]/new/page.tsx"
+    "../src/app/(dashboard)/features/[featureId]/new/page.tsx"
   );
   const content = fs.readFileSync(pagePath, "utf-8");
 
@@ -122,7 +122,7 @@ describe("Create campaign page", () => {
 
   it("should have back link to campaigns only when campaigns exist", () => {
     expect(content).toContain("Back to campaigns");
-    expect(content).toContain("/outcomes/${outcomeId}");
+    expect(content).toContain("/features/${featureId}");
     // Back link is conditionally shown based on activeCampaigns.length
     expect(content).toContain("activeCampaigns.length > 0");
   });
@@ -322,7 +322,9 @@ describe("Create campaign page", () => {
     });
 
     it("should only show form AFTER profile is loaded, not before", () => {
+      // Form should not be shown while loading — setShowForm(true) is inside the finally block
       expect(content).toContain("setShowForm(true)");
+      // The form is gated on !isLoadingProfile
       expect(content).toContain("showForm && !isLoadingProfile");
     });
 

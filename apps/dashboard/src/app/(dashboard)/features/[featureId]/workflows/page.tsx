@@ -44,25 +44,25 @@ interface WorkflowRowData {
   providerCount?: number;
 }
 
-export default function OutcomeWorkflowsPage() {
+export default function FeatureWorkflowsPage() {
   const params = useParams();
-  const outcomeId = params.outcomeId as string;
-  const outcomeDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === outcomeId);
+  const featureId = params.featureId as string;
+  const featureDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === featureId);
 
   const [detailWorkflowId, setDetailWorkflowId] = useState<string | null>(null);
 
   // Source 1: leaderboard (global performance data — all known workflows)
   const { data: leaderboard, isLoading: leaderboardLoading } = useAuthQuery(
-    ["section-leaderboard", outcomeId],
-    () => fetchSectionLeaderboard(outcomeId),
-    { enabled: outcomeDef?.implemented === true }
+    ["section-leaderboard", featureId],
+    () => fetchSectionLeaderboard(featureId),
+    { enabled: featureDef?.implemented === true }
   );
 
   // Source 2: deployed workflows (from workflow-service via api-service)
   const { data: workflowsData, isLoading: workflowsLoading } = useAuthQuery(
     ["workflows"],
     () => listWorkflows(),
-    { enabled: outcomeDef?.implemented === true }
+    { enabled: featureDef?.implemented === true }
   );
 
   const isLoading = leaderboardLoading && workflowsLoading;
@@ -74,7 +74,7 @@ export default function OutcomeWorkflowsPage() {
 
     for (const wf of workflowsData?.workflows ?? []) {
       idMap.set(wf.name, wf.id);
-      if (wf.name.startsWith(outcomeId)) {
+      if (wf.name.startsWith(featureId)) {
         deployedByName.set(wf.name, wf);
       }
     }
@@ -126,14 +126,14 @@ export default function OutcomeWorkflowsPage() {
     }
 
     return { rows: result, workflowIdMap: idMap };
-  }, [leaderboard, workflowsData, outcomeId]);
+  }, [leaderboard, workflowsData, featureId]);
 
-  if (!outcomeDef) {
+  if (!featureDef) {
     return (
       <div className="p-4 md:p-8">
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-          <h3 className="font-display font-bold text-lg text-gray-800 mb-2">Outcome not found</h3>
-          <p className="text-gray-600 text-sm">The outcome &quot;{outcomeId}&quot; does not exist.</p>
+          <h3 className="font-display font-bold text-lg text-gray-800 mb-2">Feature not found</h3>
+          <p className="text-gray-600 text-sm">The feature &quot;{featureId}&quot; does not exist.</p>
         </div>
       </div>
     );
@@ -143,7 +143,7 @@ export default function OutcomeWorkflowsPage() {
     <div className="p-4 md:p-8">
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-gray-800">Workflows</h1>
-        <p className="text-gray-600">All available workflows for {outcomeDef.label}.</p>
+        <p className="text-gray-600">All available workflows for {featureDef.label}.</p>
       </div>
 
       {isLoading ? (

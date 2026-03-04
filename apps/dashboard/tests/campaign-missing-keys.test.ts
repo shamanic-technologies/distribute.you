@@ -5,7 +5,7 @@ import * as path from "path";
 describe("Campaign creation — missing keys handling", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/outcomes/[outcomeId]/new/page.tsx"
+    "../src/app/(dashboard)/features/[featureId]/new/page.tsx"
   );
 
   it("should import ApiError for structured error handling", () => {

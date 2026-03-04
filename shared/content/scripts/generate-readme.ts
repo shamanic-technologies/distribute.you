@@ -13,15 +13,15 @@ const ROOT = resolve(__dirname, "../../../");
 import { WORKFLOW_DEFINITIONS } from "../src/workflows.js";
 import { URLS } from "../src/urls.js";
 import { BRAND } from "../src/brand.js";
-import { DISTRIBUTION_OUTCOMES } from "../src/outcomes.js";
+import { DISTRIBUTION_FEATURES } from "../src/features.js";
 
 function generateRootReadme(): string {
   const workflowTable = WORKFLOW_DEFINITIONS
     .map((w) => `| ${w.label} | ${w.description} | ${w.category} | ${w.channel} |`)
     .join("\n");
 
-  const outcomeList = DISTRIBUTION_OUTCOMES
-    .map((o) => `- **${o.title}** — ${o.description} _(${o.status === "live" ? "Live" : "Coming soon"})_`)
+  const featureList = DISTRIBUTION_FEATURES
+    .map((f) => `- **${f.title}** — ${f.description} _(${f.status === "live" ? "Live" : "Coming soon"})_`)
     .join("\n");
 
   return `# ${BRAND.name}
@@ -36,9 +36,9 @@ function generateRootReadme(): string {
 
 ${BRAND.name} is the Stripe for Distribution. Create an account, give us your URL — we automate your entire distribution layer with AI workflows ranked by real performance data.
 
-## Distribution Outcomes
+## Distribution Features
 
-${outcomeList}
+${featureList}
 
 ## Available Workflows
 
@@ -50,7 +50,7 @@ ${workflowTable}
 
 1. Create an account at [${URLS.dashboard.replace("https://", "")}](${URLS.dashboard})
 2. Add your URL
-3. Enable the distribution outcomes you need
+3. Enable the distribution features you need
 4. We handle the rest — the best-performing AI workflow runs automatically
 
 ## Monorepo Structure

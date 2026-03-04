@@ -106,7 +106,7 @@ export default function OrgOverviewPage() {
           <div className="text-center py-4">
             <p className="text-sm text-gray-500 mb-3">No brands yet. Set up your first brand to get started.</p>
             <Link
-              href={`/outcomes/sales-email-cold-outreach/new`}
+              href={`/features/sales-email-cold-outreach/new`}
               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -131,14 +131,14 @@ export default function OrgOverviewPage() {
         )}
       </div>
 
-      {/* Outcomes */}
+      {/* Features Summary */}
       <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Outcomes</h2>
+        <h2 className="text-lg font-medium text-gray-900 mb-4">Features</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {WORKFLOW_DEFINITIONS.map((wf) => (
             <Link
               key={wf.sectionKey}
-              href={wf.implemented ? `/outcomes/${wf.sectionKey}` : "#"}
+              href={wf.implemented ? `/features/${wf.sectionKey}` : "#"}
               className={`flex items-center gap-3 p-3 rounded-lg border transition ${
                 wf.implemented
                   ? "border-gray-200 hover:border-brand-300 hover:shadow-sm"

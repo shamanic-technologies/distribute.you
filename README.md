@@ -10,7 +10,7 @@
 
 distribute is the Stripe for Distribution. Create an account, give us your URL — we automate your entire distribution layer with AI workflows ranked by real performance data.
 
-## Distribution Outcomes
+## Distribution Features
 
 - **Welcome Emails** — Personalized welcome emails that match your brand. Zero configuration needed. _(Live)_
 - **Cold Outreach** — Find leads, generate personalized emails, send and optimize automatically. _(Live)_
@@ -32,7 +32,7 @@ distribute is the Stripe for Distribution. Create an account, give us your URL �
 
 1. Create an account at [dashboard.distribute.you](https://dashboard.distribute.you)
 2. Add your URL
-3. Enable the distribution outcomes you need
+3. Enable the distribution features you need
 4. We handle the rest — the best-performing AI workflow runs automatically
 
 ## Monorepo Structure

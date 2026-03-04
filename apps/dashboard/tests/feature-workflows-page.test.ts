@@ -2,10 +2,10 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
-describe("Outcome workflows page", () => {
+describe("Feature workflows page", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/outcomes/[outcomeId]/workflows/page.tsx"
+    "../src/app/(dashboard)/features/[featureId]/workflows/page.tsx"
   );
 
   it("should exist", () => {

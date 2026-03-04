@@ -189,7 +189,7 @@ export default function BrandCampaignsPage() {
               <Link
                 key={campaign.id}
                 href={sectionKey
-                  ? `/orgs/${orgId}/brands/${brandId}/outcomes/${sectionKey}/campaigns/${campaign.id}`
+                  ? `/orgs/${orgId}/brands/${brandId}/features/${sectionKey}/campaigns/${campaign.id}`
                   : `/orgs/${orgId}/brands/${brandId}/campaigns`
                 }
                 className="block bg-white rounded-xl border border-gray-200 p-4 hover:border-brand-300 hover:shadow-md transition-all"

@@ -14,15 +14,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  async redirects() {
-    return [
-      {
-        source: "/features/:path*",
-        destination: "/outcomes/:path*",
-        permanent: true,
-      },
-    ];
-  },
 };
 
 export default nextConfig;
