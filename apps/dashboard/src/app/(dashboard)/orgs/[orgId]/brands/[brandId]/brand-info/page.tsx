@@ -46,10 +46,7 @@ export default function BrandInfoPage() {
   );
   const profile = profileData?.profile ?? null;
   const profileCached = profileData?.cached ?? false;
-  // 404 means "no profile yet" — not an error worth surfacing
-  const isProfileNotFound = profileError?.message?.toLowerCase().includes("not found") ||
-    profileError?.message?.toLowerCase().includes("404");
-  const error = isProfileNotFound ? null : (profileError?.message ?? null);
+  const error = profileError?.message ?? null;
 
   const { data: runsData, isLoading: runsLoading } = useAuthQuery(
     ["brandRuns", brandId],

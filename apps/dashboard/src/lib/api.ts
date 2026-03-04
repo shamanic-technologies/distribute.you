@@ -341,15 +341,20 @@ export interface SalesProfile {
   extractedAt: string;
 }
 
-/** GET /brands/:brandId/sales-profile — returns profile or throws 404 if none exists */
+/** GET /brands/:brandId/sales-profile — returns profile or null if none exists (404) */
 export async function getBrandSalesProfile(
   brandId: string,
   token?: string
-): Promise<{ profile: SalesProfile; cached: boolean; brandId: string }> {
-  return apiCall<{ profile: SalesProfile; cached: boolean; brandId: string }>(
-    `/brands/${brandId}/sales-profile`,
-    { token }
-  );
+): Promise<{ profile: SalesProfile; cached: boolean; brandId: string } | null> {
+  try {
+    return await apiCall<{ profile: SalesProfile; cached: boolean; brandId: string }>(
+      `/brands/${brandId}/sales-profile`,
+      { token }
+    );
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
 }
 
 /** POST /brands/:brandId/sales-profile — triggers AI extraction (409 if already exists) */
