@@ -7,12 +7,12 @@ import { listBrands } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
 
 export function BrandsList() {
-  const { data, isLoading } = useAuthQuery(["brands"], () =>
+  const { data } = useAuthQuery(["brands"], () =>
     listBrands()
   );
   const brands = data?.brands ?? [];
 
-  if (isLoading) {
+  if (!data) {
     return (
       <div className="animate-pulse">
         <div className="h-6 bg-gray-200 rounded w-32 mb-3"></div>

@@ -17,7 +17,7 @@ export default function BrandsPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
-  const { data, isLoading, refetch } = useAuthQuery(
+  const { data, refetch } = useAuthQuery(
     ["brands"],
     () => listBrands()
   );
@@ -45,7 +45,7 @@ export default function BrandsPage() {
     }
   };
 
-  if (isLoading) {
+  if (!data) {
     return (
       <div className="p-4 md:p-8">
         <div className="animate-pulse space-y-4">

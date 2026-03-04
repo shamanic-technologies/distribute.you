@@ -28,7 +28,7 @@ export default function BrandOverviewPage() {
   const brandId = params.brandId as string;
   const orgId = params.orgId as string;
 
-  const { data: brandData, isLoading: brandLoading } = useAuthQuery(
+  const { data: brandData } = useAuthQuery(
     ["brand", brandId],
     () => getBrand(brandId)
   );
@@ -69,7 +69,7 @@ export default function BrandOverviewPage() {
     return sections;
   }, [campaigns]);
 
-  if (brandLoading) {
+  if (!brandData) {
     return (
       <div className="p-4 md:p-8">
         <div className="animate-pulse space-y-4">
