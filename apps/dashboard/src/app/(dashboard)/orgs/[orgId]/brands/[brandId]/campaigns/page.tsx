@@ -9,7 +9,7 @@ import { SkeletonKeysList } from "@/components/skeleton";
 import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
-import { getSectionKey, SECTION_LABELS, getWorkflowDisplayName } from "@distribute/content";
+import { getSectionKey, getWorkflowDisplayName, WORKFLOW_DEFINITIONS, OUTCOME_LABELS } from "@distribute/content";
 
 function timeAgo(date: string | Date): string {
   const now = Date.now();
@@ -183,7 +183,11 @@ export default function BrandCampaignsPage() {
             const stats = campaignStats[campaign.id];
             const sectionKey = campaign.workflowName ? getSectionKey(campaign.workflowName) : null;
             const featureLabel = sectionKey
-              ? (SECTION_LABELS[sectionKey] ?? getWorkflowDisplayName(campaign.workflowName ?? ""))
+              ? (() => {
+                  const wf = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === sectionKey);
+                  const oc = wf?.targetOutcomes[0];
+                  return oc ? OUTCOME_LABELS[oc] : getWorkflowDisplayName(campaign.workflowName ?? "");
+                })()
               : null;
             return (
               <Link
