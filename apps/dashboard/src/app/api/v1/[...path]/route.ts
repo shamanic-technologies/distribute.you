@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 const API_URL =
   process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
-const API_KEY = process.env.API_SERVICE_API_KEY;
+const API_KEY = process.env.ADMIN_DISTRIBUTE_API_KEY;
 
 async function proxyRequest(
   req: NextRequest,
@@ -15,7 +15,7 @@ async function proxyRequest(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     if (!API_KEY) {
-      console.error("[api-proxy] API_SERVICE_API_KEY env var is not set");
+      console.error("[api-proxy] ADMIN_DISTRIBUTE_API_KEY env var is not set");
       return NextResponse.json(
         { error: "API key not configured" },
         { status: 500 }
