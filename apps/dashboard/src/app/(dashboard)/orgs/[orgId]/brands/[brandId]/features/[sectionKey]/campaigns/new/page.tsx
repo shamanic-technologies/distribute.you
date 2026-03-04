@@ -246,9 +246,37 @@ export default function FeatureCreateCampaignPage() {
     });
   }, []);
 
+  // Merge leaderboard with available workflows that have no stats yet
+  const combinedRows = useMemo(() => {
+    const rows = leaderboard ?? [];
+    const leaderboardNames = new Set(rows.map((e) => e.workflowName));
+    const fallbacks: WorkflowLeaderboardEntry[] = (workflowsData?.workflows ?? [])
+      .filter((w) => w.name.startsWith(featureId) && !leaderboardNames.has(w.name))
+      .map((w) => ({
+        workflowName: w.name,
+        displayName: w.displayName ?? w.name,
+        signatureName: w.signatureName ?? null,
+        category: w.category ?? null,
+        sectionKey: featureId,
+        runCount: 0,
+        emailsSent: 0,
+        emailsOpened: 0,
+        emailsClicked: 0,
+        emailsReplied: 0,
+        totalCostUsdCents: 0,
+        openRate: 0,
+        clickRate: 0,
+        replyRate: 0,
+        costPerOpenCents: null,
+        costPerClickCents: null,
+        costPerReplyCents: null,
+      }));
+    return [...rows, ...fallbacks];
+  }, [leaderboard, workflowsData, featureId]);
+
   const sorted = useMemo(() => {
-    if (!leaderboard) return [];
-    return [...leaderboard].sort((a, b) => {
+    if (combinedRows.length === 0) return [];
+    return [...combinedRows].sort((a, b) => {
       const aRaw = a[metric];
       const bRaw = b[metric];
       const aNull = aRaw === null || aRaw === 0;
@@ -258,7 +286,7 @@ export default function FeatureCreateCampaignPage() {
       if (bNull) return -1;
       return sortDir === "desc" ? Number(bRaw) - Number(aRaw) : Number(aRaw) - Number(bRaw);
     });
-  }, [leaderboard, metric, sortDir]);
+  }, [combinedRows, metric, sortDir]);
 
   const effectiveSelection = mode === "autopilot"
     ? sorted[0]?.workflowName ?? null
