@@ -305,14 +305,13 @@ describe("Create campaign page", () => {
       expect(content).toContain("getBrandSalesProfile");
     });
 
-    it("should fallback to POST extraction when GET fails for existing brands", () => {
-      // When getBrandSalesProfile (GET) fails, should try fetchSalesProfileFromUrl (POST)
-      expect(content).toContain("fetchSalesProfileFromUrl(resolvedBrandUrl)");
+    it("should fallback to POST extraction when GET returns 404", () => {
+      expect(content).toContain("createBrandSalesProfile");
     });
 
-    it("should fetch sales profile from URL for new brands", () => {
-      expect(content).toContain("fetchSalesProfileFromUrl");
-      expect(content).toContain("fetchSalesProfileFromUrl(resolvedBrandUrl)");
+    it("should upsert brand from URL for new brands before fetching profile", () => {
+      expect(content).toContain("upsertBrand");
+      expect(content).toContain("upsertBrand(resolvedBrandUrl)");
     });
 
     it("should have profileToFormData mapping function", () => {
@@ -383,10 +382,19 @@ describe("API leaderboard function", () => {
     expect(content).toContain("brandId: string | null");
   });
 
-  it("should have fetchSalesProfileFromUrl function", () => {
-    expect(content).toContain("fetchSalesProfileFromUrl");
-    expect(content).toContain("/brand/sales-profile");
+  it("should have createBrandSalesProfile function", () => {
+    expect(content).toContain("createBrandSalesProfile");
     expect(content).toContain('method: "POST"');
-    expect(content).toContain("body: { url,");
+  });
+
+  it("should have refreshBrandSalesProfile function", () => {
+    expect(content).toContain("refreshBrandSalesProfile");
+    expect(content).toContain('method: "PUT"');
+  });
+
+  it("should have upsertBrand function", () => {
+    expect(content).toContain("upsertBrand");
+    expect(content).toContain("POST");
+    expect(content).toContain("/brands");
   });
 });

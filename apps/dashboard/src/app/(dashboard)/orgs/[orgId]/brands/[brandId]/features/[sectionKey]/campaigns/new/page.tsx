@@ -14,7 +14,7 @@ import {
   listWorkflows,
   getWorkflowKeyStatus,
   getBrandSalesProfile,
-  fetchSalesProfileFromUrl,
+  createBrandSalesProfile,
   stopCampaign,
   resumeCampaign,
   ApiError,
@@ -283,20 +283,14 @@ export default function FeatureCreateCampaignPage() {
     setCreateError(null);
     setIsLoadingProfile(true);
     try {
-      // Try cached GET first
+      // Try GET first — returns profile or 404
       const { profile } = await getBrandSalesProfile(brandId);
-      if (profile) {
-        setFormData(profileToFormData(profile, resolvedBrandUrl));
-      } else {
-        // No cached profile — trigger extraction via POST and wait
-        const { profile: extracted } = await fetchSalesProfileFromUrl(resolvedBrandUrl);
-        setFormData(extracted ? profileToFormData(extracted, resolvedBrandUrl) : { ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
-      }
+      setFormData(profileToFormData(profile, resolvedBrandUrl));
     } catch {
-      // GET failed (e.g. 404) — trigger extraction via POST and wait
+      // No profile yet — trigger extraction via POST and wait
       try {
-        const { profile: extracted } = await fetchSalesProfileFromUrl(resolvedBrandUrl);
-        setFormData(extracted ? profileToFormData(extracted, resolvedBrandUrl) : { ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
+        const { profile } = await createBrandSalesProfile(brandId);
+        setFormData(profileToFormData(profile, resolvedBrandUrl));
       } catch {
         setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
       }

@@ -50,13 +50,13 @@ describe("Create brand button on brands page", () => {
     expect(content).toContain('placeholder="https://example.com"');
   });
 
-  it("should use fetchSalesProfileFromUrl to create brands", () => {
-    expect(content).toContain("fetchSalesProfileFromUrl");
+  it("should use upsertBrand to create brands", () => {
+    expect(content).toContain("upsertBrand");
   });
 
   it("should navigate to brand after creation", () => {
     expect(content).toContain("router.push");
-    expect(content).toContain("result.brandId");
+    expect(content).toContain("newBrandId");
   });
 });
 

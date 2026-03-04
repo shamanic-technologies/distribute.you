@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listBrands, fetchSalesProfileFromUrl } from "@/lib/api";
+import { listBrands, upsertBrand, createBrandSalesProfile } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
 
 export default function BrandsPage() {
@@ -30,14 +30,11 @@ export default function BrandsPage() {
     setIsCreating(true);
     setCreateError(null);
     try {
-      const result = await fetchSalesProfileFromUrl(url);
+      const { brandId: newBrandId } = await upsertBrand(url);
+      // Trigger profile extraction in background (don't block navigation)
+      createBrandSalesProfile(newBrandId).catch(() => {});
       await refetch();
-      if (result.brandId) {
-        router.push(`/orgs/${orgId}/brands/${result.brandId}`);
-      } else {
-        setShowCreate(false);
-        setBrandUrl("");
-      }
+      router.push(`/orgs/${orgId}/brands/${newBrandId}`);
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : "Failed to create brand");
     } finally {

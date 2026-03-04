@@ -14,7 +14,8 @@ import {
   listWorkflows,
   getWorkflowKeyStatus,
   getBrandSalesProfile,
-  fetchSalesProfileFromUrl,
+  createBrandSalesProfile,
+  upsertBrand,
   stopCampaign,
   resumeCampaign,
   ApiError,
@@ -330,36 +331,31 @@ export default function CreateCampaignPage() {
     setCreateError(null);
     setIsLoadingProfile(true);
 
-    // For existing brands: fetch profile by brand ID, fallback to extraction via POST
-    if (selectedBrandId) {
+    // Resolve brandId: use selected or upsert from URL
+    let brandId = selectedBrandId;
+    if (!brandId) {
       try {
-        const { profile } = await getBrandSalesProfile(selectedBrandId);
-        setFormData(profileToFormData(profile, resolvedBrandUrl));
+        const { brandId: newId } = await upsertBrand(resolvedBrandUrl);
+        brandId = newId;
       } catch {
-        // GET failed — trigger extraction via POST and wait
-        try {
-          const { profile } = await fetchSalesProfileFromUrl(resolvedBrandUrl);
-          setFormData(profile ? profileToFormData(profile, resolvedBrandUrl) : { ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
-        } catch {
-          setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
-        }
-      } finally {
+        setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
         setIsLoadingProfile(false);
         setShowForm(true);
+        return;
       }
-      return;
     }
 
-    // New brand URL: scrape + extract profile via LLM, then show form pre-filled
+    // GET profile, fallback to POST extraction
     try {
-      const { profile } = await fetchSalesProfileFromUrl(resolvedBrandUrl);
-      if (profile) {
+      const { profile } = await getBrandSalesProfile(brandId);
+      setFormData(profileToFormData(profile, resolvedBrandUrl));
+    } catch {
+      try {
+        const { profile } = await createBrandSalesProfile(brandId);
         setFormData(profileToFormData(profile, resolvedBrandUrl));
-      } else {
+      } catch {
         setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
       }
-    } catch {
-      setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
     } finally {
       setIsLoadingProfile(false);
       setShowForm(true);
