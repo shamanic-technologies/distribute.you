@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useParams } from "next/navigation";
-import { WORKFLOW_DEFINITIONS, OUTCOME_LABELS } from "@distribute/content";
+import { SECTION_LABELS } from "@distribute/content";
 
 export default function WorkflowSectionLayout({
   children,
@@ -15,9 +15,7 @@ export default function WorkflowSectionLayout({
   const orgId = params.orgId as string;
   const sectionKey = params.sectionKey as string;
 
-  const wfDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === sectionKey);
-  const outcome = wfDef?.targetOutcomes[0];
-  const label = outcome ? OUTCOME_LABELS[outcome] : sectionKey;
+  const label = SECTION_LABELS[sectionKey] ?? sectionKey;
   const basePath = `/orgs/${orgId}/brands/${brandId}/outcomes/${sectionKey}`;
   const backToOrgBrandHref = `/orgs/${orgId}/brands/${brandId}`;
 
