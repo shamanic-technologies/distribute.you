@@ -323,7 +323,7 @@ export default function CreateCampaignPage() {
 
   // Resolve the brand URL from either the selected brand or the new URL input
   const resolvedBrandUrl = useMemo(() => {
-    const raw = selectedBrandId
+    const raw = selectedBrandId && selectedBrandId !== "__new__"
       ? brands.find((b) => b.id === selectedBrandId)?.brandUrl ?? ""
       : newBrandUrl;
     const trimmed = raw.trim();
