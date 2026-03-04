@@ -97,14 +97,6 @@ export const getWorkflowDefinitionsByTag = (tag: string) =>
 export const getWorkflowDefinitionsByOutcome = (outcome: OutcomeType) =>
   WORKFLOW_DEFINITIONS.filter((w) => w.targetOutcomes.includes(outcome));
 
-/** Human-readable labels for each outcome type. */
-export const OUTCOME_LABELS: Record<OutcomeType, string> = {
-  "interested-replies": "Sales Replies",
-  "press-coverage": "Press Coverage",
-  "webinar-attendance": "Webinar Attendance",
-  "welcome-engagement": "Welcome Engagement",
-};
-
 export interface ParsedWorkflowName {
   category: WorkflowCategory;
   channel: WorkflowChannel;

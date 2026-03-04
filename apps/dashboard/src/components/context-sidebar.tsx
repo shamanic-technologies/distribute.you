@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { WORKFLOW_DEFINITIONS, OUTCOME_LABELS } from "@distribute/content";
-import type { OutcomeType } from "@distribute/content";
+import { WORKFLOW_DEFINITIONS } from "@distribute/content";
 
 interface SidebarItem {
   id: string;
@@ -134,33 +133,12 @@ const PlusIcon = () => (
   </svg>
 );
 
-function getOutcomeIcon(outcomeType: OutcomeType): React.ReactNode {
-  switch (outcomeType) {
-    case "interested-replies": return <EnvelopeIcon />;
-    case "press-coverage": return <NewspaperIcon />;
-    case "webinar-attendance": return <CalendarIcon />;
-    case "welcome-engagement": return <EnvelopeIcon />;
-    default: return <WorkflowIcon />;
-  }
-}
-
-/** Build deduplicated outcome sidebar items from workflow definitions. */
-function buildOutcomeItems(hrefPrefix: string): SidebarItem[] {
-  const seen = new Set<OutcomeType>();
-  const items: SidebarItem[] = [];
-  for (const wf of WORKFLOW_DEFINITIONS) {
-    const outcome = wf.targetOutcomes[0];
-    if (!outcome || seen.has(outcome)) continue;
-    seen.add(outcome);
-    items.push({
-      id: wf.sectionKey,
-      label: OUTCOME_LABELS[outcome],
-      href: `${hrefPrefix}/${wf.sectionKey}`,
-      icon: getOutcomeIcon(outcome),
-      comingSoon: !wf.implemented,
-    });
-  }
-  return items;
+function getOutcomeIcon(sectionKey: string): React.ReactNode {
+  if (sectionKey.startsWith("sales")) return <EnvelopeIcon />;
+  if (sectionKey.startsWith("journalists")) return <NewspaperIcon />;
+  if (sectionKey.startsWith("webinar")) return <CalendarIcon />;
+  if (sectionKey.startsWith("welcome")) return <EnvelopeIcon />;
+  return <WorkflowIcon />;
 }
 
 interface NavigationLevel {
@@ -202,7 +180,13 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
     { id: "home", label: "Home", href: "/", icon: <HomeIcon /> },
   ];
 
-  const outcomeItems = buildOutcomeItems("/outcomes");
+  const outcomeItems: SidebarItem[] = WORKFLOW_DEFINITIONS.map((wf) => ({
+    id: wf.sectionKey,
+    label: wf.label,
+    href: `/outcomes/${wf.sectionKey}`,
+    icon: getOutcomeIcon(wf.sectionKey),
+    comingSoon: !wf.implemented,
+  }));
 
   return (
     <SidebarSection title="Dashboard">
@@ -234,7 +218,13 @@ function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string 
     { id: "brands", label: "Brands", href: `/orgs/${orgId}/brands`, icon: <BrandIcon /> },
   ];
 
-  const outcomeItems = buildOutcomeItems("/outcomes");
+  const outcomeItems: SidebarItem[] = WORKFLOW_DEFINITIONS.map((wf) => ({
+    id: wf.sectionKey,
+    label: wf.label,
+    href: `/outcomes/${wf.sectionKey}`,
+    icon: getOutcomeIcon(wf.sectionKey),
+    comingSoon: !wf.implemented,
+  }));
 
   return (
     <SidebarSection title="Organization">
@@ -276,7 +266,13 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
     { id: "workflows", label: "Workflows", href: `${basePath}/workflows`, icon: <WorkflowIcon /> },
   ];
 
-  const outcomeItems = buildOutcomeItems(`${basePath}/outcomes`);
+  const outcomeItems: SidebarItem[] = WORKFLOW_DEFINITIONS.map((wf) => ({
+    id: wf.sectionKey,
+    label: wf.label,
+    href: `${basePath}/outcomes/${wf.sectionKey}`,
+    icon: getOutcomeIcon(wf.sectionKey),
+    comingSoon: !wf.implemented,
+  }));
 
   return (
     <SidebarSection title="Brand" backHref={`/orgs/${orgId}/brands`} backLabel="Brands">
@@ -310,8 +306,7 @@ function OutcomeLevelSidebar({ orgId, brandId, sectionKey, pathname }: {
 }) {
   const basePath = `/orgs/${orgId}/brands/${brandId}/outcomes/${sectionKey}`;
   const wfDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === sectionKey);
-  const outcome = wfDef?.targetOutcomes[0];
-  const title = outcome ? OUTCOME_LABELS[outcome] : sectionKey;
+  const title = wfDef?.label ?? sectionKey;
 
   const items: SidebarItem[] = [
     { id: "campaigns", label: "Campaigns", href: basePath, icon: <WorkflowIcon /> },
@@ -337,8 +332,7 @@ function AppOutcomeLevelSidebar({ outcomeId, pathname }: {
 }) {
   const basePath = `/outcomes/${outcomeId}`;
   const wfDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === outcomeId);
-  const outcome = wfDef?.targetOutcomes[0];
-  const title = outcome ? OUTCOME_LABELS[outcome] : outcomeId;
+  const title = wfDef?.label ?? outcomeId;
 
   const items: SidebarItem[] = [
     { id: "campaigns", label: "Campaigns", href: basePath, icon: <EnvelopeIcon /> },
