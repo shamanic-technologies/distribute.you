@@ -344,16 +344,11 @@ export interface SalesProfile {
 export async function getBrandSalesProfile(
   brandId: string,
   token?: string
-): Promise<{ profile: SalesProfile | null }> {
-  try {
-    return await apiCall<{ profile: SalesProfile }>(`/brands/${brandId}/sales-profile`, { token });
-  } catch (err: unknown) {
-    // 404 means no profile yet — not an error
-    if (err instanceof Error && err.message.includes("not found")) {
-      return { profile: null };
-    }
-    throw err;
-  }
+): Promise<{ profile: SalesProfile; cached: boolean; brandId: string }> {
+  return apiCall<{ profile: SalesProfile; cached: boolean; brandId: string }>(
+    `/brands/${brandId}/sales-profile`,
+    { token }
+  );
 }
 
 export async function fetchSalesProfileFromUrl(

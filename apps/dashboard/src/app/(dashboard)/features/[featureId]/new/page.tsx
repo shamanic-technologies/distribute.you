@@ -330,15 +330,11 @@ export default function CreateCampaignPage() {
     setCreateError(null);
     setIsLoadingProfile(true);
 
-    // For existing brands: fetch profile by brand ID
+    // For existing brands: fetch profile by brand ID (get-or-create — always returns a profile)
     if (selectedBrandId) {
       try {
         const { profile } = await getBrandSalesProfile(selectedBrandId);
-        if (profile) {
-          setFormData(profileToFormData(profile, resolvedBrandUrl));
-        } else {
-          setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
-        }
+        setFormData(profileToFormData(profile, resolvedBrandUrl));
       } catch {
         setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
       } finally {
