@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
-import { WORKFLOW_DEFINITIONS, OUTCOME_LABELS } from "@distribute/content";
+import { WORKFLOW_DEFINITIONS } from "@distribute/content";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   fetchSectionLeaderboard,
@@ -143,7 +143,7 @@ export default function OutcomeWorkflowsPage() {
     <div className="p-4 md:p-8">
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-gray-800">Workflows</h1>
-        <p className="text-gray-600">All available workflows for {outcomeDef.targetOutcomes[0] ? OUTCOME_LABELS[outcomeDef.targetOutcomes[0]] : outcomeDef.label}.</p>
+        <p className="text-gray-600">All available workflows for {outcomeDef.label}.</p>
       </div>
 
       {isLoading ? (

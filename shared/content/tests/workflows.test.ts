@@ -12,7 +12,6 @@ import {
   getWorkflowDisplayName,
   SECTION_LABELS,
   WORKFLOW_CATEGORY_LABELS,
-  OUTCOME_LABELS,
 } from "../src/workflows.js";
 
 describe("WORKFLOW_DEFINITIONS", () => {
@@ -184,20 +183,5 @@ describe("WORKFLOW_CATEGORY_LABELS", () => {
   it("has labels for all categories", () => {
     expect(WORKFLOW_CATEGORY_LABELS.sales).toBe("Sales");
     expect(WORKFLOW_CATEGORY_LABELS.journalists).toBe("Journalists");
-  });
-});
-
-describe("OUTCOME_LABELS", () => {
-  it("has labels for all outcome types used in workflow definitions", () => {
-    for (const wf of WORKFLOW_DEFINITIONS) {
-      for (const outcome of wf.targetOutcomes) {
-        expect(OUTCOME_LABELS[outcome]).toBeTruthy();
-      }
-    }
-  });
-
-  it("has expected labels", () => {
-    expect(OUTCOME_LABELS["interested-replies"]).toBe("Sales Replies");
-    expect(OUTCOME_LABELS["press-coverage"]).toBe("Press Coverage");
   });
 });

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrand, listCampaignsByBrand, getCampaignBatchStats, type Brand, type Campaign, type CampaignStats } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
-import { getSectionKey, getWorkflowDisplayName, WORKFLOW_DEFINITIONS, OUTCOME_LABELS } from "@distribute/content";
+import { getSectionKey, getWorkflowDisplayName, SECTION_LABELS } from "@distribute/content";
 
 function formatCost(cents: string | null | undefined): string | null {
   if (!cents) return null;
@@ -62,11 +62,7 @@ export default function BrandOverviewPage() {
     for (const [sectionKey, sectionCampaigns] of map) {
       sections.push({
         sectionKey,
-        label: (() => {
-          const wf = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === sectionKey);
-          const oc = wf?.targetOutcomes[0];
-          return oc ? OUTCOME_LABELS[oc] : getWorkflowDisplayName(sectionCampaigns[0]?.workflowName ?? sectionKey);
-        })(),
+        label: SECTION_LABELS[sectionKey] ?? getWorkflowDisplayName(sectionCampaigns[0]?.workflowName ?? sectionKey),
         campaigns: sectionCampaigns,
       });
     }
