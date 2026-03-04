@@ -36,14 +36,14 @@ export default function BrandInfoPage() {
   );
   const brandName = brandData?.brand?.name ?? null;
 
-  const { data: profileData, isLoading, error: profileError } = useAuthQuery(
+  const { data: profileData, error: profileError } = useAuthQuery(
     ["brandSalesProfile", brandId],
     () => getBrandSalesProfile(brandId)
   );
   const profile = profileData?.profile ?? null;
   const error = profileError?.message ?? null;
 
-  const { data: runsData, isLoading: runsLoading } = useAuthQuery(
+  const { data: runsData } = useAuthQuery(
     ["brandRuns", brandId],
     () => listBrandRuns(brandId)
   );
@@ -54,7 +54,7 @@ export default function BrandInfoPage() {
     return sum + (isNaN(cents) ? 0 : cents);
   }, 0) / 100;
 
-  if (isLoading) {
+  if (!profileData) {
     return (
       <div className="p-4 md:p-8">
         <div className="animate-pulse space-y-4">
@@ -351,7 +351,7 @@ export default function BrandInfoPage() {
       {/* Update History Tab */}
       {activeTab === "history" && (
         <>
-          {runsLoading ? (
+          {!runsData ? (
             <div className="animate-pulse space-y-3">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="h-16 bg-gray-100 rounded-lg" />
