@@ -44,7 +44,7 @@ describe("CostBreakdown uses runs-service cost breakdown (not manual run aggrega
 describe("Brand page uses runs-service cost breakdown (no Other category)", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[sectionKey]/page.tsx"
+    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/outcomes/[sectionKey]/page.tsx"
   );
   const content = fs.readFileSync(pagePath, "utf-8");
 

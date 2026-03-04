@@ -1,6 +1,6 @@
-import type { FeatureColor } from "@distribute/content";
+import type { OutcomeColor } from "@distribute/content";
 
-const SIDEBAR_COLORS: Record<FeatureColor, { activeBg: string; activeText: string; dot: string }> = {
+const SIDEBAR_COLORS: Record<OutcomeColor, { activeBg: string; activeText: string; dot: string }> = {
   emerald: { activeBg: "bg-emerald-500/10", activeText: "text-emerald-400", dot: "bg-emerald-400" },
   cyan: { activeBg: "bg-cyan-500/10", activeText: "text-cyan-400", dot: "bg-cyan-400" },
   blue: { activeBg: "bg-blue-500/10", activeText: "text-blue-400", dot: "bg-blue-400" },
@@ -10,7 +10,7 @@ const SIDEBAR_COLORS: Record<FeatureColor, { activeBg: string; activeText: strin
 };
 
 export function DashboardPreview() {
-  const features: { name: string; active: boolean; color: FeatureColor }[] = [
+  const outcomes: { name: string; active: boolean; color: OutcomeColor }[] = [
     { name: "Welcome Emails", active: true, color: "emerald" },
     { name: "Cold Outreach", active: true, color: "cyan" },
     { name: "Webinar Lifecycle", active: false, color: "blue" },
@@ -49,7 +49,7 @@ export function DashboardPreview() {
           <div className="w-48 border-r border-gray-800 bg-gray-900/50 p-4 hidden md:block">
             <div className="font-semibold text-white text-sm mb-4 tracking-tight">distribute</div>
             <div className="space-y-1">
-              {features.map((f) => {
+              {outcomes.map((f) => {
                 const colors = SIDEBAR_COLORS[f.color];
                 return (
                   <div

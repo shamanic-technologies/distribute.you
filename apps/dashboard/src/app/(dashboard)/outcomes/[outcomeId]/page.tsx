@@ -48,42 +48,42 @@ const STATUS_STYLES: Record<string, string> = {
 
 // ─── Main Page ──────────────────────────────────────────────────────────────
 
-export default function FeatureCampaignsPage() {
+export default function OutcomeCampaignsPage() {
   const params = useParams();
   const router = useRouter();
-  const featureId = params.featureId as string;
+  const outcomeId = params.outcomeId as string;
 
-  const featureDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === featureId);
+  const outcomeDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === outcomeId);
 
   // Fetch all campaigns, then filter client-side by feature
   const { data: campaignsData, isLoading } = useAuthQuery(
     ["campaigns"],
     () => listCampaigns(),
-    { enabled: featureDef?.implemented === true }
+    { enabled: outcomeDef?.implemented === true }
   );
 
-  const featureCampaigns = useMemo(() => {
+  const outcomeCampaigns = useMemo(() => {
     if (!campaignsData?.campaigns) return [];
     return campaignsData.campaigns.filter(
-      (c) => c.workflowName?.startsWith(featureId)
+      (c) => c.workflowName?.startsWith(outcomeId)
     );
-  }, [campaignsData?.campaigns, featureId]);
+  }, [campaignsData?.campaigns, outcomeId]);
 
   // Redirect to create page when there are no campaigns
   useEffect(() => {
-    if (!isLoading && campaignsData && featureCampaigns.length === 0 && featureDef?.implemented) {
-      router.replace(`/features/${featureId}/new`);
+    if (!isLoading && campaignsData && outcomeCampaigns.length === 0 && outcomeDef?.implemented) {
+      router.replace(`/outcomes/${outcomeId}/new`);
     }
-  }, [isLoading, campaignsData, featureCampaigns.length, featureDef?.implemented, featureId, router]);
+  }, [isLoading, campaignsData, outcomeCampaigns.length, outcomeDef?.implemented, outcomeId, router]);
 
   const campaignIds = useMemo(
-    () => featureCampaigns.map((c) => c.id),
-    [featureCampaigns]
+    () => outcomeCampaigns.map((c) => c.id),
+    [outcomeCampaigns]
   );
 
   // Batch stats for all campaigns
   const { data: batchStats } = useAuthQuery(
-    ["campaignBatchStats", featureId, campaignIds],
+    ["campaignBatchStats", outcomeId, campaignIds],
     () => getCampaignBatchStats(campaignIds),
     { enabled: campaignIds.length > 0 }
   );
@@ -107,23 +107,23 @@ export default function FeatureCampaignsPage() {
 
   // ─── Not found / Coming soon ────────────────────────────────────────────
 
-  if (!featureDef) {
+  if (!outcomeDef) {
     return (
       <div className="p-4 md:p-8">
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-          <h3 className="font-display font-bold text-lg text-gray-800 mb-2">Feature not found</h3>
-          <p className="text-gray-600 text-sm">The feature &quot;{featureId}&quot; does not exist.</p>
+          <h3 className="font-display font-bold text-lg text-gray-800 mb-2">Outcome not found</h3>
+          <p className="text-gray-600 text-sm">The outcome &quot;{outcomeId}&quot; does not exist.</p>
         </div>
       </div>
     );
   }
 
-  if (!featureDef.implemented) {
+  if (!outcomeDef.implemented) {
     return (
       <div className="p-4 md:p-8">
         <div className="mb-6">
-          <h1 className="font-display text-2xl font-bold text-gray-800">{featureDef.label}</h1>
-          <p className="text-gray-600">{featureDef.description}</p>
+          <h1 className="font-display text-2xl font-bold text-gray-800">{outcomeDef.label}</h1>
+          <p className="text-gray-600">{outcomeDef.description}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
           <div className="w-16 h-16 bg-brand-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -133,7 +133,7 @@ export default function FeatureCampaignsPage() {
           </div>
           <h3 className="font-display font-bold text-lg text-gray-800 mb-2">Coming Soon</h3>
           <p className="text-gray-600 text-sm max-w-md mx-auto">
-            {featureDef.label} is not yet available. We&apos;re working on it and will notify you when it&apos;s ready.
+            {outcomeDef.label} is not yet available. We&apos;re working on it and will notify you when it&apos;s ready.
           </p>
         </div>
       </div>
@@ -147,11 +147,11 @@ export default function FeatureCampaignsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="font-display text-2xl font-bold text-gray-800">{featureDef.label}</h1>
-          <p className="text-gray-600">All campaigns across brands for this feature.</p>
+          <h1 className="font-display text-2xl font-bold text-gray-800">{outcomeDef.label}</h1>
+          <p className="text-gray-600">All campaigns across brands for this outcome.</p>
         </div>
         <Link
-          href={`/features/${featureId}/new`}
+          href={`/outcomes/${outcomeId}/new`}
           className="px-5 py-2.5 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition inline-flex items-center gap-2"
           data-testid="create-campaign-link"
         >
@@ -163,9 +163,9 @@ export default function FeatureCampaignsPage() {
       </div>
 
       {/* Stats overview */}
-      {featureCampaigns.length > 0 && totals.campaigns > 0 && (
+      {outcomeCampaigns.length > 0 && totals.campaigns > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6" data-testid="campaigns-stats">
-          <StatCard label="Campaigns" value={featureCampaigns.length} />
+          <StatCard label="Campaigns" value={outcomeCampaigns.length} />
           <StatCard label="Leads" value={totals.leadsServed} />
           <StatCard label="Sent" value={totals.emailsSent} />
           <StatCard label="Opened" value={totals.emailsOpened} />
@@ -184,7 +184,7 @@ export default function FeatureCampaignsPage() {
             </div>
           ))}
         </div>
-      ) : featureCampaigns.length === 0 ? (
+      ) : outcomeCampaigns.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
           <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -193,10 +193,10 @@ export default function FeatureCampaignsPage() {
           </div>
           <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No campaigns yet</h3>
           <p className="text-gray-600 text-sm max-w-md mx-auto mb-4">
-            Create your first campaign to start reaching out with {featureDef.label}.
+            Create your first campaign to start reaching out with {outcomeDef.label}.
           </p>
           <Link
-            href={`/features/${featureId}/new`}
+            href={`/outcomes/${outcomeId}/new`}
             className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -207,7 +207,7 @@ export default function FeatureCampaignsPage() {
         </div>
       ) : (
         <div className="space-y-3" data-testid="campaigns-list">
-          {featureCampaigns.map((campaign) => (
+          {outcomeCampaigns.map((campaign) => (
             <CampaignCard
               key={campaign.id}
               campaign={campaign}

@@ -2,10 +2,10 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
-describe("Feature overview page", () => {
+describe("Outcome overview page", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/features/[featureId]/page.tsx"
+    "../src/app/(dashboard)/outcomes/[outcomeId]/page.tsx"
   );
 
   it("should exist", () => {
@@ -23,13 +23,13 @@ describe("Feature overview page", () => {
     expect(content).toContain("@distribute/content");
   });
 
-  it("should show 'Coming Soon' for unimplemented features", () => {
+  it("should show 'Coming Soon' for unimplemented outcomes", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
     expect(content).toContain("Coming Soon");
     expect(content).toContain("implemented");
   });
 
-  it("should use listCampaigns for implemented features", () => {
+  it("should use listCampaigns for implemented outcomes", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
     expect(content).toContain("listCampaigns");
     expect(content).toContain("getCampaignBatchStats");
@@ -55,7 +55,6 @@ describe("Workflow definitions include implemented flag", () => {
 
   it("should have sales-email-cold-outreach as implemented", () => {
     const content = fs.readFileSync(workflowsPath, "utf-8");
-    // Find the definition inside WORKFLOW_DEFINITIONS array (not the JSDoc comment)
     const defsStart = content.indexOf("WORKFLOW_DEFINITIONS:");
     const defsContent = content.slice(defsStart);
     const salesIdx = defsContent.indexOf("sales-email-cold-outreach");
@@ -63,7 +62,7 @@ describe("Workflow definitions include implemented flag", () => {
     expect(salesBlock).toContain("implemented: true");
   });
 
-  it("should have new features as not yet implemented", () => {
+  it("should have new outcomes as not yet implemented", () => {
     const content = fs.readFileSync(workflowsPath, "utf-8");
     expect(content).toContain("journalists-email-cold-outreach");
     expect(content).toContain("webinars");
