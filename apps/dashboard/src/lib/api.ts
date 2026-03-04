@@ -530,7 +530,7 @@ export interface WorkflowSummary {
 export interface WorkflowKeyStatus {
   workflowName: string;
   ready: boolean;
-  keys: { provider: string; configured: boolean; maskedKey: string | null }[];
+  keys: { provider: string; configured: boolean; maskedKey: string | null; keySource?: "org" | "platform" }[];
   missing: string[];
 }
 

@@ -11,8 +11,8 @@ import {
   createCampaign,
   listCampaigns,
   listBrands,
-  listByokKeys,
   listWorkflows,
+  getWorkflowKeyStatus,
   getBrandSalesProfile,
   fetchSalesProfileFromUrl,
   stopCampaign,
@@ -205,31 +205,11 @@ export default function CreateCampaignPage() {
   );
   const brands = brandsData?.brands ?? [];
 
-  // Fetch BYOK keys and workflows to check for missing provider keys
-  const { data: byokKeysData } = useAuthQuery(
-    ["byokKeys"],
-    () => listByokKeys(),
-    { enabled: featureDef?.implemented === true }
-  );
   const { data: workflowsData } = useAuthQuery(
     ["workflows"],
     () => listWorkflows(),
     { enabled: featureDef?.implemented === true }
   );
-
-  // Compute missing provider keys for this feature's workflows
-  const missingProviders = useMemo(() => {
-    const workflows = workflowsData?.workflows ?? [];
-    const featureWorkflows = workflows.filter((w) => w.name.startsWith(featureId));
-    const requiredSet = new Set<string>();
-    for (const wf of featureWorkflows) {
-      for (const p of wf.requiredProviders ?? []) {
-        requiredSet.add(p);
-      }
-    }
-    const configuredSet = new Set((byokKeysData?.keys ?? []).map((k) => k.provider));
-    return [...requiredSet].filter((p) => !configuredSet.has(p));
-  }, [workflowsData, byokKeysData, featureId]);
 
   // Map workflow names to IDs for detail panel
   const workflowNameToId = useMemo(() => {
@@ -307,6 +287,18 @@ export default function CreateCampaignPage() {
   const effectiveSelection = mode === "autopilot"
     ? displayRows[0]?.workflowName ?? null
     : selectedWorkflow;
+
+  const effectiveWorkflowId = effectiveSelection
+    ? workflowNameToId.get(effectiveSelection) ?? null
+    : null;
+
+  const { data: keyStatusData } = useAuthQuery(
+    ["workflowKeyStatus", effectiveWorkflowId],
+    () => getWorkflowKeyStatus(effectiveWorkflowId!),
+    { enabled: !!effectiveWorkflowId }
+  );
+
+  const missingProviders = keyStatusData?.missing ?? [];
 
   // In manual mode, separate selected from rest
   const { topRows, restRows } = useMemo(() => {

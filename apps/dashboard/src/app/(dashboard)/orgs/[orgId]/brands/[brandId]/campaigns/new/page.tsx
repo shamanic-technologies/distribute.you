@@ -11,8 +11,8 @@ import {
   createCampaign,
   listCampaignsByBrand,
   getBrand,
-  listByokKeys,
   listWorkflows,
+  getWorkflowKeyStatus,
   getBrandSalesProfile,
   stopCampaign,
   resumeCampaign,
@@ -189,29 +189,11 @@ export default function BrandCreateCampaignPage() {
     () => listCampaignsByBrand(brandId)
   );
 
-  const { data: byokKeysData } = useAuthQuery(
-    ["byokKeys"],
-    () => listByokKeys(),
-    { enabled: featureDef?.implemented === true }
-  );
   const { data: workflowsData } = useAuthQuery(
     ["workflows"],
     () => listWorkflows(),
     { enabled: featureDef?.implemented === true }
   );
-
-  const missingProviders = useMemo(() => {
-    const workflows = workflowsData?.workflows ?? [];
-    const featureWorkflows = workflows.filter((w) => w.name.startsWith(featureId));
-    const requiredSet = new Set<string>();
-    for (const wf of featureWorkflows) {
-      for (const p of wf.requiredProviders ?? []) {
-        requiredSet.add(p);
-      }
-    }
-    const configuredSet = new Set((byokKeysData?.keys ?? []).map((k) => k.provider));
-    return [...requiredSet].filter((p) => !configuredSet.has(p));
-  }, [workflowsData, byokKeysData, featureId]);
 
   const workflowNameToId = useMemo(() => {
     const map = new Map<string, string>();
@@ -256,6 +238,18 @@ export default function BrandCreateCampaignPage() {
   const effectiveSelection = mode === "autopilot"
     ? sorted[0]?.workflowName ?? null
     : selectedWorkflow;
+
+  const effectiveWorkflowId = effectiveSelection
+    ? workflowNameToId.get(effectiveSelection) ?? null
+    : null;
+
+  const { data: keyStatusData } = useAuthQuery(
+    ["workflowKeyStatus", effectiveWorkflowId],
+    () => getWorkflowKeyStatus(effectiveWorkflowId!),
+    { enabled: !!effectiveWorkflowId }
+  );
+
+  const missingProviders = keyStatusData?.missing ?? [];
 
   const { topRows, restRows } = useMemo(() => {
     if (mode === "autopilot" || !selectedWorkflow) {
