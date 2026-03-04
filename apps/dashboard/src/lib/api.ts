@@ -266,10 +266,6 @@ export async function listBrands(token?: string): Promise<{ brands: Brand[] }> {
   return apiCall<{ brands: Brand[] }>("/brands", { token });
 }
 
-export async function getBrandsCosts(token?: string): Promise<{ costs: Record<string, string> }> {
-  return apiCall<{ costs: Record<string, string> }>("/brands/costs", { token });
-}
-
 /** GET /brands/:brandId — returns brand or null if not found (404/500 from missing brand) */
 export async function getBrand(brandId: string, token?: string): Promise<{ brand: Brand } | null> {
   try {
@@ -579,19 +575,6 @@ export async function getWorkflowSummary(workflowId: string, token?: string): Pr
 
 export async function getWorkflowKeyStatus(workflowId: string, token?: string): Promise<WorkflowKeyStatus> {
   return apiCall<WorkflowKeyStatus>(`/workflows/${workflowId}/key-status`, { token });
-}
-
-// Create brand
-export async function createBrand(
-  name: string,
-  domain: string,
-  token?: string
-): Promise<{ brand: Brand }> {
-  return apiCall<{ brand: Brand }>("/brands", {
-    token,
-    method: "POST",
-    body: { name, domain },
-  });
 }
 
 // Workflow performance
