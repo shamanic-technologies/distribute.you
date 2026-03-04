@@ -11,8 +11,8 @@ import {
   createCampaign,
   listCampaignsByBrand,
   getBrand,
-  listByokKeys,
   listWorkflows,
+  getWorkflowKeyStatus,
   getBrandSalesProfile,
   stopCampaign,
   resumeCampaign,
@@ -189,29 +189,35 @@ export default function FeatureCreateCampaignPage() {
     () => listCampaignsByBrand(brandId)
   );
 
-  const { data: byokKeysData } = useAuthQuery(
-    ["byokKeys"],
-    () => listByokKeys(),
-    { enabled: featureDef?.implemented === true }
-  );
   const { data: workflowsData } = useAuthQuery(
     ["workflows"],
     () => listWorkflows(),
     { enabled: featureDef?.implemented === true }
   );
 
-  const missingProviders = useMemo(() => {
+  const featureWorkflowIds = useMemo(() => {
     const workflows = workflowsData?.workflows ?? [];
-    const featureWorkflows = workflows.filter((w) => w.name.startsWith(featureId));
-    const requiredSet = new Set<string>();
-    for (const wf of featureWorkflows) {
-      for (const p of wf.requiredProviders ?? []) {
-        requiredSet.add(p);
+    return workflows
+      .filter((w) => w.name.startsWith(featureId))
+      .map((w) => w.id);
+  }, [workflowsData, featureId]);
+
+  const { data: keyStatusData } = useAuthQuery(
+    ["workflowKeyStatus", featureId, featureWorkflowIds],
+    async () => {
+      const results = await Promise.all(
+        featureWorkflowIds.map((id) => getWorkflowKeyStatus(id))
+      );
+      const missing = new Set<string>();
+      for (const r of results) {
+        for (const p of r.missing) missing.add(p);
       }
-    }
-    const configuredSet = new Set((byokKeysData?.keys ?? []).map((k) => k.provider));
-    return [...requiredSet].filter((p) => !configuredSet.has(p));
-  }, [workflowsData, byokKeysData, featureId]);
+      return [...missing];
+    },
+    { enabled: featureWorkflowIds.length > 0 }
+  );
+
+  const missingProviders = keyStatusData ?? [];
 
   const workflowNameToId = useMemo(() => {
     const map = new Map<string, string>();
