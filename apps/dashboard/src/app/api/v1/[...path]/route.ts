@@ -9,55 +9,64 @@ async function proxyRequest(
   req: NextRequest,
   segmentData: { params: Promise<{ path: string[] }> }
 ) {
-  const { userId: clerkUserId, orgId: clerkOrgId } = await auth();
-  if (!clerkUserId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  if (!API_KEY) {
+  try {
+    const { userId: clerkUserId, orgId: clerkOrgId } = await auth();
+    if (!clerkUserId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!API_KEY) {
+      return NextResponse.json(
+        { error: "API key not configured" },
+        { status: 500 }
+      );
+    }
+    if (!clerkOrgId) {
+      return NextResponse.json(
+        { error: "No active organization. Please complete onboarding." },
+        { status: 403 }
+      );
+    }
+
+    const { path } = await segmentData.params;
+    const url = new URL(`/v1/${path.join("/")}`, API_URL);
+    req.nextUrl.searchParams.forEach((value, key) => {
+      url.searchParams.set(key, value);
+    });
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${API_KEY}`,
+      "x-org-id": clerkOrgId,
+      "x-user-id": clerkUserId,
+    };
+
+    const body =
+      req.method !== "GET" && req.method !== "HEAD"
+        ? await req.text()
+        : undefined;
+
+    const res = await fetch(url.toString(), {
+      method: req.method,
+      headers,
+      body,
+    });
+
+    const data = await res.text();
+    return new NextResponse(data, {
+      status: res.status,
+      headers: {
+        "Content-Type":
+          res.headers.get("Content-Type") || "application/json",
+      },
+    });
+  } catch (err) {
+    const { path } = await segmentData.params;
+    console.error(`[api-proxy] ${req.method} /v1/${path.join("/")} failed:`, err);
     return NextResponse.json(
-      { error: "API key not configured" },
-      { status: 500 }
+      { error: "Proxy error", detail: err instanceof Error ? err.message : String(err) },
+      { status: 502 }
     );
   }
-  if (!clerkOrgId) {
-    return NextResponse.json(
-      { error: "No active organization. Please complete onboarding." },
-      { status: 403 }
-    );
-  }
-
-  const { path } = await segmentData.params;
-  const url = new URL(`/v1/${path.join("/")}`, API_URL);
-  req.nextUrl.searchParams.forEach((value, key) => {
-    url.searchParams.set(key, value);
-  });
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${API_KEY}`,
-    "x-org-id": clerkOrgId,
-    "x-user-id": clerkUserId,
-  };
-
-  const body =
-    req.method !== "GET" && req.method !== "HEAD"
-      ? await req.text()
-      : undefined;
-
-  const res = await fetch(url.toString(), {
-    method: req.method,
-    headers,
-    body,
-  });
-
-  const data = await res.text();
-  return new NextResponse(data, {
-    status: res.status,
-    headers: {
-      "Content-Type":
-        res.headers.get("Content-Type") || "application/json",
-    },
-  });
 }
 
 export async function GET(
