@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getBrand, getBrandSalesProfile, listBrandRuns, type SalesProfile, type BrandRun, type RunCost, type Testimonial } from "@/lib/api";
+import { getBrand, getBrandSalesProfile, listBrandRuns, fetchSalesProfileFromUrl, type SalesProfile, type BrandRun, type RunCost, type Testimonial } from "@/lib/api";
 
 function timeAgo(dateStr: string): string {
   const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
@@ -29,6 +30,8 @@ export default function BrandInfoPage() {
   const brandId = params.brandId as string;
   const orgId = params.orgId as string;
   const [activeTab, setActiveTab] = useState<"current" | "history">("current");
+  const [generating, setGenerating] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data: brandData } = useAuthQuery(
     ["brand", brandId],
@@ -53,6 +56,20 @@ export default function BrandInfoPage() {
     const cents = parseFloat(run.totalCostInUsdCents ?? "0");
     return sum + (isNaN(cents) ? 0 : cents);
   }, 0) / 100;
+
+  const brandUrl = brandData?.brand?.brandUrl ?? null;
+
+  const handleGenerate = async () => {
+    if (!brandUrl || generating) return;
+    setGenerating(true);
+    try {
+      await fetchSalesProfileFromUrl(brandUrl, undefined, { skipCache: !!profile });
+      await queryClient.invalidateQueries({ queryKey: ["brandSalesProfile", brandId] });
+      await queryClient.invalidateQueries({ queryKey: ["brandRuns", brandId] });
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   if (!profileData) {
     return (
@@ -118,16 +135,27 @@ export default function BrandInfoPage() {
     <div className="p-4 md:p-8 max-w-4xl">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-semibold text-gray-900">Brand Info</h1>
-        {activeTab === "current" && profile?.extractedAt && (
-          <div className="text-right">
-            <span className="text-xs text-gray-400 block">
-              Updated: {new Date(profile.extractedAt).toLocaleDateString()}
-            </span>
-            <span className="text-xs text-gray-400 block">
-              Total: {totalCostUsd < 1 ? "<$1" : `$${Math.round(totalCostUsd)}`}
-            </span>
-          </div>
-        )}
+        <div className="flex items-center gap-4">
+          {activeTab === "current" && profile?.extractedAt && (
+            <div className="text-right">
+              <span className="text-xs text-gray-400 block">
+                Updated: {new Date(profile.extractedAt).toLocaleDateString()}
+              </span>
+              <span className="text-xs text-gray-400 block">
+                Total: {totalCostUsd < 1 ? "<$1" : `$${Math.round(totalCostUsd)}`}
+              </span>
+            </div>
+          )}
+          {activeTab === "current" && brandUrl && (
+            <button
+              onClick={handleGenerate}
+              disabled={generating}
+              className="px-4 py-2 text-sm font-medium rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              {generating ? "Generating..." : profile ? "Regenerate" : "Generate"}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Tabs */}
