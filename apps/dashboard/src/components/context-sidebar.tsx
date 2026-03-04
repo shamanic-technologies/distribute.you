@@ -273,8 +273,6 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
   const topItems: SidebarItem[] = [
     { id: "overview", label: "Overview", href: basePath, icon: <HomeIcon /> },
     { id: "brand-info", label: "Brand Info", href: `${basePath}/brand-info`, icon: <InfoIcon /> },
-    { id: "campaigns", label: "Campaigns", href: `${basePath}/campaigns`, icon: <EnvelopeIcon /> },
-    { id: "create", label: "Create Campaign", href: `${basePath}/campaigns/new`, icon: <PlusIcon /> },
     { id: "workflows", label: "Workflows", href: `${basePath}/workflows`, icon: <WorkflowIcon /> },
   ];
 
@@ -292,7 +290,7 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
         <SidebarLink
           key={item.id}
           item={item}
-          isActive={item.id === "overview" ? pathname === item.href : item.id === "campaigns" ? pathname === item.href : pathname.startsWith(item.href)}
+          isActive={item.id === "overview" ? pathname === item.href : pathname.startsWith(item.href)}
         />
       ))}
       <div className="pt-2 mt-2 border-t border-gray-100">
@@ -321,7 +319,8 @@ function FeatureLevelSidebar({ orgId, brandId, sectionKey, pathname }: {
   const title = wfDef?.label ?? sectionKey;
 
   const items: SidebarItem[] = [
-    { id: "campaigns", label: "Campaigns", href: basePath, icon: <WorkflowIcon /> },
+    { id: "campaigns", label: "Campaigns", href: basePath, icon: <EnvelopeIcon /> },
+    { id: "create", label: "Create Campaign", href: `/orgs/${orgId}/brands/${brandId}/campaigns/new`, icon: <PlusIcon /> },
   ];
 
   return (
@@ -330,7 +329,7 @@ function FeatureLevelSidebar({ orgId, brandId, sectionKey, pathname }: {
         <SidebarLink
           key={item.id}
           item={item}
-          isActive={pathname === item.href}
+          isActive={item.id === "campaigns" ? pathname === item.href : pathname.startsWith(item.href)}
         />
       ))}
     </SidebarSection>
