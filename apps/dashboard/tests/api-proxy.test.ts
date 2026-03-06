@@ -15,17 +15,17 @@ describe("API proxy route", () => {
     expect(fs.existsSync(proxyPath)).toBe(true);
   });
 
-  it("should use ADMIN_DISTRIBUTE_API_KEY for auth", () => {
+  it("should use ADMIN_DISTRIBUTE_API_KEY via X-API-Key header", () => {
     const content = fs.readFileSync(proxyPath, "utf-8");
     expect(content).toContain("ADMIN_DISTRIBUTE_API_KEY");
-    expect(content).toContain("Authorization");
-    expect(content).toContain("Bearer");
+    expect(content).toContain('"X-API-Key"');
   });
 
-  it("should verify Clerk session via auth()", () => {
+  it("should verify Clerk session via auth() and currentUser()", () => {
     const content = fs.readFileSync(proxyPath, "utf-8");
-    expect(content).toContain('import { auth } from "@clerk/nextjs/server"');
+    expect(content).toContain("@clerk/nextjs/server");
     expect(content).toContain("await auth()");
+    expect(content).toContain("currentUser");
     expect(content).toContain("userId");
   });
 
@@ -43,12 +43,19 @@ describe("API proxy route", () => {
     expect(content).toContain("path.join");
   });
 
-  it("should forward Clerk IDs as x-org-id and x-user-id headers", () => {
+  it("should forward Clerk IDs as x-external-org-id and x-external-user-id headers", () => {
     const content = fs.readFileSync(proxyPath, "utf-8");
-    expect(content).toContain('"x-org-id"');
-    expect(content).toContain('"x-user-id"');
+    expect(content).toContain('"x-external-org-id"');
+    expect(content).toContain('"x-external-user-id"');
     expect(content).toContain("clerkOrgId");
     expect(content).toContain("clerkUserId");
+  });
+
+  it("should forward user contact info as x-email, x-first-name, x-last-name headers", () => {
+    const content = fs.readFileSync(proxyPath, "utf-8");
+    expect(content).toContain('"x-email"');
+    expect(content).toContain('"x-first-name"');
+    expect(content).toContain('"x-last-name"');
   });
 
   it("should not call client-service directly", () => {
@@ -72,9 +79,9 @@ describe("api.ts client routing", () => {
 
   it("should use direct URL with token for server-side calls", () => {
     const content = fs.readFileSync(apiPath, "utf-8");
-    // When token is provided, use the external API URL
+    // When token is provided, use the external API URL with X-API-Key
     expect(content).toContain("if (token)");
-    expect(content).toContain("headers.Authorization");
+    expect(content).toContain('headers["X-API-Key"]');
   });
 });
 
