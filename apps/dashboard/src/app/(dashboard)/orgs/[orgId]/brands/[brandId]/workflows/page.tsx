@@ -5,12 +5,16 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { listWorkflows, type Workflow } from "@/lib/api";
 import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-panel";
 
+const POLL_INTERVAL = 5_000;
+const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
+
 export default function BrandWorkflowsPage() {
   const [detailWorkflowId, setDetailWorkflowId] = useState<string | null>(null);
 
   const { data: workflowsData, isLoading } = useAuthQuery(
     ["workflows"],
-    () => listWorkflows()
+    () => listWorkflows(),
+    pollOptions,
   );
 
   const allWorkflows = useMemo(() => {

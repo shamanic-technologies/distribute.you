@@ -7,6 +7,9 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { listBrands, upsertBrand, createBrandSalesProfile } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
 
+const POLL_INTERVAL = 5_000;
+const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
+
 export default function BrandsPage() {
   const params = useParams();
   const orgId = params.orgId as string;
@@ -17,9 +20,10 @@ export default function BrandsPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
-  const { data, refetch } = useAuthQuery(
+  const { data, isLoading, refetch } = useAuthQuery(
     ["brands"],
-    () => listBrands()
+    () => listBrands(),
+    pollOptions,
   );
   const brands = data?.brands ?? [];
 
@@ -42,7 +46,7 @@ export default function BrandsPage() {
     }
   };
 
-  if (!data) {
+  if (isLoading) {
     return (
       <div className="p-4 md:p-8">
         <div className="animate-pulse space-y-4">

@@ -16,6 +16,9 @@ import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
 
+const POLL_INTERVAL = 5_000;
+const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
+
 const STATUS_STYLES: Record<string, string> = {
   ongoing: "bg-blue-100 text-blue-700 border-blue-200",
   paused: "bg-yellow-100 text-yellow-700 border-yellow-200",
@@ -70,7 +73,8 @@ export default function FeaturePage() {
   // Campaigns
   const { data: campaignsData, isLoading, refetch: refetchCampaigns } = useAuthQuery(
     ["campaigns", { brandId }],
-    () => listCampaignsByBrand(brandId)
+    () => listCampaignsByBrand(brandId),
+    pollOptions,
   );
   const allCampaigns = campaignsData?.campaigns ?? [];
   const campaigns = useMemo(
@@ -83,20 +87,21 @@ export default function FeaturePage() {
   const { data: batchStats } = useAuthQuery(
     ["campaignBatchStats", { brandId }, campaignIds],
     () => getCampaignBatchStats(campaignIds),
-    { enabled: campaignIds.length > 0 }
+    { enabled: campaignIds.length > 0, ...pollOptions },
   );
   const campaignStats = batchStats ?? {};
 
   const { data: brandCostData } = useAuthQuery(
     ["brandCostBreakdown", { brandId }],
-    () => getBrandCostBreakdown(brandId)
+    () => getBrandCostBreakdown(brandId),
+    pollOptions,
   );
   const brandCostBreakdown = brandCostData?.costs ?? [];
 
   const { data: brandDelivery } = useAuthQuery(
     ["brandDeliveryStats", brandId],
     () => getBrandDeliveryStats(brandId),
-    { retry: false }
+    { retry: false, ...pollOptions },
   );
 
   // Aggregate stats

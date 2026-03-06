@@ -8,6 +8,9 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { listBrands, listCampaigns, getCampaignBatchStats } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
 
+const POLL_INTERVAL = 5_000;
+const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
+
 function StatCard({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4">
@@ -23,13 +26,15 @@ export default function OrgOverviewPage() {
 
   const { data: brandsData, isLoading: brandsLoading } = useAuthQuery(
     ["brands"],
-    () => listBrands()
+    () => listBrands(),
+    pollOptions,
   );
   const brands = brandsData?.brands ?? [];
 
   const { data: campaignsData, isLoading: campaignsLoading } = useAuthQuery(
     ["campaigns"],
-    () => listCampaigns()
+    () => listCampaigns(),
+    pollOptions,
   );
   const campaigns = campaignsData?.campaigns ?? [];
 
@@ -45,7 +50,7 @@ export default function OrgOverviewPage() {
   const { data: batchStats } = useAuthQuery(
     ["campaignBatchStats", "overview", ...campaignIds],
     () => getCampaignBatchStats(campaignIds),
-    { enabled: campaignIds.length > 0 }
+    { enabled: campaignIds.length > 0, ...pollOptions },
   );
 
   const totals = useMemo(() => {

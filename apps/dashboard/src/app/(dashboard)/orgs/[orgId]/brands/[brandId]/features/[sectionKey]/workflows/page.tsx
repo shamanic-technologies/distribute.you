@@ -11,6 +11,9 @@ import {
 import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-panel";
 import { WORKFLOW_DEFINITIONS } from "@distribute/content";
 
+const POLL_INTERVAL = 5_000;
+const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
+
 type SortKey = "openRate" | "clickRate" | "replyRate" | "costPerOpenCents" | "costPerClickCents" | "costPerReplyCents";
 
 const COST_METRICS: Set<SortKey> = new Set(["costPerOpenCents", "costPerClickCents", "costPerReplyCents"]);
@@ -64,13 +67,13 @@ export default function FeatureWorkflowsPage() {
   const { data: workflowsData } = useAuthQuery(
     ["workflows"],
     () => listWorkflows(),
-    { enabled: wfDef?.implemented === true }
+    { enabled: wfDef?.implemented === true, ...pollOptions },
   );
 
   const { data: leaderboard, isLoading } = useAuthQuery(
     ["section-leaderboard", sectionKey],
     () => fetchSectionLeaderboard(sectionKey),
-    { enabled: wfDef?.implemented === true }
+    { enabled: wfDef?.implemented === true, ...pollOptions },
   );
 
   const workflowNameToId = useMemo(() => {

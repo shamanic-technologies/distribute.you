@@ -8,6 +8,9 @@ import { getBrand, listCampaignsByBrand, getCampaignBatchStats, type Brand, type
 import { BrandLogo } from "@/components/brand-logo";
 import { getSectionKey, getWorkflowDisplayName, SECTION_LABELS, WORKFLOW_DEFINITIONS } from "@distribute/content";
 
+const POLL_INTERVAL = 5_000;
+const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
+
 function formatCost(cents: string | null | undefined): string | null {
   if (!cents) return null;
   const val = parseFloat(cents);
@@ -59,13 +62,15 @@ export default function BrandOverviewPage() {
 
   const { data: brandData, isLoading: brandLoading } = useAuthQuery(
     ["brand", brandId],
-    () => getBrand(brandId)
+    () => getBrand(brandId),
+    pollOptions,
   );
   const brand = brandData?.brand ?? null;
 
   const { data: campaignsData } = useAuthQuery(
     ["campaigns", { brandId }],
-    () => listCampaignsByBrand(brandId)
+    () => listCampaignsByBrand(brandId),
+    pollOptions,
   );
   const campaigns = campaignsData?.campaigns ?? [];
 
@@ -74,7 +79,7 @@ export default function BrandOverviewPage() {
   const { data: batchStats } = useAuthQuery(
     ["campaignBatchStats", { brandId }, campaignIds],
     () => getCampaignBatchStats(campaignIds),
-    { enabled: campaignIds.length > 0 }
+    { enabled: campaignIds.length > 0, ...pollOptions },
   );
   const campaignStats = batchStats ?? {};
 
