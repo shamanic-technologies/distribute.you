@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { listCampaignsByBrand, getCampaignBatchStats, getBrandDeliveryStats, getBrandCostBreakdown, stopCampaign } from "@/lib/api";
-import { SkeletonCampaignsList } from "@/components/skeleton";
+import { Skeleton, SkeletonCampaignList } from "@/components/skeleton";
 import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
@@ -179,7 +179,7 @@ export default function BrandCampaignsPage() {
       {/* Campaigns List */}
       <div className="space-y-4">
         {isLoading ? (
-          <SkeletonCampaignsList />
+          <SkeletonCampaignList />
         ) : campaigns.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
             <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -246,12 +246,19 @@ export default function BrandCampaignsPage() {
                 <p className="text-xs text-gray-500 mb-2">
                   Created {timeAgo(campaign.createdAt)}
                 </p>
-                {stats && (
+                {stats ? (
                   <div className="flex gap-4 text-xs text-gray-500">
                     <span>{stats.leadsServed || 0} leads</span>
                     <span>{stats.emailsGenerated || 0} generated</span>
                     <span>{stats.emailsSent || 0} sent</span>
                     <span>{stats.emailsReplied || 0} replies</span>
+                  </div>
+                ) : (
+                  <div className="flex gap-4">
+                    <Skeleton className="h-3 w-16" />
+                    <Skeleton className="h-3 w-20" />
+                    <Skeleton className="h-3 w-12" />
+                    <Skeleton className="h-3 w-16" />
                   </div>
                 )}
               </Link>

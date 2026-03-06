@@ -32,7 +32,7 @@ export function SkeletonKeysList() {
   );
 }
 
-export function SkeletonCampaignCard() {
+export function SkeletonCampaignRow() {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4">
       <div className="flex items-start justify-between mb-2">
@@ -47,19 +47,19 @@ export function SkeletonCampaignCard() {
       <div className="flex gap-4">
         <Skeleton className="h-3 w-16" />
         <Skeleton className="h-3 w-20" />
-        <Skeleton className="h-3 w-14" />
+        <Skeleton className="h-3 w-12" />
         <Skeleton className="h-3 w-16" />
       </div>
     </div>
   );
 }
 
-export function SkeletonCampaignsList() {
+export function SkeletonCampaignList() {
   return (
     <div className="space-y-4">
-      <SkeletonCampaignCard />
-      <SkeletonCampaignCard />
-      <SkeletonCampaignCard />
+      <SkeletonCampaignRow />
+      <SkeletonCampaignRow />
+      <SkeletonCampaignRow />
     </div>
   );
 }
