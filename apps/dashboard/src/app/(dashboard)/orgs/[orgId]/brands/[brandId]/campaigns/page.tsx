@@ -11,6 +11,8 @@ import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
 import { getSectionKey, SECTION_LABELS, getWorkflowDisplayName } from "@distribute/content";
 
+const POLL_INTERVAL = 5_000;
+
 function timeAgo(date: string | Date): string {
   const now = Date.now();
   const then = new Date(date).getTime();
@@ -51,9 +53,12 @@ export default function BrandCampaignsPage() {
   const brandId = params.brandId as string;
   const orgId = params.orgId as string;
 
+  const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
+
   const { data: campaignsData, isLoading } = useAuthQuery(
     ["campaigns", { brandId }],
-    () => listCampaignsByBrand(brandId)
+    () => listCampaignsByBrand(brandId),
+    pollOptions,
   );
   const campaigns = campaignsData?.campaigns ?? [];
 
@@ -62,20 +67,21 @@ export default function BrandCampaignsPage() {
   const { data: batchStats } = useAuthQuery(
     ["campaignBatchStats", { brandId }, campaignIds],
     () => getCampaignBatchStats(campaignIds),
-    { enabled: campaignIds.length > 0 }
+    { enabled: campaignIds.length > 0, ...pollOptions },
   );
   const campaignStats = batchStats ?? {};
 
   const { data: brandCostData } = useAuthQuery(
     ["brandCostBreakdown", { brandId }],
-    () => getBrandCostBreakdown(brandId)
+    () => getBrandCostBreakdown(brandId),
+    pollOptions,
   );
   const brandCostBreakdown = brandCostData?.costs ?? [];
 
   const { data: brandDelivery } = useAuthQuery(
     ["brandDeliveryStats", brandId],
     () => getBrandDeliveryStats(brandId),
-    { retry: false }
+    { retry: false, ...pollOptions },
   );
 
   const statsValues = Object.values(campaignStats);
