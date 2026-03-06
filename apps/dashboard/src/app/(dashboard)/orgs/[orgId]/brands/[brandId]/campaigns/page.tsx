@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useCallback, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listCampaignsByBrand, getCampaignBatchStats, getBrandDeliveryStats, getBrandCostBreakdown } from "@/lib/api";
+import { listCampaignsByBrand, getCampaignBatchStats, getBrandDeliveryStats, getBrandCostBreakdown, stopCampaign } from "@/lib/api";
 import { SkeletonKeysList } from "@/components/skeleton";
 import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
@@ -55,11 +55,25 @@ export default function BrandCampaignsPage() {
 
   const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
 
-  const { data: campaignsData, isLoading } = useAuthQuery(
+  const { data: campaignsData, isLoading, refetch: refetchCampaigns } = useAuthQuery(
     ["campaigns", { brandId }],
     () => listCampaignsByBrand(brandId),
     pollOptions,
   );
+
+  const [stoppingId, setStoppingId] = useState<string | null>(null);
+
+  const handleStop = useCallback(async (e: React.MouseEvent, campaignId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setStoppingId(campaignId);
+    try {
+      await stopCampaign(campaignId);
+      refetchCampaigns();
+    } finally {
+      setStoppingId(null);
+    }
+  }, [refetchCampaigns]);
   const campaigns = campaignsData?.campaigns ?? [];
 
   const campaignIds = useMemo(() => campaigns.map(c => c.id), [campaigns]);
@@ -212,11 +226,22 @@ export default function BrandCampaignsPage() {
                       </span>
                     )}
                   </div>
-                  {stats && formatCost(stats.totalCostInUsdCents) && (
-                    <span className="text-sm font-semibold text-gray-700">
-                      {formatCost(stats.totalCostInUsdCents)}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {stats && formatCost(stats.totalCostInUsdCents) && (
+                      <span className="text-sm font-semibold text-gray-700">
+                        {formatCost(stats.totalCostInUsdCents)}
+                      </span>
+                    )}
+                    {campaign.status === "ongoing" && (
+                      <button
+                        onClick={(e) => handleStop(e, campaign.id)}
+                        disabled={stoppingId === campaign.id}
+                        className="px-3 py-1 text-xs font-medium rounded-lg bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition disabled:opacity-50"
+                      >
+                        {stoppingId === campaign.id ? "Stopping…" : "Stop"}
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <p className="text-xs text-gray-500 mb-2">
                   Created {timeAgo(campaign.createdAt)}
