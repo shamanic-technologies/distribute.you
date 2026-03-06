@@ -31,10 +31,10 @@ function formatCostCents(cents: number | null): string {
 }
 
 function formatBudget(campaign: Campaign): string | null {
-  if (campaign.maxBudgetMonthlyUsd) return `$${campaign.maxBudgetMonthlyUsd}/mo`;
-  if (campaign.maxBudgetWeeklyUsd) return `$${campaign.maxBudgetWeeklyUsd}/wk`;
-  if (campaign.maxBudgetDailyUsd) return `$${campaign.maxBudgetDailyUsd}/day`;
-  if (campaign.maxBudgetTotalUsd) return `$${campaign.maxBudgetTotalUsd} total`;
+  if (campaign.maxBudgetMonthlyUsd) return `$${campaign.maxBudgetMonthlyUsd} budget (monthly)`;
+  if (campaign.maxBudgetWeeklyUsd) return `$${campaign.maxBudgetWeeklyUsd} budget (weekly)`;
+  if (campaign.maxBudgetDailyUsd) return `$${campaign.maxBudgetDailyUsd} budget (daily)`;
+  if (campaign.maxBudgetTotalUsd) return `$${campaign.maxBudgetTotalUsd} budget (one-off)`;
   return null;
 }
 
@@ -238,14 +238,14 @@ export default function FeaturePage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-3">
+                    {stats?.totalCostInUsdCents && parseFloat(stats.totalCostInUsdCents) > 0 && (
+                      <span className="text-xs text-gray-400">
+                        {formatCostCents(parseFloat(stats.totalCostInUsdCents))} spent
+                      </span>
+                    )}
                     {budget && (
                       <span className="text-xs font-medium text-brand-600 bg-brand-50 px-2 py-1 rounded-lg">
                         {budget}
-                      </span>
-                    )}
-                    {stats?.totalCostInUsdCents && parseFloat(stats.totalCostInUsdCents) > 0 && (
-                      <span className="text-sm font-semibold text-gray-700">
-                        {formatCostCents(parseFloat(stats.totalCostInUsdCents))}
                       </span>
                     )}
                     {status === "ongoing" && (
