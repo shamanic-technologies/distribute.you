@@ -574,6 +574,8 @@ export interface Workflow {
   signatureName: string;
   dag: DAG | null;
   requiredProviders: string[];
+  status: "active" | "deprecated";
+  upgradedTo: string | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -75,7 +75,12 @@ export default function FeatureWorkflowsPage() {
     const idMap = new Map<string, string>();
     const deployedByName = new Map<string, Workflow>();
 
+    const deprecatedSet = new Set<string>();
     for (const wf of workflowsData?.workflows ?? []) {
+      if (wf.status === "deprecated") {
+        deprecatedSet.add(wf.name);
+        continue;
+      }
       idMap.set(wf.name, wf.id);
       if (wf.name.startsWith(featureId)) {
         deployedByName.set(wf.name, wf);
@@ -87,6 +92,7 @@ export default function FeatureWorkflowsPage() {
 
     // Priority: leaderboard entries (have stats)
     for (const entry of leaderboard ?? []) {
+      if (deprecatedSet.has(entry.workflowName)) continue;
       seen.add(entry.workflowName);
       const deployed = deployedByName.get(entry.workflowName);
       result.push({

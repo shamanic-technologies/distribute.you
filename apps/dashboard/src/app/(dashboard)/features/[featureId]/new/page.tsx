@@ -215,11 +215,19 @@ export default function CreateCampaignPage() {
     { enabled: featureDef?.implemented === true, ...pollOptions },
   );
 
+  const deprecatedNames = useMemo(() => {
+    const set = new Set<string>();
+    for (const wf of workflowsData?.workflows ?? []) {
+      if (wf.status === "deprecated") set.add(wf.name);
+    }
+    return set;
+  }, [workflowsData]);
+
   // Map workflow names to IDs for detail panel
   const workflowNameToId = useMemo(() => {
     const map = new Map<string, string>();
     for (const wf of workflowsData?.workflows ?? []) {
-      map.set(wf.name, wf.id);
+      if (wf.status !== "deprecated") map.set(wf.name, wf.id);
     }
     return map;
   }, [workflowsData]);
@@ -245,7 +253,7 @@ export default function CreateCampaignPage() {
 
   const sorted = useMemo(() => {
     if (!leaderboard) return [];
-    return [...leaderboard].sort((a, b) => {
+    return [...leaderboard].filter((e) => !deprecatedNames.has(e.workflowName)).sort((a, b) => {
       const aRaw = a[metric];
       const bRaw = b[metric];
       const aNull = aRaw === null || aRaw === 0;
@@ -260,7 +268,7 @@ export default function CreateCampaignPage() {
 
   // Available workflows for this outcome (used as fallback when no leaderboard data)
   const outcomeWorkflows = useMemo(() => {
-    return (workflowsData?.workflows ?? []).filter((w) => w.name.startsWith(featureId));
+    return (workflowsData?.workflows ?? []).filter((w) => w.status !== "deprecated" && w.name.startsWith(featureId));
   }, [workflowsData, featureId]);
 
   // Build display rows: leaderboard data if available, otherwise workflows with no metrics

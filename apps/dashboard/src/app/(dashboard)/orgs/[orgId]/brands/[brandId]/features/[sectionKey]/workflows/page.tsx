@@ -76,10 +76,18 @@ export default function FeatureWorkflowsPage() {
     { enabled: wfDef?.implemented === true, ...pollOptions },
   );
 
+  const deprecatedNames = useMemo(() => {
+    const set = new Set<string>();
+    for (const wf of workflowsData?.workflows ?? []) {
+      if (wf.status === "deprecated") set.add(wf.name);
+    }
+    return set;
+  }, [workflowsData]);
+
   const workflowNameToId = useMemo(() => {
     const map = new Map<string, string>();
     for (const wf of workflowsData?.workflows ?? []) {
-      map.set(wf.name, wf.id);
+      if (wf.status !== "deprecated") map.set(wf.name, wf.id);
     }
     return map;
   }, [workflowsData]);
@@ -97,7 +105,7 @@ export default function FeatureWorkflowsPage() {
 
   const sorted = useMemo(() => {
     if (!leaderboard) return [];
-    return [...leaderboard].sort((a, b) => {
+    return [...leaderboard].filter((e) => !deprecatedNames.has(e.workflowName)).sort((a, b) => {
       const aRaw = a[metric];
       const bRaw = b[metric];
       const aNull = aRaw === null || aRaw === 0;
