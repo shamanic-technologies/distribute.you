@@ -332,7 +332,7 @@ export default function FeatureCreateCampaignPage() {
 
     try {
       await createCampaign({
-        name: `${effectiveSelection} \u2014 ${new Date().toLocaleDateString()}`,
+        name: `${effectiveSelection} \u2014 ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}`,
         workflowName: effectiveSelection,
         ...formData,
         ...budgetParams,
