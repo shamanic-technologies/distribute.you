@@ -1,6 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { useCampaign } from "@/lib/campaign-context";
+import { useQueryClient } from "@/lib/use-auth-query";
+import { stopCampaign } from "@/lib/api";
 import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
@@ -16,6 +19,19 @@ function formatTotalCost(cents: string | null | undefined): string | null {
 
 export default function CampaignOverviewPage() {
   const { campaign, stats, leads, emails, loading } = useCampaign();
+  const queryClient = useQueryClient();
+  const [stopping, setStopping] = useState(false);
+
+  const handleStop = async () => {
+    if (!campaign) return;
+    setStopping(true);
+    try {
+      await stopCampaign(campaign.id);
+      await queryClient.invalidateQueries({ queryKey: ["campaign", campaign.id] });
+    } finally {
+      setStopping(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -63,11 +79,22 @@ export default function CampaignOverviewPage() {
               {campaign.status}
             </span>
           </div>
-          {stats && formatTotalCost(stats.totalCostInUsdCents) && (
-            <span className="text-sm font-semibold text-gray-700">
-              Total cost: {formatTotalCost(stats.totalCostInUsdCents)}
-            </span>
-          )}
+          <div className="flex items-center gap-3">
+            {stats && formatTotalCost(stats.totalCostInUsdCents) && (
+              <span className="text-sm font-semibold text-gray-700">
+                Total cost: {formatTotalCost(stats.totalCostInUsdCents)}
+              </span>
+            )}
+            {campaign.status === "ongoing" && (
+              <button
+                onClick={handleStop}
+                disabled={stopping}
+                className="px-3 py-1.5 text-sm font-medium rounded-lg border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 transition disabled:opacity-50"
+              >
+                {stopping ? "Stopping\u2026" : "Stop Campaign"}
+              </button>
+            )}
+          </div>
         </div>
         <p className="text-gray-600 text-sm">
           Created {new Date(campaign.createdAt).toLocaleDateString("en-US", {
