@@ -41,6 +41,9 @@ const METRIC_OPTIONS: MetricOption[] = [
 ];
 
 // Cost metrics: lower is better → default asc. Rate metrics: higher is better → default desc.
+const POLL_INTERVAL = 5_000;
+const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
+
 const COST_METRICS: Set<SortKey> = new Set(["costPerOpenCents", "costPerClickCents", "costPerReplyCents"]);
 function defaultSortDir(key: SortKey): "asc" | "desc" {
   return COST_METRICS.has(key) ? "asc" : "desc";
@@ -188,28 +191,28 @@ export default function CreateCampaignPage() {
   const { data: leaderboard, isLoading } = useAuthQuery(
     ["section-leaderboard", featureId],
     () => fetchSectionLeaderboard(featureId),
-    { enabled: featureDef?.implemented === true }
+    { enabled: featureDef?.implemented === true, ...pollOptions },
   );
 
   // Fetch active campaigns for this feature
   const { data: campaignsData, refetch: refetchCampaigns } = useAuthQuery(
     ["campaigns"],
     () => listCampaigns(),
-    { enabled: featureDef?.implemented === true }
+    { enabled: featureDef?.implemented === true, ...pollOptions },
   );
 
   // Fetch brands for this org
   const { data: brandsData } = useAuthQuery(
     ["brands"],
     () => listBrands(),
-    { enabled: featureDef?.implemented === true }
+    { enabled: featureDef?.implemented === true, ...pollOptions },
   );
   const brands = brandsData?.brands ?? [];
 
   const { data: workflowsData } = useAuthQuery(
     ["workflows"],
     () => listWorkflows(),
-    { enabled: featureDef?.implemented === true }
+    { enabled: featureDef?.implemented === true, ...pollOptions },
   );
 
   // Map workflow names to IDs for detail panel
@@ -296,7 +299,7 @@ export default function CreateCampaignPage() {
   const { data: keyStatusData } = useAuthQuery(
     ["workflowKeyStatus", effectiveWorkflowId],
     () => getWorkflowKeyStatus(effectiveWorkflowId!),
-    { enabled: !!effectiveWorkflowId }
+    { enabled: !!effectiveWorkflowId, ...pollOptions }
   );
 
   const missingProviders = keyStatusData?.missing ?? [];
