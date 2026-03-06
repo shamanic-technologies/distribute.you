@@ -18,10 +18,10 @@ describe("Leaderboard fetch uses unified API URL", () => {
     expect(content).toContain("https://api.distribute.you");
   });
 
-  it("should send Bearer token for API auth", () => {
+  it("should send X-API-Key header for API auth", () => {
     expect(content).toContain("ADMIN_DISTRIBUTE_API_KEY");
-    expect(content).toContain("Authorization");
-    expect(content).toContain("Bearer");
+    expect(content).toContain("X-API-Key");
+    expect(content).not.toContain("Bearer");
   });
 
   it("should NOT send x-org-id or x-user-id headers", () => {
