@@ -142,6 +142,25 @@ export async function trackActivity(token?: string): Promise<{ ok: boolean }> {
   return apiCall<{ ok: boolean }>("/activity", { token, method: "POST" });
 }
 
+// User identity resolution
+export async function resolveUser(
+  params: {
+    externalOrgId: string;
+    externalUserId: string;
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+    imageUrl?: string;
+  },
+  token?: string
+): Promise<{ orgId: string; userId: string }> {
+  return apiCall<{ orgId: string; userId: string }>("/users/resolve", {
+    token,
+    method: "POST",
+    body: params as unknown as Record<string, unknown>,
+  });
+}
+
 // Campaigns
 export interface Campaign {
   id: string;
