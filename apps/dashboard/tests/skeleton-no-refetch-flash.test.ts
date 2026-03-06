@@ -57,6 +57,26 @@ describe("Skeleton loaders only appear on first load", () => {
     });
   });
 
+  describe("Campaign create pages show skeleton while workflows load", () => {
+    const campaignPages = [
+      "orgs/[orgId]/brands/[brandId]/campaigns/new/page.tsx",
+      "orgs/[orgId]/brands/[brandId]/features/[sectionKey]/campaigns/new/page.tsx",
+    ];
+
+    for (const rel of campaignPages) {
+      const file = path.resolve(pagesDir, rel);
+      const content = fs.readFileSync(file, "utf-8");
+
+      it(`${rel} should track isLoadingWorkflows`, () => {
+        expect(content).toMatch(/isLoading:\s*isLoadingWorkflows/);
+      });
+
+      it(`${rel} skeleton guard should include isLoadingWorkflows`, () => {
+        expect(content).toMatch(/isLoading\s*\|\|\s*isLoadingWorkflows/);
+      });
+    }
+  });
+
   describe("QueryProvider staleTime is not too aggressive", () => {
     const queryProviderPath = path.resolve(
       __dirname,
