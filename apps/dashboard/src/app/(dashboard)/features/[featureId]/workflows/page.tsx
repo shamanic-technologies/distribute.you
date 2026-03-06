@@ -12,6 +12,9 @@ import {
 } from "@/lib/api";
 import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-panel";
 
+const POLL_INTERVAL = 5_000;
+const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
+
 function formatPercent(rate: number): string {
   if (rate === 0) return "—";
   return `${(rate * 100).toFixed(1)}%`;
@@ -55,14 +58,14 @@ export default function FeatureWorkflowsPage() {
   const { data: leaderboard, isLoading: leaderboardLoading } = useAuthQuery(
     ["section-leaderboard", featureId],
     () => fetchSectionLeaderboard(featureId),
-    { enabled: featureDef?.implemented === true }
+    { enabled: featureDef?.implemented === true, ...pollOptions },
   );
 
   // Source 2: deployed workflows (from workflow-service via api-service)
   const { data: workflowsData, isLoading: workflowsLoading } = useAuthQuery(
     ["workflows"],
     () => listWorkflows(),
-    { enabled: featureDef?.implemented === true }
+    { enabled: featureDef?.implemented === true, ...pollOptions },
   );
 
   const isLoading = leaderboardLoading && workflowsLoading;

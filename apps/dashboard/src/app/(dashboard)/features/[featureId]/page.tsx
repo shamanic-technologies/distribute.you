@@ -12,6 +12,9 @@ import {
   type CampaignStats,
 } from "@/lib/api";
 
+const POLL_INTERVAL = 5_000;
+const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function timeAgo(date: string | Date): string {
@@ -59,7 +62,7 @@ export default function FeatureCampaignsPage() {
   const { data: campaignsData, isLoading } = useAuthQuery(
     ["campaigns"],
     () => listCampaigns(),
-    { enabled: featureDef?.implemented === true }
+    { enabled: featureDef?.implemented === true, ...pollOptions },
   );
 
   const featureCampaigns = useMemo(() => {
@@ -85,7 +88,7 @@ export default function FeatureCampaignsPage() {
   const { data: batchStats } = useAuthQuery(
     ["campaignBatchStats", featureId, campaignIds],
     () => getCampaignBatchStats(campaignIds),
-    { enabled: campaignIds.length > 0 }
+    { enabled: campaignIds.length > 0, ...pollOptions },
   );
   const campaignStats: Record<string, CampaignStats> = batchStats ?? {};
 

@@ -3,15 +3,29 @@ import * as fs from "fs";
 import * as path from "path";
 
 /**
- * Regression: the campaigns list page must poll every 5s so stats update
- * in real time, but must NOT flash skeletons on each refetch.
+ * All data-display pages must poll every 5s so stats update in real time,
+ * but must NOT flash skeletons on each refetch.
  */
-describe("Campaigns list page polls without skeleton flash", () => {
-  const campaignsPagePath = path.resolve(
-    __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/page.tsx"
-  );
-  const content = fs.readFileSync(campaignsPagePath, "utf-8");
+
+const PAGES_DIR = path.resolve(__dirname, "../src/app/(dashboard)");
+
+// Pages that display live data and must poll
+const DATA_PAGES = [
+  "orgs/[orgId]/page.tsx",
+  "orgs/[orgId]/brands/page.tsx",
+  "orgs/[orgId]/brands/[brandId]/page.tsx",
+  "orgs/[orgId]/brands/[brandId]/brand-info/page.tsx",
+  "orgs/[orgId]/brands/[brandId]/campaigns/page.tsx",
+  "orgs/[orgId]/brands/[brandId]/workflows/page.tsx",
+  "orgs/[orgId]/brands/[brandId]/features/[sectionKey]/page.tsx",
+  "orgs/[orgId]/brands/[brandId]/features/[sectionKey]/workflows/page.tsx",
+  "features/[featureId]/page.tsx",
+  "features/[featureId]/workflows/page.tsx",
+];
+
+describe.each(DATA_PAGES)("Polling on %s", (relPath) => {
+  const filePath = path.resolve(PAGES_DIR, relPath);
+  const content = fs.readFileSync(filePath, "utf-8");
 
   it("should set refetchInterval on queries", () => {
     expect(content).toMatch(/refetchInterval/);
@@ -21,13 +35,11 @@ describe("Campaigns list page polls without skeleton flash", () => {
     expect(content).toMatch(/refetchIntervalInBackground:\s*false/);
   });
 
-  it("should use isLoading (not isFetching) for skeleton guard", () => {
-    // isLoading only fires on initial load, not background refetches
-    expect(content).toMatch(/isLoading/);
-    expect(content).not.toMatch(/isFetching/);
-  });
-
   it("should not use isPending for skeleton display", () => {
     expect(content).not.toMatch(/isPending/);
+  });
+
+  it("should not use isFetching for skeleton display", () => {
+    expect(content).not.toMatch(/isFetching/);
   });
 });

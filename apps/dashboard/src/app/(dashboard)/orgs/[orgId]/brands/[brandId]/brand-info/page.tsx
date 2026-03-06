@@ -6,6 +6,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrand, getBrandSalesProfile, listBrandRuns, createBrandSalesProfile, refreshBrandSalesProfile, type SalesProfile, type BrandRun, type RunCost, type Testimonial } from "@/lib/api";
 
+const POLL_INTERVAL = 5_000;
+const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
+
 function timeAgo(dateStr: string): string {
   const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
   if (seconds < 60) return "just now";
@@ -36,14 +39,16 @@ export default function BrandInfoPage() {
 
   const { data: brandData, isLoading: brandLoading } = useAuthQuery(
     ["brand", brandId],
-    () => getBrand(brandId)
+    () => getBrand(brandId),
+    pollOptions,
   );
   const brand = brandData?.brand ?? null;
   const brandName = brand?.name ?? null;
 
   const { data: profileData, error: profileError, isLoading: profileLoading } = useAuthQuery(
     ["brandSalesProfile", brandId],
-    () => getBrandSalesProfile(brandId)
+    () => getBrandSalesProfile(brandId),
+    pollOptions,
   );
   const profile = profileData?.profile ?? null;
   const profileCached = profileData?.cached ?? false;
@@ -51,7 +56,8 @@ export default function BrandInfoPage() {
 
   const { data: runsData, isLoading: runsLoading } = useAuthQuery(
     ["brandRuns", brandId],
-    () => listBrandRuns(brandId)
+    () => listBrandRuns(brandId),
+    pollOptions,
   );
   const runs = runsData?.runs ?? [];
 
