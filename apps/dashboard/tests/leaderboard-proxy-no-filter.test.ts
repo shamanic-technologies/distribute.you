@@ -8,23 +8,20 @@ const routePath = path.resolve(
 );
 const content = fs.readFileSync(routePath, "utf-8");
 
-describe("Leaderboard proxy must not send filtering headers", () => {
-  it("should still require Clerk auth for dashboard access", () => {
+describe("Leaderboard proxy sends identity headers", () => {
+  it("should require Clerk auth for dashboard access", () => {
     expect(content).toContain("await auth()");
     expect(content).toContain("clerkUserId");
     expect(content).toContain("clerkOrgId");
     expect(content).toContain("Unauthorized");
   });
 
-  it("should NOT forward x-external-org-id header to the API", () => {
-    // Headers are for identity, not filtering. The leaderboard is global data.
-    expect(content).not.toMatch(/"x-external-org-id"/);
-    expect(content).not.toMatch(/"x-org-id"/);
+  it("should forward x-external-org-id header to the API", () => {
+    expect(content).toMatch(/"x-external-org-id"/);
   });
 
-  it("should NOT forward x-external-user-id header to the API", () => {
-    expect(content).not.toMatch(/"x-external-user-id"/);
-    expect(content).not.toMatch(/"x-user-id"/);
+  it("should forward x-external-user-id header to the API", () => {
+    expect(content).toMatch(/"x-external-user-id"/);
   });
 
   it("should send X-API-Key for API auth", () => {

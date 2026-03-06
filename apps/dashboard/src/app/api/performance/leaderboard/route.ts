@@ -6,9 +6,7 @@ const API_URL =
 const API_KEY = process.env.ADMIN_DISTRIBUTE_API_KEY;
 
 export async function GET() {
-  // Require login to access the dashboard, but only send the Bearer token
-  // for API authentication — no x-org-id / x-user-id.
-  // The leaderboard is global data — identical to what performance.distribute.you shows.
+  // Require login + org context. Forward identity headers to the API.
   const { userId: clerkUserId, orgId: clerkOrgId } = await auth();
   if (!clerkUserId || !clerkOrgId || !API_KEY) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -18,6 +16,8 @@ export async function GET() {
     headers: {
       Accept: "application/json",
       "X-API-Key": API_KEY,
+      "x-external-org-id": clerkOrgId,
+      "x-external-user-id": clerkUserId,
     },
     cache: "no-store",
   });
