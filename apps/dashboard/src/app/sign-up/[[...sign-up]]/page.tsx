@@ -22,6 +22,7 @@ export default function SignUpPage() {
     if (!isLoaded || isSignedIn) return;
     setLoading(true);
     try {
+      sessionStorage.setItem("distribute_auth_intent", "signup");
       await signUp.authenticateWithRedirect({
         strategy: "oauth_google",
         redirectUrl: "/sso-callback",

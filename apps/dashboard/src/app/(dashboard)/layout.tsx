@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { ContextSidebar } from "@/components/context-sidebar";
 import { Header } from "@/components/header";
 import { OrgActivator } from "@/components/org-activator";
+import { AuthEventTracker } from "@/components/auth-event-tracker";
 import { UserActivityTracker } from "@/components/user-activity-tracker";
 import { UserResolver } from "@/components/user-resolver";
 import { MobileSidebarProvider, useMobileSidebar } from "@/components/mobile-sidebar-context";
@@ -46,6 +47,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   return (
     <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
       <OrgActivator />
+      <AuthEventTracker />
       <UserActivityTracker />
       <UserResolver />
       <Header />
