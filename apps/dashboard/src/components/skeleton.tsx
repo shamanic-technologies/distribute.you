@@ -32,6 +32,37 @@ export function SkeletonKeysList() {
   );
 }
 
+export function SkeletonCampaignRow() {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-4">
+      <div className="flex items-start justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-5 w-16 rounded-full" />
+        </div>
+        <Skeleton className="h-5 w-14" />
+      </div>
+      <Skeleton className="h-3 w-20 mb-2" />
+      <div className="flex gap-4">
+        <Skeleton className="h-3 w-16" />
+        <Skeleton className="h-3 w-20" />
+        <Skeleton className="h-3 w-12" />
+        <Skeleton className="h-3 w-16" />
+      </div>
+    </div>
+  );
+}
+
+export function SkeletonCampaignList() {
+  return (
+    <div className="space-y-4">
+      <SkeletonCampaignRow />
+      <SkeletonCampaignRow />
+      <SkeletonCampaignRow />
+    </div>
+  );
+}
+
 export function SkeletonApiKey() {
   return (
     <div className="space-y-6 max-w-2xl">

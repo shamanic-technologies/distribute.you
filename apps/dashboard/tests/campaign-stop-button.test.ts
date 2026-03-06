@@ -32,3 +32,16 @@ describe("Campaign list stop button", () => {
     expect(content).toContain("refetchCampaigns");
   });
 });
+
+describe("Campaign list skeleton loading", () => {
+  it("should use campaign-specific skeleton for initial load", () => {
+    expect(content).toContain("SkeletonCampaignList");
+    expect(content).not.toContain("SkeletonKeysList");
+  });
+
+  it("should show inline skeleton when stats are not yet loaded", () => {
+    expect(content).toContain("Skeleton");
+    // Stats row should have a fallback with Skeleton placeholders
+    expect(content).toMatch(/stats\s*\?/);
+  });
+});
