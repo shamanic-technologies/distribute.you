@@ -33,6 +33,9 @@ const METRIC_OPTIONS: MetricOption[] = [
   { label: "% Clicks", sortKey: "clickRate" },
 ];
 
+const POLL_INTERVAL = 5_000;
+const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
+
 const COST_METRICS: Set<SortKey> = new Set(["costPerOpenCents", "costPerClickCents", "costPerReplyCents"]);
 function defaultSortDir(key: SortKey): "asc" | "desc" {
   return COST_METRICS.has(key) ? "asc" : "desc";
@@ -162,7 +165,8 @@ export default function FeatureCreateCampaignPage() {
   // Fetch brand info
   const { data: brandData } = useAuthQuery(
     ["brand", brandId],
-    () => getBrand(brandId)
+    () => getBrand(brandId),
+    pollOptions,
   );
   const brand = brandData?.brand ?? null;
 
@@ -170,13 +174,13 @@ export default function FeatureCreateCampaignPage() {
   const { data: leaderboard, isLoading } = useAuthQuery(
     ["section-leaderboard", featureId],
     () => fetchSectionLeaderboard(featureId),
-    { enabled: featureDef?.implemented === true }
+    { enabled: featureDef?.implemented === true, ...pollOptions },
   );
 
   const { data: workflowsData } = useAuthQuery(
     ["workflows"],
     () => listWorkflows(),
-    { enabled: featureDef?.implemented === true }
+    { enabled: featureDef?.implemented === true, ...pollOptions },
   );
 
   const featureWorkflowIds = useMemo(() => {
@@ -198,7 +202,7 @@ export default function FeatureCreateCampaignPage() {
       }
       return [...missing];
     },
-    { enabled: featureWorkflowIds.length > 0 }
+    { enabled: featureWorkflowIds.length > 0, ...pollOptions },
   );
 
   const missingProviders = keyStatusData ?? [];

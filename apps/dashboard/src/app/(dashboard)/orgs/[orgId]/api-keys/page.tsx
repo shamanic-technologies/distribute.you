@@ -17,6 +17,9 @@ import {
 } from "@/lib/api";
 import { SkeletonApiKey } from "@/components/skeleton";
 
+const POLL_INTERVAL = 5_000;
+const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
+
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
@@ -37,7 +40,8 @@ export default function OrgApiKeysPage() {
   // ─── Platform API Keys ──────────────────────────────────────────────────
   const { data: apiKeysData, isLoading: apiKeysLoading } = useAuthQuery(
     ["apiKeys"],
-    () => listApiKeys()
+    () => listApiKeys(),
+    pollOptions,
   );
   const keys: ApiKey[] = apiKeysData?.keys ?? [];
 
@@ -80,11 +84,13 @@ export default function OrgApiKeysPage() {
   // ─── Provider Keys (BYOK) ──────────────────────────────────────────────
   const { data: byokData, isLoading: byokLoading } = useAuthQuery(
     ["byokKeys"],
-    () => listByokKeys()
+    () => listByokKeys(),
+    pollOptions,
   );
   const { data: workflowsData, isLoading: workflowsLoading } = useAuthQuery(
     ["workflows"],
-    () => listWorkflows()
+    () => listWorkflows(),
+    pollOptions,
   );
 
   const configuredKeys: ByokKey[] = byokData?.keys ?? [];

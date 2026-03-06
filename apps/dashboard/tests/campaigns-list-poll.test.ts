@@ -12,14 +12,18 @@ const PAGES_DIR = path.resolve(__dirname, "../src/app/(dashboard)");
 // Pages that display live data and must poll
 const DATA_PAGES = [
   "orgs/[orgId]/page.tsx",
+  "orgs/[orgId]/api-keys/page.tsx",
   "orgs/[orgId]/brands/page.tsx",
   "orgs/[orgId]/brands/[brandId]/page.tsx",
   "orgs/[orgId]/brands/[brandId]/brand-info/page.tsx",
   "orgs/[orgId]/brands/[brandId]/campaigns/page.tsx",
+  "orgs/[orgId]/brands/[brandId]/campaigns/new/page.tsx",
   "orgs/[orgId]/brands/[brandId]/workflows/page.tsx",
   "orgs/[orgId]/brands/[brandId]/features/[sectionKey]/page.tsx",
   "orgs/[orgId]/brands/[brandId]/features/[sectionKey]/workflows/page.tsx",
+  "orgs/[orgId]/brands/[brandId]/features/[sectionKey]/campaigns/new/page.tsx",
   "features/[featureId]/page.tsx",
+  "features/[featureId]/new/page.tsx",
   "features/[featureId]/workflows/page.tsx",
 ];
 
