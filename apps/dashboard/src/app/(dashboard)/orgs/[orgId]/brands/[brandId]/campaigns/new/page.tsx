@@ -332,7 +332,9 @@ export default function BrandCreateCampaignPage() {
       setFormData(EMPTY_FORM);
       refetchCampaigns();
     } catch (err) {
-      if (err instanceof ApiError && err.body.error === "missing_keys") {
+      if (err instanceof ApiError && err.status === 409) {
+        setCreateError("A campaign with this name already exists. Please try again.");
+      } else if (err instanceof ApiError && err.body.error === "missing_keys") {
         const missing = (err.body.missing as string[]) ?? [];
         setCreateError(
           `Missing provider keys: ${missing.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(", ")}. Configure them in Provider Keys settings before creating a campaign.`
