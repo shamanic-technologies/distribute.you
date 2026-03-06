@@ -177,7 +177,7 @@ export default function FeatureCreateCampaignPage() {
     { enabled: featureDef?.implemented === true, ...pollOptions },
   );
 
-  const { data: workflowsData } = useAuthQuery(
+  const { data: workflowsData, isLoading: isLoadingWorkflows } = useAuthQuery(
     ["workflows"],
     () => listWorkflows(),
     { enabled: featureDef?.implemented === true, ...pollOptions },
@@ -545,7 +545,7 @@ export default function FeatureCreateCampaignPage() {
       )}
 
       {/* Workflow table */}
-      {isLoading ? (
+      {isLoading || isLoadingWorkflows ? (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="animate-pulse p-6 space-y-3">
             {[1, 2, 3].map((i) => (
