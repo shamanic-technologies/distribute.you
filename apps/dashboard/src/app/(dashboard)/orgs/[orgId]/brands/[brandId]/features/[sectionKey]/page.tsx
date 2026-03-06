@@ -10,7 +10,6 @@ import {
   getBrandDeliveryStats,
   getBrandCostBreakdown,
   stopCampaign,
-  resumeCampaign,
   type Campaign,
 } from "@/lib/api";
 import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
@@ -134,10 +133,6 @@ export default function FeaturePage() {
     refetchCampaigns();
   }, [refetchCampaigns]);
 
-  const handleResume = useCallback(async (id: string) => {
-    await resumeCampaign(id);
-    refetchCampaigns();
-  }, [refetchCampaigns]);
 
   return (
     <div className="p-4 md:p-8">
@@ -256,17 +251,6 @@ export default function FeaturePage() {
                       >
                         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                           <rect x="6" y="6" width="12" height="12" rx="1" />
-                        </svg>
-                      </button>
-                    )}
-                    {(status === "stopped" || status === "paused") && (
-                      <button
-                        onClick={(e) => { e.preventDefault(); handleResume(campaign.id); }}
-                        className="text-xs text-gray-400 hover:text-green-500 transition p-1"
-                        title="Resume campaign"
-                      >
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M8 5v14l11-7z" />
                         </svg>
                       </button>
                     )}
