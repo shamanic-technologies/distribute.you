@@ -20,6 +20,7 @@ export function WorkflowSelectionTable({ sectionKey, onSelect, selectedWorkflowI
   const workflows = useMemo(() => {
     if (!data?.workflows) return [];
     return data.workflows.filter((wf) => {
+      if (wf.status === "deprecated") return false;
       const parsed = parseWorkflowName(wf.name);
       return parsed?.sectionKey === sectionKey;
     });

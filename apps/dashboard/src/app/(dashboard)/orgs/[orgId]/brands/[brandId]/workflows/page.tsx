@@ -18,7 +18,7 @@ export default function BrandWorkflowsPage() {
   );
 
   const allWorkflows = useMemo(() => {
-    return workflowsData?.workflows ?? [];
+    return (workflowsData?.workflows ?? []).filter((w) => w.status !== "deprecated");
   }, [workflowsData?.workflows]);
 
   return (
