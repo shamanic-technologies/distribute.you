@@ -142,6 +142,18 @@ export async function trackActivity(token?: string): Promise<{ ok: boolean }> {
   return apiCall<{ ok: boolean }>("/activity", { token, method: "POST" });
 }
 
+// Auth event notifications (signup/signin)
+export async function sendAuthNotification(
+  eventType: string,
+  token?: string
+): Promise<unknown> {
+  return apiCall<unknown>("/emails/send", {
+    token,
+    method: "POST",
+    body: { eventType, metadata: { timestamp: new Date().toISOString() } },
+  });
+}
+
 // User identity resolution
 export async function resolveUser(
   params: {
