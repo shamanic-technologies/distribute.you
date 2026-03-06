@@ -614,7 +614,7 @@ export interface WorkflowKeyStatus {
 }
 
 export async function listWorkflows(token?: string): Promise<{ workflows: Workflow[] }> {
-  return apiCall<{ workflows: Workflow[] }>("/workflows", { token });
+  return apiCall<{ workflows: Workflow[] }>("/workflows?status=all", { token });
 }
 
 export async function getWorkflow(workflowId: string, token?: string): Promise<Workflow> {

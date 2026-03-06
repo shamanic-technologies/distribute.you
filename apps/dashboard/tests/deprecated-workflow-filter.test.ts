@@ -16,6 +16,16 @@ describe("Workflow type includes deprecation fields", () => {
   });
 });
 
+describe("listWorkflows fetches all statuses for client-side filtering", () => {
+  it("should call /workflows?status=all so deprecatedNames set is populated", () => {
+    const content = fs.readFileSync(
+      path.join(__dirname, "../src/lib/api.ts"),
+      "utf-8"
+    );
+    expect(content).toContain('"/workflows?status=all"');
+  });
+});
+
 describe("Campaign creation pages filter deprecated workflows", () => {
   const pages = [
     {
