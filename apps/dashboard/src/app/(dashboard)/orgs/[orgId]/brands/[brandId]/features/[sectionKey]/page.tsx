@@ -220,15 +220,13 @@ export default function FeaturePage() {
             const statusStyle = STATUS_STYLES[status] || "bg-gray-100 text-gray-500 border-gray-200";
 
             return (
-              <div
+              <Link
                 key={campaign.id}
-                className="bg-white rounded-xl border border-gray-200 p-4 hover:border-brand-300 hover:shadow-md transition-all"
+                href={`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}/campaigns/${campaign.id}`}
+                className="block bg-white rounded-xl border border-gray-200 p-4 hover:border-brand-300 hover:shadow-md transition-all cursor-pointer"
               >
                 <div className="flex items-start justify-between mb-2">
-                  <Link
-                    href={`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}/campaigns/${campaign.id}`}
-                    className="flex items-center gap-2 group"
-                  >
+                  <div className="flex items-center gap-2">
                     <h3 className="font-medium text-gray-800 group-hover:text-brand-600 transition">
                       {campaign.name}
                     </h3>
@@ -238,7 +236,7 @@ export default function FeaturePage() {
                       )}
                       {status}
                     </span>
-                  </Link>
+                  </div>
                   <div className="flex items-center gap-3">
                     {budget && (
                       <span className="text-xs font-medium text-brand-600 bg-brand-50 px-2 py-1 rounded-lg">
@@ -252,7 +250,7 @@ export default function FeaturePage() {
                     )}
                     {status === "ongoing" && (
                       <button
-                        onClick={() => handleStop(campaign.id)}
+                        onClick={(e) => { e.preventDefault(); handleStop(campaign.id); }}
                         className="text-xs text-gray-400 hover:text-red-500 transition p-1"
                         title="Stop campaign"
                       >
@@ -263,7 +261,7 @@ export default function FeaturePage() {
                     )}
                     {(status === "stopped" || status === "paused") && (
                       <button
-                        onClick={() => handleResume(campaign.id)}
+                        onClick={(e) => { e.preventDefault(); handleResume(campaign.id); }}
                         className="text-xs text-gray-400 hover:text-green-500 transition p-1"
                         title="Resume campaign"
                       >
@@ -285,7 +283,7 @@ export default function FeaturePage() {
                     </>
                   )}
                 </div>
-              </div>
+              </Link>
             );
           })
         )}
