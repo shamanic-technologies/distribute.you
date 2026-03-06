@@ -30,7 +30,7 @@ async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
 
   if (token) {
     url = `${API_URL}/v1${endpoint}`;
-    headers.Authorization = `Bearer ${token}`;
+    headers["X-API-Key"] = token;
   } else {
     url = `/api/v1${endpoint}`;
   }

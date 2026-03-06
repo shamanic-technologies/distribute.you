@@ -17,7 +17,7 @@ export async function GET() {
   const res = await fetch(`${API_URL}/performance/leaderboard`, {
     headers: {
       Accept: "application/json",
-      Authorization: `Bearer ${API_KEY}`,
+      "X-API-Key": API_KEY,
     },
     cache: "no-store",
   });
