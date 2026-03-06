@@ -37,10 +37,11 @@ export function SkeletonCampaignRow() {
     <div className="bg-white rounded-xl border border-gray-200 p-4">
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2">
-          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-5 w-36" />
           <Skeleton className="h-5 w-16 rounded-full" />
+          <Skeleton className="h-5 w-24 rounded-full" />
         </div>
-        <Skeleton className="h-5 w-14" />
+        <Skeleton className="h-4 w-14" />
       </div>
       <Skeleton className="h-3 w-20 mb-2" />
       <div className="flex gap-4">
