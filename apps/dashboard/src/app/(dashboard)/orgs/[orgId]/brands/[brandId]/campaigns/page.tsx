@@ -4,7 +4,7 @@ import { useMemo, useCallback, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listCampaignsByBrand, getCampaignBatchStats, getBrandDeliveryStats, getBrandCostBreakdown, stopCampaign } from "@/lib/api";
+import { listCampaignsByBrand, getCampaignBatchStats, getBrandDeliveryStats, getBrandCostBreakdown, stopCampaign, sendCampaignEmail } from "@/lib/api";
 import { Skeleton, SkeletonCampaignList } from "@/components/skeleton";
 import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
@@ -68,7 +68,8 @@ export default function BrandCampaignsPage() {
     e.stopPropagation();
     setStoppingId(campaignId);
     try {
-      await stopCampaign(campaignId);
+      const { campaign } = await stopCampaign(campaignId);
+      sendCampaignEmail("campaign_stopped", campaign).catch(() => {});
       refetchCampaigns();
     } finally {
       setStoppingId(null);
