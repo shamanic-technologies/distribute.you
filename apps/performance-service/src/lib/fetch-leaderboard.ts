@@ -80,7 +80,7 @@ export interface LeaderboardData {
 export async function fetchLeaderboard(): Promise<LeaderboardData | null> {
   try {
     const headers: Record<string, string> = { Accept: "application/json" };
-    if (API_KEY) headers.Authorization = `Bearer ${API_KEY}`;
+    if (API_KEY) headers["X-API-Key"] = API_KEY;
 
     const res = await fetch(`${API_URL}/performance/leaderboard`, {
       headers,
