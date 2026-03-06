@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 60;
@@ -38,10 +38,18 @@ async function proxyRequest(
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${API_KEY}`,
-      "x-org-id": clerkOrgId,
-      "x-user-id": clerkUserId,
+      "X-API-Key": API_KEY,
+      "x-external-org-id": clerkOrgId,
+      "x-external-user-id": clerkUserId,
     };
+
+    const user = await currentUser();
+    if (user) {
+      const email = user.emailAddresses?.[0]?.emailAddress;
+      if (email) headers["x-email"] = email;
+      if (user.firstName) headers["x-first-name"] = user.firstName;
+      if (user.lastName) headers["x-last-name"] = user.lastName;
+    }
 
     const body =
       req.method !== "GET" && req.method !== "HEAD"
