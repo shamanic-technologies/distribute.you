@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { listCampaignsByBrand, getCampaignBatchStats, getBrandDeliveryStats, getBrandCostBreakdown, stopCampaign } from "@/lib/api";
-import { SkeletonKeysList } from "@/components/skeleton";
+import { SkeletonCampaignsList } from "@/components/skeleton";
 import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
@@ -179,7 +179,7 @@ export default function BrandCampaignsPage() {
       {/* Campaigns List */}
       <div className="space-y-4">
         {isLoading ? (
-          <SkeletonKeysList />
+          <SkeletonCampaignsList />
         ) : campaigns.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
             <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
