@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { WORKFLOW_DEFINITIONS } from "@distribute/content";
 import { useAuthQuery } from "@/lib/use-auth-query";
@@ -139,6 +139,7 @@ export default function FeatureCreateCampaignPage() {
   const brandId = params.brandId as string;
   const sectionKey = params.sectionKey as string;
 
+  const router = useRouter();
   const { org } = useOrg();
 
   const featureId = sectionKey;
@@ -332,8 +333,7 @@ export default function FeatureCreateCampaignPage() {
         ...formData,
         ...budgetParams,
       });
-      setShowForm(false);
-      setFormData(EMPTY_FORM);
+      router.push(`/orgs/${orgId}/brands/${brandId}/campaigns`);
     } catch (err) {
       if (err instanceof ApiError && err.body.error === "missing_keys") {
         const missing = (err.body.missing as string[]) ?? [];
@@ -346,7 +346,7 @@ export default function FeatureCreateCampaignPage() {
     } finally {
       setIsCreating(false);
     }
-  }, [effectiveSelection, budgetAmount, budgetFrequency, formData]);
+  }, [effectiveSelection, budgetAmount, budgetFrequency, formData, router, orgId, brandId]);
 
   if (!featureDef) return null;
 
