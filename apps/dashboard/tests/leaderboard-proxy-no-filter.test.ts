@@ -16,22 +16,20 @@ describe("Leaderboard proxy must not send filtering headers", () => {
     expect(content).toContain("Unauthorized");
   });
 
-  it("should NOT forward x-org-id header to the API", () => {
-    // Headers are for auth, not filtering. The leaderboard is global data.
-    expect(content).not.toMatch(/"x-org-id":\s*clerkOrgId/);
+  it("should NOT forward x-external-org-id header to the API", () => {
+    // Headers are for identity, not filtering. The leaderboard is global data.
+    expect(content).not.toMatch(/"x-external-org-id"/);
     expect(content).not.toMatch(/"x-org-id"/);
   });
 
-  it("should NOT forward x-user-id header to the API", () => {
-    expect(content).not.toMatch(/"x-user-id":\s*clerkUserId/);
+  it("should NOT forward x-external-user-id header to the API", () => {
+    expect(content).not.toMatch(/"x-external-user-id"/);
     expect(content).not.toMatch(/"x-user-id"/);
   });
 
-  it("should send Authorization for API auth (Bearer token only)", () => {
-    // The public API requires a Bearer token, but that's for authentication —
-    // not for filtering. The key distinction: no x-org-id / x-user-id.
+  it("should send X-API-Key for API auth", () => {
     expect(content).toContain("ADMIN_DISTRIBUTE_API_KEY");
-    expect(content).toMatch(/Authorization/);
+    expect(content).toMatch(/X-API-Key/);
   });
 
   it("should call the performance/leaderboard endpoint", () => {
