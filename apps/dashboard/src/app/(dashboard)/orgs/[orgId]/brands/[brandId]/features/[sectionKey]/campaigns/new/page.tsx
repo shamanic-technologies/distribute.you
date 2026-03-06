@@ -9,17 +9,13 @@ import { useOrg } from "@/lib/org-context";
 import {
   fetchSectionLeaderboard,
   createCampaign,
-  listCampaignsByBrand,
   getBrand,
   listWorkflows,
   getWorkflowKeyStatus,
   getBrandSalesProfile,
   createBrandSalesProfile,
-  stopCampaign,
-  resumeCampaign,
   ApiError,
   type WorkflowLeaderboardEntry,
-  type Campaign,
   type SalesProfile,
 } from "@/lib/api";
 import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-panel";
@@ -48,14 +44,6 @@ const BUDGET_FREQUENCIES: { value: BudgetFrequency; label: string }[] = [
   { value: "weekly", label: "Weekly" },
   { value: "monthly", label: "Monthly" },
 ];
-
-const STATUS_STYLES: Record<string, string> = {
-  ongoing: "bg-blue-100 text-blue-700 border-blue-200",
-  paused: "bg-yellow-100 text-yellow-700 border-yellow-200",
-  stopped: "bg-yellow-100 text-yellow-700 border-yellow-200",
-  completed: "bg-green-100 text-green-700 border-green-200",
-  failed: "bg-red-100 text-red-600 border-red-200",
-};
 
 function formatPercent(rate: number): string {
   if (rate === 0) return "\u2014";
@@ -184,12 +172,6 @@ export default function FeatureCreateCampaignPage() {
     { enabled: featureDef?.implemented === true }
   );
 
-  // Fetch campaigns for this brand
-  const { data: campaignsData, refetch: refetchCampaigns } = useAuthQuery(
-    ["campaigns", { brandId }],
-    () => listCampaignsByBrand(brandId)
-  );
-
   const { data: workflowsData } = useAuthQuery(
     ["workflows"],
     () => listWorkflows(),
@@ -227,13 +209,6 @@ export default function FeatureCreateCampaignPage() {
     }
     return map;
   }, [workflowsData]);
-
-  const activeCampaigns = useMemo(() => {
-    if (!campaignsData?.campaigns) return [];
-    return campaignsData.campaigns.filter(
-      (c) => c.workflowName?.startsWith(featureId)
-    );
-  }, [campaignsData?.campaigns, featureId]);
 
   const handleSort = useCallback((key: SortKey) => {
     setMetric((prev) => {
@@ -359,7 +334,6 @@ export default function FeatureCreateCampaignPage() {
       });
       setShowForm(false);
       setFormData(EMPTY_FORM);
-      refetchCampaigns();
     } catch (err) {
       if (err instanceof ApiError && err.body.error === "missing_keys") {
         const missing = (err.body.missing as string[]) ?? [];
@@ -372,17 +346,7 @@ export default function FeatureCreateCampaignPage() {
     } finally {
       setIsCreating(false);
     }
-  }, [effectiveSelection, budgetAmount, budgetFrequency, formData, refetchCampaigns]);
-
-  const handleStopCampaign = useCallback(async (id: string) => {
-    await stopCampaign(id);
-    refetchCampaigns();
-  }, [refetchCampaigns]);
-
-  const handleResumeCampaign = useCallback(async (id: string) => {
-    await resumeCampaign(id);
-    refetchCampaigns();
-  }, [refetchCampaigns]);
+  }, [effectiveSelection, budgetAmount, budgetFrequency, formData]);
 
   if (!featureDef) return null;
 
@@ -518,22 +482,6 @@ export default function FeatureCreateCampaignPage() {
             Go &rarr;
           </button>
 
-          {/* Active campaign status badges */}
-          {activeCampaigns.length > 0 && (
-            <div className="flex items-center gap-2">
-              {activeCampaigns.slice(0, 3).map((c) => (
-                <CampaignStatusBadge
-                  key={c.id}
-                  campaign={c}
-                  onStop={handleStopCampaign}
-                  onResume={handleResumeCampaign}
-                />
-              ))}
-              {activeCampaigns.length > 3 && (
-                <span className="text-xs text-gray-400">+{activeCampaigns.length - 3} more</span>
-              )}
-            </div>
-          )}
         </div>
       </div>
 
@@ -732,44 +680,3 @@ function WorkflowRow({
   );
 }
 
-function CampaignStatusBadge({
-  campaign,
-  onStop,
-  onResume,
-}: {
-  campaign: Campaign;
-  onStop: (id: string) => void;
-  onResume: (id: string) => void;
-}) {
-  const status = campaign.status;
-  const style = STATUS_STYLES[status] || "bg-gray-100 text-gray-500 border-gray-200";
-
-  return (
-    <div className="flex items-center gap-1.5">
-      <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full border ${style}`}>
-        {status === "ongoing" && (
-          <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
-        )}
-        {status}
-      </span>
-      {status === "ongoing" && (
-        <button
-          onClick={() => onStop(campaign.id)}
-          className="text-xs text-gray-400 hover:text-red-500 transition"
-          title="Stop"
-        >
-          &#9632;
-        </button>
-      )}
-      {(status === "stopped" || status === "paused") && (
-        <button
-          onClick={() => onResume(campaign.id)}
-          className="text-xs text-gray-400 hover:text-green-500 transition"
-          title="Resume"
-        >
-          &#9654;
-        </button>
-      )}
-    </div>
-  );
-}
