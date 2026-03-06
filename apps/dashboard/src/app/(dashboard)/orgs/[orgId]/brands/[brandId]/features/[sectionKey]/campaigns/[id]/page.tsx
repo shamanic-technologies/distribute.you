@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useCampaign } from "@/lib/campaign-context";
 import { useQueryClient } from "@/lib/use-auth-query";
-import { stopCampaign } from "@/lib/api";
+import { stopCampaign, sendCampaignEmail } from "@/lib/api";
 import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
@@ -27,6 +27,7 @@ export default function CampaignOverviewPage() {
     setStopping(true);
     try {
       await stopCampaign(campaign.id);
+      sendCampaignEmail("campaign_stopped", campaign).catch(() => {});
       await queryClient.invalidateQueries({ queryKey: ["campaign", campaign.id] });
     } finally {
       setStopping(false);

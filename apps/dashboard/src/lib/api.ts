@@ -154,6 +154,25 @@ export async function sendAuthNotification(
   });
 }
 
+// Campaign email notifications (create/stop)
+export async function sendCampaignEmail(
+  eventType: "campaign_created" | "campaign_stopped",
+  campaign: { brandId: string | null; id: string; name: string },
+  token?: string
+): Promise<void> {
+  if (!campaign.brandId) return;
+  await apiCall<unknown>("/emails/send", {
+    token,
+    method: "POST",
+    body: {
+      eventType,
+      brandId: campaign.brandId,
+      campaignId: campaign.id,
+      metadata: { campaignName: campaign.name },
+    },
+  });
+}
+
 // User identity resolution
 export async function resolveUser(
   params: {

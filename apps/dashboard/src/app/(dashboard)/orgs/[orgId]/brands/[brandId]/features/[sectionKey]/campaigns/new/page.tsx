@@ -9,6 +9,7 @@ import { useOrg } from "@/lib/org-context";
 import {
   fetchSectionLeaderboard,
   createCampaign,
+  sendCampaignEmail,
   getBrand,
   listWorkflows,
   getWorkflowKeyStatus,
@@ -331,12 +332,13 @@ export default function FeatureCreateCampaignPage() {
     if (budgetFrequency === "monthly") budgetParams.maxBudgetMonthlyUsd = budgetAmount;
 
     try {
-      await createCampaign({
+      const { campaign } = await createCampaign({
         name: `${effectiveSelection} \u2014 ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}`,
         workflowName: effectiveSelection,
         ...formData,
         ...budgetParams,
       });
+      sendCampaignEmail("campaign_created", campaign).catch(() => {});
       router.push(`/orgs/${orgId}/brands/${brandId}/campaigns`);
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
