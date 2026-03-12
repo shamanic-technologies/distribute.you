@@ -347,7 +347,7 @@ export default function FeatureCreateCampaignPage() {
         ...budgetParams,
       });
       sendCampaignEmail("campaign_created", campaign).catch(() => {});
-      router.push(`/orgs/${orgId}/brands/${brandId}/campaigns`);
+      router.push(`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}`);
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         setCreateError("A campaign with this name already exists. Please try again.");
