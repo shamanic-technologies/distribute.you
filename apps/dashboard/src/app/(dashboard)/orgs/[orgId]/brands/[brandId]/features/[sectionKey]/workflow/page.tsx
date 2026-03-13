@@ -12,6 +12,12 @@ function generateSessionId(): string {
   return crypto.randomUUID();
 }
 
+async function fetchWorkflowDocs(workflowId: string): Promise<Record<string, unknown>> {
+  const res = await fetch(`/api/workflow-docs/${workflowId}`);
+  if (!res.ok) return {};
+  return res.json();
+}
+
 export default function WorkflowViewerPage() {
   const params = useParams();
   const sectionKey = params.sectionKey as string;
@@ -48,6 +54,13 @@ export default function WorkflowViewerPage() {
     { enabled: !!activeWorkflow }
   );
 
+  // Fetch API docs for services used in the workflow's DAG
+  const { data: workflowDocs } = useAuthQuery(
+    ["workflow-docs", activeWorkflow?.id],
+    () => fetchWorkflowDocs(activeWorkflow!.id),
+    { enabled: !!activeWorkflow?.dag }
+  );
+
   const mermaidChart = useMemo(() => {
     if (!activeWorkflow?.dag) return null;
     return dagToMermaid(activeWorkflow.dag);
@@ -80,8 +93,9 @@ export default function WorkflowViewerPage() {
       dag: activeWorkflow.dag,
       summary: summary ?? null,
       mermaidDiagram: mermaidChart,
+      apiDocumentation: workflowDocs ?? null,
     };
-  }, [activeWorkflow, summary, mermaidChart]);
+  }, [activeWorkflow, summary, mermaidChart, workflowDocs]);
 
   if (isLoading) {
     return (
