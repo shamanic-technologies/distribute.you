@@ -10,66 +10,8 @@ interface ChatMessage {
 }
 
 interface WorkflowChatProps {
-  initialMermaid: string;
-  initialSummary: string;
   workflowContext: Record<string, unknown>;
   sessionId: string;
-  providers?: string[];
-}
-
-const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
-
-const PROVIDER_DOMAINS: Record<string, string> = {
-  anthropic: "anthropic.com",
-  openai: "openai.com",
-  instantly: "instantly.ai",
-  apollo: "apollo.io",
-  perplexity: "perplexity.ai",
-  google: "google.com",
-  sendgrid: "sendgrid.com",
-  postmark: "postmarkapp.com",
-  mailgun: "mailgun.com",
-  stripe: "stripe.com",
-  twilio: "twilio.com",
-  slack: "slack.com",
-  hubspot: "hubspot.com",
-  salesforce: "salesforce.com",
-  linkedin: "linkedin.com",
-  twitter: "x.com",
-  reddit: "reddit.com",
-  youtube: "youtube.com",
-};
-
-function getProviderDomain(provider: string): string {
-  return PROVIDER_DOMAINS[provider.toLowerCase()] || `${provider.toLowerCase()}.com`;
-}
-
-function capitalizeProvider(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
-function ProviderLogo({ provider }: { provider: string }) {
-  const [error, setError] = useState(false);
-  const domain = getProviderDomain(provider);
-
-  if (error) {
-    return (
-      <div className="w-5 h-5 rounded bg-gray-200 flex items-center justify-center flex-shrink-0">
-        <span className="text-[10px] font-bold text-gray-500">{provider[0]?.toUpperCase()}</span>
-      </div>
-    );
-  }
-
-  return (
-    <img
-      src={`https://img.logo.dev/${domain}?token=${LOGO_DEV_TOKEN}`}
-      alt={provider}
-      width={20}
-      height={20}
-      className="rounded flex-shrink-0"
-      onError={() => setError(true)}
-    />
-  );
 }
 
 /** Extract ```mermaid blocks from text and return segments */
@@ -123,13 +65,8 @@ function MessageContent({ content }: { content: string }) {
   );
 }
 
-export function WorkflowChat({ initialMermaid, initialSummary, workflowContext, sessionId, providers }: WorkflowChatProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: "assistant",
-      content: `${initialSummary}\n\nAsk me anything about this workflow — how it works, what each step does, or how the data flows between nodes.`,
-    },
-  ]);
+export function WorkflowChat({ workflowContext, sessionId }: WorkflowChatProps) {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -150,7 +87,7 @@ export function WorkflowChat({ initialMermaid, initialSummary, workflowContext, 
     const el = inputRef.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, 144) + "px"; // 144px ≈ 6 lines
+    el.style.height = Math.min(el.scrollHeight, 144) + "px";
   }, [input]);
 
   async function handleSubmit(e: FormEvent) {
@@ -252,54 +189,44 @@ export function WorkflowChat({ initialMermaid, initialSummary, workflowContext, 
     }
   }
 
-  return (
-    <div className="flex flex-col h-full min-h-0">
-      {/* Messages — scrollable area fills remaining space */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0 p-4 space-y-4">
-        {/* Providers card */}
-        {providers && providers.length > 0 && (
-          <div className="bg-gray-50 rounded-xl border border-gray-200 px-4 py-3">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Providers used</p>
-            <div className="flex flex-wrap gap-2">
-              {providers.map((p) => (
-                <span key={p} className="inline-flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm text-gray-700">
-                  <ProviderLogo provider={p} />
-                  {capitalizeProvider(p)}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-        {messages.map((msg, i) => (
-          <div
-            key={i}
-            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-          >
-            <div
-              className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                msg.role === "user"
-                  ? "bg-brand-600 text-white"
-                  : "bg-gray-100 text-gray-800"
-              }`}
-            >
-              {msg.role === "assistant" ? (
-                <MessageContent content={msg.content} />
-              ) : (
-                <span className="whitespace-pre-wrap">{msg.content}</span>
-              )}
-              {msg.role === "assistant" && msg.content === "" && isStreaming && (
-                <span className="inline-flex gap-1">
-                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-                </span>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+  const hasMessages = messages.length > 0;
 
-      {/* Input — sticky at bottom */}
+  return (
+    <div className="flex flex-col min-h-0">
+      {/* Messages */}
+      {hasMessages && (
+        <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0 px-4 py-3 space-y-3">
+          {messages.map((msg, i) => (
+            <div
+              key={i}
+              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+            >
+              <div
+                className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                  msg.role === "user"
+                    ? "bg-brand-600 text-white"
+                    : "bg-gray-100 text-gray-800"
+                }`}
+              >
+                {msg.role === "assistant" ? (
+                  <MessageContent content={msg.content} />
+                ) : (
+                  <span className="whitespace-pre-wrap">{msg.content}</span>
+                )}
+                {msg.role === "assistant" && msg.content === "" && isStreaming && (
+                  <span className="inline-flex gap-1">
+                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Input */}
       <form onSubmit={handleSubmit} className="flex-shrink-0 border-t border-gray-200 bg-white p-4">
         <div className="flex items-end gap-2">
           <textarea

@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getWorkflow, getWorkflowSummary } from "@/lib/api";
 import { dagToMermaid } from "@/lib/dag-to-mermaid";
+import { WorkflowOverview } from "@/components/workflows/workflow-overview";
 import { WorkflowChat } from "@/components/workflows/workflow-chat";
 
 function generateSessionId(): string {
@@ -31,18 +32,6 @@ export default function WorkflowViewerPage() {
     if (!workflow?.dag) return null;
     return dagToMermaid(workflow.dag);
   }, [workflow]);
-
-  const summaryText = useMemo(() => {
-    if (!summary) {
-      const name = workflow?.displayName || workflow?.name || "this workflow";
-      return `Here's the workflow diagram for **${name}**.`;
-    }
-    let text = summary.summary;
-    if (summary.steps.length > 0) {
-      text += "\n\n**Steps:**\n" + summary.steps.map((s, i) => `${i + 1}. ${s}`).join("\n");
-    }
-    return text;
-  }, [summary, workflow]);
 
   const workflowContext = useMemo(() => {
     if (!workflow) return {};
@@ -99,30 +88,34 @@ export default function WorkflowViewerPage() {
           <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">
             {workflow.channel}
           </span>
-          {workflow.dag && (
-            <span className="text-xs px-2 py-1 rounded-full bg-green-50 text-green-700">
-              {workflow.dag.nodes.length} steps
-            </span>
-          )}
         </div>
       </div>
 
-      {/* Chat area */}
-      {mermaidChart ? (
+      {/* Content: scrollable overview + sticky chat */}
+      <div className="flex-1 flex flex-col min-h-0">
+        {/* Scrollable overview */}
+        <div className="flex-1 overflow-y-auto min-h-0 p-4 bg-gray-50/50">
+          {workflow.dag && mermaidChart ? (
+            <WorkflowOverview
+              summary={summary ?? null}
+              dag={workflow.dag}
+              providers={workflow.requiredProviders}
+              mermaidChart={mermaidChart}
+              description={workflow.description}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-gray-500 text-sm">This workflow has no DAG definition yet.</p>
+            </div>
+          )}
+        </div>
+
+        {/* Chat — always visible at bottom */}
         <WorkflowChat
-          initialMermaid={mermaidChart}
-          initialSummary={summaryText}
           workflowContext={workflowContext}
           sessionId={sessionId}
-          providers={workflow.requiredProviders}
         />
-      ) : (
-        <div className="flex items-center justify-center h-full">
-          <div className="text-center">
-            <p className="text-gray-500 text-sm">This workflow has no DAG definition yet.</p>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
