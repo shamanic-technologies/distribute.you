@@ -119,16 +119,11 @@ export default function FeaturePage() {
     0
   );
 
-  const emailsContacted = brandDelivery?.emailsSent ?? 0;
-  const emailsDelivered = brandDelivery?.emailsDelivered ?? 0;
-  const emailsBounced = brandDelivery?.emailsBounced ?? 0;
-
   const totals = {
     ...campaignTotals,
     totalCostCents,
-    emailsGenerated: Math.max(campaignTotals.emailsGenerated, emailsContacted),
-    emailsContacted,
-    emailsDelivered: emailsDelivered || Math.max(emailsContacted - emailsBounced, 0),
+    emailsContacted: brandDelivery?.emailsSent ?? 0,
+    emailsDelivered: brandDelivery?.emailsDelivered ?? 0,
     emailsOpened: brandDelivery?.emailsOpened ?? 0,
     emailsReplied: brandDelivery?.emailsReplied ?? 0,
     willingToMeet: brandDelivery?.repliesWillingToMeet ?? 0,
@@ -276,7 +271,7 @@ export default function FeaturePage() {
                   {stats && (
                     <>
                       <span>{stats.leadsServed || 0} leads</span>
-                      <span>{Math.max(stats.emailsGenerated || 0, stats.emailsSent || 0)} generated</span>
+                      <span>{stats.emailsGenerated || 0} generated</span>
                       <span>{stats.emailsSent || 0} contacted</span>
                       <span>{stats.emailsReplied || 0} replies</span>
                     </>
