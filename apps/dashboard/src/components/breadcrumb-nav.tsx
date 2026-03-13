@@ -439,7 +439,7 @@ export function BreadcrumbNav() {
       {workflowId && orgId && brandId && sectionKey && (
         <>
           <Sep />
-          <span className="px-2 py-1 font-medium text-gray-800 truncate max-w-[200px]">
+          <span className="px-2 py-1 font-medium text-gray-800">
             {workflowName || "Workflow"}
           </span>
         </>
