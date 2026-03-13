@@ -24,25 +24,21 @@ describe("WorkflowOverview component", () => {
     expect(content).toContain("ProviderLogo");
   });
 
-  it("should render a step timeline from DAG nodes", () => {
+  it("should show providers inline with logos", () => {
     const content = fs.readFileSync(overviewPath, "utf-8");
-    expect(content).toContain("StepTimeline");
-    expect(content).toContain("dag.nodes");
-    expect(content).toContain("NodeTypeIcon");
+    // Providers should be inline pills with logo + name, not a separate card
+    expect(content).toContain("providers.map");
+    expect(content).toContain("ProviderLogo");
+    expect(content).toContain("capitalize(p)");
   });
 
-  it("should handle all DAG node types", () => {
+  it("should NOT render a raw pipeline of internal node IDs", () => {
     const content = fs.readFileSync(overviewPath, "utf-8");
-    expect(content).toContain("http.call");
-    expect(content).toContain("condition");
-    expect(content).toContain("wait");
-    expect(content).toContain("for-each");
-  });
-
-  it("should show error handler node separately", () => {
-    const content = fs.readFileSync(overviewPath, "utf-8");
-    expect(content).toContain("errorNodeId");
-    expect(content).toContain("Error Handler");
+    // No StepTimeline, no NodeTypeIcon, no internal node details
+    expect(content).not.toContain("StepTimeline");
+    expect(content).not.toContain("NodeTypeIcon");
+    expect(content).not.toContain("node.config.service");
+    expect(content).not.toContain("node.config.method");
   });
 
   it("should have a collapsible mermaid diagram section", () => {
@@ -57,11 +53,10 @@ describe("WorkflowOverview component", () => {
     expect(content).toContain("summary?.summary");
   });
 
-  it("should extract service and method from http.call nodes", () => {
+  it("should show step count in the diagram toggle", () => {
     const content = fs.readFileSync(overviewPath, "utf-8");
-    expect(content).toContain("node.config.service");
-    expect(content).toContain("node.config.method");
-    expect(content).toContain("node.config.path");
+    expect(content).toContain("dag.nodes");
+    expect(content).toContain("steps");
   });
 });
 
@@ -77,13 +72,11 @@ describe("WorkflowChat component (chat-only)", () => {
 
   it("should NOT have an initial assistant message", () => {
     const content = fs.readFileSync(chatPath, "utf-8");
-    // Messages should start empty — no initialSummary in the chat
     expect(content).toContain("useState<ChatMessage[]>([])");
   });
 
   it("should NOT accept providers or initialMermaid props", () => {
     const content = fs.readFileSync(chatPath, "utf-8");
-    // The chat component should only take workflowContext and sessionId
     expect(content).not.toMatch(/interface WorkflowChatProps[\s\S]*?providers/);
     expect(content).not.toMatch(/interface WorkflowChatProps[\s\S]*?initialMermaid/);
   });
