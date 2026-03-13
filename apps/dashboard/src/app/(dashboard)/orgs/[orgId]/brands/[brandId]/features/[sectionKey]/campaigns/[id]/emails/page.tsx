@@ -4,6 +4,16 @@ import { useState } from "react";
 import { type Email } from "@/lib/api";
 import { useCampaign } from "@/lib/campaign-context";
 
+function getEmailBody(email: Email): { html: string | null; text: string | null } {
+  if (email.bodyHtml || email.bodyText) {
+    return { html: email.bodyHtml, text: email.bodyText };
+  }
+  if (email.sequence && email.sequence.length > 0) {
+    return { html: email.sequence[0].bodyHtml, text: email.sequence[0].bodyText };
+  }
+  return { html: null, text: null };
+}
+
 function formatCostRounded(run: Email["generationRun"]): string | null {
   if (!run) return null;
   const cents = parseFloat(run.totalCostInUsdCents);
@@ -74,7 +84,7 @@ export default function CampaignEmailsPage() {
                   <p className="font-medium text-gray-800 truncate">{email.subject}</p>
                   <div className="flex items-center justify-between mt-1">
                     <p className="text-sm text-gray-500 truncate">
-                      To: {email.leadFirstName} {email.leadLastName} \u2022 {email.leadCompany}
+                      To: {email.leadFirstName} {email.leadLastName} — {email.leadCompany}
                     </p>
                     {cost && (
                       <span className="text-xs text-gray-400 ml-2 shrink-0">{cost}</span>
@@ -143,16 +153,27 @@ export default function CampaignEmailsPage() {
                 </p>
               </div>
               <div className="p-4">
-                {selectedEmail.bodyHtml ? (
-                  <div
-                    className="prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: selectedEmail.bodyHtml }}
-                  />
-                ) : (
-                  <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans">
-                    {selectedEmail.bodyText}
-                  </pre>
-                )}
+                {(() => {
+                  const body = getEmailBody(selectedEmail);
+                  if (body.html) {
+                    return (
+                      <div
+                        className="prose prose-sm max-w-none"
+                        dangerouslySetInnerHTML={{ __html: body.html }}
+                      />
+                    );
+                  }
+                  if (body.text) {
+                    return (
+                      <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans">
+                        {body.text}
+                      </pre>
+                    );
+                  }
+                  return (
+                    <p className="text-sm text-gray-400 italic">No email body available</p>
+                  );
+                })()}
               </div>
             </div>
 
@@ -167,7 +188,7 @@ export default function CampaignEmailsPage() {
                   }`} />
                   <span>{selectedEmail.generationRun.status}</span>
                   {formatDuration(selectedEmail.generationRun.startedAt, selectedEmail.generationRun.completedAt) && (
-                    <span>\u2022 {formatDuration(selectedEmail.generationRun.startedAt, selectedEmail.generationRun.completedAt)}</span>
+                    <span>— {formatDuration(selectedEmail.generationRun.startedAt, selectedEmail.generationRun.completedAt)}</span>
                   )}
                   <span className="ml-auto font-medium text-gray-700">
                     {formatCostDetailed(selectedEmail.generationRun.totalCostInUsdCents)}
