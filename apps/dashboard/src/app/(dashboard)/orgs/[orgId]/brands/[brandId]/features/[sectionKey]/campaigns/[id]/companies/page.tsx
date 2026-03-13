@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { type Lead } from "@/lib/api";
 import { useCampaign } from "@/lib/campaign-context";
+import { BrandLogo } from "@/components/brand-logo";
 
 interface DerivedCompany {
   name: string;
@@ -123,16 +124,20 @@ export default function CampaignCompaniesPage() {
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center shrink-0">
-                      <span className="text-gray-500 font-medium text-sm">
-                        {company.name[0]}
-                      </span>
+                    <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
+                      {company.domain ? (
+                        <BrandLogo domain={company.domain} size={32} className="rounded-lg" />
+                      ) : (
+                        <span className="text-gray-500 font-medium text-sm">
+                          {company.name[0]}
+                        </span>
+                      )}
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="font-medium text-gray-800 truncate">{company.name}</p>
                       <div className="flex items-center justify-between mt-1">
                         <p className="text-sm text-gray-500 truncate">
-                          {company.industry || "No industry"} \u2022 {company.leadsCount} lead{company.leadsCount !== 1 ? "s" : ""}
+                          {company.industry || "No industry"} &middot; {company.leadsCount} lead{company.leadsCount !== 1 ? "s" : ""}
                         </p>
                         {cost && (
                           <span className="text-xs text-gray-400 ml-2 shrink-0">{cost}</span>
@@ -175,10 +180,14 @@ export default function CampaignCompaniesPage() {
             {/* Company Info */}
             <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <span className="text-gray-500 font-semibold text-lg">
-                    {selectedCompany.name[0]}
-                  </span>
+                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+                  {selectedCompany.domain ? (
+                    <BrandLogo domain={selectedCompany.domain} size={40} className="rounded-lg" />
+                  ) : (
+                    <span className="text-gray-500 font-semibold text-lg">
+                      {selectedCompany.name[0]}
+                    </span>
+                  )}
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-800">{selectedCompany.name}</h3>
