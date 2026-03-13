@@ -265,7 +265,7 @@ export async function getCampaignBatchStats(
   campaignIds: string[],
   token?: string
 ): Promise<Record<string, CampaignStats>> {
-  const result = await apiCall<{ stats: Record<string, CampaignStats> }>("/campaigns/batch-stats", {
+  const result = await apiCall<{ stats: Record<string, CampaignStats> }>("/campaigns/stats/batch", {
     token,
     method: "POST",
     body: { campaignIds },
@@ -288,11 +288,11 @@ export interface BrandDeliveryStats {
 }
 
 export async function getBrandDeliveryStats(brandId: string, token?: string): Promise<BrandDeliveryStats> {
-  return apiCall<BrandDeliveryStats>(`/brands/${brandId}/delivery-stats`, { token });
+  return apiCall<BrandDeliveryStats>(`/brands/${brandId}/stats`, { token });
 }
 
 export async function getBrandCostBreakdown(brandId: string, token?: string): Promise<{ costs: CostByName[] }> {
-  return apiCall<{ costs: CostByName[] }>(`/brands/${brandId}/cost-breakdown`, { token });
+  return apiCall<{ costs: CostByName[] }>(`/brands/${brandId}/stats/costs`, { token });
 }
 
 export async function stopCampaign(campaignId: string, token?: string): Promise<{ campaign: Campaign }> {
@@ -565,7 +565,7 @@ export interface Reply {
 }
 
 export async function listCampaignReplies(campaignId: string, token?: string): Promise<{ replies: Reply[] }> {
-  return apiCall<{ replies: Reply[] }>(`/campaigns/${campaignId}/replies`, { token });
+  return apiCall<{ replies: Reply[] }>(`/campaigns/${campaignId}/stats/replies`, { token });
 }
 
 // Workflows

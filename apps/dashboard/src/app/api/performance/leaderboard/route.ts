@@ -12,7 +12,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const res = await fetch(`${API_URL}/performance/leaderboard`, {
+  const res = await fetch(`${API_URL}/v1/stats/leaderboard`, {
     headers: {
       Accept: "application/json",
       "X-API-Key": API_KEY,
