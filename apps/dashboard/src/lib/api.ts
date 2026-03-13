@@ -264,14 +264,14 @@ export async function getCampaignStats(campaignId: string, token?: string): Prom
 
 export async function getCampaignBatchStats(
   campaignIds: string[],
-  token?: string
+  token?: string,
+  brandId?: string
 ): Promise<Record<string, CampaignStats>> {
-  const result = await apiCall<{ stats: Record<string, CampaignStats> }>("/campaigns/stats/batch", {
-    token,
-    method: "POST",
-    body: { campaignIds },
-  });
-  return result.stats;
+  const query = brandId ? `?brandId=${brandId}` : "";
+  const result = await apiCall<{ campaigns: CampaignStats[] }>(`/campaigns/stats${query}`, { token });
+  const byId = Object.fromEntries(result.campaigns.map((s) => [s.campaignId, s]));
+  // Only return stats for requested campaign IDs
+  return Object.fromEntries(campaignIds.filter((id) => byId[id]).map((id) => [id, byId[id]]));
 }
 
 export interface BrandDeliveryStats {
@@ -555,19 +555,6 @@ export async function listCampaignEmails(campaignId: string, token?: string): Pr
   return apiCall<{ emails: Email[] }>(`/campaigns/${campaignId}/emails`, { token });
 }
 
-export interface Reply {
-  id: string;
-  emailId: string;
-  leadName: string | null;
-  leadEmail: string;
-  classification: string | null;
-  snippet: string | null;
-  receivedAt: string;
-}
-
-export async function listCampaignReplies(campaignId: string, token?: string): Promise<{ replies: Reply[] }> {
-  return apiCall<{ replies: Reply[] }>(`/campaigns/${campaignId}/stats/replies`, { token });
-}
 
 // Workflows
 export interface DAGNode {

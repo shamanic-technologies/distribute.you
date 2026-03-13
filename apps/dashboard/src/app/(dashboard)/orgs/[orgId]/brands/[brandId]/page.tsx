@@ -78,7 +78,7 @@ export default function BrandOverviewPage() {
 
   const { data: batchStats } = useAuthQuery(
     ["campaignBatchStats", { brandId }, campaignIds],
-    () => getCampaignBatchStats(campaignIds),
+    () => getCampaignBatchStats(campaignIds, undefined, brandId),
     { enabled: campaignIds.length > 0, ...pollOptions },
   );
   const campaignStats = batchStats ?? {};
