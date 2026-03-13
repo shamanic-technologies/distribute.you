@@ -41,7 +41,8 @@ export function CampaignCostDistribution({ runs, statsTotalCents }: CampaignCost
       for (const cost of run.costs) {
         const val = parseFloat(cost.totalCostInUsdCents);
         if (!isNaN(val) && val > 0) {
-          map.set(cost.costName, (map.get(cost.costName) || 0) + val);
+          const name = cost.costName ?? "Unknown";
+          map.set(name, (map.get(name) || 0) + val);
         }
       }
     }
