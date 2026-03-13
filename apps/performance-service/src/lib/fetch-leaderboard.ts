@@ -82,7 +82,7 @@ export async function fetchLeaderboard(): Promise<LeaderboardData | null> {
     const headers: Record<string, string> = { Accept: "application/json" };
     if (API_KEY) headers["X-API-Key"] = API_KEY;
 
-    const res = await fetch(`${API_URL}/performance/leaderboard`, {
+    const res = await fetch(`${API_URL}/v1/stats/leaderboard`, {
       headers,
       cache: "no-store",
     });
