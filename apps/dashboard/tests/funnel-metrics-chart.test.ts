@@ -70,4 +70,12 @@ describe("Feature page skeleton loaders", () => {
     expect(content).toContain("<FunnelMetricsSkeleton");
     expect(content).toContain("<ReplyBreakdownSkeleton");
   });
+
+  it("should wait for all data queries before showing stats (not just campaigns)", () => {
+    // statsLoading combines all query loading states so charts don't flash with partial data
+    expect(content).toContain("statsLoading");
+    expect(content).toContain("isLoadingBatchStats");
+    expect(content).toContain("isLoadingDelivery");
+    expect(content).toContain("isLoadingCosts");
+  });
 });

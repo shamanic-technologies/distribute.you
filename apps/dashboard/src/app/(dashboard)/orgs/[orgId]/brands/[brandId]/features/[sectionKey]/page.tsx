@@ -84,25 +84,27 @@ export default function FeaturePage() {
 
   const campaignIds = useMemo(() => campaigns.map((c) => c.id), [campaigns]);
 
-  const { data: batchStats } = useAuthQuery(
+  const { data: batchStats, isLoading: isLoadingBatchStats } = useAuthQuery(
     ["campaignBatchStats", { brandId }, campaignIds],
     () => getCampaignBatchStats(campaignIds),
     { enabled: campaignIds.length > 0, ...pollOptions },
   );
   const campaignStats = batchStats ?? {};
 
-  const { data: brandCostData } = useAuthQuery(
+  const { data: brandCostData, isLoading: isLoadingCosts } = useAuthQuery(
     ["brandCostBreakdown", { brandId }],
     () => getBrandCostBreakdown(brandId),
     pollOptions,
   );
   const brandCostBreakdown = brandCostData?.costs ?? [];
 
-  const { data: brandDelivery } = useAuthQuery(
+  const { data: brandDelivery, isLoading: isLoadingDelivery } = useAuthQuery(
     ["brandDeliveryStats", brandId],
     () => getBrandDeliveryStats(brandId),
     { retry: false, ...pollOptions },
   );
+
+  const statsLoading = isLoading || isLoadingBatchStats || isLoadingDelivery || isLoadingCosts;
 
   // Aggregate stats
   const statsValues = Object.values(campaignStats);
@@ -163,7 +165,7 @@ export default function FeaturePage() {
       </div>
 
       {/* Stats Overview */}
-      {isLoading ? (
+      {statsLoading ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
           <FunnelMetricsSkeleton />
           <ReplyBreakdownSkeleton />
