@@ -553,19 +553,6 @@ export async function listCampaignEmails(campaignId: string, token?: string): Pr
   return apiCall<{ emails: Email[] }>(`/campaigns/${campaignId}/emails`, { token });
 }
 
-export interface Reply {
-  id: string;
-  emailId: string;
-  leadName: string | null;
-  leadEmail: string;
-  classification: string | null;
-  snippet: string | null;
-  receivedAt: string;
-}
-
-export async function listCampaignReplies(campaignId: string, token?: string): Promise<{ replies: Reply[] }> {
-  return apiCall<{ replies: Reply[] }>(`/campaigns/${campaignId}/stats/replies`, { token });
-}
 
 // Workflows
 export interface DAGNode {

@@ -28,11 +28,6 @@ const EmailsIcon = () => (
   </svg>
 );
 
-const RepliesIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-  </svg>
-);
 
 const WorkflowIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
@@ -83,13 +78,6 @@ export function CampaignSidebar({ campaignId, orgId, brandId, sectionKey, stats,
       href: `${basePath}/emails`,
       icon: <EmailsIcon />,
       badge: emailCount ?? undefined,
-    },
-    {
-      id: "replies",
-      label: "Replies",
-      href: `${basePath}/replies`,
-      icon: <RepliesIcon />,
-      badge: stats?.emailsReplied,
     },
     ...(workflowId
       ? [
