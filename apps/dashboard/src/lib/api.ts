@@ -266,12 +266,10 @@ export async function getCampaignBatchStats(
   campaignIds: string[],
   token?: string
 ): Promise<Record<string, CampaignStats>> {
-  const result = await apiCall<{ stats: Record<string, CampaignStats> }>("/campaigns/stats/batch", {
-    token,
-    method: "POST",
-    body: { campaignIds },
-  });
-  return result.stats;
+  const entries = await Promise.all(
+    campaignIds.map((id) => getCampaignStats(id, token).then((stats) => [id, stats] as const))
+  );
+  return Object.fromEntries(entries);
 }
 
 export interface BrandDeliveryStats {
