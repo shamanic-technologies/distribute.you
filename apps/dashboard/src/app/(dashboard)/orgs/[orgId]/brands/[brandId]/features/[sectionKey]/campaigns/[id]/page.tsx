@@ -171,9 +171,9 @@ export default function CampaignOverviewPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
           <FunnelMetrics
             leadsServed={stats.leadsServed || 0}
-            emailsGenerated={Math.max(stats.emailsGenerated || 0, emails.length, stats.emailsSent || 0)}
+            emailsGenerated={stats.emailsGenerated || 0}
             emailsContacted={stats.emailsSent || 0}
-            emailsDelivered={stats.emailsDelivered || Math.max((stats.emailsSent || 0) - (stats.emailsBounced || 0), 0)}
+            emailsDelivered={stats.emailsDelivered || 0}
             emailsOpened={stats.emailsOpened || 0}
             emailsReplied={stats.emailsReplied || 0}
           />
