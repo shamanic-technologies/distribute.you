@@ -89,6 +89,14 @@ export function WorkflowChat({ initialMermaid, initialSummary, workflowContext, 
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
+  // Auto-resize textarea up to 6 lines
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 144) + "px"; // 144px ≈ 6 lines
+  }, [input]);
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const trimmed = input.trim();
@@ -189,9 +197,9 @@ export function WorkflowChat({ initialMermaid, initialSummary, workflowContext, 
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+    <div className="flex flex-col h-full min-h-0">
+      {/* Messages — scrollable area fills remaining space */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0 p-4 space-y-4">
         {messages.map((msg, i) => (
           <div
             key={i}
@@ -221,9 +229,9 @@ export function WorkflowChat({ initialMermaid, initialSummary, workflowContext, 
         ))}
       </div>
 
-      {/* Input */}
-      <form onSubmit={handleSubmit} className="border-t border-gray-200 p-4">
-        <div className="flex gap-2">
+      {/* Input — sticky at bottom */}
+      <form onSubmit={handleSubmit} className="flex-shrink-0 border-t border-gray-200 bg-white p-4">
+        <div className="flex items-end gap-2">
           <textarea
             ref={inputRef}
             value={input}
@@ -233,6 +241,7 @@ export function WorkflowChat({ initialMermaid, initialSummary, workflowContext, 
             disabled={isStreaming}
             rows={1}
             className="flex-1 resize-none rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:opacity-50 disabled:bg-gray-50"
+            style={{ maxHeight: 144 }}
           />
           <button
             type="submit"
