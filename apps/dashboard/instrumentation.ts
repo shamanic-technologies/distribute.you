@@ -136,6 +136,5 @@ export async function register() {
     console.error("[instrumentation] Email template deployment error:", err);
   }
 
-  // Chat config is registered lazily per-org when users open a workflow viewer.
-  // See /api/v1/chat/ensure-config/route.ts
+  // Chat config is registered platform-side by api-service at startup.
 }

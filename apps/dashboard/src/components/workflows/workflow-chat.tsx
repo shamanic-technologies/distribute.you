@@ -69,22 +69,8 @@ export function WorkflowChat({ workflowContext, sessionId }: WorkflowChatProps) 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const [configReady, setConfigReady] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-
-  // Ensure chat config is registered for this org before allowing chat
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/v1/chat/ensure-config", { method: "POST" })
-      .then((res) => {
-        if (!cancelled) setConfigReady(res.ok);
-      })
-      .catch(() => {
-        if (!cancelled) setConfigReady(false);
-      });
-    return () => { cancelled = true; };
-  }, []);
 
   const scrollToBottom = useCallback(() => {
     if (scrollRef.current) {
@@ -107,7 +93,7 @@ export function WorkflowChat({ workflowContext, sessionId }: WorkflowChatProps) 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const trimmed = input.trim();
-    if (!trimmed || isStreaming || !configReady) return;
+    if (!trimmed || isStreaming) return;
 
     const userMessage: ChatMessage = { role: "user", content: trimmed };
     setMessages((prev) => [...prev, userMessage]);
@@ -248,15 +234,15 @@ export function WorkflowChat({ workflowContext, sessionId }: WorkflowChatProps) 
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={configReady ? "Ask about this workflow..." : "Initializing chat..."}
-            disabled={isStreaming || !configReady}
+            placeholder="Ask about this workflow..."
+            disabled={isStreaming}
             rows={1}
             className="flex-1 resize-none rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:opacity-50 disabled:bg-gray-50"
             style={{ maxHeight: 144 }}
           />
           <button
             type="submit"
-            disabled={isStreaming || !input.trim() || !configReady}
+            disabled={isStreaming || !input.trim()}
             className="px-4 py-2.5 bg-brand-600 text-white rounded-xl text-sm font-medium hover:bg-brand-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
