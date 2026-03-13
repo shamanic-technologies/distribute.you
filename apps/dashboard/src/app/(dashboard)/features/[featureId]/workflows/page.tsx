@@ -90,9 +90,10 @@ export default function FeatureWorkflowsPage() {
     const seen = new Set<string>();
     const result: WorkflowRowData[] = [];
 
-    // Priority: leaderboard entries (have stats)
+    // Priority: leaderboard entries (have stats) — only if still deployed
     for (const entry of leaderboard ?? []) {
       if (deprecatedSet.has(entry.workflowName)) continue;
+      if (!idMap.has(entry.workflowName)) continue;
       seen.add(entry.workflowName);
       const deployed = deployedByName.get(entry.workflowName);
       result.push({

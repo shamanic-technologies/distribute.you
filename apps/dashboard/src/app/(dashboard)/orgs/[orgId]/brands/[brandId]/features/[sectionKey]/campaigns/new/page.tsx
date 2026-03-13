@@ -237,7 +237,7 @@ export default function FeatureCreateCampaignPage() {
 
   // Merge leaderboard with available workflows that have no stats yet
   const combinedRows = useMemo(() => {
-    const rows = (leaderboard ?? []).filter((e) => !deprecatedNames.has(e.workflowName));
+    const rows = (leaderboard ?? []).filter((e) => !deprecatedNames.has(e.workflowName) && workflowNameToId.has(e.workflowName));
     const leaderboardNames = new Set(rows.map((e) => e.workflowName));
     const fallbacks: WorkflowLeaderboardEntry[] = (workflowsData?.workflows ?? [])
       .filter((w) => w.status !== "deprecated" && w.name.startsWith(featureId) && !leaderboardNames.has(w.name))
@@ -261,7 +261,7 @@ export default function FeatureCreateCampaignPage() {
         costPerReplyCents: null,
       }));
     return [...rows, ...fallbacks];
-  }, [leaderboard, workflowsData, featureId]);
+  }, [leaderboard, workflowsData, featureId, deprecatedNames, workflowNameToId]);
 
   const sorted = useMemo(() => {
     if (combinedRows.length === 0) return [];
