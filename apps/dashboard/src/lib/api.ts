@@ -518,11 +518,19 @@ export async function listCampaignLeads(campaignId: string, token?: string): Pro
   return apiCall<{ leads: Lead[] }>(`/campaigns/${campaignId}/leads`, { token });
 }
 
+export interface EmailSequenceStep {
+  step: number;
+  bodyHtml: string;
+  bodyText: string;
+  daysSinceLastStep: number;
+}
+
 export interface Email {
   id: string;
   subject: string;
-  bodyHtml: string;
-  bodyText: string;
+  bodyHtml: string | null;
+  bodyText: string | null;
+  sequence: EmailSequenceStep[] | null;
   leadFirstName: string;
   leadLastName: string;
   leadTitle: string;
