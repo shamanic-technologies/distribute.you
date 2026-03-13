@@ -36,7 +36,7 @@ export function CostBreakdown({ costBreakdown }: CostBreakdownProps) {
   const segments = useMemo(() => {
     const entries = costBreakdown
       .map((c) => ({
-        name: c.costName,
+        name: c.costName ?? "Unknown",
         cents: parseFloat(c.totalCostInUsdCents) || 0,
       }))
       .filter((e) => e.cents > 0)
