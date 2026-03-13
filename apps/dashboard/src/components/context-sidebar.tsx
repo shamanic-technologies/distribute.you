@@ -154,11 +154,12 @@ function getFeatureIcon(sectionKey: string): React.ReactNode {
 }
 
 interface NavigationLevel {
-  type: "app" | "appFeature" | "org" | "brand" | "feature" | "campaign";
+  type: "app" | "appFeature" | "org" | "brand" | "feature" | "workflow" | "campaign";
   orgId?: string;
   brandId?: string;
   sectionKey?: string;
   campaignId?: string;
+  workflowId?: string;
   featureId?: string;
 }
 
@@ -175,6 +176,9 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
             return { type: "feature", orgId, brandId, sectionKey };
           }
           return { type: "campaign", orgId, brandId, sectionKey, campaignId: segments[7] };
+        }
+        if (segments[6] === "workflows" && segments[7]) {
+          return { type: "workflow", orgId, brandId, sectionKey, workflowId: segments[7] };
         }
         return { type: "feature", orgId, brandId, sectionKey };
       }
@@ -367,6 +371,35 @@ function AppFeatureLevelSidebar({ featureId, pathname }: {
   );
 }
 
+// Workflow Detail Level Sidebar
+function WorkflowLevelSidebar({ orgId, brandId, sectionKey, workflowId, pathname }: {
+  orgId: string;
+  brandId: string;
+  sectionKey: string;
+  workflowId: string;
+  pathname: string;
+}) {
+  const basePath = `/orgs/${orgId}/brands/${brandId}/features/${sectionKey}/workflows/${workflowId}`;
+  const wfDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === sectionKey);
+  const title = wfDef?.label ?? sectionKey;
+
+  const items: SidebarItem[] = [
+    { id: "viewer", label: "Workflow Viewer", href: basePath, icon: <WorkflowIcon /> },
+  ];
+
+  return (
+    <SidebarSection title={title} backHref={`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}/workflows`} backLabel="Workflows">
+      {items.map((item) => (
+        <SidebarLink
+          key={item.id}
+          item={item}
+          isActive={pathname === item.href || pathname.startsWith(item.href + "/")}
+        />
+      ))}
+    </SidebarSection>
+  );
+}
+
 export function ContextSidebar() {
   const pathname = usePathname();
   const segments = pathname.split("/").filter(Boolean);
@@ -383,6 +416,8 @@ export function ContextSidebar() {
       return <BrandLevelSidebar orgId={level.orgId!} brandId={level.brandId!} pathname={pathname} />;
     case "feature":
       return <FeatureLevelSidebar orgId={level.orgId!} brandId={level.brandId!} sectionKey={level.sectionKey!} pathname={pathname} />;
+    case "workflow":
+      return <WorkflowLevelSidebar orgId={level.orgId!} brandId={level.brandId!} sectionKey={level.sectionKey!} workflowId={level.workflowId!} pathname={pathname} />;
     case "campaign":
       // Campaign level defers to CampaignSidebar in the campaign layout
       return null;

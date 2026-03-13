@@ -35,6 +35,7 @@ export function BreadcrumbNav() {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState<Record<string, boolean>>({});
+  const [workflowName, setWorkflowName] = useState<string | null>(null);
 
   // Parse path structure: /orgs/[orgId]/brands/[brandId]/features/[sectionKey]/campaigns/[id]
   // Also handles app-level: /features/[featureId] and /features/[featureId]/new
@@ -43,6 +44,7 @@ export function BreadcrumbNav() {
   const brandId = orgId && pathParts[2] === "brands" && pathParts[3] ? pathParts[3] : null;
   const sectionKey = brandId && pathParts[4] === "features" && pathParts[5] ? pathParts[5] : null;
   const campaignId = sectionKey && pathParts[6] === "campaigns" && pathParts[7] ? pathParts[7] : null;
+  const workflowId = sectionKey && pathParts[6] === "workflows" && pathParts[7] ? pathParts[7] : null;
   // App-level feature path: /features/[featureId] or /features/[featureId]/new
   const appFeatureId = !orgId && pathParts[0] === "features" && pathParts[1] ? pathParts[1] : null;
   const appFeatureSubpage = appFeatureId && pathParts[2] ? pathParts[2] : null;
@@ -109,6 +111,14 @@ export function BreadcrumbNav() {
   useEffect(() => {
     if (campaignId) fetchCampaigns();
   }, [campaignId, fetchCampaigns]);
+
+  useEffect(() => {
+    if (!workflowId) { setWorkflowName(null); return; }
+    fetch(`/api/v1/workflows/${workflowId}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => setWorkflowName(data?.displayName || data?.name || null))
+      .catch(() => setWorkflowName(null));
+  }, [workflowId]);
 
   const toggleDropdown = (key: string) => {
     if (openDropdown === key) {
@@ -422,6 +432,16 @@ export function BreadcrumbNav() {
               </div>
             )}
           </div>
+        </>
+      )}
+
+      {/* WORKFLOW */}
+      {workflowId && orgId && brandId && sectionKey && (
+        <>
+          <Sep />
+          <span className="px-2 py-1 font-medium text-gray-800 truncate max-w-[200px]">
+            {workflowName || "Workflow"}
+          </span>
         </>
       )}
 

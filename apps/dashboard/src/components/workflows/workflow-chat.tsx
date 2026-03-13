@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, type FormEvent } from "react";
+import Markdown from "react-markdown";
 import { MermaidDiagram } from "./mermaid-diagram";
 
 interface ChatMessage {
@@ -46,7 +47,20 @@ function MessageContent({ content }: { content: string }) {
         seg.type === "mermaid" ? (
           <MermaidDiagram key={i} chart={seg.value} className="my-3 bg-white rounded-lg p-4 border border-gray-100" />
         ) : (
-          <span key={i} className="whitespace-pre-wrap">{seg.value}</span>
+          <Markdown
+            key={i}
+            components={{
+              p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+              strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+              ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-0.5">{children}</ul>,
+              ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-0.5">{children}</ol>,
+              code: ({ children }) => <code className="bg-gray-200/60 rounded px-1 py-0.5 text-xs font-mono">{children}</code>,
+              pre: ({ children }) => <pre className="bg-gray-800 text-gray-100 rounded-lg p-3 my-2 overflow-x-auto text-xs">{children}</pre>,
+              a: ({ href, children }) => <a href={href} className="text-brand-600 underline" target="_blank" rel="noopener noreferrer">{children}</a>,
+            }}
+          >
+            {seg.value}
+          </Markdown>
         )
       )}
     </>
@@ -57,7 +71,7 @@ export function WorkflowChat({ initialMermaid, initialSummary, workflowContext, 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "assistant",
-      content: `${initialSummary}\n\n\`\`\`mermaid\n${initialMermaid}\n\`\`\`\n\nAsk me anything about this workflow — how it works, what each step does, or how the data flows between nodes.`,
+      content: `${initialSummary}\n\nAsk me anything about this workflow — how it works, what each step does, or how the data flows between nodes.`,
     },
   ]);
   const [input, setInput] = useState("");
