@@ -3,9 +3,9 @@
 interface FunnelMetricsProps {
   leadsServed: number;
   emailsGenerated: number;
-  emailsSent: number;
+  emailsContacted: number;
+  emailsDelivered: number;
   emailsOpened: number;
-  emailsClicked: number;
   emailsReplied: number;
 }
 
@@ -35,17 +35,18 @@ export function FunnelMetricsSkeleton() {
 export function FunnelMetrics({
   leadsServed,
   emailsGenerated,
-  emailsSent,
+  emailsContacted,
+  emailsDelivered,
   emailsOpened,
-  emailsClicked,
   emailsReplied
 }: FunnelMetricsProps) {
   const steps = [
     { label: "Leads", value: leadsServed, rate: null as number | null },
     { label: "Generated", value: emailsGenerated, rate: leadsServed > 0 ? (emailsGenerated / leadsServed * 100) : 0 },
-    { label: "Sent", value: emailsSent, rate: emailsGenerated > 0 ? (emailsSent / emailsGenerated * 100) : 0 },
-    { label: "Opened", value: emailsOpened, rate: emailsSent > 0 ? (emailsOpened / emailsSent * 100) : 0 },
-    { label: "Replied", value: emailsReplied, rate: emailsSent > 0 ? (emailsReplied / emailsSent * 100) : 0 },
+    { label: "Contacted", value: emailsContacted, rate: emailsGenerated > 0 ? (emailsContacted / emailsGenerated * 100) : 0 },
+    { label: "Delivered", value: emailsDelivered, rate: emailsContacted > 0 ? (emailsDelivered / emailsContacted * 100) : 0 },
+    { label: "Opened", value: emailsOpened, rate: emailsDelivered > 0 ? (emailsOpened / emailsDelivered * 100) : 0 },
+    { label: "Replied", value: emailsReplied, rate: emailsDelivered > 0 ? (emailsReplied / emailsDelivered * 100) : 0 },
   ];
 
   const maxValue = Math.max(...steps.map(s => s.value), 1);

@@ -241,6 +241,7 @@ export interface CampaignStats {
   apollo?: ApolloStats;
   emailsGenerated: number;
   emailsSent: number;
+  emailsDelivered: number;
   emailsOpened: number;
   emailsClicked: number;
   emailsReplied: number;
