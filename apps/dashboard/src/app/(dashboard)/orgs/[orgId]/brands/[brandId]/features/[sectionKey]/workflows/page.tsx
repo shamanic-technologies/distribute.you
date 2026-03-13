@@ -76,18 +76,10 @@ export default function FeatureWorkflowsPage() {
     { enabled: wfDef?.implemented === true, ...pollOptions },
   );
 
-  const deprecatedNames = useMemo(() => {
-    const set = new Set<string>();
-    for (const wf of workflowsData?.workflows ?? []) {
-      if (wf.status === "deprecated") set.add(wf.name);
-    }
-    return set;
-  }, [workflowsData]);
-
-  const workflowNameToId = useMemo(() => {
+  const activeWorkflows = useMemo(() => {
     const map = new Map<string, string>();
     for (const wf of workflowsData?.workflows ?? []) {
-      if (wf.status !== "deprecated") map.set(wf.name, wf.id);
+      if (wf.status === "active") map.set(wf.name, wf.id);
     }
     return map;
   }, [workflowsData]);
@@ -105,7 +97,7 @@ export default function FeatureWorkflowsPage() {
 
   const sorted = useMemo(() => {
     if (!leaderboard) return [];
-    return [...leaderboard].filter((e) => !deprecatedNames.has(e.workflowName)).sort((a, b) => {
+    return [...leaderboard].filter((e) => activeWorkflows.has(e.workflowName)).sort((a, b) => {
       const aRaw = a[metric];
       const bRaw = b[metric];
       const aNull = aRaw === null || aRaw === 0;
@@ -115,7 +107,7 @@ export default function FeatureWorkflowsPage() {
       if (bNull) return -1;
       return sortDir === "desc" ? Number(bRaw) - Number(aRaw) : Number(aRaw) - Number(bRaw);
     });
-  }, [leaderboard, metric, sortDir]);
+  }, [leaderboard, activeWorkflows, metric, sortDir]);
 
   return (
     <div className="p-4 md:p-8">
@@ -168,7 +160,7 @@ export default function FeatureWorkflowsPage() {
                   <WorkflowRow
                     key={wf.workflowName}
                     wf={wf}
-                    onShowDetail={workflowNameToId.get(wf.workflowName) ? () => setDetailWorkflowId(workflowNameToId.get(wf.workflowName)!) : undefined}
+                    onShowDetail={activeWorkflows.get(wf.workflowName) ? () => setDetailWorkflowId(activeWorkflows.get(wf.workflowName)!) : undefined}
                   />
                 ))}
               </tbody>
