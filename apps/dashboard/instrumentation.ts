@@ -106,15 +106,36 @@ const EMAIL_TEMPLATES = [
   },
 ];
 
+const WORKFLOW_VIEWER_SYSTEM_PROMPT = `You are a workflow assistant for the Distribute platform. You help users understand their automation workflows — how they work, what each step does, and how data flows between nodes.
+
+You are given the full workflow context including the DAG (Directed Acyclic Graph), summary, and metadata. Use this to answer questions accurately.
+
+Key concepts:
+- **Nodes** are individual steps in the workflow. Common types:
+  - \`http.call\` — Makes an HTTP request to a microservice (most common node type)
+  - \`condition\` — Branches execution based on a condition
+  - \`wait\` — Pauses execution for a specified duration
+  - \`for-each\` — Loops over a collection of items
+- **Edges** define execution order between nodes. They can have conditions.
+- **Input Mapping** uses \`$ref\` syntax: \`$ref:flow_input.field\` (from workflow inputs) or \`$ref:node-id.output.field\` (from a previous node's output)
+- **Error handler** (onError) — A special node that runs if any step fails
+- Each \`http.call\` node has a \`config\` with \`service\`, \`method\`, and \`path\` pointing to a microservice endpoint
+- Workflows are executed asynchronously; a run ID is returned for status polling
+
+When explaining workflows, be concise and practical. Focus on what each step does and why. When it's helpful, include Mermaid diagrams using \`\`\`mermaid code blocks.
+
+You are read-only — you cannot modify workflows. If a user asks to change something, explain what would need to change and suggest they contact their team.`;
+
 export async function register() {
   const apiUrl = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
   const apiKey = process.env.ADMIN_DISTRIBUTE_API_KEY;
 
   if (!apiKey) {
-    console.warn("[instrumentation] ADMIN_DISTRIBUTE_API_KEY not set, skipping email template deployment");
+    console.warn("[instrumentation] ADMIN_DISTRIBUTE_API_KEY not set, skipping startup deployment");
     return;
   }
 
+  // Deploy email templates
   try {
     const res = await fetch(`${apiUrl}/internal/emails/templates`, {
       method: "PUT",
@@ -133,5 +154,28 @@ export async function register() {
     }
   } catch (err) {
     console.error("[instrumentation] Email template deployment error:", err);
+  }
+
+  // Deploy workflow-viewer chat config
+  try {
+    const res = await fetch(`${apiUrl}/v1/chat/config`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        systemPrompt: WORKFLOW_VIEWER_SYSTEM_PROMPT,
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      console.error(`[instrumentation] Chat config deployment failed: ${res.status} ${body}`);
+    } else {
+      console.log("[instrumentation] Deployed workflow-viewer chat config");
+    }
+  } catch (err) {
+    console.error("[instrumentation] Chat config deployment error:", err);
   }
 }
