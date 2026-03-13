@@ -1,8 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import type { DAG, WorkflowSummary } from "@/lib/api";
-import { MermaidDiagram } from "./mermaid-diagram";
+
+const MermaidDiagram = dynamic(
+  () => import("./mermaid-diagram").then((m) => ({ default: m.MermaidDiagram })),
+  { ssr: false }
+);
 
 const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
 
@@ -33,9 +38,12 @@ function getProviderDomain(provider: string): string {
 
 function ProviderLogo({ provider, size = 20 }: { provider: string; size?: number }) {
   const [error, setError] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const domain = getProviderDomain(provider);
 
-  if (error) {
+  useEffect(() => { setMounted(true); }, []);
+
+  if (!mounted || error) {
     return (
       <div
         className="rounded bg-gray-200 flex items-center justify-center flex-shrink-0"
@@ -79,9 +87,9 @@ export function WorkflowOverview({ summary, dag, providers, mermaidChart, descri
       <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
         {/* Description */}
         {(summary?.summary || description) && (
-          <p className="text-sm text-gray-700 leading-relaxed">
+          <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
             {summary?.summary || description}
-          </p>
+          </div>
         )}
 
         {/* Providers */}
