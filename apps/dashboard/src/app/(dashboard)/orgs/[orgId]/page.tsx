@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { WORKFLOW_DEFINITIONS } from "@distribute/content";
+import { WORKFLOW_DEFINITIONS, getSectionKey } from "@distribute/content";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { listBrands, listCampaigns, getCampaignBatchStats } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
@@ -166,27 +166,42 @@ export default function OrgOverviewPage() {
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="text-lg font-medium text-gray-900 mb-4">Recent Campaigns</h2>
           <div className="space-y-2">
-            {recentCampaigns.map((campaign) => (
-              <div key={campaign.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 transition">
-                <div>
-                  <span className="text-sm font-medium text-gray-700">{campaign.name}</span>
-                  <span className="text-xs text-gray-400 ml-2">
-                    {new Date(campaign.createdAt).toLocaleDateString()}
+            {recentCampaigns.map((campaign) => {
+              const sectionKey = campaign.workflowName ? getSectionKey(campaign.workflowName) : null;
+              const href = sectionKey && campaign.brandId
+                ? `/orgs/${orgId}/brands/${campaign.brandId}/features/${sectionKey}/campaigns/${campaign.id}`
+                : null;
+              const content = (
+                <>
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">{campaign.name}</span>
+                    <span className="text-xs text-gray-400 ml-2">
+                      {new Date(campaign.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full ${
+                      campaign.status === "ongoing"
+                        ? "bg-blue-100 text-blue-700"
+                        : campaign.status === "completed"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-gray-100 text-gray-600"
+                    }`}
+                  >
+                    {campaign.status}
                   </span>
+                </>
+              );
+              return href ? (
+                <Link key={campaign.id} href={href} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 transition">
+                  {content}
+                </Link>
+              ) : (
+                <div key={campaign.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 transition">
+                  {content}
                 </div>
-                <span
-                  className={`text-xs px-2 py-0.5 rounded-full ${
-                    campaign.status === "ongoing"
-                      ? "bg-blue-100 text-blue-700"
-                      : campaign.status === "completed"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-gray-100 text-gray-600"
-                  }`}
-                >
-                  {campaign.status}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
