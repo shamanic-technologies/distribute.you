@@ -264,12 +264,14 @@ export async function getCampaignStats(campaignId: string, token?: string): Prom
 
 export async function getCampaignBatchStats(
   campaignIds: string[],
-  token?: string
+  token?: string,
+  brandId?: string
 ): Promise<Record<string, CampaignStats>> {
-  const entries = await Promise.all(
-    campaignIds.map((id) => getCampaignStats(id, token).then((stats) => [id, stats] as const))
-  );
-  return Object.fromEntries(entries);
+  const query = brandId ? `?brandId=${brandId}` : "";
+  const result = await apiCall<{ campaigns: CampaignStats[] }>(`/campaigns/stats${query}`, { token });
+  const byId = Object.fromEntries(result.campaigns.map((s) => [s.campaignId, s]));
+  // Only return stats for requested campaign IDs
+  return Object.fromEntries(campaignIds.filter((id) => byId[id]).map((id) => [id, byId[id]]));
 }
 
 export interface BrandDeliveryStats {

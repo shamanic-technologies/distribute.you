@@ -87,7 +87,7 @@ export default function FeaturePage() {
 
   const { data: batchStats, isLoading: isLoadingBatchStats } = useAuthQuery(
     ["campaignBatchStats", { brandId }, campaignIds],
-    () => getCampaignBatchStats(campaignIds),
+    () => getCampaignBatchStats(campaignIds, undefined, brandId),
     { enabled: campaignIds.length > 0, placeholderData: keepPreviousData, ...pollOptions },
   );
   const campaignStats = batchStats ?? {};
