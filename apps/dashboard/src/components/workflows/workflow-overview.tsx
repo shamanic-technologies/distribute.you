@@ -125,8 +125,9 @@ function getNodeDescription(node: DAGNode): { service?: string; method?: string;
 }
 
 function StepTimeline({ dag, errorNodeId }: { dag: DAG; errorNodeId?: string }) {
-  const mainNodes = dag.nodes.filter((n) => n.id !== errorNodeId);
-  const errorNode = dag.nodes.find((n) => n.id === errorNodeId);
+  const nodes = dag.nodes ?? [];
+  const mainNodes = nodes.filter((n) => n.id !== errorNodeId);
+  const errorNode = nodes.find((n) => n.id === errorNodeId);
 
   return (
     <div className="space-y-0">
@@ -224,13 +225,13 @@ export function WorkflowOverview({ summary, dag, providers, mermaidChart, descri
         <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 px-4 py-3">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Pipeline</h3>
-            <span className="text-xs text-gray-400">{dag.nodes.length} steps</span>
+            <span className="text-xs text-gray-400">{(dag.nodes ?? []).length} steps</span>
           </div>
           <StepTimeline dag={dag} errorNodeId={dag.onError} />
         </div>
 
         {/* Providers */}
-        {providers.length > 0 && (
+        {providers && providers.length > 0 && (
           <div className="bg-white rounded-xl border border-gray-200 px-4 py-3">
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Providers</h3>
             <div className="space-y-2">
