@@ -26,37 +26,29 @@ describe("WorkflowOverview component", () => {
 
   it("should show providers inline with logos", () => {
     const content = fs.readFileSync(overviewPath, "utf-8");
-    // Providers should be inline pills with logo + name, not a separate card
     expect(content).toContain("providers.map");
     expect(content).toContain("ProviderLogo");
     expect(content).toContain("capitalize(p)");
   });
 
-  it("should NOT render a raw pipeline of internal node IDs", () => {
+  it("should NOT have any diagram or mermaid rendering", () => {
     const content = fs.readFileSync(overviewPath, "utf-8");
-    // No StepTimeline, no NodeTypeIcon, no internal node details
-    expect(content).not.toContain("StepTimeline");
-    expect(content).not.toContain("NodeTypeIcon");
-    expect(content).not.toContain("node.config.service");
-    expect(content).not.toContain("node.config.method");
+    expect(content).not.toContain("MermaidDiagram");
+    expect(content).not.toContain("mermaid");
+    expect(content).not.toContain("showDiagram");
+    expect(content).not.toContain("Flow Diagram");
+    expect(content).not.toContain("dag");
   });
 
-  it("should have a collapsible mermaid diagram section", () => {
+  it("should NOT render a raw pipeline of internal node IDs", () => {
     const content = fs.readFileSync(overviewPath, "utf-8");
-    expect(content).toContain("MermaidDiagram");
-    expect(content).toContain("showDiagram");
-    expect(content).toContain("Flow Diagram");
+    expect(content).not.toContain("StepTimeline");
+    expect(content).not.toContain("NodeTypeIcon");
   });
 
   it("should display the workflow summary text", () => {
     const content = fs.readFileSync(overviewPath, "utf-8");
     expect(content).toContain("summary?.summary");
-  });
-
-  it("should show step count in the diagram toggle", () => {
-    const content = fs.readFileSync(overviewPath, "utf-8");
-    expect(content).toContain("dag.nodes");
-    expect(content).toContain("steps");
   });
 });
 
@@ -73,12 +65,6 @@ describe("WorkflowChat component (chat-only)", () => {
   it("should NOT have an initial assistant message", () => {
     const content = fs.readFileSync(chatPath, "utf-8");
     expect(content).toContain("useState<ChatMessage[]>([])");
-  });
-
-  it("should NOT accept providers or initialMermaid props", () => {
-    const content = fs.readFileSync(chatPath, "utf-8");
-    expect(content).not.toMatch(/interface WorkflowChatProps[\s\S]*?providers/);
-    expect(content).not.toMatch(/interface WorkflowChatProps[\s\S]*?initialMermaid/);
   });
 
   it("should have SSE streaming support", () => {
@@ -107,24 +93,18 @@ describe("Workflow viewer page composition", () => {
     "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[sectionKey]/workflows/[workflowId]/page.tsx"
   );
 
-  it("should import WorkflowOverview", () => {
+  it("should NOT import dagToMermaid or mermaid", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("WorkflowOverview");
-    expect(content).toContain("workflow-overview");
+    expect(content).not.toContain("dagToMermaid");
+    expect(content).not.toContain("mermaid");
   });
 
-  it("should import WorkflowChat", () => {
+  it("should pass summary and providers to WorkflowOverview", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("WorkflowChat");
-    expect(content).toContain("workflow-chat");
-  });
-
-  it("should pass DAG and summary to WorkflowOverview", () => {
-    const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("dag={workflow.dag}");
     expect(content).toContain("summary={");
-    expect(content).toContain("mermaidChart={mermaidChart}");
     expect(content).toContain("providers={workflow.requiredProviders}");
+    expect(content).not.toContain("dag={");
+    expect(content).not.toContain("mermaidChart={");
   });
 
   it("should separate overview (scrollable) from chat (sticky bottom)", () => {

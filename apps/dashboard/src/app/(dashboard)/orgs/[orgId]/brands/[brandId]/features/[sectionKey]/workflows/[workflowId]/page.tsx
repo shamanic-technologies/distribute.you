@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getWorkflow, getWorkflowSummary } from "@/lib/api";
-import { dagToMermaid } from "@/lib/dag-to-mermaid";
 import { WorkflowOverview } from "@/components/workflows/workflow-overview";
 import { WorkflowChat } from "@/components/workflows/workflow-chat";
 
@@ -28,11 +27,6 @@ export default function WorkflowViewerPage() {
     { enabled: !!workflow }
   );
 
-  const mermaidChart = useMemo(() => {
-    if (!workflow?.dag) return null;
-    return dagToMermaid(workflow.dag);
-  }, [workflow]);
-
   const workflowContext = useMemo(() => {
     if (!workflow) return {};
     return {
@@ -47,9 +41,8 @@ export default function WorkflowViewerPage() {
       },
       dag: workflow.dag,
       summary: summary ?? null,
-      mermaidDiagram: mermaidChart,
     };
-  }, [workflow, summary, mermaidChart]);
+  }, [workflow, summary]);
 
   if (isLoading) {
     return (
@@ -91,26 +84,18 @@ export default function WorkflowViewerPage() {
         </div>
       </div>
 
-      {/* Content: scrollable overview + sticky chat */}
+      {/* Content: overview + sticky chat */}
       <div className="flex-1 flex flex-col min-h-0">
-        {/* Scrollable overview */}
+        {/* Overview */}
         <div className="flex-1 overflow-y-auto min-h-0 p-4 bg-gray-50/50">
-          {workflow.dag && mermaidChart ? (
-            <WorkflowOverview
-              summary={summary ?? null}
-              dag={workflow.dag}
-              providers={workflow.requiredProviders}
-              mermaidChart={mermaidChart}
-              description={workflow.description}
-            />
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-gray-500 text-sm">This workflow has no DAG definition yet.</p>
-            </div>
-          )}
+          <WorkflowOverview
+            summary={summary ?? null}
+            providers={workflow.requiredProviders}
+            description={workflow.description}
+          />
         </div>
 
-        {/* Chat — always visible at bottom */}
+        {/* Chat */}
         <WorkflowChat
           workflowContext={workflowContext}
           sessionId={sessionId}
