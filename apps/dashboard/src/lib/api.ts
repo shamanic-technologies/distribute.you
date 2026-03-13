@@ -289,11 +289,11 @@ export interface BrandDeliveryStats {
 }
 
 export async function getBrandDeliveryStats(brandId: string, token?: string): Promise<BrandDeliveryStats> {
-  return apiCall<BrandDeliveryStats>(`/brands/${brandId}/stats`, { token });
+  return apiCall<BrandDeliveryStats>(`/email-gateway/stats?brandId=${brandId}`, { token });
 }
 
 export async function getBrandCostBreakdown(brandId: string, token?: string): Promise<{ costs: CostByName[] }> {
-  return apiCall<{ costs: CostByName[] }>(`/brands/${brandId}/stats/costs`, { token });
+  return apiCall<{ costs: CostByName[] }>(`/runs/stats/costs?brandId=${brandId}&groupBy=costName`, { token });
 }
 
 export async function stopCampaign(campaignId: string, token?: string): Promise<{ campaign: Campaign }> {
