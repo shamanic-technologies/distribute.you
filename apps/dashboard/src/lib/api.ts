@@ -637,6 +637,70 @@ export async function getWorkflowKeyStatus(workflowId: string, token?: string): 
   return apiCall<WorkflowKeyStatus>(`/workflows/${workflowId}/key-status`, { token });
 }
 
+// Workflow required providers (with domain mapping for logos)
+export interface WorkflowProvider {
+  provider: string;
+  domain: string | null;
+}
+
+export interface WorkflowRequiredProviders {
+  workflowId: string;
+  workflowName: string;
+  providers: WorkflowProvider[];
+}
+
+export async function getWorkflowRequiredProviders(
+  workflowId: string,
+  token?: string
+): Promise<WorkflowRequiredProviders> {
+  return apiCall<WorkflowRequiredProviders>(
+    `/workflows/${workflowId}/required-providers`,
+    { token }
+  );
+}
+
+// Platform discovery
+export interface PlatformService {
+  name: string;
+  baseUrl: string;
+  openapiUrl: string;
+}
+
+export interface LlmEndpointSummary {
+  method: string;
+  path: string;
+  summary: string;
+  params?: { name: string; in: string; required: boolean; type?: string }[];
+  bodyFields?: string[];
+}
+
+export interface LlmServiceSummary {
+  service: string;
+  baseUrl: string;
+  title?: string;
+  description?: string;
+  error?: string;
+  endpoints: LlmEndpointSummary[];
+}
+
+export interface LlmContextResponse {
+  _description: string;
+  _usage: string;
+  services: LlmServiceSummary[];
+}
+
+export async function getPlatformLlmContext(): Promise<LlmContextResponse> {
+  return apiCall<LlmContextResponse>("/platform/llm-context");
+}
+
+export async function getPlatformServices(): Promise<{ services: PlatformService[] }> {
+  return apiCall<{ services: PlatformService[] }>("/platform/services");
+}
+
+export async function getPlatformServiceSpec(service: string): Promise<Record<string, unknown>> {
+  return apiCall<Record<string, unknown>>(`/platform/services/${service}`);
+}
+
 // Workflow performance
 export interface WorkflowPerformance {
   workflowId: string;
