@@ -162,7 +162,7 @@ export async function register() {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
+        "X-API-Key": apiKey,
       },
       body: JSON.stringify({
         systemPrompt: WORKFLOW_VIEWER_SYSTEM_PROMPT,
