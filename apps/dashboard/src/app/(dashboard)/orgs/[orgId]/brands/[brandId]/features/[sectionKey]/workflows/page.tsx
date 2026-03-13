@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useMemo, useCallback } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   listWorkflows,
   fetchSectionLeaderboard,
   type WorkflowLeaderboardEntry,
 } from "@/lib/api";
-import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-panel";
+import { useState } from "react";
 import { WORKFLOW_DEFINITIONS } from "@distribute/content";
 
 const POLL_INTERVAL = 5_000;
@@ -57,8 +57,10 @@ function SortHeader({
 
 export default function FeatureWorkflowsPage() {
   const params = useParams();
+  const router = useRouter();
+  const orgId = params.orgId as string;
+  const brandId = params.brandId as string;
   const sectionKey = params.sectionKey as string;
-  const [detailWorkflowId, setDetailWorkflowId] = useState<string | null>(null);
   const [metric, setMetric] = useState<SortKey>("costPerReplyCents");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
@@ -108,6 +110,12 @@ export default function FeatureWorkflowsPage() {
       return sortDir === "desc" ? Number(bRaw) - Number(aRaw) : Number(aRaw) - Number(bRaw);
     });
   }, [leaderboard, activeWorkflows, metric, sortDir]);
+
+  function navigateToWorkflow(workflowName: string) {
+    const workflowId = activeWorkflows.get(workflowName);
+    if (!workflowId) return;
+    router.push(`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}/workflows/${workflowId}`);
+  }
 
   return (
     <div className="p-4 md:p-8">
@@ -160,7 +168,8 @@ export default function FeatureWorkflowsPage() {
                   <WorkflowRow
                     key={wf.workflowName}
                     wf={wf}
-                    onShowDetail={activeWorkflows.get(wf.workflowName) ? () => setDetailWorkflowId(activeWorkflows.get(wf.workflowName)!) : undefined}
+                    hasDetail={activeWorkflows.has(wf.workflowName)}
+                    onClick={() => navigateToWorkflow(wf.workflowName)}
                   />
                 ))}
               </tbody>
@@ -168,30 +177,28 @@ export default function FeatureWorkflowsPage() {
           </div>
         </div>
       )}
-
-      {detailWorkflowId && (
-        <WorkflowDetailPanel
-          workflowId={detailWorkflowId}
-          onClose={() => setDetailWorkflowId(null)}
-        />
-      )}
     </div>
   );
 }
 
 function WorkflowRow({
   wf,
-  onShowDetail,
+  hasDetail,
+  onClick,
 }: {
   wf: WorkflowLeaderboardEntry;
-  onShowDetail?: () => void;
+  hasDetail: boolean;
+  onClick: () => void;
 }) {
   const name = wf.signatureName
     ? wf.signatureName.charAt(0).toUpperCase() + wf.signatureName.slice(1)
     : wf.displayName || wf.workflowName;
 
   return (
-    <tr className="hover:bg-gray-50 transition">
+    <tr
+      className={`hover:bg-gray-50 transition ${hasDetail ? "cursor-pointer" : ""}`}
+      onClick={hasDetail ? onClick : undefined}
+    >
       <td className="px-4 py-4 whitespace-nowrap">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-gray-900">{name}</span>
@@ -200,16 +207,10 @@ function WorkflowRow({
               {wf.category}
             </span>
           )}
-          {onShowDetail && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onShowDetail(); }}
-              className="p-1 text-gray-400 hover:text-brand-600 transition"
-              title="View workflow details"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </button>
+          {hasDetail && (
+            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
           )}
         </div>
       </td>

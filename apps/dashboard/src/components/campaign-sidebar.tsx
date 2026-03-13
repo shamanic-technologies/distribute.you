@@ -34,12 +34,6 @@ const RepliesIcon = () => (
   </svg>
 );
 
-const WorkflowIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h4v4H4zM10 14h4v4h-4zM16 6h4v4h-4zM6 10v4l4 0M18 10v4l-4 0" />
-  </svg>
-);
-
 interface CampaignSidebarProps {
   campaignId: string;
   orgId: string;
@@ -89,12 +83,6 @@ export function CampaignSidebar({ campaignId, orgId, brandId, sectionKey, stats,
       href: `${basePath}/replies`,
       icon: <RepliesIcon />,
       badge: stats?.emailsReplied,
-    },
-    {
-      id: "workflow",
-      label: "Workflow",
-      href: `/orgs/${orgId}/brands/${brandId}/features/${sectionKey}/workflow`,
-      icon: <WorkflowIcon />,
     },
   ];
 
