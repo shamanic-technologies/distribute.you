@@ -114,6 +114,7 @@ export default function WorkflowViewerPage() {
           initialSummary={summaryText}
           workflowContext={workflowContext}
           sessionId={sessionId}
+          providers={workflow.requiredProviders}
         />
       ) : (
         <div className="flex items-center justify-center h-full">
