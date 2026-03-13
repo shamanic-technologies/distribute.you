@@ -323,6 +323,7 @@ function FeatureLevelSidebar({ orgId, brandId, sectionKey, pathname }: {
   const items: SidebarItem[] = [
     { id: "campaigns", label: "Campaigns", href: basePath, icon: <EnvelopeIcon /> },
     { id: "create", label: "Create Campaign", href: `${basePath}/campaigns/new`, icon: <PlusIcon /> },
+    { id: "workflow", label: "Workflow", href: `${basePath}/workflow`, icon: <WorkflowIcon /> },
     { id: "workflows", label: "Workflows", href: `${basePath}/workflows`, icon: <WorkflowIcon /> },
   ];
 
