@@ -3,6 +3,7 @@
 import { useMemo, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { keepPreviousData } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   listCampaignsByBrand,
@@ -87,7 +88,7 @@ export default function FeaturePage() {
   const { data: batchStats, isLoading: isLoadingBatchStats } = useAuthQuery(
     ["campaignBatchStats", { brandId }, campaignIds],
     () => getCampaignBatchStats(campaignIds),
-    { enabled: campaignIds.length > 0, ...pollOptions },
+    { enabled: campaignIds.length > 0, placeholderData: keepPreviousData, ...pollOptions },
   );
   const campaignStats = batchStats ?? {};
 
@@ -104,7 +105,9 @@ export default function FeaturePage() {
     { retry: false, ...pollOptions },
   );
 
-  const statsLoading = isLoading || isLoadingBatchStats || isLoadingDelivery || isLoadingCosts;
+  // Only show skeletons on the very first load (no data yet), not on background refetches
+  const hasData = campaignsData !== undefined;
+  const statsLoading = !hasData;
 
   // Aggregate stats
   const statsValues = Object.values(campaignStats);
@@ -200,7 +203,7 @@ export default function FeaturePage() {
       {/* Campaigns List */}
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-gray-700">Campaigns</h2>
-        {isLoading ? (
+        {!hasData ? (
           <div className="animate-pulse space-y-3">
             {[1, 2, 3].map((i) => (
               <div key={i} className="h-20 bg-gray-100 rounded-xl" />
