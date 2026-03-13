@@ -12,8 +12,8 @@ import {
   stopCampaign,
   type Campaign,
 } from "@/lib/api";
-import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
-import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
+import { FunnelMetrics, FunnelMetricsSkeleton } from "@/components/campaign/funnel-metrics";
+import { ReplyBreakdown, ReplyBreakdownSkeleton } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
 
 const POLL_INTERVAL = 5_000;
@@ -163,7 +163,12 @@ export default function FeaturePage() {
       </div>
 
       {/* Stats Overview */}
-      {campaigns.length > 0 && (
+      {isLoading ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+          <FunnelMetricsSkeleton />
+          <ReplyBreakdownSkeleton />
+        </div>
+      ) : campaigns.length > 0 ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
           <FunnelMetrics
             leadsServed={totals.leadsServed}
@@ -181,7 +186,7 @@ export default function FeaturePage() {
             unsubscribe={totals.unsubscribe}
           />
         </div>
-      )}
+      ) : null}
 
       {/* Cost Breakdown */}
       {brandCostBreakdown.length > 0 && (

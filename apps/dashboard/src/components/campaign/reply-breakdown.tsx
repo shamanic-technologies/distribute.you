@@ -8,6 +8,31 @@ interface ReplyBreakdownProps {
   unsubscribe: number;
 }
 
+export function ReplyBreakdownSkeleton() {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="h-5 w-36 bg-gray-200 rounded animate-pulse mb-4" />
+      <div className="space-y-3">
+        {[70, 50, 30, 20].map((w, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <div className="w-5 h-5 bg-gray-100 rounded-full animate-pulse" />
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-1">
+                <div className="h-4 w-24 bg-gray-100 rounded animate-pulse" />
+                <div className="h-4 w-6 bg-gray-100 rounded animate-pulse" />
+              </div>
+              <div className="h-2 bg-gray-100 rounded-full">
+                <div className="h-full bg-gray-200 rounded-full animate-pulse" style={{ width: `${w}%` }} />
+              </div>
+            </div>
+            <div className="h-3 w-10 bg-gray-100 rounded animate-pulse" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function ReplyBreakdown({ 
   willingToMeet, 
   interested, 
@@ -81,7 +106,7 @@ export function ReplyBreakdown({
                 </div>
                 <div className={`h-2 ${cat.bgColor} rounded-full overflow-hidden`}>
                   <div 
-                    className={`h-full ${cat.color} rounded-full transition-all`}
+                    className={`h-full ${cat.color} rounded-full`}
                     style={{ width: `${percentage}%` }}
                   />
                 </div>
