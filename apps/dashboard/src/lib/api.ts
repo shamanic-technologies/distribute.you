@@ -292,8 +292,25 @@ export async function getBrandDeliveryStats(brandId: string, token?: string): Pr
   return apiCall<BrandDeliveryStats>(`/email-gateway/stats?brandId=${brandId}`, { token });
 }
 
+interface CostStatsGroup {
+  dimensions: Record<string, string | null>;
+  totalCostInUsdCents: string;
+  actualCostInUsdCents: string;
+  provisionedCostInUsdCents: string;
+  cancelledCostInUsdCents: string;
+  runCount: number;
+}
+
 export async function getBrandCostBreakdown(brandId: string, token?: string): Promise<{ costs: CostByName[] }> {
-  return apiCall<{ costs: CostByName[] }>(`/runs/stats/costs?brandId=${brandId}&groupBy=costName`, { token });
+  const result = await apiCall<{ groups: CostStatsGroup[] }>(`/runs/stats/costs?brandId=${brandId}&groupBy=costName`, { token });
+  const costs: CostByName[] = result.groups.map((g) => ({
+    costName: g.dimensions.costName ?? "Unknown",
+    totalCostInUsdCents: g.totalCostInUsdCents,
+    actualCostInUsdCents: g.actualCostInUsdCents,
+    provisionedCostInUsdCents: g.provisionedCostInUsdCents,
+    totalQuantity: String(g.runCount),
+  }));
+  return { costs };
 }
 
 export async function stopCampaign(campaignId: string, token?: string): Promise<{ campaign: Campaign }> {
