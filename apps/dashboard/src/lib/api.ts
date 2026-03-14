@@ -317,9 +317,6 @@ export async function stopCampaign(campaignId: string, token?: string): Promise<
   return apiCall<{ campaign: Campaign }>(`/campaigns/${campaignId}/stop`, { token, method: "POST" });
 }
 
-export async function resumeCampaign(campaignId: string, token?: string): Promise<{ campaign: Campaign }> {
-  return apiCall<{ campaign: Campaign }>(`/campaigns/${campaignId}/resume`, { token, method: "POST" });
-}
 
 // Brands
 export interface Brand {

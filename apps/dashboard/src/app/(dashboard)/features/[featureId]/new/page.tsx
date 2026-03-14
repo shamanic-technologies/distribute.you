@@ -17,7 +17,6 @@ import {
   createBrandSalesProfile,
   upsertBrand,
   stopCampaign,
-  resumeCampaign,
   ApiError,
   type WorkflowLeaderboardEntry,
   type Campaign,
@@ -424,10 +423,6 @@ export default function CreateCampaignPage() {
     refetchCampaigns();
   }, [refetchCampaigns]);
 
-  const handleResumeCampaign = useCallback(async (id: string) => {
-    await resumeCampaign(id);
-    refetchCampaigns();
-  }, [refetchCampaigns]);
 
   // ─── Not found / Coming soon ────────────────────────────────────────────
 
@@ -655,7 +650,6 @@ export default function CreateCampaignPage() {
                   key={c.id}
                   campaign={c}
                   onStop={handleStopCampaign}
-                  onResume={handleResumeCampaign}
                 />
               ))}
               {activeCampaigns.length > 3 && (
@@ -870,11 +864,9 @@ function WorkflowRow({
 function CampaignStatusBadge({
   campaign,
   onStop,
-  onResume,
 }: {
   campaign: Campaign;
   onStop: (id: string) => void;
-  onResume: (id: string) => void;
 }) {
   const status = campaign.status;
   const style = STATUS_STYLES[status] || "bg-gray-100 text-gray-500 border-gray-200";
@@ -894,15 +886,6 @@ function CampaignStatusBadge({
           title="Stop"
         >
           ■
-        </button>
-      )}
-      {(status === "stopped" || status === "paused") && (
-        <button
-          onClick={() => onResume(campaign.id)}
-          className="text-xs text-gray-400 hover:text-green-500 transition"
-          title="Resume"
-        >
-          ▶
         </button>
       )}
     </div>
