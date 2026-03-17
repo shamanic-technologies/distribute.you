@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { DocsLayout } from "@/components/docs-layout";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const SITE_URL = "https://docs.distribute.you";
 const SITE_NAME = "distribute Documentation";
@@ -204,8 +205,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("theme");if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme:dark)").matches))document.documentElement.classList.add("dark")}catch(e){}})()`,
+          }}
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
@@ -228,7 +234,9 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased h-screen flex flex-col overflow-hidden">
-        <DocsLayout>{children}</DocsLayout>
+        <ThemeProvider>
+          <DocsLayout>{children}</DocsLayout>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -9,6 +9,12 @@
   --background: #ffffff;
 }
 
+html.dark {
+  --foreground: #e2e8f0;
+  --background: #0f172a;
+  color-scheme: dark;
+}
+
 body {
   color: var(--foreground);
   background: var(--background);
@@ -69,3 +75,91 @@ h1, h2, h3, .font-display {
   background-color: transparent;
   padding: 0;
 }
+
+/* ── Dark mode global overrides ────────────────────────────────────── */
+
+/* Backgrounds */
+html.dark .bg-white { background-color: #1e293b; }
+html.dark .bg-gray-50 { background-color: #0f172a; }
+html.dark .bg-gray-100 { background-color: #1e293b; }
+html.dark .bg-gray-200 { background-color: #334155; }
+
+/* Gradients */
+html.dark .from-white { --tw-gradient-from: #1e293b; }
+html.dark .to-gray-50\/30 { --tw-gradient-to: rgba(15, 23, 42, 0.3); }
+
+/* Text */
+html.dark .text-gray-900 { color: #f1f5f9; }
+html.dark .text-gray-800 { color: #e2e8f0; }
+html.dark .text-gray-700 { color: #cbd5e1; }
+html.dark .text-gray-600 { color: #94a3b8; }
+html.dark .text-gray-500 { color: #94a3b8; }
+html.dark .text-gray-400 { color: #64748b; }
+html.dark .text-gray-300 { color: #64748b; }
+
+/* Borders */
+html.dark .border-gray-200 { border-color: #334155; }
+html.dark .border-gray-100 { border-color: #1e293b; }
+html.dark .border-gray-300 { border-color: #475569; }
+
+/* Hover states */
+html.dark .hover\:bg-gray-50:hover { background-color: #334155; }
+html.dark .hover\:bg-gray-100:hover { background-color: #334155; }
+html.dark .hover\:text-gray-800:hover { color: #e2e8f0; }
+
+/* Brand colors in dark */
+html.dark .bg-brand-50 { background-color: rgba(219, 39, 119, 0.15); }
+html.dark .bg-brand-100 { background-color: rgba(219, 39, 119, 0.2); }
+html.dark .border-brand-200 { border-color: rgba(219, 39, 119, 0.3); }
+
+/* Status/accent backgrounds */
+html.dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.15); }
+html.dark .bg-green-50 { background-color: rgba(34, 197, 94, 0.15); }
+html.dark .bg-red-50 { background-color: rgba(239, 68, 68, 0.15); }
+
+/* Shadows */
+html.dark .shadow-xl { box-shadow: 0 20px 25px -5px rgba(0,0,0,0.4), 0 8px 10px -6px rgba(0,0,0,0.3); }
+html.dark .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0,0,0,0.4), 0 4px 6px -4px rgba(0,0,0,0.3); }
+html.dark .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0,0,0,0.3); }
+
+/* Prose dark mode */
+html.dark .prose h2,
+html.dark .prose h3 { color: #e2e8f0; }
+
+html.dark .prose p,
+html.dark .prose li,
+html.dark .prose td,
+html.dark .prose th { color: #cbd5e1; }
+
+html.dark .prose strong { color: #f1f5f9; }
+
+html.dark .prose code {
+  color: #f9a8d4;
+  background-color: rgba(219, 39, 119, 0.15);
+}
+
+html.dark .prose pre {
+  background-color: #0f172a;
+  border: 1px solid #334155;
+}
+
+html.dark .prose pre code {
+  color: #e5e7eb;
+  background-color: transparent;
+}
+
+html.dark .prose blockquote {
+  color: #94a3b8;
+  border-left-color: #334155;
+}
+
+html.dark .prose hr { border-color: #334155; }
+
+html.dark .prose thead th { border-bottom-color: #334155; color: #e2e8f0; }
+html.dark .prose tbody td { border-bottom-color: #1e293b; }
+
+/* Scrollbar */
+html.dark ::-webkit-scrollbar { width: 8px; }
+html.dark ::-webkit-scrollbar-track { background: #0f172a; }
+html.dark ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+html.dark ::-webkit-scrollbar-thumb:hover { background: #475569; }
