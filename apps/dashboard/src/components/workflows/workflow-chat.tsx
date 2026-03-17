@@ -1,17 +1,33 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, type FormEvent } from "react";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
+import type { UIMessage } from "ai";
 import Markdown from "react-markdown";
 import { MermaidDiagram } from "./mermaid-diagram";
 
-interface ChatMessage {
-  role: "user" | "assistant";
-  content: string;
+interface WorkflowChatProps {
+  workflowId: string;
+  workflowContext: Record<string, unknown>;
+  onWorkflowUpdated?: () => void;
 }
 
-interface WorkflowChatProps {
-  workflowContext: Record<string, unknown>;
-  sessionId: string;
+const TOOL_LABELS: Record<string, string> = {
+  getWorkflowDetails: "Fetching workflow details",
+  getPrompt: "Fetching prompt template",
+  validateWorkflow: "Validating workflow",
+  updateWorkflow: "Updating workflow",
+  versionPrompt: "Creating prompt version",
+};
+
+/** Part shape at runtime — the actual UIMessagePart generic is complex */
+interface PartLike {
+  type: string;
+  text?: string;
+  toolName?: string;
+  state?: string;
+  output?: unknown;
 }
 
 /** Extract ```mermaid blocks from text and return segments */
@@ -36,8 +52,8 @@ function parseMessageSegments(content: string): Array<{ type: "text" | "mermaid"
   return segments;
 }
 
-function MessageContent({ content }: { content: string }) {
-  const segments = parseMessageSegments(content);
+function TextContent({ text }: { text: string }) {
+  const segments = parseMessageSegments(text);
 
   return (
     <>
@@ -65,12 +81,128 @@ function MessageContent({ content }: { content: string }) {
   );
 }
 
-export function WorkflowChat({ workflowContext, sessionId }: WorkflowChatProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+function getPartToolName(part: PartLike): string {
+  if (part.toolName) return part.toolName;
+  if (part.type.startsWith("tool-")) return part.type.slice(5);
+  return "unknown";
+}
+
+function getPartState(part: PartLike): string {
+  if (part.state) return part.state;
+  if (part.output !== undefined) return "result";
+  return "call";
+}
+
+function isToolPart(part: PartLike): boolean {
+  return part.type.startsWith("tool-") || part.type === "dynamic-tool";
+}
+
+function ToolIndicator({ toolName, state }: { toolName: string; state: string }) {
+  const label = TOOL_LABELS[toolName] ?? toolName;
+
+  if (state === "result") {
+    return (
+      <div className="flex items-center gap-2 text-xs text-green-600 py-1">
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        </svg>
+        <span>{label} done</span>
+      </div>
+    );
+  }
+
+  if (state === "error") {
+    return (
+      <div className="flex items-center gap-2 text-xs text-red-500 py-1">
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+        <span>{label} failed</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 text-xs text-gray-500 py-1">
+      <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+      </svg>
+      <span>{label}…</span>
+    </div>
+  );
+}
+
+function MessageBubble({ message, isStreaming }: { message: UIMessage; isStreaming: boolean }) {
+  const isUser = message.role === "user";
+  const parts = message.parts as PartLike[];
+
+  const hasText = parts.some((p) => p.type === "text" && p.text && p.text.length > 0);
+  const hasTools = parts.some(isToolPart);
+  const isEmpty = !isUser && !hasText && !hasTools;
+
+  return (
+    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+      <div
+        className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+          isUser ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-800"
+        }`}
+      >
+        {parts.map((part, i) => {
+          if (part.type === "text" && part.text) {
+            return isUser
+              ? <span key={i} className="whitespace-pre-wrap">{part.text}</span>
+              : <TextContent key={i} text={part.text} />;
+          }
+          if (isToolPart(part)) {
+            return (
+              <ToolIndicator
+                key={i}
+                toolName={getPartToolName(part)}
+                state={getPartState(part)}
+              />
+            );
+          }
+          return null;
+        })}
+
+        {isEmpty && isStreaming && (
+          <span className="inline-flex gap-1">
+            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function WorkflowChat({ workflowId, workflowContext, onWorkflowUpdated }: WorkflowChatProps) {
   const [input, setInput] = useState("");
-  const [isStreaming, setIsStreaming] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const [transport] = useState(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/v1/chat",
+        body: { workflowId, workflowContext },
+      })
+  );
+
+  const { messages, sendMessage, status, error } = useChat({
+    transport,
+    onFinish: ({ message }) => {
+      const parts = message.parts as PartLike[];
+      const hasUpdate = parts.some(
+        (p) => isToolPart(p) && getPartToolName(p) === "updateWorkflow" && getPartState(p) === "result"
+      );
+      if (hasUpdate) onWorkflowUpdated?.();
+    },
+  });
+
+  const isStreaming = status === "streaming" || status === "submitted";
 
   const scrollToBottom = useCallback(() => {
     if (scrollRef.current) {
@@ -82,7 +214,6 @@ export function WorkflowChat({ workflowContext, sessionId }: WorkflowChatProps) 
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  // Auto-resize textarea up to 6 lines
   useEffect(() => {
     const el = inputRef.current;
     if (!el) return;
@@ -94,98 +225,14 @@ export function WorkflowChat({ workflowContext, sessionId }: WorkflowChatProps) 
     e.preventDefault();
     const trimmed = input.trim();
     if (!trimmed || isStreaming) return;
-
-    const userMessage: ChatMessage = { role: "user", content: trimmed };
-    setMessages((prev) => [...prev, userMessage]);
     setInput("");
-    setIsStreaming(true);
-
-    // Add empty assistant message for streaming
-    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
-
-    try {
-      const res = await fetch("/api/v1/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: trimmed,
-          sessionId,
-          context: workflowContext,
-        }),
-      });
-
-      if (!res.ok) {
-        const errText = await res.text().catch(() => "Unknown error");
-        setMessages((prev) => {
-          const updated = [...prev];
-          updated[updated.length - 1] = {
-            role: "assistant",
-            content: `Sorry, I encountered an error: ${errText}`,
-          };
-          return updated;
-        });
-        setIsStreaming(false);
-        return;
-      }
-
-      const reader = res.body?.getReader();
-      if (!reader) {
-        setIsStreaming(false);
-        return;
-      }
-
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const payload = line.slice(6);
-          if (payload === "[DONE]") continue;
-
-          try {
-            const event = JSON.parse(payload);
-            if (event.type === "token" && event.token) {
-              setMessages((prev) => {
-                const updated = [...prev];
-                const last = updated[updated.length - 1];
-                updated[updated.length - 1] = {
-                  ...last,
-                  content: last.content + event.token,
-                };
-                return updated;
-              });
-            }
-          } catch {
-            // Skip malformed events
-          }
-        }
-      }
-    } catch (err) {
-      setMessages((prev) => {
-        const updated = [...prev];
-        updated[updated.length - 1] = {
-          role: "assistant",
-          content: `Sorry, something went wrong: ${err instanceof Error ? err.message : "Unknown error"}`,
-        };
-        return updated;
-      });
-    } finally {
-      setIsStreaming(false);
-    }
+    await sendMessage({ text: trimmed });
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit(e);
+      handleSubmit(e as unknown as FormEvent);
     }
   }
 
@@ -193,40 +240,25 @@ export function WorkflowChat({ workflowContext, sessionId }: WorkflowChatProps) 
 
   return (
     <div className="flex flex-col min-h-0">
-      {/* Messages */}
       {hasMessages && (
         <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0 px-4 py-3 space-y-3">
-          {messages.map((msg, i) => (
-            <div
-              key={i}
-              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                  msg.role === "user"
-                    ? "bg-brand-600 text-white"
-                    : "bg-gray-100 text-gray-800"
-                }`}
-              >
-                {msg.role === "assistant" ? (
-                  <MessageContent content={msg.content} />
-                ) : (
-                  <span className="whitespace-pre-wrap">{msg.content}</span>
-                )}
-                {msg.role === "assistant" && msg.content === "" && isStreaming && (
-                  <span className="inline-flex gap-1">
-                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-                  </span>
-                )}
+          {messages.map((msg) => (
+            <MessageBubble
+              key={msg.id}
+              message={msg}
+              isStreaming={isStreaming && msg.id === messages[messages.length - 1]?.id}
+            />
+          ))}
+          {error && (
+            <div className="flex justify-start">
+              <div className="max-w-[85%] rounded-2xl px-4 py-3 text-sm bg-red-50 text-red-700 border border-red-200">
+                Sorry, something went wrong: {error.message}
               </div>
             </div>
-          ))}
+          )}
         </div>
       )}
 
-      {/* Input */}
       <form onSubmit={handleSubmit} className="flex-shrink-0 border-t border-gray-200 bg-white p-4">
         <div className="flex items-end gap-2">
           <textarea
@@ -234,7 +266,7 @@ export function WorkflowChat({ workflowContext, sessionId }: WorkflowChatProps) 
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask about this workflow..."
+            placeholder="Ask about this workflow, view prompts, or request changes…"
             disabled={isStreaming}
             rows={1}
             className="flex-1 resize-none rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:opacity-50 disabled:bg-gray-50"
