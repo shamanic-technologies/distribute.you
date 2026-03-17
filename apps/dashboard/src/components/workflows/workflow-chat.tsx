@@ -2,11 +2,43 @@
 
 import { useState, useRef, useEffect, useCallback, type FormEvent } from "react";
 import Markdown from "react-markdown";
+import { ChevronRightIcon, WrenchScrewdriverIcon, SparklesIcon } from "@heroicons/react/20/solid";
 import { MermaidDiagram } from "./mermaid-diagram";
+
+/* ─── Content block types ────────────────────────────────────────────── */
+
+interface TextBlock {
+  type: "text";
+  text: string;
+}
+
+interface ThinkingBlock {
+  type: "thinking";
+  thinking: string;
+  isStreaming?: boolean;
+}
+
+interface ToolCallBlock {
+  type: "tool_call";
+  id: string;
+  name: string;
+  args: string;
+  isStreaming?: boolean;
+}
+
+interface ToolResultBlock {
+  type: "tool_result";
+  toolCallId: string;
+  name: string;
+  content: string;
+}
+
+type ContentBlock = TextBlock | ThinkingBlock | ToolCallBlock | ToolResultBlock;
 
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  blocks: ContentBlock[];
 }
 
 interface WorkflowChatProps {
@@ -14,7 +46,121 @@ interface WorkflowChatProps {
   sessionId: string;
 }
 
-/** Extract ```mermaid blocks from text and return segments */
+/* ─── Collapsible wrapper ────────────────────────────────────────────── */
+
+function Collapsible({
+  label,
+  icon,
+  isStreaming,
+  defaultOpen = false,
+  accentColor = "gray",
+  children,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  isStreaming?: boolean;
+  defaultOpen?: boolean;
+  accentColor?: "gray" | "brand" | "amber";
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  const colorMap = {
+    gray: "bg-gray-50 border-gray-200 text-gray-600",
+    brand: "bg-brand-50 border-brand-200 text-brand-700",
+    amber: "bg-amber-50 border-amber-200 text-amber-700",
+  };
+
+  return (
+    <div className={`my-2 rounded-lg border ${colorMap[accentColor]} overflow-hidden`}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-2 w-full px-3 py-2 text-xs font-medium hover:opacity-80 transition-opacity"
+      >
+        <ChevronRightIcon
+          className={`w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200 ${open ? "rotate-90" : ""}`}
+        />
+        {icon}
+        <span className="truncate">{label}</span>
+        {isStreaming && (
+          <span className="ml-auto flex gap-0.5">
+            <span className="w-1 h-1 rounded-full bg-current animate-bounce" style={{ animationDelay: "0ms" }} />
+            <span className="w-1 h-1 rounded-full bg-current animate-bounce" style={{ animationDelay: "150ms" }} />
+            <span className="w-1 h-1 rounded-full bg-current animate-bounce" style={{ animationDelay: "300ms" }} />
+          </span>
+        )}
+      </button>
+      {open && (
+        <div className="px-3 pb-2 text-xs opacity-80 whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Thinking block ─────────────────────────────────────────────────── */
+
+function ThinkingBlockUI({ block }: { block: ThinkingBlock }) {
+  return (
+    <Collapsible
+      label={block.isStreaming ? "Thinking..." : "Thought process"}
+      icon={<SparklesIcon className="w-3.5 h-3.5 flex-shrink-0" />}
+      isStreaming={block.isStreaming}
+      accentColor="amber"
+    >
+      {block.thinking || "..."}
+    </Collapsible>
+  );
+}
+
+/* ─── Tool call block ────────────────────────────────────────────────── */
+
+function ToolCallBlockUI({ block, result }: { block: ToolCallBlock; result?: ToolResultBlock }) {
+  const friendlyName = block.name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  const statusLabel = result
+    ? `Called ${friendlyName}`
+    : block.isStreaming
+      ? `Calling ${friendlyName}...`
+      : `Called ${friendlyName}`;
+
+  let parsedArgs: string | null = null;
+  try {
+    if (block.args) {
+      parsedArgs = JSON.stringify(JSON.parse(block.args), null, 2);
+    }
+  } catch {
+    parsedArgs = block.args;
+  }
+
+  return (
+    <Collapsible
+      label={statusLabel}
+      icon={<WrenchScrewdriverIcon className="w-3.5 h-3.5 flex-shrink-0" />}
+      isStreaming={block.isStreaming}
+      accentColor="brand"
+    >
+      {parsedArgs && (
+        <div className="mb-2">
+          <span className="font-semibold block mb-0.5">Input:</span>
+          <pre className="bg-white/60 rounded p-2 overflow-x-auto">{parsedArgs}</pre>
+        </div>
+      )}
+      {result && (
+        <div>
+          <span className="font-semibold block mb-0.5">Result:</span>
+          <pre className="bg-white/60 rounded p-2 overflow-x-auto max-h-32 overflow-y-auto">
+            {result.content}
+          </pre>
+        </div>
+      )}
+    </Collapsible>
+  );
+}
+
+/* ─── Mermaid + markdown parsing ─────────────────────────────────────── */
+
 function parseMessageSegments(content: string): Array<{ type: "text" | "mermaid"; value: string }> {
   const segments: Array<{ type: "text" | "mermaid"; value: string }> = [];
   const regex = /```mermaid\n([\s\S]*?)```/g;
@@ -36,8 +182,18 @@ function parseMessageSegments(content: string): Array<{ type: "text" | "mermaid"
   return segments;
 }
 
-function MessageContent({ content }: { content: string }) {
-  const segments = parseMessageSegments(content);
+const markdownComponents = {
+  p: ({ children }: { children?: React.ReactNode }) => <p className="mb-2 last:mb-0">{children}</p>,
+  strong: ({ children }: { children?: React.ReactNode }) => <strong className="font-semibold">{children}</strong>,
+  ul: ({ children }: { children?: React.ReactNode }) => <ul className="list-disc list-inside mb-2 space-y-0.5">{children}</ul>,
+  ol: ({ children }: { children?: React.ReactNode }) => <ol className="list-decimal list-inside mb-2 space-y-0.5">{children}</ol>,
+  code: ({ children }: { children?: React.ReactNode }) => <code className="bg-gray-200/60 rounded px-1 py-0.5 text-xs font-mono">{children}</code>,
+  pre: ({ children }: { children?: React.ReactNode }) => <pre className="bg-gray-800 text-gray-100 rounded-lg p-3 my-2 overflow-x-auto text-xs">{children}</pre>,
+  a: ({ href, children }: { href?: string; children?: React.ReactNode }) => <a href={href} className="text-brand-600 underline" target="_blank" rel="noopener noreferrer">{children}</a>,
+};
+
+function TextContent({ text }: { text: string }) {
+  const segments = parseMessageSegments(text);
 
   return (
     <>
@@ -45,18 +201,7 @@ function MessageContent({ content }: { content: string }) {
         seg.type === "mermaid" ? (
           <MermaidDiagram key={i} chart={seg.value} className="my-3 bg-white rounded-lg p-4 border border-gray-100" />
         ) : (
-          <Markdown
-            key={i}
-            components={{
-              p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-              strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-              ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-0.5">{children}</ul>,
-              ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-0.5">{children}</ol>,
-              code: ({ children }) => <code className="bg-gray-200/60 rounded px-1 py-0.5 text-xs font-mono">{children}</code>,
-              pre: ({ children }) => <pre className="bg-gray-800 text-gray-100 rounded-lg p-3 my-2 overflow-x-auto text-xs">{children}</pre>,
-              a: ({ href, children }) => <a href={href} className="text-brand-600 underline" target="_blank" rel="noopener noreferrer">{children}</a>,
-            }}
-          >
+          <Markdown key={i} components={markdownComponents}>
             {seg.value}
           </Markdown>
         )
@@ -64,6 +209,70 @@ function MessageContent({ content }: { content: string }) {
     </>
   );
 }
+
+/* ─── Message content renderer (blocks-aware) ────────────────────────── */
+
+function MessageContent({ message }: { message: ChatMessage }) {
+  const { blocks, content } = message;
+
+  // Build a map of tool results keyed by tool call id
+  const toolResults = new Map<string, ToolResultBlock>();
+  for (const b of blocks) {
+    if (b.type === "tool_result") {
+      toolResults.set(b.toolCallId, b);
+    }
+  }
+
+  const hasBlocks = blocks.some((b) => b.type !== "tool_result");
+
+  if (!hasBlocks) {
+    // Fallback: no special blocks, render plain content
+    return <TextContent text={content} />;
+  }
+
+  return (
+    <>
+      {blocks.map((block, i) => {
+        switch (block.type) {
+          case "thinking":
+            return <ThinkingBlockUI key={i} block={block} />;
+          case "tool_call":
+            return <ToolCallBlockUI key={i} block={block} result={toolResults.get(block.id)} />;
+          case "tool_result":
+            // Rendered inline with tool_call above
+            return null;
+          case "text":
+            return <TextContent key={i} text={block.text} />;
+          default:
+            return null;
+        }
+      })}
+    </>
+  );
+}
+
+/* ─── Helpers for updating blocks in state ────────────────────────────── */
+
+function updateLastMessage(
+  prev: ChatMessage[],
+  updater: (msg: ChatMessage) => ChatMessage,
+): ChatMessage[] {
+  const updated = [...prev];
+  updated[updated.length - 1] = updater(updated[updated.length - 1]);
+  return updated;
+}
+
+function appendBlock(msg: ChatMessage, block: ContentBlock): ChatMessage {
+  return { ...msg, blocks: [...msg.blocks, block] };
+}
+
+function updateLastBlock(msg: ChatMessage, updater: (block: ContentBlock) => ContentBlock): ChatMessage {
+  const blocks = [...msg.blocks];
+  blocks[blocks.length - 1] = updater(blocks[blocks.length - 1]);
+  return { ...msg, blocks };
+}
+
+/* ─── Main chat component ────────────────────────────────────────────── */
 
 export function WorkflowChat({ workflowContext, sessionId }: WorkflowChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -95,13 +304,13 @@ export function WorkflowChat({ workflowContext, sessionId }: WorkflowChatProps) 
     const trimmed = input.trim();
     if (!trimmed || isStreaming) return;
 
-    const userMessage: ChatMessage = { role: "user", content: trimmed };
+    const userMessage: ChatMessage = { role: "user", content: trimmed, blocks: [] };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsStreaming(true);
 
     // Add empty assistant message for streaming
-    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+    setMessages((prev) => [...prev, { role: "assistant", content: "", blocks: [] }]);
 
     try {
       const res = await fetch("/api/v1/chat", {
@@ -116,14 +325,13 @@ export function WorkflowChat({ workflowContext, sessionId }: WorkflowChatProps) 
 
       if (!res.ok) {
         const errText = await res.text().catch(() => "Unknown error");
-        setMessages((prev) => {
-          const updated = [...prev];
-          updated[updated.length - 1] = {
-            role: "assistant",
+        setMessages((prev) =>
+          updateLastMessage(prev, (msg) => ({
+            ...msg,
             content: `Sorry, I encountered an error: ${errText}`,
-          };
-          return updated;
-        });
+            blocks: [{ type: "text", text: `Sorry, I encountered an error: ${errText}` }],
+          })),
+        );
         setIsStreaming(false);
         return;
       }
@@ -152,16 +360,153 @@ export function WorkflowChat({ workflowContext, sessionId }: WorkflowChatProps) 
 
           try {
             const event = JSON.parse(payload);
-            if (event.type === "token" && event.token) {
-              setMessages((prev) => {
-                const updated = [...prev];
-                const last = updated[updated.length - 1];
-                updated[updated.length - 1] = {
-                  ...last,
-                  content: last.content + event.token,
-                };
-                return updated;
-              });
+
+            switch (event.type) {
+              /* ── Text tokens ─────────────────────────────── */
+              case "token": {
+                if (!event.token) break;
+                setMessages((prev) =>
+                  updateLastMessage(prev, (msg) => {
+                    const newContent = msg.content + event.token;
+                    // Ensure there's a text block to append to
+                    const lastBlock = msg.blocks[msg.blocks.length - 1];
+                    if (lastBlock?.type === "text") {
+                      return {
+                        ...msg,
+                        content: newContent,
+                        blocks: [
+                          ...msg.blocks.slice(0, -1),
+                          { type: "text", text: lastBlock.text + event.token },
+                        ],
+                      };
+                    }
+                    return {
+                      ...msg,
+                      content: newContent,
+                      blocks: [...msg.blocks, { type: "text", text: event.token }],
+                    };
+                  }),
+                );
+                break;
+              }
+
+              /* ── Thinking ────────────────────────────────── */
+              case "thinking_start": {
+                setMessages((prev) =>
+                  updateLastMessage(prev, (msg) =>
+                    appendBlock(msg, { type: "thinking", thinking: "", isStreaming: true }),
+                  ),
+                );
+                break;
+              }
+              case "thinking_delta":
+              case "thinking": {
+                const delta = event.thinking || event.delta || "";
+                setMessages((prev) =>
+                  updateLastMessage(prev, (msg) => {
+                    const lastBlock = msg.blocks[msg.blocks.length - 1];
+                    if (lastBlock?.type === "thinking") {
+                      return updateLastBlock(msg, (b) =>
+                        b.type === "thinking" ? { ...b, thinking: b.thinking + delta } : b,
+                      );
+                    }
+                    // Auto-start thinking block if we get a delta without start
+                    return appendBlock(msg, { type: "thinking", thinking: delta, isStreaming: true });
+                  }),
+                );
+                break;
+              }
+              case "thinking_stop": {
+                setMessages((prev) =>
+                  updateLastMessage(prev, (msg) =>
+                    updateLastBlock(msg, (b) =>
+                      b.type === "thinking" ? { ...b, isStreaming: false } : b,
+                    ),
+                  ),
+                );
+                break;
+              }
+
+              /* ── Tool calls ──────────────────────────────── */
+              case "tool_call": {
+                setMessages((prev) =>
+                  updateLastMessage(prev, (msg) =>
+                    appendBlock(msg, {
+                      type: "tool_call",
+                      id: event.id || event.toolCallId || `tc_${Date.now()}`,
+                      name: event.name || event.tool || "unknown",
+                      args: typeof event.args === "string"
+                        ? event.args
+                        : JSON.stringify(event.args ?? {}),
+                      isStreaming: true,
+                    }),
+                  ),
+                );
+                break;
+              }
+              case "tool_call_delta": {
+                const argsDelta = event.args || event.delta || "";
+                setMessages((prev) =>
+                  updateLastMessage(prev, (msg) =>
+                    updateLastBlock(msg, (b) =>
+                      b.type === "tool_call"
+                        ? { ...b, args: b.args + argsDelta }
+                        : b,
+                    ),
+                  ),
+                );
+                break;
+              }
+              case "tool_call_stop": {
+                setMessages((prev) =>
+                  updateLastMessage(prev, (msg) =>
+                    updateLastBlock(msg, (b) =>
+                      b.type === "tool_call" ? { ...b, isStreaming: false } : b,
+                    ),
+                  ),
+                );
+                break;
+              }
+
+              /* ── Tool results ────────────────────────────── */
+              case "tool_result": {
+                setMessages((prev) =>
+                  updateLastMessage(prev, (msg) => {
+                    // Mark matching tool_call as done
+                    const toolCallId = event.id || event.toolCallId || "";
+                    const toolName = event.name || event.tool || "";
+                    const resultContent = typeof event.result === "string"
+                      ? event.result
+                      : typeof event.content === "string"
+                        ? event.content
+                        : JSON.stringify(event.result ?? event.content ?? "");
+
+                    const blocks = msg.blocks.map((b) =>
+                      b.type === "tool_call" && (b.id === toolCallId || b.name === toolName)
+                        ? { ...b, isStreaming: false }
+                        : b,
+                    );
+
+                    return {
+                      ...msg,
+                      blocks: [
+                        ...blocks,
+                        {
+                          type: "tool_result" as const,
+                          toolCallId,
+                          name: toolName,
+                          content: resultContent,
+                        },
+                      ],
+                    };
+                  }),
+                );
+                break;
+              }
+
+              default:
+                // Ignore unknown event types (buttons, input_request, etc.)
+                break;
             }
           } catch {
             // Skip malformed events
@@ -169,14 +514,15 @@ export function WorkflowChat({ workflowContext, sessionId }: WorkflowChatProps) 
         }
       }
     } catch (err) {
-      setMessages((prev) => {
-        const updated = [...prev];
-        updated[updated.length - 1] = {
-          role: "assistant",
+      setMessages((prev) =>
+        updateLastMessage(prev, (msg) => ({
+          ...msg,
           content: `Sorry, something went wrong: ${err instanceof Error ? err.message : "Unknown error"}`,
-        };
-        return updated;
-      });
+          blocks: [
+            { type: "text", text: `Sorry, something went wrong: ${err instanceof Error ? err.message : "Unknown error"}` },
+          ],
+        })),
+      );
     } finally {
       setIsStreaming(false);
     }
@@ -190,6 +536,8 @@ export function WorkflowChat({ workflowContext, sessionId }: WorkflowChatProps) 
   }
 
   const hasMessages = messages.length > 0;
+  const lastMsg = messages[messages.length - 1];
+  const showLoadingDots = isStreaming && lastMsg?.role === "assistant" && lastMsg.content === "" && lastMsg.blocks.length === 0;
 
   return (
     <div className="flex flex-col min-h-0">
@@ -209,11 +557,11 @@ export function WorkflowChat({ workflowContext, sessionId }: WorkflowChatProps) 
                 }`}
               >
                 {msg.role === "assistant" ? (
-                  <MessageContent content={msg.content} />
+                  <MessageContent message={msg} />
                 ) : (
                   <span className="whitespace-pre-wrap">{msg.content}</span>
                 )}
-                {msg.role === "assistant" && msg.content === "" && isStreaming && (
+                {i === messages.length - 1 && showLoadingDots && (
                   <span className="inline-flex gap-1">
                     <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
                     <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
