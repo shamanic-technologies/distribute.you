@@ -113,4 +113,9 @@ describe("Workflow viewer page composition", () => {
     expect(content).toContain("WorkflowOverview");
     expect(content).toContain("WorkflowChat");
   });
+
+  it("should pass workflowId in the chat context", () => {
+    const content = fs.readFileSync(pagePath, "utf-8");
+    expect(content).toContain("workflowId: workflow.id");
+  });
 });
