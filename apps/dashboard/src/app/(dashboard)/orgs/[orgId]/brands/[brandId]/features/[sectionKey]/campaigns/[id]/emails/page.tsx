@@ -14,6 +14,15 @@ function getEmailBody(email: Email): { html: string | null; text: string | null 
   return { html: null, text: null };
 }
 
+function formatRecipient(email: Email): string {
+  const name = [email.leadFirstName, email.leadLastName].filter(Boolean).join(" ");
+  const company = email.leadCompany;
+  if (name && company) return `${name} — ${company}`;
+  if (name) return name;
+  if (company) return company;
+  return "Unknown recipient";
+}
+
 function formatCostRounded(run: Email["generationRun"]): string | null {
   if (!run) return null;
   const cents = parseFloat(run.totalCostInUsdCents);
@@ -84,7 +93,7 @@ export default function CampaignEmailsPage() {
                   <p className="font-medium text-gray-800 truncate">{email.subject}</p>
                   <div className="flex items-center justify-between mt-1">
                     <p className="text-sm text-gray-500 truncate">
-                      To: {email.leadFirstName} {email.leadLastName} — {email.leadCompany}
+                      To: {formatRecipient(email)}
                     </p>
                     {cost && (
                       <span className="text-xs text-gray-400 ml-2 shrink-0">{cost}</span>
@@ -127,7 +136,7 @@ export default function CampaignEmailsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                 <div>
                   <span className="text-gray-500">To:</span>
-                  <p className="font-medium">{selectedEmail.leadFirstName} {selectedEmail.leadLastName}</p>
+                  <p className="font-medium">{formatRecipient(selectedEmail)}</p>
                 </div>
                 <div>
                   <span className="text-gray-500">Title:</span>
