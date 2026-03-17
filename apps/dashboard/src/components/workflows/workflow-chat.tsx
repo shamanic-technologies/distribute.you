@@ -2,7 +2,13 @@
 
 import { useState, useRef, useEffect, useCallback, type FormEvent } from "react";
 import Markdown from "react-markdown";
-import { ChevronRightIcon, WrenchScrewdriverIcon, SparklesIcon } from "@heroicons/react/20/solid";
+import {
+  ChevronRightIcon,
+  WrenchScrewdriverIcon,
+  SparklesIcon,
+  CheckCircleIcon,
+  ArrowPathIcon,
+} from "@heroicons/react/20/solid";
 import { MermaidDiagram } from "./mermaid-diagram";
 
 /* ─── Content block types ────────────────────────────────────────────── */
@@ -23,6 +29,7 @@ interface ToolCallBlock {
   id: string;
   name: string;
   args: string;
+  /** true while waiting for tool_result */
   isStreaming?: boolean;
 }
 
@@ -30,7 +37,7 @@ interface ToolResultBlock {
   type: "tool_result";
   toolCallId: string;
   name: string;
-  content: string;
+  result: string;
 }
 
 type ContentBlock = TextBlock | ThinkingBlock | ToolCallBlock | ToolResultBlock;
@@ -51,6 +58,7 @@ interface WorkflowChatProps {
 function Collapsible({
   label,
   icon,
+  statusIcon,
   isStreaming,
   defaultOpen = false,
   accentColor = "gray",
@@ -58,6 +66,7 @@ function Collapsible({
 }: {
   label: string;
   icon: React.ReactNode;
+  statusIcon?: React.ReactNode;
   isStreaming?: boolean;
   defaultOpen?: boolean;
   accentColor?: "gray" | "brand" | "amber";
@@ -67,12 +76,12 @@ function Collapsible({
 
   const colorMap = {
     gray: "bg-gray-50 border-gray-200 text-gray-600",
-    brand: "bg-brand-50 border-brand-200 text-brand-700",
-    amber: "bg-amber-50 border-amber-200 text-amber-700",
+    brand: "bg-brand-50/60 border-brand-200 text-brand-700",
+    amber: "bg-amber-50/60 border-amber-200 text-amber-700",
   };
 
   return (
-    <div className={`my-2 rounded-lg border ${colorMap[accentColor]} overflow-hidden`}>
+    <div className={`my-2 rounded-xl border ${colorMap[accentColor]} overflow-hidden transition-colors`}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -83,16 +92,20 @@ function Collapsible({
         />
         {icon}
         <span className="truncate">{label}</span>
-        {isStreaming && (
-          <span className="ml-auto flex gap-0.5">
-            <span className="w-1 h-1 rounded-full bg-current animate-bounce" style={{ animationDelay: "0ms" }} />
-            <span className="w-1 h-1 rounded-full bg-current animate-bounce" style={{ animationDelay: "150ms" }} />
-            <span className="w-1 h-1 rounded-full bg-current animate-bounce" style={{ animationDelay: "300ms" }} />
-          </span>
-        )}
+        <span className="ml-auto flex items-center gap-1">
+          {isStreaming ? (
+            <span className="flex gap-0.5">
+              <span className="w-1 h-1 rounded-full bg-current animate-bounce" style={{ animationDelay: "0ms" }} />
+              <span className="w-1 h-1 rounded-full bg-current animate-bounce" style={{ animationDelay: "150ms" }} />
+              <span className="w-1 h-1 rounded-full bg-current animate-bounce" style={{ animationDelay: "300ms" }} />
+            </span>
+          ) : statusIcon ? (
+            statusIcon
+          ) : null}
+        </span>
       </button>
       {open && (
-        <div className="px-3 pb-2 text-xs opacity-80 whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
+        <div className="px-3 pb-3 text-xs whitespace-pre-wrap break-words max-h-64 overflow-y-auto">
           {children}
         </div>
       )}
@@ -105,13 +118,30 @@ function Collapsible({
 function ThinkingBlockUI({ block }: { block: ThinkingBlock }) {
   return (
     <Collapsible
-      label={block.isStreaming ? "Thinking..." : "Thought process"}
+      label={block.isStreaming ? "Thinking…" : "Thought process"}
       icon={<SparklesIcon className="w-3.5 h-3.5 flex-shrink-0" />}
+      statusIcon={!block.isStreaming ? <CheckCircleIcon className="w-3.5 h-3.5 text-amber-500/70" /> : undefined}
       isStreaming={block.isStreaming}
       accentColor="amber"
     >
-      {block.thinking || "..."}
+      <p className="text-amber-800/70 leading-relaxed">{block.thinking || "…"}</p>
     </Collapsible>
+  );
+}
+
+/* ─── Pretty JSON renderer ───────────────────────────────────────────── */
+
+function PrettyJSON({ value }: { value: string }) {
+  let formatted: string;
+  try {
+    formatted = JSON.stringify(JSON.parse(value), null, 2);
+  } catch {
+    formatted = value;
+  }
+  return (
+    <pre className="bg-white/70 rounded-lg p-2.5 overflow-x-auto text-[11px] leading-relaxed font-mono text-gray-700 border border-black/[0.04]">
+      {formatted}
+    </pre>
   );
 }
 
@@ -119,42 +149,48 @@ function ThinkingBlockUI({ block }: { block: ThinkingBlock }) {
 
 function ToolCallBlockUI({ block, result }: { block: ToolCallBlock; result?: ToolResultBlock }) {
   const friendlyName = block.name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-  const statusLabel = result
-    ? `Called ${friendlyName}`
-    : block.isStreaming
-      ? `Calling ${friendlyName}...`
-      : `Called ${friendlyName}`;
-
-  let parsedArgs: string | null = null;
-  try {
-    if (block.args) {
-      parsedArgs = JSON.stringify(JSON.parse(block.args), null, 2);
-    }
-  } catch {
-    parsedArgs = block.args;
-  }
+  const isWaiting = block.isStreaming && !result;
+  const statusLabel = isWaiting
+    ? `Calling ${friendlyName}…`
+    : `Called ${friendlyName}`;
 
   return (
     <Collapsible
       label={statusLabel}
-      icon={<WrenchScrewdriverIcon className="w-3.5 h-3.5 flex-shrink-0" />}
-      isStreaming={block.isStreaming}
+      icon={
+        isWaiting ? (
+          <ArrowPathIcon className="w-3.5 h-3.5 flex-shrink-0 animate-spin" />
+        ) : (
+          <WrenchScrewdriverIcon className="w-3.5 h-3.5 flex-shrink-0" />
+        )
+      }
+      statusIcon={result ? <CheckCircleIcon className="w-3.5 h-3.5 text-brand-500/70" /> : undefined}
+      isStreaming={isWaiting}
       accentColor="brand"
     >
-      {parsedArgs && (
-        <div className="mb-2">
-          <span className="font-semibold block mb-0.5">Input:</span>
-          <pre className="bg-white/60 rounded p-2 overflow-x-auto">{parsedArgs}</pre>
-        </div>
-      )}
-      {result && (
-        <div>
-          <span className="font-semibold block mb-0.5">Result:</span>
-          <pre className="bg-white/60 rounded p-2 overflow-x-auto max-h-32 overflow-y-auto">
-            {result.content}
-          </pre>
-        </div>
-      )}
+      <div className="space-y-2.5">
+        {block.args && block.args !== "{}" && (
+          <div>
+            <span className="font-semibold text-brand-800/60 block mb-1 uppercase tracking-wider text-[10px]">
+              Input
+            </span>
+            <PrettyJSON value={block.args} />
+          </div>
+        )}
+        {result && (
+          <div>
+            <span className="font-semibold text-brand-800/60 block mb-1 uppercase tracking-wider text-[10px]">
+              Result
+            </span>
+            <div className="max-h-40 overflow-y-auto">
+              <PrettyJSON value={result.result} />
+            </div>
+          </div>
+        )}
+        {isWaiting && !result && (
+          <p className="text-brand-600/50 italic text-[11px]">Waiting for result…</p>
+        )}
+      </div>
     </Collapsible>
   );
 }
@@ -226,12 +262,11 @@ function MessageContent({ message }: { message: ChatMessage }) {
   const hasBlocks = blocks.some((b) => b.type !== "tool_result");
 
   if (!hasBlocks) {
-    // Fallback: no special blocks, render plain content
     return <TextContent text={content} />;
   }
 
   return (
-    <>
+    <div className="space-y-1">
       {blocks.map((block, i) => {
         switch (block.type) {
           case "thinking":
@@ -239,7 +274,6 @@ function MessageContent({ message }: { message: ChatMessage }) {
           case "tool_call":
             return <ToolCallBlockUI key={i} block={block} result={toolResults.get(block.id)} />;
           case "tool_result":
-            // Rendered inline with tool_call above
             return null;
           case "text":
             return <TextContent key={i} text={block.text} />;
@@ -247,7 +281,7 @@ function MessageContent({ message }: { message: ChatMessage }) {
             return null;
         }
       })}
-    </>
+    </div>
   );
 }
 
@@ -364,11 +398,11 @@ export function WorkflowChat({ workflowContext, sessionId }: WorkflowChatProps) 
             switch (event.type) {
               /* ── Text tokens ─────────────────────────────── */
               case "token": {
-                if (!event.token) break;
+                const tokenText = event.content || event.token || "";
+                if (!tokenText) break;
                 setMessages((prev) =>
                   updateLastMessage(prev, (msg) => {
-                    const newContent = msg.content + event.token;
-                    // Ensure there's a text block to append to
+                    const newContent = msg.content + tokenText;
                     const lastBlock = msg.blocks[msg.blocks.length - 1];
                     if (lastBlock?.type === "text") {
                       return {
@@ -376,14 +410,14 @@ export function WorkflowChat({ workflowContext, sessionId }: WorkflowChatProps) 
                         content: newContent,
                         blocks: [
                           ...msg.blocks.slice(0, -1),
-                          { type: "text", text: lastBlock.text + event.token },
+                          { type: "text", text: lastBlock.text + tokenText },
                         ],
                       };
                     }
                     return {
                       ...msg,
                       content: newContent,
-                      blocks: [...msg.blocks, { type: "text", text: event.token }],
+                      blocks: [...msg.blocks, { type: "text", text: tokenText }],
                     };
                   }),
                 );
@@ -399,9 +433,8 @@ export function WorkflowChat({ workflowContext, sessionId }: WorkflowChatProps) 
                 );
                 break;
               }
-              case "thinking_delta":
-              case "thinking": {
-                const delta = event.thinking || event.delta || "";
+              case "thinking_delta": {
+                const delta = event.thinking || "";
                 setMessages((prev) =>
                   updateLastMessage(prev, (msg) => {
                     const lastBlock = msg.blocks[msg.blocks.length - 1];
@@ -410,7 +443,6 @@ export function WorkflowChat({ workflowContext, sessionId }: WorkflowChatProps) 
                         b.type === "thinking" ? { ...b, thinking: b.thinking + delta } : b,
                       );
                     }
-                    // Auto-start thinking block if we get a delta without start
                     return appendBlock(msg, { type: "thinking", thinking: delta, isStreaming: true });
                   }),
                 );
@@ -427,42 +459,19 @@ export function WorkflowChat({ workflowContext, sessionId }: WorkflowChatProps) 
                 break;
               }
 
-              /* ── Tool calls ──────────────────────────────── */
+              /* ── Tool calls (args arrive complete, no delta/stop) */
               case "tool_call": {
                 setMessages((prev) =>
                   updateLastMessage(prev, (msg) =>
                     appendBlock(msg, {
                       type: "tool_call",
-                      id: event.id || event.toolCallId || `tc_${Date.now()}`,
-                      name: event.name || event.tool || "unknown",
+                      id: event.id || `tc_${Date.now()}`,
+                      name: event.name || "unknown",
                       args: typeof event.args === "string"
                         ? event.args
                         : JSON.stringify(event.args ?? {}),
-                      isStreaming: true,
+                      isStreaming: true, // waiting for tool_result
                     }),
-                  ),
-                );
-                break;
-              }
-              case "tool_call_delta": {
-                const argsDelta = event.args || event.delta || "";
-                setMessages((prev) =>
-                  updateLastMessage(prev, (msg) =>
-                    updateLastBlock(msg, (b) =>
-                      b.type === "tool_call"
-                        ? { ...b, args: b.args + argsDelta }
-                        : b,
-                    ),
-                  ),
-                );
-                break;
-              }
-              case "tool_call_stop": {
-                setMessages((prev) =>
-                  updateLastMessage(prev, (msg) =>
-                    updateLastBlock(msg, (b) =>
-                      b.type === "tool_call" ? { ...b, isStreaming: false } : b,
-                    ),
                   ),
                 );
                 break;
@@ -470,17 +479,15 @@ export function WorkflowChat({ workflowContext, sessionId }: WorkflowChatProps) 
 
               /* ── Tool results ────────────────────────────── */
               case "tool_result": {
+                const toolCallId = event.id || "";
+                const toolName = event.name || "";
+                const resultValue = typeof event.result === "string"
+                  ? event.result
+                  : JSON.stringify(event.result ?? "");
+
                 setMessages((prev) =>
                   updateLastMessage(prev, (msg) => {
                     // Mark matching tool_call as done
-                    const toolCallId = event.id || event.toolCallId || "";
-                    const toolName = event.name || event.tool || "";
-                    const resultContent = typeof event.result === "string"
-                      ? event.result
-                      : typeof event.content === "string"
-                        ? event.content
-                        : JSON.stringify(event.result ?? event.content ?? "");
-
                     const blocks = msg.blocks.map((b) =>
                       b.type === "tool_call" && (b.id === toolCallId || b.name === toolName)
                         ? { ...b, isStreaming: false }
@@ -495,7 +502,7 @@ export function WorkflowChat({ workflowContext, sessionId }: WorkflowChatProps) 
                           type: "tool_result" as const,
                           toolCallId,
                           name: toolName,
-                          content: resultContent,
+                          result: resultValue,
                         },
                       ],
                     };
@@ -505,7 +512,6 @@ export function WorkflowChat({ workflowContext, sessionId }: WorkflowChatProps) 
               }
 
               default:
-                // Ignore unknown event types (buttons, input_request, etc.)
                 break;
             }
           } catch {
