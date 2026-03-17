@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
-import { useAuthQuery } from "@/lib/use-auth-query";
+import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { getWorkflow, getWorkflowSummary } from "@/lib/api";
 import { WorkflowOverview } from "@/components/workflows/workflow-overview";
 import { WorkflowChat } from "@/components/workflows/workflow-chat";
@@ -15,6 +15,7 @@ export default function WorkflowViewerPage() {
   const params = useParams();
   const workflowId = params.workflowId as string;
   const [sessionId] = useState(generateSessionId);
+  const queryClient = useQueryClient();
 
   const { data: workflow, isLoading } = useAuthQuery(
     ["workflow", workflowId],
@@ -30,6 +31,7 @@ export default function WorkflowViewerPage() {
     if (!workflow) return {};
     return {
       workflow: {
+        id: workflow.id,
         name: workflow.name,
         displayName: workflow.displayName,
         description: workflow.description,
@@ -42,6 +44,11 @@ export default function WorkflowViewerPage() {
       summary: summary ?? null,
     };
   }, [workflow, summary]);
+
+  const handleWorkflowUpdated = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["workflow", workflowId] });
+    queryClient.invalidateQueries({ queryKey: ["workflow-summary", workflowId] });
+  }, [queryClient, workflowId]);
 
   if (isLoading) {
     return (
@@ -96,8 +103,9 @@ export default function WorkflowViewerPage() {
 
         {/* Chat */}
         <WorkflowChat
+          workflowId={workflowId}
           workflowContext={workflowContext}
-          sessionId={sessionId}
+          onWorkflowUpdated={handleWorkflowUpdated}
         />
       </div>
     </div>

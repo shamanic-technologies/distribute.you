@@ -73,22 +73,9 @@ interface WorkflowOverviewProps {
 export function WorkflowOverview({ summary, providers, description }: WorkflowOverviewProps) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
-      {description && (
+      {(summary?.summary || description) && (
         <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
-          {description}
-        </div>
-      )}
-
-      {summary?.steps && summary.steps.length > 0 && (
-        <div className="space-y-2">
-          <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">
-            {summary.steps.length} steps
-          </span>
-          <ol className="list-decimal list-inside space-y-1">
-            {summary.steps.map((step, i) => (
-              <li key={i} className="text-sm text-gray-600">{step}</li>
-            ))}
-          </ol>
+          {summary?.summary || description}
         </div>
       )}
 

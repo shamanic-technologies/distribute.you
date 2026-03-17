@@ -62,16 +62,18 @@ describe("WorkflowChat component (chat-only)", () => {
     expect(fs.existsSync(chatPath)).toBe(true);
   });
 
-  it("should NOT have an initial assistant message", () => {
+  it("should start with no messages", () => {
     const content = fs.readFileSync(chatPath, "utf-8");
-    expect(content).toContain("useState<ChatMessage[]>([])");
+    // Uses AI SDK useChat which starts with empty messages by default
+    expect(content).toContain("useChat");
+    expect(content).not.toContain("initialMessages");
   });
 
-  it("should have SSE streaming support", () => {
+  it("should have streaming support via AI SDK", () => {
     const content = fs.readFileSync(chatPath, "utf-8");
     expect(content).toContain("isStreaming");
-    expect(content).toContain("reader.read()");
-    expect(content).toContain('data: ');
+    expect(content).toContain("@ai-sdk/react");
+    expect(content).toContain("sendMessage");
   });
 
   it("should have auto-growing textarea", () => {
