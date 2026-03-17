@@ -127,7 +127,7 @@ export default function FeaturePage() {
   const totals = {
     ...campaignTotals,
     totalCostCents,
-    emailsContacted: brandDelivery?.emailsSent ?? 0,
+    emailsContacted: brandDelivery?.emailsContacted ?? 0,
     emailsDelivered: brandDelivery?.emailsDelivered ?? 0,
     emailsOpened: brandDelivery?.emailsOpened ?? 0,
     emailsReplied: brandDelivery?.emailsReplied ?? 0,
@@ -277,7 +277,7 @@ export default function FeaturePage() {
                     <>
                       <span>{stats.leadsServed || 0} leads</span>
                       <span>{stats.emailsGenerated || 0} generated</span>
-                      <span>{stats.emailsSent || 0} contacted</span>
+                      <span>{stats.emailsContacted || 0} contacted</span>
                       <span>{stats.emailsReplied || 0} replies</span>
                     </>
                   )}

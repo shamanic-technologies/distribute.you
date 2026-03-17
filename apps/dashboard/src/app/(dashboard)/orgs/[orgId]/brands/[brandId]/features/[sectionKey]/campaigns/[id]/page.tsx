@@ -172,7 +172,7 @@ export default function CampaignOverviewPage() {
           <FunnelMetrics
             leadsServed={stats.leadsServed || 0}
             emailsGenerated={stats.emailsGenerated || 0}
-            emailsContacted={stats.emailsSent || 0}
+            emailsContacted={stats.emailsContacted || 0}
             emailsDelivered={stats.emailsDelivered || 0}
             emailsOpened={stats.emailsOpened || 0}
             emailsReplied={stats.emailsReplied || 0}

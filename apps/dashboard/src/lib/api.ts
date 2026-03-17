@@ -240,6 +240,7 @@ export interface CampaignStats {
   leadsSkipped: number;
   apollo?: ApolloStats;
   emailsGenerated: number;
+  emailsContacted: number;
   emailsSent: number;
   emailsDelivered: number;
   emailsOpened: number;
@@ -275,6 +276,7 @@ export async function getCampaignBatchStats(
 }
 
 export interface BrandDeliveryStats {
+  emailsContacted: number;
   emailsSent: number;
   emailsDelivered: number;
   emailsOpened: number;
