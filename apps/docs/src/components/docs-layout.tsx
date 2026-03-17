@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { LinkButton } from "./link-button";
 import { Sidebar } from "./sidebar";
+import { ThemeToggle } from "./theme-toggle";
 import { URLS } from "@distribute/content";
 
 export function DocsLayout({ children }: { children: React.ReactNode }) {
@@ -43,6 +44,7 @@ export function DocsLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-2 md:gap-4">
+            <ThemeToggle />
             <a
               href={URLS.landing}
               className="text-sm text-gray-600 hover:text-brand-600 transition hidden sm:block"
