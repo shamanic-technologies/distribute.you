@@ -1,37 +1,49 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, type FormEvent } from "react";
-import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
-import type { UIMessage } from "ai";
 import Markdown from "react-markdown";
 import { ChevronRightIcon, WrenchScrewdriverIcon, SparklesIcon } from "@heroicons/react/20/solid";
 import { MermaidDiagram } from "./mermaid-diagram";
 
-interface WorkflowChatProps {
-  workflowId: string;
-  workflowContext: Record<string, unknown>;
-  onWorkflowUpdated?: () => void;
+/* ─── Content block types ────────────────────────────────────────────── */
+
+interface TextBlock {
+  type: "text";
+  text: string;
 }
 
-const TOOL_LABELS: Record<string, string> = {
-  getWorkflowDetails: "Fetching workflow details",
-  getPrompt: "Fetching prompt template",
-  validateWorkflow: "Validating workflow",
-  updateWorkflow: "Updating workflow",
-  versionPrompt: "Creating prompt version",
-};
+interface ThinkingBlock {
+  type: "thinking";
+  thinking: string;
+  isStreaming?: boolean;
+}
 
-/** Part shape at runtime — the actual UIMessagePart generic is complex */
-interface PartLike {
-  type: string;
-  text?: string;
-  toolName?: string;
-  toolCallId?: string;
-  state?: string;
-  input?: unknown;
-  output?: unknown;
-  errorText?: string;
+interface ToolCallBlock {
+  type: "tool_call";
+  id: string;
+  name: string;
+  args: string;
+  isStreaming?: boolean;
+}
+
+interface ToolResultBlock {
+  type: "tool_result";
+  toolCallId: string;
+  name: string;
+  content: string;
+}
+
+type ContentBlock = TextBlock | ThinkingBlock | ToolCallBlock | ToolResultBlock;
+
+interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+  blocks: ContentBlock[];
+}
+
+interface WorkflowChatProps {
+  workflowContext: Record<string, unknown>;
+  sessionId: string;
 }
 
 /* ─── Collapsible wrapper ────────────────────────────────────────────── */
@@ -88,6 +100,65 @@ function Collapsible({
   );
 }
 
+/* ─── Thinking block ─────────────────────────────────────────────────── */
+
+function ThinkingBlockUI({ block }: { block: ThinkingBlock }) {
+  return (
+    <Collapsible
+      label={block.isStreaming ? "Thinking..." : "Thought process"}
+      icon={<SparklesIcon className="w-3.5 h-3.5 flex-shrink-0" />}
+      isStreaming={block.isStreaming}
+      accentColor="amber"
+    >
+      {block.thinking || "..."}
+    </Collapsible>
+  );
+}
+
+/* ─── Tool call block ────────────────────────────────────────────────── */
+
+function ToolCallBlockUI({ block, result }: { block: ToolCallBlock; result?: ToolResultBlock }) {
+  const friendlyName = block.name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  const statusLabel = result
+    ? `Called ${friendlyName}`
+    : block.isStreaming
+      ? `Calling ${friendlyName}...`
+      : `Called ${friendlyName}`;
+
+  let parsedArgs: string | null = null;
+  try {
+    if (block.args) {
+      parsedArgs = JSON.stringify(JSON.parse(block.args), null, 2);
+    }
+  } catch {
+    parsedArgs = block.args;
+  }
+
+  return (
+    <Collapsible
+      label={statusLabel}
+      icon={<WrenchScrewdriverIcon className="w-3.5 h-3.5 flex-shrink-0" />}
+      isStreaming={block.isStreaming}
+      accentColor="brand"
+    >
+      {parsedArgs && (
+        <div className="mb-2">
+          <span className="font-semibold block mb-0.5">Input:</span>
+          <pre className="bg-white/60 rounded p-2 overflow-x-auto">{parsedArgs}</pre>
+        </div>
+      )}
+      {result && (
+        <div>
+          <span className="font-semibold block mb-0.5">Result:</span>
+          <pre className="bg-white/60 rounded p-2 overflow-x-auto max-h-32 overflow-y-auto">
+            {result.content}
+          </pre>
+        </div>
+      )}
+    </Collapsible>
+  );
+}
+
 /* ─── Mermaid + markdown parsing ─────────────────────────────────────── */
 
 function parseMessageSegments(content: string): Array<{ type: "text" | "mermaid"; value: string }> {
@@ -139,179 +210,76 @@ function TextContent({ text }: { text: string }) {
   );
 }
 
-/* ─── Part helpers ────────────────────────────────────────────────────── */
+/* ─── Message content renderer (blocks-aware) ────────────────────────── */
 
-function getPartToolName(part: PartLike): string {
-  if (part.toolName) return part.toolName;
-  if (part.type.startsWith("tool-")) return part.type.slice(5);
-  return "unknown";
-}
+function MessageContent({ message }: { message: ChatMessage }) {
+  const { blocks, content } = message;
 
-function getPartState(part: PartLike): string {
-  if (part.state) return part.state;
-  if (part.output !== undefined) return "result";
-  return "call";
-}
-
-function isToolPart(part: PartLike): boolean {
-  return part.type.startsWith("tool-") || part.type === "dynamic-tool";
-}
-
-function isReasoningPart(part: PartLike): boolean {
-  return part.type === "reasoning";
-}
-
-/* ─── Tool call collapsible ──────────────────────────────────────────── */
-
-function ToolCallUI({ part }: { part: PartLike }) {
-  const toolName = getPartToolName(part);
-  const state = getPartState(part);
-  const friendlyLabel = TOOL_LABELS[toolName] ?? toolName.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-  const isActive = state === "call" || state === "input-streaming" || state === "partial-call";
-
-  const statusLabel = state === "result"
-    ? `${friendlyLabel} done`
-    : state === "error"
-      ? `${friendlyLabel} failed`
-      : `${friendlyLabel}…`;
-
-  let parsedInput: string | null = null;
-  if (part.input) {
-    try {
-      parsedInput = JSON.stringify(part.input, null, 2);
-    } catch {
-      parsedInput = String(part.input);
+  // Build a map of tool results keyed by tool call id
+  const toolResults = new Map<string, ToolResultBlock>();
+  for (const b of blocks) {
+    if (b.type === "tool_result") {
+      toolResults.set(b.toolCallId, b);
     }
   }
 
-  let parsedOutput: string | null = null;
-  if (part.output) {
-    try {
-      parsedOutput = JSON.stringify(part.output, null, 2);
-    } catch {
-      parsedOutput = String(part.output);
-    }
+  const hasBlocks = blocks.some((b) => b.type !== "tool_result");
+
+  if (!hasBlocks) {
+    // Fallback: no special blocks, render plain content
+    return <TextContent text={content} />;
   }
 
   return (
-    <Collapsible
-      label={statusLabel}
-      icon={<WrenchScrewdriverIcon className="w-3.5 h-3.5 flex-shrink-0" />}
-      isStreaming={isActive}
-      accentColor="brand"
-    >
-      {parsedInput && (
-        <div className="mb-2">
-          <span className="font-semibold block mb-0.5">Input:</span>
-          <pre className="bg-white/60 rounded p-2 overflow-x-auto">{parsedInput}</pre>
-        </div>
-      )}
-      {parsedOutput && (
-        <div>
-          <span className="font-semibold block mb-0.5">Result:</span>
-          <pre className="bg-white/60 rounded p-2 overflow-x-auto max-h-32 overflow-y-auto">
-            {parsedOutput}
-          </pre>
-        </div>
-      )}
-      {part.errorText && (
-        <div className="text-red-600">
-          <span className="font-semibold block mb-0.5">Error:</span>
-          {part.errorText}
-        </div>
-      )}
-    </Collapsible>
+    <>
+      {blocks.map((block, i) => {
+        switch (block.type) {
+          case "thinking":
+            return <ThinkingBlockUI key={i} block={block} />;
+          case "tool_call":
+            return <ToolCallBlockUI key={i} block={block} result={toolResults.get(block.id)} />;
+          case "tool_result":
+            // Rendered inline with tool_call above
+            return null;
+          case "text":
+            return <TextContent key={i} text={block.text} />;
+          default:
+            return null;
+        }
+      })}
+    </>
   );
 }
 
-/* ─── Reasoning/thinking collapsible ─────────────────────────────────── */
+/* ─── Helpers for updating blocks in state ────────────────────────────── */
 
-function ReasoningUI({ part }: { part: PartLike }) {
-  const isActive = part.state === "streaming";
-  return (
-    <Collapsible
-      label={isActive ? "Thinking..." : "Thought process"}
-      icon={<SparklesIcon className="w-3.5 h-3.5 flex-shrink-0" />}
-      isStreaming={isActive}
-      accentColor="amber"
-    >
-      {part.text || "..."}
-    </Collapsible>
-  );
+function updateLastMessage(
+  prev: ChatMessage[],
+  updater: (msg: ChatMessage) => ChatMessage,
+): ChatMessage[] {
+  const updated = [...prev];
+  updated[updated.length - 1] = updater(updated[updated.length - 1]);
+  return updated;
 }
 
-/* ─── Message bubble ─────────────────────────────────────────────────── */
+function appendBlock(msg: ChatMessage, block: ContentBlock): ChatMessage {
+  return { ...msg, blocks: [...msg.blocks, block] };
+}
 
-function MessageBubble({ message, isStreaming }: { message: UIMessage; isStreaming: boolean }) {
-  const isUser = message.role === "user";
-  const parts = message.parts as PartLike[];
-
-  const hasText = parts.some((p) => p.type === "text" && p.text && p.text.length > 0);
-  const hasTools = parts.some(isToolPart);
-  const hasReasoning = parts.some(isReasoningPart);
-  const isEmpty = !isUser && !hasText && !hasTools && !hasReasoning;
-
-  return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-      <div
-        className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-          isUser ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-800"
-        }`}
-      >
-        {parts.map((part, i) => {
-          if (part.type === "text" && part.text) {
-            return isUser
-              ? <span key={i} className="whitespace-pre-wrap">{part.text}</span>
-              : <TextContent key={i} text={part.text} />;
-          }
-          if (isToolPart(part)) {
-            return <ToolCallUI key={i} part={part} />;
-          }
-          if (isReasoningPart(part)) {
-            return <ReasoningUI key={i} part={part} />;
-          }
-          return null;
-        })}
-
-        {isEmpty && isStreaming && (
-          <span className="inline-flex gap-1">
-            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-          </span>
-        )}
-      </div>
-    </div>
-  );
+function updateLastBlock(msg: ChatMessage, updater: (block: ContentBlock) => ContentBlock): ChatMessage {
+  const blocks = [...msg.blocks];
+  blocks[blocks.length - 1] = updater(blocks[blocks.length - 1]);
+  return { ...msg, blocks };
 }
 
 /* ─── Main chat component ────────────────────────────────────────────── */
 
-export function WorkflowChat({ workflowId, workflowContext, onWorkflowUpdated }: WorkflowChatProps) {
+export function WorkflowChat({ workflowContext, sessionId }: WorkflowChatProps) {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
+  const [isStreaming, setIsStreaming] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-
-  const [transport] = useState(
-    () =>
-      new DefaultChatTransport({
-        api: "/api/v1/chat",
-        body: { workflowId, workflowContext },
-      })
-  );
-
-  const { messages, sendMessage, status, error } = useChat({
-    transport,
-    onFinish: ({ message }) => {
-      const parts = message.parts as PartLike[];
-      const hasUpdate = parts.some(
-        (p) => isToolPart(p) && getPartToolName(p) === "updateWorkflow" && getPartState(p) === "result"
-      );
-      if (hasUpdate) onWorkflowUpdated?.();
-    },
-  });
-
-  const isStreaming = status === "streaming" || status === "submitted";
 
   const scrollToBottom = useCallback(() => {
     if (scrollRef.current) {
@@ -323,6 +291,7 @@ export function WorkflowChat({ workflowId, workflowContext, onWorkflowUpdated }:
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
+  // Auto-resize textarea up to 6 lines
   useEffect(() => {
     const el = inputRef.current;
     if (!el) return;
@@ -334,40 +303,278 @@ export function WorkflowChat({ workflowId, workflowContext, onWorkflowUpdated }:
     e.preventDefault();
     const trimmed = input.trim();
     if (!trimmed || isStreaming) return;
+
+    const userMessage: ChatMessage = { role: "user", content: trimmed, blocks: [] };
+    setMessages((prev) => [...prev, userMessage]);
     setInput("");
-    await sendMessage({ text: trimmed });
+    setIsStreaming(true);
+
+    // Add empty assistant message for streaming
+    setMessages((prev) => [...prev, { role: "assistant", content: "", blocks: [] }]);
+
+    try {
+      const res = await fetch("/api/v1/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: trimmed,
+          sessionId,
+          context: workflowContext,
+        }),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text().catch(() => "Unknown error");
+        setMessages((prev) =>
+          updateLastMessage(prev, (msg) => ({
+            ...msg,
+            content: `Sorry, I encountered an error: ${errText}`,
+            blocks: [{ type: "text", text: `Sorry, I encountered an error: ${errText}` }],
+          })),
+        );
+        setIsStreaming(false);
+        return;
+      }
+
+      const reader = res.body?.getReader();
+      if (!reader) {
+        setIsStreaming(false);
+        return;
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const payload = line.slice(6);
+          if (payload === "[DONE]") continue;
+
+          try {
+            const event = JSON.parse(payload);
+
+            switch (event.type) {
+              /* ── Text tokens ─────────────────────────────── */
+              case "token": {
+                if (!event.token) break;
+                setMessages((prev) =>
+                  updateLastMessage(prev, (msg) => {
+                    const newContent = msg.content + event.token;
+                    // Ensure there's a text block to append to
+                    const lastBlock = msg.blocks[msg.blocks.length - 1];
+                    if (lastBlock?.type === "text") {
+                      return {
+                        ...msg,
+                        content: newContent,
+                        blocks: [
+                          ...msg.blocks.slice(0, -1),
+                          { type: "text", text: lastBlock.text + event.token },
+                        ],
+                      };
+                    }
+                    return {
+                      ...msg,
+                      content: newContent,
+                      blocks: [...msg.blocks, { type: "text", text: event.token }],
+                    };
+                  }),
+                );
+                break;
+              }
+
+              /* ── Thinking ────────────────────────────────── */
+              case "thinking_start": {
+                setMessages((prev) =>
+                  updateLastMessage(prev, (msg) =>
+                    appendBlock(msg, { type: "thinking", thinking: "", isStreaming: true }),
+                  ),
+                );
+                break;
+              }
+              case "thinking_delta":
+              case "thinking": {
+                const delta = event.thinking || event.delta || "";
+                setMessages((prev) =>
+                  updateLastMessage(prev, (msg) => {
+                    const lastBlock = msg.blocks[msg.blocks.length - 1];
+                    if (lastBlock?.type === "thinking") {
+                      return updateLastBlock(msg, (b) =>
+                        b.type === "thinking" ? { ...b, thinking: b.thinking + delta } : b,
+                      );
+                    }
+                    // Auto-start thinking block if we get a delta without start
+                    return appendBlock(msg, { type: "thinking", thinking: delta, isStreaming: true });
+                  }),
+                );
+                break;
+              }
+              case "thinking_stop": {
+                setMessages((prev) =>
+                  updateLastMessage(prev, (msg) =>
+                    updateLastBlock(msg, (b) =>
+                      b.type === "thinking" ? { ...b, isStreaming: false } : b,
+                    ),
+                  ),
+                );
+                break;
+              }
+
+              /* ── Tool calls ──────────────────────────────── */
+              case "tool_call": {
+                setMessages((prev) =>
+                  updateLastMessage(prev, (msg) =>
+                    appendBlock(msg, {
+                      type: "tool_call",
+                      id: event.id || event.toolCallId || `tc_${Date.now()}`,
+                      name: event.name || event.tool || "unknown",
+                      args: typeof event.args === "string"
+                        ? event.args
+                        : JSON.stringify(event.args ?? {}),
+                      isStreaming: true,
+                    }),
+                  ),
+                );
+                break;
+              }
+              case "tool_call_delta": {
+                const argsDelta = event.args || event.delta || "";
+                setMessages((prev) =>
+                  updateLastMessage(prev, (msg) =>
+                    updateLastBlock(msg, (b) =>
+                      b.type === "tool_call"
+                        ? { ...b, args: b.args + argsDelta }
+                        : b,
+                    ),
+                  ),
+                );
+                break;
+              }
+              case "tool_call_stop": {
+                setMessages((prev) =>
+                  updateLastMessage(prev, (msg) =>
+                    updateLastBlock(msg, (b) =>
+                      b.type === "tool_call" ? { ...b, isStreaming: false } : b,
+                    ),
+                  ),
+                );
+                break;
+              }
+
+              /* ── Tool results ────────────────────────────── */
+              case "tool_result": {
+                setMessages((prev) =>
+                  updateLastMessage(prev, (msg) => {
+                    // Mark matching tool_call as done
+                    const toolCallId = event.id || event.toolCallId || "";
+                    const toolName = event.name || event.tool || "";
+                    const resultContent = typeof event.result === "string"
+                      ? event.result
+                      : typeof event.content === "string"
+                        ? event.content
+                        : JSON.stringify(event.result ?? event.content ?? "");
+
+                    const blocks = msg.blocks.map((b) =>
+                      b.type === "tool_call" && (b.id === toolCallId || b.name === toolName)
+                        ? { ...b, isStreaming: false }
+                        : b,
+                    );
+
+                    return {
+                      ...msg,
+                      blocks: [
+                        ...blocks,
+                        {
+                          type: "tool_result" as const,
+                          toolCallId,
+                          name: toolName,
+                          content: resultContent,
+                        },
+                      ],
+                    };
+                  }),
+                );
+                break;
+              }
+
+              default:
+                // Ignore unknown event types (buttons, input_request, etc.)
+                break;
+            }
+          } catch {
+            // Skip malformed events
+          }
+        }
+      }
+    } catch (err) {
+      setMessages((prev) =>
+        updateLastMessage(prev, (msg) => ({
+          ...msg,
+          content: `Sorry, something went wrong: ${err instanceof Error ? err.message : "Unknown error"}`,
+          blocks: [
+            { type: "text", text: `Sorry, something went wrong: ${err instanceof Error ? err.message : "Unknown error"}` },
+          ],
+        })),
+      );
+    } finally {
+      setIsStreaming(false);
+    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit(e as unknown as FormEvent);
+      handleSubmit(e);
     }
   }
 
   const hasMessages = messages.length > 0;
+  const lastMsg = messages[messages.length - 1];
+  const showLoadingDots = isStreaming && lastMsg?.role === "assistant" && lastMsg.content === "" && lastMsg.blocks.length === 0;
 
   return (
     <div className="flex flex-col min-h-0">
+      {/* Messages */}
       {hasMessages && (
         <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0 px-4 py-3 space-y-3">
-          {messages.map((msg) => (
-            <MessageBubble
-              key={msg.id}
-              message={msg}
-              isStreaming={isStreaming && msg.id === messages[messages.length - 1]?.id}
-            />
-          ))}
-          {error && (
-            <div className="flex justify-start">
-              <div className="max-w-[85%] rounded-2xl px-4 py-3 text-sm bg-red-50 text-red-700 border border-red-200">
-                Sorry, something went wrong: {error.message}
+          {messages.map((msg, i) => (
+            <div
+              key={i}
+              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+            >
+              <div
+                className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                  msg.role === "user"
+                    ? "bg-brand-600 text-white"
+                    : "bg-gray-100 text-gray-800"
+                }`}
+              >
+                {msg.role === "assistant" ? (
+                  <MessageContent message={msg} />
+                ) : (
+                  <span className="whitespace-pre-wrap">{msg.content}</span>
+                )}
+                {i === messages.length - 1 && showLoadingDots && (
+                  <span className="inline-flex gap-1">
+                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                  </span>
+                )}
               </div>
             </div>
-          )}
+          ))}
         </div>
       )}
 
+      {/* Input */}
       <form onSubmit={handleSubmit} className="flex-shrink-0 border-t border-gray-200 bg-white p-4">
         <div className="flex items-end gap-2">
           <textarea
@@ -375,7 +582,7 @@ export function WorkflowChat({ workflowId, workflowContext, onWorkflowUpdated }:
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask about this workflow, view prompts, or request changes…"
+            placeholder="Ask about this workflow..."
             disabled={isStreaming}
             rows={1}
             className="flex-1 resize-none rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:opacity-50 disabled:bg-gray-50"
