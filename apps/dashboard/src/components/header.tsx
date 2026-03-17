@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { useState, useRef, useEffect } from "react";
 import { BreadcrumbNav } from "./breadcrumb-nav";
+import { ThemeToggle } from "./theme-toggle";
 import { useMobileSidebar } from "./mobile-sidebar-context";
 
 export function Header() {
@@ -51,6 +52,7 @@ export function Header() {
 
         {/* Right: Docs + User menu */}
         <div className="flex items-center gap-3">
+          <ThemeToggle />
           <a
             href="https://docs.distribute.you"
             target="_blank"
