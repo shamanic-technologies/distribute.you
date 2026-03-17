@@ -121,7 +121,7 @@ describe("Workflow chat component", () => {
   });
 
   it("should render tool call indicators", () => {
-    expect(content).toContain("ToolIndicator");
+    expect(content).toContain("ToolCallUI");
     expect(content).toContain("TOOL_LABELS");
     expect(content).toContain("Fetching workflow details");
     expect(content).toContain("Validating workflow");

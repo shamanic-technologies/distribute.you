@@ -25,7 +25,6 @@ export default function WorkflowViewerPage() {
   const { data: summary } = useAuthQuery(
     ["workflow-summary", workflowId],
     () => getWorkflowSummary(workflowId),
-    { enabled: !!workflow }
   );
 
   const workflowContext = useMemo(() => {

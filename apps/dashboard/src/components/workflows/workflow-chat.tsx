@@ -5,6 +5,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import type { UIMessage } from "ai";
 import Markdown from "react-markdown";
+import { ChevronRightIcon, WrenchScrewdriverIcon, SparklesIcon } from "@heroicons/react/20/solid";
 import { MermaidDiagram } from "./mermaid-diagram";
 
 interface WorkflowChatProps {
@@ -26,11 +27,69 @@ interface PartLike {
   type: string;
   text?: string;
   toolName?: string;
+  toolCallId?: string;
   state?: string;
+  input?: unknown;
   output?: unknown;
+  errorText?: string;
 }
 
-/** Extract ```mermaid blocks from text and return segments */
+/* ─── Collapsible wrapper ────────────────────────────────────────────── */
+
+function Collapsible({
+  label,
+  icon,
+  isStreaming,
+  defaultOpen = false,
+  accentColor = "gray",
+  children,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  isStreaming?: boolean;
+  defaultOpen?: boolean;
+  accentColor?: "gray" | "brand" | "amber";
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  const colorMap = {
+    gray: "bg-gray-50 border-gray-200 text-gray-600",
+    brand: "bg-brand-50 border-brand-200 text-brand-700",
+    amber: "bg-amber-50 border-amber-200 text-amber-700",
+  };
+
+  return (
+    <div className={`my-2 rounded-lg border ${colorMap[accentColor]} overflow-hidden`}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-2 w-full px-3 py-2 text-xs font-medium hover:opacity-80 transition-opacity"
+      >
+        <ChevronRightIcon
+          className={`w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200 ${open ? "rotate-90" : ""}`}
+        />
+        {icon}
+        <span className="truncate">{label}</span>
+        {isStreaming && (
+          <span className="ml-auto flex gap-0.5">
+            <span className="w-1 h-1 rounded-full bg-current animate-bounce" style={{ animationDelay: "0ms" }} />
+            <span className="w-1 h-1 rounded-full bg-current animate-bounce" style={{ animationDelay: "150ms" }} />
+            <span className="w-1 h-1 rounded-full bg-current animate-bounce" style={{ animationDelay: "300ms" }} />
+          </span>
+        )}
+      </button>
+      {open && (
+        <div className="px-3 pb-2 text-xs opacity-80 whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Mermaid + markdown parsing ─────────────────────────────────────── */
+
 function parseMessageSegments(content: string): Array<{ type: "text" | "mermaid"; value: string }> {
   const segments: Array<{ type: "text" | "mermaid"; value: string }> = [];
   const regex = /```mermaid\n([\s\S]*?)```/g;
@@ -52,6 +111,16 @@ function parseMessageSegments(content: string): Array<{ type: "text" | "mermaid"
   return segments;
 }
 
+const markdownComponents = {
+  p: ({ children }: { children?: React.ReactNode }) => <p className="mb-2 last:mb-0">{children}</p>,
+  strong: ({ children }: { children?: React.ReactNode }) => <strong className="font-semibold">{children}</strong>,
+  ul: ({ children }: { children?: React.ReactNode }) => <ul className="list-disc list-inside mb-2 space-y-0.5">{children}</ul>,
+  ol: ({ children }: { children?: React.ReactNode }) => <ol className="list-decimal list-inside mb-2 space-y-0.5">{children}</ol>,
+  code: ({ children }: { children?: React.ReactNode }) => <code className="bg-gray-200/60 rounded px-1 py-0.5 text-xs font-mono">{children}</code>,
+  pre: ({ children }: { children?: React.ReactNode }) => <pre className="bg-gray-800 text-gray-100 rounded-lg p-3 my-2 overflow-x-auto text-xs">{children}</pre>,
+  a: ({ href, children }: { href?: string; children?: React.ReactNode }) => <a href={href} className="text-brand-600 underline" target="_blank" rel="noopener noreferrer">{children}</a>,
+};
+
 function TextContent({ text }: { text: string }) {
   const segments = parseMessageSegments(text);
 
@@ -61,18 +130,7 @@ function TextContent({ text }: { text: string }) {
         seg.type === "mermaid" ? (
           <MermaidDiagram key={i} chart={seg.value} className="my-3 bg-white rounded-lg p-4 border border-gray-100" />
         ) : (
-          <Markdown
-            key={i}
-            components={{
-              p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-              strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-              ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-0.5">{children}</ul>,
-              ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-0.5">{children}</ol>,
-              code: ({ children }) => <code className="bg-gray-200/60 rounded px-1 py-0.5 text-xs font-mono">{children}</code>,
-              pre: ({ children }) => <pre className="bg-gray-800 text-gray-100 rounded-lg p-3 my-2 overflow-x-auto text-xs">{children}</pre>,
-              a: ({ href, children }) => <a href={href} className="text-brand-600 underline" target="_blank" rel="noopener noreferrer">{children}</a>,
-            }}
-          >
+          <Markdown key={i} components={markdownComponents}>
             {seg.value}
           </Markdown>
         )
@@ -80,6 +138,8 @@ function TextContent({ text }: { text: string }) {
     </>
   );
 }
+
+/* ─── Part helpers ────────────────────────────────────────────────────── */
 
 function getPartToolName(part: PartLike): string {
   if (part.toolName) return part.toolName;
@@ -97,41 +157,90 @@ function isToolPart(part: PartLike): boolean {
   return part.type.startsWith("tool-") || part.type === "dynamic-tool";
 }
 
-function ToolIndicator({ toolName, state }: { toolName: string; state: string }) {
-  const label = TOOL_LABELS[toolName] ?? toolName;
+function isReasoningPart(part: PartLike): boolean {
+  return part.type === "reasoning";
+}
 
-  if (state === "result") {
-    return (
-      <div className="flex items-center gap-2 text-xs text-green-600 py-1">
-        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-        </svg>
-        <span>{label} done</span>
-      </div>
-    );
+/* ─── Tool call collapsible ──────────────────────────────────────────── */
+
+function ToolCallUI({ part }: { part: PartLike }) {
+  const toolName = getPartToolName(part);
+  const state = getPartState(part);
+  const friendlyLabel = TOOL_LABELS[toolName] ?? toolName.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  const isActive = state === "call" || state === "input-streaming" || state === "partial-call";
+
+  const statusLabel = state === "result"
+    ? `${friendlyLabel} done`
+    : state === "error"
+      ? `${friendlyLabel} failed`
+      : `${friendlyLabel}…`;
+
+  let parsedInput: string | null = null;
+  if (part.input) {
+    try {
+      parsedInput = JSON.stringify(part.input, null, 2);
+    } catch {
+      parsedInput = String(part.input);
+    }
   }
 
-  if (state === "error") {
-    return (
-      <div className="flex items-center gap-2 text-xs text-red-500 py-1">
-        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-        </svg>
-        <span>{label} failed</span>
-      </div>
-    );
+  let parsedOutput: string | null = null;
+  if (part.output) {
+    try {
+      parsedOutput = JSON.stringify(part.output, null, 2);
+    } catch {
+      parsedOutput = String(part.output);
+    }
   }
 
   return (
-    <div className="flex items-center gap-2 text-xs text-gray-500 py-1">
-      <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-      </svg>
-      <span>{label}…</span>
-    </div>
+    <Collapsible
+      label={statusLabel}
+      icon={<WrenchScrewdriverIcon className="w-3.5 h-3.5 flex-shrink-0" />}
+      isStreaming={isActive}
+      accentColor="brand"
+    >
+      {parsedInput && (
+        <div className="mb-2">
+          <span className="font-semibold block mb-0.5">Input:</span>
+          <pre className="bg-white/60 rounded p-2 overflow-x-auto">{parsedInput}</pre>
+        </div>
+      )}
+      {parsedOutput && (
+        <div>
+          <span className="font-semibold block mb-0.5">Result:</span>
+          <pre className="bg-white/60 rounded p-2 overflow-x-auto max-h-32 overflow-y-auto">
+            {parsedOutput}
+          </pre>
+        </div>
+      )}
+      {part.errorText && (
+        <div className="text-red-600">
+          <span className="font-semibold block mb-0.5">Error:</span>
+          {part.errorText}
+        </div>
+      )}
+    </Collapsible>
   );
 }
+
+/* ─── Reasoning/thinking collapsible ─────────────────────────────────── */
+
+function ReasoningUI({ part }: { part: PartLike }) {
+  const isActive = part.state === "streaming";
+  return (
+    <Collapsible
+      label={isActive ? "Thinking..." : "Thought process"}
+      icon={<SparklesIcon className="w-3.5 h-3.5 flex-shrink-0" />}
+      isStreaming={isActive}
+      accentColor="amber"
+    >
+      {part.text || "..."}
+    </Collapsible>
+  );
+}
+
+/* ─── Message bubble ─────────────────────────────────────────────────── */
 
 function MessageBubble({ message, isStreaming }: { message: UIMessage; isStreaming: boolean }) {
   const isUser = message.role === "user";
@@ -139,7 +248,8 @@ function MessageBubble({ message, isStreaming }: { message: UIMessage; isStreami
 
   const hasText = parts.some((p) => p.type === "text" && p.text && p.text.length > 0);
   const hasTools = parts.some(isToolPart);
-  const isEmpty = !isUser && !hasText && !hasTools;
+  const hasReasoning = parts.some(isReasoningPart);
+  const isEmpty = !isUser && !hasText && !hasTools && !hasReasoning;
 
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
@@ -155,13 +265,10 @@ function MessageBubble({ message, isStreaming }: { message: UIMessage; isStreami
               : <TextContent key={i} text={part.text} />;
           }
           if (isToolPart(part)) {
-            return (
-              <ToolIndicator
-                key={i}
-                toolName={getPartToolName(part)}
-                state={getPartState(part)}
-              />
-            );
+            return <ToolCallUI key={i} part={part} />;
+          }
+          if (isReasoningPart(part)) {
+            return <ReasoningUI key={i} part={part} />;
           }
           return null;
         })}
@@ -177,6 +284,8 @@ function MessageBubble({ message, isStreaming }: { message: UIMessage; isStreami
     </div>
   );
 }
+
+/* ─── Main chat component ────────────────────────────────────────────── */
 
 export function WorkflowChat({ workflowId, workflowContext, onWorkflowUpdated }: WorkflowChatProps) {
   const [input, setInput] = useState("");
