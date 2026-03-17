@@ -29,6 +29,7 @@ export default function WorkflowViewerPage() {
   const workflowContext = useMemo(() => {
     if (!workflow) return {};
     return {
+      workflowId: workflow.id,
       workflow: {
         name: workflow.name,
         displayName: workflow.displayName,
