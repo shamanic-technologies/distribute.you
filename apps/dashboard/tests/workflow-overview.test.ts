@@ -85,6 +85,48 @@ describe("WorkflowChat component (chat-only)", () => {
     expect(content).toContain("e.key === \"Enter\"");
     expect(content).toContain("!e.shiftKey");
   });
+
+  it("should handle thinking_start / thinking_delta / thinking_stop events", () => {
+    const content = fs.readFileSync(chatPath, "utf-8");
+    expect(content).toContain('"thinking_start"');
+    expect(content).toContain('"thinking_delta"');
+    expect(content).toContain('"thinking_stop"');
+  });
+
+  it("should handle tool_call with id, name, args (no delta/stop)", () => {
+    const content = fs.readFileSync(chatPath, "utf-8");
+    expect(content).toContain('"tool_call"');
+    expect(content).toContain("event.id");
+    expect(content).toContain("event.name");
+    expect(content).toContain("event.args");
+    // No streaming tool_call_delta or tool_call_stop
+    expect(content).not.toContain('"tool_call_delta"');
+    expect(content).not.toContain('"tool_call_stop"');
+  });
+
+  it("should handle tool_result with id, name, result fields", () => {
+    const content = fs.readFileSync(chatPath, "utf-8");
+    expect(content).toContain('"tool_result"');
+    expect(content).toContain("event.result");
+  });
+
+  it("should render collapsible UI for thinking and tool calls", () => {
+    const content = fs.readFileSync(chatPath, "utf-8");
+    expect(content).toContain("Collapsible");
+    expect(content).toContain("ThinkingBlockUI");
+    expect(content).toContain("ToolCallBlockUI");
+    expect(content).toContain("CheckCircleIcon");
+    expect(content).toContain("ArrowPathIcon");
+  });
+
+  it("should use result field (not content) in ToolResultBlock", () => {
+    const content = fs.readFileSync(chatPath, "utf-8");
+    // ToolResultBlock should have result field and toolCallId for matching
+    expect(content).toContain("toolCallId: string;");
+    expect(content).toContain("result: string;");
+    // PrettyJSON component for formatting tool output
+    expect(content).toContain("PrettyJSON");
+  });
 });
 
 describe("Workflow viewer page composition", () => {
