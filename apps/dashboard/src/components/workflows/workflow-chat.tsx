@@ -961,7 +961,7 @@ export function WorkflowChat({ workflowId, workflowContext }: WorkflowChatProps)
               ) : (
                 /* Assistant message: no background, left-aligned */
                 <div key={i} className="flex gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <div className={`w-7 h-7 rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center flex-shrink-0 mt-0.5${i === messages.length - 1 && isStreaming ? " animate-pulse" : ""}`}>
                     <SparklesIcon className="w-4 h-4 text-white" />
                   </div>
                   <div className="flex-1 min-w-0 text-sm text-gray-800 dark:text-gray-200 leading-relaxed">
