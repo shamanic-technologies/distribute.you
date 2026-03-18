@@ -88,13 +88,9 @@ describe("Platform config registration at startup", () => {
       expect(content).toContain("expert workflow editor embedded in a workflow management dashboard");
     });
 
-    it("should include mcpServerUrl pointing to /internal/mcp-tools", () => {
-      expect(content).toContain("/internal/mcp-tools");
-      expect(content).toContain("mcpServerUrl");
-    });
-
-    it("should include mcpKeyName for api-service-mcp", () => {
-      expect(content).toContain('mcpKeyName: "api-service-mcp"');
+    it("should not include removed mcpServerUrl or mcpKeyName fields", () => {
+      expect(content).not.toContain("mcpServerUrl");
+      expect(content).not.toContain("mcpKeyName");
     });
 
     it("should be non-blocking (warn on failure, not throw)", () => {
