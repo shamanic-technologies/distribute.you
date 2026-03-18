@@ -786,65 +786,77 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
   const showLoadingDots = isStreaming && lastMsg?.role === "assistant" && lastMsg.content === "" && lastMsg.blocks.length === 0;
 
   return (
-    <div className="flex flex-col min-h-0">
+    <div className="flex-1 flex flex-col min-h-0">
       {/* Messages */}
-      {hasMessages && (
-        <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0 px-4 py-3 space-y-3">
-          {messages.map((msg, i) => (
-            <div
-              key={i}
-              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                  msg.role === "user"
-                    ? "bg-brand-600 text-white"
-                    : "bg-gray-100 text-gray-800"
-                }`}
-              >
-                {msg.role === "assistant" ? (
-                  <MessageContent message={msg} onSendMessage={sendMessage} isStreaming={isStreaming} />
-                ) : (
-                  <span className="whitespace-pre-wrap">{msg.content}</span>
-                )}
-                {i === messages.length - 1 && showLoadingDots && (
-                  <span className="inline-flex gap-1">
-                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-                  </span>
-                )}
-              </div>
-            </div>
-          ))}
+      {hasMessages ? (
+        <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+            {messages.map((msg, i) =>
+              msg.role === "user" ? (
+                <div key={i} className="flex justify-end">
+                  <div className="max-w-[80%] bg-gray-900 text-white rounded-2xl rounded-br-sm px-4 py-2.5 text-sm leading-relaxed shadow-sm">
+                    <span className="whitespace-pre-wrap">{msg.content}</span>
+                  </div>
+                </div>
+              ) : (
+                <div key={i} className="flex gap-3">
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm">
+                    <SparklesIcon className="w-4 h-4 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0 text-sm text-gray-800 leading-relaxed">
+                    <MessageContent message={msg} onSendMessage={sendMessage} isStreaming={isStreaming} />
+                    {i === messages.length - 1 && showLoadingDots && (
+                      <span className="inline-flex gap-1 mt-2">
+                        <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                        <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                        <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ),
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 flex flex-col items-center justify-center p-8">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-50 to-brand-100 flex items-center justify-center mb-5 shadow-sm">
+            <SparklesIcon className="w-7 h-7 text-brand-500" />
+          </div>
+          <h3 className="font-display font-bold text-gray-900 text-lg mb-1.5">Ask about this workflow</h3>
+          <p className="text-sm text-gray-500 text-center max-w-xs leading-relaxed">
+            I can help you configure, run, or understand how this workflow works.
+          </p>
         </div>
       )}
 
       {/* Input */}
-      <form onSubmit={handleSubmit} className="flex-shrink-0 border-t border-gray-200 bg-white p-4">
-        <div className="flex items-end gap-2">
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask about this workflow..."
-            disabled={isStreaming}
-            rows={1}
-            className="flex-1 resize-none rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:opacity-50 disabled:bg-gray-50"
-            style={{ maxHeight: 144 }}
-          />
-          <button
-            type="submit"
-            disabled={isStreaming || !input.trim()}
-            className="px-4 py-2.5 bg-brand-600 text-white rounded-xl text-sm font-medium hover:bg-brand-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
-          </button>
-        </div>
-      </form>
+      <div className="flex-shrink-0 border-t border-gray-100 bg-white/80 backdrop-blur-sm px-4 py-3">
+        <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
+          <div className="flex items-end gap-2 bg-gray-50 rounded-2xl border border-gray-200 pl-4 pr-2 py-2 focus-within:border-brand-300 focus-within:ring-2 focus-within:ring-brand-500/10 transition-all shadow-sm">
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask about this workflow..."
+              disabled={isStreaming}
+              rows={1}
+              className="flex-1 resize-none bg-transparent text-sm focus:outline-none disabled:opacity-50 py-1.5 placeholder:text-gray-400"
+              style={{ maxHeight: 144 }}
+            />
+            <button
+              type="submit"
+              disabled={isStreaming || !input.trim()}
+              className="w-8 h-8 rounded-xl bg-brand-600 text-white flex items-center justify-center hover:bg-brand-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" />
+              </svg>
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
