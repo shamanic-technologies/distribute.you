@@ -766,13 +766,13 @@ export async function fetchSectionLeaderboard(sectionKey: string): Promise<Workf
 
 // Ranked workflows (family-aggregated stats from workflow-service)
 export interface RankedEmailStats {
-  sent: number;
-  delivered: number;
-  opened: number;
-  clicked: number;
-  replied: number;
-  bounced: number;
-  unsubscribed: number;
+  emailsContacted: number;
+  emailsSent: number;
+  emailsDelivered: number;
+  emailsOpened: number;
+  emailsClicked: number;
+  emailsReplied: number;
+  emailsBounced: number;
   recipients: number;
 }
 

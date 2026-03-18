@@ -55,18 +55,18 @@ describe("Feature creation page uses ranked workflows endpoint", () => {
 
 describe("rankedToRow computes display metrics from raw stats", () => {
   it("should compute rates from broadcast email stats", () => {
-    expect(content).toContain("b.opened / b.sent");
-    expect(content).toContain("b.clicked / b.sent");
-    expect(content).toContain("b.replied / b.sent");
+    expect(content).toContain("b.emailsOpened / b.emailsSent");
+    expect(content).toContain("b.emailsClicked / b.emailsSent");
+    expect(content).toContain("b.emailsReplied / b.emailsSent");
   });
 
   it("should compute cost-per metrics from total cost", () => {
-    expect(content).toContain("cost / b.opened");
-    expect(content).toContain("cost / b.clicked");
-    expect(content).toContain("cost / b.replied");
+    expect(content).toContain("cost / b.emailsOpened");
+    expect(content).toContain("cost / b.emailsClicked");
+    expect(content).toContain("cost / b.emailsReplied");
   });
 
   it("should handle zero-sent case with zero rates", () => {
-    expect(content).toContain("b.sent > 0 ?");
+    expect(content).toContain("b.emailsSent > 0 ?");
   });
 });

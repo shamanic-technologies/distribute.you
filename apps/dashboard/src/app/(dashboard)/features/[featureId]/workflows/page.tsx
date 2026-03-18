@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
+import { keepPreviousData } from "@tanstack/react-query";
 import { WORKFLOW_DEFINITIONS } from "@distribute/content";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
@@ -10,8 +11,8 @@ import {
 } from "@/lib/api";
 import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-panel";
 
-const POLL_INTERVAL = 5_000;
-const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
+const POLL_INTERVAL = 30_000;
+const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false, placeholderData: keepPreviousData };
 
 function formatPercent(rate: number): string {
   if (rate === 0) return "—";
@@ -59,11 +60,11 @@ function rankedToRow(item: RankedWorkflowItem): WorkflowRowData {
     channel: item.workflow.channel,
     audienceType: item.workflow.audienceType,
     signatureName: item.workflow.signatureName,
-    emailsSent: b.sent,
-    openRate: b.sent > 0 ? b.opened / b.sent : 0,
-    clickRate: b.sent > 0 ? b.clicked / b.sent : 0,
-    replyRate: b.sent > 0 ? b.replied / b.sent : 0,
-    costPerReplyCents: b.replied > 0 ? cost / b.replied : null,
+    emailsSent: b.emailsSent,
+    openRate: b.emailsSent > 0 ? b.emailsOpened / b.emailsSent : 0,
+    clickRate: b.emailsSent > 0 ? b.emailsClicked / b.emailsSent : 0,
+    replyRate: b.emailsSent > 0 ? b.emailsReplied / b.emailsSent : 0,
+    costPerReplyCents: b.emailsReplied > 0 ? cost / b.emailsReplied : null,
     runCount: item.stats.completedRuns,
     nodeCount: item.dag?.nodes?.length ?? 0,
     providerCount: 0,
