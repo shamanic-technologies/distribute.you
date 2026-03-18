@@ -1,9 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { useCampaign } from "@/lib/campaign-context";
-import { useQueryClient } from "@/lib/use-auth-query";
-import { stopCampaign, sendCampaignEmail } from "@/lib/api";
+import { useStopCampaign, useIsStoppingCampaign } from "@/lib/use-stop-campaign";
 import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
@@ -19,19 +17,12 @@ function formatTotalCost(cents: string | null | undefined): string | null {
 
 export default function CampaignOverviewPage() {
   const { campaign, stats, leads, emails, loading } = useCampaign();
-  const queryClient = useQueryClient();
-  const [stopping, setStopping] = useState(false);
+  const stopMutation = useStopCampaign();
+  const stopping = useIsStoppingCampaign(campaign?.id ?? "");
 
-  const handleStop = async () => {
+  const handleStop = () => {
     if (!campaign) return;
-    setStopping(true);
-    try {
-      await stopCampaign(campaign.id);
-      sendCampaignEmail("campaign_stopped", campaign).catch(() => {});
-      await queryClient.invalidateQueries({ queryKey: ["campaign", campaign.id] });
-    } finally {
-      setStopping(false);
-    }
+    stopMutation.mutate(campaign);
   };
 
   if (loading) {
