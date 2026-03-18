@@ -8,7 +8,6 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   listCampaignsByBrand,
   getCampaignBatchStats,
-  getBrandDeliveryStats,
   getBrandCostBreakdown,
   type Campaign,
 } from "@/lib/api";
@@ -99,48 +98,41 @@ export default function FeaturePage() {
   );
   const brandCostBreakdown = brandCostData?.costs ?? [];
 
-  const { data: brandDelivery, isLoading: isLoadingDelivery } = useAuthQuery(
-    ["brandDeliveryStats", brandId],
-    () => getBrandDeliveryStats(brandId),
-    { retry: false, ...pollOptions },
-  );
-
   // Show skeletons until ALL data sources have loaded at least once.
   // When there are no campaigns, batch stats are disabled (enabled: false) so skip that check.
   const hasData = campaignsData !== undefined;
   const batchStatsReady = campaignIds.length === 0 || !isLoadingBatchStats;
-  const allStatsLoaded = hasData && batchStatsReady && !isLoadingDelivery;
-  const statsLoading = !allStatsLoaded;
+  const statsLoading = !hasData || !batchStatsReady;
   const costsLoading = isLoadingCosts;
 
-  // Aggregate stats
+  // Aggregate all stats from a single source (batch stats) so everything updates in sync
   const statsValues = Object.values(campaignStats);
-  const campaignTotals = statsValues.reduce(
+  const totals = statsValues.reduce(
     (acc, s) => ({
       leadsServed: acc.leadsServed + (s.leadsServed || 0),
       emailsGenerated: acc.emailsGenerated + (s.emailsGenerated || 0),
+      emailsContacted: acc.emailsContacted + (s.emailsContacted || 0),
+      emailsDelivered: acc.emailsDelivered + (s.emailsDelivered || 0),
+      emailsOpened: acc.emailsOpened + (s.emailsOpened || 0),
+      emailsReplied: acc.emailsReplied + (s.emailsReplied || 0),
+      willingToMeet: acc.willingToMeet + (s.repliesWillingToMeet || 0),
+      interested: acc.interested + (s.repliesInterested || 0),
+      notInterested: acc.notInterested + (s.repliesNotInterested || 0),
+      outOfOffice: acc.outOfOffice + (s.repliesOutOfOffice || 0),
+      unsubscribe: acc.unsubscribe + (s.repliesUnsubscribe || 0),
     }),
-    { leadsServed: 0, emailsGenerated: 0 }
+    {
+      leadsServed: 0, emailsGenerated: 0, emailsContacted: 0,
+      emailsDelivered: 0, emailsOpened: 0, emailsReplied: 0,
+      willingToMeet: 0, interested: 0, notInterested: 0,
+      outOfOffice: 0, unsubscribe: 0,
+    }
   );
 
   const totalCostCents = brandCostBreakdown.reduce(
     (sum, c) => sum + (parseFloat(c.totalCostInUsdCents) || 0),
     0
   );
-
-  const totals = {
-    ...campaignTotals,
-    totalCostCents,
-    emailsContacted: brandDelivery?.emailsContacted ?? 0,
-    emailsDelivered: brandDelivery?.emailsDelivered ?? 0,
-    emailsOpened: brandDelivery?.emailsOpened ?? 0,
-    emailsReplied: brandDelivery?.emailsReplied ?? 0,
-    willingToMeet: brandDelivery?.repliesWillingToMeet ?? 0,
-    interested: brandDelivery?.repliesInterested ?? 0,
-    notInterested: brandDelivery?.repliesNotInterested ?? 0,
-    outOfOffice: brandDelivery?.repliesOutOfOffice ?? 0,
-    unsubscribe: brandDelivery?.repliesUnsubscribe ?? 0,
-  };
 
   const stopMutation = useStopCampaign();
 
@@ -156,9 +148,9 @@ export default function FeaturePage() {
         <div className="flex items-center gap-3">
           {costsLoading ? (
             <div className="h-5 w-20 bg-gray-200 rounded animate-pulse" />
-          ) : formatTotalCost(totals.totalCostCents) ? (
+          ) : formatTotalCost(totalCostCents) ? (
             <span className="text-sm font-semibold text-gray-700">
-              Total: {formatTotalCost(totals.totalCostCents)}
+              Total: {formatTotalCost(totalCostCents)}
             </span>
           ) : null}
           <Link
