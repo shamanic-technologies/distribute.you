@@ -364,6 +364,7 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
 
       if (!res.ok) {
         const errText = await res.text().catch(() => "Unknown error");
+        console.error("[chat] API error:", res.status, errText);
         setMessages((prev) =>
           updateLastMessage(prev, (msg) => ({
             ...msg,
@@ -526,11 +527,26 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
                 break;
             }
           } catch {
-            // Skip malformed events
+            console.warn("[chat] Failed to parse SSE event:", line);
           }
         }
       }
+
+      // If the stream ended but the assistant message is still empty, show a fallback
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (last?.role === "assistant" && last.content === "" && last.blocks.length === 0) {
+          console.warn("[chat] Stream ended with no content. sessionId:", sessionIdRef.current);
+          return updateLastMessage(prev, (msg) => ({
+            ...msg,
+            content: "No response received. Please try again.",
+            blocks: [{ type: "text", text: "No response received. Please try again." }],
+          }));
+        }
+        return prev;
+      });
     } catch (err) {
+      console.error("[chat] Stream error:", err);
       setMessages((prev) =>
         updateLastMessage(prev, (msg) => ({
           ...msg,
