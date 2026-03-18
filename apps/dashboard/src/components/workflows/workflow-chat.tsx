@@ -49,6 +49,7 @@ interface InputRequestBlock {
   label: string;
   placeholder?: string;
   field: string;
+  value?: string;
 }
 
 interface ButtonsBlock {
@@ -65,6 +66,7 @@ interface ChatMessage {
 }
 
 interface WorkflowChatProps {
+  workflowId: string;
   workflowContext: Record<string, unknown>;
 }
 
@@ -81,6 +83,47 @@ function MessageSkeleton() {
       </div>
     </div>
   );
+}
+
+/* ─── LocalStorage persistence helpers ───────────────────────────────── */
+
+interface PersistedChat {
+  sessionId: string | null;
+  messages: ChatMessage[];
+}
+
+function storageKey(workflowId: string) {
+  return `workflow-chat:${workflowId}`;
+}
+
+function loadChat(workflowId: string): PersistedChat | null {
+  try {
+    const raw = localStorage.getItem(storageKey(workflowId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PersistedChat;
+    // Clean up streaming flags from a previous session
+    for (const msg of parsed.messages) {
+      for (const block of msg.blocks) {
+        if ("isStreaming" in block) {
+          (block as { isStreaming?: boolean }).isStreaming = false;
+        }
+      }
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function saveChat(workflowId: string, sessionId: string | null, messages: ChatMessage[]) {
+  try {
+    localStorage.setItem(
+      storageKey(workflowId),
+      JSON.stringify({ sessionId, messages } satisfies PersistedChat),
+    );
+  } catch {
+    // quota exceeded — silently ignore
+  }
 }
 
 /* ─── Collapsible wrapper ────────────────────────────────────────────── */
@@ -256,7 +299,7 @@ function InputRequestBlockUI({
   onSubmit: (value: string) => void;
   disabled?: boolean;
 }) {
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState(block.value ?? "");
   const inputType = block.inputType === "url" ? "url" : block.inputType === "email" ? "email" : "text";
 
   function handleSubmit(e: FormEvent) {
@@ -464,15 +507,31 @@ function updateLastBlock(msg: ChatMessage, updater: (block: ContentBlock) => Con
 
 /* ─── Main chat component ────────────────────────────────────────────── */
 
-export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+export function WorkflowChat({ workflowId, workflowContext }: WorkflowChatProps) {
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    const persisted = loadChat(workflowId);
+    return persisted?.messages ?? [];
+  });
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [userHasScrolled, setUserHasScrolled] = useState(false);
-  const sessionIdRef = useRef<string | null>(null);
+  const sessionIdRef = useRef<string | null>(loadChat(workflowId)?.sessionId ?? null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Persist messages + sessionId on every change
+  useEffect(() => {
+    if (!isStreaming) {
+      saveChat(workflowId, sessionIdRef.current, messages);
+    }
+  }, [messages, isStreaming, workflowId]);
+
+  const resetChat = useCallback(() => {
+    setMessages([]);
+    sessionIdRef.current = null;
+    localStorage.removeItem(storageKey(workflowId));
+  }, [workflowId]);
 
   const scrollToBottom = useCallback(() => {
     if (scrollRef.current && !userHasScrolled) {
@@ -765,6 +824,7 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
                     label: (event.label || "") as string,
                     placeholder: (event.placeholder || undefined) as string | undefined,
                     field: (event.field || "") as string,
+                    value: (event.value as string | undefined) || undefined,
                   }),
                 ),
               );
@@ -865,20 +925,34 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
+      {/* Chat toolbar */}
+      {hasMessages && (
+        <div className="flex items-center justify-end px-4 py-1.5 border-b border-gray-100 dark:border-white/[0.04] bg-white dark:bg-transparent">
+          <button
+            type="button"
+            onClick={resetChat}
+            disabled={isStreaming}
+            className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <ArrowPathIcon className="w-3.5 h-3.5" />
+            Reset chat
+          </button>
+        </div>
+      )}
       {/* Messages */}
       {hasMessages ? (
         <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-5">
             {messages.map((msg, i) =>
               msg.role === "user" ? (
-                /* ── User message: right-aligned pill ── */
+                /* User message: right-aligned pill */
                 <div key={i} className="flex justify-end">
                   <div className="max-w-[85%] bg-brand-600 text-white rounded-2xl rounded-br-md px-4 py-2.5 text-sm leading-relaxed">
                     <span className="whitespace-pre-wrap">{msg.content}</span>
                   </div>
                 </div>
               ) : (
-                /* ── Assistant message: no background, left-aligned ── */
+                /* Assistant message: no background, left-aligned */
                 <div key={i} className="flex gap-3">
                   <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center flex-shrink-0 mt-0.5">
                     <SparklesIcon className="w-4 h-4 text-white" />
@@ -897,7 +971,7 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
           </div>
         </div>
       ) : (
-        /* ── Empty state ── */
+        /* Empty state */
         <div className="flex-1 flex flex-col items-center justify-center p-8">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-500/10 to-brand-600/10 dark:from-brand-400/10 dark:to-brand-500/10 flex items-center justify-center mb-4">
             <SparklesIcon className="w-6 h-6 text-brand-500 dark:text-brand-400" />
