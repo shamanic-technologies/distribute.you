@@ -121,6 +121,18 @@ html.dark .bg-white\/70 { background-color: rgba(255, 255, 255, 0.04); }
 /* Transparent bg inputs in chat */
 html.dark .bg-transparent { background-color: transparent; }
 
+/* Prose (Tailwind Typography) — email previews, rendered HTML */
+html.dark .prose { color: #e2e8f0; }
+html.dark .prose h1, html.dark .prose h2, html.dark .prose h3,
+html.dark .prose h4, html.dark .prose strong, html.dark .prose th { color: #f1f5f9; }
+html.dark .prose a { color: #93c5fd; }
+html.dark .prose blockquote { color: #94a3b8; border-left-color: #475569; }
+html.dark .prose code { color: #e2e8f0; }
+html.dark .prose pre { background-color: #0f172a; color: #e2e8f0; }
+html.dark .prose hr { border-color: #334155; }
+html.dark .prose td, html.dark .prose th { border-color: #334155; }
+html.dark .prose thead { border-bottom-color: #475569; }
+
 /* Scrollbar */
 html.dark ::-webkit-scrollbar { width: 8px; }
 html.dark ::-webkit-scrollbar-track { background: #0f172a; }
