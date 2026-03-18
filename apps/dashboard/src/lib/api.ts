@@ -749,6 +749,7 @@ export interface WorkflowLeaderboardEntry {
   costPerReplyCents: number | null;
 }
 
+/** @deprecated Use fetchRankedWorkflows instead. */
 export async function fetchSectionLeaderboard(sectionKey: string): Promise<WorkflowLeaderboardEntry[]> {
   try {
     const res = await fetch("/api/performance/leaderboard");

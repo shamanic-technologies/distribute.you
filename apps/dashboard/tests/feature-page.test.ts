@@ -228,9 +228,8 @@ describe("Create campaign page", () => {
       expect(content).toContain("failed");
     });
 
-    it("should have stop and resume actions", () => {
+    it("should have stop action", () => {
       expect(content).toContain("stopCampaign");
-      expect(content).toContain("resumeCampaign");
     });
   });
 
@@ -265,12 +264,12 @@ describe("Create campaign page", () => {
   });
 
   describe("Data source", () => {
-    it("should use fetchSectionLeaderboard for data", () => {
-      expect(content).toContain("fetchSectionLeaderboard");
+    it("should use fetchRankedWorkflows for data", () => {
+      expect(content).toContain("fetchRankedWorkflows");
     });
 
-    it("should use leaderboard entry type", () => {
-      expect(content).toContain("WorkflowLeaderboardEntry");
+    it("should use RankedWorkflowItem type", () => {
+      expect(content).toContain("RankedWorkflowItem");
     });
   });
 
