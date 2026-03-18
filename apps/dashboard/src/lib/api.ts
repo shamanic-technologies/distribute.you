@@ -766,13 +766,13 @@ export async function fetchSectionLeaderboard(sectionKey: string): Promise<Workf
 
 // Ranked workflows (family-aggregated stats from workflow-service)
 export interface RankedEmailStats {
-  emailsContacted: number;
-  emailsSent: number;
-  emailsDelivered: number;
-  emailsOpened: number;
-  emailsClicked: number;
-  emailsReplied: number;
-  emailsBounced: number;
+  sent: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  replied: number;
+  bounced: number;
+  unsubscribed: number;
   recipients: number;
 }
 
@@ -792,7 +792,7 @@ export interface RankedWorkflowItem {
     id: string;
     name: string;
     displayName: string | null;
-    brandId: string | null;
+    createdForBrandId: string | null;
     category: string;
     channel: string;
     audienceType: string;
