@@ -551,16 +551,19 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
             continue;
           }
 
-          // Server-side error sent as SSE event (e.g. {"error": "Session not found."})
+          // Legacy: untyped error event (e.g. {"error": "Session not found."})
           if (event.error && !event.type) {
             receivedContent = true;
             const errorMsg = String(event.error);
-            console.error("[chat] Server error:", errorMsg);
+            console.error("[chat] Server error (untyped):", errorMsg);
             setMessages((prev) =>
               updateLastMessage(prev, (msg) => ({
                 ...msg,
                 content: errorMsg,
-                blocks: [{ type: "text" as const, text: errorMsg }],
+                blocks: [
+                  ...msg.blocks,
+                  { type: "text" as const, text: `⚠ ${errorMsg}` },
+                ],
               })),
             );
             continue;
@@ -714,6 +717,24 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
                   ),
                 );
               }
+              break;
+            }
+
+            /* ── Error from server ───────────────────────── */
+            case "error": {
+              receivedContent = true;
+              const errorMsg = (event.message || "Unknown server error") as string;
+              console.error("[chat] Server error event:", errorMsg);
+              setMessages((prev) =>
+                updateLastMessage(prev, (msg) => ({
+                  ...msg,
+                  content: errorMsg,
+                  blocks: [
+                    ...msg.blocks,
+                    { type: "text" as const, text: `⚠ ${errorMsg}` },
+                  ],
+                })),
+              );
               break;
             }
 
