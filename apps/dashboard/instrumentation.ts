@@ -385,7 +385,6 @@ export async function register() {
 
   // Register platform chat config (non-blocking)
   try {
-    const mcpServerUrl = `${apiUrl}/internal/mcp-tools`;
     const res = await fetch(`${apiUrl}/platform-chat/config`, {
       method: "PUT",
       headers: {
@@ -394,8 +393,6 @@ export async function register() {
       },
       body: JSON.stringify({
         systemPrompt: CHAT_SYSTEM_PROMPT,
-        mcpServerUrl,
-        mcpKeyName: "api-service-mcp",
       }),
     });
 
