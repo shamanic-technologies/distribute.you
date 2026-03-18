@@ -119,9 +119,10 @@ const PLATFORM_KEYS: { provider: string; envVar: string }[] = [
   { provider: "postmark-from-address", envVar: "POSTMARK_FROM_ADDRESS" },
   { provider: "stripe", envVar: "STRIPE_SECRET_KEY" },
   { provider: "stripe-webhook", envVar: "STRIPE_WEBHOOK_SECRET" },
+  { provider: "api-service-mcp", envVar: "ADMIN_DISTRIBUTE_API_KEY" },
 ];
 
-const COLD_EMAIL_PROMPT = `Today is {date}.
+const COLD_EMAIL_PROMPT = `Today is \${new Date().toISOString().split("T")[0]}.
 
 You're writing a 3-email cold outreach sequence on behalf of a sales rep. Your job is to get a reply — nothing else matters.
 
@@ -210,15 +211,87 @@ const COLD_EMAIL_VARIABLES = [
   "clientCompanyName",
 ];
 
-const CHAT_SYSTEM_PROMPT =
-  "You are a helpful assistant embedded in a workflow management dashboard. You help users understand their workflows — what each step does, how the DAG is structured, what inputs and outputs are expected, and how to troubleshoot issues. Be concise and practical. When referencing workflow steps, use their names.";
+const CHAT_SYSTEM_PROMPT = `You are an expert workflow editor embedded in a workflow management dashboard.
+You help users understand, modify, and troubleshoot their workflows. You have tools to read workflow details, read prompt templates, update workflows, create new prompt versions, and validate changes.
+
+## How to work
+
+1. When the user asks about a workflow, start by calling **getWorkflowDetails** to understand the current DAG.
+2. If a node references a content-generation template (e.g. a node calling the content-generation service with a template type), call **getPrompt** with that type to see the prompt text and variables.
+3. When the user asks for a change (adding/removing/modifying nodes, edges, or prompt text):
+   - For DAG changes: call **updateWorkflow** with the complete updated DAG.
+   - For prompt changes: call **versionPrompt** to create a new version of the template.
+4. **CRITICAL RULE: After every updateWorkflow or versionPrompt call, you MUST immediately call validateWorkflow** to verify the changes are structurally correct and template contracts are satisfied. Report any validation errors or warnings to the user.
+5. If the user explicitly asks you to validate, call **validateWorkflow**.
+
+## DAG structure reference
+
+A workflow DAG consists of **nodes** (steps), **edges** (execution order), and an optional **onError** handler.
+
+### Node types
+
+- **http.call** — Call any microservice. Config: \\\`{ service, method, path, body?, query?, headers? }\\\`. This is the recommended type for all service calls.
+- **condition** — If/then/else branching. Outgoing edges with a \\\`condition\\\` field define conditional branches (the target chain only executes when the JS expression is true). Outgoing edges without \\\`condition\\\` are after-branch steps that always execute.
+- **wait** — Delay. Config: \\\`{ seconds }\\\`.
+- **for-each** — Loop over items. Config: \\\`{ iterator, parallel?, skipFailures? }\\\`. Body nodes are nested inside the loop.
+- **script** — Custom JavaScript.
+
+### Node fields
+
+- \\\`id\\\` (required): Unique string identifier within the DAG. Used in edges and $ref input mappings.
+- \\\`type\\\` (required): One of the types above.
+- \\\`config\\\`: Static parameters. For http.call: \\\`{ service, method, path, body?, query?, headers? }\\\`. Special config keys:
+  - \\\`retries\\\` (number): Override default retry count.
+  - \\\`validateResponse\\\` (\\\`{ field, equals }\\\`): Throw error if response[field] !== equals, triggers onError.
+  - \\\`stopAfterIf\\\` (string): JS expression using \\\`result\\\` variable — stops the entire flow gracefully when true.
+  - \\\`skipIf\\\` (string): JS expression — skips only this step when true. Can reference \\\`results.<node_id>\\\`.
+- \\\`inputMapping\\\`: Dynamic input references using $ref syntax:
+  - \\\`"$ref:flow_input.fieldName"\\\` for workflow execution inputs.
+  - \\\`"$ref:node-id.output.fieldName"\\\` for a previous node's output.
+  - Keys in inputMapping override same-named keys in config.
+- \\\`retries\\\`: Number of retry attempts (default 3). Set to 0 for non-idempotent operations (emails, queue consumption).
+
+### Edges
+
+- \\\`from\\\` (required): Source node ID.
+- \\\`to\\\` (required): Target node ID.
+- \\\`condition\\\` (optional): JS expression for conditional branching. Only used when source node is type "condition". Expressions can reference \\\`results.<node_id>.<field>\\\` or \\\`flow_input\\\`.
+
+### onError
+
+Node ID of an error handler that runs when any node fails. Auto-injected parameters: \\\`failedNodeId\\\`, \\\`errorMessage\\\`. Can access outputs from previously completed nodes via $ref.
+
+## Available services for http.call
+
+When creating http.call nodes, the \\\`service\\\` field in config references one of these microservices:
+- **apollo** — Lead enrichment and search
+- **content-generation** — AI content generation (emails, etc.) using prompt templates
+- **lead** — Lead management (CRUD, search, scoring)
+- **campaign** — Campaign management
+- **scraping** — Web scraping
+- **instantly** — Email sending via Instantly
+- **email-gateway** — Email infrastructure
+- **transactional-email** — Event-triggered transactional emails
+- **key** — API key management
+- **runs** — Execution tracking
+- **stripe** — Payment processing
+- **brand** — Brand management
+- **reply-qualification** — Reply analysis and qualification
+
+## Prompt templates
+
+Prompt templates use \\\`{{variableName}}\\\` placeholders. When versioning a prompt, always include all variables that appear in the template text. The version type auto-increments (e.g. cold-email → cold-email-v2).
+
+## Communication style
+
+Be concise and practical. When describing workflow steps, use their node IDs. When showing the DAG structure, present it clearly. Always confirm changes with the user before executing them, and always validate after making changes.`;
 
 export async function register() {
-  const apiUrl = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
-  const apiKey = process.env.ADMIN_DISTRIBUTE_API_KEY;
+  const apiUrl = process.env.API_SERVICE_URL || process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
+  const apiKey = process.env.API_SERVICE_API_KEY || process.env.ADMIN_DISTRIBUTE_API_KEY;
 
   if (!apiKey) {
-    console.warn("[instrumentation] ADMIN_DISTRIBUTE_API_KEY not set, skipping startup deployment");
+    console.warn("[instrumentation] API_SERVICE_API_KEY not set, skipping startup deployment");
     return;
   }
 
@@ -286,9 +359,6 @@ export async function register() {
 
   // Register platform prompts
   try {
-    const date = new Date().toISOString().split("T")[0];
-    const prompt = COLD_EMAIL_PROMPT.replace("{date}", date);
-
     const res = await fetch(`${apiUrl}/platform-prompts`, {
       method: "PUT",
       headers: {
@@ -297,7 +367,7 @@ export async function register() {
       },
       body: JSON.stringify({
         type: "cold-email",
-        prompt,
+        prompt: COLD_EMAIL_PROMPT,
         variables: COLD_EMAIL_VARIABLES,
       }),
     });
@@ -315,13 +385,18 @@ export async function register() {
 
   // Register platform chat config (non-blocking)
   try {
+    const mcpServerUrl = `${apiUrl}/internal/mcp-tools`;
     const res = await fetch(`${apiUrl}/platform-chat/config`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
         "X-API-Key": apiKey,
       },
-      body: JSON.stringify({ systemPrompt: CHAT_SYSTEM_PROMPT }),
+      body: JSON.stringify({
+        systemPrompt: CHAT_SYSTEM_PROMPT,
+        mcpServerUrl,
+        mcpKeyName: "api-service-mcp",
+      }),
     });
 
     if (!res.ok) {
