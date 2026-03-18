@@ -105,7 +105,9 @@ export default function WorkflowViewerPage() {
             </div>
             <div className="min-w-0 flex-1">
               <h1 className="font-display text-[15px] font-bold text-gray-900 dark:text-gray-100 truncate">
-                {workflow.displayName || workflow.name}
+                {workflow.signatureName
+                  ? workflow.signatureName.charAt(0).toUpperCase() + workflow.signatureName.slice(1)
+                  : workflow.displayName || workflow.name}
               </h1>
               <div className="flex gap-1.5 mt-1">
                 <span className="text-[11px] px-2 py-0.5 rounded-md bg-white dark:bg-white/[0.06] border border-gray-200 dark:border-white/[0.08] text-gray-500 dark:text-gray-400 font-medium">
@@ -143,7 +145,9 @@ export default function WorkflowViewerPage() {
                 </svg>
               </div>
               <h1 className="font-display text-sm font-bold text-gray-900 dark:text-gray-100 truncate">
-                {workflow.displayName || workflow.name}
+                {workflow.signatureName
+                  ? workflow.signatureName.charAt(0).toUpperCase() + workflow.signatureName.slice(1)
+                  : workflow.displayName || workflow.name}
               </h1>
               <span className="text-[11px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-white/[0.06] text-gray-500 dark:text-gray-400 flex-shrink-0">
                 {workflow.category}
