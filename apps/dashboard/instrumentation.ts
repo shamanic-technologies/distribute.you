@@ -287,11 +287,11 @@ Prompt templates use \\\`{{variableName}}\\\` placeholders. When versioning a pr
 Be concise and practical. When describing workflow steps, use their node IDs. When showing the DAG structure, present it clearly. Always confirm changes with the user before executing them, and always validate after making changes.`;
 
 export async function register() {
-  const apiUrl = process.env.API_SERVICE_URL || process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
-  const apiKey = process.env.API_SERVICE_API_KEY || process.env.ADMIN_DISTRIBUTE_API_KEY;
+  const apiUrl = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
+  const apiKey = process.env.ADMIN_DISTRIBUTE_API_KEY;
 
   if (!apiKey) {
-    console.warn("[instrumentation] API_SERVICE_API_KEY not set, skipping startup deployment");
+    console.warn("[instrumentation] ADMIN_DISTRIBUTE_API_KEY not set, skipping startup deployment");
     return;
   }
 
