@@ -20,6 +20,7 @@ describe("Platform config registration at startup", () => {
       { provider: "postmark-from-address", envVar: "POSTMARK_FROM_ADDRESS" },
       { provider: "stripe", envVar: "STRIPE_SECRET_KEY" },
       { provider: "stripe-webhook", envVar: "STRIPE_WEBHOOK_SECRET" },
+      { provider: "api-service-mcp", envVar: "ADMIN_DISTRIBUTE_API_KEY" },
     ];
 
     it("should call POST /platform-keys via api-service", () => {
@@ -34,9 +35,9 @@ describe("Platform config registration at startup", () => {
       });
     }
 
-    it("should register exactly 12 platform keys", () => {
+    it("should register exactly 13 platform keys", () => {
       const matches = content.match(/provider: "[^"]+", envVar: "[^"]+"/g);
-      expect(matches).toHaveLength(12);
+      expect(matches).toHaveLength(13);
     });
 
     it("should fail startup if any key env var is missing", () => {
@@ -68,8 +69,7 @@ describe("Platform config registration at startup", () => {
       }
     });
 
-    it("should dynamically replace {date} with today's date", () => {
-      expect(content).toContain('.replace("{date}"');
+    it("should dynamically insert today's date in the prompt", () => {
       expect(content).toContain('toISOString().split("T")[0]');
     });
 
@@ -84,12 +84,20 @@ describe("Platform config registration at startup", () => {
       expect(content).toContain("/platform-chat/config");
     });
 
-    it("should include the system prompt for workflow dashboard assistant", () => {
-      expect(content).toContain("helpful assistant embedded in a workflow management dashboard");
+    it("should include the workflow editor system prompt", () => {
+      expect(content).toContain("expert workflow editor embedded in a workflow management dashboard");
+    });
+
+    it("should include mcpServerUrl pointing to /internal/mcp-tools", () => {
+      expect(content).toContain("/internal/mcp-tools");
+      expect(content).toContain("mcpServerUrl");
+    });
+
+    it("should include mcpKeyName for api-service-mcp", () => {
+      expect(content).toContain('mcpKeyName: "api-service-mcp"');
     });
 
     it("should be non-blocking (warn on failure, not throw)", () => {
-      // Chat config uses console.warn, not throw
       expect(content).toContain("Chat config deployment failed");
       expect(content).toContain("console.warn");
     });
@@ -102,8 +110,12 @@ describe("Platform config registration at startup", () => {
       expect(content).not.toContain("CHAT_SERVICE_URL");
     });
 
+    it("should use API_SERVICE_URL and API_SERVICE_API_KEY env vars", () => {
+      expect(content).toContain("API_SERVICE_URL");
+      expect(content).toContain("API_SERVICE_API_KEY");
+    });
+
     it("should authenticate all calls with X-API-Key", () => {
-      // All fetch calls use the same apiKey from ADMIN_DISTRIBUTE_API_KEY
       const apiKeyUsages = content.match(/"X-API-Key": apiKey/g);
       expect(apiKeyUsages!.length).toBeGreaterThanOrEqual(4); // emails + keys + prompts + chat
     });
