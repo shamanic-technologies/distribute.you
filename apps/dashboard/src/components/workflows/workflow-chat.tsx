@@ -196,6 +196,7 @@ function ThinkingBlockUI({ block }: { block: ThinkingBlock }) {
       statusIcon={!block.isStreaming ? <CheckCircleIcon className="w-3.5 h-3.5 opacity-50" /> : undefined}
       isStreaming={block.isStreaming}
       variant="thinking"
+      defaultOpen
     >
       <p className="leading-relaxed opacity-70">{block.thinking || "..."}</p>
     </Collapsible>
