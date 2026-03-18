@@ -8,6 +8,9 @@ import {
   SparklesIcon,
   CheckCircleIcon,
   ArrowPathIcon,
+  XCircleIcon,
+  ArrowUpIcon,
+  StopIcon,
 } from "@heroicons/react/20/solid";
 import { MermaidDiagram } from "./mermaid-diagram";
 
@@ -65,6 +68,21 @@ interface WorkflowChatProps {
   workflowContext: Record<string, unknown>;
 }
 
+/* ─── Skeleton shimmer for loading state ─────────────────────────────── */
+
+function MessageSkeleton() {
+  return (
+    <div className="flex gap-3 animate-in fade-in duration-150">
+      <div className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-white/[0.06] animate-pulse flex-shrink-0" />
+      <div className="flex-1 space-y-2.5 pt-1">
+        <div className="h-3.5 bg-gray-100 dark:bg-white/[0.06] rounded-md w-3/4 animate-pulse" />
+        <div className="h-3.5 bg-gray-100 dark:bg-white/[0.06] rounded-md w-1/2 animate-pulse" style={{ animationDelay: "75ms" }} />
+        <div className="h-3.5 bg-gray-100 dark:bg-white/[0.06] rounded-md w-5/12 animate-pulse" style={{ animationDelay: "150ms" }} />
+      </div>
+    </div>
+  );
+}
+
 /* ─── Collapsible wrapper ────────────────────────────────────────────── */
 
 function Collapsible({
@@ -73,7 +91,7 @@ function Collapsible({
   statusIcon,
   isStreaming,
   defaultOpen = false,
-  accentColor = "gray",
+  variant = "default",
   children,
 }: {
   label: string;
@@ -81,19 +99,19 @@ function Collapsible({
   statusIcon?: React.ReactNode;
   isStreaming?: boolean;
   defaultOpen?: boolean;
-  accentColor?: "gray" | "brand" | "amber";
+  variant?: "default" | "thinking" | "error";
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
 
-  const colorMap = {
-    gray: "bg-gray-50 border-gray-200 text-gray-600",
-    brand: "bg-brand-50/60 border-brand-200 text-brand-700",
-    amber: "bg-amber-50/60 border-amber-200 text-amber-700",
+  const variantStyles = {
+    default: "bg-gray-50/80 dark:bg-white/[0.04] border-gray-200/60 dark:border-white/[0.08] text-gray-600 dark:text-gray-300",
+    thinking: "bg-amber-50/50 dark:bg-amber-500/[0.06] border-amber-200/50 dark:border-amber-400/[0.12] text-amber-700 dark:text-amber-300",
+    error: "bg-red-50/50 dark:bg-red-500/[0.06] border-red-200/50 dark:border-red-400/[0.12] text-red-700 dark:text-red-300",
   };
 
   return (
-    <div className={`my-2 rounded-xl border ${colorMap[accentColor]} overflow-hidden transition-colors`}>
+    <div className={`my-2 rounded-xl border ${variantStyles[variant]} overflow-hidden transition-colors`}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -117,7 +135,7 @@ function Collapsible({
         </span>
       </button>
       {open && (
-        <div className="px-3 pb-3 text-xs whitespace-pre-wrap break-words max-h-64 overflow-y-auto">
+        <div className="px-3 pb-3 text-xs whitespace-pre-wrap break-words max-h-64 overflow-y-auto border-t border-inherit">
           {children}
         </div>
       )}
@@ -130,13 +148,13 @@ function Collapsible({
 function ThinkingBlockUI({ block }: { block: ThinkingBlock }) {
   return (
     <Collapsible
-      label={block.isStreaming ? "Thinking…" : "Thought process"}
+      label={block.isStreaming ? "Thinking..." : "Thought process"}
       icon={<SparklesIcon className="w-3.5 h-3.5 flex-shrink-0" />}
-      statusIcon={!block.isStreaming ? <CheckCircleIcon className="w-3.5 h-3.5 text-amber-500/70" /> : undefined}
+      statusIcon={!block.isStreaming ? <CheckCircleIcon className="w-3.5 h-3.5 opacity-50" /> : undefined}
       isStreaming={block.isStreaming}
-      accentColor="amber"
+      variant="thinking"
     >
-      <p className="text-amber-800/70 leading-relaxed">{block.thinking || "…"}</p>
+      <p className="leading-relaxed opacity-70">{block.thinking || "..."}</p>
     </Collapsible>
   );
 }
@@ -151,7 +169,7 @@ function PrettyJSON({ value }: { value: string }) {
     formatted = value;
   }
   return (
-    <pre className="bg-white/70 rounded-lg p-2.5 overflow-x-auto text-[11px] leading-relaxed font-mono text-gray-700 border border-black/[0.04]">
+    <pre className="bg-gray-900/[0.04] dark:bg-white/[0.04] rounded-lg p-2.5 overflow-x-auto text-[11px] leading-relaxed font-mono text-gray-700 dark:text-gray-300 border border-gray-200/40 dark:border-white/[0.06]">
       {formatted}
     </pre>
   );
@@ -162,8 +180,20 @@ function PrettyJSON({ value }: { value: string }) {
 function ToolCallBlockUI({ block, result }: { block: ToolCallBlock; result?: ToolResultBlock }) {
   const friendlyName = block.name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   const isWaiting = block.isStreaming && !result;
+
+  // Detect error in result
+  let isError = false;
+  if (result) {
+    try {
+      const parsed = JSON.parse(result.result);
+      isError = parsed.success === false || !!parsed.error;
+    } catch {
+      // not JSON, not an error structure
+    }
+  }
+
   const statusLabel = isWaiting
-    ? `Calling ${friendlyName}…`
+    ? `Calling ${friendlyName}...`
     : `Called ${friendlyName}`;
 
   return (
@@ -176,14 +206,22 @@ function ToolCallBlockUI({ block, result }: { block: ToolCallBlock; result?: Too
           <WrenchScrewdriverIcon className="w-3.5 h-3.5 flex-shrink-0" />
         )
       }
-      statusIcon={result ? <CheckCircleIcon className="w-3.5 h-3.5 text-brand-500/70" /> : undefined}
+      statusIcon={
+        result ? (
+          isError ? (
+            <XCircleIcon className="w-3.5 h-3.5 text-red-500/70 dark:text-red-400/70" />
+          ) : (
+            <CheckCircleIcon className="w-3.5 h-3.5 text-emerald-500/70 dark:text-emerald-400/70" />
+          )
+        ) : undefined
+      }
       isStreaming={isWaiting}
-      accentColor="brand"
+      variant={isError ? "error" : "default"}
     >
       <div className="space-y-2.5">
         {block.args && block.args !== "{}" && (
           <div>
-            <span className="font-semibold text-brand-800/60 block mb-1 uppercase tracking-wider text-[10px]">
+            <span className="font-semibold opacity-50 block mb-1 uppercase tracking-wider text-[10px]">
               Input
             </span>
             <PrettyJSON value={block.args} />
@@ -191,7 +229,7 @@ function ToolCallBlockUI({ block, result }: { block: ToolCallBlock; result?: Too
         )}
         {result && (
           <div>
-            <span className="font-semibold text-brand-800/60 block mb-1 uppercase tracking-wider text-[10px]">
+            <span className="font-semibold opacity-50 block mb-1 uppercase tracking-wider text-[10px]">
               Result
             </span>
             <div className="max-h-40 overflow-y-auto">
@@ -200,7 +238,7 @@ function ToolCallBlockUI({ block, result }: { block: ToolCallBlock; result?: Too
           </div>
         )}
         {isWaiting && !result && (
-          <p className="text-brand-600/50 italic text-[11px]">Waiting for result…</p>
+          <p className="opacity-40 italic text-[11px]">Waiting for result...</p>
         )}
       </div>
     </Collapsible>
@@ -230,8 +268,8 @@ function InputRequestBlockUI({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="my-2">
-      <label className="block text-sm font-medium text-gray-700 mb-1.5">{block.label}</label>
+    <form onSubmit={handleSubmit} className="my-3">
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{block.label}</label>
       <div className="flex gap-2">
         <input
           type={inputType}
@@ -239,12 +277,12 @@ function InputRequestBlockUI({
           onChange={(e) => setValue(e.target.value)}
           placeholder={block.placeholder}
           disabled={disabled}
-          className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:opacity-50"
+          className="flex-1 rounded-lg border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-white/[0.04] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 disabled:opacity-50 transition-shadow"
         />
         <button
           type="submit"
           disabled={disabled || !value.trim()}
-          className="px-4 py-2 bg-brand-600 text-white rounded-lg text-sm font-medium hover:bg-brand-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-2 bg-brand-600 text-white rounded-lg text-sm font-medium hover:bg-brand-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Send
         </button>
@@ -265,14 +303,14 @@ function ButtonsBlockUI({
   disabled?: boolean;
 }) {
   return (
-    <div className="my-2 flex flex-wrap gap-2">
+    <div className="my-3 flex flex-wrap gap-2">
       {block.buttons.map((btn, i) => (
         <button
           key={i}
           type="button"
           onClick={() => onSelect(btn.value)}
           disabled={disabled}
-          className="px-3 py-1.5 text-sm rounded-lg border border-brand-300 text-brand-700 bg-white hover:bg-brand-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-3.5 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-white/[0.1] text-gray-700 dark:text-gray-300 bg-white dark:bg-white/[0.04] hover:bg-gray-50 dark:hover:bg-white/[0.08] hover:border-brand-300 dark:hover:border-brand-400/30 transition disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {btn.label}
         </button>
@@ -309,9 +347,15 @@ const markdownComponents = {
   strong: ({ children }: { children?: React.ReactNode }) => <strong className="font-semibold">{children}</strong>,
   ul: ({ children }: { children?: React.ReactNode }) => <ul className="list-disc list-inside mb-2 space-y-0.5">{children}</ul>,
   ol: ({ children }: { children?: React.ReactNode }) => <ol className="list-decimal list-inside mb-2 space-y-0.5">{children}</ol>,
-  code: ({ children }: { children?: React.ReactNode }) => <code className="bg-gray-200/60 rounded px-1 py-0.5 text-xs font-mono">{children}</code>,
-  pre: ({ children }: { children?: React.ReactNode }) => <pre className="bg-gray-800 text-gray-100 rounded-lg p-3 my-2 overflow-x-auto text-xs">{children}</pre>,
-  a: ({ href, children }: { href?: string; children?: React.ReactNode }) => <a href={href} className="text-brand-600 underline" target="_blank" rel="noopener noreferrer">{children}</a>,
+  code: ({ children }: { children?: React.ReactNode }) => (
+    <code className="bg-gray-100 dark:bg-white/[0.08] text-gray-800 dark:text-gray-200 rounded px-1 py-0.5 text-xs font-mono">{children}</code>
+  ),
+  pre: ({ children }: { children?: React.ReactNode }) => (
+    <pre className="bg-gray-900 dark:bg-black/40 text-gray-100 rounded-lg p-3 my-2 overflow-x-auto text-xs">{children}</pre>
+  ),
+  a: ({ href, children }: { href?: string; children?: React.ReactNode }) => (
+    <a href={href} className="text-brand-600 dark:text-brand-400 underline decoration-brand-300/40 hover:decoration-brand-400 transition-colors" target="_blank" rel="noopener noreferrer">{children}</a>
+  ),
 };
 
 function TextContent({ text }: { text: string }) {
@@ -321,7 +365,7 @@ function TextContent({ text }: { text: string }) {
     <>
       {segments.map((seg, i) =>
         seg.type === "mermaid" ? (
-          <MermaidDiagram key={i} chart={seg.value} className="my-3 bg-white rounded-lg p-4 border border-gray-100" />
+          <MermaidDiagram key={i} chart={seg.value} className="my-3 bg-white dark:bg-white/[0.04] rounded-lg p-4 border border-gray-100 dark:border-white/[0.06]" />
         ) : (
           <Markdown key={i} components={markdownComponents}>
             {seg.value}
@@ -424,19 +468,34 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+  const [userHasScrolled, setUserHasScrolled] = useState(false);
   const sessionIdRef = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const scrollToBottom = useCallback(() => {
-    if (scrollRef.current) {
+    if (scrollRef.current && !userHasScrolled) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, []);
+  }, [userHasScrolled]);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
+
+  // Detect user scroll-up to pause auto-scroll
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    function handleScroll() {
+      if (!el) return;
+      const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+      setUserHasScrolled(!isAtBottom);
+    }
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // Auto-resize textarea up to 6 lines
   useEffect(() => {
@@ -448,7 +507,6 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
 
   const sendMessage = useCallback(async (text: string) => {
     if (!text || isStreaming) return;
-    // Simulate a form submit with the given text
     setInput("");
     await handleSend(text);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -461,15 +519,23 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
     await handleSend(trimmed);
   }
 
+  function handleStop() {
+    abortRef.current?.abort();
+  }
+
   async function handleSend(trimmed: string) {
 
     const userMessage: ChatMessage = { role: "user", content: trimmed, blocks: [] };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsStreaming(true);
+    setUserHasScrolled(false);
 
     // Add empty assistant message for streaming
     setMessages((prev) => [...prev, { role: "assistant", content: "", blocks: [] }]);
+
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     try {
       const payload: Record<string, unknown> = {
@@ -485,6 +551,7 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
+        signal: controller.signal,
       });
 
       if (!res.ok) {
@@ -530,7 +597,7 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
           try {
             event = JSON.parse(payload);
           } catch {
-            // Not JSON — could be a plain-text error from the server
+            // Not JSON -- could be a plain-text error from the server
             const errorText = payload.trim();
             if (errorText) {
               receivedContent = true;
@@ -562,7 +629,7 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
                 content: errorMsg,
                 blocks: [
                   ...msg.blocks,
-                  { type: "text" as const, text: `⚠ ${errorMsg}` },
+                  { type: "text" as const, text: errorMsg },
                 ],
               })),
             );
@@ -570,7 +637,7 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
           }
 
           switch (event.type) {
-            /* ── Text tokens ─────────────────────────────── */
+            /* -- Text tokens -- */
             case "token": {
               const tokenText = (event.content || event.token || "") as string;
               if (!tokenText) break;
@@ -599,7 +666,7 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
               break;
             }
 
-            /* ── Thinking ────────────────────────────────── */
+            /* -- Thinking -- */
             case "thinking_start": {
               receivedContent = true;
               setMessages((prev) =>
@@ -635,7 +702,7 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
               break;
             }
 
-            /* ── Tool calls (args arrive complete, no delta/stop) */
+            /* -- Tool calls (args arrive complete, no delta/stop) */
             case "tool_call": {
               receivedContent = true;
               setMessages((prev) =>
@@ -654,7 +721,7 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
               break;
             }
 
-            /* ── Tool results ────────────────────────────── */
+            /* -- Tool results -- */
             case "tool_result": {
               const toolCallId = (event.id || "") as string;
               const toolName = (event.name || "") as string;
@@ -687,7 +754,7 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
               break;
             }
 
-            /* ── Input request ───────────────────────────── */
+            /* -- Input request -- */
             case "input_request": {
               receivedContent = true;
               setMessages((prev) =>
@@ -704,7 +771,7 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
               break;
             }
 
-            /* ── Quick-reply buttons ────────────────────── */
+            /* -- Quick-reply buttons -- */
             case "buttons": {
               receivedContent = true;
               const buttons = Array.isArray(event.buttons)
@@ -720,7 +787,7 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
               break;
             }
 
-            /* ── Error from server ───────────────────────── */
+            /* -- Error from server -- */
             case "error": {
               receivedContent = true;
               const errorMsg = (event.message || "Unknown server error") as string;
@@ -731,7 +798,7 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
                   content: errorMsg,
                   blocks: [
                     ...msg.blocks,
-                    { type: "text" as const, text: `⚠ ${errorMsg}` },
+                    { type: "text" as const, text: errorMsg },
                   ],
                 })),
               );
@@ -759,17 +826,28 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
         );
       }
     } catch (err) {
-      console.error("[chat] Stream error:", err);
-      setMessages((prev) =>
-        updateLastMessage(prev, (msg) => ({
-          ...msg,
-          content: `Something went wrong: ${err instanceof Error ? err.message : "Unknown error"}`,
-          blocks: [
-            { type: "text" as const, text: `Something went wrong: ${err instanceof Error ? err.message : "Unknown error"}` },
-          ],
-        })),
-      );
+      if (err instanceof DOMException && err.name === "AbortError") {
+        // User stopped generation
+        setMessages((prev) =>
+          updateLastMessage(prev, (msg) => {
+            if (msg.content || msg.blocks.length > 0) return msg;
+            return { ...msg, content: "Generation stopped.", blocks: [{ type: "text", text: "Generation stopped." }] };
+          }),
+        );
+      } else {
+        console.error("[chat] Stream error:", err);
+        setMessages((prev) =>
+          updateLastMessage(prev, (msg) => ({
+            ...msg,
+            content: `Something went wrong: ${err instanceof Error ? err.message : "Unknown error"}`,
+            blocks: [
+              { type: "text" as const, text: `Something went wrong: ${err instanceof Error ? err.message : "Unknown error"}` },
+            ],
+          })),
+        );
+      }
     } finally {
+      abortRef.current = null;
       setIsStreaming(false);
     }
   }
@@ -783,34 +861,34 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
 
   const hasMessages = messages.length > 0;
   const lastMsg = messages[messages.length - 1];
-  const showLoadingDots = isStreaming && lastMsg?.role === "assistant" && lastMsg.content === "" && lastMsg.blocks.length === 0;
+  const showSkeleton = isStreaming && lastMsg?.role === "assistant" && lastMsg.content === "" && lastMsg.blocks.length === 0;
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
       {/* Messages */}
       {hasMessages ? (
         <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0">
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-5">
             {messages.map((msg, i) =>
               msg.role === "user" ? (
+                /* ── User message: right-aligned pill ── */
                 <div key={i} className="flex justify-end">
-                  <div className="max-w-[80%] bg-gray-900 text-white rounded-2xl rounded-br-sm px-4 py-2.5 text-sm leading-relaxed shadow-sm">
+                  <div className="max-w-[85%] bg-brand-600 text-white rounded-2xl rounded-br-md px-4 py-2.5 text-sm leading-relaxed">
                     <span className="whitespace-pre-wrap">{msg.content}</span>
                   </div>
                 </div>
               ) : (
+                /* ── Assistant message: no background, left-aligned ── */
                 <div key={i} className="flex gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm">
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center flex-shrink-0 mt-0.5">
                     <SparklesIcon className="w-4 h-4 text-white" />
                   </div>
-                  <div className="flex-1 min-w-0 text-sm text-gray-800 leading-relaxed">
-                    <MessageContent message={msg} onSendMessage={sendMessage} isStreaming={isStreaming} />
-                    {i === messages.length - 1 && showLoadingDots && (
-                      <span className="inline-flex gap-1 mt-2">
-                        <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                        <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                        <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-                      </span>
+                  <div className="flex-1 min-w-0 text-sm text-gray-800 dark:text-gray-200 leading-relaxed">
+                    {/* Show skeleton while waiting for first token */}
+                    {i === messages.length - 1 && showSkeleton ? (
+                      <MessageSkeleton />
+                    ) : (
+                      <MessageContent message={msg} onSendMessage={sendMessage} isStreaming={isStreaming} />
                     )}
                   </div>
                 </div>
@@ -819,21 +897,38 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
           </div>
         </div>
       ) : (
+        /* ── Empty state ── */
         <div className="flex-1 flex flex-col items-center justify-center p-8">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-50 to-brand-100 flex items-center justify-center mb-5 shadow-sm">
-            <SparklesIcon className="w-7 h-7 text-brand-500" />
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-500/10 to-brand-600/10 dark:from-brand-400/10 dark:to-brand-500/10 flex items-center justify-center mb-4">
+            <SparklesIcon className="w-6 h-6 text-brand-500 dark:text-brand-400" />
           </div>
-          <h3 className="font-display font-bold text-gray-900 text-lg mb-1.5">Ask about this workflow</h3>
-          <p className="text-sm text-gray-500 text-center max-w-xs leading-relaxed">
+          <h3 className="font-display font-bold text-gray-900 dark:text-gray-100 text-lg mb-1">Ask about this workflow</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 text-center max-w-xs leading-relaxed">
             I can help you configure, run, or understand how this workflow works.
           </p>
         </div>
       )}
 
+      {/* Scroll-to-bottom pill */}
+      {userHasScrolled && hasMessages && (
+        <div className="flex justify-center -mt-12 mb-2 relative z-10 pointer-events-none">
+          <button
+            type="button"
+            onClick={() => {
+              setUserHasScrolled(false);
+              scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+            }}
+            className="pointer-events-auto px-3 py-1.5 text-xs font-medium bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/[0.1] rounded-full shadow-md hover:shadow-lg transition-all text-gray-600 dark:text-gray-300"
+          >
+            Scroll to bottom
+          </button>
+        </div>
+      )}
+
       {/* Input */}
-      <div className="flex-shrink-0 border-t border-gray-100 bg-white/80 backdrop-blur-sm px-4 py-3">
+      <div className="flex-shrink-0 border-t border-gray-100 dark:border-white/[0.06] bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm px-4 py-3">
         <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
-          <div className="flex items-end gap-2 bg-gray-50 rounded-2xl border border-gray-200 pl-4 pr-2 py-2 focus-within:border-brand-300 focus-within:ring-2 focus-within:ring-brand-500/10 transition-all shadow-sm">
+          <div className="flex items-end gap-2 bg-gray-50 dark:bg-white/[0.04] rounded-2xl border border-gray-200 dark:border-white/[0.08] pl-4 pr-2 py-2 focus-within:border-brand-300 dark:focus-within:border-brand-500/40 focus-within:ring-2 focus-within:ring-brand-500/10 transition-all">
             <textarea
               ref={inputRef}
               value={input}
@@ -842,18 +937,27 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
               placeholder="Ask about this workflow..."
               disabled={isStreaming}
               rows={1}
-              className="flex-1 resize-none bg-transparent text-sm focus:outline-none disabled:opacity-50 py-1.5 placeholder:text-gray-400"
+              className="flex-1 resize-none bg-transparent text-sm text-gray-900 dark:text-gray-100 focus:outline-none disabled:opacity-50 py-1.5 placeholder:text-gray-400 dark:placeholder:text-gray-500"
               style={{ maxHeight: 144 }}
             />
-            <button
-              type="submit"
-              disabled={isStreaming || !input.trim()}
-              className="w-8 h-8 rounded-xl bg-brand-600 text-white flex items-center justify-center hover:bg-brand-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" />
-              </svg>
-            </button>
+            {isStreaming ? (
+              <button
+                type="button"
+                onClick={handleStop}
+                className="w-8 h-8 rounded-xl bg-gray-200 dark:bg-white/[0.1] text-gray-600 dark:text-gray-300 flex items-center justify-center hover:bg-gray-300 dark:hover:bg-white/[0.15] transition-colors flex-shrink-0"
+                title="Stop generating"
+              >
+                <StopIcon className="w-4 h-4" />
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={!input.trim()}
+                className="w-8 h-8 rounded-xl bg-brand-600 text-white flex items-center justify-center hover:bg-brand-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
+              >
+                <ArrowUpIcon className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </form>
       </div>

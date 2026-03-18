@@ -104,6 +104,23 @@ html.dark input::placeholder, html.dark textarea::placeholder {
   color: #64748b;
 }
 
+/* Amber accent (thinking blocks) in dark mode */
+html.dark .text-amber-700 { color: #fbbf24; }
+html.dark .text-amber-800 { color: #f59e0b; }
+html.dark .bg-amber-50 { background-color: rgba(245, 158, 11, 0.08); }
+html.dark .border-amber-200 { border-color: rgba(245, 158, 11, 0.15); }
+
+/* Brand accent (tool call blocks) dark overrides */
+html.dark .text-brand-700 { color: #f9a8d4; }
+html.dark .text-brand-800 { color: #fbcfe8; }
+html.dark .border-brand-300 { border-color: rgba(219, 39, 119, 0.25); }
+
+/* White/70 backgrounds (PrettyJSON) — ensure dark-readable */
+html.dark .bg-white\/70 { background-color: rgba(255, 255, 255, 0.04); }
+
+/* Transparent bg inputs in chat */
+html.dark .bg-transparent { background-color: transparent; }
+
 /* Scrollbar */
 html.dark ::-webkit-scrollbar { width: 8px; }
 html.dark ::-webkit-scrollbar-track { background: #0f172a; }
