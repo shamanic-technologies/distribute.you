@@ -50,7 +50,6 @@ interface ChatMessage {
 
 interface WorkflowChatProps {
   workflowContext: Record<string, unknown>;
-  sessionId: string;
 }
 
 /* ─── Collapsible wrapper ────────────────────────────────────────────── */
@@ -308,10 +307,11 @@ function updateLastBlock(msg: ChatMessage, updater: (block: ContentBlock) => Con
 
 /* ─── Main chat component ────────────────────────────────────────────── */
 
-export function WorkflowChat({ workflowContext, sessionId }: WorkflowChatProps) {
+export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+  const sessionIdRef = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -347,14 +347,19 @@ export function WorkflowChat({ workflowContext, sessionId }: WorkflowChatProps) 
     setMessages((prev) => [...prev, { role: "assistant", content: "", blocks: [] }]);
 
     try {
+      const payload: Record<string, unknown> = {
+        message: trimmed,
+        context: workflowContext,
+      };
+      // Only include sessionId if we have one from a previous response
+      if (sessionIdRef.current) {
+        payload.sessionId = sessionIdRef.current;
+      }
+
       const res = await fetch("/api/v1/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: trimmed,
-          sessionId,
-          context: workflowContext,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -394,6 +399,12 @@ export function WorkflowChat({ workflowContext, sessionId }: WorkflowChatProps) 
 
           try {
             const event = JSON.parse(payload);
+
+            // First event: chat-service returns the session ID
+            if (event.sessionId && !event.type) {
+              sessionIdRef.current = event.sessionId;
+              continue;
+            }
 
             switch (event.type) {
               /* ── Text tokens ─────────────────────────────── */

@@ -1,20 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getWorkflow, getWorkflowSummary } from "@/lib/api";
 import { WorkflowOverview } from "@/components/workflows/workflow-overview";
 import { WorkflowChat } from "@/components/workflows/workflow-chat";
 
-function generateSessionId(): string {
-  return crypto.randomUUID();
-}
-
 export default function WorkflowViewerPage() {
   const params = useParams();
   const workflowId = params.workflowId as string;
-  const [sessionId] = useState(generateSessionId);
 
   const { data: workflow, isLoading } = useAuthQuery(
     ["workflow", workflowId],
@@ -96,10 +91,7 @@ export default function WorkflowViewerPage() {
         </div>
 
         {/* Chat */}
-        <WorkflowChat
-          workflowContext={workflowContext}
-          sessionId={sessionId}
-        />
+        <WorkflowChat workflowContext={workflowContext} />
       </div>
     </div>
   );
