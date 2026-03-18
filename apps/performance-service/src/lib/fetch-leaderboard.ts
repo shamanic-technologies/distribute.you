@@ -8,13 +8,13 @@ const BRAND_SERVICE_URL = process.env.BRAND_SERVICE_URL;
 // ─── Public ranked/best endpoint types ──────────────────────────────────────
 
 interface PublicEmailStats {
-  sent: number;
-  delivered: number;
-  opened: number;
-  clicked: number;
-  replied: number;
-  bounced: number;
-  unsubscribed: number;
+  emailsContacted: number;
+  emailsSent: number;
+  emailsDelivered: number;
+  emailsOpened: number;
+  emailsClicked: number;
+  emailsReplied: number;
+  emailsBounced: number;
   recipients: number;
 }
 
@@ -147,17 +147,17 @@ function rankedToWorkflowEntry(item: PublicRankedItem): WorkflowLeaderboardEntry
     category: item.workflow.category as WorkflowCategory,
     sectionKey,
     runCount: item.stats.completedRuns,
-    emailsSent: b.sent,
-    emailsOpened: b.opened,
-    emailsClicked: b.clicked,
-    emailsReplied: b.replied,
+    emailsSent: b.emailsSent,
+    emailsOpened: b.emailsOpened,
+    emailsClicked: b.emailsClicked,
+    emailsReplied: b.emailsReplied,
     totalCostUsdCents: cost,
-    openRate: b.sent > 0 ? b.opened / b.sent : 0,
-    clickRate: b.sent > 0 ? b.clicked / b.sent : 0,
-    replyRate: b.sent > 0 ? b.replied / b.sent : 0,
-    costPerOpenCents: b.opened > 0 ? cost / b.opened : null,
-    costPerClickCents: b.clicked > 0 ? cost / b.clicked : null,
-    costPerReplyCents: b.replied > 0 ? cost / b.replied : null,
+    openRate: b.emailsSent > 0 ? b.emailsOpened / b.emailsSent : 0,
+    clickRate: b.emailsSent > 0 ? b.emailsClicked / b.emailsSent : 0,
+    replyRate: b.emailsSent > 0 ? b.emailsReplied / b.emailsSent : 0,
+    costPerOpenCents: b.emailsOpened > 0 ? cost / b.emailsOpened : null,
+    costPerClickCents: b.emailsClicked > 0 ? cost / b.emailsClicked : null,
+    costPerReplyCents: b.emailsReplied > 0 ? cost / b.emailsReplied : null,
   };
 }
 
@@ -172,18 +172,18 @@ function aggregateBrandStats(items: PublicRankedItem[]): BrandLeaderboardEntry[]
     const b = item.stats.email.broadcast;
     const existing = byBrand.get(brandId);
     if (existing) {
-      existing.sent += b.sent;
-      existing.opened += b.opened;
-      existing.clicked += b.clicked;
-      existing.replied += b.replied;
+      existing.sent += b.emailsSent;
+      existing.opened += b.emailsOpened;
+      existing.clicked += b.emailsClicked;
+      existing.replied += b.emailsReplied;
       existing.cost += item.stats.totalCostInUsdCents;
     } else {
       byBrand.set(brandId, {
         brandId,
-        sent: b.sent,
-        opened: b.opened,
-        clicked: b.clicked,
-        replied: b.replied,
+        sent: b.emailsSent,
+        opened: b.emailsOpened,
+        clicked: b.emailsClicked,
+        replied: b.emailsReplied,
         cost: item.stats.totalCostInUsdCents,
       });
     }
