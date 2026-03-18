@@ -673,7 +673,7 @@ export function WorkflowChat({ workflowId, workflowContext }: WorkflowChatProps)
         for (const line of lines) {
           if (!line.startsWith("data: ")) continue;
           const payload = line.slice(6);
-          if (payload === "[DONE]") continue;
+          if (payload === "[DONE]" || payload === '"[DONE]"') continue;
 
           let event: Record<string, unknown>;
           try {
