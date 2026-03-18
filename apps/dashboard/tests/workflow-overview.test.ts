@@ -126,6 +126,18 @@ describe("WorkflowChat component (chat-only)", () => {
     expect(content).toContain("PrettyJSON");
   });
 
+  it("should handle input_request and buttons SSE events", () => {
+    const content = fs.readFileSync(chatPath, "utf-8");
+    expect(content).toContain('"input_request"');
+    expect(content).toContain('"buttons"');
+    expect(content).toContain("InputRequestBlockUI");
+    expect(content).toContain("ButtonsBlockUI");
+    expect(content).toContain("event.input_type");
+    expect(content).toContain("event.label");
+    expect(content).toContain("event.buttons");
+    expect(content).toContain("onSendMessage");
+  });
+
   it("should omit sessionId on first message and store it from SSE", () => {
     const content = fs.readFileSync(chatPath, "utf-8");
     // sessionId managed via ref, not prop
