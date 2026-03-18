@@ -121,11 +121,20 @@ describe("WorkflowChat component (chat-only)", () => {
 
   it("should use result field (not content) in ToolResultBlock", () => {
     const content = fs.readFileSync(chatPath, "utf-8");
-    // ToolResultBlock should have result field and toolCallId for matching
     expect(content).toContain("toolCallId: string;");
     expect(content).toContain("result: string;");
-    // PrettyJSON component for formatting tool output
     expect(content).toContain("PrettyJSON");
+  });
+
+  it("should omit sessionId on first message and store it from SSE", () => {
+    const content = fs.readFileSync(chatPath, "utf-8");
+    // sessionId managed via ref, not prop
+    expect(content).toContain("sessionIdRef");
+    expect(content).toContain("sessionIdRef.current");
+    // Only include sessionId in payload if we already have one
+    expect(content).toContain("if (sessionIdRef.current)");
+    // Parse sessionId from SSE first event
+    expect(content).toContain("event.sessionId");
   });
 });
 
@@ -159,5 +168,12 @@ describe("Workflow viewer page composition", () => {
   it("should pass workflowId in the chat context", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
     expect(content).toContain("workflowId: workflow.id");
+  });
+
+  it("should NOT generate or pass sessionId (managed by chat component)", () => {
+    const content = fs.readFileSync(pagePath, "utf-8");
+    expect(content).not.toContain("generateSessionId");
+    expect(content).not.toContain("sessionId={");
+    expect(content).not.toContain("crypto.randomUUID");
   });
 });
