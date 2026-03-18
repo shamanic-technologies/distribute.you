@@ -33,7 +33,7 @@ interface PublicWorkflowMetadata {
   id: string;
   name: string;
   displayName: string | null;
-  brandId: string | null;
+  createdForBrandId: string | null;
   category: string;
   channel: string;
   audienceType: string;
@@ -167,7 +167,7 @@ function aggregateBrandStats(items: PublicRankedItem[]): BrandLeaderboardEntry[]
   const byBrand = new Map<string, { brandId: string; sent: number; opened: number; clicked: number; replied: number; cost: number }>();
 
   for (const item of items) {
-    const brandId = item.workflow.brandId;
+    const brandId = item.workflow.createdForBrandId;
     if (!brandId) continue;
     const b = item.stats.email.broadcast;
     const existing = byBrand.get(brandId);
