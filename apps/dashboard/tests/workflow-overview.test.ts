@@ -62,9 +62,10 @@ describe("WorkflowChat component (chat-only)", () => {
     expect(fs.existsSync(chatPath)).toBe(true);
   });
 
-  it("should NOT have an initial assistant message", () => {
+  it("should restore messages from localStorage or start empty", () => {
     const content = fs.readFileSync(chatPath, "utf-8");
-    expect(content).toContain("useState<ChatMessage[]>([])");
+    expect(content).toContain("useState<ChatMessage[]>");
+    expect(content).toContain("loadChat(workflowId)");
   });
 
   it("should have SSE streaming support", () => {
@@ -138,6 +139,33 @@ describe("WorkflowChat component (chat-only)", () => {
     expect(content).toContain("onSendMessage");
   });
 
+  it("should persist messages and sessionId to localStorage", () => {
+    const content = fs.readFileSync(chatPath, "utf-8");
+    expect(content).toContain("saveChat(workflowId");
+    expect(content).toContain("loadChat(workflowId)");
+    expect(content).toContain("localStorage.setItem");
+    expect(content).toContain("localStorage.getItem");
+    expect(content).toContain("workflow-chat:");
+  });
+
+  it("should have a reset chat button that clears localStorage", () => {
+    const content = fs.readFileSync(chatPath, "utf-8");
+    expect(content).toContain("resetChat");
+    expect(content).toContain("Reset chat");
+    expect(content).toContain("localStorage.removeItem");
+  });
+
+  it("should clean up isStreaming flags when restoring from localStorage", () => {
+    const content = fs.readFileSync(chatPath, "utf-8");
+    expect(content).toContain("isStreaming");
+    expect(content).toContain("false");
+  });
+
+  it("should accept workflowId prop for storage key", () => {
+    const content = fs.readFileSync(chatPath, "utf-8");
+    expect(content).toContain("workflowId: string");
+  });
+
   it("should omit sessionId on first message and store it from SSE", () => {
     const content = fs.readFileSync(chatPath, "utf-8");
     // sessionId managed via ref, not prop
@@ -177,9 +205,10 @@ describe("Workflow viewer page composition", () => {
     expect(content).toContain("WorkflowChat");
   });
 
-  it("should pass workflowId in the chat context", () => {
+  it("should pass workflowId as prop and in the chat context", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
     expect(content).toContain("workflowId: workflow.id");
+    expect(content).toContain("workflowId={workflowId}");
   });
 
   it("should NOT generate or pass sessionId (managed by chat component)", () => {
