@@ -62,13 +62,24 @@ async function proxyRequest(
       body,
     });
 
+    const contentType = res.headers.get("Content-Type") || "application/json";
+
+    // Stream SSE responses through instead of buffering
+    if (contentType.includes("text/event-stream") && res.body) {
+      return new NextResponse(res.body, {
+        status: res.status,
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+        },
+      });
+    }
+
     const data = await res.text();
     return new NextResponse(data, {
       status: res.status,
-      headers: {
-        "Content-Type":
-          res.headers.get("Content-Type") || "application/json",
-      },
+      headers: { "Content-Type": contentType },
     });
   } catch (err) {
     const { path } = await segmentData.params;

@@ -64,6 +64,14 @@ describe("API proxy route", () => {
     expect(content).not.toContain("CLIENT_SERVICE_API_KEY");
     expect(content).not.toContain("/resolve");
   });
+
+  it("should stream SSE responses instead of buffering", () => {
+    const content = fs.readFileSync(proxyPath, "utf-8");
+    expect(content).toContain("text/event-stream");
+    expect(content).toContain("res.body");
+    // Should NOT buffer SSE with await res.text() before returning
+    expect(content).toContain("no-cache");
+  });
 });
 
 describe("api.ts client routing", () => {
