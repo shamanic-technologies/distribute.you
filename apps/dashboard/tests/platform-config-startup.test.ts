@@ -110,9 +110,14 @@ describe("Platform config registration at startup", () => {
       expect(content).not.toContain("CHAT_SERVICE_URL");
     });
 
-    it("should use API_SERVICE_URL and API_SERVICE_API_KEY env vars", () => {
-      expect(content).toContain("API_SERVICE_URL");
-      expect(content).toContain("API_SERVICE_API_KEY");
+    it("should use existing NEXT_PUBLIC_DISTRIBUTE_API_URL and ADMIN_DISTRIBUTE_API_KEY", () => {
+      expect(content).toContain("NEXT_PUBLIC_DISTRIBUTE_API_URL");
+      expect(content).toContain("ADMIN_DISTRIBUTE_API_KEY");
+    });
+
+    it("should not introduce redundant API_SERVICE_URL/API_SERVICE_API_KEY env vars", () => {
+      expect(content).not.toContain("API_SERVICE_URL");
+      expect(content).not.toContain("API_SERVICE_API_KEY");
     });
 
     it("should authenticate all calls with X-API-Key", () => {
