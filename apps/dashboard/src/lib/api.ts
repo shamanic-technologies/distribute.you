@@ -763,6 +763,67 @@ export async function fetchSectionLeaderboard(sectionKey: string): Promise<Workf
   }
 }
 
+// Ranked workflows (family-aggregated stats from workflow-service)
+export interface RankedEmailStats {
+  sent: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  replied: number;
+  bounced: number;
+  unsubscribed: number;
+  recipients: number;
+}
+
+export interface RankedWorkflowStats {
+  totalCostInUsdCents: number;
+  totalOutcomes: number;
+  costPerOutcome: number | null;
+  completedRuns: number;
+  email: {
+    transactional: RankedEmailStats;
+    broadcast: RankedEmailStats;
+  };
+}
+
+export interface RankedWorkflowItem {
+  workflow: {
+    id: string;
+    name: string;
+    displayName: string | null;
+    brandId: string | null;
+    category: string;
+    channel: string;
+    audienceType: string;
+    signature: string;
+    signatureName: string;
+  };
+  dag: DAG;
+  stats: RankedWorkflowStats;
+}
+
+export interface RankedWorkflowResponse {
+  results: RankedWorkflowItem[];
+}
+
+export async function fetchRankedWorkflows(params: {
+  category?: string;
+  channel?: string;
+  audienceType?: string;
+  objective?: string;
+  limit?: number;
+}, token?: string): Promise<RankedWorkflowItem[]> {
+  const query = new URLSearchParams();
+  if (params.category) query.set("category", params.category);
+  if (params.channel) query.set("channel", params.channel);
+  if (params.audienceType) query.set("audienceType", params.audienceType);
+  if (params.objective) query.set("objective", params.objective);
+  if (params.limit) query.set("limit", String(params.limit));
+  const qs = query.toString();
+  const data = await apiCall<RankedWorkflowResponse>(`/workflows/ranked${qs ? `?${qs}` : ""}`, { token });
+  return data.results;
+}
+
 // Create campaign
 export async function createCampaign(
   params: {

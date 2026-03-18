@@ -7,16 +7,15 @@ import { WORKFLOW_DEFINITIONS } from "@distribute/content";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { useOrg } from "@/lib/org-context";
 import {
-  fetchSectionLeaderboard,
+  fetchRankedWorkflows,
   createCampaign,
   sendCampaignEmail,
   getBrand,
-  listWorkflows,
   getWorkflowKeyStatus,
   getBrandSalesProfile,
   createBrandSalesProfile,
   ApiError,
-  type WorkflowLeaderboardEntry,
+  type RankedWorkflowItem,
   type SalesProfile,
 } from "@/lib/api";
 import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-panel";
@@ -57,6 +56,50 @@ function formatPercent(rate: number): string {
 function formatCostCents(cents: number | null): string {
   if (cents === null || cents === 0) return "\u2014";
   return `$${(cents / 100).toFixed(2)}`;
+}
+
+/** Extract the family display name from displayName. Strips the sectionKey prefix to show just the codename. */
+function formatDisplayName(displayName: string | null, fallbackName: string): string {
+  const raw = displayName || fallbackName;
+  // Strip sectionKey prefix (e.g. "sales-email-cold-outreach-jasmine" → "jasmine")
+  const lastDashIdx = raw.lastIndexOf("-");
+  const suffix = lastDashIdx >= 0 ? raw.slice(lastDashIdx + 1) : raw;
+  return suffix.charAt(0).toUpperCase() + suffix.slice(1);
+}
+
+/** Flatten a RankedWorkflowItem into a sortable table row. */
+interface WorkflowTableRow {
+  id: string;
+  name: string;
+  displayName: string;
+  signatureName: string;
+  category: string;
+  emailsSent: number;
+  openRate: number;
+  clickRate: number;
+  replyRate: number;
+  costPerOpenCents: number | null;
+  costPerClickCents: number | null;
+  costPerReplyCents: number | null;
+}
+
+function rankedToRow(item: RankedWorkflowItem): WorkflowTableRow {
+  const b = item.stats.email.broadcast;
+  const cost = item.stats.totalCostInUsdCents;
+  return {
+    id: item.workflow.id,
+    name: item.workflow.name,
+    displayName: item.workflow.displayName ?? item.workflow.name,
+    signatureName: item.workflow.signatureName,
+    category: item.workflow.category,
+    emailsSent: b.sent,
+    openRate: b.sent > 0 ? b.opened / b.sent : 0,
+    clickRate: b.sent > 0 ? b.clicked / b.sent : 0,
+    replyRate: b.sent > 0 ? b.replied / b.sent : 0,
+    costPerOpenCents: b.opened > 0 ? cost / b.opened : null,
+    costPerClickCents: b.clicked > 0 ? cost / b.clicked : null,
+    costPerReplyCents: b.replied > 0 ? cost / b.replied : null,
+  };
 }
 
 interface CampaignFormData {
@@ -154,7 +197,7 @@ export default function FeatureCreateCampaignPage() {
   const [detailWorkflowId, setDetailWorkflowId] = useState<string | null>(null);
   const [metric, setMetric] = useState<SortKey>("costPerReplyCents");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const [selectedWorkflow, setSelectedWorkflow] = useState<string | null>(null);
+  const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
   const [budgetAmount, setBudgetAmount] = useState("");
   const [budgetFrequency, setBudgetFrequency] = useState<BudgetFrequency>("monthly");
   const [showForm, setShowForm] = useState(false);
@@ -171,33 +214,23 @@ export default function FeatureCreateCampaignPage() {
   );
   const brand = brandData?.brand ?? null;
 
-  // Fetch leaderboard
-  const { data: leaderboard, isLoading } = useAuthQuery(
-    ["section-leaderboard", featureId],
-    () => fetchSectionLeaderboard(featureId),
+  // Fetch ranked workflows (family-aggregated stats from workflow-service)
+  const { data: rankedItems, isLoading } = useAuthQuery(
+    ["ranked-workflows", featureDef?.category, featureDef?.channel, featureDef?.audienceType],
+    () => fetchRankedWorkflows({
+      category: featureDef!.category,
+      channel: featureDef!.channel,
+      audienceType: featureDef!.audienceType,
+      limit: 100,
+    }),
     { enabled: featureDef?.implemented === true, ...pollOptions },
   );
 
-  const { data: workflowsData, isLoading: isLoadingWorkflows } = useAuthQuery(
-    ["workflows"],
-    () => listWorkflows(),
-    { enabled: featureDef?.implemented === true, ...pollOptions },
-  );
+  // Flatten ranked items into sortable rows
+  const rows = useMemo(() => (rankedItems ?? []).map(rankedToRow), [rankedItems]);
 
-  const deprecatedNames = useMemo(() => {
-    const set = new Set<string>();
-    for (const wf of workflowsData?.workflows ?? []) {
-      if (wf.status === "deprecated") set.add(wf.name);
-    }
-    return set;
-  }, [workflowsData]);
-
-  const featureWorkflowIds = useMemo(() => {
-    const workflows = workflowsData?.workflows ?? [];
-    return workflows
-      .filter((w) => w.status !== "deprecated" && w.name.startsWith(featureId))
-      .map((w) => w.id);
-  }, [workflowsData, featureId]);
+  // Workflow IDs for key status check
+  const featureWorkflowIds = useMemo(() => rows.map((r) => r.id), [rows]);
 
   const { data: keyStatusData } = useAuthQuery(
     ["workflowKeyStatus", featureId, featureWorkflowIds],
@@ -216,14 +249,6 @@ export default function FeatureCreateCampaignPage() {
 
   const missingProviders = keyStatusData ?? [];
 
-  const workflowNameToId = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const wf of workflowsData?.workflows ?? []) {
-      if (wf.status !== "deprecated") map.set(wf.name, wf.id);
-    }
-    return map;
-  }, [workflowsData]);
-
   const handleSort = useCallback((key: SortKey) => {
     setMetric((prev) => {
       if (prev === key) {
@@ -235,37 +260,9 @@ export default function FeatureCreateCampaignPage() {
     });
   }, []);
 
-  // Merge leaderboard with available workflows that have no stats yet
-  const combinedRows = useMemo(() => {
-    const rows = (leaderboard ?? []).filter((e) => !deprecatedNames.has(e.workflowName) && workflowNameToId.has(e.workflowName));
-    const leaderboardNames = new Set(rows.map((e) => e.workflowName));
-    const fallbacks: WorkflowLeaderboardEntry[] = (workflowsData?.workflows ?? [])
-      .filter((w) => w.status !== "deprecated" && w.name.startsWith(featureId) && !leaderboardNames.has(w.name))
-      .map((w) => ({
-        workflowName: w.name,
-        displayName: w.displayName ?? w.name,
-        signatureName: w.signatureName ?? null,
-        category: w.category ?? null,
-        sectionKey: featureId,
-        runCount: 0,
-        emailsSent: 0,
-        emailsOpened: 0,
-        emailsClicked: 0,
-        emailsReplied: 0,
-        totalCostUsdCents: 0,
-        openRate: 0,
-        clickRate: 0,
-        replyRate: 0,
-        costPerOpenCents: null,
-        costPerClickCents: null,
-        costPerReplyCents: null,
-      }));
-    return [...rows, ...fallbacks];
-  }, [leaderboard, workflowsData, featureId, deprecatedNames, workflowNameToId]);
-
   const sorted = useMemo(() => {
-    if (combinedRows.length === 0) return [];
-    return [...combinedRows].sort((a, b) => {
+    if (rows.length === 0) return [];
+    return [...rows].sort((a, b) => {
       const aRaw = a[metric];
       const bRaw = b[metric];
       const aNull = aRaw === null || aRaw === 0;
@@ -275,28 +272,31 @@ export default function FeatureCreateCampaignPage() {
       if (bNull) return -1;
       return sortDir === "desc" ? Number(bRaw) - Number(aRaw) : Number(aRaw) - Number(bRaw);
     });
-  }, [combinedRows, metric, sortDir]);
+  }, [rows, metric, sortDir]);
 
-  const effectiveSelection = mode === "autopilot"
-    ? sorted[0]?.workflowName ?? null
-    : selectedWorkflow;
+  // Selection uses workflow ID as stable key
+  const effectiveSelectionId = mode === "autopilot"
+    ? sorted[0]?.id ?? null
+    : selectedWorkflowId;
+
+  const selectedRow = sorted.find((r) => r.id === effectiveSelectionId) ?? null;
 
   const { topRows, restRows } = useMemo(() => {
-    if (mode === "autopilot" || !selectedWorkflow) {
+    if (mode === "autopilot" || !selectedWorkflowId) {
       return { topRows: [], restRows: sorted };
     }
-    const selected = sorted.find((w) => w.workflowName === selectedWorkflow);
-    const rest = sorted.filter((w) => w.workflowName !== selectedWorkflow);
+    const selected = sorted.find((w) => w.id === selectedWorkflowId);
+    const rest = sorted.filter((w) => w.id !== selectedWorkflowId);
     return {
       topRows: selected ? [selected] : [],
       restRows: rest,
     };
-  }, [mode, selectedWorkflow, sorted]);
+  }, [mode, selectedWorkflowId, sorted]);
 
   const resolvedBrandUrl = brand?.brandUrl ?? "";
 
   const handleGo = useCallback(async () => {
-    if (!effectiveSelection || !budgetAmount || !resolvedBrandUrl) return;
+    if (!selectedRow || !budgetAmount || !resolvedBrandUrl) return;
     setCreateError(null);
     setIsLoadingProfile(true);
     try {
@@ -315,10 +315,10 @@ export default function FeatureCreateCampaignPage() {
       setIsLoadingProfile(false);
       setShowForm(true);
     }
-  }, [effectiveSelection, budgetAmount, resolvedBrandUrl, brandId]);
+  }, [selectedRow, budgetAmount, resolvedBrandUrl, brandId]);
 
   const handleCreateCampaign = useCallback(async () => {
-    if (!effectiveSelection || !budgetAmount) return;
+    if (!selectedRow || !budgetAmount) return;
 
     if (!formData.brandUrl.trim()) {
       setCreateError("Missing: Brand URL");
@@ -339,10 +339,11 @@ export default function FeatureCreateCampaignPage() {
     if (budgetFrequency === "weekly") budgetParams.maxBudgetWeeklyUsd = budgetAmount;
     if (budgetFrequency === "monthly") budgetParams.maxBudgetMonthlyUsd = budgetAmount;
 
+    const displayLabel = formatDisplayName(selectedRow.displayName, selectedRow.name);
     try {
       const { campaign } = await createCampaign({
-        name: `${effectiveSelection} \u2014 ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}`,
-        workflowName: effectiveSelection,
+        name: `${displayLabel} \u2014 ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}`,
+        workflowName: selectedRow.name,
         ...formData,
         ...budgetParams,
       });
@@ -362,7 +363,7 @@ export default function FeatureCreateCampaignPage() {
     } finally {
       setIsCreating(false);
     }
-  }, [effectiveSelection, budgetAmount, budgetFrequency, formData, router, orgId, brandId]);
+  }, [selectedRow, budgetAmount, budgetFrequency, formData, router, orgId, brandId, sectionKey]);
 
   if (!featureDef) return null;
 
@@ -503,7 +504,7 @@ export default function FeatureCreateCampaignPage() {
           {/* Go button */}
           <button
             onClick={handleGo}
-            disabled={!effectiveSelection || !budgetAmount || !resolvedBrandUrl}
+            disabled={!selectedRow || !budgetAmount || !resolvedBrandUrl}
             className="px-5 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Go &rarr;
@@ -568,7 +569,7 @@ export default function FeatureCreateCampaignPage() {
       )}
 
       {/* Workflow table */}
-      {isLoading || isLoadingWorkflows ? (
+      {isLoading ? (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="animate-pulse p-6 space-y-3">
             {[1, 2, 3].map((i) => (
@@ -608,12 +609,12 @@ export default function FeatureCreateCampaignPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {topRows.map((wf) => (
                   <WorkflowRow
-                    key={wf.workflowName}
+                    key={wf.id}
                     wf={wf}
                     isSelected={true}
                     selectable={false}
                     onSelect={() => {}}
-                    onShowDetail={workflowNameToId.get(wf.workflowName) ? () => setDetailWorkflowId(workflowNameToId.get(wf.workflowName)!) : undefined}
+                    onShowDetail={() => setDetailWorkflowId(wf.id)}
                   />
                 ))}
                 {topRows.length > 0 && restRows.length > 0 && (
@@ -625,12 +626,12 @@ export default function FeatureCreateCampaignPage() {
                 )}
                 {restRows.map((wf) => (
                   <WorkflowRow
-                    key={wf.workflowName}
+                    key={wf.id}
                     wf={wf}
-                    isSelected={wf.workflowName === effectiveSelection}
+                    isSelected={wf.id === effectiveSelectionId}
                     selectable={mode === "manual"}
-                    onSelect={() => setSelectedWorkflow(wf.workflowName)}
-                    onShowDetail={workflowNameToId.get(wf.workflowName) ? () => setDetailWorkflowId(workflowNameToId.get(wf.workflowName)!) : undefined}
+                    onSelect={() => setSelectedWorkflowId(wf.id)}
+                    onShowDetail={() => setDetailWorkflowId(wf.id)}
                   />
                 ))}
               </tbody>
@@ -656,15 +657,13 @@ function WorkflowRow({
   onSelect,
   onShowDetail,
 }: {
-  wf: WorkflowLeaderboardEntry;
+  wf: WorkflowTableRow;
   isSelected: boolean;
   selectable: boolean;
   onSelect: () => void;
   onShowDetail?: () => void;
 }) {
-  const name = wf.signatureName
-    ? wf.signatureName.charAt(0).toUpperCase() + wf.signatureName.slice(1)
-    : wf.displayName || wf.workflowName;
+  const label = formatDisplayName(wf.displayName, wf.name);
 
   return (
     <tr
@@ -677,7 +676,7 @@ function WorkflowRow({
         <div className="flex items-center gap-2">
           {isSelected && <div className="w-2 h-2 bg-brand-500 rounded-full flex-shrink-0" />}
           <span className={`text-sm font-medium ${isSelected ? "text-brand-700" : "text-gray-900"}`}>
-            {name}
+            {label}
           </span>
           {wf.category && (
             <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
@@ -706,4 +705,3 @@ function WorkflowRow({
     </tr>
   );
 }
-
