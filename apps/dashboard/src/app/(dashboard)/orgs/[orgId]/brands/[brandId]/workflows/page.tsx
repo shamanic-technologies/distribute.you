@@ -78,9 +78,7 @@ function WorkflowRow({
   workflow: Workflow;
   onShowDetail: () => void;
 }) {
-  const displayName = workflow.signatureName
-    ? workflow.signatureName.charAt(0).toUpperCase() + workflow.signatureName.slice(1)
-    : workflow.displayName || workflow.name;
+  const displayName = workflow.displayName || workflow.name;
   const providerCount = workflow.requiredProviders?.length ?? 0;
 
   return (

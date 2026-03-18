@@ -49,9 +49,7 @@ export function WorkflowCard({
     >
       <div className="flex items-start justify-between mb-2">
         <h3 className="font-display font-bold text-gray-800 leading-tight">
-          {workflow.signatureName
-            ? workflow.signatureName.charAt(0).toUpperCase() + workflow.signatureName.slice(1)
-            : workflow.displayName || workflow.name}
+          {workflow.displayName || workflow.name}
         </h3>
         {stepCount > 0 && (
           <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full ml-2 flex-shrink-0">

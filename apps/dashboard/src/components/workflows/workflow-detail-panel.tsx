@@ -75,9 +75,7 @@ export function WorkflowDetailPanel({
               ) : workflow ? (
                 <>
                   <h2 className="font-display font-bold text-xl text-gray-800 leading-tight">
-                    {workflow.signatureName
-                      ? workflow.signatureName.charAt(0).toUpperCase() + workflow.signatureName.slice(1)
-                      : workflow.displayName || workflow.name}
+                    {workflow.displayName || workflow.name}
                   </h2>
                   {workflow.description && (
                     <p className="text-sm text-gray-500 mt-1">{workflow.description}</p>
