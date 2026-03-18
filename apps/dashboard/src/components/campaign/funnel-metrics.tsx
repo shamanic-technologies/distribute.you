@@ -14,7 +14,7 @@ export function FunnelMetricsSkeleton() {
     <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
       <div className="h-5 w-32 bg-gray-200 rounded animate-pulse mb-6" />
       <div className="flex items-end justify-between gap-3">
-        {[100, 80, 60, 35, 15].map((h, i) => (
+        {[100, 85, 65, 50, 25, 10].map((h, i) => (
           <div key={i} className="flex-1 flex flex-col items-center">
             <div className="w-full flex justify-center" style={{ height: 128 }}>
               <div

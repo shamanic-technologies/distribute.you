@@ -13,7 +13,7 @@ export function ReplyBreakdownSkeleton() {
     <div className="bg-white rounded-xl border border-gray-200 p-6">
       <div className="h-5 w-36 bg-gray-200 rounded animate-pulse mb-4" />
       <div className="space-y-3">
-        {[70, 50, 30, 20].map((w, i) => (
+        {[70, 50, 35, 20, 10].map((w, i) => (
           <div key={i} className="flex items-center gap-3">
             <div className="w-5 h-5 bg-gray-100 rounded-full animate-pulse" />
             <div className="flex-1">
