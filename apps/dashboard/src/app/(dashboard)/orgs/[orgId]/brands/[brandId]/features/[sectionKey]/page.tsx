@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback, useState } from "react";
+import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { keepPreviousData } from "@tanstack/react-query";
@@ -10,9 +10,9 @@ import {
   getCampaignBatchStats,
   getBrandDeliveryStats,
   getBrandCostBreakdown,
-  stopCampaign,
   type Campaign,
 } from "@/lib/api";
+import { useStopCampaign, useIsStoppingCampaign } from "@/lib/use-stop-campaign";
 import { FunnelMetrics, FunnelMetricsSkeleton } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown, ReplyBreakdownSkeleton } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown, CostBreakdownSkeleton } from "@/components/campaign/cost-breakdown";
@@ -72,7 +72,7 @@ export default function FeaturePage() {
   const sectionKey = params.sectionKey as string;
 
   // Campaigns
-  const { data: campaignsData, isLoading, refetch: refetchCampaigns } = useAuthQuery(
+  const { data: campaignsData, isLoading } = useAuthQuery(
     ["campaigns", { brandId }],
     () => listCampaignsByBrand(brandId),
     pollOptions,
@@ -142,17 +142,7 @@ export default function FeaturePage() {
     unsubscribe: brandDelivery?.repliesUnsubscribe ?? 0,
   };
 
-  const [stoppingId, setStoppingId] = useState<string | null>(null);
-
-  const handleStop = useCallback(async (id: string) => {
-    setStoppingId(id);
-    try {
-      await stopCampaign(id);
-      refetchCampaigns();
-    } finally {
-      setStoppingId(null);
-    }
-  }, [refetchCampaigns]);
+  const stopMutation = useStopCampaign();
 
 
   return (
@@ -276,23 +266,7 @@ export default function FeaturePage() {
                       </span>
                     )}
                     {status === "ongoing" && (
-                      <button
-                        onClick={(e) => { e.preventDefault(); handleStop(campaign.id); }}
-                        disabled={stoppingId === campaign.id}
-                        className="text-xs text-gray-400 hover:text-red-500 transition p-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Stop campaign"
-                      >
-                        {stoppingId === campaign.id ? (
-                          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                          </svg>
-                        ) : (
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                            <rect x="6" y="6" width="12" height="12" rx="1" />
-                          </svg>
-                        )}
-                      </button>
+                      <StopCampaignButton campaignId={campaign.id} onStop={() => stopMutation.mutate({ id: campaign.id })} />
                     )}
                   </div>
                 </div>
@@ -314,5 +288,28 @@ export default function FeaturePage() {
       </div>
 
     </div>
+  );
+}
+
+function StopCampaignButton({ campaignId, onStop }: { campaignId: string; onStop: () => void }) {
+  const stopping = useIsStoppingCampaign(campaignId);
+  return (
+    <button
+      onClick={(e) => { e.preventDefault(); onStop(); }}
+      disabled={stopping}
+      className="text-xs text-gray-400 hover:text-red-500 transition p-1 disabled:opacity-50 disabled:cursor-not-allowed"
+      title="Stop campaign"
+    >
+      {stopping ? (
+        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+      ) : (
+        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+          <rect x="6" y="6" width="12" height="12" rx="1" />
+        </svg>
+      )}
+    </button>
   );
 }
