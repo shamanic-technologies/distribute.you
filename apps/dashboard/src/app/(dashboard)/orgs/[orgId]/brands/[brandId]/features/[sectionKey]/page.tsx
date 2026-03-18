@@ -15,7 +15,7 @@ import {
 } from "@/lib/api";
 import { FunnelMetrics, FunnelMetricsSkeleton } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown, ReplyBreakdownSkeleton } from "@/components/campaign/reply-breakdown";
-import { CostBreakdown } from "@/components/campaign/cost-breakdown";
+import { CostBreakdown, CostBreakdownSkeleton } from "@/components/campaign/cost-breakdown";
 
 const POLL_INTERVAL = 5_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
@@ -105,9 +105,13 @@ export default function FeaturePage() {
     { retry: false, ...pollOptions },
   );
 
-  // Only show skeletons on the very first load (no data yet), not on background refetches
+  // Show skeletons until ALL data sources have loaded at least once.
+  // When there are no campaigns, batch stats are disabled (enabled: false) so skip that check.
   const hasData = campaignsData !== undefined;
-  const statsLoading = !hasData;
+  const batchStatsReady = campaignIds.length === 0 || !isLoadingBatchStats;
+  const allStatsLoaded = hasData && batchStatsReady && !isLoadingDelivery;
+  const statsLoading = !allStatsLoaded;
+  const costsLoading = isLoadingCosts;
 
   // Aggregate stats
   const statsValues = Object.values(campaignStats);
@@ -153,11 +157,13 @@ export default function FeaturePage() {
           <p className="text-gray-600">Performance overview and campaigns for this feature.</p>
         </div>
         <div className="flex items-center gap-3">
-          {formatTotalCost(totals.totalCostCents) && (
+          {costsLoading ? (
+            <div className="h-5 w-20 bg-gray-200 rounded animate-pulse" />
+          ) : formatTotalCost(totals.totalCostCents) ? (
             <span className="text-sm font-semibold text-gray-700">
               Total: {formatTotalCost(totals.totalCostCents)}
             </span>
-          )}
+          ) : null}
           <Link
             href={`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}/campaigns/new`}
             className="px-4 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition"
@@ -194,11 +200,15 @@ export default function FeaturePage() {
       ) : null}
 
       {/* Cost Breakdown */}
-      {brandCostBreakdown.length > 0 && (
+      {costsLoading ? (
+        <div className="mb-6">
+          <CostBreakdownSkeleton />
+        </div>
+      ) : brandCostBreakdown.length > 0 ? (
         <div className="mb-6">
           <CostBreakdown costBreakdown={brandCostBreakdown} />
         </div>
-      )}
+      ) : null}
 
       {/* Campaigns List */}
       <div className="space-y-3">
