@@ -46,6 +46,7 @@ interface InputRequestBlock {
   label: string;
   placeholder?: string;
   field: string;
+  value?: string;
 }
 
 interface ButtonsBlock {
@@ -218,7 +219,7 @@ function InputRequestBlockUI({
   onSubmit: (value: string) => void;
   disabled?: boolean;
 }) {
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState(block.value ?? "");
   const inputType = block.inputType === "url" ? "url" : block.inputType === "email" ? "email" : "text";
 
   function handleSubmit(e: FormEvent) {
@@ -509,6 +510,7 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
       const decoder = new TextDecoder();
       let buffer = "";
       let receivedContent = false;
+      let lastGeneratedText = ""; // track last text for input_request prefill
       const rawChunks: string[] = []; // keep raw data for error diagnostics
 
       while (true) {
@@ -575,6 +577,7 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
               const tokenText = (event.content || event.token || "") as string;
               if (!tokenText) break;
               receivedContent = true;
+              lastGeneratedText += tokenText;
               setMessages((prev) =>
                 updateLastMessage(prev, (msg) => {
                   const newContent = msg.content + tokenText;
@@ -690,6 +693,11 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
             /* ── Input request ───────────────────────────── */
             case "input_request": {
               receivedContent = true;
+              // Prefill: explicit value from event, or the last text the AI generated
+              const prefillValue = (event.value as string | undefined)
+                || lastGeneratedText.trim()
+                || undefined;
+
               setMessages((prev) =>
                 updateLastMessage(prev, (msg) =>
                   appendBlock(msg, {
@@ -698,6 +706,7 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
                     label: (event.label || "") as string,
                     placeholder: (event.placeholder || undefined) as string | undefined,
                     field: (event.field || "") as string,
+                    value: prefillValue,
                   }),
                 ),
               );
