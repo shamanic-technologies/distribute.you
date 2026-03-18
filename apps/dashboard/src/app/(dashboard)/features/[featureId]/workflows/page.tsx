@@ -123,7 +123,9 @@ export default function FeatureWorkflowsPage() {
       if (seen.has(name)) continue;
       result.push({
         key: name,
-        name: wf.displayName || wf.name,
+        name: wf.signatureName
+          ? wf.signatureName.charAt(0).toUpperCase() + wf.signatureName.slice(1)
+          : wf.displayName || wf.name,
         category: wf.category,
         workflowId: wf.id,
         description: wf.description,
