@@ -383,12 +383,16 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
 
       const decoder = new TextDecoder();
       let buffer = "";
+      let receivedContent = false;
+      const rawChunks: string[] = []; // keep raw data for error diagnostics
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        buffer += decoder.decode(value, { stream: true });
+        const chunk = decoder.decode(value, { stream: true });
+        rawChunks.push(chunk);
+        buffer += chunk;
         const lines = buffer.split("\n");
         buffer = lines.pop() || "";
 
@@ -397,146 +401,192 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
           const payload = line.slice(6);
           if (payload === "[DONE]") continue;
 
+          let event: Record<string, unknown>;
           try {
-            const event = JSON.parse(payload);
-
-            // First event: chat-service returns the session ID
-            if (event.sessionId && !event.type) {
-              sessionIdRef.current = event.sessionId;
-              continue;
+            event = JSON.parse(payload);
+          } catch {
+            // Not JSON — could be a plain-text error from the server
+            const errorText = payload.trim();
+            if (errorText) {
+              receivedContent = true;
+              setMessages((prev) =>
+                updateLastMessage(prev, (msg) => ({
+                  ...msg,
+                  content: errorText,
+                  blocks: [{ type: "text" as const, text: errorText }],
+                })),
+              );
             }
+            continue;
+          }
 
-            switch (event.type) {
-              /* ── Text tokens ─────────────────────────────── */
-              case "token": {
-                const tokenText = event.content || event.token || "";
-                if (!tokenText) break;
-                setMessages((prev) =>
-                  updateLastMessage(prev, (msg) => {
-                    const newContent = msg.content + tokenText;
-                    const lastBlock = msg.blocks[msg.blocks.length - 1];
-                    if (lastBlock?.type === "text") {
-                      return {
-                        ...msg,
-                        content: newContent,
-                        blocks: [
-                          ...msg.blocks.slice(0, -1),
-                          { type: "text", text: lastBlock.text + tokenText },
-                        ],
-                      };
-                    }
+          // First event: chat-service returns the session ID
+          if (event.sessionId && !event.type) {
+            sessionIdRef.current = event.sessionId as string;
+            continue;
+          }
+
+          // Server-side error sent as SSE event (e.g. {"error": "Session not found."})
+          if (event.error && !event.type) {
+            receivedContent = true;
+            const errorMsg = String(event.error);
+            console.error("[chat] Server error:", errorMsg);
+            setMessages((prev) =>
+              updateLastMessage(prev, (msg) => ({
+                ...msg,
+                content: errorMsg,
+                blocks: [{ type: "text" as const, text: errorMsg }],
+              })),
+            );
+            continue;
+          }
+
+          switch (event.type) {
+            /* ── Text tokens ─────────────────────────────── */
+            case "token": {
+              const tokenText = (event.content || event.token || "") as string;
+              if (!tokenText) break;
+              receivedContent = true;
+              setMessages((prev) =>
+                updateLastMessage(prev, (msg) => {
+                  const newContent = msg.content + tokenText;
+                  const lastBlock = msg.blocks[msg.blocks.length - 1];
+                  if (lastBlock?.type === "text") {
                     return {
                       ...msg,
                       content: newContent,
-                      blocks: [...msg.blocks, { type: "text", text: tokenText }],
-                    };
-                  }),
-                );
-                break;
-              }
-
-              /* ── Thinking ────────────────────────────────── */
-              case "thinking_start": {
-                setMessages((prev) =>
-                  updateLastMessage(prev, (msg) =>
-                    appendBlock(msg, { type: "thinking", thinking: "", isStreaming: true }),
-                  ),
-                );
-                break;
-              }
-              case "thinking_delta": {
-                const delta = event.thinking || "";
-                setMessages((prev) =>
-                  updateLastMessage(prev, (msg) => {
-                    const lastBlock = msg.blocks[msg.blocks.length - 1];
-                    if (lastBlock?.type === "thinking") {
-                      return updateLastBlock(msg, (b) =>
-                        b.type === "thinking" ? { ...b, thinking: b.thinking + delta } : b,
-                      );
-                    }
-                    return appendBlock(msg, { type: "thinking", thinking: delta, isStreaming: true });
-                  }),
-                );
-                break;
-              }
-              case "thinking_stop": {
-                setMessages((prev) =>
-                  updateLastMessage(prev, (msg) =>
-                    updateLastBlock(msg, (b) =>
-                      b.type === "thinking" ? { ...b, isStreaming: false } : b,
-                    ),
-                  ),
-                );
-                break;
-              }
-
-              /* ── Tool calls (args arrive complete, no delta/stop) */
-              case "tool_call": {
-                setMessages((prev) =>
-                  updateLastMessage(prev, (msg) =>
-                    appendBlock(msg, {
-                      type: "tool_call",
-                      id: event.id || `tc_${Date.now()}`,
-                      name: event.name || "unknown",
-                      args: typeof event.args === "string"
-                        ? event.args
-                        : JSON.stringify(event.args ?? {}),
-                      isStreaming: true, // waiting for tool_result
-                    }),
-                  ),
-                );
-                break;
-              }
-
-              /* ── Tool results ────────────────────────────── */
-              case "tool_result": {
-                const toolCallId = event.id || "";
-                const toolName = event.name || "";
-                const resultValue = typeof event.result === "string"
-                  ? event.result
-                  : JSON.stringify(event.result ?? "");
-
-                setMessages((prev) =>
-                  updateLastMessage(prev, (msg) => {
-                    // Mark matching tool_call as done
-                    const blocks = msg.blocks.map((b) =>
-                      b.type === "tool_call" && (b.id === toolCallId || b.name === toolName)
-                        ? { ...b, isStreaming: false }
-                        : b,
-                    );
-
-                    return {
-                      ...msg,
                       blocks: [
-                        ...blocks,
-                        {
-                          type: "tool_result" as const,
-                          toolCallId,
-                          name: toolName,
-                          result: resultValue,
-                        },
+                        ...msg.blocks.slice(0, -1),
+                        { type: "text", text: lastBlock.text + tokenText },
                       ],
                     };
-                  }),
-                );
-                break;
-              }
-
-              default:
-                break;
+                  }
+                  return {
+                    ...msg,
+                    content: newContent,
+                    blocks: [...msg.blocks, { type: "text", text: tokenText }],
+                  };
+                }),
+              );
+              break;
             }
-          } catch {
-            // Skip malformed events
+
+            /* ── Thinking ────────────────────────────────── */
+            case "thinking_start": {
+              receivedContent = true;
+              setMessages((prev) =>
+                updateLastMessage(prev, (msg) =>
+                  appendBlock(msg, { type: "thinking", thinking: "", isStreaming: true }),
+                ),
+              );
+              break;
+            }
+            case "thinking_delta": {
+              const delta = (event.thinking || "") as string;
+              setMessages((prev) =>
+                updateLastMessage(prev, (msg) => {
+                  const lastBlock = msg.blocks[msg.blocks.length - 1];
+                  if (lastBlock?.type === "thinking") {
+                    return updateLastBlock(msg, (b) =>
+                      b.type === "thinking" ? { ...b, thinking: b.thinking + delta } : b,
+                    );
+                  }
+                  return appendBlock(msg, { type: "thinking", thinking: delta, isStreaming: true });
+                }),
+              );
+              break;
+            }
+            case "thinking_stop": {
+              setMessages((prev) =>
+                updateLastMessage(prev, (msg) =>
+                  updateLastBlock(msg, (b) =>
+                    b.type === "thinking" ? { ...b, isStreaming: false } : b,
+                  ),
+                ),
+              );
+              break;
+            }
+
+            /* ── Tool calls (args arrive complete, no delta/stop) */
+            case "tool_call": {
+              receivedContent = true;
+              setMessages((prev) =>
+                updateLastMessage(prev, (msg) =>
+                  appendBlock(msg, {
+                    type: "tool_call",
+                    id: (event.id || `tc_${Date.now()}`) as string,
+                    name: (event.name || "unknown") as string,
+                    args: typeof event.args === "string"
+                      ? event.args
+                      : JSON.stringify(event.args ?? {}),
+                    isStreaming: true, // waiting for tool_result
+                  }),
+                ),
+              );
+              break;
+            }
+
+            /* ── Tool results ────────────────────────────── */
+            case "tool_result": {
+              const toolCallId = (event.id || "") as string;
+              const toolName = (event.name || "") as string;
+              const resultValue = typeof event.result === "string"
+                ? event.result
+                : JSON.stringify(event.result ?? "");
+
+              setMessages((prev) =>
+                updateLastMessage(prev, (msg) => {
+                  const blocks = msg.blocks.map((b) =>
+                    b.type === "tool_call" && (b.id === toolCallId || b.name === toolName)
+                      ? { ...b, isStreaming: false }
+                      : b,
+                  );
+
+                  return {
+                    ...msg,
+                    blocks: [
+                      ...blocks,
+                      {
+                        type: "tool_result" as const,
+                        toolCallId,
+                        name: toolName,
+                        result: resultValue,
+                      },
+                    ],
+                  };
+                }),
+              );
+              break;
+            }
+
+            default:
+              console.warn("[chat] Unknown SSE event type:", event.type, event);
+              break;
           }
         }
       }
+
+      // If the stream ended without any content, surface the raw response
+      if (!receivedContent) {
+        const raw = rawChunks.join("");
+        console.error("[chat] Stream ended with no content. Raw response:", raw);
+        const errorMsg = raw.trim() || "Empty response from server";
+        setMessages((prev) =>
+          updateLastMessage(prev, (msg) => ({
+            ...msg,
+            content: errorMsg,
+            blocks: [{ type: "text" as const, text: errorMsg }],
+          })),
+        );
+      }
     } catch (err) {
+      console.error("[chat] Stream error:", err);
       setMessages((prev) =>
         updateLastMessage(prev, (msg) => ({
           ...msg,
-          content: `Sorry, something went wrong: ${err instanceof Error ? err.message : "Unknown error"}`,
+          content: `Something went wrong: ${err instanceof Error ? err.message : "Unknown error"}`,
           blocks: [
-            { type: "text", text: `Sorry, something went wrong: ${err instanceof Error ? err.message : "Unknown error"}` },
+            { type: "text" as const, text: `Something went wrong: ${err instanceof Error ? err.message : "Unknown error"}` },
           ],
         })),
       );
