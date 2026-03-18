@@ -63,7 +63,49 @@ interface ChatMessage {
 }
 
 interface WorkflowChatProps {
+  workflowId: string;
   workflowContext: Record<string, unknown>;
+}
+
+/* ─── LocalStorage persistence helpers ───────────────────────────────── */
+
+interface PersistedChat {
+  sessionId: string | null;
+  messages: ChatMessage[];
+}
+
+function storageKey(workflowId: string) {
+  return `workflow-chat:${workflowId}`;
+}
+
+function loadChat(workflowId: string): PersistedChat | null {
+  try {
+    const raw = localStorage.getItem(storageKey(workflowId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PersistedChat;
+    // Clean up streaming flags from a previous session
+    for (const msg of parsed.messages) {
+      for (const block of msg.blocks) {
+        if ("isStreaming" in block) {
+          (block as { isStreaming?: boolean }).isStreaming = false;
+        }
+      }
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function saveChat(workflowId: string, sessionId: string | null, messages: ChatMessage[]) {
+  try {
+    localStorage.setItem(
+      storageKey(workflowId),
+      JSON.stringify({ sessionId, messages } satisfies PersistedChat),
+    );
+  } catch {
+    // quota exceeded — silently ignore
+  }
 }
 
 /* ─── Collapsible wrapper ────────────────────────────────────────────── */
@@ -421,13 +463,29 @@ function updateLastBlock(msg: ChatMessage, updater: (block: ContentBlock) => Con
 
 /* ─── Main chat component ────────────────────────────────────────────── */
 
-export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+export function WorkflowChat({ workflowId, workflowContext }: WorkflowChatProps) {
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    const persisted = loadChat(workflowId);
+    return persisted?.messages ?? [];
+  });
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const sessionIdRef = useRef<string | null>(null);
+  const sessionIdRef = useRef<string | null>(loadChat(workflowId)?.sessionId ?? null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Persist messages + sessionId on every change
+  useEffect(() => {
+    if (!isStreaming) {
+      saveChat(workflowId, sessionIdRef.current, messages);
+    }
+  }, [messages, isStreaming, workflowId]);
+
+  const resetChat = useCallback(() => {
+    setMessages([]);
+    sessionIdRef.current = null;
+    localStorage.removeItem(storageKey(workflowId));
+  }, [workflowId]);
 
   const scrollToBottom = useCallback(() => {
     if (scrollRef.current) {
@@ -789,6 +847,20 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
+      {/* Chat toolbar */}
+      {hasMessages && (
+        <div className="flex items-center justify-end px-4 py-1.5 border-b border-gray-100 bg-white">
+          <button
+            type="button"
+            onClick={resetChat}
+            disabled={isStreaming}
+            className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <ArrowPathIcon className="w-3.5 h-3.5" />
+            Reset chat
+          </button>
+        </div>
+      )}
       {/* Messages */}
       {hasMessages ? (
         <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0">

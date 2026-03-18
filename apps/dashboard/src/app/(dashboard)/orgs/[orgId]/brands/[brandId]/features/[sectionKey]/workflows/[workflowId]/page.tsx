@@ -134,7 +134,7 @@ export default function WorkflowViewerPage() {
         </div>
 
         {/* Chat */}
-        <WorkflowChat workflowContext={workflowContext} />
+        <WorkflowChat workflowId={workflowId} workflowContext={workflowContext} />
       </div>
     </div>
   );
