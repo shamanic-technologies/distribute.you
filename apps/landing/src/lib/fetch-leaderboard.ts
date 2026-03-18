@@ -1,6 +1,5 @@
 const API_URL =
   process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
-const API_KEY = process.env.ADMIN_DISTRIBUTE_API_KEY;
 
 export interface BrandEntry {
   brandDomain: string | null;
@@ -32,46 +31,57 @@ export interface LeaderboardPreview {
   workflows: WorkflowEntry[];
 }
 
+interface PublicEmailStats {
+  sent: number;
+  opened: number;
+  clicked: number;
+  replied: number;
+}
+
+interface PublicRankedItem {
+  workflow: {
+    name: string;
+    displayName: string | null;
+    category: string;
+  };
+  stats: {
+    totalCostInUsdCents: number;
+    email: {
+      broadcast: PublicEmailStats;
+    };
+  };
+}
+
 export async function fetchLeaderboardPreview(): Promise<LeaderboardPreview | null> {
   try {
-    const headers: Record<string, string> = { Accept: "application/json" };
-    if (API_KEY) headers["X-API-Key"] = API_KEY;
-
-    const res = await fetch(`${API_URL}/performance/leaderboard`, {
-      headers,
+    const res = await fetch(`${API_URL}/v1/public/workflows/ranked?limit=3`, {
+      headers: { Accept: "application/json" },
       next: { revalidate: 300 },
     });
 
     if (!res.ok) return null;
 
-    const data = await res.json();
+    const data: { results: PublicRankedItem[] } = await res.json();
 
-    const brands: BrandEntry[] = (data.brands || []).slice(0, 3).map((b: Record<string, unknown>) => ({
-      brandDomain: b.brandDomain as string | null,
-      brandName: b.brandName as string | null,
-      emailsSent: b.emailsSent as number,
-      openRate: b.openRate as number,
-      clickRate: b.clickRate as number,
-      replyRate: b.replyRate as number,
-      costPerOpenCents: b.costPerOpenCents as number | null,
-      costPerClickCents: b.costPerClickCents as number | null,
-      costPerReplyCents: b.costPerReplyCents as number | null,
-    }));
+    const workflows: WorkflowEntry[] = data.results.map((item) => {
+      const b = item.stats.email.broadcast;
+      const cost = item.stats.totalCostInUsdCents;
+      return {
+        workflowName: item.workflow.name,
+        displayName: item.workflow.displayName ?? item.workflow.name,
+        category: item.workflow.category,
+        emailsSent: b.sent,
+        openRate: b.sent > 0 ? b.opened / b.sent : 0,
+        clickRate: b.sent > 0 ? b.clicked / b.sent : 0,
+        replyRate: b.sent > 0 ? b.replied / b.sent : 0,
+        costPerOpenCents: b.opened > 0 ? cost / b.opened : null,
+        costPerClickCents: b.clicked > 0 ? cost / b.clicked : null,
+        costPerReplyCents: b.replied > 0 ? cost / b.replied : null,
+      };
+    });
 
-    const workflows: WorkflowEntry[] = (data.workflows || []).slice(0, 3).map((w: Record<string, unknown>) => ({
-      workflowName: w.workflowName as string,
-      displayName: w.displayName as string,
-      category: w.category as string | null,
-      emailsSent: w.emailsSent as number,
-      openRate: w.openRate as number,
-      clickRate: w.clickRate as number,
-      replyRate: w.replyRate as number,
-      costPerOpenCents: w.costPerOpenCents as number | null,
-      costPerClickCents: w.costPerClickCents as number | null,
-      costPerReplyCents: w.costPerReplyCents as number | null,
-    }));
-
-    return { brands, workflows };
+    // No brand data from public ranked endpoint — return empty
+    return { brands: [], workflows };
   } catch {
     return null;
   }

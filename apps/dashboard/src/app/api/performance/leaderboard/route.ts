@@ -5,19 +5,22 @@ const API_URL =
   process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 const API_KEY = process.env.ADMIN_DISTRIBUTE_API_KEY;
 
+/**
+ * @deprecated This route proxied the old /v1/stats/leaderboard endpoint.
+ * Dashboard now uses /workflows/ranked via the catch-all proxy.
+ * Kept temporarily for backwards compatibility.
+ */
 export async function GET() {
-  // Require login + org context. Forward identity headers to the API.
   const { userId: clerkUserId, orgId: clerkOrgId } = await auth();
   if (!clerkUserId || !clerkOrgId || !API_KEY) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const res = await fetch(`${API_URL}/v1/stats/leaderboard`, {
+  // Proxy to the new public ranked endpoint
+  const res = await fetch(`${API_URL}/v1/public/workflows/ranked?limit=100`, {
     headers: {
       Accept: "application/json",
       "X-API-Key": API_KEY,
-      "x-external-org-id": clerkOrgId,
-      "x-external-user-id": clerkUserId,
     },
     cache: "no-store",
   });

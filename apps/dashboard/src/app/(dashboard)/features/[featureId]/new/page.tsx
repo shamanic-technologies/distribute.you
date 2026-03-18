@@ -7,18 +7,17 @@ import { WORKFLOW_DEFINITIONS } from "@distribute/content";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { useOrg } from "@/lib/org-context";
 import {
-  fetchSectionLeaderboard,
+  fetchRankedWorkflows,
   createCampaign,
   listCampaigns,
   listBrands,
-  listWorkflows,
   getWorkflowKeyStatus,
   getBrandSalesProfile,
   createBrandSalesProfile,
   upsertBrand,
   stopCampaign,
   ApiError,
-  type WorkflowLeaderboardEntry,
+  type RankedWorkflowItem,
   type Campaign,
   type Brand,
   type SalesProfile,
@@ -63,7 +62,7 @@ const STATUS_STYLES: Record<string, string> = {
   failed: "bg-red-100 text-red-600 border-red-200",
 };
 
-// ─── Format helpers (same as performance-service) ───────────────────────────
+// ─── Format helpers ─────────────────────────────────────────────────────────
 
 function formatPercent(rate: number): string {
   if (rate === 0) return "—";
@@ -75,7 +74,51 @@ function formatCostCents(cents: number | null): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
-// ─── SortHeader (identical to performance-service) ──────────────────────────
+/** Extract the family display name. Strips the sectionKey prefix to show just the codename. */
+function formatDisplayName(displayName: string | null, fallbackName: string): string {
+  const raw = displayName || fallbackName;
+  const lastDashIdx = raw.lastIndexOf("-");
+  const suffix = lastDashIdx >= 0 ? raw.slice(lastDashIdx + 1) : raw;
+  return suffix.charAt(0).toUpperCase() + suffix.slice(1);
+}
+
+// ─── Flatten ranked item into sortable row ──────────────────────────────────
+
+interface WorkflowTableRow {
+  id: string;
+  name: string;
+  displayName: string;
+  signatureName: string;
+  category: string;
+  emailsSent: number;
+  openRate: number;
+  clickRate: number;
+  replyRate: number;
+  costPerOpenCents: number | null;
+  costPerClickCents: number | null;
+  costPerReplyCents: number | null;
+}
+
+function rankedToRow(item: RankedWorkflowItem): WorkflowTableRow {
+  const b = item.stats.email.broadcast;
+  const cost = item.stats.totalCostInUsdCents;
+  return {
+    id: item.workflow.id,
+    name: item.workflow.name,
+    displayName: item.workflow.displayName ?? item.workflow.name,
+    signatureName: item.workflow.signatureName,
+    category: item.workflow.category,
+    emailsSent: b.sent,
+    openRate: b.sent > 0 ? b.opened / b.sent : 0,
+    clickRate: b.sent > 0 ? b.clicked / b.sent : 0,
+    replyRate: b.sent > 0 ? b.replied / b.sent : 0,
+    costPerOpenCents: b.opened > 0 ? cost / b.opened : null,
+    costPerClickCents: b.clicked > 0 ? cost / b.clicked : null,
+    costPerReplyCents: b.replied > 0 ? cost / b.replied : null,
+  };
+}
+
+// ─── SortHeader ─────────────────────────────────────────────────────────────
 
 function SortHeader({
   label,
@@ -173,7 +216,7 @@ export default function CreateCampaignPage() {
   const [detailWorkflowId, setDetailWorkflowId] = useState<string | null>(null);
   const [metric, setMetric] = useState<SortKey>("costPerReplyCents");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const [selectedWorkflow, setSelectedWorkflow] = useState<string | null>(null);
+  const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
   const [budgetAmount, setBudgetAmount] = useState("");
   const [budgetFrequency, setBudgetFrequency] = useState<BudgetFrequency>("monthly");
   const [showForm, setShowForm] = useState(false);
@@ -186,10 +229,15 @@ export default function CreateCampaignPage() {
   const [newBrandUrl, setNewBrandUrl] = useState("");
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
 
-  // Fetch leaderboard data
-  const { data: leaderboard, isLoading } = useAuthQuery(
-    ["section-leaderboard", featureId],
-    () => fetchSectionLeaderboard(featureId),
+  // Fetch ranked workflows (family-aggregated stats from workflow-service)
+  const { data: rankedItems, isLoading } = useAuthQuery(
+    ["ranked-workflows", featureDef?.category, featureDef?.channel, featureDef?.audienceType],
+    () => fetchRankedWorkflows({
+      category: featureDef!.category,
+      channel: featureDef!.channel,
+      audienceType: featureDef!.audienceType,
+      limit: 100,
+    }),
     { enabled: featureDef?.implemented === true, ...pollOptions },
   );
 
@@ -208,28 +256,8 @@ export default function CreateCampaignPage() {
   );
   const brands = brandsData?.brands ?? [];
 
-  const { data: workflowsData } = useAuthQuery(
-    ["workflows"],
-    () => listWorkflows(),
-    { enabled: featureDef?.implemented === true, ...pollOptions },
-  );
-
-  const deprecatedNames = useMemo(() => {
-    const set = new Set<string>();
-    for (const wf of workflowsData?.workflows ?? []) {
-      if (wf.status === "deprecated") set.add(wf.name);
-    }
-    return set;
-  }, [workflowsData]);
-
-  // Map workflow names to IDs for detail panel
-  const workflowNameToId = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const wf of workflowsData?.workflows ?? []) {
-      if (wf.status !== "deprecated") map.set(wf.name, wf.id);
-    }
-    return map;
-  }, [workflowsData]);
+  // Flatten ranked items into sortable rows
+  const rows = useMemo(() => (rankedItems ?? []).map(rankedToRow), [rankedItems]);
 
   const activeCampaigns = useMemo(() => {
     if (!campaignsData?.campaigns) return [];
@@ -251,78 +279,46 @@ export default function CreateCampaignPage() {
   }, []);
 
   const sorted = useMemo(() => {
-    if (!leaderboard) return [];
-    return [...leaderboard].filter((e) => !deprecatedNames.has(e.workflowName)).sort((a, b) => {
+    if (rows.length === 0) return [];
+    return [...rows].sort((a, b) => {
       const aRaw = a[metric];
       const bRaw = b[metric];
       const aNull = aRaw === null || aRaw === 0;
       const bNull = bRaw === null || bRaw === 0;
-      // Null/zero values always sort to the bottom regardless of direction
       if (aNull && bNull) return 0;
       if (aNull) return 1;
       if (bNull) return -1;
       return sortDir === "desc" ? Number(bRaw) - Number(aRaw) : Number(aRaw) - Number(bRaw);
     });
-  }, [leaderboard, metric, sortDir]);
+  }, [rows, metric, sortDir]);
 
-  // Available workflows for this outcome (used as fallback when no leaderboard data)
-  const outcomeWorkflows = useMemo(() => {
-    return (workflowsData?.workflows ?? []).filter((w) => w.status !== "deprecated" && w.name.startsWith(featureId));
-  }, [workflowsData, featureId]);
+  // Selection uses workflow ID as stable key
+  const effectiveSelectionId = mode === "autopilot"
+    ? sorted[0]?.id ?? null
+    : selectedWorkflowId;
 
-  // Build display rows: leaderboard data if available, otherwise workflows with no metrics
-  const displayRows = useMemo(() => {
-    if (sorted.length > 0) return sorted;
-    return outcomeWorkflows.map((w): WorkflowLeaderboardEntry => ({
-      workflowName: w.name,
-      displayName: w.displayName ?? w.name,
-      signatureName: w.signatureName ?? null,
-      category: w.category ?? null,
-      sectionKey: featureId,
-      runCount: 0,
-      emailsSent: 0,
-      emailsOpened: 0,
-      emailsClicked: 0,
-      emailsReplied: 0,
-      totalCostUsdCents: 0,
-      openRate: 0,
-      clickRate: 0,
-      replyRate: 0,
-      costPerOpenCents: null,
-      costPerClickCents: null,
-      costPerReplyCents: null,
-    }));
-  }, [sorted, outcomeWorkflows]);
-
-  // In autopilot, first row is always selected (leaderboard or fallback workflow)
-  const effectiveSelection = mode === "autopilot"
-    ? displayRows[0]?.workflowName ?? null
-    : selectedWorkflow;
-
-  const effectiveWorkflowId = effectiveSelection
-    ? workflowNameToId.get(effectiveSelection) ?? null
-    : null;
+  const selectedRow = sorted.find((r) => r.id === effectiveSelectionId) ?? null;
 
   const { data: keyStatusData } = useAuthQuery(
-    ["workflowKeyStatus", effectiveWorkflowId],
-    () => getWorkflowKeyStatus(effectiveWorkflowId!),
-    { enabled: !!effectiveWorkflowId, ...pollOptions }
+    ["workflowKeyStatus", effectiveSelectionId],
+    () => getWorkflowKeyStatus(effectiveSelectionId!),
+    { enabled: !!effectiveSelectionId, ...pollOptions }
   );
 
   const missingProviders = keyStatusData?.missing ?? [];
 
   // In manual mode, separate selected from rest
   const { topRows, restRows } = useMemo(() => {
-    if (mode === "autopilot" || !selectedWorkflow) {
-      return { topRows: [], restRows: displayRows };
+    if (mode === "autopilot" || !selectedWorkflowId) {
+      return { topRows: [], restRows: sorted };
     }
-    const selected = displayRows.find((w) => w.workflowName === selectedWorkflow);
-    const rest = displayRows.filter((w) => w.workflowName !== selectedWorkflow);
+    const selected = sorted.find((w) => w.id === selectedWorkflowId);
+    const rest = sorted.filter((w) => w.id !== selectedWorkflowId);
     return {
       topRows: selected ? [selected] : [],
       restRows: rest,
     };
-  }, [mode, selectedWorkflow, displayRows]);
+  }, [mode, selectedWorkflowId, sorted]);
 
   // Resolve the brand URL from either the selected brand or the new URL input
   const resolvedBrandUrl = useMemo(() => {
@@ -337,7 +333,7 @@ export default function CreateCampaignPage() {
 
   // Campaign actions
   const handleGo = useCallback(async () => {
-    if (!effectiveSelection || !budgetAmount || !resolvedBrandUrl) return;
+    if (!selectedRow || !budgetAmount || !resolvedBrandUrl) return;
     setCreateError(null);
     setIsLoadingProfile(true);
 
@@ -370,10 +366,10 @@ export default function CreateCampaignPage() {
       setIsLoadingProfile(false);
       setShowForm(true);
     }
-  }, [effectiveSelection, budgetAmount, resolvedBrandUrl, selectedBrandId]);
+  }, [selectedRow, budgetAmount, resolvedBrandUrl, selectedBrandId]);
 
   const handleCreateCampaign = useCallback(async () => {
-    if (!effectiveSelection || !budgetAmount) return;
+    if (!selectedRow || !budgetAmount) return;
 
     if (!formData.brandUrl.trim()) {
       setCreateError("Missing: Brand URL");
@@ -396,8 +392,8 @@ export default function CreateCampaignPage() {
 
     try {
       await createCampaign({
-        name: `${effectiveSelection} — ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}`,
-        workflowName: effectiveSelection,
+        name: `${selectedRow.name} — ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}`,
+        workflowName: selectedRow.name,
         ...formData,
         ...budgetParams,
       });
@@ -416,7 +412,7 @@ export default function CreateCampaignPage() {
     } finally {
       setIsCreating(false);
     }
-  }, [effectiveSelection, budgetAmount, budgetFrequency, formData, refetchCampaigns]);
+  }, [selectedRow, budgetAmount, budgetFrequency, formData, refetchCampaigns]);
 
   const handleStopCampaign = useCallback(async (id: string) => {
     await stopCampaign(id);
@@ -635,7 +631,7 @@ export default function CreateCampaignPage() {
           {/* Go button */}
           <button
             onClick={handleGo}
-            disabled={!effectiveSelection || !budgetAmount || !resolvedBrandUrl}
+            disabled={!selectedRow || !budgetAmount || !resolvedBrandUrl}
             className="px-5 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
             data-testid="go-button"
           >
@@ -724,7 +720,7 @@ export default function CreateCampaignPage() {
             ))}
           </div>
         </div>
-      ) : displayRows.length === 0 ? (
+      ) : sorted.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
           <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -757,12 +753,12 @@ export default function CreateCampaignPage() {
                 {/* Manual mode: selected row on top */}
                 {topRows.map((wf) => (
                   <WorkflowRow
-                    key={wf.workflowName}
+                    key={wf.id}
                     wf={wf}
                     isSelected={true}
                     selectable={false}
                     onSelect={() => {}}
-                    onShowDetail={workflowNameToId.get(wf.workflowName) ? () => setDetailWorkflowId(workflowNameToId.get(wf.workflowName)!) : undefined}
+                    onShowDetail={() => setDetailWorkflowId(wf.id)}
                   />
                 ))}
                 {/* Separator in manual mode when a row is pinned */}
@@ -776,12 +772,12 @@ export default function CreateCampaignPage() {
                 {/* Rest of the rows */}
                 {restRows.map((wf) => (
                   <WorkflowRow
-                    key={wf.workflowName}
+                    key={wf.id}
                     wf={wf}
-                    isSelected={wf.workflowName === effectiveSelection}
+                    isSelected={wf.id === effectiveSelectionId}
                     selectable={mode === "manual"}
-                    onSelect={() => setSelectedWorkflow(wf.workflowName)}
-                    onShowDetail={workflowNameToId.get(wf.workflowName) ? () => setDetailWorkflowId(workflowNameToId.get(wf.workflowName)!) : undefined}
+                    onSelect={() => setSelectedWorkflowId(wf.id)}
+                    onShowDetail={() => setDetailWorkflowId(wf.id)}
                   />
                 ))}
               </tbody>
@@ -810,15 +806,13 @@ function WorkflowRow({
   onSelect,
   onShowDetail,
 }: {
-  wf: WorkflowLeaderboardEntry;
+  wf: WorkflowTableRow;
   isSelected: boolean;
   selectable: boolean;
   onSelect: () => void;
   onShowDetail?: () => void;
 }) {
-  const name = wf.signatureName
-    ? wf.signatureName.charAt(0).toUpperCase() + wf.signatureName.slice(1)
-    : wf.displayName || wf.workflowName;
+  const label = formatDisplayName(wf.displayName, wf.name);
 
   return (
     <tr
@@ -831,7 +825,7 @@ function WorkflowRow({
         <div className="flex items-center gap-2">
           {isSelected && <div className="w-2 h-2 bg-brand-500 rounded-full flex-shrink-0" />}
           <span className={`text-sm font-medium ${isSelected ? "text-brand-700" : "text-gray-900"}`}>
-            {name}
+            {label}
           </span>
           {wf.category && (
             <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">

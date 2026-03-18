@@ -23,17 +23,18 @@ describe("Feature workflows page", () => {
     expect(content).toContain("@distribute/content");
   });
 
-  it("should use leaderboard data for all available workflows", () => {
+  it("should use fetchRankedWorkflows for data", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("fetchSectionLeaderboard");
-    expect(content).toContain("section-leaderboard");
+    expect(content).toContain("fetchRankedWorkflows");
+    expect(content).toContain("ranked-workflows");
     expect(content).toContain("useAuthQuery");
   });
 
-  it("should also fetch deployed workflows and merge both sources", () => {
+  it("should NOT use old fetchSectionLeaderboard or listWorkflows", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("listWorkflows");
-    expect(content).toContain("workflowIdMap");
+    expect(content).not.toContain("fetchSectionLeaderboard");
+    expect(content).not.toContain("listWorkflows");
+    expect(content).not.toContain("deprecatedSet");
   });
 
   it("should use WorkflowDetailPanel for detail view", () => {
@@ -51,9 +52,10 @@ describe("Feature workflows page", () => {
     expect(content).toContain("runCount");
   });
 
-  it("should show error state when unable to load workflows", () => {
+  it("should use workflow ID for detail panel (not name-based)", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("Unable to load workflows");
+    expect(content).toContain("setDetailWorkflowId(row.id)");
+    expect(content).not.toContain("workflowNameToId");
   });
 
   it("should have a loading state", () => {
@@ -62,9 +64,9 @@ describe("Feature workflows page", () => {
     expect(content).toContain("animate-pulse");
   });
 
-  it("should use unified WorkflowRowData type merging both sources", () => {
+  it("should use rankedToRow to flatten items", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
+    expect(content).toContain("rankedToRow");
     expect(content).toContain("WorkflowRowData");
-    expect(content).toContain("deployedByName");
   });
 });

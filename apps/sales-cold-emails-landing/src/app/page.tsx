@@ -51,13 +51,24 @@ function formatCostCents(cents: number): string {
 
 async function getHeroStats(): Promise<HeroStats | null> {
   try {
-    const url = process.env.PERFORMANCE_API_URL || URLS.performance;
-    const res = await fetch(`${url}/api/leaderboard`, {
+    const apiUrl = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
+    const res = await fetch(`${apiUrl}/v1/public/workflows/best`, {
+      headers: { Accept: "application/json" },
       next: { revalidate: 3600 },
     });
     if (!res.ok) return null;
-    const data = await res.json();
-    return data.hero || null;
+    const data: {
+      bestCostPerOpen: { value: number; brandId: string | null } | null;
+      bestCostPerReply: { value: number; brandId: string | null } | null;
+    } = await res.json();
+    return {
+      bestCostPerOpen: data.bestCostPerOpen
+        ? { brandDomain: null, costPerOpenCents: data.bestCostPerOpen.value }
+        : null,
+      bestCostPerReply: data.bestCostPerReply
+        ? { brandDomain: null, costPerReplyCents: data.bestCostPerReply.value }
+        : null,
+    };
   } catch {
     return null;
   }

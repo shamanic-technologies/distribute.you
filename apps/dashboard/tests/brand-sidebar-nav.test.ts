@@ -132,7 +132,7 @@ describe("Brand-scoped create campaign page", () => {
 
   it("should have workflow leaderboard table", () => {
     const content = fs.readFileSync(createPath, "utf-8");
-    expect(content).toContain("fetchSectionLeaderboard");
+    expect(content).toContain("fetchRankedWorkflows");
     expect(content).toContain("WorkflowRow");
   });
 });

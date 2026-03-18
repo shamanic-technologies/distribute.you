@@ -1,14 +1,12 @@
 "use client";
 
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
-  listWorkflows,
-  fetchSectionLeaderboard,
-  type WorkflowLeaderboardEntry,
+  fetchRankedWorkflows,
+  type RankedWorkflowItem,
 } from "@/lib/api";
-import { useState } from "react";
 import { WORKFLOW_DEFINITIONS } from "@distribute/content";
 
 const POLL_INTERVAL = 5_000;
@@ -29,6 +27,45 @@ function formatPercent(rate: number): string {
 function formatCostCents(cents: number | null): string {
   if (cents === null || cents === 0) return "\u2014";
   return `$${(cents / 100).toFixed(2)}`;
+}
+
+function formatDisplayName(displayName: string | null, fallbackName: string): string {
+  const raw = displayName || fallbackName;
+  const lastDashIdx = raw.lastIndexOf("-");
+  const suffix = lastDashIdx >= 0 ? raw.slice(lastDashIdx + 1) : raw;
+  return suffix.charAt(0).toUpperCase() + suffix.slice(1);
+}
+
+interface WorkflowTableRow {
+  id: string;
+  name: string;
+  displayLabel: string;
+  category: string;
+  emailsSent: number;
+  openRate: number;
+  clickRate: number;
+  replyRate: number;
+  costPerOpenCents: number | null;
+  costPerClickCents: number | null;
+  costPerReplyCents: number | null;
+}
+
+function rankedToRow(item: RankedWorkflowItem): WorkflowTableRow {
+  const b = item.stats.email.broadcast;
+  const cost = item.stats.totalCostInUsdCents;
+  return {
+    id: item.workflow.id,
+    name: item.workflow.name,
+    displayLabel: formatDisplayName(item.workflow.displayName, item.workflow.name),
+    category: item.workflow.category,
+    emailsSent: b.sent,
+    openRate: b.sent > 0 ? b.opened / b.sent : 0,
+    clickRate: b.sent > 0 ? b.clicked / b.sent : 0,
+    replyRate: b.sent > 0 ? b.replied / b.sent : 0,
+    costPerOpenCents: b.opened > 0 ? cost / b.opened : null,
+    costPerClickCents: b.clicked > 0 ? cost / b.clicked : null,
+    costPerReplyCents: b.replied > 0 ? cost / b.replied : null,
+  };
 }
 
 function SortHeader({
@@ -66,25 +103,19 @@ export default function FeatureWorkflowsPage() {
 
   const wfDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === sectionKey);
 
-  const { data: workflowsData } = useAuthQuery(
-    ["workflows"],
-    () => listWorkflows(),
+  // Fetch ranked workflows (family-aggregated stats)
+  const { data: rankedItems, isLoading } = useAuthQuery(
+    ["ranked-workflows", wfDef?.category, wfDef?.channel, wfDef?.audienceType],
+    () => fetchRankedWorkflows({
+      category: wfDef!.category,
+      channel: wfDef!.channel,
+      audienceType: wfDef!.audienceType,
+      limit: 100,
+    }),
     { enabled: wfDef?.implemented === true, ...pollOptions },
   );
 
-  const { data: leaderboard, isLoading } = useAuthQuery(
-    ["section-leaderboard", sectionKey],
-    () => fetchSectionLeaderboard(sectionKey),
-    { enabled: wfDef?.implemented === true, ...pollOptions },
-  );
-
-  const activeWorkflows = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const wf of workflowsData?.workflows ?? []) {
-      if (wf.status === "active") map.set(wf.name, wf.id);
-    }
-    return map;
-  }, [workflowsData]);
+  const rows = useMemo(() => (rankedItems ?? []).map(rankedToRow), [rankedItems]);
 
   const handleSort = useCallback((key: SortKey) => {
     setMetric((prev) => {
@@ -98,8 +129,8 @@ export default function FeatureWorkflowsPage() {
   }, []);
 
   const sorted = useMemo(() => {
-    if (!leaderboard) return [];
-    return [...leaderboard].filter((e) => activeWorkflows.has(e.workflowName)).sort((a, b) => {
+    if (rows.length === 0) return [];
+    return [...rows].sort((a, b) => {
       const aRaw = a[metric];
       const bRaw = b[metric];
       const aNull = aRaw === null || aRaw === 0;
@@ -109,11 +140,9 @@ export default function FeatureWorkflowsPage() {
       if (bNull) return -1;
       return sortDir === "desc" ? Number(bRaw) - Number(aRaw) : Number(aRaw) - Number(bRaw);
     });
-  }, [leaderboard, activeWorkflows, metric, sortDir]);
+  }, [rows, metric, sortDir]);
 
-  function navigateToWorkflow(workflowName: string) {
-    const workflowId = activeWorkflows.get(workflowName);
-    if (!workflowId) return;
+  function navigateToWorkflow(workflowId: string) {
     router.push(`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}/workflows/${workflowId}`);
   }
 
@@ -166,10 +195,9 @@ export default function FeatureWorkflowsPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {sorted.map((wf) => (
                   <WorkflowRow
-                    key={wf.workflowName}
+                    key={wf.id}
                     wf={wf}
-                    hasDetail={activeWorkflows.has(wf.workflowName)}
-                    onClick={() => navigateToWorkflow(wf.workflowName)}
+                    onClick={() => navigateToWorkflow(wf.id)}
                   />
                 ))}
               </tbody>
@@ -183,35 +211,27 @@ export default function FeatureWorkflowsPage() {
 
 function WorkflowRow({
   wf,
-  hasDetail,
   onClick,
 }: {
-  wf: WorkflowLeaderboardEntry;
-  hasDetail: boolean;
+  wf: WorkflowTableRow;
   onClick: () => void;
 }) {
-  const name = wf.signatureName
-    ? wf.signatureName.charAt(0).toUpperCase() + wf.signatureName.slice(1)
-    : wf.displayName || wf.workflowName;
-
   return (
     <tr
-      className={`hover:bg-gray-50 transition ${hasDetail ? "cursor-pointer" : ""}`}
-      onClick={hasDetail ? onClick : undefined}
+      className="hover:bg-gray-50 transition cursor-pointer"
+      onClick={onClick}
     >
       <td className="px-4 py-4 whitespace-nowrap">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-900">{name}</span>
+          <span className="text-sm font-medium text-gray-900">{wf.displayLabel}</span>
           {wf.category && (
             <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
               {wf.category}
             </span>
           )}
-          {hasDetail && (
-            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          )}
+          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
         </div>
       </td>
       <td className="px-4 py-4 text-sm text-gray-600">{wf.emailsSent > 0 ? formatPercent(wf.openRate) : "\u2014"}</td>

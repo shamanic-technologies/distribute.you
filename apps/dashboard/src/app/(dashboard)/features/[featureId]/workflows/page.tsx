@@ -5,10 +5,8 @@ import { useParams } from "next/navigation";
 import { WORKFLOW_DEFINITIONS } from "@distribute/content";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
-  fetchSectionLeaderboard,
-  listWorkflows,
-  type WorkflowLeaderboardEntry,
-  type Workflow,
+  fetchRankedWorkflows,
+  type RankedWorkflowItem,
 } from "@/lib/api";
 import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-panel";
 
@@ -25,26 +23,51 @@ function formatCostCents(cents: number | null): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
-// Unified row type: either from leaderboard (with stats) or from deployed workflows (metadata only)
+function formatDisplayName(displayName: string | null, fallbackName: string): string {
+  const raw = displayName || fallbackName;
+  const lastDashIdx = raw.lastIndexOf("-");
+  const suffix = lastDashIdx >= 0 ? raw.slice(lastDashIdx + 1) : raw;
+  return suffix.charAt(0).toUpperCase() + suffix.slice(1);
+}
+
 interface WorkflowRowData {
-  key: string;
+  id: string;
   name: string;
-  category: string | null;
-  workflowId: string | null;
-  // Stats (only from leaderboard)
-  emailsSent?: number;
-  openRate?: number;
-  clickRate?: number;
-  replyRate?: number;
-  costPerReplyCents?: number | null;
-  runCount?: number;
-  // Metadata (only from deployed workflows)
-  description?: string | null;
-  channel?: string;
-  audienceType?: string;
-  signatureName?: string | null;
-  nodeCount?: number;
-  providerCount?: number;
+  displayLabel: string;
+  category: string;
+  channel: string;
+  audienceType: string;
+  signatureName: string;
+  emailsSent: number;
+  openRate: number;
+  clickRate: number;
+  replyRate: number;
+  costPerReplyCents: number | null;
+  runCount: number;
+  nodeCount: number;
+  providerCount: number;
+}
+
+function rankedToRow(item: RankedWorkflowItem): WorkflowRowData {
+  const b = item.stats.email.broadcast;
+  const cost = item.stats.totalCostInUsdCents;
+  return {
+    id: item.workflow.id,
+    name: item.workflow.name,
+    displayLabel: formatDisplayName(item.workflow.displayName, item.workflow.name),
+    category: item.workflow.category,
+    channel: item.workflow.channel,
+    audienceType: item.workflow.audienceType,
+    signatureName: item.workflow.signatureName,
+    emailsSent: b.sent,
+    openRate: b.sent > 0 ? b.opened / b.sent : 0,
+    clickRate: b.sent > 0 ? b.clicked / b.sent : 0,
+    replyRate: b.sent > 0 ? b.replied / b.sent : 0,
+    costPerReplyCents: b.replied > 0 ? cost / b.replied : null,
+    runCount: item.stats.completedRuns,
+    nodeCount: item.dag?.nodes?.length ?? 0,
+    providerCount: 0,
+  };
 }
 
 export default function FeatureWorkflowsPage() {
@@ -54,91 +77,19 @@ export default function FeatureWorkflowsPage() {
 
   const [detailWorkflowId, setDetailWorkflowId] = useState<string | null>(null);
 
-  // Source 1: leaderboard (global performance data — all known workflows)
-  const { data: leaderboard, isLoading: leaderboardLoading } = useAuthQuery(
-    ["section-leaderboard", featureId],
-    () => fetchSectionLeaderboard(featureId),
+  // Fetch ranked workflows (family-aggregated stats)
+  const { data: rankedItems, isLoading } = useAuthQuery(
+    ["ranked-workflows", featureDef?.category, featureDef?.channel, featureDef?.audienceType],
+    () => fetchRankedWorkflows({
+      category: featureDef!.category,
+      channel: featureDef!.channel,
+      audienceType: featureDef!.audienceType,
+      limit: 100,
+    }),
     { enabled: featureDef?.implemented === true, ...pollOptions },
   );
 
-  // Source 2: deployed workflows (from workflow-service via api-service)
-  const { data: workflowsData, isLoading: workflowsLoading } = useAuthQuery(
-    ["workflows"],
-    () => listWorkflows(),
-    { enabled: featureDef?.implemented === true, ...pollOptions },
-  );
-
-  const isLoading = leaderboardLoading && workflowsLoading;
-
-  // Merge both sources into a unified list
-  const { rows, workflowIdMap } = useMemo(() => {
-    const idMap = new Map<string, string>();
-    const deployedByName = new Map<string, Workflow>();
-
-    const deprecatedSet = new Set<string>();
-    for (const wf of workflowsData?.workflows ?? []) {
-      if (wf.status === "deprecated") {
-        deprecatedSet.add(wf.name);
-        continue;
-      }
-      idMap.set(wf.name, wf.id);
-      if (wf.name.startsWith(featureId)) {
-        deployedByName.set(wf.name, wf);
-      }
-    }
-
-    const seen = new Set<string>();
-    const result: WorkflowRowData[] = [];
-
-    // Priority: leaderboard entries (have stats) — only if still deployed
-    for (const entry of leaderboard ?? []) {
-      if (deprecatedSet.has(entry.workflowName)) continue;
-      if (!idMap.has(entry.workflowName)) continue;
-      seen.add(entry.workflowName);
-      const deployed = deployedByName.get(entry.workflowName);
-      result.push({
-        key: entry.workflowName,
-        name: entry.signatureName
-          ? entry.signatureName.charAt(0).toUpperCase() + entry.signatureName.slice(1)
-          : entry.displayName || entry.workflowName,
-        category: entry.category,
-        workflowId: idMap.get(entry.workflowName) ?? null,
-        emailsSent: entry.emailsSent,
-        openRate: entry.openRate,
-        clickRate: entry.clickRate,
-        replyRate: entry.replyRate,
-        costPerReplyCents: entry.costPerReplyCents,
-        runCount: entry.runCount,
-        description: deployed?.description,
-        channel: deployed?.channel,
-        audienceType: deployed?.audienceType,
-        signatureName: entry.signatureName,
-        nodeCount: deployed?.dag?.nodes.length,
-        providerCount: deployed?.requiredProviders?.length,
-      });
-    }
-
-    // Add deployed workflows not in leaderboard
-    for (const [name, wf] of deployedByName) {
-      if (seen.has(name)) continue;
-      result.push({
-        key: name,
-        name: wf.signatureName
-          ? wf.signatureName.charAt(0).toUpperCase() + wf.signatureName.slice(1)
-          : wf.displayName || wf.name,
-        category: wf.category,
-        workflowId: wf.id,
-        description: wf.description,
-        channel: wf.channel,
-        audienceType: wf.audienceType,
-        signatureName: wf.signatureName,
-        nodeCount: wf.dag?.nodes.length,
-        providerCount: wf.requiredProviders?.length,
-      });
-    }
-
-    return { rows: result, workflowIdMap: idMap };
-  }, [leaderboard, workflowsData, featureId]);
+  const rows = useMemo(() => (rankedItems ?? []).map(rankedToRow), [rankedItems]);
 
   if (!featureDef) {
     return (
@@ -174,22 +125,18 @@ export default function FeatureWorkflowsPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h4v4H4zM10 14h4v4h-4zM16 6h4v4h-4zM6 10v4l4 0M18 10v4l-4 0" />
             </svg>
           </div>
-          <h3 className="font-display font-bold text-lg text-gray-800 mb-2">Unable to load workflows</h3>
+          <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No workflows available</h3>
           <p className="text-gray-600 text-sm max-w-md mx-auto">
-            Could not fetch workflow data. Please try refreshing the page.
+            Workflow data will appear here as campaigns run.
           </p>
         </div>
       ) : (
         <div className="space-y-3 max-w-3xl" data-testid="workflows-list">
           {rows.map((row) => (
-            <WorkflowRow
-              key={row.key}
+            <WorkflowCard
+              key={row.id}
               row={row}
-              onShowDetail={
-                row.workflowId
-                  ? () => setDetailWorkflowId(row.workflowId!)
-                  : undefined
-              }
+              onShowDetail={() => setDetailWorkflowId(row.id)}
             />
           ))}
         </div>
@@ -205,28 +152,25 @@ export default function FeatureWorkflowsPage() {
   );
 }
 
-function WorkflowRow({
+function WorkflowCard({
   row,
   onShowDetail,
 }: {
   row: WorkflowRowData;
-  onShowDetail?: () => void;
+  onShowDetail: () => void;
 }) {
-  const hasStats = (row.emailsSent ?? 0) > 0;
+  const hasStats = row.emailsSent > 0;
 
   return (
     <button
       onClick={onShowDetail}
-      disabled={!onShowDetail}
-      className={`w-full text-left bg-white rounded-xl border border-gray-200 p-4 transition-all ${
-        onShowDetail ? "hover:border-brand-300 hover:shadow-md cursor-pointer" : "cursor-default"
-      }`}
+      className="w-full text-left bg-white rounded-xl border border-gray-200 p-4 transition-all hover:border-brand-300 hover:shadow-md cursor-pointer"
       data-testid="workflow-row"
     >
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-medium text-gray-800 truncate">{row.name}</h3>
+            <h3 className="font-medium text-gray-800 truncate">{row.displayLabel}</h3>
             {row.category && (
               <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 flex-shrink-0">
                 {row.category}
@@ -234,22 +178,16 @@ function WorkflowRow({
             )}
           </div>
 
-          {row.description && (
-            <p className="text-sm text-gray-500 line-clamp-2 mb-1">{row.description}</p>
-          )}
-
-          {/* Performance stats (from leaderboard) */}
           {hasStats ? (
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2">
-              <Stat label="Sent" value={(row.emailsSent ?? 0).toLocaleString()} />
-              <Stat label="Open rate" value={formatPercent(row.openRate ?? 0)} />
-              <Stat label="Click rate" value={formatPercent(row.clickRate ?? 0)} />
-              <Stat label="Reply rate" value={formatPercent(row.replyRate ?? 0)} highlight />
-              <Stat label="$/Reply" value={formatCostCents(row.costPerReplyCents ?? null)} />
-              <Stat label="Runs" value={(row.runCount ?? 0).toLocaleString()} />
+              <Stat label="Sent" value={row.emailsSent.toLocaleString()} />
+              <Stat label="Open rate" value={formatPercent(row.openRate)} />
+              <Stat label="Click rate" value={formatPercent(row.clickRate)} />
+              <Stat label="Reply rate" value={formatPercent(row.replyRate)} highlight />
+              <Stat label="$/Reply" value={formatCostCents(row.costPerReplyCents)} />
+              <Stat label="Runs" value={row.runCount.toLocaleString()} />
             </div>
           ) : (
-            /* Metadata (from deployed workflows) */
             <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
               {row.channel && <span>{row.channel}</span>}
               {row.audienceType && (
@@ -258,16 +196,10 @@ function WorkflowRow({
                   <span>{row.audienceType}</span>
                 </>
               )}
-              {row.nodeCount != null && (
+              {row.nodeCount > 0 && (
                 <>
                   <span>·</span>
                   <span>{row.nodeCount} steps</span>
-                </>
-              )}
-              {(row.providerCount ?? 0) > 0 && (
-                <>
-                  <span>·</span>
-                  <span>{row.providerCount} provider{(row.providerCount ?? 0) > 1 ? "s" : ""}</span>
                 </>
               )}
               {!row.channel && !row.audienceType && (
@@ -276,11 +208,9 @@ function WorkflowRow({
             </div>
           )}
         </div>
-        {onShowDetail && (
-          <svg className="w-5 h-5 text-gray-300 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        )}
+        <svg className="w-5 h-5 text-gray-300 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
       </div>
     </button>
   );
