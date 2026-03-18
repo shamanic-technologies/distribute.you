@@ -46,6 +46,7 @@ interface InputRequestBlock {
   label: string;
   placeholder?: string;
   field: string;
+  value?: string;
 }
 
 interface ButtonsBlock {
@@ -218,7 +219,7 @@ function InputRequestBlockUI({
   onSubmit: (value: string) => void;
   disabled?: boolean;
 }) {
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState(block.value ?? "");
   const inputType = block.inputType === "url" ? "url" : block.inputType === "email" ? "email" : "text";
 
   function handleSubmit(e: FormEvent) {
@@ -698,6 +699,7 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
                     label: (event.label || "") as string,
                     placeholder: (event.placeholder || undefined) as string | undefined,
                     field: (event.field || "") as string,
+                    value: (event.value as string | undefined) || undefined,
                   }),
                 ),
               );
