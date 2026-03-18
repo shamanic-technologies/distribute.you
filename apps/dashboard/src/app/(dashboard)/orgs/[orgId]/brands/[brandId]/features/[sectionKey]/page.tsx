@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { keepPreviousData } from "@tanstack/react-query";
@@ -138,9 +138,16 @@ export default function FeaturePage() {
     unsubscribe: brandDelivery?.repliesUnsubscribe ?? 0,
   };
 
+  const [stoppingId, setStoppingId] = useState<string | null>(null);
+
   const handleStop = useCallback(async (id: string) => {
-    await stopCampaign(id);
-    refetchCampaigns();
+    setStoppingId(id);
+    try {
+      await stopCampaign(id);
+      refetchCampaigns();
+    } finally {
+      setStoppingId(null);
+    }
   }, [refetchCampaigns]);
 
 
@@ -261,12 +268,20 @@ export default function FeaturePage() {
                     {status === "ongoing" && (
                       <button
                         onClick={(e) => { e.preventDefault(); handleStop(campaign.id); }}
-                        className="text-xs text-gray-400 hover:text-red-500 transition p-1"
+                        disabled={stoppingId === campaign.id}
+                        className="text-xs text-gray-400 hover:text-red-500 transition p-1 disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Stop campaign"
                       >
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                          <rect x="6" y="6" width="12" height="12" rx="1" />
-                        </svg>
+                        {stoppingId === campaign.id ? (
+                          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                        ) : (
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                            <rect x="6" y="6" width="12" height="12" rx="1" />
+                          </svg>
+                        )}
                       </button>
                     )}
                   </div>
