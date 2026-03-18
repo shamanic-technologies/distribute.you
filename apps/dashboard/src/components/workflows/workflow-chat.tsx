@@ -40,7 +40,20 @@ interface ToolResultBlock {
   result: string;
 }
 
-type ContentBlock = TextBlock | ThinkingBlock | ToolCallBlock | ToolResultBlock;
+interface InputRequestBlock {
+  type: "input_request";
+  inputType: "url" | "text" | "email";
+  label: string;
+  placeholder?: string;
+  field: string;
+}
+
+interface ButtonsBlock {
+  type: "buttons";
+  buttons: { label: string; value: string }[];
+}
+
+type ContentBlock = TextBlock | ThinkingBlock | ToolCallBlock | ToolResultBlock | InputRequestBlock | ButtonsBlock;
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -194,6 +207,80 @@ function ToolCallBlockUI({ block, result }: { block: ToolCallBlock; result?: Too
   );
 }
 
+/* ─── Input request block ────────────────────────────────────────────── */
+
+function InputRequestBlockUI({
+  block,
+  onSubmit,
+  disabled,
+}: {
+  block: InputRequestBlock;
+  onSubmit: (value: string) => void;
+  disabled?: boolean;
+}) {
+  const [value, setValue] = useState("");
+  const inputType = block.inputType === "url" ? "url" : block.inputType === "email" ? "email" : "text";
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    onSubmit(trimmed);
+    setValue("");
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="my-2">
+      <label className="block text-sm font-medium text-gray-700 mb-1.5">{block.label}</label>
+      <div className="flex gap-2">
+        <input
+          type={inputType}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder={block.placeholder}
+          disabled={disabled}
+          className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:opacity-50"
+        />
+        <button
+          type="submit"
+          disabled={disabled || !value.trim()}
+          className="px-4 py-2 bg-brand-600 text-white rounded-lg text-sm font-medium hover:bg-brand-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Send
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/* ─── Buttons block ──────────────────────────────────────────────────── */
+
+function ButtonsBlockUI({
+  block,
+  onSelect,
+  disabled,
+}: {
+  block: ButtonsBlock;
+  onSelect: (value: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="my-2 flex flex-wrap gap-2">
+      {block.buttons.map((btn, i) => (
+        <button
+          key={i}
+          type="button"
+          onClick={() => onSelect(btn.value)}
+          disabled={disabled}
+          className="px-3 py-1.5 text-sm rounded-lg border border-brand-300 text-brand-700 bg-white hover:bg-brand-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {btn.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /* ─── Mermaid + markdown parsing ─────────────────────────────────────── */
 
 function parseMessageSegments(content: string): Array<{ type: "text" | "mermaid"; value: string }> {
@@ -247,7 +334,15 @@ function TextContent({ text }: { text: string }) {
 
 /* ─── Message content renderer (blocks-aware) ────────────────────────── */
 
-function MessageContent({ message }: { message: ChatMessage }) {
+function MessageContent({
+  message,
+  onSendMessage,
+  isStreaming,
+}: {
+  message: ChatMessage;
+  onSendMessage?: (text: string) => void;
+  isStreaming?: boolean;
+}) {
   const { blocks, content } = message;
 
   // Build a map of tool results keyed by tool call id
@@ -276,6 +371,24 @@ function MessageContent({ message }: { message: ChatMessage }) {
             return null;
           case "text":
             return <TextContent key={i} text={block.text} />;
+          case "input_request":
+            return (
+              <InputRequestBlockUI
+                key={i}
+                block={block}
+                onSubmit={(v) => onSendMessage?.(v)}
+                disabled={isStreaming}
+              />
+            );
+          case "buttons":
+            return (
+              <ButtonsBlockUI
+                key={i}
+                block={block}
+                onSelect={(v) => onSendMessage?.(v)}
+                disabled={isStreaming}
+              />
+            );
           default:
             return null;
         }
@@ -333,10 +446,22 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
     el.style.height = Math.min(el.scrollHeight, 144) + "px";
   }, [input]);
 
+  const sendMessage = useCallback(async (text: string) => {
+    if (!text || isStreaming) return;
+    // Simulate a form submit with the given text
+    setInput("");
+    await handleSend(text);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isStreaming]);
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const trimmed = input.trim();
     if (!trimmed || isStreaming) return;
+    await handleSend(trimmed);
+  }
+
+  async function handleSend(trimmed: string) {
 
     const userMessage: ChatMessage = { role: "user", content: trimmed, blocks: [] };
     setMessages((prev) => [...prev, userMessage]);
@@ -559,6 +684,39 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
               break;
             }
 
+            /* ── Input request ───────────────────────────── */
+            case "input_request": {
+              receivedContent = true;
+              setMessages((prev) =>
+                updateLastMessage(prev, (msg) =>
+                  appendBlock(msg, {
+                    type: "input_request",
+                    inputType: (event.input_type || "text") as "url" | "text" | "email",
+                    label: (event.label || "") as string,
+                    placeholder: (event.placeholder || undefined) as string | undefined,
+                    field: (event.field || "") as string,
+                  }),
+                ),
+              );
+              break;
+            }
+
+            /* ── Quick-reply buttons ────────────────────── */
+            case "buttons": {
+              receivedContent = true;
+              const buttons = Array.isArray(event.buttons)
+                ? (event.buttons as { label: string; value: string }[])
+                : [];
+              if (buttons.length > 0) {
+                setMessages((prev) =>
+                  updateLastMessage(prev, (msg) =>
+                    appendBlock(msg, { type: "buttons", buttons }),
+                  ),
+                );
+              }
+              break;
+            }
+
             default:
               console.warn("[chat] Unknown SSE event type:", event.type, event);
               break;
@@ -624,7 +782,7 @@ export function WorkflowChat({ workflowContext }: WorkflowChatProps) {
                 }`}
               >
                 {msg.role === "assistant" ? (
-                  <MessageContent message={msg} />
+                  <MessageContent message={msg} onSendMessage={sendMessage} isStreaming={isStreaming} />
                 ) : (
                   <span className="whitespace-pre-wrap">{msg.content}</span>
                 )}
