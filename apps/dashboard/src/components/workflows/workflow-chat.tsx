@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, type FormEvent } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import Markdown from "react-markdown";
 import {
   ChevronRightIcon,
@@ -508,6 +509,7 @@ function updateLastBlock(msg: ChatMessage, updater: (block: ContentBlock) => Con
 /* ─── Main chat component ────────────────────────────────────────────── */
 
 export function WorkflowChat({ workflowId, workflowContext }: WorkflowChatProps) {
+  const queryClient = useQueryClient();
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     const persisted = loadChat(workflowId);
     return persisted?.messages ?? [];
@@ -810,6 +812,10 @@ export function WorkflowChat({ workflowId, workflowContext }: WorkflowChatProps)
                   };
                 }),
               );
+
+              // Refresh the sidebar panel so it reflects tool changes
+              void queryClient.invalidateQueries({ queryKey: ["workflow", workflowId] });
+              void queryClient.invalidateQueries({ queryKey: ["workflow-summary", workflowId] });
               break;
             }
 
