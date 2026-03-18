@@ -15,6 +15,26 @@ import {
 } from "@heroicons/react/20/solid";
 import { MermaidDiagram } from "./mermaid-diagram";
 
+/* ─── Notification sound ─────────────────────────────────────────────── */
+
+function playDing() {
+  try {
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.4);
+    osc.onended = () => ctx.close();
+  } catch {
+    // Audio not available (e.g. SSR or browser policy)
+  }
+}
+
 /* ─── Content block types ────────────────────────────────────────────── */
 
 interface TextBlock {
@@ -892,6 +912,7 @@ export function WorkflowChat({ workflowId, workflowContext }: WorkflowChatProps)
           })),
         );
       }
+      playDing();
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
         // User stopped generation
