@@ -93,13 +93,13 @@ function rankedToRow(item: RankedWorkflowItem): WorkflowTableRow {
     displayName: item.workflow.displayName ?? item.workflow.name,
     signatureName: item.workflow.signatureName,
     category: item.workflow.category,
-    emailsSent: b.emailsSent,
-    openRate: b.emailsSent > 0 ? b.emailsOpened / b.emailsSent : 0,
-    clickRate: b.emailsSent > 0 ? b.emailsClicked / b.emailsSent : 0,
-    replyRate: b.emailsSent > 0 ? b.emailsReplied / b.emailsSent : 0,
-    costPerOpenCents: b.emailsOpened > 0 ? cost / b.emailsOpened : null,
-    costPerClickCents: b.emailsClicked > 0 ? cost / b.emailsClicked : null,
-    costPerReplyCents: b.emailsReplied > 0 ? cost / b.emailsReplied : null,
+    emailsSent: b.sent,
+    openRate: b.sent > 0 ? b.opened / b.sent : 0,
+    clickRate: b.sent > 0 ? b.clicked / b.sent : 0,
+    replyRate: b.sent > 0 ? b.replied / b.sent : 0,
+    costPerOpenCents: b.opened > 0 ? cost / b.opened : null,
+    costPerClickCents: b.clicked > 0 ? cost / b.clicked : null,
+    costPerReplyCents: b.replied > 0 ? cost / b.replied : null,
   };
 }
 
