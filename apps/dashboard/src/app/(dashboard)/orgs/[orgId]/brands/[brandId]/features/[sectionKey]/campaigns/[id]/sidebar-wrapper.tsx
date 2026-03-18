@@ -35,7 +35,7 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, sectionKey }: P
 
   // Use stats counters (same source as the funnel chart) so sidebar badges
   // and graph bars always show identical numbers on every poll cycle.
-  const leadCount = stats?.emailsContacted ?? leads.length;
+  const leadCount = stats?.leadsServed ?? leads.length;
   const emailCount = stats?.emailsGenerated ?? emails.length;
 
   return <CampaignSidebar campaignId={campaignId} orgId={orgId} brandId={brandId} sectionKey={sectionKey} stats={stats ?? undefined} emailCount={emailCount} leadCount={leadCount} companyCount={companyCount} workflowId={workflowId} />;

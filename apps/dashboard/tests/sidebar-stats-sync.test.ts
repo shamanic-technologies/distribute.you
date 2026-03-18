@@ -19,8 +19,8 @@ describe("Campaign sidebar badges use stats counters", () => {
   );
   const content = fs.readFileSync(wrapperPath, "utf-8");
 
-  it("should derive leadCount from stats.emailsContacted (leads actually contacted)", () => {
-    expect(content).toContain("stats?.emailsContacted");
+  it("should derive leadCount from stats.leadsServed", () => {
+    expect(content).toContain("stats?.leadsServed");
   });
 
   it("should derive emailCount from stats.emailsGenerated", () => {
