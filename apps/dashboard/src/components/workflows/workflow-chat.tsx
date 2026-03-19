@@ -206,7 +206,9 @@ function ThinkingBlockUI({
       variant="thinking"
       defaultOpen
     >
-      <p className="leading-relaxed opacity-70">{text || "..."}</p>
+      <div className="leading-relaxed opacity-70">
+        {text ? <TextContent text={text} /> : <p>...</p>}
+      </div>
     </Collapsible>
   );
 }
