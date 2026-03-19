@@ -1,15 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth } from "@clerk/nextjs";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { listApiKeys, createApiKey, deleteApiKey, type ApiKey, type NewApiKey } from "@/lib/api";
 import { SkeletonApiKey } from "@/components/skeleton";
 
 export default function ApiKeysPage() {
-  const { getToken } = useAuth();
   const queryClient = useQueryClient();
-  const { data, isLoading } = useAuthQuery(["apiKeys"], (token) => listApiKeys(token));
+  const { data, isLoading } = useAuthQuery(["apiKeys"], () => listApiKeys());
   const keys: ApiKey[] = data?.keys ?? [];
 
   const [newKey, setNewKey] = useState<NewApiKey | null>(null);
@@ -22,9 +20,7 @@ export default function ApiKeysPage() {
     setError(null);
     setNewKey(null);
     try {
-      const token = await getToken();
-      if (!token) throw new Error("Not authenticated");
-      const data = await createApiKey(token, "Dashboard Key");
+      const data = await createApiKey("Dashboard Key");
       setNewKey(data);
       await queryClient.invalidateQueries({ queryKey: ["apiKeys"] });
     } catch (err) {
@@ -37,9 +33,7 @@ export default function ApiKeysPage() {
   async function handleDelete(id: string) {
     if (!confirm("Delete this API key? It will stop working immediately.")) return;
     try {
-      const token = await getToken();
-      if (!token) throw new Error("Not authenticated");
-      await deleteApiKey(token, id);
+      await deleteApiKey(id);
       await queryClient.invalidateQueries({ queryKey: ["apiKeys"] });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete key");

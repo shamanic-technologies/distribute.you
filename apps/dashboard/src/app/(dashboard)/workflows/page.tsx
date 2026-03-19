@@ -31,7 +31,7 @@ export default function WorkflowsPage() {
 
   const { data, isLoading } = useAuthQuery(
     ["workflows"],
-    (token) => listWorkflows(token)
+    () => listWorkflows()
   );
   const workflows = data?.workflows ?? [];
 
