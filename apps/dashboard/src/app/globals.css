@@ -1,9 +1,35 @@
 @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&family=Inter:wght@400;500;600&display=swap');
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* ── Class-based dark mode ────────────────────────────────────────── */
+@custom-variant dark (&:where(.dark, .dark *));
 
+/* ── Theme ────────────────────────────────────────────────────────── */
+@theme {
+  --color-brand-50: #fdf2f8;
+  --color-brand-100: #fce7f3;
+  --color-brand-200: #fbcfe8;
+  --color-brand-300: #f9a8d4;
+  --color-brand-400: #f472b6;
+  --color-brand-500: #ec4899;
+  --color-brand-600: #db2777;
+  --color-brand-700: #be185d;
+  --color-brand-800: #9d174d;
+  --color-brand-900: #831843;
+
+  --font-display: "Fredoka", system-ui, -apple-system, sans-serif;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+
+  --animate-shimmer: shimmer 1.5s ease-in-out infinite;
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+}
+
+/* ── Base ─────────────────────────────────────────────────────────── */
 :root {
   --foreground: #1a1a2e;
   --background: #ffffff;
@@ -18,17 +44,15 @@ html.dark {
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
 }
 
 h1, h2, h3, .font-display {
-  font-family: "Fredoka", system-ui, -apple-system, sans-serif;
+  font-family: var(--font-display);
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+@utility text-balance {
+  text-wrap: balance;
 }
 
 /* ── Dark mode global overrides ────────────────────────────────────── */
