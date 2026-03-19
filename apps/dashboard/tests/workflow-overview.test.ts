@@ -46,13 +46,13 @@ describe("WorkflowOverview component", () => {
     expect(content).not.toContain("NodeTypeIcon");
   });
 
-  it("should display the workflow summary text", () => {
+  it("should display the workflow summary steps", () => {
     const content = fs.readFileSync(overviewPath, "utf-8");
-    expect(content).toContain("summary?.summary");
+    expect(content).toContain("summary?.steps");
   });
 });
 
-describe("WorkflowChat component (chat-only)", () => {
+describe("WorkflowChat component (useChat + AI SDK)", () => {
   const chatPath = path.join(
     __dirname,
     "../src/components/workflows/workflow-chat.tsx"
@@ -62,17 +62,24 @@ describe("WorkflowChat component (chat-only)", () => {
     expect(fs.existsSync(chatPath)).toBe(true);
   });
 
-  it("should restore messages from localStorage or start empty", () => {
+  it("should use Vercel AI SDK useChat hook", () => {
     const content = fs.readFileSync(chatPath, "utf-8");
-    expect(content).toContain("useState<ChatMessage[]>");
-    expect(content).toContain("loadChat(workflowId)");
+    expect(content).toContain('from "@ai-sdk/react"');
+    expect(content).toContain("useChat");
+    expect(content).toContain("DefaultChatTransport");
+    expect(content).toContain("UIMessage");
   });
 
-  it("should have SSE streaming support", () => {
+  it("should restore messages from localStorage on mount", () => {
     const content = fs.readFileSync(chatPath, "utf-8");
-    expect(content).toContain("isStreaming");
-    expect(content).toContain("reader.read()");
-    expect(content).toContain('data: ');
+    expect(content).toContain("loadMessages(workflowId)");
+    expect(content).toContain("localStorage.getItem");
+  });
+
+  it("should persist messages to localStorage on finish", () => {
+    const content = fs.readFileSync(chatPath, "utf-8");
+    expect(content).toContain("saveMessages(workflowId");
+    expect(content).toContain("localStorage.setItem");
   });
 
   it("should have auto-growing textarea", () => {
@@ -83,69 +90,37 @@ describe("WorkflowChat component (chat-only)", () => {
 
   it("should support Enter to submit and Shift+Enter for newline", () => {
     const content = fs.readFileSync(chatPath, "utf-8");
-    expect(content).toContain("e.key === \"Enter\"");
+    expect(content).toContain('e.key === "Enter"');
     expect(content).toContain("!e.shiftKey");
   });
 
-  it("should handle thinking_start / thinking_delta / thinking_stop events", () => {
+  it("should render thinking blocks via reasoning message parts", () => {
     const content = fs.readFileSync(chatPath, "utf-8");
-    expect(content).toContain('"thinking_start"');
-    expect(content).toContain('"thinking_delta"');
-    expect(content).toContain('"thinking_stop"');
+    expect(content).toContain('"reasoning"');
+    expect(content).toContain("ThinkingBlockUI");
   });
 
-  it("should handle tool_call with id, name, args (no delta/stop)", () => {
+  it("should render tool invocations via isToolUIPart", () => {
     const content = fs.readFileSync(chatPath, "utf-8");
-    expect(content).toContain('"tool_call"');
-    expect(content).toContain("event.id");
-    expect(content).toContain("event.name");
-    expect(content).toContain("event.args");
-    // No streaming tool_call_delta or tool_call_stop
-    expect(content).not.toContain('"tool_call_delta"');
-    expect(content).not.toContain('"tool_call_stop"');
-  });
-
-  it("should handle tool_result with id, name, result fields", () => {
-    const content = fs.readFileSync(chatPath, "utf-8");
-    expect(content).toContain('"tool_result"');
-    expect(content).toContain("event.result");
+    expect(content).toContain("isToolUIPart");
+    expect(content).toContain("ToolInvocationUI");
   });
 
   it("should render collapsible UI for thinking and tool calls", () => {
     const content = fs.readFileSync(chatPath, "utf-8");
     expect(content).toContain("Collapsible");
     expect(content).toContain("ThinkingBlockUI");
-    expect(content).toContain("ToolCallBlockUI");
+    expect(content).toContain("ToolInvocationUI");
     expect(content).toContain("CheckCircleIcon");
     expect(content).toContain("ArrowPathIcon");
   });
 
-  it("should use result field (not content) in ToolResultBlock", () => {
+  it("should handle input_request and buttons as data parts", () => {
     const content = fs.readFileSync(chatPath, "utf-8");
-    expect(content).toContain("toolCallId: string;");
-    expect(content).toContain("result: string;");
-    expect(content).toContain("PrettyJSON");
-  });
-
-  it("should handle input_request and buttons SSE events", () => {
-    const content = fs.readFileSync(chatPath, "utf-8");
-    expect(content).toContain('"input_request"');
-    expect(content).toContain('"buttons"');
+    expect(content).toContain('"data-input-request"');
+    expect(content).toContain('"data-buttons"');
     expect(content).toContain("InputRequestBlockUI");
     expect(content).toContain("ButtonsBlockUI");
-    expect(content).toContain("event.input_type");
-    expect(content).toContain("event.label");
-    expect(content).toContain("event.buttons");
-    expect(content).toContain("onSendMessage");
-  });
-
-  it("should persist messages and sessionId to localStorage", () => {
-    const content = fs.readFileSync(chatPath, "utf-8");
-    expect(content).toContain("saveChat(workflowId");
-    expect(content).toContain("loadChat(workflowId)");
-    expect(content).toContain("localStorage.setItem");
-    expect(content).toContain("localStorage.getItem");
-    expect(content).toContain("workflow-chat:");
   });
 
   it("should have a reset chat button that clears localStorage", () => {
@@ -155,10 +130,18 @@ describe("WorkflowChat component (chat-only)", () => {
     expect(content).toContain("localStorage.removeItem");
   });
 
-  it("should clean up isStreaming flags when restoring from localStorage", () => {
+  it("should manage sessionId via ref and localStorage", () => {
     const content = fs.readFileSync(chatPath, "utf-8");
-    expect(content).toContain("isStreaming");
-    expect(content).toContain("false");
+    expect(content).toContain("sessionIdRef");
+    expect(content).toContain("sessionIdRef.current");
+    expect(content).toContain("loadSessionId(workflowId)");
+    expect(content).toContain("saveSessionId(workflowId");
+  });
+
+  it("should capture sessionId from data-session stream events", () => {
+    const content = fs.readFileSync(chatPath, "utf-8");
+    expect(content).toContain('"data-session"');
+    expect(content).toContain("onData");
   });
 
   it("should accept workflowId prop for storage key", () => {
@@ -166,15 +149,71 @@ describe("WorkflowChat component (chat-only)", () => {
     expect(content).toContain("workflowId: string");
   });
 
-  it("should omit sessionId on first message and store it from SSE", () => {
+  it("should use DefaultChatTransport with prepareSendMessagesRequest", () => {
     const content = fs.readFileSync(chatPath, "utf-8");
-    // sessionId managed via ref, not prop
-    expect(content).toContain("sessionIdRef");
-    expect(content).toContain("sessionIdRef.current");
-    // Only include sessionId in payload if we already have one
-    expect(content).toContain("if (sessionIdRef.current)");
-    // Parse sessionId from SSE first event
+    expect(content).toContain("prepareSendMessagesRequest");
+    expect(content).toContain('api: "/api/v1/chat"');
+  });
+});
+
+describe("Chat proxy route (SSE → Data Stream Protocol)", () => {
+  const routePath = path.join(
+    __dirname,
+    "../src/app/api/v1/chat/route.ts"
+  );
+
+  it("should exist", () => {
+    expect(fs.existsSync(routePath)).toBe(true);
+  });
+
+  it("should handle thinking_start / thinking_delta / thinking_stop events", () => {
+    const content = fs.readFileSync(routePath, "utf-8");
+    expect(content).toContain('"thinking_start"');
+    expect(content).toContain('"thinking_delta"');
+    expect(content).toContain('"thinking_stop"');
+  });
+
+  it("should handle tool_call with id, name, args (no delta/stop)", () => {
+    const content = fs.readFileSync(routePath, "utf-8");
+    expect(content).toContain('"tool_call"');
+    expect(content).toContain("event.id");
+    expect(content).toContain("event.name");
+    expect(content).toContain("event.args");
+    expect(content).not.toContain('"tool_call_delta"');
+    expect(content).not.toContain('"tool_call_stop"');
+  });
+
+  it("should handle tool_result with id and result fields", () => {
+    const content = fs.readFileSync(routePath, "utf-8");
+    expect(content).toContain('"tool_result"');
+    expect(content).toContain("event.result");
+  });
+
+  it("should handle input_request and buttons SSE events", () => {
+    const content = fs.readFileSync(routePath, "utf-8");
+    expect(content).toContain('"input_request"');
+    expect(content).toContain('"buttons"');
+    expect(content).toContain("event.input_type");
+    expect(content).toContain("event.label");
+    expect(content).toContain("event.buttons");
+  });
+
+  it("should transform to Vercel AI SDK Data Stream Protocol", () => {
+    const content = fs.readFileSync(routePath, "utf-8");
+    expect(content).toContain("createUIMessageStream");
+    expect(content).toContain("createUIMessageStreamResponse");
+    expect(content).toContain("UIMessageStreamWriter");
+  });
+
+  it("should handle session ID from first SSE event", () => {
+    const content = fs.readFileSync(routePath, "utf-8");
     expect(content).toContain("event.sessionId");
+    expect(content).toContain('"data-session"');
+  });
+
+  it("should handle the value field on input_request (OpenAPI update)", () => {
+    const content = fs.readFileSync(routePath, "utf-8");
+    expect(content).toContain("event.value");
   });
 });
 
