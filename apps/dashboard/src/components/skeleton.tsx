@@ -1,6 +1,12 @@
 export function Skeleton({ className = "" }: { className?: string }) {
   return (
-    <div className={`animate-pulse bg-gray-200 rounded ${className}`} />
+    <div
+      className={`animate-shimmer rounded ${className}`}
+      style={{
+        backgroundImage: "linear-gradient(90deg, #e5e7eb 0%, #f3f4f6 40%, #e5e7eb 80%)",
+        backgroundSize: "200% 100%",
+      }}
+    />
   );
 }
 
