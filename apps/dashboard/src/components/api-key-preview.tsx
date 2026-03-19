@@ -2,28 +2,24 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useAuth } from "@clerk/nextjs";
 import { listApiKeys, createApiKey, type NewApiKey } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 
 export function ApiKeyPreview() {
-  const { getToken } = useAuth();
   const queryClient = useQueryClient();
   const [newKey, setNewKey] = useState<NewApiKey | null>(null);
   const [creating, setCreating] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const { data, isLoading } = useAuthQuery(["apiKeys"], (token) =>
-    listApiKeys(token)
+  const { data, isLoading } = useAuthQuery(["apiKeys"], () =>
+    listApiKeys()
   );
   const keys = data?.keys ?? [];
 
   async function handleCreate() {
     setCreating(true);
     try {
-      const token = await getToken();
-      if (!token) return;
-      const data = await createApiKey(token, "Dashboard Key");
+      const data = await createApiKey("Dashboard Key");
       setNewKey(data);
       queryClient.invalidateQueries({ queryKey: ["apiKeys"] });
     } catch (err) {
