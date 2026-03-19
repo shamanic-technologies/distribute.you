@@ -392,7 +392,7 @@ export default function FeatureCreateCampaignPage() {
           </div>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 mb-4">
           <div className="flex items-center gap-3">
             <Skeleton className="w-8 h-8 rounded-lg" />
             <div className="flex items-center gap-2">
@@ -572,7 +572,7 @@ export default function FeatureCreateCampaignPage() {
 
       {/* Workflow table */}
       {isLoading ? (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
           <div className="p-6 space-y-3">
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-12" />

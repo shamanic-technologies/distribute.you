@@ -1,18 +1,14 @@
 export function Skeleton({ className = "" }: { className?: string }) {
   return (
     <div
-      className={`animate-shimmer rounded ${className}`}
-      style={{
-        backgroundImage: "linear-gradient(90deg, #e5e7eb 0%, #f3f4f6 40%, #e5e7eb 80%)",
-        backgroundSize: "200% 100%",
-      }}
+      className={`animate-shimmer rounded bg-[length:200%_100%] bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 dark:from-gray-700 dark:via-gray-600 dark:to-gray-700 ${className}`}
     />
   );
 }
 
 export function SkeletonCard() {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5">
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1">
           <Skeleton className="h-5 w-24 mb-2" />
@@ -40,7 +36,7 @@ export function SkeletonKeysList() {
 
 export function SkeletonCampaignRow() {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4">
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2">
           <Skeleton className="h-5 w-36" />
@@ -73,12 +69,12 @@ export function SkeletonCampaignList() {
 export function SkeletonApiKey() {
   return (
     <div className="space-y-6 max-w-2xl">
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
         <div className="flex items-center justify-between mb-4">
           <Skeleton className="h-5 w-24" />
           <Skeleton className="h-6 w-20 rounded-full" />
         </div>
-        <div className="bg-gray-50 rounded-lg p-3 mb-4">
+        <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 mb-4">
           <Skeleton className="h-5 w-full" />
         </div>
         <div className="flex items-center justify-between">
@@ -86,7 +82,7 @@ export function SkeletonApiKey() {
           <Skeleton className="h-4 w-24" />
         </div>
       </div>
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
         <Skeleton className="h-5 w-24 mb-4" />
         <Skeleton className="h-32 w-full rounded-lg" />
       </div>
