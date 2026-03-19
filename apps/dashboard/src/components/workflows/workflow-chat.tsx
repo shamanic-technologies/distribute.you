@@ -1,6 +1,15 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, type FormEvent } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  useMemo,
+  type FormEvent,
+} from "react";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport, isToolUIPart, type UIMessage } from "ai";
 import { useQueryClient } from "@tanstack/react-query";
 import Markdown from "react-markdown";
 import {
@@ -31,120 +40,58 @@ function playDing() {
     osc.stop(ctx.currentTime + 0.4);
     osc.onended = () => ctx.close();
   } catch {
-    // Audio not available (e.g. SSR or browser policy)
+    // Audio not available
   }
 }
 
-/* ─── Content block types ────────────────────────────────────────────── */
+/* ─── LocalStorage persistence ───────────────────────────────────────── */
 
-interface TextBlock {
-  type: "text";
-  text: string;
+function sessionKey(workflowId: string) {
+  return `workflow-chat-session:${workflowId}`;
+}
+function messagesKey(workflowId: string) {
+  return `workflow-chat-msgs:${workflowId}`;
 }
 
-interface ThinkingBlock {
-  type: "thinking";
-  thinking: string;
-  isStreaming?: boolean;
-}
-
-interface ToolCallBlock {
-  type: "tool_call";
-  id: string;
-  name: string;
-  args: string;
-  /** true while waiting for tool_result */
-  isStreaming?: boolean;
-}
-
-interface ToolResultBlock {
-  type: "tool_result";
-  toolCallId: string;
-  name: string;
-  result: string;
-}
-
-interface InputRequestBlock {
-  type: "input_request";
-  inputType: "url" | "text" | "email";
-  label: string;
-  placeholder?: string;
-  field: string;
-  value?: string;
-}
-
-interface ButtonsBlock {
-  type: "buttons";
-  buttons: { label: string; value: string }[];
-}
-
-type ContentBlock = TextBlock | ThinkingBlock | ToolCallBlock | ToolResultBlock | InputRequestBlock | ButtonsBlock;
-
-interface ChatMessage {
-  role: "user" | "assistant";
-  content: string;
-  blocks: ContentBlock[];
-}
-
-interface WorkflowChatProps {
-  workflowId: string;
-  workflowContext: Record<string, unknown>;
-}
-
-/* ─── Skeleton shimmer for loading state ─────────────────────────────── */
-
-function MessageSkeleton() {
-  return (
-    <div className="flex gap-3 animate-in fade-in duration-150">
-      <div className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-white/[0.06] animate-pulse flex-shrink-0" />
-      <div className="flex-1 space-y-2.5 pt-1">
-        <div className="h-3.5 bg-gray-100 dark:bg-white/[0.06] rounded-md w-3/4 animate-pulse" />
-        <div className="h-3.5 bg-gray-100 dark:bg-white/[0.06] rounded-md w-1/2 animate-pulse" style={{ animationDelay: "75ms" }} />
-        <div className="h-3.5 bg-gray-100 dark:bg-white/[0.06] rounded-md w-5/12 animate-pulse" style={{ animationDelay: "150ms" }} />
-      </div>
-    </div>
-  );
-}
-
-/* ─── LocalStorage persistence helpers ───────────────────────────────── */
-
-interface PersistedChat {
-  sessionId: string | null;
-  messages: ChatMessage[];
-}
-
-function storageKey(workflowId: string) {
-  return `workflow-chat:${workflowId}`;
-}
-
-function loadChat(workflowId: string): PersistedChat | null {
+function loadSessionId(workflowId: string): string | null {
   try {
-    const raw = localStorage.getItem(storageKey(workflowId));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as PersistedChat;
-    // Clean up streaming flags from a previous session
-    for (const msg of parsed.messages) {
-      for (const block of msg.blocks) {
-        if ("isStreaming" in block) {
-          (block as { isStreaming?: boolean }).isStreaming = false;
-        }
-      }
-    }
-    return parsed;
+    return localStorage.getItem(sessionKey(workflowId));
   } catch {
     return null;
   }
 }
 
-function saveChat(workflowId: string, sessionId: string | null, messages: ChatMessage[]) {
+function saveSessionId(workflowId: string, sessionId: string) {
   try {
-    localStorage.setItem(
-      storageKey(workflowId),
-      JSON.stringify({ sessionId, messages } satisfies PersistedChat),
-    );
+    localStorage.setItem(sessionKey(workflowId), sessionId);
   } catch {
-    // quota exceeded — silently ignore
+    /* quota exceeded */
   }
+}
+
+function loadMessages(workflowId: string): UIMessage[] {
+  try {
+    const raw = localStorage.getItem(messagesKey(workflowId));
+    if (!raw) return [];
+    return JSON.parse(raw) as UIMessage[];
+  } catch {
+    return [];
+  }
+}
+
+function saveMessages(workflowId: string, messages: UIMessage[]) {
+  try {
+    localStorage.setItem(messagesKey(workflowId), JSON.stringify(messages));
+  } catch {
+    /* quota exceeded */
+  }
+}
+
+function clearChat(workflowId: string) {
+  localStorage.removeItem(sessionKey(workflowId));
+  localStorage.removeItem(messagesKey(workflowId));
+  // Also remove legacy v1 storage
+  localStorage.removeItem(`workflow-chat:${workflowId}`);
 }
 
 /* ─── Collapsible wrapper ────────────────────────────────────────────── */
@@ -169,13 +116,18 @@ function Collapsible({
   const [open, setOpen] = useState(defaultOpen);
 
   const variantStyles = {
-    default: "bg-gray-50/80 dark:bg-white/[0.04] border-gray-200/60 dark:border-white/[0.08] text-gray-600 dark:text-gray-300",
-    thinking: "bg-amber-50/50 dark:bg-amber-500/[0.06] border-amber-200/50 dark:border-amber-400/[0.12] text-amber-700 dark:text-amber-300",
-    error: "bg-red-50/50 dark:bg-red-500/[0.06] border-red-200/50 dark:border-red-400/[0.12] text-red-700 dark:text-red-300",
+    default:
+      "bg-gray-50/80 dark:bg-white/[0.04] border-gray-200/60 dark:border-white/[0.08] text-gray-600 dark:text-gray-300",
+    thinking:
+      "bg-amber-50/50 dark:bg-amber-500/[0.06] border-amber-200/50 dark:border-amber-400/[0.12] text-amber-700 dark:text-amber-300",
+    error:
+      "bg-red-50/50 dark:bg-red-500/[0.06] border-red-200/50 dark:border-red-400/[0.12] text-red-700 dark:text-red-300",
   };
 
   return (
-    <div className={`my-2 rounded-xl border ${variantStyles[variant]} overflow-hidden transition-colors`}>
+    <div
+      className={`my-2 rounded-xl border ${variantStyles[variant]} overflow-hidden transition-colors`}
+    >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -189,9 +141,18 @@ function Collapsible({
         <span className="ml-auto flex items-center gap-1">
           {isStreaming ? (
             <span className="flex gap-0.5">
-              <span className="w-1 h-1 rounded-full bg-current animate-bounce" style={{ animationDelay: "0ms" }} />
-              <span className="w-1 h-1 rounded-full bg-current animate-bounce" style={{ animationDelay: "150ms" }} />
-              <span className="w-1 h-1 rounded-full bg-current animate-bounce" style={{ animationDelay: "300ms" }} />
+              <span
+                className="w-1 h-1 rounded-full bg-current animate-bounce"
+                style={{ animationDelay: "0ms" }}
+              />
+              <span
+                className="w-1 h-1 rounded-full bg-current animate-bounce"
+                style={{ animationDelay: "150ms" }}
+              />
+              <span
+                className="w-1 h-1 rounded-full bg-current animate-bounce"
+                style={{ animationDelay: "300ms" }}
+              />
             </span>
           ) : statusIcon ? (
             statusIcon
@@ -204,23 +165,6 @@ function Collapsible({
         </div>
       )}
     </div>
-  );
-}
-
-/* ─── Thinking block ─────────────────────────────────────────────────── */
-
-function ThinkingBlockUI({ block }: { block: ThinkingBlock }) {
-  return (
-    <Collapsible
-      label={block.isStreaming ? "Thinking..." : "Thought process"}
-      icon={<SparklesIcon className="w-3.5 h-3.5 flex-shrink-0" />}
-      statusIcon={!block.isStreaming ? <CheckCircleIcon className="w-3.5 h-3.5 opacity-50" /> : undefined}
-      isStreaming={block.isStreaming}
-      variant="thinking"
-      defaultOpen
-    >
-      <p className="leading-relaxed opacity-70">{block.thinking || "..."}</p>
-    </Collapsible>
   );
 }
 
@@ -240,30 +184,76 @@ function PrettyJSON({ value }: { value: string }) {
   );
 }
 
-/* ─── Tool call block ────────────────────────────────────────────────── */
+/* ─── Thinking block ─────────────────────────────────────────────────── */
 
-function ToolCallBlockUI({ block, result }: { block: ToolCallBlock; result?: ToolResultBlock }) {
-  const friendlyName = block.name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-  const isWaiting = block.isStreaming && !result;
+function ThinkingBlockUI({
+  text,
+  isStreaming,
+}: {
+  text: string;
+  isStreaming?: boolean;
+}) {
+  return (
+    <Collapsible
+      label={isStreaming ? "Thinking..." : "Thought process"}
+      icon={<SparklesIcon className="w-3.5 h-3.5 flex-shrink-0" />}
+      statusIcon={
+        !isStreaming ? (
+          <CheckCircleIcon className="w-3.5 h-3.5 opacity-50" />
+        ) : undefined
+      }
+      isStreaming={isStreaming}
+      variant="thinking"
+      defaultOpen
+    >
+      <p className="leading-relaxed opacity-70">{text || "..."}</p>
+    </Collapsible>
+  );
+}
 
-  // Detect error in result
+/* ─── Tool invocation block ──────────────────────────────────────────── */
+
+function getToolName(part: { type: string; toolName?: string }): string {
+  // DynamicToolUIPart has toolName directly
+  if (part.toolName) return part.toolName;
+  // Static ToolUIPart has type "tool-{name}"
+  if (part.type.startsWith("tool-")) return part.type.slice(5);
+  return "unknown";
+}
+
+function ToolInvocationUI({ part }: { part: { type: string; toolCallId: string; toolName?: string; state: string; input?: unknown; output?: unknown } }) {
+  const friendlyName = getToolName(part)
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+  const isWaiting =
+    part.state === "input-streaming" || part.state === "input-available";
+  const hasResult = part.state === "output-available";
+
   let isError = false;
-  if (result) {
+  if (hasResult && part.output) {
     try {
-      const parsed = JSON.parse(result.result);
+      const parsed =
+        typeof part.output === "string"
+          ? JSON.parse(part.output)
+          : part.output;
       isError = parsed.success === false || !!parsed.error;
     } catch {
-      // not JSON, not an error structure
+      // not JSON
     }
   }
 
-  const statusLabel = isWaiting
-    ? `Calling ${friendlyName}...`
-    : `Called ${friendlyName}`;
+  const argsStr =
+    typeof part.input === "string"
+      ? part.input
+      : JSON.stringify(part.input ?? {});
+  const resultStr =
+    typeof part.output === "string"
+      ? part.output
+      : JSON.stringify(part.output ?? "");
 
   return (
     <Collapsible
-      label={statusLabel}
+      label={isWaiting ? `Calling ${friendlyName}...` : `Called ${friendlyName}`}
       icon={
         isWaiting ? (
           <ArrowPathIcon className="w-3.5 h-3.5 flex-shrink-0 animate-spin" />
@@ -272,7 +262,7 @@ function ToolCallBlockUI({ block, result }: { block: ToolCallBlock; result?: Too
         )
       }
       statusIcon={
-        result ? (
+        hasResult ? (
           isError ? (
             <XCircleIcon className="w-3.5 h-3.5 text-red-500/70 dark:text-red-400/70" />
           ) : (
@@ -284,26 +274,28 @@ function ToolCallBlockUI({ block, result }: { block: ToolCallBlock; result?: Too
       variant={isError ? "error" : "default"}
     >
       <div className="space-y-2.5">
-        {block.args && block.args !== "{}" && (
+        {argsStr && argsStr !== "{}" && (
           <div>
             <span className="font-semibold opacity-50 block mb-1 uppercase tracking-wider text-[10px]">
               Input
             </span>
-            <PrettyJSON value={block.args} />
+            <PrettyJSON value={argsStr} />
           </div>
         )}
-        {result && (
+        {hasResult && (
           <div>
             <span className="font-semibold opacity-50 block mb-1 uppercase tracking-wider text-[10px]">
               Result
             </span>
             <div className="max-h-40 overflow-y-auto">
-              <PrettyJSON value={result.result} />
+              <PrettyJSON value={resultStr} />
             </div>
           </div>
         )}
-        {isWaiting && !result && (
-          <p className="opacity-40 italic text-[11px]">Waiting for result...</p>
+        {isWaiting && (
+          <p className="opacity-40 italic text-[11px]">
+            Waiting for result...
+          </p>
         )}
       </div>
     </Collapsible>
@@ -313,16 +305,27 @@ function ToolCallBlockUI({ block, result }: { block: ToolCallBlock; result?: Too
 /* ─── Input request block ────────────────────────────────────────────── */
 
 function InputRequestBlockUI({
-  block,
+  data,
   onSubmit,
   disabled,
 }: {
-  block: InputRequestBlock;
+  data: {
+    inputType: string;
+    label: string;
+    placeholder?: string;
+    field: string;
+    value?: string;
+  };
   onSubmit: (value: string) => void;
   disabled?: boolean;
 }) {
-  const [value, setValue] = useState(block.value ?? "");
-  const inputType = block.inputType === "url" ? "url" : block.inputType === "email" ? "email" : "text";
+  const [value, setValue] = useState(data.value ?? "");
+  const inputType =
+    data.inputType === "url"
+      ? "url"
+      : data.inputType === "email"
+        ? "email"
+        : "text";
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -334,13 +337,15 @@ function InputRequestBlockUI({
 
   return (
     <form onSubmit={handleSubmit} className="my-3">
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{block.label}</label>
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+        {data.label}
+      </label>
       <div className="flex gap-2">
         <input
           type={inputType}
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder={block.placeholder}
+          placeholder={data.placeholder}
           disabled={disabled}
           className="flex-1 rounded-lg border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-white/[0.04] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 disabled:opacity-50 transition-shadow"
         />
@@ -359,17 +364,17 @@ function InputRequestBlockUI({
 /* ─── Buttons block ──────────────────────────────────────────────────── */
 
 function ButtonsBlockUI({
-  block,
+  buttons,
   onSelect,
   disabled,
 }: {
-  block: ButtonsBlock;
+  buttons: Array<{ label: string; value: string }>;
   onSelect: (value: string) => void;
   disabled?: boolean;
 }) {
   return (
     <div className="my-3 flex flex-wrap gap-2">
-      {block.buttons.map((btn, i) => (
+      {buttons.map((btn, i) => (
         <button
           key={i}
           type="button"
@@ -386,7 +391,9 @@ function ButtonsBlockUI({
 
 /* ─── Mermaid + markdown parsing ─────────────────────────────────────── */
 
-function parseMessageSegments(content: string): Array<{ type: "text" | "mermaid"; value: string }> {
+function parseMessageSegments(
+  content: string,
+): Array<{ type: "text" | "mermaid"; value: string }> {
   const segments: Array<{ type: "text" | "mermaid"; value: string }> = [];
   const regex = /```mermaid\n([\s\S]*?)```/g;
   let lastIndex = 0;
@@ -394,7 +401,10 @@ function parseMessageSegments(content: string): Array<{ type: "text" | "mermaid"
 
   while ((match = regex.exec(content)) !== null) {
     if (match.index > lastIndex) {
-      segments.push({ type: "text", value: content.slice(lastIndex, match.index) });
+      segments.push({
+        type: "text",
+        value: content.slice(lastIndex, match.index),
+      });
     }
     segments.push({ type: "mermaid", value: match[1].trim() });
     lastIndex = match.index + match[0].length;
@@ -408,18 +418,43 @@ function parseMessageSegments(content: string): Array<{ type: "text" | "mermaid"
 }
 
 const markdownComponents = {
-  p: ({ children }: { children?: React.ReactNode }) => <p className="mb-2 last:mb-0">{children}</p>,
-  strong: ({ children }: { children?: React.ReactNode }) => <strong className="font-semibold">{children}</strong>,
-  ul: ({ children }: { children?: React.ReactNode }) => <ul className="list-disc list-inside mb-2 space-y-0.5">{children}</ul>,
-  ol: ({ children }: { children?: React.ReactNode }) => <ol className="list-decimal list-inside mb-2 space-y-0.5">{children}</ol>,
+  p: ({ children }: { children?: React.ReactNode }) => (
+    <p className="mb-2 last:mb-0">{children}</p>
+  ),
+  strong: ({ children }: { children?: React.ReactNode }) => (
+    <strong className="font-semibold">{children}</strong>
+  ),
+  ul: ({ children }: { children?: React.ReactNode }) => (
+    <ul className="list-disc list-inside mb-2 space-y-0.5">{children}</ul>
+  ),
+  ol: ({ children }: { children?: React.ReactNode }) => (
+    <ol className="list-decimal list-inside mb-2 space-y-0.5">{children}</ol>
+  ),
   code: ({ children }: { children?: React.ReactNode }) => (
-    <code className="bg-gray-100 dark:bg-white/[0.08] text-gray-800 dark:text-gray-200 rounded px-1 py-0.5 text-xs font-mono">{children}</code>
+    <code className="bg-gray-100 dark:bg-white/[0.08] text-gray-800 dark:text-gray-200 rounded px-1 py-0.5 text-xs font-mono">
+      {children}
+    </code>
   ),
   pre: ({ children }: { children?: React.ReactNode }) => (
-    <pre className="bg-gray-900 dark:bg-black/40 text-gray-100 rounded-lg p-3 my-2 overflow-x-auto text-xs">{children}</pre>
+    <pre className="bg-gray-900 dark:bg-black/40 text-gray-100 rounded-lg p-3 my-2 overflow-x-auto text-xs">
+      {children}
+    </pre>
   ),
-  a: ({ href, children }: { href?: string; children?: React.ReactNode }) => (
-    <a href={href} className="text-brand-600 dark:text-brand-400 underline decoration-brand-300/40 hover:decoration-brand-400 transition-colors" target="_blank" rel="noopener noreferrer">{children}</a>
+  a: ({
+    href,
+    children,
+  }: {
+    href?: string;
+    children?: React.ReactNode;
+  }) => (
+    <a
+      href={href}
+      className="text-brand-600 dark:text-brand-400 underline decoration-brand-300/40 hover:decoration-brand-400 transition-colors"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      {children}
+    </a>
   ),
 };
 
@@ -430,132 +465,212 @@ function TextContent({ text }: { text: string }) {
     <>
       {segments.map((seg, i) =>
         seg.type === "mermaid" ? (
-          <MermaidDiagram key={i} chart={seg.value} className="my-3 bg-white dark:bg-white/[0.04] rounded-lg p-4 border border-gray-100 dark:border-white/[0.06]" />
+          <MermaidDiagram
+            key={i}
+            chart={seg.value}
+            className="my-3 bg-white dark:bg-white/[0.04] rounded-lg p-4 border border-gray-100 dark:border-white/[0.06]"
+          />
         ) : (
           <Markdown key={i} components={markdownComponents}>
             {seg.value}
           </Markdown>
-        )
+        ),
       )}
     </>
   );
 }
 
-/* ─── Message content renderer (blocks-aware) ────────────────────────── */
+/* ─── Skeleton shimmer ───────────────────────────────────────────────── */
 
-function MessageContent({
+function MessageSkeleton() {
+  return (
+    <div className="flex gap-3 animate-in fade-in duration-150">
+      <div className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-white/[0.06] animate-pulse flex-shrink-0" />
+      <div className="flex-1 space-y-2.5 pt-1">
+        <div className="h-3.5 bg-gray-100 dark:bg-white/[0.06] rounded-md w-3/4 animate-pulse" />
+        <div
+          className="h-3.5 bg-gray-100 dark:bg-white/[0.06] rounded-md w-1/2 animate-pulse"
+          style={{ animationDelay: "75ms" }}
+        />
+        <div
+          className="h-3.5 bg-gray-100 dark:bg-white/[0.06] rounded-md w-5/12 animate-pulse"
+          style={{ animationDelay: "150ms" }}
+        />
+      </div>
+    </div>
+  );
+}
+
+/* ─── Message part renderer ──────────────────────────────────────────── */
+
+function MessageParts({
   message,
-  onSendMessage,
-  isStreaming,
+  isLastMessage,
+  chatStreaming,
+  onSend,
 }: {
-  message: ChatMessage;
-  onSendMessage?: (text: string) => void;
-  isStreaming?: boolean;
+  message: UIMessage;
+  isLastMessage: boolean;
+  chatStreaming: boolean;
+  onSend: (text: string) => void;
 }) {
-  const { blocks, content } = message;
+  const { parts } = message;
+  const isActivelyStreaming = isLastMessage && chatStreaming;
 
-  // Build a map of tool results keyed by tool call id
-  const toolResults = new Map<string, ToolResultBlock>();
-  for (const b of blocks) {
-    if (b.type === "tool_result") {
-      toolResults.set(b.toolCallId, b);
-    }
-  }
-
-  const hasBlocks = blocks.some((b) => b.type !== "tool_result");
-
-  if (!hasBlocks) {
-    return <TextContent text={content} />;
+  if (parts.length === 0) {
+    return null;
   }
 
   return (
     <div className="space-y-1">
-      {blocks.map((block, i) => {
-        switch (block.type) {
-          case "thinking":
-            return <ThinkingBlockUI key={i} block={block} />;
-          case "tool_call":
-            return <ToolCallBlockUI key={i} block={block} result={toolResults.get(block.id)} />;
-          case "tool_result":
-            return null;
+      {parts.map((part, i) => {
+        const isLastPart = i === parts.length - 1;
+        const partStreaming = isActivelyStreaming && isLastPart;
+
+        switch (part.type) {
           case "text":
-            return <TextContent key={i} text={block.text} />;
-          case "input_request":
+            return <TextContent key={i} text={part.text} />;
+
+          case "reasoning":
             return (
-              <InputRequestBlockUI
+              <ThinkingBlockUI
                 key={i}
-                block={block}
-                onSubmit={(v) => onSendMessage?.(v)}
-                disabled={isStreaming}
+                text={part.text}
+                isStreaming={partStreaming}
               />
             );
-          case "buttons":
-            return (
-              <ButtonsBlockUI
-                key={i}
-                block={block}
-                onSelect={(v) => onSendMessage?.(v)}
-                disabled={isStreaming}
-              />
-            );
-          default:
+
+          default: {
+            // Tool parts (tool-* or dynamic-tool)
+            if (isToolUIPart(part)) {
+              const tp = part as unknown as { type: string; toolCallId: string; toolName?: string; state: string; input?: unknown; output?: unknown };
+              return (
+                <ToolInvocationUI
+                  key={tp.toolCallId}
+                  part={tp}
+                />
+              );
+            }
+
+            // Custom data parts (data-input-request, data-buttons, data-session)
+            const p = part as { type: string; data?: unknown };
+            if (p.type === "data-input-request" && p.data) {
+              const d = p.data as {
+                inputType: string;
+                label: string;
+                placeholder?: string;
+                field: string;
+                value?: string;
+              };
+              return (
+                <InputRequestBlockUI
+                  key={i}
+                  data={d}
+                  onSubmit={onSend}
+                  disabled={chatStreaming}
+                />
+              );
+            }
+            if (p.type === "data-buttons" && p.data) {
+              const d = p.data as {
+                buttons: Array<{ label: string; value: string }>;
+              };
+              return (
+                <ButtonsBlockUI
+                  key={i}
+                  buttons={d.buttons}
+                  onSelect={onSend}
+                  disabled={chatStreaming}
+                />
+              );
+            }
+            // data-session and unknown types: skip
             return null;
+          }
         }
       })}
     </div>
   );
 }
 
-/* ─── Helpers for updating blocks in state ────────────────────────────── */
-
-function updateLastMessage(
-  prev: ChatMessage[],
-  updater: (msg: ChatMessage) => ChatMessage,
-): ChatMessage[] {
-  const updated = [...prev];
-  updated[updated.length - 1] = updater(updated[updated.length - 1]);
-  return updated;
-}
-
-function appendBlock(msg: ChatMessage, block: ContentBlock): ChatMessage {
-  return { ...msg, blocks: [...msg.blocks, block] };
-}
-
-function updateLastBlock(msg: ChatMessage, updater: (block: ContentBlock) => ContentBlock): ChatMessage {
-  const blocks = [...msg.blocks];
-  blocks[blocks.length - 1] = updater(blocks[blocks.length - 1]);
-  return { ...msg, blocks };
-}
-
 /* ─── Main chat component ────────────────────────────────────────────── */
 
-export function WorkflowChat({ workflowId, workflowContext }: WorkflowChatProps) {
+interface WorkflowChatProps {
+  workflowId: string;
+  workflowContext: Record<string, unknown>;
+}
+
+export function WorkflowChat({
+  workflowId,
+  workflowContext,
+}: WorkflowChatProps) {
   const queryClient = useQueryClient();
-  const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    const persisted = loadChat(workflowId);
-    return persisted?.messages ?? [];
-  });
-  const [input, setInput] = useState("");
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [userHasScrolled, setUserHasScrolled] = useState(false);
-  const sessionIdRef = useRef<string | null>(loadChat(workflowId)?.sessionId ?? null);
+  const sessionIdRef = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const abortRef = useRef<AbortController | null>(null);
+  const [userHasScrolled, setUserHasScrolled] = useState(false);
+  const [input, setInput] = useState("");
 
-  // Persist messages + sessionId on every change
+  // Load session ID from localStorage on mount
   useEffect(() => {
-    if (!isStreaming) {
-      saveChat(workflowId, sessionIdRef.current, messages);
-    }
-  }, [messages, isStreaming, workflowId]);
-
-  const resetChat = useCallback(() => {
-    setMessages([]);
-    sessionIdRef.current = null;
-    localStorage.removeItem(storageKey(workflowId));
+    sessionIdRef.current = loadSessionId(workflowId);
   }, [workflowId]);
 
+  // Transport: transforms useChat request → our API format
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/v1/chat",
+        prepareSendMessagesRequest: ({ messages: msgs }) => ({
+          body: {
+            message:
+              msgs
+                .filter((m) => m.role === "user")
+                .pop()
+                ?.parts?.find(
+                  (p): p is { type: "text"; text: string } =>
+                    p.type === "text",
+                )?.text || "",
+            sessionId: sessionIdRef.current,
+            context: workflowContext,
+          },
+        }),
+      }),
+    [workflowContext],
+  );
+
+  const {
+    messages,
+    sendMessage,
+    status,
+    stop,
+    setMessages,
+  } = useChat({
+    id: `workflow-${workflowId}`,
+    transport,
+    messages: loadMessages(workflowId),
+    onData: (data: { type: string; data?: unknown }) => {
+      if (data.type === "data-session" && data.data) {
+        const d = data.data as { sessionId: string };
+        sessionIdRef.current = d.sessionId;
+        saveSessionId(workflowId, d.sessionId);
+      }
+    },
+    onFinish: ({ messages: finalMessages }) => {
+      playDing();
+      saveMessages(workflowId, finalMessages);
+      void queryClient.invalidateQueries({
+        queryKey: ["workflow", workflowId],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["workflow-summary", workflowId],
+      });
+    },
+  });
+
+  const isStreaming = status === "streaming" || status === "submitted";
+
+  // Auto-scroll
   const scrollToBottom = useCallback(() => {
     if (scrollRef.current && !userHasScrolled) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -572,14 +687,15 @@ export function WorkflowChat({ workflowId, workflowContext }: WorkflowChatProps)
     if (!el) return;
     function handleScroll() {
       if (!el) return;
-      const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+      const isAtBottom =
+        el.scrollHeight - el.scrollTop - el.clientHeight < 80;
       setUserHasScrolled(!isAtBottom);
     }
     el.addEventListener("scroll", handleScroll, { passive: true });
     return () => el.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Auto-resize textarea up to 6 lines
+  // Auto-resize textarea
   useEffect(() => {
     const el = inputRef.current;
     if (!el) return;
@@ -587,369 +703,42 @@ export function WorkflowChat({ workflowId, workflowContext }: WorkflowChatProps)
     el.style.height = Math.min(el.scrollHeight, 144) + "px";
   }, [input]);
 
-  const sendMessage = useCallback(async (text: string) => {
-    if (!text || isStreaming) return;
-    setInput("");
-    await handleSend(text);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isStreaming]);
+  // Send handlers
+  const handleSend = useCallback(
+    (text: string) => {
+      if (!text.trim() || isStreaming) return;
+      setInput("");
+      setUserHasScrolled(false);
+      sendMessage({ text });
+    },
+    [isStreaming, sendMessage],
+  );
 
-  async function handleSubmit(e: FormEvent) {
+  function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const trimmed = input.trim();
-    if (!trimmed || isStreaming) return;
-    await handleSend(trimmed);
-  }
-
-  function handleStop() {
-    abortRef.current?.abort();
-  }
-
-  async function handleSend(trimmed: string) {
-
-    const userMessage: ChatMessage = { role: "user", content: trimmed, blocks: [] };
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    setIsStreaming(true);
-    setUserHasScrolled(false);
-
-    // Add empty assistant message for streaming
-    setMessages((prev) => [...prev, { role: "assistant", content: "", blocks: [] }]);
-
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    try {
-      const payload: Record<string, unknown> = {
-        message: trimmed,
-        context: workflowContext,
-      };
-      // Only include sessionId if we have one from a previous response
-      if (sessionIdRef.current) {
-        payload.sessionId = sessionIdRef.current;
-      }
-
-      const res = await fetch("/api/v1/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      });
-
-      if (!res.ok) {
-        const errText = await res.text().catch(() => "Unknown error");
-        setMessages((prev) =>
-          updateLastMessage(prev, (msg) => ({
-            ...msg,
-            content: `Sorry, I encountered an error: ${errText}`,
-            blocks: [{ type: "text", text: `Sorry, I encountered an error: ${errText}` }],
-          })),
-        );
-        setIsStreaming(false);
-        return;
-      }
-
-      const reader = res.body?.getReader();
-      if (!reader) {
-        setIsStreaming(false);
-        return;
-      }
-
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let receivedContent = false;
-      const rawChunks: string[] = []; // keep raw data for error diagnostics
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        rawChunks.push(chunk);
-        buffer += chunk;
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const payload = line.slice(6);
-          if (payload === "[DONE]" || payload === '"[DONE]"') continue;
-
-          let event: Record<string, unknown>;
-          try {
-            event = JSON.parse(payload);
-          } catch {
-            // Not JSON -- could be a plain-text error from the server
-            const errorText = payload.trim();
-            if (errorText) {
-              receivedContent = true;
-              setMessages((prev) =>
-                updateLastMessage(prev, (msg) => ({
-                  ...msg,
-                  content: errorText,
-                  blocks: [{ type: "text" as const, text: errorText }],
-                })),
-              );
-            }
-            continue;
-          }
-
-          // First event: chat-service returns the session ID
-          if (event.sessionId && !event.type) {
-            sessionIdRef.current = event.sessionId as string;
-            continue;
-          }
-
-          // Legacy: untyped error event (e.g. {"error": "Session not found."})
-          if (event.error && !event.type) {
-            receivedContent = true;
-            const errorMsg = String(event.error);
-            console.error("[chat] Server error (untyped):", errorMsg);
-            setMessages((prev) =>
-              updateLastMessage(prev, (msg) => ({
-                ...msg,
-                content: errorMsg,
-                blocks: [
-                  ...msg.blocks,
-                  { type: "text" as const, text: errorMsg },
-                ],
-              })),
-            );
-            continue;
-          }
-
-          switch (event.type) {
-            /* -- Text tokens -- */
-            case "token": {
-              const tokenText = (event.content || event.token || "") as string;
-              if (!tokenText) break;
-              receivedContent = true;
-              setMessages((prev) =>
-                updateLastMessage(prev, (msg) => {
-                  const newContent = msg.content + tokenText;
-                  const lastBlock = msg.blocks[msg.blocks.length - 1];
-                  if (lastBlock?.type === "text") {
-                    return {
-                      ...msg,
-                      content: newContent,
-                      blocks: [
-                        ...msg.blocks.slice(0, -1),
-                        { type: "text", text: lastBlock.text + tokenText },
-                      ],
-                    };
-                  }
-                  return {
-                    ...msg,
-                    content: newContent,
-                    blocks: [...msg.blocks, { type: "text", text: tokenText }],
-                  };
-                }),
-              );
-              break;
-            }
-
-            /* -- Thinking -- */
-            case "thinking_start": {
-              receivedContent = true;
-              setMessages((prev) =>
-                updateLastMessage(prev, (msg) =>
-                  appendBlock(msg, { type: "thinking", thinking: "", isStreaming: true }),
-                ),
-              );
-              break;
-            }
-            case "thinking_delta": {
-              const delta = (event.thinking || "") as string;
-              setMessages((prev) =>
-                updateLastMessage(prev, (msg) => {
-                  const lastBlock = msg.blocks[msg.blocks.length - 1];
-                  if (lastBlock?.type === "thinking") {
-                    return updateLastBlock(msg, (b) =>
-                      b.type === "thinking" ? { ...b, thinking: b.thinking + delta } : b,
-                    );
-                  }
-                  return appendBlock(msg, { type: "thinking", thinking: delta, isStreaming: true });
-                }),
-              );
-              break;
-            }
-            case "thinking_stop": {
-              setMessages((prev) =>
-                updateLastMessage(prev, (msg) =>
-                  updateLastBlock(msg, (b) =>
-                    b.type === "thinking" ? { ...b, isStreaming: false } : b,
-                  ),
-                ),
-              );
-              break;
-            }
-
-            /* -- Tool calls (args arrive complete, no delta/stop) */
-            case "tool_call": {
-              receivedContent = true;
-              setMessages((prev) =>
-                updateLastMessage(prev, (msg) =>
-                  appendBlock(msg, {
-                    type: "tool_call",
-                    id: (event.id || `tc_${Date.now()}`) as string,
-                    name: (event.name || "unknown") as string,
-                    args: typeof event.args === "string"
-                      ? event.args
-                      : JSON.stringify(event.args ?? {}),
-                    isStreaming: true, // waiting for tool_result
-                  }),
-                ),
-              );
-              break;
-            }
-
-            /* -- Tool results -- */
-            case "tool_result": {
-              const toolCallId = (event.id || "") as string;
-              const toolName = (event.name || "") as string;
-              const resultValue = typeof event.result === "string"
-                ? event.result
-                : JSON.stringify(event.result ?? "");
-
-              setMessages((prev) =>
-                updateLastMessage(prev, (msg) => {
-                  const blocks = msg.blocks.map((b) =>
-                    b.type === "tool_call" && (b.id === toolCallId || b.name === toolName)
-                      ? { ...b, isStreaming: false }
-                      : b,
-                  );
-
-                  return {
-                    ...msg,
-                    blocks: [
-                      ...blocks,
-                      {
-                        type: "tool_result" as const,
-                        toolCallId,
-                        name: toolName,
-                        result: resultValue,
-                      },
-                    ],
-                  };
-                }),
-              );
-
-              // Refresh the sidebar panel so it reflects tool changes
-              void queryClient.invalidateQueries({ queryKey: ["workflow", workflowId] });
-              void queryClient.invalidateQueries({ queryKey: ["workflow-summary", workflowId] });
-              break;
-            }
-
-            /* -- Input request -- */
-            case "input_request": {
-              receivedContent = true;
-              setMessages((prev) =>
-                updateLastMessage(prev, (msg) =>
-                  appendBlock(msg, {
-                    type: "input_request",
-                    inputType: (event.input_type || "text") as "url" | "text" | "email",
-                    label: (event.label || "") as string,
-                    placeholder: (event.placeholder || undefined) as string | undefined,
-                    field: (event.field || "") as string,
-                    value: (event.value as string | undefined) || undefined,
-                  }),
-                ),
-              );
-              break;
-            }
-
-            /* -- Quick-reply buttons -- */
-            case "buttons": {
-              receivedContent = true;
-              const buttons = Array.isArray(event.buttons)
-                ? (event.buttons as { label: string; value: string }[])
-                : [];
-              if (buttons.length > 0) {
-                setMessages((prev) =>
-                  updateLastMessage(prev, (msg) =>
-                    appendBlock(msg, { type: "buttons", buttons }),
-                  ),
-                );
-              }
-              break;
-            }
-
-            /* -- Error from server -- */
-            case "error": {
-              receivedContent = true;
-              const errorMsg = (event.message || "Unknown server error") as string;
-              console.error("[chat] Server error event:", errorMsg);
-              setMessages((prev) =>
-                updateLastMessage(prev, (msg) => ({
-                  ...msg,
-                  content: errorMsg,
-                  blocks: [
-                    ...msg.blocks,
-                    { type: "text" as const, text: errorMsg },
-                  ],
-                })),
-              );
-              break;
-            }
-
-            default:
-              console.warn("[chat] Unknown SSE event type:", event.type, event);
-              break;
-          }
-        }
-      }
-
-      // If the stream ended without any content, surface the raw response
-      if (!receivedContent) {
-        const raw = rawChunks.join("");
-        console.error("[chat] Stream ended with no content. Raw response:", raw);
-        const errorMsg = raw.trim() || "Empty response from server";
-        setMessages((prev) =>
-          updateLastMessage(prev, (msg) => ({
-            ...msg,
-            content: errorMsg,
-            blocks: [{ type: "text" as const, text: errorMsg }],
-          })),
-        );
-      }
-      playDing();
-    } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") {
-        // User stopped generation
-        setMessages((prev) =>
-          updateLastMessage(prev, (msg) => {
-            if (msg.content || msg.blocks.length > 0) return msg;
-            return { ...msg, content: "Generation stopped.", blocks: [{ type: "text", text: "Generation stopped." }] };
-          }),
-        );
-      } else {
-        console.error("[chat] Stream error:", err);
-        setMessages((prev) =>
-          updateLastMessage(prev, (msg) => ({
-            ...msg,
-            content: `Something went wrong: ${err instanceof Error ? err.message : "Unknown error"}`,
-            blocks: [
-              { type: "text" as const, text: `Something went wrong: ${err instanceof Error ? err.message : "Unknown error"}` },
-            ],
-          })),
-        );
-      }
-    } finally {
-      abortRef.current = null;
-      setIsStreaming(false);
-    }
+    handleSend(input);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit(e);
+      handleSend(input);
     }
   }
 
+  // Reset chat
+  const resetChat = useCallback(() => {
+    setMessages([]);
+    sessionIdRef.current = null;
+    clearChat(workflowId);
+  }, [workflowId, setMessages]);
+
   const hasMessages = messages.length > 0;
   const lastMsg = messages[messages.length - 1];
-  const showSkeleton = isStreaming && lastMsg?.role === "assistant" && lastMsg.content === "" && lastMsg.blocks.length === 0;
+  const showSkeleton =
+    isStreaming &&
+    lastMsg?.role === "assistant" &&
+    lastMsg.parts.length === 0;
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
@@ -967,43 +756,63 @@ export function WorkflowChat({ workflowId, workflowContext }: WorkflowChatProps)
           </button>
         </div>
       )}
+
       {/* Messages */}
       {hasMessages ? (
         <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-5">
-            {messages.map((msg, i) =>
-              msg.role === "user" ? (
-                /* User message: right-aligned pill */
-                <div key={i} className="flex justify-end">
+            {messages.map((msg, i) => {
+              const userText = msg.parts
+                .filter(
+                  (p): p is { type: "text"; text: string } =>
+                    p.type === "text",
+                )
+                .map((p) => p.text)
+                .join("");
+
+              return msg.role === "user" ? (
+                <div key={msg.id} className="flex justify-end">
                   <div className="max-w-[85%] bg-brand-600 text-white rounded-2xl rounded-br-md px-4 py-2.5 text-sm leading-relaxed">
-                    <span className="whitespace-pre-wrap">{msg.content}</span>
+                    <span className="whitespace-pre-wrap">{userText}</span>
                   </div>
                 </div>
               ) : (
-                /* Assistant message: no background, left-aligned */
-                <div key={i} className="flex gap-3">
+                <div key={msg.id} className="flex gap-3">
                   <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center flex-shrink-0 mt-0.5">
                     {i === messages.length - 1 && isStreaming ? (
                       <span className="flex gap-0.5">
-                        <span className="w-1 h-1 rounded-full bg-white animate-bounce" style={{ animationDelay: "0ms" }} />
-                        <span className="w-1 h-1 rounded-full bg-white animate-bounce" style={{ animationDelay: "150ms" }} />
-                        <span className="w-1 h-1 rounded-full bg-white animate-bounce" style={{ animationDelay: "300ms" }} />
+                        <span
+                          className="w-1 h-1 rounded-full bg-white animate-bounce"
+                          style={{ animationDelay: "0ms" }}
+                        />
+                        <span
+                          className="w-1 h-1 rounded-full bg-white animate-bounce"
+                          style={{ animationDelay: "150ms" }}
+                        />
+                        <span
+                          className="w-1 h-1 rounded-full bg-white animate-bounce"
+                          style={{ animationDelay: "300ms" }}
+                        />
                       </span>
                     ) : (
                       <SparklesIcon className="w-4 h-4 text-white" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0 text-sm text-gray-800 dark:text-gray-200 leading-relaxed">
-                    {/* Show skeleton while waiting for first token */}
                     {i === messages.length - 1 && showSkeleton ? (
                       <MessageSkeleton />
                     ) : (
-                      <MessageContent message={msg} onSendMessage={sendMessage} isStreaming={isStreaming} />
+                      <MessageParts
+                        message={msg}
+                        isLastMessage={i === messages.length - 1}
+                        chatStreaming={isStreaming}
+                        onSend={handleSend}
+                      />
                     )}
                   </div>
                 </div>
-              ),
-            )}
+              );
+            })}
           </div>
         </div>
       ) : (
@@ -1012,7 +821,9 @@ export function WorkflowChat({ workflowId, workflowContext }: WorkflowChatProps)
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-500/10 to-brand-600/10 dark:from-brand-400/10 dark:to-brand-500/10 flex items-center justify-center mb-4">
             <SparklesIcon className="w-6 h-6 text-brand-500 dark:text-brand-400" />
           </div>
-          <h3 className="font-display font-bold text-gray-900 dark:text-gray-100 text-lg mb-1">Ask about this workflow</h3>
+          <h3 className="font-display font-bold text-gray-900 dark:text-gray-100 text-lg mb-1">
+            Ask about this workflow
+          </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400 text-center max-w-xs leading-relaxed">
             I can help you configure, run, or understand how this workflow works.
           </p>
@@ -1026,7 +837,10 @@ export function WorkflowChat({ workflowId, workflowContext }: WorkflowChatProps)
             type="button"
             onClick={() => {
               setUserHasScrolled(false);
-              scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+              scrollRef.current?.scrollTo({
+                top: scrollRef.current.scrollHeight,
+                behavior: "smooth",
+              });
             }}
             className="pointer-events-auto px-3 py-1.5 text-xs font-medium bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/[0.1] rounded-full shadow-md hover:shadow-lg transition-all text-gray-600 dark:text-gray-300"
           >
@@ -1053,7 +867,7 @@ export function WorkflowChat({ workflowId, workflowContext }: WorkflowChatProps)
             {isStreaming ? (
               <button
                 type="button"
-                onClick={handleStop}
+                onClick={() => stop()}
                 className="w-8 h-8 rounded-xl bg-gray-200 dark:bg-white/[0.1] text-gray-600 dark:text-gray-300 flex items-center justify-center hover:bg-gray-300 dark:hover:bg-white/[0.15] transition-colors flex-shrink-0"
                 title="Stop generating"
               >
