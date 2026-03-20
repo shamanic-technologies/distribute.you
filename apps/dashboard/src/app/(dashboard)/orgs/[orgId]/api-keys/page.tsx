@@ -20,8 +20,10 @@ import { SkeletonApiKey } from "@/components/skeleton";
 const POLL_INTERVAL = 5_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
 
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
+function capitalize(s: unknown): string {
+  const str = String(s ?? "");
+  if (!str) return "";
+  return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
 interface ProviderRow {
@@ -100,7 +102,7 @@ export default function OrgApiKeysPage() {
     for (const wf of workflowsData?.workflows ?? []) {
       if (wf.status === "deprecated") continue;
       for (const p of wf.requiredProviders ?? []) {
-        providerSet.add(p);
+        if (typeof p === "string" && p) providerSet.add(p);
       }
     }
     for (const k of configuredKeys) {

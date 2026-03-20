@@ -50,4 +50,13 @@ describe("workflowDisplayName", () => {
       })
     ).toBe("fallback");
   });
+
+  it("handles non-string signatureName without crashing", () => {
+    expect(
+      workflowDisplayName({
+        signatureName: 42 as unknown as string,
+        displayName: "fallback",
+      })
+    ).toBe("fallback");
+  });
 });
