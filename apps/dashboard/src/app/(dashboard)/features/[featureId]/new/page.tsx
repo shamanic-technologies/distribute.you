@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { keepPreviousData } from "@tanstack/react-query";
@@ -223,6 +223,7 @@ export default function CreateCampaignPage() {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState<CampaignFormData>(EMPTY_FORM);
   const [isCreating, setIsCreating] = useState(false);
+  const isCreatingRef = useRef(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
   // Brand state
@@ -371,6 +372,7 @@ export default function CreateCampaignPage() {
 
   const handleCreateCampaign = useCallback(async () => {
     if (!selectedRow || !budgetAmount) return;
+    if (isCreatingRef.current) return;
 
     if (!formData.brandUrl.trim()) {
       setCreateError("Missing: Brand URL");
@@ -382,6 +384,7 @@ export default function CreateCampaignPage() {
       return;
     }
 
+    isCreatingRef.current = true;
     setIsCreating(true);
     setCreateError(null);
 
@@ -391,18 +394,32 @@ export default function CreateCampaignPage() {
     if (budgetFrequency === "weekly") budgetParams.maxBudgetWeeklyUsd = budgetAmount;
     if (budgetFrequency === "monthly") budgetParams.maxBudgetMonthlyUsd = budgetAmount;
 
+    const generateName = () => {
+      const now = new Date();
+      return `${selectedRow.name} — ${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}.${String(now.getMilliseconds()).padStart(3, "0")}`;
+    };
     try {
-      await createCampaign({
-        name: `${selectedRow.name} — ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}`,
+      const campaignPayload = {
         workflowName: selectedRow.name,
         ...formData,
         ...budgetParams,
-      });
+      };
+      try {
+        await createCampaign({ name: generateName(), ...campaignPayload });
+      } catch (firstErr) {
+        if (firstErr instanceof ApiError && firstErr.status === 409) {
+          await createCampaign({ name: generateName(), ...campaignPayload });
+        } else {
+          throw firstErr;
+        }
+      }
       setShowForm(false);
       setFormData(EMPTY_FORM);
       refetchCampaigns();
     } catch (err) {
-      if (err instanceof ApiError && err.body.error === "missing_keys") {
+      if (err instanceof ApiError && err.status === 409) {
+        setCreateError("A campaign with this name already exists. Please try again.");
+      } else if (err instanceof ApiError && err.body.error === "missing_keys") {
         const missing = (err.body.missing as string[]) ?? [];
         setCreateError(
           `Missing provider keys: ${missing.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(", ")}. Configure them in Provider Keys settings before creating a campaign.`
@@ -411,6 +428,7 @@ export default function CreateCampaignPage() {
         setCreateError(err instanceof Error ? err.message : "Failed to create campaign");
       }
     } finally {
+      isCreatingRef.current = false;
       setIsCreating(false);
     }
   }, [selectedRow, budgetAmount, budgetFrequency, formData, refetchCampaigns]);
