@@ -24,6 +24,22 @@ describe("Provider Keys page (redirect to unified keys)", () => {
   });
 });
 
+describe("API Keys page capitalize handles non-string input", () => {
+  const pagePath = path.join(
+    __dirname,
+    "../src/app/(dashboard)/orgs/[orgId]/api-keys/page.tsx"
+  );
+  const content = fs.readFileSync(pagePath, "utf-8");
+
+  it("should guard capitalize against non-string values", () => {
+    expect(content).toContain("String(s ?? \"\")");
+  });
+
+  it("should filter non-string values from requiredProviders", () => {
+    expect(content).toContain('typeof p === "string"');
+  });
+});
+
 describe("Unified API Keys page has provider keys section", () => {
   const pagePath = path.join(
     __dirname,

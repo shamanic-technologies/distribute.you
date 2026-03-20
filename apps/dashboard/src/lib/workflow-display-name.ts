@@ -8,7 +8,7 @@ export function workflowDisplayName(wf: {
   name?: string | null;
   workflowName?: string | null;
 }): string {
-  if (wf.signatureName) {
+  if (wf.signatureName && typeof wf.signatureName === "string") {
     return wf.signatureName.charAt(0).toUpperCase() + wf.signatureName.slice(1);
   }
   return wf.displayName || wf.name || wf.workflowName || "Unknown";
