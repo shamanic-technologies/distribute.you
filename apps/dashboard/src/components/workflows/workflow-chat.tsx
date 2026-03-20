@@ -12,6 +12,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, isToolUIPart, type UIMessage } from "ai";
 import { useQueryClient } from "@tanstack/react-query";
 import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   ChevronRightIcon,
   WrenchScrewdriverIcon,
@@ -458,6 +459,32 @@ const markdownComponents = {
       {children}
     </a>
   ),
+  table: ({ children }: { children?: React.ReactNode }) => (
+    <div className="my-2 overflow-x-auto rounded-lg border border-gray-200 dark:border-white/[0.08]">
+      <table className="min-w-full text-sm">{children}</table>
+    </div>
+  ),
+  thead: ({ children }: { children?: React.ReactNode }) => (
+    <thead className="bg-gray-50 dark:bg-white/[0.04] text-left text-xs font-medium text-gray-500 dark:text-gray-400">
+      {children}
+    </thead>
+  ),
+  tbody: ({ children }: { children?: React.ReactNode }) => (
+    <tbody className="divide-y divide-gray-100 dark:divide-white/[0.06]">
+      {children}
+    </tbody>
+  ),
+  tr: ({ children }: { children?: React.ReactNode }) => (
+    <tr className="hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-colors">
+      {children}
+    </tr>
+  ),
+  th: ({ children }: { children?: React.ReactNode }) => (
+    <th className="px-3 py-2 font-medium">{children}</th>
+  ),
+  td: ({ children }: { children?: React.ReactNode }) => (
+    <td className="px-3 py-2 text-gray-700 dark:text-gray-300">{children}</td>
+  ),
 };
 
 function TextContent({ text }: { text: string }) {
@@ -473,7 +500,7 @@ function TextContent({ text }: { text: string }) {
             className="my-3 bg-white dark:bg-white/[0.04] rounded-lg p-4 border border-gray-100 dark:border-white/[0.06]"
           />
         ) : (
-          <Markdown key={i} components={markdownComponents}>
+          <Markdown key={i} remarkPlugins={[remarkGfm]} components={markdownComponents}>
             {seg.value}
           </Markdown>
         ),
