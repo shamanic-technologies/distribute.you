@@ -40,7 +40,7 @@ export const WORKFLOW_DEFINITIONS: WorkflowDefinition[] = [
     channel: "email",
     audienceType: "cold-outreach",
     icon: "newspaper",
-    implemented: false,
+    implemented: true,
   },
   {
     sectionKey: "webinars",
