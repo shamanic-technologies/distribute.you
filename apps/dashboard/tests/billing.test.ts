@@ -197,16 +197,20 @@ describe("Billing page", () => {
     expect(content).toContain("reloadThreshold");
   });
 
+  it("should pre-select auto-reload with $25 reload and $5 threshold by default", () => {
+    expect(content).toContain('useState(true)');
+    expect(content).toContain('useState("25")');
+    expect(content).toContain('useState("5")');
+  });
+
   it("should save auto-reload settings before Stripe redirect when enabled", () => {
     expect(content).toContain("enableAutoReload && reloadAmount");
     expect(content).toContain("configureAutoReload");
   });
 
-  it("should always sync reload amount when selecting a top-up amount", () => {
+  it("should sync reload amount when selecting a top-up amount", () => {
     expect(content).toContain("handleSelectTopup");
-    // Reload amount always syncs to selected topup, threshold defaults to $5
     expect(content).toContain("setReloadAmount");
-    expect(content).toContain('setReloadThreshold("5")');
   });
 
   it("should default auto-reload threshold to $5 (500 cents)", () => {
