@@ -202,8 +202,16 @@ describe("Billing page", () => {
     expect(content).toContain("configureAutoReload");
   });
 
-  it("should pre-fill reload amount when selecting a top-up amount", () => {
+  it("should always sync reload amount when selecting a top-up amount", () => {
     expect(content).toContain("handleSelectTopup");
+    // Reload amount always syncs to selected topup, threshold defaults to $5
+    expect(content).toContain("setReloadAmount");
+    expect(content).toContain('setReloadThreshold("5")');
+  });
+
+  it("should default auto-reload threshold to $5 (500 cents)", () => {
+    // Fallback threshold when not set by user
+    expect(content).toContain(": 500");
   });
 
   it("should redirect to Stripe checkout via createCheckoutSession", () => {

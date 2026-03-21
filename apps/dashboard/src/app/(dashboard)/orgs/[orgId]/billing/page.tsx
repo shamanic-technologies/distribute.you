@@ -71,13 +71,12 @@ export default function BillingPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account?.hasAutoReload, account?.reloadAmountCents, account?.reloadThresholdCents]);
 
-  // When the user selects a top-up amount, pre-fill reload amount to match
+  // When the user selects a top-up amount, always sync reload amount to match
   function handleSelectTopup(amount: number) {
     setTopupAmount(amount);
     setCustomAmount("");
-    if (!hasAutoReload && !reloadAmount) {
-      setReloadAmount((amount / 100).toString());
-    }
+    setReloadAmount((amount / 100).toString());
+    if (!reloadThreshold) setReloadThreshold("5");
   }
 
   async function handleManagePayment() {
@@ -104,7 +103,7 @@ export default function BillingPage() {
       // Save auto-reload settings before redirecting to Stripe
       if (enableAutoReload && reloadAmount) {
         const reloadCents = Math.round(parseFloat(reloadAmount) * 100);
-        const thresholdCents = reloadThreshold ? Math.round(parseFloat(reloadThreshold) * 100) : Math.round(reloadCents * 0.2);
+        const thresholdCents = reloadThreshold ? Math.round(parseFloat(reloadThreshold) * 100) : 500;
         const { configureAutoReload } = await import("@/lib/api");
         await configureAutoReload(reloadCents, thresholdCents);
       } else if (!enableAutoReload && hasAutoReload) {
@@ -271,7 +270,7 @@ export default function BillingPage() {
                     onChange={(e) => setReloadThreshold(e.target.value)}
                     placeholder="e.g. 5"
                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300"
-                    min="0"
+                    min="1"
                   />
                 </div>
               </div>
