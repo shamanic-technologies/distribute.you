@@ -227,9 +227,27 @@ describe("Billing page", () => {
     expect(content).toContain("configureAutoReload(reloadCents, thresholdCents)");
   });
 
-  it("should validate auto-reload threshold minimum of $5", () => {
-    expect(content).toContain("thresholdVal < 5");
-    expect(content).toContain("Auto-reload threshold must be at least $5");
+  it("should show inline error on blur when threshold is below $5", () => {
+    expect(content).toContain("handleThresholdBlur");
+    expect(content).toContain("Minimum threshold is $5.");
+    expect(content).toContain("thresholdError");
+    expect(content).toContain("onBlur={handleThresholdBlur}");
+  });
+
+  it("should show inline error on blur when custom amount is below $10", () => {
+    expect(content).toContain("handleCustomAmountBlur");
+    expect(content).toContain("Minimum top-up is $10.");
+    expect(content).toContain("customAmountError");
+    expect(content).toContain("onBlur={handleCustomAmountBlur}");
+  });
+
+  it("should disable Add Credits button when validation errors exist", () => {
+    expect(content).toContain("hasValidationError");
+  });
+
+  it("should only toggle auto-reload on checkbox click, not label text", () => {
+    // No wrapping <label> — checkbox is inside a <div>, not a clickable label
+    expect(content).not.toContain('<label className="flex items-start gap-3 cursor-pointer">');
   });
 
   it("should sync reload amount when selecting a top-up amount", () => {

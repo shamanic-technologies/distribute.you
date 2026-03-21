@@ -60,6 +60,28 @@ export default function BillingPage() {
 
   const [error, setError] = useState<string | null>(null);
 
+  // Inline validation errors (shown on blur)
+  const [thresholdError, setThresholdError] = useState<string | null>(null);
+  const [customAmountError, setCustomAmountError] = useState<string | null>(null);
+
+  function handleThresholdBlur() {
+    if (reloadThreshold && parseFloat(reloadThreshold) < 5) {
+      setThresholdError("Minimum threshold is $5.");
+    } else {
+      setThresholdError(null);
+    }
+  }
+
+  function handleCustomAmountBlur() {
+    if (customAmount && parseFloat(customAmount) < 10) {
+      setCustomAmountError("Minimum top-up is $10.");
+    } else {
+      setCustomAmountError(null);
+    }
+  }
+
+  const hasValidationError = !!(thresholdError || customAmountError);
+
   const isDepleted = account ? account.creditBalanceCents <= 0 : false;
   const hasAutoReload = account?.hasAutoReload ?? false;
 
@@ -117,14 +139,7 @@ export default function BillingPage() {
     const amountCents = customAmount ? Math.round(parseFloat(customAmount) * 100) : topupAmount;
     if (!amountCents || amountCents <= 0) return;
 
-    // Validate threshold minimum
-    if (enableAutoReload && reloadThreshold) {
-      const thresholdVal = parseFloat(reloadThreshold);
-      if (thresholdVal < 5) {
-        setError("Auto-reload threshold must be at least $5.");
-        return;
-      }
-    }
+    if (hasValidationError) return;
 
     setTopupLoading(true);
     setError(null);
@@ -267,21 +282,25 @@ export default function BillingPage() {
               type="number"
               placeholder="Custom $"
               value={customAmount}
-              onChange={(e) => { setCustomAmount(e.target.value); }}
-              className="w-28 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300"
-              min="1"
+              onChange={(e) => { setCustomAmount(e.target.value); setCustomAmountError(null); }}
+              onBlur={handleCustomAmountBlur}
+              className={`w-28 px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 ${customAmountError ? "border-red-300" : "border-gray-200"}`}
+              min="10"
               step="1"
             />
           </div>
+          {customAmountError && (
+            <p className="text-xs text-red-600 mt-1">{customAmountError}</p>
+          )}
 
           {/* Auto-reload option */}
           <div className="border-t border-gray-100 pt-4 mt-4 mb-4">
-            <label className="flex items-start gap-3 cursor-pointer">
+            <div className="flex items-start gap-3">
               <input
                 type="checkbox"
                 checked={enableAutoReload}
                 onChange={(e) => setEnableAutoReload(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                className="mt-0.5 w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
               />
               <div className="flex-1">
                 <p className="text-sm font-medium text-gray-800">Enable auto-reload</p>
@@ -289,7 +308,7 @@ export default function BillingPage() {
                   Automatically add credits when your balance gets low, so your campaigns never stop.
                 </p>
               </div>
-            </label>
+            </div>
 
             {enableAutoReload && (
               <div className="grid grid-cols-2 gap-3 mt-3 ml-7">
@@ -309,11 +328,15 @@ export default function BillingPage() {
                   <input
                     type="number"
                     value={reloadThreshold}
-                    onChange={(e) => setReloadThreshold(e.target.value)}
+                    onChange={(e) => { setReloadThreshold(e.target.value); setThresholdError(null); }}
+                    onBlur={handleThresholdBlur}
                     placeholder="e.g. 5"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300"
-                    min="1"
+                    className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 ${thresholdError ? "border-red-300" : "border-gray-200"}`}
+                    min="5"
                   />
+                  {thresholdError && (
+                    <p className="text-xs text-red-600 mt-1">{thresholdError}</p>
+                  )}
                 </div>
               </div>
             )}
@@ -321,7 +344,7 @@ export default function BillingPage() {
 
           <button
             onClick={handleTopup}
-            disabled={topupLoading || (enableAutoReload && !reloadAmount)}
+            disabled={topupLoading || (enableAutoReload && !reloadAmount) || hasValidationError}
             className="bg-brand-600 text-white px-6 py-2.5 rounded-lg hover:bg-brand-700 disabled:opacity-50 text-sm font-medium transition"
           >
             {topupLoading ? "Redirecting to Stripe..." : `Add ${formatCents(customAmount ? Math.round(parseFloat(customAmount) * 100) || 0 : topupAmount)}`}
