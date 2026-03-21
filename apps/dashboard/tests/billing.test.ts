@@ -8,6 +8,8 @@ const billingPagePath = path.resolve(__dirname, "../src/app/(dashboard)/orgs/[or
 const billingGuardPath = path.resolve(__dirname, "../src/lib/billing-guard.tsx");
 const layoutPath = path.resolve(__dirname, "../src/app/(dashboard)/layout.tsx");
 const sidebarPath = path.resolve(__dirname, "../src/components/context-sidebar.tsx");
+const campaignNewOrgPath = path.resolve(__dirname, "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[sectionKey]/campaigns/new/page.tsx");
+const campaignNewFeaturePath = path.resolve(__dirname, "../src/app/(dashboard)/features/[featureId]/new/page.tsx");
 
 describe("Billing API wrappers", () => {
   const content = fs.readFileSync(apiPath, "utf-8");
@@ -124,8 +126,9 @@ describe("Billing guard provider", () => {
     expect(content).toContain("export function dispatchPaymentRequired");
   });
 
-  it("should render a modal with insufficient credits message", () => {
+  it("should render a modal with insufficient credits message or proactive warning", () => {
     expect(content).toContain("Insufficient Credits");
+    expect(content).toContain("Campaign May Exceed Credits");
   });
 
   it("should offer quick top-up amount buttons in the modal", () => {
@@ -294,6 +297,104 @@ describe("Billing page", () => {
   it("should have loading skeleton state", () => {
     expect(content).toContain("animate-pulse");
     expect(content).toContain("accountLoading");
+  });
+});
+
+describe("Billing guard auto-reload in modal", () => {
+  const content = fs.readFileSync(billingGuardPath, "utf-8");
+
+  it("should import configureAutoReload and disableAutoReload", () => {
+    expect(content).toContain("configureAutoReload");
+    expect(content).toContain("disableAutoReload");
+  });
+
+  it("should have auto-reload toggle with enableAutoReload state", () => {
+    expect(content).toContain("enableAutoReload");
+    expect(content).toContain("Enable auto-reload");
+  });
+
+  it("should have reload amount and threshold inputs", () => {
+    expect(content).toContain("reloadAmount");
+    expect(content).toContain("reloadThreshold");
+    expect(content).toContain("Reload amount ($)");
+    expect(content).toContain("When balance below ($)");
+  });
+
+  it("should validate minimum reload amount ($10) and threshold ($5)", () => {
+    expect(content).toContain("Minimum reload amount is $10.");
+    expect(content).toContain("Minimum threshold is $5.");
+  });
+
+  it("should support custom top-up amount input", () => {
+    expect(content).toContain("customAmount");
+    expect(content).toContain("Custom amount ($)");
+    expect(content).toContain("Minimum top-up is $10.");
+  });
+
+  it("should support proactive mode with different title and description", () => {
+    expect(content).toContain("proactive");
+    expect(content).toContain("Campaign May Exceed Credits");
+    expect(content).toContain("campaign budget may exceed your current credit balance");
+  });
+
+  it("should allow configuring auto-reload without checkout in proactive mode", () => {
+    expect(content).toContain("handleSetupAutoReloadOnly");
+    expect(content).toContain("Enable Auto-Reload & Continue");
+    expect(content).toContain("onAutoReloadConfigured");
+  });
+
+  it("should fetch billing account when modal opens to pre-fill auto-reload config", () => {
+    expect(content).toContain("getBillingAccount");
+    expect(content).toContain("setAccount(acct)");
+  });
+});
+
+describe("Proactive credit check in campaign creation (org-scoped)", () => {
+  const content = fs.readFileSync(campaignNewOrgPath, "utf-8");
+
+  it("should import getBillingAccount", () => {
+    expect(content).toContain("getBillingAccount");
+  });
+
+  it("should import useBillingGuard", () => {
+    expect(content).toContain("useBillingGuard");
+    expect(content).toContain("showPaymentRequired");
+  });
+
+  it("should check if budget exceeds balance before creating campaign", () => {
+    expect(content).toContain("budgetCents > account.creditBalanceCents");
+  });
+
+  it("should check for recurring campaigns without auto-reload", () => {
+    expect(content).toContain('budgetFrequency !== "one-off"');
+    expect(content).toContain("!account.hasAutoReload");
+  });
+
+  it("should show proactive modal with onAutoReloadConfigured callback", () => {
+    expect(content).toContain("proactive: true");
+    expect(content).toContain("onAutoReloadConfigured");
+  });
+});
+
+describe("Proactive credit check in campaign creation (feature-scoped)", () => {
+  const content = fs.readFileSync(campaignNewFeaturePath, "utf-8");
+
+  it("should import getBillingAccount", () => {
+    expect(content).toContain("getBillingAccount");
+  });
+
+  it("should import useBillingGuard", () => {
+    expect(content).toContain("useBillingGuard");
+    expect(content).toContain("showPaymentRequired");
+  });
+
+  it("should check if budget exceeds balance before creating campaign", () => {
+    expect(content).toContain("budgetCents > account.creditBalanceCents");
+  });
+
+  it("should show proactive modal with onAutoReloadConfigured callback", () => {
+    expect(content).toContain("proactive: true");
+    expect(content).toContain("onAutoReloadConfigured");
   });
 });
 

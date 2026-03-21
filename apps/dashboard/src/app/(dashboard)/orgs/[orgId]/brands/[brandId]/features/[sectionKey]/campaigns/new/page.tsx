@@ -15,11 +15,13 @@ import {
   getWorkflowKeyStatus,
   getBrandSalesProfile,
   createBrandSalesProfile,
+  getBillingAccount,
   ApiError,
   type Campaign,
   type RankedWorkflowItem,
   type SalesProfile,
 } from "@/lib/api";
+import { useBillingGuard } from "@/lib/billing-guard";
 import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-panel";
 import { BrandLogo } from "@/components/brand-logo";
 import { Skeleton } from "@/components/skeleton";
@@ -191,6 +193,7 @@ export default function FeatureCreateCampaignPage() {
 
   const router = useRouter();
   const { org } = useOrg();
+  const { showPaymentRequired } = useBillingGuard();
 
   const featureId = sectionKey;
   const featureDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === featureId);
@@ -321,7 +324,7 @@ export default function FeatureCreateCampaignPage() {
     }
   }, [selectedRow, budgetAmount, resolvedBrandUrl, brandId]);
 
-  const handleCreateCampaign = useCallback(async () => {
+  const doCreateCampaign = useCallback(async () => {
     if (!selectedRow || !budgetAmount) return;
     if (isCreatingRef.current) return;
 
@@ -329,9 +332,9 @@ export default function FeatureCreateCampaignPage() {
       setCreateError("Missing: Brand URL");
       return;
     }
-    const missing = FORM_FIELDS.filter((f) => !formData[f.key].trim());
-    if (missing.length > 0) {
-      setCreateError(`Missing: ${missing.map((f) => f.label).join(", ")}`);
+    const missingFields = FORM_FIELDS.filter((f) => !formData[f.key].trim());
+    if (missingFields.length > 0) {
+      setCreateError(`Missing: ${missingFields.map((f) => f.label).join(", ")}`);
       return;
     }
 
@@ -375,9 +378,9 @@ export default function FeatureCreateCampaignPage() {
       } else if (err instanceof ApiError && err.status === 409) {
         setCreateError("A campaign with this name already exists. Please try again.");
       } else if (err instanceof ApiError && err.body.error === "missing_keys") {
-        const missing = (err.body.missing as string[]) ?? [];
+        const mk = (err.body.missing as string[]) ?? [];
         setCreateError(
-          `Missing provider keys: ${missing.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(", ")}. Configure them in Provider Keys settings before creating a campaign.`
+          `Missing provider keys: ${mk.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(", ")}. Configure them in Provider Keys settings before creating a campaign.`
         );
       } else {
         setCreateError(err instanceof Error ? err.message : "Failed to create campaign");
@@ -387,6 +390,39 @@ export default function FeatureCreateCampaignPage() {
       setIsCreating(false);
     }
   }, [selectedRow, budgetAmount, budgetFrequency, formData, router, orgId, brandId, sectionKey]);
+
+  /** Proactive credit check: if budget may exceed balance and no auto-reload, show the modal */
+  const handleCreateCampaign = useCallback(async () => {
+    if (!selectedRow || !budgetAmount) return;
+    const budgetCents = Math.round(parseFloat(budgetAmount) * 100);
+    if (!budgetCents || budgetCents <= 0) {
+      doCreateCampaign();
+      return;
+    }
+
+    try {
+      const account = await getBillingAccount();
+      const willExceed = budgetCents > account.creditBalanceCents;
+      const isRecurring = budgetFrequency !== "one-off";
+
+      if ((willExceed || isRecurring) && !account.hasAutoReload) {
+        // Show proactive modal — user can set up auto-reload, then we proceed
+        showPaymentRequired({
+          balance_cents: account.creditBalanceCents,
+          required_cents: budgetCents,
+          proactive: true,
+          onAutoReloadConfigured: () => {
+            doCreateCampaign();
+          },
+        });
+        return;
+      }
+    } catch {
+      // If billing check fails, proceed — the API will catch it with a 402 if needed
+    }
+
+    doCreateCampaign();
+  }, [selectedRow, budgetAmount, budgetFrequency, doCreateCampaign, showPaymentRequired]);
 
   if (!featureDef) return null;
 
