@@ -417,7 +417,9 @@ export default function CreateCampaignPage() {
       setFormData(EMPTY_FORM);
       refetchCampaigns();
     } catch (err) {
-      if (err instanceof ApiError && err.status === 409) {
+      if (err instanceof ApiError && err.status === 402) {
+        // 402 is handled by BillingGuardProvider modal — don't show inline error
+      } else if (err instanceof ApiError && err.status === 409) {
         setCreateError("A campaign with this name already exists. Please try again.");
       } else if (err instanceof ApiError && err.body.error === "missing_keys") {
         const missing = (err.body.missing as string[]) ?? [];
