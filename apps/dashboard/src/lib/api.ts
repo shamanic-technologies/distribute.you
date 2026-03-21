@@ -952,3 +952,49 @@ export async function createPortalSession(
   });
 }
 
+// Press Kits
+export interface MediaKit {
+  id: string;
+  title: string | null;
+  status: string;
+  mdx: string | null;
+  organizationId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function listMediaKits(token?: string): Promise<MediaKit[]> {
+  return apiCall<MediaKit[]>("/press-kits/media-kit", { token });
+}
+
+export async function getMediaKit(id: string, token?: string): Promise<MediaKit> {
+  return apiCall<MediaKit>(`/press-kits/media-kit/${id}`, { token });
+}
+
+export async function editMediaKit(
+  params: { mediaKitId: string; instruction: string; organizationUrl?: string },
+  token?: string
+): Promise<{ mediaKitId: string }> {
+  return apiCall<{ mediaKitId: string }>("/press-kits/edit-media-kit", {
+    token,
+    method: "POST",
+    body: params as unknown as Record<string, unknown>,
+  });
+}
+
+export async function getShareToken(orgId: string, token?: string): Promise<{ shareToken: string }> {
+  return apiCall<{ shareToken: string }>(`/press-kits/organizations/share-token/${orgId}`, { token });
+}
+
+export async function upsertPressKitOrg(
+  orgId: string,
+  name?: string,
+  token?: string
+): Promise<void> {
+  await apiCall<Record<string, unknown>>("/press-kits/organizations", {
+    token,
+    method: "POST",
+    body: { orgId, ...(name ? { name } : {}) },
+  });
+}
+
