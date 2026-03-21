@@ -203,9 +203,24 @@ describe("Billing page", () => {
     expect(content).toContain('useState("5")');
   });
 
-  it("should save auto-reload settings before Stripe redirect when enabled", () => {
-    expect(content).toContain("enableAutoReload && reloadAmount");
+  it("should only save auto-reload before checkout when payment method exists", () => {
+    expect(content).toContain("account?.hasPaymentMethod");
     expect(content).toContain("configureAutoReload");
+  });
+
+  it("should pass pending auto-reload params via URL when no payment method", () => {
+    expect(content).toContain("pending_reload");
+    expect(content).toContain("pending_threshold");
+  });
+
+  it("should save auto-reload on successful return from Stripe", () => {
+    expect(content).toContain("showSuccess && pendingReload");
+    expect(content).toContain("configureAutoReload(reloadCents, thresholdCents)");
+  });
+
+  it("should validate auto-reload threshold minimum of $5", () => {
+    expect(content).toContain("thresholdVal < 5");
+    expect(content).toContain("Auto-reload threshold must be at least $5");
   });
 
   it("should sync reload amount when selecting a top-up amount", () => {
