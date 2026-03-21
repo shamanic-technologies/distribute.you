@@ -222,11 +222,22 @@ describe("Billing page", () => {
     expect(content).toContain("Payment successful");
   });
 
-  it("should show auto-reload when payment method exists (not gated behind mode)", () => {
-    expect(content).toContain("Auto-Reload");
+  it("should integrate auto-reload as a checkbox inside the Add Credits card", () => {
+    expect(content).toContain("enableAutoReload");
+    expect(content).toContain("Enable auto-reload");
     expect(content).toContain("reloadAmount");
     expect(content).toContain("reloadThreshold");
-    expect(content).toContain("handleSaveReload");
+    // Should NOT be in a separate card gated behind hasPaymentMethod
+    expect(content).not.toContain("handleSaveReload");
+  });
+
+  it("should save auto-reload settings before Stripe redirect when enabled", () => {
+    expect(content).toContain("enableAutoReload && reloadAmount");
+    expect(content).toContain("switchBillingMode");
+  });
+
+  it("should pre-fill reload amount when selecting a top-up amount", () => {
+    expect(content).toContain("handleSelectTopup");
   });
 
   it("should display transaction history with color-coding", () => {
