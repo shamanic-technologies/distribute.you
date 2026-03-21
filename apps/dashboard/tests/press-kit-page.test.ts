@@ -23,6 +23,19 @@ describe("Press Kit page", () => {
     expect(content).toContain("getMediaKit");
     expect(content).toContain("editMediaKit");
     expect(content).toContain("getShareToken");
+    expect(content).toContain("upsertPressKitOrg");
+    expect(content).toContain("validateMediaKit");
+    expect(content).toContain("cancelDraftMediaKit");
+  });
+
+  it("should upsert org on mount", () => {
+    const content = fs.readFileSync(pagePath, "utf-8");
+    expect(content).toContain("upsertPressKitOrg(orgId)");
+  });
+
+  it("should filter media kits by orgId", () => {
+    const content = fs.readFileSync(pagePath, "utf-8");
+    expect(content).toContain("listMediaKits(orgId)");
   });
 
   it("should have a generate button", () => {
@@ -53,20 +66,41 @@ describe("Press Kit page", () => {
     expect(content).toContain("generating");
     expect(content).toContain("Generating...");
   });
+
+  it("should support validate and cancel-draft actions", () => {
+    const content = fs.readFileSync(pagePath, "utf-8");
+    expect(content).toContain("handleValidate");
+    expect(content).toContain("handleCancelDraft");
+    expect(content).toContain("Validate");
+    expect(content).toContain("Cancel");
+  });
+
+  it("should use correct media kit statuses", () => {
+    const content = fs.readFileSync(pagePath, "utf-8");
+    // Statuses appear as Record keys (unquoted) and in comparisons
+    expect(content).toContain("drafted");
+    expect(content).toContain("generating");
+    expect(content).toContain("validated");
+    expect(content).toContain("denied");
+    expect(content).toContain("archived");
+    // Should reference the MediaKitStatus type
+    expect(content).toContain("MediaKitStatus");
+  });
 });
 
 describe("Press Kit API functions", () => {
   const apiPath = path.join(__dirname, "../src/lib/api.ts");
 
-  it("should export MediaKit interface", () => {
+  it("should export MediaKit interface and MediaKitStatus type", () => {
     const content = fs.readFileSync(apiPath, "utf-8");
     expect(content).toContain("export interface MediaKit");
+    expect(content).toContain("export type MediaKitStatus");
   });
 
-  it("should export listMediaKits function", () => {
+  it("should export listMediaKits with orgId filter", () => {
     const content = fs.readFileSync(apiPath, "utf-8");
     expect(content).toContain("export async function listMediaKits");
-    expect(content).toContain("/press-kits/media-kit");
+    expect(content).toContain("org_id=${orgId}");
   });
 
   it("should export editMediaKit function", () => {
@@ -79,6 +113,42 @@ describe("Press Kit API functions", () => {
     const content = fs.readFileSync(apiPath, "utf-8");
     expect(content).toContain("export async function getShareToken");
     expect(content).toContain("/press-kits/organizations/share-token/");
+  });
+
+  it("should export upsertPressKitOrg function", () => {
+    const content = fs.readFileSync(apiPath, "utf-8");
+    expect(content).toContain("export async function upsertPressKitOrg");
+    expect(content).toContain("/press-kits/organizations");
+  });
+
+  it("should export updateMediaKitMdx function", () => {
+    const content = fs.readFileSync(apiPath, "utf-8");
+    expect(content).toContain("export async function updateMediaKitMdx");
+    expect(content).toContain("/press-kits/update-mdx");
+  });
+
+  it("should export updateMediaKitStatus function", () => {
+    const content = fs.readFileSync(apiPath, "utf-8");
+    expect(content).toContain("export async function updateMediaKitStatus");
+    expect(content).toContain("/press-kits/update-status");
+  });
+
+  it("should export validateMediaKit function", () => {
+    const content = fs.readFileSync(apiPath, "utf-8");
+    expect(content).toContain("export async function validateMediaKit");
+    expect(content).toContain("/press-kits/validate");
+  });
+
+  it("should export cancelDraftMediaKit function", () => {
+    const content = fs.readFileSync(apiPath, "utf-8");
+    expect(content).toContain("export async function cancelDraftMediaKit");
+    expect(content).toContain("/press-kits/cancel-draft");
+  });
+
+  it("should export checkPressKitOrgsExist function", () => {
+    const content = fs.readFileSync(apiPath, "utf-8");
+    expect(content).toContain("export async function checkPressKitOrgsExist");
+    expect(content).toContain("/press-kits/organizations/exists");
   });
 });
 

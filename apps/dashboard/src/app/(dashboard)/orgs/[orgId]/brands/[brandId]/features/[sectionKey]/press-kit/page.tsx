@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
@@ -8,9 +8,13 @@ import {
   listMediaKits,
   getMediaKit,
   editMediaKit,
+  validateMediaKit,
+  cancelDraftMediaKit,
   getShareToken,
+  upsertPressKitOrg,
   getBrand,
   type MediaKit,
+  type MediaKitStatus,
 } from "@/lib/api";
 
 const POLL_INTERVAL = 5_000;
@@ -19,11 +23,20 @@ const pollOptions = {
   refetchIntervalInBackground: false,
 };
 
-const STATUS_STYLES: Record<string, string> = {
-  published: "bg-green-100 text-green-700 border-green-200",
-  draft: "bg-yellow-100 text-yellow-700 border-yellow-200",
+const STATUS_STYLES: Record<MediaKitStatus, string> = {
+  drafted: "bg-yellow-100 text-yellow-700 border-yellow-200",
   generating: "bg-blue-100 text-blue-700 border-blue-200",
-  failed: "bg-red-100 text-red-600 border-red-200",
+  validated: "bg-green-100 text-green-700 border-green-200",
+  denied: "bg-red-100 text-red-600 border-red-200",
+  archived: "bg-gray-100 text-gray-500 border-gray-200",
+};
+
+const STATUS_LABELS: Record<MediaKitStatus, string> = {
+  drafted: "Draft",
+  generating: "Generating",
+  validated: "Validated",
+  denied: "Denied",
+  archived: "Archived",
 };
 
 function timeAgo(dateStr: string): string {
@@ -47,6 +60,16 @@ export default function PressKitPage() {
   const [selectedKit, setSelectedKit] = useState<MediaKit | null>(null);
   const [loadingKit, setLoadingKit] = useState(false);
 
+  // Ensure org exists in press-kits-service on mount
+  const orgUpserted = useRef(false);
+  useEffect(() => {
+    if (orgUpserted.current) return;
+    orgUpserted.current = true;
+    upsertPressKitOrg(orgId).catch(() => {
+      // Silently ignore — org may already exist
+    });
+  }, [orgId]);
+
   const { data: brandData } = useAuthQuery(
     ["brand", brandId],
     () => getBrand(brandId),
@@ -54,8 +77,8 @@ export default function PressKitPage() {
   const brand = brandData?.brand ?? null;
 
   const { data: mediaKits, isLoading } = useAuthQuery(
-    ["mediaKits"],
-    () => listMediaKits(),
+    ["mediaKits", orgId],
+    () => listMediaKits(orgId),
     pollOptions,
   );
   const kits = mediaKits ?? [];
@@ -71,9 +94,6 @@ export default function PressKitPage() {
     setGenerating(true);
     setGenerateError(null);
     try {
-      // If there's an existing kit, regenerate it; otherwise we need a kit ID.
-      // The edit-media-kit endpoint requires a mediaKitId.
-      // If no kits exist, we first try to generate with instruction only.
       const existingKit = kits[0];
       if (existingKit) {
         await editMediaKit({
@@ -82,18 +102,39 @@ export default function PressKitPage() {
           organizationUrl: brand?.brandUrl,
         });
       } else {
-        // For new generation, we create with an empty instruction
         await editMediaKit({
           mediaKitId: crypto.randomUUID(),
           instruction: "Generate a comprehensive press kit based on the brand information.",
           organizationUrl: brand?.brandUrl,
         });
       }
-      await queryClient.invalidateQueries({ queryKey: ["mediaKits"] });
+      await queryClient.invalidateQueries({ queryKey: ["mediaKits", orgId] });
     } catch (err) {
       setGenerateError(err instanceof Error ? err.message : "Generation failed");
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleValidate = async (kit: MediaKit) => {
+    try {
+      await validateMediaKit(kit.id);
+      await queryClient.invalidateQueries({ queryKey: ["mediaKits", orgId] });
+      // Refresh the selected kit
+      const updated = await getMediaKit(kit.id);
+      setSelectedKit(updated);
+    } catch (err) {
+      setGenerateError(err instanceof Error ? err.message : "Validation failed");
+    }
+  };
+
+  const handleCancelDraft = async (kit: MediaKit) => {
+    try {
+      await cancelDraftMediaKit(kit.id);
+      await queryClient.invalidateQueries({ queryKey: ["mediaKits", orgId] });
+      setSelectedKit(null);
+    } catch (err) {
+      setGenerateError(err instanceof Error ? err.message : "Cancellation failed");
     }
   };
 
@@ -198,6 +239,7 @@ export default function PressKitPage() {
           <div className="space-y-3">
             {kits.map((kit) => {
               const statusStyle = STATUS_STYLES[kit.status] || "bg-gray-100 text-gray-500 border-gray-200";
+              const statusLabel = STATUS_LABELS[kit.status] || kit.status;
               const isSelected = selectedKit?.id === kit.id;
 
               return (
@@ -217,7 +259,7 @@ export default function PressKitPage() {
                         {kit.status === "generating" && (
                           <span className="inline-block w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse mr-1 align-middle" />
                         )}
-                        {kit.status}
+                        {statusLabel}
                       </span>
                     </div>
                   </div>
@@ -240,7 +282,23 @@ export default function PressKitPage() {
               {selectedKit.title || "Press Kit"}
             </h2>
             <div className="flex items-center gap-2">
-              {publicPressKitUrl && (
+              {selectedKit.status === "drafted" && (
+                <>
+                  <button
+                    onClick={() => handleValidate(selectedKit)}
+                    className="text-xs px-2.5 py-1 rounded bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 transition"
+                  >
+                    Validate
+                  </button>
+                  <button
+                    onClick={() => handleCancelDraft(selectedKit)}
+                    className="text-xs px-2.5 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 transition"
+                  >
+                    Cancel
+                  </button>
+                </>
+              )}
+              {publicPressKitUrl && selectedKit.status === "validated" && (
                 <a
                   href={publicPressKitUrl}
                   target="_blank"
