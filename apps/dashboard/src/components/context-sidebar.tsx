@@ -160,6 +160,7 @@ const PlusIcon = () => (
 function getFeatureIcon(sectionKey: string): React.ReactNode {
   if (sectionKey.startsWith("sales")) return <EnvelopeIcon />;
   if (sectionKey.startsWith("journalists")) return <NewspaperIcon />;
+  if (sectionKey.startsWith("press-kit")) return <DocumentIcon />;
   if (sectionKey.startsWith("webinar")) return <CalendarIcon />;
   if (sectionKey.startsWith("welcome")) return <EnvelopeIcon />;
   return <WorkflowIcon />;
@@ -296,7 +297,6 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
   const topItems: SidebarItem[] = [
     { id: "overview", label: "Overview", href: basePath, icon: <HomeIcon /> },
     { id: "brand-info", label: "Brand Info", href: `${basePath}/brand-info`, icon: <InfoIcon /> },
-    { id: "press-kit", label: "Press Kit", href: `${basePath}/press-kit`, icon: <DocumentIcon /> },
   ];
 
   const featureItems: SidebarItem[] = WORKFLOW_DEFINITIONS.map((wf) => ({
@@ -341,9 +341,14 @@ function FeatureLevelSidebar({ orgId, brandId, sectionKey, pathname }: {
   const wfDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === sectionKey);
   const title = wfDef?.label ?? sectionKey;
 
+  const isPressKit = sectionKey.startsWith("press-kit");
+
   const items: SidebarItem[] = [
     { id: "campaigns", label: "Campaigns", href: basePath, icon: <EnvelopeIcon /> },
     { id: "create", label: "Create Campaign", href: `${basePath}/campaigns/new`, icon: <PlusIcon /> },
+    ...(isPressKit
+      ? [{ id: "press-kits", label: "Press Kits", href: `${basePath}/press-kits`, icon: <DocumentIcon /> }]
+      : []),
     { id: "workflows", label: "Workflows", href: `${basePath}/workflows`, icon: <WorkflowIcon /> },
   ];
 

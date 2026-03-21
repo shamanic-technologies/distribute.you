@@ -1,6 +1,6 @@
-export type WorkflowCategory = "sales" | "journalists" | "webinars" | "welcome";
+export type WorkflowCategory = "sales" | "journalists" | "press-kit" | "webinars" | "welcome";
 export type WorkflowChannel = "email";
-export type WorkflowAudienceType = "cold-outreach";
+export type WorkflowAudienceType = "cold-outreach" | "generation";
 
 /** Static workflow section definitions (replaces MCP_PACKAGES). */
 export interface WorkflowDefinition {
@@ -40,6 +40,17 @@ export const WORKFLOW_DEFINITIONS: WorkflowDefinition[] = [
     channel: "email",
     audienceType: "cold-outreach",
     icon: "newspaper",
+    implemented: true,
+  },
+  {
+    sectionKey: "press-kit-email-generation",
+    label: "Press Kit Generation",
+    description:
+      "Generate and manage press kits for media outreach.",
+    category: "press-kit",
+    channel: "email",
+    audienceType: "generation",
+    icon: "document",
     implemented: true,
   },
   {
@@ -83,6 +94,7 @@ export interface ParsedWorkflowName {
 export const WORKFLOW_CATEGORY_LABELS: Record<WorkflowCategory, string> = {
   sales: "Sales",
   journalists: "Journalists",
+  "press-kit": "Press Kit",
   webinars: "Webinars",
   welcome: "Welcome",
 };
@@ -91,30 +103,53 @@ export const WORKFLOW_CATEGORY_LABELS: Record<WorkflowCategory, string> = {
 export const SECTION_LABELS: Record<string, string> = {
   "sales-email-cold-outreach": "Sales Cold Email Outreach",
   "journalists-email-cold-outreach": "Journalists Cold Email Outreach",
+  "press-kit-email-generation": "Press Kit Generation",
   "webinars": "Webinars",
   "welcome-email": "Welcome Email",
 };
 
 const KNOWN_CATEGORIES = new Set<string>(["sales", "journalists", "webinars", "welcome"]);
+const TWO_WORD_CATEGORIES = new Set<string>(["press-kit"]);
 const KNOWN_CHANNELS = new Set<string>(["email"]);
 const TWO_WORD_AUDIENCE_TYPES = new Set<string>(["cold-outreach"]);
 
 /**
  * Parse a workflow name: {category}-{channel}-{audienceType}-{signatureName}.
+ * Supports multi-word categories (e.g., "press-kit") and audience types (e.g., "cold-outreach").
  * Example: "sales-email-cold-outreach-sienna"
+ * Example: "press-kit-email-generation-v1"
  * Returns null if the name doesn't match the expected format.
  */
 export function parseWorkflowName(name: string): ParsedWorkflowName | null {
   const parts = name.split("-");
   if (parts.length < 4) return null;
 
-  if (!KNOWN_CATEGORIES.has(parts[0])) return null;
-  const category = parts[0] as WorkflowCategory;
+  let category: WorkflowCategory;
+  let channelStart: number;
 
-  if (!KNOWN_CHANNELS.has(parts[1])) return null;
-  const channel = parts[1] as WorkflowChannel;
+  // Try 2-word category first (e.g., "press-kit")
+  if (parts.length >= 5) {
+    const twoWordCat = `${parts[0]}-${parts[1]}`;
+    if (TWO_WORD_CATEGORIES.has(twoWordCat)) {
+      category = twoWordCat as WorkflowCategory;
+      channelStart = 2;
+    } else if (KNOWN_CATEGORIES.has(parts[0])) {
+      category = parts[0] as WorkflowCategory;
+      channelStart = 1;
+    } else {
+      return null;
+    }
+  } else if (KNOWN_CATEGORIES.has(parts[0])) {
+    category = parts[0] as WorkflowCategory;
+    channelStart = 1;
+  } else {
+    return null;
+  }
 
-  const rest = parts.slice(2);
+  if (!KNOWN_CHANNELS.has(parts[channelStart])) return null;
+  const channel = parts[channelStart] as WorkflowChannel;
+
+  const rest = parts.slice(channelStart + 1);
 
   // Try 2-segment audience type (e.g., "cold-outreach")
   if (rest.length >= 3) {
@@ -128,6 +163,23 @@ export function parseWorkflowName(name: string): ParsedWorkflowName | null {
           audienceType: twoWord as WorkflowAudienceType,
           signatureName,
           sectionKey: `${category}-${channel}-${twoWord}`,
+        };
+      }
+    }
+  }
+
+  // Try 1-segment audience type (e.g., "generation")
+  if (rest.length >= 2) {
+    const audienceType = rest[0];
+    if (audienceType === "generation" || audienceType === "cold-outreach") {
+      const signatureName = rest.slice(1).join("-");
+      if (signatureName) {
+        return {
+          category,
+          channel,
+          audienceType: audienceType as WorkflowAudienceType,
+          signatureName,
+          sectionKey: `${category}-${channel}-${audienceType}`,
         };
       }
     }

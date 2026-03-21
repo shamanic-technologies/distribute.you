@@ -35,6 +35,13 @@ function FeatureIcon({ sectionKey, className }: { sectionKey: string; className?
       </svg>
     );
   }
+  if (sectionKey.startsWith("press-kit")) {
+    return (
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className={className}>
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+    );
+  }
   if (sectionKey.startsWith("webinar")) {
     return (
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className={className}>
@@ -144,49 +151,26 @@ export default function BrandOverviewPage() {
         </a>
       </div>
 
-      {/* Brand Tools */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-        <Link
-          href={`/orgs/${orgId}/brands/${brandId}/brand-info`}
-          className="bg-white rounded-lg border border-gray-200 p-5 hover:border-brand-300 hover:shadow-sm transition group"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-lg">
-                &#8505;&#65039;
-              </div>
-              <div>
-                <h3 className="font-medium text-gray-900 group-hover:text-brand-600 transition">Brand Info</h3>
-                <p className="text-sm text-gray-500">Company details, value proposition</p>
-              </div>
+      {/* Brand Info Card */}
+      <Link
+        href={`/orgs/${orgId}/brands/${brandId}/brand-info`}
+        className="block bg-white rounded-lg border border-gray-200 p-5 mb-6 hover:border-brand-300 hover:shadow-sm transition group"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-lg">
+              &#8505;&#65039;
             </div>
-            <svg className="w-5 h-5 text-gray-400 group-hover:text-brand-600 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </div>
-        </Link>
-        <Link
-          href={`/orgs/${orgId}/brands/${brandId}/press-kit`}
-          className="bg-white rounded-lg border border-gray-200 p-5 hover:border-brand-300 hover:shadow-sm transition group"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="font-medium text-gray-900 group-hover:text-brand-600 transition">Press Kit</h3>
-                <p className="text-sm text-gray-500">Generate press kits for media outreach</p>
-              </div>
+            <div>
+              <h3 className="font-medium text-gray-900 group-hover:text-brand-600 transition">Brand Info</h3>
+              <p className="text-sm text-gray-500">Company details, value proposition, sales profile</p>
             </div>
-            <svg className="w-5 h-5 text-gray-400 group-hover:text-brand-600 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
           </div>
-        </Link>
-      </div>
+          <svg className="w-5 h-5 text-gray-400 group-hover:text-brand-600 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </Link>
 
       {/* Features Section */}
       <div className="mb-6">
