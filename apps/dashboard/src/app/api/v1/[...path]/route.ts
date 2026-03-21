@@ -118,3 +118,10 @@ export async function DELETE(
 ) {
   return proxyRequest(req, segmentData);
 }
+
+export async function PATCH(
+  req: NextRequest,
+  segmentData: { params: Promise<{ path: string[] }> }
+) {
+  return proxyRequest(req, segmentData);
+}
