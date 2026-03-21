@@ -51,7 +51,6 @@ describe("Billing API wrappers", () => {
 
   it("should export BillingAccount interface with required fields", () => {
     expect(content).toContain("export interface BillingAccount");
-    expect(content).toContain("billingMode");
     expect(content).toContain("creditBalanceCents");
     expect(content).toContain("hasPaymentMethod");
     expect(content).toContain("reloadAmountCents");
@@ -79,7 +78,6 @@ describe("API proxy PATCH support", () => {
   });
 
   it("should use the same proxyRequest for PATCH", () => {
-    // PATCH handler should call proxyRequest like other methods
     const patchBlock = content.slice(content.indexOf("export async function PATCH"));
     expect(patchBlock).toContain("proxyRequest");
   });
@@ -137,11 +135,6 @@ describe("Billing guard provider", () => {
     expect(content).toContain("Required");
   });
 
-  it("should extract orgId from pathname for billing page link", () => {
-    expect(content).toContain("billing");
-    expect(content).toContain("orgId");
-  });
-
   it("should clean up event listener on unmount", () => {
     expect(content).toContain("removeEventListener");
   });
@@ -172,20 +165,22 @@ describe("Billing page", () => {
     expect(content).toContain('"use client"');
   });
 
-  it("should import billing API functions", () => {
+  it("should import billing API functions (no switchBillingMode in top-level imports)", () => {
     expect(content).toContain("getBillingAccount");
     expect(content).toContain("listBillingTransactions");
-    expect(content).toContain("switchBillingMode");
     expect(content).toContain("createCheckoutSession");
+    expect(content).toContain("createPortalSession");
   });
 
   it("should use useAuthQuery for data fetching", () => {
     expect(content).toContain("useAuthQuery");
   });
 
-  it("should display billing mode with badge", () => {
-    expect(content).toContain("billingMode");
-    expect(content).toContain("ModeBadge");
+  it("should NOT have mode switching UI (no BYOK/PAYG toggle)", () => {
+    expect(content).not.toContain("handleModeSwitch");
+    expect(content).not.toContain("ModeBadge");
+    expect(content).not.toContain("Billing Mode");
+    expect(content).not.toContain("Bring your own");
   });
 
   it("should display credit balance", () => {
@@ -194,24 +189,25 @@ describe("Billing page", () => {
   });
 
   it("should show depleted warning", () => {
-    expect(content).toContain("depleted");
+    expect(content).toContain("isDepleted");
     expect(content).toContain("Credits depleted");
   });
 
   it("should show payment method status", () => {
     expect(content).toContain("hasPaymentMethod");
-    expect(content).toContain("Payment Method");
+    expect(content).toContain("Card connected");
   });
 
-  it("should have top-up flow with preset amounts", () => {
+  it("should always show top-up flow (not gated behind mode)", () => {
     expect(content).toContain("TOPUP_AMOUNTS");
     expect(content).toContain("Add Credits");
     expect(content).toContain("handleTopup");
+    // Should NOT be conditionally rendered based on billingMode
+    expect(content).not.toContain('billingMode === "payg"');
   });
 
   it("should redirect to Stripe checkout via createCheckoutSession", () => {
     expect(content).toContain("createCheckoutSession");
-    expect(content).toContain("window.location.href");
     expect(content).toContain("session.url");
   });
 
@@ -223,18 +219,10 @@ describe("Billing page", () => {
 
   it("should handle success query param after Stripe redirect", () => {
     expect(content).toContain("useSearchParams");
-    expect(content).toContain("success");
     expect(content).toContain("Payment successful");
   });
 
-  it("should have mode switching between byok and payg", () => {
-    expect(content).toContain("handleModeSwitch");
-    expect(content).toContain('"byok"');
-    expect(content).toContain('"payg"');
-    expect(content).toContain("Billing Mode");
-  });
-
-  it("should have auto-reload configuration", () => {
+  it("should show auto-reload when payment method exists (not gated behind mode)", () => {
     expect(content).toContain("Auto-Reload");
     expect(content).toContain("reloadAmount");
     expect(content).toContain("reloadThreshold");
@@ -258,18 +246,9 @@ describe("Billing page", () => {
     expect(content).toContain('placeholder="Custom $"');
   });
 
-  it("should import and use createPortalSession", () => {
-    expect(content).toContain("createPortalSession");
-  });
-
   it("should have a manage payment method button", () => {
     expect(content).toContain("handleManagePayment");
     expect(content).toContain("Manage payment method");
-  });
-
-  it("should redirect to Stripe portal via createPortalSession", () => {
-    expect(content).toContain("createPortalSession");
-    expect(content).toContain("window.location.href");
   });
 
   it("should only show manage payment button when payment method exists", () => {
