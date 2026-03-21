@@ -296,6 +296,7 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
   const topItems: SidebarItem[] = [
     { id: "overview", label: "Overview", href: basePath, icon: <HomeIcon /> },
     { id: "brand-info", label: "Brand Info", href: `${basePath}/brand-info`, icon: <InfoIcon /> },
+    { id: "press-kit", label: "Press Kit", href: `${basePath}/press-kit`, icon: <DocumentIcon /> },
   ];
 
   const featureItems: SidebarItem[] = WORKFLOW_DEFINITIONS.map((wf) => ({
@@ -340,14 +341,9 @@ function FeatureLevelSidebar({ orgId, brandId, sectionKey, pathname }: {
   const wfDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === sectionKey);
   const title = wfDef?.label ?? sectionKey;
 
-  const isJournalist = sectionKey.startsWith("journalists");
-
   const items: SidebarItem[] = [
     { id: "campaigns", label: "Campaigns", href: basePath, icon: <EnvelopeIcon /> },
     { id: "create", label: "Create Campaign", href: `${basePath}/campaigns/new`, icon: <PlusIcon /> },
-    ...(isJournalist
-      ? [{ id: "press-kit", label: "Press Kit", href: `${basePath}/press-kit`, icon: <DocumentIcon /> }]
-      : []),
     { id: "workflows", label: "Workflows", href: `${basePath}/workflows`, icon: <WorkflowIcon /> },
   ];
 
