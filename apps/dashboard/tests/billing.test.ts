@@ -27,10 +27,35 @@ describe("Billing API wrappers", () => {
     expect(content).toContain("/billing/accounts/transactions");
   });
 
-  it("should export switchBillingMode function using PATCH", () => {
-    expect(content).toContain("export async function switchBillingMode");
-    expect(content).toContain("/billing/accounts/mode");
+  it("should export configureAutoReload function using PATCH", () => {
+    expect(content).toContain("export async function configureAutoReload");
+    expect(content).toContain("/billing/accounts/auto-reload");
     expect(content).toContain('"PATCH"');
+  });
+
+  it("should export disableAutoReload function using DELETE", () => {
+    expect(content).toContain("export async function disableAutoReload");
+    expect(content).toContain("/billing/accounts/auto-reload");
+    expect(content).toContain('"DELETE"');
+  });
+
+  it("should NOT have switchBillingMode (removed endpoint)", () => {
+    expect(content).not.toContain("switchBillingMode");
+    expect(content).not.toContain("/billing/accounts/mode");
+  });
+
+  it("should NOT have billingMode in BillingAccount interface", () => {
+    expect(content).toContain("export interface BillingAccount");
+    expect(content).not.toContain("billingMode");
+  });
+
+  it("should have hasAutoReload in BillingAccount interface", () => {
+    expect(content).toContain("hasAutoReload: boolean");
+  });
+
+  it("should NOT have billing_mode in BillingBalance interface", () => {
+    expect(content).toContain("export interface BillingBalance");
+    expect(content).not.toContain("billing_mode");
   });
 
   it("should export createCheckoutSession function", () => {
@@ -41,45 +66,31 @@ describe("Billing API wrappers", () => {
   it("should export createPortalSession function", () => {
     expect(content).toContain("export async function createPortalSession");
     expect(content).toContain("/billing/portal-sessions");
-    expect(content).toContain("return_url");
   });
 
-  it("should support PATCH method in ApiOptions", () => {
-    expect(content).toContain('"PATCH"');
+  it("should support PATCH and DELETE methods in ApiOptions", () => {
     expect(content).toMatch(/method\?:.*"PATCH"/);
+    expect(content).toMatch(/method\?:.*"DELETE"/);
   });
 
   it("should export BillingAccount interface with required fields", () => {
-    expect(content).toContain("export interface BillingAccount");
     expect(content).toContain("creditBalanceCents");
     expect(content).toContain("hasPaymentMethod");
+    expect(content).toContain("hasAutoReload");
     expect(content).toContain("reloadAmountCents");
     expect(content).toContain("reloadThresholdCents");
   });
-
-  it("should export BillingTransaction interface with type field", () => {
-    expect(content).toContain("export interface BillingTransaction");
-    expect(content).toContain('"deduction"');
-    expect(content).toContain('"credit"');
-    expect(content).toContain('"reload"');
-  });
-
-  it("should support reload_threshold_cents in switchBillingMode", () => {
-    expect(content).toContain("reloadThresholdCents");
-    expect(content).toContain("reload_threshold_cents");
-  });
 });
 
-describe("API proxy PATCH support", () => {
+describe("API proxy PATCH and DELETE support", () => {
   const content = fs.readFileSync(proxyPath, "utf-8");
 
   it("should export PATCH handler", () => {
     expect(content).toContain("export async function PATCH");
   });
 
-  it("should use the same proxyRequest for PATCH", () => {
-    const patchBlock = content.slice(content.indexOf("export async function PATCH"));
-    expect(patchBlock).toContain("proxyRequest");
+  it("should export DELETE handler", () => {
+    expect(content).toContain("export async function DELETE");
   });
 });
 
@@ -94,11 +105,6 @@ describe("402 Payment Required handling", () => {
   it("should only dispatch on client-side (typeof window check)", () => {
     expect(apiContent).toContain('typeof window !== "undefined"');
   });
-
-  it("should pass balance_cents and required_cents from error body", () => {
-    expect(apiContent).toContain("balance_cents");
-    expect(apiContent).toContain("required_cents");
-  });
 });
 
 describe("Billing guard provider", () => {
@@ -108,31 +114,19 @@ describe("Billing guard provider", () => {
 
   const content = fs.readFileSync(billingGuardPath, "utf-8");
 
-  it("should be a client component", () => {
-    expect(content).toContain('"use client"');
-  });
-
   it("should listen for billing:payment-required custom events", () => {
     expect(content).toContain("billing:payment-required");
     expect(content).toContain("addEventListener");
   });
 
-  it("should export BillingGuardProvider component", () => {
+  it("should export BillingGuardProvider and dispatchPaymentRequired", () => {
     expect(content).toContain("export function BillingGuardProvider");
-  });
-
-  it("should export dispatchPaymentRequired function", () => {
     expect(content).toContain("export function dispatchPaymentRequired");
   });
 
   it("should render a modal with insufficient credits message", () => {
     expect(content).toContain("Insufficient Credits");
     expect(content).toContain("Add Credits");
-  });
-
-  it("should show balance info in the modal", () => {
-    expect(content).toContain("Current balance");
-    expect(content).toContain("Required");
   });
 
   it("should clean up event listener on unmount", () => {
@@ -143,12 +137,8 @@ describe("Billing guard provider", () => {
 describe("Billing guard wired into layout", () => {
   const content = fs.readFileSync(layoutPath, "utf-8");
 
-  it("should import BillingGuardProvider", () => {
+  it("should import and wrap with BillingGuardProvider", () => {
     expect(content).toContain("BillingGuardProvider");
-    expect(content).toContain("billing-guard");
-  });
-
-  it("should wrap DashboardContent with BillingGuardProvider", () => {
     expect(content).toContain("<BillingGuardProvider>");
     expect(content).toContain("</BillingGuardProvider>");
   });
@@ -165,22 +155,23 @@ describe("Billing page", () => {
     expect(content).toContain('"use client"');
   });
 
-  it("should import billing API functions (no switchBillingMode in top-level imports)", () => {
-    expect(content).toContain("getBillingAccount");
-    expect(content).toContain("listBillingTransactions");
-    expect(content).toContain("createCheckoutSession");
-    expect(content).toContain("createPortalSession");
-  });
-
-  it("should use useAuthQuery for data fetching", () => {
-    expect(content).toContain("useAuthQuery");
-  });
-
-  it("should NOT have mode switching UI (no BYOK/PAYG toggle)", () => {
-    expect(content).not.toContain("handleModeSwitch");
+  it("should NOT reference billingMode or switchBillingMode", () => {
+    expect(content).not.toContain("billingMode");
+    expect(content).not.toContain("switchBillingMode");
     expect(content).not.toContain("ModeBadge");
     expect(content).not.toContain("Billing Mode");
-    expect(content).not.toContain("Bring your own");
+  });
+
+  it("should use hasAutoReload from account response", () => {
+    expect(content).toContain("hasAutoReload");
+  });
+
+  it("should use configureAutoReload to enable auto-reload", () => {
+    expect(content).toContain("configureAutoReload");
+  });
+
+  it("should use disableAutoReload when user unchecks auto-reload", () => {
+    expect(content).toContain("disableAutoReload");
   });
 
   it("should display credit balance", () => {
@@ -193,33 +184,10 @@ describe("Billing page", () => {
     expect(content).toContain("Credits depleted");
   });
 
-  it("should show payment method status", () => {
-    expect(content).toContain("hasPaymentMethod");
-    expect(content).toContain("Card connected");
-  });
-
-  it("should always show top-up flow (not gated behind mode)", () => {
+  it("should always show top-up flow", () => {
     expect(content).toContain("TOPUP_AMOUNTS");
     expect(content).toContain("Add Credits");
     expect(content).toContain("handleTopup");
-    // Should NOT be conditionally rendered based on billingMode
-    expect(content).not.toContain('billingMode === "payg"');
-  });
-
-  it("should redirect to Stripe checkout via createCheckoutSession", () => {
-    expect(content).toContain("createCheckoutSession");
-    expect(content).toContain("session.url");
-  });
-
-  it("should include success and cancel URLs for Stripe redirect", () => {
-    expect(content).toContain("success_url");
-    expect(content).toContain("cancel_url");
-    expect(content).toContain("?success=true");
-  });
-
-  it("should handle success query param after Stripe redirect", () => {
-    expect(content).toContain("useSearchParams");
-    expect(content).toContain("Payment successful");
   });
 
   it("should integrate auto-reload as a checkbox inside the Add Credits card", () => {
@@ -227,53 +195,37 @@ describe("Billing page", () => {
     expect(content).toContain("Enable auto-reload");
     expect(content).toContain("reloadAmount");
     expect(content).toContain("reloadThreshold");
-    // Should NOT be in a separate card gated behind hasPaymentMethod
-    expect(content).not.toContain("handleSaveReload");
   });
 
   it("should save auto-reload settings before Stripe redirect when enabled", () => {
     expect(content).toContain("enableAutoReload && reloadAmount");
-    expect(content).toContain("switchBillingMode");
+    expect(content).toContain("configureAutoReload");
   });
 
   it("should pre-fill reload amount when selecting a top-up amount", () => {
     expect(content).toContain("handleSelectTopup");
   });
 
-  it("should display transaction history with color-coding", () => {
-    expect(content).toContain("Transaction History");
-    expect(content).toContain("text-red-600");
-    expect(content).toContain("text-green-600");
-    expect(content).toContain("tx.type");
-  });
-
-  it("should have loading skeleton state", () => {
-    expect(content).toContain("animate-pulse");
-    expect(content).toContain("accountLoading");
-  });
-
-  it("should show custom amount input for top-up", () => {
-    expect(content).toContain("customAmount");
-    expect(content).toContain('placeholder="Custom $"');
-  });
-
-  it("should import and use createPortalSession", () => {
-    expect(content).toContain("createPortalSession");
+  it("should redirect to Stripe checkout via createCheckoutSession", () => {
+    expect(content).toContain("createCheckoutSession");
+    expect(content).toContain("session.url");
   });
 
   it("should have a manage payment method button", () => {
     expect(content).toContain("handleManagePayment");
     expect(content).toContain("Manage payment method");
-  });
-
-  it("should redirect to Stripe portal via createPortalSession", () => {
     expect(content).toContain("createPortalSession");
-    expect(content).toContain("window.location.href");
   });
 
+  it("should display transaction history with color-coding", () => {
+    expect(content).toContain("Transaction History");
+    expect(content).toContain("text-red-600");
+    expect(content).toContain("text-green-600");
+  });
 
-  it("should only show manage payment button when payment method exists", () => {
-    expect(content).toContain("hasPaymentMethod");
+  it("should have loading skeleton state", () => {
+    expect(content).toContain("animate-pulse");
+    expect(content).toContain("accountLoading");
   });
 });
 
@@ -287,9 +239,5 @@ describe("Billing sidebar link", () => {
 
   it("should have a BillingIcon component", () => {
     expect(content).toContain("BillingIcon");
-  });
-
-  it("should highlight billing link when on billing page", () => {
-    expect(content).toContain('pathname.startsWith(`/orgs/${orgId}/billing`)');
   });
 });

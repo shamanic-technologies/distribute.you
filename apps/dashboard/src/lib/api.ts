@@ -862,16 +862,15 @@ export async function createCampaign(
 
 // Billing
 export interface BillingAccount {
-  billingMode: "trial" | "byok" | "payg";
   creditBalanceCents: number;
   reloadAmountCents: number | null;
   reloadThresholdCents: number | null;
   hasPaymentMethod: boolean;
+  hasAutoReload: boolean;
 }
 
 export interface BillingBalance {
   balance_cents: number;
-  billing_mode: string;
   depleted: boolean;
 }
 
@@ -905,16 +904,18 @@ export async function listBillingTransactions(
   );
 }
 
-export async function switchBillingMode(
-  mode: "byok" | "payg",
-  reloadAmountCents?: number,
+export async function configureAutoReload(
+  reloadAmountCents: number,
   reloadThresholdCents?: number,
   token?: string
 ): Promise<BillingAccount> {
-  const body: Record<string, unknown> = { mode };
-  if (reloadAmountCents !== undefined) body.reload_amount_cents = reloadAmountCents;
+  const body: Record<string, unknown> = { reload_amount_cents: reloadAmountCents };
   if (reloadThresholdCents !== undefined) body.reload_threshold_cents = reloadThresholdCents;
-  return apiCall<BillingAccount>("/billing/accounts/mode", { token, method: "PATCH", body });
+  return apiCall<BillingAccount>("/billing/accounts/auto-reload", { token, method: "PATCH", body });
+}
+
+export async function disableAutoReload(token?: string): Promise<BillingAccount> {
+  return apiCall<BillingAccount>("/billing/accounts/auto-reload", { token, method: "DELETE" });
 }
 
 export async function createCheckoutSession(

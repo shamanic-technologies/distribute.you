@@ -59,17 +59,17 @@ export default function BillingPage() {
   const [error, setError] = useState<string | null>(null);
 
   const isDepleted = account ? account.creditBalanceCents <= 0 : false;
-  const hasAutoReload = !!(account?.reloadAmountCents);
+  const hasAutoReload = account?.hasAutoReload ?? false;
 
   // Pre-fill auto-reload fields from existing config
   useEffect(() => {
-    if (account?.reloadAmountCents) {
+    if (account?.hasAutoReload) {
       setEnableAutoReload(true);
-      if (!reloadAmount) setReloadAmount((account.reloadAmountCents / 100).toString());
+      if (!reloadAmount && account.reloadAmountCents) setReloadAmount((account.reloadAmountCents / 100).toString());
       if (!reloadThreshold && account.reloadThresholdCents) setReloadThreshold((account.reloadThresholdCents / 100).toString());
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [account?.reloadAmountCents, account?.reloadThresholdCents]);
+  }, [account?.hasAutoReload, account?.reloadAmountCents, account?.reloadThresholdCents]);
 
   // When the user selects a top-up amount, pre-fill reload amount to match
   function handleSelectTopup(amount: number) {
@@ -105,8 +105,11 @@ export default function BillingPage() {
       if (enableAutoReload && reloadAmount) {
         const reloadCents = Math.round(parseFloat(reloadAmount) * 100);
         const thresholdCents = reloadThreshold ? Math.round(parseFloat(reloadThreshold) * 100) : Math.round(reloadCents * 0.2);
-        const { switchBillingMode } = await import("@/lib/api");
-        await switchBillingMode("payg", reloadCents, thresholdCents);
+        const { configureAutoReload } = await import("@/lib/api");
+        await configureAutoReload(reloadCents, thresholdCents);
+      } else if (!enableAutoReload && hasAutoReload) {
+        const { disableAutoReload } = await import("@/lib/api");
+        await disableAutoReload();
       }
 
       const session = await createCheckoutSession({
