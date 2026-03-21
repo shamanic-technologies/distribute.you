@@ -2,7 +2,7 @@ const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distr
 
 interface ApiOptions {
   token?: string;
-  method?: "GET" | "POST" | "PUT" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
   body?: Record<string, unknown>;
 }
 
@@ -43,6 +43,14 @@ async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => ({ error: "Request failed" }));
+    if (response.status === 402 && typeof window !== "undefined") {
+      const { dispatchPaymentRequired } = await import("@/lib/billing-guard");
+      dispatchPaymentRequired({
+        balance_cents: errorBody.balance_cents,
+        required_cents: errorBody.required_cents,
+        error: errorBody.error,
+      });
+    }
     throw new ApiError(
       errorBody.error || errorBody.message || "Request failed",
       response.status,
@@ -846,6 +854,74 @@ export async function createCampaign(
   token?: string
 ): Promise<{ campaign: Campaign }> {
   return apiCall<{ campaign: Campaign }>("/campaigns", {
+    token,
+    method: "POST",
+    body: params as unknown as Record<string, unknown>,
+  });
+}
+
+// Billing
+export interface BillingAccount {
+  billingMode: "trial" | "byok" | "payg";
+  creditBalanceCents: number;
+  reloadAmountCents: number | null;
+  reloadThresholdCents: number | null;
+  hasPaymentMethod: boolean;
+}
+
+export interface BillingBalance {
+  balance_cents: number;
+  billing_mode: string;
+  depleted: boolean;
+}
+
+export interface BillingTransaction {
+  id: string;
+  amount_cents: number;
+  description: string;
+  created_at: string;
+  type: "deduction" | "credit" | "reload";
+}
+
+export interface CheckoutSession {
+  url: string;
+  session_id: string;
+}
+
+export async function getBillingAccount(token?: string): Promise<BillingAccount> {
+  return apiCall<BillingAccount>("/billing/accounts", { token });
+}
+
+export async function getBillingBalance(token?: string): Promise<BillingBalance> {
+  return apiCall<BillingBalance>("/billing/accounts/balance", { token });
+}
+
+export async function listBillingTransactions(
+  token?: string
+): Promise<{ transactions: BillingTransaction[]; has_more: boolean }> {
+  return apiCall<{ transactions: BillingTransaction[]; has_more: boolean }>(
+    "/billing/accounts/transactions",
+    { token }
+  );
+}
+
+export async function switchBillingMode(
+  mode: "byok" | "payg",
+  reloadAmountCents?: number,
+  reloadThresholdCents?: number,
+  token?: string
+): Promise<BillingAccount> {
+  const body: Record<string, unknown> = { mode };
+  if (reloadAmountCents !== undefined) body.reload_amount_cents = reloadAmountCents;
+  if (reloadThresholdCents !== undefined) body.reload_threshold_cents = reloadThresholdCents;
+  return apiCall<BillingAccount>("/billing/accounts/mode", { token, method: "PATCH", body });
+}
+
+export async function createCheckoutSession(
+  params: { reload_amount_cents: number; success_url: string; cancel_url: string },
+  token?: string
+): Promise<CheckoutSession> {
+  return apiCall<CheckoutSession>("/billing/checkout-sessions", {
     token,
     method: "POST",
     body: params as unknown as Record<string, unknown>,
