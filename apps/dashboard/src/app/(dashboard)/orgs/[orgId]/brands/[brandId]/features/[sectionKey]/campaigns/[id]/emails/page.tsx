@@ -217,6 +217,14 @@ export default function CampaignEmailsPage() {
                     ))}
                   </div>
                 )}
+                {selectedEmail.generationRun.status === "failed" && selectedEmail.generationRun.errorSummary && (
+                  <div className="mt-3 bg-red-50 border border-red-100 rounded-md p-3">
+                    <p className="text-sm text-red-700">{selectedEmail.generationRun.errorSummary.rootCause}</p>
+                    <p className="text-xs text-red-500 mt-1">
+                      Step: <span className="font-mono">{selectedEmail.generationRun.errorSummary.failedStep}</span>
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 

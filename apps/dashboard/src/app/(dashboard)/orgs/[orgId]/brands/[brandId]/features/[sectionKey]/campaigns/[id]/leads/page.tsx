@@ -325,6 +325,14 @@ export default function CampaignLeadsPage() {
                   taskName={selectedLead.enrichmentRun.taskName}
                   descendantRuns={selectedLead.enrichmentRun.descendantRuns}
                 />
+                {selectedLead.enrichmentRun.status === "failed" && selectedLead.enrichmentRun.errorSummary && (
+                  <div className="mt-3 bg-red-50 border border-red-100 rounded-md p-3">
+                    <p className="text-sm text-red-700">{selectedLead.enrichmentRun.errorSummary.rootCause}</p>
+                    <p className="text-xs text-red-500 mt-1">
+                      Step: <span className="font-mono">{selectedLead.enrichmentRun.errorSummary.failedStep}</span>
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
