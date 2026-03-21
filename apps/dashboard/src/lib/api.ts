@@ -482,6 +482,12 @@ export interface DescendantRun {
   ownCostInUsdCents: string;
 }
 
+export interface ErrorSummary {
+  failedStep: string;
+  message: string;
+  rootCause: string;
+}
+
 export interface BrandRun {
   id: string;
   taskName: string;
@@ -490,6 +496,8 @@ export interface BrandRun {
   completedAt: string | null;
   totalCostInUsdCents: string | null;
   costs: RunCost[];
+  error?: string;
+  errorSummary?: ErrorSummary;
 }
 
 /** GET /brands/:brandId/runs — returns runs or empty list if brand not found (404/500) */
@@ -536,6 +544,8 @@ export interface Lead {
     serviceName: string;
     taskName: string;
     descendantRuns: DescendantRun[];
+    error?: string;
+    errorSummary?: ErrorSummary;
   } | null;
 }
 
@@ -572,6 +582,8 @@ export interface Email {
     serviceName: string;
     taskName: string;
     descendantRuns: DescendantRun[];
+    error?: string;
+    errorSummary?: ErrorSummary;
   } | null;
 }
 

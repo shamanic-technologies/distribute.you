@@ -462,6 +462,14 @@ export default function BrandInfoPage() {
                       </span>
                     )}
                   </div>
+                  {run.status === "failed" && run.errorSummary && (
+                    <div className="mt-2 bg-red-50 border border-red-100 rounded-md p-3">
+                      <p className="text-sm text-red-700">{run.errorSummary.rootCause}</p>
+                      <p className="text-xs text-red-500 mt-1">
+                        Step: <span className="font-mono">{run.errorSummary.failedStep}</span>
+                      </p>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
