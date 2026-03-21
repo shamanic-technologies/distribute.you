@@ -29,6 +29,8 @@ export default function BillingPage() {
   const queryClient = useQueryClient();
 
   const showSuccess = searchParams.get("success") === "true";
+  const pendingReload = searchParams.get("pending_reload");
+  const pendingThreshold = searchParams.get("pending_threshold");
 
   // Data fetching
   const { data: account, isLoading: accountLoading } = useAuthQuery<BillingAccount>(
@@ -71,6 +73,25 @@ export default function BillingPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account?.hasAutoReload, account?.reloadAmountCents, account?.reloadThresholdCents]);
 
+  // After successful Stripe checkout, save pending auto-reload settings
+  useEffect(() => {
+    if (showSuccess && pendingReload) {
+      const reloadCents = parseInt(pendingReload, 10);
+      const thresholdCents = pendingThreshold ? parseInt(pendingThreshold, 10) : 500;
+      import("@/lib/api").then(({ configureAutoReload }) =>
+        configureAutoReload(reloadCents, thresholdCents)
+      ).then(() => {
+        queryClient.invalidateQueries({ queryKey: ["billingAccount"] });
+      }).catch(() => {});
+      // Clean URL params
+      const url = new URL(window.location.href);
+      url.searchParams.delete("pending_reload");
+      url.searchParams.delete("pending_threshold");
+      window.history.replaceState({}, "", url.toString());
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showSuccess, pendingReload, pendingThreshold]);
+
   // When the user selects a top-up amount, sync both topup and reload amount
   function handleSelectTopup(amount: number) {
     setTopupAmount(amount);
@@ -96,23 +117,45 @@ export default function BillingPage() {
     const amountCents = customAmount ? Math.round(parseFloat(customAmount) * 100) : topupAmount;
     if (!amountCents || amountCents <= 0) return;
 
+    // Validate threshold minimum
+    if (enableAutoReload && reloadThreshold) {
+      const thresholdVal = parseFloat(reloadThreshold);
+      if (thresholdVal < 5) {
+        setError("Auto-reload threshold must be at least $5.");
+        return;
+      }
+    }
+
     setTopupLoading(true);
     setError(null);
     try {
-      // Save auto-reload settings before redirecting to Stripe
-      if (enableAutoReload && reloadAmount) {
+      // If user already has a payment method, save auto-reload now.
+      // Otherwise, pass settings via URL params to save after checkout.
+      if (account?.hasPaymentMethod) {
+        if (enableAutoReload && reloadAmount) {
+          const reloadCents = Math.round(parseFloat(reloadAmount) * 100);
+          const thresholdCents = reloadThreshold ? Math.round(parseFloat(reloadThreshold) * 100) : 500;
+          const { configureAutoReload } = await import("@/lib/api");
+          await configureAutoReload(reloadCents, thresholdCents);
+        } else if (!enableAutoReload && hasAutoReload) {
+          const { disableAutoReload } = await import("@/lib/api");
+          await disableAutoReload();
+        }
+      }
+
+      // Build success URL — if no payment method yet, pass pending auto-reload params
+      const successUrl = new URL(`${window.location.origin}${window.location.pathname}`);
+      successUrl.searchParams.set("success", "true");
+      if (enableAutoReload && reloadAmount && !account?.hasPaymentMethod) {
         const reloadCents = Math.round(parseFloat(reloadAmount) * 100);
         const thresholdCents = reloadThreshold ? Math.round(parseFloat(reloadThreshold) * 100) : 500;
-        const { configureAutoReload } = await import("@/lib/api");
-        await configureAutoReload(reloadCents, thresholdCents);
-      } else if (!enableAutoReload && hasAutoReload) {
-        const { disableAutoReload } = await import("@/lib/api");
-        await disableAutoReload();
+        successUrl.searchParams.set("pending_reload", reloadCents.toString());
+        successUrl.searchParams.set("pending_threshold", thresholdCents.toString());
       }
 
       const session = await createCheckoutSession({
         reload_amount_cents: amountCents,
-        success_url: `${window.location.origin}${window.location.pathname}?success=true`,
+        success_url: successUrl.toString(),
         cancel_url: `${window.location.origin}${window.location.pathname}`,
       });
       window.location.href = session.url;
