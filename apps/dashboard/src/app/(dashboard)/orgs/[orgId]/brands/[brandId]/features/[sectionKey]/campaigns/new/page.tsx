@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo, useCallback, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { keepPreviousData } from "@tanstack/react-query";
 import { WORKFLOW_DEFINITIONS } from "@distribute/content";
@@ -192,6 +192,7 @@ export default function FeatureCreateCampaignPage() {
   const sectionKey = params.sectionKey as string;
 
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { org } = useOrg();
   const { showPaymentRequired } = useBillingGuard();
 
@@ -391,6 +392,24 @@ export default function FeatureCreateCampaignPage() {
     }
   }, [selectedRow, budgetAmount, budgetFrequency, formData, router, orgId, brandId, sectionKey]);
 
+  /** Save campaign intent to sessionStorage so we can resume after Stripe checkout */
+  const saveCampaignIntent = useCallback(() => {
+    if (!selectedRow || !budgetAmount) return;
+    const budgetParams: Record<string, string> = {};
+    if (budgetFrequency === "one-off") budgetParams.maxBudgetTotalUsd = budgetAmount;
+    if (budgetFrequency === "daily") budgetParams.maxBudgetDailyUsd = budgetAmount;
+    if (budgetFrequency === "weekly") budgetParams.maxBudgetWeeklyUsd = budgetAmount;
+    if (budgetFrequency === "monthly") budgetParams.maxBudgetMonthlyUsd = budgetAmount;
+
+    const displayLabel = formatDisplayName(selectedRow.displayName, selectedRow.name);
+    sessionStorage.setItem("pendingCampaign", JSON.stringify({
+      workflowName: selectedRow.name,
+      displayLabel,
+      ...formData,
+      ...budgetParams,
+    }));
+  }, [selectedRow, budgetAmount, budgetFrequency, formData]);
+
   /** Proactive credit check: if budget may exceed balance and no auto-reload, show the modal */
   const handleCreateCampaign = useCallback(async () => {
     if (!selectedRow || !budgetAmount) return;
@@ -406,12 +425,15 @@ export default function FeatureCreateCampaignPage() {
       const isRecurring = budgetFrequency !== "one-off";
 
       if ((willExceed || isRecurring) && !account.hasAutoReload) {
+        // Save intent so we can resume after Stripe checkout
+        saveCampaignIntent();
         // Show proactive modal — user can set up auto-reload, then we proceed
         showPaymentRequired({
           balance_cents: account.creditBalanceCents,
           required_cents: budgetCents,
           proactive: true,
           onAutoReloadConfigured: () => {
+            sessionStorage.removeItem("pendingCampaign");
             doCreateCampaign();
           },
         });
@@ -422,7 +444,70 @@ export default function FeatureCreateCampaignPage() {
     }
 
     doCreateCampaign();
-  }, [selectedRow, budgetAmount, budgetFrequency, doCreateCampaign, showPaymentRequired]);
+  }, [selectedRow, budgetAmount, budgetFrequency, doCreateCampaign, showPaymentRequired, saveCampaignIntent]);
+
+  // After Stripe checkout return, auto-launch the pending campaign
+  const pendingCampaignHandled = useRef(false);
+  useEffect(() => {
+    if (pendingCampaignHandled.current) return;
+    const isSuccess = searchParams.get("success") === "true";
+    const hasPending = searchParams.get("pending_campaign") === "true";
+    if (!isSuccess || !hasPending) return;
+
+    const raw = sessionStorage.getItem("pendingCampaign");
+    if (!raw) return;
+    pendingCampaignHandled.current = true;
+
+    // Clean URL params
+    const url = new URL(window.location.href);
+    url.searchParams.delete("success");
+    url.searchParams.delete("pending_campaign");
+    url.searchParams.delete("pending_reload");
+    url.searchParams.delete("pending_threshold");
+    window.history.replaceState({}, "", url.toString());
+
+    // Parse and launch
+    try {
+      const pending = JSON.parse(raw) as Record<string, string>;
+      sessionStorage.removeItem("pendingCampaign");
+
+      const { workflowName, displayLabel, ...rest } = pending;
+      if (!workflowName) return;
+
+      const generateName = () => {
+        const now = new Date();
+        return `${displayLabel || workflowName} \u2014 ${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}.${String(now.getMilliseconds()).padStart(3, "0")}`;
+      };
+
+      setIsCreating(true);
+      (async () => {
+        try {
+          let result: { campaign: Campaign };
+          const payload = { name: generateName(), workflowName, ...rest } as Parameters<typeof createCampaign>[0];
+          try {
+            result = await createCampaign(payload);
+          } catch (firstErr) {
+            if (firstErr instanceof ApiError && firstErr.status === 409) {
+              result = await createCampaign({ ...payload, name: generateName() });
+            } else {
+              throw firstErr;
+            }
+          }
+          sendCampaignEmail("campaign_created", result.campaign).catch(() => {});
+          router.push(`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}`);
+        } catch (err) {
+          if (err instanceof ApiError && err.status === 402) {
+            // Still insufficient — billing guard will handle
+          } else {
+            setCreateError(err instanceof Error ? err.message : "Failed to create campaign");
+          }
+          setIsCreating(false);
+        }
+      })();
+    } catch {
+      sessionStorage.removeItem("pendingCampaign");
+    }
+  }, [searchParams, router, orgId, brandId, sectionKey]);
 
   if (!featureDef) return null;
 

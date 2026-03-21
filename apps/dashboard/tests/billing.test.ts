@@ -347,6 +347,11 @@ describe("Billing guard auto-reload in modal", () => {
     expect(content).toContain("getBillingAccount");
     expect(content).toContain("setAccount(acct)");
   });
+
+  it("should add pending_campaign param to success URL in proactive checkout flow", () => {
+    expect(content).toContain("pending_campaign");
+    expect(content).toContain("info.proactive");
+  });
 });
 
 describe("Proactive credit check in campaign creation (org-scoped)", () => {
@@ -374,6 +379,17 @@ describe("Proactive credit check in campaign creation (org-scoped)", () => {
     expect(content).toContain("proactive: true");
     expect(content).toContain("onAutoReloadConfigured");
   });
+
+  it("should save campaign intent to sessionStorage before showing modal", () => {
+    expect(content).toContain("saveCampaignIntent");
+    expect(content).toContain('sessionStorage.setItem("pendingCampaign"');
+  });
+
+  it("should auto-launch campaign on return from Stripe checkout", () => {
+    expect(content).toContain('searchParams.get("pending_campaign")');
+    expect(content).toContain('sessionStorage.getItem("pendingCampaign")');
+    expect(content).toContain("pendingCampaignHandled");
+  });
 });
 
 describe("Proactive credit check in campaign creation (feature-scoped)", () => {
@@ -395,6 +411,17 @@ describe("Proactive credit check in campaign creation (feature-scoped)", () => {
   it("should show proactive modal with onAutoReloadConfigured callback", () => {
     expect(content).toContain("proactive: true");
     expect(content).toContain("onAutoReloadConfigured");
+  });
+
+  it("should save campaign intent to sessionStorage before showing modal", () => {
+    expect(content).toContain("saveCampaignIntent");
+    expect(content).toContain('sessionStorage.setItem("pendingCampaign"');
+  });
+
+  it("should auto-launch campaign on return from Stripe checkout", () => {
+    expect(content).toContain('searchParams.get("pending_campaign")');
+    expect(content).toContain('sessionStorage.getItem("pendingCampaign")');
+    expect(content).toContain("pendingCampaignHandled");
   });
 });
 
