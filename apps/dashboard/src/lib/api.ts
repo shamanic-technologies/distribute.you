@@ -953,24 +953,41 @@ export async function createPortalSession(
 }
 
 // Press Kits
+export type MediaKitStatus = "drafted" | "generating" | "validated" | "denied" | "archived";
+
 export interface MediaKit {
   id: string;
   title: string | null;
-  status: string;
+  status: MediaKitStatus;
   mdx: string | null;
   organizationId: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
-export async function listMediaKits(token?: string): Promise<MediaKit[]> {
-  return apiCall<MediaKit[]>("/press-kits/media-kit", { token });
+/** Upsert org in press-kits-service (idempotent, call before listing kits) */
+export async function upsertPressKitOrg(
+  orgId: string,
+  name?: string,
+  token?: string
+): Promise<void> {
+  await apiCall<Record<string, unknown>>("/press-kits/organizations", {
+    token,
+    method: "POST",
+    body: { orgId, ...(name ? { name } : {}) },
+  });
+}
+
+/** List media kits filtered by org_id */
+export async function listMediaKits(orgId: string, token?: string): Promise<MediaKit[]> {
+  return apiCall<MediaKit[]>(`/press-kits/media-kit?org_id=${orgId}`, { token });
 }
 
 export async function getMediaKit(id: string, token?: string): Promise<MediaKit> {
   return apiCall<MediaKit>(`/press-kits/media-kit/${id}`, { token });
 }
 
+/** Initiate media kit generation */
 export async function editMediaKit(
   params: { mediaKitId: string; instruction: string; organizationUrl?: string },
   token?: string
@@ -982,19 +999,70 @@ export async function editMediaKit(
   });
 }
 
+/** Update MDX content of a media kit */
+export async function updateMediaKitMdx(
+  mediaKitId: string,
+  mdxContent: string,
+  token?: string
+): Promise<void> {
+  await apiCall<Record<string, unknown>>("/press-kits/update-mdx", {
+    token,
+    method: "POST",
+    body: { mediaKitId, mdxContent },
+  });
+}
+
+/** Update media kit status */
+export async function updateMediaKitStatus(
+  mediaKitId: string,
+  status: MediaKitStatus,
+  denialReason?: string,
+  token?: string
+): Promise<void> {
+  await apiCall<Record<string, unknown>>("/press-kits/update-status", {
+    token,
+    method: "POST",
+    body: { mediaKitId, status, ...(denialReason ? { denialReason } : {}) },
+  });
+}
+
+/** Validate a media kit (moves to validated status) */
+export async function validateMediaKit(
+  mediaKitId: string,
+  token?: string
+): Promise<void> {
+  await apiCall<Record<string, unknown>>("/press-kits/validate", {
+    token,
+    method: "POST",
+    body: { mediaKitId },
+  });
+}
+
+/** Cancel a draft media kit */
+export async function cancelDraftMediaKit(
+  mediaKitId: string,
+  token?: string
+): Promise<void> {
+  await apiCall<Record<string, unknown>>("/press-kits/cancel-draft", {
+    token,
+    method: "POST",
+    body: { mediaKitId },
+  });
+}
+
+/** Get share token for public press kit link */
 export async function getShareToken(orgId: string, token?: string): Promise<{ shareToken: string }> {
   return apiCall<{ shareToken: string }>(`/press-kits/organizations/share-token/${orgId}`, { token });
 }
 
-export async function upsertPressKitOrg(
-  orgId: string,
-  name?: string,
+/** Check if orgs exist in press-kits-service */
+export async function checkPressKitOrgsExist(
+  orgIds: string[],
   token?: string
-): Promise<void> {
-  await apiCall<Record<string, unknown>>("/press-kits/organizations", {
-    token,
-    method: "POST",
-    body: { orgId, ...(name ? { name } : {}) },
-  });
+): Promise<Record<string, boolean>> {
+  return apiCall<Record<string, boolean>>(
+    `/press-kits/organizations/exists?orgIds=${orgIds.join(",")}`,
+    { token },
+  );
 }
 
