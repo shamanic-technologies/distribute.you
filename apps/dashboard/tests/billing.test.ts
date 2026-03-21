@@ -243,6 +243,11 @@ describe("Billing page", () => {
     expect(content).toContain("onBlur={handleReloadAmountBlur}");
   });
 
+  it("should show inline error on blur when reload amount is below $10", () => {
+    expect(content).toContain("reloadAmountError");
+    expect(content).toContain("Minimum reload amount is $10.");
+  });
+
   it("should show inline error on blur when custom amount is below $10", () => {
     expect(content).toContain("handleCustomAmountBlur");
     expect(content).toContain("Minimum top-up is $10.");
