@@ -246,10 +246,20 @@ describe("Billing page", () => {
     expect(content).toContain('placeholder="Custom $"');
   });
 
+  it("should import and use createPortalSession", () => {
+    expect(content).toContain("createPortalSession");
+  });
+
   it("should have a manage payment method button", () => {
     expect(content).toContain("handleManagePayment");
     expect(content).toContain("Manage payment method");
   });
+
+  it("should redirect to Stripe portal via createPortalSession", () => {
+    expect(content).toContain("createPortalSession");
+    expect(content).toContain("window.location.href");
+  });
+
 
   it("should only show manage payment button when payment method exists", () => {
     expect(content).toContain("hasPaymentMethod");
