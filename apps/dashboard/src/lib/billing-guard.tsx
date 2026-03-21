@@ -1,7 +1,8 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { createCheckoutSession } from "@/lib/api";
 
 interface PaymentRequiredInfo {
   balance_cents?: number;
@@ -27,20 +28,35 @@ function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
+const TOPUP_AMOUNTS = [1000, 2500, 5000, 10000]; // cents
+
 export function BillingGuardProvider({ children }: { children: ReactNode }) {
   const [visible, setVisible] = useState(false);
   const [info, setInfo] = useState<PaymentRequiredInfo>({});
+  const [selectedAmount, setSelectedAmount] = useState(2500);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const pathname = usePathname();
-  const router = useRouter();
 
   const showPaymentRequired = useCallback((paymentInfo: PaymentRequiredInfo) => {
     setInfo(paymentInfo);
+    // Pre-select the smallest amount that covers the deficit, or default to $25
+    if (paymentInfo.required_cents && paymentInfo.balance_cents !== undefined) {
+      const deficit = paymentInfo.required_cents - paymentInfo.balance_cents;
+      const match = TOPUP_AMOUNTS.find((a) => a >= deficit);
+      setSelectedAmount(match ?? TOPUP_AMOUNTS[TOPUP_AMOUNTS.length - 1]);
+    } else {
+      setSelectedAmount(2500);
+    }
+    setCheckoutError(null);
+    setCheckoutLoading(false);
     setVisible(true);
   }, []);
 
   const dismissPaymentRequired = useCallback(() => {
     setVisible(false);
     setInfo({});
+    setCheckoutError(null);
   }, []);
 
   // Listen for custom events from the API error handler
@@ -53,15 +69,20 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("billing:payment-required", handlePaymentRequired);
   }, [showPaymentRequired]);
 
-  // Extract orgId from pathname for billing link
-  const segments = pathname.split("/").filter(Boolean);
-  const orgIdIndex = segments.indexOf("orgs");
-  const orgId = orgIdIndex >= 0 ? segments[orgIdIndex + 1] : null;
-
-  function handleGoToBilling() {
-    setVisible(false);
-    if (orgId) {
-      router.push(`/orgs/${orgId}/billing`);
+  async function handleCheckout() {
+    setCheckoutLoading(true);
+    setCheckoutError(null);
+    try {
+      const currentUrl = window.location.href;
+      const session = await createCheckoutSession({
+        reload_amount_cents: selectedAmount,
+        success_url: currentUrl,
+        cancel_url: currentUrl,
+      });
+      window.location.href = session.url;
+    } catch (err) {
+      setCheckoutError(err instanceof Error ? err.message : "Failed to start checkout");
+      setCheckoutLoading(false);
     }
   }
 
@@ -81,7 +102,7 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
             </div>
 
             <p className="text-gray-600 text-sm mb-4">
-              Your account doesn&apos;t have enough credits to complete this action.
+              Your account doesn&apos;t have enough credits to complete this action. Add credits to continue.
             </p>
 
             {(info.balance_cents !== undefined || info.required_cents !== undefined) && (
@@ -101,21 +122,41 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
               </div>
             )}
 
+            {/* Quick top-up amount selection */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              {TOPUP_AMOUNTS.map((amount) => (
+                <button
+                  key={amount}
+                  onClick={() => setSelectedAmount(amount)}
+                  className={`flex-1 min-w-[70px] px-3 py-2 text-sm rounded-lg border transition ${
+                    selectedAmount === amount
+                      ? "border-brand-300 bg-brand-50 text-brand-700 font-medium"
+                      : "border-gray-200 text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  {formatCents(amount)}
+                </button>
+              ))}
+            </div>
+
+            {checkoutError && (
+              <p className="text-sm text-red-600 mb-3">{checkoutError}</p>
+            )}
+
             <div className="flex gap-3">
               <button
                 onClick={dismissPaymentRequired}
                 className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
               >
-                Dismiss
+                Cancel
               </button>
-              {orgId && (
-                <button
-                  onClick={handleGoToBilling}
-                  className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 transition"
-                >
-                  Add Credits
-                </button>
-              )}
+              <button
+                onClick={handleCheckout}
+                disabled={checkoutLoading}
+                className="flex-[2] px-4 py-2.5 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 transition disabled:opacity-50"
+              >
+                {checkoutLoading ? "Redirecting..." : `Add ${formatCents(selectedAmount)} →`}
+              </button>
             </div>
           </div>
         </div>
