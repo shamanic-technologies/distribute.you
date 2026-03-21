@@ -126,7 +126,16 @@ describe("Billing guard provider", () => {
 
   it("should render a modal with insufficient credits message", () => {
     expect(content).toContain("Insufficient Credits");
-    expect(content).toContain("Add Credits");
+  });
+
+  it("should offer quick top-up amount buttons in the modal", () => {
+    expect(content).toContain("TOPUP_AMOUNTS");
+    expect(content).toContain("selectedAmount");
+  });
+
+  it("should redirect to Stripe checkout directly from the modal", () => {
+    expect(content).toContain("createCheckoutSession");
+    expect(content).toContain("handleCheckout");
   });
 
   it("should clean up event listener on unmount", () => {
