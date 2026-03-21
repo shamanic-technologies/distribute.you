@@ -234,6 +234,15 @@ describe("Billing page", () => {
     expect(content).toContain("onBlur={handleThresholdBlur}");
   });
 
+  it("should reset threshold to $5 when left empty on blur", () => {
+    expect(content).toContain('setReloadThreshold("5")');
+  });
+
+  it("should reset reload amount to topup value when left empty on blur", () => {
+    expect(content).toContain("handleReloadAmountBlur");
+    expect(content).toContain("onBlur={handleReloadAmountBlur}");
+  });
+
   it("should show inline error on blur when custom amount is below $10", () => {
     expect(content).toContain("handleCustomAmountBlur");
     expect(content).toContain("Minimum top-up is $10.");
