@@ -172,6 +172,10 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
 
       // Build success URL with pending auto-reload params if no payment method yet
       const successUrl = new URL(window.location.href);
+      // Mark that this checkout was triggered from a pending action (e.g. campaign creation)
+      if (info.proactive) {
+        successUrl.searchParams.set("pending_campaign", "true");
+      }
       successUrl.searchParams.set("success", "true");
       if (enableAutoReload && reloadAmount && !account?.hasPaymentMethod) {
         const reloadCents = Math.round(parseFloat(reloadAmount) * 100);
