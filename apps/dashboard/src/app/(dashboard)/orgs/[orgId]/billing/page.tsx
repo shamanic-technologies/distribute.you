@@ -8,6 +8,7 @@ import {
   listBillingTransactions,
   switchBillingMode,
   createCheckoutSession,
+  createPortalSession,
   type BillingAccount,
   type BillingTransaction,
 } from "@/lib/api";
@@ -70,9 +71,26 @@ export default function BillingPage() {
   const [savingReload, setSavingReload] = useState(false);
   const [reloadSuccess, setReloadSuccess] = useState(false);
 
+  // Portal state
+  const [portalLoading, setPortalLoading] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
 
   const isDepleted = account ? account.creditBalanceCents <= 0 : false;
+
+  async function handleManagePayment() {
+    setPortalLoading(true);
+    setError(null);
+    try {
+      const { url } = await createPortalSession(
+        `${window.location.origin}${window.location.pathname}`
+      );
+      window.location.href = url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to open payment portal");
+      setPortalLoading(false);
+    }
+  }
 
   async function handleTopup() {
     const amountCents = customAmount ? Math.round(parseFloat(customAmount) * 100) : topupAmount;
@@ -197,6 +215,15 @@ export default function BillingPage() {
                   {account?.hasPaymentMethod ? "Connected" : "Not configured"}
                 </span>
               </div>
+              {account?.hasPaymentMethod && (
+                <button
+                  onClick={handleManagePayment}
+                  disabled={portalLoading}
+                  className="mt-2 text-xs text-brand-600 hover:text-brand-700 font-medium disabled:opacity-50"
+                >
+                  {portalLoading ? "Opening..." : "Manage payment method"}
+                </button>
+              )}
             </div>
             {account?.reloadAmountCents && (
               <div>

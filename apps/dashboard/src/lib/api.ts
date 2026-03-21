@@ -928,3 +928,14 @@ export async function createCheckoutSession(
   });
 }
 
+export async function createPortalSession(
+  returnUrl: string,
+  token?: string
+): Promise<{ url: string }> {
+  return apiCall<{ url: string }>("/billing/portal-sessions", {
+    token,
+    method: "POST",
+    body: { return_url: returnUrl },
+  });
+}
+

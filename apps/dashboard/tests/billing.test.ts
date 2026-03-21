@@ -38,6 +38,12 @@ describe("Billing API wrappers", () => {
     expect(content).toContain("/billing/checkout-sessions");
   });
 
+  it("should export createPortalSession function", () => {
+    expect(content).toContain("export async function createPortalSession");
+    expect(content).toContain("/billing/portal-sessions");
+    expect(content).toContain("return_url");
+  });
+
   it("should support PATCH method in ApiOptions", () => {
     expect(content).toContain('"PATCH"');
     expect(content).toMatch(/method\?:.*"PATCH"/);
@@ -250,6 +256,24 @@ describe("Billing page", () => {
   it("should show custom amount input for top-up", () => {
     expect(content).toContain("customAmount");
     expect(content).toContain('placeholder="Custom $"');
+  });
+
+  it("should import and use createPortalSession", () => {
+    expect(content).toContain("createPortalSession");
+  });
+
+  it("should have a manage payment method button", () => {
+    expect(content).toContain("handleManagePayment");
+    expect(content).toContain("Manage payment method");
+  });
+
+  it("should redirect to Stripe portal via createPortalSession", () => {
+    expect(content).toContain("createPortalSession");
+    expect(content).toContain("window.location.href");
+  });
+
+  it("should only show manage payment button when payment method exists", () => {
+    expect(content).toContain("hasPaymentMethod");
   });
 });
 
