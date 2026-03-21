@@ -63,6 +63,7 @@ export default function BillingPage() {
   // Inline validation errors (shown on blur)
   const [thresholdError, setThresholdError] = useState<string | null>(null);
   const [customAmountError, setCustomAmountError] = useState<string | null>(null);
+  const [reloadAmountError, setReloadAmountError] = useState<string | null>(null);
 
   function handleThresholdBlur() {
     if (!reloadThreshold) {
@@ -77,9 +78,13 @@ export default function BillingPage() {
 
   function handleReloadAmountBlur() {
     if (!reloadAmount) {
-      // Reset to current topup amount
       const defaultReload = customAmount ? customAmount : (topupAmount / 100).toString();
       setReloadAmount(defaultReload);
+      setReloadAmountError(null);
+    } else if (parseFloat(reloadAmount) < 10) {
+      setReloadAmountError("Minimum reload amount is $10.");
+    } else {
+      setReloadAmountError(null);
     }
   }
 
@@ -91,7 +96,7 @@ export default function BillingPage() {
     }
   }
 
-  const hasValidationError = !!(thresholdError || customAmountError);
+  const hasValidationError = !!(thresholdError || customAmountError || reloadAmountError);
 
   const isDepleted = account ? account.creditBalanceCents <= 0 : false;
   const hasAutoReload = account?.hasAutoReload ?? false;
@@ -328,12 +333,15 @@ export default function BillingPage() {
                   <input
                     type="number"
                     value={reloadAmount}
-                    onChange={(e) => setReloadAmount(e.target.value)}
+                    onChange={(e) => { setReloadAmount(e.target.value); setReloadAmountError(null); }}
                     onBlur={handleReloadAmountBlur}
                     placeholder="e.g. 25"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300"
-                    min="1"
+                    className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 ${reloadAmountError ? "border-red-300" : "border-gray-200"}`}
+                    min="10"
                   />
+                  {reloadAmountError && (
+                    <p className="text-xs text-red-600 mt-1">{reloadAmountError}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs text-gray-500 mb-1">When balance below ($)</label>
