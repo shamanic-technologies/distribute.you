@@ -48,10 +48,10 @@ export default function BillingPage() {
   const [customAmount, setCustomAmount] = useState("");
   const [topupLoading, setTopupLoading] = useState(false);
 
-  // Auto-reload toggle (integrated into top-up flow)
-  const [enableAutoReload, setEnableAutoReload] = useState(false);
-  const [reloadAmount, setReloadAmount] = useState("");
-  const [reloadThreshold, setReloadThreshold] = useState("");
+  // Auto-reload toggle (integrated into top-up flow) — pre-selected by default
+  const [enableAutoReload, setEnableAutoReload] = useState(true);
+  const [reloadAmount, setReloadAmount] = useState("25");
+  const [reloadThreshold, setReloadThreshold] = useState("5");
 
   // Portal state
   const [portalLoading, setPortalLoading] = useState(false);
@@ -71,12 +71,11 @@ export default function BillingPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account?.hasAutoReload, account?.reloadAmountCents, account?.reloadThresholdCents]);
 
-  // When the user selects a top-up amount, always sync reload amount to match
+  // When the user selects a top-up amount, sync both topup and reload amount
   function handleSelectTopup(amount: number) {
     setTopupAmount(amount);
     setCustomAmount("");
     setReloadAmount((amount / 100).toString());
-    if (!reloadThreshold) setReloadThreshold("5");
   }
 
   async function handleManagePayment() {
