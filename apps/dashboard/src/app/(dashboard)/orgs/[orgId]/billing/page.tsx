@@ -65,10 +65,21 @@ export default function BillingPage() {
   const [customAmountError, setCustomAmountError] = useState<string | null>(null);
 
   function handleThresholdBlur() {
-    if (reloadThreshold && parseFloat(reloadThreshold) < 5) {
+    if (!reloadThreshold) {
+      setReloadThreshold("5");
+      setThresholdError(null);
+    } else if (parseFloat(reloadThreshold) < 5) {
       setThresholdError("Minimum threshold is $5.");
     } else {
       setThresholdError(null);
+    }
+  }
+
+  function handleReloadAmountBlur() {
+    if (!reloadAmount) {
+      // Reset to current topup amount
+      const defaultReload = customAmount ? customAmount : (topupAmount / 100).toString();
+      setReloadAmount(defaultReload);
     }
   }
 
@@ -318,6 +329,7 @@ export default function BillingPage() {
                     type="number"
                     value={reloadAmount}
                     onChange={(e) => setReloadAmount(e.target.value)}
+                    onBlur={handleReloadAmountBlur}
                     placeholder="e.g. 25"
                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300"
                     min="1"
