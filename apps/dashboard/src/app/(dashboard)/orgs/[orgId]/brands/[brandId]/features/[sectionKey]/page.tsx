@@ -3,13 +3,14 @@
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { keepPreviousData } from "@tanstack/react-query";
+import { useQueries } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   listCampaignsByBrand,
-  getCampaignBatchStats,
+  getCampaignStats,
   getBrandCostBreakdown,
   type Campaign,
+  type CampaignStats,
 } from "@/lib/api";
 import { useStopCampaign, useIsStoppingCampaign } from "@/lib/use-stop-campaign";
 import { FunnelMetrics, FunnelMetricsSkeleton } from "@/components/campaign/funnel-metrics";
@@ -82,14 +83,23 @@ export default function FeaturePage() {
     [allCampaigns, sectionKey]
   );
 
-  const campaignIds = useMemo(() => campaigns.map((c) => c.id), [campaigns]);
+  const statsQueries = useQueries({
+    queries: campaigns.map((c) => ({
+      queryKey: ["campaignStats", c.id],
+      queryFn: () => getCampaignStats(c.id),
+      ...pollOptions,
+    })),
+  });
 
-  const { data: batchStats, isLoading: isLoadingBatchStats } = useAuthQuery(
-    ["campaignBatchStats", { brandId }, campaignIds],
-    () => getCampaignBatchStats(campaignIds, undefined, brandId),
-    { enabled: campaignIds.length > 0, placeholderData: keepPreviousData, ...pollOptions },
-  );
-  const campaignStats = batchStats ?? {};
+  const isLoadingBatchStats = statsQueries.some((q) => q.isLoading);
+  const campaignStats = useMemo(() => {
+    const map: Record<string, CampaignStats> = {};
+    for (let i = 0; i < campaigns.length; i++) {
+      const data = statsQueries[i]?.data;
+      if (data) map[campaigns[i].id] = data;
+    }
+    return map;
+  }, [campaigns, statsQueries]);
 
   const { data: brandCostData, isLoading: isLoadingCosts } = useAuthQuery(
     ["brandCostBreakdown", { brandId }],
@@ -101,7 +111,7 @@ export default function FeaturePage() {
   // Show skeletons until ALL data sources have loaded at least once.
   // When there are no campaigns, batch stats are disabled (enabled: false) so skip that check.
   const hasData = campaignsData !== undefined;
-  const batchStatsReady = campaignIds.length === 0 || !isLoadingBatchStats;
+  const batchStatsReady = campaigns.length === 0 || !isLoadingBatchStats;
   const statsLoading = !hasData || !batchStatsReady;
   const costsLoading = isLoadingCosts;
 
