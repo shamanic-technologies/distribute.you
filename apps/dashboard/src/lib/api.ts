@@ -846,6 +846,44 @@ export async function fetchRankedWorkflows(params: {
   return data.results;
 }
 
+// Generate workflow via AI
+export interface GenerateWorkflowRequest {
+  description: string;
+  hints?: {
+    services?: string[];
+    nodeTypes?: string[];
+    expectedInputs?: string[];
+  };
+}
+
+export interface GenerateWorkflowResult {
+  workflow: {
+    id: string;
+    name: string;
+    category: string;
+    channel: string;
+    audienceType: string;
+    signature: string;
+    signatureName: string;
+    action: "created" | "updated";
+    humanId: string | null;
+    styleName: string | null;
+  };
+  dag: { nodes: unknown[]; edges: unknown[] };
+  generatedDescription: string;
+}
+
+export async function generateWorkflow(
+  params: GenerateWorkflowRequest,
+  token?: string,
+): Promise<GenerateWorkflowResult> {
+  return apiCall<GenerateWorkflowResult>("/workflows/generate", {
+    method: "POST",
+    body: params as unknown as Record<string, unknown>,
+    token,
+  });
+}
+
 // Create campaign
 export async function createCampaign(
   params: {

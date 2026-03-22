@@ -2,13 +2,15 @@
 
 import { useMemo, useCallback, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { keepPreviousData } from "@tanstack/react-query";
+import { keepPreviousData, useMutation } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   fetchRankedWorkflows,
+  generateWorkflow,
   type RankedWorkflowItem,
 } from "@/lib/api";
 import { WORKFLOW_DEFINITIONS } from "@distribute/content";
+import { PlusIcon } from "@heroicons/react/20/solid";
 
 const POLL_INTERVAL = 30_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false, placeholderData: keepPreviousData };
@@ -104,6 +106,21 @@ export default function FeatureWorkflowsPage() {
 
   const wfDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === sectionKey);
 
+  const createMutation = useMutation({
+    mutationFn: () =>
+      generateWorkflow({
+        description: `Create a ${wfDef?.label ?? sectionKey} workflow: ${wfDef?.description ?? "automated workflow for this feature"}.`,
+        hints: {
+          services: wfDef ? [wfDef.category] : undefined,
+        },
+      }),
+    onSuccess: (result) => {
+      router.push(
+        `/orgs/${orgId}/brands/${brandId}/features/${sectionKey}/workflows/${result.workflow.id}`,
+      );
+    },
+  });
+
   // Fetch ranked workflows (family-aggregated stats)
   const { data: rankedItems, isLoading } = useAuthQuery(
     ["ranked-workflows", wfDef?.category, wfDef?.channel, wfDef?.audienceType],
@@ -149,12 +166,40 @@ export default function FeatureWorkflowsPage() {
 
   return (
     <div className="p-4 md:p-8">
-      <div className="mb-6">
-        <h1 className="font-display text-2xl font-bold text-gray-800">Workflows</h1>
-        <p className="text-gray-600">
-          Workflows for {wfDef?.label ?? sectionKey}.
-        </p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-gray-800">Workflows</h1>
+          <p className="text-gray-600">
+            Workflows for {wfDef?.label ?? sectionKey}.
+          </p>
+        </div>
+        <button
+          type="button"
+          disabled={createMutation.isPending}
+          onClick={() => createMutation.mutate()}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {createMutation.isPending ? (
+            <>
+              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              Creating…
+            </>
+          ) : (
+            <>
+              <PlusIcon className="w-4 h-4" />
+              New Workflow
+            </>
+          )}
+        </button>
       </div>
+      {createMutation.isError && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          Failed to create workflow. Please try again.
+        </div>
+      )}
 
       {isLoading ? (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
