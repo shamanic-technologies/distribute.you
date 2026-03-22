@@ -1,6 +1,6 @@
-export type WorkflowCategory = "sales" | "journalists" | "press-kit" | "webinars" | "welcome";
-export type WorkflowChannel = "email";
-export type WorkflowAudienceType = "cold-outreach" | "generation";
+export type WorkflowCategory = "sales" | "journalists" | "outlets" | "press-kit" | "webinars" | "welcome";
+export type WorkflowChannel = "email" | "database";
+export type WorkflowAudienceType = "cold-outreach" | "generation" | "discovery";
 
 /** Static workflow section definitions (replaces MCP_PACKAGES). */
 export interface WorkflowDefinition {
@@ -75,6 +75,28 @@ export const WORKFLOW_DEFINITIONS: WorkflowDefinition[] = [
     icon: "envelope",
     implemented: false,
   },
+  {
+    sectionKey: "outlets-database-discovery",
+    label: "Media Outlet Discovery",
+    description:
+      "Find relevant media outlets and publications for your brand.",
+    category: "outlets",
+    channel: "database",
+    audienceType: "discovery",
+    icon: "building",
+    implemented: false,
+  },
+  {
+    sectionKey: "journalists-database-discovery",
+    label: "Journalist Discovery",
+    description:
+      "Find relevant journalists and media contacts for your brand.",
+    category: "journalists",
+    channel: "database",
+    audienceType: "discovery",
+    icon: "users",
+    implemented: false,
+  },
 ];
 
 export const getWorkflowDefinition = (sectionKey: string) =>
@@ -94,6 +116,7 @@ export interface ParsedWorkflowName {
 export const WORKFLOW_CATEGORY_LABELS: Record<WorkflowCategory, string> = {
   sales: "Sales",
   journalists: "Journalists",
+  outlets: "Media Outlets",
   "press-kit": "Press Kit",
   webinars: "Webinars",
   welcome: "Welcome",
@@ -104,14 +127,17 @@ export const SECTION_LABELS: Record<string, string> = {
   "sales-email-cold-outreach": "Sales Cold Email Outreach",
   "journalists-email-cold-outreach": "Journalists Cold Email Outreach",
   "press-kit-email-generation": "Press Kit Generation",
+  "outlets-database-discovery": "Media Outlet Discovery",
+  "journalists-database-discovery": "Journalist Discovery",
   "webinars": "Webinars",
   "welcome-email": "Welcome Email",
 };
 
-const KNOWN_CATEGORIES = new Set<string>(["sales", "journalists", "webinars", "welcome"]);
+const KNOWN_CATEGORIES = new Set<string>(["sales", "journalists", "outlets", "webinars", "welcome"]);
 const TWO_WORD_CATEGORIES = new Set<string>(["press-kit"]);
-const KNOWN_CHANNELS = new Set<string>(["email"]);
+const KNOWN_CHANNELS = new Set<string>(["email", "database"]);
 const TWO_WORD_AUDIENCE_TYPES = new Set<string>(["cold-outreach"]);
+const ONE_WORD_AUDIENCE_TYPES = new Set<string>(["discovery", "generation"]);
 
 /**
  * Parse a workflow name: {category}-{channel}-{audienceType}-{signatureName}.
@@ -168,20 +194,17 @@ export function parseWorkflowName(name: string): ParsedWorkflowName | null {
     }
   }
 
-  // Try 1-segment audience type (e.g., "generation")
-  if (rest.length >= 2) {
-    const audienceType = rest[0];
-    if (audienceType === "generation" || audienceType === "cold-outreach") {
-      const signatureName = rest.slice(1).join("-");
-      if (signatureName) {
-        return {
-          category,
-          channel,
-          audienceType: audienceType as WorkflowAudienceType,
-          signatureName,
-          sectionKey: `${category}-${channel}-${audienceType}`,
-        };
-      }
+  // Try 1-segment audience type (e.g., "discovery", "generation")
+  if (rest.length >= 2 && ONE_WORD_AUDIENCE_TYPES.has(rest[0])) {
+    const signatureName = rest.slice(1).join("-");
+    if (signatureName) {
+      return {
+        category,
+        channel,
+        audienceType: rest[0] as WorkflowAudienceType,
+        signatureName,
+        sectionKey: `${category}-${channel}-${rest[0]}`,
+      };
     }
   }
 

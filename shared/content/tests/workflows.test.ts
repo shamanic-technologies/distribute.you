@@ -58,8 +58,14 @@ describe("getWorkflowDefinitionsByCategory", () => {
 
   it("filters by journalists", () => {
     const journalists = getWorkflowDefinitionsByCategory("journalists");
-    expect(journalists.length).toBeGreaterThanOrEqual(1);
+    expect(journalists.length).toBeGreaterThanOrEqual(2);
     expect(journalists.every((w) => w.category === "journalists")).toBe(true);
+  });
+
+  it("filters by outlets", () => {
+    const outlets = getWorkflowDefinitionsByCategory("outlets");
+    expect(outlets.length).toBeGreaterThanOrEqual(1);
+    expect(outlets.every((w) => w.category === "outlets")).toBe(true);
   });
 });
 
@@ -83,6 +89,39 @@ describe("parseWorkflowName", () => {
       audienceType: "cold-outreach",
       signatureName: "sequoia",
       sectionKey: "journalists-email-cold-outreach",
+    });
+  });
+
+  it("parses press-kit generation workflow name", () => {
+    const result = parseWorkflowName("press-kit-email-generation-v1");
+    expect(result).toEqual({
+      category: "press-kit",
+      channel: "email",
+      audienceType: "generation",
+      signatureName: "v1",
+      sectionKey: "press-kit-email-generation",
+    });
+  });
+
+  it("parses outlets discovery workflow name", () => {
+    const result = parseWorkflowName("outlets-database-discovery-cedar");
+    expect(result).toEqual({
+      category: "outlets",
+      channel: "database",
+      audienceType: "discovery",
+      signatureName: "cedar",
+      sectionKey: "outlets-database-discovery",
+    });
+  });
+
+  it("parses journalists discovery workflow name", () => {
+    const result = parseWorkflowName("journalists-database-discovery-birch");
+    expect(result).toEqual({
+      category: "journalists",
+      channel: "database",
+      audienceType: "discovery",
+      signatureName: "birch",
+      sectionKey: "journalists-database-discovery",
     });
   });
 
@@ -120,6 +159,8 @@ describe("getWorkflowCategory", () => {
   it("returns category for valid workflow name", () => {
     expect(getWorkflowCategory("sales-email-cold-outreach-sienna")).toBe("sales");
     expect(getWorkflowCategory("journalists-email-cold-outreach-sequoia")).toBe("journalists");
+    expect(getWorkflowCategory("outlets-database-discovery-cedar")).toBe("outlets");
+    expect(getWorkflowCategory("journalists-database-discovery-birch")).toBe("journalists");
   });
 
   it("returns null for invalid names", () => {
@@ -141,5 +182,7 @@ describe("WORKFLOW_CATEGORY_LABELS", () => {
   it("has labels for all categories", () => {
     expect(WORKFLOW_CATEGORY_LABELS.sales).toBe("Sales");
     expect(WORKFLOW_CATEGORY_LABELS.journalists).toBe("Journalists");
+    expect(WORKFLOW_CATEGORY_LABELS.outlets).toBe("Media Outlets");
+    expect(WORKFLOW_CATEGORY_LABELS["press-kit"]).toBe("Press Kit");
   });
 });
