@@ -121,6 +121,10 @@ const PLATFORM_KEYS: { provider: string; envVar: string }[] = [
   { provider: "stripe-webhook", envVar: "STRIPE_WEBHOOK_SECRET" },
   { provider: "api-service-mcp", envVar: "ADMIN_DISTRIBUTE_API_KEY" },
   { provider: "serper-dev", envVar: "SERPER_DEV_API_KEY" },
+  { provider: "google-client-id", envVar: "GOOGLE_CLIENT_ID" },
+  { provider: "google-client-secret", envVar: "GOOGLE_CLIENT_SECRET" },
+  { provider: "google-developer-token", envVar: "GOOGLE_DEVELOPER_TOKEN" },
+  { provider: "google-mcc-account-id", envVar: "GOOGLE_MCC_ACCOUNT_ID" },
 ];
 
 const COLD_EMAIL_PROMPT = `Today is \${new Date().toISOString().split("T")[0]}.

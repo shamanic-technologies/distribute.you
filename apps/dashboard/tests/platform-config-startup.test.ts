@@ -22,6 +22,10 @@ describe("Platform config registration at startup", () => {
       { provider: "stripe-webhook", envVar: "STRIPE_WEBHOOK_SECRET" },
       { provider: "api-service-mcp", envVar: "ADMIN_DISTRIBUTE_API_KEY" },
       { provider: "serper-dev", envVar: "SERPER_DEV_API_KEY" },
+      { provider: "google-client-id", envVar: "GOOGLE_CLIENT_ID" },
+      { provider: "google-client-secret", envVar: "GOOGLE_CLIENT_SECRET" },
+      { provider: "google-developer-token", envVar: "GOOGLE_DEVELOPER_TOKEN" },
+      { provider: "google-mcc-account-id", envVar: "GOOGLE_MCC_ACCOUNT_ID" },
     ];
 
     it("should call POST /platform-keys via api-service", () => {
@@ -36,9 +40,9 @@ describe("Platform config registration at startup", () => {
       });
     }
 
-    it("should register exactly 14 platform keys", () => {
+    it("should register exactly 18 platform keys", () => {
       const matches = content.match(/provider: "[^"]+", envVar: "[^"]+"/g);
-      expect(matches).toHaveLength(14);
+      expect(matches).toHaveLength(18);
     });
 
     it("should fail startup if any key env var is missing", () => {
