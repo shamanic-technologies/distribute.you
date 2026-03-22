@@ -159,6 +159,7 @@ const PlusIcon = () => (
 
 function getFeatureIcon(sectionKey: string): React.ReactNode {
   if (sectionKey.startsWith("sales")) return <EnvelopeIcon />;
+  if (sectionKey.startsWith("outlets")) return <OrgIcon />;
   if (sectionKey.startsWith("journalists")) return <NewspaperIcon />;
   if (sectionKey.startsWith("press-kit")) return <DocumentIcon />;
   if (sectionKey.startsWith("webinar")) return <CalendarIcon />;
