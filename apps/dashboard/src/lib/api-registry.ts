@@ -26,6 +26,7 @@ export const PROVIDER_DOMAINS: Record<string, string> = {
   deepseek: "deepseek.com",
   mistral: "mistral.ai",
   cohere: "cohere.com",
+  "serper-dev": "serper.dev",
 };
 
 export async function registryFetch(
