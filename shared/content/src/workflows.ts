@@ -84,7 +84,7 @@ export const WORKFLOW_DEFINITIONS: WorkflowDefinition[] = [
     channel: "database",
     audienceType: "discovery",
     icon: "building",
-    implemented: false,
+    implemented: true,
   },
   {
     sectionKey: "journalists-database-discovery",
@@ -95,7 +95,7 @@ export const WORKFLOW_DEFINITIONS: WorkflowDefinition[] = [
     channel: "database",
     audienceType: "discovery",
     icon: "users",
-    implemented: false,
+    implemented: true,
   },
 ];
 
