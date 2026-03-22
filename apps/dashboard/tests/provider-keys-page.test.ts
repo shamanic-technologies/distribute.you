@@ -102,3 +102,34 @@ describe("Unified API Keys page has provider keys section", () => {
     expect(content).toContain("confirm(");
   });
 });
+
+describe("Serper.dev provider key support", () => {
+  const pagePath = path.join(
+    __dirname,
+    "../src/app/(dashboard)/orgs/[orgId]/api-keys/page.tsx"
+  );
+  const content = fs.readFileSync(pagePath, "utf-8");
+
+  it("should include serper-dev in always-visible providers", () => {
+    expect(content).toContain("ALWAYS_VISIBLE_PROVIDERS");
+    expect(content).toContain('"serper-dev"');
+  });
+
+  it("should have provider metadata with label and description for serper-dev", () => {
+    expect(content).toContain("Serper.dev API Key");
+    expect(content).toContain("web and news search via Google");
+  });
+
+  it("should use providerLabel for display names", () => {
+    expect(content).toContain("providerLabel(row.provider)");
+  });
+});
+
+describe("API registry includes serper-dev domain", () => {
+  const registryPath = path.join(__dirname, "../src/lib/api-registry.ts");
+  const content = fs.readFileSync(registryPath, "utf-8");
+
+  it("should map serper-dev to serper.dev domain", () => {
+    expect(content).toContain('"serper-dev": "serper.dev"');
+  });
+});

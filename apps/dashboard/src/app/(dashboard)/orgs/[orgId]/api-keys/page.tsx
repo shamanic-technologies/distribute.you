@@ -20,6 +20,21 @@ import { SkeletonApiKey } from "@/components/skeleton";
 const POLL_INTERVAL = 5_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
 
+/** Providers that should always appear in the BYOK section, even if no workflow requires them yet. */
+const ALWAYS_VISIBLE_PROVIDERS = ["serper-dev"] as const;
+
+/** Human-friendly metadata for well-known providers. */
+const PROVIDER_META: Record<string, { label: string; description: string }> = {
+  "serper-dev": {
+    label: "Serper.dev API Key",
+    description: "Used for web and news search via Google (endpoints /search/*)",
+  },
+};
+
+function providerLabel(provider: string): string {
+  return PROVIDER_META[provider]?.label ?? capitalize(provider);
+}
+
 function capitalize(s: unknown): string {
   const str = String(s ?? "");
   if (!str) return "";
@@ -98,7 +113,7 @@ export default function OrgApiKeysPage() {
   const configuredKeys: ByokKey[] = byokData?.keys ?? [];
 
   const providers: ProviderRow[] = useMemo(() => {
-    const providerSet = new Set<string>();
+    const providerSet = new Set<string>(ALWAYS_VISIBLE_PROVIDERS);
     for (const wf of workflowsData?.workflows ?? []) {
       if (wf.status === "deprecated") continue;
       for (const p of wf.requiredProviders ?? []) {
@@ -136,7 +151,7 @@ export default function OrgApiKeysPage() {
       await queryClient.invalidateQueries({ queryKey: ["byokKeys"] });
       setEditingProvider(null);
       setProviderKeyInput("");
-      setProviderSuccess(`${capitalize(provider)} key saved successfully.`);
+      setProviderSuccess(`${providerLabel(provider)} saved successfully.`);
       setTimeout(() => setProviderSuccess(null), 3000);
     } catch (err) {
       setProviderError(err instanceof Error ? err.message : "Failed to save key");
@@ -146,13 +161,13 @@ export default function OrgApiKeysPage() {
   }
 
   async function handleDeleteProvider(provider: string) {
-    if (!confirm(`Remove your ${capitalize(provider)} key? Workflows using this provider will stop working.`)) return;
+    if (!confirm(`Remove your ${providerLabel(provider)} key? Workflows using this provider will stop working.`)) return;
     setProviderError(null);
     setProviderSuccess(null);
     try {
       await deleteByokKey(provider);
       await queryClient.invalidateQueries({ queryKey: ["byokKeys"] });
-      setProviderSuccess(`${capitalize(provider)} key removed.`);
+      setProviderSuccess(`${providerLabel(provider)} key removed.`);
       setTimeout(() => setProviderSuccess(null), 3000);
     } catch (err) {
       setProviderError(err instanceof Error ? err.message : "Failed to delete key");
@@ -352,7 +367,12 @@ export default function OrgApiKeysPage() {
                       }`}
                     />
                     <div>
-                      <h3 className="font-medium text-gray-800">{capitalize(row.provider)}</h3>
+                      <h3 className="font-medium text-gray-800">{providerLabel(row.provider)}</h3>
+                      {PROVIDER_META[row.provider]?.description && !row.configured && (
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {PROVIDER_META[row.provider].description}
+                        </p>
+                      )}
                       {row.configured && row.maskedKey ? (
                         <p className="text-xs text-gray-500 mt-0.5">
                           <code className="font-mono">{row.maskedKey}</code>
@@ -360,9 +380,9 @@ export default function OrgApiKeysPage() {
                             <> · Updated {new Date(row.updatedAt).toLocaleDateString()}</>
                           )}
                         </p>
-                      ) : (
+                      ) : !PROVIDER_META[row.provider]?.description ? (
                         <p className="text-xs text-gray-400 mt-0.5">Not configured</p>
-                      )}
+                      ) : null}
                     </div>
                   </div>
 
@@ -392,7 +412,7 @@ export default function OrgApiKeysPage() {
                       type="password"
                       value={providerKeyInput}
                       onChange={(e) => setProviderKeyInput(e.target.value)}
-                      placeholder={`Enter your ${capitalize(row.provider)} API key`}
+                      placeholder={`Enter your ${providerLabel(row.provider)} key`}
                       className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300"
                       autoFocus
                       onKeyDown={(e) => {
