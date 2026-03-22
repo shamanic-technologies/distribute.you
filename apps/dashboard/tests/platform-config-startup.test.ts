@@ -21,6 +21,7 @@ describe("Platform config registration at startup", () => {
       { provider: "stripe", envVar: "STRIPE_SECRET_KEY" },
       { provider: "stripe-webhook", envVar: "STRIPE_WEBHOOK_SECRET" },
       { provider: "api-service-mcp", envVar: "ADMIN_DISTRIBUTE_API_KEY" },
+      { provider: "serper-dev", envVar: "SERPER_DEV_API_KEY" },
     ];
 
     it("should call POST /platform-keys via api-service", () => {
@@ -35,9 +36,9 @@ describe("Platform config registration at startup", () => {
       });
     }
 
-    it("should register exactly 13 platform keys", () => {
+    it("should register exactly 14 platform keys", () => {
       const matches = content.match(/provider: "[^"]+", envVar: "[^"]+"/g);
-      expect(matches).toHaveLength(13);
+      expect(matches).toHaveLength(14);
     });
 
     it("should fail startup if any key env var is missing", () => {

@@ -120,6 +120,7 @@ const PLATFORM_KEYS: { provider: string; envVar: string }[] = [
   { provider: "stripe", envVar: "STRIPE_SECRET_KEY" },
   { provider: "stripe-webhook", envVar: "STRIPE_WEBHOOK_SECRET" },
   { provider: "api-service-mcp", envVar: "ADMIN_DISTRIBUTE_API_KEY" },
+  { provider: "serper-dev", envVar: "SERPER_DEV_API_KEY" },
 ];
 
 const COLD_EMAIL_PROMPT = `Today is \${new Date().toISOString().split("T")[0]}.
