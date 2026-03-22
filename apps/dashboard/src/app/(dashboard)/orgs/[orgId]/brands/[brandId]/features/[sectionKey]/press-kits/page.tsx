@@ -96,20 +96,10 @@ export default function PressKitPage() {
     setGenerating(true);
     setGenerateError(null);
     try {
-      const existingKit = kits[0];
-      if (existingKit) {
-        await editMediaKit({
-          mediaKitId: existingKit.id,
-          instruction: "Generate a comprehensive press kit based on the brand information.",
-          organizationUrl: brand?.brandUrl,
-        });
-      } else {
-        await editMediaKit({
-          orgId,
-          instruction: "Generate a comprehensive press kit based on the brand information.",
-          organizationUrl: brand?.brandUrl,
-        });
-      }
+      await editMediaKit({
+        instruction: "Generate a comprehensive press kit based on the brand information.",
+        organizationUrl: brand?.brandUrl,
+      });
       await queryClient.invalidateQueries({ queryKey: ["mediaKits", orgId] });
     } catch (err) {
       setGenerateError(err instanceof Error ? err.message : "Generation failed");
