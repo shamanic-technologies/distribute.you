@@ -80,6 +80,44 @@ describe("API proxy", () => {
   });
 });
 
+describe("Press Kit campaign integration", () => {
+  const apiPath = path.join(__dirname, "../src/lib/api.ts");
+  const campaignPagePath = path.join(
+    __dirname,
+    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[sectionKey]/campaigns/[id]/page.tsx"
+  );
+  const pressKitResultsPath = path.join(
+    __dirname,
+    "../src/components/campaign/press-kit-results.tsx"
+  );
+
+  it("should export listMediaKitsByCampaign function", () => {
+    const content = fs.readFileSync(apiPath, "utf-8");
+    expect(content).toContain("export async function listMediaKitsByCampaign");
+    expect(content).toContain("campaign_id=${campaignId}");
+  });
+
+  it("should have a PressKitResults component", () => {
+    expect(fs.existsSync(pressKitResultsPath)).toBe(true);
+    const content = fs.readFileSync(pressKitResultsPath, "utf-8");
+    expect(content).toContain("listMediaKitsByCampaign");
+    expect(content).toContain("getShareToken");
+    expect(content).toContain("press-kits/public/");
+  });
+
+  it("should show press-kit results on campaign page for press-kit sections", () => {
+    const content = fs.readFileSync(campaignPagePath, "utf-8");
+    expect(content).toContain("isPressKit");
+    expect(content).toContain("PressKitResults");
+    expect(content).toContain('sectionKey.startsWith("press-kit")');
+  });
+
+  it("should hide outreach stats for press-kit campaigns", () => {
+    const content = fs.readFileSync(campaignPagePath, "utf-8");
+    expect(content).toContain("!isPressKit && stats");
+  });
+});
+
 describe("Sidebar does not have dedicated Press Kit link", () => {
   const sidebarPath = path.join(__dirname, "../src/components/context-sidebar.tsx");
 
