@@ -1067,6 +1067,55 @@ export async function getShareToken(orgId: string, token?: string): Promise<{ sh
   return apiCall<{ shareToken: string }>(`/press-kits/organizations/${orgId}/share-token`, { token });
 }
 
+// --- Discovery types ---
+
+export interface DiscoveredOutlet {
+  id: string;
+  outletName: string;
+  outletUrl: string;
+  outletDomain: string;
+  relevanceScore: number;
+  whyRelevant: string;
+  whyNotRelevant: string;
+  overalRelevance?: string;
+  relevanceRationale?: string;
+  status: "open" | "ended" | "denied";
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DiscoveredJournalist {
+  id: string;
+  entityType: "individual" | "organization";
+  journalistName: string;
+  firstName: string | null;
+  lastName: string | null;
+  outletName?: string;
+  outletDomain?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function listCampaignOutlets(
+  campaignId: string,
+  token?: string,
+): Promise<{ outlets: DiscoveredOutlet[] }> {
+  return apiCall<{ outlets: DiscoveredOutlet[] }>(
+    `/campaigns/${campaignId}/outlets`,
+    { token },
+  );
+}
+
+export async function listCampaignJournalists(
+  campaignId: string,
+  token?: string,
+): Promise<{ journalists: DiscoveredJournalist[] }> {
+  return apiCall<{ journalists: DiscoveredJournalist[] }>(
+    `/campaigns/${campaignId}/journalists`,
+    { token },
+  );
+}
+
 /** Check if orgs exist in press-kits-service */
 export async function checkPressKitOrgsExist(
   orgIds: string[],

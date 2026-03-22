@@ -7,6 +7,8 @@ import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
 import { PressKitResults } from "@/components/campaign/press-kit-results";
+import { DiscoveredOutlets } from "@/components/campaign/discovered-outlets";
+import { DiscoveredJournalists } from "@/components/campaign/discovered-journalists";
 
 function formatTotalCost(cents: string | null | undefined): string | null {
   if (!cents) return null;
@@ -22,6 +24,9 @@ export default function CampaignOverviewPage() {
   const sectionKey = params.sectionKey as string;
   const orgId = params.orgId as string;
   const isPressKit = sectionKey.startsWith("press-kit");
+  const isOutletDiscovery = sectionKey === "outlets-database-discovery";
+  const isJournalistDiscovery = sectionKey === "journalists-database-discovery";
+  const isDiscovery = isOutletDiscovery || isJournalistDiscovery;
   const { campaign, stats, leads, emails, loading } = useCampaign();
   const stopMutation = useStopCampaign();
   const stopping = useIsStoppingCampaign(campaign?.id ?? "");
@@ -170,8 +175,20 @@ export default function CampaignOverviewPage() {
         </div>
       )}
 
-      {/* Outreach stats (for non-press-kit campaigns) */}
-      {!isPressKit && stats && (
+      {/* Discovery results */}
+      {isOutletDiscovery && campaign && (
+        <div className="mb-6">
+          <DiscoveredOutlets campaignId={campaign.id} />
+        </div>
+      )}
+      {isJournalistDiscovery && campaign && (
+        <div className="mb-6">
+          <DiscoveredJournalists campaignId={campaign.id} />
+        </div>
+      )}
+
+      {/* Outreach stats (for non-press-kit, non-discovery campaigns) */}
+      {!isPressKit && !isDiscovery && stats && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
           <FunnelMetrics
             leadsServed={stats.leadsServed || 0}
