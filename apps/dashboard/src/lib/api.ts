@@ -993,6 +993,12 @@ export async function getMediaKit(id: string, token?: string): Promise<MediaKit>
   return apiCall<MediaKit>(`/press-kits/media-kits/${id}`, { token });
 }
 
+/** List media kits associated with a campaign */
+export async function listMediaKitsByCampaign(campaignId: string, token?: string): Promise<MediaKit[]> {
+  const res = await apiCall<{ mediaKits: MediaKit[] }>(`/press-kits/media-kits?campaign_id=${campaignId}`, { token });
+  return res.mediaKits;
+}
+
 /** Initiate media kit generation (org via x-org-id, brand via x-brand-id header) */
 export async function editMediaKit(
   params: { instruction: string; brandId?: string },

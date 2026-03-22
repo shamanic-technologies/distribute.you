@@ -1,10 +1,12 @@
 "use client";
 
+import { useParams } from "next/navigation";
 import { useCampaign } from "@/lib/campaign-context";
 import { useStopCampaign, useIsStoppingCampaign } from "@/lib/use-stop-campaign";
 import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
+import { PressKitResults } from "@/components/campaign/press-kit-results";
 
 function formatTotalCost(cents: string | null | undefined): string | null {
   if (!cents) return null;
@@ -16,6 +18,10 @@ function formatTotalCost(cents: string | null | undefined): string | null {
 }
 
 export default function CampaignOverviewPage() {
+  const params = useParams();
+  const sectionKey = params.sectionKey as string;
+  const orgId = params.orgId as string;
+  const isPressKit = sectionKey.startsWith("press-kit");
   const { campaign, stats, leads, emails, loading } = useCampaign();
   const stopMutation = useStopCampaign();
   const stopping = useIsStoppingCampaign(campaign?.id ?? "");
@@ -157,8 +163,15 @@ export default function CampaignOverviewPage() {
         )}
       </div>
 
-      {/* Stats */}
-      {stats && (
+      {/* Press kit results (for press-kit campaigns) */}
+      {isPressKit && campaign && (
+        <div className="mb-6">
+          <PressKitResults campaignId={campaign.id} orgId={orgId} />
+        </div>
+      )}
+
+      {/* Outreach stats (for non-press-kit campaigns) */}
+      {!isPressKit && stats && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
           <FunnelMetrics
             leadsServed={stats.leadsServed || 0}
