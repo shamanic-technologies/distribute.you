@@ -77,13 +77,11 @@ describe("Press Kit page", () => {
 
   it("should use correct media kit statuses", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    // Statuses appear as Record keys (unquoted) and in comparisons
     expect(content).toContain("drafted");
     expect(content).toContain("generating");
     expect(content).toContain("validated");
     expect(content).toContain("denied");
     expect(content).toContain("archived");
-    // Should reference the MediaKitStatus type
     expect(content).toContain("MediaKitStatus");
   });
 
@@ -92,10 +90,10 @@ describe("Press Kit page", () => {
     expect(content).not.toContain("crypto.randomUUID()");
   });
 
-  it("should use orgId when creating a new media kit", () => {
+  it("should call editMediaKit with instruction only (org from header)", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    // When no existing kit, should pass orgId instead of a random mediaKitId
-    expect(content).toContain("orgId,");
+    // Should not pass orgId or mediaKitId in editMediaKit call body
+    expect(content).not.toContain("mediaKitId:");
   });
 });
 
@@ -114,52 +112,51 @@ describe("Press Kit API functions", () => {
     expect(content).toContain("org_id=${orgId}");
   });
 
-  it("should export editMediaKit function", () => {
+  it("should use RESTful media-kits endpoints", () => {
     const content = fs.readFileSync(apiPath, "utf-8");
-    expect(content).toContain("export async function editMediaKit");
-    expect(content).toContain("/press-kits/edit-media-kit");
+    // POST /press-kits/media-kits (create/edit)
+    expect(content).toContain('"/press-kits/media-kits"');
+    // GET /press-kits/media-kits (list)
+    expect(content).toContain("/press-kits/media-kits?org_id=");
+    // PATCH .../media-kits/:id/mdx
+    expect(content).toContain("/press-kits/media-kits/${mediaKitId}/mdx");
+    // PATCH .../media-kits/:id/status
+    expect(content).toContain("/press-kits/media-kits/${mediaKitId}/status");
+    // POST .../media-kits/:id/validate
+    expect(content).toContain("/press-kits/media-kits/${mediaKitId}/validate");
+    // POST .../media-kits/:id/cancel
+    expect(content).toContain("/press-kits/media-kits/${mediaKitId}/cancel");
   });
 
-  it("should accept orgId as alternative to mediaKitId in editMediaKit", () => {
+  it("should use PATCH method for mdx and status updates", () => {
     const content = fs.readFileSync(apiPath, "utf-8");
-    expect(content).toContain("orgId?: string");
-    expect(content).toContain("mediaKitId?: string");
+    // updateMediaKitMdx and updateMediaKitStatus should use PATCH
+    const mdxSection = content.slice(content.indexOf("updateMediaKitMdx"), content.indexOf("updateMediaKitStatus"));
+    expect(mdxSection).toContain('method: "PATCH"');
+    const statusSection = content.slice(content.indexOf("updateMediaKitStatus"), content.indexOf("validateMediaKit"));
+    expect(statusSection).toContain('method: "PATCH"');
   });
 
-  it("should export getShareToken function", () => {
+  it("should not use old endpoint paths", () => {
+    const content = fs.readFileSync(apiPath, "utf-8");
+    expect(content).not.toContain("/press-kits/edit-media-kit");
+    expect(content).not.toContain("/press-kits/update-mdx");
+    expect(content).not.toContain("/press-kits/update-status");
+    expect(content).not.toContain("/press-kits/validate");
+    expect(content).not.toContain("/press-kits/cancel-draft");
+    expect(content).not.toContain("/press-kits/organizations/share-token/");
+  });
+
+  it("should use new share-token path format", () => {
     const content = fs.readFileSync(apiPath, "utf-8");
     expect(content).toContain("export async function getShareToken");
-    expect(content).toContain("/press-kits/organizations/share-token/");
+    expect(content).toContain("/press-kits/organizations/${orgId}/share-token");
   });
 
   it("should export upsertPressKitOrg function", () => {
     const content = fs.readFileSync(apiPath, "utf-8");
     expect(content).toContain("export async function upsertPressKitOrg");
     expect(content).toContain("/press-kits/organizations");
-  });
-
-  it("should export updateMediaKitMdx function", () => {
-    const content = fs.readFileSync(apiPath, "utf-8");
-    expect(content).toContain("export async function updateMediaKitMdx");
-    expect(content).toContain("/press-kits/update-mdx");
-  });
-
-  it("should export updateMediaKitStatus function", () => {
-    const content = fs.readFileSync(apiPath, "utf-8");
-    expect(content).toContain("export async function updateMediaKitStatus");
-    expect(content).toContain("/press-kits/update-status");
-  });
-
-  it("should export validateMediaKit function", () => {
-    const content = fs.readFileSync(apiPath, "utf-8");
-    expect(content).toContain("export async function validateMediaKit");
-    expect(content).toContain("/press-kits/validate");
-  });
-
-  it("should export cancelDraftMediaKit function", () => {
-    const content = fs.readFileSync(apiPath, "utf-8");
-    expect(content).toContain("export async function cancelDraftMediaKit");
-    expect(content).toContain("/press-kits/cancel-draft");
   });
 
   it("should export checkPressKitOrgsExist function", () => {
