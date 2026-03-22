@@ -59,15 +59,16 @@ export default function PressKitPage() {
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [selectedKit, setSelectedKit] = useState<MediaKit | null>(null);
   const [loadingKit, setLoadingKit] = useState(false);
+  const [orgReady, setOrgReady] = useState(false);
 
-  // Ensure org exists in press-kits-service on mount
+  // Ensure org exists in press-kits-service before querying
   const orgUpserted = useRef(false);
   useEffect(() => {
     if (orgUpserted.current) return;
     orgUpserted.current = true;
-    upsertPressKitOrg(orgId).catch(() => {
-      // Silently ignore — org may already exist
-    });
+    upsertPressKitOrg(orgId)
+      .then(() => setOrgReady(true))
+      .catch(() => setOrgReady(true)); // proceed anyway — org may already exist
   }, [orgId]);
 
   const { data: brandData } = useAuthQuery(
@@ -79,13 +80,14 @@ export default function PressKitPage() {
   const { data: mediaKits, isLoading } = useAuthQuery(
     ["mediaKits", orgId],
     () => listMediaKits(orgId),
-    pollOptions,
+    { ...pollOptions, enabled: orgReady },
   );
   const kits = mediaKits ?? [];
 
   const { data: shareTokenData } = useAuthQuery(
     ["shareToken", orgId],
     () => getShareToken(orgId),
+    { enabled: orgReady },
   );
   const shareToken = shareTokenData?.shareToken ?? null;
 
@@ -330,9 +332,9 @@ export default function PressKitPage() {
                 <div className="h-4 bg-gray-200 rounded w-5/6" />
                 <div className="h-4 bg-gray-200 rounded w-2/3" />
               </div>
-            ) : selectedKit.mdx ? (
+            ) : selectedKit.mdxPageContent ? (
               <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap text-sm leading-relaxed">
-                {selectedKit.mdx}
+                {selectedKit.mdxPageContent}
               </div>
             ) : selectedKit.status === "generating" ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
