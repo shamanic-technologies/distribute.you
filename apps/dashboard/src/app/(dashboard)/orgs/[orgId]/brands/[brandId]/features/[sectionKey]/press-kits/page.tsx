@@ -105,7 +105,7 @@ export default function PressKitPage() {
         });
       } else {
         await editMediaKit({
-          mediaKitId: crypto.randomUUID(),
+          orgId,
           instruction: "Generate a comprehensive press kit based on the brand information.",
           organizationUrl: brand?.brandUrl,
         });

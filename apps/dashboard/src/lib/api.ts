@@ -994,7 +994,7 @@ export async function getMediaKit(id: string, token?: string): Promise<MediaKit>
 
 /** Initiate media kit generation */
 export async function editMediaKit(
-  params: { mediaKitId: string; instruction: string; organizationUrl?: string },
+  params: { mediaKitId?: string; orgId?: string; instruction: string; organizationUrl?: string },
   token?: string
 ): Promise<{ mediaKitId: string }> {
   return apiCall<{ mediaKitId: string }>("/press-kits/edit-media-kit", {

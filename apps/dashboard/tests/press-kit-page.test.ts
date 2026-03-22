@@ -5,7 +5,7 @@ import * as path from "path";
 describe("Press Kit page", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[sectionKey]/press-kit/page.tsx"
+    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[sectionKey]/press-kits/page.tsx"
   );
 
   it("should exist", () => {
@@ -86,6 +86,17 @@ describe("Press Kit page", () => {
     // Should reference the MediaKitStatus type
     expect(content).toContain("MediaKitStatus");
   });
+
+  it("should not generate random UUIDs for new media kits", () => {
+    const content = fs.readFileSync(pagePath, "utf-8");
+    expect(content).not.toContain("crypto.randomUUID()");
+  });
+
+  it("should use orgId when creating a new media kit", () => {
+    const content = fs.readFileSync(pagePath, "utf-8");
+    // When no existing kit, should pass orgId instead of a random mediaKitId
+    expect(content).toContain("orgId,");
+  });
 });
 
 describe("Press Kit API functions", () => {
@@ -107,6 +118,12 @@ describe("Press Kit API functions", () => {
     const content = fs.readFileSync(apiPath, "utf-8");
     expect(content).toContain("export async function editMediaKit");
     expect(content).toContain("/press-kits/edit-media-kit");
+  });
+
+  it("should accept orgId as alternative to mediaKitId in editMediaKit", () => {
+    const content = fs.readFileSync(apiPath, "utf-8");
+    expect(content).toContain("orgId?: string");
+    expect(content).toContain("mediaKitId?: string");
   });
 
   it("should export getShareToken function", () => {
@@ -155,15 +172,15 @@ describe("Press Kit API functions", () => {
 describe("Sidebar includes Press Kit for journalist features", () => {
   const sidebarPath = path.join(__dirname, "../src/components/context-sidebar.tsx");
 
-  it("should conditionally show Press Kit item for journalist features", () => {
+  it("should conditionally show Press Kits item for press-kit features", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    expect(content).toContain('"press-kit"');
-    expect(content).toContain('"Press Kit"');
-    expect(content).toContain("isJournalist");
+    expect(content).toContain('"press-kits"');
+    expect(content).toContain('"Press Kits"');
+    expect(content).toContain("isPressKit");
   });
 
-  it("should only show Press Kit for sections starting with 'journalists'", () => {
+  it("should only show Press Kits for sections starting with 'press-kit'", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    expect(content).toContain('sectionKey.startsWith("journalists")');
+    expect(content).toContain('sectionKey.startsWith("press-kit")');
   });
 });
