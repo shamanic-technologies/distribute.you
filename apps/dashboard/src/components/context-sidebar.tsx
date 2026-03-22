@@ -342,14 +342,9 @@ function FeatureLevelSidebar({ orgId, brandId, sectionKey, pathname }: {
   const wfDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === sectionKey);
   const title = wfDef?.label ?? sectionKey;
 
-  const isPressKit = sectionKey.startsWith("press-kit");
-
   const items: SidebarItem[] = [
     { id: "campaigns", label: "Campaigns", href: basePath, icon: <EnvelopeIcon /> },
     { id: "create", label: "Create Campaign", href: `${basePath}/campaigns/new`, icon: <PlusIcon /> },
-    ...(isPressKit
-      ? [{ id: "press-kits", label: "Press Kits", href: `${basePath}/press-kits`, icon: <DocumentIcon /> }]
-      : []),
     { id: "workflows", label: "Workflows", href: `${basePath}/workflows`, icon: <WorkflowIcon /> },
   ];
 
