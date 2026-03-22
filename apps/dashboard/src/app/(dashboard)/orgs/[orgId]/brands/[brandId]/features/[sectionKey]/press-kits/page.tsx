@@ -98,7 +98,7 @@ export default function PressKitPage() {
     try {
       await editMediaKit({
         instruction: "Generate a comprehensive press kit based on the brand information.",
-        organizationUrl: brand?.brandUrl,
+        brandId,
       });
       await queryClient.invalidateQueries({ queryKey: ["mediaKits", orgId] });
     } catch (err) {

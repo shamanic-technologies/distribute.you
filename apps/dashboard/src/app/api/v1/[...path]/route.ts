@@ -43,6 +43,10 @@ async function proxyRequest(
       "x-external-user-id": clerkUserId,
     };
 
+    // Forward optional identity headers from client
+    const brandId = req.headers.get("x-brand-id");
+    if (brandId) headers["x-brand-id"] = brandId;
+
     const user = await currentUser();
     if (user) {
       const email = user.emailAddresses?.[0]?.emailAddress;

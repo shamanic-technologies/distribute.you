@@ -4,6 +4,7 @@ interface ApiOptions {
   token?: string;
   method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
   body?: Record<string, unknown>;
+  headers?: Record<string, string>;
 }
 
 /**
@@ -23,9 +24,9 @@ export class ApiError extends Error {
 }
 
 async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
-  const { token, method = "GET", body } = options ?? {};
+  const { token, method = "GET", body, headers: extraHeaders } = options ?? {};
 
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers: Record<string, string> = { "Content-Type": "application/json", ...extraHeaders };
   let url: string;
 
   if (token) {
@@ -992,15 +993,17 @@ export async function getMediaKit(id: string, token?: string): Promise<MediaKit>
   return apiCall<MediaKit>(`/press-kits/media-kits/${id}`, { token });
 }
 
-/** Initiate media kit generation (org identified via x-org-id header) */
+/** Initiate media kit generation (org via x-org-id, brand via x-brand-id header) */
 export async function editMediaKit(
-  params: { instruction: string; organizationUrl?: string },
+  params: { instruction: string; brandId?: string },
   token?: string
 ): Promise<{ mediaKitId: string }> {
+  const { instruction, brandId } = params;
   return apiCall<{ mediaKitId: string }>("/press-kits/media-kits", {
     token,
     method: "POST",
-    body: params as unknown as Record<string, unknown>,
+    body: { instruction },
+    ...(brandId ? { headers: { "x-brand-id": brandId } } : {}),
   });
 }
 

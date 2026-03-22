@@ -90,10 +90,11 @@ describe("Press Kit page", () => {
     expect(content).not.toContain("crypto.randomUUID()");
   });
 
-  it("should call editMediaKit with instruction only (org from header)", () => {
+  it("should call editMediaKit with instruction and brandId (no organizationUrl)", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    // Should not pass orgId or mediaKitId in editMediaKit call body
     expect(content).not.toContain("mediaKitId:");
+    expect(content).not.toContain("organizationUrl");
+    expect(content).toContain("brandId,");
   });
 });
 
@@ -163,6 +164,33 @@ describe("Press Kit API functions", () => {
     const content = fs.readFileSync(apiPath, "utf-8");
     expect(content).toContain("export async function checkPressKitOrgsExist");
     expect(content).toContain("/press-kits/organizations/exists");
+  });
+
+  it("should not send organizationUrl in editMediaKit body", () => {
+    const content = fs.readFileSync(apiPath, "utf-8");
+    const editSection = content.slice(content.indexOf("export async function editMediaKit"), content.indexOf("export async function updateMediaKitMdx"));
+    expect(editSection).not.toContain("organizationUrl");
+  });
+
+  it("should send brandId as x-brand-id header in editMediaKit", () => {
+    const content = fs.readFileSync(apiPath, "utf-8");
+    const editSection = content.slice(content.indexOf("export async function editMediaKit"), content.indexOf("export async function updateMediaKitMdx"));
+    expect(editSection).toContain("x-brand-id");
+    expect(editSection).toContain("brandId");
+  });
+
+  it("should support custom headers in apiCall", () => {
+    const content = fs.readFileSync(apiPath, "utf-8");
+    expect(content).toContain("headers?: Record<string, string>");
+  });
+});
+
+describe("API proxy", () => {
+  const proxyPath = path.join(__dirname, "../src/app/api/v1/[...path]/route.ts");
+
+  it("should forward x-brand-id header from client", () => {
+    const content = fs.readFileSync(proxyPath, "utf-8");
+    expect(content).toContain("x-brand-id");
   });
 });
 
