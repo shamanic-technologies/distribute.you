@@ -959,8 +959,12 @@ export interface MediaKit {
   id: string;
   title: string | null;
   status: MediaKitStatus;
-  mdx: string | null;
+  mdxPageContent: string | null;
   organizationId: string | null;
+  orgId: string | null;
+  brandId: string | null;
+  campaignId: string | null;
+  iconUrl: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -980,7 +984,8 @@ export async function upsertPressKitOrg(
 
 /** List media kits filtered by org_id */
 export async function listMediaKits(orgId: string, token?: string): Promise<MediaKit[]> {
-  return apiCall<MediaKit[]>(`/press-kits/media-kit?org_id=${orgId}`, { token });
+  const res = await apiCall<{ mediaKits: MediaKit[] }>(`/press-kits/media-kit?org_id=${orgId}`, { token });
+  return res.mediaKits;
 }
 
 export async function getMediaKit(id: string, token?: string): Promise<MediaKit> {
