@@ -203,9 +203,9 @@ export default function FeaturePage() {
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-gray-700">Campaigns</h2>
         {!hasData ? (
-          <div className="animate-pulse space-y-3">
+          <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-20 bg-gray-100 rounded-xl" />
+              <CampaignRowSkeleton key={i} />
             ))}
           </div>
         ) : campaigns.length === 0 ? (
@@ -224,6 +224,7 @@ export default function FeaturePage() {
         ) : (
           campaigns.map((campaign) => {
             const stats = campaignStats[campaign.id];
+            const statsReady = !isLoadingBatchStats || stats !== undefined;
             const budget = formatBudget(campaign);
             const status = campaign.status;
             const statusStyle = STATUS_STYLES[status] || "bg-gray-100 text-gray-500 border-gray-200";
@@ -247,11 +248,13 @@ export default function FeaturePage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-3">
-                    {stats?.totalCostInUsdCents && parseFloat(stats.totalCostInUsdCents) > 0 && (
+                    {!statsReady ? (
+                      <div className="h-4 w-16 bg-gray-200 rounded animate-pulse" />
+                    ) : stats?.totalCostInUsdCents && parseFloat(stats.totalCostInUsdCents) > 0 ? (
                       <span className="text-xs text-gray-400">
                         {formatCostCents(parseFloat(stats.totalCostInUsdCents))} spent
                       </span>
-                    )}
+                    ) : null}
                     {budget && (
                       <span className="text-xs font-medium text-brand-600 bg-brand-50 px-2 py-1 rounded-lg">
                         {budget}
@@ -264,14 +267,21 @@ export default function FeaturePage() {
                 </div>
                 <div className="flex items-center gap-4 text-xs text-gray-500">
                   <span>{timeAgo(campaign.createdAt)}</span>
-                  {stats && (
+                  {!statsReady ? (
+                    <>
+                      <div className="h-3 w-14 bg-gray-200 rounded animate-pulse" />
+                      <div className="h-3 w-18 bg-gray-200 rounded animate-pulse" />
+                      <div className="h-3 w-18 bg-gray-200 rounded animate-pulse" />
+                      <div className="h-3 w-14 bg-gray-200 rounded animate-pulse" />
+                    </>
+                  ) : stats ? (
                     <>
                       <span>{stats.leadsServed || 0} leads</span>
                       <span>{stats.emailsGenerated || 0} generated</span>
                       <span>{stats.emailsContacted || 0} contacted</span>
                       <span>{stats.emailsReplied || 0} replies</span>
                     </>
-                  )}
+                  ) : null}
                 </div>
               </Link>
             );
@@ -279,6 +289,30 @@ export default function FeaturePage() {
         )}
       </div>
 
+    </div>
+  );
+}
+
+function CampaignRowSkeleton() {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-4">
+      <div className="flex items-start justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <div className="h-5 w-40 bg-gray-200 rounded animate-pulse" />
+          <div className="h-5 w-16 bg-gray-100 rounded-full animate-pulse" />
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="h-4 w-16 bg-gray-200 rounded animate-pulse" />
+          <div className="h-6 w-28 bg-gray-100 rounded-lg animate-pulse" />
+        </div>
+      </div>
+      <div className="flex items-center gap-4">
+        <div className="h-3 w-12 bg-gray-100 rounded animate-pulse" />
+        <div className="h-3 w-14 bg-gray-100 rounded animate-pulse" />
+        <div className="h-3 w-18 bg-gray-100 rounded animate-pulse" />
+        <div className="h-3 w-18 bg-gray-100 rounded animate-pulse" />
+        <div className="h-3 w-14 bg-gray-100 rounded animate-pulse" />
+      </div>
     </div>
   );
 }
