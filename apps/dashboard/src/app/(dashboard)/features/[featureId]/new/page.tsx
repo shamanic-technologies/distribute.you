@@ -14,7 +14,7 @@ import {
   listBrands,
   getWorkflowKeyStatus,
   extractBrandFields,
-  fieldResultsToMap,
+  fieldResultsToStringMap,
   CAMPAIGN_OUTREACH_FIELDS,
   upsertBrand,
   stopCampaign,
@@ -351,7 +351,7 @@ export default function CreateCampaignPage() {
     // Extract fields for campaign pre-fill
     try {
       const { results } = await extractBrandFields(brandId, CAMPAIGN_OUTREACH_FIELDS);
-      setFormData(extractedFieldsToFormData(fieldResultsToMap(results), resolvedBrandUrl));
+      setFormData(extractedFieldsToFormData(fieldResultsToStringMap(results), resolvedBrandUrl));
     } catch {
       setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
     } finally {

@@ -14,7 +14,7 @@ import {
   getBrand,
   getWorkflowKeyStatus,
   extractBrandFields,
-  fieldResultsToMap,
+  fieldResultsToStringMap,
   CAMPAIGN_OUTREACH_FIELDS,
   DISCOVERY_EXTRACT_FIELDS,
   getBillingAccount,
@@ -323,7 +323,7 @@ export default function FeatureCreateCampaignPage() {
     try {
       const fields = isDiscovery ? DISCOVERY_EXTRACT_FIELDS : CAMPAIGN_OUTREACH_FIELDS;
       const { results } = await extractBrandFields(brandId, fields);
-      setFormData(extractedFieldsToFormData(fieldResultsToMap(results), resolvedBrandUrl));
+      setFormData(extractedFieldsToFormData(fieldResultsToStringMap(results), resolvedBrandUrl));
     } catch {
       setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
     } finally {

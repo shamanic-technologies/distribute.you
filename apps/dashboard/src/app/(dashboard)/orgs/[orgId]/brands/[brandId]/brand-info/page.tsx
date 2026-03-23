@@ -3,13 +3,57 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import Markdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrand, extractBrandFields, SALES_PROFILE_FIELDS, fieldResultsToMap, listBrandRuns, type ExtractFieldResult, type BrandRun, type RunCost } from "@/lib/api";
 
 const POLL_INTERVAL = 5_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
+
+/** Check if a field value has meaningful content */
+function hasContent(value: unknown): boolean {
+  if (value == null) return false;
+  if (typeof value === "string") return value.trim().length > 0;
+  if (Array.isArray(value)) return value.length > 0 && value.some(hasContent);
+  if (typeof value === "object") return Object.values(value as Record<string, unknown>).some(hasContent);
+  return true;
+}
+
+/** Render any field value as React nodes */
+function FieldValue({ value }: { value: unknown }) {
+  if (value == null) return null;
+  if (typeof value === "string") return <p className="text-gray-700 whitespace-pre-line">{value}</p>;
+  if (typeof value === "number" || typeof value === "boolean") return <p className="text-gray-700">{String(value)}</p>;
+  if (Array.isArray(value)) {
+    return (
+      <ul className="space-y-1">
+        {value.filter(hasContent).map((item, i) => (
+          <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
+            <span className="text-brand-500 mt-1">-</span>
+            {typeof item === "object" && item !== null ? <FieldValue value={item} /> : <span>{String(item)}</span>}
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  if (typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>).filter(([, v]) => hasContent(v));
+    if (entries.length === 0) return null;
+    return (
+      <div className="space-y-2">
+        {entries.map(([key, val]) => {
+          const label = key.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase());
+          return (
+            <div key={key}>
+              <h4 className="text-sm font-medium text-gray-700 mb-1">{label}</h4>
+              <FieldValue value={val} />
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+  return <p className="text-gray-700">{String(value)}</p>;
+}
 
 function timeAgo(dateStr: string): string {
   const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
@@ -51,20 +95,6 @@ function shortenUrl(url: string): string {
   }
 }
 
-const fieldMarkdownComponents = {
-  p: ({ children }: { children?: React.ReactNode }) => (
-    <p className="mb-2 last:mb-0">{children}</p>
-  ),
-  ul: ({ children }: { children?: React.ReactNode }) => (
-    <ul className="list-disc list-inside mb-2 space-y-0.5">{children}</ul>
-  ),
-  ol: ({ children }: { children?: React.ReactNode }) => (
-    <ol className="list-decimal list-inside mb-2 space-y-0.5">{children}</ol>
-  ),
-  strong: ({ children }: { children?: React.ReactNode }) => (
-    <strong className="font-semibold">{children}</strong>
-  ),
-};
 
 export default function BrandInfoPage() {
   const params = useParams();
@@ -91,7 +121,7 @@ export default function BrandInfoPage() {
   );
   const fieldResults = fieldsData?.results ?? [];
   const fieldMap = fieldResultsToMap(fieldResults);
-  const hasFields = fieldResults.length > 0 && fieldResults.some((r) => r.value);
+  const hasFields = fieldResults.length > 0 && fieldResults.some((r) => hasContent(r.value));
   const latestExtractedAt = fieldResults.length > 0
     ? fieldResults.reduce((latest, r) => r.extractedAt > latest ? r.extractedAt : latest, fieldResults[0].extractedAt)
     : null;
@@ -264,12 +294,8 @@ export default function BrandInfoPage() {
                   .replace(/([A-Z])/g, " $1")
                   .replace(/^./, (c) => c.toUpperCase());
                 return (
-                  <Section key={field.key} title={label} empty={!value}>
-                    <div className="text-gray-700">
-                      <Markdown remarkPlugins={[remarkGfm]} components={fieldMarkdownComponents}>
-                        {value}
-                      </Markdown>
-                    </div>
+                  <Section key={field.key} title={label} empty={!hasContent(value)}>
+                    <FieldValue value={value} />
                   </Section>
                 );
               })}
