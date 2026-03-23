@@ -116,6 +116,10 @@ interface CampaignFormData {
   scarcity: string;
   riskReversal: string;
   socialProof: string;
+  // Discovery-specific fields
+  industry: string;
+  targetGeo: string;
+  angles: string;
 }
 
 const EMPTY_FORM: CampaignFormData = {
@@ -127,16 +131,27 @@ const EMPTY_FORM: CampaignFormData = {
   scarcity: "",
   riskReversal: "",
   socialProof: "",
+  industry: "",
+  targetGeo: "",
+  angles: "",
 };
 
-const FORM_FIELDS: { key: keyof CampaignFormData; label: string; placeholder: string }[] = [
-  { key: "targetAudience", label: "Target Audience", placeholder: "CTOs at SaaS startups with 10-50 employees" },
-  { key: "targetOutcome", label: "Target Outcome", placeholder: "Book sales demos" },
-  { key: "valueForTarget", label: "Value for Target", placeholder: "What do they gain from responding?" },
-  { key: "urgency", label: "Urgency", placeholder: "Limited-time offer ending March 1st" },
-  { key: "scarcity", label: "Scarcity", placeholder: "Only 10 spots available" },
-  { key: "riskReversal", label: "Risk Reversal", placeholder: "Free trial, no commitment" },
-  { key: "socialProof", label: "Social Proof", placeholder: "500+ companies already onboarded" },
+type FormFieldDef = { key: keyof CampaignFormData; label: string; placeholder: string; required?: boolean };
+
+const OUTREACH_FORM_FIELDS: FormFieldDef[] = [
+  { key: "targetAudience", label: "Target Audience", placeholder: "CTOs at SaaS startups with 10-50 employees", required: true },
+  { key: "targetOutcome", label: "Target Outcome", placeholder: "Book sales demos", required: true },
+  { key: "valueForTarget", label: "Value for Target", placeholder: "What do they gain from responding?", required: true },
+  { key: "urgency", label: "Urgency", placeholder: "Limited-time offer ending March 1st", required: true },
+  { key: "scarcity", label: "Scarcity", placeholder: "Only 10 spots available", required: true },
+  { key: "riskReversal", label: "Risk Reversal", placeholder: "Free trial, no commitment", required: true },
+  { key: "socialProof", label: "Social Proof", placeholder: "500+ companies already onboarded", required: true },
+];
+
+const DISCOVERY_FORM_FIELDS: FormFieldDef[] = [
+  { key: "industry", label: "Industry", placeholder: "SaaS, AI, Fintech, Healthcare...", required: true },
+  { key: "angles", label: "PR Angles", placeholder: "Fundraising announcement, product launch, thought leadership..." },
+  { key: "targetGeo", label: "Geographic Focus", placeholder: "US, Europe, Global..." },
 ];
 
 function profileToFormData(profile: SalesProfile, brandUrl: string): CampaignFormData {
@@ -158,6 +173,9 @@ function profileToFormData(profile: SalesProfile, brandUrl: string): CampaignFor
     scarcity: profile.scarcity?.summary ?? "",
     riskReversal: riskParts.join(". ") || "",
     socialProof: socialParts.slice(0, 3).join(". ") || "",
+    industry: "",
+    targetGeo: "",
+    angles: "",
   };
 }
 
@@ -198,6 +216,8 @@ export default function FeatureCreateCampaignPage() {
 
   const featureId = sectionKey;
   const featureDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === featureId);
+  const isDiscovery = featureDef?.audienceType === "discovery";
+  const FORM_FIELDS = isDiscovery ? DISCOVERY_FORM_FIELDS : OUTREACH_FORM_FIELDS;
 
   // State
   const [mode, setMode] = useState<Mode>("autopilot");
@@ -306,6 +326,14 @@ export default function FeatureCreateCampaignPage() {
   const handleGo = useCallback(async () => {
     if (!selectedRow || !budgetAmount || !resolvedBrandUrl) return;
     setCreateError(null);
+
+    if (isDiscovery) {
+      // Discovery campaigns don't need a sales profile — show form directly
+      setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
+      setShowForm(true);
+      return;
+    }
+
     setIsLoadingProfile(true);
     try {
       // Try GET first — returns null if no profile yet
@@ -323,7 +351,7 @@ export default function FeatureCreateCampaignPage() {
       setIsLoadingProfile(false);
       setShowForm(true);
     }
-  }, [selectedRow, budgetAmount, resolvedBrandUrl, brandId]);
+  }, [selectedRow, budgetAmount, resolvedBrandUrl, brandId, isDiscovery]);
 
   const doCreateCampaign = useCallback(async () => {
     if (!selectedRow || !budgetAmount) return;
@@ -333,7 +361,8 @@ export default function FeatureCreateCampaignPage() {
       setCreateError("Missing: Brand URL");
       return;
     }
-    const missingFields = FORM_FIELDS.filter((f) => !formData[f.key].trim());
+    const requiredFields = FORM_FIELDS.filter((f) => f.required !== false);
+    const missingFields = requiredFields.filter((f) => !formData[f.key].trim());
     if (missingFields.length > 0) {
       setCreateError(`Missing: ${missingFields.map((f) => f.label).join(", ")}`);
       return;
@@ -355,18 +384,41 @@ export default function FeatureCreateCampaignPage() {
       return `${displayLabel} \u2014 ${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}.${String(now.getMilliseconds()).padStart(3, "0")}`;
     };
     try {
-      const campaignPayload = {
+      const campaignPayload: Record<string, unknown> = {
         workflowName: selectedRow.name,
-        ...formData,
+        brandUrl: formData.brandUrl,
         ...budgetParams,
       };
+
+      if (isDiscovery) {
+        // Compose targetAudience from structured discovery fields
+        const parts: string[] = [];
+        if (formData.industry.trim()) parts.push(`Industry: ${formData.industry.trim()}`);
+        if (formData.angles.trim()) parts.push(`Angles: ${formData.angles.trim()}`);
+        if (formData.targetGeo.trim()) parts.push(`Geo: ${formData.targetGeo.trim()}`);
+        campaignPayload.targetAudience = parts.join(". ");
+        campaignPayload.industry = formData.industry.trim();
+        if (formData.targetGeo.trim()) campaignPayload.targetGeo = formData.targetGeo.trim();
+        if (formData.angles.trim()) {
+          campaignPayload.angles = formData.angles.split(",").map((s: string) => s.trim()).filter(Boolean);
+        }
+      } else {
+        campaignPayload.targetAudience = formData.targetAudience;
+        campaignPayload.targetOutcome = formData.targetOutcome;
+        campaignPayload.valueForTarget = formData.valueForTarget;
+        campaignPayload.urgency = formData.urgency;
+        campaignPayload.scarcity = formData.scarcity;
+        campaignPayload.riskReversal = formData.riskReversal;
+        campaignPayload.socialProof = formData.socialProof;
+      }
+
       let result: { campaign: Campaign };
       try {
-        result = await createCampaign({ name: generateName(), ...campaignPayload });
+        result = await createCampaign({ name: generateName(), ...campaignPayload } as Parameters<typeof createCampaign>[0]);
       } catch (firstErr) {
         // Retry once with a fresh timestamp on 409 (duplicate name from race condition)
         if (firstErr instanceof ApiError && firstErr.status === 409) {
-          result = await createCampaign({ name: generateName(), ...campaignPayload });
+          result = await createCampaign({ name: generateName(), ...campaignPayload } as Parameters<typeof createCampaign>[0]);
         } else {
           throw firstErr;
         }
@@ -390,7 +442,7 @@ export default function FeatureCreateCampaignPage() {
       isCreatingRef.current = false;
       setIsCreating(false);
     }
-  }, [selectedRow, budgetAmount, budgetFrequency, formData, router, orgId, brandId, sectionKey]);
+  }, [selectedRow, budgetAmount, budgetFrequency, formData, router, orgId, brandId, sectionKey, isDiscovery]);
 
   /** Save campaign intent to sessionStorage so we can resume after Stripe checkout */
   const saveCampaignIntent = useCallback(() => {
@@ -405,10 +457,11 @@ export default function FeatureCreateCampaignPage() {
     sessionStorage.setItem("pendingCampaign", JSON.stringify({
       workflowName: selectedRow.name,
       displayLabel,
+      isDiscovery,
       ...formData,
       ...budgetParams,
     }));
-  }, [selectedRow, budgetAmount, budgetFrequency, formData]);
+  }, [selectedRow, budgetAmount, budgetFrequency, formData, isDiscovery]);
 
   /** Proactive credit check: if budget may exceed balance and no auto-reload, show the modal */
   const handleCreateCampaign = useCallback(async () => {
@@ -680,7 +733,9 @@ export default function FeatureCreateCampaignPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {FORM_FIELDS.map((field) => (
               <div key={field.key}>
-                <label className="block text-xs text-gray-500 mb-1">{field.label}</label>
+                <label className="block text-xs text-gray-500 mb-1">
+                  {field.label}{!field.required && <span className="text-gray-300 ml-1">(optional)</span>}
+                </label>
                 <input
                   type="text"
                   value={formData[field.key]}
