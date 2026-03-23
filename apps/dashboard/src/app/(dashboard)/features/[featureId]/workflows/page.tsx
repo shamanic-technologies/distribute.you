@@ -11,7 +11,7 @@ import {
 } from "@/lib/api";
 import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-panel";
 
-const POLL_INTERVAL = 30_000;
+const POLL_INTERVAL = 5_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false, placeholderData: keepPreviousData };
 
 function formatPercent(rate: number): string {

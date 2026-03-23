@@ -42,7 +42,7 @@ const METRIC_OPTIONS: MetricOption[] = [
 ];
 
 // Cost metrics: lower is better → default asc. Rate metrics: higher is better → default desc.
-const POLL_INTERVAL = 30_000;
+const POLL_INTERVAL = 5_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false, placeholderData: keepPreviousData };
 
 const COST_METRICS: Set<SortKey> = new Set(["costPerOpenCents", "costPerClickCents", "costPerReplyCents"]);
