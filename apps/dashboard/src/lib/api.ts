@@ -369,14 +369,23 @@ export interface ExtractFieldResult {
 
 /** Core sales profile fields — reproduces the old /sales-profile extraction */
 export const SALES_PROFILE_FIELDS: ExtractFieldDef[] = [
-  { key: "valueProposition", description: "Core value proposition" },
-  { key: "customerPainPoints", description: "Target pain points" },
-  { key: "callToAction", description: "Primary CTA" },
   { key: "companyOverview", description: "Company overview" },
-  { key: "competitors", description: "Known competitors" },
-  { key: "productDifferentiators", description: "Key differentiators" },
+  { key: "valueProposition", description: "Core value proposition" },
   { key: "targetAudience", description: "Target audience description" },
+  { key: "customerPainPoints", description: "Target pain points" },
   { key: "keyFeatures", description: "Key product features" },
+  { key: "productDifferentiators", description: "Key differentiators" },
+  { key: "competitors", description: "Known competitors" },
+  { key: "leadership", description: "Key leadership team members, their roles and backgrounds" },
+  { key: "funding", description: "Funding history: total raised, rounds, notable investors and backers" },
+  { key: "awardsAndRecognition", description: "Awards, recognition, and industry accolades" },
+  { key: "revenueMilestones", description: "Revenue milestones and key business metrics" },
+  { key: "socialProof", description: "Social proof: case studies, testimonials, and results" },
+  { key: "callToAction", description: "Primary CTA" },
+  { key: "urgency", description: "Urgency elements and time pressure" },
+  { key: "scarcity", description: "Scarcity and limited availability" },
+  { key: "riskReversal", description: "Risk reversal: trials, guarantees, refund policy" },
+  { key: "additionalContext", description: "Additional context and notable information" },
 ];
 
 /** Fields needed for outreach campaign pre-fill */
