@@ -11,7 +11,7 @@ import {
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, isToolUIPart, type UIMessage } from "ai";
 import { useQueryClient } from "@tanstack/react-query";
-import { dispatchPaymentRequired } from "@/lib/billing-guard";
+import { useBillingGuard } from "@/lib/billing-guard";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -635,6 +635,7 @@ export function WorkflowChat({
   workflowContext,
 }: WorkflowChatProps) {
   const queryClient = useQueryClient();
+  const { showPaymentRequired } = useBillingGuard();
   const sessionIdRef = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -652,16 +653,21 @@ export function WorkflowChat({
       const response = await globalThis.fetch(input, init);
       if (response.status === 402) {
         const body = await response.json().catch(() => ({}));
-        dispatchPaymentRequired({
-          balance_cents: body.balance_cents,
-          required_cents: body.required_cents,
-          error: body.error,
+        // Parse nested error body if api-service wrapped it as { error: "<json string>" }
+        let billing = body;
+        if (typeof body.error === "string" && body.balance_cents === undefined) {
+          try { billing = JSON.parse(body.error); } catch { /* use body as-is */ }
+        }
+        showPaymentRequired({
+          balance_cents: billing.balance_cents,
+          required_cents: billing.required_cents,
+          error: typeof billing.error === "string" ? billing.error : "Insufficient credits",
         });
-        throw new Error(body.error || "Insufficient credits");
+        throw new Error(billing.error || "Insufficient credits");
       }
       return response;
     },
-    [],
+    [showPaymentRequired],
   );
 
   // Transport: transforms useChat request → our API format
