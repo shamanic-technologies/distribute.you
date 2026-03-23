@@ -101,19 +101,19 @@ importers:
         version: 3.1.1
       '@mdx-js/react':
         specifier: ^3.0.0
-        version: 3.1.1(@types/react@18.3.27)(react@18.3.1)
+        version: 3.1.1(@types/react@19.2.14)(react@19.2.4)
       '@next/mdx':
         specifier: ^15.0.0
-        version: 15.5.11(@mdx-js/loader@3.1.1)(@mdx-js/react@3.1.1(@types/react@18.3.27)(react@18.3.1))
+        version: 15.5.11(@mdx-js/loader@3.1.1)(@mdx-js/react@3.1.1(@types/react@19.2.14)(react@19.2.4))
       next:
         specifier: ^15.0.0
-        version: 15.5.11(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 15.5.11(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       react:
-        specifier: ^18.2.0
-        version: 18.3.1
+        specifier: ^19.2.4
+        version: 19.2.4
       react-dom:
-        specifier: ^18.2.0
-        version: 18.3.1(react@18.3.1)
+        specifier: ^19.2.4
+        version: 19.2.4(react@19.2.4)
     devDependencies:
       '@tailwindcss/typography':
         specifier: ^0.5.0
@@ -125,11 +125,11 @@ importers:
         specifier: ^20.0.0
         version: 20.19.30
       '@types/react':
-        specifier: ^18.2.0
-        version: 18.3.27
+        specifier: ^19.2.14
+        version: 19.2.14
       '@types/react-dom':
-        specifier: ^18.2.0
-        version: 18.3.7(@types/react@18.3.27)
+        specifier: ^19.2.0
+        version: 19.2.3(@types/react@19.2.14)
       autoprefixer:
         specifier: ^10.4.0
         version: 10.4.23(postcss@8.5.6)
@@ -3957,11 +3957,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@mdx-js/react@3.1.1(@types/react@18.3.27)(react@18.3.1)':
+  '@mdx-js/react@3.1.1(@types/react@19.2.14)(react@19.2.4)':
     dependencies:
       '@types/mdx': 2.0.13
-      '@types/react': 18.3.27
-      react: 18.3.1
+      '@types/react': 19.2.14
+      react: 19.2.4
 
   '@mermaid-js/parser@1.0.1':
     dependencies:
@@ -3969,12 +3969,12 @@ snapshots:
 
   '@next/env@15.5.11': {}
 
-  '@next/mdx@15.5.11(@mdx-js/loader@3.1.1)(@mdx-js/react@3.1.1(@types/react@18.3.27)(react@18.3.1))':
+  '@next/mdx@15.5.11(@mdx-js/loader@3.1.1)(@mdx-js/react@3.1.1(@types/react@19.2.14)(react@19.2.4))':
     dependencies:
       source-map: 0.7.6
     optionalDependencies:
       '@mdx-js/loader': 3.1.1
-      '@mdx-js/react': 3.1.1(@types/react@18.3.27)(react@18.3.1)
+      '@mdx-js/react': 3.1.1(@types/react@19.2.14)(react@19.2.4)
 
   '@next/swc-darwin-arm64@15.5.7':
     optional: true
