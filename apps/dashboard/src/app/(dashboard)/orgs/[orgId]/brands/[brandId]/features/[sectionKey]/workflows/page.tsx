@@ -12,7 +12,7 @@ import {
 import { WORKFLOW_DEFINITIONS } from "@distribute/content";
 import { PlusIcon } from "@heroicons/react/20/solid";
 
-const POLL_INTERVAL = 30_000;
+const POLL_INTERVAL = 5_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false, placeholderData: keepPreviousData };
 
 type SortKey = "openRate" | "clickRate" | "replyRate" | "costPerOpenCents" | "costPerClickCents" | "costPerReplyCents";

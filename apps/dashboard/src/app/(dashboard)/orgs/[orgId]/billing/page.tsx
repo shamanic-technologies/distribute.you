@@ -12,7 +12,7 @@ import {
   type BillingTransaction,
 } from "@/lib/api";
 
-const POLL_INTERVAL = 10_000;
+const POLL_INTERVAL = 5_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
 
 const TOPUP_AMOUNTS = [1000, 2500, 5000, 10000]; // cents

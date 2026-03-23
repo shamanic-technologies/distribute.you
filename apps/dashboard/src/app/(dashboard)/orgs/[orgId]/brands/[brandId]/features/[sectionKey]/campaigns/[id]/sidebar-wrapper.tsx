@@ -29,13 +29,13 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, sectionKey }: P
   const { data: outletsData } = useAuthQuery(
     ["campaignOutlets", campaignId],
     () => listCampaignOutlets(campaignId),
-    { enabled: isOutletDiscovery, refetchInterval: 10_000, refetchIntervalInBackground: false },
+    { enabled: isOutletDiscovery, refetchInterval: 5_000, refetchIntervalInBackground: false },
   );
 
   const { data: journalistsData } = useAuthQuery(
     ["campaignJournalists", campaignId],
     () => listCampaignJournalists(campaignId),
-    { enabled: isJournalistDiscovery, refetchInterval: 10_000, refetchIntervalInBackground: false },
+    { enabled: isJournalistDiscovery, refetchInterval: 5_000, refetchIntervalInBackground: false },
   );
 
   const workflowId = useMemo(() => {

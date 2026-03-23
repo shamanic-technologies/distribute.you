@@ -3,7 +3,7 @@
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { listCampaignOutlets, type DiscoveredOutlet } from "@/lib/api";
 
-const POLL_INTERVAL = 10_000;
+const POLL_INTERVAL = 5_000;
 
 function relevanceColor(score: number): string {
   if (score >= 70) return "bg-green-100 text-green-700 border-green-200";

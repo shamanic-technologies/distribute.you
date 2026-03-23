@@ -3,7 +3,7 @@
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { listCampaignJournalists, type DiscoveredJournalist } from "@/lib/api";
 
-const POLL_INTERVAL = 10_000;
+const POLL_INTERVAL = 5_000;
 
 interface DiscoveredJournalistsProps {
   campaignId: string;
