@@ -89,10 +89,14 @@ export async function POST(req: NextRequest) {
 
   if (!backendRes.ok) {
     const errText = await backendRes.text().catch(() => "Unknown error");
-    return NextResponse.json(
-      { error: errText },
-      { status: backendRes.status },
-    );
+    // Try to parse as JSON to forward structured error info (e.g. 402 billing fields)
+    let errBody: Record<string, unknown>;
+    try {
+      errBody = JSON.parse(errText);
+    } catch {
+      errBody = { error: errText };
+    }
+    return NextResponse.json(errBody, { status: backendRes.status });
   }
 
   if (!backendRes.body) {
