@@ -22,10 +22,16 @@
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
 
   --animate-shimmer: shimmer 1.5s ease-in-out infinite;
+  --animate-slide-in-right: slide-in-right 0.2s ease-out;
 
   @keyframes shimmer {
     0% { background-position: -200% 0; }
     100% { background-position: 200% 0; }
+  }
+
+  @keyframes slide-in-right {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
   }
 }
 

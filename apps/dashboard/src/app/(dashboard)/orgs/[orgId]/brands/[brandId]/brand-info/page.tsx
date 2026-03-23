@@ -28,6 +28,27 @@ function formatCost(cents: string | null | undefined): string | null {
   return `$${usd.toFixed(2)}`;
 }
 
+function formatDuration(startedAt: string, completedAt: string | null): string | null {
+  if (!completedAt) return null;
+  const ms = new Date(completedAt).getTime() - new Date(startedAt).getTime();
+  if (ms < 1000) return "<1s";
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+}
+
+function shortenUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    const path = u.pathname === "/" ? "" : u.pathname;
+    return u.hostname + path;
+  } catch {
+    return url;
+  }
+}
+
 export default function BrandInfoPage() {
   const params = useParams();
   const brandId = params.brandId as string;
@@ -35,6 +56,7 @@ export default function BrandInfoPage() {
   const [activeTab, setActiveTab] = useState<"current" | "history">("current");
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
+  const [selectedRun, setSelectedRun] = useState<BrandRun | null>(null);
   const queryClient = useQueryClient();
 
   const { data: brandData, isLoading: brandLoading } = useAuthQuery(
@@ -65,6 +87,13 @@ export default function BrandInfoPage() {
     const cents = parseFloat(run.totalCostInUsdCents ?? "0");
     return sum + (isNaN(cents) ? 0 : cents);
   }, 0) / 100;
+
+  // Find the latest completed sales-profile-extraction run to attach scrapedUrls
+  const latestExtractionRunId = runs.find(
+    (r) => r.taskName === "sales-profile-extraction" && r.status === "completed"
+  )?.id ?? null;
+
+  const scrapedUrls = profile?.scrapedUrls ?? [];
 
   const handleGenerate = async () => {
     if (!brand || generating) return;
@@ -426,54 +455,202 @@ export default function BrandInfoPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {runs.map((run) => (
-                <div
-                  key={run.id}
-                  className="bg-white rounded-lg border border-gray-200 p-4"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span
-                        className={`w-2 h-2 rounded-full ${
-                          run.status === "completed"
-                            ? "bg-green-500"
-                            : run.status === "failed"
-                            ? "bg-red-500"
-                            : "bg-yellow-500"
-                        }`}
-                      />
-                      <div>
-                        <p className="text-sm font-medium text-gray-800">
-                          {run.taskName === "sales-profile-extraction" ? "Sales Profile Extraction" :
-                           run.taskName === "icp-extraction" ? "ICP Extraction" :
-                           run.taskName}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {timeAgo(run.startedAt)}
-                          {run.status !== "completed" && (
-                            <span className="ml-2 text-gray-400">({run.status})</span>
+              {runs.map((run) => {
+                const isLatestExtraction = run.id === latestExtractionRunId;
+                const runScrapedUrls = isLatestExtraction ? scrapedUrls : [];
+                return (
+                  <button
+                    key={run.id}
+                    type="button"
+                    onClick={() => setSelectedRun(run)}
+                    className="w-full text-left bg-white rounded-lg border border-gray-200 p-4 hover:border-brand-300 hover:shadow-sm transition cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span
+                          className={`w-2 h-2 rounded-full shrink-0 ${
+                            run.status === "completed"
+                              ? "bg-green-500"
+                              : run.status === "failed"
+                              ? "bg-red-500"
+                              : "bg-yellow-500"
+                          }`}
+                        />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-800">
+                            {run.taskName === "sales-profile-extraction" ? "Sales Profile Extraction" :
+                             run.taskName === "icp-extraction" ? "ICP Extraction" :
+                             run.taskName}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {timeAgo(run.startedAt)}
+                            {run.status !== "completed" && (
+                              <span className="ml-2 text-gray-400">({run.status})</span>
+                            )}
+                          </p>
+                          {runScrapedUrls.length > 0 && (
+                            <p className="text-xs text-gray-400 mt-0.5 truncate">
+                              {runScrapedUrls.length} page{runScrapedUrls.length !== 1 ? "s" : ""} scraped: {runScrapedUrls.map(shortenUrl).join(", ")}
+                            </p>
                           )}
-                        </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0 ml-3">
+                        {formatCost(run.totalCostInUsdCents) && (
+                          <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">
+                            {formatCost(run.totalCostInUsdCents)}
+                          </span>
+                        )}
+                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
                       </div>
                     </div>
-                    {formatCost(run.totalCostInUsdCents) && (
-                      <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">
-                        {formatCost(run.totalCostInUsdCents)}
-                      </span>
+                    {run.status === "failed" && run.errorSummary && (
+                      <div className="mt-2 bg-red-50 border border-red-100 rounded-md p-3">
+                        <p className="text-sm text-red-700">{run.errorSummary.rootCause}</p>
+                        <p className="text-xs text-red-500 mt-1">
+                          Step: <span className="font-mono">{run.errorSummary.failedStep}</span>
+                        </p>
+                      </div>
                     )}
-                  </div>
-                  {run.status === "failed" && run.errorSummary && (
-                    <div className="mt-2 bg-red-50 border border-red-100 rounded-md p-3">
-                      <p className="text-sm text-red-700">{run.errorSummary.rootCause}</p>
-                      <p className="text-xs text-red-500 mt-1">
-                        Step: <span className="font-mono">{run.errorSummary.failedStep}</span>
-                      </p>
-                    </div>
-                  )}
-                </div>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           )}
+        </>
+      )}
+
+      {/* Run Detail Panel */}
+      {selectedRun && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/20 z-40"
+            onClick={() => setSelectedRun(null)}
+          />
+          <div className="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-xl z-50 overflow-y-auto border-l border-gray-200 animate-slide-in-right">
+            <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">Run Details</h2>
+              <button
+                onClick={() => setSelectedRun(null)}
+                className="p-1 rounded hover:bg-gray-100 text-gray-500 transition"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-4 space-y-5">
+              {/* Status & Task */}
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span
+                    className={`w-2.5 h-2.5 rounded-full ${
+                      selectedRun.status === "completed"
+                        ? "bg-green-500"
+                        : selectedRun.status === "failed"
+                        ? "bg-red-500"
+                        : "bg-yellow-500"
+                    }`}
+                  />
+                  <span className="text-sm font-medium text-gray-800 capitalize">{selectedRun.status}</span>
+                </div>
+                <p className="text-sm text-gray-600">
+                  {selectedRun.taskName === "sales-profile-extraction" ? "Sales Profile Extraction" :
+                   selectedRun.taskName === "icp-extraction" ? "ICP Extraction" :
+                   selectedRun.taskName}
+                </p>
+              </div>
+
+              {/* Timing */}
+              <div className="space-y-2">
+                <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide">Timing</h3>
+                <div className="text-sm text-gray-700 space-y-1">
+                  <p>Started: {new Date(selectedRun.startedAt).toLocaleString()}</p>
+                  {selectedRun.completedAt && (
+                    <p>Completed: {new Date(selectedRun.completedAt).toLocaleString()}</p>
+                  )}
+                  {formatDuration(selectedRun.startedAt, selectedRun.completedAt) && (
+                    <p>Duration: {formatDuration(selectedRun.startedAt, selectedRun.completedAt)}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Cost Breakdown */}
+              {selectedRun.costs?.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide">Cost Breakdown</h3>
+                  <div className="space-y-1">
+                    {selectedRun.costs.map((cost, i) => (
+                      <div key={i} className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">{cost.costName}</span>
+                        <span className="text-gray-800 font-mono text-xs">
+                          {formatCost(cost.totalCostInUsdCents) ?? "-"}
+                        </span>
+                      </div>
+                    ))}
+                    {formatCost(selectedRun.totalCostInUsdCents) && (
+                      <div className="flex items-center justify-between text-sm pt-1 border-t border-gray-100">
+                        <span className="text-gray-700 font-medium">Total</span>
+                        <span className="text-gray-900 font-medium font-mono text-xs">
+                          {formatCost(selectedRun.totalCostInUsdCents)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Scraped URLs */}
+              {selectedRun.id === latestExtractionRunId && scrapedUrls.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                    Scraped URLs ({scrapedUrls.length})
+                  </h3>
+                  <div className="space-y-1">
+                    {scrapedUrls.map((url, i) => (
+                      <a
+                        key={i}
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block text-sm text-brand-600 hover:text-brand-700 hover:underline truncate"
+                      >
+                        {shortenUrl(url)}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Error Details */}
+              {selectedRun.status === "failed" && (
+                <div className="space-y-2">
+                  <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide">Error</h3>
+                  {selectedRun.errorSummary ? (
+                    <div className="bg-red-50 border border-red-100 rounded-md p-3">
+                      <p className="text-sm text-red-700">{selectedRun.errorSummary.rootCause}</p>
+                      <p className="text-xs text-red-500 mt-1">
+                        Step: <span className="font-mono">{selectedRun.errorSummary.failedStep}</span>
+                      </p>
+                    </div>
+                  ) : selectedRun.error ? (
+                    <p className="text-sm text-red-600">{selectedRun.error}</p>
+                  ) : (
+                    <p className="text-sm text-gray-500 italic">No error details available</p>
+                  )}
+                </div>
+              )}
+
+              {/* Run ID */}
+              <div className="space-y-1 pt-2 border-t border-gray-100">
+                <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide">Run ID</h3>
+                <p className="text-xs text-gray-400 font-mono break-all">{selectedRun.id}</p>
+              </div>
+            </div>
+          </div>
         </>
       )}
     </div>
