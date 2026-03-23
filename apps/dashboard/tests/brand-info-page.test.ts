@@ -23,6 +23,23 @@ describe("Brand info page", () => {
     });
   });
 
+  describe("Scraped URLs display", () => {
+    it("should collect unique sourceUrls from field results", () => {
+      expect(content).toContain("scrapedUrls");
+      expect(content).toContain("sourceUrls");
+    });
+
+    it("should show Scraped Pages section in run detail panel for extraction runs", () => {
+      expect(content).toContain("Scraped Pages");
+      expect(content).toContain('target="_blank"');
+      expect(content).toContain("shortenUrl(url)");
+    });
+
+    it("should have a shortenUrl helper", () => {
+      expect(content).toContain("function shortenUrl");
+    });
+  });
+
   describe("Regenerate button", () => {
     it("should show button when brand exists (Generate or Regenerate)", () => {
       expect(content).toContain("brand && (");
@@ -55,11 +72,12 @@ describe("API extractBrandFields function", () => {
     expect(content).toContain("/extract-fields");
   });
 
-  it("should have ExtractFieldResult type with per-field cached and extractedAt", () => {
+  it("should have ExtractFieldResult type with per-field cached, extractedAt, and sourceUrls", () => {
     expect(content).toContain("interface ExtractFieldResult");
     expect(content).toContain("cached: boolean");
     expect(content).toContain("extractedAt: string");
     expect(content).toContain("expiresAt: string");
+    expect(content).toContain("sourceUrls: string[] | null");
   });
 
   it("should have SALES_PROFILE_FIELDS constant", () => {
