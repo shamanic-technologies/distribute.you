@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrand, extractBrandFields, SALES_PROFILE_FIELDS, fieldResultsToMap, listBrandRuns, type ExtractFieldResult, type BrandRun, type RunCost } from "@/lib/api";
 
@@ -48,6 +50,21 @@ function shortenUrl(url: string): string {
     return url;
   }
 }
+
+const fieldMarkdownComponents = {
+  p: ({ children }: { children?: React.ReactNode }) => (
+    <p className="mb-2 last:mb-0">{children}</p>
+  ),
+  ul: ({ children }: { children?: React.ReactNode }) => (
+    <ul className="list-disc list-inside mb-2 space-y-0.5">{children}</ul>
+  ),
+  ol: ({ children }: { children?: React.ReactNode }) => (
+    <ol className="list-decimal list-inside mb-2 space-y-0.5">{children}</ol>
+  ),
+  strong: ({ children }: { children?: React.ReactNode }) => (
+    <strong className="font-semibold">{children}</strong>
+  ),
+};
 
 export default function BrandInfoPage() {
   const params = useParams();
@@ -248,7 +265,11 @@ export default function BrandInfoPage() {
                   .replace(/^./, (c) => c.toUpperCase());
                 return (
                   <Section key={field.key} title={label} empty={!value}>
-                    <p className="text-gray-700 whitespace-pre-line">{value}</p>
+                    <div className="text-gray-700">
+                      <Markdown remarkPlugins={[remarkGfm]} components={fieldMarkdownComponents}>
+                        {value}
+                      </Markdown>
+                    </div>
                   </Section>
                 );
               })}
