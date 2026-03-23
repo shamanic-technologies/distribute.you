@@ -13,8 +13,9 @@ import {
   listCampaigns,
   listBrands,
   getWorkflowKeyStatus,
-  getBrandSalesProfile,
-  createBrandSalesProfile,
+  extractBrandFields,
+  fieldResultsToMap,
+  CAMPAIGN_OUTREACH_FIELDS,
   upsertBrand,
   stopCampaign,
   getBillingAccount,
@@ -22,7 +23,6 @@ import {
   type RankedWorkflowItem,
   type Campaign,
   type Brand,
-  type SalesProfile,
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
 import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-panel";
@@ -183,25 +183,16 @@ const FORM_FIELDS: { key: keyof CampaignFormData; label: string; placeholder: st
 
 // ─── Profile → form mapping ─────────────────────────────────────────────────
 
-function profileToFormData(profile: SalesProfile, brandUrl: string): CampaignFormData {
-  const socialParts: string[] = [];
-  if (profile.socialProof?.results?.length) socialParts.push(...profile.socialProof.results);
-  if (profile.socialProof?.caseStudies?.length) socialParts.push(...profile.socialProof.caseStudies);
-
-  const riskParts: string[] = [];
-  if (profile.riskReversal?.trialInfo) riskParts.push(profile.riskReversal.trialInfo);
-  if (profile.riskReversal?.guarantees?.length) riskParts.push(...profile.riskReversal.guarantees);
-  if (profile.riskReversal?.refundPolicy) riskParts.push(profile.riskReversal.refundPolicy);
-
+function extractedFieldsToFormData(fields: Record<string, string>, brandUrl: string): CampaignFormData {
   return {
     brandUrl,
-    targetAudience: profile.targetAudience ?? "",
-    targetOutcome: profile.callToAction ?? "",
-    valueForTarget: profile.valueProposition ?? "",
-    urgency: profile.urgency?.summary ?? "",
-    scarcity: profile.scarcity?.summary ?? "",
-    riskReversal: riskParts.join(". ") || "",
-    socialProof: socialParts.slice(0, 3).join(". ") || "",
+    targetAudience: fields.targetAudience ?? "",
+    targetOutcome: fields.callToAction ?? "",
+    valueForTarget: fields.valueProposition ?? "",
+    urgency: fields.urgency ?? "",
+    scarcity: fields.scarcity ?? "",
+    riskReversal: fields.riskReversal ?? "",
+    socialProof: fields.socialProof ?? "",
   };
 }
 
@@ -357,15 +348,10 @@ export default function CreateCampaignPage() {
       }
     }
 
-    // GET profile, fallback to POST extraction
+    // Extract fields for campaign pre-fill
     try {
-      const existing = await getBrandSalesProfile(brandId);
-      if (existing) {
-        setFormData(profileToFormData(existing.profile, resolvedBrandUrl));
-      } else {
-        const { profile } = await createBrandSalesProfile(brandId);
-        setFormData(profileToFormData(profile, resolvedBrandUrl));
-      }
+      const { results } = await extractBrandFields(brandId, CAMPAIGN_OUTREACH_FIELDS);
+      setFormData(extractedFieldsToFormData(fieldResultsToMap(results), resolvedBrandUrl));
     } catch {
       setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
     } finally {

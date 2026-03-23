@@ -125,9 +125,9 @@ describe("Brand-scoped create campaign page", () => {
     expect(content).not.toContain("__new__");
   });
 
-  it("should fetch brand profile using getBrandSalesProfile", () => {
+  it("should fetch brand fields using extractBrandFields", () => {
     const content = fs.readFileSync(createPath, "utf-8");
-    expect(content).toContain("getBrandSalesProfile(brandId)");
+    expect(content).toContain("extractBrandFields(brandId");
   });
 
   it("should have workflow leaderboard table", () => {

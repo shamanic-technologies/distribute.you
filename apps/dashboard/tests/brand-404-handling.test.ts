@@ -62,7 +62,7 @@ describe("Brand overview page handles missing brand", () => {
 describe("Brand info page handles missing brand", () => {
   it("should use brandLoading in skeleton guard", () => {
     expect(brandInfoContent).toMatch(/isLoading:\s*brandLoading/);
-    expect(brandInfoContent).toContain("brandLoading || profileLoading");
+    expect(brandInfoContent).toContain("brandLoading || fieldsLoading");
   });
 
   it("should show 'Brand not found' when brand is null", () => {
