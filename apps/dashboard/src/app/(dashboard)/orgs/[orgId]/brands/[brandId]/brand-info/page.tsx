@@ -157,7 +157,7 @@ export default function BrandInfoPage() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-semibold text-gray-900">Brand Info</h1>
         <div className="flex items-center gap-4">
-          {activeTab === "current" && latestExtractedAt && (
+          {latestExtractedAt && (
             <div className="text-right">
               <span className="text-xs text-gray-400 block">
                 Updated: {new Date(latestExtractedAt).toLocaleDateString()}
@@ -167,7 +167,7 @@ export default function BrandInfoPage() {
               </span>
             </div>
           )}
-          {activeTab === "current" && brand && (
+          {brand && (
             <button
               onClick={handleGenerate}
               disabled={generating}
