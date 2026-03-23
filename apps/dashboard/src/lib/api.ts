@@ -884,19 +884,22 @@ export async function generateWorkflow(
   });
 }
 
-// Create campaign
+// Create campaign (outreach or discovery)
 export async function createCampaign(
   params: {
     name: string;
     workflowName: string;
     brandUrl: string;
     targetAudience: string;
-    targetOutcome: string;
-    valueForTarget: string;
-    urgency: string;
-    scarcity: string;
-    riskReversal: string;
-    socialProof: string;
+    targetOutcome?: string;
+    valueForTarget?: string;
+    urgency?: string;
+    scarcity?: string;
+    riskReversal?: string;
+    socialProof?: string;
+    industry?: string;
+    targetGeo?: string;
+    angles?: string[];
     maxBudgetDailyUsd?: string;
     maxBudgetWeeklyUsd?: string;
     maxBudgetMonthlyUsd?: string;
