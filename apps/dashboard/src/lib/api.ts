@@ -360,7 +360,7 @@ export interface ExtractFieldDef {
 
 export interface ExtractFieldResult {
   key: string;
-  value: string;
+  value: unknown;
   cached: boolean;
   extractedAt: string;
   expiresAt: string;
@@ -406,10 +406,35 @@ export const DISCOVERY_EXTRACT_FIELDS: ExtractFieldDef[] = [
   { key: "suggestedGeo", description: "Suggested geographic focus" },
 ];
 
-/** Convert extract-fields results to a key→value map */
-export function fieldResultsToMap(results: ExtractFieldResult[]): Record<string, string> {
-  const map: Record<string, string> = {};
+/** Convert extract-fields results to a key→value map (preserves raw types) */
+export function fieldResultsToMap(results: ExtractFieldResult[]): Record<string, unknown> {
+  const map: Record<string, unknown> = {};
   for (const r of results) map[r.key] = r.value;
+  return map;
+}
+
+/** Flatten any field value to a string (for form pre-fill) */
+export function flattenFieldValue(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) return value.map((v) => flattenFieldValue(v)).filter(Boolean).join("\n");
+  if (typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>)
+      .filter(([, v]) => v != null)
+      .map(([k, v]) => {
+        const flat = flattenFieldValue(v);
+        return flat ? `${k}: ${flat}` : "";
+      })
+      .filter(Boolean)
+      .join("\n");
+  }
+  return String(value);
+}
+
+/** Convert extract-fields results to a string map (for form pre-fill) */
+export function fieldResultsToStringMap(results: ExtractFieldResult[]): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const r of results) map[r.key] = flattenFieldValue(r.value);
   return map;
 }
 
