@@ -25,8 +25,11 @@ distribute is the Stripe for Distribution. Create an account, give us your URL â
 |----------|--------------|----------|---------|
 | Sales Cold Email Outreach | Find leads, generate personalized cold emails, send & optimize. | sales | email |
 | Journalists Cold Email Outreach | Pitch journalists and media contacts for press coverage. | journalists | email |
+| Press Kit Generation | Generate and manage press kits for media outreach. | press-kit | email |
 | Webinars | Welcome emails, heat-up sequences, reminders, and post-webinar thank you emails. | webinars | email |
 | Welcome Email | Automated welcome email for new signups and contacts. | welcome | email |
+| Media Outlet Discovery | Find relevant media outlets and publications for your brand. | outlets | database |
+| Journalist Discovery | Find relevant journalists and media contacts for your brand. | journalists | database |
 
 ## Quick Start
 
