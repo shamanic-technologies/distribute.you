@@ -364,6 +364,7 @@ export interface ExtractFieldResult {
   cached: boolean;
   extractedAt: string;
   expiresAt: string;
+  sourceUrls: string[] | null;
 }
 
 /** Core sales profile fields — reproduces the old /sales-profile extraction */

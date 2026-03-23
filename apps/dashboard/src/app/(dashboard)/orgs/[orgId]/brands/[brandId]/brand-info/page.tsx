@@ -39,6 +39,16 @@ function formatDuration(startedAt: string, completedAt: string | null): string |
   return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
 }
 
+function shortenUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    const path = u.pathname === "/" ? "" : u.pathname;
+    return u.hostname + path;
+  } catch {
+    return url;
+  }
+}
+
 export default function BrandInfoPage() {
   const params = useParams();
   const brandId = params.brandId as string;
@@ -82,10 +92,10 @@ export default function BrandInfoPage() {
     return sum + (isNaN(cents) ? 0 : cents);
   }, 0) / 100;
 
-  // Find the latest completed extraction run to attach scrapedUrls
-  const latestExtractionRunId = runs.find(
-    (r) => (r.taskName === "sales-profile-extraction" || r.taskName === "field-extraction") && r.status === "completed"
-  )?.id ?? null;
+  // Collect unique scraped URLs from field results
+  const scrapedUrls = Array.from(
+    new Set(fieldResults.flatMap((r) => r.sourceUrls ?? []))
+  );
 
   const handleGenerate = async () => {
     if (!brand || generating) return;
@@ -404,6 +414,27 @@ export default function BrandInfoPage() {
                       </div>
                     )}
                   </div>
+                </div>
+              )}
+
+              {/* Scraped URLs */}
+              {(selectedRun.taskName === "sales-profile-extraction" || selectedRun.taskName === "field-extraction") && scrapedUrls.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide">Scraped Pages</h3>
+                  <ul className="space-y-1">
+                    {scrapedUrls.map((url) => (
+                      <li key={url} className="text-sm">
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-brand-600 hover:text-brand-700 hover:underline break-all"
+                        >
+                          {shortenUrl(url)}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
 
