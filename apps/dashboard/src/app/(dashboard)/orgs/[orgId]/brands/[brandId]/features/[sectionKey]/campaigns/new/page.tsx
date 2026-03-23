@@ -13,13 +13,14 @@ import {
   sendCampaignEmail,
   getBrand,
   getWorkflowKeyStatus,
-  getBrandSalesProfile,
-  createBrandSalesProfile,
+  extractBrandFields,
+  fieldResultsToMap,
+  CAMPAIGN_OUTREACH_FIELDS,
+  DISCOVERY_EXTRACT_FIELDS,
   getBillingAccount,
   ApiError,
   type Campaign,
   type RankedWorkflowItem,
-  type SalesProfile,
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
 import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-panel";
@@ -154,28 +155,19 @@ const DISCOVERY_FORM_FIELDS: FormFieldDef[] = [
   { key: "targetGeo", label: "Geographic Focus", placeholder: "US, Europe, Global..." },
 ];
 
-function profileToFormData(profile: SalesProfile, brandUrl: string): CampaignFormData {
-  const socialParts: string[] = [];
-  if (profile.socialProof?.results?.length) socialParts.push(...profile.socialProof.results);
-  if (profile.socialProof?.caseStudies?.length) socialParts.push(...profile.socialProof.caseStudies);
-
-  const riskParts: string[] = [];
-  if (profile.riskReversal?.trialInfo) riskParts.push(profile.riskReversal.trialInfo);
-  if (profile.riskReversal?.guarantees?.length) riskParts.push(...profile.riskReversal.guarantees);
-  if (profile.riskReversal?.refundPolicy) riskParts.push(profile.riskReversal.refundPolicy);
-
+function extractedFieldsToFormData(fields: Record<string, string>, brandUrl: string): CampaignFormData {
   return {
     brandUrl,
-    targetAudience: profile.targetAudience ?? "",
-    targetOutcome: profile.callToAction ?? "",
-    valueForTarget: profile.valueProposition ?? "",
-    urgency: profile.urgency?.summary ?? "",
-    scarcity: profile.scarcity?.summary ?? "",
-    riskReversal: riskParts.join(". ") || "",
-    socialProof: socialParts.slice(0, 3).join(". ") || "",
-    industry: "",
-    targetGeo: "",
-    angles: "",
+    targetAudience: fields.targetAudience ?? "",
+    targetOutcome: fields.callToAction ?? "",
+    valueForTarget: fields.valueProposition ?? "",
+    urgency: fields.urgency ?? "",
+    scarcity: fields.scarcity ?? "",
+    riskReversal: fields.riskReversal ?? "",
+    socialProof: fields.socialProof ?? "",
+    industry: fields.industry ?? "",
+    targetGeo: fields.suggestedGeo ?? "",
+    angles: fields.suggestedAngles ?? "",
   };
 }
 
@@ -327,24 +319,11 @@ export default function FeatureCreateCampaignPage() {
     if (!selectedRow || !budgetAmount || !resolvedBrandUrl) return;
     setCreateError(null);
 
-    if (isDiscovery) {
-      // Discovery campaigns don't need a sales profile — show form directly
-      setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
-      setShowForm(true);
-      return;
-    }
-
     setIsLoadingProfile(true);
     try {
-      // Try GET first — returns null if no profile yet
-      const existing = await getBrandSalesProfile(brandId);
-      if (existing) {
-        setFormData(profileToFormData(existing.profile, resolvedBrandUrl));
-      } else {
-        // No profile yet — trigger extraction via POST and wait
-        const { profile } = await createBrandSalesProfile(brandId);
-        setFormData(profileToFormData(profile, resolvedBrandUrl));
-      }
+      const fields = isDiscovery ? DISCOVERY_EXTRACT_FIELDS : CAMPAIGN_OUTREACH_FIELDS;
+      const { results } = await extractBrandFields(brandId, fields);
+      setFormData(extractedFieldsToFormData(fieldResultsToMap(results), resolvedBrandUrl));
     } catch {
       setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
     } finally {

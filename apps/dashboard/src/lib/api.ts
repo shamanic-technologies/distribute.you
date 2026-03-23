@@ -352,109 +352,66 @@ export async function getBrand(brandId: string, token?: string): Promise<{ brand
   }
 }
 
-// Brand sales profile
-export interface LeadershipMember {
-  name: string;
-  role: string;
-  bio: string | null;
-  notableBackground: string | null;
+// Brand field extraction
+export interface ExtractFieldDef {
+  key: string;
+  description: string;
 }
 
-export interface FundingRound {
-  type: string;
-  amount: string | null;
-  date: string | null;
-  notableInvestors: string[];
-}
-
-export interface FundingInfo {
-  totalRaised: string | null;
-  rounds: FundingRound[];
-  notableBackers: string[];
-}
-
-export interface Award {
-  title: string;
-  issuer: string | null;
-  year: string | null;
-  description: string | null;
-}
-
-export interface RevenueMilestone {
-  metric: string;
+export interface ExtractFieldResult {
+  key: string;
   value: string;
-  date: string | null;
-  context: string | null;
-}
-
-export type Testimonial = string | {
-  quote: string;
-  name: string | null;
-  role: string | null;
-  company: string | null;
-};
-
-export interface SalesProfile {
-  valueProposition: string | null;
-  companyOverview: string | null;
-  targetAudience: string | null;
-  customerPainPoints: string[];
-  keyFeatures: string[];
-  productDifferentiators: string[];
-  competitors: string[];
-  socialProof: {
-    caseStudies: string[];
-    testimonials: Testimonial[];
-    results: string[];
-  };
-  callToAction: string | null;
-  additionalContext: string | null;
-  leadership: LeadershipMember[];
-  funding: FundingInfo;
-  awardsAndRecognition: Award[];
-  revenueMilestones: RevenueMilestone[];
-  urgency: { elements: string[]; summary: string | null } | null;
-  scarcity: { elements: string[]; summary: string | null } | null;
-  riskReversal: { guarantees: string[]; trialInfo: string | null; refundPolicy: string | null } | null;
-  scrapedUrls: string[];
+  cached: boolean;
   extractedAt: string;
+  expiresAt: string;
 }
 
-/** GET /brands/:brandId/sales-profile — returns profile or null if none exists (404) */
-export async function getBrandSalesProfile(
-  brandId: string,
-  token?: string
-): Promise<{ profile: SalesProfile; cached: boolean; brandId: string } | null> {
-  try {
-    return await apiCall<{ profile: SalesProfile; cached: boolean; brandId: string }>(
-      `/brands/${brandId}/sales-profile`,
-      { token }
-    );
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 404) return null;
-    throw err;
-  }
+/** Core sales profile fields — reproduces the old /sales-profile extraction */
+export const SALES_PROFILE_FIELDS: ExtractFieldDef[] = [
+  { key: "valueProposition", description: "Core value proposition" },
+  { key: "customerPainPoints", description: "Target pain points" },
+  { key: "callToAction", description: "Primary CTA" },
+  { key: "companyOverview", description: "Company overview" },
+  { key: "competitors", description: "Known competitors" },
+  { key: "productDifferentiators", description: "Key differentiators" },
+  { key: "targetAudience", description: "Target audience description" },
+  { key: "keyFeatures", description: "Key product features" },
+];
+
+/** Fields needed for outreach campaign pre-fill */
+export const CAMPAIGN_OUTREACH_FIELDS: ExtractFieldDef[] = [
+  { key: "valueProposition", description: "Core value proposition" },
+  { key: "targetAudience", description: "Target audience description" },
+  { key: "callToAction", description: "Primary CTA" },
+  { key: "urgency", description: "Urgency elements and time pressure" },
+  { key: "scarcity", description: "Scarcity and limited availability" },
+  { key: "riskReversal", description: "Risk reversal: trials, guarantees, refund policy" },
+  { key: "socialProof", description: "Social proof: case studies, results, testimonials" },
+];
+
+/** Fields for discovery campaigns */
+export const DISCOVERY_EXTRACT_FIELDS: ExtractFieldDef[] = [
+  { key: "industry", description: "Brand sector" },
+  { key: "suggestedAngles", description: "Suggested PR angles" },
+  { key: "suggestedGeo", description: "Suggested geographic focus" },
+];
+
+/** Convert extract-fields results to a key→value map */
+export function fieldResultsToMap(results: ExtractFieldResult[]): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const r of results) map[r.key] = r.value;
+  return map;
 }
 
-/** POST /brands/:brandId/sales-profile — triggers AI extraction (409 if already exists) */
-export async function createBrandSalesProfile(
+/** POST /brands/:brandId/extract-fields — extract specific fields (cached 30 days per field) */
+export async function extractBrandFields(
   brandId: string,
-  token?: string
-): Promise<{ profile: SalesProfile; brandId: string }> {
-  return apiCall<{ profile: SalesProfile; brandId: string }>(
-    `/brands/${brandId}/sales-profile`,
-    { token, method: "POST" }
-  );
-}
-
-/** PUT /brands/:brandId/sales-profile — forces re-extraction */
-export async function refreshBrandSalesProfile(
-  brandId: string,
-  token?: string
-): Promise<{ profile: SalesProfile; brandId: string }> {
-  return apiCall<{ profile: SalesProfile; brandId: string }>(
-    `/brands/${brandId}/sales-profile`,
-    { token, method: "PUT" }
+  fields: ExtractFieldDef[],
+  token?: string,
+): Promise<{ results: ExtractFieldResult[] }> {
+  return apiCall<{ results: ExtractFieldResult[] }>(
+    `/brands/${brandId}/extract-fields`,
+    { token, method: "POST", body: { fields } },
   );
 }
 

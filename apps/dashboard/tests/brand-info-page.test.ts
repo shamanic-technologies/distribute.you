@@ -13,19 +13,18 @@ describe("Brand info page", () => {
     expect(content).toContain('"use client"');
   });
 
-  describe("Sales profile fetching", () => {
-    it("should use getBrandSalesProfile to fetch profile", () => {
-      expect(content).toContain("getBrandSalesProfile(brandId)");
+  describe("Field extraction fetching", () => {
+    it("should use extractBrandFields to fetch fields", () => {
+      expect(content).toContain("extractBrandFields(brandId, SALES_PROFILE_FIELDS)");
     });
 
-    it("should extract cached field from profile response", () => {
-      expect(content).toContain("profileData?.cached");
+    it("should use brandExtractedFields query key", () => {
+      expect(content).toContain('"brandExtractedFields"');
     });
   });
 
   describe("Regenerate button", () => {
     it("should show button when brand exists (Generate or Regenerate)", () => {
-      // Button shows when brand is loaded — displays "Generate" if no profile, "Regenerate" if profile exists
       expect(content).toContain("brand && (");
       expect(content).toContain('"Generate"');
     });
@@ -35,33 +34,49 @@ describe("Brand info page", () => {
       expect(content).toContain('"Regenerating..."');
     });
 
-    it("should use refreshBrandSalesProfile for regeneration", () => {
-      expect(content).toContain("refreshBrandSalesProfile");
+    it("should use extractBrandFields for regeneration", () => {
+      expect(content).toContain("extractBrandFields(brandId, SALES_PROFILE_FIELDS)");
     });
 
     it("should invalidate queries after regeneration", () => {
-      expect(content).toContain('invalidateQueries({ queryKey: ["brandSalesProfile"');
+      expect(content).toContain('invalidateQueries({ queryKey: ["brandExtractedFields"');
       expect(content).toContain('invalidateQueries({ queryKey: ["brandRuns"');
     });
   });
 });
 
-describe("API getBrandSalesProfile function", () => {
+describe("API extractBrandFields function", () => {
   const apiPath = path.resolve(__dirname, "../src/lib/api.ts");
   const content = fs.readFileSync(apiPath, "utf-8");
 
-  it("should return cached and brandId fields alongside profile", () => {
-    expect(content).toContain("cached: boolean");
-    expect(content).toContain("profile: SalesProfile; cached: boolean; brandId: string");
-  });
-
-  it("should have createBrandSalesProfile for triggering extraction", () => {
-    expect(content).toContain("export async function createBrandSalesProfile");
+  it("should have extractBrandFields function", () => {
+    expect(content).toContain("export async function extractBrandFields");
     expect(content).toContain('method: "POST"');
+    expect(content).toContain("/extract-fields");
   });
 
-  it("should have refreshBrandSalesProfile for re-extraction", () => {
-    expect(content).toContain("export async function refreshBrandSalesProfile");
-    expect(content).toContain('method: "PUT"');
+  it("should have ExtractFieldResult type with per-field cached and extractedAt", () => {
+    expect(content).toContain("interface ExtractFieldResult");
+    expect(content).toContain("cached: boolean");
+    expect(content).toContain("extractedAt: string");
+    expect(content).toContain("expiresAt: string");
+  });
+
+  it("should have SALES_PROFILE_FIELDS constant", () => {
+    expect(content).toContain("export const SALES_PROFILE_FIELDS");
+    expect(content).toContain("valueProposition");
+    expect(content).toContain("customerPainPoints");
+    expect(content).toContain("callToAction");
+  });
+
+  it("should have fieldResultsToMap helper", () => {
+    expect(content).toContain("export function fieldResultsToMap");
+  });
+
+  it("should NOT have old sales-profile functions", () => {
+    expect(content).not.toContain("export async function getBrandSalesProfile");
+    expect(content).not.toContain("export async function createBrandSalesProfile");
+    expect(content).not.toContain("export async function refreshBrandSalesProfile");
+    expect(content).not.toContain("interface SalesProfile");
   });
 });

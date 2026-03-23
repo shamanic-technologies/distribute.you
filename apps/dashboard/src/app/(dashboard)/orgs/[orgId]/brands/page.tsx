@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listBrands, upsertBrand, createBrandSalesProfile } from "@/lib/api";
+import { listBrands, upsertBrand, extractBrandFields, SALES_PROFILE_FIELDS } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
 
 const POLL_INTERVAL = 5_000;
@@ -36,7 +36,7 @@ export default function BrandsPage() {
     try {
       const { brandId: newBrandId } = await upsertBrand(url);
       // Trigger profile extraction in background (don't block navigation)
-      createBrandSalesProfile(newBrandId).catch(() => {});
+      extractBrandFields(newBrandId, SALES_PROFILE_FIELDS).catch(() => {});
       await refetch();
       router.push(`/orgs/${orgId}/brands/${newBrandId}`);
     } catch (err) {

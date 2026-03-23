@@ -13,8 +13,13 @@ describe("No dead/broken API functions", () => {
   });
 
   it("should not have createBrand with wrong params (sends {name, domain} instead of {url})", () => {
-    // createBrandSalesProfile is fine — only createBrand(name, domain) is broken
     expect(apiContent).not.toMatch(/export async function createBrand\(/);
+  });
+
+  it("should not have old sales-profile functions (migrated to extract-fields)", () => {
+    expect(apiContent).not.toContain("export async function getBrandSalesProfile");
+    expect(apiContent).not.toContain("export async function createBrandSalesProfile");
+    expect(apiContent).not.toContain("export async function refreshBrandSalesProfile");
   });
 
   it("should have upsertBrand as the correct brand creation function", () => {

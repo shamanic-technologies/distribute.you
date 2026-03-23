@@ -299,22 +299,22 @@ describe("Create campaign page", () => {
     });
   });
 
-  describe("Auto-fill from sales profile", () => {
-    it("should fetch sales profile on Go with existing brand", () => {
-      expect(content).toContain("getBrandSalesProfile");
+  describe("Auto-fill from extracted fields", () => {
+    it("should use extractBrandFields for field extraction", () => {
+      expect(content).toContain("extractBrandFields");
     });
 
-    it("should fallback to POST extraction when GET returns 404", () => {
-      expect(content).toContain("createBrandSalesProfile");
+    it("should use CAMPAIGN_OUTREACH_FIELDS for outreach campaigns", () => {
+      expect(content).toContain("CAMPAIGN_OUTREACH_FIELDS");
     });
 
-    it("should upsert brand from URL for new brands before fetching profile", () => {
+    it("should upsert brand from URL for new brands before extracting", () => {
       expect(content).toContain("upsertBrand");
       expect(content).toContain("upsertBrand(resolvedBrandUrl)");
     });
 
-    it("should have profileToFormData mapping function", () => {
-      expect(content).toContain("profileToFormData");
+    it("should have extractedFieldsToFormData mapping function", () => {
+      expect(content).toContain("extractedFieldsToFormData");
     });
 
     it("should show loading spinner while fetching profile", () => {
@@ -325,16 +325,14 @@ describe("Create campaign page", () => {
     });
 
     it("should only show form AFTER profile is loaded, not before", () => {
-      // Form should not be shown while loading — setShowForm(true) is inside the finally block
       expect(content).toContain("setShowForm(true)");
-      // The form is gated on !isLoadingProfile
       expect(content).toContain("showForm && !isLoadingProfile");
     });
 
-    it("should map profile fields to form data", () => {
-      expect(content).toContain("profile.targetAudience");
-      expect(content).toContain("profile.callToAction");
-      expect(content).toContain("profile.valueProposition");
+    it("should map extracted fields to form data", () => {
+      expect(content).toContain("fields.targetAudience");
+      expect(content).toContain("fields.callToAction");
+      expect(content).toContain("fields.valueProposition");
     });
   });
 
@@ -381,14 +379,10 @@ describe("API leaderboard function", () => {
     expect(content).toContain("brandId: string | null");
   });
 
-  it("should have createBrandSalesProfile function", () => {
-    expect(content).toContain("createBrandSalesProfile");
+  it("should have extractBrandFields function", () => {
+    expect(content).toContain("export async function extractBrandFields");
     expect(content).toContain('method: "POST"');
-  });
-
-  it("should have refreshBrandSalesProfile function", () => {
-    expect(content).toContain("refreshBrandSalesProfile");
-    expect(content).toContain('method: "PUT"');
+    expect(content).toContain("/extract-fields");
   });
 
   it("should have upsertBrand function", () => {
