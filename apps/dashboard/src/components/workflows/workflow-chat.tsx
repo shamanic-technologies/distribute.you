@@ -11,6 +11,7 @@ import {
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, isToolUIPart, type UIMessage } from "ai";
 import { useQueryClient } from "@tanstack/react-query";
+import { dispatchPaymentRequired } from "@/lib/billing-guard";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -645,11 +646,30 @@ export function WorkflowChat({
     sessionIdRef.current = loadSessionId(workflowId);
   }, [workflowId]);
 
+  // Custom fetch that intercepts 402 responses to show the credits modal
+  const billingFetch = useCallback<typeof globalThis.fetch>(
+    async (input, init) => {
+      const response = await globalThis.fetch(input, init);
+      if (response.status === 402) {
+        const body = await response.json().catch(() => ({}));
+        dispatchPaymentRequired({
+          balance_cents: body.balance_cents,
+          required_cents: body.required_cents,
+          error: body.error,
+        });
+        throw new Error(body.error || "Insufficient credits");
+      }
+      return response;
+    },
+    [],
+  );
+
   // Transport: transforms useChat request → our API format
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: "/api/v1/chat",
+        fetch: billingFetch,
         prepareSendMessagesRequest: ({ messages: msgs }) => ({
           body: {
             message:
@@ -665,7 +685,7 @@ export function WorkflowChat({
           },
         }),
       }),
-    [workflowContext],
+    [workflowContext, billingFetch],
   );
 
   const {
