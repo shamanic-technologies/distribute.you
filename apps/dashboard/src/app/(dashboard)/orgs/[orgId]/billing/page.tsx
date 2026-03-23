@@ -16,6 +16,7 @@ const POLL_INTERVAL = 10_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
 
 const TOPUP_AMOUNTS = [1000, 2500, 5000, 10000]; // cents
+const TX_PAGE_SIZE = 10;
 
 function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
@@ -54,6 +55,9 @@ export default function BillingPage() {
   const [enableAutoReload, setEnableAutoReload] = useState(true);
   const [reloadAmount, setReloadAmount] = useState("25");
   const [reloadThreshold, setReloadThreshold] = useState("5");
+
+  // Pagination state
+  const [txPage, setTxPage] = useState(0);
 
   // Portal state
   const [portalLoading, setPortalLoading] = useState(false);
@@ -213,6 +217,8 @@ export default function BillingPage() {
   }
 
   const transactions = txData?.transactions ?? [];
+  const txTotalPages = Math.max(1, Math.ceil(transactions.length / TX_PAGE_SIZE));
+  const txPageItems = transactions.slice(txPage * TX_PAGE_SIZE, (txPage + 1) * TX_PAGE_SIZE);
 
   return (
     <div className="p-4 md:p-8">
@@ -384,32 +390,61 @@ export default function BillingPage() {
           ) : transactions.length === 0 ? (
             <p className="text-sm text-gray-500">No transactions yet.</p>
           ) : (
-            <div className="divide-y divide-gray-100">
-              {transactions.map((tx) => (
-                <div key={tx.id} className="flex items-center justify-between py-3">
-                  <div>
-                    <p className="text-sm text-gray-800">{tx.description}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {new Date(tx.created_at).toLocaleDateString(undefined, {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </p>
+            <>
+              <div className="divide-y divide-gray-100">
+                {txPageItems.map((tx) => (
+                  <div key={tx.id} className="flex items-center justify-between py-3">
+                    <div>
+                      <p className="text-sm text-gray-800">{tx.description}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {new Date(tx.created_at).toLocaleDateString(undefined, {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className={`text-sm font-medium ${
+                        tx.type === "deduction" ? "text-red-600" : "text-green-600"
+                      }`}>
+                        {tx.type === "deduction" ? "-" : "+"}{formatCents(Math.abs(tx.amount_cents))}
+                      </p>
+                      <p className="text-xs text-gray-400 capitalize">{tx.type}</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className={`text-sm font-medium ${
-                      tx.type === "deduction" ? "text-red-600" : "text-green-600"
-                    }`}>
-                      {tx.type === "deduction" ? "-" : "+"}{formatCents(Math.abs(tx.amount_cents))}
-                    </p>
-                    <p className="text-xs text-gray-400 capitalize">{tx.type}</p>
+                ))}
+              </div>
+
+              {txTotalPages > 1 && (
+                <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-2">
+                  <p className="text-xs text-gray-400">
+                    {txPage * TX_PAGE_SIZE + 1}–{Math.min((txPage + 1) * TX_PAGE_SIZE, transactions.length)} of {transactions.length}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setTxPage((p) => Math.max(0, p - 1))}
+                      disabled={txPage === 0}
+                      className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                    >
+                      Previous
+                    </button>
+                    <span className="text-xs text-gray-500">
+                      {txPage + 1} / {txTotalPages}
+                    </span>
+                    <button
+                      onClick={() => setTxPage((p) => Math.min(txTotalPages - 1, p + 1))}
+                      disabled={txPage >= txTotalPages - 1}
+                      className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                    >
+                      Next
+                    </button>
                   </div>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
       </div>
