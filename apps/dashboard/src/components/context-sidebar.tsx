@@ -462,25 +462,6 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
         title={title}
         backHref={`/orgs/${orgId}/brands/${brandId}`}
         backLabel="Brand"
-        footer={
-          <div className="p-2 border-t border-gray-100">
-            <button
-              onClick={() => setSettingsOpen(true)}
-              className={`
-                flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition w-full
-                ${settingsOpen
-                  ? "bg-brand-50 text-brand-700 font-medium border border-brand-200"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-800"
-                }
-              `}
-            >
-              <span className={`w-5 h-5 ${settingsOpen ? "text-brand-600" : "text-gray-400"}`}>
-                <SettingsIcon />
-              </span>
-              <span className="flex-1 text-left">Settings</span>
-            </button>
-          </div>
-        }
       >
         {items.map((item) => (
           <SidebarLink
@@ -489,6 +470,21 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
             isActive={item.id === "campaigns" ? pathname === item.href : pathname.startsWith(item.href)}
           />
         ))}
+        <button
+          onClick={() => setSettingsOpen(true)}
+          className={`
+            flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition w-full
+            ${settingsOpen
+              ? "bg-brand-50 text-brand-700 font-medium border border-brand-200"
+              : "text-gray-600 hover:bg-gray-50 hover:text-gray-800"
+            }
+          `}
+        >
+          <span className={`w-5 h-5 ${settingsOpen ? "text-brand-600" : "text-gray-400"}`}>
+            <SettingsIcon />
+          </span>
+          <span className="flex-1 text-left">Settings</span>
+        </button>
       </SidebarSection>
       {settingsOpen && (
         <FeatureSettingsPanel featureSlug={featureSlug} onClose={() => setSettingsOpen(false)} />
