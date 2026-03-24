@@ -1,12 +1,12 @@
 import { URLS } from "@distribute/content";
 import { fetchLeaderboard } from "@/lib/fetch-leaderboard";
-import { CategorySection } from "@/components/category-section";
+import { FeatureGroup } from "@/components/feature-group";
 
 export const revalidate = 300;
 
 export default async function HomePage() {
   const data = await fetchLeaderboard();
-  const sections = data?.categorySections || [];
+  const sections = data?.featureGroups || [];
 
   return (
     <main className="min-h-screen">
@@ -29,7 +29,7 @@ export default async function HomePage() {
       {sections.length > 0 ? (
         <div className="bg-white">
           {sections.map((section) => (
-            <CategorySection key={section.featureSlug} section={section} />
+            <FeatureGroup key={section.featureSlug} section={section} />
           ))}
           <p className="text-xs text-gray-400 text-center pb-6">
             Updated {data?.updatedAt ? new Date(data.updatedAt).toLocaleDateString() : "hourly"}.{" "}

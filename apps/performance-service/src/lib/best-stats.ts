@@ -1,4 +1,4 @@
-import type { BrandLeaderboardEntry, CategorySectionStats, WorkflowLeaderboardEntry } from "./fetch-leaderboard";
+import type { BrandLeaderboardEntry, FeatureGroupStats, WorkflowLeaderboardEntry } from "./fetch-leaderboard";
 
 export function minPositive(values: (number | null)[]): number | null {
   const positives = values.filter((v): v is number => v !== null && v > 0);
@@ -9,7 +9,7 @@ export function computeBestStats(
   workflows: WorkflowLeaderboardEntry[],
   brands: BrandLeaderboardEntry[],
   tab: "workflow" | "brand",
-): CategorySectionStats {
+): FeatureGroupStats {
   if (tab === "workflow") {
     const withEmails = workflows.filter((w) => w.emailsSent > 0);
     return {

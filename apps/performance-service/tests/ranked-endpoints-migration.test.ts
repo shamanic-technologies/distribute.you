@@ -33,7 +33,7 @@ describe("Performance-service uses public ranked/best endpoints", () => {
   });
 
   it("should build category sections from workflow entries", () => {
-    expect(content).toContain("buildCategorySections");
+    expect(content).toContain("buildFeatureGroups");
   });
 
   it("should enrich brands from brand-service", () => {
@@ -49,7 +49,7 @@ describe("Performance-service uses public ranked/best endpoints", () => {
     expect(content).toContain("export interface BrandLeaderboardEntry");
     expect(content).toContain("export interface WorkflowLeaderboardEntry");
     expect(content).toContain("export interface HeroStats");
-    expect(content).toContain("export interface CategorySectionData");
+    expect(content).toContain("export interface FeatureGroupData");
     expect(content).toContain("export interface LeaderboardData");
     expect(content).toContain("export async function fetchLeaderboard");
   });
