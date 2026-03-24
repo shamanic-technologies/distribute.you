@@ -464,10 +464,15 @@ export async function prefillFeatureInputs(
 export function prefillToStringMap(prefilled: Record<string, PrefilledField>): Record<string, string> {
   const map: Record<string, string> = {};
   for (const [key, field] of Object.entries(prefilled)) {
-    if (Array.isArray(field.value)) {
-      map[key] = field.value.join("\n");
+    const v = field.value;
+    if (typeof v === "string") {
+      map[key] = v;
+    } else if (Array.isArray(v)) {
+      map[key] = v.join("\n");
+    } else if (v != null && typeof v === "object") {
+      map[key] = JSON.stringify(v);
     } else {
-      map[key] = field.value;
+      map[key] = String(v ?? "");
     }
   }
   return map;
