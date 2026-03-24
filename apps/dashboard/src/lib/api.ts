@@ -454,11 +454,34 @@ export async function prefillFeatureInputs(
   );
 }
 
+/** Flatten a value that may be a JSON-encoded object into readable text */
+function flattenValue(raw: string): string {
+  if (!raw.startsWith("{") && !raw.startsWith("[")) return raw;
+  try {
+    const parsed = JSON.parse(raw);
+    return flattenObject(parsed);
+  } catch {
+    return raw;
+  }
+}
+
+function flattenObject(obj: unknown): string {
+  if (obj == null) return "";
+  if (typeof obj === "string") return obj;
+  if (typeof obj === "number" || typeof obj === "boolean") return String(obj);
+  if (Array.isArray(obj)) return obj.map(flattenObject).filter(Boolean).join("\n");
+  if (typeof obj === "object") {
+    return Object.values(obj as Record<string, unknown>).map(flattenObject).filter(Boolean).join("\n");
+  }
+  return String(obj);
+}
+
 /** Extract flat string map from prefill response */
 export function prefillToStringMap(prefilled: Record<string, { value: string | null }>): Record<string, string> {
   const map: Record<string, string> = {};
   for (const [key, field] of Object.entries(prefilled)) {
-    map[key] = field.value ?? "";
+    const raw = field.value ?? "";
+    map[key] = flattenValue(raw);
   }
   return map;
 }
