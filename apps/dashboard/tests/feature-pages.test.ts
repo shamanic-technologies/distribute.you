@@ -17,10 +17,10 @@ describe("Feature overview page", () => {
     expect(content).toContain('"use client"');
   });
 
-  it("should import WORKFLOW_DEFINITIONS from content package", () => {
+  it("should import useFeatures from features-context", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("WORKFLOW_DEFINITIONS");
-    expect(content).toContain("@distribute/content");
+    expect(content).toContain("useFeatures");
+    expect(content).toContain("@/lib/features-context");
   });
 
   it("should show 'Coming Soon' for unimplemented features", () => {

@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useOrganization, useOrganizationList } from "@clerk/nextjs";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { WORKFLOW_DEFINITIONS, FEATURE_LABELS } from "@distribute/content";
+import { useFeatures } from "@/lib/features-context";
 import { BrandLogo } from "./brand-logo";
 
 interface Brand {
@@ -30,6 +30,7 @@ export function BreadcrumbNav() {
   const { userMemberships, setActive } = useOrganizationList({
     userMemberships: { infinite: true },
   });
+  const { features, getFeature } = useFeatures();
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -163,8 +164,8 @@ export function BreadcrumbNav() {
 
   const currentBrand = brands.find((b) => b.id === brandId);
   const currentCampaign = campaigns.find((c) => c.id === campaignId);
-  const currentFeatureLabel = featureSlug ? (FEATURE_LABELS[featureSlug] ?? featureSlug) : null;
-  const appFeatureLabel = appFeatureId ? (FEATURE_LABELS[appFeatureId] ?? appFeatureId) : null;
+  const currentFeatureLabel = featureSlug ? (getFeature(featureSlug)?.name ?? featureSlug) : null;
+  const appFeatureLabel = appFeatureId ? (getFeature(appFeatureId)?.name ?? appFeatureId) : null;
 
   const handleAppFeatureSwitch = (newFeatureId: string) => {
     setOpenDropdown(null);
@@ -280,16 +281,16 @@ export function BreadcrumbNav() {
                 <div className="px-3 py-2 border-b border-gray-100">
                   <p className="text-xs text-gray-500 font-medium">Switch feature</p>
                 </div>
-                {WORKFLOW_DEFINITIONS.map((wf) => (
+                {features.map((f) => (
                   <button
-                    key={wf.featureSlug}
-                    onClick={() => handleAppFeatureSwitch(wf.featureSlug)}
+                    key={f.slug}
+                    onClick={() => handleAppFeatureSwitch(f.slug)}
                     className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition ${
-                      appFeatureId === wf.featureSlug ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
+                      appFeatureId === f.slug ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
                     }`}
                   >
-                    <span className="truncate">{wf.label}</span>
-                    {appFeatureId === wf.featureSlug && (
+                    <span className="truncate">{f.name}</span>
+                    {appFeatureId === f.slug && (
                       <svg className="w-4 h-4 text-brand-600 ml-auto flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
@@ -372,17 +373,17 @@ export function BreadcrumbNav() {
                 <div className="px-3 py-2 border-b border-gray-100">
                   <p className="text-xs text-gray-500 font-medium">Switch feature</p>
                 </div>
-                {WORKFLOW_DEFINITIONS.map((wf) => (
+                {features.map((f) => (
                   <button
-                    key={wf.featureSlug}
-                    onClick={() => handleFeatureSwitch(wf.featureSlug)}
+                    key={f.slug}
+                    onClick={() => handleFeatureSwitch(f.slug)}
                     className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition ${
-                      featureSlug === wf.featureSlug ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
+                      featureSlug === f.slug ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
                     }`}
                   >
-                    <FeatureIcon featureSlug={wf.featureSlug} />
-                    <span className="truncate">{wf.label}</span>
-                    {featureSlug === wf.featureSlug && (
+                    <FeatureIcon featureSlug={f.slug} />
+                    <span className="truncate">{f.name}</span>
+                    {featureSlug === f.slug && (
                       <svg className="w-4 h-4 text-brand-600 ml-auto flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>

@@ -3,6 +3,7 @@
 import { useParams } from "next/navigation";
 import { useCampaign } from "@/lib/campaign-context";
 import { useStopCampaign, useIsStoppingCampaign } from "@/lib/use-stop-campaign";
+import { useFeatures } from "@/lib/features-context";
 import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
@@ -23,10 +24,12 @@ export default function CampaignOverviewPage() {
   const params = useParams();
   const featureSlug = params.featureSlug as string;
   const orgId = params.orgId as string;
-  const isPressKit = featureSlug.startsWith("press-kit");
-  const isOutletDiscovery = featureSlug === "outlets-database-discovery";
-  const isJournalistDiscovery = featureSlug === "journalists-database-discovery";
-  const isDiscovery = isOutletDiscovery || isJournalistDiscovery;
+  const { getFeature } = useFeatures();
+  const featureDef = getFeature(featureSlug);
+  const isPressKit = featureDef?.category === "press-kit";
+  const isOutletDiscovery = featureDef?.resultComponent === "discovered-outlets";
+  const isJournalistDiscovery = featureDef?.resultComponent === "discovered-journalists";
+  const isDiscovery = featureDef?.audienceType === "discovery";
   const { campaign, stats, leads, emails, loading } = useCampaign();
   const stopMutation = useStopCampaign();
   const stopping = useIsStoppingCampaign(campaign?.id ?? "");

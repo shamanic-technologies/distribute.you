@@ -12,6 +12,7 @@ import { MobileSidebarProvider, useMobileSidebar } from "@/components/mobile-sid
 import { QueryProvider } from "@/lib/query-provider";
 import { OrgContextProvider, useOrg } from "@/lib/org-context";
 import { BillingGuardProvider } from "@/lib/billing-guard";
+import { FeaturesProvider } from "@/lib/features-context";
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { isOpen, close } = useMobileSidebar();
@@ -89,9 +90,11 @@ export default function DashboardLayout({
     <QueryProvider>
       <MobileSidebarProvider>
         <OrgContextProvider>
-          <BillingGuardProvider>
-            <DashboardContent>{children}</DashboardContent>
-          </BillingGuardProvider>
+          <FeaturesProvider>
+            <BillingGuardProvider>
+              <DashboardContent>{children}</DashboardContent>
+            </BillingGuardProvider>
+          </FeaturesProvider>
         </OrgContextProvider>
       </MobileSidebarProvider>
     </QueryProvider>

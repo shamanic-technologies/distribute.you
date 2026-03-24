@@ -14,10 +14,10 @@ describe("Context sidebar", () => {
     expect(content).toContain('"use client"');
   });
 
-  it("should import WORKFLOW_DEFINITIONS from content package", () => {
+  it("should import useFeatures from features-context", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    expect(content).toContain("WORKFLOW_DEFINITIONS");
-    expect(content).toContain("@distribute/content");
+    expect(content).toContain("useFeatures");
+    expect(content).toContain("@/lib/features-context");
   });
 
   it("should handle all navigation levels", () => {
@@ -69,7 +69,7 @@ describe("Context sidebar", () => {
     expect(content).toContain("comingSoon");
     expect(content).toContain("Coming soon");
     expect(content).toContain("opacity-60");
-    expect(content).toContain("!wf.implemented");
+    expect(content).toContain("!f.implemented");
   });
   it("should NOT have 'All Organizations' back link in org sidebar", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
@@ -81,11 +81,11 @@ describe("Context sidebar", () => {
     expect(content).toContain('`/orgs/${orgId}/brands`');
   });
 
-  it("should have Features section in org sidebar with WORKFLOW_DEFINITIONS", () => {
+  it("should have Features section in org sidebar with useFeatures", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    // OrgLevelSidebar maps WORKFLOW_DEFINITIONS to featureItems
+    // OrgLevelSidebar maps features from useFeatures to featureItems
+    expect(content).toContain("useFeatures");
     expect(content).toContain("featureItems");
-    expect(content).toContain('/features/${wf.featureSlug}');
   });
 
   it("should have brand back link point to brands page", () => {

@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { WORKFLOW_DEFINITIONS } from "@distribute/content";
+import { useFeatures } from "@/lib/features-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   listCampaigns,
@@ -56,7 +56,8 @@ export default function FeatureCampaignsPage() {
   const router = useRouter();
   const featureId = params.featureId as string;
 
-  const featureDef = WORKFLOW_DEFINITIONS.find((w) => w.featureSlug === featureId);
+  const { getFeature } = useFeatures();
+  const featureDef = getFeature(featureId);
 
   // Fetch all campaigns, then filter client-side by feature
   const { data: campaignsData, isLoading } = useAuthQuery(
@@ -125,7 +126,7 @@ export default function FeatureCampaignsPage() {
     return (
       <div className="p-4 md:p-8">
         <div className="mb-6">
-          <h1 className="font-display text-2xl font-bold text-gray-800">{featureDef.label}</h1>
+          <h1 className="font-display text-2xl font-bold text-gray-800">{featureDef.name}</h1>
           <p className="text-gray-600">{featureDef.description}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
@@ -136,7 +137,7 @@ export default function FeatureCampaignsPage() {
           </div>
           <h3 className="font-display font-bold text-lg text-gray-800 mb-2">Coming Soon</h3>
           <p className="text-gray-600 text-sm max-w-md mx-auto">
-            {featureDef.label} is not yet available. We&apos;re working on it and will notify you when it&apos;s ready.
+            {featureDef.name} is not yet available. We&apos;re working on it and will notify you when it&apos;s ready.
           </p>
         </div>
       </div>
@@ -150,7 +151,7 @@ export default function FeatureCampaignsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="font-display text-2xl font-bold text-gray-800">{featureDef.label}</h1>
+          <h1 className="font-display text-2xl font-bold text-gray-800">{featureDef.name}</h1>
           <p className="text-gray-600">All campaigns across brands for this feature.</p>
         </div>
         <Link
@@ -196,7 +197,7 @@ export default function FeatureCampaignsPage() {
           </div>
           <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No campaigns yet</h3>
           <p className="text-gray-600 text-sm max-w-md mx-auto mb-4">
-            Create your first campaign to start reaching out with {featureDef.label}.
+            Create your first campaign to start reaching out with {featureDef.name}.
           </p>
           <Link
             href={`/features/${featureId}/new`}

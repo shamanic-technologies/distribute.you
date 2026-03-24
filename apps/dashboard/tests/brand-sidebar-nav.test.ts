@@ -23,7 +23,7 @@ describe("Brand sidebar navigation", () => {
 
   it("should have Features section with coming soon badges in brand sidebar", () => {
     expect(content).toContain("featureItems");
-    expect(content).toContain("comingSoon: !wf.implemented");
+    expect(content).toContain("comingSoon: !f.implemented");
   });
 
   it("should keep Overview and Brand Info links", () => {

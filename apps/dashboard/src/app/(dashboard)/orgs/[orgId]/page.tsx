@@ -3,7 +3,8 @@
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { WORKFLOW_DEFINITIONS, getFeatureSlug } from "@distribute/content";
+import { getFeatureSlug } from "@distribute/content";
+import { useFeatures } from "@/lib/features-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { listBrands, listCampaigns, getCampaignBatchStats } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
@@ -23,6 +24,7 @@ function StatCard({ label, value }: { label: string; value: number | string }) {
 export default function OrgOverviewPage() {
   const params = useParams();
   const orgId = params.orgId as string;
+  const { features } = useFeatures();
 
   const { data: brandsData, isLoading: brandsLoading } = useAuthQuery(
     ["brands"],
@@ -140,18 +142,18 @@ export default function OrgOverviewPage() {
       <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
         <h2 className="text-lg font-medium text-gray-900 mb-4">Features</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {WORKFLOW_DEFINITIONS.map((wf) => (
+          {features.map((f) => (
             <Link
-              key={wf.featureSlug}
-              href={wf.implemented ? `/features/${wf.featureSlug}` : "#"}
+              key={f.slug}
+              href={f.implemented ? `/features/${f.slug}` : "#"}
               className={`flex items-center gap-3 p-3 rounded-lg border transition ${
-                wf.implemented
+                f.implemented
                   ? "border-gray-200 hover:border-brand-300 hover:shadow-sm"
                   : "border-gray-100 opacity-60 cursor-default"
               }`}
             >
-              <span className="text-sm font-medium text-gray-700">{wf.label}</span>
-              {!wf.implemented && (
+              <span className="text-sm font-medium text-gray-700">{f.name}</span>
+              {!f.implemented && (
                 <span className="text-[10px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full whitespace-nowrap ml-auto">
                   Coming soon
                 </span>

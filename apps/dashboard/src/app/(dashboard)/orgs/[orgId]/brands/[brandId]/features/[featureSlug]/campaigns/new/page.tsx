@@ -4,9 +4,9 @@ import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { keepPreviousData } from "@tanstack/react-query";
-import { WORKFLOW_DEFINITIONS } from "@distribute/content";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { useOrg } from "@/lib/org-context";
+import { useFeatures } from "@/lib/features-context";
 import {
   fetchRankedWorkflows,
   createCampaign,
@@ -19,6 +19,7 @@ import {
   ApiError,
   type Campaign,
   type RankedWorkflowItem,
+  type FeatureInput,
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
 import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-panel";
@@ -106,67 +107,24 @@ function rankedToRow(item: RankedWorkflowItem): WorkflowTableRow {
   };
 }
 
-interface CampaignFormData {
-  brandUrl: string;
-  targetAudience: string;
-  targetOutcome: string;
-  valueForTarget: string;
-  urgency: string;
-  scarcity: string;
-  riskReversal: string;
-  socialProof: string;
-  // Discovery-specific fields
-  industry: string;
-  targetGeo: string;
-  angles: string;
+/** Build an empty form data map from feature inputs */
+function buildEmptyForm(inputs: FeatureInput[], brandUrl: string): Record<string, string> {
+  const form: Record<string, string> = { brandUrl };
+  for (const input of inputs) form[input.key] = "";
+  return form;
 }
 
-const EMPTY_FORM: CampaignFormData = {
-  brandUrl: "",
-  targetAudience: "",
-  targetOutcome: "",
-  valueForTarget: "",
-  urgency: "",
-  scarcity: "",
-  riskReversal: "",
-  socialProof: "",
-  industry: "",
-  targetGeo: "",
-  angles: "",
-};
-
-type FormFieldDef = { key: keyof CampaignFormData; label: string; placeholder: string };
-
-const OUTREACH_FORM_FIELDS: FormFieldDef[] = [
-  { key: "targetAudience", label: "Target Audience", placeholder: "CTOs at SaaS startups with 10-50 employees" },
-  { key: "targetOutcome", label: "Target Outcome", placeholder: "Book sales demos" },
-  { key: "valueForTarget", label: "Value for Target", placeholder: "What do they gain from responding?" },
-  { key: "urgency", label: "Urgency", placeholder: "Limited-time offer ending March 1st" },
-  { key: "scarcity", label: "Scarcity", placeholder: "Only 10 spots available" },
-  { key: "riskReversal", label: "Risk Reversal", placeholder: "Free trial, no commitment" },
-  { key: "socialProof", label: "Social Proof", placeholder: "500+ companies already onboarded" },
-];
-
-const DISCOVERY_FORM_FIELDS: FormFieldDef[] = [
-  { key: "industry", label: "Industry", placeholder: "SaaS, AI, Fintech, Healthcare..." },
-  { key: "angles", label: "PR Angles", placeholder: "Fundraising announcement, product launch, thought leadership..." },
-  { key: "targetGeo", label: "Geographic Focus", placeholder: "US, Europe, Global..." },
-];
-
-function extractedFieldsToFormData(fields: Record<string, string>, brandUrl: string): CampaignFormData {
-  return {
-    brandUrl,
-    targetAudience: fields.targetAudience ?? "",
-    targetOutcome: fields.callToAction ?? "",
-    valueForTarget: fields.valueProposition ?? "",
-    urgency: fields.urgency ?? "",
-    scarcity: fields.scarcity ?? "",
-    riskReversal: fields.riskReversal ?? "",
-    socialProof: fields.socialProof ?? "",
-    industry: fields.industry ?? "",
-    targetGeo: fields.suggestedGeo ?? "",
-    angles: fields.suggestedAngles ?? "",
-  };
+/** Convert prefill values into form data, keyed by feature input keys */
+function prefillToFormData(
+  prefilled: Record<string, string>,
+  inputs: FeatureInput[],
+  brandUrl: string,
+): Record<string, string> {
+  const form: Record<string, string> = { brandUrl };
+  for (const input of inputs) {
+    form[input.key] = prefilled[input.key] ?? "";
+  }
+  return form;
 }
 
 function SortHeader({
@@ -204,10 +162,9 @@ export default function FeatureCreateCampaignPage() {
   const { org } = useOrg();
   const { showPaymentRequired } = useBillingGuard();
 
-  const featureId = featureSlug;
-  const featureDef = WORKFLOW_DEFINITIONS.find((w) => w.featureSlug === featureId);
-  const isDiscovery = featureDef?.audienceType === "discovery";
-  const FORM_FIELDS = isDiscovery ? DISCOVERY_FORM_FIELDS : OUTREACH_FORM_FIELDS;
+  const { getFeature } = useFeatures();
+  const featureDef = getFeature(featureSlug);
+  const featureInputs = featureDef?.inputs ?? [];
 
   // State
   const [mode, setMode] = useState<Mode>("autopilot");
@@ -218,7 +175,7 @@ export default function FeatureCreateCampaignPage() {
   const [budgetAmount, setBudgetAmount] = useState("");
   const [budgetFrequency, setBudgetFrequency] = useState<BudgetFrequency>("monthly");
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState<CampaignFormData>(EMPTY_FORM);
+  const [formData, setFormData] = useState<Record<string, string>>({ brandUrl: "" });
   const [isCreating, setIsCreating] = useState(false);
   const isCreatingRef = useRef(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -321,14 +278,14 @@ export default function FeatureCreateCampaignPage() {
     try {
       const { prefilled } = await prefillFeatureInputs(featureSlug, brandId);
       const fields = prefillToStringMap(prefilled);
-      setFormData(extractedFieldsToFormData(fields, resolvedBrandUrl));
+      setFormData(prefillToFormData(fields, featureInputs, resolvedBrandUrl));
     } catch {
-      setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
+      setFormData(buildEmptyForm(featureInputs, resolvedBrandUrl));
     } finally {
       setIsLoadingProfile(false);
       setShowForm(true);
     }
-  }, [selectedRow, budgetAmount, resolvedBrandUrl, brandId, featureSlug]);
+  }, [selectedRow, budgetAmount, resolvedBrandUrl, brandId, featureSlug, featureInputs]);
 
   const doCreateCampaign = useCallback(async () => {
     if (!selectedRow || !budgetAmount) return;
@@ -338,7 +295,7 @@ export default function FeatureCreateCampaignPage() {
       setCreateError("Missing: Brand URL");
       return;
     }
-    const missingFields = FORM_FIELDS.filter((f) => !formData[f.key].trim());
+    const missingFields = featureInputs.filter((f) => !formData[f.key]?.trim());
     if (missingFields.length > 0) {
       setCreateError(`Missing: ${missingFields.map((f) => f.label).join(", ")}`);
       return;
@@ -360,33 +317,19 @@ export default function FeatureCreateCampaignPage() {
       return `${displayLabel} \u2014 ${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}.${String(now.getMilliseconds()).padStart(3, "0")}`;
     };
     try {
+      // Pass all form input values generically
+      const inputValues: Record<string, unknown> = {};
+      for (const input of featureInputs) {
+        const val = formData[input.key]?.trim();
+        if (val) inputValues[input.key] = val;
+      }
+
       const campaignPayload: Record<string, unknown> = {
         workflowName: selectedRow.name,
         brandUrl: formData.brandUrl,
         ...budgetParams,
+        ...inputValues,
       };
-
-      if (isDiscovery) {
-        // Compose targetAudience from structured discovery fields
-        const parts: string[] = [];
-        if (formData.industry.trim()) parts.push(`Industry: ${formData.industry.trim()}`);
-        if (formData.angles.trim()) parts.push(`Angles: ${formData.angles.trim()}`);
-        if (formData.targetGeo.trim()) parts.push(`Geo: ${formData.targetGeo.trim()}`);
-        campaignPayload.targetAudience = parts.join(". ");
-        campaignPayload.industry = formData.industry.trim();
-        if (formData.targetGeo.trim()) campaignPayload.targetGeo = formData.targetGeo.trim();
-        if (formData.angles.trim()) {
-          campaignPayload.angles = formData.angles.split(",").map((s: string) => s.trim()).filter(Boolean);
-        }
-      } else {
-        campaignPayload.targetAudience = formData.targetAudience;
-        campaignPayload.targetOutcome = formData.targetOutcome;
-        campaignPayload.valueForTarget = formData.valueForTarget;
-        campaignPayload.urgency = formData.urgency;
-        campaignPayload.scarcity = formData.scarcity;
-        campaignPayload.riskReversal = formData.riskReversal;
-        campaignPayload.socialProof = formData.socialProof;
-      }
 
       let result: { campaign: Campaign };
       try {
@@ -418,7 +361,7 @@ export default function FeatureCreateCampaignPage() {
       isCreatingRef.current = false;
       setIsCreating(false);
     }
-  }, [selectedRow, budgetAmount, budgetFrequency, formData, router, orgId, brandId, featureSlug, isDiscovery]);
+  }, [selectedRow, budgetAmount, budgetFrequency, formData, router, orgId, brandId, featureSlug, featureInputs]);
 
   /** Save campaign intent to sessionStorage so we can resume after Stripe checkout */
   const saveCampaignIntent = useCallback(() => {
@@ -433,11 +376,10 @@ export default function FeatureCreateCampaignPage() {
     sessionStorage.setItem("pendingCampaign", JSON.stringify({
       workflowName: selectedRow.name,
       displayLabel,
-      isDiscovery,
       ...formData,
       ...budgetParams,
     }));
-  }, [selectedRow, budgetAmount, budgetFrequency, formData, isDiscovery]);
+  }, [selectedRow, budgetAmount, budgetFrequency, formData]);
 
   /** Proactive credit check: if budget may exceed balance and no auto-reload, show the modal */
   const handleCreateCampaign = useCallback(async () => {
@@ -707,16 +649,16 @@ export default function FeatureCreateCampaignPage() {
             <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">&times;</button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {FORM_FIELDS.map((field) => (
-              <div key={field.key}>
+            {featureInputs.map((input) => (
+              <div key={input.key}>
                 <label className="block text-xs text-gray-500 mb-1">
-                  {field.label}
+                  {input.label}
                 </label>
                 <input
                   type="text"
-                  value={formData[field.key]}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                  placeholder={field.placeholder}
+                  value={formData[input.key] ?? ""}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, [input.key]: e.target.value }))}
+                  placeholder={input.placeholder ?? input.description}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300"
                 />
               </div>
