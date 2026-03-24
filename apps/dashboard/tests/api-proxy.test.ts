@@ -15,17 +15,30 @@ describe("API proxy route", () => {
     expect(fs.existsSync(proxyPath)).toBe(true);
   });
 
-  it("should use ADMIN_DISTRIBUTE_API_KEY via X-API-Key header", () => {
+  it("should use Clerk getToken() for Bearer auth", () => {
     const content = fs.readFileSync(proxyPath, "utf-8");
-    expect(content).toContain("ADMIN_DISTRIBUTE_API_KEY");
-    expect(content).toContain('"X-API-Key"');
+    expect(content).toContain("getToken");
+    expect(content).toContain("Authorization");
+    expect(content).toContain("Bearer");
   });
 
-  it("should verify Clerk session via auth() and currentUser()", () => {
+  it("should not use X-API-Key admin auth for user requests", () => {
+    const content = fs.readFileSync(proxyPath, "utf-8");
+    expect(content).not.toContain("X-API-Key");
+    expect(content).not.toContain("ADMIN_DISTRIBUTE_API_KEY");
+    expect(content).not.toContain("x-external-org-id");
+    expect(content).not.toContain("x-external-user-id");
+  });
+
+  it("should not call currentUser() (avoids Clerk API dependency)", () => {
+    const content = fs.readFileSync(proxyPath, "utf-8");
+    expect(content).not.toContain("currentUser");
+  });
+
+  it("should verify Clerk session via auth()", () => {
     const content = fs.readFileSync(proxyPath, "utf-8");
     expect(content).toContain("@clerk/nextjs/server");
     expect(content).toContain("await auth()");
-    expect(content).toContain("currentUser");
     expect(content).toContain("userId");
   });
 
@@ -43,19 +56,11 @@ describe("API proxy route", () => {
     expect(content).toContain("path.join");
   });
 
-  it("should forward Clerk IDs as x-external-org-id and x-external-user-id headers", () => {
+  it("should stream SSE responses instead of buffering", () => {
     const content = fs.readFileSync(proxyPath, "utf-8");
-    expect(content).toContain('"x-external-org-id"');
-    expect(content).toContain('"x-external-user-id"');
-    expect(content).toContain("clerkOrgId");
-    expect(content).toContain("clerkUserId");
-  });
-
-  it("should forward user contact info as x-email, x-first-name, x-last-name headers", () => {
-    const content = fs.readFileSync(proxyPath, "utf-8");
-    expect(content).toContain('"x-email"');
-    expect(content).toContain('"x-first-name"');
-    expect(content).toContain('"x-last-name"');
+    expect(content).toContain("text/event-stream");
+    expect(content).toContain("res.body");
+    expect(content).toContain("no-cache");
   });
 
   it("should not call client-service directly", () => {
@@ -63,14 +68,6 @@ describe("API proxy route", () => {
     expect(content).not.toContain("CLIENT_SERVICE_URL");
     expect(content).not.toContain("CLIENT_SERVICE_API_KEY");
     expect(content).not.toContain("/resolve");
-  });
-
-  it("should stream SSE responses instead of buffering", () => {
-    const content = fs.readFileSync(proxyPath, "utf-8");
-    expect(content).toContain("text/event-stream");
-    expect(content).toContain("res.body");
-    // Should NOT buffer SSE with await res.text() before returning
-    expect(content).toContain("no-cache");
   });
 });
 
@@ -85,11 +82,11 @@ describe("api.ts client routing", () => {
     expect(content).toContain("token?: string");
   });
 
-  it("should use direct URL with token for server-side calls", () => {
+  it("should use Bearer auth for server-side calls with token", () => {
     const content = fs.readFileSync(apiPath, "utf-8");
-    // When token is provided, use the external API URL with X-API-Key
     expect(content).toContain("if (token)");
-    expect(content).toContain('headers["X-API-Key"]');
+    expect(content).toContain('headers["Authorization"]');
+    expect(content).toContain("Bearer");
   });
 });
 

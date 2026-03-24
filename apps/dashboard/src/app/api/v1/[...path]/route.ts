@@ -1,33 +1,30 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 300;
 
 const API_URL =
   process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
-const API_KEY = process.env.ADMIN_DISTRIBUTE_API_KEY;
 
 async function proxyRequest(
   req: NextRequest,
   segmentData: { params: Promise<{ path: string[] }> }
 ) {
   try {
-    const { userId: clerkUserId, orgId: clerkOrgId } = await auth();
-    if (!clerkUserId) {
+    const { userId, orgId, getToken } = await auth();
+    if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    if (!API_KEY) {
-      console.error("[api-proxy] ADMIN_DISTRIBUTE_API_KEY env var is not set");
-      return NextResponse.json(
-        { error: "API key not configured" },
-        { status: 500 }
-      );
-    }
-    if (!clerkOrgId) {
+    if (!orgId) {
       return NextResponse.json(
         { error: "No active organization. Please complete onboarding." },
         { status: 403 }
       );
+    }
+
+    const token = await getToken();
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { path } = await segmentData.params;
@@ -38,22 +35,12 @@ async function proxyRequest(
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      "X-API-Key": API_KEY,
-      "x-external-org-id": clerkOrgId,
-      "x-external-user-id": clerkUserId,
+      Authorization: `Bearer ${token}`,
     };
 
     // Forward optional identity headers from client
     const brandId = req.headers.get("x-brand-id");
     if (brandId) headers["x-brand-id"] = brandId;
-
-    const user = await currentUser();
-    if (user) {
-      const email = user.emailAddresses?.[0]?.emailAddress;
-      if (email) headers["x-email"] = email;
-      if (user.firstName) headers["x-first-name"] = user.firstName;
-      if (user.lastName) headers["x-last-name"] = user.lastName;
-    }
 
     const body =
       req.method !== "GET" && req.method !== "HEAD"
