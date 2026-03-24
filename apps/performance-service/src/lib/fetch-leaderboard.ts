@@ -104,7 +104,7 @@ export interface HeroStats {
   bestCostPerReply: { brandDomain: string | null; costPerReplyCents: number } | null;
 }
 
-export interface CategorySectionStats {
+export interface FeatureGroupStats {
   emailsSent: number;
   emailsOpened: number;
   emailsReplied: number;
@@ -115,11 +115,11 @@ export interface CategorySectionStats {
   costPerReplyCents: number | null;
 }
 
-export interface CategorySectionData {
+export interface FeatureGroupData {
   category: string;
   featureSlug: string;
   label: string;
-  stats: CategorySectionStats;
+  stats: FeatureGroupStats;
   workflows: WorkflowLeaderboardEntry[];
   brands: BrandLeaderboardEntry[];
 }
@@ -130,7 +130,7 @@ export interface LeaderboardData {
   hero: HeroStats | null;
   updatedAt: string;
   availableCategories: WorkflowCategory[];
-  categorySections: CategorySectionData[];
+  featureGroups: FeatureGroupData[];
 }
 
 // ─── Transform ranked item → leaderboard entry ─────────────────────────────
@@ -209,7 +209,7 @@ function aggregateBrandStats(items: PublicRankedItem[]): BrandLeaderboardEntry[]
 
 // ─── Build category sections from workflow entries ──────────────────────────
 
-function buildCategorySections(workflows: WorkflowLeaderboardEntry[], brands: BrandLeaderboardEntry[]): CategorySectionData[] {
+function buildFeatureGroups(workflows: WorkflowLeaderboardEntry[], brands: BrandLeaderboardEntry[]): FeatureGroupData[] {
   const grouped = new Map<string, WorkflowLeaderboardEntry[]>();
   for (const wf of workflows) {
     const key = wf.featureSlug ?? wf.category ?? "unknown";
@@ -359,7 +359,7 @@ export async function fetchLeaderboard(): Promise<LeaderboardData | null> {
     }
 
     // Build category sections
-    const categorySections = buildCategorySections(workflows, brands);
+    const featureGroups = buildFeatureGroups(workflows, brands);
 
     return {
       brands,
@@ -367,7 +367,7 @@ export async function fetchLeaderboard(): Promise<LeaderboardData | null> {
       hero,
       updatedAt: new Date().toISOString(),
       availableCategories: [...categorySet],
-      categorySections,
+      featureGroups,
     };
   } catch (error) {
     console.warn("Leaderboard fetch error:", error);

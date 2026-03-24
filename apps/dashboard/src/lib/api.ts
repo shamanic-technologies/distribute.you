@@ -769,7 +769,7 @@ export async function fetchFeatureLeaderboard(featureSlug: string): Promise<Work
     const res = await fetch("/api/performance/leaderboard");
     if (!res.ok) return [];
     const data = await res.json();
-    const section = data.categorySections?.find(
+    const section = data.featureGroups?.find(
       (s: { featureSlug: string }) => s.featureSlug === featureSlug
     );
     return section?.workflows ?? [];

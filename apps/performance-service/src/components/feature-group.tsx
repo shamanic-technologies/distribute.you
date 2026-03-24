@@ -1,11 +1,11 @@
 import { SectionLeaderboard } from "./section-leaderboard";
-import type { CategorySectionData } from "@/lib/fetch-leaderboard";
+import type { FeatureGroupData } from "@/lib/fetch-leaderboard";
 
-export function CategorySection({
+export function FeatureGroup({
   section,
   maxEntries = 3,
 }: {
-  section: CategorySectionData;
+  section: FeatureGroupData;
   maxEntries?: number;
 }) {
   return (

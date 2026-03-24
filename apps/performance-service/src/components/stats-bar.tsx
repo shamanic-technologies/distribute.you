@@ -1,6 +1,6 @@
-import { formatPercent, formatCostCents, type CategorySectionStats } from "@/lib/fetch-leaderboard";
+import { formatPercent, formatCostCents, type FeatureGroupStats } from "@/lib/fetch-leaderboard";
 
-export function StatsBar({ stats }: { stats: CategorySectionStats }) {
+export function StatsBar({ stats }: { stats: FeatureGroupStats }) {
   return (
     <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm py-3 px-4 bg-gray-50 rounded-lg border border-gray-200">
       <span className="text-xs font-semibold uppercase tracking-wider text-brand-600">Best</span>
