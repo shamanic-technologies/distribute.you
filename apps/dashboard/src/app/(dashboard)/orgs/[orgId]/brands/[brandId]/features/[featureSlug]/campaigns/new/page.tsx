@@ -327,6 +327,7 @@ export default function FeatureCreateCampaignPage() {
       const campaignPayload: Record<string, unknown> = {
         workflowName: selectedRow.name,
         brandUrl: formData.brandUrl,
+        featureSlug,
         ...budgetParams,
         ...inputValues,
       };
@@ -454,7 +455,7 @@ export default function FeatureCreateCampaignPage() {
       (async () => {
         try {
           let result: { campaign: Campaign };
-          const payload = { name: generateName(), workflowName, ...rest } as Parameters<typeof createCampaign>[0];
+          const payload = { name: generateName(), workflowName, featureSlug, ...rest } as Parameters<typeof createCampaign>[0];
           try {
             result = await createCampaign(payload);
           } catch (firstErr) {

@@ -259,7 +259,7 @@ export default function CreateCampaignPage() {
   const activeCampaigns = useMemo(() => {
     if (!campaignsData?.campaigns) return [];
     return campaignsData.campaigns.filter(
-      (c) => c.workflowName?.startsWith(featureId)
+      (c) => c.featureSlug === featureId
     );
   }, [campaignsData?.campaigns, featureId]);
 
@@ -391,6 +391,7 @@ export default function CreateCampaignPage() {
     try {
       const campaignPayload = {
         workflowName: selectedRow.name,
+        featureSlug: featureId,
         ...formData,
         ...budgetParams,
       };
@@ -510,7 +511,7 @@ export default function CreateCampaignPage() {
       setIsCreating(true);
       (async () => {
         try {
-          const payload = { name: generateName(), workflowName, ...rest } as Parameters<typeof createCampaign>[0];
+          const payload = { name: generateName(), workflowName, featureSlug: featureId, ...rest } as Parameters<typeof createCampaign>[0];
           try {
             await createCampaign(payload);
           } catch (firstErr) {

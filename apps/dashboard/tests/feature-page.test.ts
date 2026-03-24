@@ -30,8 +30,8 @@ describe("Feature campaigns list page", () => {
       expect(content).toContain("getCampaignBatchStats");
     });
 
-    it("should filter campaigns by featureId", () => {
-      expect(content).toContain("workflowName?.startsWith(featureId)");
+    it("should filter campaigns by featureSlug", () => {
+      expect(content).toContain("featureSlug === featureId");
     });
   });
 
