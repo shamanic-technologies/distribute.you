@@ -620,7 +620,7 @@ export default function FeatureCreateCampaignPage() {
           {/* Go button */}
           <button
             onClick={handleGo}
-            disabled={!selectedRow || !budgetAmount || !resolvedBrandUrl}
+            disabled={!selectedRow || !budgetAmount || !resolvedBrandUrl || isLoadingProfile || showForm}
             className="px-5 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Go &rarr;
