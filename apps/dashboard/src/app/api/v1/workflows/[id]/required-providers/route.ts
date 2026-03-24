@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { PROVIDER_DOMAINS } from "@/lib/api-registry";
 
@@ -6,36 +6,47 @@ export const maxDuration = 15;
 
 const API_URL =
   process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
+const API_KEY = process.env.ADMIN_DISTRIBUTE_API_KEY;
 
 export async function GET(
   _req: NextRequest,
   segmentData: { params: Promise<{ id: string }> }
 ) {
-  const { userId, orgId, getToken } = await auth();
-  if (!userId) {
+  const { userId: clerkUserId, orgId: clerkOrgId } = await auth();
+  if (!clerkUserId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!orgId) {
+  if (!API_KEY) {
+    return NextResponse.json({ error: "API key not configured" }, { status: 500 });
+  }
+  if (!clerkOrgId) {
     return NextResponse.json(
       { error: "No active organization. Please complete onboarding." },
       { status: 403 }
     );
   }
 
-  const token = await getToken();
-  if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const { id } = await segmentData.params;
 
   try {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "X-API-Key": API_KEY,
+      "x-external-org-id": clerkOrgId,
+      "x-external-user-id": clerkUserId,
+    };
+
+    const user = await currentUser();
+    if (user) {
+      const email = user.emailAddresses?.[0]?.emailAddress;
+      if (email) headers["x-email"] = email;
+      if (user.firstName) headers["x-first-name"] = user.firstName;
+      if (user.lastName) headers["x-last-name"] = user.lastName;
+    }
+
     const res = await fetch(`${API_URL}/v1/workflows/${encodeURIComponent(id)}`, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+      headers,
     });
 
     if (!res.ok) {

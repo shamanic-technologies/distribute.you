@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import {
   createUIMessageStream,
@@ -10,6 +10,7 @@ export const maxDuration = 300;
 
 const API_URL =
   process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
+const API_KEY = process.env.ADMIN_DISTRIBUTE_API_KEY;
 
 /**
  * Dedicated chat proxy route.
@@ -24,20 +25,21 @@ const API_URL =
  * - context: optional workflow context injected into the system prompt
  */
 export async function POST(req: NextRequest) {
-  const { userId, orgId, getToken } = await auth();
-  if (!userId) {
+  const { userId: clerkUserId, orgId: clerkOrgId } = await auth();
+  if (!clerkUserId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!orgId) {
+  if (!API_KEY) {
+    return NextResponse.json(
+      { error: "API key not configured" },
+      { status: 500 },
+    );
+  }
+  if (!clerkOrgId) {
     return NextResponse.json(
       { error: "No active organization. Please complete onboarding." },
       { status: 403 },
     );
-  }
-
-  const token = await getToken();
-  if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const body = await req.json();
@@ -53,8 +55,18 @@ export async function POST(req: NextRequest) {
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
+    "X-API-Key": API_KEY,
+    "x-external-org-id": clerkOrgId,
+    "x-external-user-id": clerkUserId,
   };
+
+  const user = await currentUser();
+  if (user) {
+    const email = user.emailAddresses?.[0]?.emailAddress;
+    if (email) headers["x-email"] = email;
+    if (user.firstName) headers["x-first-name"] = user.firstName;
+    if (user.lastName) headers["x-last-name"] = user.lastName;
+  }
 
   const backendPayload: Record<string, unknown> = { message };
   if (sessionId) backendPayload.sessionId = sessionId;

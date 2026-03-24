@@ -107,14 +107,13 @@ describe("GET /api/v1/workflows/[id]/required-providers", () => {
   it("should require Clerk auth with org", () => {
     const content = fs.readFileSync(routePath, "utf-8");
     expect(content).toContain("await auth()");
-    expect(content).toContain("orgId");
+    expect(content).toContain("clerkOrgId");
   });
 
-  it("should fetch workflow from api-service with Bearer auth", () => {
+  it("should fetch workflow from api-service", () => {
     const content = fs.readFileSync(routePath, "utf-8");
     expect(content).toContain("/v1/workflows/");
-    expect(content).toContain("Authorization");
-    expect(content).toContain("Bearer");
+    expect(content).toContain("ADMIN_DISTRIBUTE_API_KEY");
   });
 
   it("should map providers to domains using PROVIDER_DOMAINS", () => {
