@@ -439,7 +439,7 @@ export async function extractBrandFields(
 export interface PrefillResponse {
   slug: string;
   brandId: string;
-  prefilled: Record<string, { value: string | null }>;
+  prefilled: Record<string, string | null>;
 }
 
 /** POST /features/:slug/prefill?format=text — get pre-filled input values as plain strings */
@@ -455,10 +455,10 @@ export async function prefillFeatureInputs(
 }
 
 /** Extract flat string map from prefill response */
-export function prefillToStringMap(prefilled: Record<string, { value: string | null }>): Record<string, string> {
+export function prefillToStringMap(prefilled: Record<string, string | null>): Record<string, string> {
   const map: Record<string, string> = {};
-  for (const [key, field] of Object.entries(prefilled)) {
-    map[key] = field.value ?? "";
+  for (const [key, value] of Object.entries(prefilled)) {
+    map[key] = value ?? "";
   }
   return map;
 }
