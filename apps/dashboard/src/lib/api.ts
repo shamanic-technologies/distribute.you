@@ -210,13 +210,7 @@ export interface Campaign {
   featureSlug: string | null;
   brandId: string | null;
   brandUrl: string | null;
-  targetAudience: string | null;
-  targetOutcome: string | null;
-  valueForTarget: string | null;
-  urgency: string | null;
-  scarcity: string | null;
-  riskReversal: string | null;
-  socialProof: string | null;
+  featureInputs: Record<string, string> | null;
   maxBudgetDailyUsd: string | null;
   maxBudgetWeeklyUsd: string | null;
   maxBudgetMonthlyUsd: string | null;

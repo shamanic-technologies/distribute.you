@@ -331,7 +331,7 @@ export default function FeatureCreateCampaignPage() {
         brandUrl: formData.brandUrl,
         featureSlug,
         ...budgetParams,
-        ...inputValues,
+        featureInputs: inputValues,
       };
 
       let result: { campaign: Campaign };
@@ -376,11 +376,13 @@ export default function FeatureCreateCampaignPage() {
     if (budgetFrequency === "monthly") budgetParams.maxBudgetMonthlyUsd = budgetAmount;
 
     const displayLabel = formatDisplayName(selectedRow.displayName, selectedRow.name);
+    const { brandUrl: intentBrandUrl, ...intentInputFields } = formData;
     sessionStorage.setItem("pendingCampaign", JSON.stringify({
       workflowName: selectedRow.name,
       displayLabel,
-      ...formData,
+      brandUrl: intentBrandUrl,
       ...budgetParams,
+      featureInputs: intentInputFields,
     }));
   }, [selectedRow, budgetAmount, budgetFrequency, formData]);
 
