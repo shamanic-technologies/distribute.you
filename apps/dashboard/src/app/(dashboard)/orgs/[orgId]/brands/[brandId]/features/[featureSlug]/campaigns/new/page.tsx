@@ -208,7 +208,7 @@ export default function FeatureCreateCampaignPage() {
   const featureWorkflowIds = useMemo(() => rows.map((r) => r.id), [rows]);
 
   const { data: keyStatusData } = useAuthQuery(
-    ["workflowKeyStatus", featureId, featureWorkflowIds],
+    ["workflowKeyStatus", featureSlug, featureWorkflowIds],
     async () => {
       const results = await Promise.all(
         featureWorkflowIds.map((id) => getWorkflowKeyStatus(id))
