@@ -181,7 +181,18 @@ export default function BrandOverviewPage() {
 
       {/* Features Section */}
       <div className="mb-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Features</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-medium text-gray-900">Features</h2>
+          <Link
+            href={`/orgs/${orgId}/brands/${brandId}/features/new`}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-brand-600 text-white hover:bg-brand-700 transition"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Create
+          </Link>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {features.map((f) => {
             const section = workflowSections.find(s => s.featureSlug === f.slug);
