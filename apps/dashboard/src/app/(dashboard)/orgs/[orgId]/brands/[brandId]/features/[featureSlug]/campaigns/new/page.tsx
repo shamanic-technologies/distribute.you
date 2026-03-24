@@ -16,6 +16,7 @@ import {
   prefillFeatureInputs,
   prefillToStringMap,
   getBillingAccount,
+  configureAutoReload,
   ApiError,
   type Campaign,
   type RankedWorkflowItem,
@@ -383,7 +384,8 @@ export default function FeatureCreateCampaignPage() {
     }));
   }, [selectedRow, budgetAmount, budgetFrequency, formData]);
 
-  /** Proactive credit check: if budget may exceed balance and no auto-reload, show the modal */
+  /** Proactive credit check: if budget may exceed balance and no auto-reload, show the modal.
+   *  If the user already has a saved payment method, silently configure auto-reload and proceed. */
   const handleCreateCampaign = useCallback(async () => {
     if (!selectedRow || !budgetAmount) return;
     if (isCreatingRef.current) return;
@@ -404,12 +406,19 @@ export default function FeatureCreateCampaignPage() {
       const isRecurring = budgetFrequency !== "one-off";
 
       if ((willExceed || isRecurring) && !account.hasAutoReload) {
-        // Save intent so we can resume after Stripe checkout
+        if (account.hasPaymentMethod) {
+          // Saved card exists — silently enable auto-reload and proceed.
+          // The backend will charge the card automatically during deduction.
+          const reloadCents = Math.max(1000, budgetCents);
+          await configureAutoReload(reloadCents, 500).catch(() => {});
+          doCreateCampaign();
+          return;
+        }
+        // No payment method — show modal so user can add a card
         saveCampaignIntent();
         // Reset loader — modal will handle the flow
         isCreatingRef.current = false;
         setIsCreating(false);
-        // Show proactive modal — user can set up auto-reload, then we proceed
         showPaymentRequired({
           balance_cents: account.creditBalanceCents,
           required_cents: budgetCents,
