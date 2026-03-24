@@ -334,11 +334,11 @@ export default function FeatureCreateCampaignPage() {
 
       let result: { campaign: Campaign };
       try {
-        result = await createCampaign({ name: generateName(), ...campaignPayload } as Parameters<typeof createCampaign>[0]);
+        result = await createCampaign({ name: generateName(), ...campaignPayload } as unknown as Parameters<typeof createCampaign>[0]);
       } catch (firstErr) {
         // Retry once with a fresh timestamp on 409 (duplicate name from race condition)
         if (firstErr instanceof ApiError && firstErr.status === 409) {
-          result = await createCampaign({ name: generateName(), ...campaignPayload } as Parameters<typeof createCampaign>[0]);
+          result = await createCampaign({ name: generateName(), ...campaignPayload } as unknown as Parameters<typeof createCampaign>[0]);
         } else {
           throw firstErr;
         }
@@ -455,7 +455,7 @@ export default function FeatureCreateCampaignPage() {
       (async () => {
         try {
           let result: { campaign: Campaign };
-          const payload = { name: generateName(), workflowName, featureSlug, ...rest } as Parameters<typeof createCampaign>[0];
+          const payload = { name: generateName(), workflowName, featureSlug, ...rest } as unknown as Parameters<typeof createCampaign>[0];
           try {
             result = await createCampaign(payload);
           } catch (firstErr) {
