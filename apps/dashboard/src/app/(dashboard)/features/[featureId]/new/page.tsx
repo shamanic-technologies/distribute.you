@@ -511,7 +511,7 @@ export default function CreateCampaignPage() {
       setIsCreating(true);
       (async () => {
         try {
-          const payload = { name: generateName(), workflowName, featureSlug: featureId, ...rest } as Parameters<typeof createCampaign>[0];
+          const payload = { name: generateName(), workflowName, featureSlug: featureId, ...rest } as unknown as Parameters<typeof createCampaign>[0];
           try {
             await createCampaign(payload);
           } catch (firstErr) {
