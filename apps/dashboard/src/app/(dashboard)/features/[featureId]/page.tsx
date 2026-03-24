@@ -69,7 +69,7 @@ export default function FeatureCampaignsPage() {
   const featureCampaigns = useMemo(() => {
     if (!campaignsData?.campaigns) return [];
     return campaignsData.campaigns.filter(
-      (c) => c.workflowName?.startsWith(featureId)
+      (c) => c.featureSlug === featureId
     );
   }, [campaignsData?.campaigns, featureId]);
 

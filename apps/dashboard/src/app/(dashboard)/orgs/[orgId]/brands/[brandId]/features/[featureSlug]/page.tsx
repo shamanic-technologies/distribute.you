@@ -79,7 +79,7 @@ export default function FeaturePage() {
   );
   const allCampaigns = campaignsData?.campaigns ?? [];
   const campaigns = useMemo(
-    () => allCampaigns.filter((c) => c.workflowName?.startsWith(featureSlug)),
+    () => allCampaigns.filter((c) => c.featureSlug === featureSlug),
     [allCampaigns, featureSlug]
   );
 

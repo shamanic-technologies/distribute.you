@@ -207,6 +207,7 @@ export interface Campaign {
   name: string;
   status: string;
   workflowName: string | null;
+  featureSlug: string | null;
   brandId: string | null;
   brandUrl: string | null;
   targetAudience: string | null;
