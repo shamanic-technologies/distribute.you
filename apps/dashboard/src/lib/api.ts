@@ -388,23 +388,6 @@ export const SALES_PROFILE_FIELDS: ExtractFieldDef[] = [
   { key: "additionalContext", description: "Additional context and notable information" },
 ];
 
-/** Fields needed for outreach campaign pre-fill */
-export const CAMPAIGN_OUTREACH_FIELDS: ExtractFieldDef[] = [
-  { key: "valueProposition", description: "Core value proposition" },
-  { key: "targetAudience", description: "Target audience description" },
-  { key: "callToAction", description: "Primary CTA" },
-  { key: "urgency", description: "Urgency elements and time pressure" },
-  { key: "scarcity", description: "Scarcity and limited availability" },
-  { key: "riskReversal", description: "Risk reversal: trials, guarantees, refund policy" },
-  { key: "socialProof", description: "Social proof: case studies, results, testimonials" },
-];
-
-/** Fields for discovery campaigns */
-export const DISCOVERY_EXTRACT_FIELDS: ExtractFieldDef[] = [
-  { key: "industry", description: "Brand sector" },
-  { key: "suggestedAngles", description: "Suggested PR angles" },
-  { key: "suggestedGeo", description: "Suggested geographic focus" },
-];
 
 /** Convert extract-fields results to a key→value map (preserves raw types) */
 export function fieldResultsToMap(results: ExtractFieldResult[]): Record<string, unknown> {
@@ -448,6 +431,45 @@ export async function extractBrandFields(
     `/brands/${brandId}/extract-fields`,
     { token, method: "POST", body: { fields } },
   );
+}
+
+// ─── Feature prefill ───────────────────────────────────────────────────────
+
+export interface PrefilledField {
+  value: string | string[];
+  cached: boolean;
+  sourceUrls: string[];
+}
+
+export interface PrefillResponse {
+  slug: string;
+  brandId: string;
+  prefilled: Record<string, PrefilledField>;
+}
+
+/** POST /features/:slug/prefill — get pre-filled input values for a feature form */
+export async function prefillFeatureInputs(
+  slug: string,
+  brandId: string,
+  token?: string,
+): Promise<PrefillResponse> {
+  return apiCall<PrefillResponse>(
+    `/features/${slug}/prefill`,
+    { token, method: "POST", body: { brandId } },
+  );
+}
+
+/** Convert prefill response to a flat string map for form pre-fill */
+export function prefillToStringMap(prefilled: Record<string, PrefilledField>): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const [key, field] of Object.entries(prefilled)) {
+    if (Array.isArray(field.value)) {
+      map[key] = field.value.join("\n");
+    } else {
+      map[key] = field.value;
+    }
+  }
+  return map;
 }
 
 /** POST /brands — upsert brand by URL, returns brandId */

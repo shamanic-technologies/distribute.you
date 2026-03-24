@@ -13,10 +13,8 @@ import {
   sendCampaignEmail,
   getBrand,
   getWorkflowKeyStatus,
-  extractBrandFields,
-  fieldResultsToStringMap,
-  CAMPAIGN_OUTREACH_FIELDS,
-  DISCOVERY_EXTRACT_FIELDS,
+  prefillFeatureInputs,
+  prefillToStringMap,
   getBillingAccount,
   ApiError,
   type Campaign,
@@ -137,20 +135,20 @@ const EMPTY_FORM: CampaignFormData = {
   angles: "",
 };
 
-type FormFieldDef = { key: keyof CampaignFormData; label: string; placeholder: string; required?: boolean };
+type FormFieldDef = { key: keyof CampaignFormData; label: string; placeholder: string };
 
 const OUTREACH_FORM_FIELDS: FormFieldDef[] = [
-  { key: "targetAudience", label: "Target Audience", placeholder: "CTOs at SaaS startups with 10-50 employees", required: true },
-  { key: "targetOutcome", label: "Target Outcome", placeholder: "Book sales demos", required: true },
-  { key: "valueForTarget", label: "Value for Target", placeholder: "What do they gain from responding?", required: true },
-  { key: "urgency", label: "Urgency", placeholder: "Limited-time offer ending March 1st", required: true },
-  { key: "scarcity", label: "Scarcity", placeholder: "Only 10 spots available", required: true },
-  { key: "riskReversal", label: "Risk Reversal", placeholder: "Free trial, no commitment", required: true },
-  { key: "socialProof", label: "Social Proof", placeholder: "500+ companies already onboarded", required: true },
+  { key: "targetAudience", label: "Target Audience", placeholder: "CTOs at SaaS startups with 10-50 employees" },
+  { key: "targetOutcome", label: "Target Outcome", placeholder: "Book sales demos" },
+  { key: "valueForTarget", label: "Value for Target", placeholder: "What do they gain from responding?" },
+  { key: "urgency", label: "Urgency", placeholder: "Limited-time offer ending March 1st" },
+  { key: "scarcity", label: "Scarcity", placeholder: "Only 10 spots available" },
+  { key: "riskReversal", label: "Risk Reversal", placeholder: "Free trial, no commitment" },
+  { key: "socialProof", label: "Social Proof", placeholder: "500+ companies already onboarded" },
 ];
 
 const DISCOVERY_FORM_FIELDS: FormFieldDef[] = [
-  { key: "industry", label: "Industry", placeholder: "SaaS, AI, Fintech, Healthcare...", required: true },
+  { key: "industry", label: "Industry", placeholder: "SaaS, AI, Fintech, Healthcare..." },
   { key: "angles", label: "PR Angles", placeholder: "Fundraising announcement, product launch, thought leadership..." },
   { key: "targetGeo", label: "Geographic Focus", placeholder: "US, Europe, Global..." },
 ];
@@ -321,16 +319,16 @@ export default function FeatureCreateCampaignPage() {
 
     setIsLoadingProfile(true);
     try {
-      const fields = isDiscovery ? DISCOVERY_EXTRACT_FIELDS : CAMPAIGN_OUTREACH_FIELDS;
-      const { results } = await extractBrandFields(brandId, fields);
-      setFormData(extractedFieldsToFormData(fieldResultsToStringMap(results), resolvedBrandUrl));
+      const { prefilled } = await prefillFeatureInputs(featureSlug, brandId);
+      const fields = prefillToStringMap(prefilled);
+      setFormData(extractedFieldsToFormData(fields, resolvedBrandUrl));
     } catch {
       setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
     } finally {
       setIsLoadingProfile(false);
       setShowForm(true);
     }
-  }, [selectedRow, budgetAmount, resolvedBrandUrl, brandId, isDiscovery]);
+  }, [selectedRow, budgetAmount, resolvedBrandUrl, brandId, featureSlug]);
 
   const doCreateCampaign = useCallback(async () => {
     if (!selectedRow || !budgetAmount) return;
@@ -340,8 +338,7 @@ export default function FeatureCreateCampaignPage() {
       setCreateError("Missing: Brand URL");
       return;
     }
-    const requiredFields = FORM_FIELDS.filter((f) => f.required !== false);
-    const missingFields = requiredFields.filter((f) => !formData[f.key].trim());
+    const missingFields = FORM_FIELDS.filter((f) => !formData[f.key].trim());
     if (missingFields.length > 0) {
       setCreateError(`Missing: ${missingFields.map((f) => f.label).join(", ")}`);
       return;
@@ -713,7 +710,7 @@ export default function FeatureCreateCampaignPage() {
             {FORM_FIELDS.map((field) => (
               <div key={field.key}>
                 <label className="block text-xs text-gray-500 mb-1">
-                  {field.label}{!field.required && <span className="text-gray-300 ml-1">(optional)</span>}
+                  {field.label}
                 </label>
                 <input
                   type="text"

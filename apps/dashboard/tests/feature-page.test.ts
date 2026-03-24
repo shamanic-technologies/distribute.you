@@ -299,13 +299,13 @@ describe("Create campaign page", () => {
     });
   });
 
-  describe("Auto-fill from extracted fields", () => {
-    it("should use extractBrandFields for field extraction", () => {
-      expect(content).toContain("extractBrandFields");
+  describe("Auto-fill from prefill endpoint", () => {
+    it("should use prefillFeatureInputs for field extraction", () => {
+      expect(content).toContain("prefillFeatureInputs");
     });
 
-    it("should use CAMPAIGN_OUTREACH_FIELDS for outreach campaigns", () => {
-      expect(content).toContain("CAMPAIGN_OUTREACH_FIELDS");
+    it("should use prefillToStringMap to convert prefill response", () => {
+      expect(content).toContain("prefillToStringMap");
     });
 
     it("should upsert brand from URL for new brands before extracting", () => {
@@ -383,6 +383,16 @@ describe("API leaderboard function", () => {
     expect(content).toContain("export async function extractBrandFields");
     expect(content).toContain('method: "POST"');
     expect(content).toContain("/extract-fields");
+  });
+
+  it("should have prefillFeatureInputs function", () => {
+    expect(content).toContain("export async function prefillFeatureInputs");
+    expect(content).toContain("/features/");
+    expect(content).toContain("/prefill");
+  });
+
+  it("should have prefillToStringMap function", () => {
+    expect(content).toContain("export function prefillToStringMap");
   });
 
   it("should have upsertBrand function", () => {
