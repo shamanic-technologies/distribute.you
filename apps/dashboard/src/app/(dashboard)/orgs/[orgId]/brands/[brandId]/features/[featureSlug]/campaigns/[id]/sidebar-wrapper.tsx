@@ -55,5 +55,5 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
   const outletCount = outletsData?.outlets?.length;
   const journalistCount = journalistsData?.journalists?.length;
 
-  return <CampaignSidebar campaignId={campaignId} orgId={orgId} brandId={brandId} featureSlug={featureSlug} stats={stats ?? undefined} emailCount={emailCount} leadCount={leadCount} companyCount={companyCount} outletCount={outletCount} journalistCount={journalistCount} workflowId={workflowId} />;
+  return <CampaignSidebar campaignId={campaignId} orgId={orgId} brandId={brandId} featureSlug={featureSlug} stats={stats ?? undefined} emailCount={emailCount} leadCount={leadCount} companyCount={companyCount} outletCount={outletCount} journalistCount={journalistCount} workflowId={workflowId} featureInputs={campaign?.featureInputs} />;
 }

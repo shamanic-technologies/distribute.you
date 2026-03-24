@@ -16,9 +16,10 @@ interface McpSidebarProps {
   title?: string;
   backHref?: string;
   backLabel?: string;
+  extraButtons?: React.ReactNode;
 }
 
-export function McpSidebar({ items, title, backHref, backLabel }: McpSidebarProps) {
+export function McpSidebar({ items, title, backHref, backLabel, extraButtons }: McpSidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -73,6 +74,11 @@ export function McpSidebar({ items, title, backHref, backLabel }: McpSidebarProp
               </Link>
             );
           })}
+          {extraButtons && (
+            <div className="mt-1 border-t border-gray-100 pt-1">
+              {extraButtons}
+            </div>
+          )}
         </nav>
       </aside>
 
@@ -115,6 +121,7 @@ export function McpSidebar({ items, title, backHref, backLabel }: McpSidebarProp
               </Link>
             );
           })}
+          {extraButtons}
         </nav>
       </div>
     </>
