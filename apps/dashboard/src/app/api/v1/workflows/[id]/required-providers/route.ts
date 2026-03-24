@@ -36,12 +36,17 @@ export async function GET(
       "x-external-user-id": clerkUserId,
     };
 
-    const user = await currentUser();
-    if (user) {
-      const email = user.emailAddresses?.[0]?.emailAddress;
-      if (email) headers["x-email"] = email;
-      if (user.firstName) headers["x-first-name"] = user.firstName;
-      if (user.lastName) headers["x-last-name"] = user.lastName;
+    // currentUser() calls Clerk's API — don't let it break the proxy if Clerk is down
+    try {
+      const user = await currentUser();
+      if (user) {
+        const email = user.emailAddresses?.[0]?.emailAddress;
+        if (email) headers["x-email"] = email;
+        if (user.firstName) headers["x-first-name"] = user.firstName;
+        if (user.lastName) headers["x-last-name"] = user.lastName;
+      }
+    } catch (err) {
+      console.warn("[workflows/required-providers] currentUser() failed:", err);
     }
 
     const res = await fetch(`${API_URL}/v1/workflows/${encodeURIComponent(id)}`, {
