@@ -6,7 +6,6 @@ import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrand, listCampaignsByBrand, getCampaignBatchStats, type Brand, type Campaign, type CampaignStats } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
-import { getFeatureSlug, getWorkflowDisplayName } from "@distribute/content";
 import { useFeatures } from "@/lib/features-context";
 
 const POLL_INTERVAL = 5_000;
@@ -103,8 +102,7 @@ export default function BrandOverviewPage() {
   const workflowSections = useMemo(() => {
     const map = new Map<string, Campaign[]>();
     for (const c of campaigns) {
-      const key = c.workflowName ? getFeatureSlug(c.workflowName) : null;
-      const section = key ?? "unknown";
+      const section = c.featureSlug ?? "unknown";
       if (!map.has(section)) map.set(section, []);
       map.get(section)!.push(c);
     }
@@ -112,7 +110,7 @@ export default function BrandOverviewPage() {
     for (const [featureSlug, sectionCampaigns] of map) {
       sections.push({
         featureSlug,
-        label: getFeatureDef(featureSlug)?.name ?? getWorkflowDisplayName(sectionCampaigns[0]?.workflowName ?? featureSlug),
+        label: getFeatureDef(featureSlug)?.name ?? featureSlug,
         campaigns: sectionCampaigns,
       });
     }

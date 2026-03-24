@@ -3,7 +3,6 @@
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { getFeatureSlug } from "@distribute/content";
 import { useFeatures } from "@/lib/features-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { listBrands, listCampaigns, getCampaignBatchStats } from "@/lib/api";
@@ -169,7 +168,7 @@ export default function OrgOverviewPage() {
           <h2 className="text-lg font-medium text-gray-900 mb-4">Recent Campaigns</h2>
           <div className="space-y-2">
             {recentCampaigns.map((campaign) => {
-              const featureSlug = campaign.workflowName ? getFeatureSlug(campaign.workflowName) : null;
+              const featureSlug = campaign.featureSlug ?? null;
               const href = featureSlug && campaign.brandId
                 ? `/orgs/${orgId}/brands/${campaign.brandId}/features/${featureSlug}/campaigns/${campaign.id}`
                 : null;
