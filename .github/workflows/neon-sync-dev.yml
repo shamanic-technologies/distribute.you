@@ -1,0 +1,118 @@
+name: Sync Neon Dev Branches from Production
+
+on:
+  schedule:
+    # Every day at 6:00 UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  sync-dev-branches:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Distribute.you services
+          - service: features-service
+            project_id: lingering-morning-07261005
+          - service: google-service
+            project_id: shy-feather-13542708
+          - service: billing-service
+            project_id: twilight-river-28884620
+          - service: press-kits-service
+            project_id: young-water-29468746
+          - service: articles-service
+            project_id: bitter-breeze-14612131
+          - service: journalists-service
+            project_id: empty-pine-18454684
+          - service: workflow-service
+            project_id: old-pond-00882067
+          - service: apollo-service
+            project_id: falling-glitter-75467434
+          - service: lead-service
+            project_id: delicate-thunder-47386047
+          - service: instantly-service
+            project_id: sparkling-leaf-97255894
+          - service: lifecycle-emails
+            project_id: hidden-darkness-32232386
+          - service: runs-service
+            project_id: cool-butterfly-39186920
+          - service: costs-service
+            project_id: quiet-night-47904218
+          - service: chat-service
+            project_id: billowing-art-88336019
+          - service: scraping-service
+            project_id: old-feather-59338413
+          - service: client-service
+            project_id: twilight-bar-73951432
+          - service: campaign-service
+            project_id: wandering-queen-26277556
+          - service: email-generation-service
+            project_id: snowy-darkness-50106044
+          - service: key-service
+            project_id: lingering-smoke-82089052
+          - service: postmark-service
+            project_id: crimson-rain-68223103
+          # Pressbeat services
+          - service: pressbeat-client-service
+            project_id: plain-sun-09975783
+          - service: pressbeat-sales
+            project_id: super-sea-30084426
+          - service: brand-service
+            project_id: broad-heart-15298526
+          - service: pressbeat-press-funnel
+            project_id: hidden-lake-80975674
+
+    steps:
+      - name: Get production branch ID
+        id: get-prod
+        run: |
+          PROD_BRANCH=$(curl -s \
+            "https://console.neon.tech/api/v2/projects/${{ matrix.project_id }}/branches" \
+            -H "Authorization: Bearer ${{ secrets.NEON_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            | jq -r '.branches[] | select(.primary == true) | .id')
+          echo "branch_id=$PROD_BRANCH" >> "$GITHUB_OUTPUT"
+          echo "Found production branch: $PROD_BRANCH"
+
+      - name: Find or create dev branch
+        id: get-dev
+        run: |
+          # Look for existing dev branch
+          DEV_BRANCH=$(curl -s \
+            "https://console.neon.tech/api/v2/projects/${{ matrix.project_id }}/branches" \
+            -H "Authorization: Bearer ${{ secrets.NEON_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            | jq -r '.branches[] | select(.name == "dev" or .name == "development") | .id')
+
+          if [ -n "$DEV_BRANCH" ]; then
+            echo "Found existing dev branch: $DEV_BRANCH"
+            # Delete and recreate to ensure clean state (handles archived branches too)
+            curl -s -X DELETE \
+              "https://console.neon.tech/api/v2/projects/${{ matrix.project_id }}/branches/$DEV_BRANCH" \
+              -H "Authorization: Bearer ${{ secrets.NEON_API_KEY }}" \
+              -H "Content-Type: application/json"
+            echo "Deleted old dev branch"
+          fi
+
+          # Create fresh dev branch from production
+          NEW_BRANCH=$(curl -s -X POST \
+            "https://console.neon.tech/api/v2/projects/${{ matrix.project_id }}/branches" \
+            -H "Authorization: Bearer ${{ secrets.NEON_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"branch\": {\"name\": \"dev\", \"parent_id\": \"${{ steps.get-prod.outputs.branch_id }}\"}}" \
+            | jq -r '.branch.id')
+
+          echo "branch_id=$NEW_BRANCH" >> "$GITHUB_OUTPUT"
+          echo "Created fresh dev branch: $NEW_BRANCH"
+
+      - name: Create compute endpoint for dev branch
+        run: |
+          # Create a compute endpoint so the dev branch is usable
+          curl -s -X POST \
+            "https://console.neon.tech/api/v2/projects/${{ matrix.project_id }}/endpoints" \
+            -H "Authorization: Bearer ${{ secrets.NEON_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"endpoint\": {\"branch_id\": \"${{ steps.get-dev.outputs.branch_id }}\", \"type\": \"read_write\"}}"
+          echo "✅ ${{ matrix.service }}: dev branch synced from production"
