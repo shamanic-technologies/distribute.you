@@ -3,7 +3,6 @@
 import { useMemo } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { listWorkflows, type Workflow } from "@/lib/api";
-import { parseWorkflowName, getWorkflowDisplayName } from "@distribute/content";
 
 interface WorkflowSelectionTableProps {
   featureSlug: string;
@@ -21,8 +20,7 @@ export function WorkflowSelectionTable({ featureSlug, onSelect, selectedWorkflow
     if (!data?.workflows) return [];
     return data.workflows.filter((wf) => {
       if (wf.status === "deprecated") return false;
-      const parsed = parseWorkflowName(wf.name);
-      return parsed?.featureSlug === featureSlug;
+      return `${wf.category}-${wf.channel}-${wf.audienceType}` === featureSlug;
     });
   }, [data?.workflows, featureSlug]);
 
@@ -82,7 +80,7 @@ export function WorkflowSelectionTable({ featureSlug, onSelect, selectedWorkflow
                       <div className="w-2 h-2 bg-brand-500 rounded-full flex-shrink-0" />
                     )}
                     <span className={`text-sm font-medium ${isSelected ? "text-brand-700" : "text-gray-900"}`}>
-                      {getWorkflowDisplayName(wf.name)}
+                      {wf.displayName ?? wf.signatureName.charAt(0).toUpperCase() + wf.signatureName.slice(1)}
                     </span>
                     {idx === 0 && (
                       <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-medium">
