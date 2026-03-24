@@ -472,6 +472,63 @@ export function prefillToStringMap(prefilled: Record<string, PrefilledField>): R
   return map;
 }
 
+// ─── Features (from features-service) ──────────────────────────────────────
+
+export interface FeatureInput {
+  key: string;
+  label: string;
+  description: string;
+  placeholder?: string;
+  extractKey?: string;
+}
+
+export interface FeatureOutput {
+  key: string;
+  label: string;
+  description?: string;
+}
+
+export interface FeatureChart {
+  type: string;
+  label?: string;
+  dataKeys?: string[];
+}
+
+export interface Feature {
+  slug: string;
+  name: string;
+  description: string;
+  category: string;
+  channel: string;
+  audienceType: string;
+  implemented: boolean;
+  icon?: string;
+  inputs: FeatureInput[];
+  outputs: FeatureOutput[];
+  charts: FeatureChart[];
+  workflowColumns?: string[];
+  resultComponent: string | null;
+}
+
+/** GET /features — list all features */
+export async function listFeatures(
+  params?: { category?: string; channel?: string; audienceType?: string; implemented?: boolean },
+  token?: string,
+): Promise<{ features: Feature[] }> {
+  const query = new URLSearchParams();
+  if (params?.category) query.set("category", params.category);
+  if (params?.channel) query.set("channel", params.channel);
+  if (params?.audienceType) query.set("audienceType", params.audienceType);
+  if (params?.implemented !== undefined) query.set("implemented", String(params.implemented));
+  const qs = query.toString();
+  return apiCall<{ features: Feature[] }>(`/features${qs ? `?${qs}` : ""}`, { token });
+}
+
+/** GET /features/:slug — get a single feature */
+export async function getFeature(slug: string, token?: string): Promise<{ feature: Feature }> {
+  return apiCall<{ feature: Feature }>(`/features/${slug}`, { token });
+}
+
 /** POST /brands — upsert brand by URL, returns brandId */
 export async function upsertBrand(
   url: string,
@@ -899,27 +956,17 @@ export async function generateWorkflow(
   });
 }
 
-// Create campaign (outreach or discovery)
+// Create campaign
 export async function createCampaign(
   params: {
     name: string;
     workflowName: string;
     brandUrl: string;
-    targetAudience: string;
-    targetOutcome?: string;
-    valueForTarget?: string;
-    urgency?: string;
-    scarcity?: string;
-    riskReversal?: string;
-    socialProof?: string;
-    industry?: string;
-    targetGeo?: string;
-    angles?: string[];
     maxBudgetDailyUsd?: string;
     maxBudgetWeeklyUsd?: string;
     maxBudgetMonthlyUsd?: string;
     maxBudgetTotalUsd?: string;
-  },
+  } & Record<string, unknown>,
   token?: string
 ): Promise<{ campaign: Campaign }> {
   return apiCall<{ campaign: Campaign }>("/campaigns", {

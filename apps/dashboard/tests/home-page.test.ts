@@ -20,6 +20,7 @@ describe("Home page", () => {
 
   it("should NOT contain old content page elements", () => {
     expect(content).not.toContain("WORKFLOW_DEFINITIONS");
+    expect(content).not.toContain("useFeatures");
     expect(content).not.toContain("ApiKeyPreview");
     expect(content).not.toContain("features-grid");
     expect(content).not.toContain("feature-card");
@@ -49,9 +50,9 @@ describe("Org overview page", () => {
     expect(content).toContain("listCampaigns");
   });
 
-  it("should import WORKFLOW_DEFINITIONS for features section", () => {
-    expect(content).toContain("WORKFLOW_DEFINITIONS");
-    expect(content).toContain("@distribute/content");
+  it("should import useFeatures for features section", () => {
+    expect(content).toContain("useFeatures");
+    expect(content).toContain("@/lib/features-context");
   });
 
   it("should link to brands page", () => {

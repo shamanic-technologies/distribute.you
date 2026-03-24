@@ -2,6 +2,7 @@
 
 import { McpSidebar } from "./mcp-sidebar";
 import { CampaignStats } from "@/lib/api";
+import { useFeatures } from "@/lib/features-context";
 
 // Icons as SVG components
 const OverviewIcon = () => (
@@ -62,10 +63,12 @@ interface CampaignSidebarProps {
 }
 
 export function CampaignSidebar({ campaignId, orgId, brandId, featureSlug, stats, emailCount, leadCount, companyCount, outletCount, journalistCount, workflowId }: CampaignSidebarProps) {
+  const { getFeature } = useFeatures();
   const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/${campaignId}`;
   const backHref = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`;
 
-  const isDiscovery = featureSlug === "outlets-database-discovery" || featureSlug === "journalists-database-discovery";
+  const featureDef = getFeature(featureSlug);
+  const isDiscovery = featureDef?.audienceType === "discovery";
 
   const outreachItems = [
     {

@@ -6,7 +6,8 @@ import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrand, listCampaignsByBrand, getCampaignBatchStats, type Brand, type Campaign, type CampaignStats } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
-import { getFeatureSlug, getWorkflowDisplayName, FEATURE_LABELS, WORKFLOW_DEFINITIONS } from "@distribute/content";
+import { getFeatureSlug, getWorkflowDisplayName } from "@distribute/content";
+import { useFeatures } from "@/lib/features-context";
 
 const POLL_INTERVAL = 5_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
@@ -73,6 +74,7 @@ export default function BrandOverviewPage() {
   const params = useParams();
   const brandId = params.brandId as string;
   const orgId = params.orgId as string;
+  const { features, getFeature: getFeatureDef } = useFeatures();
 
   const { data: brandData, isLoading: brandLoading } = useAuthQuery(
     ["brand", brandId],
@@ -110,7 +112,7 @@ export default function BrandOverviewPage() {
     for (const [featureSlug, sectionCampaigns] of map) {
       sections.push({
         featureSlug,
-        label: FEATURE_LABELS[featureSlug] ?? getWorkflowDisplayName(sectionCampaigns[0]?.workflowName ?? featureSlug),
+        label: getFeatureDef(featureSlug)?.name ?? getWorkflowDisplayName(sectionCampaigns[0]?.workflowName ?? featureSlug),
         campaigns: sectionCampaigns,
       });
     }
@@ -183,22 +185,22 @@ export default function BrandOverviewPage() {
       <div className="mb-6">
         <h2 className="text-lg font-medium text-gray-900 mb-4">Features</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {WORKFLOW_DEFINITIONS.map((wf) => {
-            const section = workflowSections.find(s => s.featureSlug === wf.featureSlug);
+          {features.map((f) => {
+            const section = workflowSections.find(s => s.featureSlug === f.slug);
             const activeCampaigns = section?.campaigns.filter(c => c.status === "ongoing") ?? [];
 
-            if (wf.implemented) {
+            if (f.implemented) {
               return (
                 <Link
-                  key={wf.featureSlug}
-                  href={`/orgs/${orgId}/brands/${brandId}/features/${wf.featureSlug}`}
+                  key={f.slug}
+                  href={`/orgs/${orgId}/brands/${brandId}/features/${f.slug}`}
                   className="bg-white rounded-lg border border-gray-200 p-5 hover:border-brand-300 hover:shadow-sm transition group"
                 >
                   <div className="flex items-start gap-3">
-                    <FeatureIcon featureSlug={wf.featureSlug} className="w-8 h-8 text-brand-600" />
+                    <FeatureIcon featureSlug={f.slug} className="w-8 h-8 text-brand-600" />
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-gray-900 group-hover:text-brand-600 transition">{wf.label}</h3>
-                      <p className="text-sm text-gray-500 mt-1">{wf.description}</p>
+                      <h3 className="font-medium text-gray-900 group-hover:text-brand-600 transition">{f.name}</h3>
+                      <p className="text-sm text-gray-500 mt-1">{f.description}</p>
                       {section && (
                         <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
                           <span className="flex items-center gap-1.5">
@@ -219,19 +221,19 @@ export default function BrandOverviewPage() {
 
             return (
               <div
-                key={wf.featureSlug}
+                key={f.slug}
                 className="bg-gray-50 rounded-lg border border-gray-200 p-5 opacity-60"
               >
                 <div className="flex items-start gap-3">
-                  <FeatureIcon featureSlug={wf.featureSlug} className="w-8 h-8 text-gray-300" />
+                  <FeatureIcon featureSlug={f.slug} className="w-8 h-8 text-gray-300" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-medium text-gray-400">{wf.label}</h3>
+                      <h3 className="font-medium text-gray-400">{f.name}</h3>
                       <span className="text-[10px] bg-gray-200 text-gray-400 px-1.5 py-0.5 rounded-full whitespace-nowrap">
                         Coming soon
                       </span>
                     </div>
-                    <p className="text-sm text-gray-400 mt-1">{wf.description}</p>
+                    <p className="text-sm text-gray-400 mt-1">{f.description}</p>
                   </div>
                 </div>
               </div>

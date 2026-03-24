@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { keepPreviousData } from "@tanstack/react-query";
-import { WORKFLOW_DEFINITIONS } from "@distribute/content";
+import { useFeatures } from "@/lib/features-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { useOrg } from "@/lib/org-context";
 import {
@@ -204,7 +204,8 @@ export default function CreateCampaignPage() {
 
   const { org } = useOrg();
   const { showPaymentRequired } = useBillingGuard();
-  const featureDef = WORKFLOW_DEFINITIONS.find((w) => w.featureSlug === featureId);
+  const { getFeature } = useFeatures();
+  const featureDef = getFeature(featureId);
 
   // State
   const [mode, setMode] = useState<Mode>("autopilot");
@@ -560,7 +561,7 @@ export default function CreateCampaignPage() {
     return (
       <div className="p-4 md:p-8">
         <div className="mb-6">
-          <h1 className="font-display text-2xl font-bold text-gray-800">{featureDef.label}</h1>
+          <h1 className="font-display text-2xl font-bold text-gray-800">{featureDef.name}</h1>
           <p className="text-gray-600">{featureDef.description}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
@@ -571,7 +572,7 @@ export default function CreateCampaignPage() {
           </div>
           <h3 className="font-display font-bold text-lg text-gray-800 mb-2">Coming Soon</h3>
           <p className="text-gray-600 text-sm max-w-md mx-auto">
-            {featureDef.label} is not yet available. We&apos;re working on it and will notify you when it&apos;s ready.
+            {featureDef.name} is not yet available. We&apos;re working on it and will notify you when it&apos;s ready.
           </p>
         </div>
       </div>
@@ -598,7 +599,7 @@ export default function CreateCampaignPage() {
       {/* Header */}
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-gray-800">Create Campaign</h1>
-        <p className="text-gray-600">Select a workflow and configure your campaign for {featureDef.label}.</p>
+        <p className="text-gray-600">Select a workflow and configure your campaign for {featureDef.name}.</p>
       </div>
 
       {/* Missing provider keys warning */}

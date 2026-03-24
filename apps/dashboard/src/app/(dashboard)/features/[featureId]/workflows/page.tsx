@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { keepPreviousData } from "@tanstack/react-query";
-import { WORKFLOW_DEFINITIONS } from "@distribute/content";
+import { useFeatures } from "@/lib/features-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   fetchRankedWorkflows,
@@ -74,7 +74,8 @@ function rankedToRow(item: RankedWorkflowItem): WorkflowRowData {
 export default function FeatureWorkflowsPage() {
   const params = useParams();
   const featureId = params.featureId as string;
-  const featureDef = WORKFLOW_DEFINITIONS.find((w) => w.featureSlug === featureId);
+  const { getFeature } = useFeatures();
+  const featureDef = getFeature(featureId);
 
   const [detailWorkflowId, setDetailWorkflowId] = useState<string | null>(null);
 
@@ -107,7 +108,7 @@ export default function FeatureWorkflowsPage() {
     <div className="p-4 md:p-8">
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-gray-800">Workflows</h1>
-        <p className="text-gray-600">All available workflows for {featureDef.label}.</p>
+        <p className="text-gray-600">All available workflows for {featureDef.name}.</p>
       </div>
 
       {isLoading ? (

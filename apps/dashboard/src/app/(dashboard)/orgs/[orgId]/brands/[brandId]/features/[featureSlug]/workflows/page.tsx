@@ -9,7 +9,7 @@ import {
   generateWorkflow,
   type RankedWorkflowItem,
 } from "@/lib/api";
-import { WORKFLOW_DEFINITIONS } from "@distribute/content";
+import { useFeatures } from "@/lib/features-context";
 import { PlusIcon } from "@heroicons/react/20/solid";
 
 const POLL_INTERVAL = 5_000;
@@ -104,12 +104,13 @@ export default function FeatureWorkflowsPage() {
   const [metric, setMetric] = useState<SortKey>("costPerReplyCents");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
-  const wfDef = WORKFLOW_DEFINITIONS.find((w) => w.featureSlug === featureSlug);
+  const { getFeature } = useFeatures();
+  const wfDef = getFeature(featureSlug);
 
   const createMutation = useMutation({
     mutationFn: () =>
       generateWorkflow({
-        description: `Create a ${wfDef?.label ?? featureSlug} workflow: ${wfDef?.description ?? "automated workflow for this feature"}.`,
+        description: `Create a ${wfDef?.name ?? featureSlug} workflow: ${wfDef?.description ?? "automated workflow for this feature"}.`,
         hints: {
           services: wfDef ? [wfDef.category] : undefined,
         },
@@ -170,7 +171,7 @@ export default function FeatureWorkflowsPage() {
         <div>
           <h1 className="font-display text-2xl font-bold text-gray-800">Workflows</h1>
           <p className="text-gray-600">
-            Workflows for {wfDef?.label ?? featureSlug}.
+            Workflows for {wfDef?.name ?? featureSlug}.
           </p>
         </div>
         <button
