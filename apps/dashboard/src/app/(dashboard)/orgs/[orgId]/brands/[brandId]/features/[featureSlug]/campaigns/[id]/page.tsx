@@ -11,26 +11,6 @@ import { PressKitResults } from "@/components/campaign/press-kit-results";
 import { DiscoveredOutlets } from "@/components/campaign/discovered-outlets";
 import { DiscoveredJournalists } from "@/components/campaign/discovered-journalists";
 
-function displayField(raw: string | null | undefined): string {
-  if (!raw) return "";
-  if (!raw.startsWith("{") && !raw.startsWith("[")) return raw;
-  try {
-    const parsed = JSON.parse(raw);
-    return flatten(parsed);
-  } catch {
-    return raw;
-  }
-}
-
-function flatten(obj: unknown): string {
-  if (obj == null) return "";
-  if (typeof obj === "string") return obj;
-  if (typeof obj === "number" || typeof obj === "boolean") return String(obj);
-  if (Array.isArray(obj)) return obj.map(flatten).filter(Boolean).join("\n");
-  if (typeof obj === "object") return Object.values(obj as Record<string, unknown>).map(flatten).filter(Boolean).join("\n");
-  return String(obj);
-}
-
 function formatTotalCost(cents: string | null | undefined): string | null {
   if (!cents) return null;
   const val = parseFloat(cents);
@@ -129,66 +109,6 @@ export default function CampaignOverviewPage() {
             year: "numeric"
           })}
         </p>
-      </div>
-
-      {/* Target audience & outcome */}
-      <div className="mb-6 space-y-2">
-        {campaign.featureInputs?.targetAudience && (
-          <div>
-            <p className="text-xs font-medium text-gray-500 mb-1">Target Audience</p>
-            <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-              {campaign.featureInputs.targetAudience}
-            </p>
-          </div>
-        )}
-        {campaign.featureInputs?.targetOutcome && (
-          <div>
-            <p className="text-xs font-medium text-gray-500 mb-1">Target Outcome</p>
-            <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-              {campaign.featureInputs.targetOutcome}
-            </p>
-          </div>
-        )}
-        {campaign.featureInputs?.valueForTarget && (
-          <div>
-            <p className="text-xs font-medium text-gray-500 mb-1">Value for Target</p>
-            <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-              {campaign.featureInputs.valueForTarget}
-            </p>
-          </div>
-        )}
-        {campaign.featureInputs?.urgency && (
-          <div>
-            <p className="text-xs font-medium text-gray-500 mb-1">Urgency</p>
-            <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 whitespace-pre-line">
-              {displayField(campaign.featureInputs.urgency)}
-            </p>
-          </div>
-        )}
-        {campaign.featureInputs?.scarcity && (
-          <div>
-            <p className="text-xs font-medium text-gray-500 mb-1">Scarcity</p>
-            <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 whitespace-pre-line">
-              {displayField(campaign.featureInputs.scarcity)}
-            </p>
-          </div>
-        )}
-        {campaign.featureInputs?.riskReversal && (
-          <div>
-            <p className="text-xs font-medium text-gray-500 mb-1">Risk Reversal</p>
-            <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 whitespace-pre-line">
-              {displayField(campaign.featureInputs.riskReversal)}
-            </p>
-          </div>
-        )}
-        {campaign.featureInputs?.socialProof && (
-          <div>
-            <p className="text-xs font-medium text-gray-500 mb-1">Social Proof</p>
-            <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 whitespace-pre-line">
-              {displayField(campaign.featureInputs.socialProof)}
-            </p>
-          </div>
-        )}
       </div>
 
       {/* Press kit results (for press-kit campaigns) */}
