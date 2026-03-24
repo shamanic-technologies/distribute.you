@@ -390,11 +390,13 @@ export default function CreateCampaignPage() {
       return `${selectedRow.name} — ${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}.${String(now.getMilliseconds()).padStart(3, "0")}`;
     };
     try {
+      const { brandUrl, ...inputFields } = formData;
       const campaignPayload = {
         workflowName: selectedRow.name,
         featureSlug: featureId,
-        ...formData,
+        brandUrl,
         ...budgetParams,
+        featureInputs: inputFields,
       };
       try {
         await createCampaign({ name: generateName(), ...campaignPayload });
@@ -436,10 +438,12 @@ export default function CreateCampaignPage() {
     if (budgetFrequency === "weekly") budgetParams.maxBudgetWeeklyUsd = budgetAmount;
     if (budgetFrequency === "monthly") budgetParams.maxBudgetMonthlyUsd = budgetAmount;
 
+    const { brandUrl: intentBrandUrl, ...intentInputFields } = formData;
     sessionStorage.setItem("pendingCampaign", JSON.stringify({
       workflowName: selectedRow.name,
-      ...formData,
+      brandUrl: intentBrandUrl,
       ...budgetParams,
+      featureInputs: intentInputFields,
     }));
   }, [selectedRow, budgetAmount, budgetFrequency, formData]);
 

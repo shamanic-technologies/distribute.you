@@ -344,9 +344,14 @@ describe("Create campaign page", () => {
 
     it("should have required campaign fields", () => {
       expect(content).toContain("brandUrl");
-      expect(content).toContain("targetAudience");
-      expect(content).toContain("targetOutcome");
+      expect(content).toContain("featureInputs");
       expect(content).toContain("workflowName");
+    });
+
+    it("should wrap form inputs in featureInputs, not spread as top-level", () => {
+      // Regression: inputValues must be sent inside featureInputs, not spread
+      expect(content).toContain("featureInputs: inputFields");
+      expect(content).not.toMatch(/\.\.\.formData,\s*\n\s*\.\.\.budgetParams/);
     });
   });
 });
@@ -377,6 +382,14 @@ describe("API leaderboard function", () => {
 
   it("should have brandId in Campaign type", () => {
     expect(content).toContain("brandId: string | null");
+  });
+
+  it("should use featureInputs in Campaign type instead of legacy top-level fields", () => {
+    expect(content).toContain("featureInputs: Record<string, string> | null");
+    // Legacy top-level fields should not exist on Campaign
+    expect(content).not.toMatch(/^\s+targetAudience: string/m);
+    expect(content).not.toMatch(/^\s+targetOutcome: string/m);
+    expect(content).not.toMatch(/^\s+scarcity: string/m);
   });
 
   it("should have extractBrandFields function", () => {

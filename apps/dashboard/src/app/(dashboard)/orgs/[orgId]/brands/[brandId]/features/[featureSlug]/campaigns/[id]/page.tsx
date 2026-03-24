@@ -133,59 +133,59 @@ export default function CampaignOverviewPage() {
 
       {/* Target audience & outcome */}
       <div className="mb-6 space-y-2">
-        {campaign.targetAudience && (
+        {campaign.featureInputs?.targetAudience && (
           <div>
             <p className="text-xs font-medium text-gray-500 mb-1">Target Audience</p>
             <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-              {campaign.targetAudience}
+              {campaign.featureInputs.targetAudience}
             </p>
           </div>
         )}
-        {campaign.targetOutcome && (
+        {campaign.featureInputs?.targetOutcome && (
           <div>
             <p className="text-xs font-medium text-gray-500 mb-1">Target Outcome</p>
             <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-              {campaign.targetOutcome}
+              {campaign.featureInputs.targetOutcome}
             </p>
           </div>
         )}
-        {campaign.valueForTarget && (
+        {campaign.featureInputs?.valueForTarget && (
           <div>
             <p className="text-xs font-medium text-gray-500 mb-1">Value for Target</p>
             <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-              {campaign.valueForTarget}
+              {campaign.featureInputs.valueForTarget}
             </p>
           </div>
         )}
-        {campaign.urgency && (
+        {campaign.featureInputs?.urgency && (
           <div>
             <p className="text-xs font-medium text-gray-500 mb-1">Urgency</p>
             <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 whitespace-pre-line">
-              {displayField(campaign.urgency)}
+              {displayField(campaign.featureInputs.urgency)}
             </p>
           </div>
         )}
-        {campaign.scarcity && (
+        {campaign.featureInputs?.scarcity && (
           <div>
             <p className="text-xs font-medium text-gray-500 mb-1">Scarcity</p>
             <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 whitespace-pre-line">
-              {displayField(campaign.scarcity)}
+              {displayField(campaign.featureInputs.scarcity)}
             </p>
           </div>
         )}
-        {campaign.riskReversal && (
+        {campaign.featureInputs?.riskReversal && (
           <div>
             <p className="text-xs font-medium text-gray-500 mb-1">Risk Reversal</p>
             <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 whitespace-pre-line">
-              {displayField(campaign.riskReversal)}
+              {displayField(campaign.featureInputs.riskReversal)}
             </p>
           </div>
         )}
-        {campaign.socialProof && (
+        {campaign.featureInputs?.socialProof && (
           <div>
             <p className="text-xs font-medium text-gray-500 mb-1">Social Proof</p>
             <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 whitespace-pre-line">
-              {displayField(campaign.socialProof)}
+              {displayField(campaign.featureInputs.socialProof)}
             </p>
           </div>
         )}
