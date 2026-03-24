@@ -436,44 +436,29 @@ export async function extractBrandFields(
 
 // ─── Feature prefill ───────────────────────────────────────────────────────
 
-export interface PrefilledField {
-  value: string | string[];
-  cached: boolean;
-  sourceUrls: string[];
-}
-
 export interface PrefillResponse {
   slug: string;
   brandId: string;
-  prefilled: Record<string, PrefilledField>;
+  prefilled: Record<string, { value: string | null }>;
 }
 
-/** POST /features/:slug/prefill — get pre-filled input values for a feature form */
+/** POST /features/:slug/prefill?format=text — get pre-filled input values as plain strings */
 export async function prefillFeatureInputs(
   slug: string,
   brandId: string,
   token?: string,
 ): Promise<PrefillResponse> {
   return apiCall<PrefillResponse>(
-    `/features/${slug}/prefill`,
+    `/features/${slug}/prefill?format=text`,
     { token, method: "POST", body: { brandId } },
   );
 }
 
-/** Convert prefill response to a flat string map for form pre-fill */
-export function prefillToStringMap(prefilled: Record<string, PrefilledField>): Record<string, string> {
+/** Extract flat string map from prefill response */
+export function prefillToStringMap(prefilled: Record<string, { value: string | null }>): Record<string, string> {
   const map: Record<string, string> = {};
   for (const [key, field] of Object.entries(prefilled)) {
-    const v = field.value;
-    if (typeof v === "string") {
-      map[key] = v;
-    } else if (Array.isArray(v)) {
-      map[key] = v.join("\n");
-    } else if (v != null && typeof v === "object") {
-      map[key] = JSON.stringify(v);
-    } else {
-      map[key] = String(v ?? "");
-    }
+    map[key] = field.value ?? "";
   }
   return map;
 }
