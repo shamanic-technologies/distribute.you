@@ -93,7 +93,7 @@ describe("Brand-scoped campaigns page", () => {
 
   it("should show feature label badge on each campaign", () => {
     const content = fs.readFileSync(campaignsPath, "utf-8");
-    expect(content).toContain("getSectionKey");
+    expect(content).toContain("getFeatureSlug");
     expect(content).toContain("featureLabel");
   });
 });

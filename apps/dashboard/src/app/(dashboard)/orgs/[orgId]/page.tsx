@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { WORKFLOW_DEFINITIONS, getSectionKey } from "@distribute/content";
+import { WORKFLOW_DEFINITIONS, getFeatureSlug } from "@distribute/content";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { listBrands, listCampaigns, getCampaignBatchStats } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
@@ -142,8 +142,8 @@ export default function OrgOverviewPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {WORKFLOW_DEFINITIONS.map((wf) => (
             <Link
-              key={wf.sectionKey}
-              href={wf.implemented ? `/features/${wf.sectionKey}` : "#"}
+              key={wf.featureSlug}
+              href={wf.implemented ? `/features/${wf.featureSlug}` : "#"}
               className={`flex items-center gap-3 p-3 rounded-lg border transition ${
                 wf.implemented
                   ? "border-gray-200 hover:border-brand-300 hover:shadow-sm"
@@ -167,9 +167,9 @@ export default function OrgOverviewPage() {
           <h2 className="text-lg font-medium text-gray-900 mb-4">Recent Campaigns</h2>
           <div className="space-y-2">
             {recentCampaigns.map((campaign) => {
-              const sectionKey = campaign.workflowName ? getSectionKey(campaign.workflowName) : null;
-              const href = sectionKey && campaign.brandId
-                ? `/orgs/${orgId}/brands/${campaign.brandId}/features/${sectionKey}/campaigns/${campaign.id}`
+              const featureSlug = campaign.workflowName ? getFeatureSlug(campaign.workflowName) : null;
+              const href = featureSlug && campaign.brandId
+                ? `/orgs/${orgId}/brands/${campaign.brandId}/features/${featureSlug}/campaigns/${campaign.id}`
                 : null;
               const content = (
                 <>

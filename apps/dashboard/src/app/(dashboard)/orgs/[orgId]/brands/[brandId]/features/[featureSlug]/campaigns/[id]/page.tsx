@@ -21,11 +21,11 @@ function formatTotalCost(cents: string | null | undefined): string | null {
 
 export default function CampaignOverviewPage() {
   const params = useParams();
-  const sectionKey = params.sectionKey as string;
+  const featureSlug = params.featureSlug as string;
   const orgId = params.orgId as string;
-  const isPressKit = sectionKey.startsWith("press-kit");
-  const isOutletDiscovery = sectionKey === "outlets-database-discovery";
-  const isJournalistDiscovery = sectionKey === "journalists-database-discovery";
+  const isPressKit = featureSlug.startsWith("press-kit");
+  const isOutletDiscovery = featureSlug === "outlets-database-discovery";
+  const isJournalistDiscovery = featureSlug === "journalists-database-discovery";
   const isDiscovery = isOutletDiscovery || isJournalistDiscovery;
   const { campaign, stats, leads, emails, loading } = useCampaign();
   const stopMutation = useStopCampaign();

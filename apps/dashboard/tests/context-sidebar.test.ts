@@ -85,7 +85,7 @@ describe("Context sidebar", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
     // OrgLevelSidebar maps WORKFLOW_DEFINITIONS to featureItems
     expect(content).toContain("featureItems");
-    expect(content).toContain('/features/${wf.sectionKey}');
+    expect(content).toContain('/features/${wf.featureSlug}');
   });
 
   it("should have brand back link point to brands page", () => {

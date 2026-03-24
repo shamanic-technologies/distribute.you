@@ -64,10 +64,10 @@ function formatCostCents(cents: number | null): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
-/** Extract the family display name from displayName. Strips the sectionKey prefix to show just the codename. */
+/** Extract the family display name from displayName. Strips the featureSlug prefix to show just the codename. */
 function formatDisplayName(displayName: string | null, fallbackName: string): string {
   const raw = displayName || fallbackName;
-  // Strip sectionKey prefix (e.g. "sales-email-cold-outreach-jasmine" → "jasmine")
+  // Strip featureSlug prefix (e.g. "sales-email-cold-outreach-jasmine" → "jasmine")
   const lastDashIdx = raw.lastIndexOf("-");
   const suffix = lastDashIdx >= 0 ? raw.slice(lastDashIdx + 1) : raw;
   return suffix.charAt(0).toUpperCase() + suffix.slice(1);
@@ -199,15 +199,15 @@ export default function FeatureCreateCampaignPage() {
   const params = useParams();
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
-  const sectionKey = params.sectionKey as string;
+  const featureSlug = params.featureSlug as string;
 
   const router = useRouter();
   const searchParams = useSearchParams();
   const { org } = useOrg();
   const { showPaymentRequired } = useBillingGuard();
 
-  const featureId = sectionKey;
-  const featureDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === featureId);
+  const featureId = featureSlug;
+  const featureDef = WORKFLOW_DEFINITIONS.find((w) => w.featureSlug === featureId);
   const isDiscovery = featureDef?.audienceType === "discovery";
   const FORM_FIELDS = isDiscovery ? DISCOVERY_FORM_FIELDS : OUTREACH_FORM_FIELDS;
 
@@ -403,7 +403,7 @@ export default function FeatureCreateCampaignPage() {
         }
       }
       sendCampaignEmail("campaign_created", result.campaign).catch(() => {});
-      router.push(`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}`);
+      router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`);
     } catch (err) {
       if (err instanceof ApiError && err.status === 402) {
         // 402 is handled by BillingGuardProvider modal — don't show inline error
@@ -421,7 +421,7 @@ export default function FeatureCreateCampaignPage() {
       isCreatingRef.current = false;
       setIsCreating(false);
     }
-  }, [selectedRow, budgetAmount, budgetFrequency, formData, router, orgId, brandId, sectionKey, isDiscovery]);
+  }, [selectedRow, budgetAmount, budgetFrequency, formData, router, orgId, brandId, featureSlug, isDiscovery]);
 
   /** Save campaign intent to sessionStorage so we can resume after Stripe checkout */
   const saveCampaignIntent = useCallback(() => {
@@ -526,7 +526,7 @@ export default function FeatureCreateCampaignPage() {
             }
           }
           sendCampaignEmail("campaign_created", result.campaign).catch(() => {});
-          router.push(`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}`);
+          router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`);
         } catch (err) {
           if (err instanceof ApiError && err.status === 402) {
             // Still insufficient — billing guard will handle
@@ -539,7 +539,7 @@ export default function FeatureCreateCampaignPage() {
     } catch {
       sessionStorage.removeItem("pendingCampaign");
     }
-  }, [searchParams, router, orgId, brandId, sectionKey]);
+  }, [searchParams, router, orgId, brandId, featureSlug]);
 
   if (!featureDef) return null;
 

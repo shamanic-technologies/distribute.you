@@ -4,11 +4,11 @@ import {
   getWorkflowDefinition,
   getWorkflowDefinitionsByCategory,
   parseWorkflowName,
-  getSectionKey,
+  getFeatureSlug,
   getSignatureName,
   getWorkflowCategory,
   getWorkflowDisplayName,
-  SECTION_LABELS,
+  FEATURE_LABELS,
   WORKFLOW_CATEGORY_LABELS,
 } from "../src/workflows.js";
 
@@ -19,7 +19,7 @@ describe("WORKFLOW_DEFINITIONS", () => {
 
   it("each definition has required fields", () => {
     for (const wf of WORKFLOW_DEFINITIONS) {
-      expect(wf.sectionKey).toBeTruthy();
+      expect(wf.featureSlug).toBeTruthy();
       expect(wf.label).toBeTruthy();
       expect(wf.description).toBeTruthy();
       expect(wf.category).toBeTruthy();
@@ -30,21 +30,21 @@ describe("WORKFLOW_DEFINITIONS", () => {
     }
   });
 
-  it("each sectionKey has a matching SECTION_LABELS entry", () => {
+  it("each featureSlug has a matching FEATURE_LABELS entry", () => {
     for (const wf of WORKFLOW_DEFINITIONS) {
-      expect(SECTION_LABELS[wf.sectionKey]).toBeTruthy();
+      expect(FEATURE_LABELS[wf.featureSlug]).toBeTruthy();
     }
   });
 });
 
 describe("getWorkflowDefinition", () => {
-  it("returns definition for known sectionKey", () => {
+  it("returns definition for known featureSlug", () => {
     const wf = getWorkflowDefinition("sales-email-cold-outreach");
     expect(wf).toBeDefined();
     expect(wf!.category).toBe("sales");
   });
 
-  it("returns undefined for unknown sectionKey", () => {
+  it("returns undefined for unknown featureSlug", () => {
     expect(getWorkflowDefinition("nonexistent")).toBeUndefined();
   });
 });
@@ -77,7 +77,7 @@ describe("parseWorkflowName", () => {
       channel: "email",
       audienceType: "cold-outreach",
       signatureName: "sienna",
-      sectionKey: "sales-email-cold-outreach",
+      featureSlug: "sales-email-cold-outreach",
     });
   });
 
@@ -88,7 +88,7 @@ describe("parseWorkflowName", () => {
       channel: "email",
       audienceType: "cold-outreach",
       signatureName: "sequoia",
-      sectionKey: "journalists-email-cold-outreach",
+      featureSlug: "journalists-email-cold-outreach",
     });
   });
 
@@ -99,7 +99,7 @@ describe("parseWorkflowName", () => {
       channel: "email",
       audienceType: "generation",
       signatureName: "v1",
-      sectionKey: "press-kit-email-generation",
+      featureSlug: "press-kit-email-generation",
     });
   });
 
@@ -110,7 +110,7 @@ describe("parseWorkflowName", () => {
       channel: "database",
       audienceType: "discovery",
       signatureName: "cedar",
-      sectionKey: "outlets-database-discovery",
+      featureSlug: "outlets-database-discovery",
     });
   });
 
@@ -121,7 +121,7 @@ describe("parseWorkflowName", () => {
       channel: "database",
       audienceType: "discovery",
       signatureName: "birch",
-      sectionKey: "journalists-database-discovery",
+      featureSlug: "journalists-database-discovery",
     });
   });
 
@@ -135,13 +135,13 @@ describe("parseWorkflowName", () => {
   });
 });
 
-describe("getSectionKey", () => {
+describe("getFeatureSlug", () => {
   it("extracts section key from workflow name", () => {
-    expect(getSectionKey("sales-email-cold-outreach-sienna")).toBe("sales-email-cold-outreach");
+    expect(getFeatureSlug("sales-email-cold-outreach-sienna")).toBe("sales-email-cold-outreach");
   });
 
   it("returns null for invalid names", () => {
-    expect(getSectionKey("invalid")).toBeNull();
+    expect(getFeatureSlug("invalid")).toBeNull();
   });
 });
 

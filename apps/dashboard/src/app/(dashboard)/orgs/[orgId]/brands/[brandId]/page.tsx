@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrand, listCampaignsByBrand, getCampaignBatchStats, type Brand, type Campaign, type CampaignStats } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
-import { getSectionKey, getWorkflowDisplayName, SECTION_LABELS, WORKFLOW_DEFINITIONS } from "@distribute/content";
+import { getFeatureSlug, getWorkflowDisplayName, FEATURE_LABELS, WORKFLOW_DEFINITIONS } from "@distribute/content";
 
 const POLL_INTERVAL = 5_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
@@ -20,36 +20,36 @@ function formatCost(cents: string | null | undefined): string | null {
   return `$${usd.toFixed(2)}`;
 }
 
-function FeatureIcon({ sectionKey, className }: { sectionKey: string; className?: string }) {
-  if (sectionKey.startsWith("sales") || sectionKey.startsWith("welcome")) {
+function FeatureIcon({ featureSlug, className }: { featureSlug: string; className?: string }) {
+  if (featureSlug.startsWith("sales") || featureSlug.startsWith("welcome")) {
     return (
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className={className}>
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
       </svg>
     );
   }
-  if (sectionKey.startsWith("journalists")) {
+  if (featureSlug.startsWith("journalists")) {
     return (
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className={className}>
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
       </svg>
     );
   }
-  if (sectionKey.startsWith("press-kit")) {
+  if (featureSlug.startsWith("press-kit")) {
     return (
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className={className}>
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
       </svg>
     );
   }
-  if (sectionKey.startsWith("outlets")) {
+  if (featureSlug.startsWith("outlets")) {
     return (
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className={className}>
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
       </svg>
     );
   }
-  if (sectionKey.startsWith("webinar")) {
+  if (featureSlug.startsWith("webinar")) {
     return (
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className={className}>
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -64,7 +64,7 @@ function FeatureIcon({ sectionKey, className }: { sectionKey: string; className?
 }
 
 interface WorkflowSection {
-  sectionKey: string;
+  featureSlug: string;
   label: string;
   campaigns: Campaign[];
 }
@@ -101,16 +101,16 @@ export default function BrandOverviewPage() {
   const workflowSections = useMemo(() => {
     const map = new Map<string, Campaign[]>();
     for (const c of campaigns) {
-      const key = c.workflowName ? getSectionKey(c.workflowName) : null;
+      const key = c.workflowName ? getFeatureSlug(c.workflowName) : null;
       const section = key ?? "unknown";
       if (!map.has(section)) map.set(section, []);
       map.get(section)!.push(c);
     }
     const sections: WorkflowSection[] = [];
-    for (const [sectionKey, sectionCampaigns] of map) {
+    for (const [featureSlug, sectionCampaigns] of map) {
       sections.push({
-        sectionKey,
-        label: SECTION_LABELS[sectionKey] ?? getWorkflowDisplayName(sectionCampaigns[0]?.workflowName ?? sectionKey),
+        featureSlug,
+        label: FEATURE_LABELS[featureSlug] ?? getWorkflowDisplayName(sectionCampaigns[0]?.workflowName ?? featureSlug),
         campaigns: sectionCampaigns,
       });
     }
@@ -184,18 +184,18 @@ export default function BrandOverviewPage() {
         <h2 className="text-lg font-medium text-gray-900 mb-4">Features</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {WORKFLOW_DEFINITIONS.map((wf) => {
-            const section = workflowSections.find(s => s.sectionKey === wf.sectionKey);
+            const section = workflowSections.find(s => s.featureSlug === wf.featureSlug);
             const activeCampaigns = section?.campaigns.filter(c => c.status === "ongoing") ?? [];
 
             if (wf.implemented) {
               return (
                 <Link
-                  key={wf.sectionKey}
-                  href={`/orgs/${orgId}/brands/${brandId}/features/${wf.sectionKey}`}
+                  key={wf.featureSlug}
+                  href={`/orgs/${orgId}/brands/${brandId}/features/${wf.featureSlug}`}
                   className="bg-white rounded-lg border border-gray-200 p-5 hover:border-brand-300 hover:shadow-sm transition group"
                 >
                   <div className="flex items-start gap-3">
-                    <FeatureIcon sectionKey={wf.sectionKey} className="w-8 h-8 text-brand-600" />
+                    <FeatureIcon featureSlug={wf.featureSlug} className="w-8 h-8 text-brand-600" />
                     <div className="flex-1 min-w-0">
                       <h3 className="font-medium text-gray-900 group-hover:text-brand-600 transition">{wf.label}</h3>
                       <p className="text-sm text-gray-500 mt-1">{wf.description}</p>
@@ -219,11 +219,11 @@ export default function BrandOverviewPage() {
 
             return (
               <div
-                key={wf.sectionKey}
+                key={wf.featureSlug}
                 className="bg-gray-50 rounded-lg border border-gray-200 p-5 opacity-60"
               >
                 <div className="flex items-start gap-3">
-                  <FeatureIcon sectionKey={wf.sectionKey} className="w-8 h-8 text-gray-300" />
+                  <FeatureIcon featureSlug={wf.featureSlug} className="w-8 h-8 text-gray-300" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="font-medium text-gray-400">{wf.label}</h3>

@@ -11,7 +11,7 @@ const content = fs.readFileSync(pagePath, "utf-8");
 describe("Feature creation page uses ranked workflows endpoint", () => {
   it("should fetch from fetchRankedWorkflows instead of leaderboard+listWorkflows", () => {
     expect(content).toContain("fetchRankedWorkflows");
-    expect(content).not.toContain("fetchSectionLeaderboard");
+    expect(content).not.toContain("fetchFeatureLeaderboard");
     expect(content).not.toContain("listWorkflows");
   });
 

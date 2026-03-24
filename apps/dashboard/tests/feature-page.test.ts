@@ -364,8 +364,8 @@ describe("API leaderboard function", () => {
     expect(content).toContain("costPerReplyCents");
   });
 
-  it("should have fetchSectionLeaderboard function", () => {
-    expect(content).toContain("fetchSectionLeaderboard");
+  it("should have fetchFeatureLeaderboard function", () => {
+    expect(content).toContain("fetchFeatureLeaderboard");
     expect(content).toContain("/performance/leaderboard");
   });
 

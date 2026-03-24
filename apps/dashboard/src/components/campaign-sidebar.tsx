@@ -51,7 +51,7 @@ interface CampaignSidebarProps {
   campaignId: string;
   orgId: string;
   brandId: string;
-  sectionKey: string;
+  featureSlug: string;
   stats?: CampaignStats;
   emailCount?: number;
   leadCount?: number;
@@ -61,11 +61,11 @@ interface CampaignSidebarProps {
   workflowId?: string;
 }
 
-export function CampaignSidebar({ campaignId, orgId, brandId, sectionKey, stats, emailCount, leadCount, companyCount, outletCount, journalistCount, workflowId }: CampaignSidebarProps) {
-  const basePath = `/orgs/${orgId}/brands/${brandId}/features/${sectionKey}/campaigns/${campaignId}`;
-  const backHref = `/orgs/${orgId}/brands/${brandId}/features/${sectionKey}`;
+export function CampaignSidebar({ campaignId, orgId, brandId, featureSlug, stats, emailCount, leadCount, companyCount, outletCount, journalistCount, workflowId }: CampaignSidebarProps) {
+  const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/${campaignId}`;
+  const backHref = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`;
 
-  const isDiscovery = sectionKey === "outlets-database-discovery" || sectionKey === "journalists-database-discovery";
+  const isDiscovery = featureSlug === "outlets-database-discovery" || featureSlug === "journalists-database-discovery";
 
   const outreachItems = [
     {
@@ -92,7 +92,7 @@ export function CampaignSidebar({ campaignId, orgId, brandId, sectionKey, stats,
   ];
 
   const discoveryItems = [
-    ...(sectionKey === "outlets-database-discovery"
+    ...(featureSlug === "outlets-database-discovery"
       ? [{
           id: "outlets",
           label: "Outlets",
@@ -101,7 +101,7 @@ export function CampaignSidebar({ campaignId, orgId, brandId, sectionKey, stats,
           badge: outletCount ?? undefined,
         }]
       : []),
-    ...(sectionKey === "journalists-database-discovery"
+    ...(featureSlug === "journalists-database-discovery"
       ? [{
           id: "journalists",
           label: "Journalists",
@@ -125,7 +125,7 @@ export function CampaignSidebar({ campaignId, orgId, brandId, sectionKey, stats,
           {
             id: "workflow",
             label: "Workflow",
-            href: `/orgs/${orgId}/brands/${brandId}/features/${sectionKey}/workflows/${workflowId}`,
+            href: `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/${workflowId}`,
             icon: <WorkflowIcon />,
           },
         ]

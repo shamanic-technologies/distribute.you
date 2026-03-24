@@ -56,7 +56,7 @@ export default function FeatureCampaignsPage() {
   const router = useRouter();
   const featureId = params.featureId as string;
 
-  const featureDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === featureId);
+  const featureDef = WORKFLOW_DEFINITIONS.find((w) => w.featureSlug === featureId);
 
   // Fetch all campaigns, then filter client-side by feature
   const { data: campaignsData, isLoading } = useAuthQuery(

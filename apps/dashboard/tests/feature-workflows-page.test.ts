@@ -30,9 +30,9 @@ describe("Feature workflows page", () => {
     expect(content).toContain("useAuthQuery");
   });
 
-  it("should NOT use old fetchSectionLeaderboard or listWorkflows", () => {
+  it("should NOT use old fetchFeatureLeaderboard or listWorkflows", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).not.toContain("fetchSectionLeaderboard");
+    expect(content).not.toContain("fetchFeatureLeaderboard");
     expect(content).not.toContain("listWorkflows");
     expect(content).not.toContain("deprecatedSet");
   });
