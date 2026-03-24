@@ -41,7 +41,7 @@ const NAV_ITEMS = [
     title: "Workflows",
     items: WORKFLOW_DEFINITIONS.map((wf) => ({
       name: wf.label,
-      href: `/${wf.sectionKey}`,
+      href: `/${wf.featureSlug}`,
       available: true,
     })),
   },

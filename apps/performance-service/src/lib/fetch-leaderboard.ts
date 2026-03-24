@@ -84,7 +84,7 @@ export interface WorkflowLeaderboardEntry {
   displayName: string;
   signatureName: string | null;
   category: WorkflowCategory | null;
-  sectionKey: string | null;
+  featureSlug: string | null;
   runCount: number;
   emailsSent: number;
   emailsOpened: number;
@@ -117,7 +117,7 @@ export interface CategorySectionStats {
 
 export interface CategorySectionData {
   category: string;
-  sectionKey: string;
+  featureSlug: string;
   label: string;
   stats: CategorySectionStats;
   workflows: WorkflowLeaderboardEntry[];
@@ -138,14 +138,14 @@ export interface LeaderboardData {
 function rankedToWorkflowEntry(item: PublicRankedItem): WorkflowLeaderboardEntry {
   const b = item.stats.email.broadcast;
   const cost = item.stats.totalCostInUsdCents;
-  const sectionKey = `${item.workflow.category}-${item.workflow.channel}-${item.workflow.audienceType}`;
+  const featureSlug = `${item.workflow.category}-${item.workflow.channel}-${item.workflow.audienceType}`;
 
   return {
     workflowName: item.workflow.name,
     displayName: item.workflow.displayName ?? item.workflow.name,
     signatureName: item.workflow.signatureName,
     category: item.workflow.category as WorkflowCategory,
-    sectionKey,
+    featureSlug,
     runCount: item.stats.completedRuns,
     emailsSent: b.sent,
     emailsOpened: b.opened,
@@ -212,22 +212,22 @@ function aggregateBrandStats(items: PublicRankedItem[]): BrandLeaderboardEntry[]
 function buildCategorySections(workflows: WorkflowLeaderboardEntry[], brands: BrandLeaderboardEntry[]): CategorySectionData[] {
   const grouped = new Map<string, WorkflowLeaderboardEntry[]>();
   for (const wf of workflows) {
-    const key = wf.sectionKey ?? wf.category ?? "unknown";
+    const key = wf.featureSlug ?? wf.category ?? "unknown";
     const arr = grouped.get(key) ?? [];
     arr.push(wf);
     grouped.set(key, arr);
   }
 
-  return [...grouped.entries()].map(([sectionKey, sectionWorkflows]) => {
+  return [...grouped.entries()].map(([featureSlug, sectionWorkflows]) => {
     const sent = sectionWorkflows.reduce((s, w) => s + w.emailsSent, 0);
     const opened = sectionWorkflows.reduce((s, w) => s + w.emailsOpened, 0);
     const replied = sectionWorkflows.reduce((s, w) => s + w.emailsReplied, 0);
     const cost = sectionWorkflows.reduce((s, w) => s + w.totalCostUsdCents, 0);
 
     return {
-      category: sectionWorkflows[0]?.category ?? sectionKey,
-      sectionKey,
-      label: sectionKey
+      category: sectionWorkflows[0]?.category ?? featureSlug,
+      featureSlug,
+      label: featureSlug
         .split("-")
         .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
         .join(" "),

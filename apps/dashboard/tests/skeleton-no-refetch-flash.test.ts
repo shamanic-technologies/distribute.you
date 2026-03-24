@@ -60,7 +60,7 @@ describe("Skeleton loaders only appear on first load", () => {
   describe("Campaign create pages show skeleton while workflows load", () => {
     const campaignPages = [
       "orgs/[orgId]/brands/[brandId]/campaigns/new/page.tsx",
-      "orgs/[orgId]/brands/[brandId]/features/[sectionKey]/campaigns/new/page.tsx",
+      "orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx",
     ];
 
     for (const rel of campaignPages) {

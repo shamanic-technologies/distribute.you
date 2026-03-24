@@ -38,7 +38,7 @@ describe("Breadcrumb hierarchy", () => {
 
   it("should use features instead of workflows in paths", () => {
     const content = fs.readFileSync(breadcrumbPath, "utf-8");
-    expect(content).toContain("/features/${sectionKey}");
+    expect(content).toContain("/features/${featureSlug}");
     expect(content).not.toContain('href={`/brands/');
   });
 });

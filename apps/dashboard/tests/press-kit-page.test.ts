@@ -5,7 +5,7 @@ import * as path from "path";
 describe("Press Kit page removed", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[sectionKey]/press-kits/page.tsx"
+    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/press-kits/page.tsx"
   );
 
   it("should not exist (press kits are now campaign-driven)", () => {
@@ -84,7 +84,7 @@ describe("Press Kit campaign integration", () => {
   const apiPath = path.join(__dirname, "../src/lib/api.ts");
   const campaignPagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[sectionKey]/campaigns/[id]/page.tsx"
+    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/page.tsx"
   );
   const pressKitResultsPath = path.join(
     __dirname,
@@ -109,7 +109,7 @@ describe("Press Kit campaign integration", () => {
     const content = fs.readFileSync(campaignPagePath, "utf-8");
     expect(content).toContain("isPressKit");
     expect(content).toContain("PressKitResults");
-    expect(content).toContain('sectionKey.startsWith("press-kit")');
+    expect(content).toContain('featureSlug.startsWith("press-kit")');
   });
 
   it("should hide outreach stats for press-kit campaigns", () => {
@@ -129,6 +129,6 @@ describe("Sidebar does not have dedicated Press Kit link", () => {
 
   it("should still have press-kit feature icon", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    expect(content).toContain('sectionKey.startsWith("press-kit")');
+    expect(content).toContain('featureSlug.startsWith("press-kit")');
   });
 });

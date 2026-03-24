@@ -29,7 +29,7 @@ describe("Contacted stat uses emailsContacted (not emailsSent)", () => {
     const content = fs.readFileSync(
       path.join(
         __dirname,
-        "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[sectionKey]/campaigns/[id]/page.tsx"
+        "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/page.tsx"
       ),
       "utf-8"
     );
@@ -47,7 +47,7 @@ describe("Contacted stat uses emailsContacted (not emailsSent)", () => {
     const content = fs.readFileSync(
       path.join(
         __dirname,
-        "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[sectionKey]/page.tsx"
+        "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/page.tsx"
       ),
       "utf-8"
     );

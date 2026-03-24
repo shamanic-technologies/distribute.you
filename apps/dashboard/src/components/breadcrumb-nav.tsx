@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useOrganization, useOrganizationList } from "@clerk/nextjs";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { WORKFLOW_DEFINITIONS, SECTION_LABELS } from "@distribute/content";
+import { WORKFLOW_DEFINITIONS, FEATURE_LABELS } from "@distribute/content";
 import { BrandLogo } from "./brand-logo";
 
 interface Brand {
@@ -37,14 +37,14 @@ export function BreadcrumbNav() {
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [workflowName, setWorkflowName] = useState<string | null>(null);
 
-  // Parse path structure: /orgs/[orgId]/brands/[brandId]/features/[sectionKey]/campaigns/[id]
+  // Parse path structure: /orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]
   // Also handles app-level: /features/[featureId] and /features/[featureId]/new
   const pathParts = pathname.split("/").filter(Boolean);
   const orgId = pathParts[0] === "orgs" && pathParts[1] ? pathParts[1] : null;
   const brandId = orgId && pathParts[2] === "brands" && pathParts[3] ? pathParts[3] : null;
-  const sectionKey = brandId && pathParts[4] === "features" && pathParts[5] ? pathParts[5] : null;
-  const campaignId = sectionKey && pathParts[6] === "campaigns" && pathParts[7] ? pathParts[7] : null;
-  const workflowId = sectionKey && pathParts[6] === "workflows" && pathParts[7] ? pathParts[7] : null;
+  const featureSlug = brandId && pathParts[4] === "features" && pathParts[5] ? pathParts[5] : null;
+  const campaignId = featureSlug && pathParts[6] === "campaigns" && pathParts[7] ? pathParts[7] : null;
+  const workflowId = featureSlug && pathParts[6] === "workflows" && pathParts[7] ? pathParts[7] : null;
   // App-level feature path: /features/[featureId] or /features/[featureId]/new
   const appFeatureId = !orgId && pathParts[0] === "features" && pathParts[1] ? pathParts[1] : null;
   const appFeatureSubpage = appFeatureId && pathParts[2] ? pathParts[2] : null;
@@ -155,23 +155,23 @@ export function BreadcrumbNav() {
 
   const handleCampaignSwitch = (newCampaignId: string) => {
     setOpenDropdown(null);
-    if (orgId && brandId && sectionKey) {
+    if (orgId && brandId && featureSlug) {
       const subpage = pathParts[8] || "";
-      router.push(`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}/campaigns/${newCampaignId}${subpage ? "/" + subpage : ""}`);
+      router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/${newCampaignId}${subpage ? "/" + subpage : ""}`);
     }
   };
 
   const currentBrand = brands.find((b) => b.id === brandId);
   const currentCampaign = campaigns.find((c) => c.id === campaignId);
-  const currentFeatureLabel = sectionKey ? (SECTION_LABELS[sectionKey] ?? sectionKey) : null;
-  const appFeatureLabel = appFeatureId ? (SECTION_LABELS[appFeatureId] ?? appFeatureId) : null;
+  const currentFeatureLabel = featureSlug ? (FEATURE_LABELS[featureSlug] ?? featureSlug) : null;
+  const appFeatureLabel = appFeatureId ? (FEATURE_LABELS[appFeatureId] ?? appFeatureId) : null;
 
   const handleAppFeatureSwitch = (newFeatureId: string) => {
     setOpenDropdown(null);
     router.push(`/features/${newFeatureId}`);
   };
 
-  const FeatureIcon = ({ sectionKey: sk }: { sectionKey: string }) => {
+  const FeatureIcon = ({ featureSlug: sk }: { featureSlug: string }) => {
     if (sk.startsWith("sales") || sk.startsWith("welcome")) {
       return (
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-4 h-4 text-gray-500 flex-shrink-0">
@@ -282,14 +282,14 @@ export function BreadcrumbNav() {
                 </div>
                 {WORKFLOW_DEFINITIONS.map((wf) => (
                   <button
-                    key={wf.sectionKey}
-                    onClick={() => handleAppFeatureSwitch(wf.sectionKey)}
+                    key={wf.featureSlug}
+                    onClick={() => handleAppFeatureSwitch(wf.featureSlug)}
                     className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition ${
-                      appFeatureId === wf.sectionKey ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
+                      appFeatureId === wf.featureSlug ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
                     }`}
                   >
                     <span className="truncate">{wf.label}</span>
-                    {appFeatureId === wf.sectionKey && (
+                    {appFeatureId === wf.featureSlug && (
                       <svg className="w-4 h-4 text-brand-600 ml-auto flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
@@ -356,12 +356,12 @@ export function BreadcrumbNav() {
       )}
 
       {/* FEATURE */}
-      {sectionKey && orgId && brandId && (
+      {featureSlug && orgId && brandId && (
         <>
           <Sep />
           <div className="relative flex items-center">
-            <Link href={`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}`} className="px-2 py-1 rounded-md hover:bg-gray-100 transition font-medium text-gray-800 flex items-center gap-1.5">
-              <FeatureIcon sectionKey={sectionKey} />
+            <Link href={`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`} className="px-2 py-1 rounded-md hover:bg-gray-100 transition font-medium text-gray-800 flex items-center gap-1.5">
+              <FeatureIcon featureSlug={featureSlug} />
               {currentFeatureLabel}
             </Link>
             <button onClick={() => toggleDropdown("feature")} className="p-1 hover:bg-gray-100 rounded transition">
@@ -374,15 +374,15 @@ export function BreadcrumbNav() {
                 </div>
                 {WORKFLOW_DEFINITIONS.map((wf) => (
                   <button
-                    key={wf.sectionKey}
-                    onClick={() => handleFeatureSwitch(wf.sectionKey)}
+                    key={wf.featureSlug}
+                    onClick={() => handleFeatureSwitch(wf.featureSlug)}
                     className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition ${
-                      sectionKey === wf.sectionKey ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
+                      featureSlug === wf.featureSlug ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
                     }`}
                   >
-                    <FeatureIcon sectionKey={wf.sectionKey} />
+                    <FeatureIcon featureSlug={wf.featureSlug} />
                     <span className="truncate">{wf.label}</span>
-                    {sectionKey === wf.sectionKey && (
+                    {featureSlug === wf.featureSlug && (
                       <svg className="w-4 h-4 text-brand-600 ml-auto flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
@@ -396,11 +396,11 @@ export function BreadcrumbNav() {
       )}
 
       {/* CAMPAIGN */}
-      {campaignId && orgId && brandId && sectionKey && (
+      {campaignId && orgId && brandId && featureSlug && (
         <>
           <Sep />
           <div className="relative flex items-center">
-            <Link href={`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}/campaigns/${campaignId}`} className="px-2 py-1 rounded-md hover:bg-gray-100 transition font-medium text-gray-800">
+            <Link href={`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/${campaignId}`} className="px-2 py-1 rounded-md hover:bg-gray-100 transition font-medium text-gray-800">
               {currentCampaign?.name || "Campaign"}
             </Link>
             <button onClick={() => toggleDropdown("campaign")} className="p-1 hover:bg-gray-100 rounded transition">
@@ -440,7 +440,7 @@ export function BreadcrumbNav() {
       )}
 
       {/* WORKFLOW */}
-      {workflowId && orgId && brandId && sectionKey && (
+      {workflowId && orgId && brandId && featureSlug && (
         <>
           <Sep />
           <span className="px-2 py-1 font-medium text-gray-800">
@@ -456,25 +456,25 @@ export function BreadcrumbNav() {
           <span className="px-2 py-1 text-gray-600">Brand Info</span>
         </>
       )}
-      {brandId && orgId && !sectionKey && pathParts[4] === "campaigns" && !pathParts[5] && (
+      {brandId && orgId && !featureSlug && pathParts[4] === "campaigns" && !pathParts[5] && (
         <>
           <Sep />
           <span className="px-2 py-1 text-gray-600">Campaigns</span>
         </>
       )}
-      {brandId && orgId && !sectionKey && pathParts[4] === "campaigns" && pathParts[5] === "new" && (
+      {brandId && orgId && !featureSlug && pathParts[4] === "campaigns" && pathParts[5] === "new" && (
         <>
           <Sep />
           <span className="px-2 py-1 text-gray-600">Create Campaign</span>
         </>
       )}
-      {brandId && orgId && !sectionKey && pathParts[4] === "workflows" && (
+      {brandId && orgId && !featureSlug && pathParts[4] === "workflows" && (
         <>
           <Sep />
           <span className="px-2 py-1 text-gray-600">Workflows</span>
         </>
       )}
-      {sectionKey && pathParts[8] === "prompt" && (
+      {featureSlug && pathParts[8] === "prompt" && (
         <>
           <Sep />
           <span className="px-2 py-1 text-gray-600">Email Prompt</span>

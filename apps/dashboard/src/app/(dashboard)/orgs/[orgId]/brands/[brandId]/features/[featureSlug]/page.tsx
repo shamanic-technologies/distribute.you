@@ -69,7 +69,7 @@ export default function FeaturePage() {
   const params = useParams();
   const brandId = params.brandId as string;
   const orgId = params.orgId as string;
-  const sectionKey = params.sectionKey as string;
+  const featureSlug = params.featureSlug as string;
 
   // Campaigns
   const { data: campaignsData, isLoading } = useAuthQuery(
@@ -79,8 +79,8 @@ export default function FeaturePage() {
   );
   const allCampaigns = campaignsData?.campaigns ?? [];
   const campaigns = useMemo(
-    () => allCampaigns.filter((c) => c.workflowName?.startsWith(sectionKey)),
-    [allCampaigns, sectionKey]
+    () => allCampaigns.filter((c) => c.workflowName?.startsWith(featureSlug)),
+    [allCampaigns, featureSlug]
   );
 
   const statsQueries = useQueries({
@@ -164,7 +164,7 @@ export default function FeaturePage() {
             </span>
           ) : null}
           <Link
-            href={`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}/campaigns/new`}
+            href={`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/new`}
             className="px-4 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition"
           >
             New Campaign
@@ -225,7 +225,7 @@ export default function FeaturePage() {
               Create your first campaign to start outreach.
             </p>
             <Link
-              href={`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}/campaigns/new`}
+              href={`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/new`}
               className="inline-flex px-4 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition"
             >
               New Campaign
@@ -242,7 +242,7 @@ export default function FeaturePage() {
             return (
               <Link
                 key={campaign.id}
-                href={`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}/campaigns/${campaign.id}`}
+                href={`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/${campaign.id}`}
                 className="block bg-white rounded-xl border border-gray-200 p-4 hover:border-brand-300 hover:shadow-md transition-all cursor-pointer"
               >
                 <div className="flex items-start justify-between mb-2">

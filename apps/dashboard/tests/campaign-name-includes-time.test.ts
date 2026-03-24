@@ -6,7 +6,7 @@ describe("All campaign creation pages include time in the campaign name", () => 
   const campaignCreatePages = [
     "../src/app/(dashboard)/features/[featureId]/new/page.tsx",
     "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/new/page.tsx",
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[sectionKey]/campaigns/new/page.tsx",
+    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx",
   ];
 
   for (const rel of campaignCreatePages) {

@@ -29,8 +29,8 @@ export default function DocsHome() {
         <h2>Available Workflows</h2>
         <ul>
           {WORKFLOW_DEFINITIONS.map((wf) => (
-            <li key={wf.sectionKey}>
-              <a href={`/${wf.sectionKey}`}>
+            <li key={wf.featureSlug}>
+              <a href={`/${wf.featureSlug}`}>
                 <strong>{wf.label}</strong>
               </a>
               {" - "}{wf.description}

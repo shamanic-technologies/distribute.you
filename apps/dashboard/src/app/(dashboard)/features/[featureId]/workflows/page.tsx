@@ -74,7 +74,7 @@ function rankedToRow(item: RankedWorkflowItem): WorkflowRowData {
 export default function FeatureWorkflowsPage() {
   const params = useParams();
   const featureId = params.featureId as string;
-  const featureDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === featureId);
+  const featureDef = WORKFLOW_DEFINITIONS.find((w) => w.featureSlug === featureId);
 
   const [detailWorkflowId, setDetailWorkflowId] = useState<string | null>(null);
 

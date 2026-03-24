@@ -24,7 +24,7 @@ describe("Performance-service uses public ranked/best endpoints", () => {
     expect(content).toContain("stats.totalCostInUsdCents");
   });
 
-  it("should compute sectionKey from category-channel-audienceType", () => {
+  it("should compute featureSlug from category-channel-audienceType", () => {
     expect(content).toContain("workflow.category}-${item.workflow.channel}-${item.workflow.audienceType");
   });
 

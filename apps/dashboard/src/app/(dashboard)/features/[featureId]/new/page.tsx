@@ -77,7 +77,7 @@ function formatCostCents(cents: number | null): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
-/** Extract the family display name. Strips the sectionKey prefix to show just the codename. */
+/** Extract the family display name. Strips the featureSlug prefix to show just the codename. */
 function formatDisplayName(displayName: string | null, fallbackName: string): string {
   const raw = displayName || fallbackName;
   const lastDashIdx = raw.lastIndexOf("-");
@@ -205,7 +205,7 @@ export default function CreateCampaignPage() {
 
   const { org } = useOrg();
   const { showPaymentRequired } = useBillingGuard();
-  const featureDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === featureId);
+  const featureDef = WORKFLOW_DEFINITIONS.find((w) => w.featureSlug === featureId);
 
   // State
   const [mode, setMode] = useState<Mode>("autopilot");

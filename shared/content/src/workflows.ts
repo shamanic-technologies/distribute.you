@@ -5,7 +5,7 @@ export type WorkflowAudienceType = "cold-outreach" | "generation" | "discovery";
 /** Static workflow section definitions (replaces MCP_PACKAGES). */
 export interface WorkflowDefinition {
   /** Section key, e.g. "sales-email-cold-outreach" */
-  sectionKey: string;
+  featureSlug: string;
   /** Human-readable label */
   label: string;
   /** Short description for cards/lists */
@@ -21,7 +21,7 @@ export interface WorkflowDefinition {
 
 export const WORKFLOW_DEFINITIONS: WorkflowDefinition[] = [
   {
-    sectionKey: "sales-email-cold-outreach",
+    featureSlug: "sales-email-cold-outreach",
     label: "Sales Cold Email Outreach",
     description:
       "Find leads, generate personalized cold emails, send & optimize.",
@@ -32,7 +32,7 @@ export const WORKFLOW_DEFINITIONS: WorkflowDefinition[] = [
     implemented: true,
   },
   {
-    sectionKey: "journalists-email-cold-outreach",
+    featureSlug: "journalists-email-cold-outreach",
     label: "Journalists Cold Email Outreach",
     description:
       "Pitch journalists and media contacts for press coverage.",
@@ -43,7 +43,7 @@ export const WORKFLOW_DEFINITIONS: WorkflowDefinition[] = [
     implemented: true,
   },
   {
-    sectionKey: "press-kit-email-generation",
+    featureSlug: "press-kit-email-generation",
     label: "Press Kit Generation",
     description:
       "Generate and manage press kits for media outreach.",
@@ -54,7 +54,7 @@ export const WORKFLOW_DEFINITIONS: WorkflowDefinition[] = [
     implemented: true,
   },
   {
-    sectionKey: "webinars",
+    featureSlug: "webinars",
     label: "Webinars",
     description:
       "Welcome emails, heat-up sequences, reminders, and post-webinar thank you emails.",
@@ -65,7 +65,7 @@ export const WORKFLOW_DEFINITIONS: WorkflowDefinition[] = [
     implemented: false,
   },
   {
-    sectionKey: "welcome-email",
+    featureSlug: "welcome-email",
     label: "Welcome Email",
     description:
       "Automated welcome email for new signups and contacts.",
@@ -76,7 +76,7 @@ export const WORKFLOW_DEFINITIONS: WorkflowDefinition[] = [
     implemented: false,
   },
   {
-    sectionKey: "outlets-database-discovery",
+    featureSlug: "outlets-database-discovery",
     label: "Media Outlet Discovery",
     description:
       "Find relevant media outlets and publications for your brand.",
@@ -87,7 +87,7 @@ export const WORKFLOW_DEFINITIONS: WorkflowDefinition[] = [
     implemented: true,
   },
   {
-    sectionKey: "journalists-database-discovery",
+    featureSlug: "journalists-database-discovery",
     label: "Journalist Discovery",
     description:
       "Find relevant journalists and media contacts for your brand.",
@@ -99,8 +99,8 @@ export const WORKFLOW_DEFINITIONS: WorkflowDefinition[] = [
   },
 ];
 
-export const getWorkflowDefinition = (sectionKey: string) =>
-  WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === sectionKey);
+export const getWorkflowDefinition = (featureSlug: string) =>
+  WORKFLOW_DEFINITIONS.find((w) => w.featureSlug === featureSlug);
 
 export const getWorkflowDefinitionsByCategory = (cat: WorkflowCategory) =>
   WORKFLOW_DEFINITIONS.filter((w) => w.category === cat);
@@ -110,7 +110,7 @@ export interface ParsedWorkflowName {
   channel: WorkflowChannel;
   audienceType: WorkflowAudienceType;
   signatureName: string;
-  sectionKey: string;
+  featureSlug: string;
 }
 
 export const WORKFLOW_CATEGORY_LABELS: Record<WorkflowCategory, string> = {
@@ -122,8 +122,8 @@ export const WORKFLOW_CATEGORY_LABELS: Record<WorkflowCategory, string> = {
   welcome: "Welcome",
 };
 
-/** Section labels keyed by sectionKey ({category}-{channel}-{audienceType}). */
-export const SECTION_LABELS: Record<string, string> = {
+/** Section labels keyed by featureSlug ({category}-{channel}-{audienceType}). */
+export const FEATURE_LABELS: Record<string, string> = {
   "sales-email-cold-outreach": "Sales Cold Email Outreach",
   "journalists-email-cold-outreach": "Journalists Cold Email Outreach",
   "press-kit-email-generation": "Press Kit Generation",
@@ -188,7 +188,7 @@ export function parseWorkflowName(name: string): ParsedWorkflowName | null {
           channel,
           audienceType: twoWord as WorkflowAudienceType,
           signatureName,
-          sectionKey: `${category}-${channel}-${twoWord}`,
+          featureSlug: `${category}-${channel}-${twoWord}`,
         };
       }
     }
@@ -203,7 +203,7 @@ export function parseWorkflowName(name: string): ParsedWorkflowName | null {
         channel,
         audienceType: rest[0] as WorkflowAudienceType,
         signatureName,
-        sectionKey: `${category}-${channel}-${rest[0]}`,
+        featureSlug: `${category}-${channel}-${rest[0]}`,
       };
     }
   }
@@ -212,8 +212,8 @@ export function parseWorkflowName(name: string): ParsedWorkflowName | null {
 }
 
 /** Get the section key for grouping. Returns null if name doesn't match expected format. */
-export function getSectionKey(workflowName: string): string | null {
-  return parseWorkflowName(workflowName)?.sectionKey ?? null;
+export function getFeatureSlug(workflowName: string): string | null {
+  return parseWorkflowName(workflowName)?.featureSlug ?? null;
 }
 
 /** Extract signatureName from a workflow name. Returns null if name doesn't match expected format. */

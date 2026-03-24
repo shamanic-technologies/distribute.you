@@ -157,13 +157,13 @@ const PlusIcon = () => (
   </svg>
 );
 
-function getFeatureIcon(sectionKey: string): React.ReactNode {
-  if (sectionKey.startsWith("sales")) return <EnvelopeIcon />;
-  if (sectionKey.startsWith("outlets")) return <OrgIcon />;
-  if (sectionKey.startsWith("journalists")) return <NewspaperIcon />;
-  if (sectionKey.startsWith("press-kit")) return <DocumentIcon />;
-  if (sectionKey.startsWith("webinar")) return <CalendarIcon />;
-  if (sectionKey.startsWith("welcome")) return <EnvelopeIcon />;
+function getFeatureIcon(featureSlug: string): React.ReactNode {
+  if (featureSlug.startsWith("sales")) return <EnvelopeIcon />;
+  if (featureSlug.startsWith("outlets")) return <OrgIcon />;
+  if (featureSlug.startsWith("journalists")) return <NewspaperIcon />;
+  if (featureSlug.startsWith("press-kit")) return <DocumentIcon />;
+  if (featureSlug.startsWith("webinar")) return <CalendarIcon />;
+  if (featureSlug.startsWith("welcome")) return <EnvelopeIcon />;
   return <WorkflowIcon />;
 }
 
@@ -171,30 +171,30 @@ interface NavigationLevel {
   type: "app" | "appFeature" | "org" | "brand" | "feature" | "workflow" | "campaign";
   orgId?: string;
   brandId?: string;
-  sectionKey?: string;
+  featureSlug?: string;
   campaignId?: string;
   workflowId?: string;
   featureId?: string;
 }
 
 function getNavigationLevel(segments: string[]): NavigationLevel {
-  // /orgs/[orgId]/brands/[brandId]/features/[sectionKey]/campaigns/[id]
+  // /orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]
   if (segments[0] === "orgs" && segments[1]) {
     const orgId = segments[1];
     if (segments[2] === "brands" && segments[3]) {
       const brandId = segments[3];
       if (segments[4] === "features" && segments[5]) {
-        const sectionKey = segments[5];
+        const featureSlug = segments[5];
         if (segments[6] === "campaigns" && segments[7]) {
           if (segments[7] === "new") {
-            return { type: "feature", orgId, brandId, sectionKey };
+            return { type: "feature", orgId, brandId, featureSlug };
           }
-          return { type: "campaign", orgId, brandId, sectionKey, campaignId: segments[7] };
+          return { type: "campaign", orgId, brandId, featureSlug, campaignId: segments[7] };
         }
         if (segments[6] === "workflows" && segments[7]) {
-          return { type: "workflow", orgId, brandId, sectionKey, workflowId: segments[7] };
+          return { type: "workflow", orgId, brandId, featureSlug, workflowId: segments[7] };
         }
-        return { type: "feature", orgId, brandId, sectionKey };
+        return { type: "feature", orgId, brandId, featureSlug };
       }
       return { type: "brand", orgId, brandId };
     }
@@ -214,10 +214,10 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
   ];
 
   const featureItems: SidebarItem[] = WORKFLOW_DEFINITIONS.map((wf) => ({
-    id: wf.sectionKey,
+    id: wf.featureSlug,
     label: wf.label,
-    href: `/features/${wf.sectionKey}`,
-    icon: getFeatureIcon(wf.sectionKey),
+    href: `/features/${wf.featureSlug}`,
+    icon: getFeatureIcon(wf.featureSlug),
     comingSoon: !wf.implemented,
   }));
 
@@ -252,10 +252,10 @@ function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string 
   ];
 
   const featureItems: SidebarItem[] = WORKFLOW_DEFINITIONS.map((wf) => ({
-    id: wf.sectionKey,
+    id: wf.featureSlug,
     label: wf.label,
-    href: `/features/${wf.sectionKey}`,
-    icon: getFeatureIcon(wf.sectionKey),
+    href: `/features/${wf.featureSlug}`,
+    icon: getFeatureIcon(wf.featureSlug),
     comingSoon: !wf.implemented,
   }));
 
@@ -301,10 +301,10 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
   ];
 
   const featureItems: SidebarItem[] = WORKFLOW_DEFINITIONS.map((wf) => ({
-    id: wf.sectionKey,
+    id: wf.featureSlug,
     label: wf.label,
-    href: `${basePath}/features/${wf.sectionKey}`,
-    icon: getFeatureIcon(wf.sectionKey),
+    href: `${basePath}/features/${wf.featureSlug}`,
+    icon: getFeatureIcon(wf.featureSlug),
     comingSoon: !wf.implemented,
   }));
 
@@ -332,15 +332,15 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
 }
 
 // Feature Level Sidebar — shows feature-specific sub-menus
-function FeatureLevelSidebar({ orgId, brandId, sectionKey, pathname }: {
+function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   orgId: string;
   brandId: string;
-  sectionKey: string;
+  featureSlug: string;
   pathname: string;
 }) {
-  const basePath = `/orgs/${orgId}/brands/${brandId}/features/${sectionKey}`;
-  const wfDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === sectionKey);
-  const title = wfDef?.label ?? sectionKey;
+  const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`;
+  const wfDef = WORKFLOW_DEFINITIONS.find((w) => w.featureSlug === featureSlug);
+  const title = wfDef?.label ?? featureSlug;
 
   const items: SidebarItem[] = [
     { id: "campaigns", label: "Campaigns", href: basePath, icon: <EnvelopeIcon /> },
@@ -367,7 +367,7 @@ function AppFeatureLevelSidebar({ featureId, pathname }: {
   pathname: string;
 }) {
   const basePath = `/features/${featureId}`;
-  const wfDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === featureId);
+  const wfDef = WORKFLOW_DEFINITIONS.find((w) => w.featureSlug === featureId);
   const title = wfDef?.label ?? featureId;
 
   const items: SidebarItem[] = [
@@ -390,23 +390,23 @@ function AppFeatureLevelSidebar({ featureId, pathname }: {
 }
 
 // Workflow Detail Level Sidebar
-function WorkflowLevelSidebar({ orgId, brandId, sectionKey, workflowId, pathname }: {
+function WorkflowLevelSidebar({ orgId, brandId, featureSlug, workflowId, pathname }: {
   orgId: string;
   brandId: string;
-  sectionKey: string;
+  featureSlug: string;
   workflowId: string;
   pathname: string;
 }) {
-  const basePath = `/orgs/${orgId}/brands/${brandId}/features/${sectionKey}/workflows/${workflowId}`;
-  const wfDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === sectionKey);
-  const title = wfDef?.label ?? sectionKey;
+  const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/${workflowId}`;
+  const wfDef = WORKFLOW_DEFINITIONS.find((w) => w.featureSlug === featureSlug);
+  const title = wfDef?.label ?? featureSlug;
 
   const items: SidebarItem[] = [
     { id: "viewer", label: "Workflow Viewer", href: basePath, icon: <WorkflowIcon /> },
   ];
 
   return (
-    <SidebarSection title={title} backHref={`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}/workflows`} backLabel="Workflows">
+    <SidebarSection title={title} backHref={`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows`} backLabel="Workflows">
       {items.map((item) => (
         <SidebarLink
           key={item.id}
@@ -433,9 +433,9 @@ export function ContextSidebar() {
     case "brand":
       return <BrandLevelSidebar orgId={level.orgId!} brandId={level.brandId!} pathname={pathname} />;
     case "feature":
-      return <FeatureLevelSidebar orgId={level.orgId!} brandId={level.brandId!} sectionKey={level.sectionKey!} pathname={pathname} />;
+      return <FeatureLevelSidebar orgId={level.orgId!} brandId={level.brandId!} featureSlug={level.featureSlug!} pathname={pathname} />;
     case "workflow":
-      return <WorkflowLevelSidebar orgId={level.orgId!} brandId={level.brandId!} sectionKey={level.sectionKey!} workflowId={level.workflowId!} pathname={pathname} />;
+      return <WorkflowLevelSidebar orgId={level.orgId!} brandId={level.brandId!} featureSlug={level.featureSlug!} workflowId={level.workflowId!} pathname={pathname} />;
     case "campaign":
       // Campaign level defers to CampaignSidebar in the campaign layout
       return null;

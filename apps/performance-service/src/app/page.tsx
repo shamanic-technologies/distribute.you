@@ -29,7 +29,7 @@ export default async function HomePage() {
       {sections.length > 0 ? (
         <div className="bg-white">
           {sections.map((section) => (
-            <CategorySection key={section.sectionKey} section={section} />
+            <CategorySection key={section.featureSlug} section={section} />
           ))}
           <p className="text-xs text-gray-400 text-center pb-6">
             Updated {data?.updatedAt ? new Date(data.updatedAt).toLocaleDateString() : "hourly"}.{" "}

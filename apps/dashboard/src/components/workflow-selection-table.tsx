@@ -6,12 +6,12 @@ import { listWorkflows, type Workflow } from "@/lib/api";
 import { parseWorkflowName, getWorkflowDisplayName } from "@distribute/content";
 
 interface WorkflowSelectionTableProps {
-  sectionKey: string;
+  featureSlug: string;
   onSelect?: (workflow: Workflow) => void;
   selectedWorkflowId?: string | null;
 }
 
-export function WorkflowSelectionTable({ sectionKey, onSelect, selectedWorkflowId }: WorkflowSelectionTableProps) {
+export function WorkflowSelectionTable({ featureSlug, onSelect, selectedWorkflowId }: WorkflowSelectionTableProps) {
   const { data, isLoading } = useAuthQuery(
     ["workflows"],
     () => listWorkflows()
@@ -22,9 +22,9 @@ export function WorkflowSelectionTable({ sectionKey, onSelect, selectedWorkflowI
     return data.workflows.filter((wf) => {
       if (wf.status === "deprecated") return false;
       const parsed = parseWorkflowName(wf.name);
-      return parsed?.sectionKey === sectionKey;
+      return parsed?.featureSlug === featureSlug;
     });
-  }, [data?.workflows, sectionKey]);
+  }, [data?.workflows, featureSlug]);
 
   if (isLoading) {
     return (

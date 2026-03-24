@@ -39,7 +39,7 @@ describe("Campaign creation pages filter deprecated workflows", () => {
       name: "feature section campaign page",
       path: path.join(
         __dirname,
-        "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[sectionKey]/campaigns/new/page.tsx"
+        "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx"
       ),
     },
     {
@@ -80,7 +80,7 @@ describe("Workflow listing pages filter deprecated workflows", () => {
     const content = fs.readFileSync(
       path.join(
         __dirname,
-        "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[sectionKey]/workflows/page.tsx"
+        "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/workflows/page.tsx"
       ),
       "utf-8"
     );

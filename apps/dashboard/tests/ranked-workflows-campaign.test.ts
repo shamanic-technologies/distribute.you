@@ -4,14 +4,14 @@ import * as path from "path";
 
 const pagePath = path.resolve(
   __dirname,
-  "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[sectionKey]/campaigns/new/page.tsx"
+  "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx"
 );
 const content = fs.readFileSync(pagePath, "utf-8");
 
 describe("Campaign creation page uses ranked workflows endpoint", () => {
   it("should fetch from fetchRankedWorkflows instead of leaderboard+listWorkflows", () => {
     expect(content).toContain("fetchRankedWorkflows");
-    expect(content).not.toContain("fetchSectionLeaderboard");
+    expect(content).not.toContain("fetchFeatureLeaderboard");
     expect(content).not.toContain("listWorkflows");
   });
 

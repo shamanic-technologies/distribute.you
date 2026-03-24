@@ -725,7 +725,7 @@ export interface WorkflowPerformance {
   workflowName: string;
   displayName: string;
   signatureName: string;
-  sectionKey: string;
+  featureSlug: string;
   runCount: number;
   emailsSent: number;
   emailsReplied: number;
@@ -748,7 +748,7 @@ export interface WorkflowLeaderboardEntry {
   displayName: string;
   signatureName: string | null;
   category: string | null;
-  sectionKey: string | null;
+  featureSlug: string | null;
   runCount: number;
   emailsSent: number;
   emailsOpened: number;
@@ -764,13 +764,13 @@ export interface WorkflowLeaderboardEntry {
 }
 
 /** @deprecated Use fetchRankedWorkflows instead. */
-export async function fetchSectionLeaderboard(sectionKey: string): Promise<WorkflowLeaderboardEntry[]> {
+export async function fetchFeatureLeaderboard(featureSlug: string): Promise<WorkflowLeaderboardEntry[]> {
   try {
     const res = await fetch("/api/performance/leaderboard");
     if (!res.ok) return [];
     const data = await res.json();
     const section = data.categorySections?.find(
-      (s: { sectionKey: string }) => s.sectionKey === sectionKey
+      (s: { featureSlug: string }) => s.featureSlug === featureSlug
     );
     return section?.workflows ?? [];
   } catch {

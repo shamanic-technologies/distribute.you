@@ -8,7 +8,7 @@ function makeWorkflow(overrides: Partial<WorkflowLeaderboardEntry> = {}): Workfl
     displayName: "Test Workflow",
     signatureName: null,
     category: null,
-    sectionKey: null,
+    featureSlug: null,
     runCount: 1,
     emailsSent: 100,
     emailsOpened: 20,

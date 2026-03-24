@@ -57,7 +57,7 @@ describe("ReplyBreakdown chart", () => {
 describe("Feature page skeleton loaders", () => {
   const filePath = path.resolve(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[sectionKey]/page.tsx"
+    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/page.tsx"
   );
   const content = fs.readFileSync(filePath, "utf-8");
 

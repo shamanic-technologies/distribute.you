@@ -100,23 +100,23 @@ export default function FeatureWorkflowsPage() {
   const router = useRouter();
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
-  const sectionKey = params.sectionKey as string;
+  const featureSlug = params.featureSlug as string;
   const [metric, setMetric] = useState<SortKey>("costPerReplyCents");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
-  const wfDef = WORKFLOW_DEFINITIONS.find((w) => w.sectionKey === sectionKey);
+  const wfDef = WORKFLOW_DEFINITIONS.find((w) => w.featureSlug === featureSlug);
 
   const createMutation = useMutation({
     mutationFn: () =>
       generateWorkflow({
-        description: `Create a ${wfDef?.label ?? sectionKey} workflow: ${wfDef?.description ?? "automated workflow for this feature"}.`,
+        description: `Create a ${wfDef?.label ?? featureSlug} workflow: ${wfDef?.description ?? "automated workflow for this feature"}.`,
         hints: {
           services: wfDef ? [wfDef.category] : undefined,
         },
       }),
     onSuccess: (result) => {
       router.push(
-        `/orgs/${orgId}/brands/${brandId}/features/${sectionKey}/workflows/${result.workflow.id}`,
+        `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/${result.workflow.id}`,
       );
     },
   });
@@ -161,7 +161,7 @@ export default function FeatureWorkflowsPage() {
   }, [rows, metric, sortDir]);
 
   function navigateToWorkflow(workflowId: string) {
-    router.push(`/orgs/${orgId}/brands/${brandId}/features/${sectionKey}/workflows/${workflowId}`);
+    router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/${workflowId}`);
   }
 
   return (
@@ -170,7 +170,7 @@ export default function FeatureWorkflowsPage() {
         <div>
           <h1 className="font-display text-2xl font-bold text-gray-800">Workflows</h1>
           <p className="text-gray-600">
-            Workflows for {wfDef?.label ?? sectionKey}.
+            Workflows for {wfDef?.label ?? featureSlug}.
           </p>
         </div>
         <button
