@@ -34,7 +34,7 @@ function formatUsdCents(cents: number): string {
 
 export function CostBreakdownSkeleton() {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
+    <div className="bg-white rounded-xl border border-gray-200 p-6 min-h-[200px]">
       <div className="h-5 w-36 bg-gray-200 rounded animate-pulse mb-4" />
       <div className="flex flex-col sm:flex-row items-center gap-6">
         {/* Donut placeholder */}
@@ -80,9 +80,9 @@ export function CostBreakdown({ costBreakdown }: CostBreakdownProps) {
 
   if (totalCents === 0) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="bg-white rounded-xl border border-gray-200 p-6 min-h-[200px] flex flex-col">
         <h3 className="font-medium text-gray-800 mb-4">Cost Breakdown</h3>
-        <p className="text-sm text-gray-500 text-center py-4">No cost data yet</p>
+        <p className="text-sm text-gray-500 text-center py-4 flex-1 flex items-center justify-center">No cost data yet</p>
       </div>
     );
   }
@@ -96,7 +96,7 @@ export function CostBreakdown({ costBreakdown }: CostBreakdownProps) {
   });
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
+    <div className="bg-white rounded-xl border border-gray-200 p-6 min-h-[200px]">
       <h3 className="font-medium text-gray-800 mb-4">Cost Breakdown</h3>
 
       <div className="flex flex-col sm:flex-row items-center gap-6">

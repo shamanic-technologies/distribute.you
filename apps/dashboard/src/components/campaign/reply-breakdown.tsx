@@ -18,7 +18,7 @@ const COLOR_MAP: Record<string, { bar: string; bg: string; icon: string }> = {
 
 export function ReplyBreakdownSkeleton() {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
+    <div className="bg-white rounded-xl border border-gray-200 p-6 min-h-[200px]">
       <div className="h-5 w-36 bg-gray-200 rounded animate-pulse mb-4" />
       <div className="space-y-3">
         {[70, 50, 35, 20, 10].map((w, i) => (
@@ -55,15 +55,15 @@ export function ReplyBreakdown({ segments, stats, registry }: ReplyBreakdownProp
 
   if (total === 0) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="bg-white rounded-xl border border-gray-200 p-6 min-h-[200px] flex flex-col">
         <h3 className="font-medium text-gray-800 mb-4">Reply Breakdown</h3>
-        <p className="text-sm text-gray-500 text-center py-4">No replies yet</p>
+        <p className="text-sm text-gray-500 text-center py-4 flex-1 flex items-center justify-center">No replies yet</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
+    <div className="bg-white rounded-xl border border-gray-200 p-6 min-h-[200px]">
       <h3 className="font-medium text-gray-800 mb-4">Reply Breakdown</h3>
 
       <div className="space-y-3">
@@ -79,7 +79,7 @@ export function ReplyBreakdown({ segments, stats, registry }: ReplyBreakdownProp
                 </div>
                 <div className={`h-2 ${cat.colors.bg} rounded-full overflow-hidden`}>
                   <div
-                    className={`h-full ${cat.colors.bar} rounded-full`}
+                    className={`h-full ${cat.colors.bar} rounded-full transition-all duration-500 ease-out`}
                     style={{ width: `${percentage}%` }}
                   />
                 </div>

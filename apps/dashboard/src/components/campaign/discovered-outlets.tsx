@@ -1,5 +1,6 @@
 "use client";
 
+import { keepPreviousData } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { listCampaignOutlets, type DiscoveredOutlet } from "@/lib/api";
 
@@ -28,14 +29,14 @@ export function DiscoveredOutlets({ campaignId }: DiscoveredOutletsProps) {
   const { data, isLoading } = useAuthQuery(
     ["campaignOutlets", campaignId],
     () => listCampaignOutlets(campaignId),
-    { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false },
+    { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
   );
 
   const outlets = data?.outlets ?? [];
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
+      <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6 min-h-[120px]">
         <div className="h-5 w-48 bg-gray-200 rounded animate-pulse mb-4" />
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
@@ -48,8 +49,8 @@ export function DiscoveredOutlets({ campaignId }: DiscoveredOutletsProps) {
 
   if (outlets.length === 0) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-6 text-center">
-        <p className="text-gray-500 text-sm">No outlets discovered yet. The campaign workflow will find relevant media outlets automatically.</p>
+      <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6 min-h-[120px] flex items-center justify-center">
+        <p className="text-gray-500 text-sm text-center">No outlets discovered yet. The campaign workflow will find relevant media outlets automatically.</p>
       </div>
     );
   }
@@ -57,7 +58,7 @@ export function DiscoveredOutlets({ campaignId }: DiscoveredOutletsProps) {
   const sorted = [...outlets].sort((a, b) => b.relevanceScore - a.relevanceScore);
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
+    <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6 min-h-[120px]">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-display font-bold text-gray-800">
           Discovered Outlets

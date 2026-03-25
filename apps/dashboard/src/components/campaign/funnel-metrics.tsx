@@ -10,7 +10,7 @@ interface FunnelMetricsProps {
 
 export function FunnelMetricsSkeleton() {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
+    <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6 min-h-[200px]">
       <div className="h-5 w-32 bg-gray-200 rounded animate-pulse mb-6" />
       <div className="flex items-end justify-between gap-3">
         {[100, 85, 65, 50, 25, 10].map((h, i) => (
@@ -43,7 +43,7 @@ export function FunnelMetrics({ steps, stats, registry }: FunnelMetricsProps) {
   const maxValue = Math.max(...resolved.map(s => s.value), 1);
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
+    <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6 min-h-[200px]">
       <h3 className="font-medium text-gray-800 mb-4 md:mb-6">Campaign Funnel</h3>
 
       <div className="flex items-end justify-between gap-3">
@@ -54,7 +54,7 @@ export function FunnelMetrics({ steps, stats, registry }: FunnelMetricsProps) {
               {/* Bar — fixed-height container, bar grows from bottom */}
               <div className="w-full flex justify-center" style={{ height: 128 }}>
                 <div
-                  className="w-full max-w-14 bg-brand-500 rounded-t self-end"
+                  className="w-full max-w-14 bg-brand-500 rounded-t self-end transition-all duration-500 ease-out"
                   style={{ height: `${barHeight}%` }}
                 />
               </div>

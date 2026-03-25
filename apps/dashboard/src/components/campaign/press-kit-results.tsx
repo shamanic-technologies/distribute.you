@@ -1,5 +1,6 @@
 "use client";
 
+import { keepPreviousData } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { listMediaKitsByCampaign, getShareToken, type MediaKit, type MediaKitStatus } from "@/lib/api";
 
@@ -22,7 +23,7 @@ export function PressKitResults({ campaignId, orgId }: PressKitResultsProps) {
   const { data: kits, isLoading: kitsLoading } = useAuthQuery(
     ["mediaKits", "campaign", campaignId],
     () => listMediaKitsByCampaign(campaignId),
-    { refetchInterval: 5_000, refetchIntervalInBackground: false },
+    { refetchInterval: 5_000, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
   );
 
   const { data: shareData } = useAuthQuery(
@@ -32,7 +33,7 @@ export function PressKitResults({ campaignId, orgId }: PressKitResultsProps) {
 
   if (kitsLoading) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
+      <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6 min-h-[120px]">
         <div className="h-5 w-40 bg-gray-200 rounded animate-pulse mb-4" />
         <div className="h-32 bg-gray-100 rounded animate-pulse" />
       </div>
@@ -41,8 +42,8 @@ export function PressKitResults({ campaignId, orgId }: PressKitResultsProps) {
 
   if (!kits || kits.length === 0) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-6 text-center">
-        <p className="text-gray-500 text-sm">No press kit generated yet. The campaign workflow will create one automatically.</p>
+      <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6 min-h-[120px] flex items-center justify-center">
+        <p className="text-gray-500 text-sm text-center">No press kit generated yet. The campaign workflow will create one automatically.</p>
       </div>
     );
   }
