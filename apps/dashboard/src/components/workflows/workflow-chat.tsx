@@ -832,6 +832,8 @@ export function WorkflowChat({
     isStreaming &&
     lastMsg?.role === "assistant" &&
     lastMsg.parts.length === 0;
+  // Show a pending indicator immediately after user sends, before assistant message appears
+  const showPendingAssistant = isStreaming && lastMsg?.role === "user";
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
@@ -918,6 +920,20 @@ export function WorkflowChat({
                 </div>
               );
             })}
+            {showPendingAssistant && (
+              <div className="flex gap-3 animate-in fade-in duration-150">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="flex gap-0.5">
+                    <span className="w-1 h-1 rounded-full bg-white animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <span className="w-1 h-1 rounded-full bg-white animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <span className="w-1 h-1 rounded-full bg-white animate-bounce" style={{ animationDelay: "300ms" }} />
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0 text-sm text-gray-800 dark:text-gray-200 leading-relaxed">
+                  <MessageSkeleton />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       ) : (
