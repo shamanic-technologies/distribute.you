@@ -210,22 +210,49 @@ export default function OrgOverviewPage() {
       {recentCampaigns.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="text-lg font-medium text-gray-900 mb-4">Recent Campaigns</h2>
-          <div className="space-y-2">
+          <div className="space-y-1">
             {recentCampaigns.map((campaign) => {
               const featureSlug = campaign.featureSlug ?? null;
+              const brand = brands.find((b) => b.id === campaign.brandId);
+              const feature = featureSlug ? features.find((f) => f.slug === featureSlug) : null;
+              const stats = batchStats?.[campaign.id];
+              const costCents = parseFloat(stats?.totalCostInUsdCents ?? "0") || 0;
               const href = featureSlug && campaign.brandId
                 ? `/orgs/${orgId}/brands/${campaign.brandId}/features/${featureSlug}/campaigns/${campaign.id}`
                 : null;
-              const content = (
-                <>
-                  <div>
-                    <span className="text-sm font-medium text-gray-700">{campaign.name}</span>
-                    <span className="text-xs text-gray-400 ml-2">
-                      {new Date(campaign.createdAt).toLocaleDateString()}
-                    </span>
+
+              const row = (
+                <div className="flex items-center gap-3 py-2 px-3">
+                  {/* Brand */}
+                  <div className="flex items-center gap-2 min-w-0 w-36 shrink-0">
+                    {brand ? (
+                      <>
+                        <BrandLogo domain={brand.domain} size={20} fallbackClassName="h-4 w-4 text-gray-400" />
+                        <span className="text-sm font-medium text-gray-700 truncate">{brand.name || brand.domain}</span>
+                      </>
+                    ) : (
+                      <span className="text-sm text-gray-400">—</span>
+                    )}
                   </div>
+                  {/* Feature */}
+                  <span className="text-xs text-gray-500 truncate w-32 shrink-0">
+                    {feature?.name ?? featureSlug ?? "—"}
+                  </span>
+                  {/* Date */}
+                  <span className="text-xs text-gray-400 w-20 shrink-0">
+                    {new Date(campaign.createdAt).toLocaleDateString()}
+                  </span>
+                  {/* Metric: emails sent */}
+                  <span className="text-xs text-gray-500 w-16 text-right shrink-0">
+                    {stats ? `${stats.emailsSent ?? 0} sent` : "—"}
+                  </span>
+                  {/* Cost */}
+                  <span className="text-xs text-gray-500 w-16 text-right shrink-0">
+                    {costCents > 0 ? `$${(costCents / 100).toFixed(2)}` : "—"}
+                  </span>
+                  {/* Status */}
                   <span
-                    className={`text-xs px-2 py-0.5 rounded-full ${
+                    className={`text-xs px-2 py-0.5 rounded-full ml-auto shrink-0 ${
                       campaign.status === "ongoing"
                         ? "bg-blue-100 text-blue-700"
                         : campaign.status === "completed"
@@ -235,15 +262,16 @@ export default function OrgOverviewPage() {
                   >
                     {campaign.status}
                   </span>
-                </>
+                </div>
               );
+
               return href ? (
-                <Link key={campaign.id} href={href} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 transition">
-                  {content}
+                <Link key={campaign.id} href={href} className="block rounded-lg hover:bg-gray-50 transition">
+                  {row}
                 </Link>
               ) : (
-                <div key={campaign.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 transition">
-                  {content}
+                <div key={campaign.id} className="rounded-lg">
+                  {row}
                 </div>
               );
             })}
