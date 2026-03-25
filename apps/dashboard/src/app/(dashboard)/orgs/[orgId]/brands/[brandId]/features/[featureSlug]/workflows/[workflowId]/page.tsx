@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getWorkflow, getWorkflowSummary } from "@/lib/api";
+import { getWorkflow, getWorkflowSummary, getFeature } from "@/lib/api";
 import { WorkflowOverview } from "@/components/workflows/workflow-overview";
 import { WorkflowChat } from "@/components/workflows/workflow-chat";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
@@ -48,6 +48,7 @@ function PageSkeleton() {
 export default function WorkflowViewerPage() {
   const params = useParams();
   const workflowId = params.workflowId as string;
+  const featureSlug = params.featureSlug as string;
   const [detailsOpen, setDetailsOpen] = useState(false);
 
   const { data: workflow, isLoading } = useAuthQuery(
@@ -60,9 +61,18 @@ export default function WorkflowViewerPage() {
     () => getWorkflowSummary(workflowId),
   );
 
+  const { data: featureData } = useAuthQuery(
+    ["feature", featureSlug],
+    () => getFeature(featureSlug),
+  );
+
   const workflowContext = useMemo(() => {
     if (!workflow) return {};
+
+    const feature = featureData?.feature ?? null;
+
     return {
+      type: "workflow-viewer",
       workflowId: workflow.id,
       workflow: {
         name: workflow.name,
@@ -75,8 +85,60 @@ export default function WorkflowViewerPage() {
       },
       dag: workflow.dag,
       summary: summary ?? null,
+      feature: feature ? {
+        slug: feature.slug,
+        name: feature.name,
+        description: feature.description,
+        category: feature.category,
+        channel: feature.channel,
+        audienceType: feature.audienceType,
+        inputs: feature.inputs.map((inp) => ({
+          key: inp.key,
+          label: inp.label,
+          type: inp.type,
+          description: inp.description,
+          extractKey: inp.extractKey,
+        })),
+        outputs: feature.outputs.map((out) => ({
+          key: out.key,
+          label: out.label,
+          type: out.type,
+        })),
+      } : null,
+      instructions: [
+        "You are a workflow assistant for the distribute.you platform.",
+        "You have access to the COMPLETE workflow DAG and the feature definition it implements.",
+        "",
+        "== DAG FORMAT ==",
+        "The DAG (Directed Acyclic Graph) defines the execution pipeline:",
+        "- dag.nodes[]: each node has { id, type, config, inputMapping, retries }",
+        "- dag.edges[]: each edge has { from, to, condition? } defining execution order",
+        "- Node types: 'http.call' (API call), 'transform' (data mapping), 'condition' (branching)",
+        "- inputMapping uses '$ref:' syntax to reference outputs from previous nodes, e.g. '$ref:node-id.fieldName'",
+        "- config contains the node's parameters (url, method, headers, body for http.call nodes)",
+        "",
+        "== FEATURE → WORKFLOW PIPELINE ==",
+        "Each feature defines inputs with an 'extractKey' field. The pipeline works as follows:",
+        "1. Brand-service extract-fields uses extractKeys to pull data from the brand profile",
+        "2. The prefill endpoint (POST /features/{slug}/prefill) reads extractKeys, calls brand-service, and returns an object keyed by input.key",
+        "3. The prefilled values become the workflow's initial inputs",
+        "Example: if a feature input has key='industry' and extractKey='industry', prefill returns { industry: '...' }",
+        "",
+        "== READING MORE DETAILS ==",
+        "If you need more information about any service's API:",
+        "1. Use list_services to see all available services",
+        "2. Use list_service_endpoints(service) to see endpoints for a specific service",
+        "3. Use get_endpoint_details(service, method, path) to get full request/response schemas",
+        "4. Use call_api(service, method, path, body) to make read-only API calls",
+        "Do NOT call APIs that create, update, or delete data.",
+        "",
+        "== SCOPE ==",
+        "You can help the user understand, diagnose, and propose modifications to the workflow.",
+        "You CANNOT execute workflows or make write calls to services from this chat.",
+        "When proposing DAG changes, show the complete modified DAG so the user can review it.",
+      ].join("\n"),
     };
-  }, [workflow, summary]);
+  }, [workflow, summary, featureData]);
 
   if (isLoading) {
     return <PageSkeleton />;
