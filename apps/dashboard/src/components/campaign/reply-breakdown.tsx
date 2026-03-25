@@ -1,12 +1,20 @@
 "use client";
 
+import type { BreakdownSegment, StatsRegistry } from "@/lib/api";
+
 interface ReplyBreakdownProps {
-  willingToMeet: number;
-  interested: number;
-  notInterested: number;
-  outOfOffice: number;
-  unsubscribe: number;
+  segments: BreakdownSegment[];
+  stats: Record<string, number>;
+  registry: StatsRegistry;
 }
+
+const COLOR_MAP: Record<string, { bar: string; bg: string; icon: string }> = {
+  green:  { bar: "bg-green-500",  bg: "bg-green-100",  icon: "\u{1F7E2}" },
+  blue:   { bar: "bg-blue-500",   bg: "bg-blue-100",   icon: "\u{1F535}" },
+  red:    { bar: "bg-red-500",    bg: "bg-red-100",    icon: "\u{1F534}" },
+  gray:   { bar: "bg-gray-400",   bg: "bg-gray-100",   icon: "\u26AA" },
+  orange: { bar: "bg-orange-500", bg: "bg-orange-100", icon: "\u{1F7E0}" },
+};
 
 export function ReplyBreakdownSkeleton() {
   return (
@@ -33,52 +41,17 @@ export function ReplyBreakdownSkeleton() {
   );
 }
 
-export function ReplyBreakdown({ 
-  willingToMeet, 
-  interested, 
-  notInterested, 
-  outOfOffice,
-  unsubscribe
-}: ReplyBreakdownProps) {
-  const total = willingToMeet + interested + notInterested + outOfOffice + unsubscribe;
-  
-  const categories = [
-    { 
-      label: "Willing to meet", 
-      value: willingToMeet, 
-      color: "bg-green-500",
-      bgColor: "bg-green-100",
-      icon: "🟢"
-    },
-    { 
-      label: "Interested", 
-      value: interested, 
-      color: "bg-blue-500",
-      bgColor: "bg-blue-100",
-      icon: "🔵"
-    },
-    { 
-      label: "Not interested", 
-      value: notInterested, 
-      color: "bg-red-500",
-      bgColor: "bg-red-100",
-      icon: "🔴"
-    },
-    { 
-      label: "Out of office", 
-      value: outOfOffice, 
-      color: "bg-gray-400",
-      bgColor: "bg-gray-100",
-      icon: "⚪"
-    },
-    { 
-      label: "Unsubscribe", 
-      value: unsubscribe, 
-      color: "bg-orange-500",
-      bgColor: "bg-orange-100",
-      icon: "🟠"
-    },
-  ].filter(c => c.value > 0);
+export function ReplyBreakdown({ segments, stats, registry }: ReplyBreakdownProps) {
+  const resolved = segments
+    .map((seg) => ({
+      key: seg.key,
+      label: registry[seg.key]?.label ?? seg.key,
+      value: stats[seg.key] ?? 0,
+      colors: COLOR_MAP[seg.color] ?? COLOR_MAP.gray,
+    }))
+    .filter((c) => c.value > 0);
+
+  const total = resolved.reduce((sum, c) => sum + c.value, 0);
 
   if (total === 0) {
     return (
@@ -92,21 +65,21 @@ export function ReplyBreakdown({
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6">
       <h3 className="font-medium text-gray-800 mb-4">Reply Breakdown</h3>
-      
+
       <div className="space-y-3">
-        {categories.map((cat) => {
+        {resolved.map((cat) => {
           const percentage = (cat.value / total) * 100;
           return (
-            <div key={cat.label} className="flex items-center gap-3">
-              <span className="text-sm">{cat.icon}</span>
+            <div key={cat.key} className="flex items-center gap-3">
+              <span className="text-sm">{cat.colors.icon}</span>
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-sm text-gray-700">{cat.label}</span>
                   <span className="text-sm font-medium text-gray-800">{cat.value}</span>
                 </div>
-                <div className={`h-2 ${cat.bgColor} rounded-full overflow-hidden`}>
-                  <div 
-                    className={`h-full ${cat.color} rounded-full`}
+                <div className={`h-2 ${cat.colors.bg} rounded-full overflow-hidden`}>
+                  <div
+                    className={`h-full ${cat.colors.bar} rounded-full`}
                     style={{ width: `${percentage}%` }}
                   />
                 </div>

@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { McpSidebar } from "./mcp-sidebar";
-import { CampaignStats } from "@/lib/api";
 import { useFeatures } from "@/lib/features-context";
 import { CampaignInputsPanel } from "./campaign/campaign-inputs-panel";
 
@@ -31,7 +30,6 @@ const EmailsIcon = () => (
   </svg>
 );
 
-
 const WorkflowIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
@@ -50,82 +48,61 @@ const JournalistsIcon = () => (
   </svg>
 );
 
+const PressKitsIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+  </svg>
+);
+
 const InputsIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
   </svg>
 );
 
+// Entity type → sidebar item config
+const ENTITY_CONFIG: Record<string, { label: string; icon: ReactNode; pathSuffix: string }> = {
+  companies:    { label: "Companies",   icon: <CompaniesIcon />,   pathSuffix: "companies" },
+  leads:        { label: "Leads",       icon: <LeadsIcon />,       pathSuffix: "leads" },
+  emails:       { label: "Emails",      icon: <EmailsIcon />,      pathSuffix: "emails" },
+  outlets:      { label: "Outlets",     icon: <OutletsIcon />,     pathSuffix: "outlets" },
+  journalists:  { label: "Journalists", icon: <JournalistsIcon />, pathSuffix: "journalists" },
+  "press-kits": { label: "Press Kits",  icon: <PressKitsIcon />,   pathSuffix: "press-kits" },
+};
+
 interface CampaignSidebarProps {
   campaignId: string;
   orgId: string;
   brandId: string;
   featureSlug: string;
-  stats?: CampaignStats;
-  emailCount?: number;
-  leadCount?: number;
-  companyCount?: number;
-  outletCount?: number;
-  journalistCount?: number;
+  entityCounts?: Record<string, number | undefined>;
   workflowId?: string;
   featureInputs?: Record<string, string> | null;
 }
 
-export function CampaignSidebar({ campaignId, orgId, brandId, featureSlug, stats, emailCount, leadCount, companyCount, outletCount, journalistCount, workflowId, featureInputs }: CampaignSidebarProps) {
+export function CampaignSidebar({ campaignId, orgId, brandId, featureSlug, entityCounts, workflowId, featureInputs }: CampaignSidebarProps) {
   const [inputsPanelOpen, setInputsPanelOpen] = useState(false);
   const { getFeature } = useFeatures();
   const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/${campaignId}`;
   const backHref = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`;
 
   const featureDef = getFeature(featureSlug);
-  const isDiscovery = featureDef?.audienceType === "discovery";
+  const entities = featureDef?.entities ?? [];
 
   const hasInputs = featureInputs && Object.values(featureInputs).some(Boolean);
 
-  const outreachItems = [
-    {
-      id: "companies",
-      label: "Companies",
-      href: `${basePath}/companies`,
-      icon: <CompaniesIcon />,
-      badge: companyCount ?? undefined,
-    },
-    {
-      id: "leads",
-      label: "Leads",
-      href: `${basePath}/leads`,
-      icon: <LeadsIcon />,
-      badge: leadCount ?? undefined,
-    },
-    {
-      id: "emails",
-      label: "Emails",
-      href: `${basePath}/emails`,
-      icon: <EmailsIcon />,
-      badge: emailCount ?? undefined,
-    },
-  ];
-
-  const discoveryItems = [
-    ...(featureSlug === "outlets-database-discovery"
-      ? [{
-          id: "outlets",
-          label: "Outlets",
-          href: `${basePath}/outlets`,
-          icon: <OutletsIcon />,
-          badge: outletCount ?? undefined,
-        }]
-      : []),
-    ...(featureSlug === "journalists-database-discovery"
-      ? [{
-          id: "journalists",
-          label: "Journalists",
-          href: `${basePath}/journalists`,
-          icon: <JournalistsIcon />,
-          badge: journalistCount ?? undefined,
-        }]
-      : []),
-  ];
+  const entityItems = entities
+    .filter((e) => ENTITY_CONFIG[e])
+    .map((e) => {
+      const config = ENTITY_CONFIG[e];
+      return {
+        id: e,
+        label: config.label,
+        href: `${basePath}/${config.pathSuffix}`,
+        icon: config.icon,
+        badge: entityCounts?.[e] ?? undefined,
+      };
+    });
 
   const items = [
     {
@@ -134,7 +111,7 @@ export function CampaignSidebar({ campaignId, orgId, brandId, featureSlug, stats
       href: basePath,
       icon: <OverviewIcon />,
     },
-    ...(isDiscovery ? discoveryItems : outreachItems),
+    ...entityItems,
     ...(workflowId
       ? [
           {

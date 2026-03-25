@@ -101,8 +101,7 @@ export default function WorkflowViewerPage() {
         })),
         outputs: feature.outputs.map((out) => ({
           key: out.key,
-          label: out.label,
-          type: out.type,
+          displayOrder: out.displayOrder,
         })),
       } : null,
       instructions: [

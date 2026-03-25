@@ -23,18 +23,25 @@ describe("Feature workflows page", () => {
     expect(content).toContain("@/lib/features-context");
   });
 
-  it("should use fetchRankedWorkflows for data", () => {
+  it("should use fetchFeatureStats with groupBy workflowName for data", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("fetchRankedWorkflows");
-    expect(content).toContain("ranked-workflows");
+    expect(content).toContain("fetchFeatureStats");
+    expect(content).toContain('groupBy: "workflowName"');
     expect(content).toContain("useAuthQuery");
   });
 
-  it("should NOT use old fetchFeatureLeaderboard or listWorkflows", () => {
+  it("should NOT use old fetchRankedWorkflows or rankedToRow", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).not.toContain("fetchFeatureLeaderboard");
-    expect(content).not.toContain("listWorkflows");
-    expect(content).not.toContain("deprecatedSet");
+    expect(content).not.toContain("fetchRankedWorkflows");
+    expect(content).not.toContain("rankedToRow");
+    expect(content).not.toContain("WorkflowRowData");
+  });
+
+  it("should display dynamic stats from feature outputs and registry", () => {
+    const content = fs.readFileSync(pagePath, "utf-8");
+    expect(content).toContain("formatStatValue");
+    expect(content).toContain("registry");
+    expect(content).toContain("sortedOutputs");
   });
 
   it("should use WorkflowDetailPanel for detail view", () => {
@@ -43,30 +50,14 @@ describe("Feature workflows page", () => {
     expect(content).toContain("detailWorkflowId");
   });
 
-  it("should display performance stats per workflow", () => {
-    const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("emailsSent");
-    expect(content).toContain("openRate");
-    expect(content).toContain("replyRate");
-    expect(content).toContain("costPerReplyCents");
-    expect(content).toContain("runCount");
-  });
-
-  it("should use workflow ID for detail panel (not name-based)", () => {
-    const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("setDetailWorkflowId(row.id)");
-    expect(content).not.toContain("workflowNameToId");
-  });
-
   it("should have a loading state", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
     expect(content).toContain("isLoading");
     expect(content).toContain("animate-pulse");
   });
 
-  it("should use rankedToRow to flatten items", () => {
+  it("should have workflows-list test id", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("rankedToRow");
-    expect(content).toContain("WorkflowRowData");
+    expect(content).toContain("workflows-list");
   });
 });

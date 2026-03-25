@@ -471,45 +471,24 @@ export interface FeatureInput {
 
 export interface FeatureOutput {
   key: string;
-  label: string;
-  type: "count" | "rate" | "currency" | "percentage";
-  displayOrder: number;
-  showInCampaignRow: boolean;
-  showInFunnel: boolean;
-  funnelOrder?: number;
-  numeratorKey?: string;
-  denominatorKey?: string;
-}
-
-export interface WorkflowColumn {
-  key: string;
-  label: string;
-  type: "rate" | "currency" | "count";
-  sortDirection: "asc" | "desc";
   displayOrder: number;
   defaultSort?: boolean;
-  numeratorKey?: string;
-  denominatorKey?: string;
+  sortDirection?: "asc" | "desc";
 }
 
 export interface FunnelStep {
   key: string;
-  label: string;
-  statsField: string;
-  rateBasedOn: string | null;
 }
 
 export interface BreakdownSegment {
   key: string;
-  label: string;
-  statsField: string;
   color: "green" | "blue" | "red" | "gray" | "orange";
   sentiment: "positive" | "neutral" | "negative";
 }
 
 export type FeatureChart =
-  | { key: string; type: "funnel-bar"; title: string; displayOrder: number; steps: FunnelStep[] }
-  | { key: string; type: "breakdown-bar"; title: string; displayOrder: number; segments: BreakdownSegment[] };
+  | { type: "funnel-bar"; steps: FunnelStep[] }
+  | { type: "breakdown-bar"; segments: BreakdownSegment[] };
 
 export interface Feature {
   slug: string;
@@ -524,10 +503,49 @@ export interface Feature {
   displayOrder?: number;
   inputs: FeatureInput[];
   outputs: FeatureOutput[];
-  workflowColumns: WorkflowColumn[];
   charts: FeatureChart[];
-  resultComponent: string | null;
-  defaultWorkflowName: string | null;
+  entities: string[];
+}
+
+// ─── Stats Registry & Stats Types ────────────────────────────────────────────
+
+export interface StatsRegistryEntry {
+  type: "count" | "rate" | "currency";
+  label: string;
+}
+
+export type StatsRegistry = Record<string, StatsRegistryEntry>;
+
+export interface SystemStats {
+  totalCostInUsdCents: number;
+  completedRuns: number;
+  activeCampaigns: number;
+  firstRunAt: string | null;
+  lastRunAt: string | null;
+}
+
+export interface StatsGroup {
+  workflowName?: string;
+  brandId?: string;
+  campaignId?: string;
+  featureSlug?: string;
+  systemStats: SystemStats;
+  stats: Record<string, number>;
+}
+
+export interface FeatureStatsResponse {
+  featureSlug: string;
+  groupBy?: string;
+  systemStats: SystemStats;
+  stats?: Record<string, number>;
+  groups?: StatsGroup[];
+}
+
+export interface GlobalStatsResponse {
+  groupBy?: string;
+  systemStats: SystemStats;
+  stats?: Record<string, number>;
+  groups?: StatsGroup[];
 }
 
 /** GET /features — list all features */
@@ -547,6 +565,38 @@ export async function listFeatures(
 /** GET /features/:slug — get a single feature */
 export async function getFeature(slug: string, token?: string): Promise<{ feature: Feature }> {
   return apiCall<{ feature: Feature }>(`/features/${slug}`, { token });
+}
+
+/** GET /features/stats/registry — stats key registry */
+export async function fetchStatsRegistry(token?: string): Promise<{ registry: StatsRegistry }> {
+  return apiCall<{ registry: StatsRegistry }>("/features/stats/registry", { token });
+}
+
+/** GET /features/:featureSlug/stats — stats for a feature */
+export async function fetchFeatureStats(
+  featureSlug: string,
+  params?: { groupBy?: string; brandId?: string; campaignId?: string; workflowName?: string },
+  token?: string,
+): Promise<FeatureStatsResponse> {
+  const query = new URLSearchParams();
+  if (params?.groupBy) query.set("groupBy", params.groupBy);
+  if (params?.brandId) query.set("brandId", params.brandId);
+  if (params?.campaignId) query.set("campaignId", params.campaignId);
+  if (params?.workflowName) query.set("workflowName", params.workflowName);
+  const qs = query.toString();
+  return apiCall<FeatureStatsResponse>(`/features/${featureSlug}/stats${qs ? `?${qs}` : ""}`, { token });
+}
+
+/** GET /features/stats — global stats cross-features */
+export async function fetchGlobalStats(
+  params?: { groupBy?: string; brandId?: string },
+  token?: string,
+): Promise<GlobalStatsResponse> {
+  const query = new URLSearchParams();
+  if (params?.groupBy) query.set("groupBy", params.groupBy);
+  if (params?.brandId) query.set("brandId", params.brandId);
+  const qs = query.toString();
+  return apiCall<GlobalStatsResponse>(`/features/stats${qs ? `?${qs}` : ""}`, { token });
 }
 
 /** POST /brands — upsert brand by URL, returns brandId */
