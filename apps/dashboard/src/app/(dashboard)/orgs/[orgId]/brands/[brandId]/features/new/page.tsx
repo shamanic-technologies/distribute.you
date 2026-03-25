@@ -49,7 +49,7 @@ export default function CreateFeaturePage() {
     () => getBrand(brandId),
   );
   const brand = brandData?.brand ?? null;
-  const { features: existingFeatures } = useFeatures();
+  const { features: existingFeatures, registry } = useFeatures();
 
   const chatId = `feature-new-${brandId}`;
 
@@ -64,9 +64,14 @@ export default function CreateFeaturePage() {
       audienceType: f.audienceType,
       inputs: f.inputs.map((inp) => ({ key: inp.key, label: inp.label, description: inp.description })),
       outputs: f.outputs.map((out) => ({ key: out.key, displayOrder: out.displayOrder })),
+      charts: f.charts,
+      entities: f.entities,
     })),
     [existingFeatures],
   );
+
+  // Build stats registry reference: { key: { type, label } }
+  const statsRegistryRef = useMemo(() => registry, [registry]);
 
   const featureContext = useMemo(() => ({
     type: "feature-creator",
@@ -78,6 +83,7 @@ export default function CreateFeaturePage() {
     } : null,
     currentDraft: draft,
     existingFeatures: existingFeaturesRef,
+    statsRegistry: statsRegistryRef,
     instructions: [
       "You are a feature designer for the distribute.you platform.",
       "Your ONLY job is to help define a feature's INPUTS and OUTPUTS. Nothing else.",
@@ -88,20 +94,30 @@ export default function CreateFeaturePage() {
       "- Create prompt templates or discuss implementation details",
       "- Suggest building anything beyond the feature definition itself",
       "",
-      "A feature has: name, description, category, channel, audienceType, inputs[], and outputs[].",
-      "Each input has: key, label, description.",
-      "Each output has: key, label, description.",
+      "A feature has: name, description, icon, category, channel, audienceType, inputs[], outputs[], charts[], and entities[].",
       "",
-      "EXISTING FEATURES: You have the full catalog in 'existingFeatures' in the context.",
+      "INPUTS: Each input has: key, label, type (text|textarea|number|select), placeholder, description, extractKey (snake_case version of key). If type is 'select', include options[].",
+      "",
+      "OUTPUTS: Each output has: key and displayOrder (integer). The key MUST be one of the allowed stats keys from the 'statsRegistry' in the context. Do NOT invent new keys — only use keys that exist in the registry. Present the available keys to the user when discussing outputs.",
+      "",
+      "CHARTS: Required. Array of chart definitions. Two types:",
+      "  - funnel-bar: { key, type: 'funnel-bar', title, displayOrder, steps: [{ key }] } (min 2 steps, keys must be from statsRegistry)",
+      "  - breakdown-bar: { key, type: 'breakdown-bar', title, displayOrder, segments: [{ key, color: green|blue|red|gray|orange, sentiment: positive|neutral|negative }] } (min 2 segments, keys must be from statsRegistry)",
+      "",
+      "ENTITIES: Required. Array of entity type strings shown in campaign detail sidebar (e.g. ['leads', 'companies', 'emails']).",
+      "",
+      "ICON: A Lucide icon name (e.g. 'envelope', 'globe', 'megaphone', 'newspaper', 'link'). See lucide.dev/icons.",
+      "",
+      "EXISTING FEATURES: You have the full catalog in 'existingFeatures' in the context, including their charts and entities. Use them as reference patterns when designing new features.",
       "When the user describes a new feature, FIRST check if a similar one already exists.",
       "If one does, present its inputs/outputs and suggest adapting from it.",
       "If the user asks to look at an existing feature, read its details from the context.",
       "",
-      "When the user says 'go ahead' or validates the design, summarize the final feature definition (name, description, inputs, outputs) clearly.",
+      "When the user says 'go ahead' or validates the design, summarize the final feature definition (name, description, inputs, outputs, charts, entities) clearly.",
       "Format inputs and outputs as tables with key, label, and description columns.",
       "Be concise and practical. Ask clarifying questions when needed.",
     ].join("\n"),
-  }), [brandId, brand, draft, existingFeaturesRef]);
+  }), [brandId, brand, draft, existingFeaturesRef, statsRegistryRef]);
 
   const handleFeatureUpdate = (partial: Partial<FeatureDraft>) => {
     setDraft((prev) => ({ ...prev, ...partial }));
