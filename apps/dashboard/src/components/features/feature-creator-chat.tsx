@@ -22,6 +22,8 @@ import {
   XCircleIcon,
   ArrowUpIcon,
   StopIcon,
+  ClipboardDocumentIcon,
+  ClipboardDocumentCheckIcon,
 } from "@heroicons/react/20/solid";
 import type { FeatureDraft } from "./feature-builder-panel";
 
@@ -418,6 +420,25 @@ export function FeatureCreatorChat({
     clearChat(chatId);
   }, [chatId, setMessages]);
 
+  // Copy conversation as text
+  const [copied, setCopied] = useState(false);
+  const copyConversation = useCallback(() => {
+    const text = messages
+      .map((msg) => {
+        const role = msg.role === "user" ? "User" : "Assistant";
+        const content = msg.parts
+          .filter((p): p is { type: "text"; text: string } => p.type === "text")
+          .map((p) => p.text)
+          .join("");
+        return `${role}:\n${content}`;
+      })
+      .join("\n\n");
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, [messages]);
+
   const hasMessages = messages.length > 0;
   const lastMsg = messages[messages.length - 1];
   const showSkeleton = isStreaming && lastMsg?.role === "assistant" && lastMsg.parts.length === 0;
@@ -426,7 +447,19 @@ export function FeatureCreatorChat({
     <div className="flex-1 flex flex-col min-h-0">
       {/* Toolbar */}
       {hasMessages && (
-        <div className="flex items-center justify-end px-4 py-1.5 border-b border-gray-100 dark:border-white/[0.04] bg-white dark:bg-transparent">
+        <div className="flex items-center justify-end gap-3 px-4 py-1.5 border-b border-gray-100 dark:border-white/[0.04] bg-white dark:bg-transparent">
+          <button
+            type="button"
+            onClick={copyConversation}
+            className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition"
+          >
+            {copied ? (
+              <ClipboardDocumentCheckIcon className="w-3.5 h-3.5 text-green-500" />
+            ) : (
+              <ClipboardDocumentIcon className="w-3.5 h-3.5" />
+            )}
+            {copied ? "Copied!" : "Copy conversation"}
+          </button>
           <button
             type="button"
             onClick={resetChat}
