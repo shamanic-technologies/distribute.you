@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { keepPreviousData } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   listCampaignsByBrand,
@@ -18,7 +19,7 @@ import { CostBreakdown, CostBreakdownSkeleton } from "@/components/campaign/cost
 import { formatStatValue } from "@/lib/format-stat";
 
 const POLL_INTERVAL = 5_000;
-const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
+const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false, placeholderData: keepPreviousData };
 
 const STATUS_STYLES: Record<string, string> = {
   ongoing: "bg-blue-100 text-blue-700 border-blue-200",

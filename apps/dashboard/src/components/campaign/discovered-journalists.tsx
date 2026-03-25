@@ -1,5 +1,6 @@
 "use client";
 
+import { keepPreviousData } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { listCampaignJournalists, type DiscoveredJournalist } from "@/lib/api";
 
@@ -13,14 +14,14 @@ export function DiscoveredJournalists({ campaignId }: DiscoveredJournalistsProps
   const { data, isLoading } = useAuthQuery(
     ["campaignJournalists", campaignId],
     () => listCampaignJournalists(campaignId),
-    { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false },
+    { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
   );
 
   const journalists = data?.journalists ?? [];
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
+      <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6 min-h-[120px]">
         <div className="h-5 w-48 bg-gray-200 rounded animate-pulse mb-4" />
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
@@ -33,14 +34,14 @@ export function DiscoveredJournalists({ campaignId }: DiscoveredJournalistsProps
 
   if (journalists.length === 0) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-6 text-center">
-        <p className="text-gray-500 text-sm">No journalists discovered yet. The campaign workflow will find relevant journalists automatically.</p>
+      <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6 min-h-[120px] flex items-center justify-center">
+        <p className="text-gray-500 text-sm text-center">No journalists discovered yet. The campaign workflow will find relevant journalists automatically.</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
+    <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6 min-h-[120px]">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-display font-bold text-gray-800">
           Discovered Journalists
