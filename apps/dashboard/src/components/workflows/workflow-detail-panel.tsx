@@ -6,6 +6,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { useOrg } from "@/lib/org-context";
 import { getWorkflow, getWorkflowSummary, getWorkflowKeyStatus } from "@/lib/api";
 import { DAGVisualization } from "./dag-visualization";
+import { workflowDisplayName } from "@/lib/workflow-display-name";
 
 const CATEGORY_COLORS: Record<string, string> = {
   sales: "bg-brand-100 text-brand-700",
@@ -75,10 +76,9 @@ export function WorkflowDetailPanel({
               ) : workflow ? (
                 <>
                   <h2 className="font-display font-bold text-xl text-gray-800 leading-tight">
-                    {workflow.signatureName
-                      ? workflow.signatureName.charAt(0).toUpperCase() + workflow.signatureName.slice(1)
-                      : workflow.displayName || workflow.name}
+                    {workflowDisplayName(workflow)}
                   </h2>
+                  <p className="text-xs text-gray-400 font-mono mt-0.5">{workflow.name}</p>
                   {workflow.description && (
                     <p className="text-sm text-gray-500 mt-1">{workflow.description}</p>
                   )}
@@ -107,11 +107,6 @@ export function WorkflowDetailPanel({
               <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
                 {workflow.audienceType}
               </span>
-              {workflow.signatureName && (
-                <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-blue-50 text-blue-700">
-                  {workflow.signatureName}
-                </span>
-              )}
               {workflow.dag && (
                 <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-green-50 text-green-700">
                   {workflow.dag.nodes.length} steps

@@ -2,24 +2,24 @@ import { describe, it, expect } from "vitest";
 import { workflowDisplayName } from "../src/lib/workflow-display-name";
 
 describe("workflowDisplayName", () => {
-  it("returns capitalized signatureName when present", () => {
+  it("returns displayName when present (even if signatureName exists)", () => {
     expect(
       workflowDisplayName({
         signatureName: "mintaka",
-        displayName: "sales-email-cold-outreach-jasmine",
+        displayName: "Cold Outreach Jasmine",
+        name: "sales-email-cold-outreach-headwater",
+      })
+    ).toBe("Cold Outreach Jasmine");
+  });
+
+  it("falls back to capitalized signatureName when displayName is null", () => {
+    expect(
+      workflowDisplayName({
+        signatureName: "mintaka",
+        displayName: null,
         name: "sales-email-cold-outreach-headwater",
       })
     ).toBe("Mintaka");
-  });
-
-  it("falls back to displayName when signatureName is null", () => {
-    expect(
-      workflowDisplayName({
-        signatureName: null,
-        displayName: "sales-email-cold-outreach-jasmine",
-        name: "sales-email-cold-outreach-headwater",
-      })
-    ).toBe("sales-email-cold-outreach-jasmine");
   });
 
   it("falls back to name when both signatureName and displayName are absent", () => {

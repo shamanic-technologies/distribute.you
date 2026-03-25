@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useParams } from "next/navigation";
+import { useState, useMemo, useCallback } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getWorkflow, getWorkflowSummary, getFeature } from "@/lib/api";
 import { WorkflowOverview } from "@/components/workflows/workflow-overview";
 import { WorkflowChat } from "@/components/workflows/workflow-chat";
+import { workflowDisplayName } from "@/lib/workflow-display-name";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 
 /* ─── Page-level skeleton ────────────────────────────────────────────── */
@@ -47,9 +48,16 @@ function PageSkeleton() {
 
 export default function WorkflowViewerPage() {
   const params = useParams();
+  const router = useRouter();
+  const orgId = params.orgId as string;
+  const brandId = params.brandId as string;
   const workflowId = params.workflowId as string;
   const featureSlug = params.featureSlug as string;
   const [detailsOpen, setDetailsOpen] = useState(false);
+
+  const handleWorkflowUpgraded = useCallback((newWorkflowId: string) => {
+    router.replace(`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/${newWorkflowId}`);
+  }, [router, orgId, brandId, featureSlug]);
 
   const { data: workflow, isLoading } = useAuthQuery(
     ["workflow", workflowId],
@@ -166,10 +174,9 @@ export default function WorkflowViewerPage() {
             </div>
             <div className="min-w-0 flex-1">
               <h1 className="font-display text-[15px] font-bold text-gray-900 dark:text-gray-100 truncate">
-                {workflow.signatureName
-                  ? workflow.signatureName.charAt(0).toUpperCase() + workflow.signatureName.slice(1)
-                  : workflow.displayName || workflow.name}
+                {workflowDisplayName(workflow)}
               </h1>
+              <p className="text-[10px] text-gray-400 dark:text-gray-500 font-mono truncate mt-0.5">{workflow.name}</p>
               <div className="flex gap-1.5 mt-1">
                 <span className="text-[11px] px-2 py-0.5 rounded-md bg-white dark:bg-white/[0.06] border border-gray-200 dark:border-white/[0.08] text-gray-500 dark:text-gray-400 font-medium">
                   {workflow.category}
@@ -206,9 +213,7 @@ export default function WorkflowViewerPage() {
                 </svg>
               </div>
               <h1 className="font-display text-sm font-bold text-gray-900 dark:text-gray-100 truncate">
-                {workflow.signatureName
-                  ? workflow.signatureName.charAt(0).toUpperCase() + workflow.signatureName.slice(1)
-                  : workflow.displayName || workflow.name}
+                {workflowDisplayName(workflow)}
               </h1>
               <span className="text-[11px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-white/[0.06] text-gray-500 dark:text-gray-400 flex-shrink-0">
                 {workflow.category}
@@ -232,7 +237,7 @@ export default function WorkflowViewerPage() {
         </div>
 
         {/* Chat */}
-        <WorkflowChat workflowId={workflowId} workflowContext={workflowContext} />
+        <WorkflowChat workflowId={workflowId} workflowContext={workflowContext} onWorkflowUpgraded={handleWorkflowUpgraded} />
       </div>
     </div>
   );
