@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrand } from "@/lib/api";
+import { useFeatures } from "@/lib/features-context";
 import { FeatureBuilderPanel, EMPTY_DRAFT, type FeatureDraft } from "@/components/features/feature-builder-panel";
 import { FeatureCreatorChat } from "@/components/features/feature-creator-chat";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
@@ -48,8 +49,24 @@ export default function CreateFeaturePage() {
     () => getBrand(brandId),
   );
   const brand = brandData?.brand ?? null;
+  const { features: existingFeatures } = useFeatures();
 
   const chatId = `feature-new-${brandId}`;
+
+  // Build a compact reference of existing features for the LLM context
+  const existingFeaturesRef = useMemo(() =>
+    existingFeatures.map((f) => ({
+      slug: f.slug,
+      name: f.name,
+      description: f.description,
+      category: f.category,
+      channel: f.channel,
+      audienceType: f.audienceType,
+      inputs: f.inputs.map((inp) => ({ key: inp.key, label: inp.label, description: inp.description })),
+      outputs: f.outputs.map((out) => ({ key: out.key, label: out.label, description: out.description })),
+    })),
+    [existingFeatures],
+  );
 
   const featureContext = useMemo(() => ({
     type: "feature-creator",
@@ -60,14 +77,19 @@ export default function CreateFeaturePage() {
       brandUrl: brand.brandUrl,
     } : null,
     currentDraft: draft,
+    existingFeatures: existingFeaturesRef,
     instructions: [
       "You are helping the user design a new feature for the distribute.you platform.",
       "A feature is defined by its inputs (what data the user provides) and outputs (what the feature produces).",
+      "IMPORTANT: You have access to the full list of existing features in 'existingFeatures' in the context.",
+      "When the user describes a new feature, FIRST check if a similar feature already exists.",
+      "If one does, tell the user about it and suggest using it as a starting point — reuse its inputs/outputs structure and adapt from there.",
+      "If the user asks you to look at an existing feature for inspiration, read its details from the context and present its inputs and outputs clearly.",
       "Help the user think through what inputs and outputs their feature needs.",
       "When you suggest inputs or outputs, format them clearly with key, label, and description.",
       "Be concise and practical. Ask clarifying questions when needed.",
     ].join(" "),
-  }), [brandId, brand, draft]);
+  }), [brandId, brand, draft, existingFeaturesRef]);
 
   const handleFeatureUpdate = (partial: Partial<FeatureDraft>) => {
     setDraft((prev) => ({ ...prev, ...partial }));
