@@ -106,7 +106,7 @@ const EMAIL_TEMPLATES = [
   },
 ];
 
-const PLATFORM_KEYS: { provider: string; envVar: string }[] = [
+const PLATFORM_KEYS: { provider: string; envVar: string; optional?: boolean }[] = [
   { provider: "anthropic", envVar: "ANTHROPIC_API_KEY" },
   { provider: "apollo", envVar: "APOLLO_API_KEY" },
   { provider: "instantly", envVar: "INSTANTLY_API_KEY" },
@@ -125,6 +125,9 @@ const PLATFORM_KEYS: { provider: string; envVar: string }[] = [
   { provider: "google-client-secret", envVar: "GOOGLE_CLIENT_SECRET" },
   { provider: "google-developer-token", envVar: "GOOGLE_DEVELOPER_TOKEN" },
   { provider: "google-mcc-account-id", envVar: "GOOGLE_MCC_ACCOUNT_ID" },
+  { provider: "cloudflare-r2-account-id", envVar: "R2_ACCOUNT_ID", optional: true },
+  { provider: "cloudflare-r2-bucket-name", envVar: "R2_BUCKET_NAME", optional: true },
+  { provider: "cloudflare-r2-public-domain", envVar: "R2_PUBLIC_DOMAIN", optional: true },
 ];
 
 const COLD_EMAIL_PROMPT = `Today is \${new Date().toISOString().split("T")[0]}.
@@ -339,15 +342,23 @@ export async function register() {
   // Register platform keys
   try {
     const missing: string[] = [];
-    for (const { envVar } of PLATFORM_KEYS) {
-      if (!process.env[envVar]) missing.push(envVar);
+    for (const { envVar, optional } of PLATFORM_KEYS) {
+      if (!process.env[envVar] && !optional) missing.push(envVar);
     }
     if (missing.length > 0) {
       throw new Error(`Missing platform key env vars: ${missing.join(", ")}`);
     }
 
+    const keysToRegister = PLATFORM_KEYS.filter(({ envVar, optional }) => {
+      if (!process.env[envVar]) {
+        if (optional) console.log(`[instrumentation] Skipping optional key: ${envVar} (not set)`);
+        return false;
+      }
+      return true;
+    });
+
     const results = await Promise.allSettled(
-      PLATFORM_KEYS.map(({ provider, envVar }) =>
+      keysToRegister.map(({ provider, envVar }) =>
         fetch(`${apiUrl}/platform-keys`, {
           method: "POST",
           headers: {
@@ -371,7 +382,7 @@ export async function register() {
       throw new Error(`Platform key registration failed: ${errors}`);
     }
 
-    console.log(`[instrumentation] Registered ${PLATFORM_KEYS.length} platform keys`);
+    console.log(`[instrumentation] Registered ${keysToRegister.length} platform keys`);
   } catch (err) {
     console.error("[instrumentation] Platform key registration error:", err);
     throw err;
