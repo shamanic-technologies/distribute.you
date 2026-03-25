@@ -87,20 +87,17 @@ export default function FeatureWorkflowsPage() {
     { enabled: wfDef?.implemented === true, ...pollOptions },
   );
 
-  // Fetch workflow list to resolve name → id
+  // Fetch workflows filtered by feature slug
   const { data: workflowsData, isLoading: workflowsLoading } = useAuthQuery(
-    ["workflows"],
-    () => listWorkflows(),
+    ["workflows", featureSlug],
+    () => listWorkflows({ featureSlug }),
     pollOptions,
   );
 
-  // Filter workflows belonging to this feature's category
   const featureWorkflows = useMemo(() => {
-    if (!workflowsData?.workflows || !wfDef) return [];
-    return workflowsData.workflows.filter(
-      (wf) => wf.category === wfDef.category && wf.status === "active"
-    );
-  }, [workflowsData, wfDef]);
+    if (!workflowsData?.workflows) return [];
+    return workflowsData.workflows.filter((wf) => wf.status === "active");
+  }, [workflowsData]);
 
   const workflowNameToId = useMemo(() => {
     const map = new Map<string, string>();

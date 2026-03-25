@@ -762,6 +762,7 @@ export interface Workflow {
   name: string;
   displayName: string | null;
   description: string | null;
+  featureSlug: string | null;
   category: string;
   channel: string;
   audienceType: string;
@@ -789,8 +790,10 @@ export interface WorkflowKeyStatus {
   missing: string[];
 }
 
-export async function listWorkflows(token?: string): Promise<{ workflows: Workflow[] }> {
-  return apiCall<{ workflows: Workflow[] }>("/workflows?status=all", { token });
+export async function listWorkflows(params?: { featureSlug?: string }, token?: string): Promise<{ workflows: Workflow[] }> {
+  const query = new URLSearchParams({ status: "all" });
+  if (params?.featureSlug) query.set("featureSlug", params.featureSlug);
+  return apiCall<{ workflows: Workflow[] }>(`/workflows?${query}`, { token });
 }
 
 export async function getWorkflow(workflowId: string, token?: string): Promise<Workflow> {
