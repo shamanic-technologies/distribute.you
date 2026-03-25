@@ -86,7 +86,7 @@ export function WorkflowOverview({ summary, providers, description }: WorkflowOv
           </span>
           <ol className="list-decimal list-inside space-y-1">
             {summary.steps.map((step, i) => (
-              <li key={i} className="text-sm text-gray-600 dark:text-gray-400">{step}</li>
+              <li key={i} className="text-sm text-gray-600 dark:text-gray-400">{step.replace(/^\d+\.\s*/, "")}</li>
             ))}
           </ol>
         </div>
