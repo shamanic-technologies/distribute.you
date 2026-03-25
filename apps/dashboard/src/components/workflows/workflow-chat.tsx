@@ -12,6 +12,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, isToolUIPart, type UIMessage } from "ai";
 import { useQueryClient } from "@tanstack/react-query";
 import { useBillingGuard } from "@/lib/billing-guard";
+import { listWorkflows } from "@/lib/api";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -727,13 +728,15 @@ export function WorkflowChat({
       });
       // Refresh workflow list (new workflows may have been created/forked)
       void queryClient.invalidateQueries({ queryKey: ["workflows"] });
-      // Check if the workflow was forked/upgraded during this conversation
+      // Check if the workflow was forked during this conversation
       if (onWorkflowUpgraded) {
-        fetch(`/api/v1/workflows/${workflowId}`)
-          .then((r) => r.ok ? r.json() : null)
-          .then((wf) => {
-            if (wf?.upgradedTo) {
-              onWorkflowUpgraded(wf.upgradedTo);
+        listWorkflows()
+          .then(({ workflows }) => {
+            const latestFork = workflows
+              .filter((w) => w.forkedFrom === workflowId)
+              .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+            if (latestFork) {
+              onWorkflowUpgraded(latestFork.id);
             }
           })
           .catch(() => {});
