@@ -5,91 +5,48 @@ import { useParams } from "next/navigation";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useFeatures } from "@/lib/features-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import {
-  fetchRankedWorkflows,
-  type RankedWorkflowItem,
-} from "@/lib/api";
+import { fetchFeatureStats } from "@/lib/api";
+import { formatStatValue, sortDirectionForType } from "@/lib/format-stat";
 import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-panel";
 
 const POLL_INTERVAL = 5_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false, placeholderData: keepPreviousData };
 
-function formatPercent(rate: number): string {
-  if (rate === 0) return "—";
-  return `${(rate * 100).toFixed(1)}%`;
-}
-
-function formatCostCents(cents: number | null): string {
-  if (cents === null || cents === 0) return "—";
-  return `$${(cents / 100).toFixed(2)}`;
-}
-
-function formatDisplayName(displayName: string | null, fallbackName: string): string {
-  const raw = displayName || fallbackName;
-  const lastDashIdx = raw.lastIndexOf("-");
-  const suffix = lastDashIdx >= 0 ? raw.slice(lastDashIdx + 1) : raw;
+function formatDisplayName(name: string): string {
+  const lastDashIdx = name.lastIndexOf("-");
+  const suffix = lastDashIdx >= 0 ? name.slice(lastDashIdx + 1) : name;
   return suffix.charAt(0).toUpperCase() + suffix.slice(1);
-}
-
-interface WorkflowRowData {
-  id: string;
-  name: string;
-  displayLabel: string;
-  category: string;
-  channel: string;
-  audienceType: string;
-  signatureName: string;
-  emailsSent: number;
-  openRate: number;
-  clickRate: number;
-  replyRate: number;
-  costPerReplyCents: number | null;
-  runCount: number;
-  nodeCount: number;
-  providerCount: number;
-}
-
-function rankedToRow(item: RankedWorkflowItem): WorkflowRowData {
-  const b = item.stats.email.broadcast;
-  const cost = item.stats.totalCostInUsdCents;
-  return {
-    id: item.workflow.id,
-    name: item.workflow.name,
-    displayLabel: formatDisplayName(item.workflow.displayName, item.workflow.name),
-    category: item.workflow.category,
-    channel: item.workflow.channel,
-    audienceType: item.workflow.audienceType,
-    signatureName: item.workflow.signatureName,
-    emailsSent: b.sent,
-    openRate: b.sent > 0 ? b.opened / b.sent : 0,
-    clickRate: b.sent > 0 ? b.clicked / b.sent : 0,
-    replyRate: b.sent > 0 ? b.replied / b.sent : 0,
-    costPerReplyCents: b.replied > 0 ? cost / b.replied : null,
-    runCount: item.stats.completedRuns,
-    nodeCount: item.dag?.nodes?.length ?? 0,
-    providerCount: 0,
-  };
 }
 
 export default function FeatureWorkflowsPage() {
   const params = useParams();
   const featureId = params.featureId as string;
-  const { getFeature } = useFeatures();
+  const { getFeature, registry } = useFeatures();
   const featureDef = getFeature(featureId);
+  const outputs = featureDef?.outputs ?? [];
+  const sortedOutputs = useMemo(
+    () => [...outputs].sort((a, b) => a.displayOrder - b.displayOrder),
+    [outputs]
+  );
 
   const [detailWorkflowId, setDetailWorkflowId] = useState<string | null>(null);
 
-  // Fetch ranked workflows (family-aggregated stats)
-  const { data: rankedItems, isLoading } = useAuthQuery(
-    ["ranked-workflows", featureId],
-    () => fetchRankedWorkflows({
-      featureSlug: featureId,
-      limit: 100,
-    }),
+  // Fetch stats grouped by workflow
+  const { data: statsData, isLoading } = useAuthQuery(
+    ["featureStats", featureId, "byWorkflow"],
+    () => fetchFeatureStats(featureId, { groupBy: "workflowName" }),
     { enabled: featureDef?.implemented === true, ...pollOptions },
   );
 
-  const rows = useMemo(() => (rankedItems ?? []).map(rankedToRow), [rankedItems]);
+  const rows = useMemo(() => {
+    if (!statsData?.groups) return [];
+    return statsData.groups.map((g) => ({
+      workflowName: g.workflowName ?? "unknown",
+      displayLabel: formatDisplayName(g.workflowName ?? "unknown"),
+      stats: g.stats,
+      systemStats: g.systemStats,
+    }));
+  }, [statsData]);
 
   if (!featureDef) {
     return (
@@ -134,9 +91,11 @@ export default function FeatureWorkflowsPage() {
         <div className="space-y-3 max-w-3xl" data-testid="workflows-list">
           {rows.map((row) => (
             <WorkflowCard
-              key={row.id}
+              key={row.workflowName}
               row={row}
-              onShowDetail={() => setDetailWorkflowId(row.id)}
+              sortedOutputs={sortedOutputs}
+              registry={registry}
+              onShowDetail={() => setDetailWorkflowId(row.workflowName)}
             />
           ))}
         </div>
@@ -154,12 +113,16 @@ export default function FeatureWorkflowsPage() {
 
 function WorkflowCard({
   row,
+  sortedOutputs,
+  registry,
   onShowDetail,
 }: {
-  row: WorkflowRowData;
+  row: { workflowName: string; displayLabel: string; stats: Record<string, number>; systemStats: import("@/lib/api").SystemStats };
+  sortedOutputs: import("@/lib/api").FeatureOutput[];
+  registry: import("@/lib/api").StatsRegistry;
   onShowDetail: () => void;
 }) {
-  const hasStats = row.emailsSent > 0;
+  const hasStats = Object.values(row.stats).some((v) => v > 0);
 
   return (
     <button
@@ -171,40 +134,23 @@ function WorkflowCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <h3 className="font-medium text-gray-800 truncate">{row.displayLabel}</h3>
-            {row.category && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 flex-shrink-0">
-                {row.category}
-              </span>
-            )}
           </div>
 
           {hasStats ? (
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2">
-              <Stat label="Sent" value={row.emailsSent.toLocaleString()} />
-              <Stat label="Open rate" value={formatPercent(row.openRate)} />
-              <Stat label="Click rate" value={formatPercent(row.clickRate)} />
-              <Stat label="Reply rate" value={formatPercent(row.replyRate)} highlight />
-              <Stat label="$/Reply" value={formatCostCents(row.costPerReplyCents)} />
-              <Stat label="Runs" value={row.runCount.toLocaleString()} />
+              {sortedOutputs.slice(0, 5).map((o) => (
+                <Stat
+                  key={o.key}
+                  label={registry[o.key]?.label ?? o.key}
+                  value={formatStatValue(row.stats[o.key], registry[o.key])}
+                  highlight={o.defaultSort}
+                />
+              ))}
+              <Stat label="Runs" value={row.systemStats.completedRuns.toLocaleString()} />
             </div>
           ) : (
             <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
-              {row.channel && <span>{row.channel}</span>}
-              {row.audienceType && (
-                <>
-                  {row.channel && <span>·</span>}
-                  <span>{row.audienceType}</span>
-                </>
-              )}
-              {row.nodeCount > 0 && (
-                <>
-                  <span>·</span>
-                  <span>{row.nodeCount} steps</span>
-                </>
-              )}
-              {!row.channel && !row.audienceType && (
-                <span>No performance data yet</span>
-              )}
+              <span>No performance data yet</span>
             </div>
           )}
         </div>

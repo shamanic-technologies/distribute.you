@@ -5,72 +5,18 @@ import { useParams, useRouter } from "next/navigation";
 import { keepPreviousData, useMutation } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
-  fetchRankedWorkflows,
+  fetchFeatureStats,
   generateWorkflow,
-  type RankedWorkflowItem,
+  type FeatureOutput,
+  type StatsRegistry,
 } from "@/lib/api";
 import { useFeatures } from "@/lib/features-context";
+import { formatStatValue, sortDirectionForType } from "@/lib/format-stat";
 import { PlusIcon } from "@heroicons/react/20/solid";
 import { Skeleton } from "@/components/skeleton";
 
 const POLL_INTERVAL = 5_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false, placeholderData: keepPreviousData };
-
-type SortKey = "openRate" | "clickRate" | "replyRate" | "costPerOpenCents" | "costPerClickCents" | "costPerReplyCents";
-
-const COST_METRICS: Set<SortKey> = new Set(["costPerOpenCents", "costPerClickCents", "costPerReplyCents"]);
-function defaultSortDir(key: SortKey): "asc" | "desc" {
-  return COST_METRICS.has(key) ? "asc" : "desc";
-}
-
-function formatPercent(rate: number): string {
-  if (rate === 0) return "\u2014";
-  return `${(rate * 100).toFixed(1)}%`;
-}
-
-function formatCostCents(cents: number | null): string {
-  if (cents === null || cents === 0) return "\u2014";
-  return `$${(cents / 100).toFixed(2)}`;
-}
-
-function formatDisplayName(displayName: string | null, fallbackName: string): string {
-  const raw = displayName || fallbackName;
-  const lastDashIdx = raw.lastIndexOf("-");
-  const suffix = lastDashIdx >= 0 ? raw.slice(lastDashIdx + 1) : raw;
-  return suffix.charAt(0).toUpperCase() + suffix.slice(1);
-}
-
-interface WorkflowTableRow {
-  id: string;
-  name: string;
-  displayLabel: string;
-  category: string;
-  emailsSent: number;
-  openRate: number;
-  clickRate: number;
-  replyRate: number;
-  costPerOpenCents: number | null;
-  costPerClickCents: number | null;
-  costPerReplyCents: number | null;
-}
-
-function rankedToRow(item: RankedWorkflowItem): WorkflowTableRow {
-  const b = item.stats.email.broadcast;
-  const cost = item.stats.totalCostInUsdCents;
-  return {
-    id: item.workflow.id,
-    name: item.workflow.name,
-    displayLabel: formatDisplayName(item.workflow.displayName, item.workflow.name),
-    category: item.workflow.category,
-    emailsSent: b.sent,
-    openRate: b.sent > 0 ? b.opened / b.sent : 0,
-    clickRate: b.sent > 0 ? b.clicked / b.sent : 0,
-    replyRate: b.sent > 0 ? b.replied / b.sent : 0,
-    costPerOpenCents: b.opened > 0 ? cost / b.opened : null,
-    costPerClickCents: b.clicked > 0 ? cost / b.clicked : null,
-    costPerReplyCents: b.replied > 0 ? cost / b.replied : null,
-  };
-}
 
 function SortHeader({
   label,
@@ -80,10 +26,10 @@ function SortHeader({
   onSort,
 }: {
   label: string;
-  sortKey: SortKey;
-  currentSort: SortKey;
+  sortKey: string;
+  currentSort: string;
   currentDir: "asc" | "desc";
-  onSort: (key: SortKey) => void;
+  onSort: (key: string) => void;
 }) {
   const active = currentSort === sortKey;
   return (
@@ -102,11 +48,20 @@ export default function FeatureWorkflowsPage() {
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
   const featureSlug = params.featureSlug as string;
-  const [metric, setMetric] = useState<SortKey>("costPerReplyCents");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
-  const { getFeature, isLoading: featuresLoading } = useFeatures();
+  const { getFeature, isLoading: featuresLoading, registry } = useFeatures();
   const wfDef = getFeature(featureSlug);
+  const outputs = wfDef?.outputs ?? [];
+
+  // Determine default sort from outputs
+  const defaultSortOutput = outputs.find((o) => o.defaultSort);
+  const defaultSortKey = defaultSortOutput?.key ?? outputs[0]?.key ?? "";
+  const defaultSortDir = defaultSortOutput?.sortDirection
+    ?? sortDirectionForType(registry[defaultSortKey]?.type)
+    ?? "desc";
+
+  const [metric, setMetric] = useState(defaultSortKey);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(defaultSortDir);
 
   const createMutation = useMutation({
     mutationFn: () =>
@@ -123,34 +78,40 @@ export default function FeatureWorkflowsPage() {
     },
   });
 
-  // Fetch ranked workflows (family-aggregated stats)
-  const { data: rankedItems, isLoading } = useAuthQuery(
-    ["ranked-workflows", featureSlug],
-    () => fetchRankedWorkflows({
-      featureSlug,
-      limit: 100,
-    }),
+  // Fetch stats grouped by workflow
+  const { data: statsData, isLoading } = useAuthQuery(
+    ["featureStats", featureSlug, "byWorkflow"],
+    () => fetchFeatureStats(featureSlug, { groupBy: "workflowName" }),
     { enabled: wfDef?.implemented === true, ...pollOptions },
   );
 
-  const rows = useMemo(() => (rankedItems ?? []).map(rankedToRow), [rankedItems]);
+  const rows = useMemo(() => {
+    if (!statsData?.groups) return [];
+    return statsData.groups.map((g) => ({
+      workflowName: g.workflowName ?? "unknown",
+      displayLabel: formatWorkflowDisplayName(g.workflowName ?? "unknown"),
+      stats: g.stats,
+      systemStats: g.systemStats,
+    }));
+  }, [statsData]);
 
-  const handleSort = useCallback((key: SortKey) => {
+  const handleSort = useCallback((key: string) => {
     setMetric((prev) => {
       if (prev === key) {
         setSortDir((d) => (d === "desc" ? "asc" : "desc"));
         return prev;
       }
-      setSortDir(defaultSortDir(key));
+      const dir = sortDirectionForType(registry[key]?.type);
+      setSortDir(dir);
       return key;
     });
-  }, []);
+  }, [registry]);
 
   const sorted = useMemo(() => {
     if (rows.length === 0) return [];
     return [...rows].sort((a, b) => {
-      const aRaw = a[metric];
-      const bRaw = b[metric];
+      const aRaw = a.stats[metric] ?? null;
+      const bRaw = b.stats[metric] ?? null;
       const aNull = aRaw === null || aRaw === 0;
       const bNull = bRaw === null || bRaw === 0;
       if (aNull && bNull) return 0;
@@ -160,9 +121,10 @@ export default function FeatureWorkflowsPage() {
     });
   }, [rows, metric, sortDir]);
 
-  function navigateToWorkflow(workflowId: string) {
-    router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/${workflowId}`);
-  }
+  const sortedOutputs = useMemo(
+    () => [...outputs].sort((a, b) => a.displayOrder - b.displayOrder),
+    [outputs]
+  );
 
   return (
     <div className="p-4 md:p-8">
@@ -185,7 +147,7 @@ export default function FeatureWorkflowsPage() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
-              Creating…
+              Creating\u2026
             </>
           ) : (
             <>
@@ -206,15 +168,18 @@ export default function FeatureWorkflowsPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                {["Workflow", "% Opens", "% Clicks", "% Replies", "$/Open", "$/Click", "$/Reply"].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Workflow</th>
+                {sortedOutputs.map((o) => (
+                  <th key={o.key} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {registry[o.key]?.label ?? o.key}
+                  </th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {[1, 2, 3].map((i) => (
                 <tr key={i}>
-                  {Array.from({ length: 7 }).map((_, j) => (
+                  {Array.from({ length: sortedOutputs.length + 1 }).map((_, j) => (
                     <td key={j} className="px-4 py-4">
                       <Skeleton className={`h-4 ${j === 0 ? "w-32" : "w-16"}`} />
                     </td>
@@ -245,21 +210,38 @@ export default function FeatureWorkflowsPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Workflow
                   </th>
-                  <SortHeader label="% Opens" sortKey="openRate" currentSort={metric} currentDir={sortDir} onSort={handleSort} />
-                  <SortHeader label="% Clicks" sortKey="clickRate" currentSort={metric} currentDir={sortDir} onSort={handleSort} />
-                  <SortHeader label="% Replies" sortKey="replyRate" currentSort={metric} currentDir={sortDir} onSort={handleSort} />
-                  <SortHeader label="$/Open" sortKey="costPerOpenCents" currentSort={metric} currentDir={sortDir} onSort={handleSort} />
-                  <SortHeader label="$/Click" sortKey="costPerClickCents" currentSort={metric} currentDir={sortDir} onSort={handleSort} />
-                  <SortHeader label="$/Reply" sortKey="costPerReplyCents" currentSort={metric} currentDir={sortDir} onSort={handleSort} />
+                  {sortedOutputs.map((o) => (
+                    <SortHeader
+                      key={o.key}
+                      label={registry[o.key]?.label ?? o.key}
+                      sortKey={o.key}
+                      currentSort={metric}
+                      currentDir={sortDir}
+                      onSort={handleSort}
+                    />
+                  ))}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {sorted.map((wf) => (
-                  <WorkflowRow
-                    key={wf.id}
-                    wf={wf}
-                    onClick={() => navigateToWorkflow(wf.id)}
-                  />
+                  <tr
+                    key={wf.workflowName}
+                    className="hover:bg-gray-50 transition cursor-pointer"
+                    onClick={() => {
+                      // Navigate to first workflow with this name — would need workflow ID lookup
+                    }}
+                  >
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-900">{wf.displayLabel}</span>
+                      </div>
+                    </td>
+                    {sortedOutputs.map((o) => (
+                      <td key={o.key} className="px-4 py-4 text-sm text-gray-600">
+                        {formatStatValue(wf.stats[o.key], registry[o.key])}
+                      </td>
+                    ))}
+                  </tr>
                 ))}
               </tbody>
             </table>
@@ -270,37 +252,8 @@ export default function FeatureWorkflowsPage() {
   );
 }
 
-function WorkflowRow({
-  wf,
-  onClick,
-}: {
-  wf: WorkflowTableRow;
-  onClick: () => void;
-}) {
-  return (
-    <tr
-      className="hover:bg-gray-50 transition cursor-pointer"
-      onClick={onClick}
-    >
-      <td className="px-4 py-4 whitespace-nowrap">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-900">{wf.displayLabel}</span>
-          {wf.category && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
-              {wf.category}
-            </span>
-          )}
-          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </div>
-      </td>
-      <td className="px-4 py-4 text-sm text-gray-600">{wf.emailsSent > 0 ? formatPercent(wf.openRate) : "\u2014"}</td>
-      <td className="px-4 py-4 text-sm text-gray-600">{wf.emailsSent > 0 ? formatPercent(wf.clickRate) : "\u2014"}</td>
-      <td className="px-4 py-4 text-sm text-gray-600">{wf.emailsSent > 0 ? formatPercent(wf.replyRate) : "\u2014"}</td>
-      <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(wf.costPerOpenCents)}</td>
-      <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(wf.costPerClickCents)}</td>
-      <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(wf.costPerReplyCents)}</td>
-    </tr>
-  );
+function formatWorkflowDisplayName(name: string): string {
+  const lastDashIdx = name.lastIndexOf("-");
+  const suffix = lastDashIdx >= 0 ? name.slice(lastDashIdx + 1) : name;
+  return suffix.charAt(0).toUpperCase() + suffix.slice(1);
 }

@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useFeatures } from "@/lib/features-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listBrands, listCampaigns, getCampaignBatchStats } from "@/lib/api";
+import { listBrands, listCampaigns, fetchGlobalStats } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
 
 const POLL_INTERVAL = 5_000;
@@ -47,24 +47,17 @@ export default function OrgOverviewPage() {
     [campaigns]
   );
 
-  const campaignIds = useMemo(() => campaigns.map((c) => c.id), [campaigns]);
-  const { data: batchStats } = useAuthQuery(
-    ["campaignBatchStats", "overview", ...campaignIds],
-    () => getCampaignBatchStats(campaignIds),
-    { enabled: campaignIds.length > 0, ...pollOptions },
+  const { data: globalStats } = useAuthQuery(
+    ["globalStats", "overview"],
+    () => fetchGlobalStats(),
+    pollOptions,
   );
 
-  const totals = useMemo(() => {
-    if (!batchStats) return { emailsSent: 0, emailsReplied: 0, totalCostCents: 0 };
-    return Object.values(batchStats).reduce(
-      (acc, s) => ({
-        emailsSent: acc.emailsSent + (s.emailsSent || 0),
-        emailsReplied: acc.emailsReplied + (s.emailsReplied || 0),
-        totalCostCents: acc.totalCostCents + (parseFloat(s.totalCostInUsdCents ?? "0") || 0),
-      }),
-      { emailsSent: 0, emailsReplied: 0, totalCostCents: 0 }
-    );
-  }, [batchStats]);
+  const totals = useMemo(() => ({
+    emailsSent: globalStats?.stats?.emailsSent ?? 0,
+    emailsReplied: globalStats?.stats?.emailsReplied ?? 0,
+    totalCostCents: globalStats?.systemStats?.totalCostInUsdCents ?? 0,
+  }), [globalStats]);
 
   const isLoading = brandsLoading || campaignsLoading;
 
@@ -215,8 +208,6 @@ export default function OrgOverviewPage() {
               const featureSlug = campaign.featureSlug ?? null;
               const brand = brands.find((b) => b.id === campaign.brandId);
               const feature = featureSlug ? features.find((f) => f.slug === featureSlug) : null;
-              const stats = batchStats?.[campaign.id];
-              const costCents = parseFloat(stats?.totalCostInUsdCents ?? "0") || 0;
               const href = featureSlug && campaign.brandId
                 ? `/orgs/${orgId}/brands/${campaign.brandId}/features/${featureSlug}/campaigns/${campaign.id}`
                 : null;
@@ -241,14 +232,6 @@ export default function OrgOverviewPage() {
                   {/* Date */}
                   <span className="text-xs text-gray-400 w-20 shrink-0">
                     {new Date(campaign.createdAt).toLocaleDateString()}
-                  </span>
-                  {/* Metric: emails sent */}
-                  <span className="text-xs text-gray-500 w-16 text-right shrink-0">
-                    {stats ? `${stats.emailsSent ?? 0} sent` : "—"}
-                  </span>
-                  {/* Cost */}
-                  <span className="text-xs text-gray-500 w-16 text-right shrink-0">
-                    {costCents > 0 ? `$${(costCents / 100).toFixed(2)}` : "—"}
                   </span>
                   {/* Status */}
                   <span

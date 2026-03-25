@@ -20,7 +20,9 @@ function formatCost(cents: string | null | undefined): string | null {
   return `$${usd.toFixed(2)}`;
 }
 
-function FeatureIcon({ featureSlug, className }: { featureSlug: string; className?: string }) {
+function FeatureIcon({ featureSlug, icon, className }: { featureSlug: string; icon?: string; className?: string }) {
+  if (icon) return <span className={className}>{icon}</span>;
+  // Fallback to slug-based icons
   if (featureSlug.startsWith("sales") || featureSlug.startsWith("welcome")) {
     return (
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className={className}>
@@ -206,7 +208,7 @@ export default function BrandOverviewPage() {
                   className="bg-white rounded-lg border border-gray-200 p-5 hover:border-brand-300 hover:shadow-sm transition group"
                 >
                   <div className="flex items-start gap-3">
-                    <FeatureIcon featureSlug={f.slug} className="w-8 h-8 text-brand-600" />
+                    <FeatureIcon featureSlug={f.slug} icon={f.icon} className="w-8 h-8 text-brand-600" />
                     <div className="flex-1 min-w-0">
                       <h3 className="font-medium text-gray-900 group-hover:text-brand-600 transition">{f.name}</h3>
                       <p className="text-sm text-gray-500 mt-1">{f.description}</p>
@@ -234,7 +236,7 @@ export default function BrandOverviewPage() {
                 className="bg-gray-50 rounded-lg border border-gray-200 p-5 opacity-60"
               >
                 <div className="flex items-start gap-3">
-                  <FeatureIcon featureSlug={f.slug} className="w-8 h-8 text-gray-300" />
+                  <FeatureIcon featureSlug={f.slug} icon={f.icon} className="w-8 h-8 text-gray-300" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="font-medium text-gray-400">{f.name}</h3>

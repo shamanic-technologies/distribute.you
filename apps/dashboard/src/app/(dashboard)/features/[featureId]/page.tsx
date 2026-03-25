@@ -7,10 +7,10 @@ import { useFeatures } from "@/lib/features-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   listCampaigns,
-  getCampaignBatchStats,
+  fetchFeatureStats,
   type Campaign,
-  type CampaignStats,
 } from "@/lib/api";
+import { formatStatValue } from "@/lib/format-stat";
 
 const POLL_INTERVAL = 5_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
@@ -56,8 +56,9 @@ export default function FeatureCampaignsPage() {
   const router = useRouter();
   const featureId = params.featureId as string;
 
-  const { getFeature } = useFeatures();
+  const { getFeature, registry } = useFeatures();
   const featureDef = getFeature(featureId);
+  const outputs = featureDef?.outputs ?? [];
 
   // Fetch all campaigns, then filter client-side by feature
   const { data: campaignsData, isLoading } = useAuthQuery(
@@ -80,34 +81,32 @@ export default function FeatureCampaignsPage() {
     }
   }, [isLoading, campaignsData, featureCampaigns.length, featureDef?.implemented, featureId, router]);
 
-  const campaignIds = useMemo(
-    () => featureCampaigns.map((c) => c.id),
-    [featureCampaigns]
+  // Feature-level stats
+  const { data: featureStatsData } = useAuthQuery(
+    ["featureStats", featureId],
+    () => fetchFeatureStats(featureId),
+    { enabled: featureCampaigns.length > 0, ...pollOptions },
   );
 
-  // Batch stats for all campaigns
-  const { data: batchStats } = useAuthQuery(
-    ["campaignBatchStats", featureId, campaignIds],
-    () => getCampaignBatchStats(campaignIds),
-    { enabled: campaignIds.length > 0, ...pollOptions },
+  // Per-campaign stats
+  const { data: campaignStatsData } = useAuthQuery(
+    ["featureStats", featureId, "byCampaign"],
+    () => fetchFeatureStats(featureId, { groupBy: "campaignId" }),
+    { enabled: featureCampaigns.length > 0, ...pollOptions },
   );
-  const campaignStats: Record<string, CampaignStats> = batchStats ?? {};
 
-  // Aggregate totals
-  const totals = useMemo(() => {
-    const statsValues = Object.values(campaignStats);
-    return statsValues.reduce(
-      (acc, s) => ({
-        campaigns: acc.campaigns + 1,
-        leadsServed: acc.leadsServed + (s.leadsServed || 0),
-        emailsSent: acc.emailsSent + (s.emailsSent || 0),
-        emailsOpened: acc.emailsOpened + (s.emailsOpened || 0),
-        emailsReplied: acc.emailsReplied + (s.emailsReplied || 0),
-        totalCostCents: acc.totalCostCents + (parseFloat(s.totalCostInUsdCents ?? "0") || 0),
-      }),
-      { campaigns: 0, leadsServed: 0, emailsSent: 0, emailsOpened: 0, emailsReplied: 0, totalCostCents: 0 }
-    );
-  }, [campaignStats]);
+  const campaignStatsMap = useMemo(() => {
+    const map: Record<string, { stats: Record<string, number>; costCents: number }> = {};
+    for (const g of campaignStatsData?.groups ?? []) {
+      if (g.campaignId) {
+        map[g.campaignId] = { stats: g.stats, costCents: g.systemStats.totalCostInUsdCents };
+      }
+    }
+    return map;
+  }, [campaignStatsData]);
+
+  const featureStats = featureStatsData?.stats ?? {};
+  const systemStats = featureStatsData?.systemStats;
 
   // ─── Not found / Coming soon ────────────────────────────────────────────
 
@@ -166,15 +165,15 @@ export default function FeatureCampaignsPage() {
         </Link>
       </div>
 
-      {/* Stats overview */}
-      {featureCampaigns.length > 0 && totals.campaigns > 0 && (
+      {/* Stats overview — dynamic from feature outputs */}
+      {featureCampaigns.length > 0 && systemStats && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6" data-testid="campaigns-stats">
-          <StatCard label="Campaigns" value={featureCampaigns.length} />
-          <StatCard label="Leads" value={totals.leadsServed} />
-          <StatCard label="Sent" value={totals.emailsSent} />
-          <StatCard label="Opened" value={totals.emailsOpened} />
-          <StatCard label="Replied" value={totals.emailsReplied} />
-          <StatCard label="Total Cost" value={formatCost(totals.totalCostCents)} />
+          <StatCard label="Campaigns" value={systemStats.activeCampaigns} />
+          <StatCard label="Runs" value={systemStats.completedRuns} />
+          {[...outputs].sort((a, b) => a.displayOrder - b.displayOrder).slice(0, 3).map((o) => (
+            <StatCard key={o.key} label={registry[o.key]?.label ?? o.key} value={formatStatValue(featureStats[o.key], registry[o.key])} />
+          ))}
+          <StatCard label="Total Cost" value={formatCost(systemStats.totalCostInUsdCents)} />
         </div>
       )}
 
@@ -211,13 +210,19 @@ export default function FeatureCampaignsPage() {
         </div>
       ) : (
         <div className="space-y-3" data-testid="campaigns-list">
-          {featureCampaigns.map((campaign) => (
-            <CampaignCard
-              key={campaign.id}
-              campaign={campaign}
-              stats={campaignStats[campaign.id]}
-            />
-          ))}
+          {featureCampaigns.map((campaign) => {
+            const cData = campaignStatsMap[campaign.id];
+            return (
+              <CampaignCard
+                key={campaign.id}
+                campaign={campaign}
+                stats={cData?.stats}
+                costCents={cData?.costCents ?? 0}
+                outputs={outputs}
+                registry={registry}
+              />
+            );
+          })}
         </div>
       )}
     </div>
@@ -238,13 +243,18 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
 function CampaignCard({
   campaign,
   stats,
+  costCents,
+  outputs,
+  registry: reg,
 }: {
   campaign: Campaign;
-  stats?: CampaignStats;
+  stats?: Record<string, number>;
+  costCents: number;
+  outputs: import("@/lib/api").FeatureOutput[];
+  registry: import("@/lib/api").StatsRegistry;
 }) {
   const statusStyle = STATUS_STYLES[campaign.status] || "bg-gray-100 text-gray-500 border-gray-200";
 
-  // Extract workflow display name from workflowName
   const workflowLabel = campaign.workflowName
     ? campaign.workflowName
         .split("-")
@@ -252,7 +262,7 @@ function CampaignCard({
         ?.replace(/^\w/, (c) => c.toUpperCase()) ?? campaign.workflowName
     : "Unknown";
 
-  const costCents = parseFloat(stats?.totalCostInUsdCents ?? "0") || 0;
+  const rowOutputs = [...outputs].sort((a, b) => a.displayOrder - b.displayOrder).slice(0, 4);
 
   return (
     <div
@@ -283,10 +293,11 @@ function CampaignCard({
       </div>
       {stats && (
         <div className="flex gap-4 text-xs text-gray-500">
-          <span>{stats.leadsServed || 0} leads</span>
-          <span>{stats.emailsSent || 0} sent</span>
-          <span>{stats.emailsOpened || 0} opened</span>
-          <span>{stats.emailsReplied || 0} replies</span>
+          {rowOutputs.map((o) => (
+            <span key={o.key}>
+              {formatStatValue(stats[o.key], reg[o.key])} {reg[o.key]?.label ?? o.key}
+            </span>
+          ))}
         </div>
       )}
     </div>

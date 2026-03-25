@@ -3,15 +3,15 @@ import * as fs from "fs";
 import * as path from "path";
 
 /**
- * Regression test: the feature overview page must derive ALL funnel and reply
- * stats from a single data source (getCampaignBatchStats) so that the bar
- * chart and campaign list cards update in sync on every poll cycle.
+ * Regression test: the feature overview page must derive ALL stats from the
+ * centralized fetchFeatureStats endpoint so that charts and campaign rows
+ * update in sync on every poll cycle.
  *
- * Previously, emailsContacted/delivered/opened/replied came from a separate
- * getBrandDeliveryStats call that polled independently, causing visible
- * desync between the overview chart and the campaign list.
+ * The new architecture uses feature.charts[] to drive chart rendering and
+ * feature.outputs[] + stats registry for dynamic stat display, replacing
+ * hardcoded field aggregation.
  */
-describe("Feature page stats use a single data source", () => {
+describe("Feature page stats use centralized feature stats endpoint", () => {
   const pagePath = path.join(
     __dirname,
     "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/page.tsx"
@@ -26,26 +26,23 @@ describe("Feature page stats use a single data source", () => {
     expect(content).not.toContain("email-gateway/stats");
   });
 
-  it("should aggregate emailsContacted from batch stats", () => {
-    // The totals reducer must include emailsContacted from the same batch source
-    expect(content).toContain("emailsContacted: acc.emailsContacted + (s.emailsContacted");
+  it("should NOT manually aggregate individual stat fields", () => {
+    // Old pattern: manual reduce over individual fields
+    expect(content).not.toContain("acc.emailsContacted");
+    expect(content).not.toContain("acc.emailsDelivered");
   });
 
-  it("should aggregate emailsDelivered from batch stats", () => {
-    expect(content).toContain("emailsDelivered: acc.emailsDelivered + (s.emailsDelivered");
+  it("should use fetchFeatureStats as the single data source", () => {
+    expect(content).toContain("fetchFeatureStats");
   });
 
-  it("should aggregate emailsOpened from batch stats", () => {
-    expect(content).toContain("emailsOpened: acc.emailsOpened + (s.emailsOpened");
+  it("should use formatStatValue for dynamic stat display", () => {
+    expect(content).toContain("formatStatValue");
   });
 
-  it("should aggregate emailsReplied from batch stats", () => {
-    expect(content).toContain("emailsReplied: acc.emailsReplied + (s.emailsReplied");
-  });
-
-  it("should aggregate reply classifications from batch stats", () => {
-    expect(content).toContain("willingToMeet: acc.willingToMeet + (s.repliesWillingToMeet");
-    expect(content).toContain("interested: acc.interested + (s.repliesInterested");
-    expect(content).toContain("notInterested: acc.notInterested + (s.repliesNotInterested");
+  it("should use charts from featureDef for rendering", () => {
+    expect(content).toContain("funnelChart");
+    expect(content).toContain("breakdownChart");
+    expect(content).toContain("featureDef?.charts");
   });
 });

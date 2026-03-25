@@ -29,10 +29,10 @@ describe("Feature overview page", () => {
     expect(content).toContain("implemented");
   });
 
-  it("should use listCampaigns for implemented features", () => {
+  it("should use listCampaigns and fetchFeatureStats for implemented features", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
     expect(content).toContain("listCampaigns");
-    expect(content).toContain("getCampaignBatchStats");
+    expect(content).toContain("fetchFeatureStats");
   });
 
   it("should link to create campaign page", () => {

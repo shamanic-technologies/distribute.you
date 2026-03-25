@@ -63,7 +63,7 @@ export default function CreateFeaturePage() {
       channel: f.channel,
       audienceType: f.audienceType,
       inputs: f.inputs.map((inp) => ({ key: inp.key, label: inp.label, description: inp.description })),
-      outputs: f.outputs.map((out) => ({ key: out.key, label: out.label, type: out.type })),
+      outputs: f.outputs.map((out) => ({ key: out.key, displayOrder: out.displayOrder })),
     })),
     [existingFeatures],
   );

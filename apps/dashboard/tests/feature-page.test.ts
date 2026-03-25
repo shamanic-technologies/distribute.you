@@ -26,8 +26,8 @@ describe("Feature campaigns list page", () => {
       expect(content).toContain("listCampaigns");
     });
 
-    it("should use getCampaignBatchStats for stats", () => {
-      expect(content).toContain("getCampaignBatchStats");
+    it("should use fetchFeatureStats for stats", () => {
+      expect(content).toContain("fetchFeatureStats");
     });
 
     it("should filter campaigns by featureSlug", () => {
@@ -72,13 +72,11 @@ describe("Feature campaigns list page", () => {
       expect(content).toContain("campaigns-stats");
     });
 
-    it("should show aggregated stat cards", () => {
+    it("should show dynamic stat cards from outputs and registry", () => {
       expect(content).toContain("Campaigns");
-      expect(content).toContain("Leads");
-      expect(content).toContain("Sent");
-      expect(content).toContain("Opened");
-      expect(content).toContain("Replied");
+      expect(content).toContain("Runs");
       expect(content).toContain("Total Cost");
+      expect(content).toContain("formatStatValue");
     });
   });
 
@@ -89,10 +87,10 @@ describe("Feature campaigns list page", () => {
       expect(content).toContain("failed");
     });
 
-    it("should show campaign stats", () => {
-      expect(content).toContain("leadsServed");
-      expect(content).toContain("emailsSent");
-      expect(content).toContain("emailsReplied");
+    it("should show dynamic campaign stats from outputs", () => {
+      expect(content).toContain("rowOutputs");
+      expect(content).toContain("formatStatValue");
+      expect(content).toContain("registry");
     });
 
     it("should show time ago for creation", () => {

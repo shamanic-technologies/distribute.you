@@ -160,7 +160,10 @@ const PlusIcon = () => (
   </svg>
 );
 
-function getFeatureIcon(featureSlug: string): React.ReactNode {
+function getFeatureIcon(featureSlug: string, icon?: string): React.ReactNode {
+  // Use feature.icon emoji/string when available
+  if (icon) return <span className="text-base leading-none">{icon}</span>;
+  // Fallback to slug-based icons
   if (featureSlug.startsWith("sales")) return <EnvelopeIcon />;
   if (featureSlug.startsWith("outlets")) return <OrgIcon />;
   if (featureSlug.startsWith("journalists")) return <NewspaperIcon />;
@@ -221,7 +224,7 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
     id: f.slug,
     label: f.name,
     href: `/features/${f.slug}`,
-    icon: getFeatureIcon(f.slug),
+    icon: getFeatureIcon(f.slug, f.icon),
     comingSoon: !f.implemented,
   }));
 
@@ -260,7 +263,7 @@ function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string 
     id: f.slug,
     label: f.name,
     href: `/features/${f.slug}`,
-    icon: getFeatureIcon(f.slug),
+    icon: getFeatureIcon(f.slug, f.icon),
     comingSoon: !f.implemented,
   }));
 
@@ -310,7 +313,7 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
     id: f.slug,
     label: f.name,
     href: `${basePath}/features/${f.slug}`,
-    icon: getFeatureIcon(f.slug),
+    icon: getFeatureIcon(f.slug, f.icon),
     comingSoon: !f.implemented,
   }));
 
@@ -345,7 +348,7 @@ const SettingsIcon = () => (
 );
 
 function FeatureSettingsPanel({ featureSlug, onClose }: { featureSlug: string; onClose: () => void }) {
-  const { getFeature } = useFeatures();
+  const { getFeature, registry } = useFeatures();
   const feature = getFeature(featureSlug);
 
   if (!feature) return null;
@@ -417,15 +420,18 @@ function FeatureSettingsPanel({ featureSlug, onClose }: { featureSlug: string; o
                 Outputs ({feature.outputs.length})
               </h4>
               <div className="space-y-2">
-                {feature.outputs.map((output) => (
-                  <div key={output.key} className="bg-gray-50 rounded-lg p-2.5 border border-gray-100">
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className="text-xs font-medium text-gray-700">{output.label}</span>
-                      <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1 rounded">{output.key}</span>
+                {feature.outputs.map((output) => {
+                  const entry = registry[output.key];
+                  return (
+                    <div key={output.key} className="bg-gray-50 rounded-lg p-2.5 border border-gray-100">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span className="text-xs font-medium text-gray-700">{entry?.label ?? output.key}</span>
+                        <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1 rounded">{output.key}</span>
+                      </div>
+                      <p className="text-xs text-gray-500">{entry?.type ?? "count"}</p>
                     </div>
-                    <p className="text-xs text-gray-500">{output.type}</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

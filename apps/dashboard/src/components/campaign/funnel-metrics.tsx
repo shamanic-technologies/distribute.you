@@ -1,12 +1,11 @@
 "use client";
 
+import type { FunnelStep, StatsRegistry } from "@/lib/api";
+
 interface FunnelMetricsProps {
-  leadsServed: number;
-  emailsGenerated: number;
-  emailsContacted: number;
-  emailsDelivered: number;
-  emailsOpened: number;
-  emailsReplied: number;
+  steps: FunnelStep[];
+  stats: Record<string, number>;
+  registry: StatsRegistry;
 }
 
 export function FunnelMetricsSkeleton() {
@@ -32,34 +31,26 @@ export function FunnelMetricsSkeleton() {
   );
 }
 
-export function FunnelMetrics({
-  leadsServed,
-  emailsGenerated,
-  emailsContacted,
-  emailsDelivered,
-  emailsOpened,
-  emailsReplied
-}: FunnelMetricsProps) {
-  const steps = [
-    { label: "Leads", value: leadsServed, rate: null as number | null },
-    { label: "Generated", value: emailsGenerated, rate: leadsServed > 0 ? (emailsGenerated / leadsServed * 100) : 0 },
-    { label: "Contacted", value: emailsContacted, rate: emailsGenerated > 0 ? (emailsContacted / emailsGenerated * 100) : 0 },
-    { label: "Delivered", value: emailsDelivered, rate: emailsContacted > 0 ? (emailsDelivered / emailsContacted * 100) : 0 },
-    { label: "Opened", value: emailsOpened, rate: emailsDelivered > 0 ? (emailsOpened / emailsDelivered * 100) : 0 },
-    { label: "Replied", value: emailsReplied, rate: emailsDelivered > 0 ? (emailsReplied / emailsDelivered * 100) : 0 },
-  ];
+export function FunnelMetrics({ steps, stats, registry }: FunnelMetricsProps) {
+  const resolved = steps.map((step, i) => {
+    const value = stats[step.key] ?? 0;
+    const prevValue = i > 0 ? (stats[steps[i - 1].key] ?? 0) : 0;
+    const rate = i > 0 && prevValue > 0 ? (value / prevValue * 100) : null;
+    const label = registry[step.key]?.label ?? step.key;
+    return { key: step.key, label, value, rate };
+  });
 
-  const maxValue = Math.max(...steps.map(s => s.value), 1);
+  const maxValue = Math.max(...resolved.map(s => s.value), 1);
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
       <h3 className="font-medium text-gray-800 mb-4 md:mb-6">Campaign Funnel</h3>
 
       <div className="flex items-end justify-between gap-3">
-        {steps.map((step, i) => {
+        {resolved.map((step) => {
           const barHeight = Math.max((step.value / maxValue) * 100, 4);
           return (
-            <div key={step.label} className="flex-1 flex flex-col items-center">
+            <div key={step.key} className="flex-1 flex flex-col items-center">
               {/* Bar — fixed-height container, bar grows from bottom */}
               <div className="w-full flex justify-center" style={{ height: 128 }}>
                 <div

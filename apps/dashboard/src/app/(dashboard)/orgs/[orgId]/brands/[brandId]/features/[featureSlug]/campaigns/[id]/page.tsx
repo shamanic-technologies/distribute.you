@@ -24,12 +24,13 @@ export default function CampaignOverviewPage() {
   const params = useParams();
   const featureSlug = params.featureSlug as string;
   const orgId = params.orgId as string;
-  const { getFeature } = useFeatures();
+  const { getFeature, registry } = useFeatures();
   const featureDef = getFeature(featureSlug);
-  const isPressKit = featureDef?.category === "press-kit";
-  const isOutletDiscovery = featureDef?.resultComponent === "discovered-outlets";
-  const isJournalistDiscovery = featureDef?.resultComponent === "discovered-journalists";
-  const isDiscovery = featureDef?.audienceType === "discovery";
+
+  const entities = featureDef?.entities ?? [];
+  const funnelChart = featureDef?.charts?.find((c) => c.type === "funnel-bar");
+  const breakdownChart = featureDef?.charts?.find((c) => c.type === "breakdown-bar");
+
   const { campaign, stats, leads, emails, loading } = useCampaign();
   const stopMutation = useStopCampaign();
   const stopping = useIsStoppingCampaign(campaign?.id ?? "");
@@ -74,6 +75,13 @@ export default function CampaignOverviewPage() {
     }
   }
 
+  // Build a stats record for charts from campaign stats
+  const statsRecord: Record<string, number> = stats
+    ? Object.fromEntries(
+        Object.entries(stats).filter((e): e is [string, number] => typeof e[1] === "number")
+      )
+    : {};
+
   return (
     <div className="p-4 md:p-8">
       {/* Header */}
@@ -111,43 +119,40 @@ export default function CampaignOverviewPage() {
         </p>
       </div>
 
-      {/* Press kit results (for press-kit campaigns) */}
-      {isPressKit && campaign && (
+      {/* Entity-specific results */}
+      {entities.includes("press-kits") && campaign && (
         <div className="mb-6">
           <PressKitResults campaignId={campaign.id} orgId={orgId} />
         </div>
       )}
-
-      {/* Discovery results */}
-      {isOutletDiscovery && campaign && (
+      {entities.includes("outlets") && campaign && (
         <div className="mb-6">
           <DiscoveredOutlets campaignId={campaign.id} />
         </div>
       )}
-      {isJournalistDiscovery && campaign && (
+      {entities.includes("journalists") && campaign && (
         <div className="mb-6">
           <DiscoveredJournalists campaignId={campaign.id} />
         </div>
       )}
 
-      {/* Outreach stats (for non-press-kit, non-discovery campaigns) */}
-      {!isPressKit && !isDiscovery && stats && (
+      {/* Charts (funnel + breakdown) — only when charts are defined */}
+      {(funnelChart || breakdownChart) && stats && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-          <FunnelMetrics
-            leadsServed={stats.leadsServed || 0}
-            emailsGenerated={stats.emailsGenerated || 0}
-            emailsContacted={stats.emailsContacted || 0}
-            emailsDelivered={stats.emailsDelivered || 0}
-            emailsOpened={stats.emailsOpened || 0}
-            emailsReplied={stats.emailsReplied || 0}
-          />
-          <ReplyBreakdown
-            willingToMeet={stats.repliesWillingToMeet || 0}
-            interested={stats.repliesInterested || 0}
-            notInterested={stats.repliesNotInterested || 0}
-            outOfOffice={stats.repliesOutOfOffice || 0}
-            unsubscribe={stats.repliesUnsubscribe || 0}
-          />
+          {funnelChart && funnelChart.type === "funnel-bar" && (
+            <FunnelMetrics
+              steps={funnelChart.steps}
+              stats={statsRecord}
+              registry={registry}
+            />
+          )}
+          {breakdownChart && breakdownChart.type === "breakdown-bar" && (
+            <ReplyBreakdown
+              segments={breakdownChart.segments}
+              stats={statsRecord}
+              registry={registry}
+            />
+          )}
         </div>
       )}
 

@@ -3,19 +3,19 @@
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { useQueries } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   listCampaignsByBrand,
-  getCampaignStats,
+  fetchFeatureStats,
   getBrandCostBreakdown,
   type Campaign,
-  type CampaignStats,
 } from "@/lib/api";
+import { useFeatures } from "@/lib/features-context";
 import { useStopCampaign, useIsStoppingCampaign } from "@/lib/use-stop-campaign";
 import { FunnelMetrics, FunnelMetricsSkeleton } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown, ReplyBreakdownSkeleton } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown, CostBreakdownSkeleton } from "@/components/campaign/cost-breakdown";
+import { formatStatValue } from "@/lib/format-stat";
 
 const POLL_INTERVAL = 5_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
@@ -27,11 +27,6 @@ const STATUS_STYLES: Record<string, string> = {
   completed: "bg-green-100 text-green-700 border-green-200",
   failed: "bg-red-100 text-red-600 border-red-200",
 };
-
-function formatCostCents(cents: number | null): string {
-  if (cents === null || cents === 0) return "\u2014";
-  return `$${(cents / 100).toFixed(2)}`;
-}
 
 function formatBudget(campaign: Campaign): string | null {
   if (campaign.maxBudgetMonthlyUsd) return `$${campaign.maxBudgetMonthlyUsd} budget (monthly)`;
@@ -70,6 +65,17 @@ export default function FeaturePage() {
   const brandId = params.brandId as string;
   const orgId = params.orgId as string;
   const featureSlug = params.featureSlug as string;
+  const { getFeature, registry } = useFeatures();
+  const featureDef = getFeature(featureSlug);
+
+  const funnelChart = featureDef?.charts?.find((c) => c.type === "funnel-bar");
+  const breakdownChart = featureDef?.charts?.find((c) => c.type === "breakdown-bar");
+  const outputs = featureDef?.outputs ?? [];
+  // Show first N outputs by displayOrder in campaign rows
+  const campaignRowOutputs = useMemo(
+    () => [...outputs].sort((a, b) => a.displayOrder - b.displayOrder).slice(0, 4),
+    [outputs]
+  );
 
   // Campaigns
   const { data: campaignsData, isLoading } = useAuthQuery(
@@ -83,23 +89,27 @@ export default function FeaturePage() {
     [allCampaigns, featureSlug]
   );
 
-  const statsQueries = useQueries({
-    queries: campaigns.map((c) => ({
-      queryKey: ["campaignStats", c.id],
-      queryFn: () => getCampaignStats(c.id),
-      ...pollOptions,
-    })),
-  });
+  // Feature-level stats (aggregated, no groupBy)
+  const { data: featureStatsData, isLoading: statsLoading } = useAuthQuery(
+    ["featureStats", featureSlug, brandId],
+    () => fetchFeatureStats(featureSlug, { brandId }),
+    { enabled: campaigns.length > 0, ...pollOptions },
+  );
 
-  const isLoadingBatchStats = statsQueries.some((q) => q.isLoading);
-  const campaignStats = useMemo(() => {
-    const map: Record<string, CampaignStats> = {};
-    for (let i = 0; i < campaigns.length; i++) {
-      const data = statsQueries[i]?.data;
-      if (data) map[campaigns[i].id] = data;
+  // Per-campaign stats (groupBy=campaignId)
+  const { data: campaignStatsData, isLoading: campaignStatsLoading } = useAuthQuery(
+    ["featureStats", featureSlug, brandId, "byCampaign"],
+    () => fetchFeatureStats(featureSlug, { groupBy: "campaignId", brandId }),
+    { enabled: campaigns.length > 0, ...pollOptions },
+  );
+
+  const campaignStatsMap = useMemo(() => {
+    const map: Record<string, Record<string, number>> = {};
+    for (const g of campaignStatsData?.groups ?? []) {
+      if (g.campaignId) map[g.campaignId] = g.stats;
     }
     return map;
-  }, [campaigns, statsQueries]);
+  }, [campaignStatsData]);
 
   const { data: brandCostData, isLoading: isLoadingCosts } = useAuthQuery(
     ["brandCostBreakdown", { brandId }],
@@ -108,44 +118,14 @@ export default function FeaturePage() {
   );
   const brandCostBreakdown = brandCostData?.costs ?? [];
 
-  // Show skeletons until ALL data sources have loaded at least once.
-  // When there are no campaigns, batch stats are disabled (enabled: false) so skip that check.
   const hasData = campaignsData !== undefined;
-  const batchStatsReady = campaigns.length === 0 || !isLoadingBatchStats;
-  const statsLoading = !hasData || !batchStatsReady;
+  const allStatsLoading = !hasData || (campaigns.length > 0 && statsLoading);
   const costsLoading = isLoadingCosts;
 
-  // Aggregate all stats from a single source (batch stats) so everything updates in sync
-  const statsValues = Object.values(campaignStats);
-  const totals = statsValues.reduce(
-    (acc, s) => ({
-      leadsServed: acc.leadsServed + (s.leadsServed || 0),
-      emailsGenerated: acc.emailsGenerated + (s.emailsGenerated || 0),
-      emailsContacted: acc.emailsContacted + (s.emailsContacted || 0),
-      emailsDelivered: acc.emailsDelivered + (s.emailsDelivered || 0),
-      emailsOpened: acc.emailsOpened + (s.emailsOpened || 0),
-      emailsReplied: acc.emailsReplied + (s.emailsReplied || 0),
-      willingToMeet: acc.willingToMeet + (s.repliesWillingToMeet || 0),
-      interested: acc.interested + (s.repliesInterested || 0),
-      notInterested: acc.notInterested + (s.repliesNotInterested || 0),
-      outOfOffice: acc.outOfOffice + (s.repliesOutOfOffice || 0),
-      unsubscribe: acc.unsubscribe + (s.repliesUnsubscribe || 0),
-    }),
-    {
-      leadsServed: 0, emailsGenerated: 0, emailsContacted: 0,
-      emailsDelivered: 0, emailsOpened: 0, emailsReplied: 0,
-      willingToMeet: 0, interested: 0, notInterested: 0,
-      outOfOffice: 0, unsubscribe: 0,
-    }
-  );
-
-  const totalCostCents = brandCostBreakdown.reduce(
-    (sum, c) => sum + (parseFloat(c.totalCostInUsdCents) || 0),
-    0
-  );
+  const totalCostCents = featureStatsData?.systemStats?.totalCostInUsdCents ?? 0;
+  const featureStats = featureStatsData?.stats ?? {};
 
   const stopMutation = useStopCampaign();
-
 
   return (
     <div className="p-4 md:p-8">
@@ -172,29 +152,28 @@ export default function FeaturePage() {
         </div>
       </div>
 
-      {/* Stats Overview */}
-      {statsLoading ? (
+      {/* Stats Overview — dynamic from charts */}
+      {allStatsLoading ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-          <FunnelMetricsSkeleton />
-          <ReplyBreakdownSkeleton />
+          {funnelChart && <FunnelMetricsSkeleton />}
+          {breakdownChart && <ReplyBreakdownSkeleton />}
         </div>
-      ) : campaigns.length > 0 ? (
+      ) : campaigns.length > 0 && (funnelChart || breakdownChart) ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-          <FunnelMetrics
-            leadsServed={totals.leadsServed}
-            emailsGenerated={totals.emailsGenerated}
-            emailsContacted={totals.emailsContacted}
-            emailsDelivered={totals.emailsDelivered}
-            emailsOpened={totals.emailsOpened}
-            emailsReplied={totals.emailsReplied}
-          />
-          <ReplyBreakdown
-            willingToMeet={totals.willingToMeet}
-            interested={totals.interested}
-            notInterested={totals.notInterested}
-            outOfOffice={totals.outOfOffice}
-            unsubscribe={totals.unsubscribe}
-          />
+          {funnelChart && funnelChart.type === "funnel-bar" && (
+            <FunnelMetrics
+              steps={funnelChart.steps}
+              stats={featureStats}
+              registry={registry}
+            />
+          )}
+          {breakdownChart && breakdownChart.type === "breakdown-bar" && (
+            <ReplyBreakdown
+              segments={breakdownChart.segments}
+              stats={featureStats}
+              registry={registry}
+            />
+          )}
         </div>
       ) : null}
 
@@ -233,11 +212,13 @@ export default function FeaturePage() {
           </div>
         ) : (
           campaigns.map((campaign) => {
-            const stats = campaignStats[campaign.id];
-            const statsReady = !isLoadingBatchStats || stats !== undefined;
+            const cStats = campaignStatsMap[campaign.id];
+            const cSystemStats = campaignStatsData?.groups?.find((g) => g.campaignId === campaign.id)?.systemStats;
+            const statsReady = !campaignStatsLoading || cStats !== undefined;
             const budget = formatBudget(campaign);
             const status = campaign.status;
             const statusStyle = STATUS_STYLES[status] || "bg-gray-100 text-gray-500 border-gray-200";
+            const costCents = cSystemStats?.totalCostInUsdCents ?? 0;
 
             return (
               <Link
@@ -260,9 +241,9 @@ export default function FeaturePage() {
                   <div className="flex items-center gap-3">
                     {!statsReady ? (
                       <div className="h-4 w-16 bg-gray-200 rounded animate-pulse" />
-                    ) : stats?.totalCostInUsdCents && parseFloat(stats.totalCostInUsdCents) > 0 ? (
+                    ) : costCents > 0 ? (
                       <span className="text-xs text-gray-400">
-                        {formatCostCents(parseFloat(stats.totalCostInUsdCents))} spent
+                        ${(costCents / 100).toFixed(2)} spent
                       </span>
                     ) : null}
                     {budget && (
@@ -278,19 +259,15 @@ export default function FeaturePage() {
                 <div className="flex items-center gap-4 text-xs text-gray-500">
                   <span>{timeAgo(campaign.createdAt)}</span>
                   {!statsReady ? (
-                    <>
-                      <div className="h-3 w-14 bg-gray-200 rounded animate-pulse" />
-                      <div className="h-3 w-18 bg-gray-200 rounded animate-pulse" />
-                      <div className="h-3 w-18 bg-gray-200 rounded animate-pulse" />
-                      <div className="h-3 w-14 bg-gray-200 rounded animate-pulse" />
-                    </>
-                  ) : stats ? (
-                    <>
-                      <span>{stats.leadsServed || 0} leads</span>
-                      <span>{stats.emailsGenerated || 0} generated</span>
-                      <span>{stats.emailsContacted || 0} contacted</span>
-                      <span>{stats.emailsReplied || 0} replies</span>
-                    </>
+                    campaignRowOutputs.map((o) => (
+                      <div key={o.key} className="h-3 w-14 bg-gray-200 rounded animate-pulse" />
+                    ))
+                  ) : cStats ? (
+                    campaignRowOutputs.map((o) => (
+                      <span key={o.key}>
+                        {formatStatValue(cStats[o.key], registry[o.key])} {registry[o.key]?.label ?? o.key}
+                      </span>
+                    ))
                   ) : null}
                 </div>
               </Link>

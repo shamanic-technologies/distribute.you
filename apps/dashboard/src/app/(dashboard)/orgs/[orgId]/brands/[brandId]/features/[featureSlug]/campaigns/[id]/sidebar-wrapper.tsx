@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import { CampaignSidebar } from "@/components/campaign-sidebar";
 import { useCampaign } from "@/lib/campaign-context";
+import { useFeatures } from "@/lib/features-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { listWorkflows, listCampaignOutlets, listCampaignJournalists } from "@/lib/api";
 
@@ -17,9 +18,9 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
   const params = useParams();
   const { campaign, stats, emails, leads } = useCampaign();
   const campaignId = params.id as string;
-
-  const isOutletDiscovery = featureSlug === "outlets-database-discovery";
-  const isJournalistDiscovery = featureSlug === "journalists-database-discovery";
+  const { getFeature } = useFeatures();
+  const featureDef = getFeature(featureSlug);
+  const entities = featureDef?.entities ?? [];
 
   const { data: workflowsData } = useAuthQuery(
     ["workflows"],
@@ -29,13 +30,13 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
   const { data: outletsData } = useAuthQuery(
     ["campaignOutlets", campaignId],
     () => listCampaignOutlets(campaignId),
-    { enabled: isOutletDiscovery, refetchInterval: 5_000, refetchIntervalInBackground: false },
+    { enabled: entities.includes("outlets"), refetchInterval: 5_000, refetchIntervalInBackground: false },
   );
 
   const { data: journalistsData } = useAuthQuery(
     ["campaignJournalists", campaignId],
     () => listCampaignJournalists(campaignId),
-    { enabled: isJournalistDiscovery, refetchInterval: 5_000, refetchIntervalInBackground: false },
+    { enabled: entities.includes("journalists"), refetchInterval: 5_000, refetchIntervalInBackground: false },
   );
 
   const workflowId = useMemo(() => {
@@ -48,12 +49,26 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
     return names.size;
   }, [leads]);
 
-  // Use stats counters (same source as the funnel chart) so sidebar badges
-  // and graph bars always show identical numbers on every poll cycle.
   const leadCount = stats?.leadsServed ?? leads.length;
   const emailCount = stats?.emailsGenerated ?? emails.length;
-  const outletCount = outletsData?.outlets?.length;
-  const journalistCount = journalistsData?.journalists?.length;
 
-  return <CampaignSidebar campaignId={campaignId} orgId={orgId} brandId={brandId} featureSlug={featureSlug} stats={stats ?? undefined} emailCount={emailCount} leadCount={leadCount} companyCount={companyCount} outletCount={outletCount} journalistCount={journalistCount} workflowId={workflowId} featureInputs={campaign?.featureInputs} />;
+  const entityCounts: Record<string, number | undefined> = {
+    leads: leadCount,
+    companies: companyCount,
+    emails: emailCount,
+    outlets: outletsData?.outlets?.length,
+    journalists: journalistsData?.journalists?.length,
+  };
+
+  return (
+    <CampaignSidebar
+      campaignId={campaignId}
+      orgId={orgId}
+      brandId={brandId}
+      featureSlug={featureSlug}
+      entityCounts={entityCounts}
+      workflowId={workflowId}
+      featureInputs={campaign?.featureInputs}
+    />
+  );
 }
