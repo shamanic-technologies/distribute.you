@@ -7,6 +7,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   fetchFeatureStats,
   generateWorkflow,
+  listWorkflows,
   type FeatureOutput,
   type StatsRegistry,
 } from "@/lib/api";
@@ -84,6 +85,23 @@ export default function FeatureWorkflowsPage() {
     () => fetchFeatureStats(featureSlug, { groupBy: "workflowName" }),
     { enabled: wfDef?.implemented === true, ...pollOptions },
   );
+
+  // Fetch workflow list to resolve name → id
+  const { data: workflowsData } = useAuthQuery(
+    ["workflows"],
+    () => listWorkflows(),
+    pollOptions,
+  );
+
+  const workflowNameToId = useMemo(() => {
+    const map = new Map<string, string>();
+    if (workflowsData?.workflows) {
+      for (const wf of workflowsData.workflows) {
+        if (!map.has(wf.name)) map.set(wf.name, wf.id);
+      }
+    }
+    return map;
+  }, [workflowsData]);
 
   const rows = useMemo(() => {
     if (!statsData?.groups) return [];
@@ -228,7 +246,10 @@ export default function FeatureWorkflowsPage() {
                     key={wf.workflowName}
                     className="hover:bg-gray-50 transition cursor-pointer"
                     onClick={() => {
-                      // Navigate to first workflow with this name — would need workflow ID lookup
+                      const wfId = workflowNameToId.get(wf.workflowName);
+                      if (wfId) {
+                        router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/${wfId}`);
+                      }
                     }}
                   >
                     <td className="px-4 py-4 whitespace-nowrap">
