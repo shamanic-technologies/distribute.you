@@ -99,14 +99,25 @@ export default function OrgOverviewPage() {
       <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-medium text-gray-900">Brands</h2>
-          {brands.length > 0 && (
+          <div className="flex items-center gap-3">
+            {brands.length > 4 && (
+              <Link
+                href={`/orgs/${orgId}/brands`}
+                className="text-sm text-gray-400 hover:text-gray-600"
+              >
+                View all →
+              </Link>
+            )}
             <Link
               href={`/orgs/${orgId}/brands`}
-              className="text-sm text-brand-500 hover:text-brand-600"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition"
             >
-              View all →
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add Brand
             </Link>
-          )}
+          </div>
         </div>
         {brands.length === 0 ? (
           <div className="text-center py-4">
@@ -139,7 +150,40 @@ export default function OrgOverviewPage() {
 
       {/* Features Summary */}
       <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Features</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-medium text-gray-900">Features</h2>
+          <div className="flex items-center gap-3">
+            {features.length > 6 && (
+              <Link
+                href={`/features`}
+                className="text-sm text-gray-400 hover:text-gray-600"
+              >
+                View all →
+              </Link>
+            )}
+            {brands.length > 0 ? (
+              <Link
+                href={`/orgs/${orgId}/brands/${brands[0].id}/features/new`}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Create
+              </Link>
+            ) : (
+              <span
+                title="Create a brand first"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-200 text-gray-400 cursor-not-allowed"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Create
+              </span>
+            )}
+          </div>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {features.map((f) => (
             <Link
