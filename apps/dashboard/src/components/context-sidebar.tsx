@@ -423,9 +423,7 @@ function FeatureSettingsPanel({ featureSlug, onClose }: { featureSlug: string; o
                       <span className="text-xs font-medium text-gray-700">{output.label}</span>
                       <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1 rounded">{output.key}</span>
                     </div>
-                    {output.description && (
-                      <p className="text-xs text-gray-500">{output.description}</p>
-                    )}
+                    <p className="text-xs text-gray-500">{output.type}</p>
                   </div>
                 ))}
               </div>

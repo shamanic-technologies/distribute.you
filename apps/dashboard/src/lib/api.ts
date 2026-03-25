@@ -462,37 +462,72 @@ export function prefillToStringMap(prefilled: Record<string, string | null>): Re
 export interface FeatureInput {
   key: string;
   label: string;
+  type: "text" | "textarea" | "number" | "select";
+  placeholder: string;
   description: string;
-  placeholder?: string;
-  extractKey?: string;
+  extractKey: string;
+  options?: string[];
 }
 
 export interface FeatureOutput {
   key: string;
   label: string;
-  description?: string;
+  type: "count" | "rate" | "currency" | "percentage";
+  displayOrder: number;
+  showInCampaignRow: boolean;
+  showInFunnel: boolean;
+  funnelOrder?: number;
+  numeratorKey?: string;
+  denominatorKey?: string;
 }
 
-export interface FeatureChart {
-  type: string;
-  label?: string;
-  dataKeys?: string[];
+export interface WorkflowColumn {
+  key: string;
+  label: string;
+  type: "rate" | "currency" | "count";
+  sortDirection: "asc" | "desc";
+  displayOrder: number;
+  defaultSort?: boolean;
+  numeratorKey?: string;
+  denominatorKey?: string;
 }
+
+export interface FunnelStep {
+  key: string;
+  label: string;
+  statsField: string;
+  rateBasedOn: string | null;
+}
+
+export interface BreakdownSegment {
+  key: string;
+  label: string;
+  statsField: string;
+  color: "green" | "blue" | "red" | "gray" | "orange";
+  sentiment: "positive" | "neutral" | "negative";
+}
+
+export type FeatureChart =
+  | { key: string; type: "funnel-bar"; title: string; displayOrder: number; steps: FunnelStep[] }
+  | { key: string; type: "breakdown-bar"; title: string; displayOrder: number; segments: BreakdownSegment[] };
 
 export interface Feature {
   slug: string;
   name: string;
   description: string;
+  icon?: string;
   category: string;
   channel: string;
   audienceType: string;
+  status: "active" | "draft" | "deprecated";
   implemented: boolean;
-  icon?: string;
+  displayOrder?: number;
   inputs: FeatureInput[];
   outputs: FeatureOutput[];
+  workflowColumns: WorkflowColumn[];
   charts: FeatureChart[];
-  workflowColumns?: string[];
   resultComponent: string | null;
+  defaultWorkflowName: string | null;
 }
 
 /** GET /features — list all features */
