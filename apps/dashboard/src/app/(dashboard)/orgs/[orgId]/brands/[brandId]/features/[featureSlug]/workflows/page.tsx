@@ -11,6 +11,7 @@ import {
 } from "@/lib/api";
 import { useFeatures } from "@/lib/features-context";
 import { PlusIcon } from "@heroicons/react/20/solid";
+import { Skeleton } from "@/components/skeleton";
 
 const POLL_INTERVAL = 5_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false, placeholderData: keepPreviousData };
@@ -104,7 +105,7 @@ export default function FeatureWorkflowsPage() {
   const [metric, setMetric] = useState<SortKey>("costPerReplyCents");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
-  const { getFeature } = useFeatures();
+  const { getFeature, isLoading: featuresLoading } = useFeatures();
   const wfDef = getFeature(featureSlug);
 
   const createMutation = useMutation({
@@ -200,13 +201,28 @@ export default function FeatureWorkflowsPage() {
         </div>
       )}
 
-      {isLoading ? (
+      {isLoading || featuresLoading ? (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="animate-pulse p-6 space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-12 bg-gray-100 rounded" />
-            ))}
-          </div>
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                {["Workflow", "% Opens", "% Clicks", "% Replies", "$/Open", "$/Click", "$/Reply"].map((h) => (
+                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {[1, 2, 3].map((i) => (
+                <tr key={i}>
+                  {Array.from({ length: 7 }).map((_, j) => (
+                    <td key={j} className="px-4 py-4">
+                      <Skeleton className={`h-4 ${j === 0 ? "w-32" : "w-16"}`} />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       ) : sorted.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
@@ -215,9 +231,9 @@ export default function FeatureWorkflowsPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h4v4H4zM10 14h4v4h-4zM16 6h4v4h-4zM6 10v4l4 0M18 10v4l-4 0" />
             </svg>
           </div>
-          <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No performance data yet</h3>
+          <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No workflows yet</h3>
           <p className="text-gray-600 text-sm max-w-md mx-auto">
-            Performance data will appear here as campaigns run.
+            Create a workflow to get started.
           </p>
         </div>
       ) : (
