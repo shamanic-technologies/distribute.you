@@ -10,8 +10,12 @@ describe("Workflow list page shows all workflows (not just those with stats)", (
 
   const content = fs.readFileSync(pagePath, "utf-8");
 
-  it("should filter workflows by feature category", () => {
-    expect(content).toContain("wf.category === wfDef.category");
+  it("should filter workflows by featureSlug via API", () => {
+    expect(content).toContain("listWorkflows({ featureSlug })");
+  });
+
+  it("should include featureSlug in the query key", () => {
+    expect(content).toContain('["workflows", featureSlug]');
   });
 
   it("should build rows from featureWorkflows (not only from stats groups)", () => {
