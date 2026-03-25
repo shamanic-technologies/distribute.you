@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getWorkflow, getWorkflowSummary, getFeature } from "@/lib/api";
@@ -73,15 +73,7 @@ export default function WorkflowViewerPage() {
   const { data: workflow, isLoading } = useAuthQuery(
     ["workflow", workflowId],
     () => getWorkflow(workflowId),
-    { refetchInterval: 3000 },
   );
-
-  // Auto-navigate when the workflow is forked (upgradedTo appears)
-  useEffect(() => {
-    if (workflow?.upgradedTo) {
-      handleWorkflowUpgraded(workflow.upgradedTo);
-    }
-  }, [workflow?.upgradedTo, handleWorkflowUpgraded]);
 
   const { data: summary } = useAuthQuery(
     ["workflow-summary", workflowId],

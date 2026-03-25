@@ -770,6 +770,7 @@ export interface Workflow {
   requiredProviders: string[];
   status: "active" | "deprecated";
   upgradedTo: string | null;
+  forkedFrom: string | null;
   createdAt: string;
   updatedAt: string;
 }
