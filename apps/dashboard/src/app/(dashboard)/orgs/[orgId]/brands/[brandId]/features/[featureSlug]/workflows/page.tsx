@@ -10,6 +10,7 @@ import {
   listWorkflows,
   type FeatureOutput,
   type StatsRegistry,
+  type SystemStats,
 } from "@/lib/api";
 import { useFeatures } from "@/lib/features-context";
 import { formatStatValue, sortDirectionForType } from "@/lib/format-stat";
@@ -87,31 +88,62 @@ export default function FeatureWorkflowsPage() {
   );
 
   // Fetch workflow list to resolve name → id
-  const { data: workflowsData } = useAuthQuery(
+  const { data: workflowsData, isLoading: workflowsLoading } = useAuthQuery(
     ["workflows"],
     () => listWorkflows(),
     pollOptions,
   );
 
+  // Filter workflows belonging to this feature's category
+  const featureWorkflows = useMemo(() => {
+    if (!workflowsData?.workflows || !wfDef) return [];
+    return workflowsData.workflows.filter(
+      (wf) => wf.category === wfDef.category && wf.status === "active"
+    );
+  }, [workflowsData, wfDef]);
+
   const workflowNameToId = useMemo(() => {
     const map = new Map<string, string>();
-    if (workflowsData?.workflows) {
-      for (const wf of workflowsData.workflows) {
-        if (!map.has(wf.name)) map.set(wf.name, wf.id);
-      }
+    for (const wf of featureWorkflows) {
+      if (!map.has(wf.name)) map.set(wf.name, wf.id);
     }
     return map;
-  }, [workflowsData]);
+  }, [featureWorkflows]);
 
   const rows = useMemo(() => {
-    if (!statsData?.groups) return [];
-    return statsData.groups.map((g) => ({
-      workflowName: g.workflowName ?? "unknown",
-      displayLabel: formatWorkflowDisplayName(g.workflowName ?? "unknown"),
-      stats: g.stats,
-      systemStats: g.systemStats,
-    }));
-  }, [statsData]);
+    const statsMap = new Map<string, { stats: Record<string, number>; systemStats?: SystemStats }>();
+    for (const g of statsData?.groups ?? []) {
+      if (g.workflowName) statsMap.set(g.workflowName, { stats: g.stats, systemStats: g.systemStats });
+    }
+
+    // Start from the workflow list so newly created workflows always appear
+    const seen = new Set<string>();
+    const result = featureWorkflows.map((wf) => {
+      seen.add(wf.name);
+      const s = statsMap.get(wf.name);
+      return {
+        workflowName: wf.name,
+        displayLabel: wf.displayName || formatWorkflowDisplayName(wf.name),
+        stats: s?.stats ?? {},
+        systemStats: s?.systemStats,
+      };
+    });
+
+    // Also include any stats-only rows not in the workflow list (e.g. deprecated workflows with historical data)
+    for (const g of statsData?.groups ?? []) {
+      const name = g.workflowName ?? "unknown";
+      if (!seen.has(name)) {
+        result.push({
+          workflowName: name,
+          displayLabel: formatWorkflowDisplayName(name),
+          stats: g.stats,
+          systemStats: g.systemStats,
+        });
+      }
+    }
+
+    return result;
+  }, [statsData, featureWorkflows]);
 
   const handleSort = useCallback((key: string) => {
     setMetric((prev) => {
@@ -181,7 +213,7 @@ export default function FeatureWorkflowsPage() {
         </div>
       )}
 
-      {isLoading || featuresLoading ? (
+      {isLoading || featuresLoading || workflowsLoading ? (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">

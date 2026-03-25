@@ -147,7 +147,7 @@ export function WorkflowDetailPanel({
                             <span className="flex-shrink-0 w-5 h-5 rounded-full bg-brand-50 text-brand-600 text-xs font-medium flex items-center justify-center">
                               {i + 1}
                             </span>
-                            <span className="text-gray-600">{step}</span>
+                            <span className="text-gray-600">{step.replace(/^\d+\.\s*/, "")}</span>
                           </li>
                         ))}
                       </ol>
