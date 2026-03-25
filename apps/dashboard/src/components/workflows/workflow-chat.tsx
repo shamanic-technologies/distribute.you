@@ -627,11 +627,14 @@ function MessageParts({
 interface WorkflowChatProps {
   workflowId: string;
   workflowContext: Record<string, unknown>;
+  /** Called when the LLM forks the workflow (upgradedTo is set). Receives the new workflow ID. */
+  onWorkflowUpgraded?: (newWorkflowId: string) => void;
 }
 
 export function WorkflowChat({
   workflowId,
   workflowContext,
+  onWorkflowUpgraded,
 }: WorkflowChatProps) {
   const queryClient = useQueryClient();
   const { showPaymentRequired } = useBillingGuard();
@@ -720,6 +723,19 @@ export function WorkflowChat({
       void queryClient.invalidateQueries({
         queryKey: ["workflow-summary", workflowId],
       });
+      // Refresh workflow list (new workflows may have been created/forked)
+      void queryClient.invalidateQueries({ queryKey: ["workflows"] });
+      // Check if the workflow was forked/upgraded during this conversation
+      if (onWorkflowUpgraded) {
+        fetch(`/api/v1/workflows/${workflowId}`)
+          .then((r) => r.ok ? r.json() : null)
+          .then((wf) => {
+            if (wf?.upgradedTo) {
+              onWorkflowUpgraded(wf.upgradedTo);
+            }
+          })
+          .catch(() => {});
+      }
     },
   });
 

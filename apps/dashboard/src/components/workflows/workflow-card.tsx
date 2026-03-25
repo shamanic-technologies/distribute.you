@@ -1,6 +1,7 @@
 "use client";
 
 import type { Workflow } from "@/lib/api";
+import { workflowDisplayName } from "@/lib/workflow-display-name";
 
 function timeAgo(date: string | Date): string {
   const now = Date.now();
@@ -49,9 +50,7 @@ export function WorkflowCard({
     >
       <div className="flex items-start justify-between mb-2">
         <h3 className="font-display font-bold text-gray-800 leading-tight">
-          {workflow.signatureName
-            ? workflow.signatureName.charAt(0).toUpperCase() + workflow.signatureName.slice(1)
-            : workflow.displayName || workflow.name}
+          {workflowDisplayName(workflow)}
         </h3>
         {stepCount > 0 && (
           <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full ml-2 flex-shrink-0">
@@ -76,11 +75,6 @@ export function WorkflowCard({
         <span className="text-xs px-2 py-0.5 rounded-full border bg-gray-50 text-gray-600 border-gray-200">
           {workflow.audienceType}
         </span>
-        {workflow.signatureName && (
-          <span className="text-xs px-2 py-0.5 rounded-full border bg-blue-50 text-blue-700 border-blue-200">
-            {workflow.signatureName}
-          </span>
-        )}
       </div>
 
       <p className="text-xs text-gray-400">

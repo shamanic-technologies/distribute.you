@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useOrganization, useOrganizationList } from "@clerk/nextjs";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useFeatures } from "@/lib/features-context";
+import { workflowDisplayName } from "@/lib/workflow-display-name";
 import { BrandLogo } from "./brand-logo";
 
 interface Brand {
@@ -117,11 +118,7 @@ export function BreadcrumbNav() {
     if (!workflowId) { setWorkflowName(null); return; }
     fetch(`/api/v1/workflows/${workflowId}`)
       .then((r) => r.ok ? r.json() : null)
-      .then((data) => setWorkflowName(
-          data?.signatureName
-            ? data.signatureName.charAt(0).toUpperCase() + data.signatureName.slice(1)
-            : data?.displayName || data?.name || null
-        ))
+      .then((data) => setWorkflowName(data ? workflowDisplayName(data) : null))
       .catch(() => setWorkflowName(null));
   }, [workflowId]);
 

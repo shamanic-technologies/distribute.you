@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { listWorkflows, type Workflow } from "@/lib/api";
 import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-panel";
+import { workflowDisplayName } from "@/lib/workflow-display-name";
 
 const POLL_INTERVAL = 5_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
@@ -78,9 +79,7 @@ function WorkflowRow({
   workflow: Workflow;
   onShowDetail: () => void;
 }) {
-  const displayName = workflow.signatureName
-    ? workflow.signatureName.charAt(0).toUpperCase() + workflow.signatureName.slice(1)
-    : workflow.displayName || workflow.name;
+  const displayName = workflowDisplayName(workflow);
   const providerCount = workflow.requiredProviders?.length ?? 0;
 
   return (
@@ -92,11 +91,6 @@ function WorkflowRow({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <h3 className="font-medium text-gray-800 truncate">{displayName}</h3>
-            {workflow.signatureName && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 flex-shrink-0">
-                {workflow.signatureName}
-              </span>
-            )}
           </div>
           {workflow.description && (
             <p className="text-sm text-gray-500 line-clamp-2">{workflow.description}</p>
