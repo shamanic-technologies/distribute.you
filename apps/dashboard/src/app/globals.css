@@ -66,6 +66,10 @@ h1, h2, h3, .font-display {
 /* Backgrounds */
 html.dark .bg-white { background-color: #1e293b; }
 html.dark .bg-gray-50 { background-color: #0f172a; }
+
+/* Gradient stops */
+html.dark .from-white { --tw-gradient-from: #1e293b; }
+html.dark .to-gray-50 { --tw-gradient-to: #0f172a; }
 html.dark .bg-gray-100 { background-color: #1e293b; }
 html.dark .bg-gray-200 { background-color: #334155; }
 
