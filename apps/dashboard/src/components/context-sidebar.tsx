@@ -160,9 +160,18 @@ const PlusIcon = () => (
   </svg>
 );
 
+const ICON_NAME_MAP: Record<string, () => React.ReactNode> = {
+  globe: () => <BrandIcon />,
+  megaphone: () => <NewspaperIcon />,
+  envelope: () => <EnvelopeIcon />,
+  document: () => <DocumentIcon />,
+  calendar: () => <CalendarIcon />,
+  building: () => <OrgIcon />,
+};
+
 function getFeatureIcon(featureSlug: string, icon?: string): React.ReactNode {
-  // Use feature.icon emoji/string when available
-  if (icon) return <span className="text-base leading-none">{icon}</span>;
+  // Map icon name strings to actual icon components
+  if (icon && ICON_NAME_MAP[icon]) return ICON_NAME_MAP[icon]();
   // Fallback to slug-based icons
   if (featureSlug.startsWith("sales")) return <EnvelopeIcon />;
   if (featureSlug.startsWith("outlets")) return <OrgIcon />;

@@ -7,6 +7,34 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrand, listCampaignsByBrand, getCampaignBatchStats, type Brand, type Campaign, type CampaignStats } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
 import { useFeatures } from "@/lib/features-context";
+import {
+  GlobeAltIcon,
+  MegaphoneIcon,
+  EnvelopeIcon,
+  MagnifyingGlassIcon,
+  ChatBubbleLeftRightIcon,
+  UserGroupIcon,
+  DocumentTextIcon,
+  PresentationChartBarIcon,
+  CursorArrowRaysIcon,
+  BoltIcon,
+  Cog6ToothIcon,
+} from "@heroicons/react/24/outline";
+import type { ComponentType, SVGProps } from "react";
+
+const ICON_MAP: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
+  globe: GlobeAltIcon,
+  megaphone: MegaphoneIcon,
+  envelope: EnvelopeIcon,
+  search: MagnifyingGlassIcon,
+  chat: ChatBubbleLeftRightIcon,
+  users: UserGroupIcon,
+  document: DocumentTextIcon,
+  presentation: PresentationChartBarIcon,
+  cursor: CursorArrowRaysIcon,
+  bolt: BoltIcon,
+  cog: Cog6ToothIcon,
+};
 
 const POLL_INTERVAL = 5_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
@@ -21,7 +49,10 @@ function formatCost(cents: string | null | undefined): string | null {
 }
 
 function FeatureIcon({ featureSlug, icon, className }: { featureSlug: string; icon?: string; className?: string }) {
-  if (icon) return <span className={className}>{icon}</span>;
+  if (icon) {
+    const IconComponent = ICON_MAP[icon];
+    if (IconComponent) return <IconComponent className={className} />;
+  }
   // Fallback to slug-based icons
   if (featureSlug.startsWith("sales") || featureSlug.startsWith("welcome")) {
     return (
