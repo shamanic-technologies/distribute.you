@@ -20,12 +20,16 @@ describe("Email template deployment at startup", () => {
     expect(content).toContain('method: "PUT"');
   });
 
-  it("should authenticate with X-API-Key only (no org/user headers)", () => {
+  it("should authenticate with X-API-Key only (no org/user headers in fetch calls)", () => {
     expect(content).toContain('"X-API-Key"');
-    expect(content).not.toContain("x-org-id");
-    expect(content).not.toContain("x-user-id");
-    expect(content).not.toContain("x-external-org-id");
-    expect(content).not.toContain("x-external-user-id");
+    // Extract just the register() function body (after the prompt constants) to check
+    // that actual fetch calls don't send identity headers — the system prompt documentation
+    // legitimately references these header names.
+    const registerBody = content.slice(content.indexOf("export async function register()"));
+    expect(registerBody).not.toContain("x-org-id");
+    expect(registerBody).not.toContain("x-user-id");
+    expect(registerBody).not.toContain("x-external-org-id");
+    expect(registerBody).not.toContain("x-external-user-id");
   });
 
   it("should use ADMIN_DISTRIBUTE_API_KEY env var", () => {
