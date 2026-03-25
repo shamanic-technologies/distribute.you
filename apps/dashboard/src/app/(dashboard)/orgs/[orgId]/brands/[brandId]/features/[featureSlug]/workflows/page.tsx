@@ -124,11 +124,9 @@ export default function FeatureWorkflowsPage() {
 
   // Fetch ranked workflows (family-aggregated stats)
   const { data: rankedItems, isLoading } = useAuthQuery(
-    ["ranked-workflows", wfDef?.category, wfDef?.channel, wfDef?.audienceType],
+    ["ranked-workflows", featureSlug],
     () => fetchRankedWorkflows({
-      category: wfDef!.category,
-      channel: wfDef!.channel,
-      audienceType: wfDef!.audienceType,
+      featureSlug,
       limit: 100,
     }),
     { enabled: wfDef?.implemented === true, ...pollOptions },
