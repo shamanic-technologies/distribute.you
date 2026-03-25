@@ -639,7 +639,8 @@ export function WorkflowChat({
   const sessionIdRef = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const [userHasScrolled, setUserHasScrolled] = useState(false);
+  const userHasScrolledRef = useRef(false);
+  const [showScrollPill, setShowScrollPill] = useState(false);
   const [input, setInput] = useState("");
 
   // Load session ID from localStorage on mount
@@ -725,16 +726,12 @@ export function WorkflowChat({
 
   const isStreaming = status === "streaming" || status === "submitted";
 
-  // Auto-scroll
-  const scrollToBottom = useCallback(() => {
-    if (scrollRef.current && !userHasScrolled) {
+  // Auto-scroll: use a ref so the scroll callback never has a stale closure
+  useEffect(() => {
+    if (scrollRef.current && !userHasScrolledRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [userHasScrolled]);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
+  }, [messages]);
 
   // Detect user scroll-up to pause auto-scroll
   useEffect(() => {
@@ -744,7 +741,8 @@ export function WorkflowChat({
       if (!el) return;
       const isAtBottom =
         el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-      setUserHasScrolled(!isAtBottom);
+      userHasScrolledRef.current = !isAtBottom;
+      setShowScrollPill(!isAtBottom);
     }
     el.addEventListener("scroll", handleScroll, { passive: true });
     return () => el.removeEventListener("scroll", handleScroll);
@@ -763,7 +761,8 @@ export function WorkflowChat({
     (text: string) => {
       if (!text.trim() || isStreaming) return;
       setInput("");
-      setUserHasScrolled(false);
+      userHasScrolledRef.current = false;
+      setShowScrollPill(false);
       sendMessage({ text });
     },
     [isStreaming, sendMessage],
@@ -886,12 +885,13 @@ export function WorkflowChat({
       )}
 
       {/* Scroll-to-bottom pill */}
-      {userHasScrolled && hasMessages && (
+      {showScrollPill && hasMessages && (
         <div className="flex justify-center -mt-12 mb-2 relative z-10 pointer-events-none">
           <button
             type="button"
             onClick={() => {
-              setUserHasScrolled(false);
+              userHasScrolledRef.current = false;
+              setShowScrollPill(false);
               scrollRef.current?.scrollTo({
                 top: scrollRef.current.scrollHeight,
                 behavior: "smooth",
