@@ -206,7 +206,6 @@ function ThinkingBlockUI({
       }
       isStreaming={isStreaming}
       variant="thinking"
-      defaultOpen
     >
       <div className="leading-relaxed opacity-70">
         {text ? <TextContent text={text} /> : <p>...</p>}

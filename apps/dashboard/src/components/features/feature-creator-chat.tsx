@@ -126,7 +126,6 @@ function ThinkingBlockUI({ text, isStreaming }: { text: string; isStreaming?: bo
       statusIcon={!isStreaming ? <CheckCircleIcon className="w-3.5 h-3.5 opacity-50" /> : undefined}
       isStreaming={isStreaming}
       variant="thinking"
-      defaultOpen
     >
       <div className="leading-relaxed opacity-70">
         {text ? <TextContent text={text} /> : <p>...</p>}
