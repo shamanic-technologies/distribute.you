@@ -192,11 +192,9 @@ export default function FeatureCreateCampaignPage() {
 
   // Fetch ranked workflows (family-aggregated stats from workflow-service)
   const { data: rankedItems, isLoading } = useAuthQuery(
-    ["ranked-workflows", featureDef?.category, featureDef?.channel, featureDef?.audienceType],
+    ["ranked-workflows", featureSlug],
     () => fetchRankedWorkflows({
-      category: featureDef!.category,
-      channel: featureDef!.channel,
-      audienceType: featureDef!.audienceType,
+      featureSlug,
       limit: 100,
     }),
     { enabled: featureDef?.implemented === true, ...pollOptions },

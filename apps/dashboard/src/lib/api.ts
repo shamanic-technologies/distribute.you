@@ -906,6 +906,7 @@ export interface RankedWorkflowItem {
     name: string;
     displayName: string | null;
     createdForBrandId: string | null;
+    featureSlug: string | null;
     category: string;
     channel: string;
     audienceType: string;
@@ -921,6 +922,7 @@ export interface RankedWorkflowResponse {
 }
 
 export async function fetchRankedWorkflows(params: {
+  featureSlug?: string;
   category?: string;
   channel?: string;
   audienceType?: string;
@@ -928,6 +930,7 @@ export async function fetchRankedWorkflows(params: {
   limit?: number;
 }, token?: string): Promise<RankedWorkflowItem[]> {
   const query = new URLSearchParams();
+  if (params.featureSlug) query.set("featureSlug", params.featureSlug);
   if (params.category) query.set("category", params.category);
   if (params.channel) query.set("channel", params.channel);
   if (params.audienceType) query.set("audienceType", params.audienceType);

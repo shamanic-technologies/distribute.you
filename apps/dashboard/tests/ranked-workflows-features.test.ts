@@ -15,10 +15,11 @@ describe("Feature creation page uses ranked workflows endpoint", () => {
     expect(content).not.toContain("listWorkflows");
   });
 
-  it("should pass category, channel, audienceType from feature definition", () => {
-    expect(content).toContain("featureDef!.category");
-    expect(content).toContain("featureDef!.channel");
-    expect(content).toContain("featureDef!.audienceType");
+  it("should filter by featureSlug instead of category/channel/audienceType", () => {
+    expect(content).toContain("featureSlug: featureId");
+    expect(content).not.toContain("featureDef!.category");
+    expect(content).not.toContain("featureDef!.channel");
+    expect(content).not.toContain("featureDef!.audienceType");
   });
 
   it("should use workflow ID as stable selection key (not workflowName)", () => {
