@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useFeatures } from "@/lib/features-context";
@@ -53,11 +54,12 @@ function BackLink({ href, label }: { href: string; label: string }) {
   );
 }
 
-function SidebarSection({ title, backHref, backLabel, children }: {
+function SidebarSection({ title, backHref, backLabel, children, footer }: {
   title?: string;
   backHref?: string;
   backLabel?: string;
   children: React.ReactNode;
+  footer?: React.ReactNode;
 }) {
   return (
     <aside className="w-56 bg-white border-r border-gray-200 flex flex-col flex-shrink-0 h-full">
@@ -74,6 +76,7 @@ function SidebarSection({ title, backHref, backLabel, children }: {
       <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
         {children}
       </nav>
+      {footer}
     </aside>
   );
 }
@@ -334,6 +337,106 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
   );
 }
 
+const SettingsIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+  </svg>
+);
+
+function FeatureSettingsPanel({ featureSlug, onClose }: { featureSlug: string; onClose: () => void }) {
+  const { getFeature } = useFeatures();
+  const feature = getFeature(featureSlug);
+
+  if (!feature) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex">
+      <div className="fixed inset-0 bg-black/30" onClick={onClose} />
+      <div className="relative ml-56 w-80 bg-white border-r border-gray-200 shadow-xl h-full overflow-y-auto">
+        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-gray-800">Feature Settings</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          {/* General */}
+          <div>
+            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">General</h4>
+            <dl className="space-y-2 text-sm">
+              <div>
+                <dt className="text-gray-400 text-xs">Slug</dt>
+                <dd className="text-gray-700 font-mono text-xs">{feature.slug}</dd>
+              </div>
+              <div>
+                <dt className="text-gray-400 text-xs">Category</dt>
+                <dd className="text-gray-700">{feature.category}</dd>
+              </div>
+              <div>
+                <dt className="text-gray-400 text-xs">Channel</dt>
+                <dd className="text-gray-700">{feature.channel}</dd>
+              </div>
+              <div>
+                <dt className="text-gray-400 text-xs">Audience</dt>
+                <dd className="text-gray-700">{feature.audienceType}</dd>
+              </div>
+            </dl>
+          </div>
+
+          {/* Inputs */}
+          {feature.inputs.length > 0 && (
+            <div>
+              <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                Inputs ({feature.inputs.length})
+              </h4>
+              <div className="space-y-2">
+                {feature.inputs.map((input) => (
+                  <div key={input.key} className="bg-gray-50 rounded-lg p-2.5 border border-gray-100">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className="text-xs font-medium text-gray-700">{input.label}</span>
+                      <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1 rounded">{input.key}</span>
+                    </div>
+                    <p className="text-xs text-gray-500">{input.description}</p>
+                    {input.placeholder && (
+                      <p className="text-[10px] text-gray-400 mt-0.5 italic">e.g. {input.placeholder}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Outputs */}
+          {feature.outputs.length > 0 && (
+            <div>
+              <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                Outputs ({feature.outputs.length})
+              </h4>
+              <div className="space-y-2">
+                {feature.outputs.map((output) => (
+                  <div key={output.key} className="bg-gray-50 rounded-lg p-2.5 border border-gray-100">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className="text-xs font-medium text-gray-700">{output.label}</span>
+                      <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1 rounded">{output.key}</span>
+                    </div>
+                    {output.description && (
+                      <p className="text-xs text-gray-500">{output.description}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Feature Level Sidebar — shows feature-specific sub-menus
 function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   orgId: string;
@@ -341,6 +444,7 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   featureSlug: string;
   pathname: string;
 }) {
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const { getFeature } = useFeatures();
   const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`;
   const feature = getFeature(featureSlug);
@@ -353,15 +457,39 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   ];
 
   return (
-    <SidebarSection title={title} backHref={`/orgs/${orgId}/brands/${brandId}`} backLabel="Brand">
-      {items.map((item) => (
-        <SidebarLink
-          key={item.id}
-          item={item}
-          isActive={item.id === "campaigns" ? pathname === item.href : pathname.startsWith(item.href)}
-        />
-      ))}
-    </SidebarSection>
+    <>
+      <SidebarSection
+        title={title}
+        backHref={`/orgs/${orgId}/brands/${brandId}`}
+        backLabel="Brand"
+      >
+        {items.map((item) => (
+          <SidebarLink
+            key={item.id}
+            item={item}
+            isActive={item.id === "campaigns" ? pathname === item.href : pathname.startsWith(item.href)}
+          />
+        ))}
+        <button
+          onClick={() => setSettingsOpen(true)}
+          className={`
+            flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition w-full
+            ${settingsOpen
+              ? "bg-brand-50 text-brand-700 font-medium border border-brand-200"
+              : "text-gray-600 hover:bg-gray-50 hover:text-gray-800"
+            }
+          `}
+        >
+          <span className={`w-5 h-5 ${settingsOpen ? "text-brand-600" : "text-gray-400"}`}>
+            <SettingsIcon />
+          </span>
+          <span className="flex-1 text-left">Settings</span>
+        </button>
+      </SidebarSection>
+      {settingsOpen && (
+        <FeatureSettingsPanel featureSlug={featureSlug} onClose={() => setSettingsOpen(false)} />
+      )}
+    </>
   );
 }
 

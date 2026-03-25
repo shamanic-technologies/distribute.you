@@ -26,6 +26,9 @@ describe("Platform config registration at startup", () => {
       { provider: "google-client-secret", envVar: "GOOGLE_CLIENT_SECRET" },
       { provider: "google-developer-token", envVar: "GOOGLE_DEVELOPER_TOKEN" },
       { provider: "google-mcc-account-id", envVar: "GOOGLE_MCC_ACCOUNT_ID" },
+      { provider: "cloudflare-r2-account-id", envVar: "R2_ACCOUNT_ID" },
+      { provider: "cloudflare-r2-bucket-name", envVar: "R2_BUCKET_NAME" },
+      { provider: "cloudflare-r2-public-domain", envVar: "R2_PUBLIC_DOMAIN" },
     ];
 
     it("should call POST /platform-keys via api-service", () => {
@@ -40,9 +43,19 @@ describe("Platform config registration at startup", () => {
       });
     }
 
-    it("should register exactly 18 platform keys", () => {
+    it("should register exactly 21 platform keys", () => {
       const matches = content.match(/provider: "[^"]+", envVar: "[^"]+"/g);
-      expect(matches).toHaveLength(18);
+      expect(matches).toHaveLength(21);
+    });
+
+    it("should mark R2 keys as optional", () => {
+      expect(content).toContain('provider: "cloudflare-r2-account-id", envVar: "R2_ACCOUNT_ID", optional: true');
+      expect(content).toContain('provider: "cloudflare-r2-bucket-name", envVar: "R2_BUCKET_NAME", optional: true');
+      expect(content).toContain('provider: "cloudflare-r2-public-domain", envVar: "R2_PUBLIC_DOMAIN", optional: true');
+    });
+
+    it("should skip optional keys when env var is not set", () => {
+      expect(content).toContain("Skipping optional key");
     });
 
     it("should fail startup if any key env var is missing", () => {

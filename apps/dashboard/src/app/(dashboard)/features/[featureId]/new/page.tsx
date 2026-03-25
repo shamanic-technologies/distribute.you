@@ -362,20 +362,21 @@ export default function CreateCampaignPage() {
 
   const doCreateCampaign = useCallback(async () => {
     if (!selectedRow || !budgetAmount) return;
-    if (isCreatingRef.current) return;
 
     if (!formData.brandUrl.trim()) {
       setCreateError("Missing: Brand URL");
+      isCreatingRef.current = false;
+      setIsCreating(false);
       return;
     }
     const missingFields = FORM_FIELDS.filter((f) => !formData[f.key].trim());
     if (missingFields.length > 0) {
       setCreateError(`Missing: ${missingFields.map((f) => f.label).join(", ")}`);
+      isCreatingRef.current = false;
+      setIsCreating(false);
       return;
     }
 
-    isCreatingRef.current = true;
-    setIsCreating(true);
     setCreateError(null);
 
     const budgetParams: Record<string, string> = {};
@@ -389,11 +390,13 @@ export default function CreateCampaignPage() {
       return `${selectedRow.name} — ${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}.${String(now.getMilliseconds()).padStart(3, "0")}`;
     };
     try {
+      const { brandUrl, ...inputFields } = formData;
       const campaignPayload = {
         workflowName: selectedRow.name,
         featureSlug: featureId,
-        ...formData,
+        brandUrl,
         ...budgetParams,
+        featureInputs: inputFields,
       };
       try {
         await createCampaign({ name: generateName(), ...campaignPayload });
@@ -435,16 +438,24 @@ export default function CreateCampaignPage() {
     if (budgetFrequency === "weekly") budgetParams.maxBudgetWeeklyUsd = budgetAmount;
     if (budgetFrequency === "monthly") budgetParams.maxBudgetMonthlyUsd = budgetAmount;
 
+    const { brandUrl: intentBrandUrl, ...intentInputFields } = formData;
     sessionStorage.setItem("pendingCampaign", JSON.stringify({
       workflowName: selectedRow.name,
-      ...formData,
+      brandUrl: intentBrandUrl,
       ...budgetParams,
+      featureInputs: intentInputFields,
     }));
   }, [selectedRow, budgetAmount, budgetFrequency, formData]);
 
   /** Proactive credit check: if budget may exceed balance and no auto-reload, show the modal */
   const handleCreateCampaign = useCallback(async () => {
     if (!selectedRow || !budgetAmount) return;
+    if (isCreatingRef.current) return;
+
+    // Show loader immediately on click
+    isCreatingRef.current = true;
+    setIsCreating(true);
+
     const budgetCents = Math.round(parseFloat(budgetAmount) * 100);
     if (!budgetCents || budgetCents <= 0) {
       doCreateCampaign();
@@ -458,6 +469,9 @@ export default function CreateCampaignPage() {
 
       if ((willExceed || isRecurring) && !account.hasAutoReload) {
         saveCampaignIntent();
+        // Reset loader — modal will handle the flow
+        isCreatingRef.current = false;
+        setIsCreating(false);
         showPaymentRequired({
           balance_cents: account.creditBalanceCents,
           required_cents: budgetCents,

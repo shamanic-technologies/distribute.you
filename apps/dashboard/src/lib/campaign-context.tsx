@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from "react";
+import { keepPreviousData } from "@tanstack/react-query";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { getCampaign, getCampaignStats, listCampaignEmails, listCampaignLeads, type Campaign, type CampaignStats, type Email, type Lead } from "./api";
 
@@ -33,7 +34,7 @@ export function CampaignProvider({ children, campaignId }: CampaignProviderProps
   const { data: campaignData, isLoading: campaignLoading } = useAuthQuery(
     ["campaign", campaignId],
     () => getCampaign(campaignId),
-    { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false },
+    { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
   );
 
   // Only poll secondary data while the campaign is active
@@ -41,6 +42,7 @@ export function CampaignProvider({ children, campaignId }: CampaignProviderProps
   const pollOptions = {
     refetchInterval: isActive ? POLL_INTERVAL : false as const,
     refetchIntervalInBackground: false,
+    placeholderData: keepPreviousData,
   };
 
   const { data: statsData, isLoading: statsLoading } = useAuthQuery(

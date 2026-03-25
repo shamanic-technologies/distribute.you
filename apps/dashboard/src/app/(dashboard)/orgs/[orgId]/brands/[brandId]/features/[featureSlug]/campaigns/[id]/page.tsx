@@ -111,66 +111,6 @@ export default function CampaignOverviewPage() {
         </p>
       </div>
 
-      {/* Target audience & outcome */}
-      <div className="mb-6 space-y-2">
-        {campaign.targetAudience && (
-          <div>
-            <p className="text-xs font-medium text-gray-500 mb-1">Target Audience</p>
-            <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-              {campaign.targetAudience}
-            </p>
-          </div>
-        )}
-        {campaign.targetOutcome && (
-          <div>
-            <p className="text-xs font-medium text-gray-500 mb-1">Target Outcome</p>
-            <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-              {campaign.targetOutcome}
-            </p>
-          </div>
-        )}
-        {campaign.valueForTarget && (
-          <div>
-            <p className="text-xs font-medium text-gray-500 mb-1">Value for Target</p>
-            <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-              {campaign.valueForTarget}
-            </p>
-          </div>
-        )}
-        {campaign.urgency && (
-          <div>
-            <p className="text-xs font-medium text-gray-500 mb-1">Urgency</p>
-            <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-              {campaign.urgency}
-            </p>
-          </div>
-        )}
-        {campaign.scarcity && (
-          <div>
-            <p className="text-xs font-medium text-gray-500 mb-1">Scarcity</p>
-            <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-              {campaign.scarcity}
-            </p>
-          </div>
-        )}
-        {campaign.riskReversal && (
-          <div>
-            <p className="text-xs font-medium text-gray-500 mb-1">Risk Reversal</p>
-            <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-              {campaign.riskReversal}
-            </p>
-          </div>
-        )}
-        {campaign.socialProof && (
-          <div>
-            <p className="text-xs font-medium text-gray-500 mb-1">Social Proof</p>
-            <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-              {campaign.socialProof}
-            </p>
-          </div>
-        )}
-      </div>
-
       {/* Press kit results (for press-kit campaigns) */}
       {isPressKit && campaign && (
         <div className="mb-6">

@@ -210,13 +210,7 @@ export interface Campaign {
   featureSlug: string | null;
   brandId: string | null;
   brandUrl: string | null;
-  targetAudience: string | null;
-  targetOutcome: string | null;
-  valueForTarget: string | null;
-  urgency: string | null;
-  scarcity: string | null;
-  riskReversal: string | null;
-  socialProof: string | null;
+  featureInputs: Record<string, string> | null;
   maxBudgetDailyUsd: string | null;
   maxBudgetWeeklyUsd: string | null;
   maxBudgetMonthlyUsd: string | null;
@@ -436,39 +430,29 @@ export async function extractBrandFields(
 
 // ─── Feature prefill ───────────────────────────────────────────────────────
 
-export interface PrefilledField {
-  value: string | string[];
-  cached: boolean;
-  sourceUrls: string[];
-}
-
 export interface PrefillResponse {
   slug: string;
   brandId: string;
-  prefilled: Record<string, PrefilledField>;
+  prefilled: Record<string, string | null>;
 }
 
-/** POST /features/:slug/prefill — get pre-filled input values for a feature form */
+/** POST /features/:slug/prefill?format=text — get pre-filled input values as plain strings */
 export async function prefillFeatureInputs(
   slug: string,
   brandId: string,
   token?: string,
 ): Promise<PrefillResponse> {
   return apiCall<PrefillResponse>(
-    `/features/${slug}/prefill`,
+    `/features/${slug}/prefill?format=text`,
     { token, method: "POST", body: { brandId } },
   );
 }
 
-/** Convert prefill response to a flat string map for form pre-fill */
-export function prefillToStringMap(prefilled: Record<string, PrefilledField>): Record<string, string> {
+/** Extract flat string map from prefill response */
+export function prefillToStringMap(prefilled: Record<string, string | null>): Record<string, string> {
   const map: Record<string, string> = {};
-  for (const [key, field] of Object.entries(prefilled)) {
-    if (Array.isArray(field.value)) {
-      map[key] = field.value.join("\n");
-    } else {
-      map[key] = field.value;
-    }
+  for (const [key, value] of Object.entries(prefilled)) {
+    map[key] = value ?? "";
   }
   return map;
 }

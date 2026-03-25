@@ -43,6 +43,11 @@ describe("Campaign creation page uses ranked workflows endpoint", () => {
     expect(content).toContain("workflowName: selectedRow.name");
   });
 
+  it("should wrap input values in featureInputs, not spread as top-level", () => {
+    expect(content).toContain("featureInputs: inputValues");
+    expect(content).not.toContain("...inputValues");
+  });
+
   it("should use workflow ID directly for detail panel (no name-based lookup)", () => {
     expect(content).toContain("setDetailWorkflowId(wf.id)");
     expect(content).not.toContain("workflowNameToId");

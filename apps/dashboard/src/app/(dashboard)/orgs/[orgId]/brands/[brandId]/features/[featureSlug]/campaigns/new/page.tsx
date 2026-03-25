@@ -16,6 +16,7 @@ import {
   prefillFeatureInputs,
   prefillToStringMap,
   getBillingAccount,
+  configureAutoReload,
   ApiError,
   type Campaign,
   type RankedWorkflowItem,
@@ -289,20 +290,21 @@ export default function FeatureCreateCampaignPage() {
 
   const doCreateCampaign = useCallback(async () => {
     if (!selectedRow || !budgetAmount) return;
-    if (isCreatingRef.current) return;
 
     if (!formData.brandUrl.trim()) {
       setCreateError("Missing: Brand URL");
+      isCreatingRef.current = false;
+      setIsCreating(false);
       return;
     }
     const missingFields = featureInputs.filter((f) => !formData[f.key]?.trim());
     if (missingFields.length > 0) {
       setCreateError(`Missing: ${missingFields.map((f) => f.label).join(", ")}`);
+      isCreatingRef.current = false;
+      setIsCreating(false);
       return;
     }
 
-    isCreatingRef.current = true;
-    setIsCreating(true);
     setCreateError(null);
 
     const budgetParams: Record<string, string> = {};
@@ -329,7 +331,7 @@ export default function FeatureCreateCampaignPage() {
         brandUrl: formData.brandUrl,
         featureSlug,
         ...budgetParams,
-        ...inputValues,
+        featureInputs: inputValues,
       };
 
       let result: { campaign: Campaign };
@@ -374,17 +376,26 @@ export default function FeatureCreateCampaignPage() {
     if (budgetFrequency === "monthly") budgetParams.maxBudgetMonthlyUsd = budgetAmount;
 
     const displayLabel = formatDisplayName(selectedRow.displayName, selectedRow.name);
+    const { brandUrl: intentBrandUrl, ...intentInputFields } = formData;
     sessionStorage.setItem("pendingCampaign", JSON.stringify({
       workflowName: selectedRow.name,
       displayLabel,
-      ...formData,
+      brandUrl: intentBrandUrl,
       ...budgetParams,
+      featureInputs: intentInputFields,
     }));
   }, [selectedRow, budgetAmount, budgetFrequency, formData]);
 
-  /** Proactive credit check: if budget may exceed balance and no auto-reload, show the modal */
+  /** Proactive credit check: if budget may exceed balance and no auto-reload, show the modal.
+   *  If the user already has a saved payment method, silently configure auto-reload and proceed. */
   const handleCreateCampaign = useCallback(async () => {
     if (!selectedRow || !budgetAmount) return;
+    if (isCreatingRef.current) return;
+
+    // Show loader immediately on click
+    isCreatingRef.current = true;
+    setIsCreating(true);
+
     const budgetCents = Math.round(parseFloat(budgetAmount) * 100);
     if (!budgetCents || budgetCents <= 0) {
       doCreateCampaign();
@@ -397,9 +408,19 @@ export default function FeatureCreateCampaignPage() {
       const isRecurring = budgetFrequency !== "one-off";
 
       if ((willExceed || isRecurring) && !account.hasAutoReload) {
-        // Save intent so we can resume after Stripe checkout
+        if (account.hasPaymentMethod) {
+          // Saved card exists — silently enable auto-reload and proceed.
+          // The backend will charge the card automatically during deduction.
+          const reloadCents = Math.max(1000, budgetCents);
+          await configureAutoReload(reloadCents, 500).catch(() => {});
+          doCreateCampaign();
+          return;
+        }
+        // No payment method — show modal so user can add a card
         saveCampaignIntent();
-        // Show proactive modal — user can set up auto-reload, then we proceed
+        // Reset loader — modal will handle the flow
+        isCreatingRef.current = false;
+        setIsCreating(false);
         showPaymentRequired({
           balance_cents: account.creditBalanceCents,
           required_cents: budgetCents,
@@ -620,7 +641,7 @@ export default function FeatureCreateCampaignPage() {
           {/* Go button */}
           <button
             onClick={handleGo}
-            disabled={!selectedRow || !budgetAmount || !resolvedBrandUrl}
+            disabled={!selectedRow || !budgetAmount || !resolvedBrandUrl || isLoadingProfile || showForm}
             className="px-5 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Go &rarr;
