@@ -18,13 +18,13 @@ describe("Workflow list page shows all workflows (not just those with stats)", (
     expect(content).toContain('["workflows", featureSlug]');
   });
 
-  it("should build rows from dynasty workflows (not only from stats groups)", () => {
-    // The rows memo should iterate over dynastyWorkflows so newly created
-    // workflows with zero stats still appear in the list
-    expect(content).toContain("dynastyWorkflows.map");
+  it("should group active workflows by displayName (dynasty pattern)", () => {
+    expect(content).toContain("dynastyWorkflows");
+    expect(content).toContain("byDisplayName");
   });
 
-  it("should use displayName from workflow", () => {
+  it("should use displayName from workflow for display", () => {
+    expect(content).toContain("displayName");
     expect(content).toContain("wf.displayName");
   });
 
@@ -32,7 +32,8 @@ describe("Workflow list page shows all workflows (not just those with stats)", (
     expect(content).toContain("workflowsLoading");
   });
 
-  it("should group workflows by dynasty (displayName)", () => {
-    expect(content).toContain("byDisplayName");
+  it("should build rows from dynasty workflows with stats lookup", () => {
+    expect(content).toContain("dynastyWorkflows.map");
+    expect(content).toContain("statsMap.get");
   });
 });
