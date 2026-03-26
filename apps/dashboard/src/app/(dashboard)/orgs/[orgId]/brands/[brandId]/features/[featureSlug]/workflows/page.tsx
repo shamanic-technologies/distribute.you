@@ -8,8 +8,6 @@ import {
   fetchFeatureStats,
   generateWorkflow,
   listWorkflows,
-  type FeatureOutput,
-  type StatsRegistry,
   type SystemStats,
 } from "@/lib/api";
 import { useFeatures } from "@/lib/features-context";
@@ -95,18 +93,20 @@ export default function FeatureWorkflowsPage() {
     pollOptions,
   );
 
-  const featureWorkflows = useMemo(() => {
+  // Active workflows grouped by displayName (dynasty): keep only the latest per dynasty
+  const dynastyWorkflows = useMemo(() => {
     if (!workflowsData?.workflows) return [];
-    return workflowsData.workflows.filter((wf) => wf.status === "active");
-  }, [workflowsData]);
-
-  const workflowNameToId = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const wf of featureWorkflows) {
-      if (!map.has(wf.name)) map.set(wf.name, wf.id);
+    const active = workflowsData.workflows.filter((wf) => wf.status === "active");
+    const byDisplayName = new Map<string, typeof active[number]>();
+    for (const wf of active) {
+      if (!wf.displayName) continue;
+      const existing = byDisplayName.get(wf.displayName);
+      if (!existing || wf.createdAt > existing.createdAt) {
+        byDisplayName.set(wf.displayName, wf);
+      }
     }
-    return map;
-  }, [featureWorkflows]);
+    return [...byDisplayName.values()];
+  }, [workflowsData]);
 
   const rows = useMemo(() => {
     const statsMap = new Map<string, { stats: Record<string, number>; systemStats?: SystemStats }>();
@@ -114,34 +114,17 @@ export default function FeatureWorkflowsPage() {
       if (g.workflowName) statsMap.set(g.workflowName, { stats: g.stats, systemStats: g.systemStats });
     }
 
-    // Start from the workflow list so newly created workflows always appear
-    const seen = new Set<string>();
-    const result = featureWorkflows.map((wf) => {
-      seen.add(wf.name);
+    return dynastyWorkflows.map((wf) => {
       const s = statsMap.get(wf.name);
       return {
+        id: wf.id,
         workflowName: wf.name,
-        displayLabel: wf.displayName || formatWorkflowDisplayName(wf.name),
+        displayName: wf.displayName!,
         stats: s?.stats ?? {},
         systemStats: s?.systemStats,
       };
     });
-
-    // Also include any stats-only rows not in the workflow list (e.g. deprecated workflows with historical data)
-    for (const g of statsData?.groups ?? []) {
-      const name = g.workflowName ?? "unknown";
-      if (!seen.has(name)) {
-        result.push({
-          workflowName: name,
-          displayLabel: formatWorkflowDisplayName(name),
-          stats: g.stats,
-          systemStats: g.systemStats,
-        });
-      }
-    }
-
-    return result;
-  }, [statsData, featureWorkflows]);
+  }, [statsData, dynastyWorkflows]);
 
   const handleSort = useCallback((key: string) => {
     setMetric((prev) => {
@@ -273,18 +256,15 @@ export default function FeatureWorkflowsPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {sorted.map((wf) => (
                   <tr
-                    key={wf.workflowName}
+                    key={wf.id}
                     className="hover:bg-gray-50 transition cursor-pointer"
                     onClick={() => {
-                      const wfId = workflowNameToId.get(wf.workflowName);
-                      if (wfId) {
-                        router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/${wfId}`);
-                      }
+                      router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/${wf.id}`);
                     }}
                   >
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-900">{wf.displayLabel}</span>
+                        <span className="text-sm font-medium text-gray-900">{wf.displayName}</span>
                       </div>
                     </td>
                     {sortedOutputs.map((o) => (
@@ -301,10 +281,4 @@ export default function FeatureWorkflowsPage() {
       )}
     </div>
   );
-}
-
-function formatWorkflowDisplayName(name: string): string {
-  const lastDashIdx = name.lastIndexOf("-");
-  const suffix = lastDashIdx >= 0 ? name.slice(lastDashIdx + 1) : name;
-  return suffix.charAt(0).toUpperCase() + suffix.slice(1);
 }
