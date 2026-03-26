@@ -998,7 +998,7 @@ export async function fetchRankedWorkflows(params: {
 // Generate workflow via AI
 export interface GenerateWorkflowRequest {
   description: string;
-  featureSlug?: string;
+  featureSlug: string;
   hints?: {
     services?: string[];
     nodeTypes?: string[];
@@ -1011,9 +1011,6 @@ export interface GenerateWorkflowResult {
     id: string;
     name: string;
     featureSlug: string;
-    category?: string;
-    channel?: string;
-    audienceType?: string;
     signature: string;
     signatureName: string;
     action: "created" | "updated";
