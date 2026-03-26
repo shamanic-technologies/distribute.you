@@ -23,6 +23,11 @@ describe("Workflow viewer page — chat context", () => {
     expect(content).toContain("do NOT list other workflows unless explicitly asked");
   });
 
+  it("should explicitly tell the model to use the workflow UUID for tool calls", () => {
+    expect(content).toContain("For ALL tool calls requiring a workflowId parameter");
+    expect(content).toContain("Never ask the user for the workflow ID");
+  });
+
   it("should pass workflowContext to WorkflowChat", () => {
     expect(content).toContain("workflowContext={workflowContext}");
   });
