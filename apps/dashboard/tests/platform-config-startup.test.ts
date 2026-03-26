@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
-const instrumentationPath = path.resolve(__dirname, "../instrumentation.ts");
+const instrumentationPath = path.resolve(__dirname, "../src/instrumentation.ts");
 const content = fs.readFileSync(instrumentationPath, "utf-8");
 
 describe("Platform config registration at startup", () => {
@@ -112,6 +112,18 @@ describe("Platform config registration at startup", () => {
     it("should be non-blocking (warn on failure, not throw)", () => {
       expect(content).toContain("Chat config deployment failed");
       expect(content).toContain("console.warn");
+    });
+  });
+
+  describe("file location", () => {
+    it("should be in src/ alongside app/ so Next.js finds it", () => {
+      const srcPath = path.resolve(__dirname, "../src/instrumentation.ts");
+      expect(fs.existsSync(srcPath)).toBe(true);
+    });
+
+    it("should NOT be at the project root (Next.js ignores it there when using src/)", () => {
+      const rootPath = path.resolve(__dirname, "../instrumentation.ts");
+      expect(fs.existsSync(rootPath)).toBe(false);
     });
   });
 

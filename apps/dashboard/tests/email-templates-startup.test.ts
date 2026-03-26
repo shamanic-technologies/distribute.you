@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
-const instrumentationPath = path.resolve(__dirname, "../instrumentation.ts");
+const instrumentationPath = path.resolve(__dirname, "../src/instrumentation.ts");
 
 describe("Email template deployment at startup", () => {
   const content = fs.readFileSync(instrumentationPath, "utf-8");
