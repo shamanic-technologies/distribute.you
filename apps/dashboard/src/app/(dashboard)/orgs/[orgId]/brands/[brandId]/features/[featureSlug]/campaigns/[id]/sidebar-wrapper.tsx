@@ -6,7 +6,7 @@ import { CampaignSidebar } from "@/components/campaign-sidebar";
 import { useCampaign } from "@/lib/campaign-context";
 import { useFeatures } from "@/lib/features-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listWorkflows, listCampaignOutlets, listCampaignJournalists } from "@/lib/api";
+import { listWorkflows, listCampaignOutlets, listCampaignJournalists, listMediaKitsByCampaign } from "@/lib/api";
 
 interface Props {
   orgId: string;
@@ -39,6 +39,12 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
     { enabled: entities.includes("journalists"), refetchInterval: 5_000, refetchIntervalInBackground: false },
   );
 
+  const { data: pressKitsData } = useAuthQuery(
+    ["campaignPressKits", campaignId],
+    () => listMediaKitsByCampaign(campaignId),
+    { enabled: entities.includes("press-kits"), refetchInterval: 5_000, refetchIntervalInBackground: false },
+  );
+
   const workflowId = useMemo(() => {
     if (!campaign?.workflowName || !workflowsData?.workflows) return undefined;
     return workflowsData.workflows.find((w) => w.name === campaign.workflowName)?.id;
@@ -58,6 +64,7 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
     emails: emailCount,
     outlets: outletsData?.outlets?.length,
     journalists: journalistsData?.journalists?.length,
+    "press-kits": pressKitsData?.length,
   };
 
   return (
