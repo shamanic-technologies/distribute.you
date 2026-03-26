@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getBrand, extractBrandFields, SALES_PROFILE_FIELDS, fieldResultsToMap, listBrandRuns, type ExtractFieldResult, type BrandRun, type RunCost } from "@/lib/api";
+import { getBrand, extractBrandFields, listExtractedFields, SALES_PROFILE_FIELDS, listBrandRuns, type BrandRun, type RunCost } from "@/lib/api";
 
 const POLL_INTERVAL = 5_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
@@ -116,14 +116,15 @@ export default function BrandInfoPage() {
 
   const { data: fieldsData, error: fieldsError, isLoading: fieldsLoading } = useAuthQuery(
     ["brandExtractedFields", brandId],
-    () => extractBrandFields(brandId, SALES_PROFILE_FIELDS),
+    () => listExtractedFields(brandId),
     pollOptions,
   );
-  const fieldResults = fieldsData?.results ?? [];
-  const fieldMap = fieldResultsToMap(fieldResults);
-  const hasFields = fieldResults.length > 0 && fieldResults.some((r) => hasContent(r.value));
-  const latestExtractedAt = fieldResults.length > 0
-    ? fieldResults.reduce((latest, r) => r.extractedAt > latest ? r.extractedAt : latest, fieldResults[0].extractedAt)
+  const cachedFields = fieldsData?.fields ?? [];
+  const fieldMap: Record<string, unknown> = {};
+  for (const f of cachedFields) fieldMap[f.key] = f.value;
+  const hasFields = cachedFields.length > 0 && cachedFields.some((f) => hasContent(f.value));
+  const latestExtractedAt = cachedFields.length > 0
+    ? cachedFields.reduce((latest, f) => f.extractedAt > latest ? f.extractedAt : latest, cachedFields[0].extractedAt)
     : null;
   const error = fieldsError?.message ?? null;
 
@@ -141,7 +142,7 @@ export default function BrandInfoPage() {
 
   // Collect unique scraped URLs from field results
   const scrapedUrls = Array.from(
-    new Set(fieldResults.flatMap((r) => r.sourceUrls ?? []))
+    new Set(cachedFields.flatMap((f) => f.sourceUrls ?? []))
   );
 
   const handleGenerate = async () => {
@@ -323,10 +324,10 @@ export default function BrandInfoPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {runs.map((run) => {
+              {runs.map((run, idx) => {
                 return (
                   <button
-                    key={run.id}
+                    key={run.startedAt ?? idx}
                     type="button"
                     onClick={() => setSelectedRun(run)}
                     className="w-full text-left bg-white rounded-lg border border-gray-200 p-4 hover:border-brand-300 hover:shadow-sm transition cursor-pointer"
@@ -346,10 +347,10 @@ export default function BrandInfoPage() {
                           <p className="text-sm font-medium text-gray-800">
                             {run.taskName === "sales-profile-extraction" || run.taskName === "field-extraction" ? "Field Extraction" :
                              run.taskName === "icp-extraction" ? "ICP Extraction" :
-                             run.taskName}
+                             run.taskName ?? "Unknown"}
                           </p>
                           <p className="text-xs text-gray-500">
-                            {timeAgo(run.startedAt)}
+                            {run.startedAt ? timeAgo(run.startedAt) : "—"}
                             {run.status !== "completed" && (
                               <span className="ml-2 text-gray-400">({run.status})</span>
                             )}
@@ -421,7 +422,7 @@ export default function BrandInfoPage() {
                 <p className="text-sm text-gray-600">
                   {selectedRun.taskName === "sales-profile-extraction" || selectedRun.taskName === "field-extraction" ? "Field Extraction" :
                    selectedRun.taskName === "icp-extraction" ? "ICP Extraction" :
-                   selectedRun.taskName}
+                   selectedRun.taskName ?? "Unknown"}
                 </p>
               </div>
 
@@ -429,11 +430,11 @@ export default function BrandInfoPage() {
               <div className="space-y-2">
                 <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide">Timing</h3>
                 <div className="text-sm text-gray-700 space-y-1">
-                  <p>Started: {new Date(selectedRun.startedAt).toLocaleString()}</p>
+                  {selectedRun.startedAt && <p>Started: {new Date(selectedRun.startedAt).toLocaleString()}</p>}
                   {selectedRun.completedAt && (
                     <p>Completed: {new Date(selectedRun.completedAt).toLocaleString()}</p>
                   )}
-                  {formatDuration(selectedRun.startedAt, selectedRun.completedAt) && (
+                  {selectedRun.startedAt && formatDuration(selectedRun.startedAt, selectedRun.completedAt) && (
                     <p>Duration: {formatDuration(selectedRun.startedAt, selectedRun.completedAt)}</p>
                   )}
                 </div>
@@ -504,11 +505,13 @@ export default function BrandInfoPage() {
                 </div>
               )}
 
-              {/* Run ID */}
-              <div className="space-y-1 pt-2 border-t border-gray-100">
-                <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide">Run ID</h3>
-                <p className="text-xs text-gray-400 font-mono break-all">{selectedRun.id}</p>
-              </div>
+              {/* Service Info */}
+              {selectedRun.serviceName && (
+                <div className="space-y-1 pt-2 border-t border-gray-100">
+                  <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide">Service</h3>
+                  <p className="text-xs text-gray-400 font-mono break-all">{selectedRun.serviceName}</p>
+                </div>
+              )}
             </div>
           </div>
         </>

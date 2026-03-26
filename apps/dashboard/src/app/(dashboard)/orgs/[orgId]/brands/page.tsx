@@ -135,7 +135,7 @@ export default function BrandsPage() {
                 </div>
               </div>
               <div className="flex items-center justify-between text-xs text-gray-400">
-                <span>Created {new Date(brand.createdAt).toLocaleDateString()}</span>
+                <span>{brand.createdAt ? `Created ${new Date(brand.createdAt).toLocaleDateString()}` : ""}</span>
                 <svg className="w-4 h-4 text-gray-300 group-hover:text-brand-400 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
