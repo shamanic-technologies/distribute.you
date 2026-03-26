@@ -41,11 +41,7 @@ export function PressKitResults({ campaignId, orgId }: PressKitResultsProps) {
   }
 
   if (!kits || kits.length === 0) {
-    return (
-      <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6 min-h-[120px] flex items-center justify-center">
-        <p className="text-gray-500 text-sm text-center">No press kit generated yet. The campaign workflow will create one automatically.</p>
-      </div>
-    );
+    return null;
   }
 
   return (
