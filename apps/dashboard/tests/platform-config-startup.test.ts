@@ -93,6 +93,11 @@ describe("Platform config registration at startup", () => {
       expect(content).toContain("expert workflow editor embedded in a workflow management dashboard");
     });
 
+    it("should instruct the model to use workflowId from context for all tool calls", () => {
+      expect(content).toContain("workflowId");
+      expect(content).toContain("NEVER ask the user for the workflow ID");
+    });
+
     it("should not include removed mcpServerUrl or mcpKeyName fields", () => {
       expect(content).not.toContain("mcpServerUrl");
       expect(content).not.toContain("mcpKeyName");
