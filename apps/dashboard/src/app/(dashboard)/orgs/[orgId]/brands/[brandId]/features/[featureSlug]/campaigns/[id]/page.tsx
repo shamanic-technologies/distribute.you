@@ -136,7 +136,7 @@ export default function CampaignOverviewPage() {
       {/* Entity-specific results */}
       {entityNames.includes("press-kits") && campaign && (
         <div className="mb-6">
-          <PressKitResults campaignId={campaign.id} orgId={orgId} />
+          <PressKitResults campaignId={campaign.id} />
         </div>
       )}
       {entityNames.includes("outlets") && campaign && (

@@ -1250,6 +1250,7 @@ export interface MediaKit {
   brandId: string | null;
   campaignId: string | null;
   iconUrl: string | null;
+  shareToken: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -1346,10 +1347,6 @@ export async function cancelDraftMediaKit(
   });
 }
 
-/** Get share token for public press kit link */
-export async function getShareToken(orgId: string, token?: string): Promise<{ shareToken: string }> {
-  return apiCall<{ shareToken: string }>(`/press-kits/organizations/${orgId}/share-token`, { token });
-}
 
 // --- Discovery types ---
 

@@ -2,7 +2,7 @@
 
 import { keepPreviousData } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listMediaKitsByCampaign, getShareToken, type MediaKit, type MediaKitStatus } from "@/lib/api";
+import { listMediaKitsByCampaign, type MediaKit, type MediaKitStatus } from "@/lib/api";
 
 const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 
@@ -16,19 +16,13 @@ const STATUS_STYLES: Record<MediaKitStatus, string> = {
 
 interface PressKitResultsProps {
   campaignId: string;
-  orgId: string;
 }
 
-export function PressKitResults({ campaignId, orgId }: PressKitResultsProps) {
+export function PressKitResults({ campaignId }: PressKitResultsProps) {
   const { data: kits, isLoading: kitsLoading } = useAuthQuery(
     ["mediaKits", "campaign", campaignId],
     () => listMediaKitsByCampaign(campaignId),
     { refetchInterval: 5_000, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
-  );
-
-  const { data: shareData } = useAuthQuery(
-    ["shareToken", orgId],
-    () => getShareToken(orgId),
   );
 
   if (kitsLoading) {
@@ -47,14 +41,14 @@ export function PressKitResults({ campaignId, orgId }: PressKitResultsProps) {
   return (
     <div className="space-y-4">
       {kits.map((kit) => (
-        <PressKitCard key={kit.id} kit={kit} shareToken={shareData?.shareToken} />
+        <PressKitCard key={kit.id} kit={kit} />
       ))}
     </div>
   );
 }
 
-function PressKitCard({ kit, shareToken }: { kit: MediaKit; shareToken?: string }) {
-  const publicUrl = shareToken ? `${API_URL}/press-kits/public/${shareToken}` : null;
+function PressKitCard({ kit }: { kit: MediaKit }) {
+  const publicUrl = kit.shareToken ? `${API_URL}/press-kits/public/${kit.shareToken}` : null;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
