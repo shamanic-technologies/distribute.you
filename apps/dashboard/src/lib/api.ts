@@ -763,9 +763,9 @@ export interface Workflow {
   displayName: string | null;
   description: string | null;
   featureSlug: string | null;
-  category: string;
-  channel: string;
-  audienceType: string;
+  category?: string;
+  channel?: string;
+  audienceType?: string;
   signatureName: string;
   dag: DAG | null;
   requiredProviders: string[];
@@ -961,9 +961,9 @@ export interface RankedWorkflowItem {
     displayName: string | null;
     createdForBrandId: string | null;
     featureSlug: string | null;
-    category: string;
-    channel: string;
-    audienceType: string;
+    category?: string;
+    channel?: string;
+    audienceType?: string;
     signature: string;
     signatureName: string;
   };
@@ -998,6 +998,7 @@ export async function fetchRankedWorkflows(params: {
 // Generate workflow via AI
 export interface GenerateWorkflowRequest {
   description: string;
+  featureSlug?: string;
   hints?: {
     services?: string[];
     nodeTypes?: string[];
@@ -1009,9 +1010,10 @@ export interface GenerateWorkflowResult {
   workflow: {
     id: string;
     name: string;
-    category: string;
-    channel: string;
-    audienceType: string;
+    featureSlug: string;
+    category?: string;
+    channel?: string;
+    audienceType?: string;
     signature: string;
     signatureName: string;
     action: "created" | "updated";

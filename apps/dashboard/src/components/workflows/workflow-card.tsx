@@ -37,7 +37,7 @@ export function WorkflowCard({
   onClick: () => void;
 }) {
   const stepCount = workflow.dag?.nodes.length ?? 0;
-  const categoryColor = CATEGORY_COLORS[workflow.category] ?? "bg-gray-100 text-gray-700 border-gray-200";
+  const categoryColor = (workflow.category ? CATEGORY_COLORS[workflow.category] : undefined) ?? "bg-gray-100 text-gray-700 border-gray-200";
 
   return (
     <button
@@ -66,15 +66,21 @@ export function WorkflowCard({
       )}
 
       <div className="flex flex-wrap gap-1.5 mb-2">
-        <span className={`text-xs px-2 py-0.5 rounded-full border ${categoryColor}`}>
-          {workflow.category}
-        </span>
-        <span className="text-xs px-2 py-0.5 rounded-full border bg-gray-50 text-gray-600 border-gray-200">
-          {workflow.channel}
-        </span>
-        <span className="text-xs px-2 py-0.5 rounded-full border bg-gray-50 text-gray-600 border-gray-200">
-          {workflow.audienceType}
-        </span>
+        {workflow.category && (
+          <span className={`text-xs px-2 py-0.5 rounded-full border ${categoryColor}`}>
+            {workflow.category}
+          </span>
+        )}
+        {workflow.channel && (
+          <span className="text-xs px-2 py-0.5 rounded-full border bg-gray-50 text-gray-600 border-gray-200">
+            {workflow.channel}
+          </span>
+        )}
+        {workflow.audienceType && (
+          <span className="text-xs px-2 py-0.5 rounded-full border bg-gray-50 text-gray-600 border-gray-200">
+            {workflow.audienceType}
+          </span>
+        )}
       </div>
 
       <p className="text-xs text-gray-400">

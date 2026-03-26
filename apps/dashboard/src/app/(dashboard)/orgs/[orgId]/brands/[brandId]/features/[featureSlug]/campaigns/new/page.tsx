@@ -55,7 +55,7 @@ interface WorkflowTableRow {
   id: string;
   name: string;
   displayName: string;
-  category: string;
+  category?: string;
   stats: Record<string, number>;
 }
 
