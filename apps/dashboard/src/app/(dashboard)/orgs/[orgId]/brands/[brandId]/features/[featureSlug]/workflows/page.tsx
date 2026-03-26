@@ -2,11 +2,10 @@
 
 import { useMemo, useCallback, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { keepPreviousData, useMutation } from "@tanstack/react-query";
+import { keepPreviousData } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   fetchFeatureStats,
-  generateWorkflow,
   listWorkflows,
   type SystemStats,
 } from "@/lib/api";
@@ -63,19 +62,9 @@ export default function FeatureWorkflowsPage() {
   const [metric, setMetric] = useState(defaultSortKey);
   const [sortDir, setSortDir] = useState<"asc" | "desc">(defaultSortDir);
 
-  const createMutation = useMutation({
-    mutationFn: () =>
-      generateWorkflow({
-        description: `Create a ${wfDef?.name ?? featureSlug} workflow: ${wfDef?.description ?? "automated workflow for this feature"}.`,
-        featureSlug,
-        hints: {},
-      }),
-    onSuccess: (result) => {
-      router.push(
-        `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/${result.workflow.id}`,
-      );
-    },
-  });
+  const handleCreateWorkflow = useCallback(() => {
+    router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/new`);
+  }, [router, orgId, brandId, featureSlug]);
 
   // Fetch stats grouped by workflow
   const { data: statsData, isLoading } = useAuthQuery(
@@ -166,32 +155,13 @@ export default function FeatureWorkflowsPage() {
         </div>
         <button
           type="button"
-          disabled={createMutation.isPending}
-          onClick={() => createMutation.mutate()}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          onClick={handleCreateWorkflow}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700 transition-colors"
         >
-          {createMutation.isPending ? (
-            <>
-              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-              Creating...
-            </>
-          ) : (
-            <>
-              <PlusIcon className="w-4 h-4" />
-              New Workflow
-            </>
-          )}
+          <PlusIcon className="w-4 h-4" />
+          New Workflow
         </button>
       </div>
-      {createMutation.isError && (
-        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          Failed to create workflow. Please try again.
-        </div>
-      )}
-
       {isLoading || featuresLoading || workflowsLoading ? (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
