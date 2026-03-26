@@ -3,35 +3,30 @@ import * as fs from "fs";
 import * as path from "path";
 
 /**
- * Regression test: the campaign sidebar badges (Leads, Emails, Journalists,
- * etc.) must use the same data source as the campaign list page
- * (fetchFeatureStats) so that the numbers displayed in the sidebar and the
- * list page always match.
- *
- * Previously, the sidebar used getCampaignStats + entity listing endpoints
- * (listCampaignLeads / listCampaignJournalists), while the list page used
- * fetchFeatureStats. These came from different API systems, causing visible
- * number mismatches (e.g. 0 journalists on detail vs 3 on list).
+ * Regression test: the campaign sidebar badges must use entity.countKey
+ * (from the feature definition) to look up feature stats, ensuring the
+ * sidebar counts match the campaign list page. No hardcoded stat key
+ * mappings — the backend provides the mapping via countKey.
  */
-describe("Campaign sidebar badges use stats counters", () => {
+describe("Campaign sidebar badges use entity.countKey from feature definition", () => {
   const wrapperPath = path.join(
     __dirname,
     "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/sidebar-wrapper.tsx"
   );
   const content = fs.readFileSync(wrapperPath, "utf-8");
 
-  it("should fetch feature stats for the campaign (same source as list page)", () => {
-    expect(content).toContain("fetchFeatureStats(featureSlug, { campaignId })");
+  it("should use entity.countKey to resolve stat values", () => {
+    expect(content).toContain("entity.countKey");
+    expect(content).toContain("fStats[entity.countKey]");
   });
 
-  it("should use feature stats as primary source for entity counts", () => {
-    expect(content).toContain("featureStatCount.leads");
-    expect(content).toContain("featureStatCount.journalists");
-    expect(content).toContain("featureStatCount.emails");
+  it("should NOT have hardcoded entity-to-stat-key mappings", () => {
+    expect(content).not.toContain("ENTITY_STAT_PREFIX");
+    expect(content).not.toContain("stats?.leadsServed");
+    expect(content).not.toContain("stats?.emailsGenerated");
   });
 
   it("should NOT pass leads.length directly as leadCount", () => {
-    // leads.length should only appear as a fallback, not as the primary value
     expect(content).not.toMatch(/leadCount={leads\.length}/);
   });
 

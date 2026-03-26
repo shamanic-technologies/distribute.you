@@ -105,7 +105,7 @@ export default function CreateFeaturePage() {
       "  - funnel-bar: { key, type: 'funnel-bar', title, displayOrder, steps: [{ key }] } (min 2 steps, keys must be from statsRegistry)",
       "  - breakdown-bar: { key, type: 'breakdown-bar', title, displayOrder, segments: [{ key, color: green|blue|red|gray|orange, sentiment: positive|neutral|negative }] } (min 2 segments, keys must be from statsRegistry)",
       "",
-      "ENTITIES: Required. Array of entity type strings shown in campaign detail sidebar (e.g. ['leads', 'companies', 'emails']).",
+      "ENTITIES: Required. Array of entity objects shown in campaign detail sidebar. Each entity has: name (string) and optional countKey (string, must be a key from statsRegistry). Example: [{name: 'leads', countKey: 'leadsServed'}, {name: 'companies'}, {name: 'emails', countKey: 'emailsGenerated'}]. The countKey determines which stat counter to show as a badge next to the entity in the sidebar.",
       "",
       "ICON: A Lucide icon name (e.g. 'envelope', 'globe', 'megaphone', 'newspaper', 'link'). See lucide.dev/icons.",
       "",

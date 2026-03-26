@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
-describe("Campaign sidebar uses feature stats for entity counts", () => {
+describe("Campaign sidebar uses feature stats via entity.countKey", () => {
   const sidebarWrapperPath = path.join(
     __dirname,
     "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/sidebar-wrapper.tsx"
@@ -20,21 +20,13 @@ describe("Campaign sidebar uses feature stats for entity counts", () => {
       expect(sidebarContent).toContain("fetchFeatureStats(featureSlug, { campaignId })");
     });
 
-    it("should use the same query key pattern as the list page", () => {
-      expect(sidebarContent).toContain('"featureStats"');
-      expect(sidebarContent).toContain('"campaign"');
+    it("should use entity.countKey to look up stats (no hardcoded prefix mapping)", () => {
+      expect(sidebarContent).toContain("entity.countKey");
+      expect(sidebarContent).not.toContain("ENTITY_STAT_PREFIX");
     });
 
-    it("should map entity names to stat key prefixes", () => {
-      expect(sidebarContent).toContain("ENTITY_STAT_PREFIX");
-      expect(sidebarContent).toContain('journalists: "journalist"');
-      expect(sidebarContent).toContain('outlets: "outlet"');
-    });
-
-    it("should prefer feature stats over entity listing counts", () => {
-      // The entityCounts should use featureStatCount first, then fall back
-      expect(sidebarContent).toContain("featureStatCount.journalists ?? listingCounts.journalists");
-      expect(sidebarContent).toContain("featureStatCount.outlets ?? listingCounts.outlets");
+    it("should fall back to listing counts when countKey is absent", () => {
+      expect(sidebarContent).toContain("listingFallback");
     });
   });
 
@@ -44,7 +36,6 @@ describe("Campaign sidebar uses feature stats for entity counts", () => {
     });
 
     it("should merge feature stats over campaign stats for chart data", () => {
-      // Feature stats should take precedence (spread last)
       expect(overviewContent).toContain("{ ...campaignStatsRecord, ...featureStats }");
     });
   });

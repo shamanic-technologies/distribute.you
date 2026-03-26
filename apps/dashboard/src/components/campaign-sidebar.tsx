@@ -92,15 +92,15 @@ export function CampaignSidebar({ campaignId, orgId, brandId, featureSlug, entit
   const hasInputs = featureInputs && Object.values(featureInputs).some(Boolean);
 
   const entityItems = entities
-    .filter((e) => ENTITY_CONFIG[e])
+    .filter((e) => ENTITY_CONFIG[e.name])
     .map((e) => {
-      const config = ENTITY_CONFIG[e];
+      const config = ENTITY_CONFIG[e.name];
       return {
-        id: e,
+        id: e.name,
         label: config.label,
         href: `${basePath}/${config.pathSuffix}`,
         icon: config.icon,
-        badge: entityCounts?.[e] ?? undefined,
+        badge: entityCounts?.[e.name] ?? undefined,
       };
     });
 
