@@ -66,16 +66,7 @@ async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
 export interface UserInfo {
   userId: string;
   orgId: string;
-  authType: string;
-  user: {
-    id: string;
-    createdAt: string;
-  } | null;
-  org: {
-    id: string;
-    plan: string;
-    createdAt: string;
-  } | null;
+  authType: "user_key" | "admin";
 }
 
 export interface ApiKey {
@@ -847,8 +838,53 @@ export interface WorkflowSummary {
 export interface WorkflowKeyStatus {
   workflowName: string;
   ready: boolean;
-  keys: { provider: string; configured: boolean; maskedKey: string | null; keySource?: "org" | "platform" }[];
+  keys: { provider: string; configured: boolean; maskedKey: string | null; keySource: "org" | "platform" }[];
   missing: string[];
+}
+
+// Key source preferences
+export interface KeySourcePreference {
+  provider: string;
+  keySource: "org" | "platform";
+}
+
+export async function listKeySources(token?: string): Promise<{ sources: KeySourcePreference[] }> {
+  return apiCall<{ sources: KeySourcePreference[] }>("/keys/sources", { token });
+}
+
+export async function setKeySource(
+  provider: string,
+  keySource: "org" | "platform",
+  token?: string
+): Promise<{ provider: string; orgId: string; keySource: "org" | "platform"; message: string }> {
+  return apiCall<{ provider: string; orgId: string; keySource: "org" | "platform"; message: string }>(
+    `/keys/${provider}/source`,
+    { token, method: "PUT", body: { keySource } }
+  );
+}
+
+// Provider requirements
+export interface ProviderRequirementEndpoint {
+  service: string;
+  method: string;
+  path: string;
+}
+
+export interface ProviderRequirementResult {
+  service: string;
+  method: string;
+  path: string;
+  provider: string;
+}
+
+export async function queryProviderRequirements(
+  endpoints: ProviderRequirementEndpoint[],
+  token?: string
+): Promise<{ requirements: ProviderRequirementResult[]; providers: string[] }> {
+  return apiCall<{ requirements: ProviderRequirementResult[]; providers: string[] }>(
+    "/keys/provider-requirements",
+    { token, method: "POST", body: { endpoints } }
+  );
 }
 
 export async function listWorkflows(params?: { featureSlug?: string }, token?: string): Promise<{ workflows: Workflow[] }> {
@@ -867,28 +903,6 @@ export async function getWorkflowSummary(workflowId: string, token?: string): Pr
 
 export async function getWorkflowKeyStatus(workflowId: string, token?: string): Promise<WorkflowKeyStatus> {
   return apiCall<WorkflowKeyStatus>(`/workflows/${workflowId}/key-status`, { token });
-}
-
-// Workflow required providers (with domain mapping for logos)
-export interface WorkflowProvider {
-  provider: string;
-  domain: string | null;
-}
-
-export interface WorkflowRequiredProviders {
-  workflowId: string;
-  workflowName: string;
-  providers: WorkflowProvider[];
-}
-
-export async function getWorkflowRequiredProviders(
-  workflowId: string,
-  token?: string
-): Promise<WorkflowRequiredProviders> {
-  return apiCall<WorkflowRequiredProviders>(
-    `/workflows/${workflowId}/required-providers`,
-    { token }
-  );
 }
 
 // Platform discovery

@@ -177,9 +177,14 @@ export function WorkflowDetailPanel({
                             </svg>
                           )}
                           <span className="text-sm font-medium text-gray-700 capitalize">{k.provider}</span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${k.keySource === "org" ? "bg-blue-50 text-blue-600" : "bg-gray-100 text-gray-500"}`}>
+                            {k.keySource === "org" ? "own key" : "platform"}
+                          </span>
                         </div>
-                        {k.configured && k.maskedKey ? (
+                        {k.configured && k.keySource === "org" && k.maskedKey ? (
                           <code className="text-xs text-gray-400 font-mono">{k.maskedKey}</code>
+                        ) : k.configured ? (
+                          <span className="text-xs text-green-600">Ready</span>
                         ) : (
                           <span className="text-xs text-red-500">Not configured</span>
                         )}

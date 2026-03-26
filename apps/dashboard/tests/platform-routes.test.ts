@@ -148,16 +148,16 @@ describe("api.ts platform client functions", () => {
     expect(content).toContain("export async function getPlatformServiceSpec");
   });
 
-  it("should export getWorkflowRequiredProviders", () => {
+  it("should export queryProviderRequirements", () => {
     const content = fs.readFileSync(apiPath, "utf-8");
-    expect(content).toContain("export async function getWorkflowRequiredProviders");
-    expect(content).toContain("/required-providers");
+    expect(content).toContain("export async function queryProviderRequirements");
+    expect(content).toContain("/keys/provider-requirements");
   });
 
-  it("should define WorkflowProvider and WorkflowRequiredProviders types", () => {
+  it("should define ProviderRequirementEndpoint and ProviderRequirementResult types", () => {
     const content = fs.readFileSync(apiPath, "utf-8");
-    expect(content).toContain("export interface WorkflowProvider");
-    expect(content).toContain("export interface WorkflowRequiredProviders");
+    expect(content).toContain("export interface ProviderRequirementEndpoint");
+    expect(content).toContain("export interface ProviderRequirementResult");
   });
 
   it("should define LlmContextResponse type", () => {

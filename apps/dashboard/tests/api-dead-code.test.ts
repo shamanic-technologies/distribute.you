@@ -16,6 +16,10 @@ describe("No dead/broken API functions", () => {
     expect(apiContent).not.toMatch(/export async function createBrand\(/);
   });
 
+  it("should not have getWorkflowRequiredProviders (endpoint removed from api-service)", () => {
+    expect(apiContent).not.toContain("export async function getWorkflowRequiredProviders");
+  });
+
   it("should not have old sales-profile functions (migrated to extract-fields)", () => {
     expect(apiContent).not.toContain("export async function getBrandSalesProfile");
     expect(apiContent).not.toContain("export async function createBrandSalesProfile");
