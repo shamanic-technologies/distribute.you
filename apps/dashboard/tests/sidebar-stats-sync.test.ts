@@ -3,14 +3,15 @@ import * as fs from "fs";
 import * as path from "path";
 
 /**
- * Regression test: the campaign sidebar badges (Leads, Emails) must use the
- * same data source as the funnel bar chart (stats from getCampaignStats) so
- * that the numbers displayed in the sidebar and the graph always match.
+ * Regression test: the campaign sidebar badges (Leads, Emails, Journalists,
+ * etc.) must use the same data source as the campaign list page
+ * (fetchFeatureStats) so that the numbers displayed in the sidebar and the
+ * list page always match.
  *
- * Previously, the sidebar used leads.length and emails.length (from
- * listCampaignLeads / listCampaignEmails), while the graph used
- * stats.leadsServed / stats.emailsGenerated. These came from different API
- * endpoints that polled independently, causing visible number mismatches.
+ * Previously, the sidebar used getCampaignStats + entity listing endpoints
+ * (listCampaignLeads / listCampaignJournalists), while the list page used
+ * fetchFeatureStats. These came from different API systems, causing visible
+ * number mismatches (e.g. 0 journalists on detail vs 3 on list).
  */
 describe("Campaign sidebar badges use stats counters", () => {
   const wrapperPath = path.join(
@@ -19,12 +20,14 @@ describe("Campaign sidebar badges use stats counters", () => {
   );
   const content = fs.readFileSync(wrapperPath, "utf-8");
 
-  it("should derive leadCount from stats.leadsServed", () => {
-    expect(content).toContain("stats?.leadsServed");
+  it("should fetch feature stats for the campaign (same source as list page)", () => {
+    expect(content).toContain("fetchFeatureStats(featureSlug, { campaignId })");
   });
 
-  it("should derive emailCount from stats.emailsGenerated", () => {
-    expect(content).toContain("stats?.emailsGenerated");
+  it("should use feature stats as primary source for entity counts", () => {
+    expect(content).toContain("featureStatCount.leads");
+    expect(content).toContain("featureStatCount.journalists");
+    expect(content).toContain("featureStatCount.emails");
   });
 
   it("should NOT pass leads.length directly as leadCount", () => {

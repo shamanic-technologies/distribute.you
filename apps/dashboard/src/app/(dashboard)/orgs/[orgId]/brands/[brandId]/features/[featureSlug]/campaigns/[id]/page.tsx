@@ -1,9 +1,12 @@
 "use client";
 
 import { useParams } from "next/navigation";
+import { keepPreviousData } from "@tanstack/react-query";
 import { useCampaign } from "@/lib/campaign-context";
 import { useStopCampaign, useIsStoppingCampaign } from "@/lib/use-stop-campaign";
 import { useFeatures } from "@/lib/features-context";
+import { useAuthQuery } from "@/lib/use-auth-query";
+import { fetchFeatureStats } from "@/lib/api";
 import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
@@ -31,9 +34,17 @@ export default function CampaignOverviewPage() {
   const funnelChart = featureDef?.charts?.find((c) => c.type === "funnel-bar");
   const breakdownChart = featureDef?.charts?.find((c) => c.type === "breakdown-bar");
 
-  const { campaign, stats, leads, emails, loading } = useCampaign();
+  const { campaign, stats, loading } = useCampaign();
+  const campaignId = params.id as string;
   const stopMutation = useStopCampaign();
   const stopping = useIsStoppingCampaign(campaign?.id ?? "");
+
+  // Feature stats for this campaign — same source the list page uses
+  const { data: featureStatsData } = useAuthQuery(
+    ["featureStats", featureSlug, "campaign", campaignId],
+    () => fetchFeatureStats(featureSlug, { campaignId }),
+    { refetchInterval: 5_000, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
+  );
 
   const handleStop = () => {
     if (!campaign) return;
@@ -75,12 +86,14 @@ export default function CampaignOverviewPage() {
     }
   }
 
-  // Build a stats record for charts from campaign stats
-  const statsRecord: Record<string, number> = stats
+  // Use feature stats (same source as the list page) for charts, with campaign stats as fallback
+  const featureStats = featureStatsData?.stats ?? {};
+  const campaignStatsRecord: Record<string, number> = stats
     ? Object.fromEntries(
         Object.entries(stats).filter((e): e is [string, number] => typeof e[1] === "number")
       )
     : {};
+  const statsRecord: Record<string, number> = { ...campaignStatsRecord, ...featureStats };
 
   return (
     <div className="p-4 md:p-8">
@@ -137,7 +150,7 @@ export default function CampaignOverviewPage() {
       )}
 
       {/* Charts (funnel + breakdown) — only when charts are defined */}
-      {(funnelChart || breakdownChart) && stats && (
+      {(funnelChart || breakdownChart) && (stats || Object.keys(featureStats).length > 0) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
           {funnelChart && funnelChart.type === "funnel-bar" && (
             <FunnelMetrics
