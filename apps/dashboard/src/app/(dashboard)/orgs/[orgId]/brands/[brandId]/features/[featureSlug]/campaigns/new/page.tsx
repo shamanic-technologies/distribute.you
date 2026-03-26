@@ -8,7 +8,7 @@ import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { useOrg } from "@/lib/org-context";
 import { useFeatures } from "@/lib/features-context";
 import {
-  fetchRankedWorkflows,
+  listWorkflows,
   fetchFeatureStats,
   createCampaign,
   sendCampaignEmail,
@@ -20,8 +20,8 @@ import {
   configureAutoReload,
   ApiError,
   type Campaign,
-  type RankedWorkflowItem,
   type FeatureInput,
+  type SystemStats,
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
 import { formatStatValue, sortDirectionForType } from "@/lib/format-stat";
@@ -42,20 +42,11 @@ const BUDGET_FREQUENCIES: { value: BudgetFrequency; label: string }[] = [
   { value: "monthly", label: "Monthly" },
 ];
 
-/** Extract the family display name from displayName. Strips the featureSlug prefix to show just the codename. */
-function formatDisplayName(displayName: string | null, fallbackName: string): string {
-  const raw = displayName || fallbackName;
-  const lastDashIdx = raw.lastIndexOf("-");
-  const suffix = lastDashIdx >= 0 ? raw.slice(lastDashIdx + 1) : raw;
-  return suffix.charAt(0).toUpperCase() + suffix.slice(1);
-}
-
-/** A workflow row combining ranked metadata with feature stats. */
+/** A workflow row combining workflow metadata with feature stats. */
 interface WorkflowTableRow {
   id: string;
   name: string;
   displayName: string;
-  category?: string;
   stats: Record<string, number>;
 }
 
@@ -155,52 +146,51 @@ export default function FeatureCreateCampaignPage() {
   );
   const brand = brandData?.brand ?? null;
 
-  // Fetch ranked workflows for workflow metadata (id, name, displayName, category)
-  const { data: rankedItems } = useAuthQuery(
-    ["ranked-workflows", featureSlug],
-    () => fetchRankedWorkflows({
-      featureSlug,
-      limit: 100,
-    }),
-    { enabled: featureDef?.implemented === true, ...pollOptions },
+  // Fetch workflows filtered by feature slug (same source as workflows page)
+  const { data: workflowsData, isLoading: workflowsLoading } = useAuthQuery(
+    ["workflows", featureSlug],
+    () => listWorkflows({ featureSlug }),
+    pollOptions,
   );
 
-  // Fetch feature stats grouped by workflow (same source as workflows page)
+  // Fetch feature stats grouped by workflow for enrichment
   const { data: statsData, isLoading } = useAuthQuery(
     ["featureStats", featureSlug, "byWorkflow"],
     () => fetchFeatureStats(featureSlug, { groupBy: "workflowName" }),
     { enabled: featureDef?.implemented === true, ...pollOptions },
   );
 
-  // Build a lookup from workflowName → ranked metadata
-  const rankedByName = useMemo(() => {
-    const map = new Map<string, RankedWorkflowItem>();
-    for (const item of rankedItems ?? []) {
-      map.set(item.workflow.name, item);
-    }
-    return map;
-  }, [rankedItems]);
-
-  // Merge stats groups with ranked workflow metadata into table rows
+  // Active workflows grouped by displayName (dynasty): keep only the latest per dynasty
   const rows = useMemo(() => {
-    if (!statsData?.groups) return [];
-    return statsData.groups
-      .map((g): WorkflowTableRow | null => {
-        const wfName = g.workflowName ?? "unknown";
-        const ranked = rankedByName.get(wfName);
-        return {
-          id: ranked?.workflow.id ?? wfName,
-          name: wfName,
-          displayName: ranked?.workflow.displayName ?? wfName,
-          category: ranked?.workflow.category ?? "",
-          stats: g.stats,
-        };
-      })
-      .filter((r): r is WorkflowTableRow => r !== null);
-  }, [statsData, rankedByName]);
+    if (!workflowsData?.workflows) return [];
+    const active = workflowsData.workflows.filter((wf) => wf.status === "active");
+    const byDisplayName = new Map<string, typeof active[number]>();
+    for (const wf of active) {
+      if (!wf.displayName) continue;
+      const existing = byDisplayName.get(wf.displayName);
+      if (!existing || wf.createdAt > existing.createdAt) {
+        byDisplayName.set(wf.displayName, wf);
+      }
+    }
+
+    const statsMap = new Map<string, { stats: Record<string, number>; systemStats?: SystemStats }>();
+    for (const g of statsData?.groups ?? []) {
+      if (g.workflowName) statsMap.set(g.workflowName, { stats: g.stats, systemStats: g.systemStats });
+    }
+
+    return [...byDisplayName.values()].map((wf): WorkflowTableRow => {
+      const s = statsMap.get(wf.name);
+      return {
+        id: wf.id,
+        name: wf.name,
+        displayName: wf.displayName!,
+        stats: s?.stats ?? {},
+      };
+    });
+  }, [workflowsData, statsData]);
 
   // Workflow IDs for key status check
-  const featureWorkflowIds = useMemo(() => rows.filter((r) => r.id !== r.name).map((r) => r.id), [rows]);
+  const featureWorkflowIds = useMemo(() => rows.map((r) => r.id), [rows]);
 
   const { data: keyStatusData } = useAuthQuery(
     ["workflowKeyStatus", featureSlug, featureWorkflowIds],
@@ -308,10 +298,9 @@ export default function FeatureCreateCampaignPage() {
     if (budgetFrequency === "weekly") budgetParams.maxBudgetWeeklyUsd = budgetAmount;
     if (budgetFrequency === "monthly") budgetParams.maxBudgetMonthlyUsd = budgetAmount;
 
-    const displayLabel = formatDisplayName(selectedRow.displayName, selectedRow.name);
     const generateName = () => {
       const now = new Date();
-      return `${displayLabel} \u2014 ${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}.${String(now.getMilliseconds()).padStart(3, "0")}`;
+      return `${selectedRow.displayName} \u2014 ${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}.${String(now.getMilliseconds()).padStart(3, "0")}`;
     };
     try {
       // Pass all form input values generically
@@ -371,11 +360,10 @@ export default function FeatureCreateCampaignPage() {
     if (budgetFrequency === "weekly") budgetParams.maxBudgetWeeklyUsd = budgetAmount;
     if (budgetFrequency === "monthly") budgetParams.maxBudgetMonthlyUsd = budgetAmount;
 
-    const displayLabel = formatDisplayName(selectedRow.displayName, selectedRow.name);
     const { brandUrl: intentBrandUrl, ...intentInputFields } = formData;
     sessionStorage.setItem("pendingCampaign", JSON.stringify({
       workflowName: selectedRow.name,
-      displayLabel,
+      displayLabel: selectedRow.displayName,
       brandUrl: intentBrandUrl,
       ...budgetParams,
       featureInputs: intentInputFields,
@@ -705,7 +693,7 @@ export default function FeatureCreateCampaignPage() {
       )}
 
       {/* Workflow table */}
-      {isLoading || featuresLoading ? (
+      {isLoading || featuresLoading || workflowsLoading ? (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
           <div className="p-6 space-y-3">
             {[1, 2, 3].map((i) => (
@@ -811,8 +799,6 @@ function WorkflowRow({
   onSelect: () => void;
   onShowDetail?: () => void;
 }) {
-  const label = formatDisplayName(wf.displayName, wf.name);
-
   return (
     <tr
       className={`${
@@ -824,7 +810,7 @@ function WorkflowRow({
         <div className="flex items-center gap-2">
           {isSelected && <div className="w-2 h-2 bg-brand-500 rounded-full flex-shrink-0" />}
           <span className={`text-sm font-medium ${isSelected ? "text-brand-700" : "text-gray-900"}`}>
-            {label}
+            {wf.displayName}
           </span>
           {onShowDetail && (
             <button
