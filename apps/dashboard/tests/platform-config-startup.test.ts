@@ -45,8 +45,14 @@ describe("Platform config registration at startup", () => {
       expect(matches).toHaveLength(18);
     });
 
-    it("should fail startup if any key env var is missing", () => {
-      expect(content).toContain("Missing platform key env vars");
+    it("should skip missing env vars instead of blocking all registrations", () => {
+      expect(content).toContain("Skipping");
+      expect(content).toContain("env vars not set");
+      expect(content).not.toContain("Missing platform key env vars");
+    });
+
+    it("should fail startup only if zero keys can be registered", () => {
+      expect(content).toContain("No platform key env vars are set");
       expect(content).toContain("throw err");
     });
   });
