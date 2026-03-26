@@ -334,7 +334,11 @@ export default function FeatureCreateCampaignPage() {
       sendCampaignEmail("campaign_created", result.campaign).catch(() => {});
       await queryClient.invalidateQueries({ queryKey: ["campaigns", { brandId }] });
       router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`);
+      // Don't reset isCreating on success — the page is navigating away.
+      // Resetting here would briefly flash the button back to its idle state.
     } catch (err) {
+      isCreatingRef.current = false;
+      setIsCreating(false);
       if (err instanceof ApiError && err.status === 402) {
         // 402 is handled by BillingGuardProvider modal — don't show inline error
       } else if (err instanceof ApiError && err.status === 409) {
@@ -347,9 +351,6 @@ export default function FeatureCreateCampaignPage() {
       } else {
         setCreateError(err instanceof Error ? err.message : "Failed to create campaign");
       }
-    } finally {
-      isCreatingRef.current = false;
-      setIsCreating(false);
     }
   }, [selectedRow, budgetAmount, budgetFrequency, formData, router, orgId, brandId, featureSlug, featureInputs]);
 
