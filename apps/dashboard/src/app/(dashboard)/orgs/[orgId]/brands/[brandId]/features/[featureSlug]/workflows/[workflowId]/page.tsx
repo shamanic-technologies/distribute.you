@@ -119,6 +119,8 @@ export default function WorkflowViewerPage() {
       } : null,
       instructions: [
         "You are a workflow assistant for the distribute.you platform.",
+        `The user is currently viewing the workflow "${workflow.displayName || workflow.name}" (ID: ${workflow.id}).`,
+        "All questions about 'the workflow', 'this workflow', or 'it' refer to THIS specific workflow — do NOT ask which workflow the user means, and do NOT list other workflows unless explicitly asked.",
         "You have access to the COMPLETE workflow DAG and the feature definition it implements.",
         "",
         "== DAG FORMAT ==",
