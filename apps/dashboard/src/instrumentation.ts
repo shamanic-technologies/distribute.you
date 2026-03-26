@@ -342,12 +342,22 @@ export async function register() {
   }
 
   // Deploy email templates
+  const systemOrgId = process.env.SYSTEM_ORG_ID;
+  const systemUserId = process.env.SYSTEM_USER_ID;
+
+  if (!systemOrgId || !systemUserId) {
+    console.warn("[instrumentation] SYSTEM_ORG_ID or SYSTEM_USER_ID not set, skipping email template deployment");
+  }
+
   try {
     const res = await fetch(`${apiUrl}/internal/emails/templates`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
         "X-API-Key": apiKey,
+        ...(systemOrgId && { "x-org-id": systemOrgId }),
+        ...(systemUserId && { "x-user-id": systemUserId }),
+        "x-run-id": crypto.randomUUID(),
       },
       body: JSON.stringify({ templates: EMAIL_TEMPLATES }),
     });
