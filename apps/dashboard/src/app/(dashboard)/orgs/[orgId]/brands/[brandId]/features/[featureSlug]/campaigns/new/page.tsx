@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { keepPreviousData } from "@tanstack/react-query";
-import { useAuthQuery } from "@/lib/use-auth-query";
+import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { useOrg } from "@/lib/org-context";
 import { useFeatures } from "@/lib/features-context";
 import {
@@ -111,6 +111,7 @@ export default function FeatureCreateCampaignPage() {
 
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const { org } = useOrg();
   const { showPaymentRequired } = useBillingGuard();
 
@@ -340,6 +341,7 @@ export default function FeatureCreateCampaignPage() {
         }
       }
       sendCampaignEmail("campaign_created", result.campaign).catch(() => {});
+      await queryClient.invalidateQueries({ queryKey: ["campaigns", { brandId }] });
       router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`);
     } catch (err) {
       if (err instanceof ApiError && err.status === 402) {
@@ -481,6 +483,7 @@ export default function FeatureCreateCampaignPage() {
             }
           }
           sendCampaignEmail("campaign_created", result.campaign).catch(() => {});
+          await queryClient.invalidateQueries({ queryKey: ["campaigns", { brandId }] });
           router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`);
         } catch (err) {
           if (err instanceof ApiError && err.status === 402) {
