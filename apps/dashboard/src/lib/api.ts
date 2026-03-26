@@ -490,9 +490,16 @@ export type FeatureChart =
   | { key: string; type: "funnel-bar"; title: string; displayOrder: number; steps: FunnelStep[] }
   | { key: string; type: "breakdown-bar"; title: string; displayOrder: number; segments: BreakdownSegment[] };
 
+export interface FeatureRef {
+  id: string;
+  slug: string;
+  status: "active" | "draft" | "deprecated";
+}
+
 export interface Feature {
   slug: string;
   name: string;
+  displayName?: string;
   description: string;
   icon?: string;
   category: string;
@@ -505,7 +512,14 @@ export interface Feature {
   outputs: FeatureOutput[];
   charts: FeatureChart[];
   entities: string[];
+  forkedFrom?: FeatureRef;
+  upgradedTo?: FeatureRef;
 }
+
+/** 200 = metadata-only update; 201 = inputs/outputs changed, feature was forked */
+export type UpdateFeatureResult =
+  | { feature: Feature; forkedFrom?: undefined }
+  | { feature: Feature; forkedFrom: FeatureRef };
 
 // ─── Stats Registry & Stats Types ────────────────────────────────────────────
 
@@ -588,7 +602,8 @@ export async function createFeature(
   });
 }
 
-/** PUT /features/:slug — update an existing feature */
+/** PUT /features/:slug — update an existing feature.
+ *  Returns 200 for metadata-only updates, 201 when inputs/outputs changed (fork). */
 export async function updateFeature(
   slug: string,
   params: Partial<{
@@ -605,8 +620,8 @@ export async function updateFeature(
     status: "active" | "draft" | "deprecated";
   }>,
   token?: string,
-): Promise<{ feature: Feature }> {
-  return apiCall<{ feature: Feature }>(`/features/${slug}`, {
+): Promise<UpdateFeatureResult> {
+  return apiCall<UpdateFeatureResult>(`/features/${slug}`, {
     token,
     method: "PUT",
     body: params as unknown as Record<string, unknown>,
