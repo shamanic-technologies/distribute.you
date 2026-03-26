@@ -18,22 +18,21 @@ describe("Workflow list page shows all workflows (not just those with stats)", (
     expect(content).toContain('["workflows", featureSlug]');
   });
 
-  it("should build rows from featureWorkflows (not only from stats groups)", () => {
-    // The rows memo should iterate over featureWorkflows so newly created
+  it("should build rows from dynasty workflows (not only from stats groups)", () => {
+    // The rows memo should iterate over dynastyWorkflows so newly created
     // workflows with zero stats still appear in the list
-    expect(content).toContain("featureWorkflows.map");
+    expect(content).toContain("dynastyWorkflows.map");
   });
 
-  it("should use displayName from workflow when available", () => {
-    expect(content).toContain("wf.displayName || formatWorkflowDisplayName");
+  it("should use displayName from workflow", () => {
+    expect(content).toContain("wf.displayName");
   });
 
   it("should wait for workflowsLoading before rendering the table", () => {
     expect(content).toContain("workflowsLoading");
   });
 
-  it("should still include stats-only rows for deprecated workflows", () => {
-    expect(content).toContain("stats-only rows");
-    expect(content).toContain("!seen.has(name)");
+  it("should group workflows by dynasty (displayName)", () => {
+    expect(content).toContain("byDisplayName");
   });
 });

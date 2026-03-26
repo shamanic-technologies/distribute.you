@@ -13,17 +13,14 @@ interface WorkflowSelectionTableProps {
 
 export function WorkflowSelectionTable({ featureSlug, onSelect, selectedWorkflowId }: WorkflowSelectionTableProps) {
   const { data, isLoading } = useAuthQuery(
-    ["workflows"],
-    () => listWorkflows()
+    ["workflows", featureSlug],
+    () => listWorkflows({ featureSlug })
   );
 
   const workflows = useMemo(() => {
     if (!data?.workflows) return [];
-    return data.workflows.filter((wf) => {
-      if (wf.status === "deprecated") return false;
-      return wf.featureSlug === featureSlug;
-    });
-  }, [data?.workflows, featureSlug]);
+    return data.workflows.filter((wf) => wf.status !== "deprecated");
+  }, [data?.workflows]);
 
   if (isLoading) {
     return (
