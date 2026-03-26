@@ -364,16 +364,21 @@ export async function register() {
 
   // Register platform keys
   try {
-    const missing: string[] = [];
-    for (const { envVar } of PLATFORM_KEYS) {
-      if (!process.env[envVar]) missing.push(envVar);
-    }
+    const available = PLATFORM_KEYS.filter(({ envVar }) => process.env[envVar]);
+    const missing = PLATFORM_KEYS.filter(({ envVar }) => !process.env[envVar]);
+
     if (missing.length > 0) {
-      throw new Error(`Missing platform key env vars: ${missing.join(", ")}`);
+      console.warn(
+        `[instrumentation] Skipping ${missing.length} platform keys (env vars not set): ${missing.map((k) => k.envVar).join(", ")}`,
+      );
+    }
+
+    if (available.length === 0) {
+      throw new Error("No platform key env vars are set — cannot register any keys");
     }
 
     const results = await Promise.allSettled(
-      PLATFORM_KEYS.map(({ provider, envVar }) =>
+      available.map(({ provider, envVar }) =>
         fetch(`${apiUrl}/platform-keys`, {
           method: "POST",
           headers: {
@@ -391,13 +396,21 @@ export async function register() {
       ),
     );
 
+    const succeeded = results.filter((r) => r.status === "fulfilled");
     const failed = results.filter((r) => r.status === "rejected");
+
     if (failed.length > 0) {
       const errors = failed.map((r) => (r as PromiseRejectedResult).reason?.message).join("; ");
-      throw new Error(`Platform key registration failed: ${errors}`);
+      console.error(`[instrumentation] ${failed.length} platform key(s) failed: ${errors}`);
     }
 
-    console.log(`[instrumentation] Registered ${PLATFORM_KEYS.length} platform keys`);
+    console.log(
+      `[instrumentation] Platform keys: ${succeeded.length} registered, ${failed.length} failed, ${missing.length} skipped`,
+    );
+
+    if (succeeded.length === 0) {
+      throw new Error(`All platform key registrations failed`);
+    }
   } catch (err) {
     console.error("[instrumentation] Platform key registration error:", err);
     throw err;
