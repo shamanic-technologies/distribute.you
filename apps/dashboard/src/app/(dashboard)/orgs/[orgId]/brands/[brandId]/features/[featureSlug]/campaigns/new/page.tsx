@@ -763,8 +763,8 @@ export default function FeatureCreateCampaignPage() {
                     outputs={sortedOutputs}
                     registry={registry}
                     isSelected={wf.id === effectiveSelectionId}
-                    selectable={mode === "manual"}
-                    onSelect={() => setSelectedWorkflowId(wf.id)}
+                    selectable={true}
+                    onSelect={() => { setSelectedWorkflowId(wf.id); setMode("manual"); }}
                     onShowDetail={() => setDetailWorkflowId(wf.id)}
                   />
                 ))}
