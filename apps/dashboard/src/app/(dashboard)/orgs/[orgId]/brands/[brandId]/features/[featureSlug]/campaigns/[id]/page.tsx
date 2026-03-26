@@ -31,6 +31,7 @@ export default function CampaignOverviewPage() {
   const featureDef = getFeature(featureSlug);
 
   const entities = featureDef?.entities ?? [];
+  const entityNames = entities.map((e) => e.name);
   const funnelChart = featureDef?.charts?.find((c) => c.type === "funnel-bar");
   const breakdownChart = featureDef?.charts?.find((c) => c.type === "breakdown-bar");
 
@@ -133,17 +134,17 @@ export default function CampaignOverviewPage() {
       </div>
 
       {/* Entity-specific results */}
-      {entities.includes("press-kits") && campaign && (
+      {entityNames.includes("press-kits") && campaign && (
         <div className="mb-6">
           <PressKitResults campaignId={campaign.id} orgId={orgId} />
         </div>
       )}
-      {entities.includes("outlets") && campaign && (
+      {entityNames.includes("outlets") && campaign && (
         <div className="mb-6">
           <DiscoveredOutlets campaignId={campaign.id} />
         </div>
       )}
-      {entities.includes("journalists") && campaign && (
+      {entityNames.includes("journalists") && campaign && (
         <div className="mb-6">
           <DiscoveredJournalists campaignId={campaign.id} />
         </div>
