@@ -53,9 +53,20 @@ describe("Unified API Keys page has provider keys section", () => {
     expect(content).toContain("deleteByokKey");
   });
 
+  it("should import key source functions from api", () => {
+    expect(content).toContain("listKeySources");
+    expect(content).toContain("setKeySource");
+    expect(content).toContain("KeySourcePreference");
+  });
+
   it("should fetch workflows to discover known providers", () => {
     expect(content).toContain("listWorkflows");
     expect(content).toContain("requiredProviders");
+  });
+
+  it("should fetch key source preferences", () => {
+    expect(content).toContain("keySources");
+    expect(content).toContain("keySourcesLoading");
   });
 
   it("should show configured vs not-configured status", () => {
@@ -69,6 +80,16 @@ describe("Unified API Keys page has provider keys section", () => {
     expect(content).toContain("Add Key");
     expect(content).toContain("Rotate");
     expect(content).toContain("Remove");
+  });
+
+  it("should have key source toggle button", () => {
+    expect(content).toContain("handleToggleSource");
+    expect(content).toContain("Use own key");
+    expect(content).toContain("Use platform");
+  });
+
+  it("should show platform key status", () => {
+    expect(content).toContain("Using platform key");
   });
 
   it("should have inline edit form with password input", () => {
