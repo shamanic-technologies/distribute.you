@@ -113,34 +113,11 @@ describe("Platform config registration at startup", () => {
     const turboPath = path.resolve(__dirname, "../../../turbo.json");
     const turboContent = fs.readFileSync(turboPath, "utf-8");
     const turboConfig = JSON.parse(turboContent);
-    const buildEnv: string[] = turboConfig.tasks?.build?.env ?? [];
+    const globalPassThrough: string[] = turboConfig.globalPassThroughEnv ?? [];
 
-    const expectedKeys = [
-      { provider: "anthropic", envVar: "ANTHROPIC_API_KEY" },
-      { provider: "apollo", envVar: "APOLLO_API_KEY" },
-      { provider: "instantly", envVar: "INSTANTLY_API_KEY" },
-      { provider: "firecrawl", envVar: "FIRECRAWL_API_KEY" },
-      { provider: "gemini", envVar: "GEMINI_API_KEY" },
-      { provider: "postmark", envVar: "POSTMARK_API_KEY" },
-      { provider: "postmark-broadcast-stream", envVar: "POSTMARK_BROADCAST_STREAM_ID" },
-      { provider: "postmark-inbound-stream", envVar: "POSTMARK_INBOUND_STREAM_ID" },
-      { provider: "postmark-transactional-stream", envVar: "POSTMARK_TRANSACTIONAL_STREAM_ID" },
-      { provider: "postmark-from-address", envVar: "POSTMARK_FROM_ADDRESS" },
-      { provider: "stripe", envVar: "STRIPE_SECRET_KEY" },
-      { provider: "stripe-webhook", envVar: "STRIPE_WEBHOOK_SECRET" },
-      { provider: "api-service-mcp", envVar: "ADMIN_DISTRIBUTE_API_KEY" },
-      { provider: "serper-dev", envVar: "SERPER_DEV_API_KEY" },
-      { provider: "google-client-id", envVar: "GOOGLE_CLIENT_ID" },
-      { provider: "google-client-secret", envVar: "GOOGLE_CLIENT_SECRET" },
-      { provider: "google-developer-token", envVar: "GOOGLE_DEVELOPER_TOKEN" },
-      { provider: "google-mcc-account-id", envVar: "GOOGLE_MCC_ACCOUNT_ID" },
-    ];
-
-    for (const { provider, envVar } of expectedKeys) {
-      it(`should include ${envVar} (${provider}) in turbo.json build env`, () => {
-        expect(buildEnv).toContain(envVar);
-      });
-    }
+    it('should use globalPassThroughEnv: ["*"] so all env vars reach instrumentation', () => {
+      expect(globalPassThrough).toContain("*");
+    });
   });
 
   describe("routing", () => {
