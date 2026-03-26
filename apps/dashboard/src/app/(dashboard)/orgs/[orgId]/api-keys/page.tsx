@@ -11,9 +11,12 @@ import {
   setByokKey,
   deleteByokKey,
   listWorkflows,
+  listKeySources,
+  setKeySource,
   type ApiKey,
   type NewApiKey,
   type ByokKey,
+  type KeySourcePreference,
 } from "@/lib/api";
 import { SkeletonApiKey } from "@/components/skeleton";
 
@@ -46,6 +49,7 @@ interface ProviderRow {
   configured: boolean;
   maskedKey: string | null;
   updatedAt: string | null;
+  keySource: "org" | "platform";
 }
 
 export default function OrgApiKeysPage() {
@@ -109,8 +113,14 @@ export default function OrgApiKeysPage() {
     () => listWorkflows(),
     pollOptions,
   );
+  const { data: keySourcesData, isLoading: keySourcesLoading } = useAuthQuery(
+    ["keySources"],
+    () => listKeySources(),
+    pollOptions,
+  );
 
   const configuredKeys: ByokKey[] = byokData?.keys ?? [];
+  const keySources: KeySourcePreference[] = keySourcesData?.sources ?? [];
 
   const providers: ProviderRow[] = useMemo(() => {
     const providerSet = new Set<string>(ALWAYS_VISIBLE_PROVIDERS);
@@ -124,6 +134,7 @@ export default function OrgApiKeysPage() {
       providerSet.add(k.provider);
     }
     const keyMap = new Map(configuredKeys.map((k) => [k.provider, k]));
+    const sourceMap = new Map(keySources.map((s) => [s.provider, s.keySource]));
     return [...providerSet].sort().map((provider) => {
       const key = keyMap.get(provider);
       return {
@@ -131,9 +142,10 @@ export default function OrgApiKeysPage() {
         configured: !!key,
         maskedKey: key?.maskedKey ?? null,
         updatedAt: key?.updatedAt ?? null,
+        keySource: sourceMap.get(provider) ?? "platform",
       };
     });
-  }, [workflowsData, configuredKeys]);
+  }, [workflowsData, configuredKeys, keySources]);
 
   const [editingProvider, setEditingProvider] = useState<string | null>(null);
   const [providerKeyInput, setProviderKeyInput] = useState("");
@@ -186,7 +198,26 @@ export default function OrgApiKeysPage() {
     setProviderError(null);
   }
 
-  const isLoading = apiKeysLoading || byokLoading || workflowsLoading;
+  const [togglingSource, setTogglingSource] = useState<string | null>(null);
+
+  async function handleToggleSource(provider: string, currentSource: "org" | "platform") {
+    const newSource = currentSource === "platform" ? "org" : "platform";
+    setTogglingSource(provider);
+    setProviderError(null);
+    setProviderSuccess(null);
+    try {
+      await setKeySource(provider, newSource);
+      await queryClient.invalidateQueries({ queryKey: ["keySources"] });
+      setProviderSuccess(`${providerLabel(provider)} switched to ${newSource === "org" ? "your own key" : "platform key"}.`);
+      setTimeout(() => setProviderSuccess(null), 3000);
+    } catch (err) {
+      setProviderError(err instanceof Error ? err.message : "Failed to update key source");
+    } finally {
+      setTogglingSource(null);
+    }
+  }
+
+  const isLoading = apiKeysLoading || byokLoading || workflowsLoading || keySourcesLoading;
 
   if (isLoading) {
     return (
@@ -363,44 +394,58 @@ export default function OrgApiKeysPage() {
                   <div className="flex items-center gap-3">
                     <div
                       className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
-                        row.configured ? "bg-green-500" : "bg-gray-300"
+                        row.keySource === "platform" || row.configured ? "bg-green-500" : "bg-gray-300"
                       }`}
                     />
                     <div>
                       <h3 className="font-medium text-gray-800">{providerLabel(row.provider)}</h3>
-                      {PROVIDER_META[row.provider]?.description && !row.configured && (
+                      {PROVIDER_META[row.provider]?.description && !row.configured && row.keySource === "org" && (
                         <p className="text-xs text-gray-500 mt-0.5">
                           {PROVIDER_META[row.provider].description}
                         </p>
                       )}
-                      {row.configured && row.maskedKey ? (
+                      {row.keySource === "platform" ? (
+                        <p className="text-xs text-gray-500 mt-0.5">Using platform key</p>
+                      ) : row.configured && row.maskedKey ? (
                         <p className="text-xs text-gray-500 mt-0.5">
                           <code className="font-mono">{row.maskedKey}</code>
                           {row.updatedAt && (
                             <> · Updated {new Date(row.updatedAt).toLocaleDateString()}</>
                           )}
                         </p>
-                      ) : !PROVIDER_META[row.provider]?.description ? (
+                      ) : (
                         <p className="text-xs text-gray-400 mt-0.5">Not configured</p>
-                      ) : null}
+                      )}
                     </div>
                   </div>
 
                   {editingProvider !== row.provider && (
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => startEditingProvider(row.provider)}
-                        className="text-sm font-medium text-brand-600 hover:text-brand-700"
+                        onClick={() => handleToggleSource(row.provider, row.keySource)}
+                        disabled={togglingSource === row.provider || (row.keySource === "platform" && !row.configured)}
+                        className="text-xs font-medium px-2 py-1 rounded-full border transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={row.keySource === "platform" && !row.configured ? "Add your own key first to switch" : `Switch to ${row.keySource === "platform" ? "own key" : "platform key"}`}
                       >
-                        {row.configured ? "Rotate" : "Add Key"}
+                        {togglingSource === row.provider ? "..." : row.keySource === "platform" ? "Use own key" : "Use platform"}
                       </button>
-                      {row.configured && (
-                        <button
-                          onClick={() => handleDeleteProvider(row.provider)}
-                          className="text-sm font-medium text-red-500 hover:text-red-600"
-                        >
-                          Remove
-                        </button>
+                      {row.keySource === "org" && (
+                        <>
+                          <button
+                            onClick={() => startEditingProvider(row.provider)}
+                            className="text-sm font-medium text-brand-600 hover:text-brand-700"
+                          >
+                            {row.configured ? "Rotate" : "Add Key"}
+                          </button>
+                          {row.configured && (
+                            <button
+                              onClick={() => handleDeleteProvider(row.provider)}
+                              className="text-sm font-medium text-red-500 hover:text-red-600"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
                   )}

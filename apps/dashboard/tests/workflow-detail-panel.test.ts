@@ -42,6 +42,13 @@ describe("WorkflowDetailPanel", () => {
     expect(content).toContain("Not configured");
   });
 
+  it("should show key source badge (own key vs platform)", () => {
+    const content = fs.readFileSync(panelPath, "utf-8");
+    expect(content).toContain("k.keySource");
+    expect(content).toContain("own key");
+    expect(content).toContain("platform");
+  });
+
   it("should show ready/missing badge", () => {
     const content = fs.readFileSync(panelPath, "utf-8");
     expect(content).toContain("keyStatus.ready");

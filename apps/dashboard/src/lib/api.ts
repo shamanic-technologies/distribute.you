@@ -847,8 +847,29 @@ export interface WorkflowSummary {
 export interface WorkflowKeyStatus {
   workflowName: string;
   ready: boolean;
-  keys: { provider: string; configured: boolean; maskedKey: string | null; keySource?: "org" | "platform" }[];
+  keys: { provider: string; configured: boolean; maskedKey: string | null; keySource: "org" | "platform" }[];
   missing: string[];
+}
+
+// Key source preferences
+export interface KeySourcePreference {
+  provider: string;
+  keySource: "org" | "platform";
+}
+
+export async function listKeySources(token?: string): Promise<{ sources: KeySourcePreference[] }> {
+  return apiCall<{ sources: KeySourcePreference[] }>("/keys/sources", { token });
+}
+
+export async function setKeySource(
+  provider: string,
+  keySource: "org" | "platform",
+  token?: string
+): Promise<{ provider: string; orgId: string; keySource: "org" | "platform"; message: string }> {
+  return apiCall<{ provider: string; orgId: string; keySource: "org" | "platform"; message: string }>(
+    `/keys/${provider}/source`,
+    { token, method: "PUT", body: { keySource } }
+  );
 }
 
 export async function listWorkflows(params?: { featureSlug?: string }, token?: string): Promise<{ workflows: Workflow[] }> {
