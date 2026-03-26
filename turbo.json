@@ -1,31 +1,10 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalPassThroughEnv": ["ENABLE_EXPERIMENTAL_COREPACK", "CLERK_SECRET_KEY"],
+  "globalPassThroughEnv": ["*"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "env": [
-        "NEXT_PUBLIC_DISTRIBUTE_API_URL",
-        "ADMIN_DISTRIBUTE_API_KEY",
-        "BRAND_SERVICE_URL",
-        "ANTHROPIC_API_KEY",
-        "APOLLO_API_KEY",
-        "INSTANTLY_API_KEY",
-        "FIRECRAWL_API_KEY",
-        "GEMINI_API_KEY",
-        "POSTMARK_API_KEY",
-        "POSTMARK_BROADCAST_STREAM_ID",
-        "POSTMARK_INBOUND_STREAM_ID",
-        "POSTMARK_TRANSACTIONAL_STREAM_ID",
-        "POSTMARK_FROM_ADDRESS",
-        "STRIPE_SECRET_KEY",
-        "STRIPE_WEBHOOK_SECRET",
-        "SERPER_DEV_API_KEY",
-        "GOOGLE_CLIENT_ID",
-        "GOOGLE_CLIENT_SECRET",
-        "GOOGLE_DEVELOPER_TOKEN",
-        "GOOGLE_MCC_ACCOUNT_ID"
-      ],
+      "env": ["NEXT_PUBLIC_DISTRIBUTE_API_URL", "ADMIN_DISTRIBUTE_API_KEY", "BRAND_SERVICE_URL"],
       "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
     },
     "dev": {
