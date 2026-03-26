@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useSignIn, useAuth } from "@clerk/nextjs";
+import { useSignIn } from "@clerk/nextjs/legacy";
+import { useAuth } from "@clerk/nextjs";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 

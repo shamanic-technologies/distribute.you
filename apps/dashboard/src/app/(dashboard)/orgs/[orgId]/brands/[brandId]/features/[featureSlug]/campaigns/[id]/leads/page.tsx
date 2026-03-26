@@ -309,7 +309,7 @@ export default function CampaignLeadsPage() {
                   }`} />
                   <span>{selectedLead.enrichmentRun.status}</span>
                   {formatDuration(selectedLead.enrichmentRun.startedAt, selectedLead.enrichmentRun.completedAt) && (
-                    <span>\u2022 {formatDuration(selectedLead.enrichmentRun.startedAt, selectedLead.enrichmentRun.completedAt)}</span>
+                    <span>{"\u2022"} {formatDuration(selectedLead.enrichmentRun.startedAt, selectedLead.enrichmentRun.completedAt)}</span>
                   )}
                   <span className="ml-auto font-medium text-gray-700">
                     {formatCostDetailed(selectedLead.enrichmentRun.totalCostInUsdCents)}

@@ -15,7 +15,9 @@ describe("@clerk/nextjs v6 compatibility", () => {
 
   it("should use @clerk/nextjs v6+", () => {
     const version = pkg.dependencies["@clerk/nextjs"];
-    expect(version).toMatch(/^[\^~]?6/);
+    expect(version).toMatch(/^[\^~]?\d+/);
+    const major = parseInt(version.replace(/^[\^~]/, ""), 10);
+    expect(major).toBeGreaterThanOrEqual(6);
   });
 
   it("ClerkProvider should use dynamic prop", () => {
