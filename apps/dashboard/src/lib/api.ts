@@ -487,8 +487,8 @@ export interface BreakdownSegment {
 }
 
 export type FeatureChart =
-  | { type: "funnel-bar"; steps: FunnelStep[] }
-  | { type: "breakdown-bar"; segments: BreakdownSegment[] };
+  | { key: string; type: "funnel-bar"; title: string; displayOrder: number; steps: FunnelStep[] }
+  | { key: string; type: "breakdown-bar"; title: string; displayOrder: number; segments: BreakdownSegment[] };
 
 export interface Feature {
   slug: string;
@@ -562,6 +562,55 @@ export async function listFeatures(
 /** GET /features/:slug — get a single feature */
 export async function getFeature(slug: string, token?: string): Promise<{ feature: Feature }> {
   return apiCall<{ feature: Feature }>(`/features/${slug}`, { token });
+}
+
+/** POST /features — create a new feature */
+export async function createFeature(
+  params: {
+    name: string;
+    description: string;
+    icon: string;
+    category: string;
+    channel: string;
+    audienceType: string;
+    inputs: FeatureInput[];
+    outputs: FeatureOutput[];
+    charts: FeatureChart[];
+    entities: string[];
+    slug?: string;
+  },
+  token?: string,
+): Promise<{ feature: Feature }> {
+  return apiCall<{ feature: Feature }>("/features", {
+    token,
+    method: "POST",
+    body: params as unknown as Record<string, unknown>,
+  });
+}
+
+/** PUT /features/:slug — update an existing feature */
+export async function updateFeature(
+  slug: string,
+  params: Partial<{
+    name: string;
+    description: string;
+    icon: string;
+    category: string;
+    channel: string;
+    audienceType: string;
+    inputs: FeatureInput[];
+    outputs: FeatureOutput[];
+    charts: FeatureChart[];
+    entities: string[];
+    status: "active" | "draft" | "deprecated";
+  }>,
+  token?: string,
+): Promise<{ feature: Feature }> {
+  return apiCall<{ feature: Feature }>(`/features/${slug}`, {
+    token,
+    method: "PUT",
+    body: params as unknown as Record<string, unknown>,
+  });
 }
 
 /** GET /features/stats/registry — stats key registry */
