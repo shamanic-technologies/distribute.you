@@ -384,18 +384,6 @@ function FeatureSettingsPanel({ featureSlug, onClose }: { featureSlug: string; o
                 <dt className="text-gray-400 text-xs">Slug</dt>
                 <dd className="text-gray-700 font-mono text-xs">{feature.slug}</dd>
               </div>
-              <div>
-                <dt className="text-gray-400 text-xs">Category</dt>
-                <dd className="text-gray-700">{feature.category}</dd>
-              </div>
-              <div>
-                <dt className="text-gray-400 text-xs">Channel</dt>
-                <dd className="text-gray-700">{feature.channel}</dd>
-              </div>
-              <div>
-                <dt className="text-gray-400 text-xs">Audience</dt>
-                <dd className="text-gray-700">{feature.audienceType}</dd>
-              </div>
             </dl>
           </div>
 

@@ -98,7 +98,7 @@ export default function HomeLoading() {
         </div>
       </section>
 
-      {/* Skeleton category sections */}
+      {/* Skeleton feature sections */}
       <div className="bg-white">
         <SkeletonSection />
         <SkeletonSection />

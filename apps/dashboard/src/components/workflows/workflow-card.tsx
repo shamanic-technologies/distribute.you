@@ -20,13 +20,6 @@ function timeAgo(date: string | Date): string {
   return `${years}y ago`;
 }
 
-const CATEGORY_COLORS: Record<string, string> = {
-  sales: "bg-brand-100 text-brand-700 border-brand-200",
-  journalists: "bg-purple-100 text-purple-700 border-purple-200",
-  webinars: "bg-teal-100 text-teal-700 border-teal-200",
-  welcome: "bg-emerald-100 text-emerald-700 border-emerald-200",
-};
-
 export function WorkflowCard({
   workflow,
   isSelected,
@@ -37,7 +30,6 @@ export function WorkflowCard({
   onClick: () => void;
 }) {
   const stepCount = workflow.dag?.nodes.length ?? 0;
-  const categoryColor = (workflow.category ? CATEGORY_COLORS[workflow.category] : undefined) ?? "bg-gray-100 text-gray-700 border-gray-200";
 
   return (
     <button
@@ -64,24 +56,6 @@ export function WorkflowCard({
           {workflow.description}
         </p>
       )}
-
-      <div className="flex flex-wrap gap-1.5 mb-2">
-        {workflow.category && (
-          <span className={`text-xs px-2 py-0.5 rounded-full border ${categoryColor}`}>
-            {workflow.category}
-          </span>
-        )}
-        {workflow.channel && (
-          <span className="text-xs px-2 py-0.5 rounded-full border bg-gray-50 text-gray-600 border-gray-200">
-            {workflow.channel}
-          </span>
-        )}
-        {workflow.audienceType && (
-          <span className="text-xs px-2 py-0.5 rounded-full border bg-gray-50 text-gray-600 border-gray-200">
-            {workflow.audienceType}
-          </span>
-        )}
-      </div>
 
       <p className="text-xs text-gray-400">
         Updated {timeAgo(workflow.updatedAt)}

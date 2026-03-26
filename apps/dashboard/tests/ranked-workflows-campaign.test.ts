@@ -8,19 +8,19 @@ const pagePath = path.resolve(
 );
 const content = fs.readFileSync(pagePath, "utf-8");
 
-describe("Campaign creation page uses feature stats + ranked workflows", () => {
+describe("Campaign creation page uses feature stats + dynasty workflows", () => {
   it("should fetch feature stats grouped by workflow for display columns", () => {
     expect(content).toContain("fetchFeatureStats");
     expect(content).toContain('groupBy: "workflowName"');
   });
 
-  it("should fetch ranked workflows for workflow metadata (id, name, displayName)", () => {
-    expect(content).toContain("fetchRankedWorkflows");
+  it("should fetch workflows via listWorkflows filtered by featureSlug", () => {
+    expect(content).toContain("listWorkflows({ featureSlug })");
   });
 
-  it("should not use deprecated leaderboard or listWorkflows", () => {
-    expect(content).not.toContain("fetchFeatureLeaderboard");
-    expect(content).not.toContain("listWorkflows");
+  it("should group workflows by displayName (dynasty pattern)", () => {
+    expect(content).toContain("byDisplayName");
+    expect(content).toContain("wf.displayName");
   });
 
   it("should use dynamic feature outputs for table columns (not hardcoded email columns)", () => {
@@ -40,11 +40,6 @@ describe("Campaign creation page uses feature stats + ranked workflows", () => {
   it("should use workflow ID as stable selection key", () => {
     expect(content).toContain("selectedWorkflowId");
     expect(content).toContain("effectiveSelectionId");
-  });
-
-  it("should display the family name (displayName) not signatureName", () => {
-    expect(content).toContain("formatDisplayName");
-    expect(content).not.toMatch(/wf\.signatureName\s*\?/);
   });
 
   it("should send the active workflow name for campaign creation", () => {

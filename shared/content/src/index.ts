@@ -8,19 +8,9 @@ export { BRAND } from "./brand.js";
 export {
   WORKFLOW_DEFINITIONS,
   getWorkflowDefinition,
-  getWorkflowDefinitionsByCategory,
-  WORKFLOW_CATEGORY_LABELS,
   FEATURE_LABELS,
-  parseWorkflowName,
-  getFeatureSlug,
-  getSignatureName,
-  getWorkflowCategory,
   getWorkflowDisplayName,
 } from "./workflows.js";
 export type {
   WorkflowDefinition,
-  WorkflowCategory,
-  WorkflowChannel,
-  WorkflowAudienceType,
-  ParsedWorkflowName,
 } from "./workflows.js";

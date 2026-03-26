@@ -8,13 +8,6 @@ import { getWorkflow, getWorkflowSummary, getWorkflowKeyStatus } from "@/lib/api
 import { DAGVisualization } from "./dag-visualization";
 import { workflowDisplayName } from "@/lib/workflow-display-name";
 
-const CATEGORY_COLORS: Record<string, string> = {
-  sales: "bg-brand-100 text-brand-700",
-  journalists: "bg-purple-100 text-purple-700",
-  webinars: "bg-teal-100 text-teal-700",
-  welcome: "bg-emerald-100 text-emerald-700",
-};
-
 export function WorkflowDetailPanel({
   workflowId,
   onClose,
@@ -49,10 +42,6 @@ export function WorkflowDetailPanel({
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
-
-  const categoryColor = workflow?.category
-    ? CATEGORY_COLORS[workflow.category] ?? "bg-gray-100 text-gray-700"
-    : "bg-gray-100 text-gray-700";
 
   return (
     <>
@@ -96,28 +85,11 @@ export function WorkflowDetailPanel({
           </div>
 
           {/* Metadata pills */}
-          {workflow && (
+          {workflow && workflow.dag && (
             <div className="flex flex-wrap gap-2">
-              {workflow.category && (
-                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${categoryColor}`}>
-                  {workflow.category}
-                </span>
-              )}
-              {workflow.channel && (
-                <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
-                  {workflow.channel}
-                </span>
-              )}
-              {workflow.audienceType && (
-                <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
-                  {workflow.audienceType}
-                </span>
-              )}
-              {workflow.dag && (
-                <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-green-50 text-green-700">
-                  {workflow.dag.nodes.length} steps
-                </span>
-              )}
+              <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-green-50 text-green-700">
+                {workflow.dag.nodes.length} steps
+              </span>
             </div>
           )}
         </div>

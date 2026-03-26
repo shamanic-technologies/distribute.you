@@ -47,6 +47,7 @@ interface WorkflowTableRow {
   id: string;
   name: string;
   displayName: string;
+  featureSlug: string | null;
   stats: Record<string, number>;
 }
 
@@ -184,6 +185,7 @@ export default function FeatureCreateCampaignPage() {
         id: wf.id,
         name: wf.name,
         displayName: wf.displayName!,
+        featureSlug: wf.featureSlug ?? null,
         stats: s?.stats ?? {},
       };
     });

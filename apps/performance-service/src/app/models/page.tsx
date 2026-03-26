@@ -23,7 +23,6 @@ export const metadata: Metadata = {
 export default async function WorkflowsPage() {
   const data = await fetchLeaderboard();
   const workflows = data?.workflows || [];
-  const availableCategories = data?.availableCategories || [];
 
   return (
     <main className="min-h-screen bg-white">
@@ -41,7 +40,6 @@ export default async function WorkflowsPage() {
             <>
               <WorkflowLeaderboardFiltered
                 workflows={workflows}
-                availableCategories={availableCategories}
               />
               <p className="text-xs text-gray-400 mt-4 text-center">
                 Updated {data?.updatedAt ? new Date(data.updatedAt).toLocaleString() : "hourly"}.

@@ -17,7 +17,7 @@ import { DISTRIBUTION_FEATURES } from "../src/features.js";
 
 function generateRootReadme(): string {
   const workflowTable = WORKFLOW_DEFINITIONS
-    .map((w) => `| ${w.label} | ${w.description} | ${w.category} | ${w.channel} |`)
+    .map((w) => `| ${w.label} | ${w.description} | ${w.featureSlug} |`)
     .join("\n");
 
   const featureList = DISTRIBUTION_FEATURES
@@ -42,8 +42,8 @@ ${featureList}
 
 ## Available Workflows
 
-| Workflow | What it does | Category | Channel |
-|----------|--------------|----------|---------|
+| Workflow | What it does | Feature |
+|----------|--------------|---------|
 ${workflowTable}
 
 ## Quick Start

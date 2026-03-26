@@ -550,13 +550,10 @@ export interface GlobalStatsResponse {
 
 /** GET /features — list all features */
 export async function listFeatures(
-  params?: { category?: string; channel?: string; audienceType?: string; implemented?: boolean },
+  params?: { implemented?: boolean },
   token?: string,
 ): Promise<{ features: Feature[] }> {
   const query = new URLSearchParams();
-  if (params?.category) query.set("category", params.category);
-  if (params?.channel) query.set("channel", params.channel);
-  if (params?.audienceType) query.set("audienceType", params.audienceType);
   if (params?.implemented !== undefined) query.set("implemented", String(params.implemented));
   const qs = query.toString();
   return apiCall<{ features: Feature[] }>(`/features${qs ? `?${qs}` : ""}`, { token });

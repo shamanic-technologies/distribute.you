@@ -52,7 +52,6 @@ export function WorkflowSelectionTable({ featureSlug, onSelect, selectedWorkflow
         <thead>
           <tr className="border-b border-gray-100 text-xs text-gray-500 uppercase tracking-wide">
             <th className="text-left px-5 py-2.5 font-medium">Variant</th>
-            <th className="text-left px-5 py-2.5 font-medium">Category</th>
             <th className="text-right px-5 py-2.5 font-medium">Created</th>
             <th className="text-right px-5 py-2.5 font-medium"></th>
           </tr>
@@ -89,9 +88,6 @@ export function WorkflowSelectionTable({ featureSlug, onSelect, selectedWorkflow
                   {wf.description && (
                     <p className="text-xs text-gray-400 mt-0.5 ml-4">{wf.description}</p>
                   )}
-                </td>
-                <td className="px-5 py-3 text-sm text-gray-500 capitalize">
-                  {wf.category}
                 </td>
                 <td className="px-5 py-3 text-sm text-gray-400 text-right">
                   {new Date(wf.createdAt).toLocaleDateString()}

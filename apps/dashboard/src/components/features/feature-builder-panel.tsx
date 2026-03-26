@@ -26,9 +26,6 @@ export interface FeatureOutputDraft {
 export interface FeatureDraft {
   name: string;
   description: string;
-  category: string;
-  channel: string;
-  audienceType: string;
   inputs: FeatureInputDraft[];
   outputs: FeatureOutputDraft[];
 }
@@ -36,9 +33,6 @@ export interface FeatureDraft {
 const EMPTY_DRAFT: FeatureDraft = {
   name: "",
   description: "",
-  category: "",
-  channel: "",
-  audienceType: "",
   inputs: [],
   outputs: [],
 };
@@ -312,35 +306,6 @@ export function FeatureBuilderPanel({ draft, onDraftChange }: FeatureBuilderPane
               rows={2}
               className="w-full text-sm rounded-lg border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-white/[0.04] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-shadow resize-none"
             />
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            <div>
-              <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Category</label>
-              <input
-                value={draft.category}
-                onChange={(e) => updateField("category", e.target.value)}
-                placeholder="marketing"
-                className="w-full text-xs rounded-md border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-white/[0.04] px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-shadow"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Channel</label>
-              <input
-                value={draft.channel}
-                onChange={(e) => updateField("channel", e.target.value)}
-                placeholder="email"
-                className="w-full text-xs rounded-md border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-white/[0.04] px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-shadow"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Audience</label>
-              <input
-                value={draft.audienceType}
-                onChange={(e) => updateField("audienceType", e.target.value)}
-                placeholder="b2b"
-                className="w-full text-xs rounded-md border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-white/[0.04] px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-shadow"
-              />
-            </div>
           </div>
         </div>
 
