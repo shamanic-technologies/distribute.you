@@ -38,7 +38,7 @@ export interface FeatureDraft {
   inputs: FeatureInputDraft[];
   outputs: FeatureOutputDraft[];
   charts: FeatureChart[];
-  entities: string[];
+  entities: Array<{ name: string; countKey?: string }>;
 }
 
 const EMPTY_DRAFT: FeatureDraft = {
@@ -450,7 +450,7 @@ export function FeatureBuilderPanel({ draft, onDraftChange, onSave, isSaving, sa
               </div>
               <div className="flex flex-wrap gap-1.5 px-3">
                 {draft.entities.map((entity, i) => (
-                  <span key={i} className="text-xs bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-gray-300 px-2 py-1 rounded-md">{entity}</span>
+                  <span key={i} className="text-xs bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-gray-300 px-2 py-1 rounded-md">{entity.name}{entity.countKey ? ` → ${entity.countKey}` : ""}</span>
                 ))}
               </div>
               <p className="text-[10px] text-gray-400 italic px-3 mt-1">Set by AI — use the chat to modify</p>

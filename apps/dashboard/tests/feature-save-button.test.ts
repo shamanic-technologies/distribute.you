@@ -33,7 +33,7 @@ describe("Feature save button", () => {
     });
 
     it("should include entities field", () => {
-      expect(panelContent).toContain("entities: string[]");
+      expect(panelContent).toContain("entities: Array<{ name: string; countKey?: string }>");
     });
 
     it("EMPTY_DRAFT should initialize all new fields", () => {

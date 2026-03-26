@@ -496,6 +496,11 @@ export interface FeatureOutput {
   sortDirection?: "asc" | "desc";
 }
 
+export interface FeatureEntity {
+  name: string;
+  countKey?: string;
+}
+
 export interface FunnelStep {
   key: string;
 }
@@ -531,7 +536,7 @@ export interface Feature {
   inputs: FeatureInput[];
   outputs: FeatureOutput[];
   charts: FeatureChart[];
-  entities: string[];
+  entities: FeatureEntity[];
   forkedFrom?: FeatureRef;
   upgradedTo?: FeatureRef;
 }
@@ -610,7 +615,7 @@ export async function createFeature(
     inputs: FeatureInput[];
     outputs: FeatureOutput[];
     charts: FeatureChart[];
-    entities: string[];
+    entities: FeatureEntity[];
     slug?: string;
   },
   token?: string,
@@ -636,7 +641,7 @@ export async function updateFeature(
     inputs: FeatureInput[];
     outputs: FeatureOutput[];
     charts: FeatureChart[];
-    entities: string[];
+    entities: FeatureEntity[];
     status: "active" | "draft" | "deprecated";
   }>,
   token?: string,
