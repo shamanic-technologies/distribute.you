@@ -9,32 +9,49 @@ import {
   XMarkIcon,
   ArrowsUpDownIcon,
 } from "@heroicons/react/20/solid";
+import type { FeatureChart } from "@/lib/api";
 
 export interface FeatureInputDraft {
   key: string;
   label: string;
   description: string;
   placeholder?: string;
+  type?: "text" | "textarea" | "number" | "select";
+  extractKey?: string;
+  options?: string[];
 }
 
 export interface FeatureOutputDraft {
   key: string;
   label: string;
   description?: string;
+  displayOrder?: number;
 }
 
 export interface FeatureDraft {
   name: string;
   description: string;
+  icon: string;
+  category: string;
+  channel: string;
+  audienceType: string;
   inputs: FeatureInputDraft[];
   outputs: FeatureOutputDraft[];
+  charts: FeatureChart[];
+  entities: string[];
 }
 
 const EMPTY_DRAFT: FeatureDraft = {
   name: "",
   description: "",
+  icon: "",
+  category: "",
+  channel: "",
+  audienceType: "",
   inputs: [],
   outputs: [],
+  charts: [],
+  entities: [],
 };
 
 /* ─── Inline editable item ─────────────────────────────────────────── */
@@ -256,9 +273,12 @@ function ItemsSection({
 interface FeatureBuilderPanelProps {
   draft: FeatureDraft;
   onDraftChange: (draft: FeatureDraft) => void;
+  onSave?: () => void;
+  isSaving?: boolean;
+  saveError?: string | null;
 }
 
-export function FeatureBuilderPanel({ draft, onDraftChange }: FeatureBuilderPanelProps) {
+export function FeatureBuilderPanel({ draft, onDraftChange, onSave, isSaving, saveError }: FeatureBuilderPanelProps) {
   function updateField(field: keyof FeatureDraft, value: string) {
     onDraftChange({ ...draft, [field]: value });
   }
@@ -307,6 +327,45 @@ export function FeatureBuilderPanel({ draft, onDraftChange }: FeatureBuilderPane
               className="w-full text-sm rounded-lg border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-white/[0.04] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-shadow resize-none"
             />
           </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Icon</label>
+            <input
+              value={draft.icon}
+              onChange={(e) => updateField("icon", e.target.value)}
+              placeholder="e.g. envelope, globe, megaphone"
+              className="w-full text-sm rounded-lg border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-white/[0.04] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-shadow"
+            />
+            <p className="text-[10px] text-gray-400 mt-1">Lucide icon name (lucide.dev/icons)</p>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Category</label>
+              <input
+                value={draft.category}
+                onChange={(e) => updateField("category", e.target.value)}
+                placeholder="marketing"
+                className="w-full text-xs rounded-md border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-white/[0.04] px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-shadow"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Channel</label>
+              <input
+                value={draft.channel}
+                onChange={(e) => updateField("channel", e.target.value)}
+                placeholder="email"
+                className="w-full text-xs rounded-md border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-white/[0.04] px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-shadow"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Audience</label>
+              <input
+                value={draft.audienceType}
+                onChange={(e) => updateField("audienceType", e.target.value)}
+                placeholder="b2b"
+                className="w-full text-xs rounded-md border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-white/[0.04] px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-shadow"
+              />
+            </div>
+          </div>
         </div>
 
         {/* Divider */}
@@ -352,7 +411,70 @@ export function FeatureBuilderPanel({ draft, onDraftChange }: FeatureBuilderPane
             onDraftChange({ ...draft, outputs: [...draft.outputs, item as FeatureOutputDraft] });
           }}
         />
+
+        {/* Charts (read-only, set by AI) */}
+        {draft.charts.length > 0 && (
+          <>
+            <div className="border-t border-gray-100 dark:border-white/[0.04]" />
+            <div>
+              <div className="flex items-center justify-between px-3 mb-1">
+                <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Charts</h3>
+                <span className="text-[10px] text-gray-400 bg-gray-100 dark:bg-white/[0.06] px-1.5 py-0.5 rounded-full">{draft.charts.length}</span>
+              </div>
+              {draft.charts.map((chart, i) => (
+                <div key={i} className="px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{chart.title}</span>
+                    <code className="text-[10px] font-mono text-gray-400 bg-gray-100 dark:bg-white/[0.06] px-1.5 py-0.5 rounded">{chart.type}</code>
+                  </div>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {(chart.type === "funnel-bar" ? chart.steps : chart.type === "breakdown-bar" ? chart.segments : []).map((s, j) => (
+                      <span key={j} className="text-[10px] bg-gray-100 dark:bg-white/[0.06] text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded">{s.key}</span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <p className="text-[10px] text-gray-400 italic px-3">Set by AI — use the chat to modify</p>
+            </div>
+          </>
+        )}
+
+        {/* Entities (read-only, set by AI) */}
+        {draft.entities.length > 0 && (
+          <>
+            <div className="border-t border-gray-100 dark:border-white/[0.04]" />
+            <div>
+              <div className="flex items-center justify-between px-3 mb-1">
+                <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Entities</h3>
+                <span className="text-[10px] text-gray-400 bg-gray-100 dark:bg-white/[0.06] px-1.5 py-0.5 rounded-full">{draft.entities.length}</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5 px-3">
+                {draft.entities.map((entity, i) => (
+                  <span key={i} className="text-xs bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-gray-300 px-2 py-1 rounded-md">{entity}</span>
+                ))}
+              </div>
+              <p className="text-[10px] text-gray-400 italic px-3 mt-1">Set by AI — use the chat to modify</p>
+            </div>
+          </>
+        )}
       </div>
+
+      {/* Save button footer */}
+      {onSave && (
+        <div className="px-5 py-4 border-t border-gray-100 dark:border-white/[0.04] bg-white dark:bg-gray-900">
+          {saveError && (
+            <p className="text-xs text-red-600 dark:text-red-400 mb-2">{saveError}</p>
+          )}
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={isSaving || !draft.name.trim()}
+            className="w-full py-2.5 px-4 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {isSaving ? "Saving..." : "Save Feature"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

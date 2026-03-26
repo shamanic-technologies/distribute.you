@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useParams } from "next/navigation";
-import { useAuthQuery } from "@/lib/use-auth-query";
-import { getBrand } from "@/lib/api";
+import { useState, useMemo, useCallback } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
+import { getBrand, createFeature, ApiError, type FeatureInput, type FeatureOutput } from "@/lib/api";
 import { useFeatures } from "@/lib/features-context";
 import { FeatureBuilderPanel, EMPTY_DRAFT, type FeatureDraft } from "@/components/features/feature-builder-panel";
 import { FeatureCreatorChat } from "@/components/features/feature-creator-chat";
@@ -41,8 +41,12 @@ export default function CreateFeaturePage() {
   const params = useParams();
   const brandId = params.brandId as string;
   const orgId = params.orgId as string;
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const [draft, setDraft] = useState<FeatureDraft>({ ...EMPTY_DRAFT });
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const { data: brandData, isLoading } = useAuthQuery(
     ["brand", brandId],
@@ -116,6 +120,43 @@ export default function CreateFeaturePage() {
     ].join("\n"),
   }), [brandId, brand, draft, existingFeaturesRef, statsRegistryRef]);
 
+  const handleSave = useCallback(async () => {
+    if (isSaving) return;
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      const result = await createFeature({
+        name: draft.name,
+        description: draft.description,
+        icon: draft.icon || "sparkles",
+        category: draft.category,
+        channel: draft.channel,
+        audienceType: draft.audienceType,
+        inputs: draft.inputs.map((inp): FeatureInput => ({
+          key: inp.key,
+          label: inp.label,
+          description: inp.description,
+          placeholder: inp.placeholder ?? inp.label,
+          type: inp.type ?? "text",
+          extractKey: inp.extractKey ?? inp.key,
+          ...(inp.options ? { options: inp.options } : {}),
+        })),
+        outputs: draft.outputs.map((out, i): FeatureOutput => ({
+          key: out.key,
+          displayOrder: out.displayOrder ?? i,
+        })),
+        charts: draft.charts,
+        entities: draft.entities,
+      });
+      await queryClient.invalidateQueries({ queryKey: ["features"] });
+      router.push(`/orgs/${orgId}/brands/${brandId}/features/${result.feature.slug}`);
+    } catch (err) {
+      setSaveError(err instanceof ApiError ? err.message : "Failed to save feature");
+    } finally {
+      setIsSaving(false);
+    }
+  }, [isSaving, draft, queryClient, router, orgId, brandId]);
+
   const handleFeatureUpdate = (partial: Partial<FeatureDraft>) => {
     setDraft((prev) => ({ ...prev, ...partial }));
   };
@@ -128,7 +169,7 @@ export default function CreateFeaturePage() {
     <div className="flex h-full overflow-hidden bg-white dark:bg-gray-900">
       {/* Desktop: side panel with feature builder */}
       <aside className="hidden lg:flex w-[400px] flex-shrink-0 flex-col border-r border-gray-200 dark:border-white/[0.06] bg-gray-50/50 dark:bg-gray-900/50">
-        <FeatureBuilderPanel draft={draft} onDraftChange={setDraft} />
+        <FeatureBuilderPanel draft={draft} onDraftChange={setDraft} onSave={handleSave} isSaving={isSaving} saveError={saveError} />
       </aside>
 
       {/* Main chat area */}
@@ -159,7 +200,7 @@ export default function CreateFeaturePage() {
           </button>
           {detailsOpen && (
             <div className="border-t border-gray-100 dark:border-white/[0.04] bg-gray-50/30 dark:bg-white/[0.02] max-h-[50vh] overflow-y-auto">
-              <FeatureBuilderPanel draft={draft} onDraftChange={setDraft} />
+              <FeatureBuilderPanel draft={draft} onDraftChange={setDraft} onSave={handleSave} isSaving={isSaving} saveError={saveError} />
             </div>
           )}
         </div>
