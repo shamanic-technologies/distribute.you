@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { WORKFLOW_CATEGORY_LABELS } from "@distribute/content";
+import { FEATURE_LABELS } from "@distribute/content";
 import {
   formatPercent,
   formatCostCents,
@@ -162,9 +162,9 @@ export function WorkflowLeaderboard({ workflows, inSection = false, maxEntries }
                         ? wf.signatureName.charAt(0).toUpperCase() + wf.signatureName.slice(1)
                         : wf.displayName || formatWorkflowName(wf.workflowName)}
                     </span>
-                    {!inSection && wf.category && (
+                    {!inSection && wf.featureSlug && (
                       <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
-                        {WORKFLOW_CATEGORY_LABELS[wf.category]}
+                        {FEATURE_LABELS[wf.featureSlug] ?? wf.featureSlug}
                       </span>
                     )}
                   </div>

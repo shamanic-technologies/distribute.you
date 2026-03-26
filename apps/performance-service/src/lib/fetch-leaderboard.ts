@@ -1,4 +1,4 @@
-import type { WorkflowCategory } from "@distribute/content";
+import { FEATURE_LABELS } from "@distribute/content";
 
 const API_URL =
   process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
@@ -83,7 +83,6 @@ export interface WorkflowLeaderboardEntry {
   workflowName: string;
   displayName: string;
   signatureName: string | null;
-  category: WorkflowCategory | null;
   featureSlug: string | null;
   runCount: number;
   emailsSent: number;
@@ -116,7 +115,6 @@ export interface FeatureGroupStats {
 }
 
 export interface FeatureGroupData {
-  category: string;
   featureSlug: string;
   label: string;
   stats: FeatureGroupStats;
@@ -129,7 +127,6 @@ export interface LeaderboardData {
   workflows: WorkflowLeaderboardEntry[];
   hero: HeroStats | null;
   updatedAt: string;
-  availableCategories: WorkflowCategory[];
   featureGroups: FeatureGroupData[];
 }
 
@@ -144,7 +141,6 @@ function rankedToWorkflowEntry(item: PublicRankedItem): WorkflowLeaderboardEntry
     workflowName: item.workflow.name,
     displayName: item.workflow.displayName ?? item.workflow.name,
     signatureName: item.workflow.signatureName,
-    category: item.workflow.category as WorkflowCategory,
     featureSlug,
     runCount: item.stats.completedRuns,
     emailsSent: b.sent,
@@ -212,7 +208,7 @@ function aggregateBrandStats(items: PublicRankedItem[]): BrandLeaderboardEntry[]
 function buildFeatureGroups(workflows: WorkflowLeaderboardEntry[], brands: BrandLeaderboardEntry[]): FeatureGroupData[] {
   const grouped = new Map<string, WorkflowLeaderboardEntry[]>();
   for (const wf of workflows) {
-    const key = wf.featureSlug ?? wf.category ?? "unknown";
+    const key = wf.featureSlug ?? "unknown";
     const arr = grouped.get(key) ?? [];
     arr.push(wf);
     grouped.set(key, arr);
@@ -225,12 +221,8 @@ function buildFeatureGroups(workflows: WorkflowLeaderboardEntry[], brands: Brand
     const cost = sectionWorkflows.reduce((s, w) => s + w.totalCostUsdCents, 0);
 
     return {
-      category: sectionWorkflows[0]?.category ?? featureSlug,
       featureSlug,
-      label: featureSlug
-        .split("-")
-        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-        .join(" "),
+      label: FEATURE_LABELS[featureSlug] ?? featureSlug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" "),
       stats: {
         emailsSent: sent,
         emailsOpened: opened,
@@ -352,13 +344,7 @@ export async function fetchLeaderboard(): Promise<LeaderboardData | null> {
       };
     }
 
-    // Extract unique categories
-    const categorySet = new Set<WorkflowCategory>();
-    for (const wf of workflows) {
-      if (wf.category) categorySet.add(wf.category);
-    }
-
-    // Build category sections
+    // Build feature sections
     const featureGroups = buildFeatureGroups(workflows, brands);
 
     return {
@@ -366,7 +352,6 @@ export async function fetchLeaderboard(): Promise<LeaderboardData | null> {
       workflows,
       hero,
       updatedAt: new Date().toISOString(),
-      availableCategories: [...categorySet],
       featureGroups,
     };
   } catch (error) {

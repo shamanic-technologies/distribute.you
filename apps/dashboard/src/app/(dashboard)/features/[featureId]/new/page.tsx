@@ -91,7 +91,7 @@ interface WorkflowTableRow {
   name: string;
   displayName: string;
   signatureName: string;
-  category: string;
+  featureSlug: string | null;
   emailsSent: number;
   openRate: number;
   clickRate: number;
@@ -109,7 +109,7 @@ function rankedToRow(item: RankedWorkflowItem): WorkflowTableRow {
     name: item.workflow.name,
     displayName: item.workflow.displayName ?? item.workflow.name,
     signatureName: item.workflow.signatureName,
-    category: item.workflow.category,
+    featureSlug: item.workflow.featureSlug,
     emailsSent: b.sent,
     openRate: b.sent > 0 ? b.opened / b.sent : 0,
     clickRate: b.sent > 0 ? b.clicked / b.sent : 0,
@@ -964,11 +964,6 @@ function WorkflowRow({
           <span className={`text-sm font-medium ${isSelected ? "text-brand-700" : "text-gray-900"}`}>
             {label}
           </span>
-          {wf.category && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
-              {wf.category}
-            </span>
-          )}
           {onShowDetail && (
             <button
               onClick={(e) => { e.stopPropagation(); onShowDetail(); }}

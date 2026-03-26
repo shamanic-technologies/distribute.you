@@ -16,7 +16,6 @@ export interface BrandEntry {
 export interface WorkflowEntry {
   workflowName: string;
   displayName: string;
-  category: string | null;
   emailsSent: number;
   openRate: number;
   clickRate: number;
@@ -73,7 +72,6 @@ export async function fetchLeaderboardPreview(): Promise<LeaderboardPreview | nu
       return {
         workflowName: item.workflow.name,
         displayName: item.workflow.displayName ?? item.workflow.name,
-        category: item.workflow.category,
         emailsSent: b.sent,
         openRate: b.sent > 0 ? b.opened / b.sent : 0,
         clickRate: b.sent > 0 ? b.clicked / b.sent : 0,

@@ -25,7 +25,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Category sections */}
+      {/* Feature sections */}
       {sections.length > 0 ? (
         <div className="bg-white">
           {sections.map((section) => (

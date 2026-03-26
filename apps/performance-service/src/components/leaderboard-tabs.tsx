@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { WORKFLOW_CATEGORY_LABELS, type WorkflowCategory } from "@distribute/content";
+import { FEATURE_LABELS } from "@distribute/content";
 import { BrandLeaderboard, WorkflowLeaderboard } from "./leaderboard-table";
 import type { BrandLeaderboardEntry, WorkflowLeaderboardEntry } from "@/lib/fetch-leaderboard";
 
@@ -10,18 +10,17 @@ type Tab = "brands" | "workflows";
 export function LeaderboardTabs({
   brands,
   workflows,
-  availableCategories,
 }: {
   brands: BrandLeaderboardEntry[];
   workflows: WorkflowLeaderboardEntry[];
-  availableCategories: WorkflowCategory[];
 }) {
   const [tab, setTab] = useState<Tab>("brands");
-  const [categoryFilter, setCategoryFilter] = useState<WorkflowCategory | "all">("all");
+  const availableFeatureSlugs = [...new Set(workflows.map((w) => w.featureSlug).filter(Boolean))] as string[];
+  const [featureFilter, setFeatureFilter] = useState<string | "all">("all");
 
-  const filteredWorkflows = categoryFilter === "all"
+  const filteredWorkflows = featureFilter === "all"
     ? workflows
-    : workflows.filter((w) => w.category === categoryFilter);
+    : workflows.filter((w) => w.featureSlug === featureFilter);
 
   return (
     <div>
@@ -48,29 +47,29 @@ export function LeaderboardTabs({
         </button>
       </div>
 
-      {tab === "workflows" && availableCategories.length > 1 && (
+      {tab === "workflows" && availableFeatureSlugs.length > 1 && (
         <div className="flex gap-2 mb-4">
           <button
-            onClick={() => setCategoryFilter("all")}
+            onClick={() => setFeatureFilter("all")}
             className={`px-3 py-1 rounded-full text-xs font-medium transition ${
-              categoryFilter === "all"
+              featureFilter === "all"
                 ? "bg-brand-100 text-brand-700 border border-brand-200"
                 : "bg-gray-100 text-gray-500 hover:text-gray-700 border border-transparent"
             }`}
           >
             All
           </button>
-          {availableCategories.map((cat) => (
+          {availableFeatureSlugs.map((slug) => (
             <button
-              key={cat}
-              onClick={() => setCategoryFilter(cat)}
+              key={slug}
+              onClick={() => setFeatureFilter(slug)}
               className={`px-3 py-1 rounded-full text-xs font-medium transition ${
-                categoryFilter === cat
+                featureFilter === slug
                   ? "bg-brand-100 text-brand-700 border border-brand-200"
                   : "bg-gray-100 text-gray-500 hover:text-gray-700 border border-transparent"
               }`}
             >
-              {WORKFLOW_CATEGORY_LABELS[cat]}
+              {FEATURE_LABELS[slug] ?? slug}
             </button>
           ))}
         </div>
@@ -87,7 +86,7 @@ export function LeaderboardTabs({
           <WorkflowLeaderboard workflows={filteredWorkflows} />
         ) : (
           <div className="text-center py-12 text-gray-500">
-            {categoryFilter !== "all" ? "No workflow data for this category." : "No workflow data yet."}
+            {featureFilter !== "all" ? "No workflow data for this feature." : "No workflow data yet."}
           </div>
         )}
       </div>

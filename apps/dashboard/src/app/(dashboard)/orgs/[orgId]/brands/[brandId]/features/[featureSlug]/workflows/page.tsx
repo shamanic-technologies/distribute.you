@@ -69,9 +69,7 @@ export default function FeatureWorkflowsPage() {
     mutationFn: () =>
       generateWorkflow({
         description: `Create a ${wfDef?.name ?? featureSlug} workflow: ${wfDef?.description ?? "automated workflow for this feature"}.`,
-        hints: {
-          services: wfDef ? [wfDef.category] : undefined,
-        },
+        hints: {},
       }),
     onSuccess: (result) => {
       router.push(

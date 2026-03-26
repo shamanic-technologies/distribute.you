@@ -55,7 +55,7 @@ interface WorkflowTableRow {
   id: string;
   name: string;
   displayName: string;
-  category: string;
+  featureSlug: string | null;
   stats: Record<string, number>;
 }
 
@@ -154,7 +154,7 @@ export default function FeatureCreateCampaignPage() {
   );
   const brand = brandData?.brand ?? null;
 
-  // Fetch ranked workflows for workflow metadata (id, name, displayName, category)
+  // Fetch ranked workflows for workflow metadata (id, name, displayName, featureSlug)
   const { data: rankedItems } = useAuthQuery(
     ["ranked-workflows", featureSlug],
     () => fetchRankedWorkflows({
@@ -191,7 +191,7 @@ export default function FeatureCreateCampaignPage() {
           id: ranked?.workflow.id ?? wfName,
           name: wfName,
           displayName: ranked?.workflow.displayName ?? wfName,
-          category: ranked?.workflow.category ?? "",
+          featureSlug: ranked?.workflow.featureSlug ?? null,
           stats: g.stats,
         };
       })
