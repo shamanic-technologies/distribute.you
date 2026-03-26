@@ -11,14 +11,14 @@ export function BrandLogo({
   className,
   fallbackClassName,
 }: {
-  domain: string;
+  domain: string | null;
   size?: number;
   className?: string;
   fallbackClassName?: string;
 }) {
   const [error, setError] = useState(false);
 
-  if (error) {
+  if (error || !domain) {
     return (
       <GlobeAltIcon
         className={fallbackClassName || className}

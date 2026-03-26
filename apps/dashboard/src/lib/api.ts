@@ -318,20 +318,30 @@ export async function stopCampaign(campaignId: string, token?: string): Promise<
 // Brands
 export interface Brand {
   id: string;
-  domain: string;
+  domain: string | null;
   name: string | null;
-  brandUrl: string;
-  createdAt: string;
+  brandUrl: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  logoUrl: string | null;
+  elevatorPitch: string | null;
+}
+
+export interface BrandDetail extends Brand {
+  bio: string | null;
+  mission: string | null;
+  location: string | null;
+  categories: string | null;
 }
 
 export async function listBrands(token?: string): Promise<{ brands: Brand[] }> {
   return apiCall<{ brands: Brand[] }>("/brands", { token });
 }
 
-/** GET /brands/:brandId — returns brand or null if not found (404/500 from missing brand) */
-export async function getBrand(brandId: string, token?: string): Promise<{ brand: Brand } | null> {
+/** GET /brands/:brandId — returns brand detail or null if not found (404/500 from missing brand) */
+export async function getBrand(brandId: string, token?: string): Promise<{ brand: BrandDetail } | null> {
   try {
-    return await apiCall<{ brand: Brand }>(`/brands/${brandId}`, { token });
+    return await apiCall<{ brand: BrandDetail }>(`/brands/${brandId}`, { token });
   } catch (err) {
     if (err instanceof ApiError && (err.status === 404 || err.status === 500)) return null;
     throw err;
@@ -345,12 +355,20 @@ export interface ExtractFieldDef {
 }
 
 export interface ExtractFieldResult {
-  key: string;
   value: unknown;
   cached: boolean;
   extractedAt: string;
   expiresAt: string;
   sourceUrls: string[] | null;
+}
+
+/** A previously extracted and cached field (from GET /brands/:id/extracted-fields) */
+export interface CachedField {
+  key: string;
+  value: unknown;
+  sourceUrls: string[] | null;
+  extractedAt: string;
+  expiresAt: string;
 }
 
 /** Core sales profile fields — reproduces the old /sales-profile extraction */
@@ -375,10 +393,10 @@ export const SALES_PROFILE_FIELDS: ExtractFieldDef[] = [
 ];
 
 
-/** Convert extract-fields results to a key→value map (preserves raw types) */
-export function fieldResultsToMap(results: ExtractFieldResult[]): Record<string, unknown> {
+/** Convert extract-fields results map to a key→value map (preserves raw types) */
+export function fieldResultsToMap(results: Record<string, ExtractFieldResult>): Record<string, unknown> {
   const map: Record<string, unknown> = {};
-  for (const r of results) map[r.key] = r.value;
+  for (const [key, r] of Object.entries(results)) map[key] = r.value;
   return map;
 }
 
@@ -400,10 +418,10 @@ export function flattenFieldValue(value: unknown): string {
   return String(value);
 }
 
-/** Convert extract-fields results to a string map (for form pre-fill) */
-export function fieldResultsToStringMap(results: ExtractFieldResult[]): Record<string, string> {
+/** Convert extract-fields results map to a string map (for form pre-fill) */
+export function fieldResultsToStringMap(results: Record<string, ExtractFieldResult>): Record<string, string> {
   const map: Record<string, string> = {};
-  for (const r of results) map[r.key] = flattenFieldValue(r.value);
+  for (const [key, r] of Object.entries(results)) map[key] = flattenFieldValue(r.value);
   return map;
 }
 
@@ -412,10 +430,21 @@ export async function extractBrandFields(
   brandId: string,
   fields: ExtractFieldDef[],
   token?: string,
-): Promise<{ results: ExtractFieldResult[] }> {
-  return apiCall<{ results: ExtractFieldResult[] }>(
+): Promise<{ brandId: string; results: Record<string, ExtractFieldResult> }> {
+  return apiCall<{ brandId: string; results: Record<string, ExtractFieldResult> }>(
     `/brands/${brandId}/extract-fields`,
     { token, method: "POST", body: { fields } },
+  );
+}
+
+/** GET /brands/:brandId/extracted-fields — list previously extracted and cached fields */
+export async function listExtractedFields(
+  brandId: string,
+  token?: string,
+): Promise<{ brandId: string; fields: CachedField[] }> {
+  return apiCall<{ brandId: string; fields: CachedField[] }>(
+    `/brands/${brandId}/extracted-fields`,
+    { token },
   );
 }
 
@@ -670,9 +699,10 @@ export async function upsertBrand(
 // Brand runs
 export interface RunCost {
   costName: string;
-  quantity: string;
-  unitCostInUsdCents: string;
   totalCostInUsdCents: string;
+  actualCostInUsdCents: string;
+  provisionedCostInUsdCents: string;
+  quantity: number;
 }
 
 export interface DescendantRun {
@@ -689,15 +719,16 @@ export interface ErrorSummary {
 }
 
 export interface BrandRun {
-  id: string;
-  taskName: string;
   status: string;
-  startedAt: string;
+  startedAt: string | null;
   completedAt: string | null;
   totalCostInUsdCents: string | null;
   costs: RunCost[];
+  serviceName: string | null;
+  taskName: string | null;
   error?: string;
   errorSummary?: ErrorSummary;
+  descendantRuns: unknown[];
 }
 
 /** GET /brands/:brandId/runs — returns runs or empty list if brand not found (404/500) */

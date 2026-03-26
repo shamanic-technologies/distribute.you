@@ -82,8 +82,6 @@ function CostGroupList({
           <div key={cost.costName} className="flex items-center justify-between text-xs text-gray-400">
             <span className="font-mono">{cost.costName}</span>
             <span>
-              {Number(cost.quantity).toLocaleString()} × {formatCostDetailed(cost.unitCostInUsdCents)}
-              {" = "}
               {formatCostDetailed(cost.totalCostInUsdCents)}
             </span>
           </div>
@@ -105,8 +103,6 @@ function CostGroupList({
               <div key={cost.costName} className="flex items-center justify-between text-xs text-gray-400">
                 <span className="font-mono">{cost.costName}</span>
                 <span>
-                  {Number(cost.quantity).toLocaleString()} × {formatCostDetailed(cost.unitCostInUsdCents)}
-                  {" = "}
                   {formatCostDetailed(cost.totalCostInUsdCents)}
                 </span>
               </div>

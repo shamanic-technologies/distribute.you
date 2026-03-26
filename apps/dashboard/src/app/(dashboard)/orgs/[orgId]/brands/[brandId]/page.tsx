@@ -181,14 +181,16 @@ export default function BrandOverviewPage() {
             {brand.name || brand.domain}
           </h1>
         </div>
-        <a
-          href={brand.brandUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-sm text-brand-600 hover:underline"
-        >
-          {brand.brandUrl}
-        </a>
+        {brand.brandUrl && (
+          <a
+            href={brand.brandUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-brand-600 hover:underline"
+          >
+            {brand.brandUrl}
+          </a>
+        )}
       </div>
 
       {/* Brand Info Card */}

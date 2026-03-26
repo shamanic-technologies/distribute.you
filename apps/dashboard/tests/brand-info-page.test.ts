@@ -14,7 +14,11 @@ describe("Brand info page", () => {
   });
 
   describe("Field extraction fetching", () => {
-    it("should use extractBrandFields to fetch fields", () => {
+    it("should use listExtractedFields to read cached fields", () => {
+      expect(content).toContain("listExtractedFields(brandId)");
+    });
+
+    it("should use extractBrandFields for regeneration", () => {
       expect(content).toContain("extractBrandFields(brandId, SALES_PROFILE_FIELDS)");
     });
 
@@ -62,22 +66,64 @@ describe("Brand info page", () => {
   });
 });
 
-describe("API extractBrandFields function", () => {
+describe("API brand functions", () => {
   const apiPath = path.resolve(__dirname, "../src/lib/api.ts");
   const content = fs.readFileSync(apiPath, "utf-8");
 
-  it("should have extractBrandFields function", () => {
+  it("should have extractBrandFields function returning map-based results", () => {
     expect(content).toContain("export async function extractBrandFields");
     expect(content).toContain('method: "POST"');
     expect(content).toContain("/extract-fields");
+    expect(content).toContain("Record<string, ExtractFieldResult>");
   });
 
-  it("should have ExtractFieldResult type with per-field cached, extractedAt, and sourceUrls", () => {
+  it("should have listExtractedFields function for GET /extracted-fields", () => {
+    expect(content).toContain("export async function listExtractedFields");
+    expect(content).toContain("/extracted-fields");
+    expect(content).toContain("CachedField[]");
+  });
+
+  it("should have CachedField type with key, value, sourceUrls, extractedAt, expiresAt", () => {
+    expect(content).toContain("interface CachedField");
+    expect(content).toMatch(/CachedField[\s\S]*key: string/);
+  });
+
+  it("should have ExtractFieldResult type without key field", () => {
     expect(content).toContain("interface ExtractFieldResult");
     expect(content).toContain("cached: boolean");
     expect(content).toContain("extractedAt: string");
-    expect(content).toContain("expiresAt: string");
     expect(content).toContain("sourceUrls: string[] | null");
+  });
+
+  it("should have Brand interface with new fields (logoUrl, elevatorPitch, updatedAt)", () => {
+    expect(content).toContain("logoUrl: string | null");
+    expect(content).toContain("elevatorPitch: string | null");
+    expect(content).toContain("updatedAt: string | null");
+  });
+
+  it("should have BrandDetail extending Brand", () => {
+    expect(content).toContain("interface BrandDetail extends Brand");
+    expect(content).toContain("bio: string | null");
+    expect(content).toContain("mission: string | null");
+    expect(content).toContain("location: string | null");
+    expect(content).toContain("categories: string | null");
+  });
+
+  it("should have BrandRun without id field", () => {
+    expect(content).toContain("interface BrandRun");
+    expect(content).toContain("serviceName: string | null");
+    expect(content).toContain("taskName: string | null");
+    expect(content).toContain("descendantRuns: unknown[]");
+  });
+
+  it("should have RunCost with actualCostInUsdCents instead of unitCostInUsdCents", () => {
+    expect(content).toContain("actualCostInUsdCents: string");
+    expect(content).toContain("provisionedCostInUsdCents: string");
+    expect(content).not.toContain("unitCostInUsdCents");
+  });
+
+  it("should have fieldResultsToMap accepting map-based results", () => {
+    expect(content).toContain("function fieldResultsToMap(results: Record<string, ExtractFieldResult>)");
   });
 
   it("should have SALES_PROFILE_FIELDS constant", () => {
@@ -85,10 +131,6 @@ describe("API extractBrandFields function", () => {
     expect(content).toContain("valueProposition");
     expect(content).toContain("customerPainPoints");
     expect(content).toContain("callToAction");
-  });
-
-  it("should have fieldResultsToMap helper", () => {
-    expect(content).toContain("export function fieldResultsToMap");
   });
 
   it("should NOT have old sales-profile functions", () => {

@@ -39,7 +39,7 @@ function deriveCompanies(leads: Lead[]): DerivedCompany[] {
       totalCents += parseFloat(lead.enrichmentRun.totalCostInUsdCents) || 0;
       for (const cost of lead.enrichmentRun.costs) {
         const existing = costAgg.get(cost.costName);
-        const q = parseFloat(cost.quantity) || 0;
+        const q = typeof cost.quantity === "number" ? cost.quantity : (parseFloat(String(cost.quantity)) || 0);
         const t = parseFloat(cost.totalCostInUsdCents) || 0;
         if (existing) {
           existing.quantity += q;
