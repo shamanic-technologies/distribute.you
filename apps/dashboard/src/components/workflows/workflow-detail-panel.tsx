@@ -50,9 +50,9 @@ export function WorkflowDetailPanel({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
-  const categoryColor = workflow
+  const categoryColor = workflow?.category
     ? CATEGORY_COLORS[workflow.category] ?? "bg-gray-100 text-gray-700"
-    : "";
+    : "bg-gray-100 text-gray-700";
 
   return (
     <>
@@ -98,15 +98,21 @@ export function WorkflowDetailPanel({
           {/* Metadata pills */}
           {workflow && (
             <div className="flex flex-wrap gap-2">
-              <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${categoryColor}`}>
-                {workflow.category}
-              </span>
-              <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
-                {workflow.channel}
-              </span>
-              <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
-                {workflow.audienceType}
-              </span>
+              {workflow.category && (
+                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${categoryColor}`}>
+                  {workflow.category}
+                </span>
+              )}
+              {workflow.channel && (
+                <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
+                  {workflow.channel}
+                </span>
+              )}
+              {workflow.audienceType && (
+                <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
+                  {workflow.audienceType}
+                </span>
+              )}
               {workflow.dag && (
                 <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-green-50 text-green-700">
                   {workflow.dag.nodes.length} steps

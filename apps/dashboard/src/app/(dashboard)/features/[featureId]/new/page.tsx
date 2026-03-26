@@ -109,7 +109,7 @@ function rankedToRow(item: RankedWorkflowItem): WorkflowTableRow {
     name: item.workflow.name,
     displayName: item.workflow.displayName ?? item.workflow.name,
     signatureName: item.workflow.signatureName,
-    category: item.workflow.category,
+    category: item.workflow.category ?? "",
     emailsSent: b.sent,
     openRate: b.sent > 0 ? b.opened / b.sent : 0,
     clickRate: b.sent > 0 ? b.clicked / b.sent : 0,

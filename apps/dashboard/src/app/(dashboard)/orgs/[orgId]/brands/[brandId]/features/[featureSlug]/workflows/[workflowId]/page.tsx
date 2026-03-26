@@ -96,9 +96,10 @@ export default function WorkflowViewerPage() {
         name: workflow.name,
         displayName: workflow.displayName,
         description: workflow.description,
-        category: workflow.category,
-        channel: workflow.channel,
-        audienceType: workflow.audienceType,
+        featureSlug: workflow.featureSlug,
+        category: workflow.category ?? null,
+        channel: workflow.channel ?? null,
+        audienceType: workflow.audienceType ?? null,
         requiredProviders: workflow.requiredProviders,
       },
       dag: workflow.dag,
@@ -188,12 +189,16 @@ export default function WorkflowViewerPage() {
                   </h1>
                   <p className="text-[10px] text-gray-400 dark:text-gray-500 font-mono truncate mt-0.5">{workflow.name}</p>
                   <div className="flex gap-1.5 mt-1">
-                    <span className="text-[11px] px-2 py-0.5 rounded-md bg-white dark:bg-white/[0.06] border border-gray-200 dark:border-white/[0.08] text-gray-500 dark:text-gray-400 font-medium">
-                      {workflow.category}
-                    </span>
-                    <span className="text-[11px] px-2 py-0.5 rounded-md bg-white dark:bg-white/[0.06] border border-gray-200 dark:border-white/[0.08] text-gray-500 dark:text-gray-400 font-medium">
-                      {workflow.channel}
-                    </span>
+                    {workflow.category && (
+                      <span className="text-[11px] px-2 py-0.5 rounded-md bg-white dark:bg-white/[0.06] border border-gray-200 dark:border-white/[0.08] text-gray-500 dark:text-gray-400 font-medium">
+                        {workflow.category}
+                      </span>
+                    )}
+                    {workflow.channel && (
+                      <span className="text-[11px] px-2 py-0.5 rounded-md bg-white dark:bg-white/[0.06] border border-gray-200 dark:border-white/[0.08] text-gray-500 dark:text-gray-400 font-medium">
+                        {workflow.channel}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -231,9 +236,11 @@ export default function WorkflowViewerPage() {
                   <h1 className="font-display text-sm font-bold text-gray-900 dark:text-gray-100 truncate">
                     {workflowDisplayName(workflow)}
                   </h1>
-                  <span className="text-[11px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-white/[0.06] text-gray-500 dark:text-gray-400 flex-shrink-0">
-                    {workflow.category}
-                  </span>
+                  {workflow.category && (
+                    <span className="text-[11px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-white/[0.06] text-gray-500 dark:text-gray-400 flex-shrink-0">
+                      {workflow.category}
+                    </span>
+                  )}
                 </div>
                 <ChevronDownIcon
                   className={`w-5 h-5 text-gray-400 flex-shrink-0 transition-transform duration-200 ${detailsOpen ? "rotate-180" : ""}`}

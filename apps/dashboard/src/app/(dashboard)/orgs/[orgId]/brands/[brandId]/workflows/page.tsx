@@ -96,9 +96,9 @@ function WorkflowRow({
             <p className="text-sm text-gray-500 line-clamp-2">{workflow.description}</p>
           )}
           <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
-            <span>{workflow.channel}</span>
-            <span>&middot;</span>
-            <span>{workflow.audienceType}</span>
+            {workflow.channel && <span>{workflow.channel}</span>}
+            {workflow.channel && workflow.audienceType && <span>&middot;</span>}
+            {workflow.audienceType && <span>{workflow.audienceType}</span>}
             {workflow.dag && (
               <>
                 <span>&middot;</span>
