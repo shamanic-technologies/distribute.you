@@ -33,11 +33,7 @@ export function DiscoveredJournalists({ campaignId }: DiscoveredJournalistsProps
   }
 
   if (journalists.length === 0) {
-    return (
-      <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6 min-h-[120px] flex items-center justify-center">
-        <p className="text-gray-500 text-sm text-center">No journalists discovered yet. The campaign workflow will find relevant journalists automatically.</p>
-      </div>
-    );
+    return null;
   }
 
   return (
