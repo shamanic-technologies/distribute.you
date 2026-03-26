@@ -363,11 +363,15 @@ export function FeatureCreatorChat({
 
   const isStreaming = status === "streaming" || status === "submitted";
 
-  // Auto-scroll: use a ref so the scroll callback never has a stale closure
+  // Auto-scroll: defer to next frame so pending scroll events update the ref first
   useEffect(() => {
-    if (scrollRef.current && !userHasScrolledRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    if (userHasScrolledRef.current) return;
+    const frame = requestAnimationFrame(() => {
+      if (!userHasScrolledRef.current && scrollRef.current) {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      }
+    });
+    return () => cancelAnimationFrame(frame);
   }, [messages]);
 
   useEffect(() => {
@@ -376,8 +380,10 @@ export function FeatureCreatorChat({
     function handleScroll() {
       if (!el) return;
       const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-      userHasScrolledRef.current = !isAtBottom;
-      setShowScrollPill(!isAtBottom);
+      const hasScrolled = !isAtBottom;
+      userHasScrolledRef.current = hasScrolled;
+      // Only update state when value changes to avoid re-render loops during streaming
+      setShowScrollPill((prev) => (prev !== hasScrolled ? hasScrolled : prev));
     }
     el.addEventListener("scroll", handleScroll, { passive: true });
     return () => el.removeEventListener("scroll", handleScroll);
