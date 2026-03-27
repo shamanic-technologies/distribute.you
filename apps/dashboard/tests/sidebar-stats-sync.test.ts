@@ -38,4 +38,8 @@ describe("Campaign sidebar badges use entity.countKey from feature definition", 
     expect(content).toContain("fStats[entity.countKey] != null");
     expect(content).not.toContain("fStats[entity.countKey] !== undefined");
   });
+
+  it("should have emails in listingFallback so badge shows even when stats return null", () => {
+    expect(content).toMatch(/emails:\s*emailsData\?\.emails\?\.length/);
+  });
 });

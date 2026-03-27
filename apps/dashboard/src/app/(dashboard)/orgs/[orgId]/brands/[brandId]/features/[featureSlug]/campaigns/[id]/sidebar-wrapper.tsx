@@ -7,7 +7,7 @@ import { CampaignSidebar } from "@/components/campaign-sidebar";
 import { useCampaign } from "@/lib/campaign-context";
 import { useFeatures } from "@/lib/features-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listWorkflows, listCampaignOutlets, listCampaignJournalists, listCampaignArticles, listMediaKitsByCampaign, fetchFeatureStats } from "@/lib/api";
+import { listWorkflows, listCampaignOutlets, listCampaignJournalists, listCampaignEmails, listCampaignArticles, listMediaKitsByCampaign, fetchFeatureStats } from "@/lib/api";
 
 interface Props {
   orgId: string;
@@ -49,6 +49,12 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
     { enabled: entityNames.includes("journalists"), refetchInterval: 5_000, refetchIntervalInBackground: false },
   );
 
+  const { data: emailsData } = useAuthQuery(
+    ["campaignEmails", campaignId],
+    () => listCampaignEmails(campaignId),
+    { enabled: entityNames.includes("emails"), refetchInterval: 5_000, refetchIntervalInBackground: false },
+  );
+
   const { data: articlesData } = useAuthQuery(
     ["campaignArticles", campaignId],
     () => listCampaignArticles(campaignId),
@@ -75,6 +81,7 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
   const listingFallback: Record<string, number | undefined> = {
     leads: leads.length,
     companies: companyCount,
+    emails: emailsData?.emails?.length,
     outlets: outletsData?.outlets?.length,
     journalists: journalistsData?.journalists?.length,
     articles: articlesData?.discoveries?.length,
