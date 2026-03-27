@@ -1397,6 +1397,52 @@ export async function listCampaignJournalists(
   );
 }
 
+// --- Article discovery types ---
+
+export interface ArticleDiscoveryItem {
+  discovery: {
+    id: string;
+    articleId: string;
+    orgId: string;
+    brandId: string;
+    featureSlug: string;
+    campaignId: string;
+    outletId: string | null;
+    journalistId: string | null;
+    topicId: string | null;
+    createdAt: string;
+  };
+  article: {
+    id: string;
+    articleUrl: string;
+    snippet: string | null;
+    ogDescription: string | null;
+    twitterCreator: string | null;
+    newsKeywords: string | null;
+    articlePublished: string | null;
+    articleChannel: string | null;
+    twitterTitle: string | null;
+    articleSection: string | null;
+    author: string | null;
+    ogTitle: string | null;
+    articleAuthor: string | null;
+    twitterDescription: string | null;
+    articleModified: string | null;
+    createdAt: string;
+    updatedAt: string;
+  };
+}
+
+export async function listCampaignArticles(
+  campaignId: string,
+  token?: string,
+): Promise<{ discoveries: ArticleDiscoveryItem[] }> {
+  return apiCall<{ discoveries: ArticleDiscoveryItem[] }>(
+    `/discoveries?campaignId=${campaignId}`,
+    { token },
+  );
+}
+
 /** Check if orgs exist in press-kits-service */
 export async function checkPressKitOrgsExist(
   orgIds: string[],
