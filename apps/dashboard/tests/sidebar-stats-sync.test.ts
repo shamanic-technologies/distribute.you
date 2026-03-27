@@ -33,4 +33,9 @@ describe("Campaign sidebar badges use entity.countKey from feature definition", 
   it("should NOT pass emails.length directly as emailCount", () => {
     expect(content).not.toMatch(/emailCount={emails\.length}/);
   });
+
+  it("should use != null (not !== undefined) so null stats fall through to listing fallback", () => {
+    expect(content).toContain("fStats[entity.countKey] != null");
+    expect(content).not.toContain("fStats[entity.countKey] !== undefined");
+  });
 });

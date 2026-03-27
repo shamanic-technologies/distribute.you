@@ -78,7 +78,7 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
   const entityCounts = useMemo(() => {
     const result: Record<string, number | undefined> = {};
     for (const entity of entities) {
-      if (entity.countKey && fStats[entity.countKey] !== undefined) {
+      if (entity.countKey && fStats[entity.countKey] != null) {
         result[entity.name] = fStats[entity.countKey];
       } else {
         result[entity.name] = listingFallback[entity.name];
