@@ -51,33 +51,38 @@ export default function CampaignJournalistsPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {journalists.map((j) => {
-              const typeStyle = j.entityType === "individual"
-                ? "bg-blue-100 text-blue-700 border-blue-200"
-                : "bg-purple-100 text-purple-700 border-purple-200";
-
-              return (
-                <button
-                  key={j.id}
-                  onClick={() => setSelected(j)}
-                  className={`w-full text-left bg-white rounded-xl border p-4 hover:border-brand-300 hover:shadow-sm transition ${
-                    selected?.id === j.id ? "border-brand-500 ring-1 ring-brand-500" : "border-gray-200"
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="font-medium text-gray-800 truncate">{j.journalistName}</p>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full border flex-shrink-0 ${typeStyle}`}>
-                      {j.entityType}
-                    </span>
-                  </div>
-                  {j.outletName && (
-                    <p className="text-xs text-gray-400 truncate">
-                      {j.outletName}{j.outletDomain ? ` (${j.outletDomain})` : ""}
-                    </p>
+            {journalists.map((j) => (
+              <button
+                key={j.id}
+                onClick={() => setSelected(j)}
+                className={`w-full text-left bg-white rounded-xl border p-4 hover:border-brand-300 hover:shadow-sm transition ${
+                  selected?.id === j.id ? "border-brand-500 ring-1 ring-brand-500" : "border-gray-200"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  {j.outletDomain ? (
+                    <img
+                      src={`https://logo.clearbit.com/${j.outletDomain}`}
+                      alt={j.outletName ?? j.outletDomain}
+                      className="w-8 h-8 rounded-full object-contain bg-gray-50 border border-gray-200 flex-shrink-0"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 flex-shrink-0 flex items-center justify-center">
+                      <span className="text-gray-400 text-xs font-medium">
+                        {(j.outletName ?? j.journalistName).charAt(0).toUpperCase()}
+                      </span>
+                    </div>
                   )}
-                </button>
-              );
-            })}
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-800 truncate">{j.journalistName}</p>
+                    {j.outletName && (
+                      <p className="text-xs text-gray-400 truncate">{j.outletName}</p>
+                    )}
+                  </div>
+                </div>
+              </button>
+            ))}
           </div>
         )}
       </div>
@@ -113,18 +118,6 @@ export default function CampaignJournalistsPage() {
                   <span className="text-gray-500">Name:</span>
                   <p className="font-medium">{selected.journalistName}</p>
                 </div>
-                <div>
-                  <span className="text-gray-500">Type:</span>
-                  <p>
-                    <span className={`text-xs px-2 py-1 rounded-full border ${
-                      selected.entityType === "individual"
-                        ? "bg-blue-100 text-blue-700 border-blue-200"
-                        : "bg-purple-100 text-purple-700 border-purple-200"
-                    }`}>
-                      {selected.entityType}
-                    </span>
-                  </p>
-                </div>
                 {selected.firstName && (
                   <div>
                     <span className="text-gray-500">First Name:</span>
@@ -143,10 +136,22 @@ export default function CampaignJournalistsPage() {
             {selected.outletName && (
               <div className="bg-white rounded-lg border border-gray-200 p-4">
                 <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Outlet</h4>
-                <p className="text-sm font-medium text-gray-800">{selected.outletName}</p>
-                {selected.outletDomain && (
-                  <p className="text-xs text-gray-400 mt-1">{selected.outletDomain}</p>
-                )}
+                <div className="flex items-center gap-3">
+                  {selected.outletDomain && (
+                    <img
+                      src={`https://logo.clearbit.com/${selected.outletDomain}`}
+                      alt={selected.outletName}
+                      className="w-6 h-6 rounded object-contain bg-gray-50"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                    />
+                  )}
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">{selected.outletName}</p>
+                    {selected.outletDomain && (
+                      <p className="text-xs text-gray-400">{selected.outletDomain}</p>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 
