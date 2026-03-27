@@ -247,7 +247,7 @@ describe("Workflow viewer page composition", () => {
   it("should pass workflowId as prop and in the chat context", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
     expect(content).toContain("workflowId: workflow.id");
-    expect(content).toContain("workflowId={workflowId}");
+    expect(content).toContain("workflowId={activeWorkflowId}");
   });
 
   it("should NOT generate or pass sessionId (managed by chat component)", () => {
