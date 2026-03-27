@@ -37,3 +37,28 @@ describe("Workflow viewer page — chat context", () => {
     expect(content).toContain("MUST NOT read, modify, or interact with any other workflow");
   });
 });
+
+describe("Platform chat system prompt — scope enforcement", () => {
+  const instrumentationPath = path.join(
+    __dirname,
+    "../src/instrumentation.ts"
+  );
+
+  const content = fs.readFileSync(instrumentationPath, "utf-8");
+
+  it("should have a SCOPE ENFORCEMENT section in the system prompt", () => {
+    expect(content).toContain("SCOPE ENFORCEMENT");
+  });
+
+  it("should prohibit list_workflows when workflowId is in context", () => {
+    expect(content).toContain("NEVER call list_workflows");
+  });
+
+  it("should mark list_workflows as off limits when workflowId is present", () => {
+    expect(content).toContain("this tool is OFF LIMITS");
+  });
+
+  it("should describe scope violation as a critical error", () => {
+    expect(content).toContain("critical error");
+  });
+});
