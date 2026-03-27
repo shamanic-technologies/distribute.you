@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getWorkflow, getWorkflowSummary, getFeature } from "@/lib/api";
 import { WorkflowOverview } from "@/components/workflows/workflow-overview";
@@ -39,25 +39,28 @@ function SidebarSkeleton() {
 
 export default function WorkflowViewerPage() {
   const params = useParams();
-  const router = useRouter();
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
-  const workflowId = params.workflowId as string;
+  const initialWorkflowId = params.workflowId as string;
   const featureSlug = params.featureSlug as string;
   const [detailsOpen, setDetailsOpen] = useState(false);
 
+  // Track active workflow ID locally so fork navigation doesn't remount the page
+  const [activeWorkflowId, setActiveWorkflowId] = useState(initialWorkflowId);
   const hasNavigatedRef = useRef(false);
 
   const handleWorkflowUpgraded = useCallback((newWorkflowId: string) => {
     if (hasNavigatedRef.current) return;
     hasNavigatedRef.current = true;
-    // Chat component already migrated messages + session to the new workflow's localStorage
-    router.replace(`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/${newWorkflowId}`);
-  }, [router, orgId, brandId, featureSlug]);
+    // Update URL without triggering a Next.js navigation — keeps the chat mounted
+    const newUrl = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/${newWorkflowId}`;
+    window.history.replaceState(null, "", newUrl);
+    setActiveWorkflowId(newWorkflowId);
+  }, [orgId, brandId, featureSlug]);
 
   const { data: workflow, isLoading } = useAuthQuery(
-    ["workflow", workflowId],
-    () => getWorkflow(workflowId),
+    ["workflow", activeWorkflowId],
+    () => getWorkflow(activeWorkflowId),
     { refetchInterval: 3000 },
   );
 
@@ -65,8 +68,8 @@ export default function WorkflowViewerPage() {
   // which ensures chat messages are saved before navigation.
 
   const { data: summary } = useAuthQuery(
-    ["workflow-summary", workflowId],
-    () => getWorkflowSummary(workflowId),
+    ["workflow-summary", activeWorkflowId],
+    () => getWorkflowSummary(activeWorkflowId),
   );
 
   const { data: featureData } = useAuthQuery(
@@ -244,7 +247,7 @@ export default function WorkflowViewerPage() {
         </div>
 
         {/* Chat — render immediately; it handles its own loading state */}
-        <WorkflowChat workflowId={workflowId} workflowContext={workflowContext} onWorkflowUpgraded={handleWorkflowUpgraded} upgradedTo={workflow?.upgradedTo ?? null} />
+        <WorkflowChat workflowId={activeWorkflowId} workflowContext={workflowContext} onWorkflowUpgraded={handleWorkflowUpgraded} upgradedTo={workflow?.upgradedTo ?? null} />
       </div>
     </div>
   );
