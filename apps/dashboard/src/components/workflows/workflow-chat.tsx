@@ -632,12 +632,15 @@ interface WorkflowChatProps {
   workflowContext: Record<string, unknown>;
   /** Called when the LLM forks the workflow (upgradedTo is set). Receives the new workflow ID. */
   onWorkflowUpgraded?: (newWorkflowId: string) => void;
+  /** Set when polling detects the workflow was upgraded (forked). */
+  upgradedTo?: string | null;
 }
 
 export function WorkflowChat({
   workflowId,
   workflowContext,
   onWorkflowUpgraded,
+  upgradedTo,
 }: WorkflowChatProps) {
   const queryClient = useQueryClient();
   const { showPaymentRequired } = useBillingGuard();
@@ -737,6 +740,11 @@ export function WorkflowChat({
               .filter((w) => w.forkedFrom === workflowId)
               .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
             if (latestFork) {
+              // Copy chat history to the new workflow so conversation continues
+              saveMessages(latestFork.id, finalMessages);
+              if (sessionIdRef.current) {
+                saveSessionId(latestFork.id, sessionIdRef.current);
+              }
               onWorkflowUpgraded(latestFork.id);
             }
           })
@@ -746,6 +754,23 @@ export function WorkflowChat({
   });
 
   const isStreaming = status === "streaming" || status === "submitted";
+
+  // Keep a ref to latest messages so the upgradedTo effect can access them without stale closures
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+
+  // When polling detects a fork (upgradedTo prop), copy chat history to the new workflow before navigating
+  const hasMigratedRef = useRef(false);
+  useEffect(() => {
+    if (!upgradedTo || hasMigratedRef.current) return;
+    hasMigratedRef.current = true;
+    // Save current in-flight messages (React state, possibly not yet in localStorage) to the new workflow
+    saveMessages(upgradedTo, messagesRef.current);
+    if (sessionIdRef.current) {
+      saveSessionId(upgradedTo, sessionIdRef.current);
+    }
+    onWorkflowUpgraded?.(upgradedTo);
+  }, [upgradedTo, onWorkflowUpgraded]);
 
   // Auto-scroll: defer to next frame so pending scroll events update the ref first
   useEffect(() => {
