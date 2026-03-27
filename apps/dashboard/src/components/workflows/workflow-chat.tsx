@@ -761,6 +761,10 @@ export function WorkflowChat({
 
   // When polling detects a fork (upgradedTo prop), copy chat history to the new workflow before navigating
   const hasMigratedRef = useRef(false);
+  // Reset migration flag when workflowId changes (e.g. after a previous fork)
+  useEffect(() => {
+    hasMigratedRef.current = false;
+  }, [workflowId]);
   useEffect(() => {
     if (!upgradedTo || hasMigratedRef.current) return;
     hasMigratedRef.current = true;
