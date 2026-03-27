@@ -645,6 +645,7 @@ export function WorkflowChat({
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const userHasScrolledRef = useRef(false);
+  const isProgrammaticScrollRef = useRef(false);
   const [showScrollPill, setShowScrollPill] = useState(false);
   const [input, setInput] = useState("");
 
@@ -751,6 +752,7 @@ export function WorkflowChat({
     if (userHasScrolledRef.current) return;
     const frame = requestAnimationFrame(() => {
       if (!userHasScrolledRef.current && scrollRef.current) {
+        isProgrammaticScrollRef.current = true;
         scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
       }
     });
@@ -763,11 +765,15 @@ export function WorkflowChat({
     if (!el) return;
     function handleScroll() {
       if (!el) return;
+      // Ignore scroll events triggered by programmatic auto-scroll
+      if (isProgrammaticScrollRef.current) {
+        isProgrammaticScrollRef.current = false;
+        return;
+      }
       const isAtBottom =
-        el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+        el.scrollHeight - el.scrollTop - el.clientHeight < 40;
       const hasScrolled = !isAtBottom;
       userHasScrolledRef.current = hasScrolled;
-      // Only update state when value changes to avoid re-render loops during streaming
       setShowScrollPill((prev) => (prev !== hasScrolled ? hasScrolled : prev));
     }
     el.addEventListener("scroll", handleScroll, { passive: true });
