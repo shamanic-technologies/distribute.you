@@ -6,6 +6,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { listCampaignJournalists, type DiscoveredJournalist } from "@/lib/api";
 
 const POLL_INTERVAL = 5_000;
+const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
 
 export default function CampaignJournalistsPage() {
   const params = useParams();
@@ -62,7 +63,7 @@ export default function CampaignJournalistsPage() {
                 <div className="flex items-center gap-3">
                   {j.outletDomain ? (
                     <img
-                      src={`https://logo.clearbit.com/${j.outletDomain}`}
+                      src={`https://img.logo.dev/${j.outletDomain}?token=${LOGO_DEV_TOKEN}`}
                       alt={j.outletName ?? j.outletDomain}
                       className="w-8 h-8 rounded-full object-contain bg-gray-50 border border-gray-200 flex-shrink-0"
                       onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
@@ -139,7 +140,7 @@ export default function CampaignJournalistsPage() {
                 <div className="flex items-center gap-3">
                   {selected.outletDomain && (
                     <img
-                      src={`https://logo.clearbit.com/${selected.outletDomain}`}
+                      src={`https://img.logo.dev/${selected.outletDomain}?token=${LOGO_DEV_TOKEN}`}
                       alt={selected.outletName}
                       className="w-6 h-6 rounded object-contain bg-gray-50"
                       onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
