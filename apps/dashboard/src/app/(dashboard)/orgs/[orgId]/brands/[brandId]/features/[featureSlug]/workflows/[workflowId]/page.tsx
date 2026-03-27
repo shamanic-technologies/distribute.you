@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getWorkflow, getWorkflowSummary, getFeature } from "@/lib/api";
@@ -51,15 +51,9 @@ export default function WorkflowViewerPage() {
   const handleWorkflowUpgraded = useCallback((newWorkflowId: string) => {
     if (hasNavigatedRef.current) return;
     hasNavigatedRef.current = true;
-    // Migrate chat session + messages so conversation continues on the forked workflow
-    try {
-      const session = localStorage.getItem(`workflow-chat-session:${workflowId}`);
-      const msgs = localStorage.getItem(`workflow-chat-msgs:${workflowId}`);
-      if (session) localStorage.setItem(`workflow-chat-session:${newWorkflowId}`, session);
-      if (msgs) localStorage.setItem(`workflow-chat-msgs:${newWorkflowId}`, msgs);
-    } catch { /* ignore storage errors */ }
+    // Chat component already migrated messages + session to the new workflow's localStorage
     router.replace(`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/${newWorkflowId}`);
-  }, [router, orgId, brandId, featureSlug, workflowId]);
+  }, [router, orgId, brandId, featureSlug]);
 
   const { data: workflow, isLoading } = useAuthQuery(
     ["workflow", workflowId],
@@ -67,12 +61,8 @@ export default function WorkflowViewerPage() {
     { refetchInterval: 3000 },
   );
 
-  // Auto-navigate when the workflow is forked (upgradedTo appears)
-  useEffect(() => {
-    if (workflow?.upgradedTo) {
-      handleWorkflowUpgraded(workflow.upgradedTo);
-    }
-  }, [workflow?.upgradedTo, handleWorkflowUpgraded]);
+  // Fork detection is handled by WorkflowChat via the upgradedTo prop,
+  // which ensures chat messages are saved before navigation.
 
   const { data: summary } = useAuthQuery(
     ["workflow-summary", workflowId],
@@ -254,7 +244,7 @@ export default function WorkflowViewerPage() {
         </div>
 
         {/* Chat — render immediately; it handles its own loading state */}
-        <WorkflowChat workflowId={workflowId} workflowContext={workflowContext} onWorkflowUpgraded={handleWorkflowUpgraded} />
+        <WorkflowChat workflowId={workflowId} workflowContext={workflowContext} onWorkflowUpgraded={handleWorkflowUpgraded} upgradedTo={workflow?.upgradedTo ?? null} />
       </div>
     </div>
   );
