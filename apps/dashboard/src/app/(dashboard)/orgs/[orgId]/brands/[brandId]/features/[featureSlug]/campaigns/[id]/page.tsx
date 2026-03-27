@@ -12,7 +12,7 @@ import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
 import { PressKitResults } from "@/components/campaign/press-kit-results";
 import { DiscoveredOutlets } from "@/components/campaign/discovered-outlets";
-import { DiscoveredJournalists } from "@/components/campaign/discovered-journalists";
+
 
 function formatTotalCost(cents: string | null | undefined): string | null {
   if (!cents) return null;
@@ -142,11 +142,6 @@ export default function CampaignOverviewPage() {
       {entityNames.includes("outlets") && campaign && (
         <div className="mb-6">
           <DiscoveredOutlets campaignId={campaign.id} />
-        </div>
-      )}
-      {entityNames.includes("journalists") && campaign && (
-        <div className="mb-6">
-          <DiscoveredJournalists campaignId={campaign.id} />
         </div>
       )}
 
