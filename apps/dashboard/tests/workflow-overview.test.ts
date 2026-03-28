@@ -257,16 +257,16 @@ describe("Workflow viewer page composition", () => {
     expect(content).not.toContain("crypto.randomUUID");
   });
 
-  it("should detect forks via listWorkflows fallback when upgradedTo is null", () => {
+  it("should detect forks via listWorkflows polling for forkedFrom children", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
     expect(content).toContain("listWorkflows");
-    expect(content).toContain("detectedForkId");
+    expect(content).toContain("detectedForkOrUpgradeId");
     expect(content).toContain("forkedFrom");
   });
 
-  it("should pass detectedForkId (not just workflow.upgradedTo) to chat", () => {
+  it("should pass detectedForkOrUpgradeId to chat as upgradedTo", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("upgradedTo={detectedForkId}");
+    expect(content).toContain("upgradedTo={detectedForkOrUpgradeId}");
   });
 
   it("should reset hasNavigatedRef when activeWorkflowId changes", () => {

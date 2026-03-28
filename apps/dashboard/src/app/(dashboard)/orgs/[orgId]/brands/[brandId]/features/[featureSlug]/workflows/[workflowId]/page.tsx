@@ -69,27 +69,26 @@ export default function WorkflowViewerPage() {
     { refetchInterval: 3000 },
   );
 
-  // Fallback fork detection: poll for child workflows when upgraded_to is not set.
-  // The backend doesn't always set upgraded_to on the parent workflow, so we also
-  // check for workflows whose forkedFrom points to the current one.
-  const needsForkPoll = !!workflow && !workflow.upgradedTo && !hasNavigatedRef.current;
+  // Fork detection: forks do NOT set upgraded_to (that's for upgrades, a separate mechanism).
+  // Forks are detected by polling for child workflows whose forkedFrom points to this one.
+  // Upgrades are detected via workflow.upgradedTo. Both result in navigating to the new workflow.
+  const needsForkPoll = !!workflow && !hasNavigatedRef.current;
   const { data: siblingData } = useAuthQuery(
     ["workflow-siblings", activeWorkflowId, featureSlug],
     () => listWorkflows({ featureSlug }),
     { refetchInterval: 5000, enabled: needsForkPoll },
   );
 
-  const detectedForkId = useMemo(() => {
+  const detectedForkOrUpgradeId = useMemo(() => {
+    // Upgrades: upgraded_to is set on the current workflow
     if (workflow?.upgradedTo) return workflow.upgradedTo;
+    // Forks: a child workflow has forkedFrom pointing to this one
     if (!siblingData?.workflows) return null;
     const fork = siblingData.workflows
       .filter((w) => w.forkedFrom === activeWorkflowId)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
     return fork?.id ?? null;
   }, [workflow?.upgradedTo, siblingData, activeWorkflowId]);
-
-  // Fork detection: pass detectedForkId to WorkflowChat via upgradedTo prop.
-  // The chat component migrates messages before calling onWorkflowUpgraded.
 
   const { data: summary } = useAuthQuery(
     ["workflow-summary", activeWorkflowId],
@@ -271,7 +270,7 @@ export default function WorkflowViewerPage() {
         </div>
 
         {/* Chat — render immediately; it handles its own loading state */}
-        <WorkflowChat workflowId={activeWorkflowId} workflowContext={workflowContext} onWorkflowUpgraded={handleWorkflowUpgraded} upgradedTo={detectedForkId} />
+        <WorkflowChat workflowId={activeWorkflowId} workflowContext={workflowContext} onWorkflowUpgraded={handleWorkflowUpgraded} upgradedTo={detectedForkOrUpgradeId} />
       </div>
     </div>
   );
