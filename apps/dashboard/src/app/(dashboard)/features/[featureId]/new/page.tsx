@@ -89,7 +89,7 @@ function formatDisplayName(dynastyName: string, fallbackName: string): string {
 interface WorkflowTableRow {
   id: string;
   name: string;
-  displayName: string;
+  dynastyName: string;
   signatureName: string;
   featureSlug: string | null;
   emailsSent: number;
@@ -107,7 +107,7 @@ function rankedToRow(item: RankedWorkflowItem): WorkflowTableRow {
   return {
     id: item.workflow.id,
     name: item.workflow.name,
-    displayName: item.workflow.dynastyName,
+    dynastyName: item.workflow.dynastyName,
     signatureName: item.workflow.signatureName,
     featureSlug: item.workflow.featureSlug,
     emailsSent: b.sent,
@@ -949,7 +949,7 @@ function WorkflowRow({
   onSelect: () => void;
   onShowDetail?: () => void;
 }) {
-  const label = formatDisplayName(wf.displayName, wf.name);
+  const label = formatDisplayName(wf.dynastyName, wf.name);
 
   return (
     <tr

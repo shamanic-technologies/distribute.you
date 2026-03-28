@@ -79,7 +79,7 @@ function WorkflowRow({
   workflow: Workflow;
   onShowDetail: () => void;
 }) {
-  const displayName = workflowDisplayName(workflow);
+  const dynastyLabel = workflowDisplayName(workflow);
   const providerCount = workflow.requiredProviders?.length ?? 0;
 
   return (
@@ -90,7 +90,7 @@ function WorkflowRow({
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-medium text-gray-800 truncate">{displayName}</h3>
+            <h3 className="font-medium text-gray-800 truncate">{dynastyLabel}</h3>
           </div>
           {workflow.description && (
             <p className="text-sm text-gray-500 line-clamp-2">{workflow.description}</p>
