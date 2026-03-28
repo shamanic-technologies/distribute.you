@@ -68,3 +68,11 @@ All marketing/docs content lives in `shared/content/src/`. Public surfaces impor
 When changing content: update `shared/content/src/`, run `pnpm generate:readme`, verify build, commit regenerated README.md.
 
 **README.md is GENERATED** — never edit directly.
+
+### Missing Backend Fields
+
+If the dashboard needs a field, endpoint, or capability that the backend doesn't provide, NEVER work around it client-side (regex, slugifying, name-derivation, aggregation heuristics, etc.). Instead, immediately draft a message for Kevin to forward to the backend team requesting what you need. Block on the backend change.
+
+### Dynasty-First Display Rule
+
+Always display `dynastyName` for workflows and features, never the versioned name. The only exception is settings/debug panels where the specific version matters — there, show the version number and versioned name alongside the dynasty name. This applies to page titles, table rows, cards, breadcrumbs, and any user-facing text. URLs should also use dynasty slugs once the backend supports resolving them to the active version.

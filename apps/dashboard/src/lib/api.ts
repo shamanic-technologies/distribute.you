@@ -854,7 +854,6 @@ export interface Workflow {
   appId: string;
   name: string;
   slug: string;
-  displayName: string | null;
   dynastyName: string;
   dynastySlug: string;
   version: number;
@@ -996,7 +995,7 @@ export async function getPlatformServiceSpec(service: string): Promise<Record<st
 export interface WorkflowPerformance {
   workflowId: string;
   workflowSlug: string;
-  displayName: string;
+  dynastyName: string;
   signatureName: string;
   featureSlug: string;
   runCount: number;
@@ -1018,7 +1017,7 @@ export async function getBestWorkflow(
 // Leaderboard (public performance data)
 export interface WorkflowLeaderboardEntry {
   workflowSlug: string;
-  displayName: string;
+  dynastyName: string;
   signatureName: string | null;
   category: string | null;
   featureSlug: string | null;
@@ -1078,7 +1077,7 @@ export interface RankedWorkflowItem {
   workflow: {
     id: string;
     name: string;
-    displayName: string | null;
+    dynastyName: string;
     createdForBrandId: string | null;
     featureSlug: string | null;
     category?: string;

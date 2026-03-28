@@ -77,8 +77,8 @@ function formatCostCents(cents: number | null): string {
 }
 
 /** Extract the family display name. Strips the featureSlug prefix to show just the codename. */
-function formatDisplayName(displayName: string | null, fallbackName: string): string {
-  const raw = displayName || fallbackName;
+function formatDisplayName(dynastyName: string, fallbackName: string): string {
+  const raw = dynastyName || fallbackName;
   const lastDashIdx = raw.lastIndexOf("-");
   const suffix = lastDashIdx >= 0 ? raw.slice(lastDashIdx + 1) : raw;
   return suffix.charAt(0).toUpperCase() + suffix.slice(1);
@@ -107,7 +107,7 @@ function rankedToRow(item: RankedWorkflowItem): WorkflowTableRow {
   return {
     id: item.workflow.id,
     name: item.workflow.name,
-    displayName: item.workflow.displayName ?? item.workflow.name,
+    displayName: item.workflow.dynastyName,
     signatureName: item.workflow.signatureName,
     featureSlug: item.workflow.featureSlug,
     emailsSent: b.sent,

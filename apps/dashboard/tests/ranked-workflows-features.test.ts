@@ -34,7 +34,7 @@ describe("Feature creation page uses ranked workflows endpoint", () => {
     expect(content).toContain("stats.totalCostInUsdCents");
   });
 
-  it("should display the family name (displayName) not signatureName", () => {
+  it("should display the dynasty name (dynastyName) not signatureName", () => {
     expect(content).toContain("formatDisplayName");
     // Should NOT use signatureName for display in the row
     expect(content).not.toMatch(/wf\.signatureName\s*\?/);

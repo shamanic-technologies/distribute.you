@@ -110,7 +110,7 @@ export default function WorkflowViewerPage() {
       workflowId: workflow.id,
       workflow: {
         name: workflow.name,
-        displayName: workflow.displayName,
+        dynastyName: workflow.dynastyName,
         description: workflow.description,
         featureSlug: workflow.featureSlug,
         requiredProviders: workflow.requiredProviders,
@@ -137,7 +137,7 @@ export default function WorkflowViewerPage() {
         "You are a workflow assistant for the distribute.you platform.",
         "",
         "== CURRENT WORKFLOW ==",
-        `Name: ${workflow.displayName || workflow.name}`,
+        `Name: ${workflow.dynastyName}`,
         `UUID: ${workflow.id}`,
         `For ALL tool calls requiring a workflowId parameter, use exactly: ${workflow.id}`,
         "Never ask the user for the workflow ID — you already have it above.",
