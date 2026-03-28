@@ -164,9 +164,8 @@ export default function FeatureCreateCampaignPage() {
   // Active workflows grouped by dynastySlug: keep only the latest per dynasty
   const rows = useMemo(() => {
     if (!workflowsData?.workflows) return [];
-    const active = workflowsData.workflows.filter((wf) => wf.status === "active");
-    const byDynasty = new Map<string, typeof active[number]>();
-    for (const wf of active) {
+    const byDynasty = new Map<string, (typeof workflowsData.workflows)[number]>();
+    for (const wf of workflowsData.workflows) {
       if (!wf.dynastySlug) continue;
       const existing = byDynasty.get(wf.dynastySlug);
       if (!existing || wf.createdAt > existing.createdAt) {

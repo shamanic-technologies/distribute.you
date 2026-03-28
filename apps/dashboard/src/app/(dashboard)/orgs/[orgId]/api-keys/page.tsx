@@ -125,7 +125,7 @@ export default function OrgApiKeysPage() {
   const providers: ProviderRow[] = useMemo(() => {
     const providerSet = new Set<string>(ALWAYS_VISIBLE_PROVIDERS);
     for (const wf of workflowsData?.workflows ?? []) {
-      if (wf.status === "deprecated") continue;
+      if (wf.status && wf.status === "deprecated") continue;
       for (const p of wf.requiredProviders ?? []) {
         if (typeof p === "string" && p) providerSet.add(p);
       }
