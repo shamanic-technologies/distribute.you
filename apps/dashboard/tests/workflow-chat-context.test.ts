@@ -11,7 +11,7 @@ describe("Workflow viewer page — chat context", () => {
   const content = fs.readFileSync(pagePath, "utf-8");
 
   it("should include the current workflow identity in instructions", () => {
-    expect(content).toContain("workflow.displayName || workflow.name");
+    expect(content).toContain("workflow.dynastyName");
     expect(content).toContain("workflow.id");
   });
 
