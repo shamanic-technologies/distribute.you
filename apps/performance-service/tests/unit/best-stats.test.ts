@@ -5,7 +5,7 @@ import type { BrandLeaderboardEntry, WorkflowLeaderboardEntry } from "../../src/
 function makeWorkflow(overrides: Partial<WorkflowLeaderboardEntry> = {}): WorkflowLeaderboardEntry {
   return {
     workflowName: "test-workflow",
-    displayName: "Test Workflow",
+    dynastyName: "Test Workflow",
     signatureName: null,
     category: null,
     featureSlug: null,

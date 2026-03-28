@@ -32,7 +32,7 @@ interface PublicWorkflowStats {
 interface PublicWorkflowMetadata {
   id: string;
   name: string;
-  displayName: string | null;
+  dynastyName: string | null;
   createdForBrandId: string | null;
   category: string;
   channel: string;
@@ -49,7 +49,7 @@ interface PublicRankedItem {
 interface BestWorkflowRecord {
   workflowId: string;
   workflowName: string;
-  displayName: string | null;
+  dynastyName: string | null;
   brandId: string | null;
   value: number;
 }
@@ -81,7 +81,7 @@ export interface BrandLeaderboardEntry {
 
 export interface WorkflowLeaderboardEntry {
   workflowName: string;
-  displayName: string;
+  dynastyName: string;
   signatureName: string | null;
   featureSlug: string | null;
   runCount: number;
@@ -139,7 +139,7 @@ function rankedToWorkflowEntry(item: PublicRankedItem): WorkflowLeaderboardEntry
 
   return {
     workflowName: item.workflow.name,
-    displayName: item.workflow.displayName ?? item.workflow.name,
+    dynastyName: item.workflow.dynastyName ?? item.workflow.name,
     signatureName: item.workflow.signatureName,
     featureSlug,
     runCount: item.stats.completedRuns,
