@@ -305,7 +305,7 @@ When the workflow executor runs an \\\`http.call\\\` node, it **automatically fo
 - \\\`x-brand-id\\\` — the brand ID (if set on the workflow)
 - \\\`x-campaign-id\\\` — the campaign ID (if set on the workflow)
 - \\\`x-feature-slug\\\` — the feature slug (if set on the workflow)
-- \\\`x-workflow-name\\\` — the workflow name
+- \\\`x-workflow-slug\\\` — the workflow slug
 
 **You do NOT need to pass these values in the request body or inputMapping** — every downstream service already receives them from the headers. Only map data in the body that is NOT covered by these headers. For example, brand-service, press-kits, content-generation, and key-service all read \\\`x-org-id\\\` from the header to identify the organization — you never need to send \\\`orgId\\\` in the body for that purpose.
 

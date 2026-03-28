@@ -72,7 +72,7 @@ export async function GET(
 
     return NextResponse.json({
       workflowId: id,
-      workflowName: workflow.name,
+      workflowSlug: workflow.name,
       providers: result,
     });
   } catch (err) {

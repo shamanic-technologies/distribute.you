@@ -41,7 +41,7 @@ describe("Feature creation page uses ranked workflows endpoint", () => {
   });
 
   it("should send the active workflow name for campaign creation", () => {
-    expect(content).toContain("workflowName: selectedRow.name");
+    expect(content).toContain("workflowSlug: selectedRow.name");
   });
 
   it("should use workflow ID directly for detail panel (no name-based lookup)", () => {

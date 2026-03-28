@@ -390,7 +390,7 @@ export default function CreateCampaignPage() {
     try {
       const { brandUrl, ...inputFields } = formData;
       const campaignPayload = {
-        workflowName: selectedRow.name,
+        workflowSlug: selectedRow.name,
         featureSlug: featureId,
         brandUrl,
         ...budgetParams,
@@ -438,7 +438,7 @@ export default function CreateCampaignPage() {
 
     const { brandUrl: intentBrandUrl, ...intentInputFields } = formData;
     sessionStorage.setItem("pendingCampaign", JSON.stringify({
-      workflowName: selectedRow.name,
+      workflowSlug: selectedRow.name,
       brandUrl: intentBrandUrl,
       ...budgetParams,
       featureInputs: intentInputFields,
@@ -512,18 +512,18 @@ export default function CreateCampaignPage() {
       const pending = JSON.parse(raw) as Record<string, string>;
       sessionStorage.removeItem("pendingCampaign");
 
-      const { workflowName, ...rest } = pending;
-      if (!workflowName) return;
+      const { workflowSlug, ...rest } = pending;
+      if (!workflowSlug) return;
 
       const generateName = () => {
         const now = new Date();
-        return `${workflowName} \u2014 ${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}.${String(now.getMilliseconds()).padStart(3, "0")}`;
+        return `${workflowSlug} \u2014 ${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}.${String(now.getMilliseconds()).padStart(3, "0")}`;
       };
 
       setIsCreating(true);
       (async () => {
         try {
-          const payload = { name: generateName(), workflowName, featureSlug: featureId, ...rest } as unknown as Parameters<typeof createCampaign>[0];
+          const payload = { name: generateName(), workflowSlug, featureSlug: featureId, ...rest } as unknown as Parameters<typeof createCampaign>[0];
           try {
             await createCampaign(payload);
           } catch (firstErr) {

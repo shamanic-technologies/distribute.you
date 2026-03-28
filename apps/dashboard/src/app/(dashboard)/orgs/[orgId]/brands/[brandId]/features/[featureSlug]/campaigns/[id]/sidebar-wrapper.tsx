@@ -68,9 +68,9 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
   );
 
   const workflowId = useMemo(() => {
-    if (!campaign?.workflowName || !workflowsData?.workflows) return undefined;
-    return workflowsData.workflows.find((w) => w.name === campaign.workflowName)?.id;
-  }, [campaign?.workflowName, workflowsData?.workflows]);
+    if (!campaign?.workflowSlug || !workflowsData?.workflows) return undefined;
+    return workflowsData.workflows.find((w) => w.name === campaign.workflowSlug)?.id;
+  }, [campaign?.workflowSlug, workflowsData?.workflows]);
 
   const companyCount = useMemo(() => {
     const names = new Set(leads.map((l) => l.organizationName).filter(Boolean));

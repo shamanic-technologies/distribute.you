@@ -69,7 +69,7 @@ export default function FeatureWorkflowsPage() {
   // Fetch stats grouped by workflow
   const { data: statsData, isLoading } = useAuthQuery(
     ["featureStats", featureSlug, "byWorkflow"],
-    () => fetchFeatureStats(featureSlug, { groupBy: "workflowName" }),
+    () => fetchFeatureStats(featureSlug, { groupBy: "workflowSlug" }),
     { enabled: wfDef?.implemented === true, ...pollOptions },
   );
 
@@ -98,14 +98,14 @@ export default function FeatureWorkflowsPage() {
   const rows = useMemo(() => {
     const statsMap = new Map<string, { stats: Record<string, number>; systemStats?: SystemStats }>();
     for (const g of statsData?.groups ?? []) {
-      if (g.workflowName) statsMap.set(g.workflowName, { stats: g.stats, systemStats: g.systemStats });
+      if (g.workflowSlug) statsMap.set(g.workflowSlug, { stats: g.stats, systemStats: g.systemStats });
     }
 
     return dynastyWorkflows.map((wf) => {
       const s = statsMap.get(wf.name);
       return {
         id: wf.id,
-        workflowName: wf.name,
+        workflowSlug: wf.name,
         displayName: wf.displayName!,
         stats: s?.stats ?? {},
         systemStats: s?.systemStats,
