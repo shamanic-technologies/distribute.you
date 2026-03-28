@@ -1,12 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
 
 /**
- * Tests the workflow fork redirect logic:
+ * Tests the workflow fork/upgrade redirect logic:
  * - Chat messages (from React state) are saved to the new workflow's localStorage
  * - Double navigation is prevented by the hasNavigated guard
- * - Both polling-based (upgradedTo prop) and onFinish-based fork detection paths
- *   save messages to the new workflow before navigating
- * - Fork detection works via both upgradedTo field AND forkedFrom child polling
+ * - Forks are detected by polling for child workflows (forkedFrom), NOT via upgradedTo
+ * - Upgrades are detected via upgradedTo (separate mechanism from forks)
  */
 
 describe("workflow fork redirect", () => {
