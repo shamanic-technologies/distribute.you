@@ -343,7 +343,7 @@ describe("Create campaign page", () => {
     it("should have required campaign fields", () => {
       expect(content).toContain("brandUrl");
       expect(content).toContain("featureInputs");
-      expect(content).toContain("workflowName");
+      expect(content).toContain("workflowSlug");
     });
 
     it("should wrap form inputs in featureInputs, not spread as top-level", () => {
@@ -374,7 +374,7 @@ describe("API leaderboard function", () => {
 
   it("should have createCampaign function", () => {
     expect(content).toContain("createCampaign");
-    expect(content).toContain("workflowName");
+    expect(content).toContain("workflowSlug");
     expect(content).toContain("brandUrl");
   });
 

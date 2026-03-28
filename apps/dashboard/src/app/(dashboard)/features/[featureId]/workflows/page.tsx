@@ -34,15 +34,15 @@ export default function FeatureWorkflowsPage() {
   // Fetch stats grouped by workflow
   const { data: statsData, isLoading } = useAuthQuery(
     ["featureStats", featureId, "byWorkflow"],
-    () => fetchFeatureStats(featureId, { groupBy: "workflowName" }),
+    () => fetchFeatureStats(featureId, { groupBy: "workflowSlug" }),
     { enabled: featureDef?.implemented === true, ...pollOptions },
   );
 
   const rows = useMemo(() => {
     if (!statsData?.groups) return [];
     return statsData.groups.map((g) => ({
-      workflowName: g.workflowName ?? "unknown",
-      displayLabel: formatDisplayName(g.workflowName ?? "unknown"),
+      workflowSlug: g.workflowSlug ?? "unknown",
+      displayLabel: formatDisplayName(g.workflowSlug ?? "unknown"),
       stats: g.stats,
       systemStats: g.systemStats,
     }));
@@ -91,11 +91,11 @@ export default function FeatureWorkflowsPage() {
         <div className="space-y-3 max-w-3xl" data-testid="workflows-list">
           {rows.map((row) => (
             <WorkflowCard
-              key={row.workflowName}
+              key={row.workflowSlug}
               row={row}
               sortedOutputs={sortedOutputs}
               registry={registry}
-              onShowDetail={() => setDetailWorkflowId(row.workflowName)}
+              onShowDetail={() => setDetailWorkflowId(row.workflowSlug)}
             />
           ))}
         </div>
@@ -117,7 +117,7 @@ function WorkflowCard({
   registry,
   onShowDetail,
 }: {
-  row: { workflowName: string; displayLabel: string; stats: Record<string, number>; systemStats: import("@/lib/api").SystemStats };
+  row: { workflowSlug: string; displayLabel: string; stats: Record<string, number>; systemStats: import("@/lib/api").SystemStats };
   sortedOutputs: import("@/lib/api").FeatureOutput[];
   registry: import("@/lib/api").StatsRegistry;
   onShowDetail: () => void;

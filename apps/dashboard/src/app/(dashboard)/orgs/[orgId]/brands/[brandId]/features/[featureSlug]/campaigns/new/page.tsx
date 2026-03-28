@@ -157,7 +157,7 @@ export default function FeatureCreateCampaignPage() {
   // Fetch feature stats grouped by workflow for enrichment
   const { data: statsData, isLoading } = useAuthQuery(
     ["featureStats", featureSlug, "byWorkflow"],
-    () => fetchFeatureStats(featureSlug, { groupBy: "workflowName" }),
+    () => fetchFeatureStats(featureSlug, { groupBy: "workflowSlug" }),
     { enabled: featureDef?.implemented === true, ...pollOptions },
   );
 
@@ -176,7 +176,7 @@ export default function FeatureCreateCampaignPage() {
 
     const statsMap = new Map<string, { stats: Record<string, number>; systemStats?: SystemStats }>();
     for (const g of statsData?.groups ?? []) {
-      if (g.workflowName) statsMap.set(g.workflowName, { stats: g.stats, systemStats: g.systemStats });
+      if (g.workflowSlug) statsMap.set(g.workflowSlug, { stats: g.stats, systemStats: g.systemStats });
     }
 
     return [...byDisplayName.values()].map((wf): WorkflowTableRow => {
@@ -313,7 +313,7 @@ export default function FeatureCreateCampaignPage() {
       }
 
       const campaignPayload: Record<string, unknown> = {
-        workflowName: selectedRow.name,
+        workflowSlug: selectedRow.name,
         brandUrl: formData.brandUrl,
         featureSlug,
         ...budgetParams,
@@ -365,7 +365,7 @@ export default function FeatureCreateCampaignPage() {
 
     const { brandUrl: intentBrandUrl, ...intentInputFields } = formData;
     sessionStorage.setItem("pendingCampaign", JSON.stringify({
-      workflowName: selectedRow.name,
+      workflowSlug: selectedRow.name,
       displayLabel: selectedRow.displayName,
       brandUrl: intentBrandUrl,
       ...budgetParams,
@@ -451,19 +451,19 @@ export default function FeatureCreateCampaignPage() {
       const pending = JSON.parse(raw) as Record<string, string>;
       sessionStorage.removeItem("pendingCampaign");
 
-      const { workflowName, displayLabel, ...rest } = pending;
-      if (!workflowName) return;
+      const { workflowSlug, displayLabel, ...rest } = pending;
+      if (!workflowSlug) return;
 
       const generateName = () => {
         const now = new Date();
-        return `${displayLabel || workflowName} \u2014 ${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}.${String(now.getMilliseconds()).padStart(3, "0")}`;
+        return `${displayLabel || workflowSlug} \u2014 ${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}.${String(now.getMilliseconds()).padStart(3, "0")}`;
       };
 
       setIsCreating(true);
       (async () => {
         try {
           let result: { campaign: Campaign };
-          const payload = { name: generateName(), workflowName, featureSlug, ...rest } as unknown as Parameters<typeof createCampaign>[0];
+          const payload = { name: generateName(), workflowSlug, featureSlug, ...rest } as unknown as Parameters<typeof createCampaign>[0];
           try {
             result = await createCampaign(payload);
           } catch (firstErr) {

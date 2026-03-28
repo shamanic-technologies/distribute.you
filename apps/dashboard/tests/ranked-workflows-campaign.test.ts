@@ -11,7 +11,7 @@ const content = fs.readFileSync(pagePath, "utf-8");
 describe("Campaign creation page uses feature stats + workflow list", () => {
   it("should fetch feature stats grouped by workflow for display columns", () => {
     expect(content).toContain("fetchFeatureStats");
-    expect(content).toContain('groupBy: "workflowName"');
+    expect(content).toContain('groupBy: "workflowSlug"');
   });
 
   it("should fetch workflows filtered by featureSlug", () => {
@@ -40,7 +40,7 @@ describe("Campaign creation page uses feature stats + workflow list", () => {
   });
 
   it("should send the active workflow name for campaign creation", () => {
-    expect(content).toContain("workflowName:");
+    expect(content).toContain("workflowSlug:");
   });
 
   it("should wrap input values in featureInputs, not spread as top-level", () => {

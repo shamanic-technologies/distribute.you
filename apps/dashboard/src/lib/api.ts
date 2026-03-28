@@ -197,7 +197,7 @@ export interface Campaign {
   id: string;
   name: string;
   status: string;
-  workflowName: string | null;
+  workflowSlug: string | null;
   featureSlug: string | null;
   brandId: string | null;
   brandUrl: string | null;
@@ -564,7 +564,7 @@ export interface SystemStats {
 }
 
 export interface StatsGroup {
-  workflowName?: string;
+  workflowSlug?: string;
   brandId?: string;
   campaignId?: string;
   featureSlug?: string;
@@ -661,14 +661,14 @@ export async function fetchStatsRegistry(token?: string): Promise<{ registry: St
 /** GET /features/:featureSlug/stats — stats for a feature */
 export async function fetchFeatureStats(
   featureSlug: string,
-  params?: { groupBy?: string; brandId?: string; campaignId?: string; workflowName?: string },
+  params?: { groupBy?: string; brandId?: string; campaignId?: string; workflowSlug?: string },
   token?: string,
 ): Promise<FeatureStatsResponse> {
   const query = new URLSearchParams();
   if (params?.groupBy) query.set("groupBy", params.groupBy);
   if (params?.brandId) query.set("brandId", params.brandId);
   if (params?.campaignId) query.set("campaignId", params.campaignId);
-  if (params?.workflowName) query.set("workflowName", params.workflowName);
+  if (params?.workflowSlug) query.set("workflowSlug", params.workflowSlug);
   const qs = query.toString();
   return apiCall<FeatureStatsResponse>(`/features/${featureSlug}/stats${qs ? `?${qs}` : ""}`, { token });
 }
@@ -865,14 +865,14 @@ export interface Workflow {
 }
 
 export interface WorkflowSummary {
-  workflowName: string;
+  workflowSlug: string;
   summary: string;
   requiredProviders: string[];
   steps: string[];
 }
 
 export interface WorkflowKeyStatus {
-  workflowName: string;
+  workflowSlug: string;
   ready: boolean;
   keys: { provider: string; configured: boolean; maskedKey: string | null; keySource: "org" | "platform" }[];
   missing: string[];
@@ -986,7 +986,7 @@ export async function getPlatformServiceSpec(service: string): Promise<Record<st
 // Workflow performance
 export interface WorkflowPerformance {
   workflowId: string;
-  workflowName: string;
+  workflowSlug: string;
   displayName: string;
   signatureName: string;
   featureSlug: string;
@@ -1008,7 +1008,7 @@ export async function getBestWorkflow(
 
 // Leaderboard (public performance data)
 export interface WorkflowLeaderboardEntry {
-  workflowName: string;
+  workflowSlug: string;
   displayName: string;
   signatureName: string | null;
   category: string | null;
@@ -1141,7 +1141,7 @@ export async function generateWorkflow(
 export async function createCampaign(
   params: {
     name: string;
-    workflowName: string;
+    workflowSlug: string;
     brandUrl: string;
     maxBudgetDailyUsd?: string;
     maxBudgetWeeklyUsd?: string;

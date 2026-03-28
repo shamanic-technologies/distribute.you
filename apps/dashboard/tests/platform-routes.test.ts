@@ -122,10 +122,10 @@ describe("GET /api/v1/workflows/[id]/required-providers", () => {
     expect(content).toContain("provider.toLowerCase()");
   });
 
-  it("should return workflowId, workflowName, and providers array", () => {
+  it("should return workflowId, workflowSlug, and providers array", () => {
     const content = fs.readFileSync(routePath, "utf-8");
     expect(content).toContain("workflowId:");
-    expect(content).toContain("workflowName:");
+    expect(content).toContain("workflowSlug:");
     expect(content).toContain("providers:");
   });
 });

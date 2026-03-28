@@ -32,12 +32,12 @@ describe("workflowDisplayName", () => {
     ).toBe("sales-email-cold-outreach-headwater");
   });
 
-  it("falls back to workflowName when name is also absent", () => {
+  it("falls back to workflowSlug when name is also absent", () => {
     expect(
       workflowDisplayName({
         signatureName: null,
         displayName: null,
-        workflowName: "sales-email-cold-outreach-headwater",
+        workflowSlug: "sales-email-cold-outreach-headwater",
       })
     ).toBe("sales-email-cold-outreach-headwater");
   });

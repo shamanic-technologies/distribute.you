@@ -255,11 +255,11 @@ function CampaignCard({
 }) {
   const statusStyle = STATUS_STYLES[campaign.status] || "bg-gray-100 text-gray-500 border-gray-200";
 
-  const workflowLabel = campaign.workflowName
-    ? campaign.workflowName
+  const workflowLabel = campaign.workflowSlug
+    ? campaign.workflowSlug
         .split("-")
         .slice(-1)[0]
-        ?.replace(/^\w/, (c) => c.toUpperCase()) ?? campaign.workflowName
+        ?.replace(/^\w/, (c) => c.toUpperCase()) ?? campaign.workflowSlug
     : "Unknown";
 
   const rowOutputs = [...outputs].sort((a, b) => a.displayOrder - b.displayOrder).slice(0, 4);
