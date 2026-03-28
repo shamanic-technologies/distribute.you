@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrand, listCampaignsByBrand, getCampaignBatchStats, type Brand, type Campaign, type CampaignStats } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
+import { BrandToolsSection } from "@/components/brand-tools";
 import { useFeatures } from "@/lib/features-context";
 import {
   GlobeAltIcon,
@@ -285,6 +286,9 @@ export default function BrandOverviewPage() {
           })}
         </div>
       </div>
+
+      {/* Tools Section */}
+      <BrandToolsSection brandId={brandId} />
     </div>
   );
 }

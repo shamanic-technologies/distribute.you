@@ -1385,6 +1385,16 @@ export interface DiscoveredJournalist {
   updatedAt: string;
 }
 
+export async function listBrandOutlets(
+  brandId: string,
+  token?: string,
+): Promise<{ outlets: DiscoveredOutlet[] }> {
+  return apiCall<{ outlets: DiscoveredOutlet[] }>(
+    `/outlets?brandId=${brandId}`,
+    { token },
+  );
+}
+
 export async function listCampaignOutlets(
   campaignId: string,
   token?: string,
