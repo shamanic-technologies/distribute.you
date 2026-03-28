@@ -23,10 +23,10 @@ describe("Feature workflows page", () => {
     expect(content).toContain("@/lib/features-context");
   });
 
-  it("should use fetchFeatureStats with groupBy workflowSlug for data", () => {
+  it("should use fetchFeatureStats with groupBy workflowDynastySlug for data", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
     expect(content).toContain("fetchFeatureStats");
-    expect(content).toContain('groupBy: "workflowSlug"');
+    expect(content).toContain('groupBy: "workflowDynastySlug"');
     expect(content).toContain("useAuthQuery");
   });
 

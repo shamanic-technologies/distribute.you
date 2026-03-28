@@ -567,9 +567,11 @@ export interface SystemStats {
 
 export interface StatsGroup {
   workflowSlug?: string;
+  workflowDynastySlug?: string;
   brandId?: string;
   campaignId?: string;
   featureSlug?: string;
+  featureDynastySlug?: string;
   systemStats: SystemStats;
   stats: Record<string, number>;
 }
@@ -663,7 +665,7 @@ export async function fetchStatsRegistry(token?: string): Promise<{ registry: St
 /** GET /features/:featureSlug/stats — stats for a feature */
 export async function fetchFeatureStats(
   featureSlug: string,
-  params?: { groupBy?: string; brandId?: string; campaignId?: string; workflowSlug?: string },
+  params?: { groupBy?: string; brandId?: string; campaignId?: string; workflowSlug?: string; workflowDynastySlug?: string },
   token?: string,
 ): Promise<FeatureStatsResponse> {
   const query = new URLSearchParams();
@@ -671,6 +673,7 @@ export async function fetchFeatureStats(
   if (params?.brandId) query.set("brandId", params.brandId);
   if (params?.campaignId) query.set("campaignId", params.campaignId);
   if (params?.workflowSlug) query.set("workflowSlug", params.workflowSlug);
+  if (params?.workflowDynastySlug) query.set("workflowDynastySlug", params.workflowDynastySlug);
   const qs = query.toString();
   return apiCall<FeatureStatsResponse>(`/features/${featureSlug}/stats${qs ? `?${qs}` : ""}`, { token });
 }
@@ -850,7 +853,11 @@ export interface Workflow {
   id: string;
   appId: string;
   name: string;
+  slug: string;
   displayName: string | null;
+  dynastyName: string;
+  dynastySlug: string;
+  version: number;
   description: string | null;
   featureSlug: string | null;
   category?: string;

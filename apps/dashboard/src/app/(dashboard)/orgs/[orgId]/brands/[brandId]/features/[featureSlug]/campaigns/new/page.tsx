@@ -154,37 +154,37 @@ export default function FeatureCreateCampaignPage() {
     pollOptions,
   );
 
-  // Fetch feature stats grouped by workflow for enrichment
+  // Fetch feature stats grouped by dynasty (aggregated across all versions)
   const { data: statsData, isLoading } = useAuthQuery(
-    ["featureStats", featureSlug, "byWorkflow"],
-    () => fetchFeatureStats(featureSlug, { groupBy: "workflowSlug" }),
+    ["featureStats", featureSlug, "byDynasty"],
+    () => fetchFeatureStats(featureSlug, { groupBy: "workflowDynastySlug" }),
     { enabled: featureDef?.implemented === true, ...pollOptions },
   );
 
-  // Active workflows grouped by displayName (dynasty): keep only the latest per dynasty
+  // Active workflows grouped by dynastySlug: keep only the latest per dynasty
   const rows = useMemo(() => {
     if (!workflowsData?.workflows) return [];
     const active = workflowsData.workflows.filter((wf) => wf.status === "active");
-    const byDisplayName = new Map<string, typeof active[number]>();
+    const byDynasty = new Map<string, typeof active[number]>();
     for (const wf of active) {
-      if (!wf.displayName) continue;
-      const existing = byDisplayName.get(wf.displayName);
+      if (!wf.dynastySlug) continue;
+      const existing = byDynasty.get(wf.dynastySlug);
       if (!existing || wf.createdAt > existing.createdAt) {
-        byDisplayName.set(wf.displayName, wf);
+        byDynasty.set(wf.dynastySlug, wf);
       }
     }
 
     const statsMap = new Map<string, { stats: Record<string, number>; systemStats?: SystemStats }>();
     for (const g of statsData?.groups ?? []) {
-      if (g.workflowSlug) statsMap.set(g.workflowSlug, { stats: g.stats, systemStats: g.systemStats });
+      if (g.workflowDynastySlug) statsMap.set(g.workflowDynastySlug, { stats: g.stats, systemStats: g.systemStats });
     }
 
-    return [...byDisplayName.values()].map((wf): WorkflowTableRow => {
-      const s = statsMap.get(wf.name);
+    return [...byDynasty.values()].map((wf): WorkflowTableRow => {
+      const s = statsMap.get(wf.dynastySlug);
       return {
         id: wf.id,
         name: wf.name,
-        displayName: wf.displayName!,
+        displayName: wf.dynastyName,
         featureSlug: wf.featureSlug ?? null,
         stats: s?.stats ?? {},
       };

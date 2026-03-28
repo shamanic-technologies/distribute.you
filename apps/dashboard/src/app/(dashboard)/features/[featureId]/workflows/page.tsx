@@ -31,18 +31,18 @@ export default function FeatureWorkflowsPage() {
 
   const [detailWorkflowId, setDetailWorkflowId] = useState<string | null>(null);
 
-  // Fetch stats grouped by workflow
+  // Fetch stats grouped by workflow dynasty
   const { data: statsData, isLoading } = useAuthQuery(
-    ["featureStats", featureId, "byWorkflow"],
-    () => fetchFeatureStats(featureId, { groupBy: "workflowSlug" }),
+    ["featureStats", featureId, "byDynasty"],
+    () => fetchFeatureStats(featureId, { groupBy: "workflowDynastySlug" }),
     { enabled: featureDef?.implemented === true, ...pollOptions },
   );
 
   const rows = useMemo(() => {
     if (!statsData?.groups) return [];
     return statsData.groups.map((g) => ({
-      workflowSlug: g.workflowSlug ?? "unknown",
-      displayLabel: formatDisplayName(g.workflowSlug ?? "unknown"),
+      workflowSlug: g.workflowDynastySlug ?? "unknown",
+      displayLabel: formatDisplayName(g.workflowDynastySlug ?? "unknown"),
       stats: g.stats,
       systemStats: g.systemStats,
     }));

@@ -9,9 +9,9 @@ const pagePath = path.resolve(
 const content = fs.readFileSync(pagePath, "utf-8");
 
 describe("Campaign creation page uses feature stats + workflow list", () => {
-  it("should fetch feature stats grouped by workflow for display columns", () => {
+  it("should fetch feature stats grouped by dynasty for display columns", () => {
     expect(content).toContain("fetchFeatureStats");
-    expect(content).toContain('groupBy: "workflowSlug"');
+    expect(content).toContain('groupBy: "workflowDynastySlug"');
   });
 
   it("should fetch workflows filtered by featureSlug", () => {
@@ -29,9 +29,9 @@ describe("Campaign creation page uses feature stats + workflow list", () => {
     expect(content).not.toContain('"$/Reply"');
   });
 
-  it("should group active workflows by displayName (dynasty pattern)", () => {
-    expect(content).toContain("byDisplayName");
-    expect(content).toContain("displayName");
+  it("should group active workflows by dynastySlug (dynasty pattern)", () => {
+    expect(content).toContain("byDynasty");
+    expect(content).toContain("dynastySlug");
   });
 
   it("should use workflow ID as stable selection key", () => {
