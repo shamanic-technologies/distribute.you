@@ -74,7 +74,7 @@ export function PerformancePreview({ brands, workflows }: PerformancePreviewProp
             </thead>
             <tbody className="divide-y divide-gray-100">
               {brands.map((brand, i) => {
-                const displayName = brand.brandName || brand.brandDomain || "Unknown";
+                const brandLabel = brand.brandName || brand.brandDomain || "Unknown";
                 return (
                   <tr key={brand.brandDomain ?? i} className={`${i === 0 ? "bg-brand-50/30" : ""} hover:bg-gray-50 transition`}>
                     <td className="px-4 py-3">
@@ -90,10 +90,10 @@ export function PerformancePreview({ brands, workflows }: PerformancePreviewProp
                           />
                         ) : (
                           <div className="w-6 h-6 rounded bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500 uppercase">
-                            {displayName.charAt(0)}
+                            {brandLabel.charAt(0)}
                           </div>
                         )}
-                        <span className={`font-medium text-sm ${i === 0 ? "text-gray-900" : "text-gray-700"}`}>{displayName}</span>
+                        <span className={`font-medium text-sm ${i === 0 ? "text-gray-900" : "text-gray-700"}`}>{brandLabel}</span>
                       </div>
                     </td>
                     <td className={`px-4 py-3 text-right font-mono text-xs ${i === 0 ? "text-gray-900 font-medium" : "text-gray-500"}`}>
@@ -131,7 +131,7 @@ export function PerformancePreview({ brands, workflows }: PerformancePreviewProp
                 <tr key={wf.workflowName} className={`${i === 0 ? "bg-brand-50/30" : ""} hover:bg-gray-50 transition`}>
                   <td className="px-4 py-3">
                     <span className={`text-sm font-medium ${i === 0 ? "text-gray-900" : "text-gray-700"}`}>
-                      {wf.displayName || wf.workflowName}
+                      {wf.dynastyName || wf.workflowName}
                     </span>
                   </td>
                   <td className={`px-4 py-3 text-right font-mono text-xs ${i === 0 ? "text-gray-900 font-medium" : "text-gray-500"}`}>

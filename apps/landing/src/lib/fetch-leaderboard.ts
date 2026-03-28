@@ -15,7 +15,7 @@ export interface BrandEntry {
 
 export interface WorkflowEntry {
   workflowName: string;
-  displayName: string;
+  dynastyName: string;
   emailsSent: number;
   openRate: number;
   clickRate: number;
@@ -44,7 +44,7 @@ interface PublicEmailStats {
 interface PublicRankedItem {
   workflow: {
     name: string;
-    displayName: string | null;
+    dynastyName: string | null;
     category: string;
   };
   stats: {
@@ -71,7 +71,7 @@ export async function fetchLeaderboardPreview(): Promise<LeaderboardPreview | nu
       const cost = item.stats.totalCostInUsdCents;
       return {
         workflowName: item.workflow.name,
-        displayName: item.workflow.displayName ?? item.workflow.name,
+        dynastyName: item.workflow.dynastyName ?? item.workflow.name,
         emailsSent: b.sent,
         openRate: b.sent > 0 ? b.opened / b.sent : 0,
         clickRate: b.sent > 0 ? b.clicked / b.sent : 0,
