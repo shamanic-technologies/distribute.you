@@ -865,9 +865,9 @@ export interface Workflow {
   signatureName: string;
   dag: DAG | null;
   requiredProviders: string[];
-  status: "active" | "deprecated";
-  upgradedTo: string | null;
-  forkedFrom: string | null;
+  status?: "active" | "deprecated";
+  upgradedTo?: string | null;
+  forkedFrom?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -932,7 +932,7 @@ export async function queryProviderRequirements(
 }
 
 export async function listWorkflows(params?: { featureSlug?: string }, token?: string): Promise<{ workflows: Workflow[] }> {
-  const query = new URLSearchParams({ status: "all" });
+  const query = new URLSearchParams();
   if (params?.featureSlug) query.set("featureSlug", params.featureSlug);
   return apiCall<{ workflows: Workflow[] }>(`/workflows?${query}`, { token });
 }
