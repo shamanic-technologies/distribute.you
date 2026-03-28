@@ -18,14 +18,14 @@ describe("Workflow list page shows all workflows (not just those with stats)", (
     expect(content).toContain('["workflows", featureSlug]');
   });
 
-  it("should group active workflows by displayName (dynasty pattern)", () => {
+  it("should group active workflows by dynastySlug (dynasty pattern)", () => {
     expect(content).toContain("dynastyWorkflows");
-    expect(content).toContain("byDisplayName");
+    expect(content).toContain("byDynasty");
   });
 
-  it("should use displayName from workflow for display", () => {
-    expect(content).toContain("displayName");
-    expect(content).toContain("wf.displayName");
+  it("should use dynastyName from workflow for display", () => {
+    expect(content).toContain("dynastyName");
+    expect(content).toContain("wf.dynastySlug");
   });
 
   it("should wait for workflowsLoading before rendering the table", () => {

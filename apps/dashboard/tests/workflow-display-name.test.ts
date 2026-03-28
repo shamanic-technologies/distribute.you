@@ -2,7 +2,18 @@ import { describe, it, expect } from "vitest";
 import { workflowDisplayName } from "../src/lib/workflow-display-name";
 
 describe("workflowDisplayName", () => {
-  it("returns displayName when present (even if signatureName exists)", () => {
+  it("returns dynastyName when present (highest priority)", () => {
+    expect(
+      workflowDisplayName({
+        dynastyName: "Dynasty Name",
+        displayName: "Cold Outreach Jasmine",
+        signatureName: "mintaka",
+        name: "sales-email-cold-outreach-headwater",
+      })
+    ).toBe("Dynasty Name");
+  });
+
+  it("returns displayName when dynastyName is absent", () => {
     expect(
       workflowDisplayName({
         signatureName: "mintaka",

@@ -66,10 +66,10 @@ export default function FeatureWorkflowsPage() {
     router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/new`);
   }, [router, orgId, brandId, featureSlug]);
 
-  // Fetch stats grouped by workflow
+  // Fetch stats grouped by workflow dynasty (aggregated across all versions)
   const { data: statsData, isLoading } = useAuthQuery(
-    ["featureStats", featureSlug, "byWorkflow"],
-    () => fetchFeatureStats(featureSlug, { groupBy: "workflowSlug" }),
+    ["featureStats", featureSlug, "byDynasty"],
+    () => fetchFeatureStats(featureSlug, { groupBy: "workflowDynastySlug" }),
     { enabled: wfDef?.implemented === true, ...pollOptions },
   );
 
@@ -80,33 +80,33 @@ export default function FeatureWorkflowsPage() {
     pollOptions,
   );
 
-  // Active workflows grouped by displayName (dynasty): keep only the latest per dynasty
+  // Active workflows grouped by dynastySlug: keep only the latest per dynasty
   const dynastyWorkflows = useMemo(() => {
     if (!workflowsData?.workflows) return [];
     const active = workflowsData.workflows.filter((wf) => wf.status === "active");
-    const byDisplayName = new Map<string, typeof active[number]>();
+    const byDynasty = new Map<string, typeof active[number]>();
     for (const wf of active) {
-      if (!wf.displayName) continue;
-      const existing = byDisplayName.get(wf.displayName);
+      if (!wf.dynastySlug) continue;
+      const existing = byDynasty.get(wf.dynastySlug);
       if (!existing || wf.createdAt > existing.createdAt) {
-        byDisplayName.set(wf.displayName, wf);
+        byDynasty.set(wf.dynastySlug, wf);
       }
     }
-    return [...byDisplayName.values()];
+    return [...byDynasty.values()];
   }, [workflowsData]);
 
   const rows = useMemo(() => {
     const statsMap = new Map<string, { stats: Record<string, number>; systemStats?: SystemStats }>();
     for (const g of statsData?.groups ?? []) {
-      if (g.workflowSlug) statsMap.set(g.workflowSlug, { stats: g.stats, systemStats: g.systemStats });
+      if (g.workflowDynastySlug) statsMap.set(g.workflowDynastySlug, { stats: g.stats, systemStats: g.systemStats });
     }
 
     return dynastyWorkflows.map((wf) => {
-      const s = statsMap.get(wf.name);
+      const s = statsMap.get(wf.dynastySlug);
       return {
         id: wf.id,
         workflowSlug: wf.name,
-        displayName: wf.displayName!,
+        displayName: wf.dynastyName,
         stats: s?.stats ?? {},
         systemStats: s?.systemStats,
       };
