@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getWorkflow, getWorkflowSummary, getFeature } from "@/lib/api";
+import { getWorkflow, getWorkflowSummary, getFeature, listWorkflows } from "@/lib/api";
 import { WorkflowOverview } from "@/components/workflows/workflow-overview";
 import { WorkflowChat } from "@/components/workflows/workflow-chat";
 import { workflowDisplayName } from "@/lib/workflow-display-name";
@@ -49,6 +49,11 @@ export default function WorkflowViewerPage() {
   const [activeWorkflowId, setActiveWorkflowId] = useState(initialWorkflowId);
   const hasNavigatedRef = useRef(false);
 
+  // Reset navigation guard when activeWorkflowId changes so subsequent forks are detected
+  useEffect(() => {
+    hasNavigatedRef.current = false;
+  }, [activeWorkflowId]);
+
   const handleWorkflowUpgraded = useCallback((newWorkflowId: string) => {
     if (hasNavigatedRef.current) return;
     hasNavigatedRef.current = true;
@@ -64,8 +69,27 @@ export default function WorkflowViewerPage() {
     { refetchInterval: 3000 },
   );
 
-  // Fork detection is handled by WorkflowChat via the upgradedTo prop,
-  // which ensures chat messages are saved before navigation.
+  // Fallback fork detection: poll for child workflows when upgraded_to is not set.
+  // The backend doesn't always set upgraded_to on the parent workflow, so we also
+  // check for workflows whose forkedFrom points to the current one.
+  const needsForkPoll = !!workflow && !workflow.upgradedTo && !hasNavigatedRef.current;
+  const { data: siblingData } = useAuthQuery(
+    ["workflow-siblings", activeWorkflowId, featureSlug],
+    () => listWorkflows({ featureSlug }),
+    { refetchInterval: 5000, enabled: needsForkPoll },
+  );
+
+  const detectedForkId = useMemo(() => {
+    if (workflow?.upgradedTo) return workflow.upgradedTo;
+    if (!siblingData?.workflows) return null;
+    const fork = siblingData.workflows
+      .filter((w) => w.forkedFrom === activeWorkflowId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+    return fork?.id ?? null;
+  }, [workflow?.upgradedTo, siblingData, activeWorkflowId]);
+
+  // Fork detection: pass detectedForkId to WorkflowChat via upgradedTo prop.
+  // The chat component migrates messages before calling onWorkflowUpgraded.
 
   const { data: summary } = useAuthQuery(
     ["workflow-summary", activeWorkflowId],
@@ -247,7 +271,7 @@ export default function WorkflowViewerPage() {
         </div>
 
         {/* Chat — render immediately; it handles its own loading state */}
-        <WorkflowChat workflowId={activeWorkflowId} workflowContext={workflowContext} onWorkflowUpgraded={handleWorkflowUpgraded} upgradedTo={workflow?.upgradedTo ?? null} />
+        <WorkflowChat workflowId={activeWorkflowId} workflowContext={workflowContext} onWorkflowUpgraded={handleWorkflowUpgraded} upgradedTo={detectedForkId} />
       </div>
     </div>
   );

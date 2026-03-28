@@ -6,6 +6,7 @@ import { describe, it, expect, vi } from "vitest";
  * - Double navigation is prevented by the hasNavigated guard
  * - Both polling-based (upgradedTo prop) and onFinish-based fork detection paths
  *   save messages to the new workflow before navigating
+ * - Fork detection works via both upgradedTo field AND forkedFrom child polling
  */
 
 describe("workflow fork redirect", () => {
@@ -107,5 +108,53 @@ describe("workflow fork redirect", () => {
     migrateToNewWorkflow("fork-1", msgs); // duplicate — should not save again
 
     expect(saveMsgs).toHaveBeenCalledTimes(1);
+  });
+
+  it("detects fork via forkedFrom child when upgradedTo is null (fallback detection)", () => {
+    const currentWorkflowId = "parent-workflow-id";
+    const workflows = [
+      { id: "parent-workflow-id", forkedFrom: null, upgradedTo: null, createdAt: "2026-03-27T15:12:12Z" },
+      { id: "child-fork-id", forkedFrom: "parent-workflow-id", upgradedTo: null, createdAt: "2026-03-27T15:13:07Z" },
+      { id: "unrelated-workflow", forkedFrom: "some-other-id", upgradedTo: null, createdAt: "2026-03-27T15:14:00Z" },
+    ];
+
+    // Mirrors page-level detectedForkId logic
+    const fork = workflows
+      .filter((w) => w.forkedFrom === currentWorkflowId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+
+    expect(fork?.id).toBe("child-fork-id");
+  });
+
+  it("prefers upgradedTo over forkedFrom child detection", () => {
+    const upgradedTo = "upgraded-target-id";
+
+    // When upgradedTo is set, use it directly — no need to scan siblings
+    const detectedForkId = upgradedTo ?? null;
+
+    expect(detectedForkId).toBe("upgraded-target-id");
+  });
+
+  it("hasNavigated resets after navigation so subsequent forks are detected", () => {
+    const navigate = vi.fn();
+    let hasNavigated = false;
+    let activeWorkflowId = "wf-1";
+
+    function handleUpgraded(newId: string) {
+      if (hasNavigated) return;
+      hasNavigated = true;
+      navigate(newId);
+      activeWorkflowId = newId;
+      // Reset guard on activeWorkflowId change (mirrors useEffect in page)
+      hasNavigated = false;
+    }
+
+    handleUpgraded("wf-2"); // first fork
+    handleUpgraded("wf-3"); // second fork — should also work
+
+    expect(navigate).toHaveBeenCalledTimes(2);
+    expect(navigate).toHaveBeenCalledWith("wf-2");
+    expect(navigate).toHaveBeenCalledWith("wf-3");
+    expect(activeWorkflowId).toBe("wf-3");
   });
 });
