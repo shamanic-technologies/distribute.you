@@ -524,7 +524,9 @@ export interface FeatureRef {
 export interface Feature {
   slug: string;
   name: string;
-  displayName?: string;
+  dynastyName?: string;
+  dynastySlug?: string;
+  version?: number;
   description: string;
   icon?: string;
   category: string;
