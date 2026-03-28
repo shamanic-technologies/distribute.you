@@ -21,14 +21,18 @@ describe("brand-tools", () => {
     expect(componentSrc).toContain("OutletsTool");
   });
 
-  it("renders press kits tool with listBrandMediaKits", () => {
-    expect(componentSrc).toContain("listBrandMediaKits");
-    expect(componentSrc).toContain("PressKitsTool");
+  it("press kits tool is disabled pending backend brand_id filter", () => {
+    expect(componentSrc).toContain('title="Press Kits"');
+    expect(componentSrc).toContain("Needs brand_id filter on GET /media-kits from backend");
   });
 
-  it("journalists tool is disabled pending backend endpoint", () => {
+  it("journalists tool is disabled pending backend brand_id filter", () => {
     expect(componentSrc).toContain('title="Journalists"');
-    expect(componentSrc).toContain("disabled");
+    expect(componentSrc).toContain("Needs brand_id filter on GET /campaign-outlet-journalists from backend");
+  });
+
+  it("does not use listBrandMediaKits workaround", () => {
+    expect(componentSrc).not.toContain("listBrandMediaKits");
   });
 
   it("brand page imports BrandToolsSection", () => {
@@ -53,12 +57,8 @@ describe("brand-tools", () => {
       expect(apiSrc).toContain("/outlets?brandId=${brandId}");
     });
 
-    it("exports listBrandMediaKits", () => {
-      expect(apiSrc).toContain("export async function listBrandMediaKits");
-    });
-
-    it("listBrandMediaKits filters by brandId", () => {
-      expect(apiSrc).toContain("kit => kit.brandId === brandId");
+    it("does not have listBrandMediaKits workaround", () => {
+      expect(apiSrc).not.toContain("export async function listBrandMediaKits");
     });
   });
 });
