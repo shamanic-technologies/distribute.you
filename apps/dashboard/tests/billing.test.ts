@@ -196,10 +196,18 @@ describe("Billing page", () => {
     expect(content).toContain("Credits depleted");
   });
 
-  it("should always show top-up flow", () => {
+  it("should show top-up flow when auto-reload is not configured", () => {
     expect(content).toContain("TOPUP_AMOUNTS");
     expect(content).toContain("Add Credits");
     expect(content).toContain("handleTopup");
+  });
+
+  it("should show editable auto-reload section when already configured", () => {
+    expect(content).toContain("editingReload");
+    expect(content).toContain("handleSaveReload");
+    expect(content).toContain("handleDisableReload");
+    expect(content).toContain("Save changes");
+    expect(content).toContain("Disable auto-reload");
   });
 
   it("should integrate auto-reload as a checkbox inside the Add Credits card", () => {

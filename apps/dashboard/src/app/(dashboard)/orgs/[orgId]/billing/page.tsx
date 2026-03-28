@@ -56,6 +56,11 @@ export default function BillingPage() {
   const [reloadAmount, setReloadAmount] = useState("25");
   const [reloadThreshold, setReloadThreshold] = useState("5");
 
+  // Edit mode for existing auto-reload config
+  const [editingReload, setEditingReload] = useState(false);
+  const [savingReload, setSavingReload] = useState(false);
+  const [disablingReload, setDisablingReload] = useState(false);
+
   // Pagination state
   const [txPage, setTxPage] = useState(0);
 
@@ -200,6 +205,39 @@ export default function BillingPage() {
     }
   }
 
+  async function handleSaveReload() {
+    if (hasValidationError || !reloadAmount) return;
+    setSavingReload(true);
+    setError(null);
+    try {
+      const reloadCents = Math.round(parseFloat(reloadAmount) * 100);
+      const thresholdCents = reloadThreshold ? Math.round(parseFloat(reloadThreshold) * 100) : 500;
+      const { configureAutoReload } = await import("@/lib/api");
+      await configureAutoReload(reloadCents, thresholdCents);
+      queryClient.invalidateQueries({ queryKey: ["billingAccount"] });
+      setEditingReload(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update auto-reload settings");
+    } finally {
+      setSavingReload(false);
+    }
+  }
+
+  async function handleDisableReload() {
+    setDisablingReload(true);
+    setError(null);
+    try {
+      const { disableAutoReload } = await import("@/lib/api");
+      await disableAutoReload();
+      queryClient.invalidateQueries({ queryKey: ["billingAccount"] });
+      setEditingReload(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to disable auto-reload");
+    } finally {
+      setDisablingReload(false);
+    }
+  }
+
   if (accountLoading) {
     return (
       <div className="p-4 md:p-8">
@@ -258,8 +296,11 @@ export default function BillingPage() {
                 {formatCents(account?.creditBalanceCents ?? 0)}
               </p>
               {hasAutoReload && (
-                <p className="text-xs text-gray-400 mt-1">
-                  Auto-reload: {formatCents(account!.reloadAmountCents!)} when below {formatCents(account!.reloadThresholdCents ?? 0)}
+                <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Auto-reload active
                 </p>
               )}
             </div>
@@ -283,99 +324,193 @@ export default function BillingPage() {
           </div>
         </div>
 
-        {/* Add Credits + Auto-Reload */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Add Credits</h2>
-          <div className="flex flex-wrap gap-2 mb-4">
-            {TOPUP_AMOUNTS.map((amount) => (
-              <button
-                key={amount}
-                onClick={() => handleSelectTopup(amount)}
-                className={`px-4 py-2 text-sm rounded-lg border transition ${
-                  topupAmount === amount && !customAmount
-                    ? "border-brand-300 bg-brand-50 text-brand-700 font-medium"
-                    : "border-gray-200 text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                {formatCents(amount)}
-              </button>
-            ))}
-            <input
-              type="number"
-              placeholder="Custom $"
-              value={customAmount}
-              onChange={(e) => { setCustomAmount(e.target.value); setCustomAmountError(null); }}
-              onBlur={handleCustomAmountBlur}
-              className={`w-28 px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 ${customAmountError ? "border-red-300" : "border-gray-200"}`}
-              min="10"
-              step="1"
-            />
-          </div>
-          {customAmountError && (
-            <p className="text-xs text-red-600 mt-1">{customAmountError}</p>
-          )}
-
-          {/* Auto-reload option */}
-          <div className="border-t border-gray-100 pt-4 mt-4 mb-4">
-            <div className="flex items-start gap-3">
-              <input
-                type="checkbox"
-                checked={enableAutoReload}
-                onChange={(e) => setEnableAutoReload(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
-              />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-800">Enable auto-reload</p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Automatically add credits when your balance gets low, so your campaigns never stop.
-                </p>
+        {/* Auto-Reload Settings (when already configured) */}
+        {hasAutoReload ? (
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-green-500" />
+                <h2 className="text-lg font-medium text-gray-900">Auto-Reload</h2>
               </div>
+              {!editingReload && (
+                <button
+                  onClick={() => setEditingReload(true)}
+                  className="text-sm text-brand-600 hover:text-brand-700 font-medium"
+                >
+                  Edit
+                </button>
+              )}
             </div>
 
-            {enableAutoReload && (
-              <div className="grid grid-cols-2 gap-3 mt-3 ml-7">
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Reload amount ($)</label>
-                  <input
-                    type="number"
-                    value={reloadAmount}
-                    onChange={(e) => { setReloadAmount(e.target.value); setReloadAmountError(null); }}
-                    onBlur={handleReloadAmountBlur}
-                    placeholder="e.g. 25"
-                    className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 ${reloadAmountError ? "border-red-300" : "border-gray-200"}`}
-                    min="10"
-                  />
-                  {reloadAmountError && (
-                    <p className="text-xs text-red-600 mt-1">{reloadAmountError}</p>
-                  )}
+            {editingReload ? (
+              <>
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Reload amount ($)</label>
+                    <input
+                      type="number"
+                      value={reloadAmount}
+                      onChange={(e) => { setReloadAmount(e.target.value); setReloadAmountError(null); }}
+                      onBlur={handleReloadAmountBlur}
+                      placeholder="e.g. 25"
+                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 ${reloadAmountError ? "border-red-300" : "border-gray-200"}`}
+                      min="10"
+                    />
+                    {reloadAmountError && (
+                      <p className="text-xs text-red-600 mt-1">{reloadAmountError}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">When balance below ($)</label>
+                    <input
+                      type="number"
+                      value={reloadThreshold}
+                      onChange={(e) => { setReloadThreshold(e.target.value); setThresholdError(null); }}
+                      onBlur={handleThresholdBlur}
+                      placeholder="e.g. 5"
+                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 ${thresholdError ? "border-red-300" : "border-gray-200"}`}
+                      min="5"
+                    />
+                    {thresholdError && (
+                      <p className="text-xs text-red-600 mt-1">{thresholdError}</p>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">When balance below ($)</label>
-                  <input
-                    type="number"
-                    value={reloadThreshold}
-                    onChange={(e) => { setReloadThreshold(e.target.value); setThresholdError(null); }}
-                    onBlur={handleThresholdBlur}
-                    placeholder="e.g. 5"
-                    className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 ${thresholdError ? "border-red-300" : "border-gray-200"}`}
-                    min="5"
-                  />
-                  {thresholdError && (
-                    <p className="text-xs text-red-600 mt-1">{thresholdError}</p>
-                  )}
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleSaveReload}
+                    disabled={savingReload || hasValidationError || !reloadAmount}
+                    className="bg-brand-600 text-white px-5 py-2 rounded-lg hover:bg-brand-700 disabled:opacity-50 text-sm font-medium transition"
+                  >
+                    {savingReload ? "Saving..." : "Save changes"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditingReload(false);
+                      if (account?.reloadAmountCents) setReloadAmount((account.reloadAmountCents / 100).toString());
+                      if (account?.reloadThresholdCents) setReloadThreshold((account.reloadThresholdCents / 100).toString());
+                    }}
+                    className="px-5 py-2 text-sm text-gray-600 hover:text-gray-800 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDisableReload}
+                    disabled={disablingReload}
+                    className="ml-auto text-sm text-red-600 hover:text-red-700 font-medium disabled:opacity-50 transition"
+                  >
+                    {disablingReload ? "Disabling..." : "Disable auto-reload"}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-xs text-gray-500">Reload amount</p>
+                  <p className="text-lg font-semibold text-gray-900 mt-0.5">{formatCents(account!.reloadAmountCents!)}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-xs text-gray-500">When balance below</p>
+                  <p className="text-lg font-semibold text-gray-900 mt-0.5">{formatCents(account!.reloadThresholdCents ?? 0)}</p>
                 </div>
               </div>
             )}
           </div>
+        ) : (
+          /* Add Credits + Auto-Reload (when not yet configured) */
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <h2 className="text-lg font-medium text-gray-900 mb-4">Add Credits</h2>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {TOPUP_AMOUNTS.map((amount) => (
+                <button
+                  key={amount}
+                  onClick={() => handleSelectTopup(amount)}
+                  className={`px-4 py-2 text-sm rounded-lg border transition ${
+                    topupAmount === amount && !customAmount
+                      ? "border-brand-300 bg-brand-50 text-brand-700 font-medium"
+                      : "border-gray-200 text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  {formatCents(amount)}
+                </button>
+              ))}
+              <input
+                type="number"
+                placeholder="Custom $"
+                value={customAmount}
+                onChange={(e) => { setCustomAmount(e.target.value); setCustomAmountError(null); }}
+                onBlur={handleCustomAmountBlur}
+                className={`w-28 px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 ${customAmountError ? "border-red-300" : "border-gray-200"}`}
+                min="10"
+                step="1"
+              />
+            </div>
+            {customAmountError && (
+              <p className="text-xs text-red-600 mt-1">{customAmountError}</p>
+            )}
 
-          <button
-            onClick={handleTopup}
-            disabled={topupLoading || (enableAutoReload && !reloadAmount) || hasValidationError}
-            className="bg-brand-600 text-white px-6 py-2.5 rounded-lg hover:bg-brand-700 disabled:opacity-50 text-sm font-medium transition"
-          >
-            {topupLoading ? "Redirecting to Stripe..." : `Add ${formatCents(customAmount ? Math.round(parseFloat(customAmount) * 100) || 0 : topupAmount)}`}
-          </button>
-        </div>
+            {/* Auto-reload option */}
+            <div className="border-t border-gray-100 pt-4 mt-4 mb-4">
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={enableAutoReload}
+                  onChange={(e) => setEnableAutoReload(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
+                />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-800">Enable auto-reload</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Automatically add credits when your balance gets low, so your campaigns never stop.
+                  </p>
+                </div>
+              </div>
+
+              {enableAutoReload && (
+                <div className="grid grid-cols-2 gap-3 mt-3 ml-7">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Reload amount ($)</label>
+                    <input
+                      type="number"
+                      value={reloadAmount}
+                      onChange={(e) => { setReloadAmount(e.target.value); setReloadAmountError(null); }}
+                      onBlur={handleReloadAmountBlur}
+                      placeholder="e.g. 25"
+                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 ${reloadAmountError ? "border-red-300" : "border-gray-200"}`}
+                      min="10"
+                    />
+                    {reloadAmountError && (
+                      <p className="text-xs text-red-600 mt-1">{reloadAmountError}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">When balance below ($)</label>
+                    <input
+                      type="number"
+                      value={reloadThreshold}
+                      onChange={(e) => { setReloadThreshold(e.target.value); setThresholdError(null); }}
+                      onBlur={handleThresholdBlur}
+                      placeholder="e.g. 5"
+                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 ${thresholdError ? "border-red-300" : "border-gray-200"}`}
+                      min="5"
+                    />
+                    {thresholdError && (
+                      <p className="text-xs text-red-600 mt-1">{thresholdError}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={handleTopup}
+              disabled={topupLoading || (enableAutoReload && !reloadAmount) || hasValidationError}
+              className="bg-brand-600 text-white px-6 py-2.5 rounded-lg hover:bg-brand-700 disabled:opacity-50 text-sm font-medium transition"
+            >
+              {topupLoading ? "Redirecting to Stripe..." : `Add ${formatCents(customAmount ? Math.round(parseFloat(customAmount) * 100) || 0 : topupAmount)}`}
+            </button>
+          </div>
+        )}
 
         {/* Transaction History */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
