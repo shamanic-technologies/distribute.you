@@ -11,8 +11,16 @@ describe("Feature update fork handling", () => {
   const apiContent = fs.readFileSync(apiPath, "utf-8");
 
   describe("Feature interface", () => {
-    it("should include displayName field", () => {
-      expect(apiContent).toMatch(/displayName\??:\s*string/);
+    it("should include dynastyName field", () => {
+      expect(apiContent).toMatch(/dynastyName\??:\s*string/);
+    });
+
+    it("should include dynastySlug field", () => {
+      expect(apiContent).toMatch(/dynastySlug\??:\s*string/);
+    });
+
+    it("should include version field", () => {
+      expect(apiContent).toMatch(/version\??:\s*number/);
     });
 
     it("should include forkedFrom field", () => {
