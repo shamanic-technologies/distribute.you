@@ -154,6 +154,12 @@ describe("WorkflowChat component (useChat + AI SDK)", () => {
     expect(content).toContain("prepareSendMessagesRequest");
     expect(content).toContain('api: "/api/v1/chat"');
   });
+
+  it("should omit sessionId from payload when null instead of sending null", () => {
+    const content = fs.readFileSync(chatPath, "utf-8");
+    expect(content).toContain("sessionIdRef.current ? { sessionId: sessionIdRef.current } : {}");
+    expect(content).not.toMatch(/\bsessionId:\s*sessionIdRef\.current\s*[,\n]/);
+  });
 });
 
 describe("Chat proxy route (SSE → Data Stream Protocol)", () => {

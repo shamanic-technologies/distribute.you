@@ -696,7 +696,7 @@ export function WorkflowChat({
                   (p): p is { type: "text"; text: string } =>
                     p.type === "text",
                 )?.text || "",
-            sessionId: sessionIdRef.current,
+            ...(sessionIdRef.current ? { sessionId: sessionIdRef.current } : {}),
             context: workflowContext,
           },
         }),
