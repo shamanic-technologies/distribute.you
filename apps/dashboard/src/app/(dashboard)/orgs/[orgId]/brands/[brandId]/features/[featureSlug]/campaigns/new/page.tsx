@@ -46,7 +46,7 @@ const BUDGET_FREQUENCIES: { value: BudgetFrequency; label: string }[] = [
 interface WorkflowTableRow {
   id: string;
   name: string;
-  displayName: string;
+  dynastyName: string;
   featureSlug: string | null;
   stats: Record<string, number>;
 }
@@ -184,7 +184,7 @@ export default function FeatureCreateCampaignPage() {
       return {
         id: wf.id,
         name: wf.name,
-        displayName: wf.dynastyName,
+        dynastyName: wf.dynastyName,
         featureSlug: wf.featureSlug ?? null,
         stats: s?.stats ?? {},
       };
@@ -302,7 +302,7 @@ export default function FeatureCreateCampaignPage() {
 
     const generateName = () => {
       const now = new Date();
-      return `${selectedRow.displayName} \u2014 ${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}.${String(now.getMilliseconds()).padStart(3, "0")}`;
+      return `${selectedRow.dynastyName} \u2014 ${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}.${String(now.getMilliseconds()).padStart(3, "0")}`;
     };
     try {
       // Pass all form input values generically
@@ -366,7 +366,7 @@ export default function FeatureCreateCampaignPage() {
     const { brandUrl: intentBrandUrl, ...intentInputFields } = formData;
     sessionStorage.setItem("pendingCampaign", JSON.stringify({
       workflowSlug: selectedRow.name,
-      displayLabel: selectedRow.displayName,
+      displayLabel: selectedRow.dynastyName,
       brandUrl: intentBrandUrl,
       ...budgetParams,
       featureInputs: intentInputFields,
@@ -813,7 +813,7 @@ function WorkflowRow({
         <div className="flex items-center gap-2">
           {isSelected && <div className="w-2 h-2 bg-brand-500 rounded-full flex-shrink-0" />}
           <span className={`text-sm font-medium ${isSelected ? "text-brand-700" : "text-gray-900"}`}>
-            {wf.displayName}
+            {wf.dynastyName}
           </span>
           {onShowDetail && (
             <button

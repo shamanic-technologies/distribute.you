@@ -106,7 +106,7 @@ export default function FeatureWorkflowsPage() {
       return {
         id: wf.id,
         workflowSlug: wf.name,
-        displayName: wf.dynastyName,
+        dynastyName: wf.dynastyName,
         stats: s?.stats ?? {},
         systemStats: s?.systemStats,
       };
@@ -232,7 +232,7 @@ export default function FeatureWorkflowsPage() {
                   >
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-900">{wf.displayName}</span>
+                        <span className="text-sm font-medium text-gray-900">{wf.dynastyName}</span>
                       </div>
                     </td>
                     {sortedOutputs.map((o) => (

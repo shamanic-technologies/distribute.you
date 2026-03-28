@@ -42,7 +42,7 @@ export default function FeatureWorkflowsPage() {
     if (!statsData?.groups) return [];
     return statsData.groups.map((g) => ({
       workflowSlug: g.workflowDynastySlug ?? "unknown",
-      displayLabel: formatDisplayName(g.workflowDynastySlug ?? "unknown"),
+      dynastyLabel: formatDisplayName(g.workflowDynastySlug ?? "unknown"),
       stats: g.stats,
       systemStats: g.systemStats,
     }));
@@ -117,7 +117,7 @@ function WorkflowCard({
   registry,
   onShowDetail,
 }: {
-  row: { workflowSlug: string; displayLabel: string; stats: Record<string, number>; systemStats: import("@/lib/api").SystemStats };
+  row: { workflowSlug: string; dynastyLabel: string; stats: Record<string, number>; systemStats: import("@/lib/api").SystemStats };
   sortedOutputs: import("@/lib/api").FeatureOutput[];
   registry: import("@/lib/api").StatsRegistry;
   onShowDetail: () => void;
@@ -133,7 +133,7 @@ function WorkflowCard({
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-medium text-gray-800 truncate">{row.displayLabel}</h3>
+            <h3 className="font-medium text-gray-800 truncate">{row.dynastyLabel}</h3>
           </div>
 
           {hasStats ? (
