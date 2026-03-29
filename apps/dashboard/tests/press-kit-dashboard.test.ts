@@ -85,6 +85,12 @@ describe("press-kit-dashboard", () => {
       expect(pageSrc).toContain("POLL_INTERVAL");
       expect(pageSrc).toContain("refetchInterval");
     });
+
+    it("handles failed status with retry action", () => {
+      expect(pageSrc).toContain('"failed"');
+      expect(pageSrc).toContain("Generation Failed");
+      expect(pageSrc).toContain("Retry");
+    });
   });
 
   describe("press-kit detail page", () => {
@@ -141,6 +147,12 @@ describe("press-kit-dashboard", () => {
 
     it("shows denial reason when denied", () => {
       expect(detailSrc).toContain("denialReason");
+    });
+
+    it("handles failed status with retry button", () => {
+      expect(detailSrc).toContain('"failed"');
+      expect(detailSrc).toContain("Generation Failed");
+      expect(detailSrc).toContain("Retry Generation");
     });
   });
 
@@ -200,6 +212,11 @@ describe("press-kit-dashboard", () => {
     it("uses contentExcerpt instead of mdxPageContent", () => {
       expect(resultsSrc).toContain("contentExcerpt");
       expect(resultsSrc).not.toContain("mdxPageContent");
+    });
+
+    it("handles failed status", () => {
+      expect(resultsSrc).toContain("failed");
+      expect(resultsSrc).toContain("Generation failed");
     });
   });
 });
