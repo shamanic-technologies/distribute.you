@@ -1418,7 +1418,7 @@ export interface DiscoveredOutlet {
   whyNotRelevant: string;
   overalRelevance?: string;
   relevanceRationale?: string;
-  status: "open" | "ended" | "denied";
+  status: "open" | "ended" | "denied" | "served" | "skipped";
   createdAt: string;
   updatedAt: string;
 }
