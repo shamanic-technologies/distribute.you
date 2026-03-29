@@ -402,7 +402,21 @@ export default function PressKitDetailPage() {
                 <PressKitChat
                   kitId={kitId}
                   brandId={brandId}
-                  pressKitContext={{ brandId, mediaKitId: kitId }}
+                  pressKitContext={{
+                    mediaKitId: kitId,
+                    brandId,
+                    brandName: brand?.name ?? brand?.domain ?? undefined,
+                    brandDomain: brand?.domain ?? undefined,
+                    pressKitTitle: kit.title ?? undefined,
+                    pressKitStatus: kit.status,
+                    currentMdxContent: kit.mdxPageContent ?? undefined,
+                    instruction: [
+                      "You are editing a press kit for this brand.",
+                      "The user wants to modify the press kit content (MDX).",
+                      "When the user asks for changes, update the MDX content via the update_mdx tool.",
+                      "Always preserve the existing structure unless the user explicitly asks to restructure.",
+                    ].join(" "),
+                  }}
                 />
               </div>
             )}
