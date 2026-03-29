@@ -28,6 +28,7 @@ const STATUS_STYLES: Record<MediaKitStatus, string> = {
   validated: "bg-green-100 text-green-700 border-green-200",
   denied: "bg-red-100 text-red-700 border-red-200",
   archived: "bg-gray-100 text-gray-500 border-gray-200",
+  failed: "bg-red-100 text-red-600 border-red-200",
 };
 
 const STATUS_LABELS: Record<MediaKitStatus, string> = {
@@ -36,6 +37,7 @@ const STATUS_LABELS: Record<MediaKitStatus, string> = {
   validated: "Published",
   denied: "Denied",
   archived: "Archived",
+  failed: "Generation Failed",
 };
 
 /* ─── MDX Content Renderer ────────────────────────────────────────────── */
@@ -152,6 +154,10 @@ export default function PressKitDetailPage() {
   });
   const cancelMut = useMutation({
     mutationFn: () => cancelDraftMediaKit(kitId),
+    onSuccess: invalidate,
+  });
+  const retryMut = useMutation({
+    mutationFn: () => editMediaKit({ instruction: "Retry generation", brandId }),
     onSuccess: invalidate,
   });
   const regenerateMut = useMutation({
@@ -317,6 +323,27 @@ export default function PressKitDetailPage() {
                   Generation in progress... This page refreshes automatically.
                 </div>
               )}
+              {kit.status === "failed" && (
+                <>
+                  <div className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                    Generation failed. You can retry or discard this press kit.
+                  </div>
+                  <button
+                    onClick={() => retryMut.mutate()}
+                    disabled={retryMut.isPending}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition"
+                  >
+                    {retryMut.isPending ? "Retrying..." : "Retry Generation"}
+                  </button>
+                  <button
+                    onClick={() => cancelMut.mutate()}
+                    disabled={cancelMut.isPending}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 transition"
+                  >
+                    Discard
+                  </button>
+                </>
+              )}
               {kit.status === "denied" && kit.denialReason && (
                 <div className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
                   Denied: {kit.denialReason}
@@ -391,7 +418,7 @@ export default function PressKitDetailPage() {
                   <div className="bg-white border border-gray-200 rounded-lg p-6 md:p-8">
                     <MdxPreview content={kit.mdxPageContent} />
                   </div>
-                ) : kit.status !== "generating" ? (
+                ) : kit.status !== "generating" && kit.status !== "failed" ? (
                   <div className="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-8 text-center">
                     <p className="text-gray-500 text-sm">No content yet.</p>
                   </div>

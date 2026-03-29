@@ -144,6 +144,51 @@ describe("press-kit-dashboard", () => {
     });
   });
 
+  describe("failed status support", () => {
+    it("MediaKitStatus type includes 'failed'", () => {
+      expect(apiSrc).toContain('"failed"');
+    });
+
+    const pagePath = path.join(
+      SRC,
+      "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/tools/press-kits/page.tsx",
+    );
+    const pageSrc = fs.readFileSync(pagePath, "utf-8");
+
+    it("list page has failed style and label", () => {
+      expect(pageSrc).toContain("failed:");
+      expect(pageSrc).toContain("Generation Failed");
+    });
+
+    it("list page has retry action for failed kits", () => {
+      expect(pageSrc).toContain("retryMut");
+      expect(pageSrc).toContain('kit.status === "failed"');
+    });
+
+    const detailPath = path.join(
+      SRC,
+      "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/tools/press-kits/[kitId]/page.tsx",
+    );
+    const detailSrc = fs.readFileSync(detailPath, "utf-8");
+
+    it("detail page has failed style and label", () => {
+      expect(detailSrc).toContain("failed:");
+      expect(detailSrc).toContain("Generation Failed");
+    });
+
+    it("detail page has retry action for failed kits", () => {
+      expect(detailSrc).toContain("retryMut");
+      expect(detailSrc).toContain("Retry Generation");
+    });
+
+    const resultsPath = path.join(SRC, "src/components/campaign/press-kit-results.tsx");
+    const resultsSrc = fs.readFileSync(resultsPath, "utf-8");
+
+    it("press-kit-results has failed style", () => {
+      expect(resultsSrc).toContain("failed:");
+    });
+  });
+
   describe("press-kit-results component updated", () => {
     const resultsPath = path.join(SRC, "src/components/campaign/press-kit-results.tsx");
     const resultsSrc = fs.readFileSync(resultsPath, "utf-8");

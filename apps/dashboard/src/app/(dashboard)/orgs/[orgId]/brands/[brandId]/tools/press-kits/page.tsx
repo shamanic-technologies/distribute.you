@@ -27,6 +27,7 @@ const STATUS_STYLES: Record<MediaKitStatus, string> = {
   validated: "bg-green-100 text-green-700 border-green-200",
   denied: "bg-red-100 text-red-700 border-red-200",
   archived: "bg-gray-100 text-gray-500 border-gray-200",
+  failed: "bg-red-100 text-red-600 border-red-200",
 };
 
 const STATUS_LABELS: Record<MediaKitStatus, string> = {
@@ -35,6 +36,7 @@ const STATUS_LABELS: Record<MediaKitStatus, string> = {
   validated: "Published",
   denied: "Denied",
   archived: "Archived",
+  failed: "Generation Failed",
 };
 
 /* ─── Stats Card ──────────────────────────────────────────────────────── */
@@ -223,6 +225,10 @@ function PressKitRow({
     mutationFn: () => cancelDraftMediaKit(kit.id),
     onSuccess: onAction,
   });
+  const retryMut = useMutation({
+    mutationFn: () => editMediaKit({ instruction: "Retry generation", brandId }),
+    onSuccess: onAction,
+  });
 
   return (
     <Link
@@ -259,8 +265,32 @@ function PressKitRow({
         </div>
       )}
 
+      {kit.status === "failed" && (
+        <p className="text-xs text-red-600 mt-2">
+          Generation failed. You can retry or discard this press kit.
+        </p>
+      )}
+
       {/* Actions — stop propagation to prevent navigation */}
       <div className="flex items-center gap-2 mt-2" onClick={(e) => e.preventDefault()}>
+        {kit.status === "failed" && (
+          <>
+            <button
+              onClick={(e) => { e.preventDefault(); retryMut.mutate(); }}
+              disabled={retryMut.isPending}
+              className="text-[10px] px-2 py-0.5 rounded border border-blue-200 text-blue-700 hover:bg-blue-50 transition"
+            >
+              {retryMut.isPending ? "..." : "Retry"}
+            </button>
+            <button
+              onClick={(e) => { e.preventDefault(); cancelMut.mutate(); }}
+              disabled={cancelMut.isPending}
+              className="text-[10px] px-2 py-0.5 rounded border border-red-200 text-red-600 hover:bg-red-50 transition"
+            >
+              Discard
+            </button>
+          </>
+        )}
         {kit.status === "drafted" && (
           <>
             <button

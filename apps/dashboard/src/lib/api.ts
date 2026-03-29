@@ -1246,7 +1246,7 @@ export async function createPortalSession(
 }
 
 // Press Kits
-export type MediaKitStatus = "drafted" | "generating" | "validated" | "denied" | "archived";
+export type MediaKitStatus = "drafted" | "generating" | "validated" | "denied" | "archived" | "failed";
 
 /** Summary returned by list endpoints (no mdxPageContent) */
 export interface MediaKitSummary {
