@@ -180,15 +180,15 @@ export default function OrgOverviewPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {features.map((f) => (
             <Link
-              key={f.slug}
-              href={f.implemented ? `/features/${f.slug}` : "#"}
+              key={f.dynastySlug ?? f.slug}
+              href={f.implemented ? `/features/${f.dynastySlug ?? f.slug}` : "#"}
               className={`flex items-center gap-3 p-3 rounded-lg border transition ${
                 f.implemented
                   ? "border-gray-200 hover:border-brand-300 hover:shadow-sm"
                   : "border-gray-100 opacity-60 cursor-default"
               }`}
             >
-              <span className="text-sm font-medium text-gray-700">{f.name}</span>
+              <span className="text-sm font-medium text-gray-700">{f.dynastyName ?? f.name}</span>
               {!f.implemented && (
                 <span className="text-[10px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full whitespace-nowrap ml-auto">
                   Coming soon
@@ -207,7 +207,7 @@ export default function OrgOverviewPage() {
             {recentCampaigns.map((campaign) => {
               const featureSlug = campaign.featureSlug ?? null;
               const brand = brands.find((b) => b.id === campaign.brandId);
-              const feature = featureSlug ? features.find((f) => f.slug === featureSlug) : null;
+              const feature = featureSlug ? (features.find((f) => f.dynastySlug === featureSlug) ?? features.find((f) => f.slug === featureSlug)) : null;
               const href = featureSlug && campaign.brandId
                 ? `/orgs/${orgId}/brands/${campaign.brandId}/features/${featureSlug}/campaigns/${campaign.id}`
                 : null;

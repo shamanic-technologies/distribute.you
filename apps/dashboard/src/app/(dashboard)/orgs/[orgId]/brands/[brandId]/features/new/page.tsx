@@ -149,7 +149,7 @@ export default function CreateFeaturePage() {
         entities: draft.entities,
       });
       await queryClient.invalidateQueries({ queryKey: ["features"] });
-      router.push(`/orgs/${orgId}/brands/${brandId}/features/${result.feature.slug}`);
+      router.push(`/orgs/${orgId}/brands/${brandId}/features/${result.feature.dynastySlug ?? result.feature.slug}`);
     } catch (err) {
       setSaveError(err instanceof ApiError ? err.message : "Failed to save feature");
     } finally {

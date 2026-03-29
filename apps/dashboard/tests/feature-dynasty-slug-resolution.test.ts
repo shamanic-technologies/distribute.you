@@ -7,7 +7,7 @@ import * as path from "path";
  * blank page because getFeature() only matched on the versioned `slug` field.
  * After a feature is forked (e.g. pr-cold-email-outreach → pr-cold-email-outreach-v2),
  * the original slug becomes deprecated and is excluded from the default features
- * list. URLs using the dynasty slug must still resolve to the active version.
+ * list. URLs use dynasty slugs exclusively so they stay stable across versions.
  */
 describe("Dynasty slug resolution in features-context", () => {
   const contextPath = path.join(
@@ -15,10 +15,13 @@ describe("Dynasty slug resolution in features-context", () => {
     "../src/lib/features-context.tsx",
   );
 
-  it("getFeature should match by dynastySlug as a fallback", () => {
+  it("getFeature should match by dynastySlug first", () => {
     const content = fs.readFileSync(contextPath, "utf-8");
-    // Must search by slug first, then fall back to dynastySlug
     expect(content).toContain("f.dynastySlug === slug");
+    // dynastySlug match must come before versioned slug match
+    const dynastyIdx = content.indexOf("f.dynastySlug === slug");
+    const slugIdx = content.indexOf("f.slug === slug");
+    expect(dynastyIdx).toBeLessThan(slugIdx);
   });
 });
 
@@ -39,7 +42,6 @@ describe("Feature pages use resolvedSlug for API calls", () => {
   it("feature page resolves slug from featureDef before API calls", () => {
     const content = fs.readFileSync(featurePagePath, "utf-8");
     expect(content).toContain("featureDef?.slug ?? featureSlug");
-    // Stats calls should use resolvedSlug, not the raw URL param
     expect(content).toContain("fetchFeatureStats(resolvedSlug");
   });
 
@@ -51,28 +53,43 @@ describe("Feature pages use resolvedSlug for API calls", () => {
     expect(content).toContain("prefillFeatureInputs(resolvedSlug");
   });
 
+  it("campaign creation page shows error UI when feature not found", () => {
+    const content = fs.readFileSync(campaignNewPath, "utf-8");
+    expect(content).toContain("Feature not found");
+    expect(content).not.toMatch(/if\s*\(\s*!featureDef\s*\)\s*return\s*null/);
+  });
+
   it("workflows page resolves slug from featureDef before API calls", () => {
     const content = fs.readFileSync(workflowsPath, "utf-8");
-    expect(content).toContain("wfDef?.slug ?? featureSlug")
+    expect(content).toContain("wfDef?.slug ?? featureSlug");
     expect(content).toContain("fetchFeatureStats(resolvedSlug");
     expect(content).toContain("listWorkflows({ featureSlug: resolvedSlug })");
   });
 });
 
-describe("Sidebar uses dynasty slugs for feature links", () => {
-  const sidebarPath = path.join(
+describe("All feature links use dynasty slugs", () => {
+  const sidebarPath = path.join(__dirname, "../src/components/context-sidebar.tsx");
+  const brandPagePath = path.join(
     __dirname,
-    "../src/components/context-sidebar.tsx",
+    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
   );
+  const breadcrumbPath = path.join(__dirname, "../src/components/breadcrumb-nav.tsx");
 
-  it("brand-level sidebar builds feature links with dynastySlug", () => {
+  it("sidebar builds feature links with dynastySlug", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    // The feature list in the sidebar should use dynastySlug for href
     expect(content).toContain("f.dynastySlug ?? f.slug");
+    expect(content).toContain("f.dynastyName ?? f.name");
   });
 
-  it("brand-level sidebar displays dynastyName for features", () => {
-    const content = fs.readFileSync(sidebarPath, "utf-8");
+  it("brand page builds feature links with dynastySlug", () => {
+    const content = fs.readFileSync(brandPagePath, "utf-8");
+    expect(content).toContain("f.dynastySlug ?? f.slug");
+    expect(content).toContain("f.dynastyName ?? f.name");
+  });
+
+  it("breadcrumb feature switcher uses dynastySlug", () => {
+    const content = fs.readFileSync(breadcrumbPath, "utf-8");
+    expect(content).toContain("f.dynastySlug ?? f.slug");
     expect(content).toContain("f.dynastyName ?? f.name");
   });
 });

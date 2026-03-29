@@ -163,7 +163,8 @@ export function BreadcrumbNav() {
   const currentCampaign = campaigns.find((c) => c.id === campaignId);
   const currentFeatureDef = featureSlug ? getFeature(featureSlug) : null;
   const currentFeatureLabel = currentFeatureDef ? (currentFeatureDef.dynastyName ?? currentFeatureDef.name) : featureSlug;
-  const appFeatureLabel = appFeatureId ? (getFeature(appFeatureId)?.name ?? appFeatureId) : null;
+  const appFeatureDef = appFeatureId ? getFeature(appFeatureId) : null;
+  const appFeatureLabel = appFeatureDef ? (appFeatureDef.dynastyName ?? appFeatureDef.name) : appFeatureId;
 
   const handleAppFeatureSwitch = (newFeatureId: string) => {
     setOpenDropdown(null);
@@ -279,22 +280,25 @@ export function BreadcrumbNav() {
                 <div className="px-3 py-2 border-b border-gray-100">
                   <p className="text-xs text-gray-500 font-medium">Switch feature</p>
                 </div>
-                {features.map((f) => (
+                {features.map((f) => {
+                  const dSlug = f.dynastySlug ?? f.slug;
+                  return (
                   <button
-                    key={f.slug}
-                    onClick={() => handleAppFeatureSwitch(f.slug)}
+                    key={dSlug}
+                    onClick={() => handleAppFeatureSwitch(dSlug)}
                     className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition ${
-                      appFeatureId === f.slug ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
+                      appFeatureId === dSlug ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
                     }`}
                   >
-                    <span className="truncate">{f.name}</span>
-                    {appFeatureId === f.slug && (
+                    <span className="truncate">{f.dynastyName ?? f.name}</span>
+                    {appFeatureId === dSlug && (
                       <svg className="w-4 h-4 text-brand-600 ml-auto flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
                     )}
                   </button>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -371,23 +375,26 @@ export function BreadcrumbNav() {
                 <div className="px-3 py-2 border-b border-gray-100">
                   <p className="text-xs text-gray-500 font-medium">Switch feature</p>
                 </div>
-                {features.map((f) => (
+                {features.map((f) => {
+                  const dSlug = f.dynastySlug ?? f.slug;
+                  return (
                   <button
-                    key={f.slug}
-                    onClick={() => handleFeatureSwitch(f.slug)}
+                    key={dSlug}
+                    onClick={() => handleFeatureSwitch(dSlug)}
                     className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition ${
-                      featureSlug === f.slug ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
+                      featureSlug === dSlug ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
                     }`}
                   >
-                    <FeatureIcon featureSlug={f.slug} />
-                    <span className="truncate">{f.name}</span>
-                    {featureSlug === f.slug && (
+                    <FeatureIcon featureSlug={dSlug} />
+                    <span className="truncate">{f.dynastyName ?? f.name}</span>
+                    {featureSlug === dSlug && (
                       <svg className="w-4 h-4 text-brand-600 ml-auto flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
                     )}
                   </button>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

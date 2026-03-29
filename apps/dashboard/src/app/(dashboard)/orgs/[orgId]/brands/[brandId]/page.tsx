@@ -144,7 +144,7 @@ export default function BrandOverviewPage() {
     for (const [featureSlug, sectionCampaigns] of map) {
       sections.push({
         featureSlug,
-        label: getFeatureDef(featureSlug)?.name ?? featureSlug,
+        label: getFeatureDef(featureSlug)?.dynastyName ?? getFeatureDef(featureSlug)?.name ?? featureSlug,
         campaigns: sectionCampaigns,
       });
     }
@@ -231,20 +231,21 @@ export default function BrandOverviewPage() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {features.map((f) => {
-            const section = workflowSections.find(s => s.featureSlug === f.slug);
+            const dSlug = f.dynastySlug ?? f.slug;
+            const section = workflowSections.find(s => s.featureSlug === dSlug || s.featureSlug === f.slug);
             const activeCampaigns = section?.campaigns.filter(c => c.status === "ongoing") ?? [];
 
             if (f.implemented) {
               return (
                 <Link
-                  key={f.slug}
-                  href={`/orgs/${orgId}/brands/${brandId}/features/${f.slug}`}
+                  key={dSlug}
+                  href={`/orgs/${orgId}/brands/${brandId}/features/${dSlug}`}
                   className="bg-white rounded-lg border border-gray-200 p-5 hover:border-brand-300 hover:shadow-sm transition group"
                 >
                   <div className="flex items-start gap-3">
-                    <FeatureIcon featureSlug={f.slug} icon={f.icon} className="w-8 h-8 text-brand-600" />
+                    <FeatureIcon featureSlug={dSlug} icon={f.icon} className="w-8 h-8 text-brand-600" />
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-gray-900 group-hover:text-brand-600 transition">{f.name}</h3>
+                      <h3 className="font-medium text-gray-900 group-hover:text-brand-600 transition">{f.dynastyName ?? f.name}</h3>
                       <p className="text-sm text-gray-500 mt-1">{f.description}</p>
                       {section && (
                         <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
@@ -266,14 +267,14 @@ export default function BrandOverviewPage() {
 
             return (
               <div
-                key={f.slug}
+                key={dSlug}
                 className="bg-gray-50 rounded-lg border border-gray-200 p-5 opacity-60"
               >
                 <div className="flex items-start gap-3">
-                  <FeatureIcon featureSlug={f.slug} icon={f.icon} className="w-8 h-8 text-gray-300" />
+                  <FeatureIcon featureSlug={dSlug} icon={f.icon} className="w-8 h-8 text-gray-300" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-medium text-gray-400">{f.name}</h3>
+                      <h3 className="font-medium text-gray-400">{f.dynastyName ?? f.name}</h3>
                       <span className="text-[10px] bg-gray-200 text-gray-400 px-1.5 py-0.5 rounded-full whitespace-nowrap">
                         Coming soon
                       </span>
