@@ -855,11 +855,18 @@ export function WorkflowChat({
     const text = messages
       .map((msg) => {
         const role = msg.role === "user" ? "User" : "Assistant";
+        const sections: string[] = [];
+        const thinking = msg.parts
+          .filter((p): p is { type: "reasoning"; text: string } => p.type === "reasoning")
+          .map((p) => p.text)
+          .join("");
+        if (thinking) sections.push(`<thinking>\n${thinking}\n</thinking>`);
         const content = msg.parts
           .filter((p): p is { type: "text"; text: string } => p.type === "text")
           .map((p) => p.text)
           .join("");
-        return `${role}:\n${content}`;
+        if (content) sections.push(content);
+        return `${role}:\n${sections.join("\n\n")}`;
       })
       .join("\n\n");
     navigator.clipboard.writeText(text).then(() => {
