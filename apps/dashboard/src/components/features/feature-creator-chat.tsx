@@ -319,6 +319,7 @@ export function FeatureCreatorChat({
                 .filter((m) => m.role === "user")
                 .pop()
                 ?.parts?.find((p): p is { type: "text"; text: string } => p.type === "text")?.text || "",
+            configKey: "feature",
             ...(sessionIdRef.current ? { sessionId: sessionIdRef.current } : {}),
             context: featureContext,
           },
