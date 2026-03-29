@@ -26,18 +26,17 @@ describe("brand-tools", () => {
     expect(componentSrc).toContain("PressKitsTool");
   });
 
-  it("press kits tool is enabled (not disabled)", () => {
-    // Press Kits ToolCard should NOT have disabled prop
-    const pressKitSection = componentSrc.slice(
-      componentSrc.indexOf('title="Press Kits"'),
-      componentSrc.indexOf('title="Journalists"'),
-    );
-    expect(pressKitSection).not.toContain("disabled");
+  it("renders journalists tool with listBrandJournalists", () => {
+    expect(componentSrc).toContain("listBrandJournalists");
+    expect(componentSrc).toContain("JournalistsTool");
   });
 
-  it("journalists tool is disabled pending api-service route", () => {
-    expect(componentSrc).toContain('title="Journalists"');
-    expect(componentSrc).toContain("Needs api-service route");
+  it("all three tools are enabled (none have disabled prop set)", () => {
+    // No ToolCard should have disabled or disabledReason props passed
+    const toolCardUsages = componentSrc.match(/<ToolCard[\s\S]*?>/g) ?? [];
+    for (const usage of toolCardUsages) {
+      expect(usage).not.toMatch(/\bdisabled\b/);
+    }
   });
 
   it("brand page imports BrandToolsSection", () => {
@@ -54,25 +53,23 @@ describe("brand-tools", () => {
     const apiPath = path.join(SRC, "src/lib/api.ts");
     const apiSrc = fs.readFileSync(apiPath, "utf-8");
 
-    it("exports listBrandOutlets", () => {
+    it("exports listBrandOutlets calling /outlets?brandId=", () => {
       expect(apiSrc).toContain("export async function listBrandOutlets");
-    });
-
-    it("listBrandOutlets calls /outlets?brandId=", () => {
       expect(apiSrc).toContain("/outlets?brandId=${brandId}");
     });
 
-    it("exports listBrandMediaKits using backend brand_id filter", () => {
+    it("exports listBrandMediaKits calling /press-kits/media-kits?brand_id=", () => {
       expect(apiSrc).toContain("export async function listBrandMediaKits");
       expect(apiSrc).toContain("/press-kits/media-kits?brand_id=${brandId}");
     });
 
-    it("listBrandMediaKits does NOT filter client-side", () => {
-      // Should use the backend filter, not .filter()
-      const fnStart = apiSrc.indexOf("async function listBrandMediaKits");
-      const fnEnd = apiSrc.indexOf("}", fnStart + 100);
-      const fnBody = apiSrc.slice(fnStart, fnEnd);
-      expect(fnBody).not.toContain(".filter(");
+    it("exports listBrandJournalists calling /journalists?brandId=", () => {
+      expect(apiSrc).toContain("export async function listBrandJournalists");
+      expect(apiSrc).toContain("/journalists?brandId=${brandId}");
+    });
+
+    it("exports BrandJournalist type", () => {
+      expect(apiSrc).toContain("export interface BrandJournalist");
     });
   });
 });

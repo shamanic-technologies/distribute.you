@@ -5,9 +5,11 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   listBrandOutlets,
   listBrandMediaKits,
+  listBrandJournalists,
   type DiscoveredOutlet,
   type MediaKit,
   type MediaKitStatus,
+  type BrandJournalist,
 } from "@/lib/api";
 
 const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
@@ -258,6 +260,81 @@ function PressKitRow({ kit }: { kit: MediaKit }) {
   );
 }
 
+// --- Journalists tool ---
+
+function JournalistsTool({ brandId }: { brandId: string }) {
+  const { data, isLoading } = useAuthQuery(
+    ["brandJournalists", brandId],
+    () => listBrandJournalists(brandId),
+    { refetchInterval: 10_000, refetchIntervalInBackground: false },
+  );
+
+  const journalists = data?.campaignJournalists ?? [];
+
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="h-14 bg-gray-100 rounded-lg animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  if (journalists.length === 0) {
+    return (
+      <p className="text-sm text-gray-500 text-center py-4">
+        No journalists discovered yet for this brand.
+      </p>
+    );
+  }
+
+  const sorted = [...journalists].sort((a, b) => parseFloat(b.relevanceScore) - parseFloat(a.relevanceScore));
+
+  return (
+    <div className="space-y-2 max-h-96 overflow-y-auto">
+      <div className="text-xs text-gray-400 mb-2">{journalists.length} journalists</div>
+      {sorted.map((j) => (
+        <JournalistRow key={j.id} journalist={j} />
+      ))}
+    </div>
+  );
+}
+
+function JournalistRow({ journalist: j }: { journalist: BrandJournalist }) {
+  const score = parseFloat(j.relevanceScore);
+
+  return (
+    <div className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 hover:border-gray-200 transition">
+      <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 flex-shrink-0 flex items-center justify-center">
+        <span className="text-gray-400 text-xs font-medium">
+          {j.journalistName.charAt(0).toUpperCase()}
+        </span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-0.5">
+          <span className="font-medium text-sm text-gray-800 truncate">{j.journalistName}</span>
+          <span className={`text-[10px] px-1.5 py-0.5 rounded-full border flex-shrink-0 ${
+            j.entityType === "individual"
+              ? "bg-blue-50 text-blue-600 border-blue-200"
+              : "bg-purple-50 text-purple-600 border-purple-200"
+          }`}>
+            {j.entityType}
+          </span>
+        </div>
+        {j.whyRelevant && (
+          <p className="text-xs text-gray-500 line-clamp-1">{j.whyRelevant}</p>
+        )}
+      </div>
+      {!isNaN(score) && (
+        <span className={`text-xs font-medium px-2 py-1 rounded-full border flex-shrink-0 ${relevanceColor(score)}`}>
+          {score}%
+        </span>
+      )}
+    </div>
+  );
+}
+
 // --- Main section ---
 
 interface BrandToolsSectionProps {
@@ -301,9 +378,9 @@ export function BrandToolsSection({ brandId }: BrandToolsSectionProps) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
             </svg>
           }
-          disabled
-          disabledReason="Needs api-service route for GET /campaign-outlet-journalists?brand_id="
-        />
+        >
+          <JournalistsTool brandId={brandId} />
+        </ToolCard>
       </div>
     </div>
   );
