@@ -18,6 +18,7 @@ import {
   listBrandMediaKits,
   type MediaKitStatus,
 } from "@/lib/api";
+import { PressKitChat } from "@/components/press-kits/press-kit-chat";
 
 const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 
@@ -116,6 +117,7 @@ export default function PressKitDetailPage() {
   const [copied, setCopied] = useState(false);
   const [regenerateInstruction, setRegenerateInstruction] = useState("");
   const [showRegenerate, setShowRegenerate] = useState(false);
+  const [activeTab, setActiveTab] = useState<"content" | "chat">("content");
 
   const { data: brandData } = useAuthQuery(
     ["brand", brandId],
@@ -359,16 +361,51 @@ export default function PressKitDetailPage() {
               </div>
             )}
 
-            {/* MDX Content Preview */}
-            {kit.mdxPageContent ? (
-              <div className="bg-white border border-gray-200 rounded-lg p-6 md:p-8">
-                <MdxPreview content={kit.mdxPageContent} />
+            {/* Tabs: Content / Edit with AI */}
+            <div className="flex items-center gap-1 mb-4 border-b border-gray-200">
+              <button
+                onClick={() => setActiveTab("content")}
+                className={`px-3 py-2 text-sm font-medium border-b-2 transition ${
+                  activeTab === "content"
+                    ? "border-brand-600 text-brand-700"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                Content
+              </button>
+              <button
+                onClick={() => setActiveTab("chat")}
+                className={`px-3 py-2 text-sm font-medium border-b-2 transition ${
+                  activeTab === "chat"
+                    ? "border-brand-600 text-brand-700"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                Edit with AI
+              </button>
+            </div>
+
+            {activeTab === "content" ? (
+              <>
+                {kit.mdxPageContent ? (
+                  <div className="bg-white border border-gray-200 rounded-lg p-6 md:p-8">
+                    <MdxPreview content={kit.mdxPageContent} />
+                  </div>
+                ) : kit.status !== "generating" ? (
+                  <div className="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-8 text-center">
+                    <p className="text-gray-500 text-sm">No content yet.</p>
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden" style={{ height: "calc(100vh - 320px)", minHeight: 400 }}>
+                <PressKitChat
+                  kitId={kitId}
+                  brandId={brandId}
+                  pressKitContext={{ brandId, mediaKitId: kitId }}
+                />
               </div>
-            ) : kit.status !== "generating" ? (
-              <div className="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-8 text-center">
-                <p className="text-gray-500 text-sm">No content yet.</p>
-              </div>
-            ) : null}
+            )}
           </div>
 
           {/* Sidebar — version history */}
