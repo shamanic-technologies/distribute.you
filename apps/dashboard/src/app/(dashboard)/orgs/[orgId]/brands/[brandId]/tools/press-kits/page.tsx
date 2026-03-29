@@ -26,8 +26,8 @@ const STATUS_STYLES: Record<MediaKitStatus, string> = {
   drafted: "bg-yellow-100 text-yellow-700 border-yellow-200",
   validated: "bg-green-100 text-green-700 border-green-200",
   denied: "bg-red-100 text-red-700 border-red-200",
-  archived: "bg-gray-100 text-gray-500 border-gray-200",
   failed: "bg-red-100 text-red-600 border-red-200",
+  archived: "bg-gray-100 text-gray-500 border-gray-200",
 };
 
 const STATUS_LABELS: Record<MediaKitStatus, string> = {
@@ -35,8 +35,8 @@ const STATUS_LABELS: Record<MediaKitStatus, string> = {
   drafted: "Draft",
   validated: "Published",
   denied: "Denied",
-  archived: "Archived",
   failed: "Generation Failed",
+  archived: "Archived",
 };
 
 /* ─── Stats Card ──────────────────────────────────────────────────────── */
@@ -266,9 +266,12 @@ function PressKitRow({
       )}
 
       {kit.status === "failed" && (
-        <p className="text-xs text-red-600 mt-2">
-          Generation failed. You can retry or discard this press kit.
-        </p>
+        <div className="flex items-center gap-1.5 text-xs text-red-600 mt-2">
+          <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Generation failed
+        </div>
       )}
 
       {/* Actions — stop propagation to prevent navigation */}
@@ -318,6 +321,15 @@ function PressKitRow({
             className="text-[10px] px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:bg-gray-50 transition"
           >
             Copy Link
+          </button>
+        )}
+        {kit.status === "failed" && (
+          <button
+            onClick={(e) => { e.preventDefault(); retryMut.mutate(); }}
+            disabled={retryMut.isPending}
+            className="text-[10px] px-2 py-0.5 rounded border border-brand-200 text-brand-700 hover:bg-brand-50 transition"
+          >
+            {retryMut.isPending ? "..." : "Retry"}
           </button>
         )}
         {(kit.status === "validated" || kit.status === "drafted") && (

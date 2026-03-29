@@ -27,8 +27,8 @@ const STATUS_STYLES: Record<MediaKitStatus, string> = {
   drafted: "bg-yellow-100 text-yellow-700 border-yellow-200",
   validated: "bg-green-100 text-green-700 border-green-200",
   denied: "bg-red-100 text-red-700 border-red-200",
-  archived: "bg-gray-100 text-gray-500 border-gray-200",
   failed: "bg-red-100 text-red-600 border-red-200",
+  archived: "bg-gray-100 text-gray-500 border-gray-200",
 };
 
 const STATUS_LABELS: Record<MediaKitStatus, string> = {
@@ -36,8 +36,8 @@ const STATUS_LABELS: Record<MediaKitStatus, string> = {
   drafted: "Draft",
   validated: "Published",
   denied: "Denied",
-  archived: "Archived",
   failed: "Generation Failed",
+  archived: "Archived",
 };
 
 /* ─── MDX Content Renderer ────────────────────────────────────────────── */
@@ -331,7 +331,7 @@ export default function PressKitDetailPage() {
                   <button
                     onClick={() => retryMut.mutate()}
                     disabled={retryMut.isPending}
-                    className="text-xs px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition"
+                    className="text-xs px-3 py-1.5 rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50 transition"
                   >
                     {retryMut.isPending ? "Retrying..." : "Retry Generation"}
                   </button>
