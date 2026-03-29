@@ -83,7 +83,7 @@ function GenerateForm({ brandId, onSuccess }: { brandId: string; onSuccess: () =
   const [instruction, setInstruction] = useState("");
 
   const mutation = useMutation({
-    mutationFn: () => editMediaKit({ instruction, brandId }),
+    mutationFn: () => editMediaKit({ instruction: instruction.trim() || "Generate a press kit for this brand", brandId }),
     onSuccess: () => {
       setInstruction("");
       onSuccess();
@@ -98,17 +98,17 @@ function GenerateForm({ brandId, onSuccess }: { brandId: string; onSuccess: () =
           type="text"
           value={instruction}
           onChange={(e) => setInstruction(e.target.value)}
-          placeholder="e.g. Focus on our AI products and recent Series B funding..."
+          placeholder="Optional: focus on AI products, recent funding, sustainability..."
           className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           onKeyDown={(e) => {
-            if (e.key === "Enter" && instruction.trim() && !mutation.isPending) {
+            if (e.key === "Enter" && !mutation.isPending) {
               mutation.mutate();
             }
           }}
         />
         <button
           onClick={() => mutation.mutate()}
-          disabled={!instruction.trim() || mutation.isPending}
+          disabled={mutation.isPending}
           className="px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2"
         >
           {mutation.isPending ? (
