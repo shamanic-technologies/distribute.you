@@ -440,16 +440,24 @@ export function FeatureCreatorChat({
       .map((msg) => {
         const role = msg.role === "user" ? "User" : "Assistant";
         const sections: string[] = [];
-        const thinking = msg.parts
-          .filter((p): p is { type: "reasoning"; text: string } => p.type === "reasoning")
-          .map((p) => p.text)
-          .join("");
-        if (thinking) sections.push(`<thinking>\n${thinking}\n</thinking>`);
-        const content = msg.parts
-          .filter((p): p is { type: "text"; text: string } => p.type === "text")
-          .map((p) => p.text)
-          .join("");
-        if (content) sections.push(content);
+        for (const part of msg.parts) {
+          if (part.type === "reasoning") {
+            const p = part as { type: "reasoning"; text: string };
+            if (p.text) sections.push(`<thinking>\n${p.text}\n</thinking>`);
+          } else if (part.type === "text") {
+            const p = part as { type: "text"; text: string };
+            if (p.text) sections.push(p.text);
+          } else if (isToolUIPart(part)) {
+            const tp = part as unknown as { type: string; toolCallId: string; toolName?: string; state: string; input?: unknown; output?: unknown };
+            const toolName = tp.toolName ?? (tp.type.startsWith("tool-") ? tp.type.slice(5) : "unknown");
+            const input = typeof tp.input === "string" ? tp.input : JSON.stringify(tp.input ?? {}, null, 2);
+            const output = typeof tp.output === "string" ? tp.output : JSON.stringify(tp.output ?? "", null, 2);
+            let block = `[Tool: ${toolName}]`;
+            if (input && input !== "{}") block += `\nInput:\n${input}`;
+            if (tp.state === "output-available" && output) block += `\nOutput:\n${output}`;
+            sections.push(block);
+          }
+        }
         return `${role}:\n${sections.join("\n\n")}`;
       })
       .join("\n\n");
