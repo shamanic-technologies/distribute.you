@@ -472,6 +472,14 @@ export function BreadcrumbNav() {
           <span className="px-2 py-1 text-gray-600">Workflows</span>
         </>
       )}
+      {brandId && orgId && pathParts[4] === "tools" && pathParts[5] && (
+        <>
+          <Sep />
+          <span className="px-2 py-1 text-gray-600">
+            {pathParts[5] === "outlets" ? "Outlets" : pathParts[5] === "press-kits" ? "Press Kits" : pathParts[5] === "journalists" ? "Journalists" : pathParts[5]}
+          </span>
+        </>
+      )}
       {featureSlug && pathParts[8] === "prompt" && (
         <>
           <Sep />
