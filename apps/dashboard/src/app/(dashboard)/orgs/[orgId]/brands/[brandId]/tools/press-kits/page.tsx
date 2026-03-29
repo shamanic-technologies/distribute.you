@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useMutation } from "@tanstack/react-query";
@@ -12,8 +12,10 @@ import {
   updateMediaKitStatus,
   cancelDraftMediaKit,
   getMediaKitViewStats,
+  getMediaKitStatsCosts,
   type MediaKitSummary,
   type MediaKitStatus,
+  type CostStatsGroup,
 } from "@/lib/api";
 
 const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
@@ -38,6 +40,13 @@ const STATUS_LABELS: Record<MediaKitStatus, string> = {
   failed: "Generation Failed",
   archived: "Archived",
 };
+
+function formatCost(cents: string | number | null | undefined): string | null {
+  if (cents == null) return null;
+  const n = typeof cents === "string" ? parseFloat(cents) : cents;
+  if (isNaN(n) || n === 0) return null;
+  return `$${(n / 100).toFixed(2)}`;
+}
 
 /* ─── Stats Card ──────────────────────────────────────────────────────── */
 
@@ -204,14 +213,17 @@ function PressKitRow({
   kit,
   orgId,
   brandId,
+  costCents,
   onAction,
 }: {
   kit: MediaKitSummary;
   orgId: string;
   brandId: string;
+  costCents: string | null;
   onAction: () => void;
 }) {
   const publicUrl = kit.shareToken ? `${API_URL}/press-kits/public/${kit.shareToken}` : null;
+  const cost = formatCost(costCents);
 
   const validateMut = useMutation({
     mutationFn: () => validateMediaKit(kit.id),
@@ -245,6 +257,11 @@ function PressKitRow({
           </h4>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
+          {cost && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded border border-gray-200 text-gray-500 bg-gray-50">
+              {cost}
+            </span>
+          )}
           <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${STATUS_STYLES[kit.status]}`}>
             {STATUS_LABELS[kit.status]}
           </span>
@@ -346,6 +363,55 @@ function PressKitRow({
   );
 }
 
+/* ─── Runs Tab ───────────────────────────────────────────────────────── */
+
+function RunsTab({ groups }: { groups: CostStatsGroup[] }) {
+  if (groups.length === 0) {
+    return (
+      <div className="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-8 text-center">
+        <h3 className="text-lg font-medium text-gray-900 mb-2">No cost data yet</h3>
+        <p className="text-gray-500 text-sm">Generation costs will appear here once available.</p>
+      </div>
+    );
+  }
+
+  const sorted = [...groups].sort((a, b) => {
+    const costA = parseFloat(a.totalCostInUsdCents);
+    const costB = parseFloat(b.totalCostInUsdCents);
+    return costB - costA;
+  });
+
+  return (
+    <div className="border border-gray-200 rounded-lg overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="bg-gray-50 border-b border-gray-200">
+            <th className="text-left px-4 py-2 text-xs font-medium text-gray-500 uppercase">Media Kit ID</th>
+            <th className="text-right px-4 py-2 text-xs font-medium text-gray-500 uppercase">Runs</th>
+            <th className="text-right px-4 py-2 text-xs font-medium text-gray-500 uppercase">Total Cost</th>
+            <th className="text-right px-4 py-2 text-xs font-medium text-gray-500 uppercase">Actual</th>
+            <th className="text-right px-4 py-2 text-xs font-medium text-gray-500 uppercase">Provisioned</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map((g, i) => {
+            const kitId = g.dimensions.mediaKitId ?? "unknown";
+            return (
+              <tr key={kitId + i} className="border-b border-gray-100 last:border-0">
+                <td className="px-4 py-3 font-mono text-xs text-gray-600">{kitId.slice(0, 8)}...</td>
+                <td className="px-4 py-3 text-right text-gray-700">{g.runCount}</td>
+                <td className="px-4 py-3 text-right font-medium text-gray-900">{formatCost(g.totalCostInUsdCents) ?? "$0.00"}</td>
+                <td className="px-4 py-3 text-right text-gray-600">{formatCost(g.actualCostInUsdCents) ?? "$0.00"}</td>
+                <td className="px-4 py-3 text-right text-gray-600">{formatCost(g.provisionedCostInUsdCents) ?? "$0.00"}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 /* ─── Main Page ───────────────────────────────────────────────────────── */
 
 export default function PressKitsToolPage() {
@@ -353,6 +419,7 @@ export default function PressKitsToolPage() {
   const brandId = params.brandId as string;
   const orgId = params.orgId as string;
   const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<"kits" | "runs">("kits");
 
   const { data: kits, isLoading } = useAuthQuery(
     ["brandMediaKits", brandId],
@@ -360,8 +427,31 @@ export default function PressKitsToolPage() {
     pollOptions,
   );
 
+  const { data: costsByKit } = useAuthQuery(
+    ["mediaKitStatsCosts", brandId, "mediaKitId"],
+    () => getMediaKitStatsCosts(brandId, "mediaKitId"),
+  );
+
+  const costMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const g of costsByKit?.groups ?? []) {
+      const id = g.dimensions.mediaKitId;
+      if (id) map.set(id, g.totalCostInUsdCents);
+    }
+    return map;
+  }, [costsByKit]);
+
+  const totalCost = useMemo(() => {
+    let total = 0;
+    for (const g of costsByKit?.groups ?? []) {
+      total += parseFloat(g.totalCostInUsdCents) || 0;
+    }
+    return total;
+  }, [costsByKit]);
+
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["brandMediaKits", brandId] });
+    queryClient.invalidateQueries({ queryKey: ["mediaKitStatsCosts", brandId] });
   };
 
   // Sort: generating first, then by date desc
@@ -394,6 +484,7 @@ export default function PressKitsToolPage() {
           <h1 className="text-2xl font-semibold text-gray-900">Press Kits</h1>
           <p className="text-sm text-gray-500">
             {kits ? `${kits.length} press kit${kits.length !== 1 ? "s" : ""}` : "Generated press kits for this brand"}
+            {totalCost > 0 && ` · Total cost: $${(totalCost / 100).toFixed(2)}`}
           </p>
         </div>
       </div>
@@ -404,77 +495,111 @@ export default function PressKitsToolPage() {
       {/* Generate */}
       <GenerateForm brandId={brandId} onSuccess={invalidate} />
 
-      {/* Loading */}
-      {isLoading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="h-20 bg-gray-100 rounded-lg animate-pulse" />
-          ))}
-        </div>
-      ) : !kits || kits.length === 0 ? (
-        <div className="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-8 text-center">
-          <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No press kits yet</h3>
-          <p className="text-gray-500 text-sm">
-            Use the form above to generate your first press kit.
-          </p>
-        </div>
-      ) : (
+      {/* Tabs */}
+      <div className="flex gap-1 mb-6 border-b border-gray-200">
+        <button
+          onClick={() => setActiveTab("kits")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
+            activeTab === "kits"
+              ? "border-brand-600 text-brand-600"
+              : "border-transparent text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          Press Kits
+        </button>
+        <button
+          onClick={() => setActiveTab("runs")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
+            activeTab === "runs"
+              ? "border-brand-600 text-brand-600"
+              : "border-transparent text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          Costs
+        </button>
+      </div>
+
+      {/* Kits Tab */}
+      {activeTab === "kits" && (
         <>
-          {/* Latest validated — hero preview */}
-          {latestValidated && (
-            <LatestValidatedPreview kit={latestValidated} orgId={orgId} brandId={brandId} />
-          )}
-
-          {/* Generating indicator */}
-          {hasAnyGenerating && (
-            <div className="flex items-center gap-2 text-sm text-blue-600 mb-4 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
-              <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin flex-shrink-0" />
-              A press kit is being generated. This page refreshes automatically.
-            </div>
-          )}
-
-          {/* Active kits list */}
-          <div className="mb-4">
-            <h2 className="text-sm font-medium text-gray-700 mb-3">
-              All Press Kits
-            </h2>
-            <div className="space-y-2">
-              {active.map((kit) => (
-                <PressKitRow key={kit.id} kit={kit} orgId={orgId} brandId={brandId} onAction={invalidate} />
+          {/* Loading */}
+          {isLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="h-20 bg-gray-100 rounded-lg animate-pulse" />
               ))}
             </div>
-          </div>
+          ) : !kits || kits.length === 0 ? (
+            <div className="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-8 text-center">
+              <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No press kits yet</h3>
+              <p className="text-gray-500 text-sm">
+                Use the form above to generate your first press kit.
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Latest validated — hero preview */}
+              {latestValidated && (
+                <LatestValidatedPreview kit={latestValidated} orgId={orgId} brandId={brandId} />
+              )}
 
-          {/* Archived */}
-          {archived.length > 0 && (
-            <div>
-              <button
-                onClick={() => setShowArchived(!showArchived)}
-                className="text-xs text-gray-400 hover:text-gray-600 transition flex items-center gap-1 mb-2"
-              >
-                <svg
-                  className={`w-3 h-3 transition-transform ${showArchived ? "rotate-90" : ""}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-                {archived.length} archived kit{archived.length !== 1 ? "s" : ""}
-              </button>
-              {showArchived && (
-                <div className="space-y-2 opacity-60">
-                  {archived.map((kit) => (
-                    <PressKitRow key={kit.id} kit={kit} orgId={orgId} brandId={brandId} onAction={invalidate} />
-                  ))}
+              {/* Generating indicator */}
+              {hasAnyGenerating && (
+                <div className="flex items-center gap-2 text-sm text-blue-600 mb-4 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                  <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                  A press kit is being generated. This page refreshes automatically.
                 </div>
               )}
-            </div>
+
+              {/* Active kits list */}
+              <div className="mb-4">
+                <h2 className="text-sm font-medium text-gray-700 mb-3">
+                  All Press Kits
+                </h2>
+                <div className="space-y-2">
+                  {active.map((kit) => (
+                    <PressKitRow key={kit.id} kit={kit} orgId={orgId} brandId={brandId} costCents={costMap.get(kit.id) ?? null} onAction={invalidate} />
+                  ))}
+                </div>
+              </div>
+
+              {/* Archived */}
+              {archived.length > 0 && (
+                <div>
+                  <button
+                    onClick={() => setShowArchived(!showArchived)}
+                    className="text-xs text-gray-400 hover:text-gray-600 transition flex items-center gap-1 mb-2"
+                  >
+                    <svg
+                      className={`w-3 h-3 transition-transform ${showArchived ? "rotate-90" : ""}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                    {archived.length} archived kit{archived.length !== 1 ? "s" : ""}
+                  </button>
+                  {showArchived && (
+                    <div className="space-y-2 opacity-60">
+                      {archived.map((kit) => (
+                        <PressKitRow key={kit.id} kit={kit} orgId={orgId} brandId={brandId} costCents={costMap.get(kit.id) ?? null} onAction={invalidate} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </>
+      )}
+
+      {/* Runs/Costs Tab */}
+      {activeTab === "runs" && (
+        <RunsTab groups={costsByKit?.groups ?? []} />
       )}
     </div>
   );
