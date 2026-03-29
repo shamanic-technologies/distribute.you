@@ -1,10 +1,8 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
-  getBrand,
   listBrandMediaKits,
   type MediaKit,
   type MediaKitStatus,
@@ -72,13 +70,6 @@ function PressKitRow({ kit }: { kit: MediaKit }) {
 export default function PressKitsToolPage() {
   const params = useParams();
   const brandId = params.brandId as string;
-  const orgId = params.orgId as string;
-
-  const { data: brandData } = useAuthQuery(
-    ["brand", brandId],
-    () => getBrand(brandId),
-  );
-  const brand = brandData?.brand ?? null;
 
   const { data: kits, isLoading } = useAuthQuery(
     ["brandMediaKits", brandId],
@@ -88,17 +79,6 @@ export default function PressKitsToolPage() {
 
   return (
     <div className="p-4 md:p-8 max-w-4xl">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-sm text-gray-500 mb-6">
-        <Link href={`/orgs/${orgId}/brands/${brandId}`} className="hover:text-brand-600 transition truncate">
-          {brand?.name ?? brand?.domain ?? "Brand"}
-        </Link>
-        <svg className="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
-        <span className="text-gray-900 font-medium">Press Kits</span>
-      </nav>
-
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <div className="w-10 h-10 bg-brand-50 rounded-lg flex items-center justify-center text-brand-600">
