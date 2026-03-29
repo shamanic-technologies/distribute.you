@@ -68,6 +68,9 @@ export default function FeaturePage() {
   const featureSlug = params.featureSlug as string;
   const { getFeature, registry } = useFeatures();
   const featureDef = getFeature(featureSlug);
+  // URL may contain a dynasty slug; resolve to the versioned slug for API calls
+  const resolvedSlug = featureDef?.slug ?? featureSlug;
+  const dynastySlug = featureDef?.dynastySlug ?? featureSlug;
 
   const funnelChart = featureDef?.charts?.find((c) => c.type === "funnel-bar");
   const breakdownChart = featureDef?.charts?.find((c) => c.type === "breakdown-bar");
@@ -86,21 +89,21 @@ export default function FeaturePage() {
   );
   const allCampaigns = campaignsData?.campaigns ?? [];
   const campaigns = useMemo(
-    () => allCampaigns.filter((c) => c.featureSlug === featureSlug),
-    [allCampaigns, featureSlug]
+    () => allCampaigns.filter((c) => c.featureSlug === resolvedSlug || c.featureSlug === dynastySlug),
+    [allCampaigns, resolvedSlug, dynastySlug]
   );
 
   // Feature-level stats (aggregated, no groupBy)
   const { data: featureStatsData, isLoading: statsLoading } = useAuthQuery(
-    ["featureStats", featureSlug, brandId],
-    () => fetchFeatureStats(featureSlug, { brandId }),
+    ["featureStats", resolvedSlug, brandId],
+    () => fetchFeatureStats(resolvedSlug, { brandId }),
     { enabled: campaigns.length > 0, ...pollOptions },
   );
 
   // Per-campaign stats (groupBy=campaignId)
   const { data: campaignStatsData, isLoading: campaignStatsLoading } = useAuthQuery(
-    ["featureStats", featureSlug, brandId, "byCampaign"],
-    () => fetchFeatureStats(featureSlug, { groupBy: "campaignId", brandId }),
+    ["featureStats", resolvedSlug, brandId, "byCampaign"],
+    () => fetchFeatureStats(resolvedSlug, { groupBy: "campaignId", brandId }),
     { enabled: campaigns.length > 0, ...pollOptions },
   );
 

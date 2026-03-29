@@ -161,7 +161,8 @@ export function BreadcrumbNav() {
 
   const currentBrand = brands.find((b) => b.id === brandId);
   const currentCampaign = campaigns.find((c) => c.id === campaignId);
-  const currentFeatureLabel = featureSlug ? (getFeature(featureSlug)?.name ?? featureSlug) : null;
+  const currentFeatureDef = featureSlug ? getFeature(featureSlug) : null;
+  const currentFeatureLabel = currentFeatureDef ? (currentFeatureDef.dynastyName ?? currentFeatureDef.name) : featureSlug;
   const appFeatureLabel = appFeatureId ? (getFeature(appFeatureId)?.name ?? appFeatureId) : null;
 
   const handleAppFeatureSwitch = (newFeatureId: string) => {

@@ -11,11 +11,11 @@ describe("Workflow list page shows all workflows (not just those with stats)", (
   const content = fs.readFileSync(pagePath, "utf-8");
 
   it("should filter workflows by featureSlug via API", () => {
-    expect(content).toContain("listWorkflows({ featureSlug })");
+    expect(content).toContain("listWorkflows({ featureSlug: resolvedSlug })");
   });
 
-  it("should include featureSlug in the query key", () => {
-    expect(content).toContain('["workflows", featureSlug]');
+  it("should include resolvedSlug in the query key", () => {
+    expect(content).toContain('["workflows", resolvedSlug]');
   });
 
   it("should group active workflows by dynastySlug (dynasty pattern)", () => {
