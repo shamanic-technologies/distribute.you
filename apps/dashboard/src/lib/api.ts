@@ -1282,6 +1282,12 @@ export async function listMediaKits(orgId: string, token?: string): Promise<Medi
   return res.mediaKits;
 }
 
+/** List media kits filtered by brand_id */
+export async function listBrandMediaKits(brandId: string, token?: string): Promise<MediaKit[]> {
+  const res = await apiCall<{ mediaKits: MediaKit[] }>(`/press-kits/media-kits?brand_id=${brandId}`, { token });
+  return res.mediaKits;
+}
+
 export async function getMediaKit(id: string, token?: string): Promise<MediaKit> {
   return apiCall<MediaKit>(`/press-kits/media-kits/${id}`, { token });
 }
