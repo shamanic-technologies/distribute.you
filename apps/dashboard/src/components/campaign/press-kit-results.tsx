@@ -2,7 +2,7 @@
 
 import { keepPreviousData } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listMediaKitsByCampaign, type MediaKit, type MediaKitStatus } from "@/lib/api";
+import { listMediaKitsByCampaign, type MediaKitSummary, type MediaKitStatus } from "@/lib/api";
 
 const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 
@@ -47,7 +47,7 @@ export function PressKitResults({ campaignId }: PressKitResultsProps) {
   );
 }
 
-function PressKitCard({ kit }: { kit: MediaKit }) {
+function PressKitCard({ kit }: { kit: MediaKitSummary }) {
   const publicUrl = kit.shareToken ? `${API_URL}/press-kits/public/${kit.shareToken}` : null;
 
   return (
@@ -73,10 +73,8 @@ function PressKitCard({ kit }: { kit: MediaKit }) {
         </div>
       )}
 
-      {kit.mdxPageContent && (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4 max-h-64 overflow-y-auto">
-          <pre className="text-xs text-gray-700 whitespace-pre-wrap font-mono">{kit.mdxPageContent.slice(0, 2000)}{kit.mdxPageContent.length > 2000 ? "\n..." : ""}</pre>
-        </div>
+      {kit.contentExcerpt && (
+        <p className="text-sm text-gray-600 mb-4 line-clamp-3">{kit.contentExcerpt}</p>
       )}
 
       {publicUrl && kit.status === "validated" && (
