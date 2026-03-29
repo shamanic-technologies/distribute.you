@@ -12,6 +12,7 @@ const STATUS_STYLES: Record<MediaKitStatus, string> = {
   validated: "bg-green-100 text-green-700 border-green-200",
   denied: "bg-red-100 text-red-700 border-red-200",
   archived: "bg-gray-100 text-gray-500 border-gray-200",
+  failed: "bg-red-100 text-red-600 border-red-200",
 };
 
 interface PressKitResultsProps {
@@ -71,6 +72,12 @@ function PressKitCard({ kit }: { kit: MediaKitSummary }) {
           <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
           Generating...
         </div>
+      )}
+
+      {kit.status === "failed" && (
+        <p className="text-sm text-red-600 mb-4">
+          Generation failed. Go to Press Kits to retry.
+        </p>
       )}
 
       {kit.contentExcerpt && (
