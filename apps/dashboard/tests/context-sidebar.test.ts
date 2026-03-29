@@ -88,6 +88,14 @@ describe("Context sidebar", () => {
     expect(content).toContain("featureItems");
   });
 
+  it("should have Tools section in brand sidebar with outlets, press kits, and journalists", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    expect(content).toContain("Tools");
+    expect(content).toContain("/tools/outlets");
+    expect(content).toContain("/tools/press-kits");
+    expect(content).toContain("/tools/journalists");
+  });
+
   it("should have brand back link point to brands page", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
     expect(content).toContain('backLabel="Brands"');
