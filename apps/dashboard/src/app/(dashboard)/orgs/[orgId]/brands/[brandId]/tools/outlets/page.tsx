@@ -177,7 +177,7 @@ export default function OutletsToolPage() {
     () => listBrandOutlets(brandId),
     pollOptions,
   );
-  const outlets = data?.outlets ?? [];
+  const outlets = (data?.outlets ?? []).filter((o) => o.status !== "skipped");
   const sorted = [...outlets].sort((a, b) => b.relevanceScore - a.relevanceScore);
 
   return (

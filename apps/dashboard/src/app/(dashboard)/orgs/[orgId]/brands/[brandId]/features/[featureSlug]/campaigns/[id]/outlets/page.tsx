@@ -33,7 +33,7 @@ export default function CampaignOutletsPage() {
     { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false },
   );
 
-  const outlets = data?.outlets ?? [];
+  const outlets = (data?.outlets ?? []).filter((o) => o.status !== "skipped");
   const sorted = [...outlets].sort((a, b) => b.relevanceScore - a.relevanceScore);
 
   if (isLoading) {
