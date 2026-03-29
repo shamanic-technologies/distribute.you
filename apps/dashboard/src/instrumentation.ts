@@ -216,6 +216,69 @@ const COLD_EMAIL_VARIABLES = [
   "clientCompanyName",
 ];
 
+const PRESS_KIT_CHAT_SYSTEM_PROMPT = `You are an expert press kit editor embedded in a media kit management dashboard.
+You help users refine, restructure, and improve their press kits (media kits). The current press kit's full details are provided in the request context — use them directly.
+
+**IMPORTANT: The request context contains the press kit's \\\`id\\\`, \\\`title\\\`, \\\`mdxPageContent\\\`, and other metadata. Use these directly for all operations.**
+
+## Available tools
+
+- **list_services** — List all available microservices.
+- **list_service_endpoints** — List endpoints for a specific service. Parameter: \\\`service\\\` (string, required).
+
+## How to work
+
+1. The current press kit details are in the request context. Read them directly.
+2. When the user asks for changes (tone, structure, sections, facts), apply them to the MDX content.
+3. Be concise and practical. Focus on the user's request.
+
+## Communication style
+
+Be concise and practical. When making changes, describe what you changed briefly. Always write content in English unless the user explicitly requests another language.`;
+
+const PRESS_KIT_ALLOWED_TOOLS = [
+  "request_user_input",
+  "list_services",
+  "list_service_endpoints",
+];
+
+const FEATURE_CHAT_SYSTEM_PROMPT = `You are an expert feature designer embedded in a feature management dashboard.
+You help users design, configure, and manage automation features. The current feature's details are provided in the request context — use them directly.
+
+**IMPORTANT: The request context contains the feature's details. Use them directly for all operations.**
+
+## Available tools
+
+- **create_feature** — Create a new feature.
+- **update_feature** — Update an existing feature's definition.
+- **list_features** — List available features.
+- **get_feature** — Get a feature by slug.
+- **get_feature_inputs** — Get input definitions for a feature.
+- **prefill_feature** — Pre-fill input values from brand data. Parameters: \\\`slug\\\` (string, required); \\\`brandId\\\` (string, required).
+- **get_feature_stats** — Get stats for a feature.
+- **request_user_input** — Ask the user for structured input.
+
+## How to work
+
+1. The current feature details are in the request context. Read them directly.
+2. When the user asks for changes, use the appropriate tool to apply them.
+3. After any modification, confirm the changes with the user.
+
+## Communication style
+
+Be concise and practical. Always write content in English unless the user explicitly requests another language.`;
+
+const FEATURE_ALLOWED_TOOLS = [
+  "request_user_input",
+  "create_feature",
+  "update_feature",
+  "list_features",
+  "get_feature",
+  "get_feature_inputs",
+  "prefill_feature",
+  "get_feature_stats",
+];
+
 const CHAT_SYSTEM_PROMPT = `You are an expert workflow editor embedded in a workflow management dashboard.
 You help users understand, modify, and troubleshoot their workflows. The current workflow's full DAG is provided in the request context — use it directly without needing to fetch it.
 
@@ -342,6 +405,43 @@ Prompt templates use \\\`{{variableName}}\\\` placeholders. When versioning a pr
 
 Be concise and practical. When describing workflow steps, use their node IDs. When showing the DAG structure, present it clearly. Always confirm changes with the user before executing them, and always validate after making changes.`;
 
+const WORKFLOW_ALLOWED_TOOLS = [
+  "request_user_input",
+  "update_workflow",
+  "validate_workflow",
+  "get_workflow_details",
+  "generate_workflow",
+  "get_workflow_required_providers",
+  "list_workflows",
+  "update_workflow_node_config",
+  "get_prompt_template",
+  "update_prompt_template",
+  "list_services",
+  "list_service_endpoints",
+  "list_org_keys",
+  "get_key_source",
+  "list_key_sources",
+  "check_provider_requirements",
+];
+
+const PLATFORM_CHAT_CONFIGS = [
+  {
+    key: "workflow",
+    systemPrompt: CHAT_SYSTEM_PROMPT,
+    allowedTools: WORKFLOW_ALLOWED_TOOLS,
+  },
+  {
+    key: "press-kit",
+    systemPrompt: PRESS_KIT_CHAT_SYSTEM_PROMPT,
+    allowedTools: PRESS_KIT_ALLOWED_TOOLS,
+  },
+  {
+    key: "feature",
+    systemPrompt: FEATURE_CHAT_SYSTEM_PROMPT,
+    allowedTools: FEATURE_ALLOWED_TOOLS,
+  },
+];
+
 export async function register() {
   const apiUrl = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
   const apiKey = process.env.ADMIN_DISTRIBUTE_API_KEY;
@@ -452,25 +552,37 @@ export async function register() {
     throw err;
   }
 
-  // Register platform chat config (non-blocking)
+  // Register platform chat configs (non-blocking)
   try {
-    const res = await fetch(`${apiUrl}/platform-chat/config`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        "X-API-Key": apiKey,
-      },
-      body: JSON.stringify({
-        systemPrompt: CHAT_SYSTEM_PROMPT,
+    const chatResults = await Promise.allSettled(
+      PLATFORM_CHAT_CONFIGS.map(async (config) => {
+        const res = await fetch(`${apiUrl}/platform-chat/config`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "X-API-Key": apiKey,
+          },
+          body: JSON.stringify(config),
+        });
+        if (!res.ok) {
+          const body = await res.text().catch(() => "");
+          throw new Error(`${config.key}: ${res.status} ${body}`);
+        }
+        return config.key;
       }),
-    });
+    );
 
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      console.warn(`[instrumentation] Chat config deployment failed: ${res.status} ${body}`);
-    } else {
-      console.log("[instrumentation] Deployed platform chat config");
+    const succeeded = chatResults.filter((r) => r.status === "fulfilled");
+    const failed = chatResults.filter((r) => r.status === "rejected");
+
+    if (failed.length > 0) {
+      const errors = failed.map((r) => (r as PromiseRejectedResult).reason?.message).join("; ");
+      console.warn(`[instrumentation] ${failed.length} chat config(s) failed: ${errors}`);
     }
+
+    console.log(
+      `[instrumentation] Chat configs: ${succeeded.length}/${PLATFORM_CHAT_CONFIGS.length} deployed`,
+    );
   } catch (err) {
     console.warn("[instrumentation] Chat config deployment error:", err);
   }

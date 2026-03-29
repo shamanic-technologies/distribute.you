@@ -90,13 +90,33 @@ describe("Platform config registration at startup", () => {
     });
   });
 
-  describe("platform chat config", () => {
+  describe("platform chat configs", () => {
     it("should call PUT /platform-chat/config via api-service", () => {
       expect(content).toContain("/platform-chat/config");
     });
 
+    it("should register all three chat config keys", () => {
+      expect(content).toContain('key: "workflow"');
+      expect(content).toContain('key: "press-kit"');
+      expect(content).toContain('key: "feature"');
+    });
+
     it("should include the workflow editor system prompt", () => {
       expect(content).toContain("expert workflow editor embedded in a workflow management dashboard");
+    });
+
+    it("should include the press kit editor system prompt", () => {
+      expect(content).toContain("expert press kit editor embedded in a media kit management dashboard");
+    });
+
+    it("should include the feature designer system prompt", () => {
+      expect(content).toContain("expert feature designer embedded in a feature management dashboard");
+    });
+
+    it("should include allowedTools for each config", () => {
+      expect(content).toContain("WORKFLOW_ALLOWED_TOOLS");
+      expect(content).toContain("PRESS_KIT_ALLOWED_TOOLS");
+      expect(content).toContain("FEATURE_ALLOWED_TOOLS");
     });
 
     it("should instruct the model to use workflowId from context for all tool calls", () => {
@@ -110,7 +130,7 @@ describe("Platform config registration at startup", () => {
     });
 
     it("should be non-blocking (warn on failure, not throw)", () => {
-      expect(content).toContain("Chat config deployment failed");
+      expect(content).toContain("chat config(s) failed");
       expect(content).toContain("console.warn");
     });
   });
