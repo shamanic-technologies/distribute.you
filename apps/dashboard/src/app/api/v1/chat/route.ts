@@ -43,14 +43,18 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { message, sessionId, context } = body as {
+  const { message, sessionId, context, configKey } = body as {
     message?: string;
     sessionId?: string;
     context?: Record<string, unknown>;
+    configKey?: string;
   };
 
   if (!message?.trim()) {
     return NextResponse.json({ error: "Message is required" }, { status: 400 });
+  }
+  if (!configKey) {
+    return NextResponse.json({ error: "configKey is required" }, { status: 400 });
   }
 
   const headers: Record<string, string> = {
@@ -73,7 +77,7 @@ export async function POST(req: NextRequest) {
     console.warn("[chat-proxy] currentUser() failed, continuing without user details:", err);
   }
 
-  const backendPayload: Record<string, unknown> = { message };
+  const backendPayload: Record<string, unknown> = { message, configKey };
   if (sessionId) backendPayload.sessionId = sessionId;
   if (context) backendPayload.context = context;
 
