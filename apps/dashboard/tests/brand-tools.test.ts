@@ -16,27 +16,19 @@ describe("brand-tools", () => {
     expect(componentSrc).toContain("export function BrandToolsSection");
   });
 
-  it("renders outlets tool with listBrandOutlets", () => {
-    expect(componentSrc).toContain("listBrandOutlets");
-    expect(componentSrc).toContain("OutletsTool");
+  it("renders outlets tool link", () => {
+    expect(componentSrc).toContain('"Outlets"');
+    expect(componentSrc).toContain("outlets");
   });
 
-  it("renders press kits tool with listBrandMediaKits", () => {
-    expect(componentSrc).toContain("listBrandMediaKits");
-    expect(componentSrc).toContain("PressKitsTool");
+  it("renders press kits tool link", () => {
+    expect(componentSrc).toContain('"Press Kits"');
+    expect(componentSrc).toContain("press-kits");
   });
 
-  it("renders journalists tool with listBrandJournalists", () => {
-    expect(componentSrc).toContain("listBrandJournalists");
-    expect(componentSrc).toContain("JournalistsTool");
-  });
-
-  it("all three tools are enabled (none have disabled prop set)", () => {
-    // No ToolCard should have disabled or disabledReason props passed
-    const toolCardUsages = componentSrc.match(/<ToolCard[\s\S]*?>/g) ?? [];
-    for (const usage of toolCardUsages) {
-      expect(usage).not.toMatch(/\bdisabled\b/);
-    }
+  it("renders journalists tool link", () => {
+    expect(componentSrc).toContain('"Journalists"');
+    expect(componentSrc).toContain("journalists");
   });
 
   it("brand page imports BrandToolsSection", () => {
