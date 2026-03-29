@@ -491,7 +491,30 @@ export default function FeatureCreateCampaignPage() {
     }
   }, [searchParams, router, orgId, brandId, featureSlug, resolvedSlug]);
 
-  if (!featureDef) return null;
+  if (featuresLoading) {
+    return (
+      <div className="p-4 md:p-8">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-gray-200 rounded w-48" />
+          <div className="h-32 bg-gray-200 rounded" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!featureDef) {
+    return (
+      <div className="p-4 md:p-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <h2 className="text-lg font-medium text-red-800 mb-2">Feature not found</h2>
+          <p className="text-sm text-red-600">
+            No active feature matches <code className="bg-red-100 px-1.5 py-0.5 rounded">{featureSlug}</code>.
+            It may have been deprecated or renamed.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-8">

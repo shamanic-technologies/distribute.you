@@ -232,10 +232,10 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
   ];
 
   const featureItems: SidebarItem[] = features.map((f) => ({
-    id: f.slug,
-    label: f.name,
-    href: `/features/${f.slug}`,
-    icon: getFeatureIcon(f.slug, f.icon),
+    id: f.dynastySlug ?? f.slug,
+    label: f.dynastyName ?? f.name,
+    href: `/features/${f.dynastySlug ?? f.slug}`,
+    icon: getFeatureIcon(f.dynastySlug ?? f.slug, f.icon),
     comingSoon: !f.implemented,
   }));
 
@@ -271,10 +271,10 @@ function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string 
   ];
 
   const featureItems: SidebarItem[] = features.map((f) => ({
-    id: f.slug,
-    label: f.name,
-    href: `/features/${f.slug}`,
-    icon: getFeatureIcon(f.slug, f.icon),
+    id: f.dynastySlug ?? f.slug,
+    label: f.dynastyName ?? f.name,
+    href: `/features/${f.dynastySlug ?? f.slug}`,
+    icon: getFeatureIcon(f.dynastySlug ?? f.slug, f.icon),
     comingSoon: !f.implemented,
   }));
 
