@@ -21,18 +21,23 @@ describe("brand-tools", () => {
     expect(componentSrc).toContain("OutletsTool");
   });
 
-  it("press kits tool is disabled pending backend brand_id filter", () => {
-    expect(componentSrc).toContain('title="Press Kits"');
-    expect(componentSrc).toContain("Needs brand_id filter on GET /media-kits from backend");
+  it("renders press kits tool with listBrandMediaKits", () => {
+    expect(componentSrc).toContain("listBrandMediaKits");
+    expect(componentSrc).toContain("PressKitsTool");
   });
 
-  it("journalists tool is disabled pending backend brand_id filter", () => {
+  it("press kits tool is enabled (not disabled)", () => {
+    // Press Kits ToolCard should NOT have disabled prop
+    const pressKitSection = componentSrc.slice(
+      componentSrc.indexOf('title="Press Kits"'),
+      componentSrc.indexOf('title="Journalists"'),
+    );
+    expect(pressKitSection).not.toContain("disabled");
+  });
+
+  it("journalists tool is disabled pending api-service route", () => {
     expect(componentSrc).toContain('title="Journalists"');
-    expect(componentSrc).toContain("Needs brand_id filter on GET /campaign-outlet-journalists from backend");
-  });
-
-  it("does not use listBrandMediaKits workaround", () => {
-    expect(componentSrc).not.toContain("listBrandMediaKits");
+    expect(componentSrc).toContain("Needs api-service route");
   });
 
   it("brand page imports BrandToolsSection", () => {
@@ -57,8 +62,17 @@ describe("brand-tools", () => {
       expect(apiSrc).toContain("/outlets?brandId=${brandId}");
     });
 
-    it("does not have listBrandMediaKits workaround", () => {
-      expect(apiSrc).not.toContain("export async function listBrandMediaKits");
+    it("exports listBrandMediaKits using backend brand_id filter", () => {
+      expect(apiSrc).toContain("export async function listBrandMediaKits");
+      expect(apiSrc).toContain("/press-kits/media-kits?brand_id=${brandId}");
+    });
+
+    it("listBrandMediaKits does NOT filter client-side", () => {
+      // Should use the backend filter, not .filter()
+      const fnStart = apiSrc.indexOf("async function listBrandMediaKits");
+      const fnEnd = apiSrc.indexOf("}", fnStart + 100);
+      const fnBody = apiSrc.slice(fnStart, fnEnd);
+      expect(fnBody).not.toContain(".filter(");
     });
   });
 });
