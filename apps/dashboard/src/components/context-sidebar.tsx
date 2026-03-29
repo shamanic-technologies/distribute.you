@@ -347,8 +347,8 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
 
   const toolItems: SidebarItem[] = [
     { id: "outlets", label: "Outlets", href: `${basePath}/tools/outlets`, icon: <ToolOutletsIcon /> },
-    { id: "press-kits", label: "Press Kits", href: `${basePath}/tools/press-kits`, icon: <ToolPressKitsIcon /> },
     { id: "journalists", label: "Journalists", href: `${basePath}/tools/journalists`, icon: <ToolJournalistsIcon /> },
+    { id: "press-kits", label: "Press Kits", href: `${basePath}/tools/press-kits`, icon: <ToolPressKitsIcon /> },
   ];
 
   return (
