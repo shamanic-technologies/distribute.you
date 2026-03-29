@@ -43,4 +43,13 @@ describe("Feature creator page passes complete context to chat", () => {
     expect(content).toContain("extractKey");
     expect(content).toContain("placeholder");
   });
+
+  it("should include dynasty identity fields in post-creation context", () => {
+    // After creation, the page transitions to settings mode with full identity
+    expect(content).toContain("createdFeature.id");
+    expect(content).toContain("createdFeature.slug");
+    expect(content).toContain("createdFeature.dynastySlug");
+    expect(content).toContain("createdFeature.dynastyName");
+    expect(content).toContain("createdFeature.version");
+  });
 });
