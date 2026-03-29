@@ -338,10 +338,10 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
   ];
 
   const featureItems: SidebarItem[] = features.map((f) => ({
-    id: f.slug,
-    label: f.name,
-    href: `${basePath}/features/${f.slug}`,
-    icon: getFeatureIcon(f.slug, f.icon),
+    id: f.dynastySlug ?? f.slug,
+    label: f.dynastyName ?? f.name,
+    href: `${basePath}/features/${f.dynastySlug ?? f.slug}`,
+    icon: getFeatureIcon(f.dynastySlug ?? f.slug, f.icon),
     comingSoon: !f.implemented,
   }));
 
@@ -484,7 +484,7 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   const { getFeature } = useFeatures();
   const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`;
   const feature = getFeature(featureSlug);
-  const title = feature?.name ?? featureSlug;
+  const title = feature?.dynastyName ?? feature?.name ?? featureSlug;
 
   const items: SidebarItem[] = [
     { id: "campaigns", label: "Campaigns", href: basePath, icon: <EnvelopeIcon /> },

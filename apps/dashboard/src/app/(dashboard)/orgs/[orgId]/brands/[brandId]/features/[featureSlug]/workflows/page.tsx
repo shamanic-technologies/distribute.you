@@ -50,6 +50,7 @@ export default function FeatureWorkflowsPage() {
 
   const { getFeature, isLoading: featuresLoading, registry } = useFeatures();
   const wfDef = getFeature(featureSlug);
+  const resolvedSlug = wfDef?.slug ?? featureSlug;
   const outputs = wfDef?.outputs ?? [];
 
   // Determine default sort from outputs
@@ -68,15 +69,15 @@ export default function FeatureWorkflowsPage() {
 
   // Fetch stats grouped by workflow dynasty (aggregated across all versions)
   const { data: statsData, isLoading } = useAuthQuery(
-    ["featureStats", featureSlug, "byDynasty"],
-    () => fetchFeatureStats(featureSlug, { groupBy: "workflowDynastySlug" }),
+    ["featureStats", resolvedSlug, "byDynasty"],
+    () => fetchFeatureStats(resolvedSlug, { groupBy: "workflowDynastySlug" }),
     { enabled: wfDef?.implemented === true, ...pollOptions },
   );
 
   // Fetch workflows filtered by feature slug
   const { data: workflowsData, isLoading: workflowsLoading } = useAuthQuery(
-    ["workflows", featureSlug],
-    () => listWorkflows({ featureSlug }),
+    ["workflows", resolvedSlug],
+    () => listWorkflows({ featureSlug: resolvedSlug }),
     pollOptions,
   );
 
@@ -149,7 +150,7 @@ export default function FeatureWorkflowsPage() {
         <div>
           <h1 className="font-display text-2xl font-bold text-gray-800">Workflows</h1>
           <p className="text-gray-600">
-            Workflows for {wfDef?.name ?? featureSlug}.
+            Workflows for {wfDef?.dynastyName ?? wfDef?.name ?? featureSlug}.
           </p>
         </div>
         <button

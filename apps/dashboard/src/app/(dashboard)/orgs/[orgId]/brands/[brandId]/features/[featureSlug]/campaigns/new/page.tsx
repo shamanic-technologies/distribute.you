@@ -109,6 +109,8 @@ export default function FeatureCreateCampaignPage() {
 
   const { getFeature, isLoading: featuresLoading, registry } = useFeatures();
   const featureDef = getFeature(featureSlug);
+  // URL may contain a dynasty slug; resolve to the versioned slug for API calls
+  const resolvedSlug = featureDef?.slug ?? featureSlug;
   const featureInputs = featureDef?.inputs ?? [];
   const outputs = featureDef?.outputs ?? [];
 
@@ -149,15 +151,15 @@ export default function FeatureCreateCampaignPage() {
 
   // Fetch workflows filtered by feature slug (same source as workflows page)
   const { data: workflowsData, isLoading: workflowsLoading } = useAuthQuery(
-    ["workflows", featureSlug],
-    () => listWorkflows({ featureSlug }),
+    ["workflows", resolvedSlug],
+    () => listWorkflows({ featureSlug: resolvedSlug }),
     pollOptions,
   );
 
   // Fetch feature stats grouped by dynasty (aggregated across all versions)
   const { data: statsData, isLoading } = useAuthQuery(
-    ["featureStats", featureSlug, "byDynasty"],
-    () => fetchFeatureStats(featureSlug, { groupBy: "workflowDynastySlug" }),
+    ["featureStats", resolvedSlug, "byDynasty"],
+    () => fetchFeatureStats(resolvedSlug, { groupBy: "workflowDynastySlug" }),
     { enabled: featureDef?.implemented === true, ...pollOptions },
   );
 
@@ -194,7 +196,7 @@ export default function FeatureCreateCampaignPage() {
   const featureWorkflowIds = useMemo(() => rows.map((r) => r.id), [rows]);
 
   const { data: keyStatusData } = useAuthQuery(
-    ["workflowKeyStatus", featureSlug, featureWorkflowIds],
+    ["workflowKeyStatus", resolvedSlug, featureWorkflowIds],
     async () => {
       const results = await Promise.all(
         featureWorkflowIds.map((id) => getWorkflowKeyStatus(id))
@@ -263,7 +265,7 @@ export default function FeatureCreateCampaignPage() {
 
     setIsLoadingProfile(true);
     try {
-      const { prefilled } = await prefillFeatureInputs(featureSlug, brandId);
+      const { prefilled } = await prefillFeatureInputs(resolvedSlug, brandId);
       const fields = prefillToStringMap(prefilled);
       setFormData(prefillToFormData(fields, featureInputs, resolvedBrandUrl));
     } catch {
@@ -272,7 +274,7 @@ export default function FeatureCreateCampaignPage() {
       setIsLoadingProfile(false);
       setShowForm(true);
     }
-  }, [selectedRow, budgetAmount, resolvedBrandUrl, brandId, featureSlug, featureInputs]);
+  }, [selectedRow, budgetAmount, resolvedBrandUrl, brandId, resolvedSlug, featureInputs]);
 
   const doCreateCampaign = useCallback(async () => {
     if (!selectedRow || !budgetAmount) return;
@@ -314,7 +316,7 @@ export default function FeatureCreateCampaignPage() {
       const campaignPayload: Record<string, unknown> = {
         workflowSlug: selectedRow.name,
         brandUrl: formData.brandUrl,
-        featureSlug,
+        featureSlug: resolvedSlug,
         ...budgetParams,
         featureInputs: inputValues,
       };
@@ -351,7 +353,7 @@ export default function FeatureCreateCampaignPage() {
         setCreateError(err instanceof Error ? err.message : "Failed to create campaign");
       }
     }
-  }, [selectedRow, budgetAmount, budgetFrequency, formData, router, orgId, brandId, featureSlug, featureInputs]);
+  }, [selectedRow, budgetAmount, budgetFrequency, formData, router, orgId, brandId, resolvedSlug, featureSlug, featureInputs]);
 
   /** Save campaign intent to sessionStorage so we can resume after Stripe checkout */
   const saveCampaignIntent = useCallback(() => {
@@ -462,7 +464,7 @@ export default function FeatureCreateCampaignPage() {
       (async () => {
         try {
           let result: { campaign: Campaign };
-          const payload = { name: generateName(), workflowSlug, featureSlug, ...rest } as unknown as Parameters<typeof createCampaign>[0];
+          const payload = { name: generateName(), workflowSlug, featureSlug: resolvedSlug, ...rest } as unknown as Parameters<typeof createCampaign>[0];
           try {
             result = await createCampaign(payload);
           } catch (firstErr) {
@@ -487,7 +489,7 @@ export default function FeatureCreateCampaignPage() {
     } catch {
       sessionStorage.removeItem("pendingCampaign");
     }
-  }, [searchParams, router, orgId, brandId, featureSlug]);
+  }, [searchParams, router, orgId, brandId, featureSlug, resolvedSlug]);
 
   if (!featureDef) return null;
 
