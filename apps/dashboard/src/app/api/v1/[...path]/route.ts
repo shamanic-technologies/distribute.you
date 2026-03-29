@@ -46,6 +46,8 @@ async function proxyRequest(
     // Forward optional identity headers from client
     const brandId = req.headers.get("x-brand-id");
     if (brandId) headers["x-brand-id"] = brandId;
+    const campaignId = req.headers.get("x-campaign-id");
+    if (campaignId) headers["x-campaign-id"] = campaignId;
 
     // currentUser() calls Clerk's API — don't let it break the proxy if Clerk is down
     try {

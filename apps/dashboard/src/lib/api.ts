@@ -289,7 +289,7 @@ export async function getBrandDeliveryStats(brandId: string, token?: string): Pr
   return apiCall<BrandDeliveryStats>(`/email-gateway/stats?brandId=${brandId}`, { token });
 }
 
-interface CostStatsGroup {
+export interface CostStatsGroup {
   dimensions: Record<string, string | null>;
   totalCostInUsdCents: string;
   actualCostInUsdCents: string;
@@ -1491,6 +1491,84 @@ export async function listCampaignJournalists(
 ): Promise<{ journalists: DiscoveredJournalist[] }> {
   return apiCall<{ journalists: DiscoveredJournalist[] }>(
     `/campaigns/${campaignId}/journalists`,
+    { token },
+  );
+}
+
+// --- Discovery actions & cost stats ---
+
+export async function discoverOutlets(
+  brandId: string,
+  campaignId: string,
+  count?: number,
+): Promise<{ runId: string; discovered: number }> {
+  return apiCall<{ runId: string; discovered: number }>(
+    `/outlets/discover`,
+    {
+      method: "POST",
+      body: count ? { count } : {},
+      headers: {
+        "x-brand-id": brandId,
+        "x-campaign-id": campaignId,
+      },
+    },
+  );
+}
+
+export async function discoverJournalists(
+  brandId: string,
+  campaignId: string,
+  outletId: string,
+  maxArticles?: number,
+): Promise<{ runId: string; discovered: number }> {
+  return apiCall<{ runId: string; discovered: number }>(
+    `/journalists/discover`,
+    {
+      method: "POST",
+      body: { outletId, ...(maxArticles ? { maxArticles } : {}) },
+      headers: {
+        "x-brand-id": brandId,
+        "x-campaign-id": campaignId,
+      },
+    },
+  );
+}
+
+export async function getOutletStatsCosts(
+  brandId: string,
+  groupBy?: string,
+  token?: string,
+): Promise<{ groups: CostStatsGroup[] }> {
+  const params = new URLSearchParams({ brandId });
+  if (groupBy) params.set("groupBy", groupBy);
+  return apiCall<{ groups: CostStatsGroup[] }>(
+    `/outlets/stats/costs?${params}`,
+    { token },
+  );
+}
+
+export async function getJournalistStatsCosts(
+  brandId: string,
+  groupBy?: string,
+  token?: string,
+): Promise<{ groups: CostStatsGroup[] }> {
+  const params = new URLSearchParams({ brandId });
+  if (groupBy) params.set("groupBy", groupBy);
+  return apiCall<{ groups: CostStatsGroup[] }>(
+    `/journalists/stats/costs?${params}`,
+    { token },
+  );
+}
+
+export async function getMediaKitStatsCosts(
+  brandId: string,
+  groupBy?: string,
+  token?: string,
+): Promise<{ groups: CostStatsGroup[] }> {
+  const params = new URLSearchParams({ brandId });
+  if (groupBy) params.set("groupBy", groupBy);
+  return apiCall<{ groups: CostStatsGroup[] }>(
+    `/press-kits/media-kits/stats/costs?${params}`,
     { token },
   );
 }

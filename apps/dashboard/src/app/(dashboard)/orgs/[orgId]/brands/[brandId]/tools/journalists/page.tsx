@@ -2,17 +2,30 @@
 
 import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
-import { useAuthQuery } from "@/lib/use-auth-query";
+import { useMutation } from "@tanstack/react-query";
+import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import {
   listBrandJournalists,
   listBrandOutlets,
+  listCampaignsByBrand,
+  discoverJournalists,
+  getJournalistStatsCosts,
   type BrandJournalist,
   type DiscoveredOutlet,
+  type Campaign,
+  type CostStatsGroup,
 } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
 
 const POLL_INTERVAL = 10_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
+
+function formatCost(cents: string | number | null | undefined): string | null {
+  if (cents == null) return null;
+  const n = typeof cents === "string" ? parseFloat(cents) : cents;
+  if (isNaN(n) || n === 0) return null;
+  return `$${(n / 100).toFixed(2)}`;
+}
 
 function relevanceColor(score: number): string {
   if (score >= 70) return "bg-green-100 text-green-700 border-green-200";
@@ -39,10 +52,62 @@ function timeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString();
 }
 
+/* ─── Types ──────────────────────────────────────────────────────────── */
+
 interface OutletWithJournalists {
   outlet: DiscoveredOutlet;
   journalists: BrandJournalist[];
 }
+
+/* ─── Discover Button (per outlet) ───────────────────────────────────── */
+
+function DiscoverJournalistsButton({
+  brandId,
+  outletId,
+  campaigns,
+  onSuccess,
+}: {
+  brandId: string;
+  outletId: string;
+  campaigns: Campaign[];
+  onSuccess: () => void;
+}) {
+  const [selectedCampaignId] = useState(campaigns[0]?.id ?? "");
+
+  const mutation = useMutation({
+    mutationFn: () => discoverJournalists(brandId, selectedCampaignId, outletId),
+    onSuccess,
+  });
+
+  if (campaigns.length === 0) return null;
+
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        onClick={(e) => { e.stopPropagation(); mutation.mutate(); }}
+        disabled={mutation.isPending || !selectedCampaignId}
+        className="text-xs px-3 py-1.5 bg-brand-600 text-white font-medium rounded-lg hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1.5"
+      >
+        {mutation.isPending ? (
+          <>
+            <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            Discovering...
+          </>
+        ) : (
+          "Discover Journalists"
+        )}
+      </button>
+      {mutation.isSuccess && mutation.data && (
+        <span className="text-xs text-green-600">+{mutation.data.discovered}</span>
+      )}
+      {mutation.isError && (
+        <span className="text-xs text-red-600">Failed</span>
+      )}
+    </div>
+  );
+}
+
+/* ─── Outlet Row ─────────────────────────────────────────────────────── */
 
 function OutletRow({
   item,
@@ -89,8 +154,11 @@ function OutletRow({
   );
 }
 
-function JournalistDetailTable({ journalist: j }: { journalist: BrandJournalist }) {
+/* ─── Journalist Detail Table ────────────────────────────────────────── */
+
+function JournalistDetailTable({ journalist: j, costCents }: { journalist: BrandJournalist; costCents: string | null }) {
   const score = parseFloat(j.relevanceScore);
+  const cost = formatCost(costCents);
   const rows: { label: string; value: React.ReactNode }[] = [
     { label: "Name", value: j.journalistName },
     { label: "First Name", value: j.firstName ?? "—" },
@@ -100,6 +168,9 @@ function JournalistDetailTable({ journalist: j }: { journalist: BrandJournalist 
   ];
   if (!isNaN(score)) {
     rows.push({ label: "Relevance", value: <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${relevanceColor(score)}`}>{score}%</span> });
+  }
+  if (cost) {
+    rows.push({ label: "Discovery Cost", value: <span className="text-xs font-medium text-gray-700">{cost}</span> });
   }
   if (j.whyRelevant) {
     rows.push({ label: "Why Relevant", value: j.whyRelevant });
@@ -137,12 +208,22 @@ function JournalistDetailTable({ journalist: j }: { journalist: BrandJournalist 
   );
 }
 
+/* ─── Detail Panel ───────────────────────────────────────────────────── */
+
 function DetailPanel({
   item,
+  campaigns,
+  brandId,
+  costMap,
   onClose,
+  onDiscover,
 }: {
   item: OutletWithJournalists;
+  campaigns: Campaign[];
+  brandId: string;
+  costMap: Map<string, string>;
   onClose: () => void;
+  onDiscover: () => void;
 }) {
   const { outlet, journalists } = item;
   const [outletOpen, setOutletOpen] = useState(false);
@@ -151,7 +232,6 @@ function DetailPanel({
     <>
       <div className="fixed inset-0 bg-black/20 z-40" onClick={onClose} />
       <div className="fixed top-0 right-0 h-full w-full max-w-lg bg-white shadow-xl z-50 overflow-y-auto border-l border-gray-200 animate-slide-in-right">
-        {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-8 h-8 bg-gray-50 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -172,13 +252,21 @@ function DetailPanel({
         <div className="p-4 space-y-6">
           {/* Journalists section */}
           <div>
-            <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">
-              Journalists ({journalists.length})
-            </h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                Journalists ({journalists.length})
+              </h3>
+              <DiscoverJournalistsButton
+                brandId={brandId}
+                outletId={outlet.id}
+                campaigns={campaigns}
+                onSuccess={onDiscover}
+              />
+            </div>
             {journalists.length === 0 ? (
               <div className="bg-gray-50 border border-dashed border-gray-200 rounded-lg p-6 text-center">
                 <p className="text-sm text-gray-500">No journalists associated with this outlet yet.</p>
-                <p className="text-xs text-gray-400 mt-1">Journalists will appear here once they are discovered by a campaign.</p>
+                <p className="text-xs text-gray-400 mt-1">Use the button above to discover journalists for this outlet.</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -192,7 +280,7 @@ function DetailPanel({
                       </div>
                       <span className="font-medium text-sm text-gray-800">{j.journalistName}</span>
                     </div>
-                    <JournalistDetailTable journalist={j} />
+                    <JournalistDetailTable journalist={j} costCents={costMap.get(j.journalistId) ?? null} />
                   </div>
                 ))}
               </div>
@@ -293,10 +381,66 @@ function DetailPanel({
   );
 }
 
+/* ─── Runs Tab ───────────────────────────────────────────────────────── */
+
+function RunsTab({ journalists }: { journalists: BrandJournalist[] }) {
+  const runGroups = useMemo(() => {
+    const map = new Map<string, BrandJournalist[]>();
+    for (const j of journalists) {
+      const runId = (j as BrandJournalist & { runId?: string }).runId;
+      if (!runId) continue;
+      const list = map.get(runId) ?? [];
+      list.push(j);
+      map.set(runId, list);
+    }
+    return Array.from(map.entries()).map(([runId, items]) => ({
+      runId,
+      count: items.length,
+      earliestDate: items.reduce((min, j) => j.createdAt < min ? j.createdAt : min, items[0].createdAt),
+    })).sort((a, b) => b.earliestDate.localeCompare(a.earliestDate));
+  }, [journalists]);
+
+  if (runGroups.length === 0) {
+    return (
+      <div className="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-8 text-center">
+        <h3 className="text-lg font-medium text-gray-900 mb-2">No runs yet</h3>
+        <p className="text-gray-500 text-sm">Discovery runs and their costs will appear here once journalists have a runId field.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border border-gray-200 rounded-lg overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="bg-gray-50 border-b border-gray-200">
+            <th className="text-left px-4 py-2 text-xs font-medium text-gray-500 uppercase">Run ID</th>
+            <th className="text-right px-4 py-2 text-xs font-medium text-gray-500 uppercase">Journalists</th>
+            <th className="text-left px-4 py-2 text-xs font-medium text-gray-500 uppercase">Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {runGroups.map((g) => (
+            <tr key={g.runId} className="border-b border-gray-100 last:border-0">
+              <td className="px-4 py-3 font-mono text-xs text-gray-600">{g.runId.slice(0, 8)}...</td>
+              <td className="px-4 py-3 text-right text-gray-700">{g.count}</td>
+              <td className="px-4 py-3 text-gray-600">{new Date(g.earliestDate).toLocaleDateString()} ({timeAgo(g.earliestDate)})</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/* ─── Main Page ──────────────────────────────────────────────────────── */
+
 export default function JournalistsToolPage() {
   const params = useParams();
   const brandId = params.brandId as string;
+  const queryClient = useQueryClient();
   const [selected, setSelected] = useState<OutletWithJournalists | null>(null);
+  const [activeTab, setActiveTab] = useState<"journalists" | "runs">("journalists");
 
   const { data: outletsData, isLoading: outletsLoading } = useAuthQuery(
     ["brandOutlets", brandId],
@@ -308,12 +452,30 @@ export default function JournalistsToolPage() {
     () => listBrandJournalists(brandId),
     pollOptions,
   );
+  const { data: campaignsData } = useAuthQuery(
+    ["brandCampaigns", brandId],
+    () => listCampaignsByBrand(brandId),
+  );
+  const { data: costsByJournalist } = useAuthQuery(
+    ["journalistStatsCosts", brandId, "journalistId"],
+    () => getJournalistStatsCosts(brandId, "journalistId"),
+  );
 
   const isLoading = outletsLoading || journalistsLoading;
+  const campaigns = campaignsData?.campaigns ?? [];
+  const journalists = journalistsData?.campaignJournalists ?? [];
+
+  const costMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const g of costsByJournalist?.groups ?? []) {
+      const id = g.dimensions.journalistId;
+      if (id) map.set(id, g.totalCostInUsdCents);
+    }
+    return map;
+  }, [costsByJournalist]);
 
   const outletItems = useMemo(() => {
     const outlets = (outletsData?.outlets ?? []).filter((o) => o.status !== "skipped");
-    const journalists = journalistsData?.campaignJournalists ?? [];
 
     const journalistsByOutlet = new Map<string, BrandJournalist[]>();
     for (const j of journalists) {
@@ -330,9 +492,22 @@ export default function JournalistsToolPage() {
         ),
       }))
       .sort((a, b) => b.outlet.relevanceScore - a.outlet.relevanceScore);
-  }, [outletsData, journalistsData]);
+  }, [outletsData, journalists]);
 
   const totalJournalists = outletItems.reduce((sum, item) => sum + item.journalists.length, 0);
+
+  const totalCost = useMemo(() => {
+    let total = 0;
+    for (const g of costsByJournalist?.groups ?? []) {
+      total += parseFloat(g.totalCostInUsdCents) || 0;
+    }
+    return total;
+  }, [costsByJournalist]);
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["brandJournalists", brandId] });
+    queryClient.invalidateQueries({ queryKey: ["journalistStatsCosts", brandId] });
+  };
 
   return (
     <div className="p-4 md:p-8 max-w-4xl">
@@ -345,43 +520,81 @@ export default function JournalistsToolPage() {
         </div>
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Journalists</h1>
-          <p className="text-sm text-gray-500">Discovered journalists grouped by media outlet</p>
+          <p className="text-sm text-gray-500">
+            {outletItems.length} outlet{outletItems.length !== 1 ? "s" : ""} &middot; {totalJournalists} journalist{totalJournalists !== 1 ? "s" : ""}
+            {totalCost > 0 && ` · Total cost: $${(totalCost / 100).toFixed(2)}`}
+          </p>
         </div>
       </div>
 
-      {/* Content */}
-      {isLoading ? (
-        <div className="space-y-3">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />
-          ))}
-        </div>
-      ) : outletItems.length === 0 ? (
-        <div className="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-8 text-center">
-          <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-          </svg>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No outlets yet</h3>
-          <p className="text-gray-500 text-sm">
-            Outlets and their journalists will be discovered when you run a journalist pitch campaign.
-          </p>
-        </div>
-      ) : (
+      {/* Tabs */}
+      <div className="flex gap-1 mb-6 border-b border-gray-200">
+        <button
+          onClick={() => setActiveTab("journalists")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
+            activeTab === "journalists"
+              ? "border-brand-600 text-brand-600"
+              : "border-transparent text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          Journalists
+        </button>
+        <button
+          onClick={() => setActiveTab("runs")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
+            activeTab === "runs"
+              ? "border-brand-600 text-brand-600"
+              : "border-transparent text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          Runs
+        </button>
+      </div>
+
+      {/* Journalists Tab */}
+      {activeTab === "journalists" && (
         <>
-          <div className="text-sm text-gray-500 mb-4">
-            {outletItems.length} outlet{outletItems.length !== 1 ? "s" : ""} &middot; {totalJournalists} journalist{totalJournalists !== 1 ? "s" : ""}
-          </div>
-          <div className="space-y-2">
-            {outletItems.map((item) => (
-              <OutletRow key={item.outlet.id} item={item} onClick={() => setSelected(item)} />
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />
+              ))}
+            </div>
+          ) : outletItems.length === 0 ? (
+            <div className="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-8 text-center">
+              <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+              </svg>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No outlets yet</h3>
+              <p className="text-gray-500 text-sm">
+                Outlets and their journalists will be discovered when you run a journalist pitch campaign.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {outletItems.map((item) => (
+                <OutletRow key={item.outlet.id} item={item} onClick={() => setSelected(item)} />
+              ))}
+            </div>
+          )}
         </>
+      )}
+
+      {/* Runs Tab */}
+      {activeTab === "runs" && (
+        <RunsTab journalists={journalists} />
       )}
 
       {/* Detail Panel */}
       {selected && (
-        <DetailPanel item={selected} onClose={() => setSelected(null)} />
+        <DetailPanel
+          item={selected}
+          campaigns={campaigns}
+          brandId={brandId}
+          costMap={costMap}
+          onClose={() => setSelected(null)}
+          onDiscover={invalidate}
+        />
       )}
     </div>
   );
