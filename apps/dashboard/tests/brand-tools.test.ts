@@ -31,6 +31,13 @@ describe("brand-tools", () => {
     expect(componentSrc).toContain("journalists");
   });
 
+  it("all three tools are enabled (none have disabled prop set)", () => {
+    const toolCardUsages = componentSrc.match(/<ToolLinkCard[\s\S]*?\/>/g) ?? [];
+    for (const usage of toolCardUsages) {
+      expect(usage).not.toMatch(/\bdisabled={true}/);
+    }
+  });
+
   it("brand page imports BrandToolsSection", () => {
     const pagePath = path.join(
       SRC,
@@ -39,6 +46,28 @@ describe("brand-tools", () => {
     const pageSrc = fs.readFileSync(pagePath, "utf-8");
     expect(pageSrc).toContain("BrandToolsSection");
     expect(pageSrc).toContain("<BrandToolsSection");
+  });
+
+  describe("tool pages exist", () => {
+    it("outlets tool page exists", () => {
+      const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/tools/outlets/page.tsx");
+      expect(fs.existsSync(p)).toBe(true);
+    });
+
+    it("press-kits tool page exists", () => {
+      const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/tools/press-kits/page.tsx");
+      expect(fs.existsSync(p)).toBe(true);
+    });
+
+    it("journalists tool page exists", () => {
+      const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/tools/journalists/page.tsx");
+      expect(fs.existsSync(p)).toBe(true);
+    });
+
+    it("press-kit detail page exists", () => {
+      const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/tools/press-kits/[kitId]/page.tsx");
+      expect(fs.existsSync(p)).toBe(true);
+    });
   });
 
   describe("api.ts functions", () => {

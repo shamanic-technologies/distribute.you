@@ -1248,19 +1248,46 @@ export async function createPortalSession(
 // Press Kits
 export type MediaKitStatus = "drafted" | "generating" | "validated" | "denied" | "archived";
 
-export interface MediaKit {
+/** Summary returned by list endpoints (no mdxPageContent) */
+export interface MediaKitSummary {
   id: string;
   title: string | null;
   status: MediaKitStatus;
-  mdxPageContent: string | null;
+  contentExcerpt: string | null;
   organizationId: string | null;
   orgId: string | null;
   brandId: string | null;
   campaignId: string | null;
   iconUrl: string | null;
   shareToken: string | null;
+  parentMediaKitId: string | null;
+  featureSlug: string | null;
+  workflowSlug: string | null;
+  denialReason: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Full detail returned by GET /media-kits/:id */
+export interface MediaKit extends MediaKitSummary {
+  mdxPageContent: string | null;
+}
+
+/** View stats for press kits */
+export interface MediaKitViewStats {
+  totalViews: number;
+  uniqueVisitors: number;
+  lastViewedAt: string | null;
+  firstViewedAt: string | null;
+}
+
+export interface MediaKitViewStatsGrouped {
+  groups: Array<{
+    key: string;
+    totalViews: number;
+    uniqueVisitors: number;
+    lastViewedAt: string | null;
+  }>;
 }
 
 /** Upsert org in press-kits-service (idempotent, call before listing kits) */
@@ -1277,14 +1304,14 @@ export async function upsertPressKitOrg(
 }
 
 /** List media kits filtered by org_id */
-export async function listMediaKits(orgId: string, token?: string): Promise<MediaKit[]> {
-  const res = await apiCall<{ mediaKits: MediaKit[] }>(`/press-kits/media-kits?org_id=${orgId}`, { token });
+export async function listMediaKits(orgId: string, token?: string): Promise<MediaKitSummary[]> {
+  const res = await apiCall<{ mediaKits: MediaKitSummary[] }>(`/press-kits/media-kits?org_id=${orgId}`, { token });
   return res.mediaKits;
 }
 
 /** List media kits filtered by brand_id */
-export async function listBrandMediaKits(brandId: string, token?: string): Promise<MediaKit[]> {
-  const res = await apiCall<{ mediaKits: MediaKit[] }>(`/press-kits/media-kits?brand_id=${brandId}`, { token });
+export async function listBrandMediaKits(brandId: string, token?: string): Promise<MediaKitSummary[]> {
+  const res = await apiCall<{ mediaKits: MediaKitSummary[] }>(`/press-kits/media-kits?brand_id=${brandId}`, { token });
   return res.mediaKits;
 }
 
@@ -1293,8 +1320,8 @@ export async function getMediaKit(id: string, token?: string): Promise<MediaKit>
 }
 
 /** List media kits associated with a campaign */
-export async function listMediaKitsByCampaign(campaignId: string, token?: string): Promise<MediaKit[]> {
-  const res = await apiCall<{ mediaKits: MediaKit[] }>(`/press-kits/media-kits?campaign_id=${campaignId}`, { token });
+export async function listMediaKitsByCampaign(campaignId: string, token?: string): Promise<MediaKitSummary[]> {
+  const res = await apiCall<{ mediaKits: MediaKitSummary[] }>(`/press-kits/media-kits?campaign_id=${campaignId}`, { token });
   return res.mediaKits;
 }
 
@@ -1359,6 +1386,23 @@ export async function cancelDraftMediaKit(
     token,
     method: "POST",
   });
+}
+
+/** Get view stats for press kits */
+export async function getMediaKitViewStats(
+  params: { brandId?: string; mediaKitId?: string; from?: string; to?: string; groupBy?: "country" | "mediaKitId" | "day" },
+  token?: string
+): Promise<MediaKitViewStats & Partial<MediaKitViewStatsGrouped>> {
+  const qs = new URLSearchParams();
+  if (params.brandId) qs.set("brandId", params.brandId);
+  if (params.mediaKitId) qs.set("mediaKitId", params.mediaKitId);
+  if (params.from) qs.set("from", params.from);
+  if (params.to) qs.set("to", params.to);
+  if (params.groupBy) qs.set("groupBy", params.groupBy);
+  return apiCall<MediaKitViewStats & Partial<MediaKitViewStatsGrouped>>(
+    `/press-kits/media-kits/stats/views?${qs.toString()}`,
+    { token },
+  );
 }
 
 
