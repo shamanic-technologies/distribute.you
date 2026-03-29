@@ -75,9 +75,9 @@ describe("Feature save button", () => {
       expect(newPageContent).toContain('queryKey: ["features"]');
     });
 
-    it("should redirect to the new feature page after save", () => {
-      expect(newPageContent).toContain("router.push");
-      expect(newPageContent).toContain("result.feature.slug");
+    it("should transition to settings page in-place after save", () => {
+      expect(newPageContent).toContain("window.history.replaceState");
+      expect(newPageContent).toContain("setCreatedFeature(result.feature)");
     });
   });
 

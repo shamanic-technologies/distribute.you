@@ -15,6 +15,29 @@ describe("Workflow viewer page — chat context", () => {
     expect(content).toContain("workflow.id");
   });
 
+  it("should include all workflow identity fields in context", () => {
+    expect(content).toContain("id: workflow.id");
+    expect(content).toContain("slug: workflow.slug");
+    expect(content).toContain("dynastySlug: workflow.dynastySlug");
+    expect(content).toContain("dynastyName: workflow.dynastyName");
+    expect(content).toContain("version: workflow.version");
+  });
+
+  it("should include all feature identity fields in context", () => {
+    expect(content).toContain("id: feature.id");
+    expect(content).toContain("dynastySlug: feature.dynastySlug");
+    expect(content).toContain("dynastyName: feature.dynastyName");
+    expect(content).toContain("version: feature.version");
+  });
+
+  it("should not put featureSlug in the workflow object (it belongs to feature)", () => {
+    // featureSlug should not appear inside the workflow context object
+    const workflowBlock = content.match(/workflow:\s*\{[\s\S]*?\},\s*dag:/);
+    if (workflowBlock) {
+      expect(workflowBlock[0]).not.toContain("featureSlug");
+    }
+  });
+
   it("should instruct the LLM NOT to ask which workflow the user means", () => {
     expect(content).toContain("do NOT ask which workflow the user means");
   });

@@ -522,6 +522,7 @@ export interface FeatureRef {
 }
 
 export interface Feature {
+  id: string;
   slug: string;
   name: string;
   dynastyName?: string;
