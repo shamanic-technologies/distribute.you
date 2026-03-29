@@ -1411,6 +1411,36 @@ export async function listCampaignOutlets(
   );
 }
 
+export interface BrandJournalist {
+  id: string;
+  journalistId: string;
+  campaignId: string;
+  outletId: string;
+  orgId: string;
+  brandId: string;
+  featureSlug: string | null;
+  relevanceScore: string;
+  whyRelevant: string;
+  whyNotRelevant: string;
+  articleUrls: string[] | null;
+  status: "buffered" | "claimed" | "served" | "skipped";
+  createdAt: string;
+  journalistName: string;
+  firstName: string | null;
+  lastName: string | null;
+  entityType: "individual" | "organization";
+}
+
+export async function listBrandJournalists(
+  brandId: string,
+  token?: string,
+): Promise<{ campaignJournalists: BrandJournalist[] }> {
+  return apiCall<{ campaignJournalists: BrandJournalist[] }>(
+    `/journalists?brandId=${brandId}`,
+    { token },
+  );
+}
+
 export async function listCampaignJournalists(
   campaignId: string,
   token?: string,
