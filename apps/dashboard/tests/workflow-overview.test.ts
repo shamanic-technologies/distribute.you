@@ -155,10 +155,27 @@ describe("WorkflowChat component (useChat + AI SDK)", () => {
     expect(content).toContain('api: "/api/v1/chat"');
   });
 
+  it("should send configKey: 'workflow' in the chat payload", () => {
+    const content = fs.readFileSync(chatPath, "utf-8");
+    expect(content).toContain('configKey: "workflow"');
+  });
+
   it("should omit sessionId from payload when null instead of sending null", () => {
     const content = fs.readFileSync(chatPath, "utf-8");
     expect(content).toContain("sessionIdRef.current ? { sessionId: sessionIdRef.current } : {}");
     expect(content).not.toMatch(/\bsessionId:\s*sessionIdRef\.current\s*[,\n]/);
+  });
+});
+
+describe("FeatureCreatorChat component", () => {
+  const chatPath = path.join(
+    __dirname,
+    "../src/components/features/feature-creator-chat.tsx"
+  );
+
+  it("should send configKey: 'feature' in the chat payload", () => {
+    const content = fs.readFileSync(chatPath, "utf-8");
+    expect(content).toContain('configKey: "feature"');
   });
 });
 
@@ -220,6 +237,13 @@ describe("Chat proxy route (SSE → Data Stream Protocol)", () => {
   it("should handle the value field on input_request (OpenAPI update)", () => {
     const content = fs.readFileSync(routePath, "utf-8");
     expect(content).toContain("event.value");
+  });
+
+  it("should require configKey and forward it to the backend", () => {
+    const content = fs.readFileSync(routePath, "utf-8");
+    expect(content).toContain("configKey");
+    expect(content).toContain('"configKey is required"');
+    expect(content).toContain("{ message, configKey }");
   });
 });
 
