@@ -1490,7 +1490,7 @@ export interface BrandJournalist {
   whyRelevant: string;
   whyNotRelevant: string;
   articleUrls: string[] | null;
-  status: "buffered" | "claimed" | "served" | "skipped";
+  status: "buffered" | "claimed" | "served" | "contacted" | "skipped";
   createdAt: string;
   journalistName: string;
   firstName: string | null;
@@ -1573,10 +1573,12 @@ export async function getOutletStatsCosts(
 export async function getJournalistStatsCosts(
   brandId: string,
   groupBy?: string,
+  campaignId?: string,
   token?: string,
 ): Promise<{ groups: CostStatsGroup[] }> {
   const params = new URLSearchParams({ brandId });
   if (groupBy) params.set("groupBy", groupBy);
+  if (campaignId) params.set("campaignId", campaignId);
   return apiCall<{ groups: CostStatsGroup[] }>(
     `/journalists/stats/costs?${params}`,
     { token },
