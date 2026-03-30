@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { type Lead, type RunCost, type DescendantRun } from "@/lib/api";
 import { useCampaign } from "@/lib/campaign-context";
+
+type Tab = "contacted" | "other";
 
 function timeAgo(date: string | Date): string {
   const now = new Date();
@@ -40,6 +42,12 @@ function formatDuration(startedAt: string, completedAt: string | null): string |
   const ms = new Date(completedAt).getTime() - new Date(startedAt).getTime();
   if (ms < 1000) return `${ms}ms`;
   return `${(ms / 1000).toFixed(1)}s`;
+}
+
+function formatUsd(cents: number): string {
+  const usd = cents / 100;
+  if (usd < 0.01 && usd > 0) return "<$0.01";
+  return `$${usd.toFixed(2)}`;
 }
 
 interface CostGroup {
@@ -149,9 +157,179 @@ function CompanyLogo({ domain, name }: { domain: string | null; name: string | n
   );
 }
 
+function StatusBadge({ status }: { status: string }) {
+  const styles =
+    status === "contacted" ? "bg-green-100 text-green-700" :
+    status === "pending" ? "bg-yellow-100 text-yellow-700" :
+    status === "failed" ? "bg-red-100 text-red-700" :
+    "bg-gray-100 text-gray-600";
+
+  return (
+    <span className={`text-xs px-2 py-0.5 rounded-full ${styles}`}>
+      {status}
+    </span>
+  );
+}
+
+function LeadsTable({
+  leads,
+  selectedLead,
+  onSelectLead,
+}: {
+  leads: Lead[];
+  selectedLead: Lead | null;
+  onSelectLead: (lead: Lead) => void;
+}) {
+  if (leads.length === 0) {
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+        <p className="text-gray-500 text-sm">No leads in this tab.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="px-4 py-3">Company</th>
+            <th className="px-4 py-3">Contact</th>
+            <th className="px-4 py-3 hidden lg:table-cell">Source</th>
+            <th className="px-4 py-3 hidden sm:table-cell">Status</th>
+            <th className="px-4 py-3 hidden md:table-cell">Found</th>
+            <th className="px-4 py-3 text-right">Cost</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-50">
+          {leads.map((lead) => {
+            const cost = formatCostRounded(lead.enrichmentRun);
+            return (
+              <tr
+                key={lead.id}
+                onClick={() => onSelectLead(lead)}
+                className={`cursor-pointer hover:bg-gray-50 transition ${
+                  selectedLead?.id === lead.id ? 'bg-brand-50' : ''
+                }`}
+              >
+                {/* Company */}
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2.5">
+                    <CompanyLogo domain={lead.organizationDomain} name={lead.organizationName} />
+                    <span className="font-medium text-gray-800 truncate max-w-[160px]">
+                      {lead.organizationName || "Unknown"}
+                    </span>
+                  </div>
+                </td>
+
+                {/* Contact */}
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <div className="min-w-0">
+                      <p className="font-medium text-gray-800 truncate">
+                        {lead.firstName} {lead.lastName}
+                      </p>
+                      {lead.title && (
+                        <p className="text-xs text-gray-500 truncate max-w-[180px]">{lead.title}</p>
+                      )}
+                    </div>
+                    {lead.linkedinUrl && (
+                      <span className="text-blue-400 shrink-0">
+                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19a.66.66 0 000 .14V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z" />
+                        </svg>
+                      </span>
+                    )}
+                  </div>
+                </td>
+
+                {/* Source */}
+                <td className="px-4 py-3 hidden lg:table-cell">
+                  <div className="flex items-center gap-1.5">
+                    <img
+                      src="https://www.apollo.io/favicon.ico"
+                      alt=""
+                      className="w-4 h-4 rounded-sm"
+                      loading="lazy"
+                    />
+                    <span className="text-xs text-gray-600">Apollo</span>
+                  </div>
+                </td>
+
+                {/* Status */}
+                <td className="px-4 py-3 hidden sm:table-cell">
+                  <StatusBadge status={lead.status} />
+                </td>
+
+                {/* Found date */}
+                <td className="px-4 py-3 hidden md:table-cell">
+                  <span
+                    className="text-xs text-gray-500"
+                    title={new Date(lead.createdAt).toLocaleString()}
+                  >
+                    {timeAgo(lead.createdAt)}
+                  </span>
+                </td>
+
+                {/* Cost */}
+                <td className="px-4 py-3 text-right">
+                  {cost ? (
+                    <span className="text-xs font-medium text-gray-600">{cost}</span>
+                  ) : (
+                    <span className="text-xs text-gray-300">-</span>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function CampaignLeadsPage() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [activeTab, setActiveTab] = useState<Tab>("contacted");
   const { leads, loading: isLoading } = useCampaign();
+
+  const sortedLeads = useMemo(
+    () => [...leads].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+    [leads]
+  );
+
+  const contactedLeads = useMemo(
+    () => sortedLeads.filter((l) => l.status === "contacted"),
+    [sortedLeads]
+  );
+  const otherLeads = useMemo(
+    () => sortedLeads.filter((l) => l.status !== "contacted"),
+    [sortedLeads]
+  );
+
+  const displayedLeads = activeTab === "contacted" ? contactedLeads : otherLeads;
+
+  const { totalCostCents, avgCostPerContactedCents } = useMemo(() => {
+    let total = 0;
+    let contactedWithCost = 0;
+    let contactedCost = 0;
+    for (const lead of leads) {
+      if (lead.enrichmentRun) {
+        const cents = parseFloat(lead.enrichmentRun.totalCostInUsdCents);
+        if (!isNaN(cents)) {
+          total += cents;
+          if (lead.status === "contacted") {
+            contactedCost += cents;
+            contactedWithCost++;
+          }
+        }
+      }
+    }
+    return {
+      totalCostCents: total,
+      avgCostPerContactedCents: contactedWithCost > 0 ? contactedCost / contactedWithCost : 0,
+    };
+  }, [leads]);
 
   if (isLoading) {
     return (
@@ -170,11 +348,48 @@ export default function CampaignLeadsPage() {
     <div className="flex flex-col md:flex-row h-full relative">
       {/* Lead Table */}
       <div className={`${selectedLead ? 'hidden md:block md:w-1/2' : 'w-full'} p-4 md:p-8 overflow-y-auto transition-all`}>
-        <div className="flex items-center justify-between mb-6">
+        {/* Header with title + cost summary */}
+        <div className="flex items-start justify-between mb-4">
           <h1 className="font-display text-xl font-bold text-gray-800">
             Leads
             <span className="ml-2 text-sm font-normal text-gray-500">({leads.length})</span>
           </h1>
+          {totalCostCents > 0 && (
+            <div className="text-right">
+              <p className="text-lg font-semibold text-gray-800">{formatUsd(totalCostCents)}</p>
+              {avgCostPerContactedCents > 0 && (
+                <p className="text-xs text-gray-500">
+                  {formatUsd(avgCostPerContactedCents)} avg/contacted
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1 mb-4 border-b border-gray-200">
+          <button
+            onClick={() => setActiveTab("contacted")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
+              activeTab === "contacted"
+                ? "border-brand-500 text-brand-700"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Contacted
+            <span className="ml-1.5 text-xs text-gray-400">({contactedLeads.length})</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("other")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
+              activeTab === "other"
+                ? "border-brand-500 text-brand-700"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Other
+            <span className="ml-1.5 text-xs text-gray-400">({otherLeads.length})</span>
+          </button>
         </div>
 
         {leads.length === 0 ? (
@@ -184,102 +399,11 @@ export default function CampaignLeadsPage() {
             <p className="text-gray-600 text-sm">Leads will appear here once the campaign runs.</p>
           </div>
         ) : (
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <th className="px-4 py-3">Company</th>
-                  <th className="px-4 py-3">Contact</th>
-                  <th className="px-4 py-3 hidden lg:table-cell">Source</th>
-                  <th className="px-4 py-3 hidden md:table-cell">Found</th>
-                  <th className="px-4 py-3 text-right">Cost</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {leads.map((lead) => {
-                  const cost = formatCostRounded(lead.enrichmentRun);
-                  return (
-                    <tr
-                      key={lead.id}
-                      onClick={() => setSelectedLead(lead)}
-                      className={`cursor-pointer hover:bg-gray-50 transition ${
-                        selectedLead?.id === lead.id ? 'bg-brand-50' : ''
-                      }`}
-                    >
-                      {/* Company */}
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2.5">
-                          <CompanyLogo domain={lead.organizationDomain} name={lead.organizationName} />
-                          <span className="font-medium text-gray-800 truncate max-w-[160px]">
-                            {lead.organizationName || "Unknown"}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Contact */}
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="min-w-0">
-                            <p className="font-medium text-gray-800 truncate">
-                              {lead.firstName} {lead.lastName}
-                            </p>
-                            {lead.title && (
-                              <p className="text-xs text-gray-500 truncate max-w-[180px]">{lead.title}</p>
-                            )}
-                          </div>
-                          {lead.linkedinUrl && (
-                            <a
-                              href={lead.linkedinUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-500 hover:text-blue-600 shrink-0"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19a.66.66 0 000 .14V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z" />
-                              </svg>
-                            </a>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Source — needs backend `namespace` field from lead-service */}
-                      <td className="px-4 py-3 hidden lg:table-cell">
-                        <div className="flex items-center gap-1.5">
-                          <img
-                            src="https://www.apollo.io/favicon.ico"
-                            alt=""
-                            className="w-4 h-4 rounded-sm"
-                            loading="lazy"
-                          />
-                          <span className="text-xs text-gray-600">Apollo</span>
-                        </div>
-                      </td>
-
-                      {/* Found date */}
-                      <td className="px-4 py-3 hidden md:table-cell">
-                        <span
-                          className="text-xs text-gray-500"
-                          title={new Date(lead.createdAt).toLocaleString()}
-                        >
-                          {timeAgo(lead.createdAt)}
-                        </span>
-                      </td>
-
-                      {/* Cost */}
-                      <td className="px-4 py-3 text-right">
-                        {cost ? (
-                          <span className="text-xs font-medium text-gray-600">{cost}</span>
-                        ) : (
-                          <span className="text-xs text-gray-300">-</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <LeadsTable
+            leads={displayedLeads}
+            selectedLead={selectedLead}
+            onSelectLead={setSelectedLead}
+          />
         )}
       </div>
 
@@ -335,13 +459,7 @@ export default function CampaignLeadsPage() {
                 <div>
                   <span className="text-gray-500">Status:</span>
                   <p className="font-medium">
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      selectedLead.status === "contacted" ? "bg-green-100 text-green-700" :
-                      selectedLead.status === "pending" ? "bg-yellow-100 text-yellow-700" :
-                      "bg-gray-100 text-gray-600"
-                    }`}>
-                      {selectedLead.status}
-                    </span>
+                    <StatusBadge status={selectedLead.status} />
                   </p>
                 </div>
                 {selectedLead.linkedinUrl && (
