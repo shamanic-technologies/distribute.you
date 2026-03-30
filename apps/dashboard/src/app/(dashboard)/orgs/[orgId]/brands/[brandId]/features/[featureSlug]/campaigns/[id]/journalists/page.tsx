@@ -16,12 +16,12 @@ const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
 
 type Tab = "contacted" | "not-contacted";
 
-const CONTACTED_STATUSES = new Set<BrandJournalist["status"]>(["contacted", "served"]);
+const CONTACTED_STATUSES = new Set<BrandJournalist["status"]>(["contacted"]);
 
 function statusLabel(status: BrandJournalist["status"]): string {
   switch (status) {
     case "contacted": return "Contacted";
-    case "served": return "Served";
+    case "served": return "Processing";
     case "buffered": return "In queue";
     case "claimed": return "Claimed";
     case "skipped": return "Skipped";
@@ -32,7 +32,7 @@ function statusLabel(status: BrandJournalist["status"]): string {
 function statusStyle(status: BrandJournalist["status"]): string {
   switch (status) {
     case "contacted": return "bg-green-100 text-green-700 border-green-200";
-    case "served": return "bg-emerald-100 text-emerald-700 border-emerald-200";
+    case "served": return "bg-orange-100 text-orange-700 border-orange-200";
     case "buffered": return "bg-blue-100 text-blue-600 border-blue-200";
     case "claimed": return "bg-yellow-100 text-yellow-700 border-yellow-200";
     case "skipped": return "bg-gray-100 text-gray-500 border-gray-200";
