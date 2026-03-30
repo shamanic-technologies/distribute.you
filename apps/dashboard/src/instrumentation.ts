@@ -125,6 +125,11 @@ const PLATFORM_KEYS: { provider: string; envVar: string }[] = [
   { provider: "google-client-secret", envVar: "GOOGLE_CLIENT_SECRET" },
   { provider: "google-developer-token", envVar: "GOOGLE_DEVELOPER_TOKEN" },
   { provider: "google-mcc-account-id", envVar: "GOOGLE_MCC_ACCOUNT_ID" },
+  { provider: "cloudflare-r2-access-key-id", envVar: "CLOUDFLARE_R2_ACCESS_KEY_ID" },
+  { provider: "cloudflare-r2-secret-access-key", envVar: "CLOUDFLARE_R2_SECRET_ACCESS_KEY" },
+  { provider: "cloudflare-r2-account-id", envVar: "CLOUDFLARE_R2_ACCOUNT_ID" },
+  { provider: "cloudflare-r2-bucket-name", envVar: "CLOUDFLARE_R2_BUCKET_NAME" },
+  { provider: "cloudflare-r2-public-domain", envVar: "CLOUDFLARE_R2_PUBLIC_DOMAIN" },
 ];
 
 const COLD_EMAIL_PROMPT = `Today is \${new Date().toISOString().split("T")[0]}.
