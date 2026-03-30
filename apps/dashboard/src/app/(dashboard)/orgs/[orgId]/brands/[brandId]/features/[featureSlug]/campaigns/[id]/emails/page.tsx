@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { type Email } from "@/lib/api";
 import { useCampaign } from "@/lib/campaign-context";
 
@@ -21,6 +21,23 @@ function formatRecipient(email: Email): string {
   if (name) return name;
   if (company) return company;
   return "Unknown recipient";
+}
+
+function timeAgo(dateStr: string): string {
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const seconds = Math.floor((now - then) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  const years = Math.floor(months / 12);
+  return `${years}y ago`;
 }
 
 function formatCostRounded(run: Email["generationRun"]): string | null {
@@ -44,9 +61,34 @@ function formatDuration(startedAt: string, completedAt: string | null): string |
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
+function formatTotalCost(emails: Email[]): string | null {
+  let totalCents = 0;
+  for (const email of emails) {
+    if (email.generationRun) {
+      const cents = parseFloat(email.generationRun.totalCostInUsdCents);
+      if (!isNaN(cents)) totalCents += cents;
+    }
+  }
+  if (totalCents === 0) return null;
+  const usd = totalCents / 100;
+  if (usd < 0.01) return "<$0.01";
+  return `$${usd.toFixed(2)}`;
+}
+
+function PersonInitials({ firstName, lastName }: { firstName: string; lastName: string }) {
+  const initials = [firstName?.[0], lastName?.[0]].filter(Boolean).join("").toUpperCase() || "?";
+  return (
+    <div className="w-8 h-8 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-xs font-semibold shrink-0">
+      {initials}
+    </div>
+  );
+}
+
 export default function CampaignEmailsPage() {
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const { emails, loading: isLoading } = useCampaign();
+
+  const totalCost = useMemo(() => formatTotalCost(emails), [emails]);
 
   if (isLoading) {
     return (
@@ -54,7 +96,7 @@ export default function CampaignEmailsPage() {
         <div className="animate-pulse space-y-4">
           <div className="h-8 w-32 bg-gray-200 rounded" />
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-20 bg-gray-100 rounded-xl" />
+            <div key={i} className="h-16 bg-gray-100 rounded-xl" />
           ))}
         </div>
       </div>
@@ -70,6 +112,11 @@ export default function CampaignEmailsPage() {
             Emails
             <span className="ml-2 text-sm font-normal text-gray-500">({emails.length})</span>
           </h1>
+          {totalCost && (
+            <span className="text-sm text-gray-500">
+              Total cost: <span className="font-medium text-gray-700">{totalCost}</span>
+            </span>
+          )}
         </div>
 
         {emails.length === 0 ? (
@@ -82,23 +129,56 @@ export default function CampaignEmailsPage() {
           <div className="space-y-2">
             {emails.map((email) => {
               const cost = formatCostRounded(email.generationRun);
+              const recipient = formatRecipient(email);
+              const name = [email.leadFirstName, email.leadLastName].filter(Boolean).join(" ");
               return (
                 <button
                   key={email.id}
                   onClick={() => setSelectedEmail(email)}
+                  title={recipient}
                   className={`w-full text-left bg-white rounded-xl border p-4 hover:border-brand-300 hover:shadow-sm transition ${
                     selectedEmail?.id === email.id ? 'border-brand-500 ring-1 ring-brand-500' : 'border-gray-200'
                   }`}
                 >
-                  <p className="font-medium text-gray-800 truncate">{email.subject}</p>
-                  <div className="flex items-center justify-between mt-1">
-                    <p className="text-sm text-gray-500 truncate">
-                      To: {formatRecipient(email)}
-                    </p>
+                  <div className="flex items-center gap-3">
+                    {/* Person avatar */}
+                    <PersonInitials firstName={email.leadFirstName} lastName={email.leadLastName} />
+
+                    {/* Company + Person + Role */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-gray-800 truncate text-sm">
+                          {name || "Unknown"}
+                        </p>
+                        {email.leadCompany && (
+                          <span className="text-xs text-gray-400 truncate shrink-0">
+                            {email.leadCompany}
+                          </span>
+                        )}
+                      </div>
+                      {email.leadTitle && (
+                        <p className="text-xs text-gray-400 truncate">{email.leadTitle}</p>
+                      )}
+                    </div>
+
+                    {/* Subject */}
+                    <div className="hidden lg:block min-w-0 flex-1">
+                      <p className="text-sm text-gray-600 truncate">{email.subject}</p>
+                    </div>
+
+                    {/* Cost */}
                     {cost && (
-                      <span className="text-xs text-gray-400 ml-2 shrink-0">{cost}</span>
+                      <span className="text-xs text-gray-400 shrink-0 hidden sm:block">{cost}</span>
                     )}
+
+                    {/* Time ago */}
+                    <span className="text-xs text-gray-400 shrink-0 whitespace-nowrap" title={new Date(email.createdAt).toLocaleString()}>
+                      {timeAgo(email.createdAt)}
+                    </span>
                   </div>
+
+                  {/* Subject on smaller screens (shown below) */}
+                  <p className="lg:hidden text-sm text-gray-600 truncate mt-1.5 ml-11">{email.subject}</p>
                 </button>
               );
             })}
@@ -132,16 +212,19 @@ export default function CampaignEmailsPage() {
 
           <div className="p-4 md:p-6">
             {/* Recipient Info */}
-            <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+            <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4" title={formatRecipient(selectedEmail)}>
+              <div className="flex items-center gap-3 mb-3">
+                <PersonInitials firstName={selectedEmail.leadFirstName} lastName={selectedEmail.leadLastName} />
+                <div>
+                  <p className="font-medium text-gray-800">
+                    {[selectedEmail.leadFirstName, selectedEmail.leadLastName].filter(Boolean).join(" ") || "Unknown"}
+                  </p>
+                  {selectedEmail.leadTitle && (
+                    <p className="text-sm text-gray-500">{selectedEmail.leadTitle}</p>
+                  )}
+                </div>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                <div>
-                  <span className="text-gray-500">To:</span>
-                  <p className="font-medium">{formatRecipient(selectedEmail)}</p>
-                </div>
-                <div>
-                  <span className="text-gray-500">Title:</span>
-                  <p className="font-medium">{selectedEmail.leadTitle || '-'}</p>
-                </div>
                 <div>
                   <span className="text-gray-500">Company:</span>
                   <p className="font-medium">{selectedEmail.leadCompany || '-'}</p>
@@ -228,7 +311,8 @@ export default function CampaignEmailsPage() {
 
             {/* Metadata */}
             <div className="mt-4 text-xs text-gray-400">
-              Generated: {new Date(selectedEmail.createdAt).toLocaleString()}
+              Generated {timeAgo(selectedEmail.createdAt)}
+              <span className="ml-1">({new Date(selectedEmail.createdAt).toLocaleString()})</span>
             </div>
           </div>
         </div>
