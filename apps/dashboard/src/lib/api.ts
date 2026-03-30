@@ -1500,10 +1500,13 @@ export interface BrandJournalist {
 
 export async function listBrandJournalists(
   brandId: string,
+  campaignId?: string,
   token?: string,
 ): Promise<{ campaignJournalists: BrandJournalist[] }> {
+  const params = new URLSearchParams({ brandId });
+  if (campaignId) params.set("campaignId", campaignId);
   return apiCall<{ campaignJournalists: BrandJournalist[] }>(
-    `/journalists?brandId=${brandId}`,
+    `/journalists?${params}`,
     { token },
   );
 }

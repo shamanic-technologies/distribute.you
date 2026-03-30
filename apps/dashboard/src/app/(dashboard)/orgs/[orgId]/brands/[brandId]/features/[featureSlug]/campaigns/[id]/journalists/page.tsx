@@ -52,8 +52,8 @@ export default function CampaignJournalistsPage() {
   const [selected, setSelected] = useState<BrandJournalist | null>(null);
 
   const { data: journalistsData, isLoading: journalistsLoading } = useAuthQuery(
-    ["brandJournalists", brandId],
-    () => listBrandJournalists(brandId),
+    ["brandJournalists", brandId, campaignId],
+    () => listBrandJournalists(brandId, campaignId),
     { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false },
   );
 
@@ -67,11 +67,7 @@ export default function CampaignJournalistsPage() {
     () => getJournalistStatsCosts(brandId, "journalistId", campaignId),
   );
 
-  // Filter journalists for this campaign
-  const campaignJournalists = useMemo(
-    () => (journalistsData?.campaignJournalists ?? []).filter((j) => j.campaignId === campaignId),
-    [journalistsData, campaignId],
-  );
+  const campaignJournalists = journalistsData?.campaignJournalists ?? [];
 
   // Outlet lookup
   const outletMap = useMemo(() => {
