@@ -125,9 +125,8 @@ describe("press-kit-dashboard", () => {
       expect(fs.existsSync(detailPath)).toBe(true);
     });
 
-    it("renders MDX content with react-markdown", () => {
-      expect(detailSrc).toContain("react-markdown");
-      expect(detailSrc).toContain("MdxPreview");
+    it("renders MDX content with neutral isolated preview", () => {
+      expect(detailSrc).toContain("NeutralPreview");
       expect(detailSrc).toContain("mdxPageContent");
     });
 
