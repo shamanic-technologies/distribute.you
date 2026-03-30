@@ -232,7 +232,7 @@ export default function CreateCampaignPage() {
   const { data: rankedItems, isLoading } = useAuthQuery(
     ["ranked-workflows", featureId],
     () => fetchRankedWorkflows({
-      featureSlug: featureId,
+      featureDynastySlug: featureId,
       limit: 100,
     }),
     { enabled: featureDef?.implemented === true, ...pollOptions },
