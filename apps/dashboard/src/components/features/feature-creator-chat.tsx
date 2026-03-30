@@ -275,6 +275,8 @@ export function FeatureCreatorChat({
 }: FeatureCreatorChatProps) {
   const { showPaymentRequired } = useBillingGuard();
   const sessionIdRef = useRef<string | null>(null);
+  const contextRef = useRef(featureContext);
+  contextRef.current = featureContext;
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const userHasScrolledRef = useRef(false);
@@ -321,11 +323,11 @@ export function FeatureCreatorChat({
                 ?.parts?.find((p): p is { type: "text"; text: string } => p.type === "text")?.text || "",
             configKey: "feature",
             ...(sessionIdRef.current ? { sessionId: sessionIdRef.current } : {}),
-            context: featureContext,
+            context: contextRef.current,
           },
         }),
       }),
-    [featureContext, billingFetch],
+    [billingFetch],
   );
 
   const { messages, sendMessage, status, stop, setMessages } = useChat({
