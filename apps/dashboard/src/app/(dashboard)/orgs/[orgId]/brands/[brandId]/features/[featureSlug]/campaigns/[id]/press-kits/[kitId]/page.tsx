@@ -189,14 +189,16 @@ function VersionHistory({
   currentId,
   campaignId,
   basePath,
+  contextHeaders,
 }: {
   currentId: string;
   campaignId: string;
   basePath: string;
+  contextHeaders?: Record<string, string>;
 }) {
   const { data: allKits } = useAuthQuery(
     ["campaignMediaKits", campaignId],
-    () => listMediaKitsByCampaign(campaignId),
+    () => listMediaKitsByCampaign(campaignId, { headers: contextHeaders }),
   );
 
   if (!allKits || allKits.length <= 1) return null;
@@ -252,6 +254,12 @@ export default function CampaignPressKitDetailPage() {
 
   const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/${campaignId}/press-kits`;
 
+  const contextHeaders: Record<string, string> = {
+    "x-brand-id": brandId,
+    "x-campaign-id": campaignId,
+    "x-feature-slug": featureSlug,
+  };
+
   const [copied, setCopied] = useState(false);
   const [regenerateInstruction, setRegenerateInstruction] = useState("");
   const [showRegenerate, setShowRegenerate] = useState(false);
@@ -265,13 +273,13 @@ export default function CampaignPressKitDetailPage() {
 
   const { data: kit, isLoading } = useAuthQuery(
     ["mediaKit", kitId],
-    () => getMediaKit(kitId),
+    () => getMediaKit(kitId, { headers: contextHeaders }),
     { refetchInterval: 5_000, refetchIntervalInBackground: false },
   );
 
   const { data: stats } = useAuthQuery(
     ["mediaKitViewStats", kitId],
-    () => getMediaKitViewStats({ mediaKitId: kitId }),
+    () => getMediaKitViewStats({ mediaKitId: kitId }, { headers: contextHeaders }),
     { enabled: kit?.status === "validated" },
   );
 
@@ -281,23 +289,23 @@ export default function CampaignPressKitDetailPage() {
   };
 
   const validateMut = useMutation({
-    mutationFn: () => validateMediaKit(kitId),
+    mutationFn: () => validateMediaKit(kitId, { headers: contextHeaders }),
     onSuccess: invalidate,
   });
   const archiveMut = useMutation({
-    mutationFn: () => updateMediaKitStatus(kitId, "archived"),
+    mutationFn: () => updateMediaKitStatus(kitId, "archived", { headers: contextHeaders }),
     onSuccess: invalidate,
   });
   const cancelMut = useMutation({
-    mutationFn: () => cancelDraftMediaKit(kitId),
+    mutationFn: () => cancelDraftMediaKit(kitId, { headers: contextHeaders }),
     onSuccess: invalidate,
   });
   const retryMut = useMutation({
-    mutationFn: () => editMediaKit({ instruction: "Retry generation", brandId }),
+    mutationFn: () => editMediaKit({ instruction: "Retry generation", headers: contextHeaders }),
     onSuccess: invalidate,
   });
   const regenerateMut = useMutation({
-    mutationFn: () => editMediaKit({ instruction: regenerateInstruction, brandId }),
+    mutationFn: () => editMediaKit({ instruction: regenerateInstruction, headers: contextHeaders }),
     onSuccess: (data) => {
       setRegenerateInstruction("");
       setShowRegenerate(false);
@@ -564,6 +572,7 @@ export default function CampaignPressKitDetailPage() {
                 <PressKitChat
                   kitId={kitId}
                   brandId={brandId}
+                  contextHeaders={contextHeaders}
                   pressKitContext={{
                     mediaKitId: kitId,
                     brandId,
@@ -586,7 +595,7 @@ export default function CampaignPressKitDetailPage() {
 
           {/* Sidebar — version history */}
           <div className="hidden lg:block w-56 flex-shrink-0">
-            <VersionHistory currentId={kitId} campaignId={campaignId} basePath={basePath} />
+            <VersionHistory currentId={kitId} campaignId={campaignId} basePath={basePath} contextHeaders={contextHeaders} />
           </div>
         </div>
       )}

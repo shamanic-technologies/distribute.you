@@ -50,10 +50,10 @@ function formatCost(cents: string | number | null | undefined): string | null {
 
 /* ─── Stats Card ──────────────────────────────────────────────────────── */
 
-function StatsBar({ brandId }: { brandId: string }) {
+function StatsBar({ brandId, contextHeaders }: { brandId: string; contextHeaders?: Record<string, string> }) {
   const { data: stats } = useAuthQuery(
     ["mediaKitViewStats", brandId],
-    () => getMediaKitViewStats({ brandId }),
+    () => getMediaKitViewStats({ brandId }, { headers: contextHeaders }),
   );
 
   if (!stats) return null;
@@ -159,33 +159,33 @@ function LatestValidatedPreview({ kit, basePath }: { kit: MediaKitSummary; baseP
 function PressKitRow({
   kit,
   basePath,
-  brandId,
   costCents,
+  contextHeaders,
   onAction,
 }: {
   kit: MediaKitSummary;
   basePath: string;
-  brandId: string;
   costCents: string | null;
+  contextHeaders?: Record<string, string>;
   onAction: () => void;
 }) {
   const publicUrl = kit.publicUrl;
   const cost = formatCost(costCents);
 
   const validateMut = useMutation({
-    mutationFn: () => validateMediaKit(kit.id),
+    mutationFn: () => validateMediaKit(kit.id, { headers: contextHeaders }),
     onSuccess: onAction,
   });
   const archiveMut = useMutation({
-    mutationFn: () => updateMediaKitStatus(kit.id, "archived"),
+    mutationFn: () => updateMediaKitStatus(kit.id, "archived", { headers: contextHeaders }),
     onSuccess: onAction,
   });
   const cancelMut = useMutation({
-    mutationFn: () => cancelDraftMediaKit(kit.id),
+    mutationFn: () => cancelDraftMediaKit(kit.id, { headers: contextHeaders }),
     onSuccess: onAction,
   });
   const retryMut = useMutation({
-    mutationFn: () => editMediaKit({ instruction: "Retry generation", brandId }),
+    mutationFn: () => editMediaKit({ instruction: "Retry generation", headers: contextHeaders }),
     onSuccess: onAction,
   });
 
@@ -363,9 +363,15 @@ export default function CampaignPressKitsPage() {
 
   const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/${campaignId}/press-kits`;
 
+  const contextHeaders: Record<string, string> = {
+    "x-brand-id": brandId,
+    "x-campaign-id": campaignId,
+    "x-feature-slug": featureSlug,
+  };
+
   const { data: kits, isLoading } = useAuthQuery(
     ["campaignMediaKits", campaignId],
-    () => listMediaKitsByCampaign(campaignId),
+    () => listMediaKitsByCampaign(campaignId, { headers: contextHeaders }),
     pollOptions,
   );
 
@@ -432,7 +438,7 @@ export default function CampaignPressKitsPage() {
       </div>
 
       {/* Stats */}
-      {kits && kits.length > 0 && <StatsBar brandId={brandId} />}
+      {kits && kits.length > 0 && <StatsBar brandId={brandId} contextHeaders={contextHeaders} />}
 
       {/* Tabs */}
       <div className="flex gap-1 mb-6 border-b border-gray-200">
@@ -500,7 +506,7 @@ export default function CampaignPressKitsPage() {
                 </h2>
                 <div className="space-y-2">
                   {active.map((kit) => (
-                    <PressKitRow key={kit.id} kit={kit} basePath={basePath} brandId={brandId} costCents={costMap.get(kit.id) ?? null} onAction={invalidate} />
+                    <PressKitRow key={kit.id} kit={kit} basePath={basePath} costCents={costMap.get(kit.id) ?? null} contextHeaders={contextHeaders} onAction={invalidate} />
                   ))}
                 </div>
               </div>
@@ -525,7 +531,7 @@ export default function CampaignPressKitsPage() {
                   {showArchived && (
                     <div className="space-y-2 opacity-60">
                       {archived.map((kit) => (
-                        <PressKitRow key={kit.id} kit={kit} basePath={basePath} brandId={brandId} costCents={costMap.get(kit.id) ?? null} onAction={invalidate} />
+                        <PressKitRow key={kit.id} kit={kit} basePath={basePath} costCents={costMap.get(kit.id) ?? null} contextHeaders={contextHeaders} onAction={invalidate} />
                       ))}
                     </div>
                   )}

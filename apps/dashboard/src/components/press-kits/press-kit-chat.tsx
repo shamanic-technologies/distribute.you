@@ -266,12 +266,14 @@ interface PressKitChatProps {
   kitId: string;
   brandId: string;
   pressKitContext: Record<string, unknown>;
+  contextHeaders?: Record<string, string>;
 }
 
 export function PressKitChat({
   kitId,
   brandId,
   pressKitContext,
+  contextHeaders,
 }: PressKitChatProps) {
   const { showPaymentRequired } = useBillingGuard();
   const queryClient = useQueryClient();
@@ -314,6 +316,7 @@ export function PressKitChat({
     () =>
       new DefaultChatTransport({
         api: "/api/v1/chat",
+        headers: contextHeaders,
         fetch: billingFetch,
         prepareSendMessagesRequest: ({ messages: msgs }) => ({
           body: {
@@ -328,7 +331,7 @@ export function PressKitChat({
           },
         }),
       }),
-    [billingFetch],
+    [billingFetch, contextHeaders],
   );
 
   const { messages, sendMessage, status, stop, setMessages } = useChat({

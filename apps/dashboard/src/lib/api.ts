@@ -1337,27 +1337,27 @@ export async function listBrandMediaKits(brandId: string, token?: string): Promi
   return res.mediaKits;
 }
 
-export async function getMediaKit(id: string, token?: string): Promise<MediaKit> {
-  return apiCall<MediaKit>(`/press-kits/media-kits/${id}`, { token });
+export async function getMediaKit(id: string, options?: { token?: string; headers?: Record<string, string> }): Promise<MediaKit> {
+  return apiCall<MediaKit>(`/press-kits/media-kits/${id}`, { token: options?.token, headers: options?.headers });
 }
 
 /** List media kits associated with a campaign */
-export async function listMediaKitsByCampaign(campaignId: string, token?: string): Promise<MediaKitSummary[]> {
-  const res = await apiCall<{ mediaKits: MediaKitSummary[] }>(`/press-kits/media-kits?campaign_id=${campaignId}`, { token });
+export async function listMediaKitsByCampaign(campaignId: string, options?: { token?: string; headers?: Record<string, string> }): Promise<MediaKitSummary[]> {
+  const res = await apiCall<{ mediaKits: MediaKitSummary[] }>(`/press-kits/media-kits?campaign_id=${campaignId}`, { token: options?.token, headers: options?.headers });
   return res.mediaKits;
 }
 
 /** Initiate media kit generation (org via x-org-id, brand via x-brand-id header) */
 export async function editMediaKit(
-  params: { instruction: string; brandId?: string },
+  params: { instruction: string; headers?: Record<string, string> },
   token?: string
 ): Promise<{ mediaKitId: string }> {
-  const { instruction, brandId } = params;
+  const { instruction, headers } = params;
   return apiCall<{ mediaKitId: string }>("/press-kits/media-kits", {
     token,
     method: "POST",
     body: { instruction },
-    ...(brandId ? { headers: { "x-brand-id": brandId } } : {}),
+    headers,
   });
 }
 
@@ -1365,12 +1365,13 @@ export async function editMediaKit(
 export async function updateMediaKitMdx(
   mediaKitId: string,
   mdxContent: string,
-  token?: string
+  options?: { token?: string; headers?: Record<string, string> }
 ): Promise<void> {
   await apiCall<Record<string, unknown>>(`/press-kits/media-kits/${mediaKitId}/mdx`, {
-    token,
+    token: options?.token,
     method: "PATCH",
     body: { mdxContent },
+    headers: options?.headers,
   });
 }
 
@@ -1378,42 +1379,44 @@ export async function updateMediaKitMdx(
 export async function updateMediaKitStatus(
   mediaKitId: string,
   status: MediaKitStatus,
-  denialReason?: string,
-  token?: string
+  options?: { denialReason?: string; token?: string; headers?: Record<string, string> }
 ): Promise<void> {
   await apiCall<Record<string, unknown>>(`/press-kits/media-kits/${mediaKitId}/status`, {
-    token,
+    token: options?.token,
     method: "PATCH",
-    body: { status, ...(denialReason ? { denialReason } : {}) },
+    body: { status, ...(options?.denialReason ? { denialReason: options.denialReason } : {}) },
+    headers: options?.headers,
   });
 }
 
 /** Validate a media kit (moves to validated status) */
 export async function validateMediaKit(
   mediaKitId: string,
-  token?: string
+  options?: { token?: string; headers?: Record<string, string> }
 ): Promise<void> {
   await apiCall<Record<string, unknown>>(`/press-kits/media-kits/${mediaKitId}/validate`, {
-    token,
+    token: options?.token,
     method: "POST",
+    headers: options?.headers,
   });
 }
 
 /** Cancel a draft media kit */
 export async function cancelDraftMediaKit(
   mediaKitId: string,
-  token?: string
+  options?: { token?: string; headers?: Record<string, string> }
 ): Promise<void> {
   await apiCall<Record<string, unknown>>(`/press-kits/media-kits/${mediaKitId}/cancel`, {
-    token,
+    token: options?.token,
     method: "POST",
+    headers: options?.headers,
   });
 }
 
 /** Get view stats for press kits */
 export async function getMediaKitViewStats(
   params: { brandId?: string; mediaKitId?: string; from?: string; to?: string; groupBy?: "country" | "mediaKitId" | "day" },
-  token?: string
+  options?: { token?: string; headers?: Record<string, string> }
 ): Promise<MediaKitViewStats & Partial<MediaKitViewStatsGrouped>> {
   const qs = new URLSearchParams();
   if (params.brandId) qs.set("brandId", params.brandId);
@@ -1423,7 +1426,7 @@ export async function getMediaKitViewStats(
   if (params.groupBy) qs.set("groupBy", params.groupBy);
   return apiCall<MediaKitViewStats & Partial<MediaKitViewStatsGrouped>>(
     `/press-kits/media-kits/stats/views?${qs.toString()}`,
-    { token },
+    { token: options?.token, headers: options?.headers },
   );
 }
 
