@@ -49,7 +49,7 @@ interface PublicRankedItem {
   };
   stats: {
     totalCostInUsdCents: number;
-    email: {
+    email?: {
       broadcast: PublicEmailStats;
     };
   };
@@ -67,18 +67,18 @@ export async function fetchLeaderboardPreview(): Promise<LeaderboardPreview | nu
     const data: { results: PublicRankedItem[] } = await res.json();
 
     const workflows: WorkflowEntry[] = data.results.map((item) => {
-      const b = item.stats.email.broadcast;
+      const b = item.stats.email?.broadcast;
       const cost = item.stats.totalCostInUsdCents;
       return {
         workflowName: item.workflow.name,
         dynastyName: item.workflow.dynastyName ?? item.workflow.name,
-        emailsSent: b.sent,
-        openRate: b.sent > 0 ? b.opened / b.sent : 0,
-        clickRate: b.sent > 0 ? b.clicked / b.sent : 0,
-        replyRate: b.sent > 0 ? b.replied / b.sent : 0,
-        costPerOpenCents: b.opened > 0 ? cost / b.opened : null,
-        costPerClickCents: b.clicked > 0 ? cost / b.clicked : null,
-        costPerReplyCents: b.replied > 0 ? cost / b.replied : null,
+        emailsSent: b?.sent ?? 0,
+        openRate: b && b.sent > 0 ? b.opened / b.sent : 0,
+        clickRate: b && b.sent > 0 ? b.clicked / b.sent : 0,
+        replyRate: b && b.sent > 0 ? b.replied / b.sent : 0,
+        costPerOpenCents: b && b.opened > 0 ? cost / b.opened : null,
+        costPerClickCents: b && b.clicked > 0 ? cost / b.clicked : null,
+        costPerReplyCents: b && b.replied > 0 ? cost / b.replied : null,
       };
     });
 

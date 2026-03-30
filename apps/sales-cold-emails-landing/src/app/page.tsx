@@ -58,15 +58,16 @@ async function getHeroStats(): Promise<HeroStats | null> {
     });
     if (!res.ok) return null;
     const data: {
-      bestCostPerOpen: { value: number; brandId: string | null } | null;
-      bestCostPerReply: { value: number; brandId: string | null } | null;
+      best: { [metricKey: string]: { value: number; createdForBrandId: string | null } | null };
     } = await res.json();
+    const openRecord = data.best["opened"] ?? null;
+    const replyRecord = data.best["replied"] ?? null;
     return {
-      bestCostPerOpen: data.bestCostPerOpen
-        ? { brandDomain: null, costPerOpenCents: data.bestCostPerOpen.value }
+      bestCostPerOpen: openRecord
+        ? { brandDomain: null, costPerOpenCents: openRecord.value }
         : null,
-      bestCostPerReply: data.bestCostPerReply
-        ? { brandDomain: null, costPerReplyCents: data.bestCostPerReply.value }
+      bestCostPerReply: replyRecord
+        ? { brandDomain: null, costPerReplyCents: replyRecord.value }
         : null,
     };
   } catch {
