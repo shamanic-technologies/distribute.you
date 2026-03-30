@@ -75,7 +75,7 @@ export default function WorkflowViewerPage() {
   const needsForkPoll = !!workflow && !hasNavigatedRef.current;
   const { data: siblingData } = useAuthQuery(
     ["workflow-siblings", activeWorkflowId, featureDynastySlug],
-    () => listWorkflows({ featureSlug: featureDynastySlug }),
+    () => listWorkflows({ featureDynastySlug }),
     { refetchInterval: 5000, enabled: needsForkPoll },
   );
 

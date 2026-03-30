@@ -460,12 +460,12 @@ export interface PrefillResponse {
 
 /** POST /features/:slug/prefill?format=text — get pre-filled input values as plain strings */
 export async function prefillFeatureInputs(
-  slug: string,
+  featureDynastySlug: string,
   brandId: string,
   token?: string,
 ): Promise<PrefillResponse> {
   return apiCall<PrefillResponse>(
-    `/features/${slug}/prefill?format=text`,
+    `/features/${featureDynastySlug}/prefill?format=text`,
     { token, method: "POST", body: { brandId } },
   );
 }
@@ -667,7 +667,7 @@ export async function fetchStatsRegistry(token?: string): Promise<{ registry: St
 
 /** GET /features/:featureSlug/stats — stats for a feature */
 export async function fetchFeatureStats(
-  featureSlug: string,
+  featureDynastySlug: string,
   params?: { groupBy?: string; brandId?: string; campaignId?: string; workflowSlug?: string; workflowDynastySlug?: string },
   token?: string,
 ): Promise<FeatureStatsResponse> {
@@ -678,7 +678,7 @@ export async function fetchFeatureStats(
   if (params?.workflowSlug) query.set("workflowSlug", params.workflowSlug);
   if (params?.workflowDynastySlug) query.set("workflowDynastySlug", params.workflowDynastySlug);
   const qs = query.toString();
-  return apiCall<FeatureStatsResponse>(`/features/${featureSlug}/stats${qs ? `?${qs}` : ""}`, { token });
+  return apiCall<FeatureStatsResponse>(`/features/${featureDynastySlug}/stats${qs ? `?${qs}` : ""}`, { token });
 }
 
 /** GET /features/stats — global stats cross-features */
@@ -934,9 +934,9 @@ export async function queryProviderRequirements(
   );
 }
 
-export async function listWorkflows(params?: { featureSlug?: string }, token?: string): Promise<{ workflows: Workflow[] }> {
+export async function listWorkflows(params?: { featureDynastySlug?: string }, token?: string): Promise<{ workflows: Workflow[] }> {
   const query = new URLSearchParams();
-  if (params?.featureSlug) query.set("featureSlug", params.featureSlug);
+  if (params?.featureDynastySlug) query.set("featureDynastySlug", params.featureDynastySlug);
   return apiCall<{ workflows: Workflow[] }>(`/workflows?${query}`, { token });
 }
 
@@ -1101,12 +1101,12 @@ export interface RankedWorkflowResponse {
 }
 
 export async function fetchRankedWorkflows(params: {
-  featureSlug?: string;
+  featureDynastySlug?: string;
   objective?: string;
   limit?: number;
 }, token?: string): Promise<RankedWorkflowItem[]> {
   const query = new URLSearchParams();
-  if (params.featureSlug) query.set("featureSlug", params.featureSlug);
+  if (params.featureDynastySlug) query.set("featureDynastySlug", params.featureDynastySlug);
   if (params.objective) query.set("objective", params.objective);
   if (params.limit) query.set("limit", String(params.limit));
   const qs = query.toString();

@@ -151,7 +151,7 @@ export default function FeatureCreateCampaignPage() {
   // Fetch workflows filtered by feature dynasty slug
   const { data: workflowsData, isLoading: workflowsLoading } = useAuthQuery(
     ["workflows", featureDynastySlug],
-    () => listWorkflows({ featureSlug: featureDynastySlug }),
+    () => listWorkflows({ featureDynastySlug }),
     pollOptions,
   );
 
