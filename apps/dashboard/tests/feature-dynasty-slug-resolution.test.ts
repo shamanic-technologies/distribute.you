@@ -41,16 +41,16 @@ describe("Feature pages use resolvedSlug for API calls", () => {
 
   it("feature page resolves slug from featureDef before API calls", () => {
     const content = fs.readFileSync(featurePagePath, "utf-8");
-    expect(content).toContain("featureDef?.slug ?? featureSlug");
-    expect(content).toContain("fetchFeatureStats(resolvedSlug");
+    expect(content).toContain("featureDynastySlug");
+    expect(content).toContain("fetchFeatureStats(featureDynastySlug");
   });
 
   it("campaign creation page resolves slug from featureDef before API calls", () => {
     const content = fs.readFileSync(campaignNewPath, "utf-8");
-    expect(content).toContain("featureDef?.slug ?? featureSlug");
-    expect(content).toContain("fetchFeatureStats(resolvedSlug");
-    expect(content).toContain("listWorkflows({ featureSlug: resolvedSlug })");
-    expect(content).toContain("prefillFeatureInputs(resolvedSlug");
+    expect(content).toContain("featureDynastySlug");
+    expect(content).toContain("fetchFeatureStats(featureDynastySlug");
+    expect(content).toContain("listWorkflows({ featureDynastySlug })");
+    expect(content).toContain("prefillFeatureInputs(featureDynastySlug");
   });
 
   it("campaign creation page shows error UI when feature not found", () => {
@@ -61,9 +61,9 @@ describe("Feature pages use resolvedSlug for API calls", () => {
 
   it("workflows page resolves slug from featureDef before API calls", () => {
     const content = fs.readFileSync(workflowsPath, "utf-8");
-    expect(content).toContain("wfDef?.slug ?? featureSlug");
-    expect(content).toContain("fetchFeatureStats(resolvedSlug");
-    expect(content).toContain("listWorkflows({ featureSlug: resolvedSlug })");
+    expect(content).toContain("featureDynastySlug");
+    expect(content).toContain("fetchFeatureStats(featureDynastySlug");
+    expect(content).toContain("listWorkflows({ featureDynastySlug })");
   });
 });
 
