@@ -25,10 +25,10 @@ function formatTotalCost(cents: string | null | undefined): string | null {
 
 export default function CampaignOverviewPage() {
   const params = useParams();
-  const featureSlug = params.featureSlug as string;
+  const featureDynastySlug = params.featureSlug as string;
   const orgId = params.orgId as string;
   const { getFeature, registry } = useFeatures();
-  const featureDef = getFeature(featureSlug);
+  const featureDef = getFeature(featureDynastySlug);
 
   const entities = featureDef?.entities ?? [];
   const entityNames = entities.map((e) => e.name);
@@ -42,8 +42,8 @@ export default function CampaignOverviewPage() {
 
   // Feature stats for this campaign — same source the list page uses
   const { data: featureStatsData } = useAuthQuery(
-    ["featureStats", featureSlug, "campaign", campaignId],
-    () => fetchFeatureStats(featureSlug, { campaignId }),
+    ["featureStats", featureDynastySlug, "campaign", campaignId],
+    () => fetchFeatureStats(featureDynastySlug, { campaignId }),
     { refetchInterval: 5_000, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
   );
 

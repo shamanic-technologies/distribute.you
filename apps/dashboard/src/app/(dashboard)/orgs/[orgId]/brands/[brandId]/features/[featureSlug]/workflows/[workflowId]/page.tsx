@@ -42,7 +42,7 @@ export default function WorkflowViewerPage() {
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
   const initialWorkflowId = params.workflowId as string;
-  const featureSlug = params.featureSlug as string;
+  const featureDynastySlug = params.featureSlug as string;
   const [detailsOpen, setDetailsOpen] = useState(false);
 
   // Track active workflow ID locally so fork navigation doesn't remount the page
@@ -58,10 +58,10 @@ export default function WorkflowViewerPage() {
     if (hasNavigatedRef.current) return;
     hasNavigatedRef.current = true;
     // Update URL without triggering a Next.js navigation — keeps the chat mounted
-    const newUrl = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/${newWorkflowId}`;
+    const newUrl = `/orgs/${orgId}/brands/${brandId}/features/${featureDynastySlug}/workflows/${newWorkflowId}`;
     window.history.replaceState(null, "", newUrl);
     setActiveWorkflowId(newWorkflowId);
-  }, [orgId, brandId, featureSlug]);
+  }, [orgId, brandId, featureDynastySlug]);
 
   const { data: workflow, isLoading } = useAuthQuery(
     ["workflow", activeWorkflowId],
@@ -74,8 +74,8 @@ export default function WorkflowViewerPage() {
   // Upgrades are detected via workflow.upgradedTo. Both result in navigating to the new workflow.
   const needsForkPoll = !!workflow && !hasNavigatedRef.current;
   const { data: siblingData } = useAuthQuery(
-    ["workflow-siblings", activeWorkflowId, featureSlug],
-    () => listWorkflows({ featureSlug }),
+    ["workflow-siblings", activeWorkflowId, featureDynastySlug],
+    () => listWorkflows({ featureSlug: featureDynastySlug }),
     { refetchInterval: 5000, enabled: needsForkPoll },
   );
 
@@ -96,8 +96,8 @@ export default function WorkflowViewerPage() {
   );
 
   const { data: featureData } = useAuthQuery(
-    ["feature", featureSlug],
-    () => getFeature(featureSlug),
+    ["feature", featureDynastySlug],
+    () => getFeature(featureDynastySlug),
   );
 
   const workflowContext = useMemo(() => {

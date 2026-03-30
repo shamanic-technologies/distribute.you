@@ -65,12 +65,9 @@ export default function FeaturePage() {
   const params = useParams();
   const brandId = params.brandId as string;
   const orgId = params.orgId as string;
-  const featureSlug = params.featureSlug as string;
+  const featureDynastySlug = params.featureSlug as string;
   const { getFeature, registry } = useFeatures();
-  const featureDef = getFeature(featureSlug);
-  // URL may contain a dynasty slug; resolve to the versioned slug for API calls
-  const resolvedSlug = featureDef?.slug ?? featureSlug;
-  const dynastySlug = featureDef?.dynastySlug ?? featureSlug;
+  const featureDef = getFeature(featureDynastySlug);
 
   const funnelChart = featureDef?.charts?.find((c) => c.type === "funnel-bar");
   const breakdownChart = featureDef?.charts?.find((c) => c.type === "breakdown-bar");
@@ -89,21 +86,21 @@ export default function FeaturePage() {
   );
   const allCampaigns = campaignsData?.campaigns ?? [];
   const campaigns = useMemo(
-    () => allCampaigns.filter((c) => c.featureSlug === resolvedSlug || c.featureSlug === dynastySlug),
-    [allCampaigns, resolvedSlug, dynastySlug]
+    () => allCampaigns.filter((c) => c.featureSlug === featureDynastySlug),
+    [allCampaigns, featureDynastySlug]
   );
 
   // Feature-level stats (aggregated, no groupBy)
   const { data: featureStatsData, isLoading: statsLoading } = useAuthQuery(
-    ["featureStats", resolvedSlug, brandId],
-    () => fetchFeatureStats(resolvedSlug, { brandId }),
+    ["featureStats", featureDynastySlug, brandId],
+    () => fetchFeatureStats(featureDynastySlug, { brandId }),
     { enabled: campaigns.length > 0, ...pollOptions },
   );
 
   // Per-campaign stats (groupBy=campaignId)
   const { data: campaignStatsData, isLoading: campaignStatsLoading } = useAuthQuery(
-    ["featureStats", resolvedSlug, brandId, "byCampaign"],
-    () => fetchFeatureStats(resolvedSlug, { groupBy: "campaignId", brandId }),
+    ["featureStats", featureDynastySlug, brandId, "byCampaign"],
+    () => fetchFeatureStats(featureDynastySlug, { groupBy: "campaignId", brandId }),
     { enabled: campaigns.length > 0, ...pollOptions },
   );
 
@@ -116,8 +113,8 @@ export default function FeaturePage() {
   }, [campaignStatsData]);
 
   const { data: brandCostData, isLoading: isLoadingCosts } = useAuthQuery(
-    ["brandCostBreakdown", { brandId, featureDynastySlug: dynastySlug }],
-    () => getBrandCostBreakdown(brandId, { featureDynastySlug: dynastySlug }),
+    ["brandCostBreakdown", { brandId, featureDynastySlug }],
+    () => getBrandCostBreakdown(brandId, { featureDynastySlug }),
     pollOptions,
   );
   const brandCostBreakdown = brandCostData?.costs ?? [];
@@ -148,7 +145,7 @@ export default function FeaturePage() {
             </span>
           ) : null}
           <Link
-            href={`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/new`}
+            href={`/orgs/${orgId}/brands/${brandId}/features/${featureDynastySlug}/campaigns/new`}
             className="px-4 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition"
           >
             New Campaign
@@ -208,7 +205,7 @@ export default function FeaturePage() {
               Create your first campaign to start outreach.
             </p>
             <Link
-              href={`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/new`}
+              href={`/orgs/${orgId}/brands/${brandId}/features/${featureDynastySlug}/campaigns/new`}
               className="inline-flex px-4 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition"
             >
               New Campaign
@@ -227,7 +224,7 @@ export default function FeaturePage() {
             return (
               <Link
                 key={campaign.id}
-                href={`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/${campaign.id}`}
+                href={`/orgs/${orgId}/brands/${brandId}/features/${featureDynastySlug}/campaigns/${campaign.id}`}
                 className="block bg-white rounded-xl border border-gray-200 p-4 hover:border-brand-300 hover:shadow-md transition-all cursor-pointer"
               >
                 <div className="flex items-start justify-between mb-2">

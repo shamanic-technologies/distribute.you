@@ -81,19 +81,19 @@ interface CampaignSidebarProps {
   campaignId: string;
   orgId: string;
   brandId: string;
-  featureSlug: string;
+  featureDynastySlug: string;
   entityCounts?: Record<string, number | undefined>;
   workflowId?: string;
   featureInputs?: Record<string, string> | null;
 }
 
-export function CampaignSidebar({ campaignId, orgId, brandId, featureSlug, entityCounts, workflowId, featureInputs }: CampaignSidebarProps) {
+export function CampaignSidebar({ campaignId, orgId, brandId, featureDynastySlug, entityCounts, workflowId, featureInputs }: CampaignSidebarProps) {
   const [inputsPanelOpen, setInputsPanelOpen] = useState(false);
   const { getFeature } = useFeatures();
-  const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/${campaignId}`;
-  const backHref = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`;
+  const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureDynastySlug}/campaigns/${campaignId}`;
+  const backHref = `/orgs/${orgId}/brands/${brandId}/features/${featureDynastySlug}`;
 
-  const featureDef = getFeature(featureSlug);
+  const featureDef = getFeature(featureDynastySlug);
   const entities = featureDef?.entities ?? [];
 
   const hasInputs = featureInputs && Object.values(featureInputs).some(Boolean);
@@ -124,7 +124,7 @@ export function CampaignSidebar({ campaignId, orgId, brandId, featureSlug, entit
           {
             id: "workflow",
             label: "Workflow",
-            href: `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/${workflowId}`,
+            href: `/orgs/${orgId}/brands/${brandId}/features/${featureDynastySlug}/workflows/${workflowId}`,
             icon: <WorkflowIcon />,
           },
         ]
