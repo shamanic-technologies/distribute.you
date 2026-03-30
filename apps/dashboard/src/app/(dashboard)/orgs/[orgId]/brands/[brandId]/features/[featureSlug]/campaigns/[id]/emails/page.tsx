@@ -14,6 +14,15 @@ function getEmailBody(email: Email): { html: string | null; text: string | null 
   return { html: null, text: null };
 }
 
+function formatRecipient(email: Email): string {
+  const name = [email.leadFirstName, email.leadLastName].filter(Boolean).join(" ");
+  const company = email.leadCompany;
+  if (name && company) return `${name} — ${company}`;
+  if (name) return name;
+  if (company) return company;
+  return "Unknown recipient";
+}
+
 function timeAgo(dateStr: string): string {
   const now = Date.now();
   const then = new Date(dateStr).getTime();
@@ -120,11 +129,13 @@ export default function CampaignEmailsPage() {
           <div className="space-y-2">
             {emails.map((email) => {
               const cost = formatCostRounded(email.generationRun);
+              const recipient = formatRecipient(email);
               const name = [email.leadFirstName, email.leadLastName].filter(Boolean).join(" ");
               return (
                 <button
                   key={email.id}
                   onClick={() => setSelectedEmail(email)}
+                  title={recipient}
                   className={`w-full text-left bg-white rounded-xl border p-4 hover:border-brand-300 hover:shadow-sm transition ${
                     selectedEmail?.id === email.id ? 'border-brand-500 ring-1 ring-brand-500' : 'border-gray-200'
                   }`}
@@ -201,7 +212,7 @@ export default function CampaignEmailsPage() {
 
           <div className="p-4 md:p-6">
             {/* Recipient Info */}
-            <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+            <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4" title={formatRecipient(selectedEmail)}>
               <div className="flex items-center gap-3 mb-3">
                 <PersonInitials firstName={selectedEmail.leadFirstName} lastName={selectedEmail.leadLastName} />
                 <div>
