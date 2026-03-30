@@ -21,17 +21,16 @@ describe("brand-tools", () => {
     expect(componentSrc).toContain("outlets");
   });
 
-  it("renders press kits tool link", () => {
-    expect(componentSrc).toContain('"Press Kits"');
-    expect(componentSrc).toContain("press-kits");
-  });
-
   it("renders journalists tool link", () => {
     expect(componentSrc).toContain('"Journalists"');
     expect(componentSrc).toContain("journalists");
   });
 
-  it("all three tools are enabled (none have disabled prop set)", () => {
+  it("does NOT render press kits as a tool (moved to campaign)", () => {
+    expect(componentSrc).not.toContain('"Press Kits"');
+  });
+
+  it("all tools are enabled (none have disabled prop set)", () => {
     const toolCardUsages = componentSrc.match(/<ToolLinkCard[\s\S]*?\/>/g) ?? [];
     for (const usage of toolCardUsages) {
       expect(usage).not.toMatch(/\bdisabled={true}/);
@@ -54,18 +53,30 @@ describe("brand-tools", () => {
       expect(fs.existsSync(p)).toBe(true);
     });
 
-    it("press-kits tool page exists", () => {
-      const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/tools/press-kits/page.tsx");
-      expect(fs.existsSync(p)).toBe(true);
-    });
-
     it("journalists tool page exists", () => {
       const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/tools/journalists/page.tsx");
       expect(fs.existsSync(p)).toBe(true);
     });
 
-    it("press-kit detail page exists", () => {
+    it("press-kits tool page has been removed", () => {
+      const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/tools/press-kits/page.tsx");
+      expect(fs.existsSync(p)).toBe(false);
+    });
+
+    it("press-kit detail tool page has been removed", () => {
       const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/tools/press-kits/[kitId]/page.tsx");
+      expect(fs.existsSync(p)).toBe(false);
+    });
+  });
+
+  describe("campaign press-kit pages exist", () => {
+    it("campaign press-kits list page exists", () => {
+      const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/page.tsx");
+      expect(fs.existsSync(p)).toBe(true);
+    });
+
+    it("campaign press-kit detail page exists", () => {
+      const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/[kitId]/page.tsx");
       expect(fs.existsSync(p)).toBe(true);
     });
   });

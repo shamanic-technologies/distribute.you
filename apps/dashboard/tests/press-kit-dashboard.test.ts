@@ -39,10 +39,28 @@ describe("press-kit-dashboard", () => {
     });
   });
 
-  describe("press-kits list page", () => {
+  describe("tools press-kits pages removed", () => {
+    it("tools press-kits list page does not exist", () => {
+      const pagePath = path.join(
+        SRC,
+        "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/tools/press-kits/page.tsx",
+      );
+      expect(fs.existsSync(pagePath)).toBe(false);
+    });
+
+    it("tools press-kit detail page does not exist", () => {
+      const detailPath = path.join(
+        SRC,
+        "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/tools/press-kits/[kitId]/page.tsx",
+      );
+      expect(fs.existsSync(detailPath)).toBe(false);
+    });
+  });
+
+  describe("campaign press-kits list page", () => {
     const pagePath = path.join(
       SRC,
-      "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/tools/press-kits/page.tsx",
+      "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/page.tsx",
     );
     const pageSrc = fs.readFileSync(pagePath, "utf-8");
 
@@ -66,8 +84,9 @@ describe("press-kit-dashboard", () => {
       expect(pageSrc).toContain("latestValidated");
     });
 
-    it("links to individual kit detail pages", () => {
-      expect(pageSrc).toContain("/tools/press-kits/${kit.id}");
+    it("links to individual kit detail pages within campaign", () => {
+      expect(pageSrc).toContain("basePath");
+      expect(pageSrc).toContain("`${basePath}/${kit.id}`");
     });
 
     it("has validate, archive, cancel actions", () => {
@@ -91,12 +110,16 @@ describe("press-kit-dashboard", () => {
       expect(pageSrc).toContain("Generation Failed");
       expect(pageSrc).toContain("Retry");
     });
+
+    it("uses listMediaKitsByCampaign (campaign-scoped)", () => {
+      expect(pageSrc).toContain("listMediaKitsByCampaign");
+    });
   });
 
-  describe("press-kit detail page", () => {
+  describe("campaign press-kit detail page", () => {
     const detailPath = path.join(
       SRC,
-      "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/tools/press-kits/[kitId]/page.tsx",
+      "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/[kitId]/page.tsx",
     );
     const detailSrc = fs.readFileSync(detailPath, "utf-8");
 
@@ -110,8 +133,7 @@ describe("press-kit-dashboard", () => {
       expect(detailSrc).toContain("mdxPageContent");
     });
 
-    it("has breadcrumb with 3 levels (brand > press kits > kit)", () => {
-      expect(detailSrc).toContain("/tools/press-kits`");
+    it("has breadcrumb with press kits link", () => {
       expect(detailSrc).toContain("Press Kits");
       expect(detailSrc).toContain("kit?.title");
     });
@@ -134,9 +156,9 @@ describe("press-kit-dashboard", () => {
       expect(detailSrc).toContain("cancelDraftMediaKit");
     });
 
-    it("shows version history sidebar", () => {
+    it("shows version history sidebar using campaign kits", () => {
       expect(detailSrc).toContain("VersionHistory");
-      expect(detailSrc).toContain("listBrandMediaKits");
+      expect(detailSrc).toContain("listMediaKitsByCampaign");
     });
 
     it("shows public URL for validated kits", () => {
@@ -154,6 +176,11 @@ describe("press-kit-dashboard", () => {
       expect(detailSrc).toContain("Generation Failed");
       expect(detailSrc).toContain("Retry Generation");
     });
+
+    it("includes PressKitChat component", () => {
+      expect(detailSrc).toContain("PressKitChat");
+      expect(detailSrc).toContain("Edit with AI");
+    });
   });
 
   describe("failed status support", () => {
@@ -163,7 +190,7 @@ describe("press-kit-dashboard", () => {
 
     const pagePath = path.join(
       SRC,
-      "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/tools/press-kits/page.tsx",
+      "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/page.tsx",
     );
     const pageSrc = fs.readFileSync(pagePath, "utf-8");
 
@@ -179,7 +206,7 @@ describe("press-kit-dashboard", () => {
 
     const detailPath = path.join(
       SRC,
-      "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/tools/press-kits/[kitId]/page.tsx",
+      "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/[kitId]/page.tsx",
     );
     const detailSrc = fs.readFileSync(detailPath, "utf-8");
 
@@ -217,6 +244,10 @@ describe("press-kit-dashboard", () => {
     it("handles failed status", () => {
       expect(resultsSrc).toContain("failed");
       expect(resultsSrc).toContain("Generation failed");
+    });
+
+    it("accepts detailBasePath prop for linking to detail pages", () => {
+      expect(resultsSrc).toContain("detailBasePath");
     });
   });
 });
