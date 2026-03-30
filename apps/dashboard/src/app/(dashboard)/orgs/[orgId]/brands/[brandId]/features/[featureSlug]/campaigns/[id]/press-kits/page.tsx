@@ -19,7 +19,6 @@ import {
 } from "@/lib/api";
 
 
-const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 
 const POLL_INTERVAL = 10_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
@@ -92,7 +91,7 @@ function StatsBar({ brandId }: { brandId: string }) {
 /* ─── Latest Validated Kit Preview ────────────────────────────────────── */
 
 function LatestValidatedPreview({ kit, basePath }: { kit: MediaKitSummary; basePath: string }) {
-  const publicUrl = kit.shareToken ? `${API_URL}/press-kits/public/${kit.shareToken}` : null;
+  const publicUrl = kit.publicUrl;
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -170,7 +169,7 @@ function PressKitRow({
   costCents: string | null;
   onAction: () => void;
 }) {
-  const publicUrl = kit.shareToken ? `${API_URL}/press-kits/public/${kit.shareToken}` : null;
+  const publicUrl = kit.publicUrl;
   const cost = formatCost(costCents);
 
   const validateMut = useMutation({

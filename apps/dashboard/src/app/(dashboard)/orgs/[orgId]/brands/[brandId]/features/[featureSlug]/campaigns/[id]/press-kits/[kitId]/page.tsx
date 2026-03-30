@@ -18,7 +18,6 @@ import {
 } from "@/lib/api";
 import { PressKitChat } from "@/components/press-kits/press-kit-chat";
 
-const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 
 const STATUS_STYLES: Record<MediaKitStatus, string> = {
   generating: "bg-blue-100 text-blue-700 border-blue-200",
@@ -309,7 +308,7 @@ export default function CampaignPressKitDetailPage() {
     },
   });
 
-  const publicUrl = kit?.shareToken ? `${API_URL}/press-kits/public/${kit.shareToken}` : null;
+  const publicUrl = kit?.publicUrl ?? null;
 
   const handleCopy = () => {
     if (publicUrl) {

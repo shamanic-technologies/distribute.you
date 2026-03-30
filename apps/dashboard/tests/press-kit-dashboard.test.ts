@@ -37,6 +37,10 @@ describe("press-kit-dashboard", () => {
     it("MediaKitSummary has parentMediaKitId for version tracking", () => {
       expect(apiSrc).toContain("parentMediaKitId: string | null");
     });
+
+    it("MediaKitSummary has publicUrl from backend", () => {
+      expect(apiSrc).toContain("publicUrl: string | null");
+    });
   });
 
   describe("tools press-kits pages removed", () => {
@@ -246,5 +250,26 @@ describe("press-kit-dashboard", () => {
     it("accepts detailBasePath prop for linking to detail pages", () => {
       expect(resultsSrc).toContain("detailBasePath");
     });
+  });
+
+  describe("public URL uses backend publicUrl field", () => {
+    const pressKitFiles = [
+      path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/page.tsx"),
+      path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/[kitId]/page.tsx"),
+      path.join(SRC, "src/components/campaign/press-kit-results.tsx"),
+    ];
+
+    for (const filePath of pressKitFiles) {
+      const fileName = path.relative(SRC, filePath);
+      const src = fs.readFileSync(filePath, "utf-8");
+
+      it(`${fileName} does not hardcode press-kits/public URL`, () => {
+        expect(src).not.toContain("/press-kits/public/");
+      });
+
+      it(`${fileName} uses kit.publicUrl`, () => {
+        expect(src).toContain("publicUrl");
+      });
+    }
   });
 });
