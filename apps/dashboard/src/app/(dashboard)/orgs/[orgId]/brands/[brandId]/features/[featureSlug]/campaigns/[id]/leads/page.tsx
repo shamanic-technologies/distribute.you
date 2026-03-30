@@ -4,6 +4,23 @@ import { useState } from "react";
 import { type Lead, type RunCost, type DescendantRun } from "@/lib/api";
 import { useCampaign } from "@/lib/campaign-context";
 
+function timeAgo(date: string | Date): string {
+  const now = new Date();
+  const then = new Date(date);
+  const seconds = Math.floor((now.getTime() - then.getTime()) / 1000);
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  const years = Math.floor(months / 12);
+  return `${years}y ago`;
+}
+
 function formatCostRounded(run: Lead["enrichmentRun"]): string | null {
   if (!run) return null;
   const cents = parseFloat(run.totalCostInUsdCents);
@@ -74,7 +91,6 @@ function CostGroupList({
 
   if (groups.length === 0) return null;
 
-  // If only one group with no descendants, render flat (backward compatible)
   if (groups.length === 1 && descendantRuns.length === 0) {
     return (
       <div className="space-y-1">
@@ -114,6 +130,25 @@ function CostGroupList({
   );
 }
 
+function CompanyLogo({ domain, name }: { domain: string | null; name: string | null }) {
+  if (domain) {
+    return (
+      <img
+        src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=32`}
+        alt=""
+        className="w-6 h-6 rounded"
+        loading="lazy"
+      />
+    );
+  }
+
+  return (
+    <div className="w-6 h-6 rounded bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-500">
+      {name ? name.charAt(0).toUpperCase() : "?"}
+    </div>
+  );
+}
+
 export default function CampaignLeadsPage() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const { leads, loading: isLoading } = useCampaign();
@@ -124,7 +159,7 @@ export default function CampaignLeadsPage() {
         <div className="animate-pulse space-y-4">
           <div className="h-8 w-32 bg-gray-200 rounded" />
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-20 bg-gray-100 rounded-xl" />
+            <div key={i} className="h-12 bg-gray-100 rounded-lg" />
           ))}
         </div>
       </div>
@@ -133,7 +168,7 @@ export default function CampaignLeadsPage() {
 
   return (
     <div className="flex flex-col md:flex-row h-full relative">
-      {/* Lead List */}
+      {/* Lead Table */}
       <div className={`${selectedLead ? 'hidden md:block md:w-1/2' : 'w-full'} p-4 md:p-8 overflow-y-auto transition-all`}>
         <div className="flex items-center justify-between mb-6">
           <h1 className="font-display text-xl font-bold text-gray-800">
@@ -149,46 +184,101 @@ export default function CampaignLeadsPage() {
             <p className="text-gray-600 text-sm">Leads will appear here once the campaign runs.</p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {leads.map((lead) => {
-              const cost = formatCostRounded(lead.enrichmentRun);
-              return (
-                <button
-                  key={lead.id}
-                  onClick={() => setSelectedLead(lead)}
-                  className={`w-full text-left bg-white rounded-xl border p-4 hover:border-brand-300 hover:shadow-sm transition ${
-                    selectedLead?.id === lead.id ? 'border-brand-500 ring-1 ring-brand-500' : 'border-gray-200'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium text-gray-800 truncate">
-                      {lead.firstName} {lead.lastName}
-                    </p>
-                    {lead.linkedinUrl && (
-                      <a
-                        href={lead.linkedinUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-500 hover:text-blue-600 shrink-0"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19a.66.66 0 000 .14V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z" />
-                        </svg>
-                      </a>
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between mt-1">
-                    <p className="text-sm text-gray-500 truncate">
-                      {lead.title || "No title"} {lead.organizationName ? `\u2022 ${lead.organizationName}` : ""}
-                    </p>
-                    {cost && (
-                      <span className="text-xs text-gray-400 ml-2 shrink-0">{cost}</span>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3">Company</th>
+                  <th className="px-4 py-3">Contact</th>
+                  <th className="px-4 py-3 hidden lg:table-cell">Source</th>
+                  <th className="px-4 py-3 hidden md:table-cell">Found</th>
+                  <th className="px-4 py-3 text-right">Cost</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {leads.map((lead) => {
+                  const cost = formatCostRounded(lead.enrichmentRun);
+                  return (
+                    <tr
+                      key={lead.id}
+                      onClick={() => setSelectedLead(lead)}
+                      className={`cursor-pointer hover:bg-gray-50 transition ${
+                        selectedLead?.id === lead.id ? 'bg-brand-50' : ''
+                      }`}
+                    >
+                      {/* Company */}
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2.5">
+                          <CompanyLogo domain={lead.organizationDomain} name={lead.organizationName} />
+                          <span className="font-medium text-gray-800 truncate max-w-[160px]">
+                            {lead.organizationName || "Unknown"}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Contact */}
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="min-w-0">
+                            <p className="font-medium text-gray-800 truncate">
+                              {lead.firstName} {lead.lastName}
+                            </p>
+                            {lead.title && (
+                              <p className="text-xs text-gray-500 truncate max-w-[180px]">{lead.title}</p>
+                            )}
+                          </div>
+                          {lead.linkedinUrl && (
+                            <a
+                              href={lead.linkedinUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-500 hover:text-blue-600 shrink-0"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19a.66.66 0 000 .14V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z" />
+                              </svg>
+                            </a>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Source — needs backend `namespace` field from lead-service */}
+                      <td className="px-4 py-3 hidden lg:table-cell">
+                        <div className="flex items-center gap-1.5">
+                          <img
+                            src="https://www.apollo.io/favicon.ico"
+                            alt=""
+                            className="w-4 h-4 rounded-sm"
+                            loading="lazy"
+                          />
+                          <span className="text-xs text-gray-600">Apollo</span>
+                        </div>
+                      </td>
+
+                      {/* Found date */}
+                      <td className="px-4 py-3 hidden md:table-cell">
+                        <span
+                          className="text-xs text-gray-500"
+                          title={new Date(lead.createdAt).toLocaleString()}
+                        >
+                          {timeAgo(lead.createdAt)}
+                        </span>
+                      </td>
+
+                      {/* Cost */}
+                      <td className="px-4 py-3 text-right">
+                        {cost ? (
+                          <span className="text-xs font-medium text-gray-600">{cost}</span>
+                        ) : (
+                          <span className="text-xs text-gray-300">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
