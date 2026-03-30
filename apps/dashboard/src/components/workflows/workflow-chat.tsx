@@ -654,7 +654,7 @@ export function WorkflowChat({
   const [showScrollPill, setShowScrollPill] = useState(false);
   const [input, setInput] = useState("");
 
-  // Load session ID from localStorage on mount
+  // Load session ID from localStorage on mount / workflow change
   useEffect(() => {
     sessionIdRef.current = loadSessionId(workflowId);
   }, [workflowId]);
@@ -757,6 +757,17 @@ export function WorkflowChat({
   });
 
   const isStreaming = status === "streaming" || status === "submitted";
+
+  // When workflowId changes (e.g. after a fork), hydrate chat from localStorage.
+  // useChat's internal store is keyed by `id` — switching IDs starts empty,
+  // so we must explicitly push the saved messages into the new store.
+  const prevWorkflowIdRef = useRef(workflowId);
+  useEffect(() => {
+    if (prevWorkflowIdRef.current !== workflowId) {
+      prevWorkflowIdRef.current = workflowId;
+      setMessages(loadMessages(workflowId));
+    }
+  }, [workflowId, setMessages]);
 
   // Keep a ref to latest messages so the upgradedTo effect can access them without stale closures
   const messagesRef = useRef(messages);

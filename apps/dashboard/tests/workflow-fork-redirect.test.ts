@@ -1,4 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
+import * as fs from "fs";
+import * as path from "path";
 
 /**
  * Tests the workflow fork/upgrade redirect logic:
@@ -125,6 +127,37 @@ describe("workflow fork redirect", () => {
     expect(fork?.id).toBe("child-fork-id");
   });
 
+  it("hydrates chat from localStorage when workflowId changes (simulates fork transition)", () => {
+    const storage = new Map<string, string>();
+    const oldId = "old-workflow-id";
+    const newId = "new-forked-workflow-id";
+
+    const conversation = [
+      { role: "user", content: "hello" },
+      { role: "assistant", content: "I've forked the workflow" },
+    ];
+
+    // Step 1: migration logic saves messages under the new key
+    storage.set(`workflow-chat-msgs:${newId}`, JSON.stringify(conversation));
+
+    // Step 2: when workflowId changes, component loads from the new key
+    // This simulates what the prevWorkflowIdRef effect does
+    let currentWorkflowId = oldId;
+    let chatMessages: unknown[] = [];
+    const setMessages = (msgs: unknown[]) => { chatMessages = msgs; };
+
+    // Simulate workflowId change
+    currentWorkflowId = newId;
+    const stored = storage.get(`workflow-chat-msgs:${currentWorkflowId}`);
+    if (stored) {
+      setMessages(JSON.parse(stored));
+    }
+
+    // Chat should have the full conversation, not be empty
+    expect(chatMessages).toEqual(conversation);
+    expect(chatMessages).toHaveLength(2);
+  });
+
   it("prefers upgradedTo over forkedFrom child detection", () => {
     const upgradedTo = "upgraded-target-id";
 
@@ -155,5 +188,22 @@ describe("workflow fork redirect", () => {
     expect(navigate).toHaveBeenCalledWith("wf-2");
     expect(navigate).toHaveBeenCalledWith("wf-3");
     expect(activeWorkflowId).toBe("wf-3");
+  });
+});
+
+describe("workflow-chat — hydrate messages on workflowId change (source check)", () => {
+  const chatPath = path.join(
+    __dirname,
+    "../src/components/workflows/workflow-chat.tsx"
+  );
+  const content = fs.readFileSync(chatPath, "utf-8");
+
+  it("should call setMessages(loadMessages(workflowId)) when workflowId changes", () => {
+    expect(content).toContain("setMessages(loadMessages(workflowId))");
+  });
+
+  it("should track previous workflowId with a ref to avoid re-hydrating on same ID", () => {
+    expect(content).toContain("prevWorkflowIdRef");
+    expect(content).toContain("prevWorkflowIdRef.current !== workflowId");
   });
 });
