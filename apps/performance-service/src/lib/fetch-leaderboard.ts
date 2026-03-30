@@ -23,7 +23,7 @@ interface PublicWorkflowStats {
   totalOutcomes: number;
   costPerOutcome: number | null;
   completedRuns: number;
-  email: {
+  email?: {
     transactional: PublicEmailStats;
     broadcast: PublicEmailStats;
   };
@@ -48,15 +48,14 @@ interface PublicRankedItem {
 
 interface BestWorkflowRecord {
   workflowId: string;
+  workflowSlug: string;
   workflowName: string;
-  dynastyName: string | null;
-  brandId: string | null;
+  createdForBrandId: string | null;
   value: number;
 }
 
 interface BestWorkflowResponse {
-  bestCostPerOpen: BestWorkflowRecord | null;
-  bestCostPerReply: BestWorkflowRecord | null;
+  best: { [metricKey: string]: BestWorkflowRecord | null };
 }
 
 // ─── Existing types (consumed by components) ────────────────────────────────
@@ -133,7 +132,7 @@ export interface LeaderboardData {
 // ─── Transform ranked item → leaderboard entry ─────────────────────────────
 
 function rankedToWorkflowEntry(item: PublicRankedItem): WorkflowLeaderboardEntry {
-  const b = item.stats.email.broadcast;
+  const b = item.stats.email?.broadcast;
   const cost = item.stats.totalCostInUsdCents;
   const featureSlug = `${item.workflow.category}-${item.workflow.channel}-${item.workflow.audienceType}`;
 
@@ -143,17 +142,17 @@ function rankedToWorkflowEntry(item: PublicRankedItem): WorkflowLeaderboardEntry
     signatureName: item.workflow.signatureName,
     featureSlug,
     runCount: item.stats.completedRuns,
-    emailsSent: b.sent,
-    emailsOpened: b.opened,
-    emailsClicked: b.clicked,
-    emailsReplied: b.replied,
+    emailsSent: b?.sent ?? 0,
+    emailsOpened: b?.opened ?? 0,
+    emailsClicked: b?.clicked ?? 0,
+    emailsReplied: b?.replied ?? 0,
     totalCostUsdCents: cost,
-    openRate: b.sent > 0 ? b.opened / b.sent : 0,
-    clickRate: b.sent > 0 ? b.clicked / b.sent : 0,
-    replyRate: b.sent > 0 ? b.replied / b.sent : 0,
-    costPerOpenCents: b.opened > 0 ? cost / b.opened : null,
-    costPerClickCents: b.clicked > 0 ? cost / b.clicked : null,
-    costPerReplyCents: b.replied > 0 ? cost / b.replied : null,
+    openRate: b && b.sent > 0 ? b.opened / b.sent : 0,
+    clickRate: b && b.sent > 0 ? b.clicked / b.sent : 0,
+    replyRate: b && b.sent > 0 ? b.replied / b.sent : 0,
+    costPerOpenCents: b && b.opened > 0 ? cost / b.opened : null,
+    costPerClickCents: b && b.clicked > 0 ? cost / b.clicked : null,
+    costPerReplyCents: b && b.replied > 0 ? cost / b.replied : null,
   };
 }
 
@@ -165,21 +164,21 @@ function aggregateBrandStats(items: PublicRankedItem[]): BrandLeaderboardEntry[]
   for (const item of items) {
     const brandId = item.workflow.createdForBrandId;
     if (!brandId) continue;
-    const b = item.stats.email.broadcast;
+    const b = item.stats.email?.broadcast;
     const existing = byBrand.get(brandId);
     if (existing) {
-      existing.sent += b.sent;
-      existing.opened += b.opened;
-      existing.clicked += b.clicked;
-      existing.replied += b.replied;
+      existing.sent += b?.sent ?? 0;
+      existing.opened += b?.opened ?? 0;
+      existing.clicked += b?.clicked ?? 0;
+      existing.replied += b?.replied ?? 0;
       existing.cost += item.stats.totalCostInUsdCents;
     } else {
       byBrand.set(brandId, {
         brandId,
-        sent: b.sent,
-        opened: b.opened,
-        clicked: b.clicked,
-        replied: b.replied,
+        sent: b?.sent ?? 0,
+        opened: b?.opened ?? 0,
+        clicked: b?.clicked ?? 0,
+        replied: b?.replied ?? 0,
         cost: item.stats.totalCostInUsdCents,
       });
     }
@@ -327,19 +326,21 @@ export async function fetchLeaderboard(): Promise<LeaderboardData | null> {
     // Enrich brands with names from brand-service
     await enrichBrands(brands);
 
-    // Build hero stats
+    // Build hero stats from dynamic best keys
     let hero: HeroStats | null = null;
     if (bestData) {
+      const openRecord = bestData.best["opened"] ?? null;
+      const replyRecord = bestData.best["replied"] ?? null;
       const [openDomain, replyDomain] = await Promise.all([
-        resolveBrandDomain(bestData.bestCostPerOpen?.brandId ?? null),
-        resolveBrandDomain(bestData.bestCostPerReply?.brandId ?? null),
+        resolveBrandDomain(openRecord?.createdForBrandId ?? null),
+        resolveBrandDomain(replyRecord?.createdForBrandId ?? null),
       ]);
       hero = {
-        bestCostPerOpen: bestData.bestCostPerOpen
-          ? { brandDomain: openDomain, costPerOpenCents: bestData.bestCostPerOpen.value }
+        bestCostPerOpen: openRecord
+          ? { brandDomain: openDomain, costPerOpenCents: openRecord.value }
           : null,
-        bestCostPerReply: bestData.bestCostPerReply
-          ? { brandDomain: replyDomain, costPerReplyCents: bestData.bestCostPerReply.value }
+        bestCostPerReply: replyRecord
+          ? { brandDomain: replyDomain, costPerReplyCents: replyRecord.value }
           : null,
       };
     }

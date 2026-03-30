@@ -30,7 +30,7 @@ describe("Feature creation page uses ranked workflows endpoint", () => {
 
   it("should derive table rows from RankedWorkflowItem stats", () => {
     expect(content).toContain("rankedToRow");
-    expect(content).toContain("stats.email.broadcast");
+    expect(content).toContain("stats.email?.broadcast");
     expect(content).toContain("stats.totalCostInUsdCents");
   });
 

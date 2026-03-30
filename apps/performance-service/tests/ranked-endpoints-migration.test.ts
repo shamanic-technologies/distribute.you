@@ -20,7 +20,7 @@ describe("Performance-service uses public ranked/best endpoints", () => {
 
   it("should transform ranked items to WorkflowLeaderboardEntry", () => {
     expect(content).toContain("rankedToWorkflowEntry");
-    expect(content).toContain("stats.email.broadcast");
+    expect(content).toContain("stats.email?.broadcast");
     expect(content).toContain("stats.totalCostInUsdCents");
   });
 

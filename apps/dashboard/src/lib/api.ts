@@ -1008,13 +1008,28 @@ export interface WorkflowPerformance {
   costPerReplyCents: number | null;
 }
 
+export interface BestWorkflowRecord {
+  workflowId: string;
+  workflowSlug: string;
+  workflowName: string;
+  createdForBrandId: string | null;
+  value: number;
+}
+
+export interface BestWorkflowResponse {
+  best: { [metricKey: string]: BestWorkflowRecord | null };
+}
+
 export async function getBestWorkflow(
+  params?: { objective?: string; featureSlug?: string; featureDynastySlug?: string },
   token?: string
-): Promise<{
-  workflow: { id: string; name: string; category: string; channel: string; audienceType: string; signatureName: string };
-  stats: { totalCostInUsdCents: number; totalOutcomes: number; costPerOutcome: number; completedRuns: number };
-}> {
-  return apiCall("/workflows/best", { token });
+): Promise<BestWorkflowResponse> {
+  const query = new URLSearchParams();
+  if (params?.objective) query.set("objective", params.objective);
+  if (params?.featureSlug) query.set("featureSlug", params.featureSlug);
+  if (params?.featureDynastySlug) query.set("featureDynastySlug", params.featureDynastySlug);
+  const qs = query.toString();
+  return apiCall(`/workflows/best${qs ? `?${qs}` : ""}`, { token });
 }
 
 // Leaderboard (public performance data)
@@ -1070,7 +1085,7 @@ export interface RankedWorkflowStats {
   totalOutcomes: number;
   costPerOutcome: number | null;
   completedRuns: number;
-  email: {
+  email?: {
     transactional: RankedEmailStats;
     broadcast: RankedEmailStats;
   };
@@ -1101,11 +1116,13 @@ export interface RankedWorkflowResponse {
 }
 
 export async function fetchRankedWorkflows(params: {
+  featureSlug?: string;
   featureDynastySlug?: string;
   objective?: string;
   limit?: number;
 }, token?: string): Promise<RankedWorkflowItem[]> {
   const query = new URLSearchParams();
+  if (params.featureSlug) query.set("featureSlug", params.featureSlug);
   if (params.featureDynastySlug) query.set("featureDynastySlug", params.featureDynastySlug);
   if (params.objective) query.set("objective", params.objective);
   if (params.limit) query.set("limit", String(params.limit));

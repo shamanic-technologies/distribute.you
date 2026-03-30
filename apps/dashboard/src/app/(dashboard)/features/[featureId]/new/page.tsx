@@ -103,7 +103,7 @@ interface WorkflowTableRow {
 }
 
 function rankedToRow(item: RankedWorkflowItem): WorkflowTableRow {
-  const b = item.stats.email.broadcast;
+  const b = item.stats.email?.broadcast;
   const cost = item.stats.totalCostInUsdCents;
   return {
     id: item.workflow.id,
@@ -112,13 +112,13 @@ function rankedToRow(item: RankedWorkflowItem): WorkflowTableRow {
     dynastyName: item.workflow.dynastyName,
     signatureName: item.workflow.signatureName,
     featureSlug: item.workflow.featureSlug,
-    emailsSent: b.sent,
-    openRate: b.sent > 0 ? b.opened / b.sent : 0,
-    clickRate: b.sent > 0 ? b.clicked / b.sent : 0,
-    replyRate: b.sent > 0 ? b.replied / b.sent : 0,
-    costPerOpenCents: b.opened > 0 ? cost / b.opened : null,
-    costPerClickCents: b.clicked > 0 ? cost / b.clicked : null,
-    costPerReplyCents: b.replied > 0 ? cost / b.replied : null,
+    emailsSent: b?.sent ?? 0,
+    openRate: b && b.sent > 0 ? b.opened / b.sent : 0,
+    clickRate: b && b.sent > 0 ? b.clicked / b.sent : 0,
+    replyRate: b && b.sent > 0 ? b.replied / b.sent : 0,
+    costPerOpenCents: b && b.opened > 0 ? cost / b.opened : null,
+    costPerClickCents: b && b.clicked > 0 ? cost / b.clicked : null,
+    costPerReplyCents: b && b.replied > 0 ? cost / b.replied : null,
   };
 }
 
