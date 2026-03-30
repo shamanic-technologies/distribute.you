@@ -20,6 +20,23 @@ import {
 
 
 
+function timeAgo(date: string | Date): string {
+  const now = Date.now();
+  const then = new Date(date).getTime();
+  const seconds = Math.floor((now - then) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  const years = Math.floor(months / 12);
+  return `${years}y ago`;
+}
+
 const POLL_INTERVAL = 10_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
 
@@ -71,17 +88,13 @@ function StatsBar({ brandId, contextHeaders }: { brandId: string; contextHeaders
       <div className="bg-white border border-gray-100 rounded-lg p-3">
         <div className="text-xs text-gray-500 mb-1">Last Viewed</div>
         <div className="text-sm font-medium text-gray-900">
-          {stats.lastViewedAt
-            ? new Date(stats.lastViewedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-            : "—"}
+          {stats.lastViewedAt ? timeAgo(stats.lastViewedAt) : "—"}
         </div>
       </div>
       <div className="bg-white border border-gray-100 rounded-lg p-3">
         <div className="text-xs text-gray-500 mb-1">First Viewed</div>
         <div className="text-sm font-medium text-gray-900">
-          {stats.firstViewedAt
-            ? new Date(stats.firstViewedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-            : "—"}
+          {stats.firstViewedAt ? timeAgo(stats.firstViewedAt) : "—"}
         </div>
       </div>
     </div>
@@ -113,7 +126,7 @@ function LatestValidatedPreview({ kit, basePath }: { kit: MediaKitSummary; baseP
             {kit.title || "Press Kit"}
           </h3>
           <span className="text-[10px] text-gray-400">
-            {new Date(kit.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+            {timeAgo(kit.updatedAt)}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -213,7 +226,7 @@ function PressKitRow({
             {STATUS_LABELS[kit.status]}
           </span>
           <span className="text-[10px] text-gray-400">
-            {new Date(kit.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+            {timeAgo(kit.updatedAt)}
           </span>
         </div>
       </div>

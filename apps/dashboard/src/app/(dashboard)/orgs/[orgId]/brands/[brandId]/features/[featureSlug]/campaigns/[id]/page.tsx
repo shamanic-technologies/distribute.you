@@ -14,6 +14,23 @@ import { PressKitResults } from "@/components/campaign/press-kit-results";
 import { DiscoveredOutlets } from "@/components/campaign/discovered-outlets";
 
 
+function timeAgo(date: string | Date): string {
+  const now = Date.now();
+  const then = new Date(date).getTime();
+  const seconds = Math.floor((now - then) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  const years = Math.floor(months / 12);
+  return `${years}y ago`;
+}
+
 function formatTotalCost(cents: string | null | undefined): string | null {
   if (!cents) return null;
   const val = parseFloat(cents);
@@ -125,11 +142,7 @@ export default function CampaignOverviewPage() {
           </div>
         </div>
         <p className="text-gray-600 text-sm">
-          Created {new Date(campaign.createdAt).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric"
-          })}
+          Created {timeAgo(campaign.createdAt)}
         </p>
       </div>
 
