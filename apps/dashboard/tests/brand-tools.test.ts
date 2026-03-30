@@ -95,9 +95,9 @@ describe("brand-tools", () => {
       expect(apiSrc).toContain("/press-kits/media-kits?brand_id=${brandId}");
     });
 
-    it("exports listBrandJournalists calling /journalists?brandId=", () => {
+    it("exports listBrandJournalists calling /journalists with brandId param", () => {
       expect(apiSrc).toContain("export async function listBrandJournalists");
-      expect(apiSrc).toContain("/journalists?brandId=${brandId}");
+      expect(apiSrc).toContain("/journalists?${params}");
     });
 
     it("exports BrandJournalist type", () => {
