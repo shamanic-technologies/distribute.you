@@ -17,7 +17,7 @@ describe("Campaign sidebar uses feature stats via entity.countKey", () => {
 
   describe("sidebar-wrapper", () => {
     it("should fetch feature stats for the campaign", () => {
-      expect(sidebarContent).toContain("fetchFeatureStats(featureSlug, { campaignId })");
+      expect(sidebarContent).toContain("fetchFeatureStats(featureDynastySlug, { campaignId })");
     });
 
     it("should use entity.countKey to look up stats (no hardcoded prefix mapping)", () => {
@@ -32,7 +32,7 @@ describe("Campaign sidebar uses feature stats via entity.countKey", () => {
 
   describe("overview page", () => {
     it("should fetch feature stats for charts", () => {
-      expect(overviewContent).toContain("fetchFeatureStats(featureSlug, { campaignId })");
+      expect(overviewContent).toContain("fetchFeatureStats(featureDynastySlug, { campaignId })");
     });
 
     it("should merge feature stats over campaign stats for chart data", () => {
