@@ -40,8 +40,10 @@ describe("Feature creation page uses ranked workflows endpoint", () => {
     expect(content).not.toMatch(/wf\.signatureName\s*\?/);
   });
 
-  it("should send the active workflow name for campaign creation", () => {
-    expect(content).toContain("workflowSlug: selectedRow.name");
+  it("should send the active workflow slug (not name) for campaign creation", () => {
+    expect(content).toContain("workflowSlug: selectedRow.slug");
+    // Must NOT use .name — names have spaces/capitalization, slugs are lowercase-hyphenated
+    expect(content).not.toContain("workflowSlug: selectedRow.name");
   });
 
   it("should use workflow ID directly for detail panel (no name-based lookup)", () => {

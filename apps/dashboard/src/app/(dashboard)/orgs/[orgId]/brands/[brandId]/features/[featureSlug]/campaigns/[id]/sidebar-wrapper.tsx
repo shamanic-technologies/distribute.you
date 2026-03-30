@@ -69,7 +69,7 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
 
   const workflowId = useMemo(() => {
     if (!campaign?.workflowSlug || !workflowsData?.workflows) return undefined;
-    return workflowsData.workflows.find((w) => w.name === campaign.workflowSlug)?.id;
+    return workflowsData.workflows.find((w) => w.slug === campaign.workflowSlug || w.name === campaign.workflowSlug)?.id;
   }, [campaign?.workflowSlug, workflowsData?.workflows]);
 
   const companyCount = useMemo(() => {

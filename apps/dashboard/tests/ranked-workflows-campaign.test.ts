@@ -39,8 +39,10 @@ describe("Campaign creation page uses feature stats + workflow list", () => {
     expect(content).toContain("effectiveSelectionId");
   });
 
-  it("should send the active workflow name for campaign creation", () => {
-    expect(content).toContain("workflowSlug:");
+  it("should send the workflow slug (not name) for campaign creation", () => {
+    expect(content).toContain("workflowSlug: selectedRow.slug");
+    // Must NOT use .name — names have spaces/capitalization, slugs are lowercase-hyphenated
+    expect(content).not.toContain("workflowSlug: selectedRow.name");
   });
 
   it("should wrap input values in featureInputs, not spread as top-level", () => {

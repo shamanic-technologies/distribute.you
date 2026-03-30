@@ -128,6 +128,12 @@ describe("GET /api/v1/workflows/[id]/required-providers", () => {
     expect(content).toContain("workflowSlug:");
     expect(content).toContain("providers:");
   });
+
+  it("should use workflow.slug (not workflow.name) for workflowSlug", () => {
+    const content = fs.readFileSync(routePath, "utf-8");
+    expect(content).toContain("workflowSlug: workflow.slug");
+    expect(content).not.toContain("workflowSlug: workflow.name");
+  });
 });
 
 describe("api.ts platform client functions", () => {

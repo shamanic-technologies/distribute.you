@@ -1079,8 +1079,11 @@ export interface RankedWorkflowStats {
 export interface RankedWorkflowItem {
   workflow: {
     id: string;
+    slug: string;
     name: string;
     dynastyName: string;
+    dynastySlug: string;
+    version: number;
     createdForBrandId: string | null;
     featureSlug: string | null;
     category?: string;
