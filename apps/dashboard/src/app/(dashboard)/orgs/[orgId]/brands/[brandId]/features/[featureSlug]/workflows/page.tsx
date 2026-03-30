@@ -105,7 +105,7 @@ export default function FeatureWorkflowsPage() {
       const s = statsMap.get(wf.dynastySlug);
       return {
         id: wf.id,
-        workflowSlug: wf.name,
+        workflowSlug: wf.slug,
         dynastyName: wf.dynastyName,
         stats: s?.stats ?? {},
         systemStats: s?.systemStats,

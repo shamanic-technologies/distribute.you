@@ -88,6 +88,7 @@ function formatDisplayName(dynastyName: string, fallbackName: string): string {
 
 interface WorkflowTableRow {
   id: string;
+  slug: string;
   name: string;
   dynastyName: string;
   signatureName: string;
@@ -106,6 +107,7 @@ function rankedToRow(item: RankedWorkflowItem): WorkflowTableRow {
   const cost = item.stats.totalCostInUsdCents;
   return {
     id: item.workflow.id,
+    slug: item.workflow.slug,
     name: item.workflow.name,
     dynastyName: item.workflow.dynastyName,
     signatureName: item.workflow.signatureName,
@@ -390,7 +392,7 @@ export default function CreateCampaignPage() {
     try {
       const { brandUrl, ...inputFields } = formData;
       const campaignPayload = {
-        workflowSlug: selectedRow.name,
+        workflowSlug: selectedRow.slug,
         featureSlug: featureId,
         brandUrl,
         ...budgetParams,
@@ -438,7 +440,7 @@ export default function CreateCampaignPage() {
 
     const { brandUrl: intentBrandUrl, ...intentInputFields } = formData;
     sessionStorage.setItem("pendingCampaign", JSON.stringify({
-      workflowSlug: selectedRow.name,
+      workflowSlug: selectedRow.slug,
       brandUrl: intentBrandUrl,
       ...budgetParams,
       featureInputs: intentInputFields,

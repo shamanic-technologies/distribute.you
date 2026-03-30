@@ -46,6 +46,7 @@ const BUDGET_FREQUENCIES: { value: BudgetFrequency; label: string }[] = [
 interface WorkflowTableRow {
   id: string;
   name: string;
+  slug: string;
   dynastyName: string;
   featureSlug: string | null;
   stats: Record<string, number>;
@@ -185,6 +186,7 @@ export default function FeatureCreateCampaignPage() {
       return {
         id: wf.id,
         name: wf.name,
+        slug: wf.slug,
         dynastyName: wf.dynastyName,
         featureSlug: wf.featureSlug ?? null,
         stats: s?.stats ?? {},
@@ -314,7 +316,7 @@ export default function FeatureCreateCampaignPage() {
       }
 
       const campaignPayload: Record<string, unknown> = {
-        workflowSlug: selectedRow.name,
+        workflowSlug: selectedRow.slug,
         brandUrl: formData.brandUrl,
         featureSlug: resolvedSlug,
         ...budgetParams,
@@ -366,7 +368,7 @@ export default function FeatureCreateCampaignPage() {
 
     const { brandUrl: intentBrandUrl, ...intentInputFields } = formData;
     sessionStorage.setItem("pendingCampaign", JSON.stringify({
-      workflowSlug: selectedRow.name,
+      workflowSlug: selectedRow.slug,
       displayLabel: selectedRow.dynastyName,
       brandUrl: intentBrandUrl,
       ...budgetParams,
