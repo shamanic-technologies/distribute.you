@@ -645,6 +645,8 @@ export function WorkflowChat({
   const queryClient = useQueryClient();
   const { showPaymentRequired } = useBillingGuard();
   const sessionIdRef = useRef<string | null>(null);
+  const contextRef = useRef(workflowContext);
+  contextRef.current = workflowContext;
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const userHasScrolledRef = useRef(false);
@@ -698,11 +700,11 @@ export function WorkflowChat({
                 )?.text || "",
             configKey: "workflow",
             ...(sessionIdRef.current ? { sessionId: sessionIdRef.current } : {}),
-            context: workflowContext,
+            context: contextRef.current,
           },
         }),
       }),
-    [workflowContext, billingFetch],
+    [billingFetch],
   );
 
   const {

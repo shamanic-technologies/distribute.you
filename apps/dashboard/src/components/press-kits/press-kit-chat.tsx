@@ -276,6 +276,8 @@ export function PressKitChat({
   const { showPaymentRequired } = useBillingGuard();
   const queryClient = useQueryClient();
   const sessionIdRef = useRef<string | null>(null);
+  const contextRef = useRef(pressKitContext);
+  contextRef.current = pressKitContext;
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const userHasScrolledRef = useRef(false);
@@ -322,11 +324,11 @@ export function PressKitChat({
                 ?.parts?.find((p): p is { type: "text"; text: string } => p.type === "text")?.text || "",
             configKey: "press-kit",
             ...(sessionIdRef.current ? { sessionId: sessionIdRef.current } : {}),
-            context: pressKitContext,
+            context: contextRef.current,
           },
         }),
       }),
-    [pressKitContext, billingFetch],
+    [billingFetch],
   );
 
   const { messages, sendMessage, status, stop, setMessages } = useChat({
