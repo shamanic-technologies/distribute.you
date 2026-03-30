@@ -76,7 +76,7 @@ export default function FeatureWorkflowsPage() {
   // Fetch workflows filtered by feature slug
   const { data: workflowsData, isLoading: workflowsLoading } = useAuthQuery(
     ["workflows", featureDynastySlug],
-    () => listWorkflows({ featureSlug: featureDynastySlug }),
+    () => listWorkflows({ featureDynastySlug }),
     pollOptions,
   );
 

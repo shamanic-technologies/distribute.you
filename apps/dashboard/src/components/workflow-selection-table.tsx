@@ -6,15 +6,15 @@ import { listWorkflows, type Workflow } from "@/lib/api";
 import { workflowDisplayName } from "@/lib/workflow-display-name";
 
 interface WorkflowSelectionTableProps {
-  featureSlug: string;
+  featureDynastySlug: string;
   onSelect?: (workflow: Workflow) => void;
   selectedWorkflowId?: string | null;
 }
 
-export function WorkflowSelectionTable({ featureSlug, onSelect, selectedWorkflowId }: WorkflowSelectionTableProps) {
+export function WorkflowSelectionTable({ featureDynastySlug, onSelect, selectedWorkflowId }: WorkflowSelectionTableProps) {
   const { data, isLoading } = useAuthQuery(
-    ["workflows", featureSlug],
-    () => listWorkflows({ featureSlug })
+    ["workflows", featureDynastySlug],
+    () => listWorkflows({ featureDynastySlug })
   );
 
   const workflows = useMemo(() => {
