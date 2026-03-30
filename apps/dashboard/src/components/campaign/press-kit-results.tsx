@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { listMediaKitsByCampaign, type MediaKitSummary, type MediaKitStatus } from "@/lib/api";
@@ -17,9 +18,10 @@ const STATUS_STYLES: Record<MediaKitStatus, string> = {
 
 interface PressKitResultsProps {
   campaignId: string;
+  detailBasePath: string;
 }
 
-export function PressKitResults({ campaignId }: PressKitResultsProps) {
+export function PressKitResults({ campaignId, detailBasePath }: PressKitResultsProps) {
   const { data: kits, isLoading: kitsLoading } = useAuthQuery(
     ["mediaKits", "campaign", campaignId],
     () => listMediaKitsByCampaign(campaignId),
@@ -42,20 +44,23 @@ export function PressKitResults({ campaignId }: PressKitResultsProps) {
   return (
     <div className="space-y-4">
       {kits.map((kit) => (
-        <PressKitCard key={kit.id} kit={kit} />
+        <PressKitCard key={kit.id} kit={kit} detailBasePath={detailBasePath} />
       ))}
     </div>
   );
 }
 
-function PressKitCard({ kit }: { kit: MediaKitSummary }) {
+function PressKitCard({ kit, detailBasePath }: { kit: MediaKitSummary; detailBasePath: string }) {
   const publicUrl = kit.shareToken ? `${API_URL}/press-kits/public/${kit.shareToken}` : null;
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
+    <Link
+      href={`${detailBasePath}/${kit.id}`}
+      className="block bg-white rounded-xl border border-gray-200 p-4 md:p-6 hover:border-brand-300 hover:shadow-sm transition group"
+    >
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <h3 className="font-display font-bold text-gray-800">
+          <h3 className="font-display font-bold text-gray-800 group-hover:text-brand-700 transition">
             {kit.title || "Press Kit"}
           </h3>
           <span className={`text-xs px-2 py-1 rounded-full border ${STATUS_STYLES[kit.status]}`}>
@@ -85,23 +90,24 @@ function PressKitCard({ kit }: { kit: MediaKitSummary }) {
       )}
 
       {publicUrl && kit.status === "validated" && (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" onClick={(e) => e.preventDefault()}>
           <a
             href={publicUrl}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
             className="text-sm text-violet-600 hover:text-violet-700 font-medium underline underline-offset-2"
           >
             View Public Press Kit
           </a>
           <button
-            onClick={() => navigator.clipboard.writeText(publicUrl)}
+            onClick={(e) => { e.stopPropagation(); e.preventDefault(); navigator.clipboard.writeText(publicUrl); }}
             className="text-xs px-2 py-1 rounded border border-gray-200 text-gray-500 hover:bg-gray-50 transition"
           >
             Copy Link
           </button>
         </div>
       )}
-    </div>
+    </Link>
   );
 }

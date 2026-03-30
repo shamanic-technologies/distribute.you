@@ -15,7 +15,7 @@ import {
   updateMediaKitStatus,
   cancelDraftMediaKit,
   getMediaKitViewStats,
-  listBrandMediaKits,
+  listMediaKitsByCampaign,
   type MediaKitStatus,
 } from "@/lib/api";
 import { PressKitChat } from "@/components/press-kits/press-kit-chat";
@@ -54,21 +54,20 @@ function MdxPreview({ content }: { content: string }) {
 
 function VersionHistory({
   currentId,
-  brandId,
-  orgId,
+  campaignId,
+  basePath,
 }: {
   currentId: string;
-  brandId: string;
-  orgId: string;
+  campaignId: string;
+  basePath: string;
 }) {
   const { data: allKits } = useAuthQuery(
-    ["brandMediaKits", brandId],
-    () => listBrandMediaKits(brandId),
+    ["campaignMediaKits", campaignId],
+    () => listMediaKitsByCampaign(campaignId),
   );
 
   if (!allKits || allKits.length <= 1) return null;
 
-  // Build version chain: find all kits that share the same lineage
   const sorted = [...allKits]
     .filter((k) => k.status !== "archived")
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -82,7 +81,7 @@ function VersionHistory({
         {sorted.map((kit) => (
           <Link
             key={kit.id}
-            href={`/orgs/${orgId}/brands/${brandId}/tools/press-kits/${kit.id}`}
+            href={`${basePath}/${kit.id}`}
             className={`block text-xs px-2 py-1.5 rounded transition ${
               kit.id === currentId
                 ? "bg-brand-50 text-brand-700 font-medium"
@@ -107,7 +106,7 @@ function VersionHistory({
 
 /* ─── Main Detail Page ────────────────────────────────────────────────── */
 
-export default function PressKitDetailPage() {
+export default function CampaignPressKitDetailPage() {
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -115,6 +114,10 @@ export default function PressKitDetailPage() {
   const brandId = params.brandId as string;
   const orgId = params.orgId as string;
   const kitId = params.kitId as string;
+  const campaignId = params.id as string;
+  const featureSlug = params.featureSlug as string;
+
+  const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/${campaignId}/press-kits`;
 
   const [copied, setCopied] = useState(false);
   const [regenerateInstruction, setRegenerateInstruction] = useState("");
@@ -141,7 +144,7 @@ export default function PressKitDetailPage() {
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["mediaKit", kitId] });
-    queryClient.invalidateQueries({ queryKey: ["brandMediaKits", brandId] });
+    queryClient.invalidateQueries({ queryKey: ["campaignMediaKits", campaignId] });
   };
 
   const validateMut = useMutation({
@@ -166,9 +169,8 @@ export default function PressKitDetailPage() {
       setRegenerateInstruction("");
       setShowRegenerate(false);
       invalidate();
-      // Navigate to the new kit
       if (data.mediaKitId) {
-        router.push(`/orgs/${orgId}/brands/${brandId}/tools/press-kits/${data.mediaKitId}`);
+        router.push(`${basePath}/${data.mediaKitId}`);
       }
     },
   });
@@ -193,7 +195,7 @@ export default function PressKitDetailPage() {
         <svg className="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
         </svg>
-        <Link href={`/orgs/${orgId}/brands/${brandId}/tools/press-kits`} className="hover:text-brand-600 transition">
+        <Link href={basePath} className="hover:text-brand-600 transition">
           Press Kits
         </Link>
         <svg className="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -210,7 +212,7 @@ export default function PressKitDetailPage() {
       ) : !kit ? (
         <div className="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-8 text-center">
           <h3 className="text-lg font-medium text-gray-900 mb-2">Press kit not found</h3>
-          <Link href={`/orgs/${orgId}/brands/${brandId}/tools/press-kits`} className="text-brand-600 text-sm hover:underline">
+          <Link href={basePath} className="text-brand-600 text-sm hover:underline">
             Back to Press Kits
           </Link>
         </div>
@@ -451,7 +453,7 @@ export default function PressKitDetailPage() {
 
           {/* Sidebar — version history */}
           <div className="hidden lg:block w-56 flex-shrink-0">
-            <VersionHistory currentId={kitId} brandId={brandId} orgId={orgId} />
+            <VersionHistory currentId={kitId} campaignId={campaignId} basePath={basePath} />
           </div>
         </div>
       )}

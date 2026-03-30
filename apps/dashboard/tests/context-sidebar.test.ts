@@ -88,11 +88,11 @@ describe("Context sidebar", () => {
     expect(content).toContain("featureItems");
   });
 
-  it("should have Tools section in brand sidebar with outlets, press kits, and journalists", () => {
+  it("should have Tools section in brand sidebar with outlets and journalists (press kits moved to campaign)", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
     expect(content).toContain("Tools");
     expect(content).toContain("/tools/outlets");
-    expect(content).toContain("/tools/press-kits");
+    expect(content).not.toContain("/tools/press-kits");
     expect(content).toContain("/tools/journalists");
   });
 

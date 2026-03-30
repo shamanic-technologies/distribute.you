@@ -136,7 +136,10 @@ export default function CampaignOverviewPage() {
       {/* Entity-specific results */}
       {entityNames.includes("press-kits") && campaign && (
         <div className="mb-6">
-          <PressKitResults campaignId={campaign.id} />
+          <PressKitResults
+            campaignId={campaign.id}
+            detailBasePath={`/orgs/${orgId}/brands/${params.brandId}/features/${featureDynastySlug}/campaigns/${campaign.id}/press-kits`}
+          />
         </div>
       )}
       {entityNames.includes("outlets") && campaign && (
