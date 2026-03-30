@@ -305,7 +305,7 @@ export async function fetchLeaderboard(): Promise<LeaderboardData | null> {
         headers,
         cache: "no-store",
       }),
-      fetch(`${API_URL}/v1/public/workflows/best`, {
+      fetch(`${API_URL}/v1/public/workflows/best?objective=emailsReplied`, {
         headers,
         cache: "no-store",
       }),
