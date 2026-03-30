@@ -1283,6 +1283,7 @@ export interface MediaKitSummary {
   campaignId: string | null;
   iconUrl: string | null;
   shareToken: string | null;
+  publicUrl: string | null;
   parentMediaKitId: string | null;
   featureSlug: string | null;
   workflowSlug: string | null;

@@ -5,7 +5,6 @@ import { keepPreviousData } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { listMediaKitsByCampaign, type MediaKitSummary, type MediaKitStatus } from "@/lib/api";
 
-const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 
 const STATUS_STYLES: Record<MediaKitStatus, string> = {
   generating: "bg-blue-100 text-blue-700 border-blue-200",
@@ -51,7 +50,7 @@ export function PressKitResults({ campaignId, detailBasePath }: PressKitResultsP
 }
 
 function PressKitCard({ kit, detailBasePath }: { kit: MediaKitSummary; detailBasePath: string }) {
-  const publicUrl = kit.shareToken ? `${API_URL}/press-kits/public/${kit.shareToken}` : null;
+  const publicUrl = kit.publicUrl;
 
   return (
     <Link
