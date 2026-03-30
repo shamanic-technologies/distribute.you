@@ -111,7 +111,7 @@ const PLATFORM_KEYS: { provider: string; envVar: string }[] = [
   { provider: "apollo", envVar: "APOLLO_API_KEY" },
   { provider: "instantly", envVar: "INSTANTLY_API_KEY" },
   { provider: "firecrawl", envVar: "FIRECRAWL_API_KEY" },
-  { provider: "gemini", envVar: "GEMINI_API_KEY" },
+  { provider: "google", envVar: "GEMINI_API_KEY" },
   { provider: "postmark", envVar: "POSTMARK_API_KEY" },
   { provider: "postmark-broadcast-stream", envVar: "POSTMARK_BROADCAST_STREAM_ID" },
   { provider: "postmark-inbound-stream", envVar: "POSTMARK_INBOUND_STREAM_ID" },
