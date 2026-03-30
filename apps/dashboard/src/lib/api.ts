@@ -298,8 +298,10 @@ export interface CostStatsGroup {
   runCount: number;
 }
 
-export async function getBrandCostBreakdown(brandId: string, token?: string): Promise<{ costs: CostByName[] }> {
-  const result = await apiCall<{ groups: CostStatsGroup[] }>(`/runs/stats/costs?brandId=${brandId}&groupBy=costName`, { token });
+export async function getBrandCostBreakdown(brandId: string, opts?: { featureDynastySlug?: string }, token?: string): Promise<{ costs: CostByName[] }> {
+  const query = new URLSearchParams({ brandId, groupBy: "costName" });
+  if (opts?.featureDynastySlug) query.set("featureDynastySlug", opts.featureDynastySlug);
+  const result = await apiCall<{ groups: CostStatsGroup[] }>(`/runs/stats/costs?${query}`, { token });
   const costs: CostByName[] = result.groups.map((g) => ({
     costName: g.dimensions.costName ?? "Unknown",
     totalCostInUsdCents: g.totalCostInUsdCents,
