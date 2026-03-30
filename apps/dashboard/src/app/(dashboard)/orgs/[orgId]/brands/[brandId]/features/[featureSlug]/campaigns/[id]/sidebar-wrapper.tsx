@@ -12,15 +12,15 @@ import { listWorkflows, listCampaignOutlets, listCampaignJournalists, listCampai
 interface Props {
   orgId: string;
   brandId: string;
-  featureSlug: string;
+  featureDynastySlug: string;
 }
 
-export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: Props) {
+export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureDynastySlug }: Props) {
   const params = useParams();
   const { campaign, leads } = useCampaign();
   const campaignId = params.id as string;
   const { getFeature } = useFeatures();
-  const featureDef = getFeature(featureSlug);
+  const featureDef = getFeature(featureDynastySlug);
   const entities = featureDef?.entities ?? [];
   const entityNames = useMemo(() => entities.map((e) => e.name), [entities]);
 
@@ -31,8 +31,8 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
 
   // Feature stats for this campaign — same source the list page uses
   const { data: featureStatsData } = useAuthQuery(
-    ["featureStats", featureSlug, "campaign", campaignId],
-    () => fetchFeatureStats(featureSlug, { campaignId }),
+    ["featureStats", featureDynastySlug, "campaign", campaignId],
+    () => fetchFeatureStats(featureDynastySlug, { campaignId }),
     { refetchInterval: 5_000, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
   );
   const fStats = featureStatsData?.stats ?? {};
@@ -110,7 +110,7 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
       campaignId={campaignId}
       orgId={orgId}
       brandId={brandId}
-      featureSlug={featureSlug}
+      featureDynastySlug={featureDynastySlug}
       entityCounts={entityCounts}
       workflowId={workflowId}
       featureInputs={campaign?.featureInputs}

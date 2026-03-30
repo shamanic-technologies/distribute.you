@@ -40,13 +40,13 @@ export default function FeatureSettingsPage() {
   const params = useParams();
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
-  const featureSlug = params.featureSlug as string;
+  const featureDynastySlug = params.featureSlug as string;
 
   const { registry, features: existingFeatures } = useFeatures();
 
   const { data: featureData, isLoading } = useAuthQuery(
-    ["feature", featureSlug],
-    () => getFeature(featureSlug),
+    ["feature", featureDynastySlug],
+    () => getFeature(featureDynastySlug),
   );
   const feature = featureData?.feature ?? null;
 
@@ -56,7 +56,7 @@ export default function FeatureSettingsPage() {
   );
   const brand = brandData?.brand ?? null;
 
-  const chatId = `feature-settings-${featureSlug}-${brandId}`;
+  const chatId = `feature-settings-${featureDynastySlug}-${brandId}`;
 
   // Build stats registry reference
   const statsRegistryRef = useMemo(() => registry, [registry]);
