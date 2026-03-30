@@ -1021,12 +1021,10 @@ export interface BestWorkflowResponse {
 }
 
 export async function getBestWorkflow(
-  params?: { objective?: string; featureSlug?: string; featureDynastySlug?: string },
+  params?: { featureDynastySlug?: string },
   token?: string
 ): Promise<BestWorkflowResponse> {
   const query = new URLSearchParams();
-  if (params?.objective) query.set("objective", params.objective);
-  if (params?.featureSlug) query.set("featureSlug", params.featureSlug);
   if (params?.featureDynastySlug) query.set("featureDynastySlug", params.featureDynastySlug);
   const qs = query.toString();
   return apiCall(`/workflows/best${qs ? `?${qs}` : ""}`, { token });
