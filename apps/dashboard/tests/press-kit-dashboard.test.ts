@@ -68,10 +68,8 @@ describe("press-kit-dashboard", () => {
       expect(fs.existsSync(pagePath)).toBe(true);
     });
 
-    it("has generate form with editMediaKit", () => {
+    it("uses editMediaKit for retry on failed kits", () => {
       expect(pageSrc).toContain("editMediaKit");
-      expect(pageSrc).toContain("GenerateForm");
-      expect(pageSrc).toContain("instruction");
     });
 
     it("has stats bar with getMediaKitViewStats", () => {

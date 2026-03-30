@@ -18,6 +18,7 @@ import {
   type CostStatsGroup,
 } from "@/lib/api";
 
+
 const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 
 const POLL_INTERVAL = 10_000;
@@ -84,59 +85,6 @@ function StatsBar({ brandId }: { brandId: string }) {
             : "—"}
         </div>
       </div>
-    </div>
-  );
-}
-
-/* ─── Generate Form ───────────────────────────────────────────────────── */
-
-function GenerateForm({ brandId, onSuccess }: { brandId: string; onSuccess: () => void }) {
-  const [instruction, setInstruction] = useState("");
-
-  const mutation = useMutation({
-    mutationFn: () => editMediaKit({ instruction: instruction.trim() || "Generate a press kit for this brand", brandId }),
-    onSuccess: () => {
-      setInstruction("");
-      onSuccess();
-    },
-  });
-
-  return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
-      <h3 className="text-sm font-medium text-gray-900 mb-2">Generate a new press kit</h3>
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={instruction}
-          onChange={(e) => setInstruction(e.target.value)}
-          placeholder="Optional: focus on AI products, recent funding, sustainability..."
-          className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !mutation.isPending) {
-              mutation.mutate();
-            }
-          }}
-        />
-        <button
-          onClick={() => mutation.mutate()}
-          disabled={mutation.isPending}
-          className="px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2"
-        >
-          {mutation.isPending ? (
-            <>
-              <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              Generating...
-            </>
-          ) : (
-            "Generate"
-          )}
-        </button>
-      </div>
-      {mutation.isError && (
-        <p className="text-xs text-red-600 mt-2">
-          Failed to start generation. {mutation.error?.message}
-        </p>
-      )}
     </div>
   );
 }
@@ -487,9 +435,6 @@ export default function CampaignPressKitsPage() {
       {/* Stats */}
       {kits && kits.length > 0 && <StatsBar brandId={brandId} />}
 
-      {/* Generate */}
-      <GenerateForm brandId={brandId} onSuccess={invalidate} />
-
       {/* Tabs */}
       <div className="flex gap-1 mb-6 border-b border-gray-200">
         <button
@@ -531,7 +476,7 @@ export default function CampaignPressKitsPage() {
               </svg>
               <h3 className="text-lg font-medium text-gray-900 mb-2">No press kits yet</h3>
               <p className="text-gray-500 text-sm">
-                Use the form above to generate your first press kit.
+                Launch a campaign to generate press kits automatically.
               </p>
             </div>
           ) : (
