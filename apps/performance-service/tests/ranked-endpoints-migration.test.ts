@@ -14,8 +14,8 @@ describe("Performance-service uses public ranked/best endpoints", () => {
     expect(content).not.toContain("/v1/stats/leaderboard");
   });
 
-  it("should call /v1/public/workflows/best with objective param for hero stats", () => {
-    expect(content).toContain("/v1/public/workflows/best?objective=emailsReplied");
+  it("should call /v1/public/workflows/best with featureDynastySlug for hero stats", () => {
+    expect(content).toContain("/v1/public/workflows/best?featureDynastySlug=sales-cold-email-outreach");
   });
 
   it("should transform ranked items to WorkflowLeaderboardEntry", () => {
@@ -75,8 +75,8 @@ describe("Sales landing uses public best endpoint", () => {
   );
   const salesContent = fs.readFileSync(salesPath, "utf-8");
 
-  it("should call /v1/public/workflows/best with objective param instead of /api/leaderboard", () => {
-    expect(salesContent).toContain("/v1/public/workflows/best?objective=emailsReplied");
+  it("should call /v1/public/workflows/best with featureDynastySlug instead of /api/leaderboard", () => {
+    expect(salesContent).toContain("/v1/public/workflows/best?featureDynastySlug=sales-cold-email-outreach");
     expect(salesContent).not.toContain("/api/leaderboard");
   });
 });
