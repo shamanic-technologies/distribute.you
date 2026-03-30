@@ -56,4 +56,25 @@ describe("Brand page uses runs-service cost breakdown (no Other category)", () =
   it("should fetch cost breakdown from runs-service", () => {
     expect(content).toContain("getBrandCostBreakdown");
   });
+
+  it("should scope cost breakdown to the feature dynasty slug", () => {
+    expect(content).toContain("featureDynastySlug: dynastySlug");
+  });
+});
+
+/**
+ * Regression: getBrandCostBreakdown must pass featureDynastySlug to
+ * /runs/stats/costs so costs are scoped to the feature, not the whole brand.
+ */
+describe("getBrandCostBreakdown supports featureDynastySlug filter", () => {
+  const apiPath = path.join(__dirname, "../src/lib/api.ts");
+  const apiContent = fs.readFileSync(apiPath, "utf-8");
+
+  it("should accept featureDynastySlug option", () => {
+    expect(apiContent).toContain("featureDynastySlug");
+  });
+
+  it("should append featureDynastySlug to the query string", () => {
+    expect(apiContent).toContain('query.set("featureDynastySlug"');
+  });
 });

@@ -116,8 +116,8 @@ export default function FeaturePage() {
   }, [campaignStatsData]);
 
   const { data: brandCostData, isLoading: isLoadingCosts } = useAuthQuery(
-    ["brandCostBreakdown", { brandId }],
-    () => getBrandCostBreakdown(brandId),
+    ["brandCostBreakdown", { brandId, featureDynastySlug: dynastySlug }],
+    () => getBrandCostBreakdown(brandId, { featureDynastySlug: dynastySlug }),
     pollOptions,
   );
   const brandCostBreakdown = brandCostData?.costs ?? [];
