@@ -30,34 +30,22 @@ export interface LeaderboardPreview {
   workflows: WorkflowEntry[];
 }
 
-interface PublicEmailStats {
-  sent: number;
-  delivered: number;
-  opened: number;
-  clicked: number;
-  replied: number;
-  bounced: number;
-  unsubscribed: number;
-  recipients: number;
-}
-
 interface PublicRankedItem {
   workflow: {
     name: string;
     dynastyName: string | null;
-    category: string;
   };
   stats: {
     totalCostInUsdCents: number;
-    email?: {
-      broadcast: PublicEmailStats;
-    };
+    totalOutcomes: number;
+    costPerOutcome: number | null;
+    completedRuns: number;
   };
 }
 
 export async function fetchLeaderboardPreview(): Promise<LeaderboardPreview | null> {
   try {
-    const res = await fetch(`${API_URL}/v1/public/workflows/ranked?limit=3`, {
+    const res = await fetch(`${API_URL}/v1/public/workflows/ranked?featureDynastySlug=sales-cold-email-outreach&objective=emailsReplied&limit=3`, {
       headers: { Accept: "application/json" },
       next: { revalidate: 300 },
     });
@@ -67,18 +55,16 @@ export async function fetchLeaderboardPreview(): Promise<LeaderboardPreview | nu
     const data: { results: PublicRankedItem[] } = await res.json();
 
     const workflows: WorkflowEntry[] = data.results.map((item) => {
-      const b = item.stats.email?.broadcast;
-      const cost = item.stats.totalCostInUsdCents;
       return {
         workflowName: item.workflow.name,
         dynastyName: item.workflow.dynastyName ?? item.workflow.name,
-        emailsSent: b?.sent ?? 0,
-        openRate: b && b.sent > 0 ? b.opened / b.sent : 0,
-        clickRate: b && b.sent > 0 ? b.clicked / b.sent : 0,
-        replyRate: b && b.sent > 0 ? b.replied / b.sent : 0,
-        costPerOpenCents: b && b.opened > 0 ? cost / b.opened : null,
-        costPerClickCents: b && b.clicked > 0 ? cost / b.clicked : null,
-        costPerReplyCents: b && b.replied > 0 ? cost / b.replied : null,
+        emailsSent: 0,
+        openRate: 0,
+        clickRate: 0,
+        replyRate: 0,
+        costPerOpenCents: null,
+        costPerClickCents: null,
+        costPerReplyCents: item.stats.costPerOutcome,
       };
     });
 

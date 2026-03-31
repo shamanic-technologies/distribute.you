@@ -29,22 +29,21 @@ import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-pane
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 type Mode = "autopilot" | "manual";
-type SortKey = "openRate" | "clickRate" | "replyRate" | "costPerOpenCents" | "costPerClickCents" | "costPerReplyCents";
+type SortKey = "costPerOutcome" | "completedRuns" | "totalOutcomes";
 type MetricOption = { label: string; sortKey: SortKey };
 type BudgetFrequency = "one-off" | "daily" | "weekly" | "monthly";
 
 const METRIC_OPTIONS: MetricOption[] = [
-  { label: "$/Reply", sortKey: "costPerReplyCents" },
-  { label: "$/Click", sortKey: "costPerClickCents" },
-  { label: "% Replies", sortKey: "replyRate" },
-  { label: "% Clicks", sortKey: "clickRate" },
+  { label: "$/Outcome", sortKey: "costPerOutcome" },
+  { label: "Outcomes", sortKey: "totalOutcomes" },
+  { label: "Runs", sortKey: "completedRuns" },
 ];
 
 // Cost metrics: lower is better → default asc. Rate metrics: higher is better → default desc.
 const POLL_INTERVAL = 5_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false, placeholderData: keepPreviousData };
 
-const COST_METRICS: Set<SortKey> = new Set(["costPerOpenCents", "costPerClickCents", "costPerReplyCents"]);
+const COST_METRICS: Set<SortKey> = new Set(["costPerOutcome"]);
 function defaultSortDir(key: SortKey): "asc" | "desc" {
   return COST_METRICS.has(key) ? "asc" : "desc";
 }
@@ -66,11 +65,6 @@ const STATUS_STYLES: Record<string, string> = {
 
 // ─── Format helpers ─────────────────────────────────────────────────────────
 
-function formatPercent(rate: number): string {
-  if (rate === 0) return "—";
-  return `${(rate * 100).toFixed(1)}%`;
-}
-
 function formatCostCents(cents: number | null): string {
   if (cents === null || cents === 0) return "—";
   return `$${(cents / 100).toFixed(2)}`;
@@ -91,34 +85,22 @@ interface WorkflowTableRow {
   slug: string;
   name: string;
   dynastyName: string;
-  signatureName: string;
   featureSlug: string | null;
-  emailsSent: number;
-  openRate: number;
-  clickRate: number;
-  replyRate: number;
-  costPerOpenCents: number | null;
-  costPerClickCents: number | null;
-  costPerReplyCents: number | null;
+  completedRuns: number;
+  totalOutcomes: number;
+  costPerOutcome: number | null;
 }
 
 function rankedToRow(item: RankedWorkflowItem): WorkflowTableRow {
-  const b = item.stats.email?.broadcast;
-  const cost = item.stats.totalCostInUsdCents;
   return {
     id: item.workflow.id,
     slug: item.workflow.slug,
     name: item.workflow.name,
     dynastyName: item.workflow.dynastyName,
-    signatureName: item.workflow.signatureName,
     featureSlug: item.workflow.featureSlug,
-    emailsSent: b?.sent ?? 0,
-    openRate: b && b.sent > 0 ? b.opened / b.sent : 0,
-    clickRate: b && b.sent > 0 ? b.clicked / b.sent : 0,
-    replyRate: b && b.sent > 0 ? b.replied / b.sent : 0,
-    costPerOpenCents: b && b.opened > 0 ? cost / b.opened : null,
-    costPerClickCents: b && b.clicked > 0 ? cost / b.clicked : null,
-    costPerReplyCents: b && b.replied > 0 ? cost / b.replied : null,
+    completedRuns: item.stats.completedRuns,
+    totalOutcomes: item.stats.totalOutcomes,
+    costPerOutcome: item.stats.costPerOutcome,
   };
 }
 
@@ -212,7 +194,7 @@ export default function CreateCampaignPage() {
   // State
   const [mode, setMode] = useState<Mode>("autopilot");
   const [detailWorkflowId, setDetailWorkflowId] = useState<string | null>(null);
-  const [metric, setMetric] = useState<SortKey>("costPerReplyCents");
+  const [metric, setMetric] = useState<SortKey>("costPerOutcome");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
   const [budgetAmount, setBudgetAmount] = useState("");
@@ -233,6 +215,7 @@ export default function CreateCampaignPage() {
     ["ranked-workflows", featureId],
     () => fetchRankedWorkflows({
       featureDynastySlug: featureId,
+      objective: "emailsReplied",
       limit: 100,
     }),
     { enabled: featureDef?.implemented === true, ...pollOptions },
@@ -880,12 +863,9 @@ export default function CreateCampaignPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Workflow
                   </th>
-                  <SortHeader label="% Opens" sortKey="openRate" currentSort={metric} currentDir={sortDir} onSort={handleSort} />
-                  <SortHeader label="% Clicks" sortKey="clickRate" currentSort={metric} currentDir={sortDir} onSort={handleSort} />
-                  <SortHeader label="% Replies" sortKey="replyRate" currentSort={metric} currentDir={sortDir} onSort={handleSort} />
-                  <SortHeader label="$/Open" sortKey="costPerOpenCents" currentSort={metric} currentDir={sortDir} onSort={handleSort} />
-                  <SortHeader label="$/Click" sortKey="costPerClickCents" currentSort={metric} currentDir={sortDir} onSort={handleSort} />
-                  <SortHeader label="$/Reply" sortKey="costPerReplyCents" currentSort={metric} currentDir={sortDir} onSort={handleSort} />
+                  <SortHeader label="Runs" sortKey="completedRuns" currentSort={metric} currentDir={sortDir} onSort={handleSort} />
+                  <SortHeader label="Outcomes" sortKey="totalOutcomes" currentSort={metric} currentDir={sortDir} onSort={handleSort} />
+                  <SortHeader label="$/Outcome" sortKey="costPerOutcome" currentSort={metric} currentDir={sortDir} onSort={handleSort} />
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -903,7 +883,7 @@ export default function CreateCampaignPage() {
                 {/* Separator in manual mode when a row is pinned */}
                 {topRows.length > 0 && restRows.length > 0 && (
                   <tr>
-                    <td colSpan={7} className="py-0">
+                    <td colSpan={4} className="py-0">
                       <div className="border-t-2 border-brand-200" />
                     </td>
                   </tr>
@@ -979,12 +959,9 @@ function WorkflowRow({
           )}
         </div>
       </td>
-      <td className="px-4 py-4 text-sm text-gray-600">{wf.emailsSent > 0 ? formatPercent(wf.openRate) : "—"}</td>
-      <td className="px-4 py-4 text-sm text-gray-600">{wf.emailsSent > 0 ? formatPercent(wf.clickRate) : "—"}</td>
-      <td className="px-4 py-4 text-sm text-gray-600">{wf.emailsSent > 0 ? formatPercent(wf.replyRate) : "—"}</td>
-      <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(wf.costPerOpenCents)}</td>
-      <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(wf.costPerClickCents)}</td>
-      <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(wf.costPerReplyCents)}</td>
+      <td className="px-4 py-4 text-sm text-gray-600">{wf.completedRuns > 0 ? wf.completedRuns : "—"}</td>
+      <td className="px-4 py-4 text-sm text-gray-600">{wf.totalOutcomes > 0 ? wf.totalOutcomes : "—"}</td>
+      <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(wf.costPerOutcome)}</td>
     </tr>
   );
 }

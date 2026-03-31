@@ -9,31 +9,34 @@ const fetchLeaderboardPath = path.resolve(
 const content = fs.readFileSync(fetchLeaderboardPath, "utf-8");
 
 describe("Performance-service uses public ranked/best endpoints", () => {
-  it("should call /v1/public/workflows/ranked instead of /v1/stats/leaderboard", () => {
+  it("should call /public/features to get feature list", () => {
+    expect(content).toContain("/public/features");
+  });
+
+  it("should call /v1/public/workflows/ranked with featureDynastySlug and objective params", () => {
     expect(content).toContain("/v1/public/workflows/ranked");
-    expect(content).not.toContain("/v1/stats/leaderboard");
+    expect(content).toContain("featureDynastySlug");
+    expect(content).toContain("objective");
   });
 
   it("should call /v1/public/workflows/best with featureDynastySlug for hero stats", () => {
-    expect(content).toContain("/v1/public/workflows/best?featureDynastySlug=sales-cold-email-outreach");
+    expect(content).toContain("/v1/public/workflows/best");
+    expect(content).toContain("featureDynastySlug");
   });
 
-  it("should transform ranked items to WorkflowLeaderboardEntry", () => {
-    expect(content).toContain("rankedToWorkflowEntry");
-    expect(content).toContain("stats.email?.broadcast");
-    expect(content).toContain("stats.totalCostInUsdCents");
+  it("should merge ranked results by workflow slug", () => {
+    expect(content).toContain("mergeRankedResults");
   });
 
-  it("should compute featureSlug from category-channel-audienceType", () => {
-    expect(content).toContain("workflow.category}-${item.workflow.channel}-${item.workflow.audienceType");
+  it("should make 4 parallel calls per feature for objectives: emailsSent, emailsOpened, emailsClicked, emailsReplied", () => {
+    expect(content).toContain("emailsSent");
+    expect(content).toContain("emailsOpened");
+    expect(content).toContain("emailsClicked");
+    expect(content).toContain("emailsReplied");
   });
 
   it("should aggregate brand stats from ranked items", () => {
-    expect(content).toContain("aggregateBrandStats");
-  });
-
-  it("should build category sections from workflow entries", () => {
-    expect(content).toContain("buildFeatureGroups");
+    expect(content).toContain("aggregateBrandsFromRankedItems");
   });
 
   it("should enrich brands from brand-service", () => {
@@ -62,8 +65,16 @@ describe("Landing page uses public ranked endpoint", () => {
   );
   const landingContent = fs.readFileSync(landingPath, "utf-8");
 
-  it("should call /v1/public/workflows/ranked instead of /performance/leaderboard", () => {
+  it("should contain featureDynastySlug=sales-cold-email-outreach in the ranked URL", () => {
+    expect(landingContent).toContain("featureDynastySlug=sales-cold-email-outreach");
     expect(landingContent).toContain("/v1/public/workflows/ranked");
+  });
+
+  it("should contain objective=emailsReplied in the ranked URL", () => {
+    expect(landingContent).toContain("objective=emailsReplied");
+  });
+
+  it("should not use the old /performance/leaderboard endpoint", () => {
     expect(landingContent).not.toContain("/performance/leaderboard");
   });
 });
@@ -75,8 +86,12 @@ describe("Sales landing uses public best endpoint", () => {
   );
   const salesContent = fs.readFileSync(salesPath, "utf-8");
 
-  it("should call /v1/public/workflows/best with featureDynastySlug instead of /api/leaderboard", () => {
-    expect(salesContent).toContain("/v1/public/workflows/best?featureDynastySlug=sales-cold-email-outreach");
+  it("should call /v1/public/workflows/best with featureDynastySlug=sales-cold-email-outreach", () => {
+    expect(salesContent).toContain("featureDynastySlug=sales-cold-email-outreach");
+    expect(salesContent).toContain("/v1/public/workflows/best");
+  });
+
+  it("should not use the old /api/leaderboard endpoint", () => {
     expect(salesContent).not.toContain("/api/leaderboard");
   });
 });

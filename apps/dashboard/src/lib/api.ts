@@ -1048,7 +1048,6 @@ export interface WorkflowPerformance {
 }
 
 export interface BestWorkflowRecord {
-  workflowId: string;
   workflowSlug: string;
   workflowName: string;
   createdForBrandId: string | null;
@@ -1060,11 +1059,11 @@ export interface BestWorkflowResponse {
 }
 
 export async function getBestWorkflow(
-  params?: { featureDynastySlug?: string },
+  params: { featureDynastySlug: string },
   token?: string
 ): Promise<BestWorkflowResponse> {
   const query = new URLSearchParams();
-  if (params?.featureDynastySlug) query.set("featureDynastySlug", params.featureDynastySlug);
+  query.set("featureDynastySlug", params.featureDynastySlug);
   const qs = query.toString();
   return apiCall(`/workflows/best${qs ? `?${qs}` : ""}`, { token });
 }
@@ -1122,10 +1121,6 @@ export interface RankedWorkflowStats {
   totalOutcomes: number;
   costPerOutcome: number | null;
   completedRuns: number;
-  email?: {
-    transactional: RankedEmailStats;
-    broadcast: RankedEmailStats;
-  };
 }
 
 export interface RankedWorkflowItem {
@@ -1138,11 +1133,6 @@ export interface RankedWorkflowItem {
     version: number;
     createdForBrandId: string | null;
     featureSlug: string | null;
-    category?: string;
-    channel?: string;
-    audienceType?: string;
-    signature: string;
-    signatureName: string;
   };
   dag: DAG;
   stats: RankedWorkflowStats;
@@ -1153,15 +1143,13 @@ export interface RankedWorkflowResponse {
 }
 
 export async function fetchRankedWorkflows(params: {
-  featureSlug?: string;
-  featureDynastySlug?: string;
-  objective?: string;
+  featureDynastySlug: string;
+  objective: string;
   limit?: number;
 }, token?: string): Promise<RankedWorkflowItem[]> {
   const query = new URLSearchParams();
-  if (params.featureSlug) query.set("featureSlug", params.featureSlug);
-  if (params.featureDynastySlug) query.set("featureDynastySlug", params.featureDynastySlug);
-  if (params.objective) query.set("objective", params.objective);
+  query.set("featureDynastySlug", params.featureDynastySlug);
+  query.set("objective", params.objective);
   if (params.limit) query.set("limit", String(params.limit));
   const qs = query.toString();
   const data = await apiCall<RankedWorkflowResponse>(`/workflows/ranked${qs ? `?${qs}` : ""}`, { token });
