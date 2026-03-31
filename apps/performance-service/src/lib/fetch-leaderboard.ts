@@ -420,7 +420,7 @@ export async function fetchLeaderboard(): Promise<LeaderboardData | null> {
 
     // Step 3: Fetch best stats for hero
     const bestRes = await fetch(
-      `${API_URL}/v1/public/features/best?featureDynastySlug=${encodeURIComponent(heroFeature.dynastySlug)}&by=workflow`,
+      `${API_URL}/v1/public/features/best?featureDynastySlug=${encodeURIComponent(heroFeature.dynastySlug)}&groupBy=workflow`,
       { headers, cache: "no-store" },
     );
     const bestData: BestResponse | null = bestRes.ok ? await bestRes.json() : null;
