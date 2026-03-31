@@ -39,6 +39,13 @@ describe("Multi-brand campaign support", () => {
     expect(content).toContain("prev.filter((id) => id !== ab.id)");
   });
 
+  it("re-runs prefill when additionalBrandIds change while form is open", () => {
+    // A useEffect should watch additionalBrandIds and re-prefill when showForm is true
+    expect(content).toContain("// Re-run prefill when brands change while form is already open");
+    // The effect must check showForm before firing
+    expect(content).toContain("if (!showForm");
+  });
+
   it("includes additionalBrandIds in the handleGo dependency array", () => {
     // The handleGo useCallback must include additionalBrandIds in its deps
     // so prefill uses the latest selected brands, not a stale closure

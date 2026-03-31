@@ -319,6 +319,27 @@ export default function FeatureCreateCampaignPage() {
     }
   }, [selectedRow, budgetAmount, resolvedBrandUrl, brandId, additionalBrandIds, featureDynastySlug, featureInputs]);
 
+  // Re-run prefill when brands change while form is already open
+  useEffect(() => {
+    if (!showForm || !resolvedBrandUrl) return;
+    let cancelled = false;
+    setIsLoadingProfile(true);
+    prefillFeatureInputs(featureDynastySlug, [brandId, ...additionalBrandIds])
+      .then(({ prefilled }) => {
+        if (cancelled) return;
+        const fields = prefillToStringMap(prefilled);
+        setFormData(prefillToFormData(fields, featureInputs, resolvedBrandUrl));
+      })
+      .catch(() => {
+        if (!cancelled) setFormData(buildEmptyForm(featureInputs, resolvedBrandUrl));
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingProfile(false);
+      });
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [additionalBrandIds]);
+
   const doCreateCampaign = useCallback(async () => {
     if (!selectedRow || !budgetAmount) return;
 

@@ -24,13 +24,13 @@ describe("Multi-brand extract-fields response types", () => {
     expect(apiContent).toContain("fields: Record<string, ExtractFieldResult>");
   });
 
-  it("extractBrandFields uses header-based endpoint (no brandId in path)", () => {
+  it("extractBrandFields uses body-based endpoint with brandIds array (no brandId in path)", () => {
     const fnStart = apiContent.indexOf("export async function extractBrandFields");
     const fnEnd = apiContent.indexOf("\n}", fnStart) + 2;
     const fn = apiContent.slice(fnStart, fnEnd);
     expect(fn).toContain("`/brands/extract-fields`");
     expect(fn).not.toContain("${brandId}");
-    expect(fn).toContain("headers");
+    expect(fn).toContain("body: { brandIds, fields }");
   });
 
   it("defines PrefillFullFieldResult with byBrand for format=full", () => {
@@ -41,7 +41,7 @@ describe("Multi-brand extract-fields response types", () => {
     expect(block).toContain("byBrand?: Record<string, BrandFieldExtraction>");
   });
 
-  it("callers pass x-brand-id via headers instead of brandId path param", () => {
+  it("callers pass brandIds as array parameter", () => {
     const brandsPage = fs.readFileSync(
       path.join(__dirname, "../src/app/(dashboard)/orgs/[orgId]/brands/page.tsx"),
       "utf-8",
@@ -50,7 +50,7 @@ describe("Multi-brand extract-fields response types", () => {
       path.join(__dirname, "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/brand-info/page.tsx"),
       "utf-8",
     );
-    expect(brandsPage).toContain('"x-brand-id"');
-    expect(brandInfoPage).toContain('"x-brand-id"');
+    expect(brandsPage).toContain("extractBrandFields([newBrandId]");
+    expect(brandInfoPage).toContain("extractBrandFields([brandId]");
   });
 });
