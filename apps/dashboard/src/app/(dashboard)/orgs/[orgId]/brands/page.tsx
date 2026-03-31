@@ -36,7 +36,7 @@ export default function BrandsPage() {
     try {
       const { brandId: newBrandId } = await upsertBrand(url);
       // Trigger profile extraction in background (don't block navigation)
-      extractBrandFields(SALES_PROFILE_FIELDS, { "x-brand-id": newBrandId }).catch(() => {});
+      extractBrandFields([newBrandId], SALES_PROFILE_FIELDS).catch(() => {});
       await refetch();
       router.push(`/orgs/${orgId}/brands/${newBrandId}`);
     } catch (err) {
