@@ -19,12 +19,16 @@ describe("Multi-brand campaign support", () => {
     expect(content).toContain("availableBrands");
   });
 
-  it("builds a CSV brand ID header from primary + additional brands", () => {
-    expect(content).toContain('[brandId, ...additionalBrandIds].join(",")');
+  it("builds brandUrls array from primary + additional brands", () => {
+    expect(content).toContain("formData.brandUrl");
+    expect(content).toContain("additionalBrands.map((b) => b.brandUrl)");
+    expect(content).toContain("brandUrls");
   });
 
-  it("passes x-brand-id header to createCampaign", () => {
-    expect(content).toContain('"x-brand-id": allBrandIds');
+  it("sends brandUrls in the campaign payload body (not headers)", () => {
+    // No header-based approach — brandUrls goes in the body
+    expect(content).not.toContain('"x-brand-id"');
+    expect(content).toContain("brandUrls,");
   });
 
   it("renders additional brands with an 'Additional' tag", () => {
@@ -41,9 +45,13 @@ describe("Multi-brand campaign support", () => {
     expect(content).toContain("Add a brand");
   });
 
-  it("createCampaign in api.ts accepts optional headers", () => {
-    expect(apiContent).toContain("headers?: Record<string, string>");
-    // headers should be separated from the body
-    expect(apiContent).toContain("const { headers, ...body } = params");
+  it("createCampaign in api.ts uses brandUrls: string[] and no custom headers param", () => {
+    // Extract just the createCampaign function block
+    const fnStart = apiContent.indexOf("export async function createCampaign");
+    const fnEnd = apiContent.indexOf("\n}", fnStart) + 2;
+    const fnBody = apiContent.slice(fnStart, fnEnd);
+    expect(fnBody).toContain("brandUrls: string[]");
+    expect(fnBody).not.toContain("brandUrl: string");
+    expect(fnBody).not.toContain("headers?: Record<string, string>");
   });
 });
