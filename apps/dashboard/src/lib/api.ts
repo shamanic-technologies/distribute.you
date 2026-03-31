@@ -1059,11 +1059,12 @@ export interface BestWorkflowResponse {
 }
 
 export async function getBestWorkflow(
-  params: { featureDynastySlug: string },
+  params: { featureDynastySlug: string; by: "workflow" | "brand" },
   token?: string
 ): Promise<BestWorkflowResponse> {
   const query = new URLSearchParams();
   query.set("featureDynastySlug", params.featureDynastySlug);
+  query.set("by", params.by);
   const qs = query.toString();
   return apiCall(`/features/best${qs ? `?${qs}` : ""}`, { token });
 }
@@ -1145,11 +1146,13 @@ export interface RankedWorkflowResponse {
 export async function fetchRankedWorkflows(params: {
   featureDynastySlug: string;
   objective: string;
+  groupBy: "workflow" | "brand";
   limit?: number;
 }, token?: string): Promise<RankedWorkflowItem[]> {
   const query = new URLSearchParams();
   query.set("featureDynastySlug", params.featureDynastySlug);
   query.set("objective", params.objective);
+  query.set("groupBy", params.groupBy);
   if (params.limit) query.set("limit", String(params.limit));
   const qs = query.toString();
   const data = await apiCall<RankedWorkflowResponse>(`/features/ranked${qs ? `?${qs}` : ""}`, { token });

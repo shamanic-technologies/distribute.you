@@ -13,15 +13,17 @@ describe("Performance-service uses public ranked/best endpoints", () => {
     expect(content).toContain("/public/features");
   });
 
-  it("should call /v1/public/features/ranked with featureDynastySlug and objective params", () => {
+  it("should call /v1/public/features/ranked with featureDynastySlug, objective, and groupBy params", () => {
     expect(content).toContain("/v1/public/features/ranked");
     expect(content).toContain("featureDynastySlug");
     expect(content).toContain("objective");
+    expect(content).toContain("groupBy=workflow");
   });
 
-  it("should call /v1/public/features/best with featureDynastySlug for hero stats", () => {
+  it("should call /v1/public/features/best with featureDynastySlug and by params", () => {
     expect(content).toContain("/v1/public/features/best");
     expect(content).toContain("featureDynastySlug");
+    expect(content).toContain("by=workflow");
   });
 
   it("should merge ranked results by workflow slug", () => {
@@ -70,8 +72,9 @@ describe("Landing page uses public ranked endpoint", () => {
     expect(landingContent).toContain("/v1/public/features/ranked");
   });
 
-  it("should contain objective=emailsReplied in the ranked URL", () => {
+  it("should contain objective=emailsReplied and groupBy=workflow in the ranked URL", () => {
     expect(landingContent).toContain("objective=emailsReplied");
+    expect(landingContent).toContain("groupBy=workflow");
   });
 
   it("should not use the old /performance/leaderboard endpoint", () => {
@@ -86,9 +89,10 @@ describe("Sales landing uses public best endpoint", () => {
   );
   const salesContent = fs.readFileSync(salesPath, "utf-8");
 
-  it("should call /v1/public/features/best with featureDynastySlug=sales-cold-email-outreach", () => {
+  it("should call /v1/public/features/best with featureDynastySlug=sales-cold-email-outreach and by=workflow", () => {
     expect(salesContent).toContain("featureDynastySlug=sales-cold-email-outreach");
     expect(salesContent).toContain("/v1/public/features/best");
+    expect(salesContent).toContain("by=workflow");
   });
 
   it("should not use the old /api/leaderboard endpoint", () => {

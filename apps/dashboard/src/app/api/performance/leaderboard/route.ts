@@ -17,7 +17,7 @@ export async function GET() {
   }
 
   // Proxy to the public ranked endpoint (featureDynastySlug + objective now required)
-  const res = await fetch(`${API_URL}/v1/public/features/ranked?featureDynastySlug=sales-cold-email-outreach&objective=emailsReplied&limit=100`, {
+  const res = await fetch(`${API_URL}/v1/public/features/ranked?featureDynastySlug=sales-cold-email-outreach&objective=emailsReplied&groupBy=workflow&limit=100`, {
     headers: {
       Accept: "application/json",
       "X-API-Key": API_KEY,
