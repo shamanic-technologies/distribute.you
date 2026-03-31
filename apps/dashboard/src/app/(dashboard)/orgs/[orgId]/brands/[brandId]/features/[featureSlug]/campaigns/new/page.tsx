@@ -308,7 +308,7 @@ export default function FeatureCreateCampaignPage() {
 
     setIsLoadingProfile(true);
     try {
-      const { prefilled } = await prefillFeatureInputs(featureDynastySlug, brandId);
+      const { prefilled } = await prefillFeatureInputs(featureDynastySlug, [brandId, ...additionalBrandIds]);
       const fields = prefillToStringMap(prefilled);
       setFormData(prefillToFormData(fields, featureInputs, resolvedBrandUrl));
     } catch {
