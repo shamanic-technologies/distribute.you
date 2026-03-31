@@ -350,7 +350,7 @@ export default function CreateCampaignPage() {
 
     // Extract fields for campaign pre-fill via features-service
     try {
-      const { prefilled } = await prefillFeatureInputs(featureId, brandId);
+      const { prefilled } = await prefillFeatureInputs(featureId, [brandId]);
       setFormData(extractedFieldsToFormData(prefillToStringMap(prefilled), resolvedBrandUrl));
     } catch {
       setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });

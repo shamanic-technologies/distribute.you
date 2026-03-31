@@ -500,12 +500,12 @@ export interface PrefillFullResponse {
 /** POST /features/:slug/prefill?format=text — get pre-filled input values as plain strings */
 export async function prefillFeatureInputs(
   featureDynastySlug: string,
-  brandId: string,
+  brandIds: string[],
   token?: string,
 ): Promise<PrefillResponse> {
   return apiCall<PrefillResponse>(
     `/features/${featureDynastySlug}/prefill?format=text`,
-    { token, method: "POST", body: { brandId } },
+    { token, method: "POST", body: { brandIds } },
   );
 }
 
