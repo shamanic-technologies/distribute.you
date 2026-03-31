@@ -355,6 +355,19 @@ export function PressKitChat({
 
   const isStreaming = status === "streaming" || status === "submitted";
 
+  // Continuously persist messages to localStorage (debounced) so they survive re-renders
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (messages.length === 0) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      saveMessages(kitId, messages);
+    }, 300);
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [messages, kitId]);
+
   // Auto-scroll
   useEffect(() => {
     if (userHasScrolledRef.current) return;
