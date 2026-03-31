@@ -451,15 +451,15 @@ export function fieldResultsToStringMap(results: Record<string, ExtractFieldResu
 }
 
 /** POST /brands/extract-fields — extract specific fields (cached 30 days per field).
- *  Reads brand IDs from x-brand-id header (CSV for multi-brand). */
+ *  brandIds is required and must be a non-empty array. */
 export async function extractBrandFields(
+  brandIds: string[],
   fields: ExtractFieldDef[],
-  headers?: Record<string, string>,
   token?: string,
 ): Promise<ExtractFieldsResponse> {
   return apiCall<ExtractFieldsResponse>(
     `/brands/extract-fields`,
-    { token, method: "POST", body: { fields }, headers },
+    { token, method: "POST", body: { brandIds, fields } },
   );
 }
 

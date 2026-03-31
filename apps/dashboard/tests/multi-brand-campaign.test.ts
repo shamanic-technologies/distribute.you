@@ -54,4 +54,23 @@ describe("Multi-brand campaign support", () => {
     expect(fnBody).not.toContain("brandUrl: string");
     expect(fnBody).not.toContain("headers?: Record<string, string>");
   });
+
+  it("extractBrandFields sends brandIds in the body, not via headers", () => {
+    const fnStart = apiContent.indexOf("export async function extractBrandFields");
+    const fnEnd = apiContent.indexOf("\n}", fnStart) + 2;
+    const fnBody = apiContent.slice(fnStart, fnEnd);
+    expect(fnBody).toContain("brandIds: string[]");
+    expect(fnBody).toContain("body: { brandIds, fields }");
+    expect(fnBody).not.toContain("headers");
+  });
+
+  it("callers of extractBrandFields pass brandIds array as first arg", () => {
+    const brandsPageRel = "../src/app/(dashboard)/orgs/[orgId]/brands/page.tsx";
+    const brandsPage = fs.readFileSync(path.join(__dirname, brandsPageRel), "utf-8");
+    expect(brandsPage).toContain("extractBrandFields([newBrandId]");
+
+    const brandInfoRel = "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/brand-info/page.tsx";
+    const brandInfo = fs.readFileSync(path.join(__dirname, brandInfoRel), "utf-8");
+    expect(brandInfo).toContain("extractBrandFields([brandId]");
+  });
 });
