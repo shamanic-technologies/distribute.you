@@ -45,7 +45,7 @@ interface PublicRankedItem {
 
 export async function fetchLeaderboardPreview(): Promise<LeaderboardPreview | null> {
   try {
-    const res = await fetch(`${API_URL}/v1/public/features/ranked?featureDynastySlug=sales-cold-email-outreach&objective=emailsReplied&limit=3`, {
+    const res = await fetch(`${API_URL}/v1/public/features/ranked?featureDynastySlug=sales-cold-email-outreach&objective=emailsReplied&groupBy=workflow&limit=3`, {
       headers: { Accept: "application/json" },
       next: { revalidate: 300 },
     });
