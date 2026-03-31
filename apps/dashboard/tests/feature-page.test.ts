@@ -130,34 +130,19 @@ describe("Create campaign page", () => {
       expect(content).toContain("Workflow");
     });
 
-    it("should have % Opens column", () => {
-      expect(content).toContain("% Opens");
-      expect(content).toContain("openRate");
+    it("should have Runs column", () => {
+      expect(content).toContain("Runs");
+      expect(content).toContain("completedRuns");
     });
 
-    it("should have % Clicks column", () => {
-      expect(content).toContain("% Clicks");
-      expect(content).toContain("clickRate");
+    it("should have Outcomes column", () => {
+      expect(content).toContain("Outcomes");
+      expect(content).toContain("totalOutcomes");
     });
 
-    it("should have % Replies column", () => {
-      expect(content).toContain("% Replies");
-      expect(content).toContain("replyRate");
-    });
-
-    it("should have $/Open column", () => {
-      expect(content).toContain("$/Open");
-      expect(content).toContain("costPerOpenCents");
-    });
-
-    it("should have $/Click column", () => {
-      expect(content).toContain("$/Click");
-      expect(content).toContain("costPerClickCents");
-    });
-
-    it("should have $/Reply column", () => {
-      expect(content).toContain("$/Reply");
-      expect(content).toContain("costPerReplyCents");
+    it("should have $/Outcome column", () => {
+      expect(content).toContain("$/Outcome");
+      expect(content).toContain("costPerOutcome");
     });
   });
 
@@ -183,10 +168,9 @@ describe("Create campaign page", () => {
     });
 
     it("should have all metric options", () => {
-      expect(content).toContain("$/Reply");
-      expect(content).toContain("$/Click");
-      expect(content).toContain("% Replies");
-      expect(content).toContain("% Clicks");
+      expect(content).toContain("$/Outcome");
+      expect(content).toContain("Outcomes");
+      expect(content).toContain("Runs");
     });
   });
 
@@ -243,9 +227,7 @@ describe("Create campaign page", () => {
     });
 
     it("should include all cost metrics in COST_METRICS set", () => {
-      expect(content).toContain("costPerOpenCents");
-      expect(content).toContain("costPerClickCents");
-      expect(content).toContain("costPerReplyCents");
+      expect(content).toContain("costPerOutcome");
     });
 
     it("should use defaultSortDir when changing metric via dropdown", () => {
@@ -256,7 +238,7 @@ describe("Create campaign page", () => {
       expect(content).toContain("setSortDir(defaultSortDir(key))");
     });
 
-    it("should initialize sort direction as asc for default costPerReplyCents metric", () => {
+    it("should initialize sort direction as asc for default costPerOutcome metric", () => {
       expect(content).toContain('useState<"asc" | "desc">("asc")');
     });
   });

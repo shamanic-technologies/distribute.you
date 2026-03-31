@@ -16,8 +16,8 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Proxy to the new public ranked endpoint
-  const res = await fetch(`${API_URL}/v1/public/workflows/ranked?limit=100`, {
+  // Proxy to the public ranked endpoint (featureDynastySlug + objective now required)
+  const res = await fetch(`${API_URL}/v1/public/workflows/ranked?featureDynastySlug=sales-cold-email-outreach&objective=emailsReplied&limit=100`, {
     headers: {
       Accept: "application/json",
       "X-API-Key": API_KEY,

@@ -15,8 +15,9 @@ describe("Feature creation page uses ranked workflows endpoint", () => {
     expect(content).not.toContain("listWorkflows");
   });
 
-  it("should filter by featureSlug instead of category/channel/audienceType", () => {
-    expect(content).toContain("featureSlug: featureId");
+  it("should filter by featureDynastySlug + objective instead of category/channel/audienceType", () => {
+    expect(content).toContain("featureDynastySlug: featureId");
+    expect(content).toContain("objective:");
     expect(content).not.toContain("featureDef!.category");
     expect(content).not.toContain("featureDef!.channel");
     expect(content).not.toContain("featureDef!.audienceType");
@@ -30,8 +31,9 @@ describe("Feature creation page uses ranked workflows endpoint", () => {
 
   it("should derive table rows from RankedWorkflowItem stats", () => {
     expect(content).toContain("rankedToRow");
-    expect(content).toContain("stats.email?.broadcast");
-    expect(content).toContain("stats.totalCostInUsdCents");
+    expect(content).toContain("stats.completedRuns");
+    expect(content).toContain("stats.totalOutcomes");
+    expect(content).toContain("stats.costPerOutcome");
   });
 
   it("should display the dynasty name (dynastyName) not signatureName", () => {
@@ -57,19 +59,12 @@ describe("Feature creation page uses ranked workflows endpoint", () => {
 });
 
 describe("rankedToRow computes display metrics from raw stats", () => {
-  it("should compute rates from broadcast email stats", () => {
-    expect(content).toContain("b.opened / b.sent");
-    expect(content).toContain("b.clicked / b.sent");
-    expect(content).toContain("b.replied / b.sent");
+  it("should map totalOutcomes and completedRuns directly from stats", () => {
+    expect(content).toContain("stats.totalOutcomes");
+    expect(content).toContain("stats.completedRuns");
   });
 
-  it("should compute cost-per metrics from total cost", () => {
-    expect(content).toContain("cost / b.opened");
-    expect(content).toContain("cost / b.clicked");
-    expect(content).toContain("cost / b.replied");
-  });
-
-  it("should handle zero-sent case with zero rates", () => {
-    expect(content).toContain("b.sent > 0 ?");
+  it("should map costPerOutcome from stats", () => {
+    expect(content).toContain("stats.costPerOutcome");
   });
 });
