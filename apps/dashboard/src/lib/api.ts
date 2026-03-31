@@ -356,12 +356,35 @@ export interface ExtractFieldDef {
   description: string;
 }
 
+/** Per-brand extraction metadata (byBrand[domain] entries) */
+export interface BrandFieldExtraction {
+  value: unknown;
+  cached: boolean;
+  extractedAt: string;
+  expiresAt: string;
+  sourceUrls: string[] | null;
+}
+
 export interface ExtractFieldResult {
   value: unknown;
   cached: boolean;
   extractedAt: string;
   expiresAt: string;
   sourceUrls: string[] | null;
+  byBrand?: Record<string, BrandFieldExtraction>;
+}
+
+/** Brand summary returned in extract-fields response */
+export interface ExtractFieldBrandInfo {
+  brandId: string;
+  domain: string;
+  name: string;
+}
+
+/** Response shape for POST /brands/extract-fields (multi-brand) */
+export interface ExtractFieldsResponse {
+  brands: ExtractFieldBrandInfo[];
+  fields: Record<string, ExtractFieldResult>;
 }
 
 /** A previously extracted and cached field (from GET /brands/:id/extracted-fields) */
@@ -427,15 +450,16 @@ export function fieldResultsToStringMap(results: Record<string, ExtractFieldResu
   return map;
 }
 
-/** POST /brands/:brandId/extract-fields — extract specific fields (cached 30 days per field) */
+/** POST /brands/extract-fields — extract specific fields (cached 30 days per field).
+ *  Reads brand IDs from x-brand-id header (CSV for multi-brand). */
 export async function extractBrandFields(
-  brandId: string,
   fields: ExtractFieldDef[],
+  headers?: Record<string, string>,
   token?: string,
-): Promise<{ brandId: string; results: Record<string, ExtractFieldResult> }> {
-  return apiCall<{ brandId: string; results: Record<string, ExtractFieldResult> }>(
-    `/brands/${brandId}/extract-fields`,
-    { token, method: "POST", body: { fields } },
+): Promise<ExtractFieldsResponse> {
+  return apiCall<ExtractFieldsResponse>(
+    `/brands/extract-fields`,
+    { token, method: "POST", body: { fields }, headers },
   );
 }
 
@@ -452,10 +476,25 @@ export async function listExtractedFields(
 
 // ─── Feature prefill ───────────────────────────────────────────────────────
 
+/** format=text response — flat string values */
 export interface PrefillResponse {
   slug: string;
   brandId: string;
   prefilled: Record<string, string | null>;
+}
+
+/** format=full response — rich objects with byBrand metadata per domain */
+export interface PrefillFullFieldResult {
+  value: unknown;
+  cached: boolean;
+  sourceUrls: string[] | null;
+  byBrand?: Record<string, BrandFieldExtraction>;
+}
+
+export interface PrefillFullResponse {
+  slug: string;
+  brandId: string;
+  prefilled: Record<string, PrefillFullFieldResult>;
 }
 
 /** POST /features/:slug/prefill?format=text — get pre-filled input values as plain strings */
