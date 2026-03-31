@@ -317,7 +317,7 @@ export default function FeatureCreateCampaignPage() {
       setIsLoadingProfile(false);
       setShowForm(true);
     }
-  }, [selectedRow, budgetAmount, resolvedBrandUrl, brandId, featureDynastySlug, featureInputs]);
+  }, [selectedRow, budgetAmount, resolvedBrandUrl, brandId, additionalBrandIds, featureDynastySlug, featureInputs]);
 
   const doCreateCampaign = useCallback(async () => {
     if (!selectedRow || !budgetAmount) return;
