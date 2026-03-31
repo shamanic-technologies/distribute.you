@@ -46,8 +46,8 @@ describe("campaign-prefill-chat", () => {
   describe("campaign new page", () => {
     const pageSrc = fs.readFileSync(campaignNewPagePath, "utf-8");
 
-    it("imports CampaignPrefillChat", () => {
-      expect(pageSrc).toContain("CampaignPrefillChat");
+    it("imports CampaignAIPanel (which wraps CampaignPrefillChat)", () => {
+      expect(pageSrc).toContain("CampaignAIPanel");
     });
 
     it("does not have a close button (×) on Campaign Details card", () => {
@@ -71,6 +71,41 @@ describe("campaign-prefill-chat", () => {
 
     it("applies field updates from chat to form state", () => {
       expect(pageSrc).toContain("onFieldsUpdate=");
+    });
+  });
+
+  describe("CampaignAIPanel component", () => {
+    const aiPanelPath = path.join(
+      SRC,
+      "src/components/campaigns/campaign-ai-panel.tsx",
+    );
+
+    it("exists", () => {
+      expect(fs.existsSync(aiPanelPath)).toBe(true);
+    });
+
+    const panelSrc = fs.readFileSync(aiPanelPath, "utf-8");
+
+    it("exports CampaignAIPanel", () => {
+      expect(panelSrc).toContain("export function CampaignAIPanel");
+    });
+
+    it("renders two-column layout with inputs and chat", () => {
+      expect(panelSrc).toContain("Campaign Inputs");
+      expect(panelSrc).toContain("CampaignPrefillChat");
+    });
+
+    it("has a backdrop overlay", () => {
+      expect(panelSrc).toContain("bg-black/20");
+      expect(panelSrc).toContain("fixed inset-0");
+    });
+
+    it("handles Escape key to close", () => {
+      expect(panelSrc).toContain('"Escape"');
+    });
+
+    it("passes onFieldsUpdate to CampaignPrefillChat", () => {
+      expect(panelSrc).toContain("onFieldsUpdate={onFieldsUpdate}");
     });
   });
 
