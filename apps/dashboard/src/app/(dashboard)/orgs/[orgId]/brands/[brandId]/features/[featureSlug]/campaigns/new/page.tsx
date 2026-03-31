@@ -870,10 +870,18 @@ export default function FeatureCreateCampaignPage() {
         formData={formData}
         featureInputs={featureInputs}
         onFieldsUpdate={(fields) => {
+          console.log("[campaign-new] onFieldsUpdate called with:", fields);
           setFormData((prev) => {
             const next = { ...prev };
+            const prevKeys = Object.keys(prev);
+            console.log("[campaign-new] formData keys:", prevKeys);
             for (const [key, value] of Object.entries(fields)) {
-              if (key in next) next[key] = value;
+              if (key in next) {
+                console.log("[campaign-new] Updating field:", key, "→", value.slice(0, 50));
+                next[key] = value;
+              } else {
+                console.error("[campaign-new] Key not found in formData:", key, "— available keys:", prevKeys);
+              }
             }
             return next;
           });

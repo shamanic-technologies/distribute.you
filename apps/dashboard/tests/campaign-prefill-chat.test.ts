@@ -38,6 +38,13 @@ describe("campaign-prefill-chat", () => {
       expect(chatSrc).toContain('"update_campaign_fields"');
     });
 
+    it("applies field updates in real-time during streaming (not just onFinish)", () => {
+      expect(chatSrc).toContain("appliedToolCallsRef");
+      expect(chatSrc).toContain("useEffect");
+      // Verify the real-time effect watches messages and calls onFieldsUpdate
+      expect(chatSrc).toContain("[messages, onFieldsUpdate]");
+    });
+
     it("uses localStorage with campaign-prefill-chat prefix", () => {
       expect(chatSrc).toContain('"campaign-prefill-chat"');
     });

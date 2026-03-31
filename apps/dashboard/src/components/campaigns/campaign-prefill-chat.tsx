@@ -369,6 +369,49 @@ export function CampaignPrefillChat({
 
   const isStreaming = status === "streaming" || status === "submitted";
 
+  // Real-time field updates: apply tool outputs as soon as they appear during streaming
+  const appliedToolCallsRef = useRef(new Set<string>());
+  useEffect(() => {
+    if (!onFieldsUpdate) return;
+    for (const msg of messages) {
+      if (msg.role !== "assistant") continue;
+      for (const part of msg.parts) {
+        const tp = part as { type: string; toolCallId?: string; toolName?: string; state?: string; output?: unknown };
+        if (tp.toolName === "update_campaign_fields") {
+          console.log("[campaign-prefill-chat] Found update_campaign_fields part:", {
+            toolCallId: tp.toolCallId,
+            state: tp.state,
+            outputType: typeof tp.output,
+            output: tp.output,
+            alreadyApplied: tp.toolCallId ? appliedToolCallsRef.current.has(tp.toolCallId) : "no-id",
+          });
+        }
+        if (
+          tp.toolName === "update_campaign_fields" &&
+          tp.state === "output-available" &&
+          tp.output &&
+          tp.toolCallId &&
+          !appliedToolCallsRef.current.has(tp.toolCallId)
+        ) {
+          appliedToolCallsRef.current.add(tp.toolCallId);
+          try {
+            const output = typeof tp.output === "string" ? JSON.parse(tp.output) : tp.output;
+            console.log("[campaign-prefill-chat] Parsed output:", output);
+            if (output && typeof output === "object") {
+              const fields = (output as { fields?: Record<string, string> }).fields ?? output;
+              console.log("[campaign-prefill-chat] Calling onFieldsUpdate with:", fields);
+              if (fields && typeof fields === "object") {
+                onFieldsUpdate(fields as Record<string, string>);
+              }
+            }
+          } catch (err) {
+            console.error("[campaign-prefill-chat] Error parsing tool output:", err);
+          }
+        }
+      }
+    }
+  }, [messages, onFieldsUpdate]);
+
   // Auto-scroll
   useEffect(() => {
     if (userHasScrolledRef.current) return;
