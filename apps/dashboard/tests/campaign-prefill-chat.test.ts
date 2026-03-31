@@ -93,5 +93,15 @@ describe("campaign-prefill-chat", () => {
     it("includes prefill_feature in allowed tools", () => {
       expect(instrSrc).toContain('"prefill_feature"');
     });
+
+    it("includes brand-service extraction tools", () => {
+      expect(instrSrc).toContain('"extract_brand_fields"');
+      expect(instrSrc).toContain('"extract_brand_text"');
+    });
+
+    it("includes API discovery tools", () => {
+      expect(instrSrc).toContain('"list_services"');
+      expect(instrSrc).toContain('"list_service_endpoints"');
+    });
   });
 });
