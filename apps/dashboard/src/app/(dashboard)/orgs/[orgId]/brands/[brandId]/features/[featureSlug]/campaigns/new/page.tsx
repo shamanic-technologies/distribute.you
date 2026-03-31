@@ -189,11 +189,7 @@ export default function FeatureCreateCampaignPage() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [showBrandPicker]);
 
-  // Build CSV brand ID header for multi-brand campaigns
-  const allBrandIds = useMemo(
-    () => [brandId, ...additionalBrandIds].join(","),
-    [brandId, additionalBrandIds],
-  );
+
 
   // Fetch workflows filtered by feature dynasty slug
   const { data: workflowsData, isLoading: workflowsLoading } = useAuthQuery(
@@ -360,14 +356,16 @@ export default function FeatureCreateCampaignPage() {
         if (val) inputValues[input.key] = val;
       }
 
-      const brandHeaders: Record<string, string> = { "x-brand-id": allBrandIds };
+      const brandUrls = [
+        formData.brandUrl,
+        ...additionalBrands.map((b) => b.brandUrl).filter((u): u is string => u != null),
+      ];
       const campaignPayload: Record<string, unknown> = {
         workflowSlug: selectedRow.slug,
-        brandUrl: formData.brandUrl,
+        brandUrls,
         featureSlug: featureDynastySlug,
         ...budgetParams,
         featureInputs: inputValues,
-        headers: brandHeaders,
       };
 
       let result: { campaign: Campaign };
@@ -402,7 +400,7 @@ export default function FeatureCreateCampaignPage() {
         setCreateError(err instanceof Error ? err.message : "Failed to create campaign");
       }
     }
-  }, [selectedRow, budgetAmount, budgetFrequency, formData, router, orgId, brandId, featureDynastySlug, featureInputs, allBrandIds]);
+  }, [selectedRow, budgetAmount, budgetFrequency, formData, router, orgId, brandId, featureDynastySlug, featureInputs, additionalBrands]);
 
   /** Save campaign intent to sessionStorage so we can resume after Stripe checkout */
   const saveCampaignIntent = useCallback(() => {
@@ -414,14 +412,18 @@ export default function FeatureCreateCampaignPage() {
     if (budgetFrequency === "monthly") budgetParams.maxBudgetMonthlyUsd = budgetAmount;
 
     const { brandUrl: intentBrandUrl, ...intentInputFields } = formData;
+    const intentBrandUrls = [
+      intentBrandUrl,
+      ...additionalBrands.map((b) => b.brandUrl).filter((u): u is string => u != null),
+    ];
     sessionStorage.setItem("pendingCampaign", JSON.stringify({
       workflowSlug: selectedRow.slug,
       displayLabel: selectedRow.dynastyName,
-      brandUrl: intentBrandUrl,
+      brandUrls: intentBrandUrls,
       ...budgetParams,
       featureInputs: intentInputFields,
     }));
-  }, [selectedRow, budgetAmount, budgetFrequency, formData]);
+  }, [selectedRow, budgetAmount, budgetFrequency, formData, additionalBrands]);
 
   /** Proactive credit check: if budget may exceed balance and no auto-reload, show the modal.
    *  If the user already has a saved payment method, silently configure auto-reload and proceed. */

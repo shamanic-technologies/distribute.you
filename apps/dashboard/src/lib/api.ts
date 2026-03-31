@@ -1171,21 +1171,18 @@ export async function createCampaign(
   params: {
     name: string;
     workflowSlug: string;
-    brandUrl: string;
+    brandUrls: string[];
     maxBudgetDailyUsd?: string;
     maxBudgetWeeklyUsd?: string;
     maxBudgetMonthlyUsd?: string;
     maxBudgetTotalUsd?: string;
-    headers?: Record<string, string>;
   } & Record<string, unknown>,
   token?: string
 ): Promise<{ campaign: Campaign }> {
-  const { headers, ...body } = params;
   return apiCall<{ campaign: Campaign }>("/campaigns", {
     token,
     method: "POST",
-    body: body as unknown as Record<string, unknown>,
-    headers,
+    body: params as unknown as Record<string, unknown>,
   });
 }
 

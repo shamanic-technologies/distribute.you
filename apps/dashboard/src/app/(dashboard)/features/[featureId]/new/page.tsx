@@ -394,7 +394,7 @@ export default function CreateCampaignPage() {
       const campaignPayload = {
         workflowSlug: selectedRow.slug,
         featureSlug: featureId,
-        brandUrl,
+        brandUrls: [brandUrl],
         ...budgetParams,
         featureInputs: inputFields,
       };
