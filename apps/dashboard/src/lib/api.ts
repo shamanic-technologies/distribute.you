@@ -1065,7 +1065,7 @@ export async function getBestWorkflow(
   const query = new URLSearchParams();
   query.set("featureDynastySlug", params.featureDynastySlug);
   const qs = query.toString();
-  return apiCall(`/workflows/best${qs ? `?${qs}` : ""}`, { token });
+  return apiCall(`/features/best${qs ? `?${qs}` : ""}`, { token });
 }
 
 // Leaderboard (public performance data)
@@ -1152,7 +1152,7 @@ export async function fetchRankedWorkflows(params: {
   query.set("objective", params.objective);
   if (params.limit) query.set("limit", String(params.limit));
   const qs = query.toString();
-  const data = await apiCall<RankedWorkflowResponse>(`/workflows/ranked${qs ? `?${qs}` : ""}`, { token });
+  const data = await apiCall<RankedWorkflowResponse>(`/features/ranked${qs ? `?${qs}` : ""}`, { token });
   return data.results;
 }
 

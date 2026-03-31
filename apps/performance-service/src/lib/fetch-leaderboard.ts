@@ -132,7 +132,7 @@ async function fetchRankedForObjective(
   headers: Record<string, string>,
 ): Promise<RankedItem[]> {
   const res = await fetch(
-    `${API_URL}/v1/public/workflows/ranked?featureDynastySlug=${encodeURIComponent(featureDynastySlug)}&objective=${encodeURIComponent(objective)}&limit=100`,
+    `${API_URL}/v1/public/features/ranked?featureDynastySlug=${encodeURIComponent(featureDynastySlug)}&objective=${encodeURIComponent(objective)}&limit=100`,
     { headers, cache: "no-store" },
   );
   if (!res.ok) return [];
@@ -420,7 +420,7 @@ export async function fetchLeaderboard(): Promise<LeaderboardData | null> {
 
     // Step 3: Fetch best stats for hero
     const bestRes = await fetch(
-      `${API_URL}/v1/public/workflows/best?featureDynastySlug=${encodeURIComponent(heroFeature.dynastySlug)}`,
+      `${API_URL}/v1/public/features/best?featureDynastySlug=${encodeURIComponent(heroFeature.dynastySlug)}`,
       { headers, cache: "no-store" },
     );
     const bestData: BestResponse | null = bestRes.ok ? await bestRes.json() : null;
