@@ -28,7 +28,7 @@ import {
 import { useBillingGuard } from "@/lib/billing-guard";
 import { formatStatValue, sortDirectionForType } from "@/lib/format-stat";
 import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-panel";
-import { CampaignPrefillChat } from "@/components/campaigns/campaign-prefill-chat";
+import { CampaignAIPanel } from "@/components/campaigns/campaign-ai-panel";
 import { BrandLogo } from "@/components/brand-logo";
 import { Skeleton } from "@/components/skeleton";
 import { SparklesIcon, XMarkIcon, EllipsisVerticalIcon, PlusIcon } from "@heroicons/react/20/solid";
@@ -787,11 +787,10 @@ export default function FeatureCreateCampaignPage() {
         </div>
       )}
 
-      {/* Campaign creation form + AI chat panel */}
+      {/* Campaign creation form */}
       {showForm && !isLoadingProfile && (
-        <div className={`mb-4 ${showChat ? "flex gap-4" : ""}`}>
-          {/* Form card */}
-          <div className={`bg-white rounded-xl border border-gray-200 p-5 ${showChat ? "flex-1 min-w-0" : ""}`}>
+        <div className="mb-4">
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <h3 className="text-sm font-medium text-gray-700">Campaign Details</h3>
@@ -799,12 +798,8 @@ export default function FeatureCreateCampaignPage() {
               </div>
               <button
                 type="button"
-                onClick={() => setShowChat((v) => !v)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition ${
-                  showChat
-                    ? "bg-brand-50 text-brand-700 border border-brand-200"
-                    : "text-gray-500 hover:text-brand-600 hover:bg-brand-50 border border-gray-200"
-                }`}
+                onClick={() => setShowChat(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition text-gray-500 hover:text-brand-600 hover:bg-brand-50 border border-gray-200"
               >
                 <SparklesIcon className="w-3.5 h-3.5" />
                 Edit with AI
@@ -845,58 +840,45 @@ export default function FeatureCreateCampaignPage() {
               </button>
             </div>
           </div>
-
-          {/* AI Chat panel */}
-          {showChat && (
-            <div className="w-[420px] flex-shrink-0 bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col" style={{ height: "calc(100vh - 320px)", minHeight: 400 }}>
-              <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
-                <div className="flex items-center gap-2">
-                  <SparklesIcon className="w-4 h-4 text-brand-500" />
-                  <span className="text-sm font-medium text-gray-700">Edit with AI</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowChat(false)}
-                  className="p-1 text-gray-400 hover:text-gray-600 transition"
-                >
-                  <XMarkIcon className="w-4 h-4" />
-                </button>
-              </div>
-              <CampaignPrefillChat
-                chatId={`${brandId}-${featureDynastySlug}`}
-                campaignContext={{
-                  brandId,
-                  brandUrl: resolvedBrandUrl,
-                  brandName: brand?.name ?? brand?.domain ?? undefined,
-                  featureSlug: featureDynastySlug,
-                  featureName: featureDef?.name ?? featureDynastySlug,
-                  currentFields: formData,
-                  fieldDefinitions: featureInputs.map((f) => ({
-                    key: f.key,
-                    label: f.label,
-                    description: f.description,
-                  })),
-                  instruction: [
-                    "You are helping the user refine campaign input fields before launching a campaign.",
-                    "The current field values are in `currentFields`. The field definitions are in `fieldDefinitions`.",
-                    "When the user asks to change fields, use the `update_campaign_fields` tool with the updated key-value pairs.",
-                    "You can also use brand extraction tools to pull information from the brand's website.",
-                  ].join("\n"),
-                }}
-                onFieldsUpdate={(fields) => {
-                  setFormData((prev) => {
-                    const next = { ...prev };
-                    for (const [key, value] of Object.entries(fields)) {
-                      if (key in next) next[key] = value;
-                    }
-                    return next;
-                  });
-                }}
-              />
-            </div>
-          )}
         </div>
       )}
+
+      {/* AI Edit overlay panel (inputs preview + chat) */}
+      <CampaignAIPanel
+        open={showChat}
+        onClose={() => setShowChat(false)}
+        chatId={`${brandId}-${featureDynastySlug}`}
+        campaignContext={{
+          brandId,
+          brandUrl: resolvedBrandUrl,
+          brandName: brand?.name ?? brand?.domain ?? undefined,
+          featureSlug: featureDynastySlug,
+          featureName: featureDef?.name ?? featureDynastySlug,
+          currentFields: formData,
+          fieldDefinitions: featureInputs.map((f) => ({
+            key: f.key,
+            label: f.label,
+            description: f.description,
+          })),
+          instruction: [
+            "You are helping the user refine campaign input fields before launching a campaign.",
+            "The current field values are in `currentFields`. The field definitions are in `fieldDefinitions`.",
+            "When the user asks to change fields, use the `update_campaign_fields` tool with the updated key-value pairs.",
+            "You can also use brand extraction tools to pull information from the brand's website.",
+          ].join("\n"),
+        }}
+        formData={formData}
+        featureInputs={featureInputs}
+        onFieldsUpdate={(fields) => {
+          setFormData((prev) => {
+            const next = { ...prev };
+            for (const [key, value] of Object.entries(fields)) {
+              if (key in next) next[key] = value;
+            }
+            return next;
+          });
+        }}
+      />
 
       {/* Workflow table */}
       {isLoading || featuresLoading || workflowsLoading ? (
