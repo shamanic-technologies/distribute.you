@@ -13,14 +13,14 @@ describe("Performance-service uses public ranked/best endpoints", () => {
     expect(content).toContain("/public/features");
   });
 
-  it("should call /v1/public/workflows/ranked with featureDynastySlug and objective params", () => {
-    expect(content).toContain("/v1/public/workflows/ranked");
+  it("should call /v1/public/features/ranked with featureDynastySlug and objective params", () => {
+    expect(content).toContain("/v1/public/features/ranked");
     expect(content).toContain("featureDynastySlug");
     expect(content).toContain("objective");
   });
 
-  it("should call /v1/public/workflows/best with featureDynastySlug for hero stats", () => {
-    expect(content).toContain("/v1/public/workflows/best");
+  it("should call /v1/public/features/best with featureDynastySlug for hero stats", () => {
+    expect(content).toContain("/v1/public/features/best");
     expect(content).toContain("featureDynastySlug");
   });
 
@@ -67,7 +67,7 @@ describe("Landing page uses public ranked endpoint", () => {
 
   it("should contain featureDynastySlug=sales-cold-email-outreach in the ranked URL", () => {
     expect(landingContent).toContain("featureDynastySlug=sales-cold-email-outreach");
-    expect(landingContent).toContain("/v1/public/workflows/ranked");
+    expect(landingContent).toContain("/v1/public/features/ranked");
   });
 
   it("should contain objective=emailsReplied in the ranked URL", () => {
@@ -86,9 +86,9 @@ describe("Sales landing uses public best endpoint", () => {
   );
   const salesContent = fs.readFileSync(salesPath, "utf-8");
 
-  it("should call /v1/public/workflows/best with featureDynastySlug=sales-cold-email-outreach", () => {
+  it("should call /v1/public/features/best with featureDynastySlug=sales-cold-email-outreach", () => {
     expect(salesContent).toContain("featureDynastySlug=sales-cold-email-outreach");
-    expect(salesContent).toContain("/v1/public/workflows/best");
+    expect(salesContent).toContain("/v1/public/features/best");
   });
 
   it("should not use the old /api/leaderboard endpoint", () => {

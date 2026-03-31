@@ -7,7 +7,7 @@ const API_KEY = process.env.ADMIN_DISTRIBUTE_API_KEY;
 
 /**
  * @deprecated This route proxied the old /v1/stats/leaderboard endpoint.
- * Dashboard now uses /workflows/ranked via the catch-all proxy.
+ * Dashboard now uses /features/ranked via the catch-all proxy.
  * Kept temporarily for backwards compatibility.
  */
 export async function GET() {
@@ -17,7 +17,7 @@ export async function GET() {
   }
 
   // Proxy to the public ranked endpoint (featureDynastySlug + objective now required)
-  const res = await fetch(`${API_URL}/v1/public/workflows/ranked?featureDynastySlug=sales-cold-email-outreach&objective=emailsReplied&limit=100`, {
+  const res = await fetch(`${API_URL}/v1/public/features/ranked?featureDynastySlug=sales-cold-email-outreach&objective=emailsReplied&limit=100`, {
     headers: {
       Accept: "application/json",
       "X-API-Key": API_KEY,
