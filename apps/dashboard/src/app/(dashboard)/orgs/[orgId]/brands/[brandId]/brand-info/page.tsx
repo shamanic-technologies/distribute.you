@@ -150,7 +150,7 @@ export default function BrandInfoPage() {
     setGenerating(true);
     setGenerateError(null);
     try {
-      await extractBrandFields(brandId, SALES_PROFILE_FIELDS);
+      await extractBrandFields(SALES_PROFILE_FIELDS, { "x-brand-id": brandId });
       await queryClient.invalidateQueries({ queryKey: ["brandExtractedFields", brandId] });
       await queryClient.invalidateQueries({ queryKey: ["brandRuns", brandId] });
     } catch (err) {
