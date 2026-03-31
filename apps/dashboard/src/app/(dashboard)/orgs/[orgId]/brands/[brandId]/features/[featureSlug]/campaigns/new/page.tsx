@@ -13,12 +13,14 @@ import {
   createCampaign,
   sendCampaignEmail,
   getBrand,
+  listBrands,
   getWorkflowKeyStatus,
   prefillFeatureInputs,
   prefillToStringMap,
   getBillingAccount,
   configureAutoReload,
   ApiError,
+  type Brand,
   type Campaign,
   type FeatureInput,
   type SystemStats,
@@ -29,7 +31,7 @@ import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-pane
 import { CampaignPrefillChat } from "@/components/campaigns/campaign-prefill-chat";
 import { BrandLogo } from "@/components/brand-logo";
 import { Skeleton } from "@/components/skeleton";
-import { SparklesIcon, XMarkIcon } from "@heroicons/react/20/solid";
+import { SparklesIcon, XMarkIcon, EllipsisVerticalIcon, PlusIcon } from "@heroicons/react/20/solid";
 
 type Mode = "autopilot" | "manual";
 type BudgetFrequency = "one-off" | "daily" | "weekly" | "monthly";
@@ -137,6 +139,9 @@ export default function FeatureCreateCampaignPage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [additionalBrandIds, setAdditionalBrandIds] = useState<string[]>([]);
+  const [showBrandPicker, setShowBrandPicker] = useState(false);
+  const brandPickerRef = useRef<HTMLDivElement>(null);
 
   const sortedOutputs = useMemo(
     () => [...outputs].sort((a, b) => a.displayOrder - b.displayOrder),
@@ -150,6 +155,45 @@ export default function FeatureCreateCampaignPage() {
     pollOptions,
   );
   const brand = brandData?.brand ?? null;
+
+  // Fetch all org brands for the brand picker
+  const { data: allBrandsData } = useAuthQuery(
+    ["brands"],
+    () => listBrands(),
+    pollOptions,
+  );
+  const allBrands = allBrandsData?.brands ?? [];
+  // Brands available to add (exclude primary + already added)
+  const availableBrands = useMemo(
+    () => allBrands.filter((b) => b.id !== brandId && !additionalBrandIds.includes(b.id)),
+    [allBrands, brandId, additionalBrandIds],
+  );
+
+  // Resolve additional brand details from the already-fetched brands list
+  const additionalBrands: Brand[] = useMemo(
+    () => additionalBrandIds
+      .map((id) => allBrands.find((b) => b.id === id))
+      .filter((b): b is Brand => b != null),
+    [additionalBrandIds, allBrands],
+  );
+
+  // Close brand picker on outside click
+  useEffect(() => {
+    if (!showBrandPicker) return;
+    const handleClick = (e: MouseEvent) => {
+      if (brandPickerRef.current && !brandPickerRef.current.contains(e.target as Node)) {
+        setShowBrandPicker(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showBrandPicker]);
+
+  // Build CSV brand ID header for multi-brand campaigns
+  const allBrandIds = useMemo(
+    () => [brandId, ...additionalBrandIds].join(","),
+    [brandId, additionalBrandIds],
+  );
 
   // Fetch workflows filtered by feature dynasty slug
   const { data: workflowsData, isLoading: workflowsLoading } = useAuthQuery(
@@ -316,12 +360,14 @@ export default function FeatureCreateCampaignPage() {
         if (val) inputValues[input.key] = val;
       }
 
+      const brandHeaders: Record<string, string> = { "x-brand-id": allBrandIds };
       const campaignPayload: Record<string, unknown> = {
         workflowSlug: selectedRow.slug,
         brandUrl: formData.brandUrl,
         featureSlug: featureDynastySlug,
         ...budgetParams,
         featureInputs: inputValues,
+        headers: brandHeaders,
       };
 
       let result: { campaign: Campaign };
@@ -356,7 +402,7 @@ export default function FeatureCreateCampaignPage() {
         setCreateError(err instanceof Error ? err.message : "Failed to create campaign");
       }
     }
-  }, [selectedRow, budgetAmount, budgetFrequency, formData, router, orgId, brandId, featureDynastySlug, featureInputs]);
+  }, [selectedRow, budgetAmount, budgetFrequency, formData, router, orgId, brandId, featureDynastySlug, featureInputs, allBrandIds]);
 
   /** Save campaign intent to sessionStorage so we can resume after Stripe checkout */
   const saveCampaignIntent = useCallback(() => {
@@ -527,32 +573,96 @@ export default function FeatureCreateCampaignPage() {
         <p className="text-gray-600">Select a workflow and configure your campaign.</p>
       </div>
 
-      {/* Brand info (locked) */}
-      {brand ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gray-50 rounded-lg flex items-center justify-center overflow-hidden">
-              <BrandLogo domain={brand.domain} size={24} fallbackClassName="h-5 w-5 text-gray-400" />
+      {/* Brand info (locked) + additional brands */}
+      <div className="space-y-2 mb-4">
+        {brand ? (
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-gray-50 rounded-lg flex items-center justify-center overflow-hidden">
+                <BrandLogo domain={brand.domain} size={24} fallbackClassName="h-5 w-5 text-gray-400" />
+              </div>
+              <div>
+                <span className="text-sm font-medium text-gray-800">{brand.name || brand.domain}</span>
+                <span className="text-xs text-gray-400 ml-2">{brand.domain}</span>
+              </div>
+              <span className="ml-auto text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded">Locked</span>
+              <div className="relative" ref={brandPickerRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowBrandPicker((v) => !v)}
+                  className="p-1 text-gray-400 hover:text-gray-600 rounded transition"
+                >
+                  <EllipsisVerticalIcon className="w-5 h-5" />
+                </button>
+                {showBrandPicker && (
+                  <div className="absolute right-0 top-full mt-1 w-64 bg-white rounded-lg border border-gray-200 shadow-lg z-50">
+                    <div className="px-3 py-2 border-b border-gray-100">
+                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Add a brand</span>
+                    </div>
+                    {availableBrands.length === 0 ? (
+                      <div className="px-3 py-3 text-xs text-gray-400">No other brands available</div>
+                    ) : (
+                      <div className="max-h-48 overflow-y-auto py-1">
+                        {availableBrands.map((b) => (
+                          <button
+                            key={b.id}
+                            type="button"
+                            onClick={() => {
+                              setAdditionalBrandIds((prev) => [...prev, b.id]);
+                              setShowBrandPicker(false);
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
+                          >
+                            <div className="w-6 h-6 bg-gray-50 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
+                              <BrandLogo domain={b.domain} size={18} fallbackClassName="h-4 w-4 text-gray-400" />
+                            </div>
+                            <span className="truncate">{b.name || b.domain}</span>
+                            <PlusIcon className="w-4 h-4 text-gray-400 ml-auto flex-shrink-0" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-            <div>
-              <span className="text-sm font-medium text-gray-800">{brand.name || brand.domain}</span>
-              <span className="text-xs text-gray-400 ml-2">{brand.domain}</span>
-            </div>
-            <span className="ml-auto text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded">Brand locked</span>
           </div>
-        </div>
-      ) : (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 mb-4">
-          <div className="flex items-center gap-3">
-            <Skeleton className="w-8 h-8 rounded-lg" />
-            <div className="flex items-center gap-2">
-              <Skeleton className="h-4 w-28" />
-              <Skeleton className="h-3 w-20" />
+        ) : (
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+            <div className="flex items-center gap-3">
+              <Skeleton className="w-8 h-8 rounded-lg" />
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+              <Skeleton className="ml-auto h-6 w-20" />
             </div>
-            <Skeleton className="ml-auto h-6 w-20" />
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Additional brands */}
+        {additionalBrands.map((ab) => (
+          <div key={ab.id} className="bg-white rounded-xl border border-blue-200 p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-gray-50 rounded-lg flex items-center justify-center overflow-hidden">
+                <BrandLogo domain={ab.domain} size={24} fallbackClassName="h-5 w-5 text-gray-400" />
+              </div>
+              <div>
+                <span className="text-sm font-medium text-gray-800">{ab.name || ab.domain}</span>
+                <span className="text-xs text-gray-400 ml-2">{ab.domain}</span>
+              </div>
+              <span className="ml-auto text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">Additional</span>
+              <button
+                type="button"
+                onClick={() => setAdditionalBrandIds((prev) => prev.filter((id) => id !== ab.id))}
+                className="p-1 text-gray-400 hover:text-red-500 rounded transition"
+              >
+                <XMarkIcon className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
 
       {/* Missing provider keys warning */}
       {missingProviders.length > 0 && (
