@@ -1059,12 +1059,12 @@ export interface BestWorkflowResponse {
 }
 
 export async function getBestWorkflow(
-  params: { featureDynastySlug: string; by: "workflow" | "brand" },
+  params: { featureDynastySlug: string; groupBy: "workflow" | "brand" },
   token?: string
 ): Promise<BestWorkflowResponse> {
   const query = new URLSearchParams();
   query.set("featureDynastySlug", params.featureDynastySlug);
-  query.set("by", params.by);
+  query.set("groupBy", params.groupBy);
   const qs = query.toString();
   return apiCall(`/features/best${qs ? `?${qs}` : ""}`, { token });
 }

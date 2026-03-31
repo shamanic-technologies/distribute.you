@@ -20,10 +20,10 @@ describe("Performance-service uses public ranked/best endpoints", () => {
     expect(content).toContain("groupBy=workflow");
   });
 
-  it("should call /v1/public/features/best with featureDynastySlug and by params", () => {
+  it("should call /v1/public/features/best with featureDynastySlug and groupBy params", () => {
     expect(content).toContain("/v1/public/features/best");
     expect(content).toContain("featureDynastySlug");
-    expect(content).toContain("by=workflow");
+    expect(content).toContain("groupBy=workflow");
   });
 
   it("should merge ranked results by workflow slug", () => {
@@ -89,10 +89,10 @@ describe("Sales landing uses public best endpoint", () => {
   );
   const salesContent = fs.readFileSync(salesPath, "utf-8");
 
-  it("should call /v1/public/features/best with featureDynastySlug=sales-cold-email-outreach and by=workflow", () => {
+  it("should call /v1/public/features/best with featureDynastySlug=sales-cold-email-outreach and groupBy=workflow", () => {
     expect(salesContent).toContain("featureDynastySlug=sales-cold-email-outreach");
     expect(salesContent).toContain("/v1/public/features/best");
-    expect(salesContent).toContain("by=workflow");
+    expect(salesContent).toContain("groupBy=workflow");
   });
 
   it("should not use the old /api/leaderboard endpoint", () => {
