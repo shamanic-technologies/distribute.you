@@ -39,6 +39,15 @@ describe("Multi-brand campaign support", () => {
     expect(content).toContain("prev.filter((id) => id !== ab.id)");
   });
 
+  it("includes additionalBrandIds in the handleGo dependency array", () => {
+    // The handleGo useCallback must include additionalBrandIds in its deps
+    // so prefill uses the latest selected brands, not a stale closure
+    const handleGoStart = content.indexOf("const handleGo = useCallback");
+    const handleGoEnd = content.indexOf("];", handleGoStart);
+    const handleGoBlock = content.slice(handleGoStart, handleGoEnd);
+    expect(handleGoBlock).toContain("additionalBrandIds");
+  });
+
   it("shows a brand picker dropdown from the three-dot menu", () => {
     expect(content).toContain("EllipsisVerticalIcon");
     expect(content).toContain("showBrandPicker");
