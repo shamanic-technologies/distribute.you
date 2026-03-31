@@ -369,6 +369,19 @@ export function CampaignPrefillChat({
 
   const isStreaming = status === "streaming" || status === "submitted";
 
+  // Continuously persist messages to localStorage (debounced) so they survive re-renders
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (messages.length === 0) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      saveMessages(chatId, messages);
+    }, 300);
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [messages, chatId]);
+
   // Real-time field updates: apply tool outputs as soon as they appear during streaming
   const appliedToolCallsRef = useRef(new Set<string>());
   useEffect(() => {

@@ -367,6 +367,19 @@ export function FeatureCreatorChat({
 
   const isStreaming = status === "streaming" || status === "submitted";
 
+  // Continuously persist messages to localStorage (debounced) so they survive re-renders
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (messages.length === 0) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      saveMessages(chatId, messages);
+    }, 300);
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [messages, chatId]);
+
   // Auto-scroll: defer to next frame so pending scroll events update the ref first
   useEffect(() => {
     if (userHasScrolledRef.current) return;

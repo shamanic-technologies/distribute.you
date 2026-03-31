@@ -758,6 +758,34 @@ export function WorkflowChat({
 
   const isStreaming = status === "streaming" || status === "submitted";
 
+  // Continuously persist messages to localStorage (debounced) so they survive
+  // any re-render, Chat recreation, or workflowId change. Previously messages
+  // were only saved in onFinish, which created a window where messages could
+  // be lost if the Chat was recreated (e.g. during a fork/upgrade) before
+  // onFinish fired.
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (messages.length === 0) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      saveMessages(workflowId, messages);
+    }, 300);
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [messages, workflowId]);
+
+  // Flush pending save immediately on unmount so nothing is lost
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveMessages(workflowId, messages);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // When workflowId changes (e.g. after a fork), hydrate chat from localStorage.
   // useChat's internal store is keyed by `id` — switching IDs starts empty,
   // so we must explicitly push the saved messages into the new store.
@@ -782,13 +810,22 @@ export function WorkflowChat({
   useEffect(() => {
     if (!upgradedTo || hasMigratedRef.current) return;
     hasMigratedRef.current = true;
-    // Save current in-flight messages (React state, possibly not yet in localStorage) to the new workflow
-    saveMessages(upgradedTo, messagesRef.current);
+    // Cancel any pending debounced save — we'll save immediately below
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    // Save current in-flight messages to BOTH old and new workflow IDs.
+    // Old ID: ensures localStorage is up-to-date in case the new Chat reads it.
+    // New ID: so loadMessages(newId) finds the messages when useChat recreates.
+    const currentMessages = messagesRef.current;
+    saveMessages(workflowId, currentMessages);
+    saveMessages(upgradedTo, currentMessages);
     if (sessionIdRef.current) {
       saveSessionId(upgradedTo, sessionIdRef.current);
     }
     onWorkflowUpgraded?.(upgradedTo);
-  }, [upgradedTo, onWorkflowUpgraded]);
+  }, [upgradedTo, workflowId, onWorkflowUpgraded]);
 
   // Auto-scroll: defer to next frame so pending scroll events update the ref first
   useEffect(() => {
