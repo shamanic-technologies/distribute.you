@@ -19,7 +19,7 @@ describe("Brand info page", () => {
     });
 
     it("should use extractBrandFields for regeneration", () => {
-      expect(content).toContain("extractBrandFields(brandId, SALES_PROFILE_FIELDS)");
+      expect(content).toContain("extractBrandFields([brandId], SALES_PROFILE_FIELDS)");
     });
 
     it("should use brandExtractedFields query key", () => {
@@ -56,7 +56,7 @@ describe("Brand info page", () => {
     });
 
     it("should use extractBrandFields for regeneration", () => {
-      expect(content).toContain("extractBrandFields(brandId, SALES_PROFILE_FIELDS)");
+      expect(content).toContain("extractBrandFields([brandId], SALES_PROFILE_FIELDS)");
     });
 
     it("should invalidate queries after regeneration", () => {
