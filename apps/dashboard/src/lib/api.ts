@@ -334,6 +334,41 @@ export async function getBrandCostsByFeature(brandId: string, token?: string): P
   };
 }
 
+export interface BrandCostGroup {
+  brandId: string | null;
+  totalCostInUsdCents: string;
+  actualCostInUsdCents: string;
+  provisionedCostInUsdCents: string;
+  runCount: number;
+}
+
+export async function getOrgCostsByBrand(token?: string): Promise<{ groups: BrandCostGroup[] }> {
+  const query = new URLSearchParams({ groupBy: "brandId" });
+  const result = await apiCall<{ groups: CostStatsGroup[] }>(`/runs/stats/costs?${query}`, { token });
+  return {
+    groups: result.groups.map((g) => ({
+      brandId: g.dimensions.brandId ?? null,
+      totalCostInUsdCents: g.totalCostInUsdCents,
+      actualCostInUsdCents: g.actualCostInUsdCents,
+      provisionedCostInUsdCents: g.provisionedCostInUsdCents,
+      runCount: g.runCount,
+    })),
+  };
+}
+
+export async function getOrgCostBreakdown(token?: string): Promise<{ costs: CostByName[] }> {
+  const query = new URLSearchParams({ groupBy: "costName" });
+  const result = await apiCall<{ groups: CostStatsGroup[] }>(`/runs/stats/costs?${query}`, { token });
+  const costs: CostByName[] = result.groups.map((g) => ({
+    costName: g.dimensions.costName ?? "Unknown",
+    totalCostInUsdCents: g.totalCostInUsdCents,
+    actualCostInUsdCents: g.actualCostInUsdCents,
+    provisionedCostInUsdCents: g.provisionedCostInUsdCents,
+    totalQuantity: String(g.runCount),
+  }));
+  return { costs };
+}
+
 export async function stopCampaign(campaignId: string, token?: string): Promise<{ campaign: Campaign }> {
   return apiCall<{ campaign: Campaign }>(`/campaigns/${campaignId}/stop`, { token, method: "POST" });
 }
