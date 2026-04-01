@@ -7,6 +7,7 @@ import { useFeatures } from "@/lib/features-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { listBrands, listCampaigns, fetchGlobalStats } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
+import { OrgUsageSection } from "@/components/org-usage";
 
 const POLL_INTERVAL = 5_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
@@ -197,6 +198,11 @@ export default function OrgOverviewPage() {
             </Link>
           ))}
         </div>
+      </div>
+
+      {/* Usage */}
+      <div className="mb-6">
+        <OrgUsageSection brands={brands} />
       </div>
 
       {/* Recent Campaigns */}
