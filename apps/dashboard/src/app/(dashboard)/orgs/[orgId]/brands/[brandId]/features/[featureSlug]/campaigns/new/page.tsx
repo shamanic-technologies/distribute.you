@@ -402,7 +402,7 @@ export default function FeatureCreateCampaignPage() {
       }
       sendCampaignEmail("campaign_created", result.campaign).catch(() => {});
       await queryClient.invalidateQueries({ queryKey: ["campaigns", { brandId }] });
-      router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureDynastySlug}`);
+      router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureDynastySlug}/campaigns/${result.campaign.id}`);
       // Don't reset isCreating on success — the page is navigating away.
       // Resetting here would briefly flash the button back to its idle state.
     } catch (err) {
@@ -548,7 +548,7 @@ export default function FeatureCreateCampaignPage() {
           }
           sendCampaignEmail("campaign_created", result.campaign).catch(() => {});
           await queryClient.invalidateQueries({ queryKey: ["campaigns", { brandId }] });
-          router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureDynastySlug}`);
+          router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureDynastySlug}/campaigns/${result.campaign.id}`);
         } catch (err) {
           if (err instanceof ApiError && err.status === 402) {
             // Still insufficient — billing guard will handle
