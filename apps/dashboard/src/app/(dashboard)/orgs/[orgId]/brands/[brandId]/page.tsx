@@ -7,6 +7,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrand, listCampaignsByBrand, getCampaignBatchStats, type Brand, type Campaign, type CampaignStats } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
 import { BrandToolsSection } from "@/components/brand-tools";
+import { BrandUsageSection } from "@/components/brand-usage";
 import { useFeatures } from "@/lib/features-context";
 import {
   GlobeAltIcon,
@@ -290,6 +291,9 @@ export default function BrandOverviewPage() {
 
       {/* Tools Section */}
       <BrandToolsSection brandId={brandId} />
+
+      {/* Usage Section */}
+      <BrandUsageSection brandId={brandId} />
     </div>
   );
 }
