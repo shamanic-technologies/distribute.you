@@ -312,6 +312,28 @@ export async function getBrandCostBreakdown(brandId: string, opts?: { featureDyn
   return { costs };
 }
 
+export interface FeatureCostGroup {
+  featureDynastySlug: string | null;
+  totalCostInUsdCents: string;
+  actualCostInUsdCents: string;
+  provisionedCostInUsdCents: string;
+  runCount: number;
+}
+
+export async function getBrandCostsByFeature(brandId: string, token?: string): Promise<{ groups: FeatureCostGroup[] }> {
+  const query = new URLSearchParams({ brandId, groupBy: "featureDynastySlug" });
+  const result = await apiCall<{ groups: CostStatsGroup[] }>(`/runs/stats/costs?${query}`, { token });
+  return {
+    groups: result.groups.map((g) => ({
+      featureDynastySlug: g.dimensions.featureDynastySlug ?? null,
+      totalCostInUsdCents: g.totalCostInUsdCents,
+      actualCostInUsdCents: g.actualCostInUsdCents,
+      provisionedCostInUsdCents: g.provisionedCostInUsdCents,
+      runCount: g.runCount,
+    })),
+  };
+}
+
 export async function stopCampaign(campaignId: string, token?: string): Promise<{ campaign: Campaign }> {
   return apiCall<{ campaign: Campaign }>(`/campaigns/${campaignId}/stop`, { token, method: "POST" });
 }
