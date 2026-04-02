@@ -171,6 +171,30 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+const SOURCE_CONFIG: Record<string, { label: string; favicon: string }> = {
+  apollo: { label: "Apollo", favicon: "https://www.apollo.io/favicon.ico" },
+  journalist: { label: "Journalist", favicon: "https://www.google.com/s2/favicons?domain=muckrack.com&sz=32" },
+};
+
+function SourceBadge({ namespace }: { namespace: string | null }) {
+  const config = namespace ? SOURCE_CONFIG[namespace] : null;
+  const label = config?.label ?? namespace ?? "Unknown";
+
+  return (
+    <div className="flex items-center gap-1.5">
+      {config?.favicon && (
+        <img
+          src={config.favicon}
+          alt=""
+          className="w-4 h-4 rounded-sm"
+          loading="lazy"
+        />
+      )}
+      <span className="text-xs text-gray-600">{label}</span>
+    </div>
+  );
+}
+
 function LeadsTable({
   leads,
   selectedLead,
@@ -245,15 +269,7 @@ function LeadsTable({
 
                 {/* Source */}
                 <td className="px-4 py-3 hidden lg:table-cell">
-                  <div className="flex items-center gap-1.5">
-                    <img
-                      src="https://www.apollo.io/favicon.ico"
-                      alt=""
-                      className="w-4 h-4 rounded-sm"
-                      loading="lazy"
-                    />
-                    <span className="text-xs text-gray-600">Apollo</span>
-                  </div>
+                  <SourceBadge namespace={lead.namespace} />
                 </td>
 
                 {/* Status */}
