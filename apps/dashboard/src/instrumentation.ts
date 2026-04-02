@@ -488,6 +488,31 @@ const PLATFORM_CHAT_CONFIGS = [
   },
 ];
 
+const TRANSIENT_CODES = new Set(["ECONNRESET", "ETIMEDOUT", "ECONNREFUSED", "UND_ERR_CONNECT_TIMEOUT"]);
+
+async function fetchWithRetry(
+  url: string,
+  init: RequestInit,
+  { retries = 3, baseDelayMs = 500 }: { retries?: number; baseDelayMs?: number } = {},
+): Promise<Response> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fetch(url, init);
+    } catch (err: unknown) {
+      lastErr = err;
+      const code = (err as { cause?: { code?: string } })?.cause?.code;
+      if (!code || !TRANSIENT_CODES.has(code) || attempt === retries) {
+        throw err;
+      }
+      const delay = baseDelayMs * 2 ** attempt;
+      console.warn(`[instrumentation] Transient error (${code}), retrying in ${delay}ms (attempt ${attempt + 1}/${retries})`);
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+  throw lastErr;
+}
+
 export async function register() {
   const apiUrl = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
   const apiKey = process.env.ADMIN_DISTRIBUTE_API_KEY;
@@ -499,7 +524,7 @@ export async function register() {
 
   // Deploy email templates
   try {
-    const res = await fetch(`${apiUrl}/internal/emails/templates`, {
+    const res = await fetchWithRetry(`${apiUrl}/internal/emails/templates`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -535,7 +560,7 @@ export async function register() {
 
     const results = await Promise.allSettled(
       available.map(({ provider, envVar }) =>
-        fetch(`${apiUrl}/platform-keys`, {
+        fetchWithRetry(`${apiUrl}/platform-keys`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -569,12 +594,11 @@ export async function register() {
     }
   } catch (err) {
     console.error("[instrumentation] Platform key registration error:", err);
-    throw err;
   }
 
   // Register platform prompts
   try {
-    const res = await fetch(`${apiUrl}/platform-prompts`, {
+    const res = await fetchWithRetry(`${apiUrl}/platform-prompts`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -595,14 +619,13 @@ export async function register() {
     console.log("[instrumentation] Deployed platform prompt (cold-email)");
   } catch (err) {
     console.error("[instrumentation] Platform prompt deployment error:", err);
-    throw err;
   }
 
   // Register platform chat configs (non-blocking)
   try {
     const chatResults = await Promise.allSettled(
       PLATFORM_CHAT_CONFIGS.map(async (config) => {
-        const res = await fetch(`${apiUrl}/platform-chat/config`, {
+        const res = await fetchWithRetry(`${apiUrl}/platform-chat/config`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
