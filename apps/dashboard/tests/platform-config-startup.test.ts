@@ -51,9 +51,22 @@ describe("Platform config registration at startup", () => {
       expect(content).not.toContain("Missing platform key env vars");
     });
 
-    it("should fail startup only if zero keys can be registered", () => {
+    it("should throw within the key block if zero keys can be registered", () => {
       expect(content).toContain("No platform key env vars are set");
-      expect(content).toContain("throw err");
+    });
+
+    it("should log but not crash process on key registration failure", () => {
+      expect(content).toContain("Platform key registration error:");
+      // The outer catch must NOT re-throw — transient failures shouldn't kill the process
+      const keyBlock = content.slice(
+        content.indexOf("// Register platform keys"),
+        content.indexOf("// Register platform prompts"),
+      );
+      const outerCatchMatch = keyBlock.match(/\} catch \(err\) \{[^}]*\}/g);
+      expect(outerCatchMatch).toBeTruthy();
+      // The last catch in the block should NOT contain "throw err"
+      const lastCatch = outerCatchMatch![outerCatchMatch!.length - 1];
+      expect(lastCatch).not.toContain("throw err");
     });
   });
 
@@ -84,9 +97,16 @@ describe("Platform config registration at startup", () => {
       expect(content).toContain('toISOString().split("T")[0]');
     });
 
-    it("should fail startup on prompt registration failure", () => {
+    it("should log but not crash process on prompt registration failure", () => {
       expect(content).toContain("Platform prompt deployment failed");
-      expect(content).toContain("throw err");
+      const promptBlock = content.slice(
+        content.indexOf("// Register platform prompts"),
+        content.indexOf("// Register platform chat configs"),
+      );
+      const outerCatchMatch = promptBlock.match(/\} catch \(err\) \{[^}]*\}/g);
+      expect(outerCatchMatch).toBeTruthy();
+      const lastCatch = outerCatchMatch![outerCatchMatch!.length - 1];
+      expect(lastCatch).not.toContain("throw err");
     });
   });
 
@@ -132,6 +152,30 @@ describe("Platform config registration at startup", () => {
     it("should be non-blocking (warn on failure, not throw)", () => {
       expect(content).toContain("chat config(s) failed");
       expect(content).toContain("console.warn");
+    });
+  });
+
+  describe("transient network retry", () => {
+    it("should define a fetchWithRetry wrapper", () => {
+      expect(content).toContain("async function fetchWithRetry");
+    });
+
+    it("should retry on known transient error codes", () => {
+      expect(content).toContain("ECONNRESET");
+      expect(content).toContain("ETIMEDOUT");
+      expect(content).toContain("ECONNREFUSED");
+    });
+
+    it("should use fetchWithRetry for all startup HTTP calls", () => {
+      const registerBlock = content.slice(content.indexOf("export async function register()"));
+      const plainFetchCalls = registerBlock.match(/[^h]fetch\(/g);
+      expect(plainFetchCalls).toBeNull();
+      const retryFetchCalls = registerBlock.match(/fetchWithRetry\(/g);
+      expect(retryFetchCalls!.length).toBeGreaterThanOrEqual(4);
+    });
+
+    it("should use exponential backoff", () => {
+      expect(content).toContain("baseDelayMs * 2 ** attempt");
     });
   });
 
