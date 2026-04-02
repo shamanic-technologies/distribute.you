@@ -863,6 +863,7 @@ export interface Lead {
   email: string;
   emailStatus: string | null;
   title: string | null;
+  namespace: string | null;
   organizationName: string | null;
   organizationDomain: string | null;
   organizationIndustry: string | null;
