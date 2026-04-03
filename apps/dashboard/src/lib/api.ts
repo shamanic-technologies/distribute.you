@@ -157,7 +157,7 @@ export async function sendAuthNotification(
 // Campaign email notifications (create/stop)
 export async function sendCampaignEmail(
   eventType: "campaign_created" | "campaign_stopped",
-  campaign: { brandIds: string[] | null; id: string; name: string },
+  campaign: { brandIds: string[]; id: string; name: string },
   token?: string
 ): Promise<void> {
   const brandId = campaign.brandIds?.[0];
@@ -200,8 +200,8 @@ export interface Campaign {
   status: string;
   workflowSlug: string | null;
   featureSlug: string | null;
-  brandIds: string[] | null;
-  brandUrls: string[] | null;
+  brandIds: string[];
+  brandUrls: string[];
   featureInputs: Record<string, string> | null;
   maxBudgetDailyUsd: string | null;
   maxBudgetWeeklyUsd: string | null;
