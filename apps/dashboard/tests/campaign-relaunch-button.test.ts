@@ -55,11 +55,7 @@ describe("Campaign relaunch button", () => {
 
   it("should use campaign.brandUrls (plural) for relaunch payload", () => {
     expect(content).toContain("campaign.brandUrls");
-  });
-
-  it("should show clear error when brandUrls is missing instead of silently falling back", () => {
-    expect(content).toContain("brand URLs missing from campaign data");
-    // Must NOT silently resolve from brandIds — that's api-service's responsibility
+    // brandUrls is guaranteed non-null by api-service — no fallback needed
     expect(content).not.toContain("getBrand(");
   });
 });

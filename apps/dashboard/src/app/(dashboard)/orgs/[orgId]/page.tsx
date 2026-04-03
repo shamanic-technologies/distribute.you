@@ -212,7 +212,7 @@ export default function OrgOverviewPage() {
           <div className="space-y-1">
             {recentCampaigns.map((campaign) => {
               const featureSlug = campaign.featureSlug ?? null;
-              const primaryBrandId = campaign.brandIds?.[0] ?? null;
+              const primaryBrandId = campaign.brandIds[0] ?? null;
               const brand = primaryBrandId ? brands.find((b) => b.id === primaryBrandId) : undefined;
               const feature = featureSlug ? (features.find((f) => f.dynastySlug === featureSlug) ?? features.find((f) => f.slug === featureSlug)) : null;
               const href = featureSlug && primaryBrandId

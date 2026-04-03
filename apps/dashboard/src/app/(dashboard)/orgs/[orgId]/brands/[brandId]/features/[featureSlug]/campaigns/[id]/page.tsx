@@ -82,13 +82,6 @@ export default function CampaignOverviewPage() {
     const now = new Date();
     const name = `${campaign.name.replace(/ — .*$/, "")} — ${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}.${String(now.getMilliseconds()).padStart(3, "0")}`;
 
-    if (!campaign.brandUrls || campaign.brandUrls.length === 0) {
-      console.error(`[dashboard] Cannot relaunch campaign ${campaign.id}: brandUrls is ${JSON.stringify(campaign.brandUrls)} but brandIds is ${JSON.stringify(campaign.brandIds)}. api-service must return brandUrls on GET /campaigns/{id}.`);
-      setRelaunching(false);
-      setRelaunchError("Cannot relaunch: brand URLs missing from campaign data. This is a backend issue — please contact support.");
-      return;
-    }
-
     const payload: Record<string, unknown> = {
       name,
       workflowSlug: campaign.workflowSlug,
