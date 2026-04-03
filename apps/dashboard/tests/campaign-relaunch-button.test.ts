@@ -55,12 +55,11 @@ describe("Campaign relaunch button", () => {
 
   it("should use campaign.brandUrls (plural) for relaunch payload", () => {
     expect(content).toContain("campaign.brandUrls");
-    // Should error if brandUrls is empty/null
-    expect(content).toContain("no brand URLs found");
   });
 
-  it("should fall back to resolving brand URLs from brandIds via brand-service", () => {
-    expect(content).toContain("getBrand");
-    expect(content).toContain("campaign.brandIds");
+  it("should show clear error when brandUrls is missing instead of silently falling back", () => {
+    expect(content).toContain("brand URLs missing from campaign data");
+    // Must NOT silently resolve from brandIds — that's api-service's responsibility
+    expect(content).not.toContain("getBrand(");
   });
 });
