@@ -86,6 +86,21 @@ describe("brand-tools removal", () => {
       expect(apiSrc).toContain("export async function listBrandJournalists");
     });
 
+    it("exports listJournalistsEnriched", () => {
+      expect(apiSrc).toContain("export async function listJournalistsEnriched");
+      expect(apiSrc).toContain("/journalists/list");
+    });
+
+    it("exports isJournalistContacted helper", () => {
+      expect(apiSrc).toContain("export function isJournalistContacted");
+    });
+
+    it("exports EnrichedJournalist type with emailStatus and cost", () => {
+      expect(apiSrc).toContain("export interface EnrichedJournalist");
+      expect(apiSrc).toContain("emailStatus: EmailStatus | null");
+      expect(apiSrc).toContain("cost: JournalistCost | null");
+    });
+
     it("exports listBrandLeads", () => {
       expect(apiSrc).toContain("export async function listBrandLeads");
     });
@@ -132,11 +147,12 @@ describe("brand-tools removal", () => {
       expect(src).not.toContain("listCampaignOutlets");
     });
 
-    it("feature journalists page uses listBrandJournalists (brand-level filter)", () => {
+    it("feature journalists page uses listJournalistsEnriched with brand scope", () => {
       const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/journalists/page.tsx");
       const src = fs.readFileSync(p, "utf-8");
-      expect(src).toContain("listBrandJournalists");
-      expect(src).not.toContain("listCampaignJournalists");
+      expect(src).toContain("listJournalistsEnriched");
+      expect(src).toContain('isJournalistContacted(j.emailStatus, "brand")');
+      expect(src).not.toContain("getJournalistStatsCosts");
     });
 
     it("feature journalists page only shows skeleton on first load (not on refetch)", () => {
@@ -145,6 +161,14 @@ describe("brand-tools removal", () => {
       expect(src).toContain("isFirstLoad");
       expect(src).toContain("if (isFirstLoad)");
       expect(src).not.toMatch(/if \(journalistsLoading\)\s*\{/);
+    });
+
+    it("campaign journalists page uses listJournalistsEnriched with campaign scope", () => {
+      const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/journalists/page.tsx");
+      const src = fs.readFileSync(p, "utf-8");
+      expect(src).toContain("listJournalistsEnriched");
+      expect(src).toContain('isJournalistContacted(j.emailStatus, "campaign")');
+      expect(src).not.toContain("getJournalistStatsCosts");
     });
 
     it("campaign journalists page only shows skeleton on first load (not on refetch)", () => {

@@ -1613,6 +1613,107 @@ export interface BrandJournalist {
   entityType: "individual" | "organization";
 }
 
+// --- Enriched journalist types (from GET /v1/journalists/list) ---
+
+export interface EmailDeliveryLeadStatus {
+  contacted: boolean;
+  delivered: boolean;
+  replied: boolean;
+  replyClassification: "positive" | "negative" | "neutral" | null;
+  lastDeliveredAt: string | null;
+}
+
+export interface EmailDeliveryEmailStatus {
+  contacted: boolean;
+  delivered: boolean;
+  bounced: boolean;
+  unsubscribed: boolean;
+  lastDeliveredAt: string | null;
+}
+
+export interface EmailDeliveryGlobalStatus {
+  email: { bounced: boolean; unsubscribed: boolean };
+}
+
+export interface EmailDeliveryScope {
+  lead: EmailDeliveryLeadStatus;
+  email: EmailDeliveryEmailStatus;
+}
+
+export interface EmailStatus {
+  broadcast: {
+    campaign: EmailDeliveryScope | null;
+    brand: EmailDeliveryScope | null;
+    global: EmailDeliveryGlobalStatus;
+  };
+  transactional: {
+    campaign: EmailDeliveryScope | null;
+    brand: EmailDeliveryScope | null;
+    global: EmailDeliveryGlobalStatus;
+  };
+}
+
+export interface JournalistCost {
+  totalCostInUsdCents: number;
+  actualCostInUsdCents: number;
+  provisionedCostInUsdCents: number;
+  runCount: number;
+}
+
+export interface EnrichedJournalist {
+  id: string;
+  journalistId: string;
+  campaignId: string;
+  outletId: string;
+  orgId: string;
+  brandIds: string[];
+  featureSlug: string | null;
+  workflowSlug: string | null;
+  relevanceScore: string;
+  whyRelevant: string;
+  whyNotRelevant: string;
+  articleUrls: string[] | null;
+  status: "buffered" | "claimed" | "served" | "contacted" | "skipped";
+  email: string | null;
+  runId: string | null;
+  createdAt: string;
+  journalistName: string;
+  firstName: string | null;
+  lastName: string | null;
+  entityType: "individual" | "organization";
+  emailStatus: EmailStatus | null;
+  cost: JournalistCost | null;
+}
+
+/** Check if a journalist has been contacted at a given scope */
+export function isJournalistContacted(
+  emailStatus: EmailStatus | null,
+  scope: "campaign" | "brand",
+): boolean {
+  if (!emailStatus) return false;
+  const bc = emailStatus.broadcast[scope];
+  const tc = emailStatus.transactional[scope];
+  return (
+    (bc?.lead.contacted ?? false) ||
+    (bc?.email.contacted ?? false) ||
+    (tc?.lead.contacted ?? false) ||
+    (tc?.email.contacted ?? false)
+  );
+}
+
+export async function listJournalistsEnriched(
+  brandId: string,
+  campaignId?: string,
+  token?: string,
+): Promise<{ journalists: EnrichedJournalist[] }> {
+  const params = new URLSearchParams({ brandId });
+  if (campaignId) params.set("campaignId", campaignId);
+  return apiCall<{ journalists: EnrichedJournalist[] }>(
+    `/journalists/list?${params}`,
+    { token },
+  );
+}
+
 export async function listBrandJournalists(
   brandId: string,
   campaignId?: string,
