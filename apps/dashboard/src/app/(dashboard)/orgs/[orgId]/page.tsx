@@ -212,10 +212,11 @@ export default function OrgOverviewPage() {
           <div className="space-y-1">
             {recentCampaigns.map((campaign) => {
               const featureSlug = campaign.featureSlug ?? null;
-              const brand = brands.find((b) => b.id === campaign.brandId);
+              const primaryBrandId = campaign.brandIds?.[0] ?? null;
+              const brand = primaryBrandId ? brands.find((b) => b.id === primaryBrandId) : undefined;
               const feature = featureSlug ? (features.find((f) => f.dynastySlug === featureSlug) ?? features.find((f) => f.slug === featureSlug)) : null;
-              const href = featureSlug && campaign.brandId
-                ? `/orgs/${orgId}/brands/${campaign.brandId}/features/${featureSlug}/campaigns/${campaign.id}`
+              const href = featureSlug && primaryBrandId
+                ? `/orgs/${orgId}/brands/${primaryBrandId}/features/${featureSlug}/campaigns/${campaign.id}`
                 : null;
 
               const row = (
