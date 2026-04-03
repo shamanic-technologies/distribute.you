@@ -2,12 +2,10 @@
 
 import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
-import { useMutation } from "@tanstack/react-query";
-import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
+import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   listBrandJournalists,
   listCampaignOutlets,
-  discoverJournalists,
   getJournalistStatsCosts,
   type BrandJournalist,
   type DiscoveredOutlet,
@@ -16,9 +14,16 @@ import {
 const POLL_INTERVAL = 5_000;
 const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
 
-type Tab = "contacted" | "not-contacted";
+type Tab = BrandJournalist["status"] | "all";
 
-const CONTACTED_STATUSES = new Set<BrandJournalist["status"]>(["contacted"]);
+// Ordered from most advanced to least advanced
+const STATUS_ORDER: BrandJournalist["status"][] = [
+  "contacted",
+  "served",
+  "claimed",
+  "buffered",
+  "skipped",
+];
 
 function statusLabel(status: BrandJournalist["status"]): string {
   switch (status) {
@@ -27,6 +32,17 @@ function statusLabel(status: BrandJournalist["status"]): string {
     case "buffered": return "In queue";
     case "claimed": return "Claimed";
     case "skipped": return "Skipped";
+    default: return status;
+  }
+}
+
+function statusDescription(status: BrandJournalist["status"]): string {
+  switch (status) {
+    case "contacted": return "Journalist has been contacted with outreach email";
+    case "served": return "Outreach is currently being processed";
+    case "claimed": return "Journalist has been claimed for outreach";
+    case "buffered": return "Journalist is waiting in the outreach queue";
+    case "skipped": return "Journalist was skipped (not relevant or unreachable)";
     default: return status;
   }
 }
@@ -62,57 +78,12 @@ function timeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString();
 }
 
-/* ─── Discover Journalists Button (per outlet) ───────────────────────── */
-
-function DiscoverJournalistsButton({
-  brandId,
-  campaignId,
-  outletId,
-  onSuccess,
-}: {
-  brandId: string;
-  campaignId: string;
-  outletId: string;
-  onSuccess: () => void;
-}) {
-  const mutation = useMutation({
-    mutationFn: () => discoverJournalists(brandId, campaignId, outletId),
-    onSuccess,
-  });
-
-  return (
-    <div className="flex items-center gap-2">
-      <button
-        onClick={(e) => { e.stopPropagation(); mutation.mutate(); }}
-        disabled={mutation.isPending}
-        className="text-xs px-3 py-1.5 bg-brand-600 text-white font-medium rounded-lg hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1.5"
-      >
-        {mutation.isPending ? (
-          <>
-            <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            Discovering...
-          </>
-        ) : (
-          "Discover Journalists"
-        )}
-      </button>
-      {mutation.isSuccess && mutation.data && (
-        <span className="text-xs text-green-600">+{mutation.data.discovered}</span>
-      )}
-      {mutation.isError && (
-        <span className="text-xs text-red-600">Failed</span>
-      )}
-    </div>
-  );
-}
-
 /* ─── Main Page ──────────────────────────────────────────────────────── */
 
 export default function CampaignJournalistsPage() {
   const params = useParams();
   const campaignId = params.id as string;
   const brandId = params.brandId as string;
-  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<Tab>("contacted");
   const [selected, setSelected] = useState<BrandJournalist | null>(null);
 
@@ -156,29 +127,34 @@ export default function CampaignJournalistsPage() {
     return map;
   }, [costsData]);
 
-  // Split into contacted / not-contacted
-  const contacted = useMemo(
-    () => campaignJournalists.filter((j) => CONTACTED_STATUSES.has(j.status)),
-    [campaignJournalists],
-  );
-  const notContacted = useMemo(
-    () => campaignJournalists.filter((j) => !CONTACTED_STATUSES.has(j.status)),
-    [campaignJournalists],
-  );
+  // Group by status
+  const groupedByStatus = useMemo(() => {
+    const groups = new Map<BrandJournalist["status"], BrandJournalist[]>();
+    for (const status of STATUS_ORDER) {
+      groups.set(status, []);
+    }
+    for (const j of campaignJournalists) {
+      const list = groups.get(j.status);
+      if (list) {
+        list.push(j);
+      }
+    }
+    return groups;
+  }, [campaignJournalists]);
 
-  // Outlets that have no journalists yet (for the discover action)
-  const outletsWithoutJournalists = useMemo(() => {
-    const outletsWithJournalists = new Set(campaignJournalists.map((j) => j.outletId));
-    return (outletsData?.outlets ?? [])
-      .filter((o) => o.status !== "skipped" && !outletsWithJournalists.has(o.id));
-  }, [outletsData, campaignJournalists]);
+  const activeList = activeTab === "all"
+    ? campaignJournalists
+    : groupedByStatus.get(activeTab) ?? [];
 
-  const activeList = activeTab === "contacted" ? contacted : notContacted;
-
-  const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ["brandJournalists", brandId, campaignId] });
-    queryClient.invalidateQueries({ queryKey: ["journalistCosts", brandId, campaignId] });
-  };
+  // Tabs: status tabs (ordered) + all
+  const tabs: { key: Tab; label: string; count: number }[] = [
+    ...STATUS_ORDER.map((status) => ({
+      key: status as Tab,
+      label: statusLabel(status),
+      count: groupedByStatus.get(status)?.length ?? 0,
+    })),
+    { key: "all", label: "All", count: campaignJournalists.length },
+  ];
 
   if (isFirstLoad) {
     return (
@@ -205,71 +181,31 @@ export default function CampaignJournalistsPage() {
           </h1>
         </div>
 
-        {/* Discover journalists for outlets without any */}
-        {outletsWithoutJournalists.length > 0 && (
-          <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Discover journalists for outlets</h3>
-            <div className="space-y-2">
-              {outletsWithoutJournalists.map((outlet) => (
-                <div key={outlet.id} className="flex items-center justify-between gap-3 p-2 rounded-lg border border-gray-100 bg-gray-50/50">
-                  <div className="flex items-center gap-2 min-w-0">
-                    {outlet.outletDomain && (
-                      <img
-                        src={`https://img.logo.dev/${outlet.outletDomain}?token=${LOGO_DEV_TOKEN}`}
-                        alt={outlet.outletName}
-                        className="w-5 h-5 rounded object-contain bg-gray-50 flex-shrink-0"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                      />
-                    )}
-                    <span className="text-sm text-gray-700 truncate">{outlet.outletName}</span>
-                  </div>
-                  <DiscoverJournalistsButton
-                    brandId={brandId}
-                    campaignId={campaignId}
-                    outletId={outlet.id}
-                    onSuccess={invalidate}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Tabs */}
-        <div className="flex gap-1 mb-6 border-b border-gray-200">
-          <button
-            onClick={() => { setActiveTab("contacted"); setSelected(null); }}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
-              activeTab === "contacted"
-                ? "border-brand-600 text-brand-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Contacted
-            <span className="ml-1.5 text-xs font-normal text-gray-400">({contacted.length})</span>
-          </button>
-          <button
-            onClick={() => { setActiveTab("not-contacted"); setSelected(null); }}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
-              activeTab === "not-contacted"
-                ? "border-brand-600 text-brand-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Not Contacted
-            <span className="ml-1.5 text-xs font-normal text-gray-400">({notContacted.length})</span>
-          </button>
+        <div className="flex gap-1 mb-6 border-b border-gray-200 overflow-x-auto">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => { setActiveTab(tab.key); setSelected(null); }}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition whitespace-nowrap ${
+                activeTab === tab.key
+                  ? "border-brand-600 text-brand-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {tab.label}
+              <span className="ml-1.5 text-xs font-normal text-gray-400">({tab.count})</span>
+            </button>
+          ))}
         </div>
 
         {activeList.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
             <h3 className="font-display font-bold text-lg text-gray-800 mb-2">
-              {activeTab === "contacted" ? "No contacted journalists yet" : "No journalists in queue"}
+              No journalists
             </h3>
             <p className="text-gray-600 text-sm">
-              {activeTab === "contacted"
-                ? "Journalists will appear here once outreach has been sent."
-                : "All discovered journalists have been contacted or will appear here when discovered."}
+              No journalists with this status yet.
             </p>
           </div>
         ) : (
@@ -330,10 +266,7 @@ export default function CampaignJournalistsPage() {
           journalist={selected}
           outlet={outletMap.get(selected.outletId)}
           costMap={costMap}
-          brandId={brandId}
-          campaignId={campaignId}
           onClose={() => setSelected(null)}
-          onDiscover={invalidate}
         />
       )}
     </div>
@@ -344,24 +277,18 @@ function DetailPanel({
   journalist: j,
   outlet,
   costMap,
-  brandId,
-  campaignId,
   onClose,
-  onDiscover,
 }: {
   journalist: BrandJournalist;
   outlet: DiscoveredOutlet | undefined;
   costMap: Map<string, number>;
-  brandId: string;
-  campaignId: string;
   onClose: () => void;
-  onDiscover: () => void;
 }) {
   const cost = costMap.get(j.journalistId);
   const score = parseFloat(j.relevanceScore);
 
   return (
-    <div className="absolute inset-0 md:relative md:w-1/2 bg-gray-50 md:border-l border-gray-200 overflow-y-auto z-10">
+    <div className="absolute inset-0 md:relative md:w-1/2 bg-gray-50 md:border-l border-gray-200 overflow-y-auto z-10 flex flex-col">
       <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
         <button onClick={onClose} className="md:hidden flex items-center gap-2 text-gray-600">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -377,7 +304,7 @@ function DetailPanel({
         </button>
       </div>
 
-      <div className="p-4 md:p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4 flex-1">
         {/* Identity */}
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
@@ -441,15 +368,7 @@ function DetailPanel({
         {/* Outlet */}
         {outlet && (
           <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider">Outlet</h4>
-              <DiscoverJournalistsButton
-                brandId={brandId}
-                campaignId={campaignId}
-                outletId={outlet.id}
-                onSuccess={onDiscover}
-              />
-            </div>
+            <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Outlet</h4>
             <div className="flex items-center gap-3">
               {outlet.outletDomain && (
                 <img
@@ -499,6 +418,21 @@ function DetailPanel({
 
         <div className="text-xs text-gray-400">
           Discovered: {new Date(j.createdAt).toLocaleDateString()} ({timeAgo(j.createdAt)})
+        </div>
+      </div>
+
+      {/* Status Legend */}
+      <div className="border-t border-gray-200 bg-white p-4">
+        <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Status Legend</h4>
+        <div className="space-y-2">
+          {STATUS_ORDER.map((status) => (
+            <div key={status} className="flex items-center gap-2">
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full border flex-shrink-0 ${statusStyle(status)}`}>
+                {statusLabel(status)}
+              </span>
+              <span className="text-xs text-gray-500">{statusDescription(status)}</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>
