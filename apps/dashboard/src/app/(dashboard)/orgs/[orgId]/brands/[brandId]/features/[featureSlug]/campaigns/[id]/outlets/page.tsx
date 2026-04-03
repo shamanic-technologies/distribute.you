@@ -277,8 +277,8 @@ export default function CampaignOutletsPage() {
     return result;
   }, [outlets]);
 
-  /** Default to the most advanced status tab that has outlets */
-  const resolvedTab = activeTab ?? (tabs.length > 1 ? tabs[0].key : "all");
+  /** Default to "All" so every status is visible on load */
+  const resolvedTab = activeTab ?? "all";
   const currentTab = tabs.find((t) => t.key === resolvedTab) ?? tabs[tabs.length - 1];
   const displayedOutlets = currentTab ? [...currentTab.outlets].sort((a, b) => b.relevanceScore - a.relevanceScore) : [];
 
