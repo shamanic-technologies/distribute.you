@@ -151,7 +151,7 @@ describe("brand-tools removal", () => {
       const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/journalists/page.tsx");
       const src = fs.readFileSync(p, "utf-8");
       expect(src).toContain("listJournalistsEnriched");
-      expect(src).toContain('isJournalistContacted(j.emailStatus, "brand")');
+      expect(src).toContain("groupedByStatus");
       expect(src).not.toContain("getJournalistStatsCosts");
     });
 
