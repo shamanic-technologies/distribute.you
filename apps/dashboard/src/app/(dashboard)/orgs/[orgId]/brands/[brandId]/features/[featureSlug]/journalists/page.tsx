@@ -4,10 +4,10 @@ import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
-  listBrandJournalists,
+  listJournalistsEnriched,
   listBrandOutlets,
-  getJournalistStatsCosts,
-  type BrandJournalist,
+  isJournalistContacted,
+  type EnrichedJournalist,
   type DiscoveredOutlet,
 } from "@/lib/api";
 
@@ -16,9 +16,7 @@ const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
 
 type Tab = "contacted" | "not-contacted";
 
-const CONTACTED_STATUSES = new Set<BrandJournalist["status"]>(["contacted"]);
-
-function statusLabel(status: BrandJournalist["status"]): string {
+function statusLabel(status: EnrichedJournalist["status"]): string {
   switch (status) {
     case "contacted": return "Contacted";
     case "served": return "Processing";
@@ -29,7 +27,7 @@ function statusLabel(status: BrandJournalist["status"]): string {
   }
 }
 
-function statusStyle(status: BrandJournalist["status"]): string {
+function statusStyle(status: EnrichedJournalist["status"]): string {
   switch (status) {
     case "contacted": return "bg-green-100 text-green-700 border-green-200";
     case "served": return "bg-orange-100 text-orange-700 border-orange-200";
@@ -66,11 +64,11 @@ export default function FeatureJournalistsPage() {
   const params = useParams();
   const brandId = params.brandId as string;
   const [activeTab, setActiveTab] = useState<Tab>("contacted");
-  const [selected, setSelected] = useState<BrandJournalist | null>(null);
+  const [selected, setSelected] = useState<EnrichedJournalist | null>(null);
 
   const { data: journalistsData, isLoading: journalistsLoading } = useAuthQuery(
-    ["brandJournalists", brandId],
-    () => listBrandJournalists(brandId),
+    ["enrichedJournalists", brandId],
+    () => listJournalistsEnriched(brandId),
     { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false },
   );
 
@@ -79,13 +77,8 @@ export default function FeatureJournalistsPage() {
     () => listBrandOutlets(brandId),
   );
 
-  const { data: costsData } = useAuthQuery(
-    ["journalistCosts", brandId],
-    () => getJournalistStatsCosts(brandId, "journalistId"),
-  );
-
-  const campaignJournalists = journalistsData?.campaignJournalists ?? [];
-  const isFirstLoad = journalistsLoading && campaignJournalists.length === 0;
+  const journalists = journalistsData?.journalists ?? [];
+  const isFirstLoad = journalistsLoading && journalists.length === 0;
 
   // Outlet lookup
   const outletMap = useMemo(() => {
@@ -96,26 +89,14 @@ export default function FeatureJournalistsPage() {
     return map;
   }, [outletsData]);
 
-  // Cost lookup by journalistId
-  const costMap = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const g of costsData?.groups ?? []) {
-      const jId = g.dimensions.journalistId;
-      if (jId) {
-        map.set(jId, typeof g.totalCostInUsdCents === "string" ? parseFloat(g.totalCostInUsdCents) : g.totalCostInUsdCents);
-      }
-    }
-    return map;
-  }, [costsData]);
-
-  // Split into contacted / not-contacted
+  // Split into contacted / not-contacted using emailStatus (brand scope)
   const contacted = useMemo(
-    () => campaignJournalists.filter((j) => CONTACTED_STATUSES.has(j.status)),
-    [campaignJournalists],
+    () => journalists.filter((j) => isJournalistContacted(j.emailStatus, "brand")),
+    [journalists],
   );
   const notContacted = useMemo(
-    () => campaignJournalists.filter((j) => !CONTACTED_STATUSES.has(j.status)),
-    [campaignJournalists],
+    () => journalists.filter((j) => !isJournalistContacted(j.emailStatus, "brand")),
+    [journalists],
   );
 
   const activeList = activeTab === "contacted" ? contacted : notContacted;
@@ -141,7 +122,7 @@ export default function FeatureJournalistsPage() {
         <div className="flex items-center justify-between mb-4">
           <h1 className="font-display text-xl font-bold text-gray-800">
             Journalists
-            <span className="ml-2 text-sm font-normal text-gray-500">({campaignJournalists.length} across all campaigns)</span>
+            <span className="ml-2 text-sm font-normal text-gray-500">({journalists.length} across all campaigns)</span>
           </h1>
         </div>
 
@@ -186,7 +167,7 @@ export default function FeatureJournalistsPage() {
           <div className="space-y-2">
             {activeList.map((j) => {
               const outlet = outletMap.get(j.outletId);
-              const cost = costMap.get(j.journalistId);
+              const cost = j.cost?.totalCostInUsdCents ?? 0;
               return (
                 <button
                   key={j.id}
@@ -221,7 +202,7 @@ export default function FeatureJournalistsPage() {
                         <p className="text-xs text-gray-400 truncate">{outlet.outletName}</p>
                       )}
                     </div>
-                    {cost != null && cost > 0 && (
+                    {cost > 0 && (
                       <span className="text-xs font-medium text-gray-500 flex-shrink-0">
                         {formatCost(cost)}
                       </span>
@@ -239,7 +220,6 @@ export default function FeatureJournalistsPage() {
         <DetailPanel
           journalist={selected}
           outlet={outletMap.get(selected.outletId)}
-          costMap={costMap}
           onClose={() => setSelected(null)}
         />
       )}
@@ -250,15 +230,13 @@ export default function FeatureJournalistsPage() {
 function DetailPanel({
   journalist: j,
   outlet,
-  costMap,
   onClose,
 }: {
-  journalist: BrandJournalist;
+  journalist: EnrichedJournalist;
   outlet: DiscoveredOutlet | undefined;
-  costMap: Map<string, number>;
   onClose: () => void;
 }) {
-  const cost = costMap.get(j.journalistId);
+  const cost = j.cost?.totalCostInUsdCents ?? 0;
   const score = parseFloat(j.relevanceScore);
 
   return (
@@ -310,6 +288,12 @@ function DetailPanel({
                 </span>
               </p>
             </div>
+            {j.email && (
+              <div>
+                <span className="text-gray-500">Email</span>
+                <p className="font-medium">{j.email}</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -322,9 +306,9 @@ function DetailPanel({
                 {statusLabel(j.status)}
               </span>
             </div>
-            {cost != null && cost > 0 && (
+            {cost > 0 && (
               <div>
-                <span className="text-xs text-gray-500 block mb-1">Discovery Cost</span>
+                <span className="text-xs text-gray-500 block mb-1">Cost</span>
                 <span className="text-sm font-medium text-gray-800">{formatCost(cost)}</span>
               </div>
             )}
@@ -338,6 +322,9 @@ function DetailPanel({
             )}
           </div>
         </div>
+
+        {/* Email Delivery Status */}
+        {j.emailStatus && <EmailStatusCard emailStatus={j.emailStatus} scope="brand" />}
 
         {/* Outlet */}
         {outlet && (
@@ -393,6 +380,56 @@ function DetailPanel({
         <div className="text-xs text-gray-400">
           Discovered: {new Date(j.createdAt).toLocaleDateString()} ({timeAgo(j.createdAt)})
         </div>
+      </div>
+    </div>
+  );
+}
+
+function EmailStatusCard({ emailStatus, scope }: { emailStatus: NonNullable<EnrichedJournalist["emailStatus"]>; scope: "campaign" | "brand" }) {
+  const bc = emailStatus.broadcast[scope];
+  const tc = emailStatus.transactional[scope];
+  if (!bc && !tc) return null;
+
+  const items: { label: string; value: boolean }[] = [];
+  if (bc) {
+    items.push({ label: "Email sent", value: bc.email.contacted });
+    items.push({ label: "Email delivered", value: bc.email.delivered });
+    items.push({ label: "Lead contacted", value: bc.lead.contacted });
+    items.push({ label: "Lead delivered", value: bc.lead.delivered });
+    items.push({ label: "Replied", value: bc.lead.replied });
+  }
+  if (tc) {
+    items.push({ label: "Transactional sent", value: tc.email.contacted });
+    items.push({ label: "Transactional delivered", value: tc.email.delivered });
+  }
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Email Delivery</h4>
+      <div className="flex flex-wrap gap-2">
+        {items.map((item) => (
+          <span
+            key={item.label}
+            className={`text-[10px] px-2 py-1 rounded-full border ${
+              item.value
+                ? "bg-green-50 text-green-700 border-green-200"
+                : "bg-gray-50 text-gray-400 border-gray-200"
+            }`}
+          >
+            {item.label}
+          </span>
+        ))}
+        {bc?.lead.replyClassification && (
+          <span className={`text-[10px] px-2 py-1 rounded-full border ${
+            bc.lead.replyClassification === "positive"
+              ? "bg-green-50 text-green-700 border-green-200"
+              : bc.lead.replyClassification === "negative"
+                ? "bg-red-50 text-red-600 border-red-200"
+                : "bg-yellow-50 text-yellow-700 border-yellow-200"
+          }`}>
+            Reply: {bc.lead.replyClassification}
+          </span>
+        )}
       </div>
     </div>
   );
