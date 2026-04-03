@@ -85,6 +85,7 @@ export default function FeatureJournalistsPage() {
   );
 
   const campaignJournalists = journalistsData?.campaignJournalists ?? [];
+  const isFirstLoad = journalistsLoading && campaignJournalists.length === 0;
 
   // Outlet lookup
   const outletMap = useMemo(() => {
@@ -119,7 +120,7 @@ export default function FeatureJournalistsPage() {
 
   const activeList = activeTab === "contacted" ? contacted : notContacted;
 
-  if (journalistsLoading) {
+  if (isFirstLoad) {
     return (
       <div className="p-4 md:p-8">
         <div className="animate-pulse space-y-4">
