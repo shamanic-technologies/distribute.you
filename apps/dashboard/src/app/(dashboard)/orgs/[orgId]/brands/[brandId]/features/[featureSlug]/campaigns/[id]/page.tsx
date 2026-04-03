@@ -1,12 +1,13 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useCampaign } from "@/lib/campaign-context";
 import { useStopCampaign, useIsStoppingCampaign } from "@/lib/use-stop-campaign";
 import { useFeatures } from "@/lib/features-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { fetchFeatureStats } from "@/lib/api";
+import { fetchFeatureStats, createCampaign, sendCampaignEmail, ApiError } from "@/lib/api";
 import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
@@ -42,8 +43,10 @@ function formatTotalCost(cents: string | null | undefined): string | null {
 
 export default function CampaignOverviewPage() {
   const params = useParams();
+  const router = useRouter();
   const featureDynastySlug = params.featureSlug as string;
   const orgId = params.orgId as string;
+  const brandId = params.brandId as string;
   const { getFeature, registry } = useFeatures();
   const featureDef = getFeature(featureDynastySlug);
 
@@ -56,6 +59,8 @@ export default function CampaignOverviewPage() {
   const campaignId = params.id as string;
   const stopMutation = useStopCampaign();
   const stopping = useIsStoppingCampaign(campaign?.id ?? "");
+  const [relaunching, setRelaunching] = useState(false);
+  const [relaunchError, setRelaunchError] = useState<string | null>(null);
 
   // Feature stats for this campaign — same source the list page uses
   const { data: featureStatsData } = useAuthQuery(
@@ -67,6 +72,40 @@ export default function CampaignOverviewPage() {
   const handleStop = () => {
     if (!campaign) return;
     stopMutation.mutate(campaign);
+  };
+
+  const handleRelaunch = async () => {
+    if (!campaign || !campaign.workflowSlug) return;
+    setRelaunching(true);
+    setRelaunchError(null);
+
+    const now = new Date();
+    const name = `${campaign.name.replace(/ — .*$/, "")} — ${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}.${String(now.getMilliseconds()).padStart(3, "0")}`;
+
+    const payload: Record<string, unknown> = {
+      name,
+      workflowSlug: campaign.workflowSlug,
+      featureSlug: campaign.featureSlug,
+      brandUrls: campaign.brandUrl ? [campaign.brandUrl] : [],
+    };
+    if (campaign.featureInputs) payload.featureInputs = campaign.featureInputs;
+    if (campaign.maxBudgetDailyUsd) payload.maxBudgetDailyUsd = campaign.maxBudgetDailyUsd;
+    if (campaign.maxBudgetWeeklyUsd) payload.maxBudgetWeeklyUsd = campaign.maxBudgetWeeklyUsd;
+    if (campaign.maxBudgetMonthlyUsd) payload.maxBudgetMonthlyUsd = campaign.maxBudgetMonthlyUsd;
+    if (campaign.maxBudgetTotalUsd) payload.maxBudgetTotalUsd = campaign.maxBudgetTotalUsd;
+
+    try {
+      const result = await createCampaign(payload as Parameters<typeof createCampaign>[0]);
+      sendCampaignEmail("campaign_created", result.campaign).catch(() => {});
+      router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureDynastySlug}/campaigns/${result.campaign.id}`);
+    } catch (err) {
+      setRelaunching(false);
+      if (err instanceof ApiError && err.status === 409) {
+        setRelaunchError("A campaign with this name already exists. Please try again.");
+      } else {
+        setRelaunchError(err instanceof Error ? err.message : "Failed to relaunch campaign");
+      }
+    }
   };
 
   if (loading) {
@@ -139,11 +178,23 @@ export default function CampaignOverviewPage() {
                 {stopping ? "Stopping\u2026" : "Stop Campaign"}
               </button>
             )}
+            {campaign.status === "stopped" && (
+              <button
+                onClick={handleRelaunch}
+                disabled={relaunching}
+                className="px-3 py-1.5 text-sm font-medium rounded-lg border border-brand-200 text-brand-600 bg-brand-50 hover:bg-brand-100 transition disabled:opacity-50"
+              >
+                {relaunching ? "Relaunching\u2026" : "Relaunch"}
+              </button>
+            )}
           </div>
         </div>
         <p className="text-gray-600 text-sm">
           Created {timeAgo(campaign.createdAt)}
         </p>
+        {relaunchError && (
+          <p className="mt-2 text-sm text-red-600">{relaunchError}</p>
+        )}
       </div>
 
       {/* Entity-specific results */}
