@@ -111,6 +111,22 @@ describe("brand-tools removal", () => {
       expect(src).toContain("listBrandJournalists");
       expect(src).not.toContain("listCampaignJournalists");
     });
+
+    it("feature journalists page only shows skeleton on first load (not on refetch)", () => {
+      const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/journalists/page.tsx");
+      const src = fs.readFileSync(p, "utf-8");
+      expect(src).toContain("isFirstLoad");
+      expect(src).toContain("if (isFirstLoad)");
+      expect(src).not.toMatch(/if \(journalistsLoading\)\s*\{/);
+    });
+
+    it("campaign journalists page only shows skeleton on first load (not on refetch)", () => {
+      const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/journalists/page.tsx");
+      const src = fs.readFileSync(p, "utf-8");
+      expect(src).toContain("isFirstLoad");
+      expect(src).toContain("if (isFirstLoad)");
+      expect(src).not.toMatch(/if \(journalistsLoading\)\s*\{/);
+    });
   });
 
   describe("context-sidebar shows entity tabs at feature level", () => {
