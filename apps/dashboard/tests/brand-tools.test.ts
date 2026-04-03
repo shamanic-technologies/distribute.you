@@ -87,6 +87,47 @@ describe("brand-tools removal", () => {
     });
   });
 
+  describe("feature-level entity pages exist", () => {
+    it("feature outlets page exists", () => {
+      const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/outlets/page.tsx");
+      expect(fs.existsSync(p)).toBe(true);
+    });
+
+    it("feature journalists page exists", () => {
+      const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/journalists/page.tsx");
+      expect(fs.existsSync(p)).toBe(true);
+    });
+
+    it("feature outlets page uses listBrandOutlets (brand-level filter)", () => {
+      const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/outlets/page.tsx");
+      const src = fs.readFileSync(p, "utf-8");
+      expect(src).toContain("listBrandOutlets");
+      expect(src).not.toContain("listCampaignOutlets");
+    });
+
+    it("feature journalists page uses listBrandJournalists (brand-level filter)", () => {
+      const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/journalists/page.tsx");
+      const src = fs.readFileSync(p, "utf-8");
+      expect(src).toContain("listBrandJournalists");
+      expect(src).not.toContain("listCampaignJournalists");
+    });
+  });
+
+  describe("context-sidebar shows entity tabs at feature level", () => {
+    const sidebarPath = path.join(SRC, "src/components/context-sidebar.tsx");
+    const sidebarSrc = fs.readFileSync(sidebarPath, "utf-8");
+
+    it("imports useEntityRegistry", () => {
+      expect(sidebarSrc).toContain("useEntityRegistry");
+      expect(sidebarSrc).toContain("entity-registry-context");
+    });
+
+    it("FeatureLevelSidebar uses entity registry to build entity items", () => {
+      expect(sidebarSrc).toContain("registry[e.name]");
+      expect(sidebarSrc).toContain("entityItems");
+    });
+  });
+
   describe("campaign-sidebar uses entity registry", () => {
     const sidebarPath = path.join(SRC, "src/components/campaign-sidebar.tsx");
     const sidebarSrc = fs.readFileSync(sidebarPath, "utf-8");
