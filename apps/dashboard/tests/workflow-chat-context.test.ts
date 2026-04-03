@@ -77,15 +77,16 @@ describe("Platform chat system prompt — scope enforcement", () => {
     expect(content).toContain("SCOPE ENFORCEMENT");
   });
 
-  it("should prohibit list_workflows when workflowId is in context", () => {
-    expect(content).toContain("NEVER call list_workflows");
+  it("should prohibit modifying other workflows", () => {
+    expect(content).toContain("NEVER modify or delete any workflow other than");
   });
 
-  it("should mark list_workflows as off limits when workflowId is present", () => {
-    expect(content).toContain("this tool is OFF LIMITS");
+  it("should encourage reading other workflows for reference", () => {
+    expect(content).toContain("CAN and SHOULD read other workflows for reference");
   });
 
-  it("should describe scope violation as a critical error", () => {
+  it("should describe editing scope violation as a critical error", () => {
     expect(content).toContain("critical error");
+    expect(content).toContain("Reading other workflows is not a violation");
   });
 });
