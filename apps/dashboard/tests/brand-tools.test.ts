@@ -4,72 +4,50 @@ import * as path from "node:path";
 
 const SRC = path.resolve(__dirname, "..");
 
-describe("brand-tools", () => {
-  const componentPath = path.join(SRC, "src/components/brand-tools.tsx");
-  const componentSrc = fs.readFileSync(componentPath, "utf-8");
-
-  it("component file exists", () => {
-    expect(fs.existsSync(componentPath)).toBe(true);
+describe("brand-tools removal", () => {
+  it("brand-tools component has been removed", () => {
+    const componentPath = path.join(SRC, "src/components/brand-tools.tsx");
+    expect(fs.existsSync(componentPath)).toBe(false);
   });
 
-  it("exports BrandToolsSection", () => {
-    expect(componentSrc).toContain("export function BrandToolsSection");
-  });
-
-  it("renders outlets tool link", () => {
-    expect(componentSrc).toContain('"Outlets"');
-    expect(componentSrc).toContain("outlets");
-  });
-
-  it("renders journalists tool link", () => {
-    expect(componentSrc).toContain('"Journalists"');
-    expect(componentSrc).toContain("journalists");
-  });
-
-  it("does NOT render press kits as a tool (moved to campaign)", () => {
-    expect(componentSrc).not.toContain('"Press Kits"');
-  });
-
-  it("all tools are enabled (none have disabled prop set)", () => {
-    const toolCardUsages = componentSrc.match(/<ToolLinkCard[\s\S]*?\/>/g) ?? [];
-    for (const usage of toolCardUsages) {
-      expect(usage).not.toMatch(/\bdisabled={true}/);
-    }
-  });
-
-  it("brand page imports BrandToolsSection", () => {
+  it("brand page does NOT import BrandToolsSection", () => {
     const pagePath = path.join(
       SRC,
       "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx"
     );
     const pageSrc = fs.readFileSync(pagePath, "utf-8");
-    expect(pageSrc).toContain("BrandToolsSection");
-    expect(pageSrc).toContain("<BrandToolsSection");
+    expect(pageSrc).not.toContain("BrandToolsSection");
+    expect(pageSrc).not.toContain("brand-tools");
   });
 
-  describe("tool pages exist", () => {
-    it("outlets tool page exists", () => {
+  describe("brand-level tool pages have been removed", () => {
+    it("outlets tool page does not exist", () => {
       const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/tools/outlets/page.tsx");
-      expect(fs.existsSync(p)).toBe(true);
+      expect(fs.existsSync(p)).toBe(false);
     });
 
-    it("journalists tool page exists", () => {
+    it("journalists tool page does not exist", () => {
       const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/tools/journalists/page.tsx");
-      expect(fs.existsSync(p)).toBe(true);
+      expect(fs.existsSync(p)).toBe(false);
     });
 
-    it("press-kits tool page has been removed", () => {
+    it("press-kits tool page does not exist", () => {
       const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/tools/press-kits/page.tsx");
       expect(fs.existsSync(p)).toBe(false);
     });
-
-    it("press-kit detail tool page has been removed", () => {
-      const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/tools/press-kits/[kitId]/page.tsx");
-      expect(fs.existsSync(p)).toBe(false);
-    });
   });
 
-  describe("campaign press-kit pages exist", () => {
+  describe("campaign-level entity pages exist", () => {
+    it("campaign outlets page exists", () => {
+      const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/outlets/page.tsx");
+      expect(fs.existsSync(p)).toBe(true);
+    });
+
+    it("campaign journalists page exists", () => {
+      const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/journalists/page.tsx");
+      expect(fs.existsSync(p)).toBe(true);
+    });
+
     it("campaign press-kits list page exists", () => {
       const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/page.tsx");
       expect(fs.existsSync(p)).toBe(true);
@@ -79,29 +57,51 @@ describe("brand-tools", () => {
       const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/[kitId]/page.tsx");
       expect(fs.existsSync(p)).toBe(true);
     });
+
+    it("campaign articles page exists", () => {
+      const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/articles/page.tsx");
+      expect(fs.existsSync(p)).toBe(true);
+    });
   });
 
   describe("api.ts functions", () => {
     const apiPath = path.join(SRC, "src/lib/api.ts");
     const apiSrc = fs.readFileSync(apiPath, "utf-8");
 
-    it("exports listBrandOutlets calling /outlets?brandId=", () => {
-      expect(apiSrc).toContain("export async function listBrandOutlets");
-      expect(apiSrc).toContain("/outlets?brandId=${brandId}");
+    it("exports fetchEntityRegistry", () => {
+      expect(apiSrc).toContain("export async function fetchEntityRegistry");
+      expect(apiSrc).toContain("/features/entities/registry");
     });
 
-    it("exports listBrandMediaKits calling /press-kits/media-kits?brand_id=", () => {
-      expect(apiSrc).toContain("export async function listBrandMediaKits");
-      expect(apiSrc).toContain("/press-kits/media-kits?brand_id=${brandId}");
+    it("exports EntityRegistry type", () => {
+      expect(apiSrc).toContain("export type EntityRegistry");
+      expect(apiSrc).toContain("export interface EntityRegistryEntry");
     });
 
-    it("exports listBrandJournalists calling /journalists with brandId param", () => {
+    it("exports listCampaignOutlets", () => {
+      expect(apiSrc).toContain("export async function listCampaignOutlets");
+    });
+
+    it("exports listBrandJournalists", () => {
       expect(apiSrc).toContain("export async function listBrandJournalists");
-      expect(apiSrc).toContain("/journalists?${params}");
+    });
+  });
+
+  describe("campaign-sidebar uses entity registry", () => {
+    const sidebarPath = path.join(SRC, "src/components/campaign-sidebar.tsx");
+    const sidebarSrc = fs.readFileSync(sidebarPath, "utf-8");
+
+    it("does NOT have hardcoded ENTITY_CONFIG", () => {
+      expect(sidebarSrc).not.toContain("ENTITY_CONFIG");
     });
 
-    it("exports BrandJournalist type", () => {
-      expect(apiSrc).toContain("export interface BrandJournalist");
+    it("imports useEntityRegistry", () => {
+      expect(sidebarSrc).toContain("useEntityRegistry");
+      expect(sidebarSrc).toContain("entity-registry-context");
+    });
+
+    it("uses registry from context to build entity items", () => {
+      expect(sidebarSrc).toContain("registry[e.name]");
     });
   });
 });

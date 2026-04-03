@@ -757,6 +757,22 @@ export async function updateFeature(
   });
 }
 
+// ─── Entity Registry ─────────────────────────────────────────────────────────
+
+export interface EntityRegistryEntry {
+  label: string;
+  icon: string;
+  pathSuffix: string;
+  description: string;
+}
+
+export type EntityRegistry = Record<string, EntityRegistryEntry>;
+
+/** GET /features/entities/registry — entity type registry */
+export async function fetchEntityRegistry(token?: string): Promise<{ registry: EntityRegistry }> {
+  return apiCall<{ registry: EntityRegistry }>("/features/entities/registry", { token });
+}
+
 /** GET /features/stats/registry — stats key registry */
 export async function fetchStatsRegistry(token?: string): Promise<{ registry: StatsRegistry }> {
   return apiCall<{ registry: StatsRegistry }>("/features/stats/registry", { token });
