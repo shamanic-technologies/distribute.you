@@ -2,19 +2,26 @@
 
 import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
-import { useMutation } from "@tanstack/react-query";
-import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
+import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   listCampaignOutlets,
-  discoverOutlets,
   getOutletStatsCosts,
   type DiscoveredOutlet,
-  type CostStatsGroup,
 } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
 
 const POLL_INTERVAL = 5_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
+
+/** Status progression from most advanced to least advanced */
+const STATUS_ORDER: Array<DiscoveredOutlet["status"]> = ["served", "ended", "denied", "open"];
+
+const STATUS_LABELS: Record<string, { label: string; description: string; color: string }> = {
+  served: { label: "Served", description: "Outlet has been successfully used for outreach", color: "bg-green-100 text-green-700 border-green-200" },
+  ended: { label: "Ended", description: "Outreach to this outlet has concluded", color: "bg-gray-100 text-gray-500 border-gray-200" },
+  denied: { label: "Denied", description: "Outlet declined or was deemed unsuitable", color: "bg-red-100 text-red-600 border-red-200" },
+  open: { label: "Open", description: "Outlet discovered, pending outreach", color: "bg-blue-100 text-blue-700 border-blue-200" },
+};
 
 function formatCost(cents: string | number | null | undefined): string | null {
   if (cents == null) return null;
@@ -30,12 +37,7 @@ function relevanceColor(score: number): string {
 }
 
 function statusBadge(status: string): string {
-  switch (status) {
-    case "open": return "bg-blue-100 text-blue-700 border-blue-200";
-    case "ended": return "bg-gray-100 text-gray-500 border-gray-200";
-    case "denied": return "bg-red-100 text-red-600 border-red-200";
-    default: return "bg-gray-100 text-gray-500 border-gray-200";
-  }
+  return STATUS_LABELS[status]?.color ?? "bg-gray-100 text-gray-500 border-gray-200";
 }
 
 function timeAgo(dateStr: string): string {
@@ -46,68 +48,6 @@ function timeAgo(dateStr: string): string {
   const days = Math.floor(seconds / 86400);
   if (days < 30) return `${days}d ago`;
   return new Date(dateStr).toLocaleDateString();
-}
-
-/* ─── Discover Form ──────────────────────────────────────────────────── */
-
-function DiscoverForm({
-  brandId,
-  campaignId,
-  onSuccess,
-}: {
-  brandId: string;
-  campaignId: string;
-  onSuccess: () => void;
-}) {
-  const [count, setCount] = useState(15);
-
-  const mutation = useMutation({
-    mutationFn: () => discoverOutlets(brandId, campaignId, count),
-    onSuccess,
-  });
-
-  return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
-      <h3 className="text-sm font-medium text-gray-900 mb-2">Discover more outlets</h3>
-      <div className="flex gap-2 items-end flex-wrap">
-        <div className="w-24">
-          <label className="text-xs text-gray-500 mb-1 block">Count</label>
-          <input
-            type="number"
-            min={1}
-            max={200}
-            value={count}
-            onChange={(e) => setCount(Math.min(200, Math.max(1, parseInt(e.target.value) || 1)))}
-            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-          />
-        </div>
-        <button
-          onClick={() => mutation.mutate()}
-          disabled={mutation.isPending}
-          className="px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2"
-        >
-          {mutation.isPending ? (
-            <>
-              <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              Discovering...
-            </>
-          ) : (
-            "Discover"
-          )}
-        </button>
-      </div>
-      {mutation.isError && (
-        <p className="text-xs text-red-600 mt-2">
-          Failed to start discovery. {mutation.error?.message}
-        </p>
-      )}
-      {mutation.isSuccess && mutation.data && (
-        <p className="text-xs text-green-600 mt-2">
-          Discovered {mutation.data.discovered} new outlet{mutation.data.discovered !== 1 ? "s" : ""}.
-        </p>
-      )}
-    </div>
-  );
 }
 
 /* ─── Outlet Row ─────────────────────────────────────────────────────── */
@@ -132,7 +72,11 @@ function OutletRow({ outlet, costCents, isSelected, onClick }: { outlet: Discove
             {outlet.status}
           </span>
         </div>
-        <p className="text-xs text-gray-400 truncate">{outlet.outletDomain}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-xs text-gray-400 truncate">{outlet.outletDomain}</p>
+          <span className="text-xs text-gray-300">·</span>
+          <span className="text-xs text-gray-400 flex-shrink-0">{timeAgo(outlet.updatedAt)}</span>
+        </div>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
         {cost && (
@@ -148,6 +92,32 @@ function OutletRow({ outlet, costCents, isSelected, onClick }: { outlet: Discove
         </svg>
       </div>
     </button>
+  );
+}
+
+/* ─── Status Legend ──────────────────────────────────────────────────── */
+
+function StatusLegend() {
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Status Legend</h4>
+      <div className="space-y-2">
+        {STATUS_ORDER.map((status) => {
+          const info = STATUS_LABELS[status];
+          return (
+            <div key={status} className="flex items-start gap-2">
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full border flex-shrink-0 mt-0.5 ${info.color}`}>
+                {info.label.toLowerCase()}
+              </span>
+              <span className="text-xs text-gray-600">{info.description}</span>
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-3 pt-3 border-t border-gray-100">
+        <p className="text-[10px] text-gray-400">Progression: open → served → ended (or denied)</p>
+      </div>
+    </div>
   );
 }
 
@@ -211,7 +181,7 @@ function OutletDetailPanel({ outlet, costCents, onClose }: { outlet: DiscoveredO
 
         {cost && (
           <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Discovery Cost</h4>
+            <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Cost</h4>
             <span className="text-sm font-medium text-gray-700">{cost}</span>
           </div>
         )}
@@ -246,56 +216,72 @@ function OutletDetailPanel({ outlet, costCents, onClose }: { outlet: DiscoveredO
           <p>Discovered: {new Date(outlet.createdAt).toLocaleDateString()} ({timeAgo(outlet.createdAt)})</p>
           <p>Updated: {new Date(outlet.updatedAt).toLocaleDateString()} ({timeAgo(outlet.updatedAt)})</p>
         </div>
+
+        <StatusLegend />
       </div>
     </div>
   );
 }
 
-/* ─── Runs Tab ───────────────────────────────────────────────────────── */
+/* ─── Status Section ─────────────────────────────────────────────────── */
 
-function RunsTab({ groups }: { groups: CostStatsGroup[] }) {
-  if (groups.length === 0) {
-    return (
-      <div className="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-8 text-center">
-        <h3 className="text-lg font-medium text-gray-900 mb-2">No runs yet</h3>
-        <p className="text-gray-500 text-sm">Discovery runs and their costs will appear here.</p>
-      </div>
-    );
-  }
-
-  const sorted = [...groups].sort((a, b) => {
-    const costA = parseFloat(a.totalCostInUsdCents);
-    const costB = parseFloat(b.totalCostInUsdCents);
-    return costB - costA;
-  });
+function StatusSection({
+  status,
+  label,
+  outlets,
+  costMap,
+  selected,
+  onSelect,
+  defaultOpen,
+}: {
+  status: string | null;
+  label: string;
+  outlets: DiscoveredOutlet[];
+  costMap: Map<string, string>;
+  selected: DiscoveredOutlet | null;
+  onSelect: (o: DiscoveredOutlet) => void;
+  defaultOpen: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const sorted = [...outlets].sort((a, b) => b.relevanceScore - a.relevanceScore);
+  const statusInfo = status ? STATUS_LABELS[status] : null;
 
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="bg-gray-50 border-b border-gray-200">
-            <th className="text-left px-4 py-2 text-xs font-medium text-gray-500 uppercase">Run ID</th>
-            <th className="text-right px-4 py-2 text-xs font-medium text-gray-500 uppercase">Runs</th>
-            <th className="text-right px-4 py-2 text-xs font-medium text-gray-500 uppercase">Total Cost</th>
-            <th className="text-right px-4 py-2 text-xs font-medium text-gray-500 uppercase">Actual</th>
-            <th className="text-right px-4 py-2 text-xs font-medium text-gray-500 uppercase">Provisioned</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map((g, i) => {
-            const runId = g.dimensions.runId ?? "unknown";
-            return (
-              <tr key={runId + i} className="border-b border-gray-100 last:border-0">
-                <td className="px-4 py-3 font-mono text-xs text-gray-600">{runId.slice(0, 8)}...</td>
-                <td className="px-4 py-3 text-right text-gray-700">{g.runCount}</td>
-                <td className="px-4 py-3 text-right font-medium text-gray-900">{formatCost(g.totalCostInUsdCents) ?? "$0.00"}</td>
-                <td className="px-4 py-3 text-right text-gray-600">{formatCost(g.actualCostInUsdCents) ?? "$0.00"}</td>
-                <td className="px-4 py-3 text-right text-gray-600">{formatCost(g.provisionedCostInUsdCents) ?? "$0.00"}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <div className="mb-4">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center gap-2 py-2 text-left"
+      >
+        <svg
+          className={`w-4 h-4 text-gray-400 transition-transform ${open ? "rotate-90" : ""}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+        <span className="text-sm font-medium text-gray-700">{label}</span>
+        {statusInfo && (
+          <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${statusInfo.color}`}>
+            {statusInfo.label.toLowerCase()}
+          </span>
+        )}
+        <span className="text-xs text-gray-400 ml-auto">{outlets.length}</span>
+      </button>
+      {open && (
+        <div className="space-y-2 mt-1">
+          {sorted.map((outlet) => (
+            <OutletRow
+              key={outlet.id}
+              outlet={outlet}
+              costCents={costMap.get(outlet.id) ?? null}
+              isSelected={selected?.id === outlet.id}
+              onClick={() => onSelect(outlet)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -306,9 +292,7 @@ export default function CampaignOutletsPage() {
   const params = useParams();
   const campaignId = params.id as string;
   const brandId = params.brandId as string;
-  const queryClient = useQueryClient();
   const [selected, setSelected] = useState<DiscoveredOutlet | null>(null);
-  const [activeTab, setActiveTab] = useState<"outlets" | "runs">("outlets");
 
   const { data, isLoading } = useAuthQuery(
     ["campaignOutlets", campaignId],
@@ -321,13 +305,7 @@ export default function CampaignOutletsPage() {
     () => getOutletStatsCosts(brandId, "outletId"),
   );
 
-  const { data: costsByRun } = useAuthQuery(
-    ["outletStatsCosts", brandId, "runId"],
-    () => getOutletStatsCosts(brandId, "runId"),
-  );
-
   const outlets = (data?.outlets ?? []).filter((o) => o.status !== "skipped");
-  const sorted = [...outlets].sort((a, b) => b.relevanceScore - a.relevanceScore);
 
   const costMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -346,10 +324,22 @@ export default function CampaignOutletsPage() {
     return total;
   }, [costsByOutlet]);
 
-  const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ["campaignOutlets", campaignId] });
-    queryClient.invalidateQueries({ queryKey: ["outletStatsCosts", brandId] });
-  };
+  const avgCostPerOutlet = outlets.length > 0 ? totalCost / outlets.length : 0;
+
+  /** Group outlets by status, ordered from most advanced to least */
+  const groupedByStatus = useMemo(() => {
+    const groups: Array<{ status: DiscoveredOutlet["status"]; outlets: DiscoveredOutlet[] }> = [];
+    for (const status of STATUS_ORDER) {
+      const matching = outlets.filter((o) => o.status === status);
+      if (matching.length > 0) {
+        groups.push({ status, outlets: matching });
+      }
+    }
+    return groups;
+  }, [outlets]);
+
+  /** The first status section with at least one outlet is open by default */
+  const defaultOpenStatus = groupedByStatus.length > 0 ? groupedByStatus[0].status : null;
 
   return (
     <div className="flex flex-col md:flex-row h-full relative">
@@ -365,76 +355,54 @@ export default function CampaignOutletsPage() {
             <h1 className="text-2xl font-semibold text-gray-900">Outlets</h1>
             <p className="text-sm text-gray-500">
               {outlets.length} outlet{outlets.length !== 1 ? "s" : ""}
-              {totalCost > 0 && ` · Total cost: $${(totalCost / 100).toFixed(2)}`}
+              {totalCost > 0 && ` · Total: $${(totalCost / 100).toFixed(2)}`}
+              {avgCostPerOutlet > 0 && ` · Avg: $${(avgCostPerOutlet / 100).toFixed(2)}/outlet`}
             </p>
           </div>
         </div>
 
-        {/* Discover form */}
-        <DiscoverForm brandId={brandId} campaignId={campaignId} onSuccess={invalidate} />
-
-        {/* Tabs */}
-        <div className="flex gap-1 mb-6 border-b border-gray-200">
-          <button
-            onClick={() => setActiveTab("outlets")}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
-              activeTab === "outlets"
-                ? "border-brand-600 text-brand-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Outlets
-          </button>
-          <button
-            onClick={() => setActiveTab("runs")}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
-              activeTab === "runs"
-                ? "border-brand-600 text-brand-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Runs
-          </button>
-        </div>
-
-        {/* Outlets Tab */}
-        {activeTab === "outlets" && (
+        {/* Outlets grouped by status */}
+        {isLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3, 4, 5].map(i => (
+              <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />
+            ))}
+          </div>
+        ) : outlets.length === 0 ? (
+          <div className="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-8 text-center">
+            <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No outlets yet</h3>
+            <p className="text-gray-500 text-sm">
+              Outlets will be discovered when the campaign runs.
+            </p>
+          </div>
+        ) : (
           <>
-            {isLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3, 4, 5].map(i => (
-                  <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />
-                ))}
-              </div>
-            ) : outlets.length === 0 ? (
-              <div className="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-8 text-center">
-                <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No outlets yet</h3>
-                <p className="text-gray-500 text-sm">
-                  Use the form above to discover outlets, or they will be discovered when the campaign runs.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {sorted.map((outlet) => (
-                  <OutletRow
-                    key={outlet.id}
-                    outlet={outlet}
-                    costCents={costMap.get(outlet.id) ?? null}
-                    isSelected={selected?.id === outlet.id}
-                    onClick={() => setSelected(outlet)}
-                  />
-                ))}
-              </div>
-            )}
+            {groupedByStatus.map(({ status, outlets: statusOutlets }) => (
+              <StatusSection
+                key={status}
+                status={status}
+                label={`${STATUS_LABELS[status].label} (${statusOutlets.length})`}
+                outlets={statusOutlets}
+                costMap={costMap}
+                selected={selected}
+                onSelect={setSelected}
+                defaultOpen={status === defaultOpenStatus}
+              />
+            ))}
+            {/* All outlets section at the end */}
+            <StatusSection
+              status={null}
+              label={`All (${outlets.length})`}
+              outlets={outlets}
+              costMap={costMap}
+              selected={selected}
+              onSelect={setSelected}
+              defaultOpen={groupedByStatus.length === 0}
+            />
           </>
-        )}
-
-        {/* Runs Tab */}
-        {activeTab === "runs" && (
-          <RunsTab groups={costsByRun?.groups ?? []} />
         )}
       </div>
 
