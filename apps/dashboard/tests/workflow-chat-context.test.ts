@@ -55,9 +55,13 @@ describe("Workflow viewer page — chat context", () => {
     expect(content).toContain("workflowContext={workflowContext}");
   });
 
-  it("should restrict scope exclusively to the current workflow", () => {
+  it("should restrict editing scope exclusively to the current workflow", () => {
     expect(content).toContain("EXCLUSIVELY this workflow");
-    expect(content).toContain("MUST NOT read, modify, or interact with any other workflow");
+    expect(content).toContain("MUST NOT modify or delete any other workflow");
+  });
+
+  it("should allow reading other workflows for reference", () => {
+    expect(content).toContain("CAN and SHOULD read other workflows for reference");
   });
 });
 
