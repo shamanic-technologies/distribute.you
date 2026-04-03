@@ -6,7 +6,6 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   listJournalistsEnriched,
   listBrandOutlets,
-  isJournalistContacted,
   type EnrichedJournalist,
   type DiscoveredOutlet,
 } from "@/lib/api";
@@ -14,7 +13,16 @@ import {
 const POLL_INTERVAL = 5_000;
 const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
 
-type Tab = "contacted" | "not-contacted";
+type Tab = EnrichedJournalist["status"] | "all";
+
+// Ordered from most advanced to least advanced
+const STATUS_ORDER: EnrichedJournalist["status"][] = [
+  "contacted",
+  "served",
+  "claimed",
+  "buffered",
+  "skipped",
+];
 
 function statusLabel(status: EnrichedJournalist["status"]): string {
   switch (status) {
@@ -23,6 +31,17 @@ function statusLabel(status: EnrichedJournalist["status"]): string {
     case "buffered": return "In queue";
     case "claimed": return "Claimed";
     case "skipped": return "Skipped";
+    default: return status;
+  }
+}
+
+function statusDescription(status: EnrichedJournalist["status"]): string {
+  switch (status) {
+    case "contacted": return "Journalist has been contacted with outreach email";
+    case "served": return "Outreach is currently being processed";
+    case "claimed": return "Journalist has been claimed for outreach";
+    case "buffered": return "Journalist is waiting in the outreach queue";
+    case "skipped": return "Journalist was skipped (not relevant or unreachable)";
     default: return status;
   }
 }
@@ -89,17 +108,34 @@ export default function FeatureJournalistsPage() {
     return map;
   }, [outletsData]);
 
-  // Split into contacted / not-contacted using emailStatus (brand scope)
-  const contacted = useMemo(
-    () => journalists.filter((j) => isJournalistContacted(j.emailStatus, "brand")),
-    [journalists],
-  );
-  const notContacted = useMemo(
-    () => journalists.filter((j) => !isJournalistContacted(j.emailStatus, "brand")),
-    [journalists],
-  );
+  // Group by status
+  const groupedByStatus = useMemo(() => {
+    const groups = new Map<EnrichedJournalist["status"], EnrichedJournalist[]>();
+    for (const status of STATUS_ORDER) {
+      groups.set(status, []);
+    }
+    for (const j of journalists) {
+      const list = groups.get(j.status);
+      if (list) {
+        list.push(j);
+      }
+    }
+    return groups;
+  }, [journalists]);
 
-  const activeList = activeTab === "contacted" ? contacted : notContacted;
+  const activeList = activeTab === "all"
+    ? journalists
+    : groupedByStatus.get(activeTab) ?? [];
+
+  // Tabs: status tabs (ordered) + all
+  const tabs: { key: Tab; label: string; count: number }[] = [
+    ...STATUS_ORDER.map((status) => ({
+      key: status as Tab,
+      label: statusLabel(status),
+      count: groupedByStatus.get(status)?.length ?? 0,
+    })),
+    { key: "all", label: "All", count: journalists.length },
+  ];
 
   if (isFirstLoad) {
     return (
@@ -127,40 +163,30 @@ export default function FeatureJournalistsPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-6 border-b border-gray-200">
-          <button
-            onClick={() => { setActiveTab("contacted"); setSelected(null); }}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
-              activeTab === "contacted"
-                ? "border-brand-600 text-brand-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Contacted
-            <span className="ml-1.5 text-xs font-normal text-gray-400">({contacted.length})</span>
-          </button>
-          <button
-            onClick={() => { setActiveTab("not-contacted"); setSelected(null); }}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
-              activeTab === "not-contacted"
-                ? "border-brand-600 text-brand-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Not Contacted
-            <span className="ml-1.5 text-xs font-normal text-gray-400">({notContacted.length})</span>
-          </button>
+        <div className="flex gap-1 mb-6 border-b border-gray-200 overflow-x-auto">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => { setActiveTab(tab.key); setSelected(null); }}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition whitespace-nowrap ${
+                activeTab === tab.key
+                  ? "border-brand-600 text-brand-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {tab.label}
+              <span className="ml-1.5 text-xs font-normal text-gray-400">({tab.count})</span>
+            </button>
+          ))}
         </div>
 
         {activeList.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
             <h3 className="font-display font-bold text-lg text-gray-800 mb-2">
-              {activeTab === "contacted" ? "No contacted journalists yet" : "No journalists in queue"}
+              No journalists
             </h3>
             <p className="text-gray-600 text-sm">
-              {activeTab === "contacted"
-                ? "Journalists will appear here once outreach has been sent."
-                : "All discovered journalists have been contacted or will appear here when discovered."}
+              No journalists with this status yet.
             </p>
           </div>
         ) : (
@@ -240,7 +266,7 @@ function DetailPanel({
   const score = parseFloat(j.relevanceScore);
 
   return (
-    <div className="absolute inset-0 md:relative md:w-1/2 bg-gray-50 md:border-l border-gray-200 overflow-y-auto z-10">
+    <div className="absolute inset-0 md:relative md:w-1/2 bg-gray-50 md:border-l border-gray-200 overflow-y-auto z-10 flex flex-col">
       <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
         <button onClick={onClose} className="md:hidden flex items-center gap-2 text-gray-600">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -256,7 +282,7 @@ function DetailPanel({
         </button>
       </div>
 
-      <div className="p-4 md:p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4 flex-1">
         {/* Identity */}
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
@@ -379,6 +405,21 @@ function DetailPanel({
 
         <div className="text-xs text-gray-400">
           Discovered: {new Date(j.createdAt).toLocaleDateString()} ({timeAgo(j.createdAt)})
+        </div>
+      </div>
+
+      {/* Status Legend */}
+      <div className="border-t border-gray-200 bg-white p-4">
+        <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Status Legend</h4>
+        <div className="space-y-2">
+          {STATUS_ORDER.map((status) => (
+            <div key={status} className="flex items-center gap-2">
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full border flex-shrink-0 ${statusStyle(status)}`}>
+                {statusLabel(status)}
+              </span>
+              <span className="text-xs text-gray-500">{statusDescription(status)}</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>
