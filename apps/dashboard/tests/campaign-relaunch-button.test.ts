@@ -58,4 +58,9 @@ describe("Campaign relaunch button", () => {
     // Should error if brandUrls is empty/null
     expect(content).toContain("no brand URLs found");
   });
+
+  it("should fall back to resolving brand URLs from brandIds via brand-service", () => {
+    expect(content).toContain("getBrand");
+    expect(content).toContain("campaign.brandIds");
+  });
 });
