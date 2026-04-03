@@ -223,69 +223,6 @@ function OutletDetailPanel({ outlet, costCents, onClose }: { outlet: DiscoveredO
   );
 }
 
-/* ─── Status Section ─────────────────────────────────────────────────── */
-
-function StatusSection({
-  status,
-  label,
-  outlets,
-  costMap,
-  selected,
-  onSelect,
-  defaultOpen,
-}: {
-  status: string | null;
-  label: string;
-  outlets: DiscoveredOutlet[];
-  costMap: Map<string, string>;
-  selected: DiscoveredOutlet | null;
-  onSelect: (o: DiscoveredOutlet) => void;
-  defaultOpen: boolean;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  const sorted = [...outlets].sort((a, b) => b.relevanceScore - a.relevanceScore);
-  const statusInfo = status ? STATUS_LABELS[status] : null;
-
-  return (
-    <div className="mb-4">
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-2 py-2 text-left"
-      >
-        <svg
-          className={`w-4 h-4 text-gray-400 transition-transform ${open ? "rotate-90" : ""}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
-        <span className="text-sm font-medium text-gray-700">{label}</span>
-        {statusInfo && (
-          <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${statusInfo.color}`}>
-            {statusInfo.label.toLowerCase()}
-          </span>
-        )}
-        <span className="text-xs text-gray-400 ml-auto">{outlets.length}</span>
-      </button>
-      {open && (
-        <div className="space-y-2 mt-1">
-          {sorted.map((outlet) => (
-            <OutletRow
-              key={outlet.id}
-              outlet={outlet}
-              costCents={costMap.get(outlet.id) ?? null}
-              isSelected={selected?.id === outlet.id}
-              onClick={() => onSelect(outlet)}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 /* ─── Main Page ──────────────────────────────────────────────────────── */
 
 export default function CampaignOutletsPage() {
@@ -293,6 +230,7 @@ export default function CampaignOutletsPage() {
   const campaignId = params.id as string;
   const brandId = params.brandId as string;
   const [selected, setSelected] = useState<DiscoveredOutlet | null>(null);
+  const [activeTab, setActiveTab] = useState<string | null>(null);
 
   const { data, isLoading } = useAuthQuery(
     ["campaignOutlets", campaignId],
@@ -326,20 +264,23 @@ export default function CampaignOutletsPage() {
 
   const avgCostPerOutlet = outlets.length > 0 ? totalCost / outlets.length : 0;
 
-  /** Group outlets by status, ordered from most advanced to least */
-  const groupedByStatus = useMemo(() => {
-    const groups: Array<{ status: DiscoveredOutlet["status"]; outlets: DiscoveredOutlet[] }> = [];
+  /** Tabs: status tabs with at least 1 outlet (most advanced first), then "all" */
+  const tabs = useMemo(() => {
+    const result: Array<{ key: string; label: string; outlets: DiscoveredOutlet[] }> = [];
     for (const status of STATUS_ORDER) {
       const matching = outlets.filter((o) => o.status === status);
       if (matching.length > 0) {
-        groups.push({ status, outlets: matching });
+        result.push({ key: status, label: `${STATUS_LABELS[status].label} (${matching.length})`, outlets: matching });
       }
     }
-    return groups;
+    result.push({ key: "all", label: `All (${outlets.length})`, outlets });
+    return result;
   }, [outlets]);
 
-  /** The first status section with at least one outlet is open by default */
-  const defaultOpenStatus = groupedByStatus.length > 0 ? groupedByStatus[0].status : null;
+  /** Default to "All" so every status is visible on load */
+  const resolvedTab = activeTab ?? "all";
+  const currentTab = tabs.find((t) => t.key === resolvedTab) ?? tabs[tabs.length - 1];
+  const displayedOutlets = currentTab ? [...currentTab.outlets].sort((a, b) => b.relevanceScore - a.relevanceScore) : [];
 
   return (
     <div className="flex flex-col md:flex-row h-full relative">
@@ -361,7 +302,26 @@ export default function CampaignOutletsPage() {
           </div>
         </div>
 
-        {/* Outlets grouped by status */}
+        {/* Status tabs */}
+        {!isLoading && outlets.length > 0 && (
+          <div className="flex gap-1 mb-6 border-b border-gray-200">
+            {tabs.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
+                  resolvedTab === tab.key
+                    ? "border-brand-600 text-brand-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Outlet list */}
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2, 3, 4, 5].map(i => (
@@ -379,30 +339,17 @@ export default function CampaignOutletsPage() {
             </p>
           </div>
         ) : (
-          <>
-            {groupedByStatus.map(({ status, outlets: statusOutlets }) => (
-              <StatusSection
-                key={status}
-                status={status}
-                label={`${STATUS_LABELS[status].label} (${statusOutlets.length})`}
-                outlets={statusOutlets}
-                costMap={costMap}
-                selected={selected}
-                onSelect={setSelected}
-                defaultOpen={status === defaultOpenStatus}
+          <div className="space-y-2">
+            {displayedOutlets.map((outlet) => (
+              <OutletRow
+                key={outlet.id}
+                outlet={outlet}
+                costCents={costMap.get(outlet.id) ?? null}
+                isSelected={selected?.id === outlet.id}
+                onClick={() => setSelected(outlet)}
               />
             ))}
-            {/* All outlets section at the end */}
-            <StatusSection
-              status={null}
-              label={`All (${outlets.length})`}
-              outlets={outlets}
-              costMap={costMap}
-              selected={selected}
-              onSelect={setSelected}
-              defaultOpen={groupedByStatus.length === 0}
-            />
-          </>
+          </div>
         )}
       </div>
 
