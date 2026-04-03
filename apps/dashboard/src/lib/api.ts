@@ -906,6 +906,10 @@ export async function listCampaignLeads(campaignId: string, token?: string): Pro
   return apiCall<{ leads: Lead[] }>(`/campaigns/${campaignId}/leads`, { token });
 }
 
+export async function listBrandLeads(brandId: string, token?: string): Promise<{ leads: Lead[] }> {
+  return apiCall<{ leads: Lead[] }>(`/leads?brandId=${brandId}`, { token });
+}
+
 export interface EmailSequenceStep {
   step: number;
   bodyHtml: string;
@@ -942,6 +946,10 @@ export interface Email {
 
 export async function listCampaignEmails(campaignId: string, token?: string): Promise<{ emails: Email[] }> {
   return apiCall<{ emails: Email[] }>(`/campaigns/${campaignId}/emails`, { token });
+}
+
+export async function listBrandEmails(brandId: string, token?: string): Promise<{ emails: Email[] }> {
+  return apiCall<{ emails: Email[] }>(`/emails?brandId=${brandId}`, { token });
 }
 
 
@@ -1750,6 +1758,16 @@ export async function listCampaignArticles(
 ): Promise<{ discoveries: ArticleDiscoveryItem[] }> {
   return apiCall<{ discoveries: ArticleDiscoveryItem[] }>(
     `/discoveries?campaignId=${campaignId}`,
+    { token },
+  );
+}
+
+export async function listBrandArticles(
+  brandId: string,
+  token?: string,
+): Promise<{ discoveries: ArticleDiscoveryItem[] }> {
+  return apiCall<{ discoveries: ArticleDiscoveryItem[] }>(
+    `/discoveries?brandId=${brandId}`,
     { token },
   );
 }

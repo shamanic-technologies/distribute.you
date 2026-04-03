@@ -85,6 +85,18 @@ describe("brand-tools removal", () => {
     it("exports listBrandJournalists", () => {
       expect(apiSrc).toContain("export async function listBrandJournalists");
     });
+
+    it("exports listBrandLeads", () => {
+      expect(apiSrc).toContain("export async function listBrandLeads");
+    });
+
+    it("exports listBrandEmails", () => {
+      expect(apiSrc).toContain("export async function listBrandEmails");
+    });
+
+    it("exports listBrandArticles", () => {
+      expect(apiSrc).toContain("export async function listBrandArticles");
+    });
   });
 
   describe("feature-level entity pages exist", () => {
@@ -95,6 +107,21 @@ describe("brand-tools removal", () => {
 
     it("feature journalists page exists", () => {
       const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/journalists/page.tsx");
+      expect(fs.existsSync(p)).toBe(true);
+    });
+
+    it("feature leads page exists", () => {
+      const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/leads/page.tsx");
+      expect(fs.existsSync(p)).toBe(true);
+    });
+
+    it("feature emails page exists", () => {
+      const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/emails/page.tsx");
+      expect(fs.existsSync(p)).toBe(true);
+    });
+
+    it("feature articles page exists", () => {
+      const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/articles/page.tsx");
       expect(fs.existsSync(p)).toBe(true);
     });
 
@@ -126,6 +153,24 @@ describe("brand-tools removal", () => {
       expect(src).toContain("isFirstLoad");
       expect(src).toContain("if (isFirstLoad)");
       expect(src).not.toMatch(/if \(journalistsLoading\)\s*\{/);
+    });
+
+    it("feature leads page uses listBrandLeads (brand-level filter)", () => {
+      const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/leads/page.tsx");
+      const src = fs.readFileSync(p, "utf-8");
+      expect(src).toContain("listBrandLeads");
+    });
+
+    it("feature emails page uses listBrandEmails (brand-level filter)", () => {
+      const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/emails/page.tsx");
+      const src = fs.readFileSync(p, "utf-8");
+      expect(src).toContain("listBrandEmails");
+    });
+
+    it("feature articles page uses listBrandArticles (brand-level filter)", () => {
+      const p = path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/articles/page.tsx");
+      const src = fs.readFileSync(p, "utf-8");
+      expect(src).toContain("listBrandArticles");
     });
   });
 
