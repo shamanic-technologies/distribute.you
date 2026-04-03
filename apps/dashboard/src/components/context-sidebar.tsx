@@ -1,9 +1,20 @@
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { keepPreviousData } from "@tanstack/react-query";
 import { useFeatures } from "@/lib/features-context";
 import { useEntityRegistry } from "@/lib/entity-registry-context";
+import { useAuthQuery } from "@/lib/use-auth-query";
+import {
+  fetchFeatureStats,
+  listBrandOutlets,
+  listBrandJournalists,
+  listBrandLeads,
+  listBrandEmails,
+  listBrandArticles,
+} from "@/lib/api";
 
 interface SidebarItem {
   id: string;
@@ -11,6 +22,7 @@ interface SidebarItem {
   href: string;
   icon: React.ReactNode;
   comingSoon?: boolean;
+  badge?: number;
 }
 
 function SidebarLink({ item, isActive }: { item: SidebarItem; isActive: boolean }) {
@@ -31,6 +43,11 @@ function SidebarLink({ item, isActive }: { item: SidebarItem; isActive: boolean 
         {item.icon}
       </span>
       <span className="flex-1">{item.label}</span>
+      {item.badge !== undefined && (
+        <span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? "bg-brand-100 text-brand-700" : "bg-gray-100 text-gray-500"}`}>
+          {item.badge}
+        </span>
+      )}
       {item.comingSoon && (
         <span className="text-[10px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full whitespace-nowrap">
           Coming soon
@@ -388,6 +405,62 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   const feature = getFeature(featureSlug);
   const title = feature?.dynastyName ?? feature?.name ?? featureSlug;
   const entities = feature?.entities ?? [];
+  const entityNames = useMemo(() => entities.map((e) => e.name), [entities]);
+
+  // Feature stats scoped to this brand — same pattern as campaign sidebar
+  const { data: featureStatsData } = useAuthQuery(
+    ["featureStats", featureSlug, "brand", brandId],
+    () => fetchFeatureStats(featureSlug, { brandId }),
+    { refetchInterval: 5_000, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
+  );
+  const fStats = featureStatsData?.stats ?? {};
+
+  // Listing fallbacks for entities without a countKey
+  const { data: outletsData } = useAuthQuery(
+    ["brandOutlets", brandId],
+    () => listBrandOutlets(brandId),
+    { enabled: entityNames.includes("outlets"), refetchInterval: 5_000, refetchIntervalInBackground: false },
+  );
+  const { data: journalistsData } = useAuthQuery(
+    ["brandJournalists", brandId],
+    () => listBrandJournalists(brandId),
+    { enabled: entityNames.includes("journalists"), refetchInterval: 5_000, refetchIntervalInBackground: false },
+  );
+  const { data: leadsData } = useAuthQuery(
+    ["brandLeads", brandId],
+    () => listBrandLeads(brandId),
+    { enabled: entityNames.includes("leads"), refetchInterval: 5_000, refetchIntervalInBackground: false },
+  );
+  const { data: emailsData } = useAuthQuery(
+    ["brandEmails", brandId],
+    () => listBrandEmails(brandId),
+    { enabled: entityNames.includes("emails"), refetchInterval: 5_000, refetchIntervalInBackground: false },
+  );
+  const { data: articlesData } = useAuthQuery(
+    ["brandArticles", brandId],
+    () => listBrandArticles(brandId),
+    { enabled: entityNames.includes("articles"), refetchInterval: 5_000, refetchIntervalInBackground: false },
+  );
+
+  const listingFallback: Record<string, number | undefined> = {
+    leads: leadsData?.leads?.length,
+    emails: emailsData?.emails?.length,
+    outlets: outletsData?.outlets?.length,
+    journalists: journalistsData?.campaignJournalists?.length,
+    articles: articlesData?.discoveries?.length,
+  };
+
+  const entityCounts = useMemo(() => {
+    const result: Record<string, number | undefined> = {};
+    for (const entity of entities) {
+      if (entity.countKey && fStats[entity.countKey] != null) {
+        result[entity.name] = fStats[entity.countKey];
+      } else {
+        result[entity.name] = listingFallback[entity.name];
+      }
+    }
+    return result;
+  }, [entities, fStats, listingFallback]);
 
   const entityItems: SidebarItem[] = entities
     .filter((e) => registry[e.name])
@@ -398,6 +471,7 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
         label: config.label,
         href: `${basePath}/${config.pathSuffix}`,
         icon: getEntitySidebarIcon(config.icon),
+        badge: entityCounts[e.name],
       };
     });
 

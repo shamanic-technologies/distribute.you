@@ -187,6 +187,12 @@ describe("brand-tools removal", () => {
       expect(sidebarSrc).toContain("registry[e.name]");
       expect(sidebarSrc).toContain("entityItems");
     });
+
+    it("FeatureLevelSidebar fetches brand-level counts for entity badges", () => {
+      expect(sidebarSrc).toContain("fetchFeatureStats");
+      expect(sidebarSrc).toContain("entityCounts");
+      expect(sidebarSrc).toContain("badge: entityCounts[e.name]");
+    });
   });
 
   describe("campaign-sidebar uses entity registry", () => {
