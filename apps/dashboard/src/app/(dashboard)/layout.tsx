@@ -13,6 +13,7 @@ import { QueryProvider } from "@/lib/query-provider";
 import { OrgContextProvider, useOrg } from "@/lib/org-context";
 import { BillingGuardProvider } from "@/lib/billing-guard";
 import { FeaturesProvider } from "@/lib/features-context";
+import { EntityRegistryProvider } from "@/lib/entity-registry-context";
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { isOpen, close } = useMobileSidebar();
@@ -91,9 +92,11 @@ export default function DashboardLayout({
       <MobileSidebarProvider>
         <OrgContextProvider>
           <FeaturesProvider>
-            <BillingGuardProvider>
-              <DashboardContent>{children}</DashboardContent>
-            </BillingGuardProvider>
+            <EntityRegistryProvider>
+              <BillingGuardProvider>
+                <DashboardContent>{children}</DashboardContent>
+              </BillingGuardProvider>
+            </EntityRegistryProvider>
           </FeaturesProvider>
         </OrgContextProvider>
       </MobileSidebarProvider>
