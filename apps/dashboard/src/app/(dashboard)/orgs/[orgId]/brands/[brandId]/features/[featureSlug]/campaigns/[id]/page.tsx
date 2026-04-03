@@ -7,7 +7,7 @@ import { useCampaign } from "@/lib/campaign-context";
 import { useStopCampaign, useIsStoppingCampaign } from "@/lib/use-stop-campaign";
 import { useFeatures } from "@/lib/features-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { fetchFeatureStats, createCampaign, sendCampaignEmail, getBrand, ApiError } from "@/lib/api";
+import { fetchFeatureStats, createCampaign, sendCampaignEmail, ApiError } from "@/lib/api";
 import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
@@ -82,17 +82,10 @@ export default function CampaignOverviewPage() {
     const now = new Date();
     const name = `${campaign.name.replace(/ — .*$/, "")} — ${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}.${String(now.getMilliseconds()).padStart(3, "0")}`;
 
-    // Resolve brand URLs: prefer campaign.brandUrls, fall back to resolving from brandIds via brand-service
-    let resolvedBrandUrls = campaign.brandUrls?.filter(Boolean) ?? [];
-    if (resolvedBrandUrls.length === 0 && campaign.brandIds && campaign.brandIds.length > 0) {
-      const results = await Promise.all(campaign.brandIds.map((id) => getBrand(id)));
-      resolvedBrandUrls = results
-        .map((r) => r?.brand.brandUrl)
-        .filter((url): url is string => url != null);
-    }
-    if (resolvedBrandUrls.length === 0) {
+    if (!campaign.brandUrls || campaign.brandUrls.length === 0) {
+      console.error(`[dashboard] Cannot relaunch campaign ${campaign.id}: brandUrls is ${JSON.stringify(campaign.brandUrls)} but brandIds is ${JSON.stringify(campaign.brandIds)}. api-service must return brandUrls on GET /campaigns/{id}.`);
       setRelaunching(false);
-      setRelaunchError("Cannot relaunch: no brand URLs found on this campaign.");
+      setRelaunchError("Cannot relaunch: brand URLs missing from campaign data. This is a backend issue — please contact support.");
       return;
     }
 
@@ -100,7 +93,7 @@ export default function CampaignOverviewPage() {
       name,
       workflowSlug: campaign.workflowSlug,
       featureSlug: campaign.featureSlug,
-      brandUrls: resolvedBrandUrls,
+      brandUrls: campaign.brandUrls,
     };
     if (campaign.featureInputs) payload.featureInputs = campaign.featureInputs;
     if (campaign.maxBudgetDailyUsd) payload.maxBudgetDailyUsd = campaign.maxBudgetDailyUsd;
