@@ -2,13 +2,15 @@
 
 import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
-import { useAuthQuery } from "@/lib/use-auth-query";
+import { useMutation } from "@tanstack/react-query";
+import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import {
   listBrandJournalists,
   listCampaignOutlets,
+  discoverJournalists,
   getJournalistStatsCosts,
   type BrandJournalist,
-  type CostStatsGroup,
+  type DiscoveredOutlet,
 } from "@/lib/api";
 
 const POLL_INTERVAL = 5_000;
@@ -40,14 +42,77 @@ function statusStyle(status: BrandJournalist["status"]): string {
   }
 }
 
+function relevanceColor(score: number): string {
+  if (score >= 70) return "bg-green-100 text-green-700 border-green-200";
+  if (score >= 40) return "bg-yellow-100 text-yellow-700 border-yellow-200";
+  return "bg-red-100 text-red-600 border-red-200";
+}
+
 function formatCost(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
+
+function timeAgo(dateStr: string): string {
+  const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  const days = Math.floor(seconds / 86400);
+  if (days < 30) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString();
+}
+
+/* ─── Discover Journalists Button (per outlet) ───────────────────────── */
+
+function DiscoverJournalistsButton({
+  brandId,
+  campaignId,
+  outletId,
+  onSuccess,
+}: {
+  brandId: string;
+  campaignId: string;
+  outletId: string;
+  onSuccess: () => void;
+}) {
+  const mutation = useMutation({
+    mutationFn: () => discoverJournalists(brandId, campaignId, outletId),
+    onSuccess,
+  });
+
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        onClick={(e) => { e.stopPropagation(); mutation.mutate(); }}
+        disabled={mutation.isPending}
+        className="text-xs px-3 py-1.5 bg-brand-600 text-white font-medium rounded-lg hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1.5"
+      >
+        {mutation.isPending ? (
+          <>
+            <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            Discovering...
+          </>
+        ) : (
+          "Discover Journalists"
+        )}
+      </button>
+      {mutation.isSuccess && mutation.data && (
+        <span className="text-xs text-green-600">+{mutation.data.discovered}</span>
+      )}
+      {mutation.isError && (
+        <span className="text-xs text-red-600">Failed</span>
+      )}
+    </div>
+  );
+}
+
+/* ─── Main Page ──────────────────────────────────────────────────────── */
 
 export default function CampaignJournalistsPage() {
   const params = useParams();
   const campaignId = params.id as string;
   const brandId = params.brandId as string;
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<Tab>("contacted");
   const [selected, setSelected] = useState<BrandJournalist | null>(null);
 
@@ -71,9 +136,9 @@ export default function CampaignJournalistsPage() {
 
   // Outlet lookup
   const outletMap = useMemo(() => {
-    const map = new Map<string, { name: string; domain: string }>();
+    const map = new Map<string, DiscoveredOutlet>();
     for (const o of outletsData?.outlets ?? []) {
-      map.set(o.id, { name: o.outletName, domain: o.outletDomain });
+      map.set(o.id, o);
     }
     return map;
   }, [outletsData]);
@@ -100,7 +165,19 @@ export default function CampaignJournalistsPage() {
     [campaignJournalists],
   );
 
+  // Outlets that have no journalists yet (for the discover action)
+  const outletsWithoutJournalists = useMemo(() => {
+    const outletsWithJournalists = new Set(campaignJournalists.map((j) => j.outletId));
+    return (outletsData?.outlets ?? [])
+      .filter((o) => o.status !== "skipped" && !outletsWithJournalists.has(o.id));
+  }, [outletsData, campaignJournalists]);
+
   const activeList = activeTab === "contacted" ? contacted : notContacted;
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["brandJournalists", brandId, campaignId] });
+    queryClient.invalidateQueries({ queryKey: ["journalistCosts", brandId, campaignId] });
+  };
 
   if (journalistsLoading) {
     return (
@@ -126,6 +203,36 @@ export default function CampaignJournalistsPage() {
             <span className="ml-2 text-sm font-normal text-gray-500">({campaignJournalists.length})</span>
           </h1>
         </div>
+
+        {/* Discover journalists for outlets without any */}
+        {outletsWithoutJournalists.length > 0 && (
+          <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
+            <h3 className="text-sm font-medium text-gray-900 mb-3">Discover journalists for outlets</h3>
+            <div className="space-y-2">
+              {outletsWithoutJournalists.map((outlet) => (
+                <div key={outlet.id} className="flex items-center justify-between gap-3 p-2 rounded-lg border border-gray-100 bg-gray-50/50">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {outlet.outletDomain && (
+                      <img
+                        src={`https://img.logo.dev/${outlet.outletDomain}?token=${LOGO_DEV_TOKEN}`}
+                        alt={outlet.outletName}
+                        className="w-5 h-5 rounded object-contain bg-gray-50 flex-shrink-0"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                    )}
+                    <span className="text-sm text-gray-700 truncate">{outlet.outletName}</span>
+                  </div>
+                  <DiscoverJournalistsButton
+                    brandId={brandId}
+                    campaignId={campaignId}
+                    outletId={outlet.id}
+                    onSuccess={invalidate}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="flex gap-1 mb-6 border-b border-gray-200">
@@ -178,10 +285,10 @@ export default function CampaignJournalistsPage() {
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    {outlet?.domain ? (
+                    {outlet?.outletDomain ? (
                       <img
-                        src={`https://img.logo.dev/${outlet.domain}?token=${LOGO_DEV_TOKEN}`}
-                        alt={outlet.name}
+                        src={`https://img.logo.dev/${outlet.outletDomain}?token=${LOGO_DEV_TOKEN}`}
+                        alt={outlet.outletName}
                         className="w-8 h-8 rounded-full object-contain bg-gray-50 border border-gray-200 flex-shrink-0"
                         onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                       />
@@ -199,8 +306,8 @@ export default function CampaignJournalistsPage() {
                           {statusLabel(j.status)}
                         </span>
                       </div>
-                      {outlet?.name && (
-                        <p className="text-xs text-gray-400 truncate">{outlet.name}</p>
+                      {outlet?.outletName && (
+                        <p className="text-xs text-gray-400 truncate">{outlet.outletName}</p>
                       )}
                     </div>
                     {cost != null && cost > 0 && (
@@ -220,9 +327,12 @@ export default function CampaignJournalistsPage() {
       {selected && (
         <DetailPanel
           journalist={selected}
-          outletMap={outletMap}
+          outlet={outletMap.get(selected.outletId)}
           costMap={costMap}
+          brandId={brandId}
+          campaignId={campaignId}
           onClose={() => setSelected(null)}
+          onDiscover={invalidate}
         />
       )}
     </div>
@@ -231,16 +341,21 @@ export default function CampaignJournalistsPage() {
 
 function DetailPanel({
   journalist: j,
-  outletMap,
+  outlet,
   costMap,
+  brandId,
+  campaignId,
   onClose,
+  onDiscover,
 }: {
   journalist: BrandJournalist;
-  outletMap: Map<string, { name: string; domain: string }>;
+  outlet: DiscoveredOutlet | undefined;
   costMap: Map<string, number>;
+  brandId: string;
+  campaignId: string;
   onClose: () => void;
+  onDiscover: () => void;
 }) {
-  const outlet = outletMap.get(j.outletId);
   const cost = costMap.get(j.journalistId);
   const score = parseFloat(j.relevanceScore);
 
@@ -314,11 +429,7 @@ function DetailPanel({
             {!isNaN(score) && (
               <div>
                 <span className="text-xs text-gray-500 block mb-1">Relevance</span>
-                <span className={`text-xs px-2 py-1 rounded-full border ${
-                  score >= 70 ? "bg-green-100 text-green-700 border-green-200"
-                    : score >= 40 ? "bg-yellow-100 text-yellow-700 border-yellow-200"
-                    : "bg-red-100 text-red-600 border-red-200"
-                }`}>
+                <span className={`text-xs px-2 py-1 rounded-full border ${relevanceColor(score)}`}>
                   {score}%
                 </span>
               </div>
@@ -329,19 +440,27 @@ function DetailPanel({
         {/* Outlet */}
         {outlet && (
           <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Outlet</h4>
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider">Outlet</h4>
+              <DiscoverJournalistsButton
+                brandId={brandId}
+                campaignId={campaignId}
+                outletId={outlet.id}
+                onSuccess={onDiscover}
+              />
+            </div>
             <div className="flex items-center gap-3">
-              {outlet.domain && (
+              {outlet.outletDomain && (
                 <img
-                  src={`https://img.logo.dev/${outlet.domain}?token=${LOGO_DEV_TOKEN}`}
-                  alt={outlet.name}
+                  src={`https://img.logo.dev/${outlet.outletDomain}?token=${LOGO_DEV_TOKEN}`}
+                  alt={outlet.outletName}
                   className="w-6 h-6 rounded object-contain bg-gray-50"
                   onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                 />
               )}
               <div>
-                <p className="text-sm font-medium text-gray-800">{outlet.name}</p>
-                {outlet.domain && <p className="text-xs text-gray-400">{outlet.domain}</p>}
+                <p className="text-sm font-medium text-gray-800">{outlet.outletName}</p>
+                {outlet.outletDomain && <p className="text-xs text-gray-400">{outlet.outletDomain}</p>}
               </div>
             </div>
           </div>
@@ -378,7 +497,7 @@ function DetailPanel({
         )}
 
         <div className="text-xs text-gray-400">
-          Discovered: {new Date(j.createdAt).toLocaleString()}
+          Discovered: {new Date(j.createdAt).toLocaleDateString()} ({timeAgo(j.createdAt)})
         </div>
       </div>
     </div>
