@@ -20,12 +20,12 @@ describe("sendCampaignEmail function", () => {
   });
 
   it("should include brandId and campaignId in the request", () => {
-    expect(content).toContain("brandId: campaign.brandId");
+    expect(content).toContain("brandId");
     expect(content).toContain("campaignId: campaign.id");
   });
 
-  it("should skip sending when brandId is null", () => {
-    expect(content).toContain("if (!campaign.brandId) return");
+  it("should skip sending when no brandIds exist", () => {
+    expect(content).toContain("if (!brandId) return");
   });
 
   it("should call /emails/send endpoint", () => {

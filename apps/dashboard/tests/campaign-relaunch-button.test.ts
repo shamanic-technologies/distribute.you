@@ -52,4 +52,10 @@ describe("Campaign relaunch button", () => {
   it("should display relaunch errors", () => {
     expect(content).toContain("relaunchError");
   });
+
+  it("should use campaign.brandUrls (plural) for relaunch payload", () => {
+    expect(content).toContain("campaign.brandUrls");
+    // Should error if brandUrls is empty/null
+    expect(content).toContain("no brand URLs found");
+  });
 });

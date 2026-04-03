@@ -82,11 +82,17 @@ export default function CampaignOverviewPage() {
     const now = new Date();
     const name = `${campaign.name.replace(/ — .*$/, "")} — ${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}.${String(now.getMilliseconds()).padStart(3, "0")}`;
 
+    if (!campaign.brandUrls || campaign.brandUrls.length === 0) {
+      setRelaunching(false);
+      setRelaunchError("Cannot relaunch: no brand URLs found on this campaign.");
+      return;
+    }
+
     const payload: Record<string, unknown> = {
       name,
       workflowSlug: campaign.workflowSlug,
       featureSlug: campaign.featureSlug,
-      brandUrls: campaign.brandUrl ? [campaign.brandUrl] : [],
+      brandUrls: campaign.brandUrls,
     };
     if (campaign.featureInputs) payload.featureInputs = campaign.featureInputs;
     if (campaign.maxBudgetDailyUsd) payload.maxBudgetDailyUsd = campaign.maxBudgetDailyUsd;
