@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useFeatures } from "@/lib/features-context";
+import { useEntityRegistry } from "@/lib/entity-registry-context";
 
 interface SidebarItem {
   id: string;
@@ -358,6 +359,22 @@ const SettingsIcon = () => (
   </svg>
 );
 
+// Entity icon mapping for sidebar — maps registry icon names to SVG components
+const ENTITY_ICON_MAP: Record<string, () => React.ReactNode> = {
+  users: () => <OrgIcon />,
+  newspaper: () => <OrgIcon />,
+  "pen-tool": () => <NewspaperIcon />,
+  "scroll-text": () => <DocumentIcon />,
+  building: () => <OrgIcon />,
+  envelope: () => <EnvelopeIcon />,
+  document: () => <DocumentIcon />,
+};
+
+function getEntitySidebarIcon(iconName: string): React.ReactNode {
+  const iconFn = ENTITY_ICON_MAP[iconName];
+  return iconFn ? iconFn() : <WorkflowIcon />;
+}
+
 // Feature Level Sidebar — shows feature-specific sub-menus
 function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   orgId: string;
@@ -366,13 +383,28 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   pathname: string;
 }) {
   const { getFeature } = useFeatures();
+  const { registry } = useEntityRegistry();
   const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`;
   const feature = getFeature(featureSlug);
   const title = feature?.dynastyName ?? feature?.name ?? featureSlug;
+  const entities = feature?.entities ?? [];
+
+  const entityItems: SidebarItem[] = entities
+    .filter((e) => registry[e.name])
+    .map((e) => {
+      const config = registry[e.name];
+      return {
+        id: e.name,
+        label: config.label,
+        href: `${basePath}/${config.pathSuffix}`,
+        icon: getEntitySidebarIcon(config.icon),
+      };
+    });
 
   const items: SidebarItem[] = [
     { id: "campaigns", label: "Campaigns", href: basePath, icon: <EnvelopeIcon /> },
     { id: "create", label: "Create Campaign", href: `${basePath}/campaigns/new`, icon: <PlusIcon /> },
+    ...entityItems,
     { id: "workflows", label: "Workflows", href: `${basePath}/workflows`, icon: <WorkflowIcon /> },
     { id: "settings", label: "Settings", href: `${basePath}/settings`, icon: <SettingsIcon /> },
   ];
