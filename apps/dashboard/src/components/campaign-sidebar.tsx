@@ -117,27 +117,26 @@ export function CampaignSidebar({ campaignId, orgId, brandId, featureDynastySlug
       href: basePath,
       icon: <OverviewIcon />,
     },
-    ...(workflowId
-      ? [
-          {
-            id: "workflow",
-            label: "Workflow",
-            href: `/orgs/${orgId}/brands/${brandId}/features/${featureDynastySlug}/workflows/${workflowId}`,
-            icon: <WorkflowIcon />,
-          },
-        ]
-      : []),
   ];
+
+  const settingsItems = workflowId
+    ? [
+        {
+          id: "workflow",
+          label: "Workflow",
+          href: `/orgs/${orgId}/brands/${brandId}/features/${featureDynastySlug}/workflows/${workflowId}`,
+          icon: <WorkflowIcon />,
+        },
+      ]
+    : [];
 
   return (
     <>
       <McpSidebar
         items={items}
         outcomesItems={entityItems}
-        title="Campaign"
-        backHref={backHref}
-        backLabel="Campaigns"
-        extraButtons={hasInputs ? (
+        settingsItems={settingsItems}
+        settingsExtra={hasInputs ? (
           <button
             onClick={() => setInputsPanelOpen(true)}
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition text-gray-600 hover:bg-gray-50 hover:text-gray-800 w-full"
@@ -146,6 +145,9 @@ export function CampaignSidebar({ campaignId, orgId, brandId, featureDynastySlug
             <span className="flex-1 text-left">Inputs</span>
           </button>
         ) : undefined}
+        title="Campaign"
+        backHref={backHref}
+        backLabel="Campaigns"
       />
       <CampaignInputsPanel
         open={inputsPanelOpen}
