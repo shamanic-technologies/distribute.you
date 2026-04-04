@@ -37,7 +37,6 @@ function formatDate(dateStr: string | null): string {
 export default function FeatureArticlesPage() {
   const params = useParams();
   const brandId = params.brandId as string;
-  const featureSlug = params.featureSlug as string;
   const [selected, setSelected] = useState<ArticleDiscoveryItem | null>(null);
   const [search, setSearch] = useState("");
 
@@ -48,8 +47,8 @@ export default function FeatureArticlesPage() {
   );
 
   const { data: outletsData } = useAuthQuery(
-    ["brandOutlets", brandId, featureSlug],
-    () => listBrandOutlets(brandId, [featureSlug]),
+    ["brandOutlets", brandId],
+    () => listBrandOutlets(brandId),
   );
 
   const { data: journalistsData } = useAuthQuery(
