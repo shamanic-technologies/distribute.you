@@ -7,6 +7,7 @@ import {
   listJournalistsEnriched,
   listBrandOutlets,
   type EnrichedJournalist,
+  type JournalistCampaignEntry,
   type DiscoveredOutlet,
 } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
@@ -14,10 +15,7 @@ import { EntitySearchBar } from "@/components/entity-search-bar";
 const POLL_INTERVAL = 5_000;
 const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
 
-type Tab = EnrichedJournalist["status"] | "all";
-
-// Ordered from most advanced to least advanced
-const STATUS_ORDER: EnrichedJournalist["status"][] = [
+const CAMPAIGN_STATUS_ORDER: JournalistCampaignEntry["status"][] = [
   "contacted",
   "served",
   "claimed",
@@ -25,7 +23,9 @@ const STATUS_ORDER: EnrichedJournalist["status"][] = [
   "skipped",
 ];
 
-function statusLabel(status: EnrichedJournalist["status"]): string {
+type Tab = JournalistCampaignEntry["status"] | "all";
+
+function statusLabel(status: JournalistCampaignEntry["status"]): string {
   switch (status) {
     case "contacted": return "Contacted";
     case "served": return "Processing";
@@ -36,7 +36,7 @@ function statusLabel(status: EnrichedJournalist["status"]): string {
   }
 }
 
-function statusDescription(status: EnrichedJournalist["status"]): string {
+function statusDescription(status: JournalistCampaignEntry["status"]): string {
   switch (status) {
     case "contacted": return "Journalist has been contacted with outreach email";
     case "served": return "Outreach is currently being processed";
@@ -47,7 +47,7 @@ function statusDescription(status: EnrichedJournalist["status"]): string {
   }
 }
 
-function statusStyle(status: EnrichedJournalist["status"]): string {
+function statusStyle(status: JournalistCampaignEntry["status"]): string {
   switch (status) {
     case "contacted": return "bg-green-100 text-green-700 border-green-200";
     case "served": return "bg-orange-100 text-orange-700 border-orange-200";
@@ -76,6 +76,20 @@ function timeAgo(dateStr: string): string {
   const days = Math.floor(seconds / 86400);
   if (days < 30) return `${days}d ago`;
   return new Date(dateStr).toLocaleDateString();
+}
+
+/** Returns the most advanced status across all campaign entries */
+function bestStatus(campaigns: JournalistCampaignEntry[]): JournalistCampaignEntry["status"] {
+  let best: JournalistCampaignEntry["status"] = "skipped";
+  let bestIdx = CAMPAIGN_STATUS_ORDER.length;
+  for (const c of campaigns) {
+    const idx = CAMPAIGN_STATUS_ORDER.indexOf(c.status);
+    if (idx !== -1 && idx < bestIdx) {
+      bestIdx = idx;
+      best = c.status;
+    }
+  }
+  return best;
 }
 
 /* ─── Main Page ──────────────────────────────────────────────────────── */
@@ -111,20 +125,27 @@ export default function FeatureJournalistsPage() {
     return map;
   }, [outletsData]);
 
-  // Group by status
+  // Derive best status per journalist for tab grouping
+  const journalistStatuses = useMemo(() => {
+    const map = new Map<string, JournalistCampaignEntry["status"]>();
+    for (const j of journalists) {
+      map.set(j.journalistId, bestStatus(j.campaigns));
+    }
+    return map;
+  }, [journalists]);
+
+  // Group by best status
   const groupedByStatus = useMemo(() => {
-    const groups = new Map<EnrichedJournalist["status"], EnrichedJournalist[]>();
-    for (const status of STATUS_ORDER) {
+    const groups = new Map<JournalistCampaignEntry["status"], EnrichedJournalist[]>();
+    for (const status of CAMPAIGN_STATUS_ORDER) {
       groups.set(status, []);
     }
     for (const j of journalists) {
-      const list = groups.get(j.status);
-      if (list) {
-        list.push(j);
-      }
+      const s = journalistStatuses.get(j.journalistId) ?? "skipped";
+      groups.get(s)?.push(j);
     }
     return groups;
-  }, [journalists]);
+  }, [journalists, journalistStatuses]);
 
   const activeList = activeTab === "all"
     ? journalists
@@ -141,7 +162,7 @@ export default function FeatureJournalistsPage() {
 
   // Tabs: status tabs (ordered) + all
   const tabs: { key: Tab; label: string; count: number }[] = [
-    ...STATUS_ORDER.map((status) => ({
+    ...CAMPAIGN_STATUS_ORDER.map((status) => ({
       key: status as Tab,
       label: statusLabel(status),
       count: groupedByStatus.get(status)?.length ?? 0,
@@ -208,12 +229,13 @@ export default function FeatureJournalistsPage() {
             {filteredList.map((j) => {
               const outlet = outletMap.get(j.outletId);
               const cost = j.cost?.totalCostInUsdCents ?? 0;
+              const status = journalistStatuses.get(j.journalistId) ?? "skipped";
               return (
                 <button
-                  key={j.id}
+                  key={j.journalistId}
                   onClick={() => setSelected(j)}
                   className={`w-full text-left bg-white rounded-xl border p-4 hover:border-brand-300 hover:shadow-sm transition ${
-                    selected?.id === j.id ? "border-brand-500 ring-1 ring-brand-500" : "border-gray-200"
+                    selected?.journalistId === j.journalistId ? "border-brand-500 ring-1 ring-brand-500" : "border-gray-200"
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -234,14 +256,19 @@ export default function FeatureJournalistsPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <p className="font-medium text-gray-800 truncate">{j.journalistName}</p>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full border flex-shrink-0 ${statusStyle(j.status)}`}>
-                          {statusLabel(j.status)}
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full border flex-shrink-0 ${statusStyle(status)}`}>
+                          {statusLabel(status)}
                         </span>
                       </div>
                       {outlet?.outletName && (
                         <p className="text-xs text-gray-400 truncate">{outlet.outletName}</p>
                       )}
                     </div>
+                    {j.campaigns.length > 1 && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-gray-200 bg-gray-50 text-gray-500 flex-shrink-0">
+                        {j.campaigns.length} campaigns
+                      </span>
+                    )}
                     {cost > 0 && (
                       <span className="text-xs font-medium text-gray-500 flex-shrink-0">
                         {formatCost(cost)}
@@ -277,7 +304,6 @@ function DetailPanel({
   onClose: () => void;
 }) {
   const cost = j.cost?.totalCostInUsdCents ?? 0;
-  const score = parseFloat(j.relevanceScore);
 
   return (
     <div className="absolute inset-0 md:relative md:w-1/2 bg-gray-50 md:border-l border-gray-200 overflow-y-auto z-10 flex flex-col">
@@ -337,13 +363,13 @@ function DetailPanel({
           </div>
         </div>
 
-        {/* Status & Cost */}
+        {/* Aggregated Status & Cost */}
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <div className="flex items-center gap-4">
             <div>
-              <span className="text-xs text-gray-500 block mb-1">Status</span>
-              <span className={`text-xs px-2 py-1 rounded-full border ${statusStyle(j.status)}`}>
-                {statusLabel(j.status)}
+              <span className="text-xs text-gray-500 block mb-1">Best Status</span>
+              <span className={`text-xs px-2 py-1 rounded-full border ${statusStyle(bestStatus(j.campaigns))}`}>
+                {statusLabel(bestStatus(j.campaigns))}
               </span>
             </div>
             {cost > 0 && (
@@ -352,14 +378,10 @@ function DetailPanel({
                 <span className="text-sm font-medium text-gray-800">{formatCost(cost)}</span>
               </div>
             )}
-            {!isNaN(score) && (
-              <div>
-                <span className="text-xs text-gray-500 block mb-1">Relevance</span>
-                <span className={`text-xs px-2 py-1 rounded-full border ${relevanceColor(score)}`}>
-                  {score}%
-                </span>
-              </div>
-            )}
+            <div>
+              <span className="text-xs text-gray-500 block mb-1">Campaigns</span>
+              <span className="text-sm font-medium text-gray-800">{j.campaigns.length}</span>
+            </div>
           </div>
         </div>
 
@@ -387,38 +409,12 @@ function DetailPanel({
           </div>
         )}
 
-        {/* Relevance Reasoning */}
-        {j.whyRelevant && (
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Why Relevant</h4>
-            <p className="text-sm text-gray-700">{j.whyRelevant}</p>
-          </div>
-        )}
-        {j.whyNotRelevant && (
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Why Not Relevant</h4>
-            <p className="text-sm text-gray-700">{j.whyNotRelevant}</p>
-          </div>
-        )}
-
-        {/* Articles */}
-        {j.articleUrls && j.articleUrls.length > 0 && (
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Articles</h4>
-            <ul className="space-y-1">
-              {j.articleUrls.map((url) => (
-                <li key={url}>
-                  <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-brand-600 hover:underline truncate block">
-                    {url}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        <div className="text-xs text-gray-400">
-          Discovered: {new Date(j.createdAt).toLocaleDateString()} ({timeAgo(j.createdAt)})
+        {/* Per-Campaign Details */}
+        <div className="space-y-3">
+          <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider">Campaign Entries</h4>
+          {j.campaigns.map((c) => (
+            <CampaignEntryCard key={c.id} campaign={c} />
+          ))}
         </div>
       </div>
 
@@ -426,7 +422,7 @@ function DetailPanel({
       <div className="border-t border-gray-200 bg-white p-4">
         <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Status Legend</h4>
         <div className="space-y-2">
-          {STATUS_ORDER.map((status) => (
+          {CAMPAIGN_STATUS_ORDER.map((status) => (
             <div key={status} className="flex items-center gap-2">
               <span className={`text-[10px] px-1.5 py-0.5 rounded-full border flex-shrink-0 ${statusStyle(status)}`}>
                 {statusLabel(status)}
@@ -436,6 +432,56 @@ function DetailPanel({
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+function CampaignEntryCard({ campaign: c }: { campaign: JournalistCampaignEntry }) {
+  const score = parseFloat(c.relevanceScore);
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-4 space-y-3">
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${statusStyle(c.status)}`}>
+          {statusLabel(c.status)}
+        </span>
+        {!isNaN(score) && (
+          <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${relevanceColor(score)}`}>
+            {score}% relevant
+          </span>
+        )}
+        <span className="text-[10px] text-gray-400 ml-auto">
+          {new Date(c.createdAt).toLocaleDateString()} ({timeAgo(c.createdAt)})
+        </span>
+      </div>
+
+      {c.whyRelevant && (
+        <div>
+          <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Why Relevant</span>
+          <p className="text-sm text-gray-700 mt-0.5">{c.whyRelevant}</p>
+        </div>
+      )}
+      {c.whyNotRelevant && (
+        <div>
+          <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Why Not Relevant</span>
+          <p className="text-sm text-gray-700 mt-0.5">{c.whyNotRelevant}</p>
+        </div>
+      )}
+
+      {c.articleUrls && c.articleUrls.length > 0 && (
+        <div>
+          <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Articles</span>
+          <ul className="mt-1 space-y-0.5">
+            {c.articleUrls.map((url) => (
+              <li key={url}>
+                <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-brand-600 hover:underline truncate block">
+                  {url}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
