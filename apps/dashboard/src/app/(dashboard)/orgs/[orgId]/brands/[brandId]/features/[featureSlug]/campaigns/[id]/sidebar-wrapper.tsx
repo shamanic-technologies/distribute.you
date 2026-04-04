@@ -7,7 +7,7 @@ import { CampaignSidebar } from "@/components/campaign-sidebar";
 import { useCampaign } from "@/lib/campaign-context";
 import { useFeatures } from "@/lib/features-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listWorkflows, listCampaignOutlets, listCampaignJournalists, listCampaignEmails, listCampaignArticles, listMediaKitsByCampaign, fetchFeatureStats } from "@/lib/api";
+import { listWorkflows, listCampaignOutlets, listJournalistsEnriched, listCampaignEmails, listCampaignArticles, listMediaKitsByCampaign, fetchFeatureStats } from "@/lib/api";
 
 interface Props {
   orgId: string;
@@ -44,8 +44,8 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureDynastyS
   );
 
   const { data: journalistsData } = useAuthQuery(
-    ["campaignJournalists", campaignId],
-    () => listCampaignJournalists(campaignId),
+    ["enrichedJournalists", brandId, campaignId],
+    () => listJournalistsEnriched(brandId, { campaignId }),
     { enabled: entityNames.includes("journalists"), refetchInterval: 5_000, refetchIntervalInBackground: false },
   );
 
@@ -92,14 +92,14 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureDynastyS
     "press-kits": pressKitsData?.length,
   };
 
-  // Build entity counts: use countKey from feature stats when available, else listing fallback
+  // Build entity counts: prefer listing total (shows ALL items), fall back to feature stats
   const entityCounts = useMemo(() => {
     const result: Record<string, number | undefined> = {};
     for (const entity of entities) {
-      if (entity.countKey && fStats[entity.countKey] != null) {
-        result[entity.name] = fStats[entity.countKey];
-      } else {
+      if (listingFallback[entity.name] != null) {
         result[entity.name] = listingFallback[entity.name];
+      } else if (entity.countKey && fStats[entity.countKey] != null) {
+        result[entity.name] = fStats[entity.countKey];
       }
     }
     return result;
