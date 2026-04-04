@@ -1552,7 +1552,8 @@ export interface OutletCampaign {
   featureSlug: string;
   brandIds: string[];
   relevanceScore: number;
-  status: "open" | "ended" | "denied" | "served" | "skipped";
+  status: "open" | "ended" | "denied" | "served" | "skipped" | "contacted" | "delivered" | "replied";
+  replyClassification?: "positive" | "negative" | "neutral" | null;
   whyRelevant?: string;
   whyNotRelevant?: string;
   overallRelevance?: string | null;
@@ -1568,7 +1569,8 @@ export interface DeduplicatedOutlet {
   outletUrl: string;
   outletDomain: string;
   createdAt: string;
-  latestStatus: "open" | "ended" | "denied" | "served" | "skipped";
+  latestStatus: "open" | "ended" | "denied" | "served" | "skipped" | "contacted" | "delivered" | "replied";
+  replyClassification?: "positive" | "negative" | "neutral" | null;
   latestRelevanceScore: number;
   campaigns: OutletCampaign[];
 }
@@ -1581,7 +1583,8 @@ export interface CampaignOutlet {
   outletDomain: string;
   relevanceScore: number;
   whyRelevant: string | null;
-  outletStatus: "open" | "ended" | "denied" | "served" | "skipped" | null;
+  outletStatus: "open" | "ended" | "denied" | "served" | "skipped" | "contacted" | "delivered" | "replied" | null;
+  replyClassification?: "positive" | "negative" | "neutral" | null;
 }
 
 export interface DiscoveredJournalist {

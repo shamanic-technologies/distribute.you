@@ -10,20 +10,10 @@ import {
 } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
 import { EntitySearchBar } from "@/components/entity-search-bar";
+import { STATUS_PRIORITY, statusBadgeColor, statusLabel, resolveDisplayStatus } from "@/lib/outlet-status";
 
 const POLL_INTERVAL = 5_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
-
-/** Most-advanced → least-advanced. Any status not listed here sorts to the end. */
-const STATUS_PRIORITY: string[] = ["served", "ended", "denied", "open", "skipped"];
-
-const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  served: { label: "Served", color: "bg-green-100 text-green-700 border-green-200" },
-  ended: { label: "Ended", color: "bg-gray-100 text-gray-500 border-gray-200" },
-  denied: { label: "Denied", color: "bg-red-100 text-red-600 border-red-200" },
-  open: { label: "Open", color: "bg-blue-100 text-blue-700 border-blue-200" },
-  skipped: { label: "Skipped", color: "bg-orange-100 text-orange-600 border-orange-200" },
-};
 
 function formatCost(cents: string | number | null | undefined): string | null {
   if (cents == null) return null;
@@ -38,12 +28,8 @@ function relevanceColor(score: number): string {
   return "bg-red-100 text-red-600 border-red-200";
 }
 
-function statusBadge(status: string): string {
-  return STATUS_LABELS[status]?.color ?? "bg-gray-100 text-gray-500 border-gray-200";
-}
-
 function resolveStatus(outlet: CampaignOutlet): string {
-  return outlet.outletStatus ?? "open";
+  return resolveDisplayStatus(outlet.outletStatus ?? "open", outlet.replyClassification);
 }
 
 /* ─── Outlet Row ─────────────────────────────────────────────────────── */
@@ -65,8 +51,8 @@ function OutletRow({ outlet, costCents, isSelected, onClick }: { outlet: Campaig
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5">
           <span className="font-medium text-sm text-gray-800 truncate">{outlet.outletName}</span>
-          <span className={`text-[10px] px-1.5 py-0.5 rounded-full border flex-shrink-0 ${statusBadge(status)}`}>
-            {status}
+          <span className={`text-[10px] px-1.5 py-0.5 rounded-full border flex-shrink-0 ${statusBadgeColor(status)}`}>
+            {statusLabel(status)}
           </span>
         </div>
         <p className="text-xs text-gray-400 truncate">{outlet.outletDomain}</p>
@@ -131,8 +117,8 @@ function OutletDetailPanel({ outlet, costCents, onClose }: { outlet: CampaignOut
             <div>
               <span className="text-gray-500">Status</span>
               <p>
-                <span className={`text-xs px-2 py-1 rounded-full border ${statusBadge(status)}`}>
-                  {status}
+                <span className={`text-xs px-2 py-1 rounded-full border ${statusBadgeColor(status)}`}>
+                  {statusLabel(status)}
                 </span>
               </p>
             </div>
@@ -223,8 +209,7 @@ export default function CampaignOutletsPage() {
     const result: Array<{ key: string; label: string; outlets: CampaignOutlet[] }> = [];
     for (const status of sortedStatuses) {
       const matching = statusCounts.get(status)!;
-      const info = STATUS_LABELS[status];
-      result.push({ key: status, label: `${info?.label ?? status} (${matching.length})`, outlets: matching });
+      result.push({ key: status, label: `${statusLabel(status)} (${matching.length})`, outlets: matching });
     }
     result.push({ key: "all", label: `All (${outlets.length})`, outlets });
     return result;
