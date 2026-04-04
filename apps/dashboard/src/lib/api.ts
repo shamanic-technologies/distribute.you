@@ -1634,7 +1634,9 @@ export interface BrandJournalist {
   whyRelevant: string;
   whyNotRelevant: string;
   articleUrls: string[] | null;
-  status: "buffered" | "claimed" | "served" | "contacted" | "skipped";
+  consolidatedStatus: "buffered" | "claimed" | "served" | "contacted" | "delivered" | "replied" | "bounced" | "skipped";
+  localStatus: "buffered" | "claimed" | "served" | "contacted" | "skipped";
+  emailGatewayStatus: "contacted" | "delivered" | "replied" | "bounced" | null;
   createdAt: string;
   journalistName: string;
   firstName: string | null;
@@ -1694,7 +1696,9 @@ export interface JournalistCampaignEntry {
   campaignId: string;
   featureSlug: string | null;
   workflowSlug: string | null;
-  status: "buffered" | "claimed" | "served" | "contacted" | "skipped";
+  consolidatedStatus: "buffered" | "claimed" | "served" | "contacted" | "delivered" | "replied" | "bounced" | "skipped";
+  localStatus: "buffered" | "claimed" | "served" | "contacted" | "skipped";
+  emailGatewayStatus: "contacted" | "delivered" | "replied" | "bounced" | null;
   relevanceScore: string;
   whyRelevant: string;
   whyNotRelevant: string;
