@@ -89,8 +89,8 @@ export default function FeatureJournalistsPage() {
   const [search, setSearch] = useState("");
 
   const { data: journalistsData, isLoading: journalistsLoading } = useAuthQuery(
-    ["enrichedJournalists", brandId],
-    () => listJournalistsEnriched(brandId),
+    ["enrichedJournalists", brandId, featureSlug],
+    () => listJournalistsEnriched(brandId, { featureDynastySlug: featureSlug }),
     { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false },
   );
 

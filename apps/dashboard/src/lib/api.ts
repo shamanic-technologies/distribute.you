@@ -1706,14 +1706,14 @@ export function isJournalistContacted(
 
 export async function listJournalistsEnriched(
   brandId: string,
-  campaignId?: string,
-  token?: string,
+  options?: { campaignId?: string; featureDynastySlug?: string; token?: string },
 ): Promise<{ journalists: EnrichedJournalist[] }> {
   const params = new URLSearchParams({ brandId });
-  if (campaignId) params.set("campaignId", campaignId);
+  if (options?.campaignId) params.set("campaignId", options.campaignId);
+  if (options?.featureDynastySlug) params.set("featureDynastySlug", options.featureDynastySlug);
   return apiCall<{ journalists: EnrichedJournalist[] }>(
     `/journalists/list?${params}`,
-    { token },
+    { token: options?.token },
   );
 }
 
