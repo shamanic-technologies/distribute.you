@@ -1603,9 +1603,11 @@ export async function listBrandOutlets(
   brandId: string,
   featureDynastySlug?: string,
   token?: string,
+  campaignId?: string,
 ): Promise<{ outlets: DeduplicatedOutlet[]; total: number }> {
   const params = new URLSearchParams({ brandId });
   if (featureDynastySlug) params.set("featureDynastySlug", featureDynastySlug);
+  if (campaignId) params.set("campaignId", campaignId);
   return apiCall<{ outlets: DeduplicatedOutlet[]; total: number }>(
     `/outlets?${params}`,
     { token },
