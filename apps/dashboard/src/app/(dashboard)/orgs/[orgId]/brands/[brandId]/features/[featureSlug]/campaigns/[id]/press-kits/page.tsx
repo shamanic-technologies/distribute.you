@@ -17,8 +17,7 @@ import {
   type MediaKitStatus,
   type CostStatsGroup,
 } from "@/lib/api";
-
-
+import { EntitySearchBar } from "@/components/entity-search-bar";
 
 function timeAgo(date: string | Date): string {
   const now = Date.now();
@@ -430,6 +429,15 @@ export default function CampaignPressKitsPage() {
   const archived = sorted.filter((k) => k.status === "archived");
 
   const [showArchived, setShowArchived] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const filteredActive = useMemo(() => {
+    if (!search) return active;
+    const q = search.toLowerCase();
+    return active.filter((k) =>
+      (k.title?.toLowerCase().includes(q) ?? false) || (k.contentExcerpt?.toLowerCase().includes(q) ?? false)
+    );
+  }, [active, search]);
 
   return (
     <div className="p-4 md:p-8 max-w-5xl">
@@ -480,6 +488,8 @@ export default function CampaignPressKitsPage() {
       {/* Kits Tab */}
       {activeTab === "kits" && (
         <>
+          <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by title or content..." resultCount={filteredActive.length} totalCount={active.length} />
+
           {/* Loading */}
           {isLoading ? (
             <div className="space-y-3">
@@ -518,7 +528,7 @@ export default function CampaignPressKitsPage() {
                   All Press Kits
                 </h2>
                 <div className="space-y-2">
-                  {active.map((kit) => (
+                  {filteredActive.map((kit) => (
                     <PressKitRow key={kit.id} kit={kit} basePath={basePath} costCents={costMap.get(kit.id) ?? null} contextHeaders={contextHeaders} onAction={invalidate} />
                   ))}
                 </div>

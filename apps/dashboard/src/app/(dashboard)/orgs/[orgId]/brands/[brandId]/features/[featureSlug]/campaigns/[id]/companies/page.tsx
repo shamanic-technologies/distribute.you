@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { type Lead } from "@/lib/api";
 import { useCampaign } from "@/lib/campaign-context";
 import { BrandLogo } from "@/components/brand-logo";
+import { EntitySearchBar } from "@/components/entity-search-bar";
 
 interface DerivedCompany {
   name: string;
@@ -80,6 +81,15 @@ export default function CampaignCompaniesPage() {
   const { leads, loading: isLoading } = useCampaign();
   const companies = useMemo(() => deriveCompanies(leads), [leads]);
   const [selectedCompany, setSelectedCompany] = useState<DerivedCompany | null>(null);
+  const [search, setSearch] = useState("");
+
+  const filteredCompanies = useMemo(() => {
+    if (!search) return companies;
+    const q = search.toLowerCase();
+    return companies.filter((c) =>
+      c.name.toLowerCase().includes(q) || (c.industry?.toLowerCase().includes(q) ?? false)
+    );
+  }, [companies, search]);
 
   if (isLoading) {
     return (
@@ -105,15 +115,17 @@ export default function CampaignCompaniesPage() {
           </h1>
         </div>
 
-        {companies.length === 0 ? (
+        <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by company or industry..." resultCount={filteredCompanies.length} totalCount={companies.length} />
+
+        {filteredCompanies.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
             <div className="text-4xl mb-4">&#127970;</div>
-            <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No companies yet</h3>
-            <p className="text-gray-600 text-sm">Companies will appear here once leads are found.</p>
+            <h3 className="font-display font-bold text-lg text-gray-800 mb-2">{companies.length === 0 ? "No companies yet" : "No matching companies"}</h3>
+            <p className="text-gray-600 text-sm">{companies.length === 0 ? "Companies will appear here once leads are found." : "Try a different search term."}</p>
           </div>
         ) : (
           <div className="space-y-2">
-            {companies.map((company) => {
+            {filteredCompanies.map((company) => {
               const cost = formatCostRounded(company.totalCostInUsdCents);
               return (
                 <button

@@ -9,6 +9,7 @@ import {
   type EnrichedJournalist,
   type DiscoveredOutlet,
 } from "@/lib/api";
+import { EntitySearchBar } from "@/components/entity-search-bar";
 
 const POLL_INTERVAL = 5_000;
 const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
@@ -85,6 +86,7 @@ export default function CampaignJournalistsPage() {
   const brandId = params.brandId as string;
   const [activeTab, setActiveTab] = useState<Tab>("contacted");
   const [selected, setSelected] = useState<EnrichedJournalist | null>(null);
+  const [search, setSearch] = useState("");
 
   const { data: journalistsData, isLoading: journalistsLoading } = useAuthQuery(
     ["enrichedJournalists", brandId, campaignId],
@@ -127,6 +129,15 @@ export default function CampaignJournalistsPage() {
   const activeList = activeTab === "all"
     ? journalists
     : groupedByStatus.get(activeTab) ?? [];
+
+  const filteredList = useMemo(() => {
+    if (!search) return activeList;
+    const q = search.toLowerCase();
+    return activeList.filter((j) => {
+      const outletName = outletMap.get(j.outletId)?.outletName ?? "";
+      return j.journalistName.toLowerCase().includes(q) || outletName.toLowerCase().includes(q);
+    });
+  }, [activeList, search, outletMap]);
 
   // Tabs: status tabs (ordered) + all
   const tabs: { key: Tab; label: string; count: number }[] = [
@@ -181,18 +192,20 @@ export default function CampaignJournalistsPage() {
           ))}
         </div>
 
-        {activeList.length === 0 ? (
+        <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by journalist or outlet name..." resultCount={filteredList.length} totalCount={activeList.length} />
+
+        {filteredList.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
             <h3 className="font-display font-bold text-lg text-gray-800 mb-2">
-              No journalists
+              {activeList.length === 0 ? "No journalists" : "No matching journalists"}
             </h3>
             <p className="text-gray-600 text-sm">
-              No journalists with this status yet.
+              {activeList.length === 0 ? "No journalists with this status yet." : "Try a different search term."}
             </p>
           </div>
         ) : (
           <div className="space-y-2">
-            {activeList.map((j) => {
+            {filteredList.map((j) => {
               const outlet = outletMap.get(j.outletId);
               const cost = j.cost?.totalCostInUsdCents ?? 0;
               return (

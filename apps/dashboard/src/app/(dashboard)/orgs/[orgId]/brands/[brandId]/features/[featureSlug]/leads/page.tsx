@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { listBrandLeads, type Lead, type RunCost, type DescendantRun } from "@/lib/api";
+import { EntitySearchBar } from "@/components/entity-search-bar";
 
 const POLL_INTERVAL = 5_000;
 
@@ -241,6 +242,7 @@ export default function FeatureLeadsPage() {
   const brandId = params.brandId as string;
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("contacted");
+  const [search, setSearch] = useState("");
 
   const { data, isLoading } = useAuthQuery(
     ["brandLeads", brandId],
@@ -257,6 +259,18 @@ export default function FeatureLeadsPage() {
   const contactedLeads = useMemo(() => sortedLeads.filter((l) => l.status === "contacted"), [sortedLeads]);
   const otherLeads = useMemo(() => sortedLeads.filter((l) => l.status !== "contacted"), [sortedLeads]);
   const displayedLeads = activeTab === "contacted" ? contactedLeads : otherLeads;
+
+  const filteredLeads = useMemo(() => {
+    if (!search) return displayedLeads;
+    const q = search.toLowerCase();
+    return displayedLeads.filter((l) => {
+      const name = `${l.firstName} ${l.lastName}`.toLowerCase();
+      return name.includes(q)
+        || (l.organizationName?.toLowerCase().includes(q) ?? false)
+        || (l.title?.toLowerCase().includes(q) ?? false)
+        || (l.email?.toLowerCase().includes(q) ?? false);
+    });
+  }, [displayedLeads, search]);
 
   const { totalCostCents, avgCostPerContactedCents } = useMemo(() => {
     let total = 0;
@@ -318,13 +332,15 @@ export default function FeatureLeadsPage() {
           </button>
         </div>
 
+        <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by name, company, title, or email..." resultCount={filteredLeads.length} totalCount={displayedLeads.length} />
+
         {leads.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
             <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No leads yet</h3>
             <p className="text-gray-600 text-sm">Leads will appear here once campaigns run.</p>
           </div>
         ) : (
-          <LeadsTable leads={displayedLeads} selectedLead={selectedLead} onSelectLead={setSelectedLead} />
+          <LeadsTable leads={filteredLeads} selectedLead={selectedLead} onSelectLead={setSelectedLead} />
         )}
       </div>
 

@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { type Email } from "@/lib/api";
 import { useCampaign } from "@/lib/campaign-context";
+import { EntitySearchBar } from "@/components/entity-search-bar";
 
 function getEmailBody(email: Email): { html: string | null; text: string | null } {
   if (email.bodyHtml || email.bodyText) {
@@ -86,9 +87,19 @@ function PersonInitials({ firstName, lastName }: { firstName: string; lastName: 
 
 export default function CampaignEmailsPage() {
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
+  const [search, setSearch] = useState("");
   const { emails, loading: isLoading } = useCampaign();
 
   const totalCost = useMemo(() => formatTotalCost(emails), [emails]);
+
+  const filteredEmails = useMemo(() => {
+    if (!search) return emails;
+    const q = search.toLowerCase();
+    return emails.filter((e) => {
+      const name = [e.leadFirstName, e.leadLastName].filter(Boolean).join(" ").toLowerCase();
+      return name.includes(q) || (e.leadCompany?.toLowerCase().includes(q) ?? false) || e.subject.toLowerCase().includes(q);
+    });
+  }, [emails, search]);
 
   if (isLoading) {
     return (
@@ -119,15 +130,17 @@ export default function CampaignEmailsPage() {
           )}
         </div>
 
-        {emails.length === 0 ? (
+        <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by name, company, or subject..." resultCount={filteredEmails.length} totalCount={emails.length} />
+
+        {filteredEmails.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
             <div className="text-4xl mb-4">&#128231;</div>
-            <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No emails yet</h3>
-            <p className="text-gray-600 text-sm">Emails will appear here once generated.</p>
+            <h3 className="font-display font-bold text-lg text-gray-800 mb-2">{emails.length === 0 ? "No emails yet" : "No matching emails"}</h3>
+            <p className="text-gray-600 text-sm">{emails.length === 0 ? "Emails will appear here once generated." : "Try a different search term."}</p>
           </div>
         ) : (
           <div className="space-y-2">
-            {emails.map((email) => {
+            {filteredEmails.map((email) => {
               const cost = formatCostRounded(email.generationRun);
               const recipient = formatRecipient(email);
               const name = [email.leadFirstName, email.leadLastName].filter(Boolean).join(" ");
