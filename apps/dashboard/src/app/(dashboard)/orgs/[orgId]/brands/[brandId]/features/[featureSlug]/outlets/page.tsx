@@ -246,8 +246,8 @@ export default function FeatureOutletsPage() {
   );
 
   const { data: costsByOutlet } = useAuthQuery(
-    ["outletStatsCosts", brandId, "outletId"],
-    () => getOutletStatsCosts(brandId, "outletId"),
+    ["outletStatsCosts", brandId, featureSlug, "outletId"],
+    () => getOutletStatsCosts(brandId, "outletId", featureSlug),
   );
 
   const outlets = data?.outlets ?? [];
