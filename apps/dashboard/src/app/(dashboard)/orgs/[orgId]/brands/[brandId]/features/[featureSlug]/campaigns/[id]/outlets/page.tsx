@@ -168,8 +168,8 @@ export default function CampaignOutletsPage() {
   );
 
   const { data: costsByOutlet } = useAuthQuery(
-    ["outletStatsCosts", brandId, "outletId"],
-    () => getOutletStatsCosts(brandId, "outletId"),
+    ["outletStatsCosts", brandId, campaignId, "outletId"],
+    () => getOutletStatsCosts(brandId, "outletId", undefined, undefined, campaignId),
   );
 
   const outlets = data?.outlets ?? [];
@@ -201,21 +201,16 @@ export default function CampaignOutletsPage() {
       list.push(o);
       statusCounts.set(s, list);
     }
-    const sortedStatuses = [...statusCounts.keys()].sort((a, b) => {
-      const ai = STATUS_PRIORITY.indexOf(a);
-      const bi = STATUS_PRIORITY.indexOf(b);
-      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
-    });
     const result: Array<{ key: string; label: string; outlets: CampaignOutlet[] }> = [];
-    for (const status of sortedStatuses) {
-      const matching = statusCounts.get(status)!;
+    for (const status of STATUS_PRIORITY) {
+      const matching = statusCounts.get(status) ?? [];
       result.push({ key: status, label: `${statusLabel(status)} (${matching.length})`, outlets: matching });
     }
     result.push({ key: "all", label: `All (${outlets.length})`, outlets });
     return result;
   }, [outlets]);
 
-  const resolvedTab = activeTab ?? (tabs.length > 1 ? tabs[0].key : "all");
+  const resolvedTab = activeTab ?? (tabs.find((t) => t.key !== "all" && t.outlets.length > 0)?.key ?? "all");
   const currentTab = tabs.find((t) => t.key === resolvedTab) ?? tabs[tabs.length - 1];
   const displayedOutlets = currentTab ? [...currentTab.outlets].sort((a, b) => b.relevanceScore - a.relevanceScore) : [];
 
@@ -248,7 +243,7 @@ export default function CampaignOutletsPage() {
         </div>
 
         {/* Status tabs */}
-        {!isLoading && outlets.length > 0 && (
+        {!isLoading && (
           <div className="flex gap-1 mb-6 border-b border-gray-200">
             {tabs.map((tab) => (
               <button

@@ -1819,10 +1819,12 @@ export async function getOutletStatsCosts(
   groupBy?: string,
   featureDynastySlug?: string,
   token?: string,
+  campaignId?: string,
 ): Promise<{ groups: CostStatsGroup[] }> {
   const params = new URLSearchParams({ brandId });
   if (groupBy) params.set("groupBy", groupBy);
   if (featureDynastySlug) params.set("featureDynastySlug", featureDynastySlug);
+  if (campaignId) params.set("campaignId", campaignId);
   return apiCall<{ groups: CostStatsGroup[] }>(
     `/outlets/stats/costs?${params}`,
     { token },
