@@ -33,7 +33,7 @@ export function DiscoveredOutlets({ campaignId }: DiscoveredOutletsProps) {
     { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
   );
 
-  const outlets = (data?.outlets ?? []).filter((o) => (o.outletStatus ?? "open") !== "skipped");
+  const outlets = data?.outlets ?? [];
 
   if (isLoading) {
     return (
