@@ -517,10 +517,10 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   const entityCounts = useMemo(() => {
     const result: Record<string, number | undefined> = {};
     for (const entity of entities) {
-      if (entity.countKey && fStats[entity.countKey] != null) {
-        result[entity.name] = fStats[entity.countKey];
-      } else {
+      if (listingFallback[entity.name] != null) {
         result[entity.name] = listingFallback[entity.name];
+      } else if (entity.countKey && fStats[entity.countKey] != null) {
+        result[entity.name] = fStats[entity.countKey];
       }
     }
     return result;
