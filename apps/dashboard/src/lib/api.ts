@@ -1787,10 +1787,12 @@ export async function discoverJournalists(
 export async function getOutletStatsCosts(
   brandId: string,
   groupBy?: string,
+  featureDynastySlug?: string,
   token?: string,
 ): Promise<{ groups: CostStatsGroup[] }> {
   const params = new URLSearchParams({ brandId });
   if (groupBy) params.set("groupBy", groupBy);
+  if (featureDynastySlug) params.set("featureDynastySlug", featureDynastySlug);
   return apiCall<{ groups: CostStatsGroup[] }>(
     `/outlets/stats/costs?${params}`,
     { token },
