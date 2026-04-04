@@ -11,6 +11,10 @@ const campaignPagePath = path.resolve(
   __dirname,
   "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/journalists/page.tsx",
 );
+const brandPagePath = path.resolve(
+  __dirname,
+  "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/journalists/page.tsx",
+);
 
 describe("EnrichedJournalist type matches grouped API response", () => {
   const apiContent = fs.readFileSync(apiPath, "utf-8");
@@ -51,49 +55,51 @@ describe("EnrichedJournalist type matches grouped API response", () => {
 });
 
 describe("Journalist pages use journalistId as key (not flat id)", () => {
-  it("feature-level page uses journalistId for React keys and selection", () => {
-    const content = fs.readFileSync(featurePagePath, "utf-8");
-    expect(content).toContain("key={j.journalistId}");
-    expect(content).toContain("selected?.journalistId === j.journalistId");
-    // Must NOT use j.id (which doesn't exist on the grouped response)
-    expect(content).not.toMatch(/key=\{j\.id\}/);
-    expect(content).not.toMatch(/selected\?\.id === j\.id/);
-  });
+  const pages = [
+    { name: "feature-level", path: featurePagePath },
+    { name: "campaign-level", path: campaignPagePath },
+    { name: "brand-level", path: brandPagePath },
+  ];
 
-  it("campaign-level page uses journalistId for React keys and selection", () => {
-    const content = fs.readFileSync(campaignPagePath, "utf-8");
-    expect(content).toContain("key={j.journalistId}");
-    expect(content).toContain("selected?.journalistId === j.journalistId");
-    expect(content).not.toMatch(/key=\{j\.id\}/);
-    expect(content).not.toMatch(/selected\?\.id === j\.id/);
-  });
+  for (const page of pages) {
+    it(`${page.name} page uses journalistId for React keys and selection`, () => {
+      const content = fs.readFileSync(page.path, "utf-8");
+      expect(content).toContain("key={j.journalistId}");
+      expect(content).toContain("selected?.journalistId === j.journalistId");
+      expect(content).not.toMatch(/key=\{j\.id\}/);
+      expect(content).not.toMatch(/selected\?\.id === j\.id/);
+    });
+  }
 });
 
 describe("Journalist pages derive status from campaigns array", () => {
-  it("feature-level page calls bestStatus for status derivation", () => {
-    const content = fs.readFileSync(featurePagePath, "utf-8");
-    expect(content).toContain("bestStatus(j.campaigns)");
-    // Must NOT read j.status directly (it doesn't exist on grouped response)
-    expect(content).not.toMatch(/\bj\.status\b/);
-  });
+  const pages = [
+    { name: "feature-level", path: featurePagePath },
+    { name: "campaign-level", path: campaignPagePath },
+    { name: "brand-level", path: brandPagePath },
+  ];
 
-  it("campaign-level page calls bestStatus for status derivation", () => {
-    const content = fs.readFileSync(campaignPagePath, "utf-8");
-    expect(content).toContain("bestStatus(j.campaigns)");
-    expect(content).not.toMatch(/\bj\.status\b/);
-  });
+  for (const page of pages) {
+    it(`${page.name} page calls bestStatus for status derivation`, () => {
+      const content = fs.readFileSync(page.path, "utf-8");
+      expect(content).toContain("bestStatus(j.campaigns)");
+      expect(content).not.toMatch(/\bj\.status\b/);
+    });
+  }
 });
 
 describe("Journalist detail panel shows per-campaign entries", () => {
-  it("feature-level page renders CampaignEntryCard for each campaign", () => {
-    const content = fs.readFileSync(featurePagePath, "utf-8");
-    expect(content).toContain("j.campaigns.map");
-    expect(content).toContain("CampaignEntryCard");
-  });
+  const pages = [
+    { name: "feature-level", path: featurePagePath },
+    { name: "campaign-level", path: campaignPagePath },
+    { name: "brand-level", path: brandPagePath },
+  ];
 
-  it("campaign-level page renders CampaignEntryCard for each campaign", () => {
-    const content = fs.readFileSync(campaignPagePath, "utf-8");
-    expect(content).toContain("j.campaigns.map");
-    expect(content).toContain("CampaignEntryCard");
-  });
+  for (const page of pages) {
+    it(`${page.name} page renders CampaignEntryCard for each campaign`, () => {
+      const content = fs.readFileSync(page.path, "utf-8");
+      expect(content).toContain("j.campaigns.map");
+      expect(content).toContain("CampaignEntryCard");
+    });
+  }
 });
