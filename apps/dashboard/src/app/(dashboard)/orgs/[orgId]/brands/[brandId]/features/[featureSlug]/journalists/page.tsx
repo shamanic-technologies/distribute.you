@@ -8,7 +8,7 @@ import {
   listBrandOutlets,
   type EnrichedJournalist,
   type JournalistCampaignEntry,
-  type DiscoveredOutlet,
+  type DeduplicatedOutlet,
 } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 
@@ -118,7 +118,7 @@ export default function FeatureJournalistsPage() {
 
   // Outlet lookup
   const outletMap = useMemo(() => {
-    const map = new Map<string, DiscoveredOutlet>();
+    const map = new Map<string, DeduplicatedOutlet>();
     for (const o of outletsData?.outlets ?? []) {
       map.set(o.id, o);
     }
@@ -300,7 +300,7 @@ function DetailPanel({
   onClose,
 }: {
   journalist: EnrichedJournalist;
-  outlet: DiscoveredOutlet | undefined;
+  outlet: DeduplicatedOutlet | undefined;
   onClose: () => void;
 }) {
   const cost = j.cost?.totalCostInUsdCents ?? 0;

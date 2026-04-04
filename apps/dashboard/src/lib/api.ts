@@ -1546,19 +1546,42 @@ export async function getMediaKitViewStats(
 
 // --- Discovery types ---
 
-export interface DiscoveredOutlet {
+/** Per-campaign data nested inside a deduplicated outlet */
+export interface OutletCampaign {
+  campaignId: string;
+  featureSlug: string;
+  brandIds: string[];
+  relevanceScore: number;
+  status: "open" | "ended" | "denied" | "served" | "skipped";
+  whyRelevant?: string;
+  whyNotRelevant?: string;
+  overallRelevance?: string | null;
+  relevanceRationale?: string | null;
+  runId?: string | null;
+  updatedAt: string;
+}
+
+/** Deduplicated outlet returned by GET /v1/outlets */
+export interface DeduplicatedOutlet {
+  id: string;
+  outletName: string;
+  outletUrl: string;
+  outletDomain: string;
+  createdAt: string;
+  latestStatus: "open" | "ended" | "denied" | "served" | "skipped";
+  latestRelevanceScore: number;
+  campaigns: OutletCampaign[];
+}
+
+/** Flat outlet returned by GET /v1/campaigns/{id}/outlets */
+export interface CampaignOutlet {
   id: string;
   outletName: string;
   outletUrl: string;
   outletDomain: string;
   relevanceScore: number;
-  whyRelevant: string;
-  whyNotRelevant: string;
-  overalRelevance?: string;
-  relevanceRationale?: string;
-  status: "open" | "ended" | "denied" | "served" | "skipped";
-  createdAt: string;
-  updatedAt: string;
+  whyRelevant: string | null;
+  outletStatus: "open" | "ended" | "denied" | "served" | "skipped" | null;
 }
 
 export interface DiscoveredJournalist {
@@ -1577,10 +1600,10 @@ export async function listBrandOutlets(
   brandId: string,
   featureDynastySlug?: string,
   token?: string,
-): Promise<{ outlets: DiscoveredOutlet[] }> {
+): Promise<{ outlets: DeduplicatedOutlet[]; total: number }> {
   const params = new URLSearchParams({ brandId });
   if (featureDynastySlug) params.set("featureDynastySlug", featureDynastySlug);
-  return apiCall<{ outlets: DiscoveredOutlet[] }>(
+  return apiCall<{ outlets: DeduplicatedOutlet[]; total: number }>(
     `/outlets?${params}`,
     { token },
   );
@@ -1589,8 +1612,8 @@ export async function listBrandOutlets(
 export async function listCampaignOutlets(
   campaignId: string,
   token?: string,
-): Promise<{ outlets: DiscoveredOutlet[] }> {
-  return apiCall<{ outlets: DiscoveredOutlet[] }>(
+): Promise<{ outlets: CampaignOutlet[] }> {
+  return apiCall<{ outlets: CampaignOutlet[] }>(
     `/campaigns/${campaignId}/outlets`,
     { token },
   );

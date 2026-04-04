@@ -6,7 +6,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   listCampaignOutlets,
   getOutletStatsCosts,
-  type DiscoveredOutlet,
+  type CampaignOutlet,
 } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
 import { EntitySearchBar } from "@/components/entity-search-bar";
@@ -14,8 +14,8 @@ import { EntitySearchBar } from "@/components/entity-search-bar";
 const POLL_INTERVAL = 5_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
 
-/** Status progression from most advanced to least advanced */
-const STATUS_ORDER: Array<DiscoveredOutlet["status"]> = ["served", "ended", "denied", "open"];
+type OutletStatus = "open" | "ended" | "denied" | "served" | "skipped";
+const STATUS_ORDER: OutletStatus[] = ["served", "ended", "denied", "open"];
 
 const STATUS_LABELS: Record<string, { label: string; description: string; color: string }> = {
   served: { label: "Served", description: "Outlet has been successfully used for outreach", color: "bg-green-100 text-green-700 border-green-200" },
@@ -41,20 +41,15 @@ function statusBadge(status: string): string {
   return STATUS_LABELS[status]?.color ?? "bg-gray-100 text-gray-500 border-gray-200";
 }
 
-function timeAgo(dateStr: string): string {
-  const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-  if (seconds < 60) return "just now";
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-  const days = Math.floor(seconds / 86400);
-  if (days < 30) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString();
+function resolveStatus(outlet: CampaignOutlet): string {
+  return outlet.outletStatus ?? "open";
 }
 
 /* ─── Outlet Row ─────────────────────────────────────────────────────── */
 
-function OutletRow({ outlet, costCents, isSelected, onClick }: { outlet: DiscoveredOutlet; costCents: string | null; isSelected: boolean; onClick: () => void }) {
+function OutletRow({ outlet, costCents, isSelected, onClick }: { outlet: CampaignOutlet; costCents: string | null; isSelected: boolean; onClick: () => void }) {
   const cost = formatCost(costCents);
+  const status = resolveStatus(outlet);
   return (
     <button
       type="button"
@@ -69,15 +64,11 @@ function OutletRow({ outlet, costCents, isSelected, onClick }: { outlet: Discove
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5">
           <span className="font-medium text-sm text-gray-800 truncate">{outlet.outletName}</span>
-          <span className={`text-[10px] px-1.5 py-0.5 rounded-full border flex-shrink-0 ${statusBadge(outlet.status)}`}>
-            {outlet.status}
+          <span className={`text-[10px] px-1.5 py-0.5 rounded-full border flex-shrink-0 ${statusBadge(status)}`}>
+            {status}
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          <p className="text-xs text-gray-400 truncate">{outlet.outletDomain}</p>
-          <span className="text-xs text-gray-300">·</span>
-          <span className="text-xs text-gray-400 flex-shrink-0">{timeAgo(outlet.updatedAt)}</span>
-        </div>
+        <p className="text-xs text-gray-400 truncate">{outlet.outletDomain}</p>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
         {cost && (
@@ -96,36 +87,11 @@ function OutletRow({ outlet, costCents, isSelected, onClick }: { outlet: Discove
   );
 }
 
-/* ─── Status Legend ──────────────────────────────────────────────────── */
-
-function StatusLegend() {
-  return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4">
-      <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Status Legend</h4>
-      <div className="space-y-2">
-        {STATUS_ORDER.map((status) => {
-          const info = STATUS_LABELS[status];
-          return (
-            <div key={status} className="flex items-start gap-2">
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full border flex-shrink-0 mt-0.5 ${info.color}`}>
-                {info.label.toLowerCase()}
-              </span>
-              <span className="text-xs text-gray-600">{info.description}</span>
-            </div>
-          );
-        })}
-      </div>
-      <div className="mt-3 pt-3 border-t border-gray-100">
-        <p className="text-[10px] text-gray-400">Progression: open → served → ended (or denied)</p>
-      </div>
-    </div>
-  );
-}
-
 /* ─── Detail Panel ───────────────────────────────────────────────────── */
 
-function OutletDetailPanel({ outlet, costCents, onClose }: { outlet: DiscoveredOutlet; costCents: string | null; onClose: () => void }) {
+function OutletDetailPanel({ outlet, costCents, onClose }: { outlet: CampaignOutlet; costCents: string | null; onClose: () => void }) {
   const cost = formatCost(costCents);
+  const status = resolveStatus(outlet);
   return (
     <div className="absolute inset-0 md:relative md:w-1/2 bg-gray-50 md:border-l border-gray-200 overflow-y-auto z-10">
       <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
@@ -158,19 +124,19 @@ function OutletDetailPanel({ outlet, costCents, onClose }: { outlet: DiscoveredO
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
             <div>
-              <span className="text-gray-500">Domain:</span>
+              <span className="text-gray-500">Domain</span>
               <p className="font-medium">{outlet.outletDomain}</p>
             </div>
             <div>
-              <span className="text-gray-500">Status:</span>
+              <span className="text-gray-500">Status</span>
               <p>
-                <span className={`text-xs px-2 py-1 rounded-full border ${statusBadge(outlet.status)}`}>
-                  {outlet.status}
+                <span className={`text-xs px-2 py-1 rounded-full border ${statusBadge(status)}`}>
+                  {status}
                 </span>
               </p>
             </div>
             <div className="sm:col-span-2">
-              <span className="text-gray-500">URL:</span>
+              <span className="text-gray-500">URL</span>
               <p>
                 <a href={outlet.outletUrl} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:underline text-sm break-all">
                   {outlet.outletUrl}
@@ -193,32 +159,6 @@ function OutletDetailPanel({ outlet, costCents, onClose }: { outlet: DiscoveredO
             <p className="text-sm text-gray-700">{outlet.whyRelevant}</p>
           </div>
         )}
-
-        {outlet.whyNotRelevant && (
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Why Not Relevant</h4>
-            <p className="text-sm text-gray-700">{outlet.whyNotRelevant}</p>
-          </div>
-        )}
-
-        {(outlet.overalRelevance || outlet.relevanceRationale) && (
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Relevance Assessment</h4>
-            {outlet.overalRelevance && (
-              <p className="text-sm text-gray-700 mb-1"><span className="font-medium">Overall:</span> {outlet.overalRelevance}</p>
-            )}
-            {outlet.relevanceRationale && (
-              <p className="text-sm text-gray-700">{outlet.relevanceRationale}</p>
-            )}
-          </div>
-        )}
-
-        <div className="text-xs text-gray-400 space-y-1">
-          <p>Discovered: {new Date(outlet.createdAt).toLocaleDateString()} ({timeAgo(outlet.createdAt)})</p>
-          <p>Updated: {new Date(outlet.updatedAt).toLocaleDateString()} ({timeAgo(outlet.updatedAt)})</p>
-        </div>
-
-        <StatusLegend />
       </div>
     </div>
   );
@@ -230,7 +170,7 @@ export default function CampaignOutletsPage() {
   const params = useParams();
   const campaignId = params.id as string;
   const brandId = params.brandId as string;
-  const [selected, setSelected] = useState<DiscoveredOutlet | null>(null);
+  const [selected, setSelected] = useState<CampaignOutlet | null>(null);
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
@@ -245,7 +185,7 @@ export default function CampaignOutletsPage() {
     () => getOutletStatsCosts(brandId, "outletId"),
   );
 
-  const outlets = (data?.outlets ?? []).filter((o) => o.status !== "skipped");
+  const outlets = (data?.outlets ?? []).filter((o) => resolveStatus(o) !== "skipped");
 
   const costMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -266,11 +206,10 @@ export default function CampaignOutletsPage() {
 
   const avgCostPerOutlet = outlets.length > 0 ? totalCost / outlets.length : 0;
 
-  /** Tabs: status tabs with at least 1 outlet (most advanced first), then "all" */
   const tabs = useMemo(() => {
-    const result: Array<{ key: string; label: string; outlets: DiscoveredOutlet[] }> = [];
+    const result: Array<{ key: string; label: string; outlets: CampaignOutlet[] }> = [];
     for (const status of STATUS_ORDER) {
-      const matching = outlets.filter((o) => o.status === status);
+      const matching = outlets.filter((o) => resolveStatus(o) === status);
       if (matching.length > 0) {
         result.push({ key: status, label: `${STATUS_LABELS[status].label} (${matching.length})`, outlets: matching });
       }
@@ -279,7 +218,6 @@ export default function CampaignOutletsPage() {
     return result;
   }, [outlets]);
 
-  /** Default to "All" so every status is visible on load */
   const resolvedTab = activeTab ?? "all";
   const currentTab = tabs.find((t) => t.key === resolvedTab) ?? tabs[tabs.length - 1];
   const displayedOutlets = currentTab ? [...currentTab.outlets].sort((a, b) => b.relevanceScore - a.relevanceScore) : [];
@@ -306,8 +244,8 @@ export default function CampaignOutletsPage() {
             <h1 className="text-2xl font-semibold text-gray-900">Outlets</h1>
             <p className="text-sm text-gray-500">
               {outlets.length} outlet{outlets.length !== 1 ? "s" : ""}
-              {totalCost > 0 && ` · Total: $${(totalCost / 100).toFixed(2)}`}
-              {avgCostPerOutlet > 0 && ` · Avg: $${(avgCostPerOutlet / 100).toFixed(2)}/outlet`}
+              {totalCost > 0 && ` \u00b7 Total: $${(totalCost / 100).toFixed(2)}`}
+              {avgCostPerOutlet > 0 && ` \u00b7 Avg: $${(avgCostPerOutlet / 100).toFixed(2)}/outlet`}
             </p>
           </div>
         </div>
