@@ -2,7 +2,7 @@
 
 import { keepPreviousData } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listCampaignOutlets, type DiscoveredOutlet } from "@/lib/api";
+import { listCampaignOutlets, type CampaignOutlet } from "@/lib/api";
 
 const POLL_INTERVAL = 5_000;
 
@@ -17,6 +17,7 @@ function statusStyle(status: string): string {
     case "open": return "bg-blue-100 text-blue-700 border-blue-200";
     case "ended": return "bg-gray-100 text-gray-500 border-gray-200";
     case "denied": return "bg-red-100 text-red-600 border-red-200";
+    case "served": return "bg-green-100 text-green-700 border-green-200";
     default: return "bg-gray-100 text-gray-500 border-gray-200";
   }
 }
@@ -32,7 +33,7 @@ export function DiscoveredOutlets({ campaignId }: DiscoveredOutletsProps) {
     { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
   );
 
-  const outlets = (data?.outlets ?? []).filter((o) => o.status !== "skipped");
+  const outlets = (data?.outlets ?? []).filter((o) => (o.outletStatus ?? "open") !== "skipped");
 
   if (isLoading) {
     return (
@@ -70,7 +71,8 @@ export function DiscoveredOutlets({ campaignId }: DiscoveredOutletsProps) {
   );
 }
 
-function OutletRow({ outlet }: { outlet: DiscoveredOutlet }) {
+function OutletRow({ outlet }: { outlet: CampaignOutlet }) {
+  const status = outlet.outletStatus ?? "open";
   return (
     <div className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 hover:border-gray-200 transition">
       <div className="flex-1 min-w-0">
@@ -83,8 +85,8 @@ function OutletRow({ outlet }: { outlet: DiscoveredOutlet }) {
           >
             {outlet.outletName}
           </a>
-          <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${statusStyle(outlet.status)}`}>
-            {outlet.status}
+          <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${statusStyle(status)}`}>
+            {status}
           </span>
         </div>
         <p className="text-xs text-gray-400 truncate">{outlet.outletDomain}</p>

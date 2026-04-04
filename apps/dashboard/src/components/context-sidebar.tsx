@@ -393,7 +393,7 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
   );
 
   const outcomeItems: SidebarItem[] = [
-    { id: "outlets", label: "Outlets", href: `${basePath}/outlets`, icon: <OutcomeOutletIcon />, badge: outletsData?.outlets?.length },
+    { id: "outlets", label: "Outlets", href: `${basePath}/outlets`, icon: <OutcomeOutletIcon />, badge: outletsData?.total },
     { id: "journalists", label: "Journalists", href: `${basePath}/journalists`, icon: <NewspaperIcon />, badge: journalistsData?.journalists?.length },
     { id: "articles", label: "Articles", href: `${basePath}/articles`, icon: <OutcomeArticleIcon />, badge: articlesData?.discoveries?.length },
     { id: "leads", label: "Leads", href: `${basePath}/leads`, icon: <OutcomeLeadIcon />, badge: leadsData?.leads?.length },
@@ -509,7 +509,7 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   const listingFallback: Record<string, number | undefined> = {
     leads: leadsData?.leads?.length,
     emails: emailsData?.emails?.length,
-    outlets: outletsData?.outlets?.length,
+    outlets: outletsData?.total,
     journalists: journalistsData?.journalists?.length,
     articles: articlesData?.discoveries?.length,
   };
