@@ -1868,10 +1868,13 @@ export async function listCampaignArticles(
 
 export async function listBrandArticles(
   brandId: string,
+  featureDynastySlug?: string,
   token?: string,
 ): Promise<{ discoveries: ArticleDiscoveryItem[] }> {
+  const params = new URLSearchParams({ brandId });
+  if (featureDynastySlug) params.set("featureDynastySlug", featureDynastySlug);
   return apiCall<{ discoveries: ArticleDiscoveryItem[] }>(
-    `/discoveries?brandId=${brandId}`,
+    `/discoveries?${params}`,
     { token },
   );
 }
