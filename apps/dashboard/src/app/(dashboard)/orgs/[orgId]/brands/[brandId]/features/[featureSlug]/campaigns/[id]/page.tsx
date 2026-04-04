@@ -12,7 +12,7 @@ import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
 import { PressKitResults } from "@/components/campaign/press-kit-results";
-import { DiscoveredOutlets } from "@/components/campaign/discovered-outlets";
+
 
 
 function timeAgo(date: string | Date): string {
@@ -204,11 +204,6 @@ export default function CampaignOverviewPage() {
             campaignId={campaign.id}
             detailBasePath={`/orgs/${orgId}/brands/${params.brandId}/features/${featureDynastySlug}/campaigns/${campaign.id}/press-kits`}
           />
-        </div>
-      )}
-      {entityNames.includes("outlets") && campaign && (
-        <div className="mb-6">
-          <DiscoveredOutlets campaignId={campaign.id} />
         </div>
       )}
 
