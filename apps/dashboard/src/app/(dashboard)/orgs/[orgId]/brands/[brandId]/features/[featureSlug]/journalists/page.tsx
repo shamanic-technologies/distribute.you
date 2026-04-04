@@ -83,7 +83,6 @@ function timeAgo(dateStr: string): string {
 export default function FeatureJournalistsPage() {
   const params = useParams();
   const brandId = params.brandId as string;
-  const featureSlug = params.featureSlug as string;
   const [activeTab, setActiveTab] = useState<Tab>("contacted");
   const [selected, setSelected] = useState<EnrichedJournalist | null>(null);
   const [search, setSearch] = useState("");
@@ -95,8 +94,8 @@ export default function FeatureJournalistsPage() {
   );
 
   const { data: outletsData } = useAuthQuery(
-    ["brandOutlets", brandId, featureSlug],
-    () => listBrandOutlets(brandId, [featureSlug]),
+    ["brandOutlets", brandId],
+    () => listBrandOutlets(brandId),
   );
 
   const journalists = journalistsData?.journalists ?? [];
