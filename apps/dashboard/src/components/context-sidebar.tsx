@@ -10,7 +10,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   fetchFeatureStats,
   listBrandOutlets,
-  listBrandJournalists,
+  listJournalistsEnriched,
   listBrandLeads,
   listBrandEmails,
   listBrandArticles,
@@ -422,8 +422,8 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
     { enabled: entityNames.includes("outlets"), refetchInterval: 5_000, refetchIntervalInBackground: false },
   );
   const { data: journalistsData } = useAuthQuery(
-    ["brandJournalists", brandId],
-    () => listBrandJournalists(brandId),
+    ["enrichedJournalists", brandId],
+    () => listJournalistsEnriched(brandId),
     { enabled: entityNames.includes("journalists"), refetchInterval: 5_000, refetchIntervalInBackground: false },
   );
   const { data: leadsData } = useAuthQuery(
@@ -446,7 +446,7 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
     leads: leadsData?.leads?.length,
     emails: emailsData?.emails?.length,
     outlets: outletsData?.outlets?.length,
-    journalists: journalistsData?.campaignJournalists?.length,
+    journalists: journalistsData?.journalists?.length,
     articles: articlesData?.discoveries?.length,
   };
 
