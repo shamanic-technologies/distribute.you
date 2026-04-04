@@ -15,7 +15,10 @@ import { EntitySearchBar } from "@/components/entity-search-bar";
 const POLL_INTERVAL = 5_000;
 const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
 
-const CAMPAIGN_STATUS_ORDER: JournalistCampaignEntry["status"][] = [
+const CAMPAIGN_STATUS_ORDER: JournalistCampaignEntry["consolidatedStatus"][] = [
+  "replied",
+  "delivered",
+  "bounced",
   "contacted",
   "served",
   "claimed",
@@ -23,10 +26,13 @@ const CAMPAIGN_STATUS_ORDER: JournalistCampaignEntry["status"][] = [
   "skipped",
 ];
 
-type Tab = JournalistCampaignEntry["status"] | "all";
+type Tab = JournalistCampaignEntry["consolidatedStatus"] | "all";
 
-function statusLabel(status: JournalistCampaignEntry["status"]): string {
+function statusLabel(status: JournalistCampaignEntry["consolidatedStatus"]): string {
   switch (status) {
+    case "replied": return "Replied";
+    case "delivered": return "Delivered";
+    case "bounced": return "Bounced";
     case "contacted": return "Contacted";
     case "served": return "Processing";
     case "buffered": return "In queue";
@@ -36,8 +42,11 @@ function statusLabel(status: JournalistCampaignEntry["status"]): string {
   }
 }
 
-function statusDescription(status: JournalistCampaignEntry["status"]): string {
+function statusDescription(status: JournalistCampaignEntry["consolidatedStatus"]): string {
   switch (status) {
+    case "replied": return "Journalist replied to the outreach email";
+    case "delivered": return "Outreach email was delivered to the journalist";
+    case "bounced": return "Outreach email bounced and was not delivered";
     case "contacted": return "Journalist has been contacted with outreach email";
     case "served": return "Outreach is currently being processed";
     case "claimed": return "Journalist has been claimed for outreach";
@@ -47,9 +56,12 @@ function statusDescription(status: JournalistCampaignEntry["status"]): string {
   }
 }
 
-function statusStyle(status: JournalistCampaignEntry["status"]): string {
+function statusStyle(status: JournalistCampaignEntry["consolidatedStatus"]): string {
   switch (status) {
-    case "contacted": return "bg-green-100 text-green-700 border-green-200";
+    case "replied": return "bg-emerald-100 text-emerald-700 border-emerald-200";
+    case "delivered": return "bg-green-100 text-green-700 border-green-200";
+    case "bounced": return "bg-red-100 text-red-600 border-red-200";
+    case "contacted": return "bg-teal-100 text-teal-700 border-teal-200";
     case "served": return "bg-orange-100 text-orange-700 border-orange-200";
     case "buffered": return "bg-blue-100 text-blue-600 border-blue-200";
     case "claimed": return "bg-yellow-100 text-yellow-700 border-yellow-200";
@@ -79,14 +91,14 @@ function timeAgo(dateStr: string): string {
 }
 
 /** Returns the most advanced status across all campaign entries */
-function bestStatus(campaigns: JournalistCampaignEntry[]): JournalistCampaignEntry["status"] {
-  let best: JournalistCampaignEntry["status"] = "skipped";
+function bestStatus(campaigns: JournalistCampaignEntry[]): JournalistCampaignEntry["consolidatedStatus"] {
+  let best: JournalistCampaignEntry["consolidatedStatus"] = "skipped";
   let bestIdx = CAMPAIGN_STATUS_ORDER.length;
   for (const c of campaigns) {
-    const idx = CAMPAIGN_STATUS_ORDER.indexOf(c.status);
+    const idx = CAMPAIGN_STATUS_ORDER.indexOf(c.consolidatedStatus);
     if (idx !== -1 && idx < bestIdx) {
       bestIdx = idx;
-      best = c.status;
+      best = c.consolidatedStatus;
     }
   }
   return best;
@@ -127,7 +139,7 @@ export default function BrandJournalistsPage() {
 
   // Derive best status per journalist for tab grouping
   const journalistStatuses = useMemo(() => {
-    const map = new Map<string, JournalistCampaignEntry["status"]>();
+    const map = new Map<string, JournalistCampaignEntry["consolidatedStatus"]>();
     for (const j of journalists) {
       map.set(j.journalistId, bestStatus(j.campaigns));
     }
@@ -136,7 +148,7 @@ export default function BrandJournalistsPage() {
 
   // Group by best status
   const groupedByStatus = useMemo(() => {
-    const groups = new Map<JournalistCampaignEntry["status"], EnrichedJournalist[]>();
+    const groups = new Map<JournalistCampaignEntry["consolidatedStatus"], EnrichedJournalist[]>();
     for (const status of CAMPAIGN_STATUS_ORDER) {
       groups.set(status, []);
     }
@@ -450,8 +462,8 @@ function CampaignEntryCard({ campaign: c }: { campaign: JournalistCampaignEntry 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 space-y-3">
       <div className="flex items-center gap-3 flex-wrap">
-        <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${statusStyle(c.status)}`}>
-          {statusLabel(c.status)}
+        <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${statusStyle(c.consolidatedStatus)}`}>
+          {statusLabel(c.consolidatedStatus)}
         </span>
         {!isNaN(score) && (
           <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${relevanceColor(score)}`}>
