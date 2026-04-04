@@ -157,11 +157,14 @@ export default function FeatureCreateCampaignPage() {
   const brand = brandData?.brand ?? null;
 
   // Fetch all org brands for the brand picker
-  const { data: allBrandsData } = useAuthQuery(
+  const { data: allBrandsData, error: brandsError } = useAuthQuery(
     ["brands"],
     () => listBrands(),
     pollOptions,
   );
+  if (brandsError) {
+    console.error("[dashboard] Failed to fetch brands for picker:", brandsError);
+  }
   const allBrands = allBrandsData?.brands ?? [];
   // Brands available to add (exclude primary + already added)
   const availableBrands = useMemo(
@@ -622,7 +625,9 @@ export default function FeatureCreateCampaignPage() {
                     <div className="px-3 py-2 border-b border-gray-100">
                       <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Add a brand</span>
                     </div>
-                    {availableBrands.length === 0 ? (
+                    {brandsError ? (
+                      <div className="px-3 py-3 text-xs text-red-500">Failed to load brands: {brandsError.message}</div>
+                    ) : availableBrands.length === 0 ? (
                       <div className="px-3 py-3 text-xs text-gray-400">No other brands available</div>
                     ) : (
                       <div className="max-h-48 overflow-y-auto py-1">
