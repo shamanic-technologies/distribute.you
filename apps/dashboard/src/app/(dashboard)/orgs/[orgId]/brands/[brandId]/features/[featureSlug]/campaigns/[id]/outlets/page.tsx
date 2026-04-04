@@ -9,6 +9,7 @@ import {
   type DiscoveredOutlet,
 } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
+import { EntitySearchBar } from "@/components/entity-search-bar";
 
 const POLL_INTERVAL = 5_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
@@ -231,6 +232,7 @@ export default function CampaignOutletsPage() {
   const brandId = params.brandId as string;
   const [selected, setSelected] = useState<DiscoveredOutlet | null>(null);
   const [activeTab, setActiveTab] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   const { data, isLoading } = useAuthQuery(
     ["campaignOutlets", campaignId],
@@ -281,6 +283,14 @@ export default function CampaignOutletsPage() {
   const resolvedTab = activeTab ?? "all";
   const currentTab = tabs.find((t) => t.key === resolvedTab) ?? tabs[tabs.length - 1];
   const displayedOutlets = currentTab ? [...currentTab.outlets].sort((a, b) => b.relevanceScore - a.relevanceScore) : [];
+
+  const filteredOutlets = useMemo(() => {
+    if (!search) return displayedOutlets;
+    const q = search.toLowerCase();
+    return displayedOutlets.filter((o) =>
+      o.outletName.toLowerCase().includes(q) || o.outletDomain.toLowerCase().includes(q)
+    );
+  }, [displayedOutlets, search]);
 
   return (
     <div className="flex flex-col md:flex-row h-full relative">
@@ -339,8 +349,10 @@ export default function CampaignOutletsPage() {
             </p>
           </div>
         ) : (
+          <>
+          <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by outlet name or domain..." resultCount={filteredOutlets.length} totalCount={displayedOutlets.length} />
           <div className="space-y-2">
-            {displayedOutlets.map((outlet) => (
+            {filteredOutlets.map((outlet) => (
               <OutletRow
                 key={outlet.id}
                 outlet={outlet}
@@ -350,6 +362,7 @@ export default function CampaignOutletsPage() {
               />
             ))}
           </div>
+          </>
         )}
       </div>
 

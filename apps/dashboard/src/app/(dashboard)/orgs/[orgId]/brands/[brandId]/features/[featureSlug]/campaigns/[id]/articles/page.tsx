@@ -9,6 +9,7 @@ import {
   listCampaignJournalists,
   type ArticleDiscoveryItem,
 } from "@/lib/api";
+import { EntitySearchBar } from "@/components/entity-search-bar";
 
 const POLL_INTERVAL = 5_000;
 
@@ -37,6 +38,7 @@ export default function CampaignArticlesPage() {
   const params = useParams();
   const campaignId = params.id as string;
   const [selected, setSelected] = useState<ArticleDiscoveryItem | null>(null);
+  const [search, setSearch] = useState("");
 
   const { data, isLoading } = useAuthQuery(
     ["campaignArticles", campaignId],
@@ -84,6 +86,19 @@ export default function CampaignArticlesPage() {
     [articles],
   );
 
+  const filteredArticles = useMemo(() => {
+    if (!search) return sorted;
+    const q = search.toLowerCase();
+    return sorted.filter((item) => {
+      const title = (item.article.ogTitle || item.article.twitterTitle || item.article.snippet || "").toLowerCase();
+      const outletName = item.discovery.outletId ? (outletMap.get(item.discovery.outletId) ?? "") : "";
+      const journalistName = item.discovery.journalistId
+        ? (journalistMap.get(item.discovery.journalistId) ?? "")
+        : (item.article.articleAuthor || item.article.author || "");
+      return title.includes(q) || outletName.toLowerCase().includes(q) || journalistName.toLowerCase().includes(q);
+    });
+  }, [sorted, search, outletMap, journalistMap]);
+
   if (isLoading) {
     return (
       <div className="p-4 md:p-8">
@@ -108,14 +123,16 @@ export default function CampaignArticlesPage() {
           </h1>
         </div>
 
-        {articles.length === 0 ? (
+        <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by title, outlet, or journalist..." resultCount={filteredArticles.length} totalCount={sorted.length} />
+
+        {filteredArticles.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-            <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No articles yet</h3>
-            <p className="text-gray-600 text-sm">Articles will appear here once discovered from outlets and journalists.</p>
+            <h3 className="font-display font-bold text-lg text-gray-800 mb-2">{articles.length === 0 ? "No articles yet" : "No matching articles"}</h3>
+            <p className="text-gray-600 text-sm">{articles.length === 0 ? "Articles will appear here once discovered from outlets and journalists." : "Try a different search term."}</p>
           </div>
         ) : (
           <div className="space-y-2">
-            {sorted.map((item) => {
+            {filteredArticles.map((item) => {
               const outletName = item.discovery.outletId
                 ? outletMap.get(item.discovery.outletId)
                 : null;

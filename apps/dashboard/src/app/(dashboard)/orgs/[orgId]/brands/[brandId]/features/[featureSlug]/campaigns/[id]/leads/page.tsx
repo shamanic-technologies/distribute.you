@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { type Lead, type RunCost, type DescendantRun } from "@/lib/api";
 import { useCampaign } from "@/lib/campaign-context";
+import { EntitySearchBar } from "@/components/entity-search-bar";
 
 type Tab = "contacted" | "other";
 
@@ -307,6 +308,7 @@ function LeadsTable({
 export default function CampaignLeadsPage() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("contacted");
+  const [search, setSearch] = useState("");
   const { leads, loading: isLoading } = useCampaign();
 
   const sortedLeads = useMemo(
@@ -324,6 +326,18 @@ export default function CampaignLeadsPage() {
   );
 
   const displayedLeads = activeTab === "contacted" ? contactedLeads : otherLeads;
+
+  const filteredLeads = useMemo(() => {
+    if (!search) return displayedLeads;
+    const q = search.toLowerCase();
+    return displayedLeads.filter((l) => {
+      const name = `${l.firstName} ${l.lastName}`.toLowerCase();
+      return name.includes(q)
+        || (l.organizationName?.toLowerCase().includes(q) ?? false)
+        || (l.title?.toLowerCase().includes(q) ?? false)
+        || (l.email?.toLowerCase().includes(q) ?? false);
+    });
+  }, [displayedLeads, search]);
 
   const { totalCostCents, avgCostPerContactedCents } = useMemo(() => {
     let total = 0;
@@ -408,6 +422,8 @@ export default function CampaignLeadsPage() {
           </button>
         </div>
 
+        <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by name, company, title, or email..." resultCount={filteredLeads.length} totalCount={displayedLeads.length} />
+
         {leads.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
             <div className="text-4xl mb-4">&#128101;</div>
@@ -416,7 +432,7 @@ export default function CampaignLeadsPage() {
           </div>
         ) : (
           <LeadsTable
-            leads={displayedLeads}
+            leads={filteredLeads}
             selectedLead={selectedLead}
             onSelectLead={setSelectedLead}
           />
