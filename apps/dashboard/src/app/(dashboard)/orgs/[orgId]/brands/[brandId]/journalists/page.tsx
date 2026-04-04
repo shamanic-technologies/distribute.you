@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
@@ -100,6 +100,7 @@ export default function BrandJournalistsPage() {
   const [activeTab, setActiveTab] = useState<Tab>("contacted");
   const [selected, setSelected] = useState<EnrichedJournalist | null>(null);
   const [search, setSearch] = useState("");
+  const hasAutoSelectedTab = useRef(false);
 
   const { data: journalistsData, isLoading: journalistsLoading } = useAuthQuery(
     ["enrichedJournalists", brandId],
@@ -145,6 +146,14 @@ export default function BrandJournalistsPage() {
     }
     return groups;
   }, [journalists, journalistStatuses]);
+
+  // Auto-select the first non-empty tab on initial data load
+  useEffect(() => {
+    if (hasAutoSelectedTab.current || journalists.length === 0) return;
+    hasAutoSelectedTab.current = true;
+    const first = CAMPAIGN_STATUS_ORDER.find((s) => (groupedByStatus.get(s)?.length ?? 0) > 0);
+    if (first) setActiveTab(first);
+  }, [journalists.length, groupedByStatus]);
 
   const activeList = activeTab === "all"
     ? journalists
