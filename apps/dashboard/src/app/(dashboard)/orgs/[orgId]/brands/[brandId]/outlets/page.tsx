@@ -15,13 +15,15 @@ import { EntitySearchBar } from "@/components/entity-search-bar";
 const POLL_INTERVAL = 5_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
 
-const STATUS_ORDER: Array<DeduplicatedOutlet["latestStatus"]> = ["served", "ended", "denied", "open"];
+/** Most-advanced → least-advanced. Any status not listed here sorts to the end. */
+const STATUS_PRIORITY: string[] = ["served", "ended", "denied", "open", "skipped"];
 
-const STATUS_LABELS: Record<string, { label: string; description: string; color: string }> = {
-  served: { label: "Served", description: "Outlet has been successfully used for outreach", color: "bg-green-100 text-green-700 border-green-200" },
-  ended: { label: "Ended", description: "Outreach to this outlet has concluded", color: "bg-gray-100 text-gray-500 border-gray-200" },
-  denied: { label: "Denied", description: "Outlet declined or was deemed unsuitable", color: "bg-red-100 text-red-600 border-red-200" },
-  open: { label: "Open", description: "Outlet discovered, pending outreach", color: "bg-blue-100 text-blue-700 border-blue-200" },
+const STATUS_LABELS: Record<string, { label: string; color: string }> = {
+  served: { label: "Served", color: "bg-green-100 text-green-700 border-green-200" },
+  ended: { label: "Ended", color: "bg-gray-100 text-gray-500 border-gray-200" },
+  denied: { label: "Denied", color: "bg-red-100 text-red-600 border-red-200" },
+  open: { label: "Open", color: "bg-blue-100 text-blue-700 border-blue-200" },
+  skipped: { label: "Skipped", color: "bg-orange-100 text-orange-600 border-orange-200" },
 };
 
 function formatCost(cents: string | number | null | undefined): string | null {
@@ -258,7 +260,7 @@ export default function BrandOutletsPage() {
     () => getOutletStatsCosts(brandId, "outletId"),
   );
 
-  const outlets = (data?.outlets ?? []).filter((o) => o.latestStatus !== "skipped");
+  const outlets = data?.outlets ?? [];
 
   const costMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -280,18 +282,31 @@ export default function BrandOutletsPage() {
   const avgCostPerOutlet = outlets.length > 0 ? totalCost / outlets.length : 0;
 
   const tabs = useMemo(() => {
+    // Collect all statuses present in the data
+    const statusCounts = new Map<string, DeduplicatedOutlet[]>();
+    for (const o of outlets) {
+      const list = statusCounts.get(o.latestStatus) ?? [];
+      list.push(o);
+      statusCounts.set(o.latestStatus, list);
+    }
+    // Sort by priority (most advanced first), unknown statuses go to end
+    const sortedStatuses = [...statusCounts.keys()].sort((a, b) => {
+      const ai = STATUS_PRIORITY.indexOf(a);
+      const bi = STATUS_PRIORITY.indexOf(b);
+      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+    });
     const result: Array<{ key: string; label: string; outlets: DeduplicatedOutlet[] }> = [];
-    for (const status of STATUS_ORDER) {
-      const matching = outlets.filter((o) => o.latestStatus === status);
-      if (matching.length > 0) {
-        result.push({ key: status, label: `${STATUS_LABELS[status].label} (${matching.length})`, outlets: matching });
-      }
+    for (const status of sortedStatuses) {
+      const matching = statusCounts.get(status)!;
+      const info = STATUS_LABELS[status];
+      result.push({ key: status, label: `${info?.label ?? status} (${matching.length})`, outlets: matching });
     }
     result.push({ key: "all", label: `All (${outlets.length})`, outlets });
     return result;
   }, [outlets]);
 
-  const resolvedTab = activeTab ?? "all";
+  // Default to first status tab that has data (most advanced), not "all"
+  const resolvedTab = activeTab ?? (tabs.length > 1 ? tabs[0].key : "all");
   const currentTab = tabs.find((t) => t.key === resolvedTab) ?? tabs[tabs.length - 1];
   const displayedOutlets = currentTab ? [...currentTab.outlets].sort((a, b) => b.latestRelevanceScore - a.latestRelevanceScore) : [];
 
