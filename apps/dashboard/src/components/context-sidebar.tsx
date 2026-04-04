@@ -415,15 +415,15 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   );
   const fStats = featureStatsData?.stats ?? {};
 
-  // Listing fallbacks for entities without a countKey
+  // Listing fallbacks for entities without a countKey — filtered by featureDynastySlug
   const { data: outletsData } = useAuthQuery(
-    ["brandOutlets", brandId],
-    () => listBrandOutlets(brandId),
+    ["brandOutlets", brandId, featureSlug],
+    () => listBrandOutlets(brandId, featureSlug),
     { enabled: entityNames.includes("outlets"), refetchInterval: 5_000, refetchIntervalInBackground: false },
   );
   const { data: journalistsData } = useAuthQuery(
-    ["enrichedJournalists", brandId],
-    () => listJournalistsEnriched(brandId),
+    ["enrichedJournalists", brandId, featureSlug],
+    () => listJournalistsEnriched(brandId, { featureDynastySlug: featureSlug }),
     { enabled: entityNames.includes("journalists"), refetchInterval: 5_000, refetchIntervalInBackground: false },
   );
   const { data: leadsData } = useAuthQuery(
@@ -437,8 +437,8 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
     { enabled: entityNames.includes("emails"), refetchInterval: 5_000, refetchIntervalInBackground: false },
   );
   const { data: articlesData } = useAuthQuery(
-    ["brandArticles", brandId],
-    () => listBrandArticles(brandId),
+    ["brandArticles", brandId, featureSlug],
+    () => listBrandArticles(brandId, featureSlug),
     { enabled: entityNames.includes("articles"), refetchInterval: 5_000, refetchIntervalInBackground: false },
   );
 
