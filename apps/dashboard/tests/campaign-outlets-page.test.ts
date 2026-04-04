@@ -33,16 +33,17 @@ describe("getOutletStatsCosts accepts campaignId parameter", () => {
   });
 });
 
-describe("campaign outlet page shows all status tabs", () => {
+describe("campaign outlet page uses deduplicated endpoint and same tab logic as brand page", () => {
   const content = fs.readFileSync(campaignOutletPagePath, "utf-8");
 
-  it("should iterate over STATUS_PRIORITY to build tabs (not just existing statuses)", () => {
-    expect(content).toContain("for (const status of STATUS_PRIORITY)");
+  it("should use listBrandOutlets instead of listCampaignOutlets", () => {
+    expect(content).toContain("listBrandOutlets");
+    expect(content).not.toContain("listCampaignOutlets");
   });
 
-  it("should show tabs even when outlets list is empty", () => {
-    // The tab rendering condition should NOT require outlets.length > 0
-    expect(content).not.toContain("outlets.length > 0 && (");
+  it("should only show tabs for statuses that have outlets", () => {
+    // Uses dynamic tab building from statusCounts keys, not all STATUS_PRIORITY
+    expect(content).toContain("statusCounts.keys()");
   });
 
   it("should default to first non-empty tab, falling back to all", () => {
