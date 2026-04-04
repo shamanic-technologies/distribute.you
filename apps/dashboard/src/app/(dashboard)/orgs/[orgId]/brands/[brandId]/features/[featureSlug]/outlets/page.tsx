@@ -229,13 +229,14 @@ function OutletDetailPanel({ outlet, costCents, onClose }: { outlet: DiscoveredO
 export default function FeatureOutletsPage() {
   const params = useParams();
   const brandId = params.brandId as string;
+  const featureSlug = params.featureSlug as string;
   const [selected, setSelected] = useState<DiscoveredOutlet | null>(null);
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
   const { data, isLoading } = useAuthQuery(
-    ["brandOutlets", brandId],
-    () => listBrandOutlets(brandId),
+    ["brandOutlets", brandId, featureSlug],
+    () => listBrandOutlets(brandId, featureSlug),
     pollOptions,
   );
 

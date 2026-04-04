@@ -1575,10 +1575,13 @@ export interface DiscoveredJournalist {
 
 export async function listBrandOutlets(
   brandId: string,
+  featureDynastySlug?: string,
   token?: string,
 ): Promise<{ outlets: DiscoveredOutlet[] }> {
+  const params = new URLSearchParams({ brandId });
+  if (featureDynastySlug) params.set("featureDynastySlug", featureDynastySlug);
   return apiCall<{ outlets: DiscoveredOutlet[] }>(
-    `/outlets?brandId=${brandId}`,
+    `/outlets?${params}`,
     { token },
   );
 }
