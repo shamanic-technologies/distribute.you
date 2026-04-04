@@ -2,12 +2,11 @@
 
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
-import { keepPreviousData } from "@tanstack/react-query";
 import { CampaignSidebar } from "@/components/campaign-sidebar";
 import { useCampaign } from "@/lib/campaign-context";
 import { useFeatures } from "@/lib/features-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listWorkflows, listCampaignOutlets, listJournalistsEnriched, listCampaignEmails, listCampaignArticles, listMediaKitsByCampaign, fetchFeatureStats } from "@/lib/api";
+import { listWorkflows, listCampaignOutlets, listJournalistsEnriched, listCampaignEmails, listCampaignArticles, listMediaKitsByCampaign } from "@/lib/api";
 
 interface Props {
   orgId: string;
@@ -28,14 +27,6 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureDynastyS
     ["workflows"],
     () => listWorkflows(),
   );
-
-  // Feature stats for this campaign — same source the list page uses
-  const { data: featureStatsData } = useAuthQuery(
-    ["featureStats", featureDynastySlug, "campaign", campaignId],
-    () => fetchFeatureStats(featureDynastySlug, { campaignId }),
-    { refetchInterval: 5_000, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
-  );
-  const fStats = featureStatsData?.stats ?? {};
 
   const { data: outletsData } = useAuthQuery(
     ["campaignOutlets", campaignId],
@@ -81,8 +72,11 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureDynastyS
     return names.size;
   }, [leads]);
 
-  // Entity listing counts as fallback for entities without a countKey
-  const listingFallback: Record<string, number | undefined> = {
+  // Entity counts from listing data — the only authoritative source for totals.
+  // Feature stats (countKey) are status-specific (e.g. "journalistsContacted") and would
+  // show misleading counts (0 when there are buffered/skipped journalists), so we don't
+  // use them as fallback. If listing data hasn't loaded yet, the badge stays hidden.
+  const entityCounts: Record<string, number | undefined> = {
     leads: leads.length,
     companies: companyCount,
     emails: emailsData?.emails?.length,
@@ -91,19 +85,6 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureDynastyS
     articles: articlesData?.discoveries?.length,
     "press-kits": pressKitsData?.length,
   };
-
-  // Build entity counts: prefer listing total (shows ALL items), fall back to feature stats
-  const entityCounts = useMemo(() => {
-    const result: Record<string, number | undefined> = {};
-    for (const entity of entities) {
-      if (listingFallback[entity.name] != null) {
-        result[entity.name] = listingFallback[entity.name];
-      } else if (entity.countKey && fStats[entity.countKey] != null) {
-        result[entity.name] = fStats[entity.countKey];
-      }
-    }
-    return result;
-  }, [entities, fStats, listingFallback]);
 
   return (
     <CampaignSidebar
