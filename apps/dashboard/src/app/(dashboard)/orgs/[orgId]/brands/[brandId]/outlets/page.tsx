@@ -11,20 +11,10 @@ import {
 } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
 import { EntitySearchBar } from "@/components/entity-search-bar";
+import { STATUS_PRIORITY, statusBadgeColor, statusLabel, resolveDisplayStatus } from "@/lib/outlet-status";
 
 const POLL_INTERVAL = 5_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
-
-/** Most-advanced → least-advanced. Any status not listed here sorts to the end. */
-const STATUS_PRIORITY: string[] = ["served", "ended", "denied", "open", "skipped"];
-
-const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  served: { label: "Served", color: "bg-green-100 text-green-700 border-green-200" },
-  ended: { label: "Ended", color: "bg-gray-100 text-gray-500 border-gray-200" },
-  denied: { label: "Denied", color: "bg-red-100 text-red-600 border-red-200" },
-  open: { label: "Open", color: "bg-blue-100 text-blue-700 border-blue-200" },
-  skipped: { label: "Skipped", color: "bg-orange-100 text-orange-600 border-orange-200" },
-};
 
 function formatCost(cents: string | number | null | undefined): string | null {
   if (cents == null) return null;
@@ -37,10 +27,6 @@ function relevanceColor(score: number): string {
   if (score >= 70) return "bg-green-100 text-green-700 border-green-200";
   if (score >= 40) return "bg-yellow-100 text-yellow-700 border-yellow-200";
   return "bg-red-100 text-red-600 border-red-200";
-}
-
-function statusBadge(status: string): string {
-  return STATUS_LABELS[status]?.color ?? "bg-gray-100 text-gray-500 border-gray-200";
 }
 
 function timeAgo(dateStr: string): string {
@@ -57,6 +43,7 @@ function timeAgo(dateStr: string): string {
 
 function OutletRow({ outlet, costCents, isSelected, onClick }: { outlet: DeduplicatedOutlet; costCents: string | null; isSelected: boolean; onClick: () => void }) {
   const cost = formatCost(costCents);
+  const displayStatus = resolveDisplayStatus(outlet.latestStatus, outlet.replyClassification);
   return (
     <button
       type="button"
@@ -71,8 +58,8 @@ function OutletRow({ outlet, costCents, isSelected, onClick }: { outlet: Dedupli
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5">
           <span className="font-medium text-sm text-gray-800 truncate">{outlet.outletName}</span>
-          <span className={`text-[10px] px-1.5 py-0.5 rounded-full border flex-shrink-0 ${statusBadge(outlet.latestStatus)}`}>
-            {outlet.latestStatus}
+          <span className={`text-[10px] px-1.5 py-0.5 rounded-full border flex-shrink-0 ${statusBadgeColor(displayStatus)}`}>
+            {statusLabel(displayStatus)}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -101,13 +88,14 @@ function OutletRow({ outlet, costCents, isSelected, onClick }: { outlet: Dedupli
 /* ─── Campaign Detail Card ──────────────────────────────────────────── */
 
 function CampaignDetailCard({ campaign }: { campaign: OutletCampaign }) {
+  const displayStatus = resolveDisplayStatus(campaign.status, campaign.replyClassification);
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono text-gray-500 bg-gray-50 px-2 py-0.5 rounded">{campaign.featureSlug}</span>
-          <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${statusBadge(campaign.status)}`}>
-            {campaign.status}
+          <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${statusBadgeColor(displayStatus)}`}>
+            {statusLabel(displayStatus)}
           </span>
         </div>
         <span className={`text-xs font-medium px-2 py-1 rounded-full border ${relevanceColor(campaign.relevanceScore)}`}>
@@ -157,6 +145,7 @@ function CampaignDetailCard({ campaign }: { campaign: OutletCampaign }) {
 
 function OutletDetailPanel({ outlet, costCents, onClose }: { outlet: DeduplicatedOutlet; costCents: string | null; onClose: () => void }) {
   const cost = formatCost(costCents);
+  const displayStatus = resolveDisplayStatus(outlet.latestStatus, outlet.replyClassification);
   return (
     <div className="absolute inset-0 md:relative md:w-1/2 bg-gray-50 md:border-l border-gray-200 overflow-y-auto z-10">
       <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
@@ -196,8 +185,8 @@ function OutletDetailPanel({ outlet, costCents, onClose }: { outlet: Deduplicate
             <div>
               <span className="text-gray-500">Status</span>
               <p>
-                <span className={`text-xs px-2 py-1 rounded-full border ${statusBadge(outlet.latestStatus)}`}>
-                  {outlet.latestStatus}
+                <span className={`text-xs px-2 py-1 rounded-full border ${statusBadgeColor(displayStatus)}`}>
+                  {statusLabel(displayStatus)}
                 </span>
               </p>
             </div>
@@ -282,14 +271,13 @@ export default function BrandOutletsPage() {
   const avgCostPerOutlet = outlets.length > 0 ? totalCost / outlets.length : 0;
 
   const tabs = useMemo(() => {
-    // Collect all statuses present in the data
     const statusCounts = new Map<string, DeduplicatedOutlet[]>();
     for (const o of outlets) {
-      const list = statusCounts.get(o.latestStatus) ?? [];
+      const ds = resolveDisplayStatus(o.latestStatus, o.replyClassification);
+      const list = statusCounts.get(ds) ?? [];
       list.push(o);
-      statusCounts.set(o.latestStatus, list);
+      statusCounts.set(ds, list);
     }
-    // Sort by priority (most advanced first), unknown statuses go to end
     const sortedStatuses = [...statusCounts.keys()].sort((a, b) => {
       const ai = STATUS_PRIORITY.indexOf(a);
       const bi = STATUS_PRIORITY.indexOf(b);
@@ -298,8 +286,7 @@ export default function BrandOutletsPage() {
     const result: Array<{ key: string; label: string; outlets: DeduplicatedOutlet[] }> = [];
     for (const status of sortedStatuses) {
       const matching = statusCounts.get(status)!;
-      const info = STATUS_LABELS[status];
-      result.push({ key: status, label: `${info?.label ?? status} (${matching.length})`, outlets: matching });
+      result.push({ key: status, label: `${statusLabel(status)} (${matching.length})`, outlets: matching });
     }
     result.push({ key: "all", label: `All (${outlets.length})`, outlets });
     return result;
