@@ -42,8 +42,8 @@ export default function FeatureArticlesPage() {
   const [search, setSearch] = useState("");
 
   const { data, isLoading } = useAuthQuery(
-    ["brandArticles", brandId],
-    () => listBrandArticles(brandId),
+    ["brandArticles", brandId, featureSlug],
+    () => listBrandArticles(brandId, featureSlug),
     { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false },
   );
 
