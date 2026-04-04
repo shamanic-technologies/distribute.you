@@ -1686,29 +1686,34 @@ export interface JournalistCost {
   runCount: number;
 }
 
-export interface EnrichedJournalist {
+export interface JournalistCampaignEntry {
   id: string;
-  journalistId: string;
   campaignId: string;
-  outletId: string;
-  orgId: string;
-  brandIds: string[];
   featureSlug: string | null;
   workflowSlug: string | null;
+  status: "buffered" | "claimed" | "served" | "contacted" | "skipped";
   relevanceScore: string;
   whyRelevant: string;
   whyNotRelevant: string;
   articleUrls: string[] | null;
-  status: "buffered" | "claimed" | "served" | "contacted" | "skipped";
   email: string | null;
+  apolloPersonId: string | null;
   runId: string | null;
   createdAt: string;
+}
+
+export interface EnrichedJournalist {
+  journalistId: string;
   journalistName: string;
   firstName: string | null;
   lastName: string | null;
   entityType: "individual" | "organization";
+  outletId: string;
+  email: string | null;
+  apolloPersonId: string | null;
   emailStatus: EmailStatus | null;
   cost: JournalistCost | null;
+  campaigns: JournalistCampaignEntry[];
 }
 
 /** Check if a journalist has been contacted at a given scope */
