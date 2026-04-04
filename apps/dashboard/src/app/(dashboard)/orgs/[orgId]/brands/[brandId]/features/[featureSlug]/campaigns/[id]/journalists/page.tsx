@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
@@ -8,7 +8,7 @@ import {
   listCampaignOutlets,
   type EnrichedJournalist,
   type JournalistCampaignEntry,
-  type DiscoveredOutlet,
+  type CampaignOutlet,
 } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 
@@ -101,6 +101,7 @@ export default function CampaignJournalistsPage() {
   const [activeTab, setActiveTab] = useState<Tab>("contacted");
   const [selected, setSelected] = useState<EnrichedJournalist | null>(null);
   const [search, setSearch] = useState("");
+  const hasAutoSelectedTab = useRef(false);
 
   const { data: journalistsData, isLoading: journalistsLoading } = useAuthQuery(
     ["enrichedJournalists", brandId, campaignId],
@@ -118,7 +119,7 @@ export default function CampaignJournalistsPage() {
 
   // Outlet lookup
   const outletMap = useMemo(() => {
-    const map = new Map<string, DiscoveredOutlet>();
+    const map = new Map<string, CampaignOutlet>();
     for (const o of outletsData?.outlets ?? []) {
       map.set(o.id, o);
     }
@@ -146,6 +147,14 @@ export default function CampaignJournalistsPage() {
     }
     return groups;
   }, [journalists, journalistStatuses]);
+
+  // Auto-select the first non-empty tab on initial data load
+  useEffect(() => {
+    if (hasAutoSelectedTab.current || journalists.length === 0) return;
+    hasAutoSelectedTab.current = true;
+    const first = CAMPAIGN_STATUS_ORDER.find((s) => (groupedByStatus.get(s)?.length ?? 0) > 0);
+    if (first) setActiveTab(first);
+  }, [journalists.length, groupedByStatus]);
 
   const activeList = activeTab === "all"
     ? journalists
@@ -295,7 +304,7 @@ function DetailPanel({
   onClose,
 }: {
   journalist: EnrichedJournalist;
-  outlet: DiscoveredOutlet | undefined;
+  outlet: CampaignOutlet | undefined;
   onClose: () => void;
 }) {
   const cost = j.cost?.totalCostInUsdCents ?? 0;

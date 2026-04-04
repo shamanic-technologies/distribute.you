@@ -88,6 +88,26 @@ describe("Journalist pages derive status from campaigns array", () => {
   }
 });
 
+describe("Journalist pages auto-select first non-empty tab on load", () => {
+  const pages = [
+    { name: "feature-level", path: featurePagePath },
+    { name: "campaign-level", path: campaignPagePath },
+    { name: "brand-level", path: brandPagePath },
+  ];
+
+  for (const page of pages) {
+    it(`${page.name} page auto-selects the first non-empty status tab`, () => {
+      const content = fs.readFileSync(page.path, "utf-8");
+      // Must use a ref to track whether auto-selection has happened (only once)
+      expect(content).toContain("hasAutoSelectedTab");
+      // Must find the first status with entries and set it as active
+      expect(content).toContain("CAMPAIGN_STATUS_ORDER.find");
+      // Must NOT hardcode initial tab to a specific status without auto-selection
+      expect(content).toContain("useEffect");
+    });
+  }
+});
+
 describe("Journalist detail panel shows per-campaign entries", () => {
   const pages = [
     { name: "feature-level", path: featurePagePath },
