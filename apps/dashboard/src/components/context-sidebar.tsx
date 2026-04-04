@@ -475,10 +475,12 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
       };
     });
 
-  const items: SidebarItem[] = [
+  const topItems: SidebarItem[] = [
     { id: "campaigns", label: "Campaigns", href: basePath, icon: <EnvelopeIcon /> },
     { id: "create", label: "Create Campaign", href: `${basePath}/campaigns/new`, icon: <PlusIcon /> },
-    ...entityItems,
+  ];
+
+  const bottomItems: SidebarItem[] = [
     { id: "workflows", label: "Workflows", href: `${basePath}/workflows`, icon: <WorkflowIcon /> },
     { id: "settings", label: "Settings", href: `${basePath}/settings`, icon: <SettingsIcon /> },
   ];
@@ -489,11 +491,30 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
       backHref={`/orgs/${orgId}/brands/${brandId}`}
       backLabel="Brand"
     >
-      {items.map((item) => (
+      {topItems.map((item) => (
         <SidebarLink
           key={item.id}
           item={item}
           isActive={item.id === "campaigns" ? pathname === item.href : pathname.startsWith(item.href)}
+        />
+      ))}
+      {entityItems.length > 0 && (
+        <div className="pt-2 mt-2 border-t border-gray-100">
+          <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Outcomes</h4>
+          {entityItems.map((item) => (
+            <SidebarLink
+              key={item.id}
+              item={item}
+              isActive={pathname.startsWith(item.href)}
+            />
+          ))}
+        </div>
+      )}
+      {bottomItems.map((item) => (
+        <SidebarLink
+          key={item.id}
+          item={item}
+          isActive={pathname.startsWith(item.href)}
         />
       ))}
     </SidebarSection>

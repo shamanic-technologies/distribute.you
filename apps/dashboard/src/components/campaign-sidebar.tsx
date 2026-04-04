@@ -117,7 +117,6 @@ export function CampaignSidebar({ campaignId, orgId, brandId, featureDynastySlug
       href: basePath,
       icon: <OverviewIcon />,
     },
-    ...entityItems,
     ...(workflowId
       ? [
           {
@@ -134,6 +133,7 @@ export function CampaignSidebar({ campaignId, orgId, brandId, featureDynastySlug
     <>
       <McpSidebar
         items={items}
+        outcomesItems={entityItems}
         title="Campaign"
         backHref={backHref}
         backLabel="Campaigns"
