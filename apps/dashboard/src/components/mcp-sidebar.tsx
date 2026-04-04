@@ -13,13 +13,14 @@ interface McpSidebarItem {
 
 interface McpSidebarProps {
   items: McpSidebarItem[];
+  outcomesItems?: McpSidebarItem[];
   title?: string;
   backHref?: string;
   backLabel?: string;
   extraButtons?: React.ReactNode;
 }
 
-export function McpSidebar({ items, title, backHref, backLabel, extraButtons }: McpSidebarProps) {
+export function McpSidebar({ items, outcomesItems, title, backHref, backLabel, extraButtons }: McpSidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -53,8 +54,8 @@ export function McpSidebar({ items, title, backHref, backLabel, extraButtons }: 
                 href={item.href}
                 className={`
                   flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition
-                  ${isActive 
-                    ? "bg-brand-50 text-brand-700 font-medium border border-brand-200" 
+                  ${isActive
+                    ? "bg-brand-50 text-brand-700 font-medium border border-brand-200"
                     : "text-gray-600 hover:bg-gray-50 hover:text-gray-800"
                   }
                 `}
@@ -74,6 +75,40 @@ export function McpSidebar({ items, title, backHref, backLabel, extraButtons }: 
               </Link>
             );
           })}
+          {outcomesItems && outcomesItems.length > 0 && (
+            <div className="pt-2 mt-2 border-t border-gray-100">
+              <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Outcomes</h4>
+              {outcomesItems.map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.id}
+                    href={item.href}
+                    className={`
+                      flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition
+                      ${isActive
+                        ? "bg-brand-50 text-brand-700 font-medium border border-brand-200"
+                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-800"
+                      }
+                    `}
+                  >
+                    <span className={`w-5 h-5 ${isActive ? "text-brand-600" : "text-gray-400"}`}>
+                      {item.icon}
+                    </span>
+                    <span className="flex-1">{item.label}</span>
+                    {item.badge !== undefined && (
+                      <span className={`
+                        text-xs px-1.5 py-0.5 rounded-full
+                        ${isActive ? "bg-brand-100 text-brand-700" : "bg-gray-100 text-gray-500"}
+                      `}>
+                        {item.badge}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
           {extraButtons && (
             <div className="mt-1 border-t border-gray-100 pt-1">
               {extraButtons}
@@ -105,8 +140,32 @@ export function McpSidebar({ items, title, backHref, backLabel, extraButtons }: 
                 href={item.href}
                 className={`
                   flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition
-                  ${isActive 
-                    ? "bg-brand-100 text-brand-700 font-medium" 
+                  ${isActive
+                    ? "bg-brand-100 text-brand-700 font-medium"
+                    : "bg-gray-100 text-gray-600"
+                  }
+                `}
+              >
+                <span className="w-4 h-4">{item.icon}</span>
+                <span>{item.label}</span>
+                {item.badge !== undefined && (
+                  <span className="text-[10px] bg-white/50 px-1 rounded">
+                    {item.badge}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
+          {outcomesItems && outcomesItems.length > 0 && outcomesItems.map((item) => {
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.id}
+                href={item.href}
+                className={`
+                  flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition
+                  ${isActive
+                    ? "bg-brand-100 text-brand-700 font-medium"
                     : "bg-gray-100 text-gray-600"
                   }
                 `}
