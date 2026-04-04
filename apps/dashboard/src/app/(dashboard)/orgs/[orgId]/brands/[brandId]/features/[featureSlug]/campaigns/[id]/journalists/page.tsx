@@ -90,7 +90,7 @@ export default function CampaignJournalistsPage() {
 
   const { data: journalistsData, isLoading: journalistsLoading } = useAuthQuery(
     ["enrichedJournalists", brandId, campaignId],
-    () => listJournalistsEnriched(brandId, campaignId),
+    () => listJournalistsEnriched(brandId, { campaignId }),
     { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false },
   );
 
