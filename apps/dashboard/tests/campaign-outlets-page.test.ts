@@ -41,12 +41,13 @@ describe("campaign outlet page uses deduplicated endpoint and same tab logic as 
     expect(content).not.toContain("listCampaignOutlets");
   });
 
-  it("should only show tabs for statuses that have outlets", () => {
-    // Uses dynamic tab building from statusCounts keys, not all STATUS_PRIORITY
-    expect(content).toContain("statusCounts.keys()");
+  it("should show static tabs for all statuses in priority order", () => {
+    // Uses static tabs from STATUS_PRIORITY, matching the journalist page pattern
+    expect(content).toContain("STATUS_PRIORITY.map");
   });
 
-  it("should default to first non-empty tab, falling back to all", () => {
-    expect(content).toContain('t.key !== "all" && t.outlets.length > 0');
+  it("should auto-select first non-empty tab on initial load", () => {
+    expect(content).toContain("STATUS_PRIORITY.find");
+    expect(content).toContain("hasAutoSelectedTab");
   });
 });

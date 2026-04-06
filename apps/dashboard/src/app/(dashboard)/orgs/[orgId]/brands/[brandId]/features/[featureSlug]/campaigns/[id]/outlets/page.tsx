@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
@@ -12,6 +12,8 @@ import {
 import { BrandLogo } from "@/components/brand-logo";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 import { STATUS_PRIORITY, statusBadgeColor, statusLabel, resolveDisplayStatus } from "@/lib/outlet-status";
+
+type Tab = string | "all";
 
 const POLL_INTERVAL = 5_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
@@ -224,8 +226,9 @@ export default function CampaignOutletsPage() {
   const campaignId = params.id as string;
   const brandId = params.brandId as string;
   const [selected, setSelected] = useState<DeduplicatedOutlet | null>(null);
-  const [activeTab, setActiveTab] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<Tab>("all");
   const [search, setSearch] = useState("");
+  const hasAutoSelectedTab = useRef(false);
 
   const { data, isLoading } = useAuthQuery(
     ["campaignOutlets", campaignId],
@@ -259,31 +262,43 @@ export default function CampaignOutletsPage() {
 
   const avgCostPerOutlet = outlets.length > 0 ? totalCost / outlets.length : 0;
 
-  const tabs = useMemo(() => {
-    const statusCounts = new Map<string, DeduplicatedOutlet[]>();
+  // Group outlets by display status
+  const groupedByStatus = useMemo(() => {
+    const groups = new Map<string, DeduplicatedOutlet[]>();
+    for (const status of STATUS_PRIORITY) {
+      groups.set(status, []);
+    }
     for (const o of outlets) {
       const ds = resolveDisplayStatus(o.latestStatus, o.replyClassification);
-      const list = statusCounts.get(ds) ?? [];
-      list.push(o);
-      statusCounts.set(ds, list);
+      groups.get(ds)?.push(o);
     }
-    const sortedStatuses = [...statusCounts.keys()].sort((a, b) => {
-      const ai = STATUS_PRIORITY.indexOf(a);
-      const bi = STATUS_PRIORITY.indexOf(b);
-      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
-    });
-    const result: Array<{ key: string; label: string; outlets: DeduplicatedOutlet[] }> = [];
-    for (const status of sortedStatuses) {
-      const matching = statusCounts.get(status)!;
-      result.push({ key: status, label: `${statusLabel(status)} (${matching.length})`, outlets: matching });
-    }
-    result.push({ key: "all", label: `All (${outlets.length})`, outlets });
-    return result;
+    return groups;
   }, [outlets]);
 
-  const resolvedTab = activeTab ?? (tabs.find((t) => t.key !== "all" && t.outlets.length > 0)?.key ?? "all");
-  const currentTab = tabs.find((t) => t.key === resolvedTab) ?? tabs[tabs.length - 1];
-  const displayedOutlets = currentTab ? [...currentTab.outlets].sort((a, b) => b.latestRelevanceScore - a.latestRelevanceScore) : [];
+  // Auto-select the first non-empty tab on initial data load
+  useEffect(() => {
+    if (hasAutoSelectedTab.current || outlets.length === 0) return;
+    hasAutoSelectedTab.current = true;
+    const first = STATUS_PRIORITY.find((s) => (groupedByStatus.get(s)?.length ?? 0) > 0);
+    if (first) setActiveTab(first);
+  }, [outlets.length, groupedByStatus]);
+
+  // Static tabs: all statuses in priority order + "all"
+  const tabs: { key: Tab; label: string; count: number }[] = [
+    ...STATUS_PRIORITY.map((status) => ({
+      key: status as Tab,
+      label: statusLabel(status),
+      count: groupedByStatus.get(status)?.length ?? 0,
+    })),
+    { key: "all", label: "All", count: outlets.length },
+  ];
+
+  const displayedOutlets = useMemo(() => {
+    const list = activeTab === "all"
+      ? outlets
+      : groupedByStatus.get(activeTab) ?? [];
+    return [...list].sort((a, b) => b.latestRelevanceScore - a.latestRelevanceScore);
+  }, [activeTab, outlets, groupedByStatus]);
 
   const filteredOutlets = useMemo(() => {
     if (!search) return displayedOutlets;
@@ -315,18 +330,19 @@ export default function CampaignOutletsPage() {
 
         {/* Status tabs */}
         {!isLoading && outlets.length > 0 && (
-          <div className="flex gap-1 mb-6 border-b border-gray-200">
+          <div className="flex gap-1 mb-6 border-b border-gray-200 overflow-x-auto">
             {tabs.map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
-                  resolvedTab === tab.key
+                onClick={() => { setActiveTab(tab.key); setSelected(null); }}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition whitespace-nowrap ${
+                  activeTab === tab.key
                     ? "border-brand-600 text-brand-600"
                     : "border-transparent text-gray-500 hover:text-gray-700"
                 }`}
               >
                 {tab.label}
+                <span className="ml-1.5 text-xs font-normal text-gray-400">({tab.count})</span>
               </button>
             ))}
           </div>
