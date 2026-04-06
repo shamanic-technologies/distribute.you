@@ -509,15 +509,14 @@ function EmailStatusCard({ emailStatus, scope }: { emailStatus: NonNullable<Enri
 
   const items: { label: string; value: boolean }[] = [];
   if (bc) {
-    items.push({ label: "Email sent", value: bc.email.contacted });
-    items.push({ label: "Email delivered", value: bc.email.delivered });
-    items.push({ label: "Lead contacted", value: bc.lead.contacted });
-    items.push({ label: "Lead delivered", value: bc.lead.delivered });
-    items.push({ label: "Replied", value: bc.lead.replied });
+    items.push({ label: "Contacted", value: bc.contacted });
+    items.push({ label: "Delivered", value: bc.delivered });
+    items.push({ label: "Opened", value: bc.opened });
+    items.push({ label: "Replied", value: bc.replied });
   }
   if (tc) {
-    items.push({ label: "Transactional sent", value: tc.email.contacted });
-    items.push({ label: "Transactional delivered", value: tc.email.delivered });
+    items.push({ label: "Transactional sent", value: tc.contacted });
+    items.push({ label: "Transactional delivered", value: tc.delivered });
   }
 
   return (
@@ -536,15 +535,15 @@ function EmailStatusCard({ emailStatus, scope }: { emailStatus: NonNullable<Enri
             {item.label}
           </span>
         ))}
-        {bc?.lead.replyClassification && (
+        {bc?.replyClassification && (
           <span className={`text-[10px] px-2 py-1 rounded-full border ${
-            bc.lead.replyClassification === "positive"
+            bc.replyClassification === "positive"
               ? "bg-green-50 text-green-700 border-green-200"
-              : bc.lead.replyClassification === "negative"
+              : bc.replyClassification === "negative"
                 ? "bg-red-50 text-red-600 border-red-200"
                 : "bg-yellow-50 text-yellow-700 border-yellow-200"
           }`}>
-            Reply: {bc.lead.replyClassification}
+            Reply: {bc.replyClassification}
           </span>
         )}
       </div>

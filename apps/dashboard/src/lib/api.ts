@@ -1648,17 +1648,12 @@ export interface BrandJournalist {
 
 // --- Enriched journalist types (from GET /v1/journalists/list) ---
 
-export interface EmailDeliveryLeadStatus {
+export interface EmailDeliveryScopeStatus {
   contacted: boolean;
   delivered: boolean;
+  opened: boolean;
   replied: boolean;
   replyClassification: "positive" | "negative" | "neutral" | null;
-  lastDeliveredAt: string | null;
-}
-
-export interface EmailDeliveryEmailStatus {
-  contacted: boolean;
-  delivered: boolean;
   bounced: boolean;
   unsubscribed: boolean;
   lastDeliveredAt: string | null;
@@ -1668,20 +1663,15 @@ export interface EmailDeliveryGlobalStatus {
   email: { bounced: boolean; unsubscribed: boolean };
 }
 
-export interface EmailDeliveryScope {
-  lead: EmailDeliveryLeadStatus;
-  email: EmailDeliveryEmailStatus;
-}
-
 export interface EmailStatus {
   broadcast: {
-    campaign: EmailDeliveryScope | null;
-    brand: EmailDeliveryScope | null;
+    campaign: EmailDeliveryScopeStatus | null;
+    brand: EmailDeliveryScopeStatus | null;
     global: EmailDeliveryGlobalStatus;
   };
   transactional: {
-    campaign: EmailDeliveryScope | null;
-    brand: EmailDeliveryScope | null;
+    campaign: EmailDeliveryScopeStatus | null;
+    brand: EmailDeliveryScopeStatus | null;
     global: EmailDeliveryGlobalStatus;
   };
 }
@@ -1734,10 +1724,8 @@ export function isJournalistContacted(
   const bc = emailStatus.broadcast[scope];
   const tc = emailStatus.transactional[scope];
   return (
-    (bc?.lead.contacted ?? false) ||
-    (bc?.email.contacted ?? false) ||
-    (tc?.lead.contacted ?? false) ||
-    (tc?.email.contacted ?? false)
+    (bc?.contacted ?? false) ||
+    (tc?.contacted ?? false)
   );
 }
 
