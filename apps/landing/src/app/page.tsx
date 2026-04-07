@@ -78,66 +78,179 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* The DIY Problem */}
+      {/* Use Case: Claude Code */}
       <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-14">
+            <div className="inline-flex items-center gap-2.5 bg-white border border-gray-200 px-4 py-2 rounded-full mb-6">
+              <div className="w-6 h-6 bg-orange-500 rounded-md flex items-center justify-center">
+                <span className="text-white text-xs font-bold">{'>'}_</span>
+              </div>
+              <span className="text-sm font-medium text-gray-900">Claude Code</span>
+            </div>
             <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
-              What happens when you ask Claude to send cold emails
+              From your terminal to distribution
             </h2>
-            <p className="text-gray-500 text-lg">
-              You&apos;ve tried it. Here&apos;s what you got.
+            <p className="text-gray-500 text-lg max-w-2xl mx-auto">
+              You&apos;re already building with Claude Code. Now tell it to distribute.
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">
-            {/* DIY column */}
-            <div className="bg-white rounded-xl p-6 border border-gray-200">
-              <div className="flex items-center gap-2 mb-5">
+            {/* Without distribute.you */}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="px-5 py-3 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-red-400" />
-                <h3 className="font-semibold text-gray-900">Do it yourself</h3>
+                <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Without distribute.you</span>
               </div>
-              <div className="space-y-3">
-                {[
-                  "Need an Apollo API key for leads",
-                  "Need Instantly or Resend to send",
-                  "Uses Opus 4.6 for every single email",
-                  "No idea which prompt converts best",
-                  "No optimization over time",
-                  "100x cost per conversion",
-                ].map((item) => (
-                  <div key={item} className="flex items-start gap-2.5">
-                    <svg className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                    <span className="text-sm text-gray-600">{item}</span>
-                  </div>
-                ))}
+              <div className="p-5">
+                {/* Terminal mockup */}
+                <div className="bg-gray-950 rounded-lg p-4 mb-4 font-mono text-xs">
+                  <p className="text-gray-500">{'>'} Send cold emails to journalists about my product</p>
+                  <p className="text-gray-400 mt-2">I&apos;ll need a few API keys:</p>
+                  <p className="text-amber-400">- Apollo API key for lead discovery</p>
+                  <p className="text-amber-400">- Instantly or Resend API key to send</p>
+                  <p className="text-amber-400">- Let me generate emails with Opus 4.6...</p>
+                  <p className="text-red-400 mt-2">{'>'} 47 emails sent. Cost: $83.20</p>
+                  <p className="text-red-400">{'>'} 0 replies tracked. No dashboard.</p>
+                </div>
+                <div className="space-y-2.5">
+                  {[
+                    "$10+ per email sent",
+                    "Wrong model for the job — 100x overspend",
+                    "Excel files with mixed-up rows",
+                    "No tracking, no dashboard, no idea what worked",
+                  ].map((item) => (
+                    <div key={item} className="flex items-start gap-2.5">
+                      <svg className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      <span className="text-sm text-gray-600">{item}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
-            {/* distribute.you column */}
-            <div className="bg-white rounded-xl p-6 border-2 border-emerald-200 shadow-sm">
-              <div className="flex items-center gap-2 mb-5">
+            {/* With distribute.you */}
+            <div className="bg-white rounded-xl border-2 border-emerald-200 shadow-sm overflow-hidden">
+              <div className="px-5 py-3 bg-emerald-50 border-b border-emerald-100 flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                <h3 className="font-semibold text-gray-900">distribute.you</h3>
+                <span className="text-xs font-medium text-emerald-600 uppercase tracking-wider">With distribute.you</span>
               </div>
-              <div className="space-y-3">
-                {[
-                  "One command. Everything handled.",
-                  "Best workflow auto-selected",
-                  "Cheapest model that maximizes conversions",
-                  "Prompts optimized across thousands of sends",
-                  "Gets better every day, automatically",
-                  "At cost. No markup.",
-                ].map((item) => (
-                  <div key={item} className="flex items-start gap-2.5">
-                    <svg className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span className="text-sm text-gray-600">{item}</span>
-                  </div>
-                ))}
+              <div className="p-5">
+                {/* Terminal mockup */}
+                <div className="bg-gray-950 rounded-lg p-4 mb-4 font-mono text-xs">
+                  <p className="text-gray-500">{'>'} Use distribute.you to run journalist outreach</p>
+                  <p className="text-gray-500">{'>'} Budget: $5/day. URL: myproduct.com</p>
+                  <p className="text-emerald-400 mt-2">Campaign started. Best workflow auto-selected.</p>
+                  <p className="text-emerald-400">Emails sending at $0.42/reply average.</p>
+                  <p className="text-emerald-400 mt-2">You&apos;ll get notified when someone replies.</p>
+                </div>
+                <div className="space-y-2.5">
+                  {[
+                    "One command. Everything handled.",
+                    "Best model for quality per dollar — automatically",
+                    "Full dashboard with tracking and replies",
+                    "At cost. No markup. No surprise bills.",
+                  ].map((item) => (
+                    <div key={item} className="flex items-start gap-2.5">
+                      <svg className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span className="text-sm text-gray-600">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Use Case: OpenClaw */}
+      <section className="py-20 px-4">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-14">
+            <div className="inline-flex items-center gap-2.5 bg-white border border-gray-200 px-4 py-2 rounded-full mb-6">
+              <div className="w-6 h-6 bg-gray-900 rounded-md flex items-center justify-center">
+                <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <span className="text-sm font-medium text-gray-900">OpenClaw</span>
+            </div>
+            <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+              From OpenClaw to distribution
+            </h2>
+            <p className="text-gray-500 text-lg max-w-2xl mx-auto">
+              Ask OpenClaw to launch a campaign. It calls distribute.you. Done.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Without distribute.you */}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="px-5 py-3 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-red-400" />
+                <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Without distribute.you</span>
+              </div>
+              <div className="p-5">
+                <div className="bg-gray-950 rounded-lg p-4 mb-4 font-mono text-xs">
+                  <p className="text-gray-500">{'>'} Set up a sales cold email campaign for my SaaS</p>
+                  <p className="text-gray-400 mt-2">Setting up Apollo scraping... Resend integration...</p>
+                  <p className="text-gray-400">Generating 200 emails with Opus 4.6...</p>
+                  <p className="text-red-400 mt-2">{'>'} Total cost: $186.40</p>
+                  <p className="text-red-400">{'>'} Rows mismatched. 23 emails sent to wrong contacts.</p>
+                  <p className="text-red-400">{'>'} No reply tracking. No way to know what worked.</p>
+                </div>
+                <div className="space-y-2.5">
+                  {[
+                    "Multiple API keys to manage yourself",
+                    "Most expensive model for every email",
+                    "Data errors — wrong emails to wrong people",
+                    "Zero visibility on results",
+                  ].map((item) => (
+                    <div key={item} className="flex items-start gap-2.5">
+                      <svg className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      <span className="text-sm text-gray-600">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* With distribute.you */}
+            <div className="bg-white rounded-xl border-2 border-emerald-200 shadow-sm overflow-hidden">
+              <div className="px-5 py-3 bg-emerald-50 border-b border-emerald-100 flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                <span className="text-xs font-medium text-emerald-600 uppercase tracking-wider">With distribute.you</span>
+              </div>
+              <div className="p-5">
+                <div className="bg-gray-950 rounded-lg p-4 mb-4 font-mono text-xs">
+                  <p className="text-gray-500">{'>'} Use distribute.you: sales outreach, $3/day, myapp.com</p>
+                  <p className="text-emerald-400 mt-2">Campaign live. Budget: $3/day.</p>
+                  <p className="text-emerald-400">Crowdsourced workflow selected: apex-v4 (4.8% reply rate)</p>
+                  <p className="text-emerald-400 mt-2">Dashboard: dashboard.distribute.you</p>
+                  <p className="text-emerald-400">Notifications enabled. You&apos;re all set.</p>
+                </div>
+                <div className="space-y-2.5">
+                  {[
+                    "One sentence. Campaign running.",
+                    "Crowdsourced best prompts and models",
+                    "Full dashboard — replies, metrics, costs",
+                    "Phone notifications when leads reply",
+                  ].map((item) => (
+                    <div key={item} className="flex items-start gap-2.5">
+                      <svg className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span className="text-sm text-gray-600">{item}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -315,8 +428,8 @@ export default async function Home() {
           </p>
           <div className="grid md:grid-cols-3 gap-6 text-left">
             <div className="bg-white rounded-xl p-5 border border-gray-200">
-              <div className="font-mono text-xs text-gray-400 mb-3">$ claude</div>
-              <h3 className="font-semibold text-gray-900 text-sm mb-1">Works from your terminal</h3>
+              <div className="font-mono text-xs text-gray-400 mb-3">$ claude / openclaw</div>
+              <h3 className="font-semibold text-gray-900 text-sm mb-1">Works from Claude Code &amp; OpenClaw</h3>
               <p className="text-sm text-gray-500">
                 Use our MCP server from Claude Code, OpenClaw, or any MCP client.
                 One command to launch a campaign.
