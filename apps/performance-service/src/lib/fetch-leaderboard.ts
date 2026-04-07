@@ -30,6 +30,22 @@ interface RankedResponse {
   results: RankedItem[];
 }
 
+interface BrandRankedItem {
+  brand: {
+    brandId: string;
+  };
+  stats: {
+    totalCostInUsdCents: number;
+    totalOutcomes: number;
+    costPerOutcome: number | null;
+    completedRuns: number;
+  };
+}
+
+interface BrandRankedResponse {
+  results: BrandRankedItem[];
+}
+
 interface BestRecord {
   workflowSlug: string;
   workflowName: string;
@@ -191,50 +207,55 @@ function mergeRankedResults(
   });
 }
 
-// ─── Aggregate brand stats directly from ranked items ───────────────────────
+// ─── Fetch brand-grouped ranked results for a single objective ───────────────
 
-function aggregateBrandsFromRankedItems(allRankedItems: RankedItem[][]): BrandLeaderboardEntry[] {
-  // Collect all unique workflow slugs with their brand IDs and merged stats
-  const byBrand = new Map<
-    string,
-    { brandId: string; sent: number; opened: number; clicked: number; replied: number; cost: number }
-  >();
+async function fetchBrandRankedForObjective(
+  featureDynastySlug: string,
+  objective: string,
+  headers: Record<string, string>,
+): Promise<BrandRankedItem[]> {
+  const res = await fetch(
+    `${API_URL}/v1/public/features/ranked?featureDynastySlug=${encodeURIComponent(featureDynastySlug)}&objective=${encodeURIComponent(objective)}&groupBy=brand&limit=100`,
+    { headers, cache: "no-store" },
+  );
+  if (!res.ok) return [];
+  const data: BrandRankedResponse = await res.json();
+  return data.results;
+}
 
-  // allRankedItems[0] = sent, [1] = opened, [2] = clicked, [3] = replied
-  // We need to aggregate by brandId across all objectives
-  // Use sent results as the primary source for cost and brand mapping
-  const sentItems = allRankedItems[0] ?? [];
-  const openedMap = new Map((allRankedItems[1] ?? []).map((r) => [r.workflow.slug, r]));
-  const clickedMap = new Map((allRankedItems[2] ?? []).map((r) => [r.workflow.slug, r]));
-  const repliedMap = new Map((allRankedItems[3] ?? []).map((r) => [r.workflow.slug, r]));
+// ─── Aggregate brand stats from brand-grouped ranked results ────────────────
 
-  // Also collect brand IDs from other objectives
-  const allItems = [...sentItems, ...(allRankedItems[1] ?? []), ...(allRankedItems[2] ?? []), ...(allRankedItems[3] ?? [])];
-  const brandBySlug = new Map<string, string>();
-  for (const item of allItems) {
-    if (item.workflow.createdForBrandId) {
-      brandBySlug.set(item.workflow.slug, item.workflow.createdForBrandId);
-    }
-  }
+function aggregateBrandsFromBrandRanked(
+  allSent: BrandRankedItem[],
+  allOpened: BrandRankedItem[],
+  allClicked: BrandRankedItem[],
+  allReplied: BrandRankedItem[],
+): BrandLeaderboardEntry[] {
+  const sentMap = new Map(allSent.map((r) => [r.brand.brandId, r]));
+  const openedMap = new Map(allOpened.map((r) => [r.brand.brandId, r]));
+  const clickedMap = new Map(allClicked.map((r) => [r.brand.brandId, r]));
+  const repliedMap = new Map(allReplied.map((r) => [r.brand.brandId, r]));
 
-  // Use all unique slugs from sent results, plus any that appear only in other objectives
-  const allSlugs = new Set([
-    ...sentItems.map((r) => r.workflow.slug),
+  const allBrandIds = new Set([
+    ...sentMap.keys(),
     ...openedMap.keys(),
     ...clickedMap.keys(),
     ...repliedMap.keys(),
   ]);
 
-  for (const slug of allSlugs) {
-    const brandId = brandBySlug.get(slug);
-    if (!brandId) continue;
+  // Accumulate stats per brand across all features
+  const byBrand = new Map<
+    string,
+    { brandId: string; sent: number; opened: number; clicked: number; replied: number; cost: number }
+  >();
 
-    const sentItem = sentItems.find((r) => r.workflow.slug === slug);
-    const sent = sentItem?.stats.totalOutcomes ?? 0;
-    const opened = openedMap.get(slug)?.stats.totalOutcomes ?? 0;
-    const clicked = clickedMap.get(slug)?.stats.totalOutcomes ?? 0;
-    const replied = repliedMap.get(slug)?.stats.totalOutcomes ?? 0;
-    const cost = sentItem?.stats.totalCostInUsdCents ?? 0;
+  for (const brandId of allBrandIds) {
+    const any = sentMap.get(brandId) ?? openedMap.get(brandId) ?? clickedMap.get(brandId) ?? repliedMap.get(brandId)!;
+    const sent = sentMap.get(brandId)?.stats.totalOutcomes ?? 0;
+    const opened = openedMap.get(brandId)?.stats.totalOutcomes ?? 0;
+    const clicked = clickedMap.get(brandId)?.stats.totalOutcomes ?? 0;
+    const replied = repliedMap.get(brandId)?.stats.totalOutcomes ?? 0;
+    const cost = any.stats.totalCostInUsdCents;
 
     const existing = byBrand.get(brandId);
     if (existing) {
@@ -400,7 +421,7 @@ export async function fetchLeaderboard(): Promise<LeaderboardData | null> {
     const heroFeature =
       features.find((f) => f.dynastySlug.includes("sales-cold-email")) ?? features[0];
 
-    // Step 2: For each feature, make 4 parallel ranked calls + 1 best call
+    // Step 2: For each feature, make 4 parallel workflow-ranked calls + 4 parallel brand-ranked calls
     const objectives = ["emailsSent", "emailsOpened", "emailsClicked", "emailsReplied"] as const;
 
     const featureResults = await Promise.all(
@@ -408,12 +429,19 @@ export async function fetchLeaderboard(): Promise<LeaderboardData | null> {
         const [sentResults, openedResults, clickedResults, repliedResults] = await Promise.all(
           objectives.map((obj) => fetchRankedForObjective(feature.dynastySlug, obj, headers)),
         );
+        const [brandSent, brandOpened, brandClicked, brandReplied] = await Promise.all(
+          objectives.map((obj) => fetchBrandRankedForObjective(feature.dynastySlug, obj, headers)),
+        );
         return {
           feature,
           sentResults,
           openedResults,
           clickedResults,
           repliedResults,
+          brandSent,
+          brandOpened,
+          brandClicked,
+          brandReplied,
         };
       }),
     );
@@ -427,22 +455,23 @@ export async function fetchLeaderboard(): Promise<LeaderboardData | null> {
 
     // Step 4: Merge results per feature and build workflow entries
     const allWorkflows: WorkflowLeaderboardEntry[] = [];
-    const allSent: RankedItem[] = [];
-    const allOpened: RankedItem[] = [];
-    const allClicked: RankedItem[] = [];
-    const allReplied: RankedItem[] = [];
+    const allBrandSent: BrandRankedItem[] = [];
+    const allBrandOpened: BrandRankedItem[] = [];
+    const allBrandClicked: BrandRankedItem[] = [];
+    const allBrandReplied: BrandRankedItem[] = [];
 
-    for (const { sentResults, openedResults, clickedResults, repliedResults } of featureResults) {
+    for (const { sentResults, openedResults, clickedResults, repliedResults,
+                 brandSent, brandOpened, brandClicked, brandReplied } of featureResults) {
       const merged = mergeRankedResults(sentResults, openedResults, clickedResults, repliedResults);
       allWorkflows.push(...merged);
-      allSent.push(...sentResults);
-      allOpened.push(...openedResults);
-      allClicked.push(...clickedResults);
-      allReplied.push(...repliedResults);
+      allBrandSent.push(...brandSent);
+      allBrandOpened.push(...brandOpened);
+      allBrandClicked.push(...brandClicked);
+      allBrandReplied.push(...brandReplied);
     }
 
-    // Step 5: Aggregate brands from all ranked items
-    const brands = aggregateBrandsFromRankedItems([allSent, allOpened, allClicked, allReplied]);
+    // Step 5: Aggregate brands from brand-grouped ranked results
+    const brands = aggregateBrandsFromBrandRanked(allBrandSent, allBrandOpened, allBrandClicked, allBrandReplied);
 
     // Enrich brands with names from brand-service
     await enrichBrands(brands);
