@@ -5,10 +5,8 @@ import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   listJournalistsEnriched,
-  listCampaignOutlets,
   type EnrichedJournalist,
   type JournalistCampaignEntry,
-  type CampaignOutlet,
 } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 
@@ -121,22 +119,8 @@ export default function CampaignJournalistsPage() {
     { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false },
   );
 
-  const { data: outletsData } = useAuthQuery(
-    ["campaignOutlets", campaignId],
-    () => listCampaignOutlets(campaignId),
-  );
-
   const journalists = journalistsData?.journalists ?? [];
   const isFirstLoad = journalistsLoading && journalists.length === 0;
-
-  // Outlet lookup
-  const outletMap = useMemo(() => {
-    const map = new Map<string, CampaignOutlet>();
-    for (const o of outletsData?.outlets ?? []) {
-      map.set(o.id, o);
-    }
-    return map;
-  }, [outletsData]);
 
   // Derive best status per journalist for tab grouping
   const journalistStatuses = useMemo(() => {
@@ -176,10 +160,10 @@ export default function CampaignJournalistsPage() {
     if (!search) return activeList;
     const q = search.toLowerCase();
     return activeList.filter((j) => {
-      const outletName = outletMap.get(j.outletId)?.outletName ?? "";
+      const outletName = j.outletName ?? "";
       return j.journalistName.toLowerCase().includes(q) || outletName.toLowerCase().includes(q);
     });
-  }, [activeList, search, outletMap]);
+  }, [activeList, search]);
 
   // Tabs: status tabs (ordered) + all
   const tabs: { key: Tab; label: string; count: number }[] = [
@@ -248,7 +232,6 @@ export default function CampaignJournalistsPage() {
         ) : (
           <div className="space-y-2">
             {filteredList.map((j) => {
-              const outlet = outletMap.get(j.outletId);
               const cost = j.cost?.totalCostInUsdCents ?? 0;
               const status = journalistStatuses.get(j.journalistId) ?? "skipped";
               return (
@@ -260,10 +243,10 @@ export default function CampaignJournalistsPage() {
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    {outlet?.outletDomain ? (
+                    {j.outletDomain ? (
                       <img
-                        src={`https://img.logo.dev/${outlet.outletDomain}?token=${LOGO_DEV_TOKEN}`}
-                        alt={outlet.outletName}
+                        src={`https://img.logo.dev/${j.outletDomain}?token=${LOGO_DEV_TOKEN}`}
+                        alt={j.outletName ?? ""}
                         className="w-8 h-8 rounded-full object-contain bg-gray-50 border border-gray-200 flex-shrink-0"
                         onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                       />
@@ -281,8 +264,8 @@ export default function CampaignJournalistsPage() {
                           {statusLabel(status)}
                         </span>
                       </div>
-                      {outlet?.outletName && (
-                        <p className="text-xs text-gray-400 truncate">{outlet.outletName}</p>
+                      {j.outletName && (
+                        <p className="text-xs text-gray-400 truncate">{j.outletName}</p>
                       )}
                     </div>
                     {cost > 0 && (
@@ -302,7 +285,6 @@ export default function CampaignJournalistsPage() {
       {selected && (
         <DetailPanel
           journalist={selected}
-          outlet={outletMap.get(selected.outletId)}
           onClose={() => setSelected(null)}
         />
       )}
@@ -312,11 +294,9 @@ export default function CampaignJournalistsPage() {
 
 function DetailPanel({
   journalist: j,
-  outlet,
   onClose,
 }: {
   journalist: EnrichedJournalist;
-  outlet: CampaignOutlet | undefined;
   onClose: () => void;
 }) {
   const cost = j.cost?.totalCostInUsdCents ?? 0;
@@ -405,21 +385,21 @@ function DetailPanel({
         {j.emailStatus && <EmailStatusCard emailStatus={j.emailStatus} scope="campaign" />}
 
         {/* Outlet */}
-        {outlet && (
+        {j.outletName && (
           <div className="bg-white rounded-lg border border-gray-200 p-4">
             <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Outlet</h4>
             <div className="flex items-center gap-3">
-              {outlet.outletDomain && (
+              {j.outletDomain && (
                 <img
-                  src={`https://img.logo.dev/${outlet.outletDomain}?token=${LOGO_DEV_TOKEN}`}
-                  alt={outlet.outletName}
+                  src={`https://img.logo.dev/${j.outletDomain}?token=${LOGO_DEV_TOKEN}`}
+                  alt={j.outletName}
                   className="w-6 h-6 rounded object-contain bg-gray-50"
                   onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                 />
               )}
               <div>
-                <p className="text-sm font-medium text-gray-800">{outlet.outletName}</p>
-                {outlet.outletDomain && <p className="text-xs text-gray-400">{outlet.outletDomain}</p>}
+                <p className="text-sm font-medium text-gray-800">{j.outletName}</p>
+                {j.outletDomain && <p className="text-xs text-gray-400">{j.outletDomain}</p>}
               </div>
             </div>
           </div>
