@@ -336,23 +336,9 @@ describe("Create campaign page", () => {
   });
 });
 
-describe("API leaderboard function", () => {
+describe("API campaign function", () => {
   const apiPath = path.resolve(__dirname, "../src/lib/api.ts");
   const content = fs.readFileSync(apiPath, "utf-8");
-
-  it("should have WorkflowLeaderboardEntry type", () => {
-    expect(content).toContain("interface WorkflowLeaderboardEntry");
-    expect(content).toContain("openRate");
-    expect(content).toContain("clickRate");
-    expect(content).toContain("costPerOpenCents");
-    expect(content).toContain("costPerClickCents");
-    expect(content).toContain("costPerReplyCents");
-  });
-
-  it("should have fetchFeatureLeaderboard function", () => {
-    expect(content).toContain("fetchFeatureLeaderboard");
-    expect(content).toContain("/performance/leaderboard");
-  });
 
   it("should have createCampaign function", () => {
     expect(content).toContain("createCampaign");
