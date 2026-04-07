@@ -156,9 +156,9 @@ export default function CampaignOverviewPage() {
     <div className="p-4 md:p-8">
       {/* Header */}
       <div className="mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-3">
-            <h1 className="font-display text-2xl font-bold text-gray-800">{campaign.name}</h1>
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <h1 className="font-display text-2xl font-bold text-gray-800 truncate">{campaign.name}</h1>
             <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(campaign.status)}`}>
               {campaign.status}
             </span>
