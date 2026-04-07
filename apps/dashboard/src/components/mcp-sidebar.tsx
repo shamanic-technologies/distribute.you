@@ -30,10 +30,14 @@ interface McpSidebarProps {
   extraButtons?: React.ReactNode;
 }
 
-function CollapsibleOutcomeGroup({ group, pathname }: { group: McpSidebarGroup; pathname: string }) {
+function CollapsibleOutcomeGroup({ group, pathname, isActiveGroup, onItemClick }: {
+  group: McpSidebarGroup;
+  pathname: string;
+  isActiveGroup: boolean;
+  onItemClick: (groupId: string) => void;
+}) {
   const hasData = group.items.some((item) => item.badge != null && Number(item.badge) > 0);
-  const hasActiveChild = group.items.some((item) => pathname.startsWith(item.href));
-  const [open, setOpen] = useState(hasData || hasActiveChild);
+  const [open, setOpen] = useState(hasData || isActiveGroup);
 
   return (
     <div>
@@ -54,11 +58,12 @@ function CollapsibleOutcomeGroup({ group, pathname }: { group: McpSidebarGroup; 
       {open && (
         <div className="space-y-0.5">
           {group.items.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive = isActiveGroup && pathname.startsWith(item.href);
             return (
               <Link
                 key={`${group.id}-${item.id}`}
                 href={item.href}
+                onClick={() => onItemClick(group.id)}
                 className={`
                   flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition
                   ${isActive
@@ -85,6 +90,29 @@ function CollapsibleOutcomeGroup({ group, pathname }: { group: McpSidebarGroup; 
         </div>
       )}
     </div>
+  );
+}
+
+function CollapsibleOutcomeGroupList({ groups, pathname }: { groups: McpSidebarGroup[]; pathname: string }) {
+  const defaultGroupId = groups.find((g) => g.items.some((item) => pathname.startsWith(item.href)))?.id ?? null;
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(defaultGroupId);
+
+  const effectiveActiveGroupId = activeGroupId && groups.some((g) =>
+    g.id === activeGroupId && g.items.some((item) => pathname.startsWith(item.href))
+  ) ? activeGroupId : defaultGroupId;
+
+  return (
+    <>
+      {groups.map((group) => (
+        <CollapsibleOutcomeGroup
+          key={group.id}
+          group={group}
+          pathname={pathname}
+          isActiveGroup={effectiveActiveGroupId === group.id}
+          onItemClick={setActiveGroupId}
+        />
+      ))}
+    </>
   );
 }
 
@@ -145,9 +173,7 @@ export function McpSidebar({ items, outcomesItems, outcomesGroups, settingsItems
           })}
           {outcomesGroups && outcomesGroups.length > 0 ? (
             <div className="pt-2 mt-2 border-t border-gray-100 space-y-1">
-              {outcomesGroups.map((group) => (
-                <CollapsibleOutcomeGroup key={group.id} group={group} pathname={pathname} />
-              ))}
+              <CollapsibleOutcomeGroupList groups={outcomesGroups} pathname={pathname} />
             </div>
           ) : outcomesItems && outcomesItems.length > 0 ? (
             <div className="pt-2 mt-2 border-t border-gray-100">
