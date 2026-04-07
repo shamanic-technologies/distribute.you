@@ -4,7 +4,6 @@ import { LinkButton } from "@/components/link-button";
 import { Navbar } from "@/components/navbar";
 import { DashboardPreview } from "@/components/dashboard-preview";
 import { PerformancePreview } from "@/components/performance-preview";
-import { ExpertStrategies } from "@/components/expert-strategies";
 import { StatusIndicator } from "@/components/status-indicator";
 import { fetchLeaderboardPreview } from "@/lib/fetch-leaderboard";
 import { URLS, DISTRIBUTION_FEATURES, DISTRIBUTION_STEPS } from "@distribute/content";
@@ -41,18 +40,16 @@ export default async function Home() {
           </h1>
 
           <p className="text-lg md:text-xl text-gray-500 mb-10 max-w-2xl mx-auto leading-relaxed">
-            Create an account. Give us your URL. We handle welcome emails,
-            outreach campaigns, webinar flows, and every touchpoint in
-            between.{" "}
+            Your URL. A budget. We reach the right people for you.{" "}
             <span className="text-gray-700 font-medium">
-              Powered by AI workflows ranked by real performance data.
+              You just get notified when someone replies.
             </span>
           </p>
 
           <HeroForm signUpUrl={URLS.signUp} />
 
           <p className="text-sm text-gray-400 mt-6">
-            Free to start. No markup — you only pay the raw cost of AI, APIs, and tools.
+            Free to start. No subscription. You only pay the raw cost of AI and APIs.
           </p>
         </div>
       </section>
@@ -64,69 +61,103 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Problem Statement */}
+      {/* Vision */}
       <section className="py-20 px-4">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="font-display text-3xl md:text-4xl font-bold mb-6 text-gray-900">
-            Built for builders who hate marketing
+            Your product deserves to be known
           </h2>
-          <p className="text-lg text-gray-500 leading-relaxed mb-8">
-            You&apos;re great at building products. You shouldn&apos;t need to spend time
-            crafting welcome emails, setting up drip campaigns, or managing
-            outreach sequences.
+          <p className="text-lg text-gray-500 leading-relaxed mb-4">
+            You create value. We make sure the right people hear about it.
           </p>
-          <div className="grid md:grid-cols-3 gap-6 text-left">
-            <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
-              <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center mb-3">
-                <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
+          <p className="text-lg text-gray-500 leading-relaxed">
+            In 2026, you shouldn&apos;t need to think about campaigns, sequences, or outreach tools.
+            Set a daily budget. Pick your channels.{" "}
+            <span className="text-gray-700 font-medium">Distribution runs itself.</span>
+          </p>
+        </div>
+      </section>
+
+      {/* The DIY Problem */}
+      <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+              What happens when you ask Claude to send cold emails
+            </h2>
+            <p className="text-gray-500 text-lg">
+              You&apos;ve tried it. Here&apos;s what you got.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* DIY column */}
+            <div className="bg-white rounded-xl p-6 border border-gray-200">
+              <div className="flex items-center gap-2 mb-5">
+                <div className="w-2 h-2 rounded-full bg-red-400" />
+                <h3 className="font-semibold text-gray-900">Do it yourself</h3>
               </div>
-              <h3 className="font-semibold text-gray-900 text-sm mb-1">Zero configuration</h3>
-              <p className="text-sm text-gray-500">
-                We read your URL, understand your brand, and generate everything automatically.
-              </p>
+              <div className="space-y-3">
+                {[
+                  "Need an Apollo API key for leads",
+                  "Need Instantly or Resend to send",
+                  "Uses Opus 4.6 for every single email",
+                  "No idea which prompt converts best",
+                  "No optimization over time",
+                  "100x cost per conversion",
+                ].map((item) => (
+                  <div key={item} className="flex items-start gap-2.5">
+                    <svg className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    <span className="text-sm text-gray-600">{item}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
-              <div className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center mb-3">
-                <svg className="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
+
+            {/* distribute.you column */}
+            <div className="bg-white rounded-xl p-6 border-2 border-emerald-200 shadow-sm">
+              <div className="flex items-center gap-2 mb-5">
+                <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                <h3 className="font-semibold text-gray-900">distribute.you</h3>
               </div>
-              <h3 className="font-semibold text-gray-900 text-sm mb-1">Data-driven defaults</h3>
-              <p className="text-sm text-gray-500">
-                The best-performing workflow runs by default. Optimized across thousands of accounts.
-              </p>
-            </div>
-            <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
-              <div className="w-8 h-8 bg-cyan-100 rounded-lg flex items-center justify-center mb-3">
-                <svg className="w-4 h-4 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+              <div className="space-y-3">
+                {[
+                  "One command. Everything handled.",
+                  "Best workflow auto-selected",
+                  "Cheapest model that maximizes conversions",
+                  "Prompts optimized across thousands of sends",
+                  "Gets better every day, automatically",
+                  "At cost. No markup.",
+                ].map((item) => (
+                  <div key={item} className="flex items-start gap-2.5">
+                    <svg className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-sm text-gray-600">{item}</span>
+                  </div>
+                ))}
               </div>
-              <h3 className="font-semibold text-gray-900 text-sm mb-1">Zero markup</h3>
-              <p className="text-sm text-gray-500">
-                We pass through every cost at raw price — AI, APIs, email tools, ad platforms. No markup, ever.
-              </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Feature Categories */}
-      <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
+      {/* Feature Channels */}
+      <section className="py-20 px-4">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
-              One platform, every touchpoint
+              Three channels. One click.
             </h2>
             <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-              Each feature has hundreds of AI workflows competing on real metrics.
+              Each channel has hundreds of AI workflows competing on real metrics.
               The best one runs by default.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid md:grid-cols-3 gap-4">
             {DISTRIBUTION_FEATURES.map((feature) => {
               const colors = FEATURE_COLOR_CLASSES[feature.color];
               return (
@@ -141,15 +172,9 @@ export default async function Home() {
                         {feature.title}
                       </h3>
                     </div>
-                    {feature.status === "live" ? (
-                      <span className="text-[10px] font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full border border-green-100">
-                        Live
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-medium text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">
-                        Soon
-                      </span>
-                    )}
+                    <span className="text-[10px] font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full border border-green-100">
+                      Live
+                    </span>
                   </div>
                   <p className="text-sm text-gray-500 mb-3 leading-relaxed">
                     {feature.description}
@@ -167,43 +192,41 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* How Workflows Work */}
-      <section className="py-20 px-4">
+      {/* Always the best workflow */}
+      <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            Thousands of workflows. One winner.
+            Always the best workflow. Automatically.
           </h2>
           <p className="text-gray-500 text-lg mb-6 leading-relaxed">
-            Every distribution feature runs on AI workflows. Each workflow is a
-            different approach — different prompts, different sequences, different
-            timing. We rank them by real performance data and the best one runs
-            by default.
+            Hundreds of workflows compete on real data. Different prompts,
+            different models, different sequences. The winner runs by default.
           </p>
           <p className="text-gray-700 font-medium text-lg mb-12">
-            Done is better than perfect. You don&apos;t configure anything.
+            If a new model launches tomorrow with better quality per dollar — we switch. You don&apos;t need to think about it.
           </p>
 
-          <div className="bg-gray-50 rounded-2xl p-6 md:p-8 border border-gray-100 text-left">
+          <div className="bg-white rounded-2xl p-6 md:p-8 border border-gray-200 text-left shadow-sm">
             <div className="text-xs text-gray-400 uppercase tracking-wider mb-4 font-medium">
-              Example: Welcome Email workflows
+              Example: Sales Outreach workflows
             </div>
             <div className="space-y-3">
               {[
-                { name: "aurora-v3", metric: "34.2% open rate", cost: "$0.03/open", selected: true },
-                { name: "nova-v2", metric: "31.8% open rate", cost: "$0.04/open", selected: false },
-                { name: "sienna-v1", metric: "28.5% open rate", cost: "$0.05/open", selected: false },
+                { name: "apex-v4", metric: "4.8% reply rate", cost: "$0.42/reply", selected: true },
+                { name: "signal-v3", metric: "4.1% reply rate", cost: "$0.51/reply", selected: false },
+                { name: "ember-v2", metric: "3.6% reply rate", cost: "$0.63/reply", selected: false },
               ].map((wf) => (
                 <div
                   key={wf.name}
                   className={`flex items-center justify-between px-4 py-3 rounded-lg ${
                     wf.selected
-                      ? "bg-white border-2 border-emerald-200 shadow-sm"
-                      : "bg-white border border-gray-200"
+                      ? "bg-cyan-50 border-2 border-cyan-200 shadow-sm"
+                      : "bg-gray-50 border border-gray-200"
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     {wf.selected && (
-                      <div className="w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
+                      <div className="w-5 h-5 bg-cyan-500 rounded-full flex items-center justify-center">
                         <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                         </svg>
@@ -213,7 +236,7 @@ export default async function Home() {
                       {wf.name}
                     </span>
                     {wf.selected && (
-                      <span className="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full font-medium">
+                      <span className="text-[10px] text-cyan-600 bg-cyan-50 px-2 py-0.5 rounded-full font-medium border border-cyan-200">
                         Auto-selected
                       </span>
                     )}
@@ -231,16 +254,166 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Expert Strategies */}
+      {/* At cost pricing */}
+      <section className="py-20 px-4">
+        <div className="max-w-3xl mx-auto text-center">
+          <h2 className="font-display text-3xl md:text-4xl font-bold mb-6 text-gray-900">
+            At cost. No subscription.
+          </h2>
+          <p className="text-lg text-gray-500 leading-relaxed mb-8">
+            Credit your account. Pick your channels. We charge the retail price of every API
+            and model we use — nothing more.{" "}
+            <span className="text-gray-700 font-medium">No monthly fee. No commitment.</span>
+          </p>
+          <div className="grid md:grid-cols-3 gap-6 text-left">
+            <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
+              <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center mb-3">
+                <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="font-semibold text-gray-900 text-sm mb-1">Zero markup</h3>
+              <p className="text-sm text-gray-500">
+                We pass through every cost at raw retail price — AI, APIs, email tools. No markup, ever.
+              </p>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
+              <div className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center mb-3">
+                <svg className="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+              </div>
+              <h3 className="font-semibold text-gray-900 text-sm mb-1">Credits, not subscriptions</h3>
+              <p className="text-sm text-gray-500">
+                Add credits when you want. Use them when you want. No recurring charge.
+              </p>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
+              <div className="w-8 h-8 bg-cyan-100 rounded-lg flex items-center justify-center mb-3">
+                <svg className="w-4 h-4 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <h3 className="font-semibold text-gray-900 text-sm mb-1">Transparent average costs</h3>
+              <p className="text-sm text-gray-500">
+                We show the average cost per reply across all accounts. You know what to expect.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Open source */}
       <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
-        <div className="max-w-5xl mx-auto">
-          <ExpertStrategies />
+        <div className="max-w-3xl mx-auto text-center">
+          <h2 className="font-display text-3xl md:text-4xl font-bold mb-6 text-gray-900">
+            Fully open. Fully yours.
+          </h2>
+          <p className="text-lg text-gray-500 leading-relaxed mb-8">
+            Every workflow is open source. See the prompts. Modify them. Contribute your own.
+            That&apos;s how we crowdsource the best strategies.
+          </p>
+          <div className="grid md:grid-cols-3 gap-6 text-left">
+            <div className="bg-white rounded-xl p-5 border border-gray-200">
+              <div className="font-mono text-xs text-gray-400 mb-3">$ claude</div>
+              <h3 className="font-semibold text-gray-900 text-sm mb-1">Works from your terminal</h3>
+              <p className="text-sm text-gray-500">
+                Use our MCP server from Claude Code, OpenCode, or any MCP client.
+                One command to launch a campaign.
+              </p>
+            </div>
+            <div className="bg-white rounded-xl p-5 border border-gray-200">
+              <div className="font-mono text-xs text-gray-400 mb-3">GET /v1/workflows</div>
+              <h3 className="font-semibold text-gray-900 text-sm mb-1">Full API</h3>
+              <p className="text-sm text-gray-500">
+                Everything you can do in the dashboard, you can do via API.
+                Build your own integrations.
+              </p>
+            </div>
+            <div className="bg-white rounded-xl p-5 border border-gray-200">
+              <div className="font-mono text-xs text-gray-400 mb-3">MIT License</div>
+              <h3 className="font-semibold text-gray-900 text-sm mb-1">Open source workflows</h3>
+              <p className="text-sm text-gray-500">
+                See every prompt. Fork any workflow. Submit a better one.
+                The best rises to the top.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Phone notification */}
+      <section className="py-20 px-4">
+        <div className="max-w-xl mx-auto text-center">
+          <h2 className="font-display text-3xl md:text-4xl font-bold mb-4 text-gray-900">
+            The notification you want to receive
+          </h2>
+          <p className="text-gray-500 text-lg mb-10">
+            Set it up once. Get notified when it works.
+          </p>
+
+          {/* Phone notification mockup */}
+          <div className="mx-auto max-w-sm">
+            <div className="bg-gray-950 rounded-3xl p-2 shadow-2xl">
+              <div className="bg-gray-900 rounded-2xl overflow-hidden">
+                {/* Status bar */}
+                <div className="flex items-center justify-between px-6 py-2 text-[10px] text-gray-400">
+                  <span>9:41</span>
+                  <div className="flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 18c3.31 0 6-2.69 6-6s-2.69-6-6-6-6 2.69-6 6 2.69 6 6 6z" /></svg>
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M2 22h20V2z" /></svg>
+                  </div>
+                </div>
+
+                {/* Notifications */}
+                <div className="px-4 pb-6 space-y-2.5 pt-4">
+                  <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-3.5 border border-white/5">
+                    <div className="flex items-center gap-2.5 mb-1">
+                      <div className="w-5 h-5 bg-brand-400 rounded-md flex items-center justify-center">
+                        <span className="text-white text-[10px] font-bold">d</span>
+                      </div>
+                      <span className="text-[10px] text-gray-400 uppercase tracking-wider">distribute.you</span>
+                      <span className="text-[10px] text-gray-600 ml-auto">now</span>
+                    </div>
+                    <p className="text-sm text-white font-medium">New lead replied</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Sarah from TechCrunch wants to cover your launch</p>
+                  </div>
+
+                  <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-3.5 border border-white/5">
+                    <div className="flex items-center gap-2.5 mb-1">
+                      <div className="w-5 h-5 bg-brand-400 rounded-md flex items-center justify-center">
+                        <span className="text-white text-[10px] font-bold">d</span>
+                      </div>
+                      <span className="text-[10px] text-gray-400 uppercase tracking-wider">distribute.you</span>
+                      <span className="text-[10px] text-gray-600 ml-auto">2m ago</span>
+                    </div>
+                    <p className="text-sm text-white font-medium">New lead replied</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Mike from Acme Corp is interested in a demo</p>
+                  </div>
+
+                  <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-3.5 border border-white/5">
+                    <div className="flex items-center gap-2.5 mb-1">
+                      <div className="w-5 h-5 bg-brand-400 rounded-md flex items-center justify-center">
+                        <span className="text-white text-[10px] font-bold">d</span>
+                      </div>
+                      <span className="text-[10px] text-gray-400 uppercase tracking-wider">distribute.you</span>
+                      <span className="text-[10px] text-gray-600 ml-auto">5m ago</span>
+                    </div>
+                    <p className="text-sm text-white font-medium">New lead replied</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Lisa, Senior Engineer — open to chat about the role</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {/* Glow */}
+            <div className="absolute -inset-4 bg-gradient-to-r from-brand-400/10 via-emerald-500/10 to-cyan-500/10 rounded-3xl blur-3xl -z-10" />
+          </div>
         </div>
       </section>
 
       {/* Performance Leaderboard */}
       {leaderboard && (leaderboard.brands.length > 0 || leaderboard.workflows.length > 0) && (
-        <section className="py-20 px-4">
+        <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-10">
               <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
@@ -281,69 +454,14 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Use case example */}
-      <section className="py-20 px-4">
-        <div className="max-w-3xl mx-auto">
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-center mb-4 text-gray-900">
-            Like having a growth team on autopilot
-          </h2>
-          <p className="text-gray-500 text-lg text-center mb-12">
-            Here&apos;s what happens when you enable &ldquo;Welcome Emails&rdquo; for your SaaS.
-          </p>
-
-          <div className="space-y-4">
-            {[
-              {
-                step: "Brand Service",
-                desc: "Reads your URL, extracts your brand voice, colors, and messaging.",
-                detail: "acme.com → modern, B2B SaaS, blue palette, professional tone",
-                color: "bg-emerald-400",
-              },
-              {
-                step: "Content Generation",
-                desc: "Drafts a welcome email template matching your brand.",
-                detail: "Subject: \"Welcome to Acme — here's what to do first\"",
-                color: "bg-cyan-400",
-              },
-              {
-                step: "Auto-trigger",
-                desc: "Fires automatically when a new user signs up.",
-                detail: "Webhook: user.created → send welcome email",
-                color: "bg-blue-400",
-              },
-              {
-                step: "Metrics",
-                desc: "We track open rates, clicks, and optimize continuously.",
-                detail: "34.2% open rate — top 10% across all accounts",
-                color: "bg-violet-400",
-              },
-            ].map((item, i) => (
-              <div key={i} className="flex gap-4 items-start">
-                <div className="w-px bg-gray-200 ml-3 flex-shrink-0 hidden md:block" style={{ minHeight: '100%' }} />
-                <div className="bg-white rounded-xl p-5 border border-gray-200 flex-1">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <div className={`w-2 h-2 rounded-full ${item.color}`} />
-                    <h4 className="font-semibold text-gray-900 text-sm">{item.step}</h4>
-                  </div>
-                  <p className="text-sm text-gray-500 mb-2">{item.desc}</p>
-                  <p className="text-xs text-gray-400 font-mono bg-gray-50 px-3 py-1.5 rounded-md">
-                    {item.detail}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* CTA */}
       <section className="py-20 px-4 bg-gray-900">
         <div className="max-w-xl mx-auto text-center">
           <h2 className="font-display text-3xl font-bold mb-3 text-white">
-            Get started for free
+            The dream is one click away
           </h2>
           <p className="text-gray-400 mb-8">
-            No markup, no contracts. You only pay the raw cost of AI, APIs, and tools.
+            No markup, no subscription. Credit your account and let distribution run itself.
           </p>
           <LinkButton
             href={URLS.signUp}

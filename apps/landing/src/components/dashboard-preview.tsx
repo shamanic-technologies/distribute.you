@@ -11,18 +11,17 @@ const SIDEBAR_COLORS: Record<FeatureColor, { activeBg: string; activeText: strin
 
 export function DashboardPreview() {
   const features: { name: string; active: boolean; color: FeatureColor }[] = [
-    { name: "Welcome Emails", active: true, color: "emerald" },
-    { name: "Cold Outreach", active: true, color: "cyan" },
-    { name: "Webinar Lifecycle", active: false, color: "blue" },
-    { name: "Lifecycle Campaigns", active: false, color: "violet" },
+    { name: "Sales Outreach", active: true, color: "cyan" },
+    { name: "Journalist Outreach", active: true, color: "emerald" },
+    { name: "Hiring Outreach", active: false, color: "violet" },
   ];
 
   const workflows = [
-    { rank: 1, name: "aurora-v3", openRate: "34.2%", costPerOpen: "$0.03", bar: 100 },
-    { rank: 2, name: "nova-v2", openRate: "31.8%", costPerOpen: "$0.04", bar: 93 },
-    { rank: 3, name: "sienna-v1", openRate: "28.5%", costPerOpen: "$0.05", bar: 83 },
-    { rank: 4, name: "ember-v2", openRate: "25.1%", costPerOpen: "$0.06", bar: 73 },
-    { rank: 5, name: "coral-v1", openRate: "22.7%", costPerOpen: "$0.07", bar: 66 },
+    { rank: 1, name: "apex-v4", replyRate: "4.8%", costPerReply: "$0.42", bar: 100 },
+    { rank: 2, name: "signal-v3", replyRate: "4.1%", costPerReply: "$0.51", bar: 85 },
+    { rank: 3, name: "ember-v2", replyRate: "3.6%", costPerReply: "$0.63", bar: 75 },
+    { rank: 4, name: "pulse-v1", replyRate: "3.2%", costPerReply: "$0.71", bar: 67 },
+    { rank: 5, name: "drift-v1", replyRate: "2.9%", costPerReply: "$0.84", bar: 60 },
   ];
 
   return (
@@ -84,7 +83,7 @@ export function DashboardPreview() {
             {/* Feature header */}
             <div className="flex items-center justify-between mb-5">
               <div>
-                <h3 className="text-white font-semibold text-sm">Welcome Emails</h3>
+                <h3 className="text-white font-semibold text-sm">Sales Outreach</h3>
                 <p className="text-gray-500 text-xs mt-0.5">
                   Best workflow selected automatically
                 </p>
@@ -99,23 +98,23 @@ export function DashboardPreview() {
             <div className="grid grid-cols-3 gap-3 mb-6">
               <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/30">
                 <p className="text-[10px] text-gray-500 uppercase tracking-wider">
-                  Open Rate
+                  Reply Rate
                 </p>
-                <p className="text-xl font-bold text-white mt-1">34.2%</p>
-                <p className="text-[10px] text-green-400 mt-0.5">+2.1% vs avg</p>
+                <p className="text-xl font-bold text-white mt-1">4.8%</p>
+                <p className="text-[10px] text-green-400 mt-0.5">+1.2% vs avg</p>
               </div>
               <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/30">
                 <p className="text-[10px] text-gray-500 uppercase tracking-wider">
-                  Cost / Open
+                  Cost / Reply
                 </p>
-                <p className="text-xl font-bold text-white mt-1">$0.03</p>
-                <p className="text-[10px] text-green-400 mt-0.5">-18% vs avg</p>
+                <p className="text-xl font-bold text-white mt-1">$0.42</p>
+                <p className="text-[10px] text-green-400 mt-0.5">-22% vs avg</p>
               </div>
               <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/30">
                 <p className="text-[10px] text-gray-500 uppercase tracking-wider">
                   Emails Sent
                 </p>
-                <p className="text-xl font-bold text-white mt-1">12.8k</p>
+                <p className="text-xl font-bold text-white mt-1">8.4k</p>
                 <p className="text-[10px] text-gray-400 mt-0.5">Last 30 days</p>
               </div>
             </div>
@@ -132,13 +131,13 @@ export function DashboardPreview() {
                   <div
                     key={wf.rank}
                     className={`flex items-center gap-3 px-4 py-2 text-xs ${
-                      wf.rank === 1 ? "bg-emerald-500/5" : ""
+                      wf.rank === 1 ? "bg-cyan-500/5" : ""
                     }`}
                   >
                     <span
                       className={`w-5 text-center font-mono ${
                         wf.rank === 1
-                          ? "text-emerald-400 font-bold"
+                          ? "text-cyan-400 font-bold"
                           : "text-gray-600"
                       }`}
                     >
@@ -156,7 +155,7 @@ export function DashboardPreview() {
                         <div
                           className={`h-1.5 rounded-full ${
                             wf.rank === 1
-                              ? "bg-emerald-400"
+                              ? "bg-cyan-400"
                               : "bg-gray-600"
                           }`}
                           style={{ width: `${wf.bar}%` }}
@@ -164,10 +163,10 @@ export function DashboardPreview() {
                       </div>
                     </div>
                     <span className="w-12 text-right text-gray-400">
-                      {wf.openRate}
+                      {wf.replyRate}
                     </span>
                     <span className="w-12 text-right text-gray-500">
-                      {wf.costPerOpen}
+                      {wf.costPerReply}
                     </span>
                   </div>
                 ))}
@@ -178,7 +177,7 @@ export function DashboardPreview() {
       </div>
 
       {/* Glow effect behind dashboard — rainbow */}
-      <div className="absolute -inset-4 bg-gradient-to-r from-emerald-500/10 via-violet-500/10 to-pink-500/10 rounded-2xl blur-3xl -z-10" />
+      <div className="absolute -inset-4 bg-gradient-to-r from-cyan-500/10 via-violet-500/10 to-emerald-500/10 rounded-2xl blur-3xl -z-10" />
     </div>
   );
 }

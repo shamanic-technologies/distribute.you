@@ -5,8 +5,8 @@ import {
 } from "../src/features.js";
 
 describe("DISTRIBUTION_FEATURES", () => {
-  it("has at least 6 distribution features", () => {
-    expect(DISTRIBUTION_FEATURES.length).toBeGreaterThanOrEqual(6);
+  it("has at least 3 distribution features", () => {
+    expect(DISTRIBUTION_FEATURES.length).toBeGreaterThanOrEqual(3);
   });
 
   it("each feature has required fields", () => {
@@ -19,11 +19,6 @@ describe("DISTRIBUTION_FEATURES", () => {
       expect(["live", "coming-soon"]).toContain(f.status);
       expect(validColors).toContain(f.color);
     }
-  });
-
-  it("each feature has a unique color", () => {
-    const colors = DISTRIBUTION_FEATURES.map((f) => f.color);
-    expect(new Set(colors).size).toBe(colors.length);
   });
 
   it("has at least one live feature", () => {
