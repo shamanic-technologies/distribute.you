@@ -323,7 +323,7 @@ export default async function Home() {
               </p>
             </div>
             <div className="bg-white rounded-xl p-5 border border-gray-200">
-              <div className="font-mono text-xs text-gray-400 mb-3">GET /v1/workflows</div>
+              <div className="font-mono text-xs text-gray-400 mb-3">POST /v1/distribute</div>
               <h3 className="font-semibold text-gray-900 text-sm mb-1">Full API</h3>
               <p className="text-sm text-gray-500">
                 Everything you can do in the dashboard, you can do via API.
