@@ -1708,6 +1708,8 @@ export interface EnrichedJournalist {
   lastName: string | null;
   entityType: "individual" | "organization";
   outletId: string;
+  outletName: string | null;
+  outletDomain: string | null;
   email: string | null;
   apolloPersonId: string | null;
   emailStatus: EmailStatus | null;
