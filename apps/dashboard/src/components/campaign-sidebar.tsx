@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { McpSidebar } from "./mcp-sidebar";
+import { useState, useMemo, type ReactNode } from "react";
+import { McpSidebar, type McpSidebarGroup } from "./mcp-sidebar";
 import { useFeatures } from "@/lib/features-context";
 import { useEntityRegistry } from "@/lib/entity-registry-context";
 import { CampaignInputsPanel } from "./campaign/campaign-inputs-panel";
@@ -75,6 +75,12 @@ function getEntityIcon(iconName: string): ReactNode {
   );
 }
 
+const OUTCOME_GROUPS = [
+  { id: "journalists", label: "Journalists", entityIds: ["outlets", "journalists", "emails", "articles"] },
+  { id: "sales", label: "Sales", entityIds: ["leads", "emails"] },
+  { id: "hiring", label: "Hiring", entityIds: ["leads", "emails"] },
+] as const;
+
 interface CampaignSidebarProps {
   campaignId: string;
   orgId: string;
@@ -110,6 +116,18 @@ export function CampaignSidebar({ campaignId, orgId, brandId, featureDynastySlug
       };
     });
 
+  const outcomesGroups: McpSidebarGroup[] = useMemo(() => {
+    return OUTCOME_GROUPS
+      .map((group) => ({
+        id: group.id,
+        label: group.label,
+        items: group.entityIds
+          .map((eid) => entityItems.find((item) => item.id === eid))
+          .filter((item): item is (typeof entityItems)[number] => item != null),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [entityItems]);
+
   const items = [
     {
       id: "overview",
@@ -134,7 +152,7 @@ export function CampaignSidebar({ campaignId, orgId, brandId, featureDynastySlug
     <>
       <McpSidebar
         items={items}
-        outcomesItems={entityItems}
+        outcomesGroups={outcomesGroups}
         settingsItems={settingsItems}
         settingsExtra={hasInputs ? (
           <button

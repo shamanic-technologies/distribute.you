@@ -172,21 +172,6 @@ function StatusBadge({ status }: { status: LeadConsolidatedStatus }) {
   return <span className={`text-xs px-2 py-0.5 rounded-full border ${leadStatusStyle(status)}`}>{leadStatusLabel(status)}</span>;
 }
 
-const SOURCE_CONFIG: Record<string, { label: string; favicon: string }> = {
-  apollo: { label: "Apollo", favicon: "https://www.apollo.io/favicon.ico" },
-  journalist: { label: "Journalist", favicon: "https://www.google.com/s2/favicons?domain=muckrack.com&sz=32" },
-};
-
-function SourceBadge({ namespace }: { namespace: string | null }) {
-  const config = namespace ? SOURCE_CONFIG[namespace] : null;
-  const label = config?.label ?? namespace ?? "Unknown";
-  return (
-    <div className="flex items-center gap-1.5">
-      {config?.favicon && <img src={config.favicon} alt="" className="w-4 h-4 rounded-sm" loading="lazy" />}
-      <span className="text-xs text-gray-600">{label}</span>
-    </div>
-  );
-}
 
 function LeadsTable({ leads, selectedLead, onSelectLead }: {
   leads: Lead[];
@@ -207,7 +192,6 @@ function LeadsTable({ leads, selectedLead, onSelectLead }: {
           <tr className="border-b border-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
             <th className="px-4 py-3">Company</th>
             <th className="px-4 py-3">Contact</th>
-            <th className="px-4 py-3 hidden lg:table-cell">Source</th>
             <th className="px-4 py-3 hidden sm:table-cell">Status</th>
             <th className="px-4 py-3 hidden md:table-cell">Found</th>
             <th className="px-4 py-3 text-right">Cost</th>
@@ -243,7 +227,6 @@ function LeadsTable({ leads, selectedLead, onSelectLead }: {
                     )}
                   </div>
                 </td>
-                <td className="px-4 py-3 hidden lg:table-cell"><SourceBadge namespace={lead.namespace} /></td>
                 <td className="px-4 py-3 hidden sm:table-cell"><StatusBadge status={getLeadConsolidatedStatus(lead)} /></td>
                 <td className="px-4 py-3 hidden md:table-cell">
                   <span className="text-xs text-gray-500" title={new Date(lead.createdAt).toLocaleString()}>{timeAgo(lead.createdAt)}</span>
