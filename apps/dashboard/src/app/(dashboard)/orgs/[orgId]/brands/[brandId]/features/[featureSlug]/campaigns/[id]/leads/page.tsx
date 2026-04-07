@@ -1,11 +1,39 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { type Lead, type RunCost, type DescendantRun } from "@/lib/api";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { getLeadConsolidatedStatus, type Lead, type LeadConsolidatedStatus, type RunCost, type DescendantRun } from "@/lib/api";
 import { useCampaign } from "@/lib/campaign-context";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 
-type Tab = "contacted" | "other";
+const LEAD_STATUS_ORDER: LeadConsolidatedStatus[] = [
+  "replied",
+  "delivered",
+  "bounced",
+  "contacted",
+  "served",
+];
+
+type Tab = LeadConsolidatedStatus | "all";
+
+function leadStatusLabel(status: LeadConsolidatedStatus): string {
+  switch (status) {
+    case "replied": return "Replied";
+    case "delivered": return "Delivered";
+    case "bounced": return "Bounced";
+    case "contacted": return "Contacted";
+    case "served": return "Processing";
+  }
+}
+
+function leadStatusStyle(status: LeadConsolidatedStatus): string {
+  switch (status) {
+    case "replied": return "bg-emerald-100 text-emerald-700 border-emerald-200";
+    case "delivered": return "bg-green-100 text-green-700 border-green-200";
+    case "bounced": return "bg-red-100 text-red-600 border-red-200";
+    case "contacted": return "bg-teal-100 text-teal-700 border-teal-200";
+    case "served": return "bg-orange-100 text-orange-700 border-orange-200";
+  }
+}
 
 function timeAgo(date: string | Date): string {
   const now = new Date();
@@ -158,18 +186,8 @@ function CompanyLogo({ domain, name }: { domain: string | null; name: string | n
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const styles =
-    status === "contacted" ? "bg-green-100 text-green-700" :
-    status === "pending" ? "bg-yellow-100 text-yellow-700" :
-    status === "failed" ? "bg-red-100 text-red-700" :
-    "bg-gray-100 text-gray-600";
-
-  return (
-    <span className={`text-xs px-2 py-0.5 rounded-full ${styles}`}>
-      {status}
-    </span>
-  );
+function StatusBadge({ status }: { status: LeadConsolidatedStatus }) {
+  return <span className={`text-xs px-2 py-0.5 rounded-full border ${leadStatusStyle(status)}`}>{leadStatusLabel(status)}</span>;
 }
 
 const SOURCE_CONFIG: Record<string, { label: string; favicon: string }> = {
@@ -275,7 +293,7 @@ function LeadsTable({
 
                 {/* Status */}
                 <td className="px-4 py-3 hidden sm:table-cell">
-                  <StatusBadge status={lead.status} />
+                  <StatusBadge status={getLeadConsolidatedStatus(lead)} />
                 </td>
 
                 {/* Found date */}
@@ -309,6 +327,7 @@ export default function CampaignLeadsPage() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("contacted");
   const [search, setSearch] = useState("");
+  const hasAutoSelectedTab = useRef(false);
   const { leads, loading: isLoading } = useCampaign();
 
   const sortedLeads = useMemo(
@@ -316,28 +335,47 @@ export default function CampaignLeadsPage() {
     [leads]
   );
 
-  const contactedLeads = useMemo(
-    () => sortedLeads.filter((l) => l.status === "contacted"),
-    [sortedLeads]
-  );
-  const otherLeads = useMemo(
-    () => sortedLeads.filter((l) => l.status !== "contacted"),
-    [sortedLeads]
-  );
+  const groupedByStatus = useMemo(() => {
+    const groups = new Map<LeadConsolidatedStatus, Lead[]>();
+    for (const status of LEAD_STATUS_ORDER) groups.set(status, []);
+    for (const lead of sortedLeads) {
+      const s = getLeadConsolidatedStatus(lead);
+      groups.get(s)?.push(lead);
+    }
+    return groups;
+  }, [sortedLeads]);
 
-  const displayedLeads = activeTab === "contacted" ? contactedLeads : otherLeads;
+  useEffect(() => {
+    if (hasAutoSelectedTab.current || sortedLeads.length === 0) return;
+    hasAutoSelectedTab.current = true;
+    const first = LEAD_STATUS_ORDER.find((s) => (groupedByStatus.get(s)?.length ?? 0) > 0);
+    if (first) setActiveTab(first);
+  }, [sortedLeads.length, groupedByStatus]);
+
+  const activeList = activeTab === "all"
+    ? sortedLeads
+    : groupedByStatus.get(activeTab) ?? [];
 
   const filteredLeads = useMemo(() => {
-    if (!search) return displayedLeads;
+    if (!search) return activeList;
     const q = search.toLowerCase();
-    return displayedLeads.filter((l) => {
+    return activeList.filter((l) => {
       const name = `${l.firstName} ${l.lastName}`.toLowerCase();
       return name.includes(q)
         || (l.organizationName?.toLowerCase().includes(q) ?? false)
         || (l.title?.toLowerCase().includes(q) ?? false)
         || (l.email?.toLowerCase().includes(q) ?? false);
     });
-  }, [displayedLeads, search]);
+  }, [activeList, search]);
+
+  const tabs: { key: Tab; label: string; count: number }[] = [
+    ...LEAD_STATUS_ORDER.map((status) => ({
+      key: status as Tab,
+      label: leadStatusLabel(status),
+      count: groupedByStatus.get(status)?.length ?? 0,
+    })),
+    { key: "all", label: "All", count: sortedLeads.length },
+  ];
 
   const { totalCostCents, avgCostPerContactedCents } = useMemo(() => {
     let total = 0;
@@ -348,7 +386,7 @@ export default function CampaignLeadsPage() {
         const cents = parseFloat(lead.enrichmentRun.totalCostInUsdCents);
         if (!isNaN(cents)) {
           total += cents;
-          if (lead.status === "contacted") {
+          if (lead.contacted) {
             contactedCost += cents;
             contactedWithCost++;
           }
@@ -397,32 +435,24 @@ export default function CampaignLeadsPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-4 border-b border-gray-200">
-          <button
-            onClick={() => setActiveTab("contacted")}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
-              activeTab === "contacted"
-                ? "border-brand-500 text-brand-700"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Contacted
-            <span className="ml-1.5 text-xs text-gray-400">({contactedLeads.length})</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("other")}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
-              activeTab === "other"
-                ? "border-brand-500 text-brand-700"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Other
-            <span className="ml-1.5 text-xs text-gray-400">({otherLeads.length})</span>
-          </button>
+        <div className="flex gap-1 mb-4 border-b border-gray-200 overflow-x-auto">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => { setActiveTab(tab.key); setSelectedLead(null); }}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition whitespace-nowrap ${
+                activeTab === tab.key
+                  ? "border-brand-600 text-brand-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {tab.label}
+              <span className="ml-1.5 text-xs font-normal text-gray-400">({tab.count})</span>
+            </button>
+          ))}
         </div>
 
-        <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by name, company, title, or email..." resultCount={filteredLeads.length} totalCount={displayedLeads.length} />
+        <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by name, company, title, or email..." resultCount={filteredLeads.length} totalCount={activeList.length} />
 
         {leads.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
@@ -491,7 +521,7 @@ export default function CampaignLeadsPage() {
                 <div>
                   <span className="text-gray-500">Status:</span>
                   <p className="font-medium">
-                    <StatusBadge status={selectedLead.status} />
+                    <StatusBadge status={getLeadConsolidatedStatus(selectedLead)} />
                   </p>
                 </div>
                 {selectedLead.linkedinUrl && (
