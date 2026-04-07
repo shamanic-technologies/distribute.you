@@ -37,8 +37,9 @@ describe("Performance-service uses public ranked/best endpoints", () => {
     expect(content).toContain("emailsReplied");
   });
 
-  it("should aggregate brand stats from ranked items", () => {
-    expect(content).toContain("aggregateBrandsFromRankedItems");
+  it("should aggregate brand stats from brand-grouped ranked results", () => {
+    expect(content).toContain("aggregateBrandsFromBrandRanked");
+    expect(content).toContain("groupBy=brand");
   });
 
   it("should enrich brands from brand-service", () => {
