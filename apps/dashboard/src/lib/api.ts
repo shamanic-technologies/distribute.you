@@ -918,7 +918,7 @@ export function getLeadConsolidatedStatus(lead: Lead): LeadConsolidatedStatus {
 }
 
 export async function listCampaignLeads(campaignId: string, token?: string): Promise<{ leads: Lead[] }> {
-  return apiCall<{ leads: Lead[] }>(`/campaigns/${campaignId}/leads`, { token });
+  return apiCall<{ leads: Lead[] }>(`/leads?campaignId=${campaignId}`, { token });
 }
 
 export async function listBrandLeads(brandId: string, token?: string): Promise<{ leads: Lead[] }> {
