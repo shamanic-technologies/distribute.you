@@ -54,6 +54,8 @@ interface WorkflowTableRow {
   dynastyName: string;
   featureSlug: string | null;
   stats: Record<string, number>;
+  brandLastRunAt: string | null;
+  updatedAt: string;
 }
 
 /** Build an empty form data map from feature inputs */
@@ -208,6 +210,13 @@ export default function FeatureCreateCampaignPage() {
     { enabled: featureDef?.implemented === true, ...pollOptions },
   );
 
+  // Fetch brand-specific stats to know when each workflow was last used by this brand
+  const { data: brandStatsData } = useAuthQuery(
+    ["featureStats", featureDynastySlug, "byDynasty", "brand", brandId],
+    () => fetchFeatureStats(featureDynastySlug, { groupBy: "workflowDynastySlug", brandId }),
+    { enabled: featureDef?.implemented === true, ...pollOptions },
+  );
+
   // Active workflows grouped by dynastySlug: keep only the latest per dynasty
   const rows = useMemo(() => {
     if (!workflowsData?.workflows) return [];
@@ -225,6 +234,12 @@ export default function FeatureCreateCampaignPage() {
       if (g.workflowDynastySlug) statsMap.set(g.workflowDynastySlug, { stats: g.stats, systemStats: g.systemStats });
     }
 
+    // Brand-specific stats: lastRunAt per workflow dynasty for this brand
+    const brandLastRunMap = new Map<string, string | null>();
+    for (const g of brandStatsData?.groups ?? []) {
+      if (g.workflowDynastySlug) brandLastRunMap.set(g.workflowDynastySlug, g.systemStats.lastRunAt);
+    }
+
     return [...byDynasty.values()].map((wf): WorkflowTableRow => {
       const s = statsMap.get(wf.dynastySlug);
       return {
@@ -234,9 +249,11 @@ export default function FeatureCreateCampaignPage() {
         dynastyName: wf.dynastyName,
         featureSlug: wf.featureSlug ?? null,
         stats: s?.stats ?? {},
+        brandLastRunAt: brandLastRunMap.get(wf.dynastySlug) ?? null,
+        updatedAt: wf.updatedAt,
       };
     });
-  }, [workflowsData, statsData]);
+  }, [workflowsData, statsData, brandStatsData]);
 
   // Workflow IDs for key status check
   const featureWorkflowIds = useMemo(() => rows.map((r) => r.id), [rows]);
@@ -270,6 +287,17 @@ export default function FeatureCreateCampaignPage() {
     });
   }, [registry]);
 
+  // Tiebreaker: most recently used by this brand, then most recently updated workflow
+  const tiebreak = (a: WorkflowTableRow, b: WorkflowTableRow): number => {
+    // 1st tiebreak: last workflow used by this brand (most recent first)
+    const aLastRun = a.brandLastRunAt ?? "";
+    const bLastRun = b.brandLastRunAt ?? "";
+    if (aLastRun !== bLastRun) return aLastRun > bLastRun ? -1 : 1;
+    // 2nd tiebreak: workflow updatedAt (most recent first)
+    if (a.updatedAt !== b.updatedAt) return a.updatedAt > b.updatedAt ? -1 : 1;
+    return 0;
+  };
+
   const sorted = useMemo(() => {
     if (rows.length === 0) return [];
     return [...rows].sort((a, b) => {
@@ -277,10 +305,11 @@ export default function FeatureCreateCampaignPage() {
       const bRaw = b.stats[metric] ?? null;
       const aNull = aRaw === null || aRaw === 0;
       const bNull = bRaw === null || bRaw === 0;
-      if (aNull && bNull) return 0;
+      if (aNull && bNull) return tiebreak(a, b);
       if (aNull) return 1;
       if (bNull) return -1;
-      return sortDir === "desc" ? Number(bRaw) - Number(aRaw) : Number(aRaw) - Number(bRaw);
+      const diff = sortDir === "desc" ? Number(bRaw) - Number(aRaw) : Number(aRaw) - Number(bRaw);
+      return diff !== 0 ? diff : tiebreak(a, b);
     });
   }, [rows, metric, sortDir]);
 
