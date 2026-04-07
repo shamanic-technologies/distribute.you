@@ -27,7 +27,6 @@ pnpm --filter @distribute/<package> vitest run tests/unit/specific.test.ts
 - `apps/dashboard/` (port 3001) — Next.js 15 App Router, Clerk auth
 - `apps/docs/` — Documentation site (docs.distribute.you)
 - `apps/landing/` — Main landing page
-- `apps/performance-service/` — Performance monitoring service
 - `apps/sales-cold-emails-landing/` — Marketing landing page (salescoldemail.distribute.you)
 
 ### Extracted Services (separate repos)
