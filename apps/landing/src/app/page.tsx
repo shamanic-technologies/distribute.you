@@ -318,7 +318,7 @@ export default async function Home() {
               <div className="font-mono text-xs text-gray-400 mb-3">$ claude</div>
               <h3 className="font-semibold text-gray-900 text-sm mb-1">Works from your terminal</h3>
               <p className="text-sm text-gray-500">
-                Use our MCP server from Claude Code, OpenCode, or any MCP client.
+                Use our MCP server from Claude Code, OpenClaw, or any MCP client.
                 One command to launch a campaign.
               </p>
             </div>
