@@ -12,12 +12,9 @@ distribute is the Stripe for Distribution. Create an account, give us your URL �
 
 ## Distribution Features
 
-- **Welcome Emails** — Personalized welcome emails that match your brand. Zero configuration needed. _(Live)_
-- **Cold Outreach** — Find leads, generate personalized emails, send and optimize automatically. _(Live)_
-- **Webinar Lifecycle** — Registration confirmations, reminders, follow-ups. The full flow, automated. _(Coming soon)_
-- **Lifecycle Campaigns** — Onboarding sequences, re-engagement, and win-back flows that run on autopilot. _(Coming soon)_
-- **Downsell & Retention** — Smart follow-ups when users disengage. Reduce churn without lifting a finger. _(Coming soon)_
-- **Social Distribution** — Your content, repurposed and distributed across every social channel. _(Coming soon)_
+- **Sales Outreach** — Find prospects, write personalized cold emails, send and track replies. Automatically. _(Live)_
+- **Journalist Outreach** — Pitch journalists who cover your space. Get press without a PR agency. _(Live)_
+- **Hiring Outreach** — Reach candidates that match your needs. Cold outreach for recruiting. _(Live)_
 
 ## Available Workflows
 
