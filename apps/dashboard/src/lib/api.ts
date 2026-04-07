@@ -886,7 +886,11 @@ export interface Lead {
   organizationIndustry: string | null;
   organizationSize: string | null;
   linkedinUrl: string | null;
-  status: string;
+  status: "contacted" | "served";
+  contacted: boolean;
+  delivered: boolean;
+  bounced: boolean;
+  replied: boolean;
   createdAt: string;
   enrichmentRun: {
     status: string;
@@ -900,6 +904,17 @@ export interface Lead {
     error?: string;
     errorSummary?: ErrorSummary;
   } | null;
+}
+
+export type LeadConsolidatedStatus = "replied" | "bounced" | "delivered" | "contacted" | "served";
+
+/** Derive consolidated status from email-gateway booleans + local status, matching journalists page pattern */
+export function getLeadConsolidatedStatus(lead: Lead): LeadConsolidatedStatus {
+  if (lead.replied) return "replied";
+  if (lead.bounced) return "bounced";
+  if (lead.delivered) return "delivered";
+  if (lead.contacted) return "contacted";
+  return "served";
 }
 
 export async function listCampaignLeads(campaignId: string, token?: string): Promise<{ leads: Lead[] }> {
