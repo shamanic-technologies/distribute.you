@@ -209,7 +209,7 @@ export default function OrgOverviewPage() {
       {recentCampaigns.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="text-lg font-medium text-gray-900 mb-4">Recent Campaigns</h2>
-          <div className="space-y-1">
+          <div className="space-y-1 overflow-x-auto">
             {recentCampaigns.map((campaign) => {
               const featureSlug = campaign.featureSlug ?? null;
               const primaryBrandId = campaign.brandIds[0] ?? null;

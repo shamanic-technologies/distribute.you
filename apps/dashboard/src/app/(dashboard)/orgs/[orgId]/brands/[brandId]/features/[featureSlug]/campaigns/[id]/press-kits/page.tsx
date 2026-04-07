@@ -332,8 +332,8 @@ function RunsTab({ groups }: { groups: CostStatsGroup[] }) {
   });
 
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden">
-      <table className="w-full text-sm">
+    <div className="border border-gray-200 rounded-lg overflow-hidden overflow-x-auto">
+      <table className="w-full text-sm min-w-[500px]">
         <thead>
           <tr className="bg-gray-50 border-b border-gray-200">
             <th className="text-left px-4 py-2 text-xs font-medium text-gray-500 uppercase">Media Kit ID</th>
