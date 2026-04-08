@@ -110,6 +110,13 @@ async function processStream(
         break;
       }
       case "error": {
+        const errorCode = event.code as string | undefined;
+        if (errorCode) {
+          writer.write({
+            type: "data-error-info",
+            data: { code: errorCode, message: (event.message || "Unknown server error") as string },
+          });
+        }
         writer.write({
           type: "error",
           errorText: (event.message || "Unknown server error") as string,
@@ -271,5 +278,59 @@ describe("chat stream proxy", () => {
     expect(writer.events).toEqual([
       { type: "error", errorText: "Rate limited" },
     ]);
+  });
+
+  it("forwards error code via data-error-info before error event", async () => {
+    const reader = createMockReader([
+      'data: {"type":"error","code":"model_overloaded","message":"Claude is temporarily overloaded. Please try again in a moment."}\n',
+    ]);
+    const writer = createMockWriter();
+
+    await processStream(reader, writer);
+
+    expect(writer.events).toEqual([
+      {
+        type: "data-error-info",
+        data: { code: "model_overloaded", message: "Claude is temporarily overloaded. Please try again in a moment." },
+      },
+      {
+        type: "error",
+        errorText: "Claude is temporarily overloaded. Please try again in a moment.",
+      },
+    ]);
+  });
+
+  it("does not emit data-error-info when error event has no code", async () => {
+    const reader = createMockReader([
+      'data: {"type":"error","message":"Something went wrong"}\n',
+    ]);
+    const writer = createMockWriter();
+
+    await processStream(reader, writer);
+
+    expect(writer.events).toEqual([
+      { type: "error", errorText: "Something went wrong" },
+    ]);
+    expect(writer.events.find((e) => e.type === "data-error-info")).toBeUndefined();
+  });
+
+  it("forwards all error code types correctly", async () => {
+    for (const code of ["model_overloaded", "rate_limited", "model_error", "internal_error"]) {
+      const reader = createMockReader([
+        `data: {"type":"error","code":"${code}","message":"Error: ${code}"}\n`,
+      ]);
+      const writer = createMockWriter();
+
+      await processStream(reader, writer);
+
+      expect(writer.events[0]).toEqual({
+        type: "data-error-info",
+        data: { code, message: `Error: ${code}` },
+      });
+      expect(writer.events[1]).toEqual({
+        type: "error",
+        errorText: `Error: ${code}`,
+      });
+    }
   });
 });
