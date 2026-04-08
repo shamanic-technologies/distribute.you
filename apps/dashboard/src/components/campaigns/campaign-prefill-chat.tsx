@@ -282,6 +282,7 @@ export function CampaignPrefillChat({
   const isProgrammaticScrollRef = useRef(false);
   const [showScrollPill, setShowScrollPill] = useState(false);
   const [input, setInput] = useState("");
+  const [lastErrorInfo, setLastErrorInfo] = useState<{ code: string; message: string } | null>(null);
 
   useEffect(() => {
     sessionIdRef.current = loadSessionId(chatId);
@@ -329,7 +330,7 @@ export function CampaignPrefillChat({
     [billingFetch],
   );
 
-  const { messages, sendMessage, status, stop, setMessages } = useChat({
+  const { messages, sendMessage, regenerate, status, stop, setMessages, error: chatError } = useChat({
     id: `campaign-prefill-${chatId}`,
     transport,
     messages: loadMessages(chatId),
@@ -338,6 +339,9 @@ export function CampaignPrefillChat({
         const d = data.data as { sessionId: string };
         sessionIdRef.current = d.sessionId;
         saveSessionId(chatId, d.sessionId);
+      }
+      if (data.type === "data-error-info" && data.data) {
+        setLastErrorInfo(data.data as { code: string; message: string });
       }
     },
     onFinish: ({ messages: finalMessages }) => {
@@ -463,10 +467,28 @@ export function CampaignPrefillChat({
     el.style.height = Math.min(el.scrollHeight, 144) + "px";
   }, [input]);
 
+  // Retry logic for SSE error codes
+  const RETRYABLE_CODES = useMemo(() => new Set(["model_overloaded", "rate_limited", "model_error"]), []);
+
+  const retryLastMessage = useCallback(() => {
+    setLastErrorInfo(null);
+    regenerate();
+  }, [regenerate]);
+
+  useEffect(() => {
+    if (lastErrorInfo?.code !== "rate_limited" || isStreaming) return;
+    const timer = setTimeout(() => {
+      setLastErrorInfo(null);
+      regenerate();
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [lastErrorInfo, isStreaming, regenerate]);
+
   const handleSend = useCallback(
     (text: string) => {
       if (!text.trim() || isStreaming) return;
       setInput("");
+      setLastErrorInfo(null);
       userHasScrolledRef.current = false;
       setShowScrollPill(false);
       sendMessage({ text });
@@ -615,6 +637,22 @@ export function CampaignPrefillChat({
                 <div className="flex-1 min-w-0 text-sm text-gray-800 leading-relaxed">
                   <MessageSkeleton />
                 </div>
+              </div>
+            )}
+            {/* SSE error banner with optional retry */}
+            {(lastErrorInfo || (chatError && status === "error")) && !isStreaming && (
+              <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 animate-in fade-in duration-150">
+                <p>{lastErrorInfo?.message ?? chatError?.message ?? "An error occurred"}</p>
+                {lastErrorInfo && RETRYABLE_CODES.has(lastErrorInfo.code) && (
+                  <button
+                    type="button"
+                    onClick={retryLastMessage}
+                    className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors"
+                  >
+                    <ArrowPathIcon className="w-3.5 h-3.5" />
+                    {lastErrorInfo.code === "rate_limited" ? "Retrying automatically..." : "Retry"}
+                  </button>
+                )}
               </div>
             )}
           </div>

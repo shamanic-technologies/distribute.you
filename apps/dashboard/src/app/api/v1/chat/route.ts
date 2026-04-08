@@ -274,6 +274,13 @@ export async function POST(req: NextRequest) {
           }
 
           case "error": {
+            const errorCode = event.code as string | undefined;
+            if (errorCode) {
+              writer.write({
+                type: "data-error-info" as `data-${string}`,
+                data: { code: errorCode, message: (event.message || "Unknown server error") as string },
+              } as never);
+            }
             writer.write({
               type: "error",
               errorText: (event.message || "Unknown server error") as string,
