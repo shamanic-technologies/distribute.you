@@ -1484,7 +1484,7 @@ export interface OutletCampaign {
   featureSlug: string;
   brandIds: string[];
   relevanceScore: number;
-  status: "open" | "ended" | "denied" | "served" | "skipped" | "contacted" | "delivered" | "replied";
+  outreachStatus: "open" | "ended" | "denied" | "served" | "skipped" | "contacted" | "delivered" | "replied";
   replyClassification?: "positive" | "negative" | "neutral" | null;
   whyRelevant?: string;
   whyNotRelevant?: string;
@@ -1501,9 +1501,9 @@ export interface DeduplicatedOutlet {
   outletUrl: string;
   outletDomain: string;
   createdAt: string;
-  latestStatus: "open" | "ended" | "denied" | "served" | "skipped" | "contacted" | "delivered" | "replied";
+  outreachStatus: "open" | "ended" | "denied" | "served" | "skipped" | "contacted" | "delivered" | "replied";
   replyClassification?: "positive" | "negative" | "neutral" | null;
-  latestRelevanceScore: number;
+  relevanceScore: number;
   campaigns: OutletCampaign[];
 }
 
@@ -1568,9 +1568,7 @@ export interface BrandJournalist {
   whyRelevant: string;
   whyNotRelevant: string;
   articleUrls: string[] | null;
-  consolidatedStatus: "buffered" | "claimed" | "served" | "contacted" | "delivered" | "replied" | "bounced" | "skipped";
-  localStatus: "buffered" | "claimed" | "served" | "contacted" | "skipped";
-  emailGatewayStatus: "contacted" | "delivered" | "replied" | "bounced" | null;
+  outreachStatus: "buffered" | "claimed" | "served" | "contacted" | "delivered" | "replied" | "bounced" | "skipped";
   createdAt: string;
   journalistName: string;
   firstName: string | null;
@@ -1620,9 +1618,7 @@ export interface JournalistCampaignEntry {
   campaignId: string;
   featureSlug: string | null;
   workflowSlug: string | null;
-  consolidatedStatus: "buffered" | "claimed" | "served" | "contacted" | "delivered" | "replied" | "bounced" | "skipped";
-  localStatus: "buffered" | "claimed" | "served" | "contacted" | "skipped";
-  emailGatewayStatus: "contacted" | "delivered" | "replied" | "bounced" | null;
+  outreachStatus: "buffered" | "claimed" | "served" | "contacted" | "delivered" | "replied" | "bounced" | "skipped";
   relevanceScore: string;
   whyRelevant: string;
   whyNotRelevant: string;

@@ -45,7 +45,7 @@ function timeAgo(dateStr: string): string {
 
 function OutletRow({ outlet, costCents, isSelected, onClick }: { outlet: DeduplicatedOutlet; costCents: string | null; isSelected: boolean; onClick: () => void }) {
   const cost = formatCost(costCents);
-  const displayStatus = resolveDisplayStatus(outlet.latestStatus, outlet.replyClassification);
+  const displayStatus = resolveDisplayStatus(outlet.outreachStatus, outlet.replyClassification);
   return (
     <button
       type="button"
@@ -72,8 +72,8 @@ function OutletRow({ outlet, costCents, isSelected, onClick }: { outlet: Dedupli
             {cost}
           </span>
         )}
-        <span className={`text-xs font-medium px-2 py-1 rounded-full border ${relevanceColor(outlet.latestRelevanceScore)}`}>
-          {outlet.latestRelevanceScore}%
+        <span className={`text-xs font-medium px-2 py-1 rounded-full border ${relevanceColor(outlet.relevanceScore)}`}>
+          {outlet.relevanceScore}%
         </span>
         <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -86,7 +86,7 @@ function OutletRow({ outlet, costCents, isSelected, onClick }: { outlet: Dedupli
 /* ─── Campaign Detail Card ──────────────────────────────────────────── */
 
 function CampaignDetailCard({ campaign }: { campaign: OutletCampaign }) {
-  const displayStatus = resolveDisplayStatus(campaign.status, campaign.replyClassification);
+  const displayStatus = resolveDisplayStatus(campaign.outreachStatus, campaign.replyClassification);
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4">
       <div className="flex items-center justify-between mb-3">
@@ -139,7 +139,7 @@ function CampaignDetailCard({ campaign }: { campaign: OutletCampaign }) {
 
 function OutletDetailPanel({ outlet, costCents, onClose }: { outlet: DeduplicatedOutlet; costCents: string | null; onClose: () => void }) {
   const cost = formatCost(costCents);
-  const displayStatus = resolveDisplayStatus(outlet.latestStatus, outlet.replyClassification);
+  const displayStatus = resolveDisplayStatus(outlet.outreachStatus, outlet.replyClassification);
   return (
     <div className="absolute inset-0 md:relative md:w-1/2 bg-gray-50 md:border-l border-gray-200 overflow-y-auto z-10">
       <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
@@ -166,8 +166,8 @@ function OutletDetailPanel({ outlet, costCents, onClose }: { outlet: Deduplicate
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-medium text-gray-800">{outlet.outletName}</h3>
-            <span className={`text-xs font-medium px-2 py-1 rounded-full border ${relevanceColor(outlet.latestRelevanceScore)}`}>
-              {outlet.latestRelevanceScore}% relevance
+            <span className={`text-xs font-medium px-2 py-1 rounded-full border ${relevanceColor(outlet.relevanceScore)}`}>
+              {outlet.relevanceScore}% relevance
             </span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
@@ -269,7 +269,7 @@ export default function CampaignOutletsPage() {
       groups.set(status, []);
     }
     for (const o of outlets) {
-      const ds = resolveDisplayStatus(o.latestStatus, o.replyClassification);
+      const ds = resolveDisplayStatus(o.outreachStatus, o.replyClassification);
       groups.get(ds)?.push(o);
     }
     return groups;
@@ -297,7 +297,7 @@ export default function CampaignOutletsPage() {
     const list = activeTab === "all"
       ? outlets
       : groupedByStatus.get(activeTab) ?? [];
-    return [...list].sort((a, b) => b.latestRelevanceScore - a.latestRelevanceScore);
+    return [...list].sort((a, b) => b.relevanceScore - a.relevanceScore);
   }, [activeTab, outlets, groupedByStatus]);
 
   const filteredOutlets = useMemo(() => {
