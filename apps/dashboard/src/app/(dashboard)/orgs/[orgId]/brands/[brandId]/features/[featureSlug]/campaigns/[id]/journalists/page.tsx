@@ -13,7 +13,7 @@ import { EntitySearchBar } from "@/components/entity-search-bar";
 const POLL_INTERVAL = 5_000;
 const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
 
-const CAMPAIGN_STATUS_ORDER: JournalistCampaignEntry["consolidatedStatus"][] = [
+const CAMPAIGN_STATUS_ORDER: JournalistCampaignEntry["outreachStatus"][] = [
   "replied",
   "delivered",
   "bounced",
@@ -24,9 +24,9 @@ const CAMPAIGN_STATUS_ORDER: JournalistCampaignEntry["consolidatedStatus"][] = [
   "skipped",
 ];
 
-type Tab = JournalistCampaignEntry["consolidatedStatus"] | "all";
+type Tab = JournalistCampaignEntry["outreachStatus"] | "all";
 
-function statusLabel(status: JournalistCampaignEntry["consolidatedStatus"]): string {
+function statusLabel(status: JournalistCampaignEntry["outreachStatus"]): string {
   switch (status) {
     case "replied": return "Replied";
     case "delivered": return "Delivered";
@@ -40,7 +40,7 @@ function statusLabel(status: JournalistCampaignEntry["consolidatedStatus"]): str
   }
 }
 
-function statusDescription(status: JournalistCampaignEntry["consolidatedStatus"]): string {
+function statusDescription(status: JournalistCampaignEntry["outreachStatus"]): string {
   switch (status) {
     case "replied": return "Journalist replied to the outreach email";
     case "delivered": return "Outreach email was delivered to the journalist";
@@ -54,7 +54,7 @@ function statusDescription(status: JournalistCampaignEntry["consolidatedStatus"]
   }
 }
 
-function statusStyle(status: JournalistCampaignEntry["consolidatedStatus"]): string {
+function statusStyle(status: JournalistCampaignEntry["outreachStatus"]): string {
   switch (status) {
     case "replied": return "bg-emerald-100 text-emerald-700 border-emerald-200";
     case "delivered": return "bg-green-100 text-green-700 border-green-200";
@@ -89,14 +89,14 @@ function timeAgo(dateStr: string): string {
 }
 
 /** Returns the most advanced status across all campaign entries */
-function bestStatus(campaigns: JournalistCampaignEntry[]): JournalistCampaignEntry["consolidatedStatus"] {
-  let best: JournalistCampaignEntry["consolidatedStatus"] = "skipped";
+function bestStatus(campaigns: JournalistCampaignEntry[]): JournalistCampaignEntry["outreachStatus"] {
+  let best: JournalistCampaignEntry["outreachStatus"] = "skipped";
   let bestIdx = CAMPAIGN_STATUS_ORDER.length;
   for (const c of campaigns) {
-    const idx = CAMPAIGN_STATUS_ORDER.indexOf(c.consolidatedStatus);
+    const idx = CAMPAIGN_STATUS_ORDER.indexOf(c.outreachStatus);
     if (idx !== -1 && idx < bestIdx) {
       bestIdx = idx;
-      best = c.consolidatedStatus;
+      best = c.outreachStatus;
     }
   }
   return best;
@@ -124,7 +124,7 @@ export default function CampaignJournalistsPage() {
 
   // Derive best status per journalist for tab grouping
   const journalistStatuses = useMemo(() => {
-    const map = new Map<string, JournalistCampaignEntry["consolidatedStatus"]>();
+    const map = new Map<string, JournalistCampaignEntry["outreachStatus"]>();
     for (const j of journalists) {
       map.set(j.journalistId, bestStatus(j.campaigns));
     }
@@ -133,7 +133,7 @@ export default function CampaignJournalistsPage() {
 
   // Group by best status
   const groupedByStatus = useMemo(() => {
-    const groups = new Map<JournalistCampaignEntry["consolidatedStatus"], EnrichedJournalist[]>();
+    const groups = new Map<JournalistCampaignEntry["outreachStatus"], EnrichedJournalist[]>();
     for (const status of CAMPAIGN_STATUS_ORDER) {
       groups.set(status, []);
     }
@@ -438,8 +438,8 @@ function CampaignEntryCard({ campaign: c }: { campaign: JournalistCampaignEntry 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 space-y-3">
       <div className="flex items-center gap-3 flex-wrap">
-        <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${statusStyle(c.consolidatedStatus)}`}>
-          {statusLabel(c.consolidatedStatus)}
+        <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${statusStyle(c.outreachStatus)}`}>
+          {statusLabel(c.outreachStatus)}
         </span>
         {!isNaN(score) && (
           <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${relevanceColor(score)}`}>

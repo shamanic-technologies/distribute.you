@@ -45,9 +45,7 @@ describe("EnrichedJournalist type matches grouped API response", () => {
     );
     expect(match).not.toBeNull();
     const body = match![1];
-    expect(body).toContain("consolidatedStatus:");
-    expect(body).toContain("localStatus:");
-    expect(body).toContain("emailGatewayStatus:");
+    expect(body).toContain("outreachStatus:");
     expect(body).toContain("relevanceScore:");
     expect(body).toContain("whyRelevant:");
     expect(body).toContain("articleUrls:");
