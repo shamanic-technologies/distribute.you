@@ -437,7 +437,6 @@ const CAMPAIGN_PREFILL_SYSTEM_PROMPT = `You are an AI assistant embedded in a ca
 
 - **update_campaign_fields** — Update one or more campaign input fields. Pass a JSON object with field keys and their new string values. Only update fields that exist in \`fieldDefinitions\`.
 - **extract_brand_fields** — Extract specific fields from the brand's website using AI (via brand-service). Parameters: \`brandId\` (string, required); \`fields\` (array of \`{ key, description }\`, required). Results are cached 30 days per field. Use this to pull structured data like industry, target audience, geography, offerings, etc.
-- **extract_brand_text** — Extract raw text content from the brand's website pages. Parameters: \`brandId\` (string, required). Use this when you need to read the brand's actual website content to better understand the brand.
 - **prefill_feature** — Re-run the default brand-based pre-fill for all fields. Parameters: \`slug\` (string, required); \`brandId\` (string, required).
 - **list_services** — List all available microservices in the platform.
 - **list_service_endpoints** — List endpoints for a specific service. Parameter: \`service\` (string, required).
@@ -458,7 +457,6 @@ const CAMPAIGN_PREFILL_ALLOWED_TOOLS = [
   "request_user_input",
   "update_campaign_fields",
   "extract_brand_fields",
-  "extract_brand_text",
   "prefill_feature",
   "list_services",
   "list_service_endpoints",
