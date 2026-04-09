@@ -14,7 +14,6 @@ import {
   STATUS_DESCRIPTIONS,
   statusBadgeColor as statusStyle,
   statusLabel,
-  bestDisplayStatus,
   resolveDisplayStatus,
 } from "@/lib/outlet-status";
 
@@ -22,10 +21,6 @@ const POLL_INTERVAL = 5_000;
 const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
 
 type Tab = string | "all";
-
-function getReplyClassification(j: EnrichedJournalist): string | null {
-  return j.emailStatus?.broadcast?.brand?.replyClassification ?? null;
-}
 
 function statusDescription(displayStatus: string): string {
   return STATUS_DESCRIPTIONS[displayStatus] ?? displayStatus;
@@ -51,9 +46,9 @@ function timeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString();
 }
 
-/** Returns the most advanced display status across all campaign entries */
-function bestStatus(j: EnrichedJournalist): string {
-  return bestDisplayStatus(j.campaigns, getReplyClassification(j));
+/** Resolve the display status from the backend's top-level outreachStatus */
+function journalistDisplayStatus(j: EnrichedJournalist): string {
+  return resolveDisplayStatus(j.outreachStatus, j.replyClassification);
 }
 
 /* ─── Main Page ──────────────────────────────────────────────────────── */
@@ -79,7 +74,7 @@ export default function BrandJournalistsPage() {
   const journalistStatuses = useMemo(() => {
     const map = new Map<string, string>();
     for (const j of journalists) {
-      map.set(j.journalistId, bestStatus(j));
+      map.set(j.journalistId, journalistDisplayStatus(j));
     }
     return map;
   }, [journalists]);
@@ -322,8 +317,8 @@ function DetailPanel({
           <div className="flex items-center gap-4">
             <div>
               <span className="text-xs text-gray-500 block mb-1">Best Status</span>
-              <span className={`text-xs px-2 py-1 rounded-full border ${statusStyle(bestStatus(j))}`}>
-                {statusLabel(bestStatus(j))}
+              <span className={`text-xs px-2 py-1 rounded-full border ${statusStyle(journalistDisplayStatus(j))}`}>
+                {statusLabel(journalistDisplayStatus(j))}
               </span>
             </div>
             {cost > 0 && (

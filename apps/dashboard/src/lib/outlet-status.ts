@@ -68,18 +68,6 @@ export function resolveDisplayStatus(
   return status;
 }
 
-/** Raw backend statuses in priority order (before reply-classification split). */
-export const RAW_STATUS_ORDER: string[] = [
-  "replied",
-  "delivered",
-  "bounced",
-  "contacted",
-  "served",
-  "claimed",
-  "buffered",
-  "skipped",
-];
-
 export const STATUS_DESCRIPTIONS: Record<string, string> = {
   "replied-positive": "Replied positively to the outreach email",
   "replied-negative": "Replied negatively to the outreach email",
@@ -92,26 +80,6 @@ export const STATUS_DESCRIPTIONS: Record<string, string> = {
   buffered: "Waiting in the outreach queue",
   skipped: "Skipped (not relevant or unreachable)",
 };
-
-/**
- * Compute the most-advanced raw status from a list of campaign entries,
- * then resolve to display status with reply classification.
- */
-export function bestDisplayStatus(
-  campaigns: { outreachStatus: string }[],
-  replyClassification?: string | null,
-): string {
-  let bestRaw = "skipped";
-  let bestIdx = RAW_STATUS_ORDER.length;
-  for (const c of campaigns) {
-    const idx = RAW_STATUS_ORDER.indexOf(c.outreachStatus);
-    if (idx !== -1 && idx < bestIdx) {
-      bestIdx = idx;
-      bestRaw = c.outreachStatus;
-    }
-  }
-  return resolveDisplayStatus(bestRaw, replyClassification);
-}
 
 export function statusBadgeColor(displayStatus: string): string {
   return STATUS_LABELS[displayStatus]?.color ?? "bg-gray-100 text-gray-500 border-gray-200";
