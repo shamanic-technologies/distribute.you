@@ -1484,7 +1484,7 @@ export interface OutletCampaign {
   featureSlug: string;
   brandIds: string[];
   relevanceScore: number;
-  outreachStatus: "open" | "ended" | "denied" | "served" | "skipped" | "contacted" | "delivered" | "replied";
+  outreachStatus: "buffered" | "claimed" | "served" | "contacted" | "delivered" | "replied" | "bounced" | "skipped";
   replyClassification?: "positive" | "negative" | "neutral" | null;
   whyRelevant?: string;
   whyNotRelevant?: string;
@@ -1501,7 +1501,7 @@ export interface DeduplicatedOutlet {
   outletUrl: string;
   outletDomain: string;
   createdAt: string;
-  outreachStatus: "open" | "ended" | "denied" | "served" | "skipped" | "contacted" | "delivered" | "replied";
+  outreachStatus: "buffered" | "claimed" | "served" | "contacted" | "delivered" | "replied" | "bounced" | "skipped";
   replyClassification?: "positive" | "negative" | "neutral" | null;
   relevanceScore: number;
   campaigns: OutletCampaign[];
@@ -1515,7 +1515,7 @@ export interface CampaignOutlet {
   outletDomain: string;
   relevanceScore: number;
   whyRelevant: string | null;
-  outletStatus: "open" | "ended" | "denied" | "served" | "skipped" | "contacted" | "delivered" | "replied" | null;
+  outletStatus: "buffered" | "claimed" | "served" | "contacted" | "delivered" | "replied" | "bounced" | "skipped" | null;
   replyClassification?: "positive" | "negative" | "neutral" | null;
 }
 
