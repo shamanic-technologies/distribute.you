@@ -294,14 +294,23 @@ export default function BrandOutletsPage() {
     if (first) setActiveTab(first);
   }, [outlets.length, groupedByStatus]);
 
+  // Tab counts: use backend byOutreachStatus when available, fall back to client-side.
+  // "replied" from backend is split into replied-positive/negative/neutral from the array.
+  const backendCounts = data?.byOutreachStatus;
+  const tabCount = (status: string): number => {
+    if (status.startsWith("replied-")) return groupedByStatus.get(status)?.length ?? 0;
+    if (backendCounts && status in backendCounts) return backendCounts[status];
+    return groupedByStatus.get(status)?.length ?? 0;
+  };
+
   // Static tabs: all statuses in priority order + "all"
   const tabs: { key: Tab; label: string; count: number }[] = [
     ...STATUS_PRIORITY.map((status) => ({
       key: status as Tab,
       label: statusLabel(status),
-      count: groupedByStatus.get(status)?.length ?? 0,
+      count: tabCount(status),
     })),
-    { key: "all", label: "All", count: outlets.length },
+    { key: "all", label: "All", count: data?.total ?? outlets.length },
   ];
 
   const displayedOutlets = useMemo(() => {
@@ -332,7 +341,7 @@ export default function BrandOutletsPage() {
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">Outlets</h1>
             <p className="text-sm text-gray-500">
-              {outlets.length} outlet{outlets.length !== 1 ? "s" : ""} across all campaigns
+              {data?.total ?? outlets.length} outlet{(data?.total ?? outlets.length) !== 1 ? "s" : ""} across all campaigns
               {totalCost > 0 && ` \u00b7 Total: $${(totalCost / 100).toFixed(2)}`}
               {avgCostPerOutlet > 0 && ` \u00b7 Avg: $${(avgCostPerOutlet / 100).toFixed(2)}/outlet`}
             </p>
