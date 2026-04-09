@@ -1536,11 +1536,11 @@ export async function listBrandOutlets(
   featureDynastySlug?: string,
   token?: string,
   campaignId?: string,
-): Promise<{ outlets: DeduplicatedOutlet[]; total: number }> {
+): Promise<{ outlets: DeduplicatedOutlet[]; total: number; byOutreachStatus?: Record<string, number> }> {
   const params = new URLSearchParams({ brandId });
   if (featureDynastySlug) params.set("featureDynastySlug", featureDynastySlug);
   if (campaignId) params.set("campaignId", campaignId);
-  return apiCall<{ outlets: DeduplicatedOutlet[]; total: number }>(
+  return apiCall<{ outlets: DeduplicatedOutlet[]; total: number; byOutreachStatus?: Record<string, number> }>(
     `/outlets?${params}`,
     { token },
   );
