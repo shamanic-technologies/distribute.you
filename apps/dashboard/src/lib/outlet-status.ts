@@ -1,10 +1,13 @@
 /**
  * Shared outreach status constants and helpers.
  *
- * Used by BOTH outlet and journalist pages. The display status list must be
- * identical across both pages. "replied" is split into replied-positive,
- * replied-negative, replied-neutral based on replyClassification.
+ * Used by BOTH outlet and journalist pages. This file covers the UNION of
+ * statuses from both entity types:
+ *   - Outlet-only: open, denied, ended
+ *   - Journalist-only: bounced
+ *   - Shared: replied, delivered, contacted, served, claimed, buffered, skipped
  *
+ * "replied" is split into replied-positive/negative/neutral based on replyClassification.
  * Statuses match the backend exactly — no aggregation, no renaming.
  */
 
@@ -26,7 +29,8 @@ export type DisplayStatus =
   | "open"
   | "skipped"
   | "denied"
-  | "ended";
+  | "ended"
+  | "bounced";
 
 /** Most-advanced → least-advanced. Unknown statuses sort to the end. */
 export const STATUS_PRIORITY: string[] = [
@@ -34,6 +38,7 @@ export const STATUS_PRIORITY: string[] = [
   "replied-negative",
   "replied-neutral",
   "delivered",
+  "bounced",
   "contacted",
   "served",
   "claimed",
@@ -49,6 +54,7 @@ export const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   "replied-negative": { label: "Reply −",    color: "bg-red-100 text-red-600 border-red-200" },
   "replied-neutral":  { label: "Reply",      color: "bg-purple-100 text-purple-700 border-purple-200" },
   delivered:          { label: "Delivered",   color: "bg-green-100 text-green-700 border-green-200" },
+  bounced:            { label: "Bounced",     color: "bg-red-100 text-red-600 border-red-200" },
   contacted:          { label: "Contacted",   color: "bg-teal-100 text-teal-700 border-teal-200" },
   served:             { label: "Served",      color: "bg-orange-100 text-orange-700 border-orange-200" },
   claimed:            { label: "Claimed",     color: "bg-yellow-100 text-yellow-700 border-yellow-200" },
@@ -81,6 +87,7 @@ export const STATUS_DESCRIPTIONS: Record<string, string> = {
   "replied-negative": "Replied negatively to the outreach email",
   "replied-neutral": "Replied to the outreach email",
   delivered: "Outreach email was delivered",
+  bounced: "Outreach email bounced (journalist-only)",
   contacted: "Has been contacted with outreach email",
   served: "Served to the email sending pipeline",
   claimed: "Claimed by the sending workflow, not yet served",
