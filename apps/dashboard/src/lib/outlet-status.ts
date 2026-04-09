@@ -4,6 +4,8 @@
  * Used by BOTH outlet and journalist pages. The display status list must be
  * identical across both pages. "replied" is split into replied-positive,
  * replied-negative, replied-neutral based on replyClassification.
+ *
+ * Statuses match the backend exactly — no aggregation, no renaming.
  */
 
 export type ReplyClassification = "positive" | "negative" | "neutral";
@@ -17,12 +19,14 @@ export type DisplayStatus =
   | "replied-negative"
   | "replied-neutral"
   | "delivered"
-  | "bounced"
   | "contacted"
   | "served"
   | "claimed"
   | "buffered"
-  | "skipped";
+  | "open"
+  | "skipped"
+  | "denied"
+  | "ended";
 
 /** Most-advanced → least-advanced. Unknown statuses sort to the end. */
 export const STATUS_PRIORITY: string[] = [
@@ -30,12 +34,14 @@ export const STATUS_PRIORITY: string[] = [
   "replied-negative",
   "replied-neutral",
   "delivered",
-  "bounced",
   "contacted",
   "served",
   "claimed",
   "buffered",
+  "open",
   "skipped",
+  "denied",
+  "ended",
 ];
 
 export const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -43,12 +49,14 @@ export const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   "replied-negative": { label: "Reply −",    color: "bg-red-100 text-red-600 border-red-200" },
   "replied-neutral":  { label: "Reply",      color: "bg-purple-100 text-purple-700 border-purple-200" },
   delivered:          { label: "Delivered",   color: "bg-green-100 text-green-700 border-green-200" },
-  bounced:            { label: "Bounced",     color: "bg-red-100 text-red-600 border-red-200" },
   contacted:          { label: "Contacted",   color: "bg-teal-100 text-teal-700 border-teal-200" },
-  served:             { label: "Processing",  color: "bg-orange-100 text-orange-700 border-orange-200" },
+  served:             { label: "Served",      color: "bg-orange-100 text-orange-700 border-orange-200" },
   claimed:            { label: "Claimed",     color: "bg-yellow-100 text-yellow-700 border-yellow-200" },
-  buffered:           { label: "In queue",    color: "bg-blue-100 text-blue-600 border-blue-200" },
+  buffered:           { label: "Buffered",    color: "bg-blue-100 text-blue-600 border-blue-200" },
+  open:               { label: "Open",        color: "bg-slate-100 text-slate-600 border-slate-200" },
   skipped:            { label: "Skipped",     color: "bg-gray-100 text-gray-500 border-gray-200" },
+  denied:             { label: "Denied",      color: "bg-red-100 text-red-600 border-red-200" },
+  ended:              { label: "Ended",       color: "bg-stone-100 text-stone-600 border-stone-200" },
 };
 
 /**
@@ -73,12 +81,14 @@ export const STATUS_DESCRIPTIONS: Record<string, string> = {
   "replied-negative": "Replied negatively to the outreach email",
   "replied-neutral": "Replied to the outreach email",
   delivered: "Outreach email was delivered",
-  bounced: "Outreach email bounced and was not delivered",
   contacted: "Has been contacted with outreach email",
-  served: "Outreach is currently being processed",
-  claimed: "Has been claimed for outreach",
-  buffered: "Waiting in the outreach queue",
-  skipped: "Skipped (not relevant or unreachable)",
+  served: "Served to the email sending pipeline",
+  claimed: "Claimed by the sending workflow, not yet served",
+  buffered: "Created but not yet processed",
+  open: "Waiting in buffer, not yet claimed by the workflow",
+  skipped: "Skipped (duplicate, blocked, or low relevance)",
+  denied: "Denied",
+  ended: "Ended manually",
 };
 
 export function statusBadgeColor(displayStatus: string): string {
