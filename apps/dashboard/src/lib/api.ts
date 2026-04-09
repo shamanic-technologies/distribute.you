@@ -852,6 +852,16 @@ export interface BrandRun {
   descendantRuns: unknown[];
 }
 
+/** GET /campaigns/:campaignId/runs — returns runs for a campaign */
+export async function listCampaignRuns(campaignId: string, token?: string): Promise<{ runs: BrandRun[] }> {
+  try {
+    return await apiCall<{ runs: BrandRun[] }>(`/campaigns/${campaignId}/runs`, { token });
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 404 || err.status === 500)) return { runs: [] };
+    throw err;
+  }
+}
+
 /** GET /brands/:brandId/runs — returns runs or empty list if brand not found (404/500) */
 export async function listBrandRuns(brandId: string, token?: string): Promise<{ runs: BrandRun[] }> {
   try {
