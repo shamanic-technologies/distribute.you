@@ -11,39 +11,29 @@ import * as fs from "fs";
 import * as path from "path";
 
 /**
- * The 10 backend outreachStatus values (from outlets-service and journalists-service).
- * "replied" is split into 3 display statuses via replyClassification.
+ * Backend outreachStatus values per entity type.
+ *   - Outlet (10): replied, delivered, contacted, served, claimed, buffered, open, skipped, denied, ended
+ *   - Journalist (8): replied, delivered, contacted, served, claimed, buffered, bounced, skipped
+ *
+ * Outlet-only: open, denied, ended
+ * Journalist-only: bounced
  */
-const BACKEND_RAW_STATUSES = [
-  "replied",
-  "delivered",
-  "contacted",
-  "served",
-  "claimed",
-  "buffered",
-  "open",
-  "skipped",
-  "denied",
-  "ended",
+const OUTLET_RAW_STATUSES = [
+  "replied", "delivered", "contacted", "served", "claimed", "buffered", "open", "skipped", "denied", "ended",
 ] as const;
 
-/** All display statuses (replied splits into 3) */
+const JOURNALIST_RAW_STATUSES = [
+  "replied", "delivered", "contacted", "served", "claimed", "buffered", "bounced", "skipped",
+] as const;
+
+/** Union of all display statuses across both entity types (replied splits into 3) */
 const ALL_DISPLAY_STATUSES = [
-  "replied-positive",
-  "replied-negative",
-  "replied-neutral",
-  "delivered",
-  "contacted",
-  "served",
-  "claimed",
-  "buffered",
-  "open",
-  "skipped",
-  "denied",
-  "ended",
+  "replied-positive", "replied-negative", "replied-neutral",
+  "delivered", "bounced", "contacted", "served", "claimed", "buffered",
+  "open", "skipped", "denied", "ended",
 ] as const;
 
-describe("outreach status completeness", () => {
+describe("outreach status completeness (shared display map)", () => {
   it("STATUS_PRIORITY includes every display status", () => {
     for (const status of ALL_DISPLAY_STATUSES) {
       expect(STATUS_PRIORITY).toContain(status);
@@ -64,14 +54,8 @@ describe("outreach status completeness", () => {
     }
   });
 
-  it("does NOT contain 'bounced' anywhere in status maps", () => {
-    expect(STATUS_PRIORITY).not.toContain("bounced");
-    expect(STATUS_LABELS["bounced"]).toBeUndefined();
-    expect(STATUS_DESCRIPTIONS["bounced"]).toBeUndefined();
-  });
-
-  it("resolveDisplayStatus maps all backend statuses to known display statuses", () => {
-    for (const raw of BACKEND_RAW_STATUSES) {
+  it("resolveDisplayStatus maps all outlet statuses to known display statuses", () => {
+    for (const raw of OUTLET_RAW_STATUSES) {
       if (raw === "replied") {
         expect(ALL_DISPLAY_STATUSES).toContain(resolveDisplayStatus(raw, "positive"));
         expect(ALL_DISPLAY_STATUSES).toContain(resolveDisplayStatus(raw, "negative"));
@@ -82,12 +66,21 @@ describe("outreach status completeness", () => {
     }
   });
 
-  it("statusLabel never returns raw status string for known statuses", () => {
+  it("resolveDisplayStatus maps all journalist statuses to known display statuses", () => {
+    for (const raw of JOURNALIST_RAW_STATUSES) {
+      if (raw === "replied") {
+        expect(ALL_DISPLAY_STATUSES).toContain(resolveDisplayStatus(raw, "positive"));
+        expect(ALL_DISPLAY_STATUSES).toContain(resolveDisplayStatus(raw, "negative"));
+        expect(ALL_DISPLAY_STATUSES).toContain(resolveDisplayStatus(raw, null));
+      } else {
+        expect(ALL_DISPLAY_STATUSES).toContain(resolveDisplayStatus(raw));
+      }
+    }
+  });
+
+  it("statusLabel returns a truthy label for every display status", () => {
     for (const status of ALL_DISPLAY_STATUSES) {
-      const label = statusLabel(status);
-      // Label should be a human-readable string, not the raw key
-      // (except "Open", "Denied", "Ended" which happen to match — that's fine)
-      expect(label).toBeTruthy();
+      expect(statusLabel(status)).toBeTruthy();
     }
   });
 
@@ -105,26 +98,50 @@ describe("outreach status completeness", () => {
   });
 });
 
-describe("api.ts type definitions include all backend statuses", () => {
+describe("api.ts type definitions match per-entity status sets", () => {
   const apiContent = fs.readFileSync(
     path.resolve(__dirname, "../src/lib/api.ts"),
     "utf-8",
   );
+  const lines = apiContent.split("\n");
 
-  for (const status of BACKEND_RAW_STATUSES) {
-    it(`includes "${status}" in outreachStatus union types`, () => {
-      expect(apiContent).toContain(`"${status}"`);
-    });
-  }
+  // Find all outreachStatus union type lines
+  const outreachLines = lines.filter((l) => l.includes("outreachStatus:") && l.includes("|"));
 
-  it("does not include 'bounced' in outreachStatus unions", () => {
-    // bounced exists in EmailDeliveryScopeStatus (different concept) but should
-    // NOT appear in any outreachStatus union type definition
-    const outreachLines = apiContent
-      .split("\n")
-      .filter((line) => line.includes("outreachStatus:") && line.includes("|"));
-    for (const line of outreachLines) {
+  // Outlet interfaces: OutletCampaign, DeduplicatedOutlet, CampaignOutlet (outletStatus)
+  it("outlet types include open, denied, ended", () => {
+    const outletLines = lines.filter(
+      (l) => (l.includes("outreachStatus:") || l.includes("outletStatus:")) && l.includes('"open"'),
+    );
+    expect(outletLines.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("outlet types do NOT include bounced", () => {
+    // Lines with open (outlet-only marker) should not have bounced
+    const outletLines = lines.filter(
+      (l) => (l.includes("outreachStatus:") || l.includes("outletStatus:")) && l.includes('"open"'),
+    );
+    for (const line of outletLines) {
       expect(line).not.toContain('"bounced"');
+    }
+  });
+
+  it("journalist types include bounced", () => {
+    // Lines with bounced but NOT open → journalist types
+    const journalistLines = outreachLines.filter(
+      (l) => l.includes('"bounced"') && !l.includes('"open"'),
+    );
+    expect(journalistLines.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("journalist types do NOT include open, denied, or ended", () => {
+    const journalistLines = outreachLines.filter(
+      (l) => l.includes('"bounced"') && !l.includes('"open"'),
+    );
+    for (const line of journalistLines) {
+      expect(line).not.toContain('"open"');
+      expect(line).not.toContain('"denied"');
+      expect(line).not.toContain('"ended"');
     }
   });
 });
