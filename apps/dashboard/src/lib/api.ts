@@ -1640,6 +1640,8 @@ export interface EnrichedJournalist {
   outletDomain: string | null;
   email: string | null;
   apolloPersonId: string | null;
+  outreachStatus: "buffered" | "claimed" | "served" | "contacted" | "delivered" | "replied" | "bounced" | "skipped";
+  replyClassification?: "positive" | "negative" | "neutral" | null;
   emailStatus: EmailStatus | null;
   cost: JournalistCost | null;
   campaigns: JournalistCampaignEntry[];

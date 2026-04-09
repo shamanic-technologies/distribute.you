@@ -30,8 +30,10 @@ describe("EnrichedJournalist type matches grouped API response", () => {
     );
     expect(match).not.toBeNull();
     const body = match![1];
-    // These fields should be on JournalistCampaignEntry, not EnrichedJournalist
-    expect(body).not.toContain("status:");
+    // These per-campaign fields should be on JournalistCampaignEntry, not EnrichedJournalist
+    // outreachStatus IS expected at top-level (backend high-watermark), but not a bare "status:" field
+    expect(body).not.toMatch(/\bstatus:/);
+    expect(body).toContain("outreachStatus:");
     expect(body).not.toContain("relevanceScore:");
     expect(body).not.toContain("articleUrls:");
     expect(body).not.toContain("whyRelevant:");
@@ -72,7 +74,7 @@ describe("Journalist pages use journalistId as key (not flat id)", () => {
   }
 });
 
-describe("Journalist pages derive status from campaigns array", () => {
+describe("Journalist pages use backend top-level outreachStatus (no client-side computation)", () => {
   const pages = [
     { name: "feature-level", path: featurePagePath },
     { name: "campaign-level", path: campaignPagePath },
@@ -80,10 +82,11 @@ describe("Journalist pages derive status from campaigns array", () => {
   ];
 
   for (const page of pages) {
-    it(`${page.name} page calls bestStatus for status derivation`, () => {
+    it(`${page.name} page uses journalistDisplayStatus (resolveDisplayStatus from backend field)`, () => {
       const content = fs.readFileSync(page.path, "utf-8");
-      expect(content).toContain("bestStatus(j.campaigns)");
-      expect(content).not.toMatch(/\bj\.status\b/);
+      expect(content).toContain("journalistDisplayStatus(j)");
+      expect(content).toContain("resolveDisplayStatus(j.outreachStatus");
+      expect(content).not.toContain("bestDisplayStatus");
     });
   }
 });
@@ -101,7 +104,7 @@ describe("Journalist pages auto-select first non-empty tab on load", () => {
       // Must use a ref to track whether auto-selection has happened (only once)
       expect(content).toContain("hasAutoSelectedTab");
       // Must find the first status with entries and set it as active
-      expect(content).toContain("CAMPAIGN_STATUS_ORDER.find");
+      expect(content).toContain("STATUS_PRIORITY.find");
       // Must NOT hardcode initial tab to a specific status without auto-selection
       expect(content).toContain("useEffect");
     });
