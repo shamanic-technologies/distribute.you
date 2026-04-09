@@ -483,7 +483,7 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
 
   const outcomeItems: SidebarItem[] = [
     { id: "outlets", label: "Outlets", href: `${basePath}/outlets`, icon: <OutcomeOutletIcon />, badge: outletsData?.total },
-    { id: "journalists", label: "Journalists", href: `${basePath}/journalists`, icon: <NewspaperIcon />, badge: journalistsData?.journalists?.length },
+    { id: "journalists", label: "Journalists", href: `${basePath}/journalists`, icon: <NewspaperIcon />, badge: journalistsData?.total ?? journalistsData?.journalists?.length },
     { id: "articles", label: "Articles", href: `${basePath}/articles`, icon: <OutcomeArticleIcon />, badge: articlesData?.discoveries?.length },
     { id: "leads", label: "Leads", href: `${basePath}/leads`, icon: <OutcomeLeadIcon />, badge: leadsData?.leads?.length },
     { id: "emails", label: "Emails", href: `${basePath}/emails`, icon: <EnvelopeIcon />, badge: emailsData?.emails?.length },
@@ -596,7 +596,7 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
     leads: leadsData?.leads?.length,
     emails: emailsData?.emails?.length,
     outlets: outletsData?.total,
-    journalists: journalistsData?.journalists?.length,
+    journalists: journalistsData?.total ?? journalistsData?.journalists?.length,
     articles: articlesData?.discoveries?.length,
   };
 

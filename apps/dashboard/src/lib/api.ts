@@ -1536,11 +1536,11 @@ export async function listBrandOutlets(
   featureDynastySlug?: string,
   token?: string,
   campaignId?: string,
-): Promise<{ outlets: DeduplicatedOutlet[]; total: number }> {
+): Promise<{ outlets: DeduplicatedOutlet[]; total: number; byOutreachStatus?: Record<string, number> }> {
   const params = new URLSearchParams({ brandId });
   if (featureDynastySlug) params.set("featureDynastySlug", featureDynastySlug);
   if (campaignId) params.set("campaignId", campaignId);
-  return apiCall<{ outlets: DeduplicatedOutlet[]; total: number }>(
+  return apiCall<{ outlets: DeduplicatedOutlet[]; total: number; byOutreachStatus?: Record<string, number> }>(
     `/outlets?${params}`,
     { token },
   );
@@ -1664,11 +1664,11 @@ export function isJournalistContacted(
 export async function listJournalistsEnriched(
   brandId: string,
   options?: { campaignId?: string; featureDynastySlug?: string; token?: string },
-): Promise<{ journalists: EnrichedJournalist[] }> {
+): Promise<{ journalists: EnrichedJournalist[]; total?: number; byOutreachStatus?: Record<string, number> }> {
   const params = new URLSearchParams({ brandId });
   if (options?.campaignId) params.set("campaignId", options.campaignId);
   if (options?.featureDynastySlug) params.set("featureDynastySlug", options.featureDynastySlug);
-  return apiCall<{ journalists: EnrichedJournalist[] }>(
+  return apiCall<{ journalists: EnrichedJournalist[]; total?: number; byOutreachStatus?: Record<string, number> }>(
     `/journalists/list?${params}`,
     { token: options?.token },
   );
