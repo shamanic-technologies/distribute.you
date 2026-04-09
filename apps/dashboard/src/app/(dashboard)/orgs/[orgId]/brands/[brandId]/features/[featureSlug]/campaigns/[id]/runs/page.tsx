@@ -1,9 +1,10 @@
 "use client";
 
+import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listCampaignRuns, type BrandRun } from "@/lib/api";
+import { listCampaignRuns, type CampaignRun } from "@/lib/api";
 
 function formatUsdCents(cents: string | null | undefined): string | null {
   if (!cents) return null;
@@ -29,7 +30,7 @@ function formatDuration(startedAt: string | null, completedAt: string | null): s
 }
 
 function formatTime(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "\u2014";
   const d = new Date(iso);
   return d.toLocaleString(undefined, {
     month: "short",
@@ -57,21 +58,35 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function RunRow({ run, defaultOpen }: { run: BrandRun; defaultOpen?: boolean }) {
-  const hasDescendants = run.descendantRuns && run.descendantRuns.length > 0;
-  const descendants = (run.descendantRuns ?? []) as Array<{
-    serviceName: string;
-    taskName: string;
-    status: string;
-    startedAt?: string | null;
-    completedAt?: string | null;
-    ownCostInUsdCents?: string;
-  }>;
+/** Build a tree: top-level runs + their children (sub-runs) */
+function buildRunTree(runs: CampaignRun[]): Array<CampaignRun & { children: CampaignRun[] }> {
+  const byId = new Map(runs.map((r) => [r.id, r]));
+  const childrenMap = new Map<string, CampaignRun[]>();
+
+  for (const run of runs) {
+    if (run.parentRunId && byId.has(run.parentRunId)) {
+      const list = childrenMap.get(run.parentRunId) ?? [];
+      list.push(run);
+      childrenMap.set(run.parentRunId, list);
+    }
+  }
+
+  // Top-level = runs whose parent is null or whose parent is not in the list
+  const topLevel = runs.filter((r) => !r.parentRunId || !byId.has(r.parentRunId));
+
+  return topLevel.map((r) => ({
+    ...r,
+    children: childrenMap.get(r.id) ?? [],
+  }));
+}
+
+function RunRow({ run, children, defaultOpen }: { run: CampaignRun; children: CampaignRun[]; defaultOpen?: boolean }) {
+  const hasChildren = children.length > 0;
 
   return (
     <details className="group border border-gray-200 rounded-lg" open={defaultOpen}>
       <summary className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50 transition select-none list-none">
-        {hasDescendants && (
+        {hasChildren ? (
           <svg
             className="w-4 h-4 text-gray-400 transition-transform group-open:rotate-90 flex-shrink-0"
             fill="none"
@@ -80,8 +95,9 @@ function RunRow({ run, defaultOpen }: { run: BrandRun; defaultOpen?: boolean }) 
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
+        ) : (
+          <div className="w-4 flex-shrink-0" />
         )}
-        {!hasDescendants && <div className="w-4 flex-shrink-0" />}
 
         <StatusBadge status={run.status} />
 
@@ -106,48 +122,39 @@ function RunRow({ run, defaultOpen }: { run: BrandRun; defaultOpen?: boolean }) 
 
         <span className="flex-1" />
 
-        {formatUsdCents(run.totalCostInUsdCents) && (
+        {formatUsdCents(run.ownCostInUsdCents) && (
           <span className="text-xs font-medium text-gray-600 flex-shrink-0">
-            {formatUsdCents(run.totalCostInUsdCents)}
+            {formatUsdCents(run.ownCostInUsdCents)}
           </span>
         )}
       </summary>
 
-      {/* Error summary */}
-      {run.errorSummary && (
-        <div className="mx-4 mb-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm">
-          <p className="font-medium text-red-700">{run.errorSummary.rootCause}</p>
-          <p className="text-red-600 mt-1 text-xs">Step: {run.errorSummary.failedStep}</p>
-          <p className="text-red-500 mt-1 text-xs">{run.errorSummary.message}</p>
-        </div>
-      )}
-
-      {/* Descendant runs */}
-      {descendants.length > 0 && (
+      {/* Sub-runs */}
+      {hasChildren && (
         <div className="mx-4 mb-3 border-l-2 border-gray-200 pl-3 space-y-1">
-          {descendants.map((d, i) => (
+          {children.map((child) => (
             <div
-              key={i}
+              key={child.id}
               className="flex items-center gap-2 py-1.5 px-2 rounded text-sm hover:bg-gray-50"
             >
-              <StatusBadge status={d.status} />
+              <StatusBadge status={child.status} />
               <span className="text-gray-600 truncate">
-                {d.taskName ?? d.serviceName}
+                {child.taskName ?? child.serviceName}
               </span>
-              {d.serviceName && d.taskName && (
+              {child.serviceName && child.taskName && (
                 <span className="text-xs text-gray-400 flex-shrink-0">
-                  {d.serviceName}
+                  {child.serviceName}
                 </span>
               )}
               <span className="flex-1" />
-              {d.startedAt && (
+              {child.startedAt && (
                 <span className="text-xs text-gray-400 flex-shrink-0">
-                  {formatDuration(d.startedAt, d.completedAt ?? null)}
+                  {formatDuration(child.startedAt, child.completedAt)}
                 </span>
               )}
-              {d.ownCostInUsdCents && formatUsdCents(d.ownCostInUsdCents) && (
+              {formatUsdCents(child.ownCostInUsdCents) && (
                 <span className="text-xs text-gray-500 flex-shrink-0">
-                  {formatUsdCents(d.ownCostInUsdCents)}
+                  {formatUsdCents(child.ownCostInUsdCents)}
                 </span>
               )}
             </div>
@@ -169,6 +176,7 @@ export default function CampaignRunsPage() {
   );
 
   const runs = data?.runs ?? [];
+  const tree = useMemo(() => buildRunTree(runs), [runs]);
 
   if (isLoading) {
     return (
@@ -188,18 +196,18 @@ export default function CampaignRunsPage() {
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-gray-800">Runs</h1>
         <p className="text-sm text-gray-500 mt-1">
-          {runs.length} run{runs.length !== 1 ? "s" : ""}
+          {tree.length} run{tree.length !== 1 ? "s" : ""}
         </p>
       </div>
 
-      {runs.length === 0 ? (
+      {tree.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
           <p className="text-gray-500 text-sm">No runs yet for this campaign.</p>
         </div>
       ) : (
         <div className="space-y-2">
-          {runs.map((run, i) => (
-            <RunRow key={`${run.startedAt}-${i}`} run={run} defaultOpen={i === 0} />
+          {tree.map((run, i) => (
+            <RunRow key={run.id} run={run} children={run.children} defaultOpen={i === 0} />
           ))}
         </div>
       )}
