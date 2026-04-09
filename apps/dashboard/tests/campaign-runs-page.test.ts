@@ -22,8 +22,12 @@ describe("Campaign runs page", () => {
       expect(apiContent).toContain("export async function listCampaignRuns");
     });
 
-    it("should call /campaigns/{id}/runs endpoint", () => {
-      expect(apiContent).toContain("`/campaigns/${campaignId}/runs`");
+    it("should call /runs?campaignId= endpoint (runs-service proxy)", () => {
+      expect(apiContent).toContain("/runs?campaignId=");
+    });
+
+    it("should export CampaignRun type", () => {
+      expect(apiContent).toContain("export interface CampaignRun");
     });
   });
 
@@ -50,13 +54,9 @@ describe("Campaign runs page", () => {
       expect(runsPageContent).toContain("refetchInterval: 5_000");
     });
 
-    it("should render descendant runs", () => {
-      expect(runsPageContent).toContain("descendantRuns");
-    });
-
-    it("should display error summaries for failed runs", () => {
-      expect(runsPageContent).toContain("errorSummary");
-      expect(runsPageContent).toContain("rootCause");
+    it("should build a parent/child run tree from flat list", () => {
+      expect(runsPageContent).toContain("buildRunTree");
+      expect(runsPageContent).toContain("parentRunId");
     });
 
     it("should show status badges", () => {
@@ -64,6 +64,11 @@ describe("Campaign runs page", () => {
       expect(runsPageContent).toContain("completed");
       expect(runsPageContent).toContain("failed");
       expect(runsPageContent).toContain("running");
+    });
+
+    it("should display ownCostInUsdCents (not totalCostInUsdCents)", () => {
+      expect(runsPageContent).toContain("ownCostInUsdCents");
+      expect(runsPageContent).not.toContain("totalCostInUsdCents");
     });
   });
 });
