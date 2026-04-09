@@ -113,14 +113,23 @@ export default function BrandJournalistsPage() {
     });
   }, [activeList, search]);
 
+  // Tab counts: use backend byOutreachStatus when available, fall back to client-side.
+  // "replied" from backend is split into replied-positive/negative/neutral from the array.
+  const backendCounts = journalistsData?.byOutreachStatus;
+  const tabCount = (status: string): number => {
+    if (status.startsWith("replied-")) return groupedByStatus.get(status)?.length ?? 0;
+    if (backendCounts && status in backendCounts) return backendCounts[status];
+    return groupedByStatus.get(status)?.length ?? 0;
+  };
+
   // Tabs: status tabs (ordered) + all
   const tabs: { key: Tab; label: string; count: number }[] = [
     ...STATUS_PRIORITY.map((status) => ({
       key: status as Tab,
       label: statusLabel(status),
-      count: groupedByStatus.get(status)?.length ?? 0,
+      count: tabCount(status),
     })),
-    { key: "all", label: "All", count: journalists.length },
+    { key: "all", label: "All", count: journalistsData?.total ?? journalists.length },
   ];
 
   if (isFirstLoad) {
@@ -144,7 +153,7 @@ export default function BrandJournalistsPage() {
         <div className="flex items-center justify-between mb-4">
           <h1 className="font-display text-xl font-bold text-gray-800">
             Journalists
-            <span className="ml-2 text-sm font-normal text-gray-500">({journalists.length} across all campaigns)</span>
+            <span className="ml-2 text-sm font-normal text-gray-500">({journalistsData?.total ?? journalists.length} across all campaigns)</span>
           </h1>
         </div>
 
