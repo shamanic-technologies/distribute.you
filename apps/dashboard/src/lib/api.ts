@@ -1584,7 +1584,7 @@ export interface BrandJournalist {
   whyRelevant: string;
   whyNotRelevant: string;
   articleUrls: string[] | null;
-  outreachStatus: "buffered" | "claimed" | "served" | "contacted" | "delivered" | "replied" | "open" | "skipped" | "denied" | "ended";
+  outreachStatus: "buffered" | "claimed" | "served" | "contacted" | "delivered" | "replied" | "bounced" | "skipped";
   createdAt: string;
   journalistName: string;
   firstName: string | null;
@@ -1634,7 +1634,7 @@ export interface JournalistCampaignEntry {
   campaignId: string;
   featureSlug: string | null;
   workflowSlug: string | null;
-  outreachStatus: "buffered" | "claimed" | "served" | "contacted" | "delivered" | "replied" | "open" | "skipped" | "denied" | "ended";
+  outreachStatus: "buffered" | "claimed" | "served" | "contacted" | "delivered" | "replied" | "bounced" | "skipped";
   relevanceScore: string;
   whyRelevant: string;
   whyNotRelevant: string;
@@ -1656,7 +1656,7 @@ export interface EnrichedJournalist {
   outletDomain: string | null;
   email: string | null;
   apolloPersonId: string | null;
-  outreachStatus: "buffered" | "claimed" | "served" | "contacted" | "delivered" | "replied" | "open" | "skipped" | "denied" | "ended";
+  outreachStatus: "buffered" | "claimed" | "served" | "contacted" | "delivered" | "replied" | "bounced" | "skipped";
   replyClassification?: "positive" | "negative" | "neutral" | null;
   emailStatus: EmailStatus | null;
   cost: JournalistCost | null;
