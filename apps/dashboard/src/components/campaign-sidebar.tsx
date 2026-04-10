@@ -93,7 +93,7 @@ interface CampaignSidebarProps {
   orgId: string;
   brandId: string;
   featureDynastySlug: string;
-  entityCounts?: Record<string, number | undefined>;
+  entityCounts?: Record<string, number | "loading" | undefined>;
   workflowId?: string;
   featureInputs?: Record<string, string> | null;
 }
