@@ -3,12 +3,10 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { keepPreviousData } from "@tanstack/react-query";
 import { useFeatures } from "@/lib/features-context";
 import { useEntityRegistry } from "@/lib/entity-registry-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
-  fetchFeatureStats,
   listBrandOutlets,
   listJournalistsEnriched,
   listBrandLeads,
@@ -557,15 +555,7 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   const entities = feature?.entities ?? [];
   const entityNames = useMemo(() => entities.map((e) => e.name), [entities]);
 
-  // Feature stats scoped to this brand — same pattern as campaign sidebar
-  const { data: featureStatsData } = useAuthQuery(
-    ["featureStats", featureSlug, "brand", brandId],
-    () => fetchFeatureStats(featureSlug, { brandId }),
-    { refetchInterval: 5_000, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
-  );
-  const fStats = featureStatsData?.stats ?? {};
-
-  // Listing fallbacks for entities without a countKey — filtered by featureDynastySlug
+  // Listing counts — filtered by featureDynastySlug
   const { data: outletsData } = useAuthQuery(
     ["brandOutlets", brandId, featureSlug],
     () => listBrandOutlets(brandId, featureSlug),
@@ -592,25 +582,15 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
     { enabled: entityNames.includes("articles"), refetchInterval: 5_000, refetchIntervalInBackground: false },
   );
 
-  const listingFallback: Record<string, number | undefined> = {
+  // Entity counts from listing data only — feature stats countKeys are status-specific
+  // (e.g. "journalistsContacted") and would show misleading totals.
+  const entityCounts: Record<string, number | undefined> = {
     leads: leadsData?.leads?.length,
     emails: emailsData?.emails?.length,
     outlets: outletsData?.total,
     journalists: journalistsData?.total ?? journalistsData?.journalists?.length,
     articles: articlesData?.discoveries?.length,
   };
-
-  const entityCounts = useMemo(() => {
-    const result: Record<string, number | undefined> = {};
-    for (const entity of entities) {
-      if (listingFallback[entity.name] != null) {
-        result[entity.name] = listingFallback[entity.name];
-      } else if (entity.countKey && fStats[entity.countKey] != null) {
-        result[entity.name] = fStats[entity.countKey];
-      }
-    }
-    return result;
-  }, [entities, fStats, listingFallback]);
 
   const entityItems: SidebarItem[] = entities
     .filter((e) => registry[e.name])
