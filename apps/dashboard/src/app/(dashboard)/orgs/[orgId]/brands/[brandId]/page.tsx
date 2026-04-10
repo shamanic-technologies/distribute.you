@@ -19,6 +19,7 @@ import {
 } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
 import { BrandUsageSection } from "@/components/brand-usage";
+import { Skeleton } from "@/components/skeleton";
 import { useFeatures } from "@/lib/features-context";
 import {
   GlobeAltIcon,
@@ -145,31 +146,39 @@ export default function BrandOverviewPage() {
   const campaignStats = batchStats ?? {};
 
   // Brand-level outcome counts
-  const { data: outletsData } = useAuthQuery(
+  const { data: outletsData, isLoading: outletsLoading } = useAuthQuery(
     ["brandOutlets", brandId],
     () => listBrandOutlets(brandId),
     pollOptions,
   );
-  const { data: journalistsData } = useAuthQuery(
+  const { data: journalistsData, isLoading: journalistsLoading } = useAuthQuery(
     ["enrichedJournalists", brandId],
     () => listJournalistsEnriched(brandId),
     pollOptions,
   );
-  const { data: leadsData } = useAuthQuery(
+  const { data: leadsData, isLoading: leadsLoading } = useAuthQuery(
     ["brandLeads", brandId],
     () => listBrandLeads(brandId),
     pollOptions,
   );
-  const { data: emailsData } = useAuthQuery(
+  const { data: emailsData, isLoading: emailsLoading } = useAuthQuery(
     ["brandEmails", brandId],
     () => listBrandEmails(brandId),
     pollOptions,
   );
-  const { data: articlesData } = useAuthQuery(
+  const { data: articlesData, isLoading: articlesLoading } = useAuthQuery(
     ["brandArticles", brandId],
     () => listBrandArticles(brandId),
     pollOptions,
   );
+
+  const outcomeLoading: Record<string, boolean> = {
+    outlets: outletsLoading,
+    journalists: journalistsLoading,
+    articles: articlesLoading,
+    leads: leadsLoading,
+    emails: emailsLoading,
+  };
 
   const outcomeCounts = useMemo(() => ({
     outlets: outletsData?.outlets?.length ?? 0,
@@ -282,7 +291,11 @@ export default function BrandOverviewPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={icon} />
               </svg>
               <p className="text-sm font-medium text-gray-700 group-hover:text-brand-600 transition">{label}</p>
-              <p className="text-lg font-semibold text-gray-900 mt-1">{outcomeCounts[key]}</p>
+              {outcomeLoading[key] ? (
+                <Skeleton className="h-6 w-8 mx-auto mt-1" />
+              ) : (
+                <p className="text-lg font-semibold text-gray-900 mt-1">{outcomeCounts[key]}</p>
+              )}
             </Link>
           ))}
         </div>

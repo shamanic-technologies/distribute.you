@@ -131,6 +131,7 @@ const PLATFORM_KEYS: { provider: string; envVar: string }[] = [
   { provider: "cloudflare-r2-bucket-name", envVar: "CLOUDFLARE_R2_BUCKET_NAME" },
   { provider: "cloudflare-r2-public-domain", envVar: "CLOUDFLARE_R2_PUBLIC_DOMAIN" },
   { provider: "logo-dev", envVar: "LOGO_DEV_TOKEN" },
+  { provider: "scrape-do", envVar: "SCRAPE_DO_API_KEY" },
 ];
 
 const COLD_EMAIL_PROMPT = `Today is \${new Date().toISOString().split("T")[0]}.
