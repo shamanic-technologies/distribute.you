@@ -10,6 +10,7 @@ import {
   type OutletCampaign,
 } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
+import { Skeleton } from "@/components/skeleton";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 import { STATUS_PRIORITY, statusBadgeColor, statusLabel, resolveDisplayStatus } from "@/lib/outlet-status";
 
@@ -340,11 +341,15 @@ export default function BrandOutletsPage() {
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">Outlets</h1>
-            <p className="text-sm text-gray-500">
-              {data?.total ?? outlets.length} outlet{(data?.total ?? outlets.length) !== 1 ? "s" : ""} across all campaigns
-              {totalCost > 0 && ` \u00b7 Total: $${(totalCost / 100).toFixed(2)}`}
-              {avgCostPerOutlet > 0 && ` \u00b7 Avg: $${(avgCostPerOutlet / 100).toFixed(2)}/outlet`}
-            </p>
+            {isLoading ? (
+              <Skeleton className="h-4 w-48 mt-1" />
+            ) : (
+              <p className="text-sm text-gray-500">
+                {data?.total ?? outlets.length} outlet{(data?.total ?? outlets.length) !== 1 ? "s" : ""} across all campaigns
+                {totalCost > 0 && ` \u00b7 Total: $${(totalCost / 100).toFixed(2)}`}
+                {avgCostPerOutlet > 0 && ` \u00b7 Avg: $${(avgCostPerOutlet / 100).toFixed(2)}/outlet`}
+              </p>
+            )}
           </div>
         </div>
 
