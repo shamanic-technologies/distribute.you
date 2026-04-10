@@ -3,13 +3,39 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Skeleton } from "@/components/skeleton";
+
+function BadgeContent({ badge, isActive }: { badge: string | number | "loading"; isActive: boolean }) {
+  if (badge === "loading") {
+    return <Skeleton className="h-4 w-5 rounded-full" />;
+  }
+  return (
+    <span className={`
+      text-xs px-1.5 py-0.5 rounded-full
+      ${isActive ? "bg-brand-100 text-brand-700" : "bg-gray-100 text-gray-500"}
+    `}>
+      {badge}
+    </span>
+  );
+}
+
+function MobileBadgeContent({ badge }: { badge: string | number | "loading" }) {
+  if (badge === "loading") {
+    return <Skeleton className="h-3 w-4 rounded" />;
+  }
+  return (
+    <span className="text-[10px] bg-white/50 px-1 rounded">
+      {badge}
+    </span>
+  );
+}
 
 interface McpSidebarItem {
   id: string;
   label: string;
   href: string;
   icon: React.ReactNode;
-  badge?: string | number;
+  badge?: string | number | "loading";
 }
 
 export interface McpSidebarGroup {
@@ -36,7 +62,7 @@ function CollapsibleOutcomeGroup({ group, pathname, isActiveGroup, onItemClick }
   isActiveGroup: boolean;
   onItemClick: (groupId: string) => void;
 }) {
-  const hasData = group.items.some((item) => item.badge != null && Number(item.badge) > 0);
+  const hasData = group.items.some((item) => item.badge != null && (item.badge === "loading" || Number(item.badge) > 0));
   const [open, setOpen] = useState(hasData || isActiveGroup);
 
   return (
@@ -77,12 +103,7 @@ function CollapsibleOutcomeGroup({ group, pathname, isActiveGroup, onItemClick }
                 </span>
                 <span className="flex-1">{item.label}</span>
                 {item.badge !== undefined && (
-                  <span className={`
-                    text-xs px-1.5 py-0.5 rounded-full
-                    ${isActive ? "bg-brand-100 text-brand-700" : "bg-gray-100 text-gray-500"}
-                  `}>
-                    {item.badge}
-                  </span>
+                  <BadgeContent badge={item.badge} isActive={isActive} />
                 )}
               </Link>
             );
@@ -161,12 +182,7 @@ export function McpSidebar({ items, outcomesItems, outcomesGroups, settingsItems
                 </span>
                 <span className="flex-1">{item.label}</span>
                 {item.badge !== undefined && (
-                  <span className={`
-                    text-xs px-1.5 py-0.5 rounded-full
-                    ${isActive ? "bg-brand-100 text-brand-700" : "bg-gray-100 text-gray-500"}
-                  `}>
-                    {item.badge}
-                  </span>
+                  <BadgeContent badge={item.badge} isActive={isActive} />
                 )}
               </Link>
             );
@@ -197,12 +213,7 @@ export function McpSidebar({ items, outcomesItems, outcomesGroups, settingsItems
                     </span>
                     <span className="flex-1">{item.label}</span>
                     {item.badge !== undefined && (
-                      <span className={`
-                        text-xs px-1.5 py-0.5 rounded-full
-                        ${isActive ? "bg-brand-100 text-brand-700" : "bg-gray-100 text-gray-500"}
-                      `}>
-                        {item.badge}
-                      </span>
+                      <BadgeContent badge={item.badge} isActive={isActive} />
                     )}
                   </Link>
                 );
@@ -231,12 +242,7 @@ export function McpSidebar({ items, outcomesItems, outcomesGroups, settingsItems
                     </span>
                     <span className="flex-1">{item.label}</span>
                     {item.badge !== undefined && (
-                      <span className={`
-                        text-xs px-1.5 py-0.5 rounded-full
-                        ${isActive ? "bg-brand-100 text-brand-700" : "bg-gray-100 text-gray-500"}
-                      `}>
-                        {item.badge}
-                      </span>
+                      <BadgeContent badge={item.badge} isActive={isActive} />
                     )}
                   </Link>
                 );
@@ -284,9 +290,7 @@ export function McpSidebar({ items, outcomesItems, outcomesGroups, settingsItems
                 <span className="w-4 h-4">{item.icon}</span>
                 <span>{item.label}</span>
                 {item.badge !== undefined && (
-                  <span className="text-[10px] bg-white/50 px-1 rounded">
-                    {item.badge}
-                  </span>
+                  <MobileBadgeContent badge={item.badge} />
                 )}
               </Link>
             );
@@ -318,9 +322,7 @@ export function McpSidebar({ items, outcomesItems, outcomesGroups, settingsItems
                   <span className="w-4 h-4">{item.icon}</span>
                   <span>{item.label}</span>
                   {item.badge !== undefined && (
-                    <span className="text-[10px] bg-white/50 px-1 rounded">
-                      {item.badge}
-                    </span>
+                    <MobileBadgeContent badge={item.badge} />
                   )}
                 </Link>
               );
@@ -343,9 +345,7 @@ export function McpSidebar({ items, outcomesItems, outcomesGroups, settingsItems
                 <span className="w-4 h-4">{item.icon}</span>
                 <span>{item.label}</span>
                 {item.badge !== undefined && (
-                  <span className="text-[10px] bg-white/50 px-1 rounded">
-                    {item.badge}
-                  </span>
+                  <MobileBadgeContent badge={item.badge} />
                 )}
               </Link>
             );
