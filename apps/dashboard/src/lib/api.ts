@@ -852,6 +852,22 @@ export interface BrandRun {
   descendantRuns: unknown[];
 }
 
+export interface CampaignRun {
+  id: string;
+  serviceName: string;
+  taskName: string;
+  status: string;
+  startedAt: string;
+  completedAt: string | null;
+  parentRunId: string | null;
+  ownCostInUsdCents: string;
+}
+
+/** GET /runs?campaignId={id} — returns runs for a campaign via runs-service proxy */
+export async function listCampaignRuns(campaignId: string, token?: string): Promise<{ runs: CampaignRun[] }> {
+  return apiCall<{ runs: CampaignRun[] }>(`/runs?campaignId=${encodeURIComponent(campaignId)}`, { token });
+}
+
 /** GET /brands/:brandId/runs — returns runs or empty list if brand not found (404/500) */
 export async function listBrandRuns(brandId: string, token?: string): Promise<{ runs: BrandRun[] }> {
   try {
