@@ -241,16 +241,24 @@ export interface CampaignStats {
   emailsDelivered: number;
   emailsOpened: number;
   emailsClicked: number;
-  emailsReplied: number;
   emailsBounced: number;
-  // Reply classifications
-  repliesInterested?: number;
-  repliesMeetingBooked?: number;
-  repliesClosed?: number;
-  repliesNeutral?: number;
-  repliesNotInterested?: number;
-  repliesOutOfOffice?: number;
-  repliesUnsubscribe?: number;
+  // Reply aggregates
+  repliesPositive: number;
+  repliesNegative: number;
+  repliesNeutral: number;
+  repliesAutoReply: number;
+  // Reply detail breakdown
+  repliesDetail: {
+    interested: number;
+    meetingBooked: number;
+    closed: number;
+    notInterested: number;
+    wrongPerson: number;
+    unsubscribe: number;
+    neutral: number;
+    autoReply: number;
+    outOfOffice: number;
+  };
 }
 
 export async function listCampaigns(token?: string): Promise<{ campaigns: Campaign[] }> {
@@ -273,26 +281,6 @@ export async function getCampaignBatchStats(
   return Object.fromEntries(campaignIds.filter((id) => byId[id]).map((id) => [id, byId[id]]));
 }
 
-export interface BrandDeliveryStats {
-  emailsContacted: number;
-  emailsSent: number;
-  emailsDelivered: number;
-  emailsOpened: number;
-  emailsClicked: number;
-  emailsReplied: number;
-  emailsBounced: number;
-  repliesInterested: number;
-  repliesMeetingBooked: number;
-  repliesClosed: number;
-  repliesNeutral: number;
-  repliesNotInterested: number;
-  repliesOutOfOffice: number;
-  repliesUnsubscribe: number;
-}
-
-export async function getBrandDeliveryStats(brandId: string, token?: string): Promise<BrandDeliveryStats> {
-  return apiCall<BrandDeliveryStats>(`/email-gateway/stats?brandId=${brandId}`, { token });
-}
 
 export interface CostStatsGroup {
   dimensions: Record<string, string | null>;

@@ -215,7 +215,7 @@ export default function CreateCampaignPage() {
     ["ranked-workflows", featureId],
     () => fetchRankedWorkflows({
       featureDynastySlug: featureId,
-      objective: "emailsReplied",
+      objective: "repliesPositive",
       groupBy: "workflow",
       limit: 100,
     }),
