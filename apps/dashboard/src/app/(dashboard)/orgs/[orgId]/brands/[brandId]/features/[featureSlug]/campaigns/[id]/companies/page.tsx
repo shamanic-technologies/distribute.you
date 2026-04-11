@@ -69,12 +69,12 @@ function formatCostRounded(totalCents: string | null): string | null {
   if (isNaN(cents) || cents === 0) return null;
   const usd = cents / 100;
   if (usd < 0.01) return "<$0.01";
-  return `$${usd.toFixed(2)}`;
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function formatCostDetailed(cents: number): string {
   const val = cents / 100;
-  return `$${val.toFixed(4)}`;
+  return `$${val.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`;
 }
 
 export default function CampaignCompaniesPage() {
@@ -111,7 +111,7 @@ export default function CampaignCompaniesPage() {
         <div className="flex items-center justify-between mb-6">
           <h1 className="font-display text-xl font-bold text-gray-800">
             Companies
-            <span className="ml-2 text-sm font-normal text-gray-500">({companies.length})</span>
+            <span className="ml-2 text-sm font-normal text-gray-500">({companies.length.toLocaleString("en-US")})</span>
           </h1>
         </div>
 

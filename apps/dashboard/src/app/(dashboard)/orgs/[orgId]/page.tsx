@@ -13,10 +13,11 @@ const POLL_INTERVAL = 5_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
 
 function StatCard({ label, value }: { label: string; value: number | string }) {
+  const display = typeof value === "number" ? value.toLocaleString("en-US") : value;
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4">
       <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">{label}</p>
-      <p className="text-2xl font-semibold text-gray-800">{value}</p>
+      <p className="text-2xl font-semibold text-gray-800">{display}</p>
     </div>
   );
 }

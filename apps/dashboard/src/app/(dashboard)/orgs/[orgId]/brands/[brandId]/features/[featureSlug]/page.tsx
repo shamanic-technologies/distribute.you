@@ -30,10 +30,10 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 function formatBudget(campaign: Campaign): string | null {
-  if (campaign.maxBudgetMonthlyUsd) return `$${campaign.maxBudgetMonthlyUsd} budget (monthly)`;
-  if (campaign.maxBudgetWeeklyUsd) return `$${campaign.maxBudgetWeeklyUsd} budget (weekly)`;
-  if (campaign.maxBudgetDailyUsd) return `$${campaign.maxBudgetDailyUsd} budget (daily)`;
-  if (campaign.maxBudgetTotalUsd) return `$${campaign.maxBudgetTotalUsd} budget (one-off)`;
+  if (campaign.maxBudgetMonthlyUsd) return `$${Number(campaign.maxBudgetMonthlyUsd).toLocaleString("en-US")} budget (monthly)`;
+  if (campaign.maxBudgetWeeklyUsd) return `$${Number(campaign.maxBudgetWeeklyUsd).toLocaleString("en-US")} budget (weekly)`;
+  if (campaign.maxBudgetDailyUsd) return `$${Number(campaign.maxBudgetDailyUsd).toLocaleString("en-US")} budget (daily)`;
+  if (campaign.maxBudgetTotalUsd) return `$${Number(campaign.maxBudgetTotalUsd).toLocaleString("en-US")} budget (one-off)`;
   return null;
 }
 
@@ -58,7 +58,7 @@ function formatTotalCost(cents: number): string | null {
   if (cents === 0) return null;
   const usd = cents / 100;
   if (usd < 0.01) return "<$0.01";
-  return `$${usd.toFixed(2)}`;
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export default function FeaturePage() {
@@ -244,7 +244,7 @@ export default function FeaturePage() {
                       <div className="h-4 w-16 bg-gray-200 rounded animate-pulse" />
                     ) : costCents > 0 ? (
                       <span className="text-xs text-gray-400">
-                        ${(costCents / 100).toFixed(2)} spent
+                        ${(costCents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} spent
                       </span>
                     ) : null}
                     {budget && (

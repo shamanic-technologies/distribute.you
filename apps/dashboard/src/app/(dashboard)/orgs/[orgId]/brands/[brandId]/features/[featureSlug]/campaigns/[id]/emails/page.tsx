@@ -47,12 +47,12 @@ function formatCostRounded(run: Email["generationRun"]): string | null {
   if (isNaN(cents) || cents === 0) return null;
   const usd = cents / 100;
   if (usd < 0.01) return "<$0.01";
-  return `$${usd.toFixed(2)}`;
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function formatCostDetailed(cents: string): string {
   const val = parseFloat(cents) / 100;
-  return `$${val.toFixed(4)}`;
+  return `$${val.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`;
 }
 
 function formatDuration(startedAt: string, completedAt: string | null): string | null {
@@ -73,7 +73,7 @@ function formatTotalCost(emails: Email[]): string | null {
   if (totalCents === 0) return null;
   const usd = totalCents / 100;
   if (usd < 0.01) return "<$0.01";
-  return `$${usd.toFixed(2)}`;
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function PersonInitials({ firstName, lastName }: { firstName: string; lastName: string }) {
@@ -121,7 +121,7 @@ export default function CampaignEmailsPage() {
         <div className="flex items-center justify-between mb-6">
           <h1 className="font-display text-xl font-bold text-gray-800">
             Emails
-            <span className="ml-2 text-sm font-normal text-gray-500">({emails.length})</span>
+            <span className="ml-2 text-sm font-normal text-gray-500">({emails.length.toLocaleString("en-US")})</span>
           </h1>
           {totalCost && (
             <span className="text-sm text-gray-500">

@@ -38,7 +38,7 @@ function formatTotalCost(cents: string | null | undefined): string | null {
   if (isNaN(val) || val === 0) return null;
   const usd = val / 100;
   if (usd < 0.01) return "<$0.01";
-  return `$${usd.toFixed(2)}`;
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export default function CampaignOverviewPage() {
