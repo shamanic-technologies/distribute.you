@@ -22,7 +22,7 @@ const COLORS = [
 function formatUsdCents(cents: number): string {
   const usd = cents / 100;
   if (usd < 0.01 && usd > 0) return "<$0.01";
-  return `$${usd.toFixed(2)}`;
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function formatCostName(name: string): string {

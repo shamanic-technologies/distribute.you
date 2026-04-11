@@ -61,7 +61,8 @@ function formatCost(cents: string | number | null | undefined): string | null {
   if (cents == null) return null;
   const n = typeof cents === "string" ? parseFloat(cents) : cents;
   if (isNaN(n) || n === 0) return null;
-  return `$${(n / 100).toFixed(2)}`;
+  const usd = n / 100;
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 /* ─── Stats Card ──────────────────────────────────────────────────────── */
@@ -453,7 +454,7 @@ export default function CampaignPressKitsPage() {
           <h1 className="text-2xl font-semibold text-gray-900">Press Kits</h1>
           <p className="text-sm text-gray-500">
             {kits ? `${kits.length} press kit${kits.length !== 1 ? "s" : ""}` : "Generated press kits for this campaign"}
-            {totalCost > 0 && ` · Total cost: $${(totalCost / 100).toFixed(2)}`}
+            {totalCost > 0 && ` · Total cost: $${(totalCost / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           </p>
         </div>
       </div>

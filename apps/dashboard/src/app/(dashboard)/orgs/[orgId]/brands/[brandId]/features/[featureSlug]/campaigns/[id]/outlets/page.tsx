@@ -23,7 +23,8 @@ function formatCost(cents: string | number | null | undefined): string | null {
   if (cents == null) return null;
   const n = typeof cents === "string" ? parseFloat(cents) : cents;
   if (isNaN(n) || n === 0) return null;
-  return `$${(n / 100).toFixed(2)}`;
+  const usd = n / 100;
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function relevanceColor(score: number): string {
@@ -325,9 +326,9 @@ export default function CampaignOutletsPage() {
               <Skeleton className="h-4 w-48 mt-1" />
             ) : (
               <p className="text-sm text-gray-500">
-                {outlets.length} outlet{outlets.length !== 1 ? "s" : ""}
-                {totalCost > 0 && ` \u00b7 Total: $${(totalCost / 100).toFixed(2)}`}
-                {avgCostPerOutlet > 0 && ` \u00b7 Avg: $${(avgCostPerOutlet / 100).toFixed(2)}/outlet`}
+                {outlets.length.toLocaleString("en-US")} outlet{outlets.length !== 1 ? "s" : ""}
+                {totalCost > 0 && ` \u00b7 Total: $${(totalCost / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                {avgCostPerOutlet > 0 && ` \u00b7 Avg: $${(avgCostPerOutlet / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/outlet`}
               </p>
             )}
           </div>

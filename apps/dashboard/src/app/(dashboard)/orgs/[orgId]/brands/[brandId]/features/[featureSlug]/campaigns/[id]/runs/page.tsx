@@ -12,7 +12,7 @@ function formatUsdCents(cents: string | null | undefined): string | null {
   if (isNaN(val) || val === 0) return null;
   const usd = val / 100;
   if (usd < 0.01) return "<$0.01";
-  return `$${usd.toFixed(2)}`;
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function formatDuration(startedAt: string | null, completedAt: string | null): string | null {
@@ -196,7 +196,7 @@ export default function CampaignRunsPage() {
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-gray-800">Runs</h1>
         <p className="text-sm text-gray-500 mt-1">
-          {tree.length} run{tree.length !== 1 ? "s" : ""}
+          {tree.length.toLocaleString("en-US")} run{tree.length !== 1 ? "s" : ""}
         </p>
       </div>
 
