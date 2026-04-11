@@ -52,7 +52,7 @@ export function EntitySearchBar({
       </div>
       {showCount && (
         <p className="text-xs text-gray-400 mt-1">
-          {resultCount} of {totalCount} result{totalCount !== 1 ? "s" : ""}
+          {resultCount?.toLocaleString("en-US")} of {totalCount?.toLocaleString("en-US")} result{totalCount !== 1 ? "s" : ""}
         </p>
       )}
     </div>

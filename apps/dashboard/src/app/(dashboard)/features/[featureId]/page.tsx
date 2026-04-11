@@ -38,7 +38,7 @@ function formatCost(cents: number): string {
   if (cents === 0) return "$0";
   const usd = cents / 100;
   if (usd < 0.01) return "<$0.01";
-  return `$${usd.toFixed(2)}`;
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -232,10 +232,11 @@ export default function FeatureCampaignsPage() {
 // ─── Sub-components ─────────────────────────────────────────────────────────
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
+  const display = typeof value === "number" ? value.toLocaleString("en-US") : value;
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-3">
       <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">{label}</p>
-      <p className="text-lg font-semibold text-gray-800">{value}</p>
+      <p className="text-lg font-semibold text-gray-800">{display}</p>
     </div>
   );
 }

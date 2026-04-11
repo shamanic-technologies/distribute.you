@@ -117,7 +117,7 @@ export default function FeatureArticlesPage() {
         <div className="flex items-center justify-between mb-6">
           <h1 className="font-display text-xl font-bold text-gray-800">
             Articles
-            <span className="ml-2 text-sm font-normal text-gray-500">({articles.length} across all campaigns)</span>
+            <span className="ml-2 text-sm font-normal text-gray-500">({articles.length.toLocaleString("en-US")} across all campaigns)</span>
           </h1>
         </div>
 
