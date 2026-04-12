@@ -11,5 +11,5 @@ export const URLS = {
   signUp: "https://dashboard.distribute.you/sign-up",
   signIn: "https://dashboard.distribute.you/sign-in",
   apiKeys: "https://dashboard.distribute.you/api-keys",
-  performance: "https://performance.distribute.you",
+  performance: "https://distribute.you/performance",
 } as const;
