@@ -1,8 +1,8 @@
 import { MetadataRoute } from "next";
-import { ENV_URLS } from "@/lib/env-urls";
+import { PROD_URLS } from "@/lib/env-urls";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = ENV_URLS.landing;
+  const baseUrl = PROD_URLS.landing;
 
   return [
     {

@@ -1,12 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Image from "next/image";
 import { LinkButton } from "./link-button";
-import { ENV_URLS } from "@/lib/env-urls";
+import { resolveUrls } from "@/lib/env-urls";
 
 export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const urls = useMemo(
+    () => resolveUrls(typeof window !== "undefined" ? window.location.hostname : ""),
+    [],
+  );
 
   return (
     <nav className="bg-white/80 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50">
@@ -21,7 +25,7 @@ export function Navbar() {
         {/* Desktop nav */}
         <div className="hidden md:flex items-center gap-6">
           <a
-            href={ENV_URLS.github}
+            href={urls.github}
             className="text-gray-500 hover:text-gray-900 text-sm transition flex items-center gap-1.5"
             target="_blank"
             rel="noopener noreferrer"
@@ -32,31 +36,31 @@ export function Navbar() {
             GitHub
           </a>
           <a
-            href={ENV_URLS.performance}
+            href={urls.performance}
             className="text-gray-500 hover:text-gray-900 text-sm transition"
           >
             Performance
           </a>
           <a
-            href={ENV_URLS.docs}
+            href={urls.docs}
             className="text-gray-500 hover:text-gray-900 text-sm transition"
           >
             Docs
           </a>
           <a
-            href={ENV_URLS.apiDocs}
+            href={urls.apiDocs}
             className="text-gray-500 hover:text-gray-900 text-sm transition"
           >
             API
           </a>
           <a
-            href={ENV_URLS.signIn}
+            href={urls.signIn}
             className="text-gray-500 hover:text-gray-900 text-sm transition"
           >
             Sign In
           </a>
           <LinkButton
-            href={ENV_URLS.signUp}
+            href={urls.signUp}
             className="bg-gray-900 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition"
           >
             Get Started
@@ -66,7 +70,7 @@ export function Navbar() {
         {/* Mobile nav */}
         <div className="flex md:hidden items-center gap-2">
           <LinkButton
-            href={ENV_URLS.signUp}
+            href={urls.signUp}
             className="bg-gray-900 text-white px-3 py-1.5 rounded-lg text-sm font-medium"
           >
             Start
@@ -94,7 +98,7 @@ export function Navbar() {
         <div className="md:hidden border-t border-gray-100 bg-white">
           <div className="max-w-6xl mx-auto px-4 py-3 space-y-1">
             <a
-              href={ENV_URLS.github}
+              href={urls.github}
               className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm"
               target="_blank"
               rel="noopener noreferrer"
@@ -105,32 +109,32 @@ export function Navbar() {
               GitHub
             </a>
             <a
-              href={ENV_URLS.performance}
+              href={urls.performance}
               className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm"
             >
               Performance
             </a>
             <a
-              href={ENV_URLS.docs}
+              href={urls.docs}
               className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm"
             >
               Docs
             </a>
             <a
-              href={ENV_URLS.apiDocs}
+              href={urls.apiDocs}
               className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm"
             >
               API
             </a>
             <a
-              href={ENV_URLS.signIn}
+              href={urls.signIn}
               className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm"
             >
               Sign In
             </a>
             <div className="pt-2 border-t border-gray-100">
               <LinkButton
-                href={ENV_URLS.signUp}
+                href={urls.signUp}
                 className="w-full bg-gray-900 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 text-center block"
               >
                 Get Started
