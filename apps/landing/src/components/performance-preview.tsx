@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { URLS } from "@distribute/content";
 import type { BrandEntry, WorkflowEntry } from "@/lib/fetch-leaderboard";
 import { formatPercent, formatCostCents } from "@/lib/fetch-leaderboard";
 
@@ -47,7 +46,7 @@ export function PerformancePreview({ brands, workflows }: PerformancePreviewProp
           </button>
         </div>
         <a
-          href={URLS.performance}
+          href="/performance"
           className="text-sm text-brand-600 hover:text-brand-700 font-medium transition flex items-center gap-1"
         >
           See all

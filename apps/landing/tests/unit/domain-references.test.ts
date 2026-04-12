@@ -65,9 +65,9 @@ describe("domain references in landing app", () => {
     expect(matches, `Files still referencing @distribute_eu: ${matches.join(", ")}`).toEqual([]);
   });
 
-  it("should use distribute.you in sitemap", () => {
+  it("should use PROD_URLS.landing in sitemap", () => {
     const sitemap = readFileSync(join(ROOT, "src/app/sitemap.ts"), "utf-8");
-    expect(sitemap).toContain("https://distribute.you");
+    expect(sitemap).toContain("PROD_URLS.landing");
   });
 
   it("should use distribute.you in robots.txt", () => {

@@ -1,7 +1,8 @@
 import { MetadataRoute } from "next";
+import { PROD_URLS } from "@/lib/env-urls";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = "https://distribute.you";
+  const baseUrl = PROD_URLS.landing;
 
   return [
     {
