@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
-import { URLS } from "@distribute/content";
-import { fetchLeaderboard } from "@/lib/fetch-leaderboard";
-import { WorkflowLeaderboardFiltered } from "@/components/workflow-leaderboard-filtered";
+import { PROD_URLS } from "@/lib/env-urls";
+import { fetchLeaderboard } from "@/lib/performance/fetch-leaderboard";
+import { WorkflowLeaderboardFiltered } from "@/components/performance/workflow-leaderboard-filtered";
 
 export const revalidate = 300;
+
+const PERF_URL = `${PROD_URLS.landing}/performance`;
 
 export const metadata: Metadata = {
   title: "Workflow Leaderboard",
@@ -13,10 +15,10 @@ export const metadata: Metadata = {
     title: "Workflow Leaderboard — distribute Performance",
     description:
       "Compare outreach workflows by real campaign performance. Which workflow generates the best open rates, replies, and conversions?",
-    url: `${URLS.performance}/models`,
+    url: `${PERF_URL}/models`,
   },
   alternates: {
-    canonical: `${URLS.performance}/models`,
+    canonical: `${PERF_URL}/models`,
   },
 };
 
@@ -38,9 +40,7 @@ export default async function WorkflowsPage() {
 
           {workflows.length > 0 ? (
             <>
-              <WorkflowLeaderboardFiltered
-                workflows={workflows}
-              />
+              <WorkflowLeaderboardFiltered workflows={workflows} />
               <p className="text-xs text-gray-400 mt-4 text-center">
                 Updated {data?.updatedAt ? new Date(data.updatedAt).toLocaleString() : "hourly"}.
                 All data from real campaigns.

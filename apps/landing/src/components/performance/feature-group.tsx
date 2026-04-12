@@ -1,5 +1,5 @@
 import { SectionLeaderboard } from "./section-leaderboard";
-import type { FeatureGroupData } from "@/lib/fetch-leaderboard";
+import type { FeatureGroupData } from "@/lib/performance/fetch-leaderboard";
 
 export function FeatureGroup({
   section,

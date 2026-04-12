@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react";
 import { StatsBar } from "./stats-bar";
 import { BrandLeaderboard, WorkflowLeaderboard } from "./leaderboard-table";
-import { computeBestStats } from "@/lib/best-stats";
-import type { BrandLeaderboardEntry, WorkflowLeaderboardEntry } from "@/lib/fetch-leaderboard";
+import { computeBestStats } from "@/lib/performance/best-stats";
+import type { BrandLeaderboardEntry, WorkflowLeaderboardEntry } from "@/lib/performance/fetch-leaderboard";
 
 type Tab = "workflow" | "brand";
 
