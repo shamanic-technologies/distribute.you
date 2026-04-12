@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { LinkButton } from "./link-button";
-import { URLS } from "@distribute/content";
+import { ENV_URLS } from "@/lib/env-urls";
 
 export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -21,7 +21,7 @@ export function Navbar() {
         {/* Desktop nav */}
         <div className="hidden md:flex items-center gap-6">
           <a
-            href={URLS.github}
+            href={ENV_URLS.github}
             className="text-gray-500 hover:text-gray-900 text-sm transition flex items-center gap-1.5"
             target="_blank"
             rel="noopener noreferrer"
@@ -32,31 +32,31 @@ export function Navbar() {
             GitHub
           </a>
           <a
-            href={URLS.performance}
+            href={ENV_URLS.performance}
             className="text-gray-500 hover:text-gray-900 text-sm transition"
           >
             Performance
           </a>
           <a
-            href={URLS.docs}
+            href={ENV_URLS.docs}
             className="text-gray-500 hover:text-gray-900 text-sm transition"
           >
             Docs
           </a>
           <a
-            href={URLS.apiDocs}
+            href={ENV_URLS.apiDocs}
             className="text-gray-500 hover:text-gray-900 text-sm transition"
           >
             API
           </a>
           <a
-            href={URLS.signIn}
+            href={ENV_URLS.signIn}
             className="text-gray-500 hover:text-gray-900 text-sm transition"
           >
             Sign In
           </a>
           <LinkButton
-            href={URLS.signUp}
+            href={ENV_URLS.signUp}
             className="bg-gray-900 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition"
           >
             Get Started
@@ -66,7 +66,7 @@ export function Navbar() {
         {/* Mobile nav */}
         <div className="flex md:hidden items-center gap-2">
           <LinkButton
-            href={URLS.signUp}
+            href={ENV_URLS.signUp}
             className="bg-gray-900 text-white px-3 py-1.5 rounded-lg text-sm font-medium"
           >
             Start
@@ -94,7 +94,7 @@ export function Navbar() {
         <div className="md:hidden border-t border-gray-100 bg-white">
           <div className="max-w-6xl mx-auto px-4 py-3 space-y-1">
             <a
-              href={URLS.github}
+              href={ENV_URLS.github}
               className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm"
               target="_blank"
               rel="noopener noreferrer"
@@ -105,32 +105,32 @@ export function Navbar() {
               GitHub
             </a>
             <a
-              href={URLS.performance}
+              href={ENV_URLS.performance}
               className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm"
             >
               Performance
             </a>
             <a
-              href={URLS.docs}
+              href={ENV_URLS.docs}
               className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm"
             >
               Docs
             </a>
             <a
-              href={URLS.apiDocs}
+              href={ENV_URLS.apiDocs}
               className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm"
             >
               API
             </a>
             <a
-              href={URLS.signIn}
+              href={ENV_URLS.signIn}
               className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm"
             >
               Sign In
             </a>
             <div className="pt-2 border-t border-gray-100">
               <LinkButton
-                href={URLS.signUp}
+                href={ENV_URLS.signUp}
                 className="w-full bg-gray-900 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 text-center block"
               >
                 Get Started

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { URLS } from "@distribute/content";
+import { ENV_URLS } from "@/lib/env-urls";
 
-const SITE_URL = URLS.landing;
+const SITE_URL = ENV_URLS.landing;
 const SITE_NAME = "distribute";
 const SITE_DESCRIPTION = "The Stripe for Distribution. Create an account, give us your URL — we automate welcome emails, outreach, webinar flows, and every touchpoint. AI workflows ranked by real performance data.";
 
@@ -102,8 +102,8 @@ const jsonLd = {
     name: "distribute",
     url: SITE_URL,
     sameAs: [
-      URLS.github,
-      URLS.twitter,
+      ENV_URLS.github,
+      ENV_URLS.twitter,
     ],
   },
 };
@@ -115,8 +115,8 @@ const organizationJsonLd = {
   url: SITE_URL,
   description: "The Stripe for Distribution",
   sameAs: [
-    URLS.github,
-    URLS.twitter,
+    ENV_URLS.github,
+    ENV_URLS.twitter,
   ],
   contactPoint: {
     "@type": "ContactPoint",
