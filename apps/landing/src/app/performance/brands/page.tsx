@@ -5,6 +5,8 @@ import { BrandLeaderboard } from "@/components/performance/leaderboard-table";
 
 export const revalidate = 300;
 
+const PERF_URL = `${PROD_URLS.landing}/performance`;
+
 export const metadata: Metadata = {
   title: "Brand Leaderboard",
   description:
@@ -13,10 +15,10 @@ export const metadata: Metadata = {
     title: "Brand Leaderboard — distribute Performance",
     description:
       "Compare brand performance across distribute cold email campaigns. Real open rates, visit rates, reply rates, and cost per action.",
-    url: `${PROD_URLS.landing}/performance/brands`,
+    url: `${PERF_URL}/brands`,
   },
   alternates: {
-    canonical: `${PROD_URLS.landing}/performance/brands`,
+    canonical: `${PERF_URL}/brands`,
   },
 };
 
