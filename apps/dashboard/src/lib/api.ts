@@ -706,9 +706,14 @@ export async function listFeatures(
   return apiCall<{ features: Feature[] }>(`/features${qs ? `?${qs}` : ""}`, { token });
 }
 
-/** GET /features/:slug — get a single feature */
+/** GET /features/:slug — get a single feature by versioned slug */
 export async function getFeature(slug: string, token?: string): Promise<{ feature: Feature }> {
   return apiCall<{ feature: Feature }>(`/features/${slug}`, { token });
+}
+
+/** GET /features/by-dynasty/:dynastySlug — get the active feature for a dynasty */
+export async function getFeatureByDynasty(dynastySlug: string, token?: string): Promise<{ feature: Feature }> {
+  return apiCall<{ feature: Feature }>(`/features/by-dynasty/${dynastySlug}`, { token });
 }
 
 /** POST /features — create a new feature */
