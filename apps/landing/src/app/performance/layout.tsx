@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { URLS } from "@distribute/content";
 import { PROD_URLS } from "@/lib/env-urls";
-import { PerformanceNavbar } from "@/components/performance/performance-navbar";
+import { Navbar } from "@/components/navbar";
 
-const SITE_URL = PROD_URLS.landing + "/performance";
+const PERF_URL = `${PROD_URLS.landing}/performance`;
 const SITE_NAME = "distribute Performance";
 const SITE_DESCRIPTION =
   "100% transparent performance data from distribute campaigns. See real open rates, reply rates, and cost-per-action across all brands and AI models.";
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: SITE_URL,
+    url: PERF_URL,
     siteName: SITE_NAME,
     title: "distribute Performance — Real Campaign Data",
     description:
@@ -58,7 +58,7 @@ export const metadata: Metadata = {
     creator: "@distribute_you",
   },
   alternates: {
-    canonical: SITE_URL,
+    canonical: PERF_URL,
   },
 };
 
@@ -68,7 +68,7 @@ const datasetJsonLd = {
   name: "distribute Campaign Performance Data",
   description:
     "Public leaderboard of cold email campaign performance metrics including open rates, click rates, reply rates, and cost-per-action across brands and AI models.",
-  url: SITE_URL,
+  url: PERF_URL,
   license: "https://creativecommons.org/licenses/by/4.0/",
   creator: {
     "@type": "Organization",
@@ -78,7 +78,7 @@ const datasetJsonLd = {
   distribution: {
     "@type": "DataDownload",
     encodingFormat: "application/json",
-    contentUrl: `${SITE_URL}/api/leaderboard`,
+    contentUrl: `${PERF_URL}/api/leaderboard`,
   },
   temporalCoverage: "2024/..",
   variableMeasured: [
@@ -103,7 +103,7 @@ const breadcrumbJsonLd = {
       "@type": "ListItem",
       position: 2,
       name: "Performance",
-      item: SITE_URL,
+      item: PERF_URL,
     },
   ],
 };
@@ -123,7 +123,7 @@ export default function PerformanceLayout({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
-      <PerformanceNavbar />
+      <Navbar />
       {children}
       <footer className="bg-gray-900 text-gray-400 py-8 px-4">
         <div className="max-w-4xl mx-auto text-center text-sm">

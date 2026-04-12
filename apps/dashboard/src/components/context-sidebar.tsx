@@ -15,6 +15,7 @@ import {
   listBrandEmails,
   listBrandArticles,
 } from "@/lib/api";
+import { formatCount } from "@/lib/format-number";
 
 interface SidebarItem {
   id: string;
@@ -45,7 +46,7 @@ function SidebarLink({ item, isActive }: { item: SidebarItem; isActive: boolean 
       <span className="flex-1">{item.label}</span>
       {item.badge !== undefined && (
         <span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? "bg-brand-100 text-brand-700" : "bg-gray-100 text-gray-500"}`}>
-          {item.badge}
+          {formatCount(item.badge)}
         </span>
       )}
       {item.comingSoon && (
