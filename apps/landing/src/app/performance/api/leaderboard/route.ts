@@ -9,7 +9,7 @@ export async function GET() {
   if (!data) {
     return NextResponse.json(
       { error: "Leaderboard data unavailable" },
-      { status: 503 }
+      { status: 503 },
     );
   }
 

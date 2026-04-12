@@ -4,7 +4,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "env": ["NEXT_PUBLIC_DISTRIBUTE_API_URL", "ADMIN_DISTRIBUTE_API_KEY", "BRAND_SERVICE_URL"],
+      "env": ["NEXT_PUBLIC_DISTRIBUTE_API_URL", "ADMIN_DISTRIBUTE_API_KEY", "NEXT_PUBLIC_LOGO_DEV_TOKEN"],
       "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
     },
     "dev": {

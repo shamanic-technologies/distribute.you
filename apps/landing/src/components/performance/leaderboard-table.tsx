@@ -7,6 +7,7 @@ import {
   formatPercent,
   formatCostCents,
   formatWorkflowName,
+  formatCostDollars,
   type BrandLeaderboardEntry,
   type WorkflowLeaderboardEntry,
 } from "@/lib/performance/fetch-leaderboard";
@@ -203,7 +204,7 @@ function WorkflowDetailPanel({ workflow: wf, onClose }: { workflow: WorkflowLead
         </div>
         <div className="px-6 py-5 space-y-6">
           <div className="grid grid-cols-2 gap-4">
-            <DetailStat label="Total Spent" value={formatCostCents(wf.totalCostUsdCents)} />
+            <DetailStat label="Total Spent" value={formatCostDollars(wf.totalCostUsdCents)} />
             <DetailStat label="Emails Sent" value={wf.emailsSent > 0 ? wf.emailsSent.toLocaleString() : "—"} />
             <DetailStat label="Runs" value={wf.runCount > 0 ? wf.runCount.toLocaleString() : "—"} />
           </div>
