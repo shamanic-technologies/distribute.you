@@ -59,7 +59,7 @@ function formatCost(cents: string | null | undefined): string | null {
   if (isNaN(val) || val === 0) return null;
   const usd = val / 100;
   if (usd < 0.01) return "<$0.01";
-  return `$${usd.toFixed(2)}`;
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function FeatureIcon({ featureSlug, icon, className }: { featureSlug: string; icon?: string; className?: string }) {
@@ -337,9 +337,9 @@ export default function BrandOverviewPage() {
                         <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
                           <span className="flex items-center gap-1.5">
                             <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                            {activeCampaigns.length} active
+                            {activeCampaigns.length.toLocaleString("en-US")} active
                           </span>
-                          <span>{section.campaigns.length} total</span>
+                          <span>{section.campaigns.length.toLocaleString("en-US")} total</span>
                         </div>
                       )}
                     </div>

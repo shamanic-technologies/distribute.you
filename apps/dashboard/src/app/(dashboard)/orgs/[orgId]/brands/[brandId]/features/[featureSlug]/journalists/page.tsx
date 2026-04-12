@@ -33,7 +33,7 @@ function relevanceColor(score: number): string {
 }
 
 function formatCost(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
+  const usd = cents / 100; return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function timeAgo(dateStr: string): string {
@@ -154,7 +154,7 @@ export default function FeatureJournalistsPage() {
         <div className="flex items-center justify-between mb-4">
           <h1 className="font-display text-xl font-bold text-gray-800">
             Journalists
-            <span className="ml-2 text-sm font-normal text-gray-500">({journalistsData?.total ?? journalists.length} across all campaigns)</span>
+            <span className="ml-2 text-sm font-normal text-gray-500">({(journalistsData?.total ?? journalists.length).toLocaleString("en-US")} across all campaigns)</span>
           </h1>
         </div>
 

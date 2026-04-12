@@ -244,8 +244,10 @@ export interface CampaignStats {
   emailsReplied: number;
   emailsBounced: number;
   // Reply classifications
-  repliesWillingToMeet?: number;
   repliesInterested?: number;
+  repliesMeetingBooked?: number;
+  repliesClosed?: number;
+  repliesNeutral?: number;
   repliesNotInterested?: number;
   repliesOutOfOffice?: number;
   repliesUnsubscribe?: number;
@@ -279,8 +281,10 @@ export interface BrandDeliveryStats {
   emailsClicked: number;
   emailsReplied: number;
   emailsBounced: number;
-  repliesWillingToMeet: number;
   repliesInterested: number;
+  repliesMeetingBooked: number;
+  repliesClosed: number;
+  repliesNeutral: number;
   repliesNotInterested: number;
   repliesOutOfOffice: number;
   repliesUnsubscribe: number;

@@ -1,0 +1,5 @@
+# distribute Performance - https://performance.distribute.you
+User-agent: *
+Allow: /
+
+Sitemap: https://performance.distribute.you/sitemap.xml
