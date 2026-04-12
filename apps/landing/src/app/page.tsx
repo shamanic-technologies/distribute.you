@@ -6,7 +6,8 @@ import { DashboardPreview } from "@/components/dashboard-preview";
 import { PerformancePreview } from "@/components/performance-preview";
 import { StatusIndicator } from "@/components/status-indicator";
 import { fetchLeaderboardPreview } from "@/lib/fetch-leaderboard";
-import { URLS, DISTRIBUTION_FEATURES, DISTRIBUTION_STEPS } from "@distribute/content";
+import { DISTRIBUTION_FEATURES, DISTRIBUTION_STEPS } from "@distribute/content";
+import { ENV_URLS } from "@/lib/env-urls";
 import type { FeatureColor } from "@distribute/content";
 
 export const revalidate = 300;
@@ -46,7 +47,7 @@ export default async function Home() {
             </span>
           </p>
 
-          <HeroForm signUpUrl={URLS.signUp} />
+          <HeroForm signUpUrl={ENV_URLS.signUp} />
 
           <p className="text-sm text-gray-400 mt-6">
             Free to start. No subscription. You only pay the raw cost of AI and APIs.
@@ -577,7 +578,7 @@ export default async function Home() {
             No markup, no subscription. Credit your account and let distribution run itself.
           </p>
           <LinkButton
-            href={URLS.signUp}
+            href={ENV_URLS.signUp}
             className="inline-block bg-white text-gray-900 px-8 py-3 rounded-lg font-medium hover:bg-gray-100 transition text-sm"
           >
             Get Started Free
@@ -595,10 +596,10 @@ export default async function Home() {
           </div>
           <p className="text-sm text-gray-600 mb-4">The Stripe for Distribution</p>
           <div className="flex flex-wrap justify-center gap-6 text-sm">
-            <a href={URLS.performance} className="hover:text-gray-300 transition">Performance</a>
-            <a href={URLS.docs} className="hover:text-gray-300 transition">Docs</a>
-            <a href={URLS.apiDocs} className="hover:text-gray-300 transition">API</a>
-            <a href={URLS.github} target="_blank" rel="noopener noreferrer" className="hover:text-gray-300 transition">GitHub</a>
+            <a href={ENV_URLS.performance} className="hover:text-gray-300 transition">Performance</a>
+            <a href={ENV_URLS.docs} className="hover:text-gray-300 transition">Docs</a>
+            <a href={ENV_URLS.apiDocs} className="hover:text-gray-300 transition">API</a>
+            <a href={ENV_URLS.github} target="_blank" rel="noopener noreferrer" className="hover:text-gray-300 transition">GitHub</a>
             <a href="#" className="hover:text-gray-300 transition">Privacy</a>
           </div>
           <div className="flex justify-center mt-5">

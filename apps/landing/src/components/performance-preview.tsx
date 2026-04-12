@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { URLS } from "@distribute/content";
+import { ENV_URLS } from "@/lib/env-urls";
 import type { BrandEntry, WorkflowEntry } from "@/lib/fetch-leaderboard";
 import { formatPercent, formatCostCents } from "@/lib/fetch-leaderboard";
 
@@ -47,7 +47,7 @@ export function PerformancePreview({ brands, workflows }: PerformancePreviewProp
           </button>
         </div>
         <a
-          href={URLS.performance}
+          href={ENV_URLS.performance}
           className="text-sm text-brand-600 hover:text-brand-700 font-medium transition flex items-center gap-1"
         >
           See all
