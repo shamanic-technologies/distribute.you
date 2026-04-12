@@ -31,16 +31,11 @@ interface RankedResponse {
 
 interface BrandRankedItem {
   brand: {
-    brandId: string;
+    id: string;
     name: string | null;
     domain: string | null;
   };
-  stats: {
-    totalCostInUsdCents: number;
-    totalOutcomes: number;
-    costPerOutcome: number | null;
-    completedRuns: number;
-  };
+  stats: Record<string, number | null>;
 }
 
 interface BrandRankedResponse {
@@ -232,10 +227,10 @@ function aggregateBrandsFromBrandRanked(
   allClicked: BrandRankedItem[],
   allReplied: BrandRankedItem[],
 ): BrandLeaderboardEntry[] {
-  const sentMap = new Map(allSent.map((r) => [r.brand.brandId, r]));
-  const openedMap = new Map(allOpened.map((r) => [r.brand.brandId, r]));
-  const clickedMap = new Map(allClicked.map((r) => [r.brand.brandId, r]));
-  const repliedMap = new Map(allReplied.map((r) => [r.brand.brandId, r]));
+  const sentMap = new Map(allSent.map((r) => [r.brand.id, r]));
+  const openedMap = new Map(allOpened.map((r) => [r.brand.id, r]));
+  const clickedMap = new Map(allClicked.map((r) => [r.brand.id, r]));
+  const repliedMap = new Map(allReplied.map((r) => [r.brand.id, r]));
 
   const allBrandIds = new Set([
     ...sentMap.keys(),
@@ -255,7 +250,7 @@ function aggregateBrandsFromBrandRanked(
     const opened = openedMap.get(brandId)?.stats.totalOutcomes ?? 0;
     const clicked = clickedMap.get(brandId)?.stats.totalOutcomes ?? 0;
     const replied = repliedMap.get(brandId)?.stats.totalOutcomes ?? 0;
-    const cost = any.stats.totalCostInUsdCents;
+    const cost = any.stats.totalCostInUsdCents ?? 0;
 
     const existing = byBrand.get(brandId);
     if (existing) {
