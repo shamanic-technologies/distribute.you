@@ -80,7 +80,7 @@ function SkeletonSection() {
   );
 }
 
-export default function HomeLoading() {
+export default function PerformanceLoading() {
   return (
     <main className="min-h-screen">
       {/* Hero — static, renders immediately */}

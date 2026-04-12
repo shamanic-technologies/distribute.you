@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { fetchLeaderboard } from "@/lib/fetch-leaderboard";
+import { fetchLeaderboard } from "@/lib/performance/fetch-leaderboard";
 
 export const revalidate = 300;
 

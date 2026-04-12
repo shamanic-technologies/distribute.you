@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
-import { URLS } from "@distribute/content";
-import { ComingSoon } from "@/components/coming-soon";
+import { PROD_URLS } from "@/lib/env-urls";
+import { ComingSoon } from "@/components/performance/coming-soon";
+
+const PERF_URL = `${PROD_URLS.landing}/performance`;
 
 export const metadata: Metadata = {
   title: "Prompt Leaderboard",
@@ -10,10 +12,10 @@ export const metadata: Metadata = {
     title: "Prompt Leaderboard — distribute Performance",
     description:
       "Coming soon: compare prompt versions and see which ones generate the most effective cold emails.",
-    url: `${URLS.performance}/prompts`,
+    url: `${PERF_URL}/prompts`,
   },
   alternates: {
-    canonical: `${URLS.performance}/prompts`,
+    canonical: `${PERF_URL}/prompts`,
   },
 };
 

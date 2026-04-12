@@ -1,4 +1,4 @@
-import { formatPercent, formatCostCents, type FeatureGroupStats } from "@/lib/fetch-leaderboard";
+import { formatPercent, formatCostCents, type FeatureGroupStats } from "@/lib/performance/fetch-leaderboard";
 
 export function StatsBar({ stats }: { stats: FeatureGroupStats }) {
   return (

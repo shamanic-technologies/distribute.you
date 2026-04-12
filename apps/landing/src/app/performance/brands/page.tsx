@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
-import { URLS } from "@distribute/content";
-import { fetchLeaderboard } from "@/lib/fetch-leaderboard";
-import { BrandLeaderboard } from "@/components/leaderboard-table";
+import { PROD_URLS } from "@/lib/env-urls";
+import { fetchLeaderboard } from "@/lib/performance/fetch-leaderboard";
+import { BrandLeaderboard } from "@/components/performance/leaderboard-table";
 
 export const revalidate = 300;
+
+const PERF_URL = `${PROD_URLS.landing}/performance`;
 
 export const metadata: Metadata = {
   title: "Brand Leaderboard",
@@ -13,10 +15,10 @@ export const metadata: Metadata = {
     title: "Brand Leaderboard — distribute Performance",
     description:
       "Compare brand performance across distribute cold email campaigns. Real open rates, visit rates, reply rates, and cost per action.",
-    url: `${URLS.performance}/brands`,
+    url: `${PERF_URL}/brands`,
   },
   alternates: {
-    canonical: `${URLS.performance}/brands`,
+    canonical: `${PERF_URL}/brands`,
   },
 };
 

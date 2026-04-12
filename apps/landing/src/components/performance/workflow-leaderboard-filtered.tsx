@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { FEATURE_LABELS } from "@distribute/content";
 import { WorkflowLeaderboard } from "./leaderboard-table";
-import type { WorkflowLeaderboardEntry } from "@/lib/fetch-leaderboard";
+import type { WorkflowLeaderboardEntry } from "@/lib/performance/fetch-leaderboard";
 
 export function WorkflowLeaderboardFiltered({
   workflows,

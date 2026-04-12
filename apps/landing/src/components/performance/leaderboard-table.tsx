@@ -9,8 +9,8 @@ import {
   formatWorkflowName,
   type BrandLeaderboardEntry,
   type WorkflowLeaderboardEntry,
-} from "@/lib/fetch-leaderboard";
-import { defaultDir, compareForSort, type SortKey } from "@/lib/sort-direction";
+} from "@/lib/performance/fetch-leaderboard";
+import { defaultDir, compareForSort, type SortKey } from "@/lib/performance/sort-direction";
 
 const LOGO_DEV_TOKEN = process.env.NEXT_PUBLIC_LOGO_DEV_TOKEN;
 

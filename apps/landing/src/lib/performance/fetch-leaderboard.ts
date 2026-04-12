@@ -243,7 +243,6 @@ function aggregateBrandsFromBrandRanked(
     ...repliedMap.keys(),
   ]);
 
-  // Accumulate stats per brand across all features
   const byBrand = new Map<
     string,
     { brandId: string; sent: number; opened: number; clicked: number; replied: number; cost: number }
@@ -400,14 +399,14 @@ export async function fetchLeaderboard(): Promise<LeaderboardData | null> {
       cache: "no-store",
     });
     if (!featuresRes.ok) {
-      console.warn(`[performance-service] Features fetch failed: ${featuresRes.status}`);
+      console.warn(`[landing] Performance: features fetch failed: ${featuresRes.status}`);
       return null;
     }
     const featuresData: { features: FeatureListItem[] } = await featuresRes.json();
     const features = featuresData.features;
 
     if (features.length === 0) {
-      console.warn("[performance-service] No features returned from api-service");
+      console.warn("[landing] Performance: no features returned from api-service");
       return null;
     }
 
@@ -506,13 +505,12 @@ export async function fetchLeaderboard(): Promise<LeaderboardData | null> {
       featureGroups,
     };
   } catch (error) {
-    console.warn("[performance-service] Leaderboard fetch error:", error);
+    console.warn("[landing] Performance: leaderboard fetch error:", error);
     return null;
   }
 }
 
 export function formatWorkflowName(name: string): string {
-  // Fallback: title-case hyphenated names
   return name
     .split("-")
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
