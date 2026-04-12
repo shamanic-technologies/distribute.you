@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getWorkflow, getWorkflowSummary, getFeature, listWorkflows } from "@/lib/api";
+import { getWorkflow, getWorkflowSummary, getFeatureByDynasty, listWorkflows } from "@/lib/api";
 import { WorkflowOverview } from "@/components/workflows/workflow-overview";
 import { WorkflowChat } from "@/components/workflows/workflow-chat";
 import { workflowDisplayName } from "@/lib/workflow-display-name";
@@ -97,7 +97,7 @@ export default function WorkflowViewerPage() {
 
   const { data: featureData } = useAuthQuery(
     ["feature", featureDynastySlug],
-    () => getFeature(featureDynastySlug),
+    () => getFeatureByDynasty(featureDynastySlug),
   );
 
   const workflowContext = useMemo(() => {
