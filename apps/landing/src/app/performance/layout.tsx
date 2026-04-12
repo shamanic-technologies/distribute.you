@@ -3,7 +3,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { URLS } from "@distribute/content";
 import { PROD_URLS } from "@/lib/env-urls";
-import { Navbar } from "@/components/navbar";
 
 const PERF_URL = `${PROD_URLS.landing}/performance`;
 const SITE_NAME = "distribute Performance";
@@ -124,23 +123,28 @@ export default function PerformanceLayout({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
-      <Navbar />
-      {/* Performance sub-nav */}
-      <nav className="bg-white border-b border-gray-100 px-4 py-2">
-        <div className="max-w-6xl mx-auto flex items-center gap-6">
-          <Link href="/performance" className="flex items-center gap-2 font-display font-bold text-lg text-gray-800">
-            <Image src="/logo-head.jpg" alt="distribute" width={24} height={24} className="rounded-lg" />
-            <span className="text-brand-500">Performance</span>
-          </Link>
-          <div className="hidden md:flex items-center gap-4 text-sm">
-            <Link href="/performance/brands" className="text-gray-600 hover:text-brand-600 transition">
-              By Brand
+      <nav className="bg-white border-b border-gray-200 px-4 py-3">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <Link href="/performance" className="flex items-center gap-2 font-display font-bold text-xl text-gray-800">
+              <Image src="/logo-head.jpg" alt="distribute" width={28} height={28} className="rounded-lg" />
+              distribute <span className="text-brand-500">Performance</span>
             </Link>
-            <Link href="/performance/models" className="text-gray-600 hover:text-brand-600 transition">
-              By Workflow
-            </Link>
-            <Link href="/performance/prompts" className="text-gray-600 hover:text-brand-600 transition">
-              By Prompt
+            <div className="hidden md:flex items-center gap-4 text-sm">
+              <Link href="/performance/brands" className="text-gray-600 hover:text-brand-600 transition">
+                By Brand
+              </Link>
+              <Link href="/performance/models" className="text-gray-600 hover:text-brand-600 transition">
+                By Workflow
+              </Link>
+              <Link href="/performance/prompts" className="text-gray-600 hover:text-brand-600 transition">
+                By Prompt
+              </Link>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 text-sm">
+            <Link href="/" className="text-gray-500 hover:text-brand-600 transition hidden md:inline">
+              distribute.you
             </Link>
           </div>
         </div>
