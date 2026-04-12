@@ -18,6 +18,6 @@ describe("Campaign overview page shows total cost", () => {
   it("should format cost from cents to USD", () => {
     expect(content).toContain("formatTotalCost");
     expect(content).toContain("/ 100");
-    expect(content).toContain(".toFixed(2)");
+    expect(content).toContain("toLocaleString");
   });
 });

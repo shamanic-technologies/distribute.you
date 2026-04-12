@@ -19,7 +19,8 @@ const TOPUP_AMOUNTS = [1000, 2500, 5000, 10000]; // cents
 const TX_PAGE_SIZE = 10;
 
 function formatCents(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
+  const usd = cents / 100;
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export default function BillingPage() {
@@ -556,7 +557,7 @@ export default function BillingPage() {
               {txTotalPages > 1 && (
                 <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-2">
                   <p className="text-xs text-gray-400">
-                    {txPage * TX_PAGE_SIZE + 1}–{Math.min((txPage + 1) * TX_PAGE_SIZE, transactions.length)} of {transactions.length}
+                    {(txPage * TX_PAGE_SIZE + 1).toLocaleString("en-US")}–{Math.min((txPage + 1) * TX_PAGE_SIZE, transactions.length).toLocaleString("en-US")} of {transactions.length.toLocaleString("en-US")}
                   </p>
                   <div className="flex items-center gap-2">
                     <button

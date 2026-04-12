@@ -6,13 +6,15 @@ export function formatStatValue(value: number | null | undefined, entry: StatsRe
 
   switch (entry.type) {
     case "count":
-      return value.toLocaleString();
+      return value.toLocaleString("en-US");
     case "rate":
       if (value === 0) return "\u2014";
       return `${(value * 100).toFixed(1)}%`;
-    case "currency":
+    case "currency": {
       if (value === 0) return "\u2014";
-      return `$${(value / 100).toFixed(2)}`;
+      const usd = value / 100;
+      return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
     default:
       return String(value);
   }

@@ -35,7 +35,8 @@ export function useBillingGuard() {
 }
 
 function formatCents(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
+  const usd = cents / 100;
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 const TOPUP_AMOUNTS = [1000, 2500, 5000, 10000]; // cents

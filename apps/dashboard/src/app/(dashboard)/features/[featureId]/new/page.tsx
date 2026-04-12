@@ -67,7 +67,8 @@ const STATUS_STYLES: Record<string, string> = {
 
 function formatCostCents(cents: number | null): string {
   if (cents === null || cents === 0) return "—";
-  return `$${(cents / 100).toFixed(2)}`;
+  const usd = cents / 100;
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 /** Extract the family display name. Strips the featureSlug prefix to show just the codename. */

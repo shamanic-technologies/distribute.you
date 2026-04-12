@@ -61,12 +61,12 @@ function formatCostRounded(run: Lead["enrichmentRun"]): string | null {
   if (isNaN(cents) || cents === 0) return null;
   const usd = cents / 100;
   if (usd < 0.01) return "<$0.01";
-  return `$${usd.toFixed(2)}`;
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function formatCostDetailed(cents: string): string {
   const val = parseFloat(cents) / 100;
-  return `$${val.toFixed(4)}`;
+  return `$${val.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`;
 }
 
 function formatDuration(startedAt: string, completedAt: string | null): string | null {
@@ -79,7 +79,7 @@ function formatDuration(startedAt: string, completedAt: string | null): string |
 function formatUsd(cents: number): string {
   const usd = cents / 100;
   if (usd < 0.01 && usd > 0) return "<$0.01";
-  return `$${usd.toFixed(2)}`;
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 interface CostGroup {
@@ -341,7 +341,7 @@ export default function BrandLeadsPage() {
         <div className="flex items-start justify-between mb-4">
           <h1 className="font-display text-xl font-bold text-gray-800">
             Leads
-            <span className="ml-2 text-sm font-normal text-gray-500">({leads.length} across all campaigns)</span>
+            <span className="ml-2 text-sm font-normal text-gray-500">({leads.length.toLocaleString("en-US")} across all campaigns)</span>
           </h1>
           {totalCostCents > 0 && (
             <div className="text-right">
