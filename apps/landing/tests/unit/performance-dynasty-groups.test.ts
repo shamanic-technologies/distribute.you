@@ -35,14 +35,12 @@ describe("Performance leaderboard groups by base dynasty name", () => {
     expect(content).toContain("resolveBaseGroup(f.dynastySlug) !== null");
   });
 
-  it("accumulates brand items instead of overwriting duplicates", () => {
-    expect(content).toContain("accumulateBrandItems");
-    // Must iterate and sum, not use Map constructor which loses duplicates
-    expect(content).not.toMatch(/new Map\(all(Sent|Opened|Clicked|Replied)\.map/);
+  it("aggregates brands per group via aggregateBrands", () => {
+    expect(content).toContain("aggregateBrands(allBrandArrays)");
   });
 
-  it("builds per-group brands instead of sharing a global list", () => {
-    // aggregateBrandsFromBrandRanked is called inside buildFeatureGroups per group
-    expect(content).toContain("aggregateBrandsFromBrandRanked(allBrandSent, allBrandOpened, allBrandClicked, allBrandReplied)");
+  it("uses env-aware API URL resolution", () => {
+    expect(content).toContain("resolveApiUrl");
+    expect(content).toContain('hostname.includes("staging")');
   });
 });

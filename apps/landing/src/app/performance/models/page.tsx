@@ -5,6 +5,8 @@ import { WorkflowLeaderboardFiltered } from "@/components/performance/workflow-l
 
 export const revalidate = 300;
 
+const PERF_URL = `${PROD_URLS.landing}/performance`;
+
 export const metadata: Metadata = {
   title: "Workflow Leaderboard",
   description:
@@ -13,10 +15,10 @@ export const metadata: Metadata = {
     title: "Workflow Leaderboard — distribute Performance",
     description:
       "Compare outreach workflows by real campaign performance. Which workflow generates the best open rates, replies, and conversions?",
-    url: `${PROD_URLS.landing}/performance/models`,
+    url: `${PERF_URL}/models`,
   },
   alternates: {
-    canonical: `${PROD_URLS.landing}/performance/models`,
+    canonical: `${PERF_URL}/models`,
   },
 };
 

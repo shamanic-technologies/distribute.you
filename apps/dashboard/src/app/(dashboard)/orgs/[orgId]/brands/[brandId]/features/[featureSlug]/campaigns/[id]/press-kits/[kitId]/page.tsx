@@ -17,6 +17,7 @@ import {
   type MediaKitStatus,
 } from "@/lib/api";
 import { PressKitChat } from "@/components/press-kits/press-kit-chat";
+import { formatCount } from "@/lib/format-number";
 
 
 const STATUS_STYLES: Record<MediaKitStatus, string> = {
@@ -388,11 +389,11 @@ export default function CampaignPressKitDetailPage() {
               <div className="grid grid-cols-3 gap-3 mb-4">
                 <div className="bg-white border border-gray-100 rounded-lg p-3">
                   <div className="text-[10px] text-gray-500 uppercase tracking-wider">Views</div>
-                  <div className="text-lg font-semibold text-gray-900">{stats.totalViews}</div>
+                  <div className="text-lg font-semibold text-gray-900">{formatCount(stats.totalViews)}</div>
                 </div>
                 <div className="bg-white border border-gray-100 rounded-lg p-3">
                   <div className="text-[10px] text-gray-500 uppercase tracking-wider">Unique</div>
-                  <div className="text-lg font-semibold text-gray-900">{stats.uniqueVisitors}</div>
+                  <div className="text-lg font-semibold text-gray-900">{formatCount(stats.uniqueVisitors)}</div>
                 </div>
                 <div className="bg-white border border-gray-100 rounded-lg p-3">
                   <div className="text-[10px] text-gray-500 uppercase tracking-wider">Last View</div>

@@ -4,6 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Skeleton } from "@/components/skeleton";
+import { formatCount } from "@/lib/format-number";
+
+function formatBadge(badge: string | number): string {
+  if (typeof badge === "number") return formatCount(badge);
+  return badge;
+}
 
 function BadgeContent({ badge, isActive }: { badge: string | number | "loading"; isActive: boolean }) {
   if (badge === "loading") {
@@ -14,7 +20,7 @@ function BadgeContent({ badge, isActive }: { badge: string | number | "loading";
       text-xs px-1.5 py-0.5 rounded-full
       ${isActive ? "bg-brand-100 text-brand-700" : "bg-gray-100 text-gray-500"}
     `}>
-      {badge}
+      {formatBadge(badge)}
     </span>
   );
 }
@@ -25,7 +31,7 @@ function MobileBadgeContent({ badge }: { badge: string | number | "loading" }) {
   }
   return (
     <span className="text-[10px] bg-white/50 px-1 rounded">
-      {badge}
+      {formatBadge(badge)}
     </span>
   );
 }

@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getFeature, getBrand } from "@/lib/api";
+import { getFeatureByDynasty, getBrand } from "@/lib/api";
 import { useFeatures } from "@/lib/features-context";
 import { FeatureCreatorChat } from "@/components/features/feature-creator-chat";
 import { FeatureOverview } from "@/components/features/feature-overview";
@@ -46,7 +46,7 @@ export default function FeatureSettingsPage() {
 
   const { data: featureData, isLoading } = useAuthQuery(
     ["feature", featureDynastySlug],
-    () => getFeature(featureDynastySlug),
+    () => getFeatureByDynasty(featureDynastySlug),
   );
   const feature = featureData?.feature ?? null;
 

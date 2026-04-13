@@ -35,13 +35,8 @@ h1, h2, h3, .font-display {
     background-clip: text;
   }
 
-  @keyframes slide-in {
-    from { transform: translateX(100%); }
-    to { transform: translateX(0); }
-  }
-
   .animate-slide-in {
-    animation: slide-in 0.2s ease-out;
+    animation: slideIn 0.2s ease-out;
   }
 
   .gradient-text-subtle {
@@ -49,5 +44,14 @@ h1, h2, h3, .font-display {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
   }
 }
