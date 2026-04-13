@@ -189,13 +189,29 @@ export default function BrandOverviewPage() {
     emails: emailsData?.emails?.length ?? 0,
   }), [outletsData, journalistsData, articlesData, leadsData, emailsData]);
 
-  // Build workflow sections from actual campaigns
+  // Deduplicate features by dynasty: keep one representative per dynastySlug
+  const dynastyFeatures = useMemo(() => {
+    const seen = new Map<string, typeof features[number]>();
+    for (const f of features) {
+      const key = f.dynastySlug ?? f.slug;
+      const existing = seen.get(key);
+      if (!existing || (f.status === "active" && existing.status !== "active") || (f.version ?? 0) > (existing.version ?? 0)) {
+        seen.set(key, f);
+      }
+    }
+    return Array.from(seen.values());
+  }, [features]);
+
+  // Build workflow sections from actual campaigns, grouped by dynasty slug
   const workflowSections = useMemo(() => {
     const map = new Map<string, Campaign[]>();
     for (const c of campaigns) {
-      const section = c.featureSlug ?? "unknown";
-      if (!map.has(section)) map.set(section, []);
-      map.get(section)!.push(c);
+      const featureSlug = c.featureSlug ?? "unknown";
+      // Resolve to dynasty slug: if the campaign references a versioned slug, find its dynasty
+      const feat = getFeatureDef(featureSlug);
+      const dynastyKey = feat?.dynastySlug ?? featureSlug;
+      if (!map.has(dynastyKey)) map.set(dynastyKey, []);
+      map.get(dynastyKey)!.push(c);
     }
     const sections: WorkflowSection[] = [];
     for (const [featureSlug, sectionCampaigns] of map) {
@@ -206,7 +222,7 @@ export default function BrandOverviewPage() {
       });
     }
     return sections;
-  }, [campaigns]);
+  }, [campaigns, getFeatureDef]);
 
   if (brandLoading) {
     return (
@@ -317,7 +333,7 @@ export default function BrandOverviewPage() {
           </Link>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {features.map((f) => {
+          {dynastyFeatures.map((f) => {
             const dSlug = f.dynastySlug ?? f.slug;
             const section = workflowSections.find(s => s.featureSlug === dSlug || s.featureSlug === f.slug);
             const activeCampaigns = section?.campaigns.filter(c => c.status === "ongoing") ?? [];
