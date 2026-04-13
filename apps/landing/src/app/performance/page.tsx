@@ -67,13 +67,13 @@ export default async function PerformancePage() {
               href={urls.signUp}
               className="px-6 py-3 bg-brand-500 text-white rounded-full hover:bg-brand-600 transition font-medium"
             >
-              Start a Campaign
+              See All Brands
             </a>
             <a
               href={urls.docs}
               className="px-6 py-3 bg-white border border-gray-200 text-gray-700 rounded-full hover:border-brand-300 transition font-medium"
             >
-              Read the Docs
+              Compare Workflows
             </a>
           </div>
         </div>

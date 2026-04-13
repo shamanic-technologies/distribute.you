@@ -1,4 +1,4 @@
-import { FEATURE_LABELS, URLS } from "@distribute/content";
+import { URLS } from "@distribute/content";
 
 const API_KEY = process.env.ADMIN_DISTRIBUTE_API_KEY;
 
@@ -10,6 +10,23 @@ function resolveApiUrl(hostname: string): string {
     return URLS.api.replace("://api.", "://api-staging.");
   }
   return URLS.api;
+}
+
+// ─── Base groups: merge multiple dynasty slugs into one display group ────────
+
+interface BaseGroup {
+  label: string;
+  slugs: string[];
+}
+
+const BASE_GROUPS: BaseGroup[] = [
+  { label: "Hiring Cold Email Outreach", slugs: ["hiring-cold-email-outreach"] },
+  { label: "Sales Cold Email Outreach", slugs: ["sales-cold-email-outreach"] },
+  { label: "PR Cold Email Outreach", slugs: ["pr-cold-email-outreach", "pr-cold-email-outreach-sophia", "pr-cold-email-outreach-berlin"] },
+];
+
+function resolveBaseGroup(dynastySlug: string): BaseGroup | null {
+  return BASE_GROUPS.find((g) => g.slugs.includes(dynastySlug)) ?? null;
 }
 
 // ─── API response types ─────────────────────────────────────────────────────
@@ -286,29 +303,40 @@ function aggregateBrands(brandsByFeature: BrandLeaderboardEntry[][]): BrandLeade
   }));
 }
 
-// ─── Build feature groups ───────────────────────────────────────────────────
+// ─── Per-dynasty fetch result ────────────────────────────────────────────────
+
+interface DynastyFetchResult {
+  dynastySlug: string;
+  workflows: WorkflowLeaderboardEntry[];
+  brands: BrandLeaderboardEntry[];
+}
+
+// ─── Build feature groups from base groups ───────────────────────────────────
 
 function buildFeatureGroups(
-  workflowsByFeature: Map<string, WorkflowLeaderboardEntry[]>,
-  brandsByFeature: Map<string, BrandLeaderboardEntry[]>,
-  featureLabelMap: Map<string, string>,
+  groupResults: Map<string, DynastyFetchResult[]>,
 ): FeatureGroupData[] {
-  return [...workflowsByFeature.entries()].map(([featureSlug, workflows]) => {
-    const brands = brandsByFeature.get(featureSlug) ?? [];
-    const sent = workflows.reduce((s, w) => s + w.emailsSent, 0);
-    const opened = workflows.reduce((s, w) => s + w.emailsOpened, 0);
-    const replied = workflows.reduce((s, w) => s + w.emailsReplied, 0);
-    const cost = workflows.reduce((s, w) => s + w.totalCostUsdCents, 0);
+  return BASE_GROUPS.map((group) => {
+    const results = groupResults.get(group.label) ?? [];
+
+    const allWorkflows: WorkflowLeaderboardEntry[] = [];
+    const allBrandArrays: BrandLeaderboardEntry[][] = [];
+
+    for (const r of results) {
+      allWorkflows.push(...r.workflows);
+      allBrandArrays.push(r.brands);
+    }
+
+    const brands = aggregateBrands(allBrandArrays);
+
+    const sent = allWorkflows.reduce((s, w) => s + w.emailsSent, 0);
+    const opened = allWorkflows.reduce((s, w) => s + w.emailsOpened, 0);
+    const replied = allWorkflows.reduce((s, w) => s + w.emailsReplied, 0);
+    const cost = allWorkflows.reduce((s, w) => s + w.totalCostUsdCents, 0);
 
     return {
-      featureSlug,
-      label:
-        featureLabelMap.get(featureSlug) ??
-        FEATURE_LABELS[featureSlug] ??
-        featureSlug
-          .split("-")
-          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-          .join(" "),
+      featureSlug: group.slugs[0],
+      label: group.label,
       stats: {
         emailsSent: sent,
         emailsOpened: opened,
@@ -319,10 +347,10 @@ function buildFeatureGroups(
         costPerOpenCents: opened > 0 ? cost / opened : null,
         costPerReplyCents: replied > 0 ? cost / replied : null,
       },
-      workflows,
+      workflows: allWorkflows,
       brands,
     };
-  });
+  }).filter((g) => g.workflows.length > 0 || g.brands.length > 0);
 }
 
 // ─── Main fetch function ────────────────────────────────────────────────────
@@ -350,49 +378,53 @@ export async function fetchLeaderboard(hostname = ""): Promise<LeaderboardData |
       return null;
     }
 
-    // Build a label map from dynasty slug to dynasty name
-    const featureLabelMap = new Map<string, string>();
-    for (const f of features) {
-      featureLabelMap.set(f.dynastySlug, f.dynastyName);
+    // Step 2: Filter to only features that belong to a base group
+    const relevantFeatures = features.filter((f) => resolveBaseGroup(f.dynastySlug) !== null);
+
+    if (relevantFeatures.length === 0) {
+      console.error("[landing] Performance: no features matched any base group");
+      return null;
     }
 
-    // Find the primary email feature for hero stats
     const heroFeature =
-      features.find((f) => f.dynastySlug.includes("sales-cold-email")) ?? features[0];
+      relevantFeatures.find((f) => f.dynastySlug.includes("sales-cold-email")) ?? relevantFeatures[0];
 
-    // Step 2: For each feature, fetch workflow + brand ranked data (2 calls per feature)
-    const workflowsByFeature = new Map<string, WorkflowLeaderboardEntry[]>();
-    const brandsByFeature = new Map<string, BrandLeaderboardEntry[]>();
-    const allBrandArrays: BrandLeaderboardEntry[][] = [];
-
-    const featureResults = await Promise.all(
-      features.map(async (feature) => {
+    // Step 3: For each relevant feature, fetch workflow + brand ranked data (2 calls per feature)
+    const dynastyResults: DynastyFetchResult[] = await Promise.all(
+      relevantFeatures.map(async (feature) => {
         const [workflows, brands] = await Promise.all([
           fetchWorkflowRanked(feature.dynastySlug, headers, apiUrl),
           fetchBrandRanked(feature.dynastySlug, headers, apiUrl),
         ]);
-        return { feature, workflows, brands };
+        return { dynastySlug: feature.dynastySlug, workflows, brands };
       }),
     );
 
-    const allWorkflows: WorkflowLeaderboardEntry[] = [];
-    for (const { feature, workflows, brands } of featureResults) {
-      workflowsByFeature.set(feature.dynastySlug, workflows);
-      brandsByFeature.set(feature.dynastySlug, brands);
-      allWorkflows.push(...workflows);
-      allBrandArrays.push(brands);
+    // Step 4: Organize results by base group
+    const groupResults = new Map<string, DynastyFetchResult[]>();
+    for (const result of dynastyResults) {
+      const group = resolveBaseGroup(result.dynastySlug);
+      if (!group) continue;
+      const arr = groupResults.get(group.label) ?? [];
+      arr.push(result);
+      groupResults.set(group.label, arr);
     }
 
-    // Step 3: Aggregate brands across features
-    const brands = aggregateBrands(allBrandArrays);
-
-    // Step 4: Fetch best stats for hero
+    // Step 5: Fetch best stats for hero
     const bestRes = await fetch(
       `${apiUrl}/v1/public/features/best?featureDynastySlug=${encodeURIComponent(heroFeature.dynastySlug)}&groupBy=workflow`,
       { headers, cache: "no-store" },
     );
     const bestData: BestResponse | null = bestRes.ok ? await bestRes.json() : null;
 
+    // Step 6: Build feature groups (per-group workflows + per-group brands)
+    const featureGroups = buildFeatureGroups(groupResults);
+
+    // Step 7: Aggregate global lists from groups
+    const allWorkflows = featureGroups.flatMap((g) => g.workflows);
+    const brands = aggregateBrands(featureGroups.map((g) => g.brands));
+
+    // Step 8: Build hero stats
     let hero: HeroStats | null = null;
     if (bestData) {
       const openRecord = bestData.best["emailsOpened"] ?? null;
@@ -406,9 +438,6 @@ export async function fetchLeaderboard(hostname = ""): Promise<LeaderboardData |
           : null,
       };
     }
-
-    // Step 5: Build feature groups
-    const featureGroups = buildFeatureGroups(workflowsByFeature, brandsByFeature, featureLabelMap);
 
     return {
       brands,
