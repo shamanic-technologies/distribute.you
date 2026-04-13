@@ -10,7 +10,7 @@ export default async function PerformancePage() {
   const headersList = await headers();
   const host = headersList.get("host") || "";
   const urls = resolveUrls(host);
-  const data = await fetchLeaderboard();
+  const data = await fetchLeaderboard(host);
   const sections = data?.featureGroups || [];
 
   return (

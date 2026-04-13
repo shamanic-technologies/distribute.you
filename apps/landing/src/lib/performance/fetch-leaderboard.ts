@@ -1,8 +1,16 @@
-import { FEATURE_LABELS } from "@distribute/content";
+import { FEATURE_LABELS, URLS } from "@distribute/content";
 
-const API_URL =
-  process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 const API_KEY = process.env.ADMIN_DISTRIBUTE_API_KEY;
+
+function resolveApiUrl(hostname: string): string {
+  if (process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL) {
+    return process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL;
+  }
+  if (hostname.includes("staging")) {
+    return URLS.api.replace("://api.", "://api-staging.");
+  }
+  return URLS.api;
+}
 
 // ─── API response types ─────────────────────────────────────────────────────
 
@@ -143,9 +151,10 @@ function num(stats: Record<string, number | null>, key: string): number {
 async function fetchWorkflowRanked(
   featureDynastySlug: string,
   headers: Record<string, string>,
+  apiUrl: string,
 ): Promise<WorkflowLeaderboardEntry[]> {
   const res = await fetch(
-    `${API_URL}/v1/public/features/ranked?featureDynastySlug=${encodeURIComponent(featureDynastySlug)}&objective=emailsSent&groupBy=workflow&limit=100`,
+    `${apiUrl}/v1/public/features/ranked?featureDynastySlug=${encodeURIComponent(featureDynastySlug)}&objective=emailsSent&groupBy=workflow&limit=100`,
     { headers, cache: "no-store" },
   );
   if (!res.ok) {
@@ -188,9 +197,10 @@ async function fetchWorkflowRanked(
 async function fetchBrandRanked(
   featureDynastySlug: string,
   headers: Record<string, string>,
+  apiUrl: string,
 ): Promise<BrandLeaderboardEntry[]> {
   const res = await fetch(
-    `${API_URL}/v1/public/features/ranked?featureDynastySlug=${encodeURIComponent(featureDynastySlug)}&objective=emailsSent&groupBy=brand&limit=100`,
+    `${apiUrl}/v1/public/features/ranked?featureDynastySlug=${encodeURIComponent(featureDynastySlug)}&objective=emailsSent&groupBy=brand&limit=100`,
     { headers, cache: "no-store" },
   );
   if (!res.ok) {
@@ -317,13 +327,14 @@ function buildFeatureGroups(
 
 // ─── Main fetch function ────────────────────────────────────────────────────
 
-export async function fetchLeaderboard(): Promise<LeaderboardData | null> {
+export async function fetchLeaderboard(hostname = ""): Promise<LeaderboardData | null> {
   try {
+    const apiUrl = resolveApiUrl(hostname);
     const headers: Record<string, string> = { Accept: "application/json" };
     if (API_KEY) headers["X-API-Key"] = API_KEY;
 
     // Step 1: Fetch feature list from api-service
-    const featuresRes = await fetch(`${API_URL}/public/features`, {
+    const featuresRes = await fetch(`${apiUrl}/public/features`, {
       headers,
       cache: "no-store",
     });
@@ -357,8 +368,8 @@ export async function fetchLeaderboard(): Promise<LeaderboardData | null> {
     const featureResults = await Promise.all(
       features.map(async (feature) => {
         const [workflows, brands] = await Promise.all([
-          fetchWorkflowRanked(feature.dynastySlug, headers),
-          fetchBrandRanked(feature.dynastySlug, headers),
+          fetchWorkflowRanked(feature.dynastySlug, headers, apiUrl),
+          fetchBrandRanked(feature.dynastySlug, headers, apiUrl),
         ]);
         return { feature, workflows, brands };
       }),
@@ -377,7 +388,7 @@ export async function fetchLeaderboard(): Promise<LeaderboardData | null> {
 
     // Step 4: Fetch best stats for hero
     const bestRes = await fetch(
-      `${API_URL}/v1/public/features/best?featureDynastySlug=${encodeURIComponent(heroFeature.dynastySlug)}&groupBy=workflow`,
+      `${apiUrl}/v1/public/features/best?featureDynastySlug=${encodeURIComponent(heroFeature.dynastySlug)}&groupBy=workflow`,
       { headers, cache: "no-store" },
     );
     const bestData: BestResponse | null = bestRes.ok ? await bestRes.json() : null;
