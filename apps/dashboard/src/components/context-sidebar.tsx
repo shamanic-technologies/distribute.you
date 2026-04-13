@@ -558,10 +558,12 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   const entityNames = useMemo(() => entities.map((e) => e.name), [entities]);
 
   // Feature stats scoped to this brand — same pattern as campaign sidebar
+  // Use the resolved versioned slug — the stats endpoint requires the exact version
+  const featureVersionedSlug = feature?.slug;
   const { data: featureStatsData } = useAuthQuery(
-    ["featureStats", featureSlug, "brand", brandId],
-    () => fetchFeatureStats(featureSlug, { brandId }),
-    { refetchInterval: 5_000, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
+    ["featureStats", featureVersionedSlug, "brand", brandId],
+    () => fetchFeatureStats(featureVersionedSlug!, { brandId }),
+    { enabled: !!featureVersionedSlug, refetchInterval: 5_000, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
   );
   const fStats = featureStatsData?.stats ?? {};
 
