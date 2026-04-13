@@ -82,17 +82,19 @@ export default function FeatureCampaignsPage() {
   }, [isLoading, campaignsData, featureCampaigns.length, featureDef?.implemented, featureId, router]);
 
   // Feature-level stats
+  // Use the resolved versioned slug — the stats endpoint requires the exact version
+  const featureVersionedSlug = featureDef?.slug;
   const { data: featureStatsData } = useAuthQuery(
-    ["featureStats", featureId],
-    () => fetchFeatureStats(featureId),
-    { enabled: featureCampaigns.length > 0, ...pollOptions },
+    ["featureStats", featureVersionedSlug],
+    () => fetchFeatureStats(featureVersionedSlug!),
+    { enabled: !!featureVersionedSlug && featureCampaigns.length > 0, ...pollOptions },
   );
 
   // Per-campaign stats
   const { data: campaignStatsData } = useAuthQuery(
-    ["featureStats", featureId, "byCampaign"],
-    () => fetchFeatureStats(featureId, { groupBy: "campaignId" }),
-    { enabled: featureCampaigns.length > 0, ...pollOptions },
+    ["featureStats", featureVersionedSlug, "byCampaign"],
+    () => fetchFeatureStats(featureVersionedSlug!, { groupBy: "campaignId" }),
+    { enabled: !!featureVersionedSlug && featureCampaigns.length > 0, ...pollOptions },
   );
 
   const campaignStatsMap = useMemo(() => {

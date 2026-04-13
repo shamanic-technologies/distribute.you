@@ -15,6 +15,7 @@ import {
   listBrandEmails,
   listBrandArticles,
 } from "@/lib/api";
+import { formatCount } from "@/lib/format-number";
 
 interface SidebarItem {
   id: string;
@@ -45,7 +46,7 @@ function SidebarLink({ item, isActive }: { item: SidebarItem; isActive: boolean 
       <span className="flex-1">{item.label}</span>
       {item.badge !== undefined && (
         <span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? "bg-brand-100 text-brand-700" : "bg-gray-100 text-gray-500"}`}>
-          {item.badge}
+          {formatCount(item.badge)}
         </span>
       )}
       {item.comingSoon && (
@@ -558,10 +559,12 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   const entityNames = useMemo(() => entities.map((e) => e.name), [entities]);
 
   // Feature stats scoped to this brand — same pattern as campaign sidebar
+  // Use the resolved versioned slug — the stats endpoint requires the exact version
+  const featureVersionedSlug = feature?.slug;
   const { data: featureStatsData } = useAuthQuery(
-    ["featureStats", featureSlug, "brand", brandId],
-    () => fetchFeatureStats(featureSlug, { brandId }),
-    { refetchInterval: 5_000, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
+    ["featureStats", featureVersionedSlug, "brand", brandId],
+    () => fetchFeatureStats(featureVersionedSlug!, { brandId }),
+    { enabled: !!featureVersionedSlug, refetchInterval: 5_000, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
   );
   const fStats = featureStatsData?.stats ?? {};
 

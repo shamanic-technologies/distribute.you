@@ -1,11 +1,16 @@
 import { URLS } from "@distribute/content";
 import { fetchLeaderboard } from "@/lib/performance/fetch-leaderboard";
 import { FeatureGroup } from "@/components/performance/feature-group";
+import { resolveUrls } from "@/lib/env-urls";
+import { headers } from "next/headers";
 
 export const revalidate = 300;
 
 export default async function PerformancePage() {
-  const data = await fetchLeaderboard();
+  const headersList = await headers();
+  const host = headersList.get("host") || "";
+  const urls = resolveUrls(host);
+  const data = await fetchLeaderboard(host);
   const sections = data?.featureGroups || [];
 
   return (
@@ -59,16 +64,16 @@ export default async function PerformancePage() {
           </p>
           <div className="flex flex-wrap gap-4 justify-center text-sm">
             <a
-              href="/performance/brands"
+              href={urls.signUp}
               className="px-6 py-3 bg-brand-500 text-white rounded-full hover:bg-brand-600 transition font-medium"
             >
-              See All Brands
+              Start a Campaign
             </a>
             <a
-              href="/performance/models"
+              href={urls.docs}
               className="px-6 py-3 bg-white border border-gray-200 text-gray-700 rounded-full hover:border-brand-300 transition font-medium"
             >
-              Compare Workflows
+              Read the Docs
             </a>
           </div>
         </div>

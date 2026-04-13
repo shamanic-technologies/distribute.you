@@ -20,6 +20,7 @@ import {
 import { BrandLogo } from "@/components/brand-logo";
 import { BrandUsageSection } from "@/components/brand-usage";
 import { Skeleton } from "@/components/skeleton";
+import { formatCount } from "@/lib/format-number";
 import { useFeatures } from "@/lib/features-context";
 import {
   GlobeAltIcon,
@@ -310,7 +311,7 @@ export default function BrandOverviewPage() {
               {outcomeLoading[key] ? (
                 <Skeleton className="h-6 w-8 mx-auto mt-1" />
               ) : (
-                <p className="text-lg font-semibold text-gray-900 mt-1">{outcomeCounts[key]}</p>
+                <p className="text-lg font-semibold text-gray-900 mt-1">{formatCount(outcomeCounts[key])}</p>
               )}
             </Link>
           ))}
