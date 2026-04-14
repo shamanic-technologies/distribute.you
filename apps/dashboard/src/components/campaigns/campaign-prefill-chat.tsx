@@ -375,6 +375,8 @@ export function CampaignPrefillChat({
 
   // Continuously persist messages to localStorage (debounced) so they survive re-renders
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestRef = useRef({ messages, chatId });
+  latestRef.current = { messages, chatId };
   useEffect(() => {
     if (messages.length === 0) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
@@ -385,6 +387,13 @@ export function CampaignPrefillChat({
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
   }, [messages, chatId]);
+  // Flush on unmount so closing the panel never loses messages
+  useEffect(() => {
+    return () => {
+      const { messages: msgs, chatId: id } = latestRef.current;
+      if (msgs.length > 0) saveMessages(id, msgs);
+    };
+  }, []);
 
   // Real-time field updates: apply tool inputs as soon as they appear during streaming.
   // The AI passes field key-value pairs as tool ARGUMENTS (input), not in the result (output).
