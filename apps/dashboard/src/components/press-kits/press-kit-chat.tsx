@@ -362,6 +362,8 @@ export function PressKitChat({
 
   // Continuously persist messages to localStorage (debounced) so they survive re-renders
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestRef = useRef({ messages, kitId });
+  latestRef.current = { messages, kitId };
   useEffect(() => {
     if (messages.length === 0) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
@@ -372,6 +374,13 @@ export function PressKitChat({
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
   }, [messages, kitId]);
+  // Flush on unmount so closing the panel never loses messages
+  useEffect(() => {
+    return () => {
+      const { messages: msgs, kitId: id } = latestRef.current;
+      if (msgs.length > 0) saveMessages(id, msgs);
+    };
+  }, []);
 
   // Auto-scroll
   useEffect(() => {

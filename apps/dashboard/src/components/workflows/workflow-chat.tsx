@@ -770,6 +770,8 @@ export function WorkflowChat({
   // be lost if the Chat was recreated (e.g. during a fork/upgrade) before
   // onFinish fired.
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestRef = useRef({ messages, workflowId });
+  latestRef.current = { messages, workflowId };
   useEffect(() => {
     if (messages.length === 0) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
@@ -780,16 +782,12 @@ export function WorkflowChat({
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
   }, [messages, workflowId]);
-
-  // Flush pending save immediately on unmount so nothing is lost
+  // Flush on unmount so closing the panel never loses messages
   useEffect(() => {
     return () => {
-      if (saveTimerRef.current) {
-        clearTimeout(saveTimerRef.current);
-        saveMessages(workflowId, messages);
-      }
+      const { messages: msgs, workflowId: id } = latestRef.current;
+      if (msgs.length > 0) saveMessages(id, msgs);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // When workflowId changes (e.g. after a fork), hydrate chat from localStorage.

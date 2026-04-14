@@ -373,6 +373,8 @@ export function FeatureCreatorChat({
 
   // Continuously persist messages to localStorage (debounced) so they survive re-renders
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestRef = useRef({ messages, chatId });
+  latestRef.current = { messages, chatId };
   useEffect(() => {
     if (messages.length === 0) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
@@ -383,6 +385,13 @@ export function FeatureCreatorChat({
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
   }, [messages, chatId]);
+  // Flush on unmount so closing the panel never loses messages
+  useEffect(() => {
+    return () => {
+      const { messages: msgs, chatId: id } = latestRef.current;
+      if (msgs.length > 0) saveMessages(id, msgs);
+    };
+  }, []);
 
   // Auto-scroll: defer to next frame so pending scroll events update the ref first
   useEffect(() => {
