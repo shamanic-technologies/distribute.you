@@ -29,7 +29,7 @@ function resolveBaseGroup(dynastySlug: string): BaseGroup | null {
   return BASE_GROUPS.find((g) => g.slugs.includes(dynastySlug)) ?? null;
 }
 
-// ─── API response types ─────────────────────────────────────────────────────
+// ��── API response types ────���────────────────────────────────────────────────
 
 interface WorkflowRankedItem {
   workflow: {
@@ -253,7 +253,7 @@ async function fetchBrandRanked(
   });
 }
 
-// ─── Aggregate brands across features (deduplicate by brandId) ──────────────
+// ─── Aggregate brands across features (deduplicate by brandId) ───���──────────
 
 function aggregateBrands(brandsByFeature: BrandLeaderboardEntry[][]): BrandLeaderboardEntry[] {
   const byId = new Map<string, { sent: number; opened: number; clicked: number; replied: number; cost: number; name: string | null; domain: string | null }>();
@@ -303,7 +303,7 @@ function aggregateBrands(brandsByFeature: BrandLeaderboardEntry[][]): BrandLeade
   }));
 }
 
-// ─── Per-dynasty fetch result ────────────────────────────────────────────────
+// ─── Per-dynasty fetch result ───────────���────────────────────────────────────
 
 interface DynastyFetchResult {
   dynastySlug: string;
@@ -311,7 +311,7 @@ interface DynastyFetchResult {
   brands: BrandLeaderboardEntry[];
 }
 
-// ─── Build feature groups from base groups ───────────────────────────────────
+// ─── Build feature groups from base groups ────���──────────────────────────────
 
 function buildFeatureGroups(
   groupResults: Map<string, DynastyFetchResult[]>,
@@ -353,7 +353,7 @@ function buildFeatureGroups(
   }).filter((g) => g.workflows.length > 0 || g.brands.length > 0);
 }
 
-// ─── Main fetch function ────────────────────────────────────────────────────
+// ─── Main fetch function ────────────────────────────��───────────────────────
 
 export async function fetchLeaderboard(hostname = ""): Promise<LeaderboardData | null> {
   try {

@@ -3,6 +3,7 @@ import Image from "next/image";
 import { URLS } from "@distribute/content";
 import { PROD_URLS } from "@/lib/env-urls";
 import { Navbar } from "@/components/navbar";
+import { headers } from "next/headers";
 
 const PERF_URL = `${PROD_URLS.landing}/performance`;
 const SITE_NAME = "distribute Performance";
@@ -108,11 +109,13 @@ const breadcrumbJsonLd = {
   ],
 };
 
-export default function PerformanceLayout({
+export default async function PerformanceLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const headersList = await headers();
+  const host = headersList.get("host") || "";
   return (
     <>
       <script
@@ -123,7 +126,7 @@ export default function PerformanceLayout({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
-      <Navbar />
+      <Navbar host={host} />
       {children}
       <footer className="bg-gray-900 text-gray-400 py-8 px-4">
         <div className="max-w-4xl mx-auto text-center text-sm">
