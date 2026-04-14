@@ -76,7 +76,7 @@ describe("Multi-brand campaign support", () => {
     const fnEnd = apiContent.indexOf("\n}", fnStart) + 2;
     const fnBody = apiContent.slice(fnStart, fnEnd);
     expect(fnBody).toContain("brandIds: string[]");
-    expect(fnBody).toContain("body: { brandIds, fields }");
+    expect(fnBody).toContain("body: { brandIds, fields, resetCache }");
     expect(fnBody).not.toContain("headers");
   });
 
