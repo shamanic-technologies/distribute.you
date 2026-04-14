@@ -5,11 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { resolveUrls } from "@/lib/env-urls";
 
-export function PerformanceNavbar() {
-  const urls = useMemo(
-    () => resolveUrls(typeof window !== "undefined" ? window.location.hostname : ""),
-    [],
-  );
+export function PerformanceNavbar({ host }: { host: string }) {
+  const urls = useMemo(() => resolveUrls(host), [host]);
 
   return (
     <nav className="bg-white border-b border-gray-200 px-4 py-3">

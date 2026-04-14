@@ -706,9 +706,14 @@ export async function listFeatures(
   return apiCall<{ features: Feature[] }>(`/features${qs ? `?${qs}` : ""}`, { token });
 }
 
-/** GET /features/:slug — get a single feature */
+/** GET /features/:slug — get a single feature by versioned slug */
 export async function getFeature(slug: string, token?: string): Promise<{ feature: Feature }> {
   return apiCall<{ feature: Feature }>(`/features/${slug}`, { token });
+}
+
+/** GET /features/by-dynasty/:dynastySlug — get the active feature for a dynasty */
+export async function getFeatureByDynasty(dynastySlug: string, token?: string): Promise<{ feature: Feature }> {
+  return apiCall<{ feature: Feature }>(`/features/by-dynasty/${dynastySlug}`, { token });
 }
 
 /** POST /features — create a new feature */
@@ -784,7 +789,7 @@ export async function fetchStatsRegistry(token?: string): Promise<{ registry: St
 
 /** GET /features/:featureSlug/stats — stats for a feature */
 export async function fetchFeatureStats(
-  featureDynastySlug: string,
+  featureSlug: string,
   params?: { groupBy?: string; brandId?: string; campaignId?: string; workflowSlug?: string; workflowDynastySlug?: string },
   token?: string,
 ): Promise<FeatureStatsResponse> {
@@ -795,7 +800,7 @@ export async function fetchFeatureStats(
   if (params?.workflowSlug) query.set("workflowSlug", params.workflowSlug);
   if (params?.workflowDynastySlug) query.set("workflowDynastySlug", params.workflowDynastySlug);
   const qs = query.toString();
-  return apiCall<FeatureStatsResponse>(`/features/${featureDynastySlug}/stats${qs ? `?${qs}` : ""}`, { token });
+  return apiCall<FeatureStatsResponse>(`/features/${featureSlug}/stats${qs ? `?${qs}` : ""}`, { token });
 }
 
 /** GET /features/stats — global stats cross-features */

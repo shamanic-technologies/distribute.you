@@ -1,12 +1,37 @@
-import { FEATURE_LABELS } from "@distribute/content";
+import { URLS } from "@distribute/content";
 
-const API_URL =
-  process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 const API_KEY = process.env.ADMIN_DISTRIBUTE_API_KEY;
 
-// ─── API response types ──────────────────────────────────────────────────────
+function resolveApiUrl(hostname: string): string {
+  if (process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL) {
+    return process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL;
+  }
+  if (hostname.includes("staging")) {
+    return URLS.api.replace("://api.", "://api-staging.");
+  }
+  return URLS.api;
+}
 
-interface RankedItem {
+// ─── Base groups: merge multiple dynasty slugs into one display group ────────
+
+interface BaseGroup {
+  label: string;
+  slugs: string[];
+}
+
+const BASE_GROUPS: BaseGroup[] = [
+  { label: "Hiring Cold Email Outreach", slugs: ["hiring-cold-email-outreach"] },
+  { label: "Sales Cold Email Outreach", slugs: ["sales-cold-email-outreach"] },
+  { label: "PR Cold Email Outreach", slugs: ["pr-cold-email-outreach", "pr-cold-email-outreach-sophia", "pr-cold-email-outreach-berlin"] },
+];
+
+function resolveBaseGroup(dynastySlug: string): BaseGroup | null {
+  return BASE_GROUPS.find((g) => g.slugs.includes(dynastySlug)) ?? null;
+}
+
+// ��── API response types ────���────────────────────────────────────────────────
+
+interface WorkflowRankedItem {
   workflow: {
     id: string;
     slug: string;
@@ -16,17 +41,13 @@ interface RankedItem {
     version: number;
     featureSlug: string;
     createdForBrandId: string | null;
+    signatureName?: string;
   };
-  stats: {
-    totalCostInUsdCents: number;
-    totalOutcomes: number;
-    costPerOutcome: number | null;
-    completedRuns: number;
-  };
+  stats: Record<string, number | null>;
 }
 
-interface RankedResponse {
-  results: RankedItem[];
+interface WorkflowRankedResponse {
+  results: WorkflowRankedItem[];
 }
 
 interface BrandRankedItem {
@@ -136,58 +157,43 @@ export interface LeaderboardData {
   featureGroups: FeatureGroupData[];
 }
 
-// ─── Fetch ranked results for a single objective ─────────────────────────────
+// ─── Helpers to read stats from flat API response ───────────────────────────
 
-async function fetchRankedForObjective(
-  featureDynastySlug: string,
-  objective: string,
-  headers: Record<string, string>,
-): Promise<RankedItem[]> {
-  const res = await fetch(
-    `${API_URL}/v1/public/features/ranked?featureDynastySlug=${encodeURIComponent(featureDynastySlug)}&objective=${encodeURIComponent(objective)}&groupBy=workflow&limit=100`,
-    { headers, cache: "no-store" },
-  );
-  if (!res.ok) return [];
-  const data: RankedResponse = await res.json();
-  return data.results;
+function num(stats: Record<string, number | null>, key: string): number {
+  return (stats[key] as number) ?? 0;
 }
 
-// ─── Merge 4 objective results into WorkflowLeaderboardEntry[] ───────────────
+// ─── Fetch ranked workflows for a feature (single call returns all stats) ───
 
-function mergeRankedResults(
-  sentResults: RankedItem[],
-  openedResults: RankedItem[],
-  clickedResults: RankedItem[],
-  repliedResults: RankedItem[],
-): WorkflowLeaderboardEntry[] {
-  const sentMap = new Map(sentResults.map((r) => [r.workflow.slug, r]));
-  const openedMap = new Map(openedResults.map((r) => [r.workflow.slug, r]));
-  const clickedMap = new Map(clickedResults.map((r) => [r.workflow.slug, r]));
-  const repliedMap = new Map(repliedResults.map((r) => [r.workflow.slug, r]));
+async function fetchWorkflowRanked(
+  featureDynastySlug: string,
+  headers: Record<string, string>,
+  apiUrl: string,
+): Promise<WorkflowLeaderboardEntry[]> {
+  const res = await fetch(
+    `${apiUrl}/v1/public/features/ranked?featureDynastySlug=${encodeURIComponent(featureDynastySlug)}&objective=emailsSent&groupBy=workflow&limit=100`,
+    { headers, cache: "no-store" },
+  );
+  if (!res.ok) {
+    console.error(`[landing] Workflow ranked fetch failed for ${featureDynastySlug}: ${res.status}`);
+    return [];
+  }
+  const data: WorkflowRankedResponse = await res.json();
 
-  const allSlugs = new Set([
-    ...sentMap.keys(),
-    ...openedMap.keys(),
-    ...clickedMap.keys(),
-    ...repliedMap.keys(),
-  ]);
-
-  return [...allSlugs].map((slug) => {
-    const any =
-      sentMap.get(slug) ?? openedMap.get(slug) ?? clickedMap.get(slug) ?? repliedMap.get(slug)!;
-    const sent = sentMap.get(slug)?.stats.totalOutcomes ?? 0;
-    const opened = openedMap.get(slug)?.stats.totalOutcomes ?? 0;
-    const clicked = clickedMap.get(slug)?.stats.totalOutcomes ?? 0;
-    const replied = repliedMap.get(slug)?.stats.totalOutcomes ?? 0;
-    const cost = any.stats.totalCostInUsdCents;
+  return data.results.map((r) => {
+    const sent = num(r.stats, "emailsSent");
+    const opened = num(r.stats, "emailsOpened");
+    const clicked = num(r.stats, "emailsClicked");
+    const replied = num(r.stats, "repliesPositive") + num(r.stats, "repliesNegative") + num(r.stats, "repliesNeutral");
+    const cost = num(r.stats, "totalCostInUsdCents");
 
     return {
-      workflowName: any.workflow.name,
-      dynastyName: any.workflow.dynastyName ?? any.workflow.name,
-      signatureName: null,
+      workflowName: r.workflow.name,
+      dynastyName: r.workflow.dynastyName ?? r.workflow.name,
+      signatureName: r.workflow.signatureName ?? null,
       category: null,
-      featureSlug: any.workflow.featureSlug ?? null,
-      runCount: any.stats.completedRuns,
+      featureSlug: r.workflow.featureSlug ?? null,
+      runCount: num(r.stats, "completedRuns"),
       emailsSent: sent,
       emailsOpened: opened,
       emailsClicked: clicked,
@@ -203,81 +209,86 @@ function mergeRankedResults(
   });
 }
 
-// ─── Fetch brand-grouped ranked results for a single objective ───────────────
+// ─── Fetch ranked brands for a feature (single call returns all stats) ──────
 
-async function fetchBrandRankedForObjective(
+async function fetchBrandRanked(
   featureDynastySlug: string,
-  objective: string,
   headers: Record<string, string>,
-): Promise<BrandRankedItem[]> {
+  apiUrl: string,
+): Promise<BrandLeaderboardEntry[]> {
   const res = await fetch(
-    `${API_URL}/v1/public/features/ranked?featureDynastySlug=${encodeURIComponent(featureDynastySlug)}&objective=${encodeURIComponent(objective)}&groupBy=brand&limit=100`,
+    `${apiUrl}/v1/public/features/ranked?featureDynastySlug=${encodeURIComponent(featureDynastySlug)}&objective=emailsSent&groupBy=brand&limit=100`,
     { headers, cache: "no-store" },
   );
-  if (!res.ok) return [];
+  if (!res.ok) {
+    console.error(`[landing] Brand ranked fetch failed for ${featureDynastySlug}: ${res.status}`);
+    return [];
+  }
   const data: BrandRankedResponse = await res.json();
-  return data.results;
+
+  return data.results.map((r) => {
+    const sent = num(r.stats, "emailsSent");
+    const opened = num(r.stats, "emailsOpened");
+    const clicked = num(r.stats, "emailsClicked");
+    const replied = num(r.stats, "repliesPositive") + num(r.stats, "repliesNegative") + num(r.stats, "repliesNeutral");
+    const cost = num(r.stats, "totalCostInUsdCents");
+
+    return {
+      brandId: r.brand.id,
+      brandName: r.brand.name ?? null,
+      brandDomain: r.brand.domain ?? null,
+      brandUrl: null,
+      emailsSent: sent,
+      emailsOpened: opened,
+      emailsClicked: clicked,
+      emailsReplied: replied,
+      totalCostUsdCents: cost,
+      openRate: sent > 0 ? opened / sent : 0,
+      clickRate: sent > 0 ? clicked / sent : 0,
+      replyRate: sent > 0 ? replied / sent : 0,
+      costPerOpenCents: opened > 0 ? cost / opened : null,
+      costPerClickCents: clicked > 0 ? cost / clicked : null,
+      costPerReplyCents: replied > 0 ? cost / replied : null,
+    };
+  });
 }
 
-// ─── Aggregate brand stats from brand-grouped ranked results ─────────────────
+// ─── Aggregate brands across features (deduplicate by brandId) ───���──────────
 
-function aggregateBrandsFromBrandRanked(
-  allSent: BrandRankedItem[],
-  allOpened: BrandRankedItem[],
-  allClicked: BrandRankedItem[],
-  allReplied: BrandRankedItem[],
-): BrandLeaderboardEntry[] {
-  const sentMap = new Map(allSent.map((r) => [r.brand.id, r]));
-  const openedMap = new Map(allOpened.map((r) => [r.brand.id, r]));
-  const clickedMap = new Map(allClicked.map((r) => [r.brand.id, r]));
-  const repliedMap = new Map(allReplied.map((r) => [r.brand.id, r]));
+function aggregateBrands(brandsByFeature: BrandLeaderboardEntry[][]): BrandLeaderboardEntry[] {
+  const byId = new Map<string, { sent: number; opened: number; clicked: number; replied: number; cost: number; name: string | null; domain: string | null }>();
 
-  const allBrandIds = new Set([
-    ...sentMap.keys(),
-    ...openedMap.keys(),
-    ...clickedMap.keys(),
-    ...repliedMap.keys(),
-  ]);
-
-  const byBrand = new Map<
-    string,
-    { brandId: string; name: string | null; domain: string | null; sent: number; opened: number; clicked: number; replied: number; cost: number }
-  >();
-
-  for (const brandId of allBrandIds) {
-    const any = sentMap.get(brandId) ?? openedMap.get(brandId) ?? clickedMap.get(brandId) ?? repliedMap.get(brandId)!;
-    const sent = sentMap.get(brandId)?.stats.totalOutcomes ?? 0;
-    const opened = openedMap.get(brandId)?.stats.totalOutcomes ?? 0;
-    const clicked = clickedMap.get(brandId)?.stats.totalOutcomes ?? 0;
-    const replied = repliedMap.get(brandId)?.stats.totalOutcomes ?? 0;
-    const cost = any.stats.totalCostInUsdCents ?? 0;
-
-    const existing = byBrand.get(brandId);
-    if (existing) {
-      existing.sent += sent;
-      existing.opened += opened;
-      existing.clicked += clicked;
-      existing.replied += replied;
-      existing.cost += cost;
-    } else {
-      byBrand.set(brandId, {
-        brandId,
-        name: any.brand.name,
-        domain: any.brand.domain,
-        sent,
-        opened,
-        clicked,
-        replied,
-        cost,
-      });
+  for (const brands of brandsByFeature) {
+    for (const b of brands) {
+      if (!b.brandId) continue;
+      const existing = byId.get(b.brandId);
+      if (existing) {
+        existing.sent += b.emailsSent;
+        existing.opened += b.emailsOpened;
+        existing.clicked += b.emailsClicked;
+        existing.replied += b.emailsReplied;
+        existing.cost += b.totalCostUsdCents;
+        if (!existing.name && b.brandName) existing.name = b.brandName;
+        if (!existing.domain && b.brandDomain) existing.domain = b.brandDomain;
+      } else {
+        byId.set(b.brandId, {
+          sent: b.emailsSent,
+          opened: b.emailsOpened,
+          clicked: b.emailsClicked,
+          replied: b.emailsReplied,
+          cost: b.totalCostUsdCents,
+          name: b.brandName,
+          domain: b.brandDomain,
+        });
+      }
     }
   }
 
-  return [...byBrand.values()].map((b) => ({
-    brandId: b.brandId,
-    brandUrl: null,
-    brandDomain: b.domain,
+  return [...byId.entries()].map(([brandId, b]) => ({
+    brandId,
     brandName: b.name,
+    brandDomain: b.domain,
+    brandUrl: null,
     emailsSent: b.sent,
     emailsOpened: b.opened,
     emailsClicked: b.clicked,
@@ -292,36 +303,40 @@ function aggregateBrandsFromBrandRanked(
   }));
 }
 
-// ─── Build feature groups from workflow entries ──────────────────────────────
+// ─── Per-dynasty fetch result ───────────���────────────────────────────────────
+
+interface DynastyFetchResult {
+  dynastySlug: string;
+  workflows: WorkflowLeaderboardEntry[];
+  brands: BrandLeaderboardEntry[];
+}
+
+// ─── Build feature groups from base groups ────���──────────────────────────────
 
 function buildFeatureGroups(
-  workflows: WorkflowLeaderboardEntry[],
-  brands: BrandLeaderboardEntry[],
-  featureLabelMap: Map<string, string>,
+  groupResults: Map<string, DynastyFetchResult[]>,
 ): FeatureGroupData[] {
-  const grouped = new Map<string, WorkflowLeaderboardEntry[]>();
-  for (const wf of workflows) {
-    const key = wf.featureSlug ?? "unknown";
-    const arr = grouped.get(key) ?? [];
-    arr.push(wf);
-    grouped.set(key, arr);
-  }
+  return BASE_GROUPS.map((group) => {
+    const results = groupResults.get(group.label) ?? [];
 
-  return [...grouped.entries()].map(([featureSlug, sectionWorkflows]) => {
-    const sent = sectionWorkflows.reduce((s, w) => s + w.emailsSent, 0);
-    const opened = sectionWorkflows.reduce((s, w) => s + w.emailsOpened, 0);
-    const replied = sectionWorkflows.reduce((s, w) => s + w.emailsReplied, 0);
-    const cost = sectionWorkflows.reduce((s, w) => s + w.totalCostUsdCents, 0);
+    const allWorkflows: WorkflowLeaderboardEntry[] = [];
+    const allBrandArrays: BrandLeaderboardEntry[][] = [];
+
+    for (const r of results) {
+      allWorkflows.push(...r.workflows);
+      allBrandArrays.push(r.brands);
+    }
+
+    const brands = aggregateBrands(allBrandArrays);
+
+    const sent = allWorkflows.reduce((s, w) => s + w.emailsSent, 0);
+    const opened = allWorkflows.reduce((s, w) => s + w.emailsOpened, 0);
+    const replied = allWorkflows.reduce((s, w) => s + w.emailsReplied, 0);
+    const cost = allWorkflows.reduce((s, w) => s + w.totalCostUsdCents, 0);
 
     return {
-      featureSlug,
-      label:
-        featureLabelMap.get(featureSlug) ??
-        FEATURE_LABELS[featureSlug] ??
-        featureSlug
-          .split("-")
-          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-          .join(" "),
+      featureSlug: group.slugs[0],
+      label: group.label,
       stats: {
         emailsSent: sent,
         emailsOpened: opened,
@@ -332,114 +347,88 @@ function buildFeatureGroups(
         costPerOpenCents: opened > 0 ? cost / opened : null,
         costPerReplyCents: replied > 0 ? cost / replied : null,
       },
-      workflows: sectionWorkflows,
+      workflows: allWorkflows,
       brands,
     };
-  });
+  }).filter((g) => g.workflows.length > 0 || g.brands.length > 0);
 }
 
-// ─── Main fetch function ─────────────────────────────────────────────────────
+// ─── Main fetch function ────────────────────────────��───────────────────────
 
-export async function fetchLeaderboard(): Promise<LeaderboardData | null> {
+export async function fetchLeaderboard(hostname = ""): Promise<LeaderboardData | null> {
   try {
+    const apiUrl = resolveApiUrl(hostname);
     const headers: Record<string, string> = { Accept: "application/json" };
     if (API_KEY) headers["X-API-Key"] = API_KEY;
 
     // Step 1: Fetch feature list from api-service
-    const featuresRes = await fetch(`${API_URL}/public/features`, {
+    const featuresRes = await fetch(`${apiUrl}/public/features`, {
       headers,
       cache: "no-store",
     });
     if (!featuresRes.ok) {
-      console.error(`[landing] Features fetch failed: ${featuresRes.status}`);
+      console.error(`[landing] Performance: features fetch failed: ${featuresRes.status}`);
       return null;
     }
     const featuresData: { features: FeatureListItem[] } = await featuresRes.json();
     const features = featuresData.features;
 
     if (features.length === 0) {
-      console.error("[landing] No features returned from api-service");
+      console.error("[landing] Performance: no features returned from api-service");
       return null;
     }
 
-    const featureLabelMap = new Map<string, string>();
-    for (const f of features) {
-      featureLabelMap.set(f.dynastySlug, f.dynastyName);
+    // Step 2: Filter to only features that belong to a base group
+    const relevantFeatures = features.filter((f) => resolveBaseGroup(f.dynastySlug) !== null);
+
+    if (relevantFeatures.length === 0) {
+      console.error("[landing] Performance: no features matched any base group");
+      return null;
     }
 
     const heroFeature =
-      features.find((f) => f.dynastySlug.includes("sales-cold-email")) ?? features[0];
+      relevantFeatures.find((f) => f.dynastySlug.includes("sales-cold-email")) ?? relevantFeatures[0];
 
-    // Step 2: For each feature, make 4 parallel workflow-ranked + 4 parallel brand-ranked calls
-    const objectives = ["emailsSent", "emailsOpened", "emailsClicked", "emailsReplied"] as const;
-
-    const featureResults = await Promise.all(
-      features.map(async (feature) => {
-        const [sentResults, openedResults, clickedResults, repliedResults] = await Promise.all(
-          objectives.map((obj) => fetchRankedForObjective(feature.dynastySlug, obj, headers)),
-        );
-        const [brandSent, brandOpened, brandClicked, brandReplied] = await Promise.all(
-          objectives.map((obj) => fetchBrandRankedForObjective(feature.dynastySlug, obj, headers)),
-        );
-        return {
-          feature,
-          sentResults,
-          openedResults,
-          clickedResults,
-          repliedResults,
-          brandSent,
-          brandOpened,
-          brandClicked,
-          brandReplied,
-        };
+    // Step 3: For each relevant feature, fetch workflow + brand ranked data (2 calls per feature)
+    const dynastyResults: DynastyFetchResult[] = await Promise.all(
+      relevantFeatures.map(async (feature) => {
+        const [workflows, brands] = await Promise.all([
+          fetchWorkflowRanked(feature.dynastySlug, headers, apiUrl),
+          fetchBrandRanked(feature.dynastySlug, headers, apiUrl),
+        ]);
+        return { dynastySlug: feature.dynastySlug, workflows, brands };
       }),
     );
 
-    // Step 3: Fetch best stats for hero
+    // Step 4: Organize results by base group
+    const groupResults = new Map<string, DynastyFetchResult[]>();
+    for (const result of dynastyResults) {
+      const group = resolveBaseGroup(result.dynastySlug);
+      if (!group) continue;
+      const arr = groupResults.get(group.label) ?? [];
+      arr.push(result);
+      groupResults.set(group.label, arr);
+    }
+
+    // Step 5: Fetch best stats for hero
     const bestRes = await fetch(
-      `${API_URL}/v1/public/features/best?featureDynastySlug=${encodeURIComponent(heroFeature.dynastySlug)}&groupBy=workflow`,
+      `${apiUrl}/v1/public/features/best?featureDynastySlug=${encodeURIComponent(heroFeature.dynastySlug)}&groupBy=workflow`,
       { headers, cache: "no-store" },
     );
     const bestData: BestResponse | null = bestRes.ok ? await bestRes.json() : null;
 
-    // Step 4: Merge results per feature
-    const allWorkflows: WorkflowLeaderboardEntry[] = [];
-    const allBrandSent: BrandRankedItem[] = [];
-    const allBrandOpened: BrandRankedItem[] = [];
-    const allBrandClicked: BrandRankedItem[] = [];
-    const allBrandReplied: BrandRankedItem[] = [];
+    // Step 6: Build feature groups (per-group workflows + per-group brands)
+    const featureGroups = buildFeatureGroups(groupResults);
 
-    for (const {
-      sentResults,
-      openedResults,
-      clickedResults,
-      repliedResults,
-      brandSent,
-      brandOpened,
-      brandClicked,
-      brandReplied,
-    } of featureResults) {
-      const merged = mergeRankedResults(sentResults, openedResults, clickedResults, repliedResults);
-      allWorkflows.push(...merged);
-      allBrandSent.push(...brandSent);
-      allBrandOpened.push(...brandOpened);
-      allBrandClicked.push(...brandClicked);
-      allBrandReplied.push(...brandReplied);
-    }
+    // Step 7: Aggregate global lists from groups
+    const allWorkflows = featureGroups.flatMap((g) => g.workflows);
+    const brands = aggregateBrands(featureGroups.map((g) => g.brands));
 
-    // Step 5: Aggregate brands (name/domain come from the API response)
-    const brands = aggregateBrandsFromBrandRanked(
-      allBrandSent,
-      allBrandOpened,
-      allBrandClicked,
-      allBrandReplied,
-    );
-
-    // Step 6: Build hero stats
+    // Step 8: Build hero stats
     let hero: HeroStats | null = null;
     if (bestData) {
-      const openRecord = bestData.best["opened"] ?? null;
-      const replyRecord = bestData.best["replied"] ?? null;
+      const openRecord = bestData.best["emailsOpened"] ?? null;
+      const replyRecord = bestData.best["repliesPositive"] ?? null;
       hero = {
         bestCostPerOpen: openRecord
           ? { brandDomain: null, costPerOpenCents: openRecord.value }
@@ -450,9 +439,6 @@ export async function fetchLeaderboard(): Promise<LeaderboardData | null> {
       };
     }
 
-    // Step 7: Build feature groups
-    const featureGroups = buildFeatureGroups(allWorkflows, brands, featureLabelMap);
-
     return {
       brands,
       workflows: allWorkflows,
@@ -461,7 +447,7 @@ export async function fetchLeaderboard(): Promise<LeaderboardData | null> {
       featureGroups,
     };
   } catch (error) {
-    console.error("[landing] Leaderboard fetch error:", error);
+    console.error("[landing] Performance: leaderboard fetch error:", error);
     return null;
   }
 }
