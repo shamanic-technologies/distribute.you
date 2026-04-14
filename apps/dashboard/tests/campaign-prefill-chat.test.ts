@@ -144,5 +144,9 @@ describe("campaign-prefill-chat", () => {
       expect(instrSrc).toContain('"list_services"');
       expect(instrSrc).toContain('"list_service_endpoints"');
     });
+
+    it("includes browse_url tool for web page visits", () => {
+      expect(instrSrc).toContain('"browse_url"');
+    });
   });
 });
