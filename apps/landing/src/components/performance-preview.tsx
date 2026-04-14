@@ -1,5 +1,6 @@
 import type { FeatureGroupData } from "@/lib/performance/fetch-leaderboard";
 import { formatPercent, formatCostCents } from "@/lib/performance/fetch-leaderboard";
+import { computeBestStats } from "@/lib/performance/best-stats";
 
 interface PerformancePreviewProps {
   featureGroups: FeatureGroupData[];
@@ -10,7 +11,8 @@ export function PerformancePreview({ featureGroups }: PerformancePreviewProps) {
     <div>
       <div className="grid md:grid-cols-3 gap-4">
         {featureGroups.map((group) => {
-          const hasData = group.stats.replyRate > 0 || group.stats.costPerReplyCents !== null;
+          const best = computeBestStats(group.workflows, group.brands, "brand");
+          const hasData = best.replyRate > 0 || best.costPerReplyCents !== null;
 
           return (
             <div
@@ -28,7 +30,7 @@ export function PerformancePreview({ featureGroups }: PerformancePreviewProps) {
                       % Positive Replies
                     </p>
                     <p className="text-2xl font-bold text-gray-900 font-mono">
-                      {formatPercent(group.stats.replyRate)}
+                      {formatPercent(best.replyRate)}
                     </p>
                   </div>
                   <div>
@@ -36,7 +38,7 @@ export function PerformancePreview({ featureGroups }: PerformancePreviewProps) {
                       $ per Positive Reply
                     </p>
                     <p className="text-2xl font-bold text-gray-900 font-mono">
-                      {formatCostCents(group.stats.costPerReplyCents)}
+                      {formatCostCents(best.costPerReplyCents)}
                     </p>
                   </div>
                 </div>
