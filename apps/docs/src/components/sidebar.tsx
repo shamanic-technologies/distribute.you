@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { WORKFLOW_DEFINITIONS, URLS } from "@distribute/content";
+import { URLS } from "@distribute/content";
 
 const NAV_ITEMS = [
   {
@@ -11,15 +11,32 @@ const NAV_ITEMS = [
       { name: "Introduction", href: "/" },
       { name: "Quick Start", href: "/quickstart" },
       { name: "Authentication", href: "/authentication" },
-      { name: "MCP Usage", href: "/mcp" },
+    ],
+  },
+  {
+    title: "MCP Server",
+    items: [
+      { name: "Overview", href: "/mcp" },
+      { name: "Installation", href: "/mcp/installation" },
+      { name: "Tools Reference", href: "/mcp/tools" },
     ],
   },
   {
     title: "API Reference",
     items: [
       { name: "Overview", href: "/api" },
+      { name: "Brands", href: "/api/brands" },
+      { name: "Features", href: "/api/features" },
       { name: "Campaigns", href: "/api/campaigns" },
-      { name: "Results", href: "/api/results" },
+      { name: "Workflows", href: "/api/workflows" },
+      { name: "Leads", href: "/api/leads" },
+      { name: "Emails", href: "/api/emails" },
+      { name: "Outlets", href: "/api/outlets" },
+      { name: "Journalists", href: "/api/journalists" },
+      { name: "Articles", href: "/api/articles" },
+      { name: "Press Kits", href: "/api/press-kits" },
+      { name: "Billing", href: "/api/billing" },
+      { name: "Costs", href: "/api/costs" },
       { name: "Webhooks", href: "/api/webhooks" },
       { name: "Interactive Docs \u2197", href: URLS.apiDocs, external: true },
     ],
@@ -28,22 +45,14 @@ const NAV_ITEMS = [
     title: "Integrations",
     items: [
       { name: "Overview", href: "/integrations" },
-      { name: "ChatGPT", href: "/integrations/chatgpt" },
-      { name: "Claude", href: "/integrations/claude" },
+      { name: "Claude Code", href: "/integrations/claude" },
+      { name: "Claude Desktop", href: "/integrations/claude-desktop" },
       { name: "Cursor", href: "/integrations/cursor" },
-      { name: "Cursor Skill", href: "/integrations/cursor-skill" },
+      { name: "ChatGPT", href: "/integrations/chatgpt" },
       { name: "n8n", href: "/integrations/n8n" },
       { name: "Zapier", href: "/integrations/zapier" },
       { name: "Make.com", href: "/integrations/make" },
     ],
-  },
-  {
-    title: "Workflows",
-    items: WORKFLOW_DEFINITIONS.map((wf) => ({
-      name: wf.label,
-      href: `/${wf.featureSlug}`,
-      available: true,
-    })),
   },
 ];
 
@@ -60,11 +69,12 @@ export function Sidebar() {
             </h3>
             <ul className="space-y-1">
               {section.items.map((item) => {
-                const isActive = pathname === item.href;
-                const isAvailable = "available" in item ? item.available : true;
+                const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href + "/"));
                 const isExternal = "external" in item && item.external;
                 const LinkComponent = isExternal ? "a" : Link;
-                const linkProps = isExternal ? { href: item.href, target: "_blank", rel: "noopener noreferrer" } : { href: item.href };
+                const linkProps = isExternal
+                  ? { href: item.href, target: "_blank" as const, rel: "noopener noreferrer" }
+                  : { href: item.href };
 
                 return (
                   <li key={item.href}>
@@ -76,17 +86,7 @@ export function Sidebar() {
                           : "text-gray-700 hover:bg-gray-50 hover:text-brand-600"
                       }`}
                     >
-                      {"available" in item && (
-                        <span
-                          className={`w-2 h-2 rounded-full ${
-                            isAvailable ? "bg-brand-500" : "bg-gray-300"
-                          }`}
-                        />
-                      )}
                       {item.name}
-                      {!isAvailable && (
-                        <span className="text-xs text-gray-400 ml-auto">Soon</span>
-                      )}
                     </LinkComponent>
                   </li>
                 );
