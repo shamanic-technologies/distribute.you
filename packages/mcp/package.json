@@ -1,0 +1,27 @@
+{
+  "name": "@distribute/mcp",
+  "version": "0.1.0",
+  "description": "MCP server for the Distribute API — use from Claude Code, Claude Desktop, or any MCP client",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "bin": {
+    "distribute-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts",
+    "test": "vitest run",
+    "test:unit": "vitest run tests/unit"
+  },
+  "dependencies": {
+    "@distribute/api-client": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^3.0.0"
+  }
+}
