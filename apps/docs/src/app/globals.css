@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -21,10 +21,6 @@ body {
   font-family: "Inter", system-ui, -apple-system, sans-serif;
 }
 
-h1, h2, h3, .font-display {
-  font-family: "Fredoka", system-ui, -apple-system, sans-serif;
-}
-
 @layer utilities {
   .text-balance {
     text-wrap: balance;
@@ -33,12 +29,10 @@ h1, h2, h3, .font-display {
 
 /* Prose overrides for docs */
 .prose h2 {
-  font-family: "Fredoka", system-ui, -apple-system, sans-serif;
   color: #1a1a2e;
 }
 
 .prose h3 {
-  font-family: "Fredoka", system-ui, -apple-system, sans-serif;
   color: #1a1a2e;
 }
 
@@ -80,9 +74,11 @@ h1, h2, h3, .font-display {
 
 /* Backgrounds */
 html.dark .bg-white { background-color: #1e293b; }
+html.dark .bg-white\/80 { background-color: rgba(30, 41, 59, 0.8); }
 html.dark .bg-gray-50 { background-color: #0f172a; }
 html.dark .bg-gray-100 { background-color: #1e293b; }
 html.dark .bg-gray-200 { background-color: #334155; }
+html.dark .bg-gray-900 { background-color: #0f172a; }
 
 /* Gradients */
 html.dark .from-white { --tw-gradient-from: #1e293b; }
@@ -105,12 +101,18 @@ html.dark .border-gray-300 { border-color: #475569; }
 /* Hover states */
 html.dark .hover\:bg-gray-50:hover { background-color: #334155; }
 html.dark .hover\:bg-gray-100:hover { background-color: #334155; }
+html.dark .hover\:bg-gray-200:hover { background-color: #475569; }
 html.dark .hover\:text-gray-800:hover { color: #e2e8f0; }
+html.dark .hover\:text-gray-900:hover { color: #f1f5f9; }
 
 /* Brand colors in dark */
 html.dark .bg-brand-50 { background-color: rgba(219, 39, 119, 0.15); }
 html.dark .bg-brand-100 { background-color: rgba(219, 39, 119, 0.2); }
 html.dark .border-brand-200 { border-color: rgba(219, 39, 119, 0.3); }
+html.dark .text-brand-800 { color: #f9a8d4; }
+html.dark .text-brand-700 { color: #f9a8d4; }
+html.dark .text-brand-600 { color: #f472b6; }
+html.dark .text-brand-500 { color: #ec4899; }
 
 /* Status/accent backgrounds */
 html.dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.15); }

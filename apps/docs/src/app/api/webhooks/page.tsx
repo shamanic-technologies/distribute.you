@@ -11,13 +11,13 @@ export const metadata: Metadata = {
 
 export default function WebhooksApiPage() {
   return (
-    <div className="max-w-3xl mx-auto px-8 py-12">
-      <h1 className="text-4xl font-bold mb-4">Webhooks</h1>
-      <p className="text-xl text-gray-600 mb-8">
+    <div className="max-w-4xl mx-auto px-6 py-8">
+      <h1 className="text-2xl font-semibold text-gray-900 mb-3">Webhooks</h1>
+      <p className="text-base text-gray-500 mb-8">
         Receive real-time notifications when campaign events occur.
       </p>
 
-      <div className="prose prose-lg">
+      <div className="prose">
         <h2>Overview</h2>
         <p>
           Webhooks allow you to receive HTTP POST requests when events occur in

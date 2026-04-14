@@ -204,17 +204,19 @@ export default function FeatureCreateCampaignPage() {
   );
 
   // Fetch feature stats grouped by dynasty (aggregated across all versions)
+  // Use the resolved versioned slug — the stats endpoint requires the exact version
+  const featureVersionedSlug = featureDef?.slug;
   const { data: statsData, isLoading } = useAuthQuery(
-    ["featureStats", featureDynastySlug, "byDynasty"],
-    () => fetchFeatureStats(featureDynastySlug, { groupBy: "workflowDynastySlug" }),
-    { enabled: featureDef?.implemented === true, ...pollOptions },
+    ["featureStats", featureVersionedSlug, "byDynasty"],
+    () => fetchFeatureStats(featureVersionedSlug!, { groupBy: "workflowDynastySlug" }),
+    { enabled: !!featureVersionedSlug && featureDef?.implemented === true, ...pollOptions },
   );
 
   // Fetch brand-specific stats to know when each workflow was last used by this brand
   const { data: brandStatsData } = useAuthQuery(
-    ["featureStats", featureDynastySlug, "byDynasty", "brand", brandId],
-    () => fetchFeatureStats(featureDynastySlug, { groupBy: "workflowDynastySlug", brandId }),
-    { enabled: featureDef?.implemented === true, ...pollOptions },
+    ["featureStats", featureVersionedSlug, "byDynasty", "brand", brandId],
+    () => fetchFeatureStats(featureVersionedSlug!, { groupBy: "workflowDynastySlug", brandId }),
+    { enabled: !!featureVersionedSlug && featureDef?.implemented === true, ...pollOptions },
   );
 
   // Active workflows grouped by dynastySlug: keep only the latest per dynasty

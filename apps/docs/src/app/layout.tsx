@@ -100,23 +100,24 @@ const softwareJsonLd = {
   name: "distribute",
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
-  description: "AI-powered distribution automation platform using Model Context Protocol (MCP). Launch cold email campaigns, find leads, and automate outreach from ChatGPT, Claude, or Cursor.",
+  description: "AI-powered distribution automation platform. Automate sales outreach, journalist pitches, and hiring campaigns. Provide your URL and budget — distribute handles the rest.",
   url: "https://distribute.you",
   offers: {
     "@type": "Offer",
     price: "0",
     priceCurrency: "USD",
-    description: "Free tier available — bring your own API keys",
+    description: "At cost — no subscriptions, no markups. Pay only for what you use.",
   },
   featureList: [
-    "Cold email campaign automation",
-    "Lead search via Apollo",
+    "Sales cold email automation",
+    "Journalist outreach and PR",
+    "Hiring outreach",
+    "Press kit generation",
     "AI-powered email generation",
-    "ChatGPT integration",
-    "Claude integration",
-    "Cursor IDE integration",
-    "Webhook notifications",
-    "REST API access",
+    "Workflow ranking system",
+    "MCP server with 35 tools",
+    "REST API and TypeScript client",
+    "Real-time performance dashboards",
   ],
 };
 
@@ -166,34 +167,26 @@ const faqJsonLd = {
     },
     {
       "@type": "Question",
-      name: "How do I connect distribute to ChatGPT?",
+      name: "How do I install the distribute MCP server?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Go to ChatGPT Settings → Connectors → Add Custom Connector. Enter the MCP URL: https://mcp.distribute.you/mcp and add your API key as a Bearer token in the Authorization header.",
+        text: "For Claude Code: run 'claude mcp add distribute -- npx @distribute/mcp --api-key=YOUR_KEY'. For Claude Desktop or Cursor, add the MCP server config to your configuration file. See docs.distribute.you/mcp/installation for details.",
       },
     },
     {
       "@type": "Question",
-      name: "How do I connect distribute to Claude?",
+      name: "What tools are available?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "For Claude.ai, go to Settings → Integrations → Add more. Enter 'distribute' as the name and https://mcp.distribute.you/mcp as the URL. For Claude Desktop, edit the claude_desktop_config.json file.",
+        text: "The distribute MCP server provides 35 tools for managing brands, campaigns, workflows, leads, emails, outlets, journalists, articles, press kits, billing, and costs. See docs.distribute.you/mcp/tools for the full reference.",
       },
     },
     {
       "@type": "Question",
-      name: "How do I connect distribute to Cursor?",
+      name: "How much does distribute cost?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Add the MCP configuration to your .cursor/mcp.json file with the URL https://mcp.distribute.you/mcp and your API key in the Authorization header. Restart Cursor after saving.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "Can I use my own API keys?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Yes. distribute lets you use your own API keys for underlying services like OpenAI, Anthropic, and Apollo. You pay those providers directly at their rates, giving you full control over costs and usage.",
+        text: "distribute charges at cost — no subscriptions, no markups. You buy credits and only pay for what you use (AI calls, lead enrichment, email sends). See your cost breakdown in real-time in the dashboard.",
       },
     },
   ],
@@ -210,6 +203,11 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem("theme");if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme:dark)").matches))document.documentElement.classList.add("dark")}catch(e){}})()`,
+          }}
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){if(!location.hostname.includes("-staging"))return;var img=new Image();img.crossOrigin="anonymous";img.onload=function(){var c=document.createElement("canvas");c.width=img.width;c.height=img.height;var x=c.getContext("2d");x.drawImage(img,0,0);x.globalCompositeOperation="multiply";x.fillStyle="rgba(138,43,226,0.45)";x.fillRect(0,0,c.width,c.height);x.globalCompositeOperation="destination-in";x.drawImage(img,0,0);var d=c.toDataURL("image/png");document.querySelectorAll('link[rel*="icon"]').forEach(function(l){l.href=d})};img.src="/favicon.jpg"})()`,
           }}
         />
         <script

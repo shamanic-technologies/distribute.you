@@ -24,7 +24,6 @@ const config: Config = {
         },
       },
       fontFamily: {
-        display: ["Fredoka", "system-ui", "-apple-system", "sans-serif"],
         sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
       },
       typography: {

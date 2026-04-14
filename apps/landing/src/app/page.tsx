@@ -5,13 +5,15 @@ import { Navbar } from "@/components/navbar";
 import { DashboardPreview } from "@/components/dashboard-preview";
 import { PerformancePreview } from "@/components/performance-preview";
 import { StatusIndicator } from "@/components/status-indicator";
-import { fetchLeaderboardPreview } from "@/lib/fetch-leaderboard";
+import { fetchLeaderboard } from "@/lib/performance/fetch-leaderboard";
 import { DISTRIBUTION_FEATURES, DISTRIBUTION_STEPS } from "@distribute/content";
 import { resolveUrls } from "@/lib/env-urls";
 import type { FeatureColor } from "@distribute/content";
 import { headers } from "next/headers";
 
 export const revalidate = 300;
+
+const LOGO_DEV_TOKEN = process.env.NEXT_PUBLIC_LOGO_DEV_TOKEN;
 
 const FEATURE_COLOR_CLASSES: Record<FeatureColor, { bg: string; text: string; border: string; dot: string; hover: string }> = {
   emerald: { bg: "bg-emerald-100", text: "text-emerald-600", border: "border-emerald-200", dot: "bg-emerald-400", hover: "group-hover:text-emerald-600" },
@@ -26,10 +28,10 @@ export default async function Home() {
   const headersList = await headers();
   const host = headersList.get("host") || "";
   const urls = resolveUrls(host);
-  const leaderboard = await fetchLeaderboardPreview();
+  const leaderboard = await fetchLeaderboard(host);
   return (
     <main className="min-h-screen">
-      <Navbar />
+      <Navbar host={host} />
 
       {/* Hero */}
       <section className="pt-20 pb-8 px-4">
@@ -72,11 +74,8 @@ export default async function Home() {
           <h2 className="font-display text-3xl md:text-4xl font-bold mb-6 text-gray-900">
             Your product deserves to be known
           </h2>
-          <p className="text-lg text-gray-500 leading-relaxed mb-4">
-            You create value. We make sure the right people hear about it.
-          </p>
           <p className="text-lg text-gray-500 leading-relaxed">
-            In 2026, you shouldn&apos;t need to think about campaigns, sequences, or outreach tools.
+            You create value. We make sure the right people hear about it.
             Set a daily budget. Pick your channels.{" "}
             <span className="text-gray-700 font-medium">Distribution runs itself.</span>
           </p>
@@ -88,9 +87,20 @@ export default async function Home() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
             <div className="inline-flex items-center gap-2.5 bg-white border border-gray-200 px-4 py-2 rounded-full mb-6">
-              <div className="w-6 h-6 bg-orange-500 rounded-md flex items-center justify-center">
-                <span className="text-white text-xs font-bold">{'>'}_</span>
-              </div>
+              {LOGO_DEV_TOKEN ? (
+                <Image
+                  src={`https://img.logo.dev/claude.ai?token=${LOGO_DEV_TOKEN}&size=64`}
+                  alt="Claude"
+                  width={24}
+                  height={24}
+                  className="rounded-md"
+                  unoptimized
+                />
+              ) : (
+                <div className="w-6 h-6 bg-orange-500 rounded-md flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">{'>'}_</span>
+                </div>
+              )}
               <span className="text-sm font-medium text-gray-900">Claude Code</span>
             </div>
             <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
@@ -105,7 +115,16 @@ export default async function Home() {
             {/* Without distribute.you */}
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               <div className="px-5 py-3 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-red-400" />
+                {LOGO_DEV_TOKEN && (
+                  <Image
+                    src={`https://img.logo.dev/claude.ai?token=${LOGO_DEV_TOKEN}&size=32`}
+                    alt="Claude"
+                    width={16}
+                    height={16}
+                    className="rounded-sm"
+                    unoptimized
+                  />
+                )}
                 <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Without distribute.you</span>
               </div>
               <div className="p-5">
@@ -140,7 +159,16 @@ export default async function Home() {
             {/* With distribute.you */}
             <div className="bg-white rounded-xl border-2 border-emerald-200 shadow-sm overflow-hidden">
               <div className="px-5 py-3 bg-emerald-50 border-b border-emerald-100 flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                {LOGO_DEV_TOKEN && (
+                  <Image
+                    src={`https://img.logo.dev/claude.ai?token=${LOGO_DEV_TOKEN}&size=32`}
+                    alt="Claude"
+                    width={16}
+                    height={16}
+                    className="rounded-sm"
+                    unoptimized
+                  />
+                )}
                 <span className="text-xs font-medium text-emerald-600 uppercase tracking-wider">With distribute.you</span>
               </div>
               <div className="p-5">
@@ -178,11 +206,22 @@ export default async function Home() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
             <div className="inline-flex items-center gap-2.5 bg-white border border-gray-200 px-4 py-2 rounded-full mb-6">
-              <div className="w-6 h-6 bg-gray-900 rounded-md flex items-center justify-center">
-                <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
+              {LOGO_DEV_TOKEN ? (
+                <Image
+                  src={`https://img.logo.dev/openclaw.ai?token=${LOGO_DEV_TOKEN}&size=64`}
+                  alt="OpenClaw"
+                  width={24}
+                  height={24}
+                  className="rounded-md"
+                  unoptimized
+                />
+              ) : (
+                <div className="w-6 h-6 bg-gray-900 rounded-md flex items-center justify-center">
+                  <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+              )}
               <span className="text-sm font-medium text-gray-900">OpenClaw</span>
             </div>
             <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
@@ -197,7 +236,16 @@ export default async function Home() {
             {/* Without distribute.you */}
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               <div className="px-5 py-3 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-red-400" />
+                {LOGO_DEV_TOKEN && (
+                  <Image
+                    src={`https://img.logo.dev/openclaw.ai?token=${LOGO_DEV_TOKEN}&size=32`}
+                    alt="OpenClaw"
+                    width={16}
+                    height={16}
+                    className="rounded-sm"
+                    unoptimized
+                  />
+                )}
                 <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Without distribute.you</span>
               </div>
               <div className="p-5">
@@ -230,7 +278,16 @@ export default async function Home() {
             {/* With distribute.you */}
             <div className="bg-white rounded-xl border-2 border-emerald-200 shadow-sm overflow-hidden">
               <div className="px-5 py-3 bg-emerald-50 border-b border-emerald-100 flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                {LOGO_DEV_TOKEN && (
+                  <Image
+                    src={`https://img.logo.dev/openclaw.ai?token=${LOGO_DEV_TOKEN}&size=32`}
+                    alt="OpenClaw"
+                    width={16}
+                    height={16}
+                    className="rounded-sm"
+                    unoptimized
+                  />
+                )}
                 <span className="text-xs font-medium text-emerald-600 uppercase tracking-wider">With distribute.you</span>
               </div>
               <div className="p-5">
@@ -484,42 +541,33 @@ export default async function Home() {
                 </div>
 
                 {/* Notifications */}
-                <div className="px-4 pb-6 space-y-2.5 pt-4">
-                  <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-3.5 border border-white/5">
-                    <div className="flex items-center gap-2.5 mb-1">
-                      <div className="w-5 h-5 bg-brand-400 rounded-md flex items-center justify-center">
-                        <span className="text-white text-[10px] font-bold">d</span>
-                      </div>
-                      <span className="text-[10px] text-gray-400 uppercase tracking-wider">distribute.you</span>
-                      <span className="text-[10px] text-gray-600 ml-auto">now</span>
+                <div className="px-4 pb-6 space-y-2 pt-4">
+                  {[
+                    { type: "logo" as const, domain: "techcrunch.com", label: "TechCrunch", time: "now", text: "Sarah from TechCrunch wants to cover your launch" },
+                    { type: "logo" as const, domain: "shopify.com", label: "Shopify", time: "2m ago", text: "Mike from Shopify is interested in a demo" },
+                    { type: "avatar" as const, domain: null, label: "Lisa", time: "5m ago", text: "Lisa, Senior Frontend Engineer — open to chat about the role" },
+                  ].map((notif) => (
+                    <div key={notif.text} className="bg-white/10 backdrop-blur-lg rounded-xl px-3.5 py-2.5 border border-white/5 flex items-center gap-2.5">
+                      {notif.type === "logo" && LOGO_DEV_TOKEN ? (
+                        <Image
+                          src={`https://img.logo.dev/${notif.domain}?token=${LOGO_DEV_TOKEN}&size=48`}
+                          alt={notif.label}
+                          width={20}
+                          height={20}
+                          className="rounded flex-shrink-0"
+                          unoptimized
+                        />
+                      ) : (
+                        <div className="w-5 h-5 rounded-full bg-violet-400 flex items-center justify-center flex-shrink-0">
+                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                        </div>
+                      )}
+                      <p className="text-xs text-gray-300 flex-1 truncate">{notif.text}</p>
+                      <span className="text-[10px] text-gray-600 flex-shrink-0">{notif.time}</span>
                     </div>
-                    <p className="text-sm text-white font-medium">New lead replied</p>
-                    <p className="text-xs text-gray-400 mt-0.5">Sarah from TechCrunch wants to cover your launch</p>
-                  </div>
-
-                  <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-3.5 border border-white/5">
-                    <div className="flex items-center gap-2.5 mb-1">
-                      <div className="w-5 h-5 bg-brand-400 rounded-md flex items-center justify-center">
-                        <span className="text-white text-[10px] font-bold">d</span>
-                      </div>
-                      <span className="text-[10px] text-gray-400 uppercase tracking-wider">distribute.you</span>
-                      <span className="text-[10px] text-gray-600 ml-auto">2m ago</span>
-                    </div>
-                    <p className="text-sm text-white font-medium">New lead replied</p>
-                    <p className="text-xs text-gray-400 mt-0.5">Mike from Acme Corp is interested in a demo</p>
-                  </div>
-
-                  <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-3.5 border border-white/5">
-                    <div className="flex items-center gap-2.5 mb-1">
-                      <div className="w-5 h-5 bg-brand-400 rounded-md flex items-center justify-center">
-                        <span className="text-white text-[10px] font-bold">d</span>
-                      </div>
-                      <span className="text-[10px] text-gray-400 uppercase tracking-wider">distribute.you</span>
-                      <span className="text-[10px] text-gray-600 ml-auto">5m ago</span>
-                    </div>
-                    <p className="text-sm text-white font-medium">New lead replied</p>
-                    <p className="text-xs text-gray-400 mt-0.5">Lisa, Senior Engineer — open to chat about the role</p>
-                  </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -530,7 +578,7 @@ export default async function Home() {
       </section>
 
       {/* Performance Leaderboard */}
-      {leaderboard && (leaderboard.brands.length > 0 || leaderboard.workflows.length > 0) && (
+      {leaderboard && leaderboard.featureGroups.length > 0 && (
         <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-10">
@@ -538,11 +586,11 @@ export default async function Home() {
                 Real performance, real data
               </h2>
               <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-                Every workflow and every brand is ranked by actual metrics.
+                Every feature is ranked by actual metrics.
                 All data is public — no black boxes.
               </p>
             </div>
-            <PerformancePreview brands={leaderboard.brands} workflows={leaderboard.workflows} />
+            <PerformancePreview featureGroups={leaderboard.featureGroups} />
           </div>
         </section>
       )}

@@ -4,164 +4,133 @@ import { CopyForLLM } from "@/components/copy-for-llm";
 
 export const metadata: Metadata = {
   title: "Integrations",
-  description: "Connect distribute to ChatGPT, Claude, Cursor, n8n, Zapier, Make.com, and more. Automate workflows with MCP and REST API.",
-  openGraph: {
-    title: "Integrations | distribute Docs",
-    description: "Connect distribute to your favorite tools.",
-  },
+  description: "Connect distribute to Claude Code, Claude Desktop, Cursor, ChatGPT, n8n, Zapier, Make.com, and more.",
 };
 
 const LLM_INSTRUCTIONS = `# distribute Integrations
 
-## AI Clients (MCP Protocol)
-- ChatGPT: Settings → Connectors → Add https://mcp.distribute.you/mcp
-- Claude.ai: Settings → Integrations → Add https://mcp.distribute.you/mcp
-- Claude Desktop: Edit claude_desktop_config.json
-- Cursor: Add to .cursor/mcp.json
+## MCP Clients (recommended)
+- Claude Code: claude mcp add distribute -- npx @distribute/mcp --api-key=YOUR_KEY
+- Claude Desktop: add to claude_desktop_config.json
+- Cursor: add to .cursor/mcp.json
+- ChatGPT: MCP connector or GPT Actions
 
-## Automation Platforms
-- n8n: Use HTTP Request node with API
-- Zapier: Use Webhooks by Zapier
-- Make.com: Use HTTP module
+## Automation Platforms (REST API)
+- n8n: HTTP Request node
+- Zapier: Webhooks by Zapier
+- Make.com: HTTP module
 
 ## Integration Methods
-1. MCP Protocol (Recommended): Full automation from AI clients
-2. REST API: Direct HTTP calls from any platform
-3. Webhooks: Real-time event notifications
+1. MCP Server: 35 tools, recommended for AI clients
+2. REST API: api.distribute.you/v1, TypeScript client available
+3. Webhooks: real-time event notifications`;
 
-## MCP Endpoint
-https://mcp.distribute.you/mcp
-
-## API Base URL
-https://api.distribute.you/v1`;
-
-const AI_CLIENTS = [
+const MCP_CLIENTS = [
   {
-    name: "ChatGPT",
-    description: "Connect distribute to OpenAI's ChatGPT (Plus, Pro, Team, Enterprise).",
-    href: "/integrations/chatgpt",
-    icon: "🤖",
+    name: "Claude Code",
+    description: "Use distribute from Claude Code with one command.",
+    href: "/integrations/claude",
   },
   {
-    name: "Claude",
-    description: "Use distribute with Claude.ai, Claude Desktop, or Claude Code.",
-    href: "/integrations/claude",
-    icon: "🧠",
+    name: "Claude Desktop",
+    description: "Add distribute tools to Claude Desktop app.",
+    href: "/integrations/claude-desktop",
   },
   {
     name: "Cursor",
-    description: "Connect distribute to Cursor IDE for AI-assisted workflows.",
+    description: "Connect distribute to Cursor IDE.",
     href: "/integrations/cursor",
-    icon: "🖥️",
   },
   {
-    name: "Cursor Skill",
-    description: "Advanced: Install distribute as a Cursor skill with custom instructions.",
-    href: "/integrations/cursor-skill",
-    icon: "⚙️",
+    name: "ChatGPT",
+    description: "Use distribute with ChatGPT Plus, Pro, Team, or Enterprise.",
+    href: "/integrations/chatgpt",
   },
 ];
 
 const AUTOMATION_PLATFORMS = [
   {
     name: "n8n",
-    description: "Build automated workflows with n8n using HTTP requests or custom nodes.",
+    description: "Build automated workflows using HTTP requests.",
     href: "/integrations/n8n",
-    icon: "🔄",
   },
   {
     name: "Zapier",
-    description: "Connect distribute to 5,000+ apps with Zapier automations.",
+    description: "Connect distribute to 5,000+ apps with Zapier.",
     href: "/integrations/zapier",
-    icon: "⚡",
   },
   {
     name: "Make.com",
-    description: "Create visual automation scenarios with Make.com integration.",
+    description: "Create visual automation scenarios with Make.com.",
     href: "/integrations/make",
-    icon: "🔧",
   },
 ];
 
 export default function IntegrationsPage() {
   return (
-    <div className="max-w-3xl mx-auto px-8 py-12">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-4xl font-bold">Integrations</h1>
+    <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="flex items-center justify-between mb-3">
+        <h1 className="text-2xl font-semibold text-gray-900">Integrations</h1>
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
-      <p className="text-xl text-gray-600 mb-8">
+      <p className="text-base text-gray-500 mb-8">
         Connect distribute to your favorite tools and platforms.
       </p>
 
-      <h2 className="text-2xl font-semibold mb-4">AI Clients</h2>
-      <div className="grid gap-4 mb-8">
-        {AI_CLIENTS.map((integration) => (
+      <h2 className="text-lg font-semibold text-gray-900 mb-3">MCP Clients</h2>
+      <p className="text-gray-500 text-sm mb-4">
+        Use the <code className="text-brand-700 bg-brand-50 px-1.5 py-0.5 rounded text-xs">@distribute/mcp</code> server
+        from any MCP-compatible AI client.
+      </p>
+      <div className="grid gap-2 mb-10">
+        {MCP_CLIENTS.map((item) => (
           <Link
-            key={integration.name}
-            href={integration.href}
-            className="block p-6 border border-gray-200 rounded-lg hover:border-brand-500 hover:shadow-md transition"
+            key={item.name}
+            href={item.href}
+            className="block p-3 border border-gray-200 rounded-lg hover:border-brand-300 hover:shadow-sm transition"
           >
-            <div className="flex items-start gap-4">
-              <span className="text-3xl">{integration.icon}</span>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {integration.name}
-                </h3>
-                <p className="text-gray-600 mt-1">{integration.description}</p>
-              </div>
-            </div>
+            <h3 className="text-sm font-semibold text-gray-900">{item.name}</h3>
+            <p className="text-xs text-gray-500 mt-0.5">{item.description}</p>
           </Link>
         ))}
       </div>
 
-      <h2 className="text-2xl font-semibold mb-4">Automation Platforms</h2>
-      <div className="grid gap-4">
-        {AUTOMATION_PLATFORMS.map((integration) => (
+      <h2 className="text-lg font-semibold text-gray-900 mb-3">Automation Platforms</h2>
+      <p className="text-gray-500 text-sm mb-4">
+        Use the REST API to integrate distribute with automation platforms.
+      </p>
+      <div className="grid gap-2 mb-10">
+        {AUTOMATION_PLATFORMS.map((item) => (
           <Link
-            key={integration.name}
-            href={integration.href}
-            className="block p-6 border border-gray-200 rounded-lg hover:border-brand-500 hover:shadow-md transition"
+            key={item.name}
+            href={item.href}
+            className="block p-3 border border-gray-200 rounded-lg hover:border-brand-300 hover:shadow-sm transition"
           >
-            <div className="flex items-start gap-4">
-              <span className="text-3xl">{integration.icon}</span>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {integration.name}
-                </h3>
-                <p className="text-gray-600 mt-1">{integration.description}</p>
-              </div>
-            </div>
+            <h3 className="text-sm font-semibold text-gray-900">{item.name}</h3>
+            <p className="text-xs text-gray-500 mt-0.5">{item.description}</p>
           </Link>
         ))}
       </div>
 
-      <div className="prose prose-lg mt-12">
+      <div className="prose">
         <h2>Integration Methods</h2>
-        <p>distribute can be integrated in three ways:</p>
 
-        <h3>1. MCP Protocol (Recommended)</h3>
+        <h3>1. MCP Server (Recommended)</h3>
         <p>
-          Use our MCPs directly from Claude, Cursor, or any MCP-compatible
-          client. This is the most powerful option with full automation.
+          Install <code>@distribute/mcp</code> for full automation from AI clients.
+          35 tools for brands, campaigns, workflows, leads, press kits, billing, and more.
         </p>
 
         <h3>2. REST API</h3>
         <p>
-          Call our REST API from any platform that supports HTTP requests. See
-          the <Link href="/api">API Reference</Link> for details.
+          Call the REST API directly or use the <code>@distribute/api-client</code> TypeScript client.
+          See the <Link href="/api">API Reference</Link>.
         </p>
 
         <h3>3. Webhooks</h3>
         <p>
-          Receive real-time updates when campaigns change status, reach
-          milestones, or complete. Configure webhooks in your dashboard.
-        </p>
-
-        <h2>Need Help?</h2>
-        <p>
-          If you need help integrating distribute with your stack, reach out at{" "}
-          <a href="mailto:support@distribute.you">support@distribute.you</a>.
+          Receive real-time notifications when campaigns reach milestones, receive replies,
+          or complete. See <Link href="/api/webhooks">Webhooks</Link>.
         </p>
       </div>
     </div>

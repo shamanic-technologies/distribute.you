@@ -1,67 +1,76 @@
 import { Metadata } from "next";
+import Link from "next/link";
 import { CopyForLLM } from "@/components/copy-for-llm";
 import { URLS } from "@distribute/content";
 
-const API_RATE_LIMITS = { free: "100 requests/minute" };
-
 export const metadata: Metadata = {
   title: "API Reference",
-  description: "Complete REST API reference for distribute. Endpoints for campaigns, leads, company scraping, and more.",
+  description: "Complete REST API reference for distribute. Manage brands, campaigns, workflows, leads, press kits, billing, and more.",
   openGraph: {
     title: "API Reference | distribute Docs",
     description: "REST API documentation for distribute.",
   },
 };
 
-const LLM_INSTRUCTIONS = `# distribute REST API Reference
+const LLM_INSTRUCTIONS = `# distribute REST API
 
 ## Base URL
 https://api.distribute.you/v1
 
 ## Authentication
 All requests require X-API-Key header:
-curl https://api.distribute.you/v1/me -H "X-API-Key: YOUR_API_KEY"
+X-API-Key: dist_YOUR_KEY
 
-## Endpoints
+## TypeScript Client
+npm install @distribute/api-client
 
-### Account
-GET /v1/me - Get account info
+import { DistributeClient } from "@distribute/api-client";
+const client = new DistributeClient({ apiKey: "dist_YOUR_KEY" });
 
-### Company Scraping  
-POST /v1/company/scrape - Scrape company from URL
-Body: { "url": "https://acme.com" }
+## Endpoint Groups
+- /me, /api-keys — Identity
+- /brands — Brand management
+- /features — Automation features and stats
+- /campaigns — Campaign CRUD and stats
+- /workflows — Workflow inspection
+- /leads — Lead listing
+- /emails — Email listing
+- /outlets — Media outlet discovery
+- /journalists — Journalist discovery
+- /discoveries — Article discovery
+- /press-kits — Press kit generation
+- /billing — Balance and transactions
+- /runs/stats — Cost analytics
+- /email-gateway — Delivery stats`;
 
-### Lead Search
-POST /v1/leads/search - Search leads via Apollo
-Body: { "person_titles": ["CEO"], "organization_locations": ["US"] }
-
-POST /v1/leads/enrich - Enrich lead data
-
-### Reply Qualification
-POST /v1/qualify - Qualify email reply with AI
-Body: { "emailContent": "...", "context": "..." }
-
-### Campaigns
-POST /v1/campaigns - Create campaign (provide URL, target audience, outcome, budget)
-GET /v1/campaigns - List campaigns
-GET /v1/campaigns/:id/stats - Get campaign stats
-POST /v1/campaigns/:id/stop - Stop a campaign
-POST /v1/campaigns/:id/resume - Resume a stopped campaign
-
-Get API key at: https://dashboard.distribute.you/api-keys`;
+const API_SECTIONS = [
+  { name: "Brands", href: "/api/brands", description: "Create brands from URLs, extract structured data with AI" },
+  { name: "Features", href: "/api/features", description: "Browse automation types, stats, and prefill inputs" },
+  { name: "Campaigns", href: "/api/campaigns", description: "Create, stop, and monitor campaigns" },
+  { name: "Workflows", href: "/api/workflows", description: "Inspect workflows, DAGs, and key status" },
+  { name: "Leads", href: "/api/leads", description: "List discovered leads and their outreach status" },
+  { name: "Emails", href: "/api/emails", description: "View generated emails and sequences" },
+  { name: "Outlets", href: "/api/outlets", description: "Media outlets discovered for your brand" },
+  { name: "Journalists", href: "/api/journalists", description: "Journalists discovered for PR outreach" },
+  { name: "Articles", href: "/api/articles", description: "Articles mentioning your brand" },
+  { name: "Press Kits", href: "/api/press-kits", description: "Generate and manage press kits" },
+  { name: "Billing", href: "/api/billing", description: "Balance, account settings, transactions" },
+  { name: "Costs", href: "/api/costs", description: "Cost breakdown and delivery statistics" },
+  { name: "Webhooks", href: "/api/webhooks", description: "Real-time event notifications" },
+];
 
 export default function ApiOverviewPage() {
   return (
-    <div className="max-w-3xl mx-auto px-8 py-12">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-4xl font-bold">API Reference</h1>
+    <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="flex items-center justify-between mb-3">
+        <h1 className="text-2xl font-semibold text-gray-900">API Reference</h1>
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
-      <p className="text-xl text-gray-600 mb-4">
-        Direct REST API access to distribute services.
+      <p className="text-base text-gray-500 mb-4">
+        Direct REST API access to distribute.
       </p>
 
-      <div className="bg-brand-50 border border-brand-200 rounded-lg p-4 mb-8 flex items-center justify-between">
+      <div className="bg-brand-50 border border-brand-200 rounded-lg p-4 mb-10 flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-brand-800">Interactive API Reference</p>
           <p className="text-sm text-brand-600">Try endpoints directly in the browser with our Scalar-powered docs.</p>
@@ -70,257 +79,63 @@ export default function ApiOverviewPage() {
           href={URLS.apiDocs}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm bg-brand-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-brand-600 transition whitespace-nowrap"
+          className="text-sm bg-gray-900 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-800 transition whitespace-nowrap"
         >
           Open API Docs
         </a>
       </div>
 
-      <div className="prose prose-lg">
+      <div className="prose">
         <h2>Base URL</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg">
           <code>https://api.distribute.you/v1</code>
         </pre>
 
         <h2>Authentication</h2>
-        <p>All requests require your API key in the header:</p>
+        <p>All requests require your API key in the <code>X-API-Key</code> header:</p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`curl https://api.distribute.you/v1/campaigns \\
-  -H "X-API-Key: YOUR_API_KEY"`}</code>
-        </pre>
-        <p>
-          Get your API key at{" "}
-          <a href={URLS.apiKeys}>
-            {URLS.apiKeys.replace("https://", "")}
-          </a>
-        </p>
-
-        <h2>Endpoints</h2>
-
-        <h3>Account</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Method</th>
-              <th>Endpoint</th>
-              <th>Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><code>GET</code></td>
-              <td>/me</td>
-              <td>Get current user and organization info</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <h3>Company Scraping</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Method</th>
-              <th>Endpoint</th>
-              <th>Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><code>POST</code></td>
-              <td>/company/scrape</td>
-              <td>Scrape company info from URL</td>
-            </tr>
-            <tr>
-              <td><code>GET</code></td>
-              <td>/company/:id</td>
-              <td>Get scraped company by ID</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <h4>Scrape Company</h4>
-        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`POST /v1/company/scrape
-Content-Type: application/json
-
-{
-  "url": "https://acme.com"
-}`}</code>
+          <code>{`curl https://api.distribute.you/v1/me \\
+  -H "X-API-Key: dist_YOUR_KEY"`}</code>
         </pre>
 
-        <h3>Lead Search</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Method</th>
-              <th>Endpoint</th>
-              <th>Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><code>POST</code></td>
-              <td>/leads/search</td>
-              <td>Search leads via Apollo</td>
-            </tr>
-            <tr>
-              <td><code>POST</code></td>
-              <td>/leads/enrich</td>
-              <td>Enrich a lead with additional info</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <h4>Search Leads</h4>
+        <h2>TypeScript Client</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`POST /v1/leads/search
-Content-Type: application/json
-
-{
-  "person_titles": ["CEO", "CTO", "Founder"],
-  "organization_locations": ["United States"],
-  "organization_industries": ["Software"],
-  "per_page": 10
-}`}</code>
+          <code>{`npm install @distribute/api-client`}</code>
         </pre>
-
-        <h3>Reply Qualification</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Method</th>
-              <th>Endpoint</th>
-              <th>Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><code>POST</code></td>
-              <td>/qualify</td>
-              <td>Qualify an email reply with AI</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <h4>Qualify Reply</h4>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`POST /v1/qualify
-Content-Type: application/json
+          <code>{`import { DistributeClient } from "@distribute/api-client";
 
-{
-  "fromEmail": "prospect@company.com",
-  "toEmail": "sales@yourbrand.com",
-  "subject": "Re: Quick question",
-  "bodyText": "Thanks for reaching out! I'd love to learn more..."
-}`}</code>
+const client = new DistributeClient({ apiKey: "dist_YOUR_KEY" });
+const { brands } = await client.listBrands();`}</code>
         </pre>
-
-        <h3>Campaigns</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Method</th>
-              <th>Endpoint</th>
-              <th>Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><code>POST</code></td>
-              <td>/campaigns</td>
-              <td>Create a new campaign</td>
-            </tr>
-            <tr>
-              <td><code>GET</code></td>
-              <td>/campaigns</td>
-              <td>List all campaigns</td>
-            </tr>
-            <tr>
-              <td><code>GET</code></td>
-              <td>/campaigns/:id</td>
-              <td>Get campaign details</td>
-            </tr>
-            <tr>
-              <td><code>GET</code></td>
-              <td>/campaigns/:id/stats</td>
-              <td>Get campaign statistics</td>
-            </tr>
-            <tr>
-              <td><code>POST</code></td>
-              <td>/campaigns/:id/stop</td>
-              <td>Stop a campaign</td>
-            </tr>
-            <tr>
-              <td><code>POST</code></td>
-              <td>/campaigns/:id/resume</td>
-              <td>Resume a stopped campaign</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <h4>Create Campaign</h4>
-        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`POST /v1/campaigns
-Content-Type: application/json
-
-{
-  "name": "Q1 Outreach",
-  "brandUrl": "https://yourbrand.com",
-  "targetAudience": "CTOs at SaaS startups with 10-50 employees in the US",
-  "targetOutcome": "Book sales demos",
-  "valueForTarget": "Access to enterprise analytics at startup pricing",
-  "maxBudgetDailyUsd": 10
-}`}</code>
-        </pre>
-
-        <h2>Rate Limits</h2>
-        <p>
-          <strong>Rate limit:</strong> {API_RATE_LIMITS.free}
-        </p>
 
         <h2>Errors</h2>
-        <p>All errors return a JSON response:</p>
-        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`{
-  "error": "Invalid API key"
-}`}</code>
-        </pre>
-
-        <h3>HTTP Status Codes</h3>
         <table>
           <thead>
-            <tr>
-              <th>Code</th>
-              <th>Meaning</th>
-            </tr>
+            <tr><th>Code</th><th>Meaning</th></tr>
           </thead>
           <tbody>
-            <tr>
-              <td><code>200</code></td>
-              <td>Success</td>
-            </tr>
-            <tr>
-              <td><code>400</code></td>
-              <td>Bad request (invalid parameters)</td>
-            </tr>
-            <tr>
-              <td><code>401</code></td>
-              <td>Unauthorized (invalid API key)</td>
-            </tr>
-            <tr>
-              <td><code>404</code></td>
-              <td>Resource not found</td>
-            </tr>
-            <tr>
-              <td><code>429</code></td>
-              <td>Rate limit exceeded</td>
-            </tr>
-            <tr>
-              <td><code>500</code></td>
-              <td>Internal server error</td>
-            </tr>
+            <tr><td><code>400</code></td><td>Bad request — invalid parameters</td></tr>
+            <tr><td><code>401</code></td><td>Unauthorized — invalid or missing API key</td></tr>
+            <tr><td><code>404</code></td><td>Resource not found</td></tr>
+            <tr><td><code>429</code></td><td>Rate limit exceeded</td></tr>
+            <tr><td><code>500</code></td><td>Internal server error</td></tr>
           </tbody>
         </table>
+      </div>
+
+      <h2 className="text-lg font-semibold text-gray-900 mt-10 mb-4">Endpoints</h2>
+      <div className="grid gap-3">
+        {API_SECTIONS.map((section) => (
+          <Link
+            key={section.name}
+            href={section.href}
+            className="block p-4 border border-gray-200 rounded-lg hover:border-brand-300 hover:shadow-sm transition"
+          >
+            <h3 className="text-base font-semibold text-gray-900">{section.name}</h3>
+            <p className="text-sm text-gray-500 mt-1">{section.description}</p>
+          </Link>
+        ))}
       </div>
     </div>
   );
