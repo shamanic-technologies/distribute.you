@@ -4,29 +4,47 @@ import { useState } from "react";
 import { useOrganizationList } from "@clerk/nextjs";
 
 type AccountType = "agency" | "company";
-type Step = "value-prop" | "type-selection" | "name-input";
+type Step = "value-prop" | "type-selection" | "url-input";
+
+/** Extract a bare domain from user input (strips protocol, path, query, etc.) */
+function extractDomain(input: string): string | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  try {
+    const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    const hostname = new URL(withProtocol).hostname;
+    if (!hostname || !hostname.includes(".")) return null;
+    return hostname;
+  } catch {
+    return null;
+  }
+}
 
 export default function OnboardingPage() {
   const { createOrganization, setActive } = useOrganizationList();
   const [step, setStep] = useState<Step>("value-prop");
   const [accountType, setAccountType] = useState<AccountType | null>(null);
-  const [name, setName] = useState("");
+  const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const domain = extractDomain(url);
+
   const handleTypeSelect = (type: AccountType) => {
     setAccountType(type);
-    setStep("name-input");
+    setStep("url-input");
   };
 
   const handleSubmit = async () => {
-    if (!name.trim() || !accountType || !createOrganization || !setActive) return;
+    if (!domain || !accountType || !createOrganization || !setActive) return;
     setSubmitting(true);
     setError(null);
     try {
-      const org = await createOrganization({ name: name.trim() });
+      const brandUrl = /^https?:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`;
+      const org = await createOrganization({ name: domain });
       await setActive({ organization: org.id });
-      window.location.href = "/";
+      // Full reload so Clerk session cookie is updated before API calls
+      window.location.href = `/orgs/${org.id}/brands?autoCreate=${encodeURIComponent(brandUrl)}`;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {
@@ -144,7 +162,7 @@ export default function OnboardingPage() {
     );
   }
 
-  // Step 3: Name Input — redirects to dashboard on success
+  // Step 3: URL Input — creates org + brand, redirects to brand page
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-8 md:p-12">
       <button
@@ -157,10 +175,10 @@ export default function OnboardingPage() {
         Back
       </button>
       <h2 className="font-display text-2xl font-bold text-gray-900 mb-2">
-        {accountType === "agency" ? "What's your agency name?" : "What's your company name?"}
+        {accountType === "agency" ? "What's your agency website?" : "What's your company website?"}
       </h2>
       <p className="text-gray-500 mb-6">
-        This will be used to set up your workspace.
+        We&apos;ll use this to set up your workspace and create your first brand.
       </p>
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 mb-4 text-sm">
@@ -170,18 +188,21 @@ export default function OnboardingPage() {
       <div className="space-y-4">
         <input
           type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder={accountType === "agency" ? "e.g. Growth Partners" : "e.g. Acme Inc"}
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="e.g. acme.com"
           className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           autoFocus
           onKeyDown={(e) => {
-            if (e.key === "Enter" && name.trim()) handleSubmit();
+            if (e.key === "Enter" && domain) handleSubmit();
           }}
         />
+        {url.trim() && !domain && (
+          <p className="text-sm text-red-500">Please enter a valid URL (e.g. acme.com)</p>
+        )}
         <button
           onClick={handleSubmit}
-          disabled={!name.trim() || submitting}
+          disabled={!domain || submitting}
           className="w-full px-6 py-3 bg-brand-600 text-white rounded-xl hover:bg-brand-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {submitting ? "Setting up..." : "Create Workspace"}
