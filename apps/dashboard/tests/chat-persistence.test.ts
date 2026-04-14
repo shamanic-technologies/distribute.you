@@ -49,5 +49,14 @@ for (const { name, file } of chatComponents) {
       expect(content).toContain("onFinish:");
       expect(content).toContain("saveMessages(");
     });
+
+    it("should flush messages on unmount via a ref (not stale closure)", () => {
+      // Must use a ref to hold latest messages so the unmount effect
+      // saves current data, not a stale first-render snapshot
+      expect(content).toContain("latestRef");
+      expect(content).toContain("latestRef.current =");
+      // The unmount-only effect must have an empty dependency array
+      expect(content).toContain("}, []);");
+    });
   });
 }
