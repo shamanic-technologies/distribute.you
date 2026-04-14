@@ -41,16 +41,16 @@ const client = new DistributeClient({ apiKey: "dist_YOUR_KEY" });
 
 export default function AuthenticationPage() {
   return (
-    <div className="max-w-3xl mx-auto px-8 py-12">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="font-display text-5xl font-bold text-gray-900">Authentication</h1>
+    <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="flex items-center justify-between mb-3">
+        <h1 className="text-2xl font-semibold text-gray-900">Authentication</h1>
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
-      <p className="text-xl text-gray-500 mb-10">
+      <p className="text-base text-gray-500 mb-8">
         Set up your API key to authenticate with distribute.
       </p>
 
-      <div className="prose prose-lg">
+      <div className="prose">
         <h2>1. Create an Account</h2>
         <p>
           Sign up at{" "}

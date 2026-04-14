@@ -1,19 +1,36 @@
 import { Metadata } from "next";
+import { CopyForLLM } from "@/components/copy-for-llm";
 
 export const metadata: Metadata = {
   title: "Outlets API",
   description: "List media outlets discovered for your brand via the distribute API.",
 };
 
+const LLM_INSTRUCTIONS = `# Outlets API
+
+## List Brand Outlets
+GET /v1/outlets?brandId=brand_abc123
+GET /v1/outlets?brandId=brand_abc123&featureDynastySlug=journalists-email-cold-outreach
+
+## List Campaign Outlets
+GET /v1/campaigns/:campaignId/outlets
+
+## TypeScript Client
+const { outlets, total } = await client.listBrandOutlets("brand_abc123");
+const { outlets: campOutlets } = await client.listCampaignOutlets("camp_abc");`;
+
 export default function OutletsApiPage() {
   return (
-    <div className="max-w-3xl mx-auto px-8 py-12">
-      <h1 className="font-display text-5xl font-bold text-gray-900 mb-4">Outlets</h1>
-      <p className="text-xl text-gray-500 mb-10">
+    <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="flex items-center justify-between mb-3">
+        <h1 className="text-2xl font-semibold text-gray-900">Outlets</h1>
+        <CopyForLLM content={LLM_INSTRUCTIONS} />
+      </div>
+      <p className="text-base text-gray-500 mb-8">
         Media outlets discovered for your brand.
       </p>
 
-      <div className="prose prose-lg">
+      <div className="prose">
         <h2>List Brand Outlets</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/outlets?brandId=brand_abc123

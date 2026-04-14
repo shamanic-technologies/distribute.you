@@ -1,19 +1,46 @@
 import { Metadata } from "next";
+import { CopyForLLM } from "@/components/copy-for-llm";
 
 export const metadata: Metadata = {
   title: "Press Kits API",
   description: "Generate, list, and manage AI-powered press kits via the distribute API.",
 };
 
+const LLM_INSTRUCTIONS = `# Press Kits API
+
+## List Press Kits
+GET /v1/press-kits/media-kits
+GET /v1/press-kits/media-kits?brand_id=brand_abc123
+
+## Get Press Kit
+GET /v1/press-kits/media-kits/:id
+
+## Generate Press Kit
+POST /v1/press-kits/media-kits
+Headers: x-brand-id: brand_abc123
+{ "instruction": "Create a press kit highlighting our Series A funding" }
+
+## View Stats
+GET /v1/press-kits/media-kits/stats/views?brandId=brand_abc123
+GET /v1/press-kits/media-kits/stats/views?mediaKitId=mk_abc&groupBy=country
+
+## TypeScript Client
+const { mediaKits } = await client.listPressKits({ brandId: "brand_abc" });
+const { mediaKitId } = await client.generatePressKit("Create a press kit", { brandId: "brand_abc" });
+const stats = await client.getPressKitViewStats({ brandId: "brand_abc" });`;
+
 export default function PressKitsApiPage() {
   return (
-    <div className="max-w-3xl mx-auto px-8 py-12">
-      <h1 className="font-display text-5xl font-bold text-gray-900 mb-4">Press Kits</h1>
-      <p className="text-xl text-gray-500 mb-10">
+    <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="flex items-center justify-between mb-3">
+        <h1 className="text-2xl font-semibold text-gray-900">Press Kits</h1>
+        <CopyForLLM content={LLM_INSTRUCTIONS} />
+      </div>
+      <p className="text-base text-gray-500 mb-8">
         Generate and manage AI-powered press kits.
       </p>
 
-      <div className="prose prose-lg">
+      <div className="prose">
         <h2>List Press Kits</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/press-kits/media-kits

@@ -7,13 +7,13 @@ export const metadata: Metadata = {
 
 export default function CursorIntegrationPage() {
   return (
-    <div className="max-w-3xl mx-auto px-8 py-12">
-      <h1 className="font-display text-5xl font-bold text-gray-900 mb-4">Cursor</h1>
-      <p className="text-xl text-gray-500 mb-10">
+    <div className="max-w-4xl mx-auto px-6 py-8">
+      <h1 className="text-2xl font-semibold text-gray-900 mb-3">Cursor</h1>
+      <p className="text-base text-gray-500 mb-8">
         Connect distribute to Cursor IDE.
       </p>
 
-      <div className="prose prose-lg">
+      <div className="prose">
         <h2>Setup</h2>
         <p>Add to <code>.cursor/mcp.json</code> in your project root (or global config):</p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">

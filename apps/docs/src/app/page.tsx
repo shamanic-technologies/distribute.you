@@ -1,16 +1,49 @@
 import Link from "next/link";
 import { URLS } from "@distribute/content";
+import { CopyForLLM } from "@/components/copy-for-llm";
+
+const LLM_INSTRUCTIONS = `# distribute Documentation
+
+## What is distribute?
+AI-powered distribution automation. Provide a URL + budget, distribute handles lead finding, content generation, outreach, and reporting.
+
+## Channels
+- Sales Outreach — Cold email to prospects matching your ICP
+- Journalist Outreach — Pitch journalists for press coverage
+- Hiring Outreach — Reach matching candidates
+
+## Key Concepts
+- Brands: your company/product profile, auto-analyzed from URL
+- Features: campaign types (Sales Cold Email, Journalist Pitch, etc.)
+- Workflows: execution engines behind features, auto-optimized
+- Campaigns: running instances with budget limits
+
+## Quick Start
+1. Sign up at dashboard.distribute.you
+2. Get API key (dist_xxx format)
+3. Install MCP: claude mcp add distribute -- npx @distribute/mcp --api-key=YOUR_KEY
+4. "Create a brand for acme.com"
+5. "Launch a cold email campaign targeting CTOs, $10/day budget"
+
+## Access Methods
+- MCP Server: npx @distribute/mcp (35 tools)
+- REST API: api.distribute.you/v1
+- TypeScript Client: @distribute/api-client
+- Dashboard: dashboard.distribute.you`;
 
 export default function DocsHome() {
   return (
-    <div className="max-w-3xl mx-auto px-8 py-12">
-      <h1 className="font-display text-5xl font-bold mb-4 text-gray-900">distribute Documentation</h1>
-      <p className="text-xl text-gray-500 mb-10">
+    <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="flex items-center justify-between mb-3">
+        <h1 className="text-2xl font-semibold text-gray-900">distribute Documentation</h1>
+        <CopyForLLM content={LLM_INSTRUCTIONS} />
+      </div>
+      <p className="text-base text-gray-500 mb-8">
         Your distribution, automated. Provide a URL and a budget — distribute handles lead finding,
         content generation, outreach, and reporting.
       </p>
 
-      <div className="prose prose-lg">
+      <div className="prose">
         <h2>What is distribute?</h2>
         <p>
           distribute is an AI-powered distribution automation platform. You provide your website URL and a daily budget.
