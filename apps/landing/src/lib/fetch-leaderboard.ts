@@ -1,33 +1,20 @@
 const API_URL =
   process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 
-export interface BrandEntry {
-  brandDomain: string | null;
-  brandName?: string | null;
-  emailsSent: number;
-  openRate: number;
-  clickRate: number;
+export interface FeaturePreviewStats {
+  featureSlug: string;
+  featureLabel: string;
   replyRate: number;
-  costPerOpenCents: number | null;
-  costPerClickCents: number | null;
-  costPerReplyCents: number | null;
-}
-
-export interface WorkflowEntry {
-  workflowName: string;
-  dynastyName: string;
-  emailsSent: number;
-  openRate: number;
-  clickRate: number;
-  replyRate: number;
-  costPerOpenCents: number | null;
-  costPerClickCents: number | null;
   costPerReplyCents: number | null;
 }
 
 export interface LeaderboardPreview {
-  brands: BrandEntry[];
-  workflows: WorkflowEntry[];
+  features: FeaturePreviewStats[];
+}
+
+interface FeatureListItem {
+  dynastyName: string;
+  dynastySlug: string;
 }
 
 interface PublicRankedItem {
@@ -45,32 +32,66 @@ interface PublicRankedItem {
 
 export async function fetchLeaderboardPreview(): Promise<LeaderboardPreview | null> {
   try {
-    const res = await fetch(`${API_URL}/v1/public/features/ranked?featureDynastySlug=sales-cold-email-outreach&objective=emailsReplied&groupBy=workflow&limit=3`, {
-      headers: { Accept: "application/json" },
+    const headers: Record<string, string> = { Accept: "application/json" };
+
+    // Step 1: Fetch feature list
+    const featuresRes = await fetch(`${API_URL}/public/features`, {
+      headers,
       next: { revalidate: 300 },
     });
+    if (!featuresRes.ok) {
+      console.error(`[landing] Features fetch failed: ${featuresRes.status}`);
+      return null;
+    }
+    const featuresData: { features: FeatureListItem[] } = await featuresRes.json();
+    const featureList = featuresData.features;
 
-    if (!res.ok) return null;
+    if (featureList.length === 0) {
+      console.error("[landing] No features returned from api-service");
+      return null;
+    }
 
-    const data: { results: PublicRankedItem[] } = await res.json();
+    // Step 2: For each feature, fetch emailsSent and emailsReplied to compute reply rate + cost/reply
+    const features = await Promise.all(
+      featureList.map(async (feature) => {
+        const [sentRes, repliedRes] = await Promise.all([
+          fetch(
+            `${API_URL}/v1/public/features/ranked?featureDynastySlug=${encodeURIComponent(feature.dynastySlug)}&objective=emailsSent&groupBy=workflow&limit=100`,
+            { headers, next: { revalidate: 300 } },
+          ),
+          fetch(
+            `${API_URL}/v1/public/features/ranked?featureDynastySlug=${encodeURIComponent(feature.dynastySlug)}&objective=emailsReplied&groupBy=workflow&limit=100`,
+            { headers, next: { revalidate: 300 } },
+          ),
+        ]);
 
-    const workflows: WorkflowEntry[] = data.results.map((item) => {
-      return {
-        workflowName: item.workflow.name,
-        dynastyName: item.workflow.dynastyName ?? item.workflow.name,
-        emailsSent: 0,
-        openRate: 0,
-        clickRate: 0,
-        replyRate: 0,
-        costPerOpenCents: null,
-        costPerClickCents: null,
-        costPerReplyCents: item.stats.costPerOutcome,
-      };
-    });
+        let totalSent = 0;
+        let totalReplied = 0;
+        let totalCostCents = 0;
 
-    // No brand data from public ranked endpoint — return empty
-    return { brands: [], workflows };
-  } catch {
+        if (sentRes.ok) {
+          const sentData: { results: PublicRankedItem[] } = await sentRes.json();
+          totalSent = sentData.results.reduce((s, r) => s + r.stats.totalOutcomes, 0);
+          totalCostCents = sentData.results.reduce((s, r) => s + r.stats.totalCostInUsdCents, 0);
+        }
+
+        if (repliedRes.ok) {
+          const repliedData: { results: PublicRankedItem[] } = await repliedRes.json();
+          totalReplied = repliedData.results.reduce((s, r) => s + r.stats.totalOutcomes, 0);
+        }
+
+        return {
+          featureSlug: feature.dynastySlug,
+          featureLabel: feature.dynastyName,
+          replyRate: totalSent > 0 ? totalReplied / totalSent : 0,
+          costPerReplyCents: totalReplied > 0 ? totalCostCents / totalReplied : null,
+        };
+      }),
+    );
+
+    return { features };
+  } catch (error) {
+    console.error("[landing] Leaderboard preview fetch error:", error);
     return null;
   }
 }
