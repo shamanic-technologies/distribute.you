@@ -2,211 +2,85 @@ import { Metadata } from "next";
 import { CopyForLLM } from "@/components/copy-for-llm";
 
 export const metadata: Metadata = {
-  title: "Claude Integration",
-  description: "Connect distribute to Claude. Use Claude.ai, Claude Desktop, or Claude Code to launch campaigns and automate distribution.",
-  openGraph: {
-    title: "Claude Integration | distribute",
-    description: "Use distribute tools directly in Claude.",
-  },
-  keywords: ["Claude", "Anthropic", "MCP", "distribution automation", "lead generation", "cold email", "Claude Desktop"],
+  title: "Claude Code Integration",
+  description: "Use distribute from Claude Code. One command to install, 35 tools for brands, campaigns, leads, and more.",
 };
 
-const LLM_INSTRUCTIONS = `# distribute + Claude Integration
+const LLM_INSTRUCTIONS = `# distribute + Claude Code
 
-## Supported Claude Clients
-- Claude.ai (web)
-- Claude Desktop
-- Claude Code
+## Install
+claude mcp add distribute -- npx @distribute/mcp --api-key=YOUR_KEY
 
-## Claude.ai Setup
-1. Go to Settings → Integrations
-2. Click "Add more"
-3. Enter:
-   - Name: distribute
-   - URL: https://mcp.distribute.you/mcp
-4. Enable tools in chat
+## Verify
+Ask: "Check my distribute connection" → whoami tool
 
-## Claude Desktop Setup
-Edit ~/Library/Application Support/Claude/claude_desktop_config.json:
-{
-  "mcpServers": {
-    "distribute": {
-      "command": "npx",
-      "args": ["-y", "mcp-remote", "https://mcp.distribute.you/mcp"],
-      "env": {
-        "MCP_HEADERS": "Authorization:Bearer YOUR_API_KEY"
-      }
-    }
-  }
-}
+## Example Prompts
+- "Create a brand for acme.com"
+- "Launch a cold email campaign targeting CTOs, $10/day budget"
+- "Show stats for my latest campaign"
+- "Generate a press kit for my brand"
+- "What's my billing balance?"
 
-## Claude Code Setup
-claude mcp add distribute --transport http https://mcp.distribute.you/mcp
-
-## Available Tools
-- distribute_status: Check connection
-- distribute_create_campaign: Launch campaign
-- distribute_list_campaigns: List campaigns
-- distribute_stop_campaign: Stop a campaign
-- distribute_resume_campaign: Resume a campaign
-- distribute_campaign_stats: Get performance
-- distribute_list_brands: List your brands
-- distribute_suggest_icp: Suggest ideal customer profile for a brand URL
-
-## Get API Key
-https://dashboard.distribute.you/api-keys`;
+## 35 tools available
+See full list: docs.distribute.you/mcp/tools`;
 
 export default function ClaudeIntegrationPage() {
   return (
     <div className="max-w-3xl mx-auto px-8 py-12">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-4xl font-bold">Claude Integration</h1>
+        <h1 className="font-display text-5xl font-bold text-gray-900">Claude Code</h1>
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
-      <p className="text-xl text-gray-600 mb-8">
-        Connect distribute to Claude and launch campaigns from Anthropic&apos;s AI assistant.
+      <p className="text-xl text-gray-500 mb-10">
+        Use distribute directly from Claude Code.
       </p>
 
       <div className="prose prose-lg">
-        <h2>Supported Claude Clients</h2>
-        <ul>
-          <li><strong>Claude.ai</strong> - Anthropic&apos;s web interface</li>
-          <li><strong>Claude Desktop</strong> - Desktop application</li>
-          <li><strong>Claude Code</strong> - Coding assistant CLI</li>
-        </ul>
+        <h2>Install</h2>
+        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
+          <code>claude mcp add distribute -- npx @distribute/mcp --api-key=YOUR_KEY</code>
+        </pre>
+        <p>
+          This registers <code>@distribute/mcp</code> as a local MCP server.
+          Claude Code will have access to 35 tools for managing your entire distribution pipeline.
+        </p>
 
-        <h2>Claude.ai Setup</h2>
+        <h2>Verify</h2>
+        <p>Ask Claude Code:</p>
+        <pre className="bg-gray-50 text-gray-800 p-4 rounded-lg border border-gray-200">
+          <code>&quot;Check my distribute connection&quot;</code>
+        </pre>
+        <p>Claude will call the <code>whoami</code> tool and show your user ID and org ID.</p>
+
+        <h2>Usage</h2>
+        <p>Just describe what you want in natural language:</p>
+        <pre className="bg-gray-50 text-gray-800 p-4 rounded-lg border border-gray-200 overflow-x-auto">
+          <code>{`"Create a brand for acme.com and launch a cold email campaign
+targeting CTOs at SaaS startups with $50/day budget"`}</code>
+        </pre>
+
+        <p>Claude Code will:</p>
         <ol>
-          <li>Open <strong>Settings</strong> (bottom of sidebar)</li>
-          <li>Scroll to <strong>Integrations</strong></li>
-          <li>Click <strong>Add more</strong></li>
-          <li>
-            Enter the integration details:
-            <ul>
-              <li><strong>Integration name:</strong> distribute</li>
-              <li><strong>Integration URL:</strong> <code>https://mcp.distribute.you/mcp</code></li>
-            </ul>
-          </li>
-          <li>Save and enable the integration</li>
-          <li>In new chats, make sure to enable the distribute tools</li>
+          <li>Call <code>brands_create</code> with your URL</li>
+          <li>Call <code>features_list</code> to find the right feature</li>
+          <li>Call <code>workflows_list</code> to pick the best workflow</li>
+          <li>Call <code>campaigns_create</code> with your parameters</li>
         </ol>
 
-        <h2>Claude Desktop Setup</h2>
-        <p>
-          Edit the configuration file at{" "}
-          <code>~/Library/Application Support/Claude/claude_desktop_config.json</code>:
-        </p>
-        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`{
-  "mcpServers": {
-    "distribute": {
-      "command": "npx",
-      "args": ["-y", "mcp-remote", "https://mcp.distribute.you/mcp"],
-      "env": {
-        "MCP_HEADERS": "Authorization:Bearer YOUR_API_KEY"
-      }
-    }
-  }
-}`}</code>
-        </pre>
-        <p>Restart Claude Desktop after saving.</p>
-
-        <h2>Claude Code Setup</h2>
-        <p>Add distribute using the CLI:</p>
-        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>claude mcp add distribute --transport http https://mcp.distribute.you/mcp</code>
-        </pre>
-        <p>
-          Then configure your API key, or set the <code>DISTRIBUTE_API_KEY</code> environment variable.
-        </p>
-
-        <h2>Test Your Connection</h2>
-        <p>Ask Claude:</p>
-        <pre className="bg-gray-100 p-4 rounded-lg">
-          <code className="text-gray-800">&quot;Check my distribute connection status&quot;</code>
-        </pre>
-
-        <h2>Available Tools</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Tool</th>
-              <th>Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><code>distribute_status</code></td>
-              <td>Check connection and configuration</td>
-            </tr>
-            <tr>
-              <td><code>distribute_create_campaign</code></td>
-              <td>Launch a cold email campaign</td>
-            </tr>
-            <tr>
-              <td><code>distribute_list_campaigns</code></td>
-              <td>List all your campaigns</td>
-            </tr>
-            <tr>
-              <td><code>distribute_stop_campaign</code></td>
-              <td>Stop a running campaign</td>
-            </tr>
-            <tr>
-              <td><code>distribute_resume_campaign</code></td>
-              <td>Resume a stopped campaign</td>
-            </tr>
-            <tr>
-              <td><code>distribute_campaign_stats</code></td>
-              <td>Get campaign performance metrics</td>
-            </tr>
-            <tr>
-              <td><code>distribute_list_brands</code></td>
-              <td>List all your brands</td>
-            </tr>
-            <tr>
-              <td><code>distribute_suggest_icp</code></td>
-              <td>Suggest ideal customer profile for a brand URL</td>
-            </tr>
-          </tbody>
-        </table>
-
         <h2>Example Prompts</h2>
-
-        <h3>Launch a Campaign</h3>
-        <pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code className="text-gray-800">{`"Launch a cold email campaign for mybrand.com
-targeting CTOs at SaaS companies with 50-200 employees.
-Budget: $10/day max. Run for 5 days as a trial."`}</code>
-        </pre>
-
-        <h3>Check Campaign Status</h3>
-        <pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code className="text-gray-800">{`"What's the status of my sales campaign?
-How many emails sent, opened, and replied?"`}</code>
-        </pre>
-
-        <h2>Troubleshooting</h2>
-
-        <h3>MCP tools not appearing</h3>
         <ul>
-          <li>For Claude.ai: Make sure you enabled the tools in the chat</li>
-          <li>For Claude Desktop: Restart the app after config changes</li>
-          <li>Verify the MCP URL is correct</li>
+          <li>&quot;Show me all my brands&quot;</li>
+          <li>&quot;What workflows are available for journalist outreach?&quot;</li>
+          <li>&quot;Get the stats for campaign camp_abc123&quot;</li>
+          <li>&quot;Generate a press kit highlighting our latest product launch&quot;</li>
+          <li>&quot;How much have I spent this month?&quot;</li>
+          <li>&quot;List all journalists discovered for my brand&quot;</li>
         </ul>
 
-        <h3>Authorization errors</h3>
-        <ul>
-          <li>Check your API key is valid</li>
-          <li>Ensure the Bearer token format is correct</li>
-          <li>Verify at <a href="https://dashboard.distribute.you/api-keys">dashboard.distribute.you/api-keys</a></li>
-        </ul>
-
-        <h2>Next Steps</h2>
-        <ul>
-          <li><a href="/quickstart">Quick Start Guide</a></li>
-          <li><a href="/sales-outreach">Sales Outreach MCP</a></li>
-          <li><a href="/authentication">Authentication & API Keys</a></li>
-        </ul>
+        <h2>All 35 Tools</h2>
+        <p>
+          See the full <a href="/mcp/tools">Tools Reference</a> for detailed descriptions.
+        </p>
       </div>
     </div>
   );

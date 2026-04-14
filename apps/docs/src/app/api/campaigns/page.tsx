@@ -2,166 +2,124 @@ import { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Campaigns API",
-  description: "Create, list, pause, and resume campaigns via the distribute REST API. Full endpoint reference with examples.",
-  openGraph: {
-    title: "Campaigns API | distribute Docs",
-    description: "Campaign management endpoints for distribute.",
-  },
+  description: "Create, stop, and monitor campaigns via the distribute REST API.",
 };
 
 export default function CampaignsApiPage() {
   return (
     <div className="max-w-3xl mx-auto px-8 py-12">
-      <h1 className="text-4xl font-bold mb-4">Campaigns API</h1>
-      <p className="text-xl text-gray-600 mb-8">
-        Create, manage, and monitor campaigns via the REST API.
+      <h1 className="font-display text-5xl font-bold text-gray-900 mb-4">Campaigns</h1>
+      <p className="text-xl text-gray-500 mb-10">
+        Create, stop, and monitor distribution campaigns.
       </p>
 
       <div className="prose prose-lg">
-        <h2>Create Campaign</h2>
-        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`POST /v1/campaigns
-Content-Type: application/json
-X-API-Key: YOUR_API_KEY
-
-{
-  "name": "Q1 Outreach",
-  "type": "cold-email-outreach",
-  "brandUrl": "https://acme.com",
-  "targetAudience": "CTOs at SaaS companies, 50-200 employees",
-  "targetOutcome": "Book sales demos",
-  "valueForTarget": "Access to enterprise analytics at startup pricing",
-  "urgency": "Early-adopter pricing ends March 31st",
-  "scarcity": "Onboarding limited to 20 companies this quarter",
-  "riskReversal": "14-day free trial, cancel anytime, no commitment",
-  "socialProof": "Used by 500+ SaaS companies including Vercel and Linear",
-  "maxBudgetDailyUsd": 10,
-  "maxBudgetWeeklyUsd": 50
-}`}</code>
-        </pre>
-
-        <h3>Response</h3>
-        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`{
-  "campaign": {
-    "id": "camp_abc123",
-    "name": "Q1 Outreach",
-    "type": "cold-email-outreach",
-    "brandId": "brand_xyz",
-    "status": "ongoing",
-    "targetAudience": "CTOs at SaaS companies, 50-200 employees",
-    "targetOutcome": "Book sales demos",
-    "valueForTarget": "Access to enterprise analytics at startup pricing",
-    "urgency": "Early-adopter pricing ends March 31st",
-    "scarcity": "Onboarding limited to 20 companies this quarter",
-    "riskReversal": "14-day free trial, cancel anytime, no commitment",
-    "socialProof": "Used by 500+ SaaS companies including Vercel and Linear"
-  }
-}`}</code>
-        </pre>
-
         <h2>List Campaigns</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/campaigns
-GET /v1/campaigns?status=ongoing
-GET /v1/campaigns?status=stopped`}</code>
-        </pre>
-
-        <h3>Response</h3>
-        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`{
-  "campaigns": [
-    {
-      "id": "camp_abc123",
-      "name": "Q1 Outreach",
-      "status": "ongoing",
-      "targetAudience": "CTOs at SaaS companies",
-      "targetOutcome": "Book sales demos",
-      "valueForTarget": "Access to enterprise analytics at startup pricing",
-      "urgency": "Early-adopter pricing ends March 31st",
-      "scarcity": "Onboarding limited to 20 companies this quarter",
-      "riskReversal": "14-day free trial, cancel anytime",
-      "socialProof": "Used by 500+ SaaS companies",
-      "maxBudgetDailyUsd": "10"
-    }
-  ]
-}`}</code>
+GET /v1/campaigns?brandId=brand_abc123&status=all
+X-API-Key: dist_YOUR_KEY`}</code>
         </pre>
 
         <h2>Get Campaign</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`GET /v1/campaigns/:id`}</code>
+          <code>{`GET /v1/campaigns/:campaignId
+X-API-Key: dist_YOUR_KEY`}</code>
         </pre>
 
-        <h3>Response</h3>
+        <h2>Create Campaign</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`{
-  "campaign": {
-    "id": "camp_abc123",
-    "name": "Q1 Outreach",
-    "status": "ongoing",
-    "targetAudience": "CTOs at SaaS companies",
-    "targetOutcome": "Book sales demos",
-    "valueForTarget": "Access to enterprise analytics at startup pricing",
-    "urgency": "Early-adopter pricing ends March 31st",
-    "scarcity": "Onboarding limited to 20 companies this quarter",
-    "riskReversal": "14-day free trial, cancel anytime",
-    "socialProof": "Used by 500+ SaaS companies",
-    "maxBudgetDailyUsd": "10",
-    "createdAt": "2026-01-30T10:00:00Z"
-  }
+          <code>{`POST /v1/campaigns
+Content-Type: application/json
+X-API-Key: dist_YOUR_KEY
+
+{
+  "name": "Q2 Sales Outreach",
+  "workflowSlug": "sales-email-cold-outreach-apex-v4",
+  "brandUrls": ["https://acme.com"],
+  "featureInputs": {
+    "target_audience": "CTOs at SaaS startups, 10-200 employees",
+    "target_outcome": "Book sales demos",
+    "value_for_target": "Enterprise analytics at startup pricing"
+  },
+  "maxBudgetDailyUsd": "10"
 }`}</code>
         </pre>
+        <p>The campaign starts running immediately after creation.</p>
+        <h3>Required Fields</h3>
+        <table>
+          <thead>
+            <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>name</code></td><td>string</td><td>Campaign name</td></tr>
+            <tr><td><code>workflowSlug</code></td><td>string</td><td>Workflow to execute</td></tr>
+            <tr><td><code>brandUrls</code></td><td>string[]</td><td>Brand URLs (one or more)</td></tr>
+          </tbody>
+        </table>
+        <h3>Optional Fields</h3>
+        <table>
+          <thead>
+            <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>featureInputs</code></td><td>object</td><td>Key-value inputs for the feature</td></tr>
+            <tr><td><code>maxBudgetDailyUsd</code></td><td>string</td><td>Daily budget cap in USD</td></tr>
+            <tr><td><code>maxBudgetWeeklyUsd</code></td><td>string</td><td>Weekly budget cap</td></tr>
+            <tr><td><code>maxBudgetMonthlyUsd</code></td><td>string</td><td>Monthly budget cap</td></tr>
+            <tr><td><code>maxBudgetTotalUsd</code></td><td>string</td><td>Total lifetime budget cap</td></tr>
+          </tbody>
+        </table>
 
         <h2>Stop Campaign</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`POST /v1/campaigns/:id/stop`}</code>
+          <code>{`POST /v1/campaigns/:campaignId/stop
+X-API-Key: dist_YOUR_KEY`}</code>
         </pre>
 
-        <h3>Response</h3>
+        <h2>Campaign Stats</h2>
+        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
+          <code>{`GET /v1/campaigns/:campaignId/stats
+X-API-Key: dist_YOUR_KEY`}</code>
+        </pre>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`{
-  "campaign": {
-    "id": "camp_abc123",
-    "status": "stopped"
-  }
+  "campaignId": "camp_abc123",
+  "totalCostInUsdCents": "423",
+  "leadsServed": 150,
+  "emailsSent": 247,
+  "emailsDelivered": 231,
+  "emailsOpened": 54,
+  "emailsReplied": 12,
+  "repliesInterested": 5,
+  "repliesMeetingBooked": 3,
+  "costBreakdown": [
+    { "costName": "llm-email-generation", "totalCostInUsdCents": "200" },
+    { "costName": "apollo-enrichment", "totalCostInUsdCents": "150" }
+  ]
 }`}</code>
         </pre>
 
-        <h2>Resume Campaign</h2>
+        <h2>Batch Campaign Stats</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`POST /v1/campaigns/:id/resume`}</code>
+          <code>{`GET /v1/campaigns/stats
+GET /v1/campaigns/stats?brandId=brand_abc123
+X-API-Key: dist_YOUR_KEY`}</code>
         </pre>
+        <p>Returns stats for all campaigns (or filtered by brand) in a single call.</p>
 
-        <h3>Response</h3>
+        <h2>TypeScript Client</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`{
-  "campaign": {
-    "id": "camp_abc123",
-    "status": "ongoing"
-  }
-}`}</code>
+          <code>{`const { campaigns } = await client.listCampaigns({ brandId: "brand_abc" });
+const { campaign } = await client.createCampaign({
+  name: "Q2 Outreach",
+  workflowSlug: "sales-email-cold-outreach-apex-v4",
+  brandUrls: ["https://acme.com"],
+  maxBudgetDailyUsd: "10",
+});
+const stats = await client.getCampaignStats("camp_abc123");
+await client.stopCampaign("camp_abc123");`}</code>
         </pre>
-
-        <h2>Campaign Statuses</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Status</th>
-              <th>Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><code>ongoing</code></td>
-              <td>Campaign is active and running</td>
-            </tr>
-            <tr>
-              <td><code>stopped</code></td>
-              <td>Campaign has been stopped</td>
-            </tr>
-          </tbody>
-        </table>
       </div>
     </div>
   );

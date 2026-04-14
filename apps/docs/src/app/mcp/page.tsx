@@ -1,249 +1,186 @@
 import { Metadata } from "next";
+import Link from "next/link";
 import { CopyForLLM } from "@/components/copy-for-llm";
 import { URLS } from "@distribute/content";
 
 export const metadata: Metadata = {
-  title: "MCP Usage Guide",
-  description: "Learn how to use distribute tools from ChatGPT, Claude, Cursor, or any MCP-compatible client. Configuration and best practices.",
+  title: "MCP Server",
+  description: "Use distribute from Claude Code, Claude Desktop, Cursor, or any MCP-compatible client. 35 tools for brands, campaigns, workflows, and more.",
   openGraph: {
-    title: "MCP Usage Guide | distribute Docs",
-    description: "Complete guide to using distribute from any MCP client.",
+    title: "MCP Server | distribute Docs",
+    description: "Complete guide to using distribute via MCP.",
   },
 };
 
-const LLM_INSTRUCTIONS = `# distribute - MCP Usage Guide
+const LLM_INSTRUCTIONS = `# distribute MCP Server
 
-## MCP Endpoint
-https://mcp.distribute.you/mcp
+## Install
+npm: npx @distribute/mcp --api-key=dist_YOUR_KEY
+Claude Code: claude mcp add distribute -- npx @distribute/mcp --api-key=YOUR_KEY
 
-## Supported Clients
-- ChatGPT (Pro, Plus, Team, Enterprise)
-- Claude.ai, Claude Desktop, Claude Code
-- Cursor IDE
-- Any MCP-compatible client
+## 35 Tools Available
+Identity: whoami
+Brands: brands_list, brands_get, brands_create, brands_extract_fields
+Features: features_list, features_get, features_prefill, features_stats, features_global_stats, features_stats_registry
+Campaigns: campaigns_list, campaigns_get, campaigns_create, campaigns_stop, campaigns_stats
+Leads: leads_list
+Emails: emails_list
+Workflows: workflows_list, workflows_get, workflows_summary, workflows_key_status
+Outlets: outlets_list, outlets_by_campaign
+Journalists: journalists_list, journalists_by_campaign
+Articles: articles_list
+Press Kits: press_kits_list, press_kits_get, press_kits_generate, press_kits_view_stats
+Billing: billing_balance, billing_account, billing_transactions
+Costs: costs_brand_breakdown, costs_by_brand, costs_delivery_stats
 
-## Cursor Configuration
-Add to .cursor/mcp.json:
-{
-  "mcpServers": {
-    "distribute": {
-      "url": "https://mcp.distribute.you/mcp",
-      "headers": {
-        "Authorization": "Bearer YOUR_API_KEY"
-      }
-    }
-  }
-}
+## Auth
+--api-key=dist_xxx or DISTRIBUTE_API_KEY env var`;
 
-## Available Tools
-- distribute_status: Check connection status
-- distribute_create_campaign: Create cold email campaign
-- distribute_list_campaigns: List campaigns
-- distribute_stop_campaign: Stop a running campaign
-- distribute_resume_campaign: Resume a stopped campaign
-- distribute_campaign_stats: Get campaign stats
-- distribute_campaign_debug: Get detailed campaign debug info
-- distribute_list_brands: List your brands
-- distribute_suggest_icp: Suggest ideal customer profile for a brand URL
-
-## Authentication
-Include API key as Bearer token:
-Authorization: Bearer YOUR_API_KEY
-
-Get your API key at: https://dashboard.distribute.you/api-keys`;
-
-export default function McpUsagePage() {
+export default function McpOverviewPage() {
   return (
     <div className="max-w-3xl mx-auto px-8 py-12">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-4xl font-bold">MCP Usage</h1>
+        <h1 className="font-display text-5xl font-bold text-gray-900">MCP Server</h1>
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
-      <p className="text-xl text-gray-600 mb-8">
-        How to use distribute tools from any MCP-compatible client.
+      <p className="text-xl text-gray-500 mb-10">
+        Use distribute from Claude Code, Claude Desktop, Cursor, or any MCP-compatible client.
       </p>
 
       <div className="prose prose-lg">
         <h2>What is MCP?</h2>
         <p>
-          The <strong>Model Context Protocol (MCP)</strong> is an open standard
-          that allows AI assistants to connect to external tools and data
-          sources. distribute provides a suite of automated distribution tools
-          accessible via MCP.
+          The <strong>Model Context Protocol (MCP)</strong> is an open standard that allows AI assistants
+          to connect to external tools. distribute provides an MCP server with 35 tools for managing
+          your entire distribution pipeline.
         </p>
 
-        <h2>MCP Endpoint</h2>
-        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg">
-          <code>https://mcp.distribute.you/mcp</code>
+        <h2>Quick Install</h2>
+        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
+          <code>claude mcp add distribute -- npx @distribute/mcp --api-key=YOUR_KEY</code>
         </pre>
+        <p>
+          See <Link href="/mcp/installation">Installation</Link> for Claude Desktop, Cursor, and other clients.
+        </p>
 
-        <h2>Supported Clients</h2>
-        <ul>
-          <li><strong>ChatGPT</strong> - OpenAI&apos;s chat interface (Pro, Plus, Team, Enterprise)</li>
-          <li><strong>Claude.ai</strong> - Anthropic&apos;s web interface</li>
-          <li><strong>Claude Desktop</strong> - Anthropic&apos;s desktop app</li>
-          <li><strong>Claude Code</strong> - Anthropic&apos;s coding assistant</li>
-          <li><strong>Cursor</strong> - AI-powered IDE</li>
-          <li><strong>Any MCP-compatible client</strong></li>
-        </ul>
-
-        <h2>Installation</h2>
-
-        <h3>ChatGPT</h3>
+        <h2>How It Works</h2>
+        <p>
+          The <code>@distribute/mcp</code> package runs as a local stdio server. Your AI client
+          communicates with it via the MCP protocol, and it calls the distribute API on your behalf.
+        </p>
         <ol>
-          <li>Go to <strong>Settings → Connectors</strong></li>
-          <li>Click <strong>Add Custom Connector</strong></li>
-          <li>Enter the MCP URL: <code>https://mcp.distribute.you/mcp</code></li>
-          <li>Add your API key in the Authorization header</li>
+          <li>Install via <code>npx @distribute/mcp</code> with your API key</li>
+          <li>Your AI client discovers 35 available tools</li>
+          <li>Describe what you want in natural language</li>
+          <li>The AI translates to the appropriate tool calls</li>
         </ol>
 
-        <h3>Claude.ai / Claude Desktop</h3>
-        <ol>
-          <li>Go to <strong>Settings → Connectors</strong></li>
-          <li>Click <strong>Add</strong></li>
-          <li>Enter the MCP URL: <code>https://mcp.distribute.you/mcp</code></li>
-          <li>Configure authentication with your API key</li>
-        </ol>
-
-        <h3>Cursor</h3>
-        <p>
-          Add to your <code>.cursor/mcp.json</code> in your project or globally:
-        </p>
-        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`{
-  "mcpServers": {
-    "distribute": {
-      "url": "https://mcp.distribute.you/mcp",
-      "headers": {
-        "Authorization": "Bearer YOUR_API_KEY"
-      }
-    }
-  }
-}`}</code>
+        <h2>Example Prompts</h2>
+        <pre className="bg-gray-50 text-gray-800 p-4 rounded-lg overflow-x-auto border border-gray-200">
+          <code>{`"Create a brand for acme.com"
+"Launch a cold email campaign targeting CTOs at tech startups, $10/day budget"
+"Show me the stats for my latest campaign"
+"Generate a press kit for my brand"
+"What's my current billing balance?"
+"List all journalists discovered for acme.com"`}</code>
         </pre>
 
-        <h3>Claude Code</h3>
-        <p>
-          Add to your <code>.mcp.json</code> configuration:
-        </p>
-        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`{
-  "mcpServers": {
-    "distribute": {
-      "url": "https://mcp.distribute.you/mcp",
-      "headers": {
-        "Authorization": "Bearer YOUR_API_KEY"
-      }
-    }
-  }
-}`}</code>
-        </pre>
-
-        <h2>Available Tools</h2>
+        <h2>Tool Categories</h2>
         <table>
           <thead>
             <tr>
-              <th>Tool</th>
+              <th>Category</th>
+              <th>Tools</th>
               <th>Description</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td><code>distribute_status</code></td>
-              <td>Check connection status and configuration</td>
+              <td>Identity</td>
+              <td>1</td>
+              <td>Verify connection and API key</td>
             </tr>
             <tr>
-              <td><code>distribute_create_campaign</code></td>
-              <td>Create a cold email campaign</td>
+              <td>Brands</td>
+              <td>4</td>
+              <td>Create and manage brand profiles</td>
             </tr>
             <tr>
-              <td><code>distribute_list_campaigns</code></td>
-              <td>List all your campaigns</td>
+              <td>Features</td>
+              <td>6</td>
+              <td>Browse automation types and stats</td>
             </tr>
             <tr>
-              <td><code>distribute_stop_campaign</code></td>
-              <td>Stop a running campaign</td>
+              <td>Campaigns</td>
+              <td>5</td>
+              <td>Create, stop, and monitor campaigns</td>
             </tr>
             <tr>
-              <td><code>distribute_resume_campaign</code></td>
-              <td>Resume a stopped campaign</td>
+              <td>Workflows</td>
+              <td>4</td>
+              <td>Inspect workflow details and key status</td>
             </tr>
             <tr>
-              <td><code>distribute_campaign_stats</code></td>
-              <td>Get campaign statistics</td>
+              <td>Leads</td>
+              <td>1</td>
+              <td>List discovered leads</td>
             </tr>
             <tr>
-              <td><code>distribute_campaign_debug</code></td>
-              <td>Get detailed campaign debug info</td>
+              <td>Emails</td>
+              <td>1</td>
+              <td>View generated emails</td>
             </tr>
             <tr>
-              <td><code>distribute_list_brands</code></td>
-              <td>List all your brands</td>
+              <td>Outlets</td>
+              <td>2</td>
+              <td>Media outlets discovered for your brand</td>
             </tr>
             <tr>
-              <td><code>distribute_suggest_icp</code></td>
-              <td>Suggest ideal customer profile for a brand URL</td>
+              <td>Journalists</td>
+              <td>2</td>
+              <td>Journalists discovered for your brand</td>
+            </tr>
+            <tr>
+              <td>Articles</td>
+              <td>1</td>
+              <td>Articles mentioning your brand</td>
+            </tr>
+            <tr>
+              <td>Press Kits</td>
+              <td>4</td>
+              <td>Generate and manage press kits</td>
+            </tr>
+            <tr>
+              <td>Billing</td>
+              <td>3</td>
+              <td>Balance, account, transactions</td>
+            </tr>
+            <tr>
+              <td>Costs</td>
+              <td>3</td>
+              <td>Cost breakdown and delivery stats</td>
             </tr>
           </tbody>
         </table>
-
-        <h2>Natural Language Usage</h2>
         <p>
-          You don&apos;t need to call tools directly. Just describe what you want:
+          See the full <Link href="/mcp/tools">Tools Reference</Link> for detailed descriptions of each tool.
         </p>
-        <pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code className="text-gray-800">{`"Launch a cold email campaign for acme.com 
-targeting CTOs at tech startups. 
-Budget: $10/day max. 
-Run for 5 days as a trial."`}</code>
-        </pre>
-        <p>The AI assistant will translate this to the appropriate tool calls.</p>
 
         <h2>Authentication</h2>
         <p>
-          All MCP requests require your API key. Include it as a Bearer token:
+          The MCP server requires your API key, provided via CLI flag or environment variable:
         </p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>Authorization: Bearer YOUR_API_KEY</code>
+          <code>{`# CLI flag (recommended)
+npx @distribute/mcp --api-key=dist_YOUR_KEY
+
+# Environment variable
+DISTRIBUTE_API_KEY=dist_YOUR_KEY npx @distribute/mcp`}</code>
         </pre>
         <p>
           Get your API key at{" "}
-          <a href={URLS.apiKeys}>
-            {URLS.apiKeys.replace("https://", "")}
-          </a>
+          <a href={URLS.apiKeys}>{URLS.apiKeys.replace("https://", "")}</a>.
         </p>
-
-        <h2>Error Handling</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Code</th>
-              <th>Meaning</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><code>unauthorized</code></td>
-              <td>Invalid or missing API key</td>
-            </tr>
-            <tr>
-              <td><code>byok_missing</code></td>
-              <td>Required API key not configured in your dashboard</td>
-            </tr>
-            <tr>
-              <td><code>byok_invalid</code></td>
-              <td>Configured API key is invalid or expired</td>
-            </tr>
-            <tr>
-              <td><code>budget_exceeded</code></td>
-              <td>Spending limit reached</td>
-            </tr>
-            <tr>
-              <td><code>rate_limited</code></td>
-              <td>Too many requests</td>
-            </tr>
-          </tbody>
-        </table>
       </div>
     </div>
   );
