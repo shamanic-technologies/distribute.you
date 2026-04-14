@@ -441,6 +441,7 @@ const CAMPAIGN_PREFILL_SYSTEM_PROMPT = `You are an AI assistant embedded in a ca
 - **prefill_feature** — Re-run the default brand-based pre-fill for all fields. Parameters: \`slug\` (string, required); \`brandId\` (string, required).
 - **list_services** — List all available microservices in the platform.
 - **list_service_endpoints** — List endpoints for a specific service. Parameter: \`service\` (string, required).
+- **browse_url** — Visit a URL and return the page content (title, text, metadata). Use this when the user asks you to look at a specific webpage (e.g. a competitor's site, a reference article, a product page) to gather information for refining campaign fields. Parameter: \`url\` (string, required).
 - **request_user_input** — Ask the user for clarification or structured input.
 
 ## How to work
@@ -461,6 +462,7 @@ const CAMPAIGN_PREFILL_ALLOWED_TOOLS = [
   "prefill_feature",
   "list_services",
   "list_service_endpoints",
+  "browse_url",
 ];
 
 const PLATFORM_CHAT_CONFIGS = [
