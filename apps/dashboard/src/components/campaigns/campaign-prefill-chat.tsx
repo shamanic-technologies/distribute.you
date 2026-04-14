@@ -346,20 +346,20 @@ export function CampaignPrefillChat({
     },
     onFinish: ({ messages: finalMessages }) => {
       saveMessages(chatId, finalMessages);
-      // Detect update_campaign_fields tool calls and apply to form
+      // Detect update_campaign_fields tool calls and apply field values from tool INPUT (args)
       if (onFieldsUpdate) {
         const lastAssistant = [...finalMessages].reverse().find((m) => m.role === "assistant");
         if (lastAssistant) {
           const toolParts = lastAssistant.parts.filter((p) => {
-            const tp = p as { type: string; toolName?: string; state?: string; output?: unknown };
-            return tp.toolName === "update_campaign_fields" && tp.state === "output-available" && tp.output;
+            const tp = p as { type: string; toolName?: string; state?: string; input?: unknown };
+            return tp.toolName === "update_campaign_fields" && tp.input;
           });
           for (const tp of toolParts) {
-            const part = tp as unknown as { output: unknown };
+            const part = tp as unknown as { input: unknown };
             try {
-              const output = typeof part.output === "string" ? JSON.parse(part.output) : part.output;
-              if (output && typeof output === "object") {
-                const fields = (output as { fields?: Record<string, string> }).fields ?? output;
+              const input = typeof part.input === "string" ? JSON.parse(part.input) : part.input;
+              if (input && typeof input === "object") {
+                const fields = (input as { fields?: Record<string, string> }).fields ?? input;
                 if (fields && typeof fields === "object") {
                   onFieldsUpdate(fields as Record<string, string>);
                 }
@@ -386,43 +386,33 @@ export function CampaignPrefillChat({
     };
   }, [messages, chatId]);
 
-  // Real-time field updates: apply tool outputs as soon as they appear during streaming
+  // Real-time field updates: apply tool inputs as soon as they appear during streaming.
+  // The AI passes field key-value pairs as tool ARGUMENTS (input), not in the result (output).
   const appliedToolCallsRef = useRef(new Set<string>());
   useEffect(() => {
     if (!onFieldsUpdate) return;
     for (const msg of messages) {
       if (msg.role !== "assistant") continue;
       for (const part of msg.parts) {
-        const tp = part as { type: string; toolCallId?: string; toolName?: string; state?: string; output?: unknown };
-        if (tp.toolName === "update_campaign_fields") {
-          console.log("[campaign-prefill-chat] Found update_campaign_fields part:", {
-            toolCallId: tp.toolCallId,
-            state: tp.state,
-            outputType: typeof tp.output,
-            output: tp.output,
-            alreadyApplied: tp.toolCallId ? appliedToolCallsRef.current.has(tp.toolCallId) : "no-id",
-          });
-        }
+        const tp = part as { type: string; toolCallId?: string; toolName?: string; state?: string; input?: unknown; output?: unknown };
         if (
           tp.toolName === "update_campaign_fields" &&
-          tp.state === "output-available" &&
-          tp.output &&
+          (tp.state === "input-available" || tp.state === "output-available") &&
+          tp.input &&
           tp.toolCallId &&
           !appliedToolCallsRef.current.has(tp.toolCallId)
         ) {
           appliedToolCallsRef.current.add(tp.toolCallId);
           try {
-            const output = typeof tp.output === "string" ? JSON.parse(tp.output) : tp.output;
-            console.log("[campaign-prefill-chat] Parsed output:", output);
-            if (output && typeof output === "object") {
-              const fields = (output as { fields?: Record<string, string> }).fields ?? output;
-              console.log("[campaign-prefill-chat] Calling onFieldsUpdate with:", fields);
+            const input = typeof tp.input === "string" ? JSON.parse(tp.input) : tp.input;
+            if (input && typeof input === "object") {
+              const fields = (input as { fields?: Record<string, string> }).fields ?? input;
               if (fields && typeof fields === "object") {
                 onFieldsUpdate(fields as Record<string, string>);
               }
             }
           } catch (err) {
-            console.error("[campaign-prefill-chat] Error parsing tool output:", err);
+            console.error("[campaign-prefill-chat] Error parsing tool input:", err);
           }
         }
       }
