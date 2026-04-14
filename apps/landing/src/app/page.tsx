@@ -5,7 +5,7 @@ import { Navbar } from "@/components/navbar";
 import { DashboardPreview } from "@/components/dashboard-preview";
 import { PerformancePreview } from "@/components/performance-preview";
 import { StatusIndicator } from "@/components/status-indicator";
-import { fetchLeaderboardPreview } from "@/lib/fetch-leaderboard";
+import { fetchLeaderboard } from "@/lib/performance/fetch-leaderboard";
 import { DISTRIBUTION_FEATURES, DISTRIBUTION_STEPS } from "@distribute/content";
 import { resolveUrls } from "@/lib/env-urls";
 import type { FeatureColor } from "@distribute/content";
@@ -28,7 +28,7 @@ export default async function Home() {
   const headersList = await headers();
   const host = headersList.get("host") || "";
   const urls = resolveUrls(host);
-  const leaderboard = await fetchLeaderboardPreview();
+  const leaderboard = await fetchLeaderboard(host);
   return (
     <main className="min-h-screen">
       <Navbar host={host} />
@@ -89,8 +89,8 @@ export default async function Home() {
             <div className="inline-flex items-center gap-2.5 bg-white border border-gray-200 px-4 py-2 rounded-full mb-6">
               {LOGO_DEV_TOKEN ? (
                 <Image
-                  src={`https://img.logo.dev/anthropic.com?token=${LOGO_DEV_TOKEN}&size=64`}
-                  alt="Anthropic"
+                  src={`https://img.logo.dev/claude.ai?token=${LOGO_DEV_TOKEN}&size=64`}
+                  alt="Claude"
                   width={24}
                   height={24}
                   className="rounded-md"
@@ -115,7 +115,16 @@ export default async function Home() {
             {/* Without distribute.you */}
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               <div className="px-5 py-3 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-red-400" />
+                {LOGO_DEV_TOKEN && (
+                  <Image
+                    src={`https://img.logo.dev/claude.ai?token=${LOGO_DEV_TOKEN}&size=32`}
+                    alt="Claude"
+                    width={16}
+                    height={16}
+                    className="rounded-sm"
+                    unoptimized
+                  />
+                )}
                 <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Without distribute.you</span>
               </div>
               <div className="p-5">
@@ -150,7 +159,16 @@ export default async function Home() {
             {/* With distribute.you */}
             <div className="bg-white rounded-xl border-2 border-emerald-200 shadow-sm overflow-hidden">
               <div className="px-5 py-3 bg-emerald-50 border-b border-emerald-100 flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                {LOGO_DEV_TOKEN && (
+                  <Image
+                    src={`https://img.logo.dev/claude.ai?token=${LOGO_DEV_TOKEN}&size=32`}
+                    alt="Claude"
+                    width={16}
+                    height={16}
+                    className="rounded-sm"
+                    unoptimized
+                  />
+                )}
                 <span className="text-xs font-medium text-emerald-600 uppercase tracking-wider">With distribute.you</span>
               </div>
               <div className="p-5">
@@ -218,7 +236,16 @@ export default async function Home() {
             {/* Without distribute.you */}
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               <div className="px-5 py-3 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-red-400" />
+                {LOGO_DEV_TOKEN && (
+                  <Image
+                    src={`https://img.logo.dev/openclaw.ai?token=${LOGO_DEV_TOKEN}&size=32`}
+                    alt="OpenClaw"
+                    width={16}
+                    height={16}
+                    className="rounded-sm"
+                    unoptimized
+                  />
+                )}
                 <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Without distribute.you</span>
               </div>
               <div className="p-5">
@@ -251,7 +278,16 @@ export default async function Home() {
             {/* With distribute.you */}
             <div className="bg-white rounded-xl border-2 border-emerald-200 shadow-sm overflow-hidden">
               <div className="px-5 py-3 bg-emerald-50 border-b border-emerald-100 flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                {LOGO_DEV_TOKEN && (
+                  <Image
+                    src={`https://img.logo.dev/openclaw.ai?token=${LOGO_DEV_TOKEN}&size=32`}
+                    alt="OpenClaw"
+                    width={16}
+                    height={16}
+                    className="rounded-sm"
+                    unoptimized
+                  />
+                )}
                 <span className="text-xs font-medium text-emerald-600 uppercase tracking-wider">With distribute.you</span>
               </div>
               <div className="p-5">
@@ -505,38 +541,31 @@ export default async function Home() {
                 </div>
 
                 {/* Notifications */}
-                <div className="px-4 pb-6 space-y-2.5 pt-4">
+                <div className="px-4 pb-6 space-y-2 pt-4">
                   {[
-                    { domain: "techcrunch.com", label: "TechCrunch", time: "now", text: "Sarah from TechCrunch wants to cover your launch" },
-                    { domain: "shopify.com", label: "Shopify", time: "2m ago", text: "Mike from Shopify is interested in a demo" },
-                    { domain: "notion.so", label: "Notion", time: "5m ago", text: "Lisa from Notion — open to chat about the role" },
+                    { type: "logo" as const, domain: "techcrunch.com", label: "TechCrunch", time: "now", text: "Sarah from TechCrunch wants to cover your launch" },
+                    { type: "logo" as const, domain: "shopify.com", label: "Shopify", time: "2m ago", text: "Mike from Shopify is interested in a demo" },
+                    { type: "avatar" as const, domain: null, label: "Lisa", time: "5m ago", text: "Lisa, Senior Frontend Engineer — open to chat about the role" },
                   ].map((notif) => (
-                    <div key={notif.domain} className="bg-white/10 backdrop-blur-lg rounded-2xl p-3.5 border border-white/5">
-                      <div className="flex items-center gap-2.5 mb-1">
+                    <div key={notif.text} className="bg-white/10 backdrop-blur-lg rounded-xl px-3.5 py-2.5 border border-white/5 flex items-center gap-2.5">
+                      {notif.type === "logo" && LOGO_DEV_TOKEN ? (
                         <Image
-                          src="/logo-head.jpg"
-                          alt="distribute.you"
+                          src={`https://img.logo.dev/${notif.domain}?token=${LOGO_DEV_TOKEN}&size=48`}
+                          alt={notif.label}
                           width={20}
                           height={20}
-                          className="rounded-md"
+                          className="rounded flex-shrink-0"
+                          unoptimized
                         />
-                        <span className="text-[10px] text-gray-400 uppercase tracking-wider">distribute.you</span>
-                        <span className="text-[10px] text-gray-600 ml-auto">{notif.time}</span>
-                      </div>
-                      <p className="text-sm text-white font-medium">New lead replied</p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        {LOGO_DEV_TOKEN && (
-                          <Image
-                            src={`https://img.logo.dev/${notif.domain}?token=${LOGO_DEV_TOKEN}&size=32`}
-                            alt={notif.label}
-                            width={14}
-                            height={14}
-                            className="rounded-sm"
-                            unoptimized
-                          />
-                        )}
-                        <p className="text-xs text-gray-400">{notif.text}</p>
-                      </div>
+                      ) : (
+                        <div className="w-5 h-5 rounded-full bg-violet-400 flex items-center justify-center flex-shrink-0">
+                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                        </div>
+                      )}
+                      <p className="text-xs text-gray-300 flex-1 truncate">{notif.text}</p>
+                      <span className="text-[10px] text-gray-600 flex-shrink-0">{notif.time}</span>
                     </div>
                   ))}
                 </div>
@@ -549,7 +578,7 @@ export default async function Home() {
       </section>
 
       {/* Performance Leaderboard */}
-      {leaderboard && leaderboard.features.length > 0 && (
+      {leaderboard && leaderboard.featureGroups.length > 0 && (
         <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-10">
@@ -561,7 +590,7 @@ export default async function Home() {
                 All data is public — no black boxes.
               </p>
             </div>
-            <PerformancePreview features={leaderboard.features} />
+            <PerformancePreview featureGroups={leaderboard.featureGroups} />
           </div>
         </section>
       )}
