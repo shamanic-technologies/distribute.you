@@ -29,7 +29,7 @@ export default async function Home() {
   const leaderboard = await fetchLeaderboardPreview();
   return (
     <main className="min-h-screen">
-      <Navbar />
+      <Navbar host={host} />
 
       {/* Hero */}
       <section className="pt-20 pb-8 px-4">

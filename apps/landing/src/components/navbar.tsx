@@ -5,12 +5,9 @@ import Image from "next/image";
 import { LinkButton } from "./link-button";
 import { resolveUrls } from "@/lib/env-urls";
 
-export function Navbar() {
+export function Navbar({ host }: { host: string }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const urls = useMemo(
-    () => resolveUrls(typeof window !== "undefined" ? window.location.hostname : ""),
-    [],
-  );
+  const urls = useMemo(() => resolveUrls(host), [host]);
 
   return (
     <nav className="bg-white/80 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50">
