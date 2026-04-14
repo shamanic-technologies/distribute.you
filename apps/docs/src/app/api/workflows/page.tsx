@@ -1,19 +1,43 @@
 import { Metadata } from "next";
+import { CopyForLLM } from "@/components/copy-for-llm";
 
 export const metadata: Metadata = {
   title: "Workflows API",
   description: "List workflows, inspect DAGs, get summaries, and check API key status via the distribute API.",
 };
 
+const LLM_INSTRUCTIONS = `# Workflows API
+
+## List Workflows
+GET /v1/workflows
+GET /v1/workflows?featureDynastySlug=sales-email-cold-outreach
+
+## Get Workflow
+GET /v1/workflows/:workflowId
+
+## Workflow Summary
+GET /v1/workflows/:workflowId/summary
+
+## Key Status
+GET /v1/workflows/:workflowId/key-status
+
+## TypeScript Client
+const { workflows } = await client.listWorkflows({ featureDynastySlug: "sales-email-cold-outreach" });
+const summary = await client.getWorkflowSummary("wf_abc123");
+const keyStatus = await client.getWorkflowKeyStatus("wf_abc123");`;
+
 export default function WorkflowsApiPage() {
   return (
-    <div className="max-w-3xl mx-auto px-8 py-12">
-      <h1 className="font-display text-5xl font-bold text-gray-900 mb-4">Workflows</h1>
-      <p className="text-xl text-gray-500 mb-10">
+    <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="flex items-center justify-between mb-3">
+        <h1 className="text-2xl font-semibold text-gray-900">Workflows</h1>
+        <CopyForLLM content={LLM_INSTRUCTIONS} />
+      </div>
+      <p className="text-base text-gray-500 mb-8">
         Inspect workflow details, execution graphs, and API key requirements.
       </p>
 
-      <div className="prose prose-lg">
+      <div className="prose">
         <h2>List Workflows</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/workflows

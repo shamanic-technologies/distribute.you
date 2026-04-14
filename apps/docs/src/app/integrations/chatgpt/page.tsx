@@ -7,13 +7,13 @@ export const metadata: Metadata = {
 
 export default function ChatGPTIntegrationPage() {
   return (
-    <div className="max-w-3xl mx-auto px-8 py-12">
-      <h1 className="font-display text-5xl font-bold text-gray-900 mb-4">ChatGPT</h1>
-      <p className="text-xl text-gray-500 mb-10">
+    <div className="max-w-4xl mx-auto px-6 py-8">
+      <h1 className="text-2xl font-semibold text-gray-900 mb-3">ChatGPT</h1>
+      <p className="text-base text-gray-500 mb-8">
         Use distribute with ChatGPT Plus, Pro, Team, or Enterprise.
       </p>
 
-      <div className="prose prose-lg">
+      <div className="prose">
         <h2>Option 1: MCP Connector</h2>
         <p>
           If your ChatGPT plan supports MCP connectors:
