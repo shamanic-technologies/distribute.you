@@ -1,37 +1,25 @@
-import type { FeaturePreviewStats } from "@/lib/fetch-leaderboard";
-import { formatPercent, formatCostCents } from "@/lib/fetch-leaderboard";
+import type { FeatureGroupData } from "@/lib/performance/fetch-leaderboard";
+import { formatPercent, formatCostCents } from "@/lib/performance/fetch-leaderboard";
 
 interface PerformancePreviewProps {
-  features: FeaturePreviewStats[];
+  featureGroups: FeatureGroupData[];
 }
 
-const FEATURE_COLORS: Record<string, { dot: string; bg: string; border: string }> = {
-  "sales-cold-email-outreach": { dot: "bg-cyan-400", bg: "bg-cyan-50", border: "border-cyan-200" },
-  "journalist-outreach": { dot: "bg-emerald-400", bg: "bg-emerald-50", border: "border-emerald-200" },
-  "hiring-outreach": { dot: "bg-violet-400", bg: "bg-violet-50", border: "border-violet-200" },
-};
-
-const DEFAULT_COLORS = { dot: "bg-gray-400", bg: "bg-gray-50", border: "border-gray-200" };
-
-export function PerformancePreview({ features }: PerformancePreviewProps) {
+export function PerformancePreview({ featureGroups }: PerformancePreviewProps) {
   return (
     <div>
       <div className="grid md:grid-cols-3 gap-4">
-        {features.map((feature) => {
-          const colors = FEATURE_COLORS[feature.featureSlug] ?? DEFAULT_COLORS;
-          const hasData = feature.replyRate > 0 || feature.costPerReplyCents !== null;
+        {featureGroups.map((group) => {
+          const hasData = group.stats.replyRate > 0 || group.stats.costPerReplyCents !== null;
 
           return (
             <div
-              key={feature.featureSlug}
-              className={`rounded-xl p-5 border ${colors.border} ${colors.bg}`}
+              key={group.featureSlug}
+              className="rounded-xl p-5 border border-gray-200 bg-white"
             >
-              <div className="flex items-center gap-2 mb-4">
-                <div className={`w-2 h-2 rounded-full ${colors.dot}`} />
-                <h3 className="font-semibold text-gray-900 text-sm">
-                  {feature.featureLabel}
-                </h3>
-              </div>
+              <h3 className="font-semibold text-gray-900 text-sm mb-4">
+                {group.label}
+              </h3>
 
               {hasData ? (
                 <div className="space-y-3">
@@ -40,7 +28,7 @@ export function PerformancePreview({ features }: PerformancePreviewProps) {
                       % Positive Replies
                     </p>
                     <p className="text-2xl font-bold text-gray-900 font-mono">
-                      {formatPercent(feature.replyRate)}
+                      {formatPercent(group.stats.replyRate)}
                     </p>
                   </div>
                   <div>
@@ -48,7 +36,7 @@ export function PerformancePreview({ features }: PerformancePreviewProps) {
                       $ per Positive Reply
                     </p>
                     <p className="text-2xl font-bold text-gray-900 font-mono">
-                      {formatCostCents(feature.costPerReplyCents)}
+                      {formatCostCents(group.stats.costPerReplyCents)}
                     </p>
                   </div>
                 </div>

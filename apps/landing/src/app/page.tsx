@@ -5,7 +5,7 @@ import { Navbar } from "@/components/navbar";
 import { DashboardPreview } from "@/components/dashboard-preview";
 import { PerformancePreview } from "@/components/performance-preview";
 import { StatusIndicator } from "@/components/status-indicator";
-import { fetchLeaderboardPreview } from "@/lib/fetch-leaderboard";
+import { fetchLeaderboard } from "@/lib/performance/fetch-leaderboard";
 import { DISTRIBUTION_FEATURES, DISTRIBUTION_STEPS } from "@distribute/content";
 import { resolveUrls } from "@/lib/env-urls";
 import type { FeatureColor } from "@distribute/content";
@@ -28,7 +28,7 @@ export default async function Home() {
   const headersList = await headers();
   const host = headersList.get("host") || "";
   const urls = resolveUrls(host);
-  const leaderboard = await fetchLeaderboardPreview();
+  const leaderboard = await fetchLeaderboard(host);
   return (
     <main className="min-h-screen">
       <Navbar host={host} />
@@ -578,7 +578,7 @@ export default async function Home() {
       </section>
 
       {/* Performance Leaderboard */}
-      {leaderboard && leaderboard.features.length > 0 && (
+      {leaderboard && leaderboard.featureGroups.length > 0 && (
         <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-10">
@@ -590,7 +590,7 @@ export default async function Home() {
                 All data is public — no black boxes.
               </p>
             </div>
-            <PerformancePreview features={leaderboard.features} />
+            <PerformancePreview featureGroups={leaderboard.featureGroups} />
           </div>
         </section>
       )}
