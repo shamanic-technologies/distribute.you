@@ -1,155 +1,74 @@
-"use client";
-
-import { useState } from "react";
-import Image from "next/image";
-import type { BrandEntry, WorkflowEntry } from "@/lib/fetch-leaderboard";
+import type { FeaturePreviewStats } from "@/lib/fetch-leaderboard";
 import { formatPercent, formatCostCents } from "@/lib/fetch-leaderboard";
 
-const LOGO_DEV_TOKEN = process.env.NEXT_PUBLIC_LOGO_DEV_TOKEN;
-
-type Tab = "brands" | "workflows";
-
 interface PerformancePreviewProps {
-  brands: BrandEntry[];
-  workflows: WorkflowEntry[];
+  features: FeaturePreviewStats[];
 }
 
-export function PerformancePreview({ brands, workflows }: PerformancePreviewProps) {
-  const [tab, setTab] = useState<Tab>("brands");
+const FEATURE_COLORS: Record<string, { dot: string; bg: string; border: string }> = {
+  "sales-cold-email-outreach": { dot: "bg-cyan-400", bg: "bg-cyan-50", border: "border-cyan-200" },
+  "journalist-outreach": { dot: "bg-emerald-400", bg: "bg-emerald-50", border: "border-emerald-200" },
+  "hiring-outreach": { dot: "bg-violet-400", bg: "bg-violet-50", border: "border-violet-200" },
+};
 
+const DEFAULT_COLORS = { dot: "bg-gray-400", bg: "bg-gray-50", border: "border-gray-200" };
+
+export function PerformancePreview({ features }: PerformancePreviewProps) {
   return (
     <div>
-      {/* Tabs */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
-          <button
-            onClick={() => setTab("brands")}
-            className={`px-5 py-2 rounded-md text-sm font-medium transition ${
-              tab === "brands"
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Brands
-            <span className="ml-1.5 text-xs text-gray-400">{brands.length}</span>
-          </button>
-          <button
-            onClick={() => setTab("workflows")}
-            className={`px-5 py-2 rounded-md text-sm font-medium transition ${
-              tab === "workflows"
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Workflows
-            <span className="ml-1.5 text-xs text-gray-400">{workflows.length}</span>
-          </button>
-        </div>
+      <div className="grid md:grid-cols-3 gap-4">
+        {features.map((feature) => {
+          const colors = FEATURE_COLORS[feature.featureSlug] ?? DEFAULT_COLORS;
+          const hasData = feature.replyRate > 0 || feature.costPerReplyCents !== null;
+
+          return (
+            <div
+              key={feature.featureSlug}
+              className={`rounded-xl p-5 border ${colors.border} ${colors.bg}`}
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <div className={`w-2 h-2 rounded-full ${colors.dot}`} />
+                <h3 className="font-semibold text-gray-900 text-sm">
+                  {feature.featureLabel}
+                </h3>
+              </div>
+
+              {hasData ? (
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">
+                      % Positive Replies
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900 font-mono">
+                      {formatPercent(feature.replyRate)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">
+                      $ per Positive Reply
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900 font-mono">
+                      {formatCostCents(feature.costPerReplyCents)}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400">Data coming soon</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div className="text-center mt-4">
         <a
           href="/performance"
-          className="text-sm text-brand-600 hover:text-brand-700 font-medium transition flex items-center gap-1"
+          className="text-sm text-brand-600 hover:text-brand-700 font-medium transition inline-flex items-center gap-1"
         >
-          See all
+          See all performance data
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </a>
-      </div>
-
-      {/* Table */}
-      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-        {tab === "brands" ? (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 text-left">
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Brand</th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-right">% Opens</th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-right">% Clicks</th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-right">% Replies</th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-right">$/Open</th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-right">$/Click</th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-right">$/Reply</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {brands.map((brand, i) => {
-                const brandLabel = brand.brandName || brand.brandDomain || "Unknown";
-                return (
-                  <tr key={brand.brandDomain ?? i} className={`${i === 0 ? "bg-brand-50/30" : ""} hover:bg-gray-50 transition`}>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2.5">
-                        {brand.brandDomain && LOGO_DEV_TOKEN ? (
-                          <Image
-                            src={`https://img.logo.dev/${brand.brandDomain}?token=${LOGO_DEV_TOKEN}&size=64`}
-                            alt={brand.brandDomain}
-                            width={24}
-                            height={24}
-                            className="rounded"
-                            unoptimized
-                          />
-                        ) : (
-                          <div className="w-6 h-6 rounded bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500 uppercase">
-                            {brandLabel.charAt(0)}
-                          </div>
-                        )}
-                        <span className={`font-medium text-sm ${i === 0 ? "text-gray-900" : "text-gray-700"}`}>{brandLabel}</span>
-                      </div>
-                    </td>
-                    <td className={`px-4 py-3 text-right font-mono text-xs ${i === 0 ? "text-gray-900 font-medium" : "text-gray-500"}`}>
-                      {brand.emailsSent > 0 ? formatPercent(brand.openRate) : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right text-gray-500 font-mono text-xs">
-                      {brand.emailsSent > 0 ? formatPercent(brand.clickRate) : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right text-gray-500 font-mono text-xs">
-                      {brand.emailsSent > 0 ? formatPercent(brand.replyRate) : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right text-gray-500 font-mono text-xs">{formatCostCents(brand.costPerOpenCents)}</td>
-                    <td className="px-4 py-3 text-right text-gray-500 font-mono text-xs">{formatCostCents(brand.costPerClickCents)}</td>
-                    <td className="px-4 py-3 text-right text-gray-500 font-mono text-xs">{formatCostCents(brand.costPerReplyCents)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 text-left">
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Workflow</th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-right">% Opens</th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-right">% Clicks</th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-right">% Replies</th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-right">$/Open</th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-right">$/Click</th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-right">$/Reply</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {workflows.map((wf, i) => (
-                <tr key={wf.workflowName} className={`${i === 0 ? "bg-brand-50/30" : ""} hover:bg-gray-50 transition`}>
-                  <td className="px-4 py-3">
-                    <span className={`text-sm font-medium ${i === 0 ? "text-gray-900" : "text-gray-700"}`}>
-                      {wf.dynastyName || wf.workflowName}
-                    </span>
-                  </td>
-                  <td className={`px-4 py-3 text-right font-mono text-xs ${i === 0 ? "text-gray-900 font-medium" : "text-gray-500"}`}>
-                    {wf.emailsSent > 0 ? formatPercent(wf.openRate) : "—"}
-                  </td>
-                  <td className="px-4 py-3 text-right text-gray-500 font-mono text-xs">
-                    {wf.emailsSent > 0 ? formatPercent(wf.clickRate) : "—"}
-                  </td>
-                  <td className="px-4 py-3 text-right text-gray-500 font-mono text-xs">
-                    {wf.emailsSent > 0 ? formatPercent(wf.replyRate) : "—"}
-                  </td>
-                  <td className="px-4 py-3 text-right text-gray-500 font-mono text-xs">{formatCostCents(wf.costPerOpenCents)}</td>
-                  <td className="px-4 py-3 text-right text-gray-500 font-mono text-xs">{formatCostCents(wf.costPerClickCents)}</td>
-                  <td className="px-4 py-3 text-right text-gray-500 font-mono text-xs">{formatCostCents(wf.costPerReplyCents)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
       </div>
     </div>
   );
