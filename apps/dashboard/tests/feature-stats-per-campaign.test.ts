@@ -28,8 +28,9 @@ describe("Feature page fetches stats from centralized feature stats endpoint", (
     expect(content).toContain('groupBy: "campaignId"');
   });
 
-  it("should fetch aggregate feature stats with brandId filter", () => {
-    expect(content).toContain("fetchFeatureStats(featureDynastySlug, { brandId })");
+  it("should fetch aggregate feature stats with brandId filter using versioned slug", () => {
+    expect(content).toContain("featureVersionedSlug = featureDef?.slug");
+    expect(content).toContain("fetchFeatureStats(featureVersionedSlug!, { brandId })");
   });
 
   it("should NOT use useQueries for individual campaign stats", () => {

@@ -39,16 +39,18 @@ describe("Feature pages use resolvedSlug for API calls", () => {
     "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/workflows/page.tsx",
   );
 
-  it("feature page resolves slug from featureDef before API calls", () => {
+  it("feature page resolves versioned slug from featureDef before API calls", () => {
     const content = fs.readFileSync(featurePagePath, "utf-8");
     expect(content).toContain("featureDynastySlug");
-    expect(content).toContain("fetchFeatureStats(featureDynastySlug");
+    expect(content).toContain("featureVersionedSlug = featureDef?.slug");
+    expect(content).toContain("fetchFeatureStats(featureVersionedSlug!");
   });
 
-  it("campaign creation page resolves slug from featureDef before API calls", () => {
+  it("campaign creation page resolves versioned slug from featureDef before API calls", () => {
     const content = fs.readFileSync(campaignNewPath, "utf-8");
     expect(content).toContain("featureDynastySlug");
-    expect(content).toContain("fetchFeatureStats(featureDynastySlug");
+    expect(content).toContain("featureVersionedSlug = featureDef?.slug");
+    expect(content).toContain("fetchFeatureStats(featureVersionedSlug!");
     expect(content).toContain("listWorkflows({ featureDynastySlug })");
     expect(content).toContain("prefillFeatureInputs(featureDynastySlug");
   });
@@ -59,10 +61,11 @@ describe("Feature pages use resolvedSlug for API calls", () => {
     expect(content).not.toMatch(/if\s*\(\s*!featureDef\s*\)\s*return\s*null/);
   });
 
-  it("workflows page resolves slug from featureDef before API calls", () => {
+  it("workflows page resolves versioned slug from featureDef before API calls", () => {
     const content = fs.readFileSync(workflowsPath, "utf-8");
     expect(content).toContain("featureDynastySlug");
-    expect(content).toContain("fetchFeatureStats(featureDynastySlug");
+    expect(content).toContain("featureVersionedSlug = wfDef?.slug");
+    expect(content).toContain("fetchFeatureStats(featureVersionedSlug!");
     expect(content).toContain("listWorkflows({ featureDynastySlug })");
   });
 });
