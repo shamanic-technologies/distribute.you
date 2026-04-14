@@ -517,11 +517,12 @@ export function fieldResultsToStringMap(results: Record<string, ExtractFieldResu
 export async function extractBrandFields(
   brandIds: string[],
   fields: ExtractFieldDef[],
-  token?: string,
+  opts?: { token?: string; resetCache?: boolean },
 ): Promise<ExtractFieldsResponse> {
+  const { token, resetCache } = opts ?? {};
   return apiCall<ExtractFieldsResponse>(
     `/brands/extract-fields`,
-    { token, method: "POST", body: { brandIds, fields } },
+    { token, method: "POST", body: { brandIds, fields, resetCache } },
   );
 }
 
