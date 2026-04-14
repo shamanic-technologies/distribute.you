@@ -1,9 +1,10 @@
 import { Metadata } from "next";
 import { CopyForLLM } from "@/components/copy-for-llm";
+import { URLS } from "@distribute/content";
 
 export const metadata: Metadata = {
   title: "Authentication",
-  description: "Set up your distribute API keys and configure your own API credentials for Apollo, Anthropic, and more.",
+  description: "Set up your distribute API key and authenticate requests via MCP or REST API.",
   openGraph: {
     title: "Authentication | distribute Docs",
     description: "Configure API keys and credentials.",
@@ -13,137 +14,107 @@ export const metadata: Metadata = {
 const LLM_INSTRUCTIONS = `# distribute Authentication
 
 ## 1. Create Account
-Sign up at: https://dashboard.distribute.you/sign-up
+Sign up at: dashboard.distribute.you/sign-up
 
 ## 2. Get API Key
-Dashboard → API Keys
-Format: mcpf_xxxxxxxxxxxxxxxxxxxx
+Dashboard → API Keys → Create Key
+Format: dist_xxxxxxxxxxxxxxxxxxxx
 
 ## 3. Using the API Key
 
-### For MCP (ChatGPT, Claude, Cursor):
-Authorization: Bearer mcpf_YOUR_KEY
+### For MCP Server:
+npx @distribute/mcp --api-key=dist_YOUR_KEY
+# or
+DISTRIBUTE_API_KEY=dist_YOUR_KEY npx @distribute/mcp
 
 ### For REST API:
-X-API-Key: mcpf_YOUR_KEY
+X-API-Key: dist_YOUR_KEY
 
-## 4. Your Own API Keys (Optional)
-Dashboard → API Keys
+### For TypeScript Client:
+import { DistributeClient } from "@distribute/api-client";
+const client = new DistributeClient({ apiKey: "dist_YOUR_KEY" });
 
-Supported providers:
-- Apollo: For lead search (get key at apollo.io)
-- Anthropic: For AI email generation (get key at console.anthropic.com)
-
-Keys are encrypted with AES-256-GCM.`;
+## Security
+- Keys are scoped to your organization
+- Rotate keys periodically via the dashboard
+- Never commit keys to version control`;
 
 export default function AuthenticationPage() {
   return (
     <div className="max-w-3xl mx-auto px-8 py-12">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-4xl font-bold">Authentication</h1>
+        <h1 className="font-display text-5xl font-bold text-gray-900">Authentication</h1>
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
-      <p className="text-xl text-gray-600 mb-8">
-        Set up your API keys and configure your own provider credentials to start using distribute.
+      <p className="text-xl text-gray-500 mb-10">
+        Set up your API key to authenticate with distribute.
       </p>
 
       <div className="prose prose-lg">
         <h2>1. Create an Account</h2>
         <p>
           Sign up at{" "}
-          <a href="https://dashboard.distribute.you/sign-up">
-            dashboard.distribute.you
-          </a>{" "}
-          to get started. You can use email or Google OAuth.
+          <a href={URLS.signUp}>dashboard.distribute.you</a>{" "}
+          to get started.
         </p>
 
         <h2>2. Get Your API Key</h2>
         <p>
-          After signing in, go to{" "}
-          <strong>API Keys</strong> to generate your distribute API
-          key.
+          After signing in, go to <strong>API Keys</strong> and create a new key.
         </p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>mcpf_xxxxxxxxxxxxxxxxxxxxxxxxxxxx</code>
+          <code>dist_xxxxxxxxxxxxxxxxxxxxxxxxxxxx</code>
         </pre>
         <p>
-          <strong>Keep this key secret.</strong> It grants full access to your
-          account and organization.
+          <strong>Keep this key secret.</strong> It grants full access to your organization.
         </p>
 
         <h2>3. Using Your API Key</h2>
 
-        <h3>For MCP (ChatGPT, Claude, Cursor)</h3>
-        <p>Include as Bearer token in the Authorization header:</p>
+        <h3>MCP Server</h3>
+        <p>Pass the key via CLI flag or environment variable:</p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>Authorization: Bearer YOUR_API_KEY</code>
+          <code>{`# CLI flag
+npx @distribute/mcp --api-key=dist_YOUR_KEY
+
+# Environment variable
+DISTRIBUTE_API_KEY=dist_YOUR_KEY npx @distribute/mcp`}</code>
         </pre>
 
-        <h3>For REST API</h3>
-        <p>Include in the X-API-Key header:</p>
-        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`curl https://api.distribute.you/v1/me \\
-  -H "X-API-Key: YOUR_API_KEY"`}</code>
-        </pre>
-
-        <h2>4. Configure Your API Keys (Optional)</h2>
-        <p>
-          distribute can use your own API keys for underlying services. Go to{" "}
-          <strong>API Keys</strong> to configure them.
-        </p>
-
-        <h3>Supported Providers</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Provider</th>
-              <th>Purpose</th>
-              <th>Where to Get</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Apollo</td>
-              <td>Lead search and enrichment</td>
-              <td>
-                <a href="https://app.apollo.io/#/settings/integrations/api">
-                  apollo.io
-                </a>
-              </td>
-            </tr>
-            <tr>
-              <td>Anthropic</td>
-              <td>AI content generation</td>
-              <td>
-                <a href="https://console.anthropic.com/">
-                  console.anthropic.com
-                </a>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-        <h3>Benefits of Using Your Own Keys</h3>
-        <ul>
-          <li>Use your own API credits and pricing</li>
-          <li>Higher rate limits</li>
-          <li>Full control over your data</li>
-        </ul>
-
-        <h2>5. Verify Setup</h2>
-        <p>Test your configuration:</p>
+        <h3>REST API</h3>
+        <p>Include your key in the <code>X-API-Key</code> header:</p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`curl https://api.distribute.you/v1/me \\
-  -H "X-API-Key: YOUR_API_KEY"`}</code>
+  -H "X-API-Key: dist_YOUR_KEY"`}</code>
         </pre>
-        <p>You should see your account details and organization info.</p>
 
-        <h2>Security Best Practices</h2>
+        <h3>TypeScript Client</h3>
+        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
+          <code>{`import { DistributeClient } from "@distribute/api-client";
+
+const client = new DistributeClient({
+  apiKey: "dist_YOUR_KEY",
+});
+
+const me = await client.getMe();
+console.log(me); // { userId, orgId, authType }`}</code>
+        </pre>
+
+        <h2>4. Verify Setup</h2>
+        <p>Test your key with a simple API call:</p>
+        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
+          <code>{`curl https://api.distribute.you/v1/me \\
+  -H "X-API-Key: dist_YOUR_KEY"`}</code>
+        </pre>
+        <p>You should see your user ID and organization ID.</p>
+
+        <h2>Security</h2>
         <ul>
-          <li>Never commit API keys to version control</li>
+          <li>API keys are scoped to your organization</li>
+          <li>Never commit keys to version control</li>
           <li>Use environment variables for local development</li>
-          <li>Rotate keys periodically</li>
-          <li>Use organization-level keys for team access</li>
+          <li>Rotate keys periodically via the dashboard</li>
+          <li>You can create multiple keys and revoke them individually</li>
         </ul>
       </div>
     </div>
