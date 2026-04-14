@@ -26,16 +26,16 @@ See full list: docs.distribute.you/mcp/tools`;
 
 export default function ClaudeIntegrationPage() {
   return (
-    <div className="max-w-3xl mx-auto px-8 py-12">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="font-display text-5xl font-bold text-gray-900">Claude Code</h1>
+    <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="flex items-center justify-between mb-3">
+        <h1 className="text-2xl font-semibold text-gray-900">Claude Code</h1>
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
-      <p className="text-xl text-gray-500 mb-10">
+      <p className="text-base text-gray-500 mb-8">
         Use distribute directly from Claude Code.
       </p>
 
-      <div className="prose prose-lg">
+      <div className="prose">
         <h2>Install</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>claude mcp add distribute -- npx @distribute/mcp --api-key=YOUR_KEY</code>

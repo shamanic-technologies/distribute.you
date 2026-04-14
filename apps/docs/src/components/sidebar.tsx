@@ -60,14 +60,14 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-64 border-r border-gray-100 bg-gradient-to-b from-white to-gray-50/30 p-4 flex-shrink-0 overflow-y-auto">
-      <nav className="space-y-6">
+    <aside className="w-56 h-full border-r border-gray-100 bg-gradient-to-b from-white to-gray-50/30 p-4 flex-shrink-0 overflow-y-auto">
+      <nav className="space-y-5">
         {NAV_ITEMS.map((section) => (
           <div key={section.title}>
-            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-3">
+            <h3 className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5 px-2.5">
               {section.title}
             </h3>
-            <ul className="space-y-1">
+            <ul className="space-y-0.5">
               {section.items.map((item) => {
                 const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href + "/"));
                 const isExternal = "external" in item && item.external;
@@ -80,10 +80,10 @@ export function Sidebar() {
                   <li key={item.href}>
                     <LinkComponent
                       {...linkProps}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition ${
+                      className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[13px] transition ${
                         isActive
                           ? "bg-brand-100 text-brand-700 font-medium border border-brand-200"
-                          : "text-gray-700 hover:bg-gray-50 hover:text-brand-600"
+                          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                       }`}
                     >
                       {item.name}

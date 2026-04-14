@@ -38,16 +38,16 @@ Costs: costs_brand_breakdown, costs_by_brand, costs_delivery_stats
 
 export default function McpOverviewPage() {
   return (
-    <div className="max-w-3xl mx-auto px-8 py-12">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="font-display text-5xl font-bold text-gray-900">MCP Server</h1>
+    <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="flex items-center justify-between mb-3">
+        <h1 className="text-2xl font-semibold text-gray-900">MCP Server</h1>
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
-      <p className="text-xl text-gray-500 mb-10">
+      <p className="text-base text-gray-500 mb-8">
         Use distribute from Claude Code, Claude Desktop, Cursor, or any MCP-compatible client.
       </p>
 
-      <div className="prose prose-lg">
+      <div className="prose">
         <h2>What is MCP?</h2>
         <p>
           The <strong>Model Context Protocol (MCP)</strong> is an open standard that allows AI assistants

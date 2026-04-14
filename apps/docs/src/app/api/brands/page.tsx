@@ -1,19 +1,50 @@
 import { Metadata } from "next";
+import { CopyForLLM } from "@/components/copy-for-llm";
 
 export const metadata: Metadata = {
   title: "Brands API",
   description: "Create brands from URLs, get brand details, and extract structured data with AI via the distribute API.",
 };
 
+const LLM_INSTRUCTIONS = `# Brands API
+
+## List Brands
+GET /v1/brands
+X-API-Key: dist_YOUR_KEY
+
+## Get Brand
+GET /v1/brands/:brandId
+X-API-Key: dist_YOUR_KEY
+
+## Create Brand
+POST /v1/brands
+{ "url": "https://acme.com" }
+
+## Extract Fields
+POST /v1/brands/extract-fields
+{ "brandIds": ["brand_abc"], "fields": [{ "key": "industry", "description": "Primary industry" }] }
+Results cached 30 days.
+
+## List Extracted Fields
+GET /v1/brands/:brandId/extracted-fields
+
+## TypeScript Client
+const { brands } = await client.listBrands();
+const result = await client.createBrand("https://acme.com");
+const fields = await client.extractBrandFields(["brand_abc"], [{ key: "industry", description: "Primary industry" }]);`;
+
 export default function BrandsApiPage() {
   return (
-    <div className="max-w-3xl mx-auto px-8 py-12">
-      <h1 className="font-display text-5xl font-bold text-gray-900 mb-4">Brands</h1>
-      <p className="text-xl text-gray-500 mb-10">
+    <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="flex items-center justify-between mb-3">
+        <h1 className="text-2xl font-semibold text-gray-900">Brands</h1>
+        <CopyForLLM content={LLM_INSTRUCTIONS} />
+      </div>
+      <p className="text-base text-gray-500 mb-8">
         Create brands from URLs and extract structured data with AI.
       </p>
 
-      <div className="prose prose-lg">
+      <div className="prose">
         <h2>List Brands</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/brands

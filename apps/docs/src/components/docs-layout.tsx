@@ -13,7 +13,7 @@ export function DocsLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      {/* Header — aligned with landing */}
+      {/* Header */}
       <header className="bg-white/80 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2 md:gap-6">
@@ -29,7 +29,7 @@ export function DocsLayout({ children }: { children: React.ReactNode }) {
 
             <Link href="/" className="flex items-center gap-2">
               <Image src="/logo-head.jpg" alt="distribute" width={28} height={28} className="rounded-lg" />
-              <span className="font-display font-bold text-xl text-gray-900">distribute</span>
+              <span className="font-bold text-base text-gray-900">distribute</span>
               <span className="text-[10px] text-brand-500 font-medium bg-brand-50 px-1.5 py-0.5 rounded hidden sm:inline">.you</span>
               <span className="text-gray-400 font-light text-sm hidden sm:inline ml-1">Docs</span>
             </Link>
@@ -89,7 +89,7 @@ export function DocsLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Desktop sidebar */}
-        <div className="hidden md:block">
+        <div className="hidden md:flex flex-shrink-0 overflow-hidden">
           <Sidebar />
         </div>
 
