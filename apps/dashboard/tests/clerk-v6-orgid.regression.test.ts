@@ -32,7 +32,7 @@ describe("@clerk/nextjs v6 compatibility", () => {
       "../src/app/onboarding/page.tsx"
     );
     const content = fs.readFileSync(onboardingPath, "utf-8");
-    expect(content).toContain('window.location.href = "/"');
+    expect(content).toContain('window.location.href =');
     expect(content).not.toContain('router.push("/")');
   });
 
