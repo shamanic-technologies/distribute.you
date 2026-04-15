@@ -27,10 +27,11 @@ describe("Onboarding flow", () => {
     expect(content).toContain("type-selection");
   });
 
-  it("should have a name input step", () => {
+  it("should have a URL input step", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("name-input");
+    expect(content).toContain("url-input");
     expect(content).toContain("Create Workspace");
+    expect(content).toContain("acme.com");
   });
 
   it("should use Clerk SDK to create org (not api.ts or /apps/register)", () => {
@@ -50,9 +51,10 @@ describe("Onboarding flow", () => {
     expect(content).not.toContain('"success"');
   });
 
-  it("should redirect to / after org creation", () => {
+  it("should redirect to brands page with autoCreate param after org creation", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain('window.location.href = "/"');
+    expect(content).toContain("autoCreate=");
+    expect(content).toContain("/brands?autoCreate=");
   });
 });
 

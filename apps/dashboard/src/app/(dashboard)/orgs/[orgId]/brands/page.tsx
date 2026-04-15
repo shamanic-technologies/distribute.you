@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { listBrands, upsertBrand, extractBrandFields, SALES_PROFILE_FIELDS } from "@/lib/api";
@@ -14,11 +14,13 @@ export default function BrandsPage() {
   const params = useParams();
   const orgId = params.orgId as string;
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [showCreate, setShowCreate] = useState(false);
   const [brandUrl, setBrandUrl] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const autoCreateTriggered = useRef(false);
 
   const { data, isLoading, refetch } = useAuthQuery(
     ["brands"],
@@ -27,24 +29,48 @@ export default function BrandsPage() {
   );
   const brands = data?.brands ?? [];
 
-  const handleCreateBrand = async () => {
-    const trimmed = brandUrl.trim();
+  const createBrandAndRedirect = async (rawUrl: string) => {
+    const trimmed = rawUrl.trim();
     if (!trimmed) return;
     const url = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
     setIsCreating(true);
     setCreateError(null);
     try {
       const { brandId: newBrandId } = await upsertBrand(url);
-      // Trigger profile extraction in background (don't block navigation)
       extractBrandFields([newBrandId], SALES_PROFILE_FIELDS).catch(() => {});
       await refetch();
-      router.push(`/orgs/${orgId}/brands/${newBrandId}`);
+      router.replace(`/orgs/${orgId}/brands/${newBrandId}`);
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : "Failed to create brand");
+      setShowCreate(true);
+      setBrandUrl(rawUrl);
     } finally {
       setIsCreating(false);
     }
   };
+
+  // Auto-create brand from onboarding flow
+  const autoCreateUrl = searchParams.get("autoCreate");
+  useEffect(() => {
+    if (autoCreateUrl && !autoCreateTriggered.current) {
+      autoCreateTriggered.current = true;
+      createBrandAndRedirect(autoCreateUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoCreateUrl]);
+
+  const handleCreateBrand = () => createBrandAndRedirect(brandUrl);
+
+  // Show a creating state when auto-creating from onboarding
+  if (autoCreateUrl && isCreating) {
+    return (
+      <div className="p-4 md:p-8 flex flex-col items-center justify-center min-h-[40vh]">
+        <div className="w-12 h-12 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin mb-4" />
+        <p className="text-gray-600 font-medium">Setting up your brand...</p>
+        <p className="text-sm text-gray-400 mt-1">This may take a few seconds</p>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
