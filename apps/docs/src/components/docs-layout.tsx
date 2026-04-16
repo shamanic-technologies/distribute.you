@@ -30,7 +30,7 @@ export function DocsLayout({ children }: { children: React.ReactNode }) {
             <Link href="/" className="flex items-center gap-2">
               <Image src="/logo-head.jpg" alt="distribute" width={28} height={28} className="rounded-lg" />
               <span className="font-bold text-base text-gray-900">distribute</span>
-              <span className="text-[10px] text-brand-500 font-medium bg-brand-50 px-1.5 py-0.5 rounded hidden sm:inline">.you</span>
+              <span className="text-[10px] text-brand-500 font-medium bg-brand-50 px-1.5 py-0.5 rounded uppercase hidden sm:inline">beta</span>
               <span className="text-gray-400 font-light text-sm hidden sm:inline ml-1">Docs</span>
             </Link>
           </div>

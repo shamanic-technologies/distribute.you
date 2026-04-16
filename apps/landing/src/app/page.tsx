@@ -641,7 +641,7 @@ export default async function Home() {
           <div className="flex items-center justify-center gap-2 mb-3">
             <Image src="/logo-head.jpg" alt="distribute" width={24} height={24} className="rounded-lg" />
             <span className="font-display font-bold text-white text-lg">distribute</span>
-            <span className="text-[10px] text-brand-400 font-medium bg-brand-500/10 px-1.5 py-0.5 rounded">.you</span>
+            <span className="text-[10px] text-brand-400 font-medium bg-brand-500/10 px-1.5 py-0.5 rounded uppercase">beta</span>
           </div>
           <p className="text-sm text-gray-600 mb-4">The Stripe for Distribution</p>
           <div className="flex flex-wrap justify-center gap-6 text-sm">
