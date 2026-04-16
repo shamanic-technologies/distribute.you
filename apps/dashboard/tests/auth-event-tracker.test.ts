@@ -59,6 +59,11 @@ describe("AuthEventTracker component", () => {
   it("should be best-effort (catch errors silently)", () => {
     expect(content).toContain(".catch(");
   });
+
+  it("should read and forward promo code from sessionStorage on signup", () => {
+    expect(content).toContain("distribute_promo_code");
+    expect(content).toContain("promoCode");
+  });
 });
 
 describe("Sign-up page sets auth intent flag", () => {
@@ -92,6 +97,13 @@ describe("sendAuthNotification in api.ts", () => {
     const fnBody = content.slice(fnStart, fnStart + 400);
     expect(fnBody).toContain("timestamp");
     expect(fnBody).toContain("new Date().toISOString()");
+  });
+
+  it("should accept optional extra metadata and spread it", () => {
+    const fnStart = content.indexOf("export async function sendAuthNotification");
+    const fnBody = content.slice(fnStart, fnStart + 400);
+    expect(fnBody).toContain("extra");
+    expect(fnBody).toContain("...extra");
   });
 });
 
