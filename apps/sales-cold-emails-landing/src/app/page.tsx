@@ -91,6 +91,7 @@ export default async function Home() {
               className="rounded-lg"
             />
             <span className="font-bold text-xl text-brand-600">Sales Cold Emails</span>
+            <span className="text-[10px] text-brand-500 font-medium bg-brand-50 px-1.5 py-0.5 rounded uppercase">beta</span>
           </div>
           <div className="flex items-center gap-4">
             <a
@@ -473,6 +474,7 @@ export default async function Home() {
               className="rounded-md"
             />
             <span className="font-bold text-white text-lg">distribute</span>
+            <span className="text-[10px] text-brand-400 font-medium bg-brand-500/10 px-1.5 py-0.5 rounded uppercase">beta</span>
           </div>
           <p className="text-sm mb-4">Open-source cold email automation</p>
           <div className="flex justify-center gap-6 text-sm">

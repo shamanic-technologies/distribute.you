@@ -47,6 +47,7 @@ export default function SignUpPage() {
           <Link href="https://distribute.you" className="flex items-center gap-3">
             <Image src="/logo-head.jpg" alt="distribute" width={36} height={36} className="rounded-lg" />
             <span className="font-display font-bold text-xl">distribute</span>
+            <span className="text-[10px] text-white/80 font-medium bg-white/10 px-1.5 py-0.5 rounded uppercase">beta</span>
           </Link>
         </div>
         <div>
@@ -88,6 +89,7 @@ export default function SignUpPage() {
             <Link href="https://distribute.you" className="flex items-center gap-2">
               <Image src="/logo-head.jpg" alt="distribute" width={32} height={32} className="rounded-lg" />
               <span className="font-display font-bold text-lg text-brand-600">distribute</span>
+              <span className="text-[10px] text-brand-500 font-medium bg-brand-50 px-1.5 py-0.5 rounded uppercase">beta</span>
             </Link>
           </div>
 
