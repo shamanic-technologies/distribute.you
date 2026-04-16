@@ -330,16 +330,7 @@ export default function OrgApiKeysPage() {
               <div>
                 <p className="font-medium text-gray-700 mb-2">For MCP (ChatGPT, Claude, Cursor):</p>
                 <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-xs">
-{`{
-  "mcpServers": {
-    "distribute": {
-      "url": "https://mcp.distribute.you/mcp",
-      "headers": {
-        "Authorization": "Bearer YOUR_API_KEY"
-      }
-    }
-  }
-}`}
+{`claude mcp add distribute -- npx @distribute/mcp --api-key=YOUR_API_KEY`}
                 </pre>
               </div>
               <div>
