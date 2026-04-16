@@ -47,10 +47,7 @@ export default async function Home() {
           </h1>
 
           <p className="text-lg md:text-xl text-gray-500 mb-10 max-w-2xl mx-auto leading-relaxed">
-            Your URL. A budget. We reach the right people for you.{" "}
-            <span className="text-gray-700 font-medium">
-              You just get notified when someone replies.
-            </span>
+            Send cold emails from Claude, no setup.
           </p>
 
           <HeroForm signUpUrl={urls.signUp} />
