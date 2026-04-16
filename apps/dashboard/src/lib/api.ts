@@ -145,12 +145,13 @@ export async function trackActivity(token?: string): Promise<{ ok: boolean }> {
 // Auth event notifications (signup/signin)
 export async function sendAuthNotification(
   eventType: string,
-  token?: string
+  token?: string,
+  extra?: Record<string, string>
 ): Promise<unknown> {
   return apiCall<unknown>("/emails/send", {
     token,
     method: "POST",
-    body: { eventType, metadata: { timestamp: new Date().toISOString() } },
+    body: { eventType, metadata: { timestamp: new Date().toISOString(), ...extra } },
   });
 }
 
