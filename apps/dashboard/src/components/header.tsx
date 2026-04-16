@@ -43,6 +43,7 @@ export function Header() {
           <Link href="/" className="flex items-center gap-2 pr-4 border-r border-gray-200">
             <Image src="/logo-head.jpg" alt="distribute" width={28} height={28} className="rounded-md" />
             <span className="font-display font-bold text-lg text-brand-600 hidden sm:block">distribute</span>
+            <span className="text-[10px] text-brand-500 font-medium bg-brand-50 px-1.5 py-0.5 rounded uppercase hidden sm:block">beta</span>
           </Link>
 
           <div className="hidden sm:block min-w-0 flex-1">
