@@ -813,6 +813,10 @@ export function WorkflowChat({
   }, [workflowId]);
   useEffect(() => {
     if (!upgradedTo || hasMigratedRef.current) return;
+    // Don't navigate while the chat is still streaming — the user would lose
+    // visibility and control over the running actions.  The effect will re-run
+    // when isStreaming flips to false (it's in the dependency array).
+    if (isStreaming) return;
     hasMigratedRef.current = true;
     // Cancel any pending debounced save — we'll save immediately below
     if (saveTimerRef.current) {
@@ -829,7 +833,7 @@ export function WorkflowChat({
       saveSessionId(upgradedTo, sessionIdRef.current);
     }
     onWorkflowUpgraded?.(upgradedTo);
-  }, [upgradedTo, workflowId, onWorkflowUpgraded]);
+  }, [upgradedTo, workflowId, onWorkflowUpgraded, isStreaming]);
 
   // Auto-scroll: defer to next frame so pending scroll events update the ref first
   useEffect(() => {
@@ -955,6 +959,9 @@ export function WorkflowChat({
       setTimeout(() => setCopied(false), 2000);
     });
   }, [messages]);
+
+  // Show a banner when an upgrade was detected but we're waiting for streaming to finish
+  const upgradePending = !!upgradedTo && !hasMigratedRef.current && isStreaming;
 
   const hasMessages = messages.length > 0;
   const lastMsg = messages[messages.length - 1];
@@ -1114,6 +1121,14 @@ export function WorkflowChat({
           >
             Scroll to bottom
           </button>
+        </div>
+      )}
+
+      {/* Upgrade pending banner */}
+      {upgradePending && (
+        <div className="flex-shrink-0 px-4 py-2 bg-amber-50 dark:bg-amber-500/[0.08] border-t border-amber-200 dark:border-amber-400/20 text-sm text-amber-700 dark:text-amber-300 flex items-center gap-2">
+          <ArrowPathIcon className="w-4 h-4 animate-spin flex-shrink-0" />
+          <span>New workflow version detected. Switching when the current operation completes...</span>
         </div>
       )}
 

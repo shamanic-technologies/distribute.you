@@ -328,16 +328,39 @@ export default function OrgApiKeysPage() {
             <h3 className="font-medium text-gray-800 mb-4">How to Use</h3>
             <div className="space-y-4 text-sm">
               <div>
-                <p className="font-medium text-gray-700 mb-2">For MCP (ChatGPT, Claude, Cursor):</p>
+                <p className="font-medium text-gray-700 mb-2">Claude Code:</p>
                 <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-xs">
 {`claude mcp add distribute -- npx @distribute/mcp --api-key=YOUR_API_KEY`}
                 </pre>
               </div>
               <div>
-                <p className="font-medium text-gray-700 mb-2">For REST API:</p>
+                <p className="font-medium text-gray-700 mb-2">Claude Desktop / Cursor:</p>
+                <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-xs">
+{`{
+  "mcpServers": {
+    "distribute": {
+      "command": "npx",
+      "args": ["@distribute/mcp", "--api-key=YOUR_API_KEY"]
+    }
+  }
+}`}
+                </pre>
+              </div>
+              <div>
+                <p className="font-medium text-gray-700 mb-2">REST API:</p>
                 <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-xs">
 {`curl https://api.distribute.you/v1/me \\
   -H "X-API-Key: YOUR_API_KEY"`}
+                </pre>
+              </div>
+              <div>
+                <p className="font-medium text-gray-700 mb-2">TypeScript Client:</p>
+                <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-xs">
+{`import { DistributeClient } from "@distribute/api-client";
+
+const client = new DistributeClient({
+  apiKey: "YOUR_API_KEY",
+});`}
                 </pre>
               </div>
             </div>
