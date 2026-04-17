@@ -22,7 +22,7 @@ export function WorkflowSelectionTable({ featureDynastySlug, onSelect, selectedW
     return data.workflows.filter((wf) => wf.status !== "deprecated");
   }, [data?.workflows]);
 
-  if (isLoading) {
+  if (isLoading && !data) {
     return (
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="animate-pulse p-6 space-y-3">

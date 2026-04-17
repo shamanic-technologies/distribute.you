@@ -56,6 +56,7 @@ export function BrandUsageSection({ brandId }: { brandId: string }) {
   );
 
   const isLoading = featureGroupsLoading || totalCostLoading;
+  const hasData = !!(featureGroupsData || totalCostData);
 
   const segments: Segment[] = useMemo(() => {
     const groups = featureGroupsData?.groups ?? [];
@@ -98,7 +99,7 @@ export function BrandUsageSection({ brandId }: { brandId: string }) {
 
   const totalCents = segments.reduce((sum, s) => sum + s.cents, 0);
 
-  if (isLoading) {
+  if (isLoading && !hasData) {
     return (
       <div className="mb-6">
         <h2 className="text-lg font-medium text-gray-900 mb-4">Usage</h2>
