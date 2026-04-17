@@ -35,7 +35,7 @@ export function ApiKeyPreview() {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  if (isLoading) {
+  if (isLoading && !data) {
     return (
       <div className="bg-white rounded-2xl border border-gray-200 p-6 animate-pulse">
         <div className="h-5 bg-gray-200 rounded w-24 mb-3"></div>

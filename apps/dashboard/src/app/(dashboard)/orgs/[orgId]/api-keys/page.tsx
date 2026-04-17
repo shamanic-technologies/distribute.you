@@ -218,8 +218,9 @@ export default function OrgApiKeysPage() {
   }
 
   const isLoading = apiKeysLoading || byokLoading || workflowsLoading || keySourcesLoading;
+  const hasAnyData = !!(apiKeysData || byokData || workflowsData || keySourcesData);
 
-  if (isLoading) {
+  if (isLoading && !hasAnyData) {
     return (
       <div className="p-4 md:p-8">
         <div className="mb-6">

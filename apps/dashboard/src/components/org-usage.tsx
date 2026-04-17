@@ -52,6 +52,7 @@ export function OrgUsageSection({ brands }: { brands: Brand[] }) {
   );
 
   const isLoading = brandGroupsLoading || totalCostLoading;
+  const hasData = !!(brandGroupsData || totalCostData);
 
   const brandMap = useMemo(() => {
     const map = new Map<string, Brand>();
@@ -99,7 +100,7 @@ export function OrgUsageSection({ brands }: { brands: Brand[] }) {
 
   const totalCents = segments.reduce((sum, s) => sum + s.cents, 0);
 
-  if (isLoading) {
+  if (isLoading && !hasData) {
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-6 animate-pulse">
         <div className="h-5 w-24 bg-gray-200 rounded mb-4" />

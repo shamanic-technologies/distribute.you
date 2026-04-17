@@ -112,7 +112,7 @@ export default function FeatureEmailsPage() {
     });
   }, [emails, search]);
 
-  if (isLoading) {
+  if (isLoading && !data) {
     return (
       <div className="p-4 md:p-8">
         <div className="animate-pulse space-y-4">

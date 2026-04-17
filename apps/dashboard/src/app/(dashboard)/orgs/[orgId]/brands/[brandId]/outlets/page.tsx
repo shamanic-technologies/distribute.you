@@ -342,7 +342,7 @@ export default function BrandOutletsPage() {
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">Outlets</h1>
-            {isLoading ? (
+            {isLoading && !data ? (
               <Skeleton className="h-4 w-48 mt-1" />
             ) : (
               <p className="text-sm text-gray-500">
@@ -355,7 +355,7 @@ export default function BrandOutletsPage() {
         </div>
 
         {/* Status tabs */}
-        {!isLoading && outlets.length > 0 && (
+        {!(isLoading && !data) && outlets.length > 0 && (
           <div className="flex gap-1 mb-6 border-b border-gray-200 overflow-x-auto">
             {tabs.map((tab) => (
               <button
@@ -375,7 +375,7 @@ export default function BrandOutletsPage() {
         )}
 
         {/* Outlet list */}
-        {isLoading ? (
+        {isLoading && !data ? (
           <div className="space-y-3">
             {[1, 2, 3, 4, 5].map(i => (
               <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />
