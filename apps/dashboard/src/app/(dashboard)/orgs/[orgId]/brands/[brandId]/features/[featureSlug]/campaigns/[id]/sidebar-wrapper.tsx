@@ -109,15 +109,17 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureDynastyS
   const entityCounts = useMemo(() => {
     const result: Record<string, number | "loading" | undefined> = {};
     for (const entity of entities) {
+      const hasListingData = listingFallback[entity.name] != null;
+      const hasStatsData = entity.countKey && fStats[entity.countKey] != null;
       const isEntityLoading = entityLoading[entity.name] ?? false;
       const isStatsLoading = featureStatsLoading;
-      // Show loading skeleton while data is being fetched
-      if (isEntityLoading || isStatsLoading) {
+      // Only show loading skeleton on initial fetch (no data yet)
+      if ((isEntityLoading || isStatsLoading) && !hasListingData && !hasStatsData) {
         result[entity.name] = "loading";
-      } else if (listingFallback[entity.name] != null) {
+      } else if (hasListingData) {
         result[entity.name] = listingFallback[entity.name];
-      } else if (entity.countKey && fStats[entity.countKey] != null) {
-        result[entity.name] = fStats[entity.countKey];
+      } else if (hasStatsData) {
+        result[entity.name] = fStats[entity.countKey!];
       }
     }
     return result;

@@ -110,22 +110,22 @@ export default function CampaignOverviewPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="p-4 md:p-8">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 w-64 bg-gray-200 rounded" />
-          <div className="h-4 w-96 bg-gray-100 rounded" />
-          <div className="grid grid-cols-2 gap-4 mt-6">
-            <div className="h-48 bg-gray-100 rounded-xl" />
-            <div className="h-48 bg-gray-100 rounded-xl" />
+  if (!campaign) {
+    if (loading) {
+      return (
+        <div className="p-4 md:p-8">
+          <div className="animate-pulse space-y-4">
+            <div className="h-8 w-64 bg-gray-200 rounded" />
+            <div className="h-4 w-96 bg-gray-100 rounded" />
+            <div className="grid grid-cols-2 gap-4 mt-6">
+              <div className="h-48 bg-gray-100 rounded-xl" />
+              <div className="h-48 bg-gray-100 rounded-xl" />
+            </div>
           </div>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
-  if (!campaign) {
     return (
       <div className="p-4 md:p-8">
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">

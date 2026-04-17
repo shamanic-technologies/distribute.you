@@ -101,7 +101,7 @@ export default function CampaignEmailsPage() {
     });
   }, [emails, search]);
 
-  if (isLoading) {
+  if (isLoading && emails.length === 0) {
     return (
       <div className="p-4 md:p-8">
         <div className="animate-pulse space-y-4">

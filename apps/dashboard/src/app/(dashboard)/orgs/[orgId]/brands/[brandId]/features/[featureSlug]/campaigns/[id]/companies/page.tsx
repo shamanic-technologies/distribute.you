@@ -91,7 +91,7 @@ export default function CampaignCompaniesPage() {
     );
   }, [companies, search]);
 
-  if (isLoading) {
+  if (isLoading && leads.length === 0) {
     return (
       <div className="p-4 md:p-8">
         <div className="animate-pulse space-y-4">
