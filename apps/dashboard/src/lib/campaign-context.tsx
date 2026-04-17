@@ -63,7 +63,9 @@ export function CampaignProvider({ children, campaignId }: CampaignProviderProps
     pollOptions,
   );
 
-  const loading = campaignLoading || statsLoading || emailsLoading || leadsLoading;
+  // Only gate the global loading state on the campaign query itself.
+  // Stats/emails/leads load independently — individual pages handle their own loading.
+  const loading = campaignLoading;
   const campaign = campaignData?.campaign ?? null;
   const stats = statsData ?? null;
   const emails = emailsData?.emails ?? EMPTY_EMAILS;
