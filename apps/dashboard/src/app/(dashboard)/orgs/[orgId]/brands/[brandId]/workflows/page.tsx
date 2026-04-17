@@ -29,7 +29,7 @@ export default function BrandWorkflowsPage() {
         <p className="text-gray-600">All available workflows for this brand.</p>
       </div>
 
-      {isLoading ? (
+      {isLoading && !workflowsData ? (
         <div className="space-y-3 max-w-3xl">
           {[1, 2, 3].map((i) => (
             <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 animate-pulse">
