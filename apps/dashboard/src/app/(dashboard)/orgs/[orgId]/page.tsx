@@ -63,7 +63,7 @@ export default function OrgOverviewPage() {
 
   const isLoading = brandsLoading || campaignsLoading;
 
-  if (isLoading) {
+  if (isLoading && !brandsData && !campaignsData) {
     return (
       <div className="p-4 md:p-8">
         <div className="animate-pulse space-y-4">

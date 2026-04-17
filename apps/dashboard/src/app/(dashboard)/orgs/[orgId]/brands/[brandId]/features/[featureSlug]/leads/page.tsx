@@ -322,7 +322,7 @@ export default function FeatureLeadsPage() {
     return { totalCostCents: total, avgCostPerContactedCents: contactedWithCost > 0 ? contactedCost / contactedWithCost : 0 };
   }, [leads]);
 
-  if (isLoading) {
+  if (isLoading && !data) {
     return (
       <div className="p-4 md:p-8">
         <div className="animate-pulse space-y-4">

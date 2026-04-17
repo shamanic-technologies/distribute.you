@@ -42,7 +42,6 @@ Public status page at `status.distribute.you`.
 
 | Name | URL | Method | Expected Status |
 |------|-----|--------|-----------------|
-| MCP Service | `https://mcp.distribute.you/health` | GET | 200 |
 | Dashboard | `https://dashboard.distribute.you` | GET | 200 |
 | Docs | `https://docs.distribute.you` | GET | 200 |
 | Sales Landing | `https://salescoldemail.distribute.you` | GET | 200 |

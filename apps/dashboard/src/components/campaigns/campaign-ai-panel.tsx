@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { SparklesIcon, XMarkIcon } from "@heroicons/react/20/solid";
 import { CampaignPrefillChat } from "./campaign-prefill-chat";
 import type { FeatureInput } from "@/lib/api";
@@ -35,19 +35,12 @@ function flatten(obj: unknown): string {
 function InputsColumn({
   formData,
   featureInputs,
+  onFieldChange,
 }: {
   formData: Record<string, string>;
   featureInputs: FeatureInput[];
+  onFieldChange: (key: string, value: string) => void;
 }) {
-  const entries = useMemo(() => {
-    const result: { label: string; value: string }[] = [];
-    for (const input of featureInputs) {
-      const raw = formData[input.key];
-      result.push({ label: input.label, value: displayField(raw) });
-    }
-    return result;
-  }, [formData, featureInputs]);
-
   return (
     <div className="flex-1 min-w-0 flex flex-col h-full">
       <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-200">
@@ -56,17 +49,25 @@ function InputsColumn({
         </h2>
       </div>
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-        {entries.length === 0 ? (
+        {featureInputs.length === 0 ? (
           <p className="text-sm text-gray-500">No inputs configured.</p>
         ) : (
-          entries.map(({ label, value }) => (
-            <div key={label}>
-              <p className="text-xs font-medium text-gray-500 mb-1">{label}</p>
-              <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 whitespace-pre-line min-h-[2.25rem]">
-                {value || (
-                  <span className="text-gray-300 italic">Empty</span>
-                )}
-              </p>
+          featureInputs.map((input) => (
+            <div key={input.key}>
+              <label
+                htmlFor={`ai-panel-${input.key}`}
+                className="text-xs font-medium text-gray-500 mb-1 block"
+              >
+                {input.label}
+              </label>
+              <textarea
+                id={`ai-panel-${input.key}`}
+                value={displayField(formData[input.key])}
+                onChange={(e) => onFieldChange(input.key, e.target.value)}
+                rows={3}
+                className="w-full text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 whitespace-pre-line min-h-[2.25rem] resize-y focus:outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-500/10 transition-all"
+                placeholder="Empty"
+              />
             </div>
           ))
         )}
@@ -137,6 +138,7 @@ export function CampaignAIPanel({
             <InputsColumn
               formData={formData}
               featureInputs={featureInputs}
+              onFieldChange={(key, value) => onFieldsUpdate({ [key]: value })}
             />
           </div>
 

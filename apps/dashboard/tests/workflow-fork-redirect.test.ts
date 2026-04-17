@@ -191,6 +191,47 @@ describe("workflow fork redirect", () => {
   });
 });
 
+describe("workflow-chat — defer upgrade navigation while streaming", () => {
+  it("hasMigrated guard defers when streaming is active", () => {
+    const onWorkflowUpgraded = vi.fn();
+    let hasMigrated = false;
+    let isStreaming = true;
+    const upgradedTo = "new-workflow-id";
+
+    // Simulate the effect running while streaming
+    function runEffect() {
+      if (!upgradedTo || hasMigrated) return;
+      if (isStreaming) return; // deferred
+      hasMigrated = true;
+      onWorkflowUpgraded(upgradedTo);
+    }
+
+    // First run: streaming → should not navigate
+    runEffect();
+    expect(onWorkflowUpgraded).not.toHaveBeenCalled();
+    expect(hasMigrated).toBe(false);
+
+    // Streaming finishes → effect re-runs → should navigate now
+    isStreaming = false;
+    runEffect();
+    expect(onWorkflowUpgraded).toHaveBeenCalledTimes(1);
+    expect(onWorkflowUpgraded).toHaveBeenCalledWith("new-workflow-id");
+    expect(hasMigrated).toBe(true);
+  });
+
+  it("source code defers migration when isStreaming is true", () => {
+    const chatPath = path.join(
+      __dirname,
+      "../src/components/workflows/workflow-chat.tsx"
+    );
+    const content = fs.readFileSync(chatPath, "utf-8");
+
+    // The upgradedTo effect must check isStreaming and include it in deps
+    expect(content).toContain("if (isStreaming) return");
+    expect(content).toContain("isStreaming]");
+  });
+});
+
 describe("workflow-chat — hydrate messages on workflowId change (source check)", () => {
   const chatPath = path.join(
     __dirname,

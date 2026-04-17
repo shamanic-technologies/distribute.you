@@ -242,7 +242,7 @@ export default function CreateFeaturePage() {
     setDraft((prev) => ({ ...prev, ...partial }));
   };
 
-  if (isLoading) {
+  if (isLoading && !brandData) {
     return <PageSkeleton />;
   }
 

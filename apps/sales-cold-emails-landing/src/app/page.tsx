@@ -11,7 +11,7 @@ const SALES_FEATURES = [
 ];
 
 const SALES_STEPS = [
-  { number: 1, title: "Connect Your AI", description: "Add distribute to ChatGPT, Claude, or Cursor", code: "https://mcp.distribute.you/mcp" },
+  { number: 1, title: "Connect Your AI", description: "Add distribute to ChatGPT, Claude, or Cursor", code: "npx @distribute/mcp --api-key=YOUR_KEY" },
   { number: 2, title: "Describe Your Campaign", description: "Tell the AI who to target and what to say", example: '"Send cold emails to CTOs at B2B SaaS companies about our dev tool"' },
   { number: 3, title: "We Handle The Rest", description: "Finds leads, writes emails, sends, and optimizes" },
   { number: 4, title: "You Get Meetings", description: "Reply to interested prospects and close deals" },
