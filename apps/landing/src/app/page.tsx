@@ -364,6 +364,24 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* Performance Leaderboard */}
+      {leaderboard && leaderboard.featureGroups.length > 0 && (
+        <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-10">
+              <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+                Real performance, real data
+              </h2>
+              <p className="text-gray-500 text-lg max-w-2xl mx-auto">
+                Every feature is ranked by actual metrics.
+                All data is public — no black boxes.
+              </p>
+            </div>
+            <PerformancePreview featureGroups={leaderboard.featureGroups} />
+          </div>
+        </section>
+      )}
+
       {/* Always the best workflow */}
       <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
         <div className="max-w-3xl mx-auto text-center">
@@ -573,24 +591,6 @@ export default async function Home() {
           </div>
         </div>
       </section>
-
-      {/* Performance Leaderboard */}
-      {leaderboard && leaderboard.featureGroups.length > 0 && (
-        <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-10">
-              <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
-                Real performance, real data
-              </h2>
-              <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-                Every feature is ranked by actual metrics.
-                All data is public — no black boxes.
-              </p>
-            </div>
-            <PerformancePreview featureGroups={leaderboard.featureGroups} />
-          </div>
-        </section>
-      )}
 
       {/* How it works */}
       <section id="how-it-works" className="py-20 px-4">
