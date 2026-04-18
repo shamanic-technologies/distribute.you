@@ -364,6 +364,24 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* Performance Leaderboard */}
+      {leaderboard && leaderboard.featureGroups.length > 0 && (
+        <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-10">
+              <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+                Real performance, real data
+              </h2>
+              <p className="text-gray-500 text-lg max-w-2xl mx-auto">
+                Every feature is ranked by actual metrics.
+                All data is public — no black boxes.
+              </p>
+            </div>
+            <PerformancePreview featureGroups={leaderboard.featureGroups} />
+          </div>
+        </section>
+      )}
+
       {/* Always the best workflow */}
       <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
         <div className="max-w-3xl mx-auto text-center">
@@ -574,24 +592,6 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Performance Leaderboard */}
-      {leaderboard && leaderboard.featureGroups.length > 0 && (
-        <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-10">
-              <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
-                Real performance, real data
-              </h2>
-              <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-                Every feature is ranked by actual metrics.
-                All data is public — no black boxes.
-              </p>
-            </div>
-            <PerformancePreview featureGroups={leaderboard.featureGroups} />
-          </div>
-        </section>
-      )}
-
       {/* How it works */}
       <section id="how-it-works" className="py-20 px-4">
         <div className="max-w-4xl mx-auto">
@@ -653,6 +653,14 @@ export default async function Home() {
           </div>
           <div className="flex justify-center mt-5">
             <StatusIndicator />
+          </div>
+          <div className="mt-6 pt-6 border-t border-gray-800">
+            <p className="text-xs text-gray-600 mb-3">Also by our team</p>
+            <div className="flex flex-wrap justify-center gap-4 text-xs">
+              <a href="https://pressbeat.io" target="_blank" className="hover:text-gray-300 transition">PressBeat.io — Organic Press on Demand</a>
+              <a href="https://growthagency.dev" target="_blank" className="hover:text-gray-300 transition">GrowthAgency.dev — Growth Agency for Humans</a>
+              <a href="https://growthservice.org" target="_blank" className="hover:text-gray-300 transition">GrowthService.org — Increase AI Search Ranking</a>
+            </div>
           </div>
           <p className="text-xs mt-4 text-gray-700">MIT License. Open Source.</p>
         </div>
