@@ -147,9 +147,9 @@ export default async function PerformanceLayout({
           <div className="mt-4 pt-4 border-t border-gray-800">
             <p className="text-xs text-gray-600 mb-2">Also by our team</p>
             <div className="flex flex-wrap justify-center gap-4 text-xs">
-              <a href="https://pressbeat.io" target="_blank" rel="noopener noreferrer" className="hover:text-gray-300 transition">PressBeat.io — Organic Press on Demand</a>
-              <a href="https://growthagency.dev" target="_blank" rel="noopener noreferrer" className="hover:text-gray-300 transition">GrowthAgency.dev — Growth Agency for Humans</a>
-              <a href="https://growthservice.org" target="_blank" rel="noopener noreferrer" className="hover:text-gray-300 transition">GrowthService.org — Increase AI Search Ranking</a>
+              <a href="https://pressbeat.io" target="_blank" className="hover:text-gray-300 transition">PressBeat.io — Organic Press on Demand</a>
+              <a href="https://growthagency.dev" target="_blank" className="hover:text-gray-300 transition">GrowthAgency.dev — Growth Agency for Humans</a>
+              <a href="https://growthservice.org" target="_blank" className="hover:text-gray-300 transition">GrowthService.org — Increase AI Search Ranking</a>
             </div>
           </div>
         </div>
