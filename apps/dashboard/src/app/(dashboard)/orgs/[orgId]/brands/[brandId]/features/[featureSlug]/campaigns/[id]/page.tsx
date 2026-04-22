@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useCampaign } from "@/lib/campaign-context";
@@ -145,14 +145,24 @@ export default function CampaignOverviewPage() {
     }
   }
 
-  // Use feature stats (same source as the list page) for charts, with campaign stats as fallback
+  // Use feature stats (same source as the list page) for charts, with campaign stats as fallback.
+  // Retain the last valid stats to prevent charts from flickering to 0 during polling
+  // when the API intermittently returns a response without the optional `stats` field.
   const featureStats = featureStatsData?.stats ?? {};
   const campaignStatsRecord: Record<string, number> = stats
     ? Object.fromEntries(
         Object.entries(stats).filter((e): e is [string, number] => typeof e[1] === "number")
       )
     : {};
-  const statsRecord: Record<string, number> = { ...campaignStatsRecord, ...featureStats };
+  const lastValidStatsRef = useRef<Record<string, number>>({});
+  const hasNewFeatureStats = Object.keys(featureStats).length > 0;
+  const hasNewCampaignStats = Object.keys(campaignStatsRecord).length > 0;
+  if (hasNewFeatureStats || hasNewCampaignStats) {
+    lastValidStatsRef.current = { ...campaignStatsRecord, ...featureStats };
+  }
+  const statsRecord: Record<string, number> = (hasNewFeatureStats || hasNewCampaignStats)
+    ? { ...campaignStatsRecord, ...featureStats }
+    : lastValidStatsRef.current;
 
   return (
     <div className="p-4 md:p-8">
@@ -209,8 +219,8 @@ export default function CampaignOverviewPage() {
         </div>
       )}
 
-      {/* Charts (funnel + breakdown) — only when charts are defined */}
-      {(funnelChart || breakdownChart) && (stats || Object.keys(featureStats).length > 0) && (
+      {/* Charts (funnel + breakdown) — only when charts are defined and data has been loaded at least once */}
+      {(funnelChart || breakdownChart) && Object.keys(statsRecord).length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
           {funnelChart && funnelChart.type === "funnel-bar" && (
             <FunnelMetrics
