@@ -4,7 +4,7 @@ import * as path from "path";
 
 const campaignOutletPagePath = path.resolve(
   __dirname,
-  "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/outlets/page.tsx",
+  "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureDynastySlug]/campaigns/[id]/outlets/page.tsx",
 );
 const apiPath = path.resolve(__dirname, "../src/lib/api.ts");
 

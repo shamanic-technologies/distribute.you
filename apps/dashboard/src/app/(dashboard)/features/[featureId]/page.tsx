@@ -82,19 +82,18 @@ export default function FeatureCampaignsPage() {
   }, [isLoading, campaignsData, featureCampaigns.length, featureDef?.implemented, featureId, router]);
 
   // Feature-level stats
-  // Use the resolved versioned slug — the stats endpoint requires the exact version
-  const featureVersionedSlug = featureDef?.slug;
+  const featureDynastySlug = featureDef?.dynastySlug;
   const { data: featureStatsData } = useAuthQuery(
-    ["featureStats", featureVersionedSlug],
-    () => fetchFeatureStats(featureVersionedSlug!),
-    { enabled: !!featureVersionedSlug && featureCampaigns.length > 0, ...pollOptions },
+    ["featureStats", featureDynastySlug],
+    () => fetchFeatureStats(featureDynastySlug!),
+    { enabled: !!featureDynastySlug && featureCampaigns.length > 0, ...pollOptions },
   );
 
   // Per-campaign stats
   const { data: campaignStatsData } = useAuthQuery(
-    ["featureStats", featureVersionedSlug, "byCampaign"],
-    () => fetchFeatureStats(featureVersionedSlug!, { groupBy: "campaignId" }),
-    { enabled: !!featureVersionedSlug && featureCampaigns.length > 0, ...pollOptions },
+    ["featureStats", featureDynastySlug, "byCampaign"],
+    () => fetchFeatureStats(featureDynastySlug!, { groupBy: "campaignId" }),
+    { enabled: !!featureDynastySlug && featureCampaigns.length > 0, ...pollOptions },
   );
 
   const campaignStatsMap = useMemo(() => {

@@ -14,7 +14,7 @@ import * as path from "path";
 describe("Feature page fetches stats from centralized feature stats endpoint", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/page.tsx"
+    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureDynastySlug]/page.tsx"
   );
   const content = fs.readFileSync(pagePath, "utf-8");
 
@@ -28,9 +28,9 @@ describe("Feature page fetches stats from centralized feature stats endpoint", (
     expect(content).toContain('groupBy: "campaignId"');
   });
 
-  it("should fetch aggregate feature stats with brandId filter using versioned slug", () => {
-    expect(content).toContain("featureVersionedSlug = featureDef?.slug");
-    expect(content).toContain("fetchFeatureStats(featureVersionedSlug!, { brandId })");
+  it("should fetch aggregate feature stats with brandId filter using dynasty slug", () => {
+    expect(content).toContain("fetchFeatureStats(featureDynastySlug, { brandId })");
+    expect(content).not.toContain("featureVersionedSlug");
   });
 
   it("should NOT use useQueries for individual campaign stats", () => {

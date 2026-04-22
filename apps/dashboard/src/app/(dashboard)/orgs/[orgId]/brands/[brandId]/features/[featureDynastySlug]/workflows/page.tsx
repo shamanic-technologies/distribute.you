@@ -46,7 +46,7 @@ export default function FeatureWorkflowsPage() {
   const router = useRouter();
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
-  const featureDynastySlug = params.featureSlug as string;
+  const featureDynastySlug = params.featureDynastySlug as string;
 
   const { getFeature, isLoading: featuresLoading, registry } = useFeatures();
   const wfDef = getFeature(featureDynastySlug);
@@ -67,12 +67,10 @@ export default function FeatureWorkflowsPage() {
   }, [router, orgId, brandId, featureDynastySlug]);
 
   // Fetch stats grouped by workflow dynasty (aggregated across all versions)
-  // Use the resolved versioned slug — the stats endpoint requires the exact version
-  const featureVersionedSlug = wfDef?.slug;
   const { data: statsData, isLoading } = useAuthQuery(
-    ["featureStats", featureVersionedSlug, "byDynasty"],
-    () => fetchFeatureStats(featureVersionedSlug!, { groupBy: "workflowDynastySlug" }),
-    { enabled: !!featureVersionedSlug && wfDef?.implemented === true, ...pollOptions },
+    ["featureStats", featureDynastySlug, "byDynasty"],
+    () => fetchFeatureStats(featureDynastySlug, { groupBy: "workflowDynastySlug" }),
+    { enabled: wfDef?.implemented === true, ...pollOptions },
   );
 
   // Fetch workflows filtered by feature slug

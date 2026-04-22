@@ -42,7 +42,7 @@ export default function WorkflowViewerPage() {
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
   const initialWorkflowId = params.workflowId as string;
-  const featureDynastySlug = params.featureSlug as string;
+  const featureDynastySlug = params.featureDynastySlug as string;
   const [detailsOpen, setDetailsOpen] = useState(false);
 
   // Track active workflow ID locally so fork navigation doesn't remount the page

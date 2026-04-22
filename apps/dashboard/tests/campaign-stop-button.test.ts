@@ -5,14 +5,14 @@ import * as path from "path";
 /**
  * Campaign stop button functionality has moved from the old brand-scoped
  * campaigns list page to the feature-scoped page at:
- * orgs/[orgId]/brands/[brandId]/features/[featureSlug]/page.tsx
+ * orgs/[orgId]/brands/[brandId]/features/[featureDynastySlug]/page.tsx
  *
  * The stop button is now a StopCampaignButton component using useStopCampaign hook.
  */
 
 const pagePath = path.join(
   __dirname,
-  "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/page.tsx"
+  "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureDynastySlug]/page.tsx"
 );
 const content = fs.readFileSync(pagePath, "utf-8");
 

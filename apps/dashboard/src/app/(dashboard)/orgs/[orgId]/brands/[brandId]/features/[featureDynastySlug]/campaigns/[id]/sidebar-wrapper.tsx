@@ -30,12 +30,10 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureDynastyS
   );
 
   // Feature stats for this campaign — same source the list page uses
-  // Use the resolved versioned slug — the stats endpoint requires the exact version
-  const featureVersionedSlug = featureDef?.slug;
   const { data: featureStatsData, isLoading: featureStatsLoading } = useAuthQuery(
-    ["featureStats", featureVersionedSlug, "campaign", campaignId],
-    () => fetchFeatureStats(featureVersionedSlug!, { campaignId }),
-    { enabled: !!featureVersionedSlug, refetchInterval: 5_000, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
+    ["featureStats", featureDynastySlug, "campaign", campaignId],
+    () => fetchFeatureStats(featureDynastySlug, { campaignId }),
+    { enabled: true, refetchInterval: 5_000, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
   );
   const fStats = featureStatsData?.stats ?? {};
 
