@@ -8,6 +8,7 @@ import { OrgActivator } from "@/components/org-activator";
 import { AuthEventTracker } from "@/components/auth-event-tracker";
 import { UserActivityTracker } from "@/components/user-activity-tracker";
 import { UserResolver } from "@/components/user-resolver";
+import { OrgCacheInvalidator } from "@/components/org-cache-invalidator";
 import { MobileSidebarProvider, useMobileSidebar } from "@/components/mobile-sidebar-context";
 import { QueryProvider } from "@/lib/query-provider";
 import { OrgContextProvider, useOrg } from "@/lib/org-context";
@@ -50,6 +51,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   return (
     <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
       <OrgActivator />
+      <OrgCacheInvalidator />
       <AuthEventTracker />
       <UserActivityTracker />
       <UserResolver />
