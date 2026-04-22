@@ -3,15 +3,15 @@ import * as fs from "fs";
 import * as path from "path";
 
 /**
- * Regression: the sidebar-wrapper fetched campaign emails with its own useAuthQuery
- * on the same query key ("campaignEmails") as the CampaignProvider context. The two
- * observers had conflicting options (different refetchInterval and placeholderData),
- * causing the email data to flicker every 5 seconds in both sidebar and body.
+ * Regression: the sidebar-wrapper fetched campaign emails and articles with its own
+ * useAuthQuery on the same query keys as the page components / CampaignProvider context.
+ * The dual observers caused data to flicker every 5 seconds in both sidebar and body.
  *
- * Fix: sidebar-wrapper must use emails from useCampaign() context (single observer),
- * just like it already does for leads.
+ * Fix: sidebar-wrapper must NOT duplicate queries that entity pages already make.
+ * - Emails: read from useCampaign() context (single observer), like leads.
+ * - Articles: rely on featureStats for the sidebar count instead of fetching the full list.
  */
-describe("Campaign emails should not flicker (no duplicate query)", () => {
+describe("Campaign entity data should not flicker (no duplicate queries)", () => {
   const sidebarWrapperPath = path.join(
     __dirname,
     "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureDynastySlug]/campaigns/[id]/sidebar-wrapper.tsx"
@@ -33,7 +33,10 @@ describe("Campaign emails should not flicker (no duplicate query)", () => {
   });
 
   it("sidebar-wrapper must get emails from useCampaign() context", () => {
-    // Should destructure emails from the campaign context
     expect(sidebarContent).toMatch(/emails.*useCampaign|useCampaign.*emails/s);
+  });
+
+  it("sidebar-wrapper must NOT call listCampaignArticles directly", () => {
+    expect(sidebarContent).not.toContain("listCampaignArticles");
   });
 });
