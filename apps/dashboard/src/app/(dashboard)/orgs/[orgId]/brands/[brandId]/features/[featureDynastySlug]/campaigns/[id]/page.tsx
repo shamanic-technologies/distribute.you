@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useCampaign } from "@/lib/campaign-context";
@@ -143,24 +143,13 @@ export default function CampaignOverviewPage() {
     }
   }
 
-  // Use feature stats (same source as the list page) for charts, with campaign stats as fallback.
-  // Retain the last valid stats to prevent charts from flickering to 0 during polling
-  // when the API intermittently returns a response without the optional `stats` field.
   const featureStats = featureStatsData?.stats ?? {};
   const campaignStatsRecord: Record<string, number> = stats
     ? Object.fromEntries(
         Object.entries(stats).filter((e): e is [string, number] => typeof e[1] === "number")
       )
     : {};
-  const lastValidStatsRef = useRef<Record<string, number>>({});
-  const hasNewFeatureStats = Object.keys(featureStats).length > 0;
-  const hasNewCampaignStats = Object.keys(campaignStatsRecord).length > 0;
-  if (hasNewFeatureStats || hasNewCampaignStats) {
-    lastValidStatsRef.current = { ...campaignStatsRecord, ...featureStats };
-  }
-  const statsRecord: Record<string, number> = (hasNewFeatureStats || hasNewCampaignStats)
-    ? { ...campaignStatsRecord, ...featureStats }
-    : lastValidStatsRef.current;
+  const statsRecord: Record<string, number> = { ...campaignStatsRecord, ...featureStats };
 
   return (
     <div className="p-4 md:p-8">
