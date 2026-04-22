@@ -40,6 +40,7 @@ describe("Campaign sidebar badges use entity.countKey from feature definition", 
   });
 
   it("should have emails in listingFallback so badge shows even when stats return null", () => {
-    expect(content).toMatch(/emails:\s*emailsData\?\.emails\?\.length/);
+    // Emails now come from useCampaign() context (campaignEmails), not a separate query
+    expect(content).toMatch(/emails:\s*campaignEmails\.length/);
   });
 });
