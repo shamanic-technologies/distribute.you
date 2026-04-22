@@ -40,7 +40,7 @@ export default function FeatureSettingsPage() {
   const params = useParams();
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
-  const featureDynastySlug = params.featureSlug as string;
+  const featureDynastySlug = params.featureDynastySlug as string;
 
   const { registry, features: existingFeatures } = useFeatures();
 

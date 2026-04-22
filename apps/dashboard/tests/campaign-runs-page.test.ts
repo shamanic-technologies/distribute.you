@@ -5,7 +5,7 @@ import * as path from "path";
 describe("Campaign runs page", () => {
   const runsPagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/runs/page.tsx"
+    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureDynastySlug]/campaigns/[id]/runs/page.tsx"
   );
   const sidebarPath = path.join(
     __dirname,

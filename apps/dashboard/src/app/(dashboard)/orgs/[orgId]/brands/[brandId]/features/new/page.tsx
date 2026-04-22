@@ -229,7 +229,7 @@ export default function CreateFeaturePage() {
       await queryClient.invalidateQueries({ queryKey: ["features"] });
       // Transition in-place — keep chat mounted, update URL without navigation
       setCreatedFeature(result.feature);
-      const settingsUrl = `/orgs/${orgId}/brands/${brandId}/features/${result.feature.dynastySlug ?? result.feature.slug}/settings`;
+      const settingsUrl = `/orgs/${orgId}/brands/${brandId}/features/${result.feature.dynastySlug}/settings`;
       window.history.replaceState(null, "", settingsUrl);
     } catch (err) {
       setSaveError(err instanceof ApiError ? err.message : "Failed to save feature");

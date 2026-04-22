@@ -10,7 +10,7 @@ import * as path from "path";
 describe("Workflow chat context — dynasty identity fields", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/workflows/[workflowId]/page.tsx"
+    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureDynastySlug]/workflows/[workflowId]/page.tsx"
   );
   const content = fs.readFileSync(pagePath, "utf-8");
 
@@ -40,7 +40,7 @@ describe("Workflow chat context — dynasty identity fields", () => {
 describe("Feature settings chat context — dynasty identity fields", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/settings/page.tsx"
+    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureDynastySlug]/settings/page.tsx"
   );
   const content = fs.readFileSync(pagePath, "utf-8");
 

@@ -11,7 +11,7 @@ import * as path from "path";
 describe("Campaign sidebar badges use entity.countKey from feature definition", () => {
   const wrapperPath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/sidebar-wrapper.tsx"
+    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureDynastySlug]/campaigns/[id]/sidebar-wrapper.tsx"
   );
   const content = fs.readFileSync(wrapperPath, "utf-8");
 

@@ -8,7 +8,7 @@ const brandOutletPagePath = path.resolve(
 );
 const featureOutletPagePath = path.resolve(
   __dirname,
-  "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/outlets/page.tsx",
+  "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureDynastySlug]/outlets/page.tsx",
 );
 const apiPath = path.resolve(__dirname, "../src/lib/api.ts");
 

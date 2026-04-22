@@ -44,7 +44,7 @@ function formatTotalCost(cents: string | null | undefined): string | null {
 export default function CampaignOverviewPage() {
   const params = useParams();
   const router = useRouter();
-  const featureDynastySlug = params.featureSlug as string;
+  const featureDynastySlug = params.featureDynastySlug as string;
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
   const { getFeature, registry } = useFeatures();
@@ -63,12 +63,10 @@ export default function CampaignOverviewPage() {
   const [relaunchError, setRelaunchError] = useState<string | null>(null);
 
   // Feature stats for this campaign — same source the list page uses
-  // Use the resolved versioned slug — the stats endpoint requires the exact version
-  const featureVersionedSlug = featureDef?.slug;
   const { data: featureStatsData } = useAuthQuery(
-    ["featureStats", featureVersionedSlug, "campaign", campaignId],
-    () => fetchFeatureStats(featureVersionedSlug!, { campaignId }),
-    { enabled: !!featureVersionedSlug, refetchInterval: 5_000, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
+    ["featureStats", featureDynastySlug, "campaign", campaignId],
+    () => fetchFeatureStats(featureDynastySlug, { campaignId }),
+    { enabled: true, refetchInterval: 5_000, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
   );
 
   const handleStop = () => {

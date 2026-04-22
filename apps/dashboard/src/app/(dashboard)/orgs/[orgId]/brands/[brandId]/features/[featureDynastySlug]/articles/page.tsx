@@ -37,19 +37,19 @@ function formatDate(dateStr: string | null): string {
 export default function FeatureArticlesPage() {
   const params = useParams();
   const brandId = params.brandId as string;
-  const featureSlug = params.featureSlug as string;
+  const featureDynastySlug = params.featureDynastySlug as string;
   const [selected, setSelected] = useState<ArticleDiscoveryItem | null>(null);
   const [search, setSearch] = useState("");
 
   const { data, isLoading } = useAuthQuery(
-    ["brandArticles", brandId, featureSlug],
-    () => listBrandArticles(brandId, featureSlug),
+    ["brandArticles", brandId, featureDynastySlug],
+    () => listBrandArticles(brandId, featureDynastySlug),
     { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false },
   );
 
   const { data: outletsData } = useAuthQuery(
-    ["brandOutlets", brandId, featureSlug],
-    () => listBrandOutlets(brandId, featureSlug),
+    ["brandOutlets", brandId, featureDynastySlug],
+    () => listBrandOutlets(brandId, featureDynastySlug),
   );
 
   const { data: journalistsData } = useAuthQuery(
