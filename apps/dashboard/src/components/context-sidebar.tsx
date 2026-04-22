@@ -339,11 +339,11 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
     { id: "home", label: "Home", href: "/", icon: <HomeIcon /> },
   ];
 
-  const featureItems: SidebarItem[] = features.map((f) => ({
-    id: f.dynastySlug ?? f.slug,
+  const featureItems: SidebarItem[] = features.filter((f) => f.dynastySlug).map((f) => ({
+    id: f.dynastySlug!,
     label: f.dynastyName ?? f.name,
-    href: `/features/${f.dynastySlug ?? f.slug}`,
-    icon: getFeatureIcon(f.dynastySlug ?? f.slug, f.icon),
+    href: `/features/${f.dynastySlug}`,
+    icon: getFeatureIcon(f.dynastySlug!, f.icon),
     comingSoon: !f.implemented,
   }));
 
@@ -378,11 +378,11 @@ function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string 
     { id: "brands", label: "Brands", href: `/orgs/${orgId}/brands`, icon: <BrandIcon /> },
   ];
 
-  const featureItems: SidebarItem[] = features.map((f) => ({
-    id: f.dynastySlug ?? f.slug,
+  const featureItems: SidebarItem[] = features.filter((f) => f.dynastySlug).map((f) => ({
+    id: f.dynastySlug!,
     label: f.dynastyName ?? f.name,
-    href: `/features/${f.dynastySlug ?? f.slug}`,
-    icon: getFeatureIcon(f.dynastySlug ?? f.slug, f.icon),
+    href: `/features/${f.dynastySlug}`,
+    icon: getFeatureIcon(f.dynastySlug!, f.icon),
     comingSoon: !f.implemented,
   }));
 
@@ -447,11 +447,11 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
     { id: "brand-info", label: "Brand Info", href: `${basePath}/brand-info`, icon: <InfoIcon /> },
   ];
 
-  const featureItems: SidebarItem[] = features.map((f) => ({
-    id: f.dynastySlug ?? f.slug,
+  const featureItems: SidebarItem[] = features.filter((f) => f.dynastySlug).map((f) => ({
+    id: f.dynastySlug!,
     label: f.dynastyName ?? f.name,
-    href: `${basePath}/features/${f.dynastySlug ?? f.slug}`,
-    icon: getFeatureIcon(f.dynastySlug ?? f.slug, f.icon),
+    href: `${basePath}/features/${f.dynastySlug}`,
+    icon: getFeatureIcon(f.dynastySlug!, f.icon),
     comingSoon: !f.implemented,
   }));
 
@@ -559,12 +559,11 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   const entityNames = useMemo(() => entities.map((e) => e.name), [entities]);
 
   // Feature stats scoped to this brand — same pattern as campaign sidebar
-  // Use the resolved versioned slug — the stats endpoint requires the exact version
-  const featureVersionedSlug = feature?.slug;
+  const featureDynastySlug = feature?.dynastySlug;
   const { data: featureStatsData } = useAuthQuery(
-    ["featureStats", featureVersionedSlug, "brand", brandId],
-    () => fetchFeatureStats(featureVersionedSlug!, { brandId }),
-    { enabled: !!featureVersionedSlug, refetchInterval: 5_000, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
+    ["featureStats", featureDynastySlug, "brand", brandId],
+    () => fetchFeatureStats(featureDynastySlug!, { brandId }),
+    { enabled: !!featureDynastySlug, refetchInterval: 5_000, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
   );
   const fStats = featureStatsData?.stats ?? {};
 

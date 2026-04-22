@@ -4,7 +4,7 @@ import * as path from "path";
 
 describe("Campaign creation redirects to the new campaign page", () => {
   const rel =
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx";
+    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureDynastySlug]/campaigns/new/page.tsx";
   const content = fs.readFileSync(path.join(__dirname, rel), "utf-8");
 
   it("navigates to the created campaign's detail page, not the feature page", () => {

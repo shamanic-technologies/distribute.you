@@ -193,13 +193,14 @@ export default function BrandOverviewPage() {
   const dynastyFeatures = useMemo(() => {
     const seen = new Map<string, typeof features[number]>();
     for (const f of features) {
-      const key = f.dynastySlug ?? f.slug;
+      if (!f.dynastySlug) continue;
+      const key = f.dynastySlug;
       const existing = seen.get(key);
       if (!existing || (f.status === "active" && existing.status !== "active") || (f.version ?? 0) > (existing.version ?? 0)) {
         seen.set(key, f);
       }
     }
-    return Array.from(seen.values());
+    return Array.from(seen.values()) as (typeof features[number] & { dynastySlug: string })[];
   }, [features]);
 
   // Build workflow sections from actual campaigns, grouped by dynasty slug
@@ -334,7 +335,7 @@ export default function BrandOverviewPage() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {dynastyFeatures.map((f) => {
-            const dSlug = f.dynastySlug ?? f.slug;
+            const dSlug = f.dynastySlug;
             const section = workflowSections.find(s => s.featureSlug === dSlug || s.featureSlug === f.slug);
             const activeCampaigns = section?.campaigns.filter(c => c.status === "ongoing") ?? [];
 

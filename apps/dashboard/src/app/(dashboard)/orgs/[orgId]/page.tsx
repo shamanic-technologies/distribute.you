@@ -182,8 +182,8 @@ export default function OrgOverviewPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {features.map((f) => (
             <Link
-              key={f.dynastySlug ?? f.slug}
-              href={f.implemented ? `/features/${f.dynastySlug ?? f.slug}` : "#"}
+              key={f.dynastySlug}
+              href={f.implemented ? `/features/${f.dynastySlug}` : "#"}
               className={`flex items-center gap-3 p-3 rounded-lg border transition ${
                 f.implemented
                   ? "border-gray-200 hover:border-brand-300 hover:shadow-sm"
@@ -215,7 +215,7 @@ export default function OrgOverviewPage() {
               const featureSlug = campaign.featureSlug ?? null;
               const primaryBrandId = campaign.brandIds[0] ?? null;
               const brand = primaryBrandId ? brands.find((b) => b.id === primaryBrandId) : undefined;
-              const feature = featureSlug ? (features.find((f) => f.dynastySlug === featureSlug) ?? features.find((f) => f.slug === featureSlug)) : null;
+              const feature = featureSlug ? features.find((f) => f.dynastySlug === featureSlug) : null;
               const href = featureSlug && primaryBrandId
                 ? `/orgs/${orgId}/brands/${primaryBrandId}/features/${featureSlug}/campaigns/${campaign.id}`
                 : null;

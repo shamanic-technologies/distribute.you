@@ -32,12 +32,11 @@ export default function FeatureWorkflowsPage() {
   const [detailWorkflowId, setDetailWorkflowId] = useState<string | null>(null);
 
   // Fetch stats grouped by workflow dynasty
-  // Use the resolved versioned slug — the stats endpoint requires the exact version
-  const featureVersionedSlug = featureDef?.slug;
+  const featureDynastySlug = featureDef?.dynastySlug;
   const { data: statsData, isLoading } = useAuthQuery(
-    ["featureStats", featureVersionedSlug, "byDynasty"],
-    () => fetchFeatureStats(featureVersionedSlug!, { groupBy: "workflowDynastySlug" }),
-    { enabled: !!featureVersionedSlug && featureDef?.implemented === true, ...pollOptions },
+    ["featureStats", featureDynastySlug, "byDynasty"],
+    () => fetchFeatureStats(featureDynastySlug!, { groupBy: "workflowDynastySlug" }),
+    { enabled: !!featureDynastySlug && featureDef?.implemented === true, ...pollOptions },
   );
 
   const rows = useMemo(() => {

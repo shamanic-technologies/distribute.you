@@ -16,7 +16,7 @@ export default function NewWorkflowPage() {
   const router = useRouter();
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
-  const featureDynastySlug = params.featureSlug as string;
+  const featureDynastySlug = params.featureDynastySlug as string;
 
   const { getFeature } = useFeatures();
   const wfDef = getFeature(featureDynastySlug);

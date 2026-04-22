@@ -280,8 +280,8 @@ export function BreadcrumbNav() {
                 <div className="px-3 py-2 border-b border-gray-100">
                   <p className="text-xs text-gray-500 font-medium">Switch feature</p>
                 </div>
-                {features.map((f) => {
-                  const dSlug = f.dynastySlug ?? f.slug;
+                {features.filter((f): f is typeof f & { dynastySlug: string } => !!f.dynastySlug).map((f) => {
+                  const dSlug = f.dynastySlug;
                   return (
                   <button
                     key={dSlug}
@@ -375,8 +375,8 @@ export function BreadcrumbNav() {
                 <div className="px-3 py-2 border-b border-gray-100">
                   <p className="text-xs text-gray-500 font-medium">Switch feature</p>
                 </div>
-                {features.map((f) => {
-                  const dSlug = f.dynastySlug ?? f.slug;
+                {features.filter((f): f is typeof f & { dynastySlug: string } => !!f.dynastySlug).map((f) => {
+                  const dSlug = f.dynastySlug;
                   return (
                   <button
                     key={dSlug}

@@ -15,44 +15,42 @@ describe("Dynasty slug resolution in features-context", () => {
     "../src/lib/features-context.tsx",
   );
 
-  it("getFeature should match by dynastySlug first", () => {
+  it("getFeature should match exclusively by dynastySlug", () => {
     const content = fs.readFileSync(contextPath, "utf-8");
     expect(content).toContain("f.dynastySlug === slug");
-    // dynastySlug match must come before versioned slug match
-    const dynastyIdx = content.indexOf("f.dynastySlug === slug");
-    const slugIdx = content.indexOf("f.slug === slug");
-    expect(dynastyIdx).toBeLessThan(slugIdx);
+    // No fallback to versioned slug -- dynasty slug is the only lookup
+    expect(content).not.toContain("f.slug === slug");
   });
 });
 
 describe("Feature pages use resolvedSlug for API calls", () => {
   const featurePagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/page.tsx",
+    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureDynastySlug]/page.tsx",
   );
   const campaignNewPath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx",
+    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureDynastySlug]/campaigns/new/page.tsx",
   );
   const workflowsPath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/workflows/page.tsx",
+    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureDynastySlug]/workflows/page.tsx",
   );
 
-  it("feature page resolves versioned slug from featureDef before API calls", () => {
+  it("feature page uses dynasty slug directly for API calls", () => {
     const content = fs.readFileSync(featurePagePath, "utf-8");
     expect(content).toContain("featureDynastySlug");
-    expect(content).toContain("featureVersionedSlug = featureDef?.slug");
-    expect(content).toContain("fetchFeatureStats(featureVersionedSlug!");
+    expect(content).toContain("fetchFeatureStats(featureDynastySlug");
+    expect(content).not.toContain("featureVersionedSlug");
   });
 
-  it("campaign creation page resolves versioned slug from featureDef before API calls", () => {
+  it("campaign creation page uses dynasty slug directly for API calls", () => {
     const content = fs.readFileSync(campaignNewPath, "utf-8");
     expect(content).toContain("featureDynastySlug");
-    expect(content).toContain("featureVersionedSlug = featureDef?.slug");
-    expect(content).toContain("fetchFeatureStats(featureVersionedSlug!");
+    expect(content).toContain("fetchFeatureStats(featureDynastySlug");
     expect(content).toContain("listWorkflows({ featureDynastySlug })");
     expect(content).toContain("prefillFeatureInputs(featureDynastySlug");
+    expect(content).not.toContain("featureVersionedSlug");
   });
 
   it("campaign creation page shows error UI when feature not found", () => {
@@ -61,12 +59,12 @@ describe("Feature pages use resolvedSlug for API calls", () => {
     expect(content).not.toMatch(/if\s*\(\s*!featureDef\s*\)\s*return\s*null/);
   });
 
-  it("workflows page resolves versioned slug from featureDef before API calls", () => {
+  it("workflows page uses dynasty slug directly for API calls", () => {
     const content = fs.readFileSync(workflowsPath, "utf-8");
     expect(content).toContain("featureDynastySlug");
-    expect(content).toContain("featureVersionedSlug = wfDef?.slug");
-    expect(content).toContain("fetchFeatureStats(featureVersionedSlug!");
+    expect(content).toContain("fetchFeatureStats(featureDynastySlug");
     expect(content).toContain("listWorkflows({ featureDynastySlug })");
+    expect(content).not.toContain("featureVersionedSlug");
   });
 });
 
@@ -78,21 +76,24 @@ describe("All feature links use dynasty slugs", () => {
   );
   const breadcrumbPath = path.join(__dirname, "../src/components/breadcrumb-nav.tsx");
 
-  it("sidebar builds feature links with dynastySlug", () => {
+  it("sidebar builds feature links with dynastySlug (no fallback)", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    expect(content).toContain("f.dynastySlug ?? f.slug");
+    expect(content).toContain("f.dynastySlug");
+    expect(content).not.toContain("f.dynastySlug ?? f.slug");
     expect(content).toContain("f.dynastyName ?? f.name");
   });
 
-  it("brand page builds feature links with dynastySlug", () => {
+  it("brand page builds feature links with dynastySlug (no fallback)", () => {
     const content = fs.readFileSync(brandPagePath, "utf-8");
-    expect(content).toContain("f.dynastySlug ?? f.slug");
+    expect(content).toContain("f.dynastySlug");
+    expect(content).not.toContain("f.dynastySlug ?? f.slug");
     expect(content).toContain("f.dynastyName ?? f.name");
   });
 
-  it("breadcrumb feature switcher uses dynastySlug", () => {
+  it("breadcrumb feature switcher uses dynastySlug (no fallback)", () => {
     const content = fs.readFileSync(breadcrumbPath, "utf-8");
-    expect(content).toContain("f.dynastySlug ?? f.slug");
+    expect(content).toContain("f.dynastySlug");
+    expect(content).not.toContain("f.dynastySlug ?? f.slug");
     expect(content).toContain("f.dynastyName ?? f.name");
   });
 });
