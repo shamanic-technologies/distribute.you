@@ -66,7 +66,7 @@ export default function FeaturePage() {
   const brandId = params.brandId as string;
   const orgId = params.orgId as string;
   const featureDynastySlug = params.featureDynastySlug as string;
-  const { getFeature, registry } = useFeatures();
+  const { getFeature, registry, isLoading: featuresLoading } = useFeatures();
   const featureDef = getFeature(featureDynastySlug);
 
   const funnelChart = featureDef?.charts?.find((c) => c.type === "funnel-bar");
@@ -120,8 +120,8 @@ export default function FeaturePage() {
   const brandCostBreakdown = brandCostData?.costs ?? [];
 
   const hasData = campaignsData !== undefined;
-  const allStatsLoading = !hasData || (campaigns.length > 0 && statsLoading);
-  const costsLoading = isLoadingCosts;
+  const allStatsLoading = featuresLoading || !hasData || (campaigns.length > 0 && statsLoading);
+  const costsLoading = featuresLoading || isLoadingCosts;
 
   const totalCostCents = featureStatsData?.systemStats?.totalCostInUsdCents ?? 0;
   const featureStats = featureStatsData?.stats ?? {};
@@ -156,8 +156,8 @@ export default function FeaturePage() {
       {/* Stats Overview — dynamic from charts */}
       {allStatsLoading ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-          {funnelChart && <FunnelMetricsSkeleton />}
-          {breakdownChart && <ReplyBreakdownSkeleton />}
+          {(funnelChart || !featureDef) && <FunnelMetricsSkeleton />}
+          {(breakdownChart || !featureDef) && <ReplyBreakdownSkeleton />}
         </div>
       ) : campaigns.length > 0 && (funnelChart || breakdownChart) ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
@@ -192,7 +192,7 @@ export default function FeaturePage() {
       {/* Campaigns List */}
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-gray-700">Campaigns</h2>
-        {!hasData ? (
+        {(!hasData || featuresLoading) ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
               <CampaignRowSkeleton key={i} />
@@ -263,13 +263,13 @@ export default function FeaturePage() {
                     campaignRowOutputs.map((o) => (
                       <div key={o.key} className="h-3 w-14 bg-gray-200 rounded animate-pulse" />
                     ))
-                  ) : cStats ? (
+                  ) : (
                     campaignRowOutputs.map((o) => (
                       <span key={o.key}>
-                        {formatStatValue(cStats[o.key], registry[o.key])} {registry[o.key]?.label ?? o.key}
+                        {formatStatValue(cStats?.[o.key] ?? 0, registry[o.key])} {registry[o.key]?.label ?? o.key}
                       </span>
                     ))
-                  ) : null}
+                  )}
                 </div>
               </Link>
             );
