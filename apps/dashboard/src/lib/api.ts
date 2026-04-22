@@ -686,14 +686,14 @@ export interface FeatureStatsResponse {
   featureSlug: string;
   groupBy?: string;
   systemStats: SystemStats;
-  stats?: Record<string, number>;
+  stats: Record<string, number>;
   groups?: StatsGroup[];
 }
 
 export interface GlobalStatsResponse {
   groupBy?: string;
   systemStats: SystemStats;
-  stats?: Record<string, number>;
+  stats: Record<string, number>;
   groups?: StatsGroup[];
 }
 
