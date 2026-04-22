@@ -7,7 +7,7 @@ import { CampaignSidebar } from "@/components/campaign-sidebar";
 import { useCampaign } from "@/lib/campaign-context";
 import { useFeatures } from "@/lib/features-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listWorkflows, listCampaignOutlets, listJournalistsEnriched, listCampaignEmails, listCampaignArticles, listMediaKitsByCampaign, fetchFeatureStats } from "@/lib/api";
+import { listWorkflows, listCampaignOutlets, listJournalistsEnriched, listMediaKitsByCampaign, fetchFeatureStats } from "@/lib/api";
 
 interface Props {
   orgId: string;
@@ -17,7 +17,7 @@ interface Props {
 
 export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureDynastySlug }: Props) {
   const params = useParams();
-  const { campaign, leads, loading: campaignLoading } = useCampaign();
+  const { campaign, leads, emails: campaignEmails, loading: campaignLoading } = useCampaign();
   const campaignId = params.id as string;
   const { getFeature } = useFeatures();
   const featureDef = getFeature(featureDynastySlug);
@@ -49,18 +49,6 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureDynastyS
     { enabled: entityNames.includes("journalists"), refetchInterval: 5_000, refetchIntervalInBackground: false },
   );
 
-  const { data: emailsData, isLoading: emailsLoading } = useAuthQuery(
-    ["campaignEmails", campaignId],
-    () => listCampaignEmails(campaignId),
-    { enabled: entityNames.includes("emails"), refetchInterval: 5_000, refetchIntervalInBackground: false },
-  );
-
-  const { data: articlesData, isLoading: articlesLoading } = useAuthQuery(
-    ["campaignArticles", campaignId],
-    () => listCampaignArticles(campaignId),
-    { enabled: entityNames.includes("articles"), refetchInterval: 5_000, refetchIntervalInBackground: false },
-  );
-
   const { data: pressKitsData, isLoading: pressKitsLoading } = useAuthQuery(
     ["campaignPressKits", campaignId],
     () => listMediaKitsByCampaign(campaignId),
@@ -72,8 +60,8 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureDynastyS
     companies: campaignLoading,
     outlets: outletsLoading,
     journalists: journalistsLoading,
-    emails: emailsLoading,
-    articles: articlesLoading,
+    emails: campaignLoading,
+    articles: featureStatsLoading,
     "press-kits": pressKitsLoading,
   };
 
@@ -95,10 +83,10 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureDynastyS
   const listingFallback: Record<string, number | undefined> = {
     leads: leads.length,
     companies: companyCount,
-    emails: emailsData?.emails?.length,
+    emails: campaignEmails.length,
     outlets: outletsData?.outlets?.length,
     journalists: journalistsData?.journalists?.length,
-    articles: articlesData?.discoveries?.length,
+    articles: undefined,
     "press-kits": pressKitsData?.length,
   };
 
