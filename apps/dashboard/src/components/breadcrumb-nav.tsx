@@ -24,6 +24,15 @@ const brandListCache: { data: Brand[] | null; timestamp: number } = { data: null
 const campaignListCache: Record<string, { data: Campaign[]; timestamp: number }> = {};
 const CACHE_TTL = 60000;
 
+/** Clear module-level breadcrumb caches (called on org switch) */
+export function clearBreadcrumbCaches() {
+  brandListCache.data = null;
+  brandListCache.timestamp = 0;
+  for (const key of Object.keys(campaignListCache)) {
+    delete campaignListCache[key];
+  }
+}
+
 export function BreadcrumbNav() {
   const pathname = usePathname();
   const router = useRouter();
@@ -133,7 +142,11 @@ export function BreadcrumbNav() {
   };
 
   const handleOrgSwitch = (clerkOrgId: string) => {
-    if (setActive) setActive({ organization: clerkOrgId });
+    if (setActive) {
+      clearBreadcrumbCaches();
+      setActive({ organization: clerkOrgId });
+      // OrgCacheInvalidator handles React Query clearing and navigation
+    }
     setOpenDropdown(null);
   };
 
