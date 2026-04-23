@@ -99,7 +99,7 @@ describe("Feature save button", () => {
 
     it("updateFeature should PUT to /features/:slug", () => {
       const match = apiContent.match(
-        /function updateFeature[\s\S]*?method:\s*"PUT"[\s\S]*?\/features\/\$/
+        /function updateFeature[\s\S]*?\/features\/\$[\s\S]*?method:\s*"PUT"/
       );
       expect(match).not.toBeNull();
     });
