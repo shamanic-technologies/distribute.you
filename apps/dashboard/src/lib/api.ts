@@ -683,7 +683,8 @@ export interface StatsGroup {
 }
 
 export interface FeatureStatsResponse {
-  featureSlug: string;
+  featureSlug?: string;
+  dynastySlug?: string;
   groupBy?: string;
   systemStats: SystemStats;
   stats: Record<string, number>;
@@ -791,18 +792,17 @@ export async function fetchStatsRegistry(token?: string): Promise<{ registry: St
 
 /** GET /features/:featureSlug/stats — stats for a feature */
 export async function fetchFeatureStats(
-  featureSlug: string,
+  dynastySlug: string,
   params?: { groupBy?: string; brandId?: string; campaignId?: string; workflowSlug?: string; workflowDynastySlug?: string },
   token?: string,
 ): Promise<FeatureStatsResponse> {
-  const query = new URLSearchParams();
+  const query = new URLSearchParams({ dynastySlug });
   if (params?.groupBy) query.set("groupBy", params.groupBy);
   if (params?.brandId) query.set("brandId", params.brandId);
   if (params?.campaignId) query.set("campaignId", params.campaignId);
   if (params?.workflowSlug) query.set("workflowSlug", params.workflowSlug);
   if (params?.workflowDynastySlug) query.set("workflowDynastySlug", params.workflowDynastySlug);
-  const qs = query.toString();
-  return apiCall<FeatureStatsResponse>(`/features/${featureSlug}/stats${qs ? `?${qs}` : ""}`, { token });
+  return apiCall<FeatureStatsResponse>(`/features/stats/dynasty?${query}`, { token });
 }
 
 /** GET /features/stats — global stats cross-features */
