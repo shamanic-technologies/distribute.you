@@ -290,7 +290,7 @@ function getFeatureIcon(featureSlug: string, icon?: string): React.ReactNode {
 }
 
 interface NavigationLevel {
-  type: "app" | "appFeature" | "org" | "brand" | "feature" | "featureSettings" | "workflow" | "campaign";
+  type: "app" | "appFeature" | "org" | "brand" | "brandSettings" | "feature" | "featureSettings" | "workflow" | "campaign";
   orgId?: string;
   brandId?: string;
   featureSlug?: string;
@@ -305,7 +305,10 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
     const orgId = segments[1];
     if (segments[2] === "brands" && segments[3]) {
       const brandId = segments[3];
-      if (segments[4] === "features" && segments[5]) {
+      if (segments[4] === "settings") {
+          return { type: "brandSettings", orgId, brandId };
+        }
+        if (segments[4] === "features" && segments[5]) {
         const featureSlug = segments[5];
         if (segments[6] === "campaigns" && segments[7]) {
           if (segments[7] === "new") {
@@ -438,6 +441,13 @@ const OutcomeLeadIcon = () => (
   </svg>
 );
 
+const SettingsIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+  </svg>
+);
+
 // Brand Level Sidebar
 function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandId: string; pathname: string }) {
   const { features } = useFeatures();
@@ -516,16 +526,40 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
           />
         ))}
       </div>
+      <div className="pt-2 mt-2 border-t border-gray-100">
+        <SidebarLink
+          item={{ id: "settings", label: "Brand Settings", href: `${basePath}/settings`, icon: <SettingsIcon /> }}
+          isActive={pathname.startsWith(`${basePath}/settings`)}
+        />
+      </div>
     </SidebarSection>
   );
 }
 
-const SettingsIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-  </svg>
-);
+// Brand Settings Level Sidebar
+function BrandSettingsLevelSidebar({ orgId, brandId, pathname }: {
+  orgId: string;
+  brandId: string;
+  pathname: string;
+}) {
+  const basePath = `/orgs/${orgId}/brands/${brandId}/settings`;
+
+  const items: SidebarItem[] = [
+    { id: "settings", label: "Brand Settings", href: basePath, icon: <SettingsIcon /> },
+  ];
+
+  return (
+    <SidebarSection title="Settings" backHref={`/orgs/${orgId}/brands/${brandId}`} backLabel="Brand">
+      {items.map((item) => (
+        <SidebarLink
+          key={item.id}
+          item={item}
+          isActive={pathname === item.href || pathname.startsWith(item.href + "/")}
+        />
+      ))}
+    </SidebarSection>
+  );
+}
 
 // Entity icon mapping for sidebar — maps registry icon names to SVG components
 const ENTITY_ICON_MAP: Record<string, () => React.ReactNode> = {
@@ -771,6 +805,8 @@ export function ContextSidebar() {
       return <OrgLevelSidebar orgId={level.orgId!} pathname={pathname} />;
     case "brand":
       return <BrandLevelSidebar orgId={level.orgId!} brandId={level.brandId!} pathname={pathname} />;
+    case "brandSettings":
+      return <BrandSettingsLevelSidebar orgId={level.orgId!} brandId={level.brandId!} pathname={pathname} />;
     case "feature":
       return <FeatureLevelSidebar orgId={level.orgId!} brandId={level.brandId!} featureSlug={level.featureSlug!} pathname={pathname} />;
     case "featureSettings":
