@@ -1505,14 +1505,40 @@ export async function getMediaKitViewStats(
 
 // --- Discovery types ---
 
+/** Cumulative journalist status counts from journalists-service */
+export interface OutletStatusCounts {
+  buffered: number;
+  claimed: number;
+  served: number;
+  skipped: number;
+  contacted: number;
+  sent: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  replied: number;
+  repliesPositive: number;
+  repliesNegative: number;
+  repliesNeutral: number;
+  bounced: number;
+  unsubscribed: number;
+}
+
+/** Structured outlet status from journalists-service */
+export interface OutletStatus {
+  totalJournalists: number;
+  brand: OutletStatusCounts | null;
+  byCampaign: Record<string, OutletStatusCounts> | null;
+  campaign: OutletStatusCounts | null;
+  global: { bounced: number; unsubscribed: number };
+}
+
 /** Per-campaign data nested inside a deduplicated outlet */
 export interface OutletCampaign {
   campaignId: string;
   featureSlug: string;
   brandIds: string[];
   relevanceScore: number;
-  outreachStatus: "buffered" | "claimed" | "served" | "contacted" | "delivered" | "replied" | "open" | "skipped" | "denied" | "ended";
-  replyClassification?: "positive" | "negative" | "neutral" | null;
   whyRelevant?: string;
   whyNotRelevant?: string;
   overallRelevance?: string | null;
@@ -1528,8 +1554,7 @@ export interface DeduplicatedOutlet {
   outletUrl: string;
   outletDomain: string;
   createdAt: string;
-  outreachStatus: "buffered" | "claimed" | "served" | "contacted" | "delivered" | "replied" | "open" | "skipped" | "denied" | "ended";
-  replyClassification?: "positive" | "negative" | "neutral" | null;
+  status: OutletStatus | null;
   relevanceScore: number;
   campaigns: OutletCampaign[];
 }
