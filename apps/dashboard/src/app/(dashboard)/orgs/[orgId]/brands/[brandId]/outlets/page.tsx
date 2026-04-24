@@ -8,11 +8,12 @@ import {
   getOutletStatsCosts,
   type DeduplicatedOutlet,
   type OutletCampaign,
+  type OutletStatusCounts,
 } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
 import { Skeleton } from "@/components/skeleton";
 import { EntitySearchBar } from "@/components/entity-search-bar";
-import { STATUS_PRIORITY, statusBadgeColor, statusLabel, resolveDisplayStatus } from "@/lib/outlet-status";
+import { STATUS_PRIORITY, statusBadgeColor, statusLabel, deriveDisplayStatusFromCounts } from "@/lib/outlet-status";
 
 type Tab = string | "all";
 
@@ -47,7 +48,7 @@ function timeAgo(dateStr: string): string {
 
 function OutletRow({ outlet, costCents, isSelected, onClick }: { outlet: DeduplicatedOutlet; costCents: string | null; isSelected: boolean; onClick: () => void }) {
   const cost = formatCost(costCents);
-  const displayStatus = resolveDisplayStatus(outlet.outreachStatus, outlet.replyClassification);
+  const displayStatus = deriveDisplayStatusFromCounts(outlet.status?.brand);
   return (
     <button
       type="button"
@@ -91,8 +92,8 @@ function OutletRow({ outlet, costCents, isSelected, onClick }: { outlet: Dedupli
 
 /* ─── Campaign Detail Card ──────────────────────────────────────────── */
 
-function CampaignDetailCard({ campaign }: { campaign: OutletCampaign }) {
-  const displayStatus = resolveDisplayStatus(campaign.outreachStatus, campaign.replyClassification);
+function CampaignDetailCard({ campaign, counts }: { campaign: OutletCampaign; counts: OutletStatusCounts | null | undefined }) {
+  const displayStatus = deriveDisplayStatusFromCounts(counts);
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4">
       <div className="flex items-center justify-between mb-3">
@@ -149,7 +150,7 @@ function CampaignDetailCard({ campaign }: { campaign: OutletCampaign }) {
 
 function OutletDetailPanel({ outlet, costCents, onClose }: { outlet: DeduplicatedOutlet; costCents: string | null; onClose: () => void }) {
   const cost = formatCost(costCents);
-  const displayStatus = resolveDisplayStatus(outlet.outreachStatus, outlet.replyClassification);
+  const displayStatus = deriveDisplayStatusFromCounts(outlet.status?.brand);
   return (
     <div className="absolute inset-0 md:relative md:w-1/2 bg-gray-50 md:border-l border-gray-200 overflow-y-auto z-10">
       <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
@@ -224,7 +225,7 @@ function OutletDetailPanel({ outlet, costCents, onClose }: { outlet: Deduplicate
           <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Campaign Details ({outlet.campaigns.length})</h4>
           <div className="space-y-3">
             {outlet.campaigns.map((c) => (
-              <CampaignDetailCard key={c.campaignId} campaign={c} />
+              <CampaignDetailCard key={c.campaignId} campaign={c} counts={outlet.status?.byCampaign?.[c.campaignId]} />
             ))}
           </div>
         </div>
@@ -282,7 +283,7 @@ export default function BrandOutletsPage() {
       groups.set(status, []);
     }
     for (const o of outlets) {
-      const ds = resolveDisplayStatus(o.outreachStatus, o.replyClassification);
+      const ds = deriveDisplayStatusFromCounts(o.status?.brand);
       groups.get(ds)?.push(o);
     }
     return groups;

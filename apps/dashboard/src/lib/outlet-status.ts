@@ -1,3 +1,5 @@
+import type { OutletStatusCounts } from "@/lib/api";
+
 /**
  * Shared outreach status constants and helpers.
  *
@@ -80,6 +82,38 @@ export function resolveDisplayStatus(
     return "replied-neutral";
   }
   return status;
+}
+
+/**
+ * High-watermark status priority for deriving display status from StatusCounts.
+ * Maps count field names → display status, ordered most-advanced first.
+ */
+const COUNTS_WATERMARK: Array<{ key: string; display: string }> = [
+  { key: "repliesPositive", display: "replied-positive" },
+  { key: "repliesNegative", display: "replied-negative" },
+  { key: "repliesNeutral", display: "replied-neutral" },
+  { key: "delivered", display: "delivered" },
+  { key: "bounced", display: "bounced" },
+  { key: "contacted", display: "contacted" },
+  { key: "served", display: "served" },
+  { key: "claimed", display: "claimed" },
+  { key: "buffered", display: "buffered" },
+  { key: "skipped", display: "skipped" },
+];
+
+/**
+ * Derive display status from structured OutletStatusCounts.
+ * Picks the most advanced status that has count > 0.
+ * Returns "open" if no counts are positive or counts is null.
+ */
+export function deriveDisplayStatusFromCounts(
+  counts: OutletStatusCounts | null | undefined,
+): string {
+  if (!counts) return "open";
+  for (const { key, display } of COUNTS_WATERMARK) {
+    if ((counts[key as keyof OutletStatusCounts] ?? 0) > 0) return display;
+  }
+  return "open";
 }
 
 export const STATUS_DESCRIPTIONS: Record<string, string> = {
