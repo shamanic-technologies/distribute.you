@@ -84,6 +84,12 @@ export default function RootLayout({
     <ClerkProvider dynamic>
       <html lang="en" suppressHydrationWarning>
         <head>
+          <script async src="https://www.googletagmanager.com/gtag/js?id=G-YJHNGLEJPP" />
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-YJHNGLEJPP');`,
+            }}
+          />
           <script
             dangerouslySetInnerHTML={{
               __html: `(function(){try{var t=localStorage.getItem("theme");if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme:dark)").matches))document.documentElement.classList.add("dark")}catch(e){}})()`,
