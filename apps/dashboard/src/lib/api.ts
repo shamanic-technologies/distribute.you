@@ -828,6 +828,18 @@ export async function upsertBrand(
   );
 }
 
+/** POST /brands/:brandId/transfer — transfer brand to another org */
+export async function transferBrand(
+  brandId: string,
+  targetOrgId: string,
+  token?: string
+): Promise<{ success: boolean }> {
+  return apiCall<{ success: boolean }>(
+    `/brands/${brandId}/transfer`,
+    { token, method: "POST", body: { targetOrgId } }
+  );
+}
+
 // Brand runs
 export interface RunCost {
   costName: string;
