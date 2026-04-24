@@ -108,18 +108,17 @@ describe("api.ts type definitions match per-entity status sets", () => {
   // Find all outreachStatus union type lines
   const outreachLines = lines.filter((l) => l.includes("outreachStatus:") && l.includes("|"));
 
-  // Outlet interfaces: OutletCampaign, DeduplicatedOutlet, CampaignOutlet (outletStatus)
-  it("outlet types include open, denied, ended", () => {
+  // CampaignOutlet still uses flat outletStatus; DeduplicatedOutlet/OutletCampaign use structured status object
+  it("CampaignOutlet outletStatus includes open", () => {
     const outletLines = lines.filter(
-      (l) => (l.includes("outreachStatus:") || l.includes("outletStatus:")) && l.includes('"open"'),
+      (l) => l.includes("outletStatus:") && l.includes('"open"'),
     );
-    expect(outletLines.length).toBeGreaterThanOrEqual(3);
+    expect(outletLines.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("outlet types do NOT include bounced", () => {
-    // Lines with open (outlet-only marker) should not have bounced
+  it("CampaignOutlet outletStatus does NOT include bounced", () => {
     const outletLines = lines.filter(
-      (l) => (l.includes("outreachStatus:") || l.includes("outletStatus:")) && l.includes('"open"'),
+      (l) => l.includes("outletStatus:") && l.includes('"open"'),
     );
     for (const line of outletLines) {
       expect(line).not.toContain('"bounced"');
