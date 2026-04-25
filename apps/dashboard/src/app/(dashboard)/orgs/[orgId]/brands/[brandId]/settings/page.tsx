@@ -3,7 +3,12 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useOrganizationList, useOrganization } from "@clerk/nextjs";
-import { transferBrand, listBrandTransfers, type BrandTransfer } from "@/lib/api";
+import {
+  transferBrand,
+  listOutgoingTransfers,
+  listIncomingTransfers,
+  type BrandTransfer,
+} from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 
 export default function BrandSettingsPage() {
@@ -23,11 +28,18 @@ export default function BrandSettingsPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedTransfer, setSelectedTransfer] = useState<BrandTransfer | null>(null);
 
-  const { data: transferData, isLoading: transfersLoading } = useAuthQuery(
-    ["brand-transfers", brandId],
-    () => listBrandTransfers(brandId),
+  const { data: outgoingData, isLoading: outgoingLoading } = useAuthQuery(
+    ["brand-transfers-outgoing", brandId],
+    () => listOutgoingTransfers(brandId),
   );
-  const transfers = transferData?.transfers ?? [];
+  const { data: incomingData, isLoading: incomingLoading } = useAuthQuery(
+    ["brand-transfers-incoming", brandId],
+    () => listIncomingTransfers(brandId),
+  );
+
+  const outgoing = outgoingData?.transfers ?? [];
+  const incoming = incomingData?.transfers ?? [];
+  const transfersLoading = outgoingLoading || incomingLoading;
 
   const otherOrgs = (userMemberships.data ?? [])
     .map((m) => m.organization)
@@ -58,7 +70,6 @@ export default function BrandSettingsPage() {
       <div>
         <h2 className="text-lg font-semibold text-gray-900 mb-3">Danger Zone</h2>
         <div className="border border-red-300 rounded-lg divide-y divide-red-300">
-          {/* Transfer Brand */}
           <div className="flex items-center justify-between p-4">
             <div>
               <h3 className="text-sm font-semibold text-gray-900">Transfer brand</h3>
@@ -105,65 +116,24 @@ export default function BrandSettingsPage() {
         <h2 className="text-lg font-semibold text-gray-900 mb-3">Transfer History</h2>
         {transfersLoading ? (
           <p className="text-sm text-gray-500">Loading...</p>
-        ) : transfers.length === 0 ? (
+        ) : outgoing.length === 0 && incoming.length === 0 ? (
           <p className="text-sm text-gray-500">No transfers yet.</p>
         ) : (
-          <div className="border border-gray-200 rounded-lg divide-y divide-gray-200">
-            {transfers.map((t) => {
-              const serviceEntries = Object.entries(t.serviceResults);
-              const errorCount = serviceEntries.filter(
-                ([, r]) => "error" in r
-              ).length;
-              const successCount = serviceEntries.filter(
-                ([, r]) => "updatedTables" in r
-              ).length;
-              const skippedCount = serviceEntries.filter(
-                ([, r]) => "skipped" in r
-              ).length;
-
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => setSelectedTransfer(t)}
-                  className="w-full text-left p-4 hover:bg-gray-50 transition"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {new Date(t.createdAt).toLocaleDateString("en-US", {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-0.5 font-mono">
-                        {t.sourceOrgId.slice(0, 8)} → {t.targetOrgId.slice(0, 8)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs">
-                      {successCount > 0 && (
-                        <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-700">
-                          {successCount} migrated
-                        </span>
-                      )}
-                      {skippedCount > 0 && (
-                        <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                          {skippedCount} skipped
-                        </span>
-                      )}
-                      {errorCount > 0 && (
-                        <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700">
-                          {errorCount} failed
-                        </span>
-                      )}
-                      <span className="text-gray-400 ml-1">→</span>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
+          <div className="space-y-6">
+            {outgoing.length > 0 && (
+              <TransferList
+                label="Outgoing"
+                transfers={outgoing}
+                onSelect={setSelectedTransfer}
+              />
+            )}
+            {incoming.length > 0 && (
+              <TransferList
+                label="Incoming"
+                transfers={incoming}
+                onSelect={setSelectedTransfer}
+              />
+            )}
           </div>
         )}
       </div>
@@ -258,10 +228,7 @@ export default function BrandSettingsPage() {
               <h4 className="text-sm font-semibold text-gray-900 mb-3">Service Results</h4>
               <div className="space-y-2">
                 {Object.entries(selectedTransfer.serviceResults).map(([service, result]) => (
-                  <div
-                    key={service}
-                    className="border border-gray-200 rounded-lg p-3"
-                  >
+                  <div key={service} className="border border-gray-200 rounded-lg p-3">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-sm font-medium text-gray-900">{service}</span>
                       {"error" in result ? (
@@ -292,6 +259,73 @@ export default function BrandSettingsPage() {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+function TransferList({
+  label,
+  transfers,
+  onSelect,
+}: {
+  label: string;
+  transfers: BrandTransfer[];
+  onSelect: (t: BrandTransfer) => void;
+}) {
+  return (
+    <div>
+      <h3 className="text-sm font-medium text-gray-600 mb-2">{label}</h3>
+      <div className="border border-gray-200 rounded-lg divide-y divide-gray-200">
+        {transfers.map((t) => {
+          const entries = Object.entries(t.serviceResults);
+          const errorCount = entries.filter(([, r]) => "error" in r).length;
+          const successCount = entries.filter(([, r]) => "updatedTables" in r).length;
+          const skippedCount = entries.filter(([, r]) => "skipped" in r).length;
+
+          return (
+            <button
+              key={t.id}
+              onClick={() => onSelect(t)}
+              className="w-full text-left p-4 hover:bg-gray-50 transition"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">
+                    {new Date(t.createdAt).toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5 font-mono">
+                    {t.sourceOrgId.slice(0, 8)} → {t.targetOrgId.slice(0, 8)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  {successCount > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                      {successCount} migrated
+                    </span>
+                  )}
+                  {skippedCount > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                      {skippedCount} skipped
+                    </span>
+                  )}
+                  {errorCount > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                      {errorCount} failed
+                    </span>
+                  )}
+                  <span className="text-gray-400 ml-1">→</span>
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
