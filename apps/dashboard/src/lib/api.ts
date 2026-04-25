@@ -833,8 +833,8 @@ export async function transferBrand(
   brandId: string,
   targetOrgId: string,
   token?: string
-): Promise<{ success: boolean }> {
-  return apiCall<{ success: boolean }>(
+): Promise<void> {
+  await apiCall(
     `/brands/${brandId}/transfer`,
     { token, method: "POST", body: { targetOrgId } }
   );
