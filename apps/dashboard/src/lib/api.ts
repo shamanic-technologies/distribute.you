@@ -829,20 +829,12 @@ export async function upsertBrand(
 }
 
 /** POST /brands/:brandId/transfer — transfer brand to another org */
-export interface TransferBrandResult {
-  brandId: string;
-  sourceOrgId: string;
-  targetOrgId: string;
-  serviceResults: Record<string, unknown>;
-  brandConflict?: { skipped: true; existingBrandId: string; domain: string };
-}
-
 export async function transferBrand(
   brandId: string,
   targetOrgId: string,
   token?: string
-): Promise<TransferBrandResult> {
-  return apiCall<TransferBrandResult>(
+): Promise<void> {
+  await apiCall(
     `/brands/${brandId}/transfer`,
     { token, method: "POST", body: { targetOrgId } }
   );

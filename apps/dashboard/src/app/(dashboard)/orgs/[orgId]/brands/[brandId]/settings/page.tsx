@@ -19,7 +19,6 @@ export default function BrandSettingsPage() {
   const [selectedOrgId, setSelectedOrgId] = useState<string>("");
   const [transferring, setTransferring] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const otherOrgs = (userMemberships.data ?? [])
@@ -32,14 +31,9 @@ export default function BrandSettingsPage() {
     if (!selectedOrgId || transferring) return;
     setTransferring(true);
     setError(null);
-    setInfo(null);
     try {
-      const result = await transferBrand(brandId, selectedOrgId);
-      if (result.brandConflict) {
-        setInfo(`Brand data transferred. The target org already had a brand for "${result.brandConflict.domain}" — existing brand kept.`);
-      } else {
-        router.push(`/orgs/${orgId}/brands`);
-      }
+      await transferBrand(brandId, selectedOrgId);
+      router.push(`/orgs/${orgId}/brands`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Transfer failed");
     } finally {
@@ -93,15 +87,6 @@ export default function BrandSettingsPage() {
         <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-center justify-between">
           <p className="text-sm text-red-600">{error}</p>
           <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 text-sm ml-4">
-            Dismiss
-          </button>
-        </div>
-      )}
-
-      {info && (
-        <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center justify-between">
-          <p className="text-sm text-blue-700">{info}</p>
-          <button onClick={() => setInfo(null)} className="text-blue-400 hover:text-blue-600 text-sm ml-4">
             Dismiss
           </button>
         </div>
