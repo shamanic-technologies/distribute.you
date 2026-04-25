@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useOrganizationList, useOrganization } from "@clerk/nextjs";
-import { transferBrand } from "@/lib/api";
+import { transferBrand, ApiError } from "@/lib/api";
 
 export default function BrandSettingsPage() {
   const params = useParams();
@@ -19,6 +19,7 @@ export default function BrandSettingsPage() {
   const [selectedOrgId, setSelectedOrgId] = useState<string>("");
   const [transferring, setTransferring] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const otherOrgs = (userMemberships.data ?? [])
@@ -31,11 +32,17 @@ export default function BrandSettingsPage() {
     if (!selectedOrgId || transferring) return;
     setTransferring(true);
     setError(null);
+    setInfo(null);
     try {
       await transferBrand(brandId, selectedOrgId);
       router.push(`/orgs/${orgId}/brands`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Transfer failed");
+      const message = err instanceof Error ? err.message : "Transfer failed";
+      if (err instanceof ApiError && err.status === 409) {
+        setInfo(message);
+      } else {
+        setError(message);
+      }
     } finally {
       setTransferring(false);
       setConfirmOpen(false);
@@ -87,6 +94,15 @@ export default function BrandSettingsPage() {
         <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-center justify-between">
           <p className="text-sm text-red-600">{error}</p>
           <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 text-sm ml-4">
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {info && (
+        <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center justify-between">
+          <p className="text-sm text-blue-700">{info}</p>
+          <button onClick={() => setInfo(null)} className="text-blue-400 hover:text-blue-600 text-sm ml-4">
             Dismiss
           </button>
         </div>
