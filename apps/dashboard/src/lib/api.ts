@@ -840,6 +840,53 @@ export async function transferBrand(
   );
 }
 
+// Brand transfers
+
+interface TransferServiceSuccess {
+  updatedTables: { tableName: string; count: number }[];
+}
+interface TransferServiceError {
+  error: string;
+}
+interface TransferServiceSkipped {
+  skipped: true;
+}
+type TransferServiceResult = TransferServiceSuccess | TransferServiceError | TransferServiceSkipped;
+
+export interface BrandTransfer {
+  id: string;
+  brandId: string;
+  sourceOrgId: string;
+  targetOrgId: string;
+  initiatedByUserId: string;
+  serviceResults: Record<string, TransferServiceResult>;
+  createdAt: string;
+}
+
+/** GET /brand-transfers/outgoing — transfers where your org is the source */
+export async function listOutgoingTransfers(
+  brandId?: string,
+  token?: string
+): Promise<{ transfers: BrandTransfer[] }> {
+  const query = brandId ? `?brandId=${brandId}` : "";
+  return apiCall<{ transfers: BrandTransfer[] }>(
+    `/brand-transfers/outgoing${query}`,
+    { token }
+  );
+}
+
+/** GET /brand-transfers/incoming — transfers where your org is the target */
+export async function listIncomingTransfers(
+  brandId?: string,
+  token?: string
+): Promise<{ transfers: BrandTransfer[] }> {
+  const query = brandId ? `?brandId=${brandId}` : "";
+  return apiCall<{ transfers: BrandTransfer[] }>(
+    `/brand-transfers/incoming${query}`,
+    { token }
+  );
+}
+
 // Brand runs
 export interface RunCost {
   costName: string;
