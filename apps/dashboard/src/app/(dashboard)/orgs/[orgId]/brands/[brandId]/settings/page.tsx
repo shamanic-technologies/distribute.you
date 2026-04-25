@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useOrganizationList, useOrganization } from "@clerk/nextjs";
-import { transferBrand, ApiError } from "@/lib/api";
+import { transferBrand } from "@/lib/api";
 
 export default function BrandSettingsPage() {
   const params = useParams();
@@ -34,15 +34,14 @@ export default function BrandSettingsPage() {
     setError(null);
     setInfo(null);
     try {
-      await transferBrand(brandId, selectedOrgId);
-      router.push(`/orgs/${orgId}/brands`);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Transfer failed";
-      if (err instanceof ApiError && err.status === 409) {
-        setInfo(message);
+      const result = await transferBrand(brandId, selectedOrgId);
+      if (result.brandConflict) {
+        setInfo(`Brand data transferred. The target org already had a brand for "${result.brandConflict.domain}" — existing brand kept.`);
       } else {
-        setError(message);
+        router.push(`/orgs/${orgId}/brands`);
       }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Transfer failed");
     } finally {
       setTransferring(false);
       setConfirmOpen(false);
