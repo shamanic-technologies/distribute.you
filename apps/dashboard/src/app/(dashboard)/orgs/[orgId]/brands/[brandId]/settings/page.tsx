@@ -33,7 +33,7 @@ export default function BrandSettingsPage() {
     setError(null);
     try {
       await transferBrand(brandId, selectedOrgId);
-      router.push(`/orgs/${orgId}/brands`);
+      router.push(`/orgs/${orgId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Transfer failed");
     } finally {
