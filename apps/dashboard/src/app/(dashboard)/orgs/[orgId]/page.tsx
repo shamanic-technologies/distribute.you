@@ -56,8 +56,8 @@ export default function OrgOverviewPage() {
   );
 
   const totals = useMemo(() => ({
-    emailsSent: globalStats?.stats?.emailsSent ?? 0,
-    emailsReplied: globalStats?.stats?.emailsReplied ?? 0,
+    recipientsSent: globalStats?.stats?.recipientsSent ?? 0,
+    recipientsReplied: globalStats?.stats?.recipientsReplied ?? 0,
     totalCostCents: globalStats?.systemStats?.totalCostInUsdCents ?? 0,
   }), [globalStats]);
 
@@ -86,8 +86,8 @@ export default function OrgOverviewPage() {
       <div data-testid="overview-stats" className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         <StatCard label="Brands" value={brands.length} />
         <StatCard label="Campaigns" value={campaigns.length} />
-        <StatCard label="Emails Sent" value={totals.emailsSent} />
-        <StatCard label="Replies" value={totals.emailsReplied} />
+        <StatCard label="Emails Sent" value={totals.recipientsSent} />
+        <StatCard label="Replies" value={totals.recipientsReplied} />
       </div>
 
       {/* Brands Summary */}
