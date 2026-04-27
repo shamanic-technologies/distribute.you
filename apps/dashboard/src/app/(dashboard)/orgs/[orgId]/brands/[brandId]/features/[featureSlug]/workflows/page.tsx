@@ -149,7 +149,7 @@ export default function FeatureWorkflowsPage() {
         <div>
           <h1 className="font-display text-2xl font-bold text-gray-800">Workflows</h1>
           <p className="text-gray-600">
-            Workflows for {wfDef?.dynastyName ?? wfDef?.name ?? featureSlug}.
+            Workflows for {wfDef?.name ?? featureSlug}.
           </p>
         </div>
         <button
