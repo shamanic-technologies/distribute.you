@@ -228,6 +228,31 @@ export interface CostByName {
   totalQuantity: string;
 }
 
+export interface RecipientStats {
+  contacted: number;
+  sent: number;
+  delivered: number;
+  opened: number;
+  bounced: number;
+  clicked: number;
+  unsubscribed: number;
+  repliesPositive: number;
+  repliesNegative: number;
+  repliesNeutral: number;
+  repliesAutoReply: number;
+  repliesDetail: number;
+}
+
+export interface EmailStats {
+  sent: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  bounced: number;
+  unsubscribed: number;
+  stepStats: Record<string, number>;
+}
+
 export interface CampaignStats {
   campaignId: string;
   totalCostInUsdCents?: string | null;
@@ -237,21 +262,8 @@ export interface CampaignStats {
   leadsSkipped: number;
   apollo?: ApolloStats;
   emailsGenerated: number;
-  emailsContacted: number;
-  emailsSent: number;
-  emailsDelivered: number;
-  emailsOpened: number;
-  emailsClicked: number;
-  emailsReplied: number;
-  emailsBounced: number;
-  // Reply classifications
-  repliesInterested?: number;
-  repliesMeetingBooked?: number;
-  repliesClosed?: number;
-  repliesNeutral?: number;
-  repliesNotInterested?: number;
-  repliesOutOfOffice?: number;
-  repliesUnsubscribe?: number;
+  recipientStats: RecipientStats;
+  emailStats: EmailStats;
 }
 
 export async function listCampaigns(token?: string): Promise<{ campaigns: Campaign[] }> {
@@ -275,20 +287,8 @@ export async function getCampaignBatchStats(
 }
 
 export interface BrandDeliveryStats {
-  emailsContacted: number;
-  emailsSent: number;
-  emailsDelivered: number;
-  emailsOpened: number;
-  emailsClicked: number;
-  emailsReplied: number;
-  emailsBounced: number;
-  repliesInterested: number;
-  repliesMeetingBooked: number;
-  repliesClosed: number;
-  repliesNeutral: number;
-  repliesNotInterested: number;
-  repliesOutOfOffice: number;
-  repliesUnsubscribe: number;
+  recipientStats: RecipientStats;
+  emailStats: EmailStats;
 }
 
 export async function getBrandDeliveryStats(brandId: string, token?: string): Promise<BrandDeliveryStats> {
