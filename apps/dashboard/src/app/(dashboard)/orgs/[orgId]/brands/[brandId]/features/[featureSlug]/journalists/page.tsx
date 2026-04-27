@@ -56,15 +56,15 @@ function journalistDisplayStatus(j: EnrichedJournalist): string {
 export default function FeatureJournalistsPage() {
   const params = useParams();
   const brandId = params.brandId as string;
-  const featureDynastySlug = params.featureDynastySlug as string;
+  const featureSlug = params.featureSlug as string;
   const [activeTab, setActiveTab] = useState<Tab>("contacted");
   const [selected, setSelected] = useState<EnrichedJournalist | null>(null);
   const [search, setSearch] = useState("");
   const hasAutoSelectedTab = useRef(false);
 
   const { data: journalistsData, isLoading: journalistsLoading } = useAuthQuery(
-    ["enrichedJournalists", brandId, featureDynastySlug],
-    () => listJournalistsEnriched(brandId, { featureDynastySlug }),
+    ["enrichedJournalists", brandId, featureSlug],
+    () => listJournalistsEnriched(brandId, { featureSlug }),
     { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false },
   );
 

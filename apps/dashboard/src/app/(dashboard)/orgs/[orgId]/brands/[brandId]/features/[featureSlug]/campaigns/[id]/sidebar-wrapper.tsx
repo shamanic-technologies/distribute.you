@@ -12,15 +12,15 @@ import { listWorkflows, listCampaignOutlets, listJournalistsEnriched, listMediaK
 interface Props {
   orgId: string;
   brandId: string;
-  featureDynastySlug: string;
+  featureSlug: string;
 }
 
-export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureDynastySlug }: Props) {
+export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: Props) {
   const params = useParams();
   const { campaign, leads, emails: campaignEmails, loading: campaignLoading } = useCampaign();
   const campaignId = params.id as string;
   const { getFeature } = useFeatures();
-  const featureDef = getFeature(featureDynastySlug);
+  const featureDef = getFeature(featureSlug);
   const entities = featureDef?.entities ?? [];
   const entityNames = useMemo(() => entities.map((e) => e.name), [entities]);
 
@@ -31,8 +31,8 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureDynastyS
 
   // Feature stats for this campaign — same source the list page uses
   const { data: featureStatsData, isLoading: featureStatsLoading } = useAuthQuery(
-    ["featureStats", featureDynastySlug, "campaign", campaignId],
-    () => fetchFeatureStats(featureDynastySlug, { campaignId }),
+    ["featureStats", featureSlug, "campaign", campaignId],
+    () => fetchFeatureStats(featureSlug, { campaignId }),
     { enabled: true, refetchInterval: 5_000, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
   );
   const fStats = featureStatsData?.stats ?? {};
@@ -116,7 +116,7 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureDynastyS
       campaignId={campaignId}
       orgId={orgId}
       brandId={brandId}
-      featureDynastySlug={featureDynastySlug}
+      featureSlug={featureSlug}
       entityCounts={entityCounts}
       workflowId={workflowId}
       featureInputs={campaign?.featureInputs}

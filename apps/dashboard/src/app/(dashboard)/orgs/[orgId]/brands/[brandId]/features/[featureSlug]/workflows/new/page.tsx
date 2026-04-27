@@ -16,10 +16,10 @@ export default function NewWorkflowPage() {
   const router = useRouter();
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
-  const featureDynastySlug = params.featureDynastySlug as string;
+  const featureSlug = params.featureSlug as string;
 
   const { getFeature } = useFeatures();
-  const wfDef = getFeature(featureDynastySlug);
+  const wfDef = getFeature(featureSlug);
 
   const startedRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,13 +27,13 @@ export default function NewWorkflowPage() {
   const createMutation = useMutation({
     mutationFn: () =>
       generateWorkflow({
-        description: `Create a ${wfDef?.name ?? featureDynastySlug} workflow: ${wfDef?.description ?? "automated workflow for this feature"}.`,
-        featureSlug: featureDynastySlug,
+        description: `Create a ${wfDef?.name ?? featureSlug} workflow: ${wfDef?.description ?? "automated workflow for this feature"}.`,
+        featureSlug: featureSlug,
         hints: {},
       }),
     onSuccess: (result) => {
       router.replace(
-        `/orgs/${orgId}/brands/${brandId}/features/${featureDynastySlug}/workflows/${result.workflow.id}`,
+        `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/${result.workflow.id}`,
       );
     },
     onError: () => {

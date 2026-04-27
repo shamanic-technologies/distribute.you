@@ -10,7 +10,7 @@ const LLM_INSTRUCTIONS = `# Workflows API
 
 ## List Workflows
 GET /v1/workflows
-GET /v1/workflows?featureDynastySlug=sales-email-cold-outreach
+GET /v1/workflows?featureSlug=sales-email-cold-outreach
 
 ## Get Workflow
 GET /v1/workflows/:workflowId
@@ -22,7 +22,7 @@ GET /v1/workflows/:workflowId/summary
 GET /v1/workflows/:workflowId/key-status
 
 ## TypeScript Client
-const { workflows } = await client.listWorkflows({ featureDynastySlug: "sales-email-cold-outreach" });
+const { workflows } = await client.listWorkflows({ featureSlug: "sales-email-cold-outreach" });
 const summary = await client.getWorkflowSummary("wf_abc123");
 const keyStatus = await client.getWorkflowKeyStatus("wf_abc123");`;
 
@@ -41,7 +41,7 @@ export default function WorkflowsApiPage() {
         <h2>List Workflows</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/workflows
-GET /v1/workflows?featureDynastySlug=sales-email-cold-outreach
+GET /v1/workflows?featureSlug=sales-email-cold-outreach
 X-API-Key: dist_YOUR_KEY`}</code>
         </pre>
         <p>Returns all workflows, optionally filtered by feature.</p>
@@ -100,7 +100,7 @@ X-API-Key: dist_YOUR_KEY`}</code>
 
         <h2>TypeScript Client</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`const { workflows } = await client.listWorkflows({ featureDynastySlug: "sales-email-cold-outreach" });
+          <code>{`const { workflows } = await client.listWorkflows({ featureSlug: "sales-email-cold-outreach" });
 const workflow = await client.getWorkflow("wf_abc123");
 const summary = await client.getWorkflowSummary("wf_abc123");
 const keyStatus = await client.getWorkflowKeyStatus("wf_abc123");`}</code>

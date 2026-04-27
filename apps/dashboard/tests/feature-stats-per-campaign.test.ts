@@ -14,7 +14,7 @@ import * as path from "path";
 describe("Feature page fetches stats from centralized feature stats endpoint", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureDynastySlug]/page.tsx"
+    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/page.tsx"
   );
   const content = fs.readFileSync(pagePath, "utf-8");
 
@@ -29,7 +29,7 @@ describe("Feature page fetches stats from centralized feature stats endpoint", (
   });
 
   it("should fetch aggregate feature stats with brandId filter using dynasty slug", () => {
-    expect(content).toContain("fetchFeatureStats(featureDynastySlug, { brandId })");
+    expect(content).toContain("fetchFeatureStats(featureSlug, { brandId })");
     expect(content).not.toContain("featureVersionedSlug");
   });
 

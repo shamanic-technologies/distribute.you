@@ -46,10 +46,10 @@ export default function FeatureWorkflowsPage() {
   const router = useRouter();
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
-  const featureDynastySlug = params.featureDynastySlug as string;
+  const featureSlug = params.featureSlug as string;
 
   const { getFeature, isLoading: featuresLoading, registry } = useFeatures();
-  const wfDef = getFeature(featureDynastySlug);
+  const wfDef = getFeature(featureSlug);
   const outputs = wfDef?.outputs ?? [];
 
   // Determine default sort from outputs
@@ -63,20 +63,20 @@ export default function FeatureWorkflowsPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">(defaultSortDir);
 
   const handleCreateWorkflow = useCallback(() => {
-    router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureDynastySlug}/workflows/new`);
-  }, [router, orgId, brandId, featureDynastySlug]);
+    router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/new`);
+  }, [router, orgId, brandId, featureSlug]);
 
   // Fetch stats grouped by workflow dynasty (aggregated across all versions)
   const { data: statsData, isLoading } = useAuthQuery(
-    ["featureStats", featureDynastySlug, "byDynasty"],
-    () => fetchFeatureStats(featureDynastySlug, { groupBy: "workflowDynastySlug" }),
+    ["featureStats", featureSlug, "byDynasty"],
+    () => fetchFeatureStats(featureSlug, { groupBy: "workflowDynastySlug" }),
     { enabled: wfDef?.implemented === true, ...pollOptions },
   );
 
   // Fetch workflows filtered by feature slug
   const { data: workflowsData, isLoading: workflowsLoading } = useAuthQuery(
-    ["workflows", featureDynastySlug],
-    () => listWorkflows({ featureDynastySlug }),
+    ["workflows", featureSlug],
+    () => listWorkflows({ featureSlug }),
     pollOptions,
   );
 
@@ -149,7 +149,7 @@ export default function FeatureWorkflowsPage() {
         <div>
           <h1 className="font-display text-2xl font-bold text-gray-800">Workflows</h1>
           <p className="text-gray-600">
-            Workflows for {wfDef?.dynastyName ?? wfDef?.name ?? featureDynastySlug}.
+            Workflows for {wfDef?.dynastyName ?? wfDef?.name ?? featureSlug}.
           </p>
         </div>
         <button
@@ -226,7 +226,7 @@ export default function FeatureWorkflowsPage() {
                     key={wf.id}
                     className="hover:bg-gray-50 transition cursor-pointer"
                     onClick={() => {
-                      router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureDynastySlug}/workflows/${wf.id}`);
+                      router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/${wf.id}`);
                     }}
                   >
                     <td className="px-4 py-4 whitespace-nowrap">

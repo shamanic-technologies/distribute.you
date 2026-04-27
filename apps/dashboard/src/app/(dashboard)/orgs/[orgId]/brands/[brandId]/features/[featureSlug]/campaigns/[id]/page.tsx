@@ -44,11 +44,11 @@ function formatTotalCost(cents: string | null | undefined): string | null {
 export default function CampaignOverviewPage() {
   const params = useParams();
   const router = useRouter();
-  const featureDynastySlug = params.featureDynastySlug as string;
+  const featureSlug = params.featureSlug as string;
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
   const { getFeature, registry } = useFeatures();
-  const featureDef = getFeature(featureDynastySlug);
+  const featureDef = getFeature(featureSlug);
 
   const entities = featureDef?.entities ?? [];
   const entityNames = entities.map((e) => e.name);
@@ -64,8 +64,8 @@ export default function CampaignOverviewPage() {
 
   // Feature stats for this campaign — same source the list page uses
   const { data: featureStatsData } = useAuthQuery(
-    ["featureStats", featureDynastySlug, "campaign", campaignId],
-    () => fetchFeatureStats(featureDynastySlug, { campaignId }),
+    ["featureStats", featureSlug, "campaign", campaignId],
+    () => fetchFeatureStats(featureSlug, { campaignId }),
     { enabled: true, refetchInterval: 5_000, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
   );
 
@@ -97,7 +97,7 @@ export default function CampaignOverviewPage() {
     try {
       const result = await createCampaign(payload as Parameters<typeof createCampaign>[0]);
       sendCampaignEmail("campaign_created", result.campaign).catch(() => {});
-      router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureDynastySlug}/campaigns/${result.campaign.id}`);
+      router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/${result.campaign.id}`);
     } catch (err) {
       setRelaunching(false);
       if (err instanceof ApiError && err.status === 409) {
@@ -201,7 +201,7 @@ export default function CampaignOverviewPage() {
         <div className="mb-6">
           <PressKitResults
             campaignId={campaign.id}
-            detailBasePath={`/orgs/${orgId}/brands/${params.brandId}/features/${featureDynastySlug}/campaigns/${campaign.id}/press-kits`}
+            detailBasePath={`/orgs/${orgId}/brands/${params.brandId}/features/${featureSlug}/campaigns/${campaign.id}/press-kits`}
           />
         </div>
       )}

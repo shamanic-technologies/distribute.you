@@ -9,10 +9,10 @@ export function registerArticleTools(server: McpServer, client: DistributeClient
     {
       campaignId: z.string().optional().describe("Filter by campaign UUID"),
       brandId: z.string().optional().describe("Filter by brand UUID"),
-      featureDynastySlug: z.string().optional().describe("Filter by feature dynasty slug"),
+      featureSlug: z.string().optional().describe("Filter by feature dynasty slug"),
     },
-    async ({ campaignId, brandId, featureDynastySlug }) => {
-      const result = await client.listArticles({ campaignId, brandId, featureDynastySlug });
+    async ({ campaignId, brandId, featureSlug }) => {
+      const result = await client.listArticles({ campaignId, brandId, featureSlug });
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
     },
   );

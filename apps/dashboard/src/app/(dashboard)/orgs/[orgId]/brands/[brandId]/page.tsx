@@ -189,36 +189,19 @@ export default function BrandOverviewPage() {
     emails: emailsData?.emails?.length ?? 0,
   }), [outletsData, journalistsData, articlesData, leadsData, emailsData]);
 
-  // Deduplicate features by dynasty: keep one representative per dynastySlug
-  const dynastyFeatures = useMemo(() => {
-    const seen = new Map<string, typeof features[number]>();
-    for (const f of features) {
-      if (!f.dynastySlug) continue;
-      const key = f.dynastySlug;
-      const existing = seen.get(key);
-      if (!existing || (f.status === "active" && existing.status !== "active") || (f.version ?? 0) > (existing.version ?? 0)) {
-        seen.set(key, f);
-      }
-    }
-    return Array.from(seen.values()) as (typeof features[number] & { dynastySlug: string })[];
-  }, [features]);
-
-  // Build workflow sections from actual campaigns, grouped by dynasty slug
+  // Build workflow sections from actual campaigns, grouped by feature slug
   const workflowSections = useMemo(() => {
     const map = new Map<string, Campaign[]>();
     for (const c of campaigns) {
-      const featureSlug = c.featureSlug ?? "unknown";
-      // Resolve to dynasty slug: if the campaign references a versioned slug, find its dynasty
-      const feat = getFeatureDef(featureSlug);
-      const dynastyKey = feat?.dynastySlug ?? featureSlug;
-      if (!map.has(dynastyKey)) map.set(dynastyKey, []);
-      map.get(dynastyKey)!.push(c);
+      const fSlug = c.featureSlug ?? "unknown";
+      if (!map.has(fSlug)) map.set(fSlug, []);
+      map.get(fSlug)!.push(c);
     }
     const sections: WorkflowSection[] = [];
-    for (const [featureSlug, sectionCampaigns] of map) {
+    for (const [fSlug, sectionCampaigns] of map) {
       sections.push({
-        featureSlug,
-        label: getFeatureDef(featureSlug)?.dynastyName ?? getFeatureDef(featureSlug)?.name ?? featureSlug,
+        featureSlug: fSlug,
+        label: getFeatureDef(fSlug)?.name ?? fSlug,
         campaigns: sectionCampaigns,
       });
     }
@@ -323,33 +306,23 @@ export default function BrandOverviewPage() {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-medium text-gray-900">Features</h2>
-          <Link
-            href={`/orgs/${orgId}/brands/${brandId}/features/new`}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-brand-600 text-white hover:bg-brand-700 transition"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Create
-          </Link>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {dynastyFeatures.map((f) => {
-            const dSlug = f.dynastySlug;
-            const section = workflowSections.find(s => s.featureSlug === dSlug || s.featureSlug === f.slug);
+          {features.map((f) => {
+            const section = workflowSections.find(s => s.featureSlug === f.slug);
             const activeCampaigns = section?.campaigns.filter(c => c.status === "ongoing") ?? [];
 
             if (f.implemented) {
               return (
                 <Link
-                  key={dSlug}
-                  href={`/orgs/${orgId}/brands/${brandId}/features/${dSlug}`}
+                  key={f.slug}
+                  href={`/orgs/${orgId}/brands/${brandId}/features/${f.slug}`}
                   className="bg-white rounded-lg border border-gray-200 p-5 hover:border-brand-300 hover:shadow-sm transition group"
                 >
                   <div className="flex items-start gap-3">
-                    <FeatureIcon featureSlug={dSlug} icon={f.icon} className="w-8 h-8 text-brand-600" />
+                    <FeatureIcon featureSlug={f.slug} icon={f.icon} className="w-8 h-8 text-brand-600" />
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-gray-900 group-hover:text-brand-600 transition">{f.dynastyName ?? f.name}</h3>
+                      <h3 className="font-medium text-gray-900 group-hover:text-brand-600 transition">{f.name}</h3>
                       <p className="text-sm text-gray-500 mt-1">{f.description}</p>
                       {section && (
                         <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
@@ -371,14 +344,14 @@ export default function BrandOverviewPage() {
 
             return (
               <div
-                key={dSlug}
+                key={f.slug}
                 className="bg-gray-50 rounded-lg border border-gray-200 p-5 opacity-60"
               >
                 <div className="flex items-start gap-3">
-                  <FeatureIcon featureSlug={dSlug} icon={f.icon} className="w-8 h-8 text-gray-300" />
+                  <FeatureIcon featureSlug={f.slug} icon={f.icon} className="w-8 h-8 text-gray-300" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-medium text-gray-400">{f.dynastyName ?? f.name}</h3>
+                      <h3 className="font-medium text-gray-400">{f.name}</h3>
                       <span className="text-[10px] bg-gray-200 text-gray-400 px-1.5 py-0.5 rounded-full whitespace-nowrap">
                         Coming soon
                       </span>

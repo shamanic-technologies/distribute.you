@@ -190,18 +190,18 @@ export class DistributeClient {
   }
 
   async prefillFeatureInputs(
-    featureDynastySlug: string,
+    featureSlug: string,
     brandIds: string[],
   ): Promise<PrefillResponse> {
     return this.request<PrefillResponse>(
       "POST",
-      `/features/${featureDynastySlug}/prefill?format=text`,
+      `/features/${featureSlug}/prefill?format=text`,
       { brandIds },
     );
   }
 
   async getFeatureStats(
-    featureDynastySlug: string,
+    featureSlug: string,
     params?: { groupBy?: string; brandId?: string; campaignId?: string },
   ): Promise<FeatureStatsResponse> {
     const query = new URLSearchParams();
@@ -211,7 +211,7 @@ export class DistributeClient {
     const qs = query.toString();
     return this.request<FeatureStatsResponse>(
       "GET",
-      `/features/${featureDynastySlug}/stats${qs ? `?${qs}` : ""}`,
+      `/features/${featureSlug}/stats${qs ? `?${qs}` : ""}`,
     );
   }
 
@@ -283,9 +283,9 @@ export class DistributeClient {
 
   // ─── Workflows ───────────────────────────────────────────────────────────
 
-  async listWorkflows(params?: { featureDynastySlug?: string }): Promise<{ workflows: Workflow[] }> {
+  async listWorkflows(params?: { featureSlug?: string }): Promise<{ workflows: Workflow[] }> {
     const query = new URLSearchParams();
-    if (params?.featureDynastySlug) query.set("featureDynastySlug", params.featureDynastySlug);
+    if (params?.featureSlug) query.set("featureSlug", params.featureSlug);
     const qs = query.toString();
     return this.request<{ workflows: Workflow[] }>("GET", `/workflows${qs ? `?${qs}` : ""}`);
   }
@@ -306,10 +306,10 @@ export class DistributeClient {
 
   async listBrandOutlets(
     brandId: string,
-    params?: { featureDynastySlug?: string; campaignId?: string },
+    params?: { featureSlug?: string; campaignId?: string },
   ): Promise<{ outlets: DeduplicatedOutlet[]; total: number; byOutreachStatus?: Record<string, number> }> {
     const query = new URLSearchParams({ brandId });
-    if (params?.featureDynastySlug) query.set("featureDynastySlug", params.featureDynastySlug);
+    if (params?.featureSlug) query.set("featureSlug", params.featureSlug);
     if (params?.campaignId) query.set("campaignId", params.campaignId);
     return this.request<{ outlets: DeduplicatedOutlet[]; total: number; byOutreachStatus?: Record<string, number> }>(
       "GET",
@@ -325,11 +325,11 @@ export class DistributeClient {
 
   async listJournalists(
     brandId: string,
-    params?: { campaignId?: string; featureDynastySlug?: string },
+    params?: { campaignId?: string; featureSlug?: string },
   ): Promise<{ journalists: EnrichedJournalist[]; total?: number; byOutreachStatus?: Record<string, number> }> {
     const query = new URLSearchParams({ brandId });
     if (params?.campaignId) query.set("campaignId", params.campaignId);
-    if (params?.featureDynastySlug) query.set("featureDynastySlug", params.featureDynastySlug);
+    if (params?.featureSlug) query.set("featureSlug", params.featureSlug);
     return this.request<{ journalists: EnrichedJournalist[]; total?: number; byOutreachStatus?: Record<string, number> }>(
       "GET",
       `/journalists/list?${query}`,
@@ -343,12 +343,12 @@ export class DistributeClient {
   // ─── Articles ────────────────────────────────────────────────────────────
 
   async listArticles(
-    params: { campaignId?: string; brandId?: string; featureDynastySlug?: string },
+    params: { campaignId?: string; brandId?: string; featureSlug?: string },
   ): Promise<{ discoveries: ArticleDiscoveryItem[] }> {
     const query = new URLSearchParams();
     if (params.campaignId) query.set("campaignId", params.campaignId);
     if (params.brandId) query.set("brandId", params.brandId);
-    if (params.featureDynastySlug) query.set("featureDynastySlug", params.featureDynastySlug);
+    if (params.featureSlug) query.set("featureSlug", params.featureSlug);
     return this.request<{ discoveries: ArticleDiscoveryItem[] }>("GET", `/discoveries?${query}`);
   }
 
@@ -407,11 +407,11 @@ export class DistributeClient {
   async getCostBreakdown(params: {
     brandId?: string;
     groupBy: string;
-    featureDynastySlug?: string;
+    featureSlug?: string;
   }): Promise<{ groups: CostStatsGroup[] }> {
     const query = new URLSearchParams({ groupBy: params.groupBy });
     if (params.brandId) query.set("brandId", params.brandId);
-    if (params.featureDynastySlug) query.set("featureDynastySlug", params.featureDynastySlug);
+    if (params.featureSlug) query.set("featureSlug", params.featureSlug);
     return this.request<{ groups: CostStatsGroup[] }>("GET", `/runs/stats/costs?${query}`);
   }
 

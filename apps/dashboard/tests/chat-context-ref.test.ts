@@ -15,11 +15,6 @@ import * as path from "path";
 
 const chatComponents = [
   {
-    name: "feature-creator-chat",
-    file: "../src/components/features/feature-creator-chat.tsx",
-    contextProp: "featureContext",
-  },
-  {
     name: "workflow-chat",
     file: "../src/components/workflows/workflow-chat.tsx",
     contextProp: "workflowContext",

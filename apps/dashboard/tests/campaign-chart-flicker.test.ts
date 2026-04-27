@@ -12,7 +12,7 @@ import * as path from "path";
 describe("Campaign chart stats rendering", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureDynastySlug]/campaigns/[id]/page.tsx"
+    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/page.tsx"
   );
 
   it("should not use useRef for stats caching (stats is mandatory)", () => {

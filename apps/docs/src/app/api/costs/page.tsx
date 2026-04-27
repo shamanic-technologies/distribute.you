@@ -11,7 +11,7 @@ const LLM_INSTRUCTIONS = `# Costs API
 ## Cost Breakdown
 GET /v1/runs/stats/costs?groupBy=costName
 GET /v1/runs/stats/costs?groupBy=costName&brandId=brand_abc123
-groupBy values: costName, brandId, featureDynastySlug
+groupBy values: costName, brandId, featureSlug
 
 ## Delivery Stats
 GET /v1/email-gateway/stats?brandId=brand_abc123
@@ -41,7 +41,7 @@ X-API-Key: dist_YOUR_KEY`}</code>
         </pre>
         <p>
           Returns costs grouped by the specified dimension. Common groupBy values:
-          <code>costName</code>, <code>brandId</code>, <code>featureDynastySlug</code>.
+          <code>costName</code>, <code>brandId</code>, <code>featureSlug</code>.
         </p>
 
         <h2>Delivery Stats</h2>

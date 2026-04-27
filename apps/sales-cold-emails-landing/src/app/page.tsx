@@ -52,7 +52,7 @@ function formatCostCents(cents: number): string {
 async function getHeroStats(): Promise<HeroStats | null> {
   try {
     const apiUrl = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
-    const res = await fetch(`${apiUrl}/v1/public/features/best?featureDynastySlug=sales-cold-email-outreach&groupBy=workflow`, {
+    const res = await fetch(`${apiUrl}/v1/public/features/best?featureSlug=sales-cold-email-outreach&groupBy=workflow`, {
       headers: { Accept: "application/json" },
       next: { revalidate: 3600 },
     });

@@ -25,8 +25,8 @@ const BASE_GROUPS: BaseGroup[] = [
   { label: "PR Cold Email Outreach", slugs: ["pr-cold-email-outreach", "pr-cold-email-outreach-sophia", "pr-cold-email-outreach-berlin"] },
 ];
 
-function resolveBaseGroup(dynastySlug: string): BaseGroup | null {
-  return BASE_GROUPS.find((g) => g.slugs.includes(dynastySlug)) ?? null;
+function resolveBaseGroup(featureSlug: string): BaseGroup | null {
+  return BASE_GROUPS.find((g) => g.slugs.includes(featureSlug)) ?? null;
 }
 
 // ��── API response types ────���────────────────────────────────────────────────
@@ -75,8 +75,8 @@ interface BestResponse {
 }
 
 interface FeatureListItem {
-  dynastyName: string;
-  dynastySlug: string;
+  name: string;
+  slug: string;
   description: string;
   icon: string;
   category: string;
@@ -166,16 +166,16 @@ function num(stats: Record<string, number | null>, key: string): number {
 // ─── Fetch ranked workflows for a feature (single call returns all stats) ───
 
 async function fetchWorkflowRanked(
-  featureDynastySlug: string,
+  featureSlug: string,
   headers: Record<string, string>,
   apiUrl: string,
 ): Promise<WorkflowLeaderboardEntry[]> {
   const res = await fetch(
-    `${apiUrl}/v1/public/features/ranked?featureDynastySlug=${encodeURIComponent(featureDynastySlug)}&objective=emailsSent&groupBy=workflow&limit=100`,
+    `${apiUrl}/v1/public/features/ranked?featureSlug=${encodeURIComponent(featureSlug)}&objective=emailsSent&groupBy=workflow&limit=100`,
     { headers, cache: "no-store" },
   );
   if (!res.ok) {
-    console.error(`[landing] Workflow ranked fetch failed for ${featureDynastySlug}: ${res.status}`);
+    console.error(`[landing] Workflow ranked fetch failed for ${featureSlug}: ${res.status}`);
     return [];
   }
   const data: WorkflowRankedResponse = await res.json();
@@ -212,16 +212,16 @@ async function fetchWorkflowRanked(
 // ─── Fetch ranked brands for a feature (single call returns all stats) ──────
 
 async function fetchBrandRanked(
-  featureDynastySlug: string,
+  featureSlug: string,
   headers: Record<string, string>,
   apiUrl: string,
 ): Promise<BrandLeaderboardEntry[]> {
   const res = await fetch(
-    `${apiUrl}/v1/public/features/ranked?featureDynastySlug=${encodeURIComponent(featureDynastySlug)}&objective=emailsSent&groupBy=brand&limit=100`,
+    `${apiUrl}/v1/public/features/ranked?featureSlug=${encodeURIComponent(featureSlug)}&objective=emailsSent&groupBy=brand&limit=100`,
     { headers, cache: "no-store" },
   );
   if (!res.ok) {
-    console.error(`[landing] Brand ranked fetch failed for ${featureDynastySlug}: ${res.status}`);
+    console.error(`[landing] Brand ranked fetch failed for ${featureSlug}: ${res.status}`);
     return [];
   }
   const data: BrandRankedResponse = await res.json();
@@ -303,10 +303,10 @@ function aggregateBrands(brandsByFeature: BrandLeaderboardEntry[][]): BrandLeade
   }));
 }
 
-// ─── Per-dynasty fetch result ───────────���────────────────────────────────────
+// ─── Per-feature fetch result ────────────────────────────────────────────────
 
-interface DynastyFetchResult {
-  dynastySlug: string;
+interface FeatureFetchResult {
+  featureSlug: string;
   workflows: WorkflowLeaderboardEntry[];
   brands: BrandLeaderboardEntry[];
 }
@@ -314,7 +314,7 @@ interface DynastyFetchResult {
 // ─── Build feature groups from base groups ────���──────────────────────────────
 
 function buildFeatureGroups(
-  groupResults: Map<string, DynastyFetchResult[]>,
+  groupResults: Map<string, FeatureFetchResult[]>,
 ): FeatureGroupData[] {
   return BASE_GROUPS.map((group) => {
     const results = groupResults.get(group.label) ?? [];
@@ -379,7 +379,7 @@ export async function fetchLeaderboard(hostname = ""): Promise<LeaderboardData |
     }
 
     // Step 2: Filter to only features that belong to a base group
-    const relevantFeatures = features.filter((f) => resolveBaseGroup(f.dynastySlug) !== null);
+    const relevantFeatures = features.filter((f) => resolveBaseGroup(f.slug) !== null);
 
     if (relevantFeatures.length === 0) {
       console.error("[landing] Performance: no features matched any base group");
@@ -387,23 +387,23 @@ export async function fetchLeaderboard(hostname = ""): Promise<LeaderboardData |
     }
 
     const heroFeature =
-      relevantFeatures.find((f) => f.dynastySlug.includes("sales-cold-email")) ?? relevantFeatures[0];
+      relevantFeatures.find((f) => f.slug.includes("sales-cold-email")) ?? relevantFeatures[0];
 
     // Step 3: For each relevant feature, fetch workflow + brand ranked data (2 calls per feature)
-    const dynastyResults: DynastyFetchResult[] = await Promise.all(
+    const featureResults: FeatureFetchResult[] = await Promise.all(
       relevantFeatures.map(async (feature) => {
         const [workflows, brands] = await Promise.all([
-          fetchWorkflowRanked(feature.dynastySlug, headers, apiUrl),
-          fetchBrandRanked(feature.dynastySlug, headers, apiUrl),
+          fetchWorkflowRanked(feature.slug, headers, apiUrl),
+          fetchBrandRanked(feature.slug, headers, apiUrl),
         ]);
-        return { dynastySlug: feature.dynastySlug, workflows, brands };
+        return { featureSlug: feature.slug, workflows, brands };
       }),
     );
 
     // Step 4: Organize results by base group
-    const groupResults = new Map<string, DynastyFetchResult[]>();
-    for (const result of dynastyResults) {
-      const group = resolveBaseGroup(result.dynastySlug);
+    const groupResults = new Map<string, FeatureFetchResult[]>();
+    for (const result of featureResults) {
+      const group = resolveBaseGroup(result.featureSlug);
       if (!group) continue;
       const arr = groupResults.get(group.label) ?? [];
       arr.push(result);
@@ -412,7 +412,7 @@ export async function fetchLeaderboard(hostname = ""): Promise<LeaderboardData |
 
     // Step 5: Fetch best stats for hero
     const bestRes = await fetch(
-      `${apiUrl}/v1/public/features/best?featureDynastySlug=${encodeURIComponent(heroFeature.dynastySlug)}&groupBy=workflow`,
+      `${apiUrl}/v1/public/features/best?featureSlug=${encodeURIComponent(heroFeature.slug)}&groupBy=workflow`,
       { headers, cache: "no-store" },
     );
     const bestData: BestResponse | null = bestRes.ok ? await bestRes.json() : null;

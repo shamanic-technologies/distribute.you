@@ -14,7 +14,7 @@ import * as path from "path";
 describe("Campaign entity data should not flicker (no duplicate queries)", () => {
   const sidebarWrapperPath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureDynastySlug]/campaigns/[id]/sidebar-wrapper.tsx"
+    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/sidebar-wrapper.tsx"
   );
   const campaignContextPath = path.join(
     __dirname,

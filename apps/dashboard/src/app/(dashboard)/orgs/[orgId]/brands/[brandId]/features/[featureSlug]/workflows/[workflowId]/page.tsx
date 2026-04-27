@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getWorkflow, getWorkflowSummary, getFeatureByDynasty, listWorkflows } from "@/lib/api";
+import { getWorkflow, getWorkflowSummary, getFeature, listWorkflows } from "@/lib/api";
 import { WorkflowOverview } from "@/components/workflows/workflow-overview";
 import { WorkflowChat } from "@/components/workflows/workflow-chat";
 import { workflowDisplayName } from "@/lib/workflow-display-name";
@@ -42,7 +42,7 @@ export default function WorkflowViewerPage() {
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
   const initialWorkflowId = params.workflowId as string;
-  const featureDynastySlug = params.featureDynastySlug as string;
+  const featureSlug = params.featureSlug as string;
   const [detailsOpen, setDetailsOpen] = useState(false);
 
   // Track active workflow ID locally so fork navigation doesn't remount the page
@@ -58,10 +58,10 @@ export default function WorkflowViewerPage() {
     if (hasNavigatedRef.current) return;
     hasNavigatedRef.current = true;
     // Update URL without triggering a Next.js navigation — keeps the chat mounted
-    const newUrl = `/orgs/${orgId}/brands/${brandId}/features/${featureDynastySlug}/workflows/${newWorkflowId}`;
+    const newUrl = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/${newWorkflowId}`;
     window.history.replaceState(null, "", newUrl);
     setActiveWorkflowId(newWorkflowId);
-  }, [orgId, brandId, featureDynastySlug]);
+  }, [orgId, brandId, featureSlug]);
 
   const { data: workflow, isLoading } = useAuthQuery(
     ["workflow", activeWorkflowId],
@@ -74,8 +74,8 @@ export default function WorkflowViewerPage() {
   // Upgrades are detected via workflow.upgradedTo. Both result in navigating to the new workflow.
   const needsForkPoll = !!workflow && !hasNavigatedRef.current;
   const { data: siblingData } = useAuthQuery(
-    ["workflow-siblings", activeWorkflowId, featureDynastySlug],
-    () => listWorkflows({ featureDynastySlug }),
+    ["workflow-siblings", activeWorkflowId, featureSlug],
+    () => listWorkflows({ featureSlug }),
     { refetchInterval: 5000, enabled: needsForkPoll },
   );
 
@@ -96,8 +96,8 @@ export default function WorkflowViewerPage() {
   );
 
   const { data: featureData } = useAuthQuery(
-    ["feature", featureDynastySlug],
-    () => getFeatureByDynasty(featureDynastySlug),
+    ["feature", featureSlug],
+    () => getFeature(featureSlug),
   );
 
   const workflowContext = useMemo(() => {
@@ -123,10 +123,7 @@ export default function WorkflowViewerPage() {
       feature: feature ? {
         id: feature.id,
         slug: feature.slug,
-        dynastySlug: feature.dynastySlug,
         name: feature.name,
-        dynastyName: feature.dynastyName,
-        version: feature.version,
         description: feature.description,
         inputs: feature.inputs.map((inp) => ({
           key: inp.key,

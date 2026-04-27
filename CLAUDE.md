@@ -76,6 +76,8 @@ If the dashboard needs a field, endpoint, or capability that the backend doesn't
 
 NEVER add fallback logic (|| alternatives, silent defaults, graceful degradation) when data is missing or doesn't match. Instead, log a clear `console.error` with the mismatched value and context so the bug surfaces immediately. If a required field is absent, show an error UI — don't hide the problem. This applies everywhere: lookups, field resolution, display logic.
 
-### Dynasty-First Display Rule
+### Dynasty-First Display Rule (Workflows Only)
 
-Always display `dynastyName` for workflows and features, never the versioned name. The only exception is settings/debug panels where the specific version matters — there, show the version number and versioned name alongside the dynasty name. This applies to page titles, table rows, cards, breadcrumbs, and any user-facing text. URLs should also use dynasty slugs once the backend supports resolving them to the active version.
+Always display `dynastyName` for workflows, never the versioned name. The only exception is settings/debug panels where the specific version matters — there, show the version number and versioned name alongside the dynasty name. This applies to page titles, table rows, cards, breadcrumbs, and any user-facing text.
+
+Note: Features no longer have dynasty concepts. Features use `slug` and `name` directly.
