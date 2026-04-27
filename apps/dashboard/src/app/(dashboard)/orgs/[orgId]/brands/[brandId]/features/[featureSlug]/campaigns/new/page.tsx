@@ -106,7 +106,7 @@ export default function FeatureCreateCampaignPage() {
   const params = useParams();
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
-  const featureDynastySlug = params.featureDynastySlug as string;
+  const featureSlug = params.featureSlug as string;
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -115,7 +115,7 @@ export default function FeatureCreateCampaignPage() {
   const { showPaymentRequired } = useBillingGuard();
 
   const { getFeature, isLoading: featuresLoading, registry } = useFeatures();
-  const featureDef = getFeature(featureDynastySlug);
+  const featureDef = getFeature(featureSlug);
   const featureInputs = featureDef?.inputs ?? [];
   const outputs = featureDef?.outputs ?? [];
 
@@ -198,22 +198,22 @@ export default function FeatureCreateCampaignPage() {
 
   // Fetch workflows filtered by feature dynasty slug
   const { data: workflowsData, isLoading: workflowsLoading } = useAuthQuery(
-    ["workflows", featureDynastySlug],
-    () => listWorkflows({ featureDynastySlug }),
+    ["workflows", featureSlug],
+    () => listWorkflows({ featureSlug }),
     pollOptions,
   );
 
   // Fetch feature stats grouped by dynasty (aggregated across all versions)
   const { data: statsData, isLoading } = useAuthQuery(
-    ["featureStats", featureDynastySlug, "byDynasty"],
-    () => fetchFeatureStats(featureDynastySlug, { groupBy: "workflowDynastySlug" }),
+    ["featureStats", featureSlug, "byDynasty"],
+    () => fetchFeatureStats(featureSlug, { groupBy: "workflowDynastySlug" }),
     { enabled: featureDef?.implemented === true, ...pollOptions },
   );
 
   // Fetch brand-specific stats to know when each workflow was last used by this brand
   const { data: brandStatsData } = useAuthQuery(
-    ["featureStats", featureDynastySlug, "byDynasty", "brand", brandId],
-    () => fetchFeatureStats(featureDynastySlug, { groupBy: "workflowDynastySlug", brandId }),
+    ["featureStats", featureSlug, "byDynasty", "brand", brandId],
+    () => fetchFeatureStats(featureSlug, { groupBy: "workflowDynastySlug", brandId }),
     { enabled: featureDef?.implemented === true, ...pollOptions },
   );
 
@@ -259,7 +259,7 @@ export default function FeatureCreateCampaignPage() {
   const featureWorkflowIds = useMemo(() => rows.map((r) => r.id), [rows]);
 
   const { data: keyStatusData } = useAuthQuery(
-    ["workflowKeyStatus", featureDynastySlug, featureWorkflowIds],
+    ["workflowKeyStatus", featureSlug, featureWorkflowIds],
     async () => {
       const results = await Promise.all(
         featureWorkflowIds.map((id) => getWorkflowKeyStatus(id))
@@ -340,7 +340,7 @@ export default function FeatureCreateCampaignPage() {
 
     setIsLoadingProfile(true);
     try {
-      const { prefilled } = await prefillFeatureInputs(featureDynastySlug, [brandId, ...additionalBrandIds]);
+      const { prefilled } = await prefillFeatureInputs(featureSlug, [brandId, ...additionalBrandIds]);
       const fields = prefillToStringMap(prefilled);
       setFormData(prefillToFormData(fields, featureInputs, resolvedBrandUrl));
     } catch {
@@ -349,14 +349,14 @@ export default function FeatureCreateCampaignPage() {
       setIsLoadingProfile(false);
       setShowForm(true);
     }
-  }, [selectedRow, budgetAmount, resolvedBrandUrl, brandId, additionalBrandIds, featureDynastySlug, featureInputs]);
+  }, [selectedRow, budgetAmount, resolvedBrandUrl, brandId, additionalBrandIds, featureSlug, featureInputs]);
 
   // Re-run prefill when brands change while form is already open
   useEffect(() => {
     if (!showForm || !resolvedBrandUrl) return;
     let cancelled = false;
     setIsLoadingProfile(true);
-    prefillFeatureInputs(featureDynastySlug, [brandId, ...additionalBrandIds])
+    prefillFeatureInputs(featureSlug, [brandId, ...additionalBrandIds])
       .then(({ prefilled }) => {
         if (cancelled) return;
         const fields = prefillToStringMap(prefilled);
@@ -416,7 +416,7 @@ export default function FeatureCreateCampaignPage() {
       const campaignPayload: Record<string, unknown> = {
         workflowSlug: selectedRow.slug,
         brandUrls,
-        featureSlug: featureDynastySlug,
+        featureSlug: featureSlug,
         ...budgetParams,
         featureInputs: inputValues,
       };
@@ -434,7 +434,7 @@ export default function FeatureCreateCampaignPage() {
       }
       sendCampaignEmail("campaign_created", result.campaign).catch(() => {});
       await queryClient.invalidateQueries({ queryKey: ["campaigns", { brandId }] });
-      router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureDynastySlug}/campaigns/${result.campaign.id}`);
+      router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/${result.campaign.id}`);
       // Don't reset isCreating on success — the page is navigating away.
       // Resetting here would briefly flash the button back to its idle state.
     } catch (err) {
@@ -453,7 +453,7 @@ export default function FeatureCreateCampaignPage() {
         setCreateError(err instanceof Error ? err.message : "Failed to create campaign");
       }
     }
-  }, [selectedRow, budgetAmount, budgetFrequency, formData, router, orgId, brandId, featureDynastySlug, featureInputs, additionalBrands]);
+  }, [selectedRow, budgetAmount, budgetFrequency, formData, router, orgId, brandId, featureSlug, featureInputs, additionalBrands]);
 
   /** Save campaign intent to sessionStorage so we can resume after Stripe checkout */
   const saveCampaignIntent = useCallback(() => {
@@ -568,7 +568,7 @@ export default function FeatureCreateCampaignPage() {
       (async () => {
         try {
           let result: { campaign: Campaign };
-          const payload = { name: generateName(), workflowSlug, featureSlug: featureDynastySlug, ...rest } as unknown as Parameters<typeof createCampaign>[0];
+          const payload = { name: generateName(), workflowSlug, featureSlug: featureSlug, ...rest } as unknown as Parameters<typeof createCampaign>[0];
           try {
             result = await createCampaign(payload);
           } catch (firstErr) {
@@ -580,7 +580,7 @@ export default function FeatureCreateCampaignPage() {
           }
           sendCampaignEmail("campaign_created", result.campaign).catch(() => {});
           await queryClient.invalidateQueries({ queryKey: ["campaigns", { brandId }] });
-          router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureDynastySlug}/campaigns/${result.campaign.id}`);
+          router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/${result.campaign.id}`);
         } catch (err) {
           if (err instanceof ApiError && err.status === 402) {
             // Still insufficient — billing guard will handle
@@ -593,7 +593,7 @@ export default function FeatureCreateCampaignPage() {
     } catch {
       sessionStorage.removeItem("pendingCampaign");
     }
-  }, [searchParams, router, orgId, brandId, featureDynastySlug]);
+  }, [searchParams, router, orgId, brandId, featureSlug]);
 
   if (featuresLoading) {
     return (
@@ -612,7 +612,7 @@ export default function FeatureCreateCampaignPage() {
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
           <h2 className="text-lg font-medium text-red-800 mb-2">Feature not found</h2>
           <p className="text-sm text-red-600">
-            No active feature matches <code className="bg-red-100 px-1.5 py-0.5 rounded">{featureDynastySlug}</code>.
+            No active feature matches <code className="bg-red-100 px-1.5 py-0.5 rounded">{featureSlug}</code>.
             It may have been deprecated or renamed.
           </p>
         </div>
@@ -902,13 +902,13 @@ export default function FeatureCreateCampaignPage() {
       <CampaignAIPanel
         open={showChat}
         onClose={() => setShowChat(false)}
-        chatId={`${brandId}-${featureDynastySlug}`}
+        chatId={`${brandId}-${featureSlug}`}
         campaignContext={{
           brandId,
           brandUrl: resolvedBrandUrl,
           brandName: brand?.name ?? brand?.domain ?? undefined,
-          featureSlug: featureDynastySlug,
-          featureName: featureDef?.name ?? featureDynastySlug,
+          featureSlug: featureSlug,
+          featureName: featureDef?.name ?? featureSlug,
           currentFields: formData,
           fieldDefinitions: featureInputs.map((f) => ({
             key: f.key,

@@ -251,14 +251,14 @@ export default function CampaignPressKitDetailPage() {
   const orgId = params.orgId as string;
   const kitId = params.kitId as string;
   const campaignId = params.id as string;
-  const featureDynastySlug = params.featureDynastySlug as string;
+  const featureSlug = params.featureSlug as string;
 
-  const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureDynastySlug}/campaigns/${campaignId}/press-kits`;
+  const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/${campaignId}/press-kits`;
 
   const contextHeaders: Record<string, string> = {
     "x-brand-id": brandId,
     "x-campaign-id": campaignId,
-    "x-feature-slug": featureDynastySlug,
+    "x-feature-slug": featureSlug,
   };
 
   const [copied, setCopied] = useState(false);

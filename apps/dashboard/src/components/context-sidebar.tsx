@@ -342,11 +342,11 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
     { id: "home", label: "Home", href: "/", icon: <HomeIcon /> },
   ];
 
-  const featureItems: SidebarItem[] = features.filter((f) => f.dynastySlug).map((f) => ({
-    id: f.dynastySlug!,
-    label: f.dynastyName ?? f.name,
-    href: `/features/${f.dynastySlug}`,
-    icon: getFeatureIcon(f.dynastySlug!, f.icon),
+  const featureItems: SidebarItem[] = features.map((f) => ({
+    id: f.slug,
+    label: f.name,
+    href: `/features/${f.slug}`,
+    icon: getFeatureIcon(f.slug, f.icon),
     comingSoon: !f.implemented,
   }));
 
@@ -381,11 +381,11 @@ function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string 
     { id: "brands", label: "Brands", href: `/orgs/${orgId}/brands`, icon: <BrandIcon /> },
   ];
 
-  const featureItems: SidebarItem[] = features.filter((f) => f.dynastySlug).map((f) => ({
-    id: f.dynastySlug!,
-    label: f.dynastyName ?? f.name,
-    href: `/features/${f.dynastySlug}`,
-    icon: getFeatureIcon(f.dynastySlug!, f.icon),
+  const featureItems: SidebarItem[] = features.map((f) => ({
+    id: f.slug,
+    label: f.name,
+    href: `/features/${f.slug}`,
+    icon: getFeatureIcon(f.slug, f.icon),
     comingSoon: !f.implemented,
   }));
 
@@ -457,11 +457,11 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
     { id: "brand-info", label: "Brand Info", href: `${basePath}/brand-info`, icon: <InfoIcon /> },
   ];
 
-  const featureItems: SidebarItem[] = features.filter((f) => f.dynastySlug).map((f) => ({
-    id: f.dynastySlug!,
-    label: f.dynastyName ?? f.name,
-    href: `${basePath}/features/${f.dynastySlug}`,
-    icon: getFeatureIcon(f.dynastySlug!, f.icon),
+  const featureItems: SidebarItem[] = features.map((f) => ({
+    id: f.slug,
+    label: f.name,
+    href: `${basePath}/features/${f.slug}`,
+    icon: getFeatureIcon(f.slug, f.icon),
     comingSoon: !f.implemented,
   }));
 
@@ -588,20 +588,20 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   const { registry } = useEntityRegistry();
   const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`;
   const feature = getFeature(featureSlug);
-  const title = feature?.dynastyName ?? feature?.name ?? featureSlug;
+  const title = feature?.name ?? featureSlug;
   const entities = feature?.entities ?? [];
   const entityNames = useMemo(() => entities.map((e) => e.name), [entities]);
 
   // Feature stats scoped to this brand — same pattern as campaign sidebar
-  const featureDynastySlug = feature?.dynastySlug;
+  const resolvedFeatureSlug = feature?.slug;
   const { data: featureStatsData } = useAuthQuery(
-    ["featureStats", featureDynastySlug, "brand", brandId],
-    () => fetchFeatureStats(featureDynastySlug!, { brandId }),
-    { enabled: !!featureDynastySlug, refetchInterval: 5_000, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
+    ["featureStats", resolvedFeatureSlug, "brand", brandId],
+    () => fetchFeatureStats(resolvedFeatureSlug!, { brandId }),
+    { enabled: !!resolvedFeatureSlug, refetchInterval: 5_000, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
   );
   const fStats = featureStatsData?.stats ?? {};
 
-  // Listing fallbacks for entities without a countKey — filtered by featureDynastySlug
+  // Listing fallbacks for entities without a countKey — filtered by featureSlug
   const { data: outletsData } = useAuthQuery(
     ["brandOutlets", brandId, featureSlug],
     () => listBrandOutlets(brandId, featureSlug),
@@ -609,7 +609,7 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   );
   const { data: journalistsData } = useAuthQuery(
     ["enrichedJournalists", brandId, featureSlug],
-    () => listJournalistsEnriched(brandId, { featureDynastySlug: featureSlug }),
+    () => listJournalistsEnriched(brandId, { featureSlug }),
     { enabled: entityNames.includes("journalists"), refetchInterval: 5_000, refetchIntervalInBackground: false },
   );
   const { data: leadsData } = useAuthQuery(

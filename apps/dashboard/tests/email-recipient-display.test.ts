@@ -4,7 +4,7 @@ import * as path from "path";
 
 const emailsPagePath = path.resolve(
   __dirname,
-  "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureDynastySlug]/campaigns/[id]/emails/page.tsx"
+  "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/emails/page.tsx"
 );
 
 describe("Email recipient display", () => {

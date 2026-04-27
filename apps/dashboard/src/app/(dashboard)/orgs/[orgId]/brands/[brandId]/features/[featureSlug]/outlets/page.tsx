@@ -239,21 +239,21 @@ function OutletDetailPanel({ outlet, costCents, onClose }: { outlet: Deduplicate
 export default function FeatureOutletsPage() {
   const params = useParams();
   const brandId = params.brandId as string;
-  const featureDynastySlug = params.featureDynastySlug as string;
+  const featureSlug = params.featureSlug as string;
   const [selected, setSelected] = useState<DeduplicatedOutlet | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("all");
   const [search, setSearch] = useState("");
   const hasAutoSelectedTab = useRef(false);
 
   const { data, isLoading } = useAuthQuery(
-    ["brandOutlets", brandId, featureDynastySlug],
-    () => listBrandOutlets(brandId, featureDynastySlug),
+    ["brandOutlets", brandId, featureSlug],
+    () => listBrandOutlets(brandId, featureSlug),
     pollOptions,
   );
 
   const { data: costsByOutlet } = useAuthQuery(
-    ["outletStatsCosts", brandId, featureDynastySlug, "outletId"],
-    () => getOutletStatsCosts(brandId, "outletId", featureDynastySlug),
+    ["outletStatsCosts", brandId, featureSlug, "outletId"],
+    () => getOutletStatsCosts(brandId, "outletId", featureSlug),
   );
 
   const outlets = data?.outlets ?? [];

@@ -5,17 +5,17 @@ import * as path from "path";
 describe("Workflow list page shows all workflows (not just those with stats)", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureDynastySlug]/workflows/page.tsx"
+    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/workflows/page.tsx"
   );
 
   const content = fs.readFileSync(pagePath, "utf-8");
 
   it("should filter workflows by featureSlug via API", () => {
-    expect(content).toContain("listWorkflows({ featureDynastySlug })");
+    expect(content).toContain("listWorkflows({ featureSlug })");
   });
 
   it("should include resolvedSlug in the query key", () => {
-    expect(content).toContain('["workflows", featureDynastySlug]');
+    expect(content).toContain('["workflows", featureSlug]');
   });
 
   it("should group active workflows by dynastySlug (dynasty pattern)", () => {

@@ -228,6 +228,31 @@ export interface CostByName {
   totalQuantity: string;
 }
 
+export interface RecipientStats {
+  contacted: number;
+  sent: number;
+  delivered: number;
+  opened: number;
+  bounced: number;
+  clicked: number;
+  unsubscribed: number;
+  repliesPositive: number;
+  repliesNegative: number;
+  repliesNeutral: number;
+  repliesAutoReply: number;
+  repliesDetail: number;
+}
+
+export interface EmailStats {
+  sent: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  bounced: number;
+  unsubscribed: number;
+  stepStats: Record<string, number>;
+}
+
 export interface CampaignStats {
   campaignId: string;
   totalCostInUsdCents?: string | null;
@@ -237,21 +262,8 @@ export interface CampaignStats {
   leadsSkipped: number;
   apollo?: ApolloStats;
   emailsGenerated: number;
-  emailsContacted: number;
-  emailsSent: number;
-  emailsDelivered: number;
-  emailsOpened: number;
-  emailsClicked: number;
-  emailsReplied: number;
-  emailsBounced: number;
-  // Reply classifications
-  repliesInterested?: number;
-  repliesMeetingBooked?: number;
-  repliesClosed?: number;
-  repliesNeutral?: number;
-  repliesNotInterested?: number;
-  repliesOutOfOffice?: number;
-  repliesUnsubscribe?: number;
+  recipientStats: RecipientStats;
+  emailStats: EmailStats;
 }
 
 export async function listCampaigns(token?: string): Promise<{ campaigns: Campaign[] }> {
@@ -275,20 +287,8 @@ export async function getCampaignBatchStats(
 }
 
 export interface BrandDeliveryStats {
-  emailsContacted: number;
-  emailsSent: number;
-  emailsDelivered: number;
-  emailsOpened: number;
-  emailsClicked: number;
-  emailsReplied: number;
-  emailsBounced: number;
-  repliesInterested: number;
-  repliesMeetingBooked: number;
-  repliesClosed: number;
-  repliesNeutral: number;
-  repliesNotInterested: number;
-  repliesOutOfOffice: number;
-  repliesUnsubscribe: number;
+  recipientStats: RecipientStats;
+  emailStats: EmailStats;
 }
 
 export async function getBrandDeliveryStats(brandId: string, token?: string): Promise<BrandDeliveryStats> {
@@ -304,9 +304,9 @@ export interface CostStatsGroup {
   runCount: number;
 }
 
-export async function getBrandCostBreakdown(brandId: string, opts?: { featureDynastySlug?: string }, token?: string): Promise<{ costs: CostByName[] }> {
+export async function getBrandCostBreakdown(brandId: string, opts?: { featureSlug?: string }, token?: string): Promise<{ costs: CostByName[] }> {
   const query = new URLSearchParams({ brandId, groupBy: "costName" });
-  if (opts?.featureDynastySlug) query.set("featureDynastySlug", opts.featureDynastySlug);
+  if (opts?.featureSlug) query.set("featureSlug", opts.featureSlug);
   const result = await apiCall<{ groups: CostStatsGroup[] }>(`/runs/stats/costs?${query}`, { token });
   const costs: CostByName[] = result.groups.map((g) => ({
     costName: g.dimensions.costName ?? "Unknown",
@@ -319,7 +319,7 @@ export async function getBrandCostBreakdown(brandId: string, opts?: { featureDyn
 }
 
 export interface FeatureCostGroup {
-  featureDynastySlug: string | null;
+  featureSlug: string | null;
   totalCostInUsdCents: string;
   actualCostInUsdCents: string;
   provisionedCostInUsdCents: string;
@@ -327,11 +327,11 @@ export interface FeatureCostGroup {
 }
 
 export async function getBrandCostsByFeature(brandId: string, token?: string): Promise<{ groups: FeatureCostGroup[] }> {
-  const query = new URLSearchParams({ brandId, groupBy: "featureDynastySlug" });
+  const query = new URLSearchParams({ brandId, groupBy: "featureSlug" });
   const result = await apiCall<{ groups: CostStatsGroup[] }>(`/runs/stats/costs?${query}`, { token });
   return {
     groups: result.groups.map((g) => ({
-      featureDynastySlug: g.dimensions.featureDynastySlug ?? null,
+      featureSlug: g.dimensions.featureSlug ?? null,
       totalCostInUsdCents: g.totalCostInUsdCents,
       actualCostInUsdCents: g.actualCostInUsdCents,
       provisionedCostInUsdCents: g.provisionedCostInUsdCents,
@@ -563,12 +563,12 @@ export interface PrefillFullResponse {
 
 /** POST /features/:slug/prefill?format=text — get pre-filled input values as plain strings */
 export async function prefillFeatureInputs(
-  featureDynastySlug: string,
+  featureSlug: string,
   brandIds: string[],
   token?: string,
 ): Promise<PrefillResponse> {
   return apiCall<PrefillResponse>(
-    `/features/${featureDynastySlug}/prefill?format=text`,
+    `/features/${featureSlug}/prefill?format=text`,
     { token, method: "POST", body: { brandIds } },
   );
 }
@@ -620,24 +620,12 @@ export type FeatureChart =
   | { key: string; type: "funnel-bar"; title: string; displayOrder: number; steps: FunnelStep[] }
   | { key: string; type: "breakdown-bar"; title: string; displayOrder: number; segments: BreakdownSegment[] };
 
-export interface FeatureRef {
-  id: string;
-  slug: string;
-  status: "active" | "draft" | "deprecated";
-}
-
 export interface Feature {
   id: string;
   slug: string;
   name: string;
-  dynastyName?: string;
-  dynastySlug?: string;
-  version?: number;
   description: string;
   icon?: string;
-  category: string;
-  channel: string;
-  audienceType: string;
   status: "active" | "draft" | "deprecated";
   implemented: boolean;
   displayOrder?: number;
@@ -645,14 +633,7 @@ export interface Feature {
   outputs: FeatureOutput[];
   charts: FeatureChart[];
   entities: FeatureEntity[];
-  forkedFrom?: FeatureRef;
-  upgradedTo?: FeatureRef;
 }
-
-/** 200 = metadata-only update; 201 = inputs/outputs changed, feature was forked */
-export type UpdateFeatureResult =
-  | { feature: Feature; forkedFrom?: undefined }
-  | { feature: Feature; forkedFrom: FeatureRef };
 
 // ─── Stats Registry & Stats Types ────────────────────────────────────────────
 
@@ -677,14 +658,12 @@ export interface StatsGroup {
   brandId?: string;
   campaignId?: string;
   featureSlug?: string;
-  featureDynastySlug?: string;
   systemStats: SystemStats;
   stats: Record<string, number>;
 }
 
 export interface FeatureStatsResponse {
   featureSlug?: string;
-  dynastySlug?: string;
   groupBy?: string;
   systemStats: SystemStats;
   stats: Record<string, number>;
@@ -714,61 +693,6 @@ export async function getFeature(slug: string, token?: string): Promise<{ featur
   return apiCall<{ feature: Feature }>(`/features/${slug}`, { token });
 }
 
-/** GET /features/by-dynasty/:dynastySlug — get the active feature for a dynasty */
-export async function getFeatureByDynasty(dynastySlug: string, token?: string): Promise<{ feature: Feature }> {
-  return apiCall<{ feature: Feature }>(`/features/by-dynasty/${dynastySlug}`, { token });
-}
-
-/** POST /features — create a new feature */
-export async function createFeature(
-  params: {
-    name: string;
-    description: string;
-    icon: string;
-    category: string;
-    channel: string;
-    audienceType: string;
-    inputs: FeatureInput[];
-    outputs: FeatureOutput[];
-    charts: FeatureChart[];
-    entities: FeatureEntity[];
-    slug?: string;
-  },
-  token?: string,
-): Promise<{ feature: Feature }> {
-  return apiCall<{ feature: Feature }>("/features", {
-    token,
-    method: "POST",
-    body: params as unknown as Record<string, unknown>,
-  });
-}
-
-/** PUT /features/:slug — update an existing feature.
- *  Returns 200 for metadata-only updates, 201 when inputs/outputs changed (fork). */
-export async function updateFeature(
-  slug: string,
-  params: Partial<{
-    name: string;
-    description: string;
-    icon: string;
-    category: string;
-    channel: string;
-    audienceType: string;
-    inputs: FeatureInput[];
-    outputs: FeatureOutput[];
-    charts: FeatureChart[];
-    entities: FeatureEntity[];
-    status: "active" | "draft" | "deprecated";
-  }>,
-  token?: string,
-): Promise<UpdateFeatureResult> {
-  return apiCall<UpdateFeatureResult>(`/features/${slug}`, {
-    token,
-    method: "PUT",
-    body: params as unknown as Record<string, unknown>,
-  });
-}
-
 // ─── Entity Registry ─────────────────────────────────────────────────────────
 
 export interface EntityRegistryEntry {
@@ -792,17 +716,18 @@ export async function fetchStatsRegistry(token?: string): Promise<{ registry: St
 
 /** GET /features/:featureSlug/stats — stats for a feature */
 export async function fetchFeatureStats(
-  dynastySlug: string,
+  featureSlug: string,
   params?: { groupBy?: string; brandId?: string; campaignId?: string; workflowSlug?: string; workflowDynastySlug?: string },
   token?: string,
 ): Promise<FeatureStatsResponse> {
-  const query = new URLSearchParams({ dynastySlug });
+  const query = new URLSearchParams();
   if (params?.groupBy) query.set("groupBy", params.groupBy);
   if (params?.brandId) query.set("brandId", params.brandId);
   if (params?.campaignId) query.set("campaignId", params.campaignId);
   if (params?.workflowSlug) query.set("workflowSlug", params.workflowSlug);
   if (params?.workflowDynastySlug) query.set("workflowDynastySlug", params.workflowDynastySlug);
-  return apiCall<FeatureStatsResponse>(`/features/stats/dynasty?${query}`, { token });
+  const qs = query.toString();
+  return apiCall<FeatureStatsResponse>(`/features/${featureSlug}/stats${qs ? `?${qs}` : ""}`, { token });
 }
 
 /** GET /features/stats — global stats cross-features */
@@ -1157,9 +1082,9 @@ export async function queryProviderRequirements(
   );
 }
 
-export async function listWorkflows(params?: { featureDynastySlug?: string }, token?: string): Promise<{ workflows: Workflow[] }> {
+export async function listWorkflows(params?: { featureSlug?: string }, token?: string): Promise<{ workflows: Workflow[] }> {
   const query = new URLSearchParams();
-  if (params?.featureDynastySlug) query.set("featureDynastySlug", params.featureDynastySlug);
+  if (params?.featureSlug) query.set("featureSlug", params.featureSlug);
   return apiCall<{ workflows: Workflow[] }>(`/workflows?${query}`, { token });
 }
 
@@ -1245,13 +1170,13 @@ export interface RankedWorkflowResponse {
 }
 
 export async function fetchRankedWorkflows(params: {
-  featureDynastySlug: string;
+  featureSlug: string;
   objective: string;
   groupBy: "workflow" | "brand";
   limit?: number;
 }, token?: string): Promise<RankedWorkflowItem[]> {
   const query = new URLSearchParams();
-  query.set("featureDynastySlug", params.featureDynastySlug);
+  query.set("featureSlug", params.featureSlug);
   query.set("objective", params.objective);
   query.set("groupBy", params.groupBy);
   if (params.limit) query.set("limit", String(params.limit));
@@ -1644,12 +1569,12 @@ export interface DiscoveredJournalist {
 
 export async function listBrandOutlets(
   brandId: string,
-  featureDynastySlug?: string,
+  featureSlug?: string,
   token?: string,
   campaignId?: string,
 ): Promise<{ outlets: DeduplicatedOutlet[]; total: number; byOutreachStatus?: Record<string, number> }> {
   const params = new URLSearchParams({ brandId });
-  if (featureDynastySlug) params.set("featureDynastySlug", featureDynastySlug);
+  if (featureSlug) params.set("featureSlug", featureSlug);
   if (campaignId) params.set("campaignId", campaignId);
   return apiCall<{ outlets: DeduplicatedOutlet[]; total: number; byOutreachStatus?: Record<string, number> }>(
     `/outlets?${params}`,
@@ -1774,11 +1699,11 @@ export function isJournalistContacted(
 
 export async function listJournalistsEnriched(
   brandId: string,
-  options?: { campaignId?: string; featureDynastySlug?: string; token?: string },
+  options?: { campaignId?: string; featureSlug?: string; token?: string },
 ): Promise<{ journalists: EnrichedJournalist[]; total?: number; byOutreachStatus?: Record<string, number> }> {
   const params = new URLSearchParams({ brandId });
   if (options?.campaignId) params.set("campaignId", options.campaignId);
-  if (options?.featureDynastySlug) params.set("featureDynastySlug", options.featureDynastySlug);
+  if (options?.featureSlug) params.set("featureSlug", options.featureSlug);
   return apiCall<{ journalists: EnrichedJournalist[]; total?: number; byOutreachStatus?: Record<string, number> }>(
     `/journalists/list?${params}`,
     { token: options?.token },
@@ -1850,13 +1775,13 @@ export async function discoverJournalists(
 export async function getOutletStatsCosts(
   brandId: string,
   groupBy?: string,
-  featureDynastySlug?: string,
+  featureSlug?: string,
   token?: string,
   campaignId?: string,
 ): Promise<{ groups: CostStatsGroup[] }> {
   const params = new URLSearchParams({ brandId });
   if (groupBy) params.set("groupBy", groupBy);
-  if (featureDynastySlug) params.set("featureDynastySlug", featureDynastySlug);
+  if (featureSlug) params.set("featureSlug", featureSlug);
   if (campaignId) params.set("campaignId", campaignId);
   return apiCall<{ groups: CostStatsGroup[] }>(
     `/outlets/stats/costs?${params}`,
@@ -1940,11 +1865,11 @@ export async function listCampaignArticles(
 
 export async function listBrandArticles(
   brandId: string,
-  featureDynastySlug?: string,
+  featureSlug?: string,
   token?: string,
 ): Promise<{ discoveries: ArticleDiscoveryItem[] }> {
   const params = new URLSearchParams({ brandId });
-  if (featureDynastySlug) params.set("featureDynastySlug", featureDynastySlug);
+  if (featureSlug) params.set("featureSlug", featureSlug);
   return apiCall<{ discoveries: ArticleDiscoveryItem[] }>(
     `/discoveries?${params}`,
     { token },

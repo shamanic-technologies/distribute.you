@@ -5,11 +5,11 @@ import * as path from "path";
 describe("Campaign sidebar uses feature stats via entity.countKey", () => {
   const sidebarWrapperPath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureDynastySlug]/campaigns/[id]/sidebar-wrapper.tsx"
+    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/sidebar-wrapper.tsx"
   );
   const overviewPagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureDynastySlug]/campaigns/[id]/page.tsx"
+    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/page.tsx"
   );
 
   const sidebarContent = fs.readFileSync(sidebarWrapperPath, "utf-8");
@@ -17,7 +17,7 @@ describe("Campaign sidebar uses feature stats via entity.countKey", () => {
 
   describe("sidebar-wrapper", () => {
     it("should fetch feature stats for the campaign using dynasty slug", () => {
-      expect(sidebarContent).toContain("fetchFeatureStats(featureDynastySlug, { campaignId })");
+      expect(sidebarContent).toContain("fetchFeatureStats(featureSlug, { campaignId })");
       expect(sidebarContent).not.toContain("featureVersionedSlug");
     });
 
@@ -33,7 +33,7 @@ describe("Campaign sidebar uses feature stats via entity.countKey", () => {
 
   describe("overview page", () => {
     it("should fetch feature stats for charts using dynasty slug", () => {
-      expect(overviewContent).toContain("fetchFeatureStats(featureDynastySlug, { campaignId })");
+      expect(overviewContent).toContain("fetchFeatureStats(featureSlug, { campaignId })");
       expect(overviewContent).not.toContain("featureVersionedSlug");
     });
 

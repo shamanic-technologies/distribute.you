@@ -32,7 +32,7 @@ describe("Performance leaderboard groups by base dynasty name", () => {
   });
 
   it("filters features through resolveBaseGroup before fetching", () => {
-    expect(content).toContain("resolveBaseGroup(f.dynastySlug) !== null");
+    expect(content).toContain("resolveBaseGroup(f.slug) !== null");
   });
 
   it("aggregates brands per group via aggregateBrands", () => {

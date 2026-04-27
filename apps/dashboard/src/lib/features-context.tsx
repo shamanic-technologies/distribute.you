@@ -37,7 +37,7 @@ export function FeaturesProvider({ children }: { children: ReactNode }) {
   const registry = registryData?.registry ?? {};
 
   const getFeature = (slug: string) =>
-    features.find((f) => f.dynastySlug === slug);
+    features.find((f) => f.slug === slug);
 
   return (
     <FeaturesContext.Provider value={{ features, isLoading, getFeature, registry, registryLoading }}>

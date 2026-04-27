@@ -470,21 +470,29 @@ const PLATFORM_CHAT_CONFIGS = [
     key: "workflow",
     systemPrompt: CHAT_SYSTEM_PROMPT,
     allowedTools: WORKFLOW_ALLOWED_TOOLS,
+    provider: "google",
+    model: "pro",
   },
   {
     key: "press-kit",
     systemPrompt: PRESS_KIT_CHAT_SYSTEM_PROMPT,
     allowedTools: PRESS_KIT_ALLOWED_TOOLS,
+    provider: "google",
+    model: "pro",
   },
   {
     key: "feature",
     systemPrompt: FEATURE_CHAT_SYSTEM_PROMPT,
     allowedTools: FEATURE_ALLOWED_TOOLS,
+    provider: "google",
+    model: "pro",
   },
   {
     key: "campaign-prefill",
     systemPrompt: CAMPAIGN_PREFILL_SYSTEM_PROMPT,
     allowedTools: CAMPAIGN_PREFILL_ALLOWED_TOOLS,
+    provider: "google",
+    model: "pro",
   },
 ];
 
