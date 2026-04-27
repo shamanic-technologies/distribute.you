@@ -16,12 +16,12 @@ GET /v1/features?implemented=true
 GET /v1/features/:slug
 
 ## Prefill Inputs
-POST /v1/features/:dynastySlug/prefill?format=text
+POST /v1/features/:featureSlug/prefill?format=text
 { "brandIds": ["brand_abc123"] }
 
 ## Feature Stats
-GET /v1/features/:dynastySlug/stats
-GET /v1/features/:dynastySlug/stats?groupBy=brand
+GET /v1/features/:featureSlug/stats
+GET /v1/features/:featureSlug/stats?groupBy=brand
 
 ## Global Stats
 GET /v1/features/stats
@@ -67,7 +67,7 @@ X-API-Key: dist_YOUR_KEY`}</code>
 
         <h2>Prefill Inputs</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`POST /v1/features/:dynastySlug/prefill?format=text
+          <code>{`POST /v1/features/:featureSlug/prefill?format=text
 Content-Type: application/json
 X-API-Key: dist_YOUR_KEY
 
@@ -82,9 +82,9 @@ X-API-Key: dist_YOUR_KEY
 
         <h2>Feature Stats</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`GET /v1/features/:dynastySlug/stats
-GET /v1/features/:dynastySlug/stats?groupBy=brand
-GET /v1/features/:dynastySlug/stats?groupBy=campaign&brandId=brand_abc123
+          <code>{`GET /v1/features/:featureSlug/stats
+GET /v1/features/:featureSlug/stats?groupBy=brand
+GET /v1/features/:featureSlug/stats?groupBy=campaign&brandId=brand_abc123
 X-API-Key: dist_YOUR_KEY`}</code>
         </pre>
         <p>

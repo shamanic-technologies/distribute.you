@@ -15,8 +15,8 @@ describe("Feature creation page uses ranked workflows endpoint", () => {
     expect(content).not.toContain("listWorkflows");
   });
 
-  it("should filter by featureDynastySlug + objective instead of category/channel/audienceType", () => {
-    expect(content).toContain("featureDynastySlug: featureId");
+  it("should filter by featureSlug + objective instead of category/channel/audienceType", () => {
+    expect(content).toContain("featureSlug: featureId");
     expect(content).toContain("objective:");
     expect(content).not.toContain("featureDef!.category");
     expect(content).not.toContain("featureDef!.channel");

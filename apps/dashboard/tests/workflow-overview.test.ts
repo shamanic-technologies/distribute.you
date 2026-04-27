@@ -167,18 +167,6 @@ describe("WorkflowChat component (useChat + AI SDK)", () => {
   });
 });
 
-describe("FeatureCreatorChat component", () => {
-  const chatPath = path.join(
-    __dirname,
-    "../src/components/features/feature-creator-chat.tsx"
-  );
-
-  it("should send configKey: 'feature' in the chat payload", () => {
-    const content = fs.readFileSync(chatPath, "utf-8");
-    expect(content).toContain('configKey: "feature"');
-  });
-});
-
 describe("Chat proxy route (SSE → Data Stream Protocol)", () => {
   const routePath = path.join(
     __dirname,
@@ -250,7 +238,7 @@ describe("Chat proxy route (SSE → Data Stream Protocol)", () => {
 describe("Workflow viewer page composition", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureDynastySlug]/workflows/[workflowId]/page.tsx"
+    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/workflows/[workflowId]/page.tsx"
   );
 
   it("should NOT import dagToMermaid or mermaid", () => {

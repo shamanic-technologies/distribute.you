@@ -147,50 +147,27 @@ export default function OrgOverviewPage() {
       <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-medium text-gray-900">Features</h2>
-          <div className="flex items-center gap-3">
-            {features.length > 6 && (
-              <Link
-                href={`/features`}
-                className="text-sm text-gray-400 hover:text-gray-600"
-              >
-                View all →
-              </Link>
-            )}
-            {brands.length > 0 ? (
-              <Link
-                href={`/orgs/${orgId}/brands/${brands[0].id}/features/new`}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Create
-              </Link>
-            ) : (
-              <span
-                title="Create a brand first"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-200 text-gray-400 cursor-not-allowed"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Create
-              </span>
-            )}
-          </div>
+          {features.length > 6 && (
+            <Link
+              href={`/features`}
+              className="text-sm text-gray-400 hover:text-gray-600"
+            >
+              View all →
+            </Link>
+          )}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {features.map((f) => (
             <Link
-              key={f.dynastySlug}
-              href={f.implemented ? `/features/${f.dynastySlug}` : "#"}
+              key={f.slug}
+              href={f.implemented ? `/features/${f.slug}` : "#"}
               className={`flex items-center gap-3 p-3 rounded-lg border transition ${
                 f.implemented
                   ? "border-gray-200 hover:border-brand-300 hover:shadow-sm"
                   : "border-gray-100 opacity-60 cursor-default"
               }`}
             >
-              <span className="text-sm font-medium text-gray-700">{f.dynastyName ?? f.name}</span>
+              <span className="text-sm font-medium text-gray-700">{f.name}</span>
               {!f.implemented && (
                 <span className="text-[10px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full whitespace-nowrap ml-auto">
                   Coming soon
@@ -215,7 +192,7 @@ export default function OrgOverviewPage() {
               const featureSlug = campaign.featureSlug ?? null;
               const primaryBrandId = campaign.brandIds[0] ?? null;
               const brand = primaryBrandId ? brands.find((b) => b.id === primaryBrandId) : undefined;
-              const feature = featureSlug ? features.find((f) => f.dynastySlug === featureSlug) : null;
+              const feature = featureSlug ? features.find((f) => f.slug === featureSlug) : null;
               const href = featureSlug && primaryBrandId
                 ? `/orgs/${orgId}/brands/${primaryBrandId}/features/${featureSlug}/campaigns/${campaign.id}`
                 : null;

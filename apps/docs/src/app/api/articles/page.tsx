@@ -11,7 +11,7 @@ const LLM_INSTRUCTIONS = `# Articles API
 ## List Articles
 GET /v1/discoveries?brandId=brand_abc123
 GET /v1/discoveries?campaignId=camp_abc123
-GET /v1/discoveries?featureDynastySlug=journalists-email-cold-outreach
+GET /v1/discoveries?featureSlug=journalists-email-cold-outreach
 Returns: URLs, titles, descriptions, authors, publication dates, discovery metadata
 
 ## TypeScript Client
@@ -33,7 +33,7 @@ export default function ArticlesApiPage() {
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/discoveries?brandId=brand_abc123
 GET /v1/discoveries?campaignId=camp_abc123
-GET /v1/discoveries?featureDynastySlug=journalists-email-cold-outreach
+GET /v1/discoveries?featureSlug=journalists-email-cold-outreach
 X-API-Key: dist_YOUR_KEY`}</code>
         </pre>
         <p>

@@ -215,7 +215,7 @@ export default function CreateCampaignPage() {
   const { data: rankedItems, isLoading } = useAuthQuery(
     ["ranked-workflows", featureId],
     () => fetchRankedWorkflows({
-      featureDynastySlug: featureId,
+      featureSlug: featureId,
       objective: "emailsReplied",
       groupBy: "workflow",
       limit: 100,

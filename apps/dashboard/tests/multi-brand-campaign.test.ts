@@ -3,7 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 describe("Multi-brand campaign support", () => {
-  const pageRel = "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureDynastySlug]/campaigns/new/page.tsx";
+  const pageRel = "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx";
   const content = fs.readFileSync(path.join(__dirname, pageRel), "utf-8");
 
   const apiRel = "../src/lib/api.ts";

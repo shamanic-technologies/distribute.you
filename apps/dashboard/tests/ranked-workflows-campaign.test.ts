@@ -4,7 +4,7 @@ import * as path from "path";
 
 const pagePath = path.resolve(
   __dirname,
-  "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureDynastySlug]/campaigns/new/page.tsx"
+  "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx"
 );
 const content = fs.readFileSync(pagePath, "utf-8");
 
@@ -14,9 +14,9 @@ describe("Campaign creation page uses feature stats + workflow list", () => {
     expect(content).toContain('groupBy: "workflowDynastySlug"');
   });
 
-  it("should fetch workflows filtered by featureDynastySlug", () => {
+  it("should fetch workflows filtered by featureSlug", () => {
     expect(content).toContain("listWorkflows");
-    expect(content).toContain("featureDynastySlug");
+    expect(content).toContain("featureSlug");
   });
 
   it("should use dynamic feature outputs for table columns (not hardcoded email columns)", () => {

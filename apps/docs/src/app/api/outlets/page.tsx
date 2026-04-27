@@ -10,7 +10,7 @@ const LLM_INSTRUCTIONS = `# Outlets API
 
 ## List Brand Outlets
 GET /v1/outlets?brandId=brand_abc123
-GET /v1/outlets?brandId=brand_abc123&featureDynastySlug=journalists-email-cold-outreach
+GET /v1/outlets?brandId=brand_abc123&featureSlug=journalists-email-cold-outreach
 
 ## List Campaign Outlets
 GET /v1/campaigns/:campaignId/outlets
@@ -34,7 +34,7 @@ export default function OutletsApiPage() {
         <h2>List Brand Outlets</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/outlets?brandId=brand_abc123
-GET /v1/outlets?brandId=brand_abc123&featureDynastySlug=journalists-email-cold-outreach
+GET /v1/outlets?brandId=brand_abc123&featureSlug=journalists-email-cold-outreach
 X-API-Key: dist_YOUR_KEY`}</code>
         </pre>
         <p>Returns deduplicated outlets across campaigns with relevance scores and outreach status.</p>

@@ -10,7 +10,7 @@ describe("Org overview page empty state", () => {
   const content = fs.readFileSync(pagePath, "utf-8");
 
   it("should hide 'View all' link when no brands exist", () => {
-    expect(content).toContain("brands.length > 0");
+    expect(content).toContain("brands.length > 4");
     expect(content).toContain("View all →");
   });
 

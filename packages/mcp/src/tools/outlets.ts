@@ -8,11 +8,11 @@ export function registerOutletTools(server: McpServer, client: DistributeClient)
     "List media outlets discovered for a brand. Shows outlet name, URL, domain, relevance score, outreach status, and associated campaigns.",
     {
       brandId: z.string().describe("The brand UUID"),
-      featureDynastySlug: z.string().optional().describe("Filter by feature dynasty slug"),
+      featureSlug: z.string().optional().describe("Filter by feature dynasty slug"),
       campaignId: z.string().optional().describe("Filter by campaign UUID"),
     },
-    async ({ brandId, featureDynastySlug, campaignId }) => {
-      const result = await client.listBrandOutlets(brandId, { featureDynastySlug, campaignId });
+    async ({ brandId, featureSlug, campaignId }) => {
+      const result = await client.listBrandOutlets(brandId, { featureSlug, campaignId });
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
     },
   );

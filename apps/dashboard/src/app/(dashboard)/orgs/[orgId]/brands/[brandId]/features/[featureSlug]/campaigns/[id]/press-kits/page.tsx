@@ -370,16 +370,16 @@ export default function CampaignPressKitsPage() {
   const brandId = params.brandId as string;
   const orgId = params.orgId as string;
   const campaignId = params.id as string;
-  const featureDynastySlug = params.featureDynastySlug as string;
+  const featureSlug = params.featureSlug as string;
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"kits" | "runs">("kits");
 
-  const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureDynastySlug}/campaigns/${campaignId}/press-kits`;
+  const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/${campaignId}/press-kits`;
 
   const contextHeaders: Record<string, string> = {
     "x-brand-id": brandId,
     "x-campaign-id": campaignId,
-    "x-feature-slug": featureDynastySlug,
+    "x-feature-slug": featureSlug,
   };
 
   const { data: kits, isLoading } = useAuthQuery(

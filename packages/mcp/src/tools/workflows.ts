@@ -7,10 +7,10 @@ export function registerWorkflowTools(server: McpServer, client: DistributeClien
     "workflows_list",
     "List available workflows. Optionally filter by feature to see workflows for a specific automation type.",
     {
-      featureDynastySlug: z.string().optional().describe("Filter by feature dynasty slug"),
+      featureSlug: z.string().optional().describe("Filter by feature dynasty slug"),
     },
-    async ({ featureDynastySlug }) => {
-      const result = await client.listWorkflows(featureDynastySlug ? { featureDynastySlug } : undefined);
+    async ({ featureSlug }) => {
+      const result = await client.listWorkflows(featureSlug ? { featureSlug } : undefined);
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
     },
   );

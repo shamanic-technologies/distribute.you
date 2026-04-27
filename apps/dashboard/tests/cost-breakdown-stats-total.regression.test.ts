@@ -44,7 +44,7 @@ describe("CostBreakdown uses runs-service cost breakdown (not manual run aggrega
 describe("Brand page uses runs-service cost breakdown (no Other category)", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureDynastySlug]/page.tsx"
+    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/page.tsx"
   );
   const content = fs.readFileSync(pagePath, "utf-8");
 
@@ -58,23 +58,23 @@ describe("Brand page uses runs-service cost breakdown (no Other category)", () =
   });
 
   it("should scope cost breakdown to the feature dynasty slug", () => {
-    expect(content).toContain("getBrandCostBreakdown(brandId, { featureDynastySlug })");
+    expect(content).toContain("getBrandCostBreakdown(brandId, { featureSlug })");
   });
 });
 
 /**
- * Regression: getBrandCostBreakdown must pass featureDynastySlug to
+ * Regression: getBrandCostBreakdown must pass featureSlug to
  * /runs/stats/costs so costs are scoped to the feature, not the whole brand.
  */
-describe("getBrandCostBreakdown supports featureDynastySlug filter", () => {
+describe("getBrandCostBreakdown supports featureSlug filter", () => {
   const apiPath = path.join(__dirname, "../src/lib/api.ts");
   const apiContent = fs.readFileSync(apiPath, "utf-8");
 
-  it("should accept featureDynastySlug option", () => {
-    expect(apiContent).toContain("featureDynastySlug");
+  it("should accept featureSlug option", () => {
+    expect(apiContent).toContain("featureSlug");
   });
 
-  it("should append featureDynastySlug to the query string", () => {
-    expect(apiContent).toContain('query.set("featureDynastySlug"');
+  it("should append featureSlug to the query string", () => {
+    expect(apiContent).toContain('query.set("featureSlug"');
   });
 });

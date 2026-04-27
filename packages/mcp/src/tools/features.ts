@@ -29,11 +29,11 @@ export function registerFeatureTools(server: McpServer, client: DistributeClient
     "features_prefill",
     "Pre-fill a feature's input fields using brand data. Returns suggested values for each input based on the brand's website analysis.",
     {
-      featureDynastySlug: z.string().describe("The feature dynasty slug"),
+      featureSlug: z.string().describe("The feature dynasty slug"),
       brandIds: z.array(z.string()).describe("Brand UUIDs to extract input data from"),
     },
-    async ({ featureDynastySlug, brandIds }) => {
-      const result = await client.prefillFeatureInputs(featureDynastySlug, brandIds);
+    async ({ featureSlug, brandIds }) => {
+      const result = await client.prefillFeatureInputs(featureSlug, brandIds);
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
     },
   );
@@ -42,13 +42,13 @@ export function registerFeatureTools(server: McpServer, client: DistributeClient
     "features_stats",
     "Get performance statistics for a specific feature — total cost, completed runs, active campaigns, and custom stats. Can be grouped by brand, campaign, or workflow.",
     {
-      featureDynastySlug: z.string().describe("The feature dynasty slug"),
+      featureSlug: z.string().describe("The feature dynasty slug"),
       groupBy: z.string().optional().describe("Group results by: 'brandId', 'campaignId', or 'workflowDynastySlug'"),
       brandId: z.string().optional().describe("Filter stats to a specific brand"),
       campaignId: z.string().optional().describe("Filter stats to a specific campaign"),
     },
-    async ({ featureDynastySlug, groupBy, brandId, campaignId }) => {
-      const result = await client.getFeatureStats(featureDynastySlug, { groupBy, brandId, campaignId });
+    async ({ featureSlug, groupBy, brandId, campaignId }) => {
+      const result = await client.getFeatureStats(featureSlug, { groupBy, brandId, campaignId });
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
     },
   );
@@ -57,7 +57,7 @@ export function registerFeatureTools(server: McpServer, client: DistributeClient
     "features_global_stats",
     "Get aggregate performance statistics across all features. Can be grouped by feature or brand.",
     {
-      groupBy: z.string().optional().describe("Group results by: 'featureDynastySlug' or 'brandId'"),
+      groupBy: z.string().optional().describe("Group results by: 'featureSlug' or 'brandId'"),
       brandId: z.string().optional().describe("Filter stats to a specific brand"),
     },
     async ({ groupBy, brandId }) => {

@@ -4,7 +4,7 @@ import * as path from "path";
 
 describe("Campaign creation pages guard against double-submit", () => {
   const campaignCreatePages = [
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureDynastySlug]/campaigns/new/page.tsx",
+    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx",
   ];
 
   for (const rel of campaignCreatePages) {

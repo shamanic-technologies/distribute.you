@@ -62,9 +62,9 @@ export function BrandUsageSection({ brandId }: { brandId: string }) {
     const groups = featureGroupsData?.groups ?? [];
     const entries = groups
       .map((g) => ({
-        slug: g.featureDynastySlug,
-        name: g.featureDynastySlug
-          ? (getFeature(g.featureDynastySlug)?.dynastyName ?? getFeature(g.featureDynastySlug)?.name ?? g.featureDynastySlug)
+        slug: g.featureSlug,
+        name: g.featureSlug
+          ? (getFeature(g.featureSlug)?.name ?? g.featureSlug)
           : "Other",
         cents: parseFloat(g.totalCostInUsdCents) || 0,
       }))

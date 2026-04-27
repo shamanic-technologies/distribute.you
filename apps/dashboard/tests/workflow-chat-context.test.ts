@@ -5,7 +5,7 @@ import * as path from "path";
 describe("Workflow viewer page — chat context", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureDynastySlug]/workflows/[workflowId]/page.tsx"
+    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/workflows/[workflowId]/page.tsx"
   );
 
   const content = fs.readFileSync(pagePath, "utf-8");
@@ -23,11 +23,12 @@ describe("Workflow viewer page — chat context", () => {
     expect(content).toContain("version: workflow.version");
   });
 
-  it("should include all feature identity fields in context", () => {
+  it("should include feature identity fields in context (no dynasty fields)", () => {
     expect(content).toContain("id: feature.id");
-    expect(content).toContain("dynastySlug: feature.dynastySlug");
-    expect(content).toContain("dynastyName: feature.dynastyName");
-    expect(content).toContain("version: feature.version");
+    expect(content).toContain("slug: feature.slug");
+    expect(content).toContain("name: feature.name");
+    expect(content).not.toContain("dynastySlug: feature.dynastySlug");
+    expect(content).not.toContain("dynastyName: feature.dynastyName");
   });
 
   it("should not put featureSlug in the workflow object (it belongs to feature)", () => {

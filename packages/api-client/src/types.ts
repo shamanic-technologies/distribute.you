@@ -138,9 +138,6 @@ export interface Feature {
   id: string;
   slug: string;
   name: string;
-  dynastyName?: string;
-  dynastySlug?: string;
-  version?: number;
   description: string;
   icon?: string;
   category: string;
@@ -153,13 +150,9 @@ export interface Feature {
   outputs: FeatureOutput[];
   charts: FeatureChart[];
   entities: FeatureEntity[];
-  forkedFrom?: FeatureRef;
-  upgradedTo?: FeatureRef;
 }
 
-export type UpdateFeatureResult =
-  | { feature: Feature; forkedFrom?: undefined }
-  | { feature: Feature; forkedFrom: FeatureRef };
+export type UpdateFeatureResult = { feature: Feature };
 
 export interface StatsRegistryEntry {
   type: "count" | "rate" | "currency";
@@ -182,7 +175,6 @@ export interface StatsGroup {
   brandId?: string;
   campaignId?: string;
   featureSlug?: string;
-  featureDynastySlug?: string;
   systemStats: SystemStats;
   stats: Record<string, number>;
 }
