@@ -6,9 +6,6 @@ export function FeatureOverview({ feature, registry }: {
     name: string;
     description: string;
     icon?: string;
-    category: string;
-    channel: string;
-    audienceType: string;
     inputs: Array<{ key: string; label: string; description: string; placeholder?: string; type?: string; extractKey?: string }>;
     outputs: Array<{ key: string; displayOrder?: number }>;
     charts: Array<{ type: string; title: string }>;
@@ -24,25 +21,6 @@ export function FeatureOverview({ feature, registry }: {
           {feature.description}
         </div>
       )}
-
-      {/* Metadata */}
-      <div className="flex flex-wrap gap-1.5">
-        {feature.category && (
-          <span className="text-[10px] font-medium bg-gray-100 dark:bg-white/[0.06] text-gray-600 dark:text-gray-300 px-2 py-1 rounded-md">
-            {feature.category}
-          </span>
-        )}
-        {feature.channel && (
-          <span className="text-[10px] font-medium bg-gray-100 dark:bg-white/[0.06] text-gray-600 dark:text-gray-300 px-2 py-1 rounded-md">
-            {feature.channel}
-          </span>
-        )}
-        {feature.audienceType && (
-          <span className="text-[10px] font-medium bg-gray-100 dark:bg-white/[0.06] text-gray-600 dark:text-gray-300 px-2 py-1 rounded-md">
-            {feature.audienceType}
-          </span>
-        )}
-      </div>
 
       {/* Inputs */}
       {feature.inputs.length > 0 && (

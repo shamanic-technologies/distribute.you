@@ -626,9 +626,6 @@ export interface Feature {
   name: string;
   description: string;
   icon?: string;
-  category: string;
-  channel: string;
-  audienceType: string;
   status: "active" | "draft" | "deprecated";
   implemented: boolean;
   displayOrder?: number;
