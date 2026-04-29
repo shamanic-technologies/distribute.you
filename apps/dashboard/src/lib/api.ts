@@ -1525,6 +1525,8 @@ export interface OutletCampaign {
   relevanceScore: number;
   whyRelevant?: string;
   whyNotRelevant?: string;
+  statusReason: string | null;
+  statusDetail: string | null;
   overallRelevance?: string | null;
   relevanceRationale?: string | null;
   runId?: string | null;
