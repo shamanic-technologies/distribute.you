@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { headers } from "next/headers";
 import { Navbar } from "@/components/navbar";
-import { PROD_URLS } from "@/lib/env-urls";
+import { fetchInvestorMetrics } from "@/lib/investors/fetch-metrics";
 
 export const metadata: Metadata = {
   title: "Investor Information",
@@ -10,28 +10,6 @@ export const metadata: Metadata = {
     "Live platform metrics and company information for distribute investors.",
   robots: { index: false, follow: false },
 };
-
-const METRICS = {
-  updatedAt: "2026-04-29",
-  users: { total: 59, orgs: 51 },
-  billing: {
-    totalAccounts: 16,
-    accountsWithPaymentMethod: 4,
-    totalCreditBalanceCents: 116_885,
-    totalCreditedCents: 20_000,
-    totalConsumedCents: 4_120,
-  },
-  runs: {
-    completed: 376_910,
-    failed: 43_945,
-    running: 32_776,
-  },
-  monthlyGrowth: [
-    { month: "Feb 2026", newOrgs: 40, newUsers: 19, completedRuns: 13_832 },
-    { month: "Mar 2026", newOrgs: 7, newUsers: 38, completedRuns: 97_266 },
-    { month: "Apr 2026", newOrgs: 4, newUsers: 2, completedRuns: 265_813 },
-  ],
-} as const;
 
 function formatCents(cents: number): string {
   return `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -63,9 +41,14 @@ export default async function InvestorsPage() {
   const headersList = await headers();
   const host = headersList.get("host") || "";
 
+  const metrics = await fetchInvestorMetrics();
+
   const totalRuns =
-    METRICS.runs.completed + METRICS.runs.failed + METRICS.runs.running;
-  const successRate = ((METRICS.runs.completed / totalRuns) * 100).toFixed(1);
+    metrics.runs.completed + metrics.runs.failed + metrics.runs.running;
+  const successRate =
+    totalRuns > 0
+      ? ((metrics.runs.completed / totalRuns) * 100).toFixed(1)
+      : "0";
 
   return (
     <>
@@ -84,11 +67,9 @@ export default async function InvestorsPage() {
               />
               <h1 className="font-display text-4xl font-bold">distribute</h1>
             </div>
-            <p className="text-xl text-gray-400 mb-2">
-              Investor Information
-            </p>
+            <p className="text-xl text-gray-400 mb-2">Investor Information</p>
             <p className="text-sm text-gray-600">
-              Last updated: {METRICS.updatedAt}
+              Live data &mdash; updated on every page load
             </p>
           </div>
         </section>
@@ -102,7 +83,7 @@ export default async function InvestorsPage() {
             <div className="bg-gray-800/30 border border-gray-700/50 rounded-xl p-6 text-gray-300 space-y-4 text-sm leading-relaxed">
               <p>
                 <strong className="text-white">distribute</strong> is the Stripe
-                for Distribution. Users provide a URL and a budget — the
+                for Distribution. Users provide a URL and a budget &mdash; the
                 platform automates lead finding, outreach, email generation, and
                 reporting using AI workflows ranked by real performance data.
               </p>
@@ -118,9 +99,9 @@ export default async function InvestorsPage() {
                   {formatNumber(totalRuns)}+ workflow executions
                 </strong>{" "}
                 to date across{" "}
-                <strong className="text-white">{METRICS.users.orgs}</strong>{" "}
+                <strong className="text-white">{metrics.users.orgs}</strong>{" "}
                 organizations and{" "}
-                <strong className="text-white">{METRICS.users.total}</strong>{" "}
+                <strong className="text-white">{metrics.users.total}</strong>{" "}
                 users.
               </p>
             </div>
@@ -136,17 +117,17 @@ export default async function InvestorsPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <StatCard
                 label="Organizations"
-                value={formatNumber(METRICS.users.orgs)}
-                sub={`${METRICS.users.total} individual users`}
+                value={formatNumber(metrics.users.orgs)}
+                sub={`${metrics.users.total} individual users`}
               />
               <StatCard
                 label="Billing Accounts"
-                value={formatNumber(METRICS.billing.totalAccounts)}
-                sub={`${METRICS.billing.accountsWithPaymentMethod} with saved payment method`}
+                value={formatNumber(metrics.billing.totalAccounts)}
+                sub={`${metrics.billing.accountsWithPaymentMethod} with saved payment method`}
               />
               <StatCard
                 label="Completed Runs"
-                value={formatNumber(METRICS.runs.completed)}
+                value={formatNumber(metrics.runs.completed)}
                 sub={`${successRate}% success rate`}
               />
               <StatCard
@@ -167,17 +148,17 @@ export default async function InvestorsPage() {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <StatCard
                 label="Total Credits Loaded"
-                value={formatCents(METRICS.billing.totalCreditedCents)}
+                value={formatCents(metrics.billing.totalCreditedCents)}
                 sub="Cumulative top-ups"
               />
               <StatCard
                 label="Credits Consumed"
-                value={formatCents(METRICS.billing.totalConsumedCents)}
+                value={formatCents(metrics.billing.totalConsumedCents)}
                 sub="Total platform spend"
               />
               <StatCard
                 label="Outstanding Balance"
-                value={formatCents(METRICS.billing.totalCreditBalanceCents)}
+                value={formatCents(metrics.billing.totalCreditBalanceCents)}
                 sub="Across all accounts"
               />
             </div>
@@ -210,15 +191,16 @@ export default async function InvestorsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {METRICS.monthlyGrowth.map((row, i) => {
-                    const prev = METRICS.monthlyGrowth[i - 1];
-                    const growth = prev
-                      ? (
-                          ((row.completedRuns - prev.completedRuns) /
-                            prev.completedRuns) *
-                          100
-                        ).toFixed(0)
-                      : null;
+                  {metrics.monthlyGrowth.map((row, i) => {
+                    const prev = metrics.monthlyGrowth[i - 1];
+                    const growth =
+                      prev && prev.completedRuns > 0
+                        ? (
+                            ((row.completedRuns - prev.completedRuns) /
+                              prev.completedRuns) *
+                            100
+                          ).toFixed(0)
+                        : null;
                     return (
                       <tr
                         key={row.month}
@@ -264,7 +246,9 @@ export default async function InvestorsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <p className="text-gray-400 mb-1">Hosting</p>
-                  <p className="text-white">Railway (backend), Vercel (frontend)</p>
+                  <p className="text-white">
+                    Railway (backend), Vercel (frontend)
+                  </p>
                 </div>
                 <div>
                   <p className="text-gray-400 mb-1">Database</p>
@@ -272,11 +256,15 @@ export default async function InvestorsPage() {
                 </div>
                 <div>
                   <p className="text-gray-400 mb-1">Architecture</p>
-                  <p className="text-white">27 microservices, DAG workflow orchestration</p>
+                  <p className="text-white">
+                    27 microservices, DAG workflow orchestration
+                  </p>
                 </div>
                 <div>
                   <p className="text-gray-400 mb-1">Payments</p>
-                  <p className="text-white">Stripe (credit top-ups, no subscriptions)</p>
+                  <p className="text-white">
+                    Stripe (credit top-ups, no subscriptions)
+                  </p>
                 </div>
                 <div>
                   <p className="text-gray-400 mb-1">Auth</p>
@@ -284,7 +272,9 @@ export default async function InvestorsPage() {
                 </div>
                 <div>
                   <p className="text-gray-400 mb-1">AI Models</p>
-                  <p className="text-white">Multi-provider (Anthropic, OpenAI, Google)</p>
+                  <p className="text-white">
+                    Multi-provider (Anthropic, OpenAI, Google)
+                  </p>
                 </div>
               </div>
             </div>
