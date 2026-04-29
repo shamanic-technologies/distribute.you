@@ -4,7 +4,7 @@ import * as path from "path";
 
 /**
  * Regression test: features-context and all feature links must use f.slug
- * directly, since the dynasty concept has been removed from features.
+ * directly. Features use slug/name — no dynasty concept.
  */
 describe("Feature slug resolution in features-context", () => {
   const contextPath = path.join(

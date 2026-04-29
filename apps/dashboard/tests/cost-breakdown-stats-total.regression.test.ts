@@ -57,7 +57,7 @@ describe("Brand page uses runs-service cost breakdown (no Other category)", () =
     expect(content).toContain("getBrandCostBreakdown");
   });
 
-  it("should scope cost breakdown to the feature dynasty slug", () => {
+  it("should scope cost breakdown to the feature slug", () => {
     expect(content).toContain("getBrandCostBreakdown(brandId, { featureSlug })");
   });
 });
