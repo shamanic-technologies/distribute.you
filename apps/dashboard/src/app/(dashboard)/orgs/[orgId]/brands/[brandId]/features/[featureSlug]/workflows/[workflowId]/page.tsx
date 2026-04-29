@@ -110,10 +110,10 @@ export default function WorkflowViewerPage() {
       workflowId: workflow.id,
       workflow: {
         id: workflow.id,
-        slug: workflow.slug,
-        dynastySlug: workflow.dynastySlug,
-        name: workflow.name,
-        dynastyName: workflow.dynastyName,
+        workflowSlug: workflow.workflowSlug,
+        workflowDynastySlug: workflow.workflowDynastySlug,
+        workflowName: workflow.workflowName,
+        workflowDynastyName: workflow.workflowDynastyName,
         version: workflow.version,
         description: workflow.description,
         requiredProviders: workflow.requiredProviders,
@@ -141,9 +141,9 @@ export default function WorkflowViewerPage() {
         "You are a workflow assistant for the distribute.you platform.",
         "",
         "== CURRENT WORKFLOW ==",
-        `Name: ${workflow.dynastyName}`,
-        `Slug: ${workflow.slug}`,
-        `Dynasty Slug: ${workflow.dynastySlug}`,
+        `Name: ${workflow.workflowDynastyName}`,
+        `Slug: ${workflow.workflowSlug}`,
+        `Dynasty Slug: ${workflow.workflowDynastySlug}`,
         `Version: ${workflow.version}`,
         `UUID: ${workflow.id}`,
         `For ALL tool calls requiring a workflowId parameter, use exactly: ${workflow.id}`,
@@ -215,7 +215,7 @@ export default function WorkflowViewerPage() {
                   <h1 className="font-display text-[15px] font-bold text-gray-900 dark:text-gray-100 truncate">
                     {workflowDisplayName(workflow)}
                   </h1>
-                  <p className="text-[10px] text-gray-400 dark:text-gray-500 font-mono truncate mt-0.5">{workflow.name}</p>
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500 font-mono truncate mt-0.5">{workflow.workflowName}</p>
                 </div>
               </div>
             </div>

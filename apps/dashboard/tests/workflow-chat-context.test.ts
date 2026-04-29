@@ -11,15 +11,15 @@ describe("Workflow viewer page — chat context", () => {
   const content = fs.readFileSync(pagePath, "utf-8");
 
   it("should include the current workflow identity in instructions", () => {
-    expect(content).toContain("workflow.dynastyName");
+    expect(content).toContain("workflow.workflowDynastyName");
     expect(content).toContain("workflow.id");
   });
 
   it("should include all workflow identity fields in context", () => {
     expect(content).toContain("id: workflow.id");
-    expect(content).toContain("slug: workflow.slug");
-    expect(content).toContain("dynastySlug: workflow.dynastySlug");
-    expect(content).toContain("dynastyName: workflow.dynastyName");
+    expect(content).toContain("workflowSlug: workflow.workflowSlug");
+    expect(content).toContain("workflowDynastySlug: workflow.workflowDynastySlug");
+    expect(content).toContain("workflowDynastyName: workflow.workflowDynastyName");
     expect(content).toContain("version: workflow.version");
   });
 
@@ -27,8 +27,8 @@ describe("Workflow viewer page — chat context", () => {
     expect(content).toContain("id: feature.id");
     expect(content).toContain("slug: feature.slug");
     expect(content).toContain("name: feature.name");
-    expect(content).not.toContain("dynastySlug: feature.dynastySlug");
-    expect(content).not.toContain("dynastyName: feature.dynastyName");
+    expect(content).not.toContain("workflowDynastySlug: feature.workflowDynastySlug");
+    expect(content).not.toContain("workflowDynastyName: feature.workflowDynastyName");
   });
 
   it("should not put featureSlug in the workflow object (it belongs to feature)", () => {

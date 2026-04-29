@@ -67,7 +67,7 @@ export function WorkflowDetailPanel({
                   <h2 className="font-display font-bold text-xl text-gray-800 leading-tight">
                     {workflowDisplayName(workflow)}
                   </h2>
-                  <p className="text-xs text-gray-400 font-mono mt-0.5">{workflow.name}</p>
+                  <p className="text-xs text-gray-400 font-mono mt-0.5">{workflow.workflowName}</p>
                   {workflow.description && (
                     <p className="text-sm text-gray-500 mt-1">{workflow.description}</p>
                   )}

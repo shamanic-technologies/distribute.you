@@ -29,9 +29,9 @@ describe("Campaign creation page uses feature stats + workflow list", () => {
     expect(content).not.toContain('"$/Reply"');
   });
 
-  it("should group active workflows by dynastySlug (dynasty pattern)", () => {
+  it("should group active workflows by workflowDynastySlug (dynasty pattern)", () => {
     expect(content).toContain("byDynasty");
-    expect(content).toContain("dynastySlug");
+    expect(content).toContain("workflowDynastySlug");
   });
 
   it("should use workflow ID as stable selection key", () => {
@@ -40,9 +40,9 @@ describe("Campaign creation page uses feature stats + workflow list", () => {
   });
 
   it("should send the workflow slug (not name) for campaign creation", () => {
-    expect(content).toContain("workflowSlug: selectedRow.slug");
-    // Must NOT use .name — names have spaces/capitalization, slugs are lowercase-hyphenated
-    expect(content).not.toContain("workflowSlug: selectedRow.name");
+    expect(content).toContain("workflowSlug: selectedRow.workflowSlug");
+    // Must NOT use .workflowName — names have spaces/capitalization, slugs are lowercase-hyphenated
+    expect(content).not.toContain("workflowSlug: selectedRow.workflowName");
   });
 
   it("should wrap input values in featureInputs, not spread as top-level", () => {
