@@ -1,20 +1,20 @@
 /**
  * Returns the user-facing display name for a workflow.
- * Priority: dynastyName > signatureName (capitalized) > name (fallback).
+ * Priority: workflowDynastyName > signatureName (capitalized) > workflowName (fallback).
  *
- * The `dynastyName` stays constant across workflow upgrades/forks,
- * whereas `name` (the versioned signature) changes on every upgrade.
+ * The `workflowDynastyName` stays constant across workflow upgrades/forks,
+ * whereas `workflowName` (the versioned signature) changes on every upgrade.
  * Users should always see the stable dynasty name.
  */
 export function workflowDisplayName(wf: {
-  dynastyName?: string | null;
+  workflowDynastyName?: string | null;
   signatureName?: string | null;
-  name?: string | null;
+  workflowName?: string | null;
   workflowSlug?: string | null;
 }): string {
-  if (wf.dynastyName) return wf.dynastyName;
+  if (wf.workflowDynastyName) return wf.workflowDynastyName;
   if (wf.signatureName && typeof wf.signatureName === "string") {
     return wf.signatureName.charAt(0).toUpperCase() + wf.signatureName.slice(1);
   }
-  return wf.name || wf.workflowSlug || "Unknown";
+  return wf.workflowName || wf.workflowSlug || "Unknown";
 }

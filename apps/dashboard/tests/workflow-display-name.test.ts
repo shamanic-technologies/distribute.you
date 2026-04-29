@@ -2,41 +2,41 @@ import { describe, it, expect } from "vitest";
 import { workflowDisplayName } from "../src/lib/workflow-display-name";
 
 describe("workflowDisplayName", () => {
-  it("returns dynastyName when present (highest priority)", () => {
+  it("returns workflowDynastyName when present (highest priority)", () => {
     expect(
       workflowDisplayName({
-        dynastyName: "Cold Outreach Jasmine",
+        workflowDynastyName: "Cold Outreach Jasmine",
         signatureName: "mintaka",
-        name: "sales-email-cold-outreach-headwater",
+        workflowName: "sales-email-cold-outreach-headwater",
       })
     ).toBe("Cold Outreach Jasmine");
   });
 
-  it("falls back to capitalized signatureName when dynastyName is null", () => {
+  it("falls back to capitalized signatureName when workflowDynastyName is null", () => {
     expect(
       workflowDisplayName({
         signatureName: "mintaka",
-        dynastyName: null,
-        name: "sales-email-cold-outreach-headwater",
+        workflowDynastyName: null,
+        workflowName: "sales-email-cold-outreach-headwater",
       })
     ).toBe("Mintaka");
   });
 
-  it("falls back to name when both signatureName and dynastyName are absent", () => {
+  it("falls back to workflowName when both signatureName and workflowDynastyName are absent", () => {
     expect(
       workflowDisplayName({
         signatureName: null,
-        dynastyName: null,
-        name: "sales-email-cold-outreach-headwater",
+        workflowDynastyName: null,
+        workflowName: "sales-email-cold-outreach-headwater",
       })
     ).toBe("sales-email-cold-outreach-headwater");
   });
 
-  it("falls back to workflowSlug when name is also absent", () => {
+  it("falls back to workflowSlug when workflowName is also absent", () => {
     expect(
       workflowDisplayName({
         signatureName: null,
-        dynastyName: null,
+        workflowDynastyName: null,
         workflowSlug: "sales-email-cold-outreach-headwater",
       })
     ).toBe("sales-email-cold-outreach-headwater");
@@ -46,7 +46,7 @@ describe("workflowDisplayName", () => {
     expect(
       workflowDisplayName({
         signatureName: "",
-        dynastyName: "fallback",
+        workflowDynastyName: "fallback",
       })
     ).toBe("fallback");
   });
@@ -55,7 +55,7 @@ describe("workflowDisplayName", () => {
     expect(
       workflowDisplayName({
         signatureName: 42 as unknown as string,
-        dynastyName: "fallback",
+        workflowDynastyName: "fallback",
       })
     ).toBe("fallback");
   });

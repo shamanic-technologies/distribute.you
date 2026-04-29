@@ -83,9 +83,9 @@ function formatDisplayName(dynastyName: string, fallbackName: string): string {
 
 interface WorkflowTableRow {
   id: string;
-  slug: string;
-  name: string;
-  dynastyName: string;
+  workflowSlug: string;
+  workflowName: string;
+  workflowDynastyName: string;
   featureSlug: string | null;
   completedRuns: number;
   totalOutcomes: number;
@@ -95,9 +95,9 @@ interface WorkflowTableRow {
 function rankedToRow(item: RankedWorkflowItem): WorkflowTableRow {
   return {
     id: item.workflow.id,
-    slug: item.workflow.slug,
-    name: item.workflow.name,
-    dynastyName: item.workflow.dynastyName,
+    workflowSlug: item.workflow.workflowSlug,
+    workflowName: item.workflow.workflowName,
+    workflowDynastyName: item.workflow.workflowDynastyName,
     featureSlug: item.workflow.featureSlug,
     completedRuns: item.stats.completedRuns,
     totalOutcomes: item.stats.totalOutcomes,
@@ -372,12 +372,12 @@ export default function CreateCampaignPage() {
 
     const generateName = () => {
       const now = new Date();
-      return `${selectedRow.name} — ${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}.${String(now.getMilliseconds()).padStart(3, "0")}`;
+      return `${selectedRow.workflowName} — ${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}.${String(now.getMilliseconds()).padStart(3, "0")}`;
     };
     try {
       const { brandUrl, ...inputFields } = formData;
       const campaignPayload = {
-        workflowSlug: selectedRow.slug,
+        workflowSlug: selectedRow.workflowSlug,
         featureSlug: featureId,
         brandUrls: [brandUrl],
         ...budgetParams,
@@ -425,7 +425,7 @@ export default function CreateCampaignPage() {
 
     const { brandUrl: intentBrandUrl, ...intentInputFields } = formData;
     sessionStorage.setItem("pendingCampaign", JSON.stringify({
-      workflowSlug: selectedRow.slug,
+      workflowSlug: selectedRow.workflowSlug,
       brandUrl: intentBrandUrl,
       ...budgetParams,
       featureInputs: intentInputFields,
@@ -933,7 +933,7 @@ function WorkflowRow({
   onSelect: () => void;
   onShowDetail?: () => void;
 }) {
-  const label = formatDisplayName(wf.dynastyName, wf.name);
+  const label = formatDisplayName(wf.workflowDynastyName, wf.workflowName);
 
   return (
     <tr
