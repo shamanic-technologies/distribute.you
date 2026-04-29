@@ -1654,13 +1654,15 @@ export interface JournalistCampaignEntry {
   campaignId: string;
   featureSlug: string | null;
   workflowSlug: string | null;
-  outreachStatus: "buffered" | "claimed" | "served" | "contacted" | "delivered" | "replied" | "bounced" | "skipped";
+  outreachStatus: "buffered" | "claimed" | "served" | "contacted" | "sent" | "delivered" | "opened" | "replied" | "bounced" | "skipped";
   relevanceScore: string;
   whyRelevant: string;
   whyNotRelevant: string;
   articleUrls: string[] | null;
   email: string | null;
   apolloPersonId: string | null;
+  statusReason: string | null;
+  statusDetail: string | null;
   runId: string | null;
   createdAt: string;
 }
@@ -1676,7 +1678,7 @@ export interface EnrichedJournalist {
   outletDomain: string | null;
   email: string | null;
   apolloPersonId: string | null;
-  outreachStatus: "buffered" | "claimed" | "served" | "contacted" | "delivered" | "replied" | "bounced" | "skipped";
+  outreachStatus: "buffered" | "claimed" | "served" | "contacted" | "sent" | "delivered" | "opened" | "replied" | "bounced" | "skipped";
   replyClassification?: "positive" | "negative" | "neutral" | null;
   emailStatus: EmailStatus | null;
   cost: JournalistCost | null;

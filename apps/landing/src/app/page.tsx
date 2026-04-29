@@ -650,6 +650,7 @@ export default async function Home() {
             <a href={urls.apiDocs} className="hover:text-gray-300 transition">API</a>
             <a href={urls.github} target="_blank" rel="noopener noreferrer" className="hover:text-gray-300 transition">GitHub</a>
             <a href="#" className="hover:text-gray-300 transition">Privacy</a>
+            <a href="/investors" className="hover:text-gray-300 transition">Investor Information</a>
           </div>
           <div className="flex justify-center mt-5">
             <StatusIndicator />

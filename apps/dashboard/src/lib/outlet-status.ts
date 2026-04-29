@@ -23,7 +23,9 @@ export type DisplayStatus =
   | "replied-positive"
   | "replied-negative"
   | "replied-neutral"
+  | "opened"
   | "delivered"
+  | "sent"
   | "contacted"
   | "served"
   | "claimed"
@@ -39,7 +41,9 @@ export const STATUS_PRIORITY: string[] = [
   "replied-positive",
   "replied-negative",
   "replied-neutral",
+  "opened",
   "delivered",
+  "sent",
   "bounced",
   "contacted",
   "served",
@@ -55,7 +59,9 @@ export const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   "replied-positive": { label: "Reply +",    color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
   "replied-negative": { label: "Reply −",    color: "bg-red-100 text-red-600 border-red-200" },
   "replied-neutral":  { label: "Reply",      color: "bg-purple-100 text-purple-700 border-purple-200" },
+  opened:             { label: "Opened",     color: "bg-indigo-100 text-indigo-700 border-indigo-200" },
   delivered:          { label: "Delivered",   color: "bg-green-100 text-green-700 border-green-200" },
+  sent:               { label: "Sent",       color: "bg-cyan-100 text-cyan-700 border-cyan-200" },
   bounced:            { label: "Bounced",     color: "bg-red-100 text-red-600 border-red-200" },
   contacted:          { label: "Contacted",   color: "bg-teal-100 text-teal-700 border-teal-200" },
   served:             { label: "Served",      color: "bg-orange-100 text-orange-700 border-orange-200" },
@@ -92,7 +98,9 @@ const COUNTS_WATERMARK: Array<{ key: string; display: string }> = [
   { key: "repliesPositive", display: "replied-positive" },
   { key: "repliesNegative", display: "replied-negative" },
   { key: "repliesNeutral", display: "replied-neutral" },
+  { key: "opened", display: "opened" },
   { key: "delivered", display: "delivered" },
+  { key: "sent", display: "sent" },
   { key: "bounced", display: "bounced" },
   { key: "contacted", display: "contacted" },
   { key: "served", display: "served" },
@@ -120,7 +128,9 @@ export const STATUS_DESCRIPTIONS: Record<string, string> = {
   "replied-positive": "Replied positively to the outreach email",
   "replied-negative": "Replied negatively to the outreach email",
   "replied-neutral": "Replied to the outreach email",
+  opened: "Outreach email was opened by the recipient",
   delivered: "Outreach email was delivered",
+  sent: "Outreach email was sent",
   bounced: "Outreach email bounced (journalist-only)",
   contacted: "Has been contacted with outreach email",
   served: "Served to the email sending pipeline",

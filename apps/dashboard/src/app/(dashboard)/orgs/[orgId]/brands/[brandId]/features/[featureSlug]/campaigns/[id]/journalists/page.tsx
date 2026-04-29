@@ -212,6 +212,11 @@ export default function CampaignJournalistsPage() {
                         <span className={`text-[10px] px-1.5 py-0.5 rounded-full border flex-shrink-0 ${statusStyle(status)}`}>
                           {statusLabel(status)}
                         </span>
+                        {j.campaigns[0]?.statusReason && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200 flex-shrink-0" title={j.campaigns[0].statusDetail ?? undefined}>
+                            {j.campaigns[0].statusReason}
+                          </span>
+                        )}
                       </div>
                       {j.outletName && (
                         <p className="text-xs text-gray-400 truncate">{j.outletName}</p>
@@ -390,6 +395,11 @@ function CampaignEntryCard({ campaign: c }: { campaign: JournalistCampaignEntry 
         <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${statusStyle(c.outreachStatus)}`}>
           {statusLabel(c.outreachStatus)}
         </span>
+        {c.statusReason && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">
+            {c.statusReason}
+          </span>
+        )}
         {!isNaN(score) && (
           <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${relevanceColor(score)}`}>
             {score}% relevant
@@ -400,6 +410,12 @@ function CampaignEntryCard({ campaign: c }: { campaign: JournalistCampaignEntry 
         </span>
       </div>
 
+      {c.statusDetail && (
+        <div>
+          <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Status Detail</span>
+          <p className="text-sm text-gray-700 mt-0.5">{c.statusDetail}</p>
+        </div>
+      )}
       {c.whyRelevant && (
         <div>
           <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Why Relevant</span>
