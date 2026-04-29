@@ -41,7 +41,7 @@ export default async function InvestorsPage() {
   const headersList = await headers();
   const host = headersList.get("host") || "";
 
-  const metrics = await fetchInvestorMetrics();
+  const metrics = await fetchInvestorMetrics(host);
 
   const totalRuns =
     metrics.runs.completed + metrics.runs.failed + metrics.runs.running;

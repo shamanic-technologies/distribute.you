@@ -1,4 +1,4 @@
-import { neon } from "@neondatabase/serverless";
+import { URLS } from "@distribute/content";
 
 interface MonthlyRow {
   month: string;
@@ -25,115 +25,101 @@ export interface InvestorMetrics {
   monthlyGrowth: MonthlyRow[];
 }
 
-function requireEnv(name: string): string {
-  const val = process.env[name];
-  if (!val) throw new Error(`[landing] Missing env var: ${name}`);
-  return val;
+interface UsersStatsResponse {
+  totalOrgs: number;
+  totalUsers: number;
+  monthlyGrowth: { month: string; newOrgs: number; newUsers: number }[];
 }
 
-export async function fetchInvestorMetrics(): Promise<InvestorMetrics> {
-  const clientDb = neon(requireEnv("NEON_CLIENT_SERVICE_URL"));
-  const billingDb = neon(requireEnv("NEON_BILLING_SERVICE_URL"));
-  const runsDb = neon(requireEnv("NEON_RUNS_SERVICE_URL"));
+interface BillingStatsResponse {
+  totalAccounts: number;
+  accountsWithPaymentMethod: number;
+  totalCreditBalanceCents: number;
+  totalCreditedCents: number;
+  totalConsumedCents: number;
+}
 
-  const [
-    orgsResult,
-    usersResult,
-    billingResult,
-    creditsLoadedResult,
-    creditsConsumedResult,
-    runsResult,
-    monthlyOrgsResult,
-    monthlyUsersResult,
-    monthlyRunsResult,
-  ] = await Promise.all([
-    clientDb`SELECT COUNT(*)::int as count FROM orgs`,
-    clientDb`SELECT COUNT(*)::int as count FROM users`,
-    billingDb`SELECT COUNT(*)::int as total, SUM(credit_balance_cents)::int as balance, COUNT(*) FILTER (WHERE stripe_payment_method_id IS NOT NULL)::int as with_pm FROM billing_accounts`,
-    billingDb`SELECT COALESCE(SUM(amount_cents), 0)::int as total FROM credit_provisions WHERE type = 'credit' AND status = 'confirmed'`,
-    billingDb`SELECT COALESCE(SUM(amount_cents), 0)::int as total FROM credit_provisions WHERE type = 'debit' AND status = 'confirmed'`,
-    runsDb`SELECT status, COUNT(*)::int as count FROM runs GROUP BY status`,
-    clientDb`SELECT TO_CHAR(DATE_TRUNC('month', created_at), 'Mon YYYY') as month, DATE_TRUNC('month', created_at) as sort_key, COUNT(*)::int as count FROM orgs GROUP BY month, sort_key ORDER BY sort_key`,
-    clientDb`SELECT TO_CHAR(DATE_TRUNC('month', created_at), 'Mon YYYY') as month, DATE_TRUNC('month', created_at) as sort_key, COUNT(*)::int as count FROM users GROUP BY month, sort_key ORDER BY sort_key`,
-    runsDb`SELECT TO_CHAR(DATE_TRUNC('month', created_at), 'Mon YYYY') as month, DATE_TRUNC('month', created_at) as sort_key, COUNT(*)::int as count FROM runs WHERE status = 'completed' GROUP BY month, sort_key ORDER BY sort_key`,
+interface RunsStatsResponse {
+  byStatus: { completed: number; failed: number; running: number };
+  monthly: { month: string; completed: number; failed: number; running: number }[];
+}
+
+function resolveApiUrl(hostname: string): string {
+  if (process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL) {
+    return process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL;
+  }
+  if (hostname.includes("staging")) {
+    return URLS.api.replace("://api.", "://api-staging.");
+  }
+  return URLS.api;
+}
+
+export async function fetchInvestorMetrics(hostname = ""): Promise<InvestorMetrics> {
+  const apiUrl = resolveApiUrl(hostname);
+  const headers: Record<string, string> = { Accept: "application/json" };
+  const apiKey = process.env.ADMIN_DISTRIBUTE_API_KEY;
+  if (apiKey) headers["X-API-Key"] = apiKey;
+
+  const [usersRes, billingRes, runsRes] = await Promise.all([
+    fetch(`${apiUrl}/public/stats/users`, { headers, cache: "no-store" }),
+    fetch(`${apiUrl}/public/stats/billing`, { headers, cache: "no-store" }),
+    fetch(`${apiUrl}/public/stats/runs`, { headers, cache: "no-store" }),
   ]);
 
-  const runsMap = new Map<string, number>();
-  for (const row of runsResult) {
-    runsMap.set(row.status as string, row.count as number);
-  }
+  if (!usersRes.ok) throw new Error(`[landing] /public/stats/users failed: ${usersRes.status}`);
+  if (!billingRes.ok) throw new Error(`[landing] /public/stats/billing failed: ${billingRes.status}`);
+  if (!runsRes.ok) throw new Error(`[landing] /public/stats/runs failed: ${runsRes.status}`);
 
-  // Build monthly growth by merging all three monthly queries
+  const users: UsersStatsResponse = await usersRes.json();
+  const billing: BillingStatsResponse = await billingRes.json();
+  const runs: RunsStatsResponse = await runsRes.json();
+
+  // Merge monthly data from users and runs into a unified timeline
   const monthlyMap = new Map<string, MonthlyRow>();
-  for (const row of monthlyOrgsResult) {
-    const key = row.month as string;
-    monthlyMap.set(key, {
-      month: key,
-      newOrgs: row.count as number,
-      newUsers: 0,
+
+  for (const row of users.monthlyGrowth) {
+    monthlyMap.set(row.month, {
+      month: row.month,
+      newOrgs: row.newOrgs,
+      newUsers: row.newUsers,
       completedRuns: 0,
     });
   }
-  for (const row of monthlyUsersResult) {
-    const key = row.month as string;
-    const existing = monthlyMap.get(key);
+
+  for (const row of runs.monthly) {
+    const existing = monthlyMap.get(row.month);
     if (existing) {
-      existing.newUsers = row.count as number;
+      existing.completedRuns = row.completed;
     } else {
-      monthlyMap.set(key, {
-        month: key,
-        newOrgs: 0,
-        newUsers: row.count as number,
-        completedRuns: 0,
-      });
-    }
-  }
-  for (const row of monthlyRunsResult) {
-    const key = row.month as string;
-    const existing = monthlyMap.get(key);
-    if (existing) {
-      existing.completedRuns = row.count as number;
-    } else {
-      monthlyMap.set(key, {
-        month: key,
+      monthlyMap.set(row.month, {
+        month: row.month,
         newOrgs: 0,
         newUsers: 0,
-        completedRuns: row.count as number,
+        completedRuns: row.completed,
       });
     }
   }
 
-  // Sort by chronological order (using the month strings from monthly queries which are already ordered)
-  const monthOrder = monthlyRunsResult.map((r) => r.month as string);
-  const allMonths = new Set([
-    ...monthlyOrgsResult.map((r) => r.month as string),
-    ...monthlyUsersResult.map((r) => r.month as string),
-    ...monthOrder,
-  ]);
-  const sortedMonths = [...allMonths].sort((a, b) => {
-    const da = new Date(a);
-    const db = new Date(b);
-    return da.getTime() - db.getTime();
-  });
+  const sortedMonths = [...monthlyMap.keys()].sort();
 
   return {
     updatedAt: new Date().toISOString(),
     users: {
-      total: usersResult[0].count as number,
-      orgs: orgsResult[0].count as number,
+      total: users.totalUsers,
+      orgs: users.totalOrgs,
     },
     billing: {
-      totalAccounts: billingResult[0].total as number,
-      accountsWithPaymentMethod: billingResult[0].with_pm as number,
-      totalCreditBalanceCents: (billingResult[0].balance as number) ?? 0,
-      totalCreditedCents: creditsLoadedResult[0].total as number,
-      totalConsumedCents: creditsConsumedResult[0].total as number,
+      totalAccounts: billing.totalAccounts,
+      accountsWithPaymentMethod: billing.accountsWithPaymentMethod,
+      totalCreditBalanceCents: billing.totalCreditBalanceCents,
+      totalCreditedCents: billing.totalCreditedCents,
+      totalConsumedCents: billing.totalConsumedCents,
     },
     runs: {
-      completed: runsMap.get("completed") ?? 0,
-      failed: runsMap.get("failed") ?? 0,
-      running: runsMap.get("running") ?? 0,
+      completed: runs.byStatus.completed,
+      failed: runs.byStatus.failed,
+      running: runs.byStatus.running,
     },
-    monthlyGrowth: sortedMonths.map((m) => monthlyMap.get(m)!).filter(Boolean),
+    monthlyGrowth: sortedMonths.map((m) => monthlyMap.get(m)!),
   };
 }
