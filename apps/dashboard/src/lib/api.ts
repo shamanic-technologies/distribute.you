@@ -1003,10 +1003,10 @@ export interface DAG {
 export interface Workflow {
   id: string;
   appId: string;
-  name: string;
-  slug: string;
-  dynastyName: string;
-  dynastySlug: string;
+  workflowName: string;
+  workflowSlug: string;
+  workflowDynastyName: string;
+  workflowDynastySlug: string;
   version: number;
   description: string | null;
   featureSlug: string | null;
@@ -1153,10 +1153,10 @@ export interface RankedWorkflowStats {
 export interface RankedWorkflowItem {
   workflow: {
     id: string;
-    slug: string;
-    name: string;
-    dynastyName: string;
-    dynastySlug: string;
+    workflowSlug: string;
+    workflowName: string;
+    workflowDynastyName: string;
+    workflowDynastySlug: string;
     version: number;
     createdForBrandId: string | null;
     featureSlug: string | null;
