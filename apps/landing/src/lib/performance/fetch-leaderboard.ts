@@ -34,10 +34,10 @@ function resolveBaseGroup(featureSlug: string): BaseGroup | null {
 interface WorkflowRankedItem {
   workflow: {
     id: string;
-    slug: string;
-    name: string;
-    dynastyName: string;
-    dynastySlug: string;
+    workflowSlug: string;
+    workflowName: string;
+    workflowDynastyName: string;
+    workflowDynastySlug: string;
     version: number;
     featureSlug: string;
     createdForBrandId: string | null;
@@ -188,8 +188,8 @@ async function fetchWorkflowRanked(
     const cost = num(r.stats, "totalCostInUsdCents");
 
     return {
-      workflowName: r.workflow.name,
-      dynastyName: r.workflow.dynastyName ?? r.workflow.name,
+      workflowName: r.workflow.workflowName,
+      dynastyName: r.workflow.workflowDynastyName ?? r.workflow.workflowName,
       signatureName: r.workflow.signatureName ?? null,
       category: null,
       featureSlug: r.workflow.featureSlug ?? null,
