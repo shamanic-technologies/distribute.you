@@ -114,12 +114,10 @@ export default function FeatureJournalistsPage() {
     });
   }, [activeList, search]);
 
-  // Tab counts: use backend byOutreachStatus when available, fall back to client-side.
-  // "replied" from backend is split into replied-positive/negative/neutral from the array.
-  const backendCounts = journalistsData?.byOutreachStatus;
+  // Tab counts: always use client-side grouping so counts match the displayed list.
+  // Backend byOutreachStatus counts cumulatively (e.g. "delivered" includes journalists
+  // who progressed to "contacted"), causing mismatches with the current-status grouping.
   const tabCount = (status: string): number => {
-    if (status.startsWith("replied-")) return groupedByStatus.get(status)?.length ?? 0;
-    if (backendCounts && status in backendCounts) return backendCounts[status];
     return groupedByStatus.get(status)?.length ?? 0;
   };
 
