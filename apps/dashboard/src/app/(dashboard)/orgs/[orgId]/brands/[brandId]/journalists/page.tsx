@@ -113,12 +113,10 @@ export default function BrandJournalistsPage() {
     });
   }, [activeList, search]);
 
-  // Tab counts: use backend byOutreachStatus when available, fall back to client-side.
-  // "replied" from backend is split into replied-positive/negative/neutral from the array.
-  const backendCounts = journalistsData?.byOutreachStatus;
+  // Tab counts: always use client-side grouping so counts match the displayed list.
+  // Backend byOutreachStatus counts cumulatively (e.g. "delivered" includes journalists
+  // who progressed to "contacted"), causing mismatches with the current-status grouping.
   const tabCount = (status: string): number => {
-    if (status.startsWith("replied-")) return groupedByStatus.get(status)?.length ?? 0;
-    if (backendCounts && status in backendCounts) return backendCounts[status];
     return groupedByStatus.get(status)?.length ?? 0;
   };
 
@@ -220,6 +218,11 @@ export default function BrandJournalistsPage() {
                         <span className={`text-[10px] px-1.5 py-0.5 rounded-full border flex-shrink-0 ${statusStyle(status)}`}>
                           {statusLabel(status)}
                         </span>
+                        {j.campaigns[0]?.statusReason && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200 flex-shrink-0" title={j.campaigns[0].statusDetail ?? undefined}>
+                            {j.campaigns[0].statusReason}
+                          </span>
+                        )}
                       </div>
                       {j.outletName && (
                         <p className="text-xs text-gray-400 truncate">{j.outletName}</p>
@@ -403,6 +406,11 @@ function CampaignEntryCard({ campaign: c }: { campaign: JournalistCampaignEntry 
         <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${statusStyle(c.outreachStatus)}`}>
           {statusLabel(c.outreachStatus)}
         </span>
+        {c.statusReason && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">
+            {c.statusReason}
+          </span>
+        )}
         {!isNaN(score) && (
           <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${relevanceColor(score)}`}>
             {score}% relevant
@@ -413,6 +421,12 @@ function CampaignEntryCard({ campaign: c }: { campaign: JournalistCampaignEntry 
         </span>
       </div>
 
+      {c.statusDetail && (
+        <div>
+          <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Status Detail</span>
+          <p className="text-sm text-gray-700 mt-0.5">{c.statusDetail}</p>
+        </div>
+      )}
       {c.whyRelevant && (
         <div>
           <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Why Relevant</span>

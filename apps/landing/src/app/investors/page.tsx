@@ -67,9 +67,11 @@ export default async function InvestorsPage() {
               />
               <h1 className="font-display text-4xl font-bold">distribute</h1>
             </div>
-            <p className="text-xl text-gray-400 mb-2">Investor Information</p>
+            <p className="text-xl text-gray-400 mb-2">
+              Investor Information
+            </p>
             <p className="text-sm text-gray-600">
-              Live data &mdash; updated on every page load
+              Live data — updated on every page load
             </p>
           </div>
         </section>
@@ -83,7 +85,7 @@ export default async function InvestorsPage() {
             <div className="bg-gray-800/30 border border-gray-700/50 rounded-xl p-6 text-gray-300 space-y-4 text-sm leading-relaxed">
               <p>
                 <strong className="text-white">distribute</strong> is the Stripe
-                for Distribution. Users provide a URL and a budget &mdash; the
+                for Distribution. Users provide a URL and a budget — the
                 platform automates lead finding, outreach, email generation, and
                 reporting using AI workflows ranked by real performance data.
               </p>
@@ -246,9 +248,7 @@ export default async function InvestorsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <p className="text-gray-400 mb-1">Hosting</p>
-                  <p className="text-white">
-                    Railway (backend), Vercel (frontend)
-                  </p>
+                  <p className="text-white">Railway (backend), Vercel (frontend)</p>
                 </div>
                 <div>
                   <p className="text-gray-400 mb-1">Database</p>
@@ -256,15 +256,11 @@ export default async function InvestorsPage() {
                 </div>
                 <div>
                   <p className="text-gray-400 mb-1">Architecture</p>
-                  <p className="text-white">
-                    27 microservices, DAG workflow orchestration
-                  </p>
+                  <p className="text-white">27 microservices, DAG workflow orchestration</p>
                 </div>
                 <div>
                   <p className="text-gray-400 mb-1">Payments</p>
-                  <p className="text-white">
-                    Stripe (credit top-ups, no subscriptions)
-                  </p>
+                  <p className="text-white">Stripe (credit top-ups, no subscriptions)</p>
                 </div>
                 <div>
                   <p className="text-gray-400 mb-1">Auth</p>
@@ -272,9 +268,7 @@ export default async function InvestorsPage() {
                 </div>
                 <div>
                   <p className="text-gray-400 mb-1">AI Models</p>
-                  <p className="text-white">
-                    Multi-provider (Anthropic, OpenAI, Google)
-                  </p>
+                  <p className="text-white">Multi-provider (Anthropic, OpenAI, Google)</p>
                 </div>
               </div>
             </div>
