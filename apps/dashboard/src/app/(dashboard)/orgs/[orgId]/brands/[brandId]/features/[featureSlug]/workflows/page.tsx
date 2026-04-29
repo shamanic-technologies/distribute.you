@@ -66,9 +66,9 @@ export default function FeatureWorkflowsPage() {
     router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/new`);
   }, [router, orgId, brandId, featureSlug]);
 
-  // Fetch stats grouped by workflow dynasty (aggregated across all versions)
+  // Fetch stats grouped by workflowDynastySlug (aggregated across all versions)
   const { data: statsData, isLoading } = useAuthQuery(
-    ["featureStats", featureSlug, "byDynasty"],
+    ["featureStats", featureSlug, "byWorkflowDynastySlug"],
     () => fetchFeatureStats(featureSlug, { groupBy: "workflowDynastySlug" }),
     { enabled: wfDef?.implemented === true, ...pollOptions },
   );

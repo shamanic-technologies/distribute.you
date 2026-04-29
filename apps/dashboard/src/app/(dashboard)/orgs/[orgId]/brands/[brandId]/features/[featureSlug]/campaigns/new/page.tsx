@@ -196,23 +196,23 @@ export default function FeatureCreateCampaignPage() {
 
 
 
-  // Fetch workflows filtered by feature dynasty slug
+  // Fetch workflows filtered by feature slug
   const { data: workflowsData, isLoading: workflowsLoading } = useAuthQuery(
     ["workflows", featureSlug],
     () => listWorkflows({ featureSlug }),
     pollOptions,
   );
 
-  // Fetch feature stats grouped by dynasty (aggregated across all versions)
+  // Fetch feature stats grouped by workflowDynastySlug (aggregated across all versions)
   const { data: statsData, isLoading } = useAuthQuery(
-    ["featureStats", featureSlug, "byDynasty"],
+    ["featureStats", featureSlug, "byWorkflowDynastySlug"],
     () => fetchFeatureStats(featureSlug, { groupBy: "workflowDynastySlug" }),
     { enabled: featureDef?.implemented === true, ...pollOptions },
   );
 
   // Fetch brand-specific stats to know when each workflow was last used by this brand
   const { data: brandStatsData } = useAuthQuery(
-    ["featureStats", featureSlug, "byDynasty", "brand", brandId],
+    ["featureStats", featureSlug, "byWorkflowDynastySlug", "brand", brandId],
     () => fetchFeatureStats(featureSlug, { groupBy: "workflowDynastySlug", brandId }),
     { enabled: featureDef?.implemented === true, ...pollOptions },
   );

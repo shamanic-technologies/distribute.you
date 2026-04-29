@@ -7,7 +7,7 @@ export function registerWorkflowTools(server: McpServer, client: DistributeClien
     "workflows_list",
     "List available workflows. Optionally filter by feature to see workflows for a specific automation type.",
     {
-      featureSlug: z.string().optional().describe("Filter by feature dynasty slug"),
+      featureSlug: z.string().optional().describe("Filter by feature slug"),
     },
     async ({ featureSlug }) => {
       const result = await client.listWorkflows(featureSlug ? { featureSlug } : undefined);

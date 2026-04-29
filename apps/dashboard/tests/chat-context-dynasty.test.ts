@@ -3,9 +3,9 @@ import * as fs from "fs";
 import * as path from "path";
 
 /**
- * Regression test: workflow chat context must include complete dynasty identity
- * fields (id, slug, dynastySlug, dynastyName, version) for workflows.
- * Feature dynasty has been removed — features only have id, slug, name.
+ * Regression test: workflow chat context must include complete identity fields
+ * (id, slug, dynastySlug, dynastyName, version) for workflows.
+ * Features only have id, slug, name — no dynasty concept.
  */
 
 describe("Workflow chat context — dynasty identity fields", () => {

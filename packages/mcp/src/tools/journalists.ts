@@ -9,7 +9,7 @@ export function registerJournalistTools(server: McpServer, client: DistributeCli
     {
       brandId: z.string().describe("The brand UUID"),
       campaignId: z.string().optional().describe("Filter by campaign UUID"),
-      featureSlug: z.string().optional().describe("Filter by feature dynasty slug"),
+      featureSlug: z.string().optional().describe("Filter by feature slug"),
     },
     async ({ brandId, campaignId, featureSlug }) => {
       const result = await client.listJournalists(brandId, { campaignId, featureSlug });

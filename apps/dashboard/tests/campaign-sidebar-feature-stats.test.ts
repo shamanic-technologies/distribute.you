@@ -16,7 +16,7 @@ describe("Campaign sidebar uses feature stats via entity.countKey", () => {
   const overviewContent = fs.readFileSync(overviewPagePath, "utf-8");
 
   describe("sidebar-wrapper", () => {
-    it("should fetch feature stats for the campaign using dynasty slug", () => {
+    it("should fetch feature stats for the campaign using feature slug", () => {
       expect(sidebarContent).toContain("fetchFeatureStats(featureSlug, { campaignId })");
       expect(sidebarContent).not.toContain("featureVersionedSlug");
     });
@@ -32,7 +32,7 @@ describe("Campaign sidebar uses feature stats via entity.countKey", () => {
   });
 
   describe("overview page", () => {
-    it("should fetch feature stats for charts using dynasty slug", () => {
+    it("should fetch feature stats for charts using feature slug", () => {
       expect(overviewContent).toContain("fetchFeatureStats(featureSlug, { campaignId })");
       expect(overviewContent).not.toContain("featureVersionedSlug");
     });

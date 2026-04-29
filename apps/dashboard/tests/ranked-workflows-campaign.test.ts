@@ -9,7 +9,7 @@ const pagePath = path.resolve(
 const content = fs.readFileSync(pagePath, "utf-8");
 
 describe("Campaign creation page uses feature stats + workflow list", () => {
-  it("should fetch feature stats grouped by dynasty for display columns", () => {
+  it("should fetch feature stats grouped by workflowDynastySlug for display columns", () => {
     expect(content).toContain("fetchFeatureStats");
     expect(content).toContain('groupBy: "workflowDynastySlug"');
   });
