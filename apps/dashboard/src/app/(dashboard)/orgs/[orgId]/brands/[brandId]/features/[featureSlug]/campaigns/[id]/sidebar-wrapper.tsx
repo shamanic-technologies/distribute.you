@@ -67,7 +67,7 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
 
   const workflowId = useMemo(() => {
     if (!campaign?.workflowSlug || !workflowsData?.workflows) return undefined;
-    const match = workflowsData.workflows.find((w) => w.slug === campaign.workflowSlug);
+    const match = workflowsData.workflows.find((w) => w.workflowSlug === campaign.workflowSlug);
     if (!match && campaign.workflowSlug) {
       console.error(`[dashboard] Campaign ${campaign.id} has workflowSlug="${campaign.workflowSlug}" which does not match any workflow slug. This campaign may have been created with the workflow name instead of slug.`);
     }
