@@ -66,6 +66,11 @@ function OutletRow({ outlet, costCents, isSelected, onClick }: { outlet: Dedupli
           <span className={`text-[10px] px-1.5 py-0.5 rounded-full border flex-shrink-0 ${statusBadgeColor(displayStatus)}`}>
             {statusLabel(displayStatus)}
           </span>
+          {outlet.campaigns[0]?.statusReason && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200 flex-shrink-0" title={outlet.campaigns[0].statusDetail ?? undefined}>
+              {outlet.campaigns[0].statusReason}
+            </span>
+          )}
         </div>
         <p className="text-xs text-gray-400 truncate">{outlet.outletDomain}</p>
       </div>
@@ -98,6 +103,11 @@ function CampaignDetailCard({ campaign, counts }: { campaign: OutletCampaign; co
           <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${statusBadgeColor(displayStatus)}`}>
             {statusLabel(displayStatus)}
           </span>
+          {campaign.statusReason && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">
+              {campaign.statusReason}
+            </span>
+          )}
         </div>
         <span className={`text-xs font-medium px-2 py-1 rounded-full border ${relevanceColor(campaign.relevanceScore)}`}>
           {campaign.relevanceScore}%
@@ -111,6 +121,12 @@ function CampaignDetailCard({ campaign, counts }: { campaign: OutletCampaign; co
         </div>
       </div>
 
+      {campaign.statusDetail && (
+        <div className="mt-2 pt-2 border-t border-gray-100">
+          <span className="text-xs font-medium text-gray-500">Status Detail</span>
+          <p className="text-sm text-gray-700 mt-0.5">{campaign.statusDetail}</p>
+        </div>
+      )}
       {campaign.whyRelevant && (
         <div className="mt-2 pt-2 border-t border-gray-100">
           <span className="text-xs font-medium text-gray-500">Why Relevant</span>
