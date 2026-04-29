@@ -8,7 +8,7 @@ export function registerCostTools(server: McpServer, client: DistributeClient): 
     "Get a cost breakdown for a brand — shows costs grouped by cost type (e.g. LLM calls, email sends, lead enrichment).",
     {
       brandId: z.string().describe("The brand UUID"),
-      featureSlug: z.string().optional().describe("Filter by feature dynasty slug"),
+      featureSlug: z.string().optional().describe("Filter by feature slug"),
     },
     async ({ brandId, featureSlug }) => {
       const result = await client.getCostBreakdown({ brandId, groupBy: "costName", featureSlug });

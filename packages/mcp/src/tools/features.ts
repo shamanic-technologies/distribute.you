@@ -18,7 +18,7 @@ export function registerFeatureTools(server: McpServer, client: DistributeClient
   server.tool(
     "features_get",
     "Get details of a specific feature, including its required inputs, outputs, charts, and entities.",
-    { slug: z.string().describe("The feature dynasty slug (e.g. 'sales-email-cold-outreach')") },
+    { slug: z.string().describe("The feature slug (e.g. 'sales-email-cold-outreach')") },
     async ({ slug }) => {
       const result = await client.getFeature(slug);
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
@@ -29,7 +29,7 @@ export function registerFeatureTools(server: McpServer, client: DistributeClient
     "features_prefill",
     "Pre-fill a feature's input fields using brand data. Returns suggested values for each input based on the brand's website analysis.",
     {
-      featureSlug: z.string().describe("The feature dynasty slug"),
+      featureSlug: z.string().describe("The feature slug"),
       brandIds: z.array(z.string()).describe("Brand UUIDs to extract input data from"),
     },
     async ({ featureSlug, brandIds }) => {
@@ -42,7 +42,7 @@ export function registerFeatureTools(server: McpServer, client: DistributeClient
     "features_stats",
     "Get performance statistics for a specific feature — total cost, completed runs, active campaigns, and custom stats. Can be grouped by brand, campaign, or workflow.",
     {
-      featureSlug: z.string().describe("The feature dynasty slug"),
+      featureSlug: z.string().describe("The feature slug"),
       groupBy: z.string().optional().describe("Group results by: 'brandId', 'campaignId', or 'workflowDynastySlug'"),
       brandId: z.string().optional().describe("Filter stats to a specific brand"),
       campaignId: z.string().optional().describe("Filter stats to a specific campaign"),

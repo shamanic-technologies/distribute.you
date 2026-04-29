@@ -66,9 +66,9 @@ export default function FeatureWorkflowsPage() {
     router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/new`);
   }, [router, orgId, brandId, featureSlug]);
 
-  // Fetch stats grouped by workflow dynasty (aggregated across all versions)
+  // Fetch stats grouped by workflowDynastySlug (aggregated across all versions)
   const { data: statsData, isLoading } = useAuthQuery(
-    ["featureStats", featureSlug, "byDynasty"],
+    ["featureStats", featureSlug, "byWorkflowDynastySlug"],
     () => fetchFeatureStats(featureSlug, { groupBy: "workflowDynastySlug" }),
     { enabled: wfDef?.implemented === true, ...pollOptions },
   );
@@ -80,15 +80,15 @@ export default function FeatureWorkflowsPage() {
     pollOptions,
   );
 
-  // Active workflows grouped by dynastySlug: keep only the latest per dynasty
+  // Active workflows grouped by workflowDynastySlug: keep only the latest per dynasty
   const dynastyWorkflows = useMemo(() => {
     if (!workflowsData?.workflows) return [];
     const byDynasty = new Map<string, (typeof workflowsData.workflows)[number]>();
     for (const wf of workflowsData.workflows) {
-      if (!wf.dynastySlug) continue;
-      const existing = byDynasty.get(wf.dynastySlug);
+      if (!wf.workflowDynastySlug) continue;
+      const existing = byDynasty.get(wf.workflowDynastySlug);
       if (!existing || wf.createdAt > existing.createdAt) {
-        byDynasty.set(wf.dynastySlug, wf);
+        byDynasty.set(wf.workflowDynastySlug, wf);
       }
     }
     return [...byDynasty.values()];
@@ -101,11 +101,11 @@ export default function FeatureWorkflowsPage() {
     }
 
     return dynastyWorkflows.map((wf) => {
-      const s = statsMap.get(wf.dynastySlug);
+      const s = statsMap.get(wf.workflowDynastySlug);
       return {
         id: wf.id,
-        workflowSlug: wf.slug,
-        dynastyName: wf.dynastyName,
+        workflowSlug: wf.workflowSlug,
+        workflowDynastyName: wf.workflowDynastyName,
         stats: s?.stats ?? {},
         systemStats: s?.systemStats,
       };
@@ -231,7 +231,7 @@ export default function FeatureWorkflowsPage() {
                   >
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-900">{wf.dynastyName}</span>
+                        <span className="text-sm font-medium text-gray-900">{wf.workflowDynastyName}</span>
                       </div>
                     </td>
                     {sortedOutputs.map((o) => (

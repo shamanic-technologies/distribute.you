@@ -49,9 +49,9 @@ const BUDGET_FREQUENCIES: { value: BudgetFrequency; label: string }[] = [
 /** A workflow row combining workflow metadata with feature stats. */
 interface WorkflowTableRow {
   id: string;
-  name: string;
-  slug: string;
-  dynastyName: string;
+  workflowName: string;
+  workflowSlug: string;
+  workflowDynastyName: string;
   featureSlug: string | null;
   stats: Record<string, number>;
   brandLastRunAt: string | null;
@@ -196,36 +196,36 @@ export default function FeatureCreateCampaignPage() {
 
 
 
-  // Fetch workflows filtered by feature dynasty slug
+  // Fetch workflows filtered by feature slug
   const { data: workflowsData, isLoading: workflowsLoading } = useAuthQuery(
     ["workflows", featureSlug],
     () => listWorkflows({ featureSlug }),
     pollOptions,
   );
 
-  // Fetch feature stats grouped by dynasty (aggregated across all versions)
+  // Fetch feature stats grouped by workflowDynastySlug (aggregated across all versions)
   const { data: statsData, isLoading } = useAuthQuery(
-    ["featureStats", featureSlug, "byDynasty"],
+    ["featureStats", featureSlug, "byWorkflowDynastySlug"],
     () => fetchFeatureStats(featureSlug, { groupBy: "workflowDynastySlug" }),
     { enabled: featureDef?.implemented === true, ...pollOptions },
   );
 
   // Fetch brand-specific stats to know when each workflow was last used by this brand
   const { data: brandStatsData } = useAuthQuery(
-    ["featureStats", featureSlug, "byDynasty", "brand", brandId],
+    ["featureStats", featureSlug, "byWorkflowDynastySlug", "brand", brandId],
     () => fetchFeatureStats(featureSlug, { groupBy: "workflowDynastySlug", brandId }),
     { enabled: featureDef?.implemented === true, ...pollOptions },
   );
 
-  // Active workflows grouped by dynastySlug: keep only the latest per dynasty
+  // Active workflows grouped by workflowDynastySlug: keep only the latest per dynasty
   const rows = useMemo(() => {
     if (!workflowsData?.workflows) return [];
     const byDynasty = new Map<string, (typeof workflowsData.workflows)[number]>();
     for (const wf of workflowsData.workflows) {
-      if (!wf.dynastySlug) continue;
-      const existing = byDynasty.get(wf.dynastySlug);
+      if (!wf.workflowDynastySlug) continue;
+      const existing = byDynasty.get(wf.workflowDynastySlug);
       if (!existing || wf.createdAt > existing.createdAt) {
-        byDynasty.set(wf.dynastySlug, wf);
+        byDynasty.set(wf.workflowDynastySlug, wf);
       }
     }
 
@@ -241,15 +241,15 @@ export default function FeatureCreateCampaignPage() {
     }
 
     return [...byDynasty.values()].map((wf): WorkflowTableRow => {
-      const s = statsMap.get(wf.dynastySlug);
+      const s = statsMap.get(wf.workflowDynastySlug);
       return {
         id: wf.id,
-        name: wf.name,
-        slug: wf.slug,
-        dynastyName: wf.dynastyName,
+        workflowName: wf.workflowName,
+        workflowSlug: wf.workflowSlug,
+        workflowDynastyName: wf.workflowDynastyName,
         featureSlug: wf.featureSlug ?? null,
         stats: s?.stats ?? {},
-        brandLastRunAt: brandLastRunMap.get(wf.dynastySlug) ?? null,
+        brandLastRunAt: brandLastRunMap.get(wf.workflowDynastySlug) ?? null,
         updatedAt: wf.updatedAt,
       };
     });
@@ -399,7 +399,7 @@ export default function FeatureCreateCampaignPage() {
 
     const generateName = () => {
       const now = new Date();
-      return `${selectedRow.dynastyName} \u2014 ${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}.${String(now.getMilliseconds()).padStart(3, "0")}`;
+      return `${selectedRow.workflowDynastyName} \u2014 ${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}.${String(now.getMilliseconds()).padStart(3, "0")}`;
     };
     try {
       // Pass all form input values generically
@@ -414,7 +414,7 @@ export default function FeatureCreateCampaignPage() {
         ...additionalBrands.map((b) => b.brandUrl).filter((u): u is string => u != null),
       ];
       const campaignPayload: Record<string, unknown> = {
-        workflowSlug: selectedRow.slug,
+        workflowSlug: selectedRow.workflowSlug,
         brandUrls,
         featureSlug: featureSlug,
         ...budgetParams,
@@ -470,8 +470,8 @@ export default function FeatureCreateCampaignPage() {
       ...additionalBrands.map((b) => b.brandUrl).filter((u): u is string => u != null),
     ];
     sessionStorage.setItem("pendingCampaign", JSON.stringify({
-      workflowSlug: selectedRow.slug,
-      displayLabel: selectedRow.dynastyName,
+      workflowSlug: selectedRow.workflowSlug,
+      displayLabel: selectedRow.workflowDynastyName,
       brandUrls: intentBrandUrls,
       ...budgetParams,
       featureInputs: intentInputFields,
@@ -1061,7 +1061,7 @@ function WorkflowRow({
         <div className="flex items-center gap-2">
           {isSelected && <div className="w-2 h-2 bg-brand-500 rounded-full flex-shrink-0" />}
           <span className={`text-sm font-medium ${isSelected ? "text-brand-700" : "text-gray-900"}`}>
-            {wf.dynastyName}
+            {wf.workflowDynastyName}
           </span>
           {onShowDetail && (
             <button

@@ -3,9 +3,9 @@ import * as fs from "fs";
 import * as path from "path";
 
 /**
- * Regression test: workflow chat context must include complete dynasty identity
- * fields (id, slug, dynastySlug, dynastyName, version) for workflows.
- * Feature dynasty has been removed — features only have id, slug, name.
+ * Regression test: workflow chat context must include complete identity fields
+ * (id, slug, dynastySlug, dynastyName, version) for workflows.
+ * Features only have id, slug, name — no dynasty concept.
  */
 
 describe("Workflow chat context — dynasty identity fields", () => {
@@ -15,11 +15,11 @@ describe("Workflow chat context — dynasty identity fields", () => {
   );
   const content = fs.readFileSync(pagePath, "utf-8");
 
-  it("should pass workflow.id, slug, dynastySlug, dynastyName, version in context", () => {
+  it("should pass workflow.id, workflowSlug, workflowDynastySlug, workflowDynastyName, version in context", () => {
     expect(content).toContain("id: workflow.id");
-    expect(content).toContain("slug: workflow.slug");
-    expect(content).toContain("dynastySlug: workflow.dynastySlug");
-    expect(content).toContain("dynastyName: workflow.dynastyName");
+    expect(content).toContain("workflowSlug: workflow.workflowSlug");
+    expect(content).toContain("workflowDynastySlug: workflow.workflowDynastySlug");
+    expect(content).toContain("workflowDynastyName: workflow.workflowDynastyName");
     expect(content).toContain("version: workflow.version");
   });
 
@@ -27,14 +27,14 @@ describe("Workflow chat context — dynasty identity fields", () => {
     expect(content).toContain("id: feature.id");
     expect(content).toContain("slug: feature.slug");
     expect(content).toContain("name: feature.name");
-    expect(content).not.toContain("dynastySlug: feature.dynastySlug");
-    expect(content).not.toContain("dynastyName: feature.dynastyName");
+    expect(content).not.toContain("workflowDynastySlug: feature.workflowDynastySlug");
+    expect(content).not.toContain("workflowDynastyName: feature.workflowDynastyName");
     expect(content).not.toContain("version: feature.version");
   });
 
   it("should include dynasty slug and version in instructions text for workflow", () => {
-    expect(content).toContain("Dynasty Slug: ${workflow.dynastySlug}");
+    expect(content).toContain("Dynasty Slug: ${workflow.workflowDynastySlug}");
     expect(content).toContain("Version: ${workflow.version}");
-    expect(content).toContain("Slug: ${workflow.slug}");
+    expect(content).toContain("Slug: ${workflow.workflowSlug}");
   });
 });

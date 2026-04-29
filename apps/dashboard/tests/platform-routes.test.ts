@@ -129,10 +129,10 @@ describe("GET /api/v1/workflows/[id]/required-providers", () => {
     expect(content).toContain("providers:");
   });
 
-  it("should use workflow.slug (not workflow.name) for workflowSlug", () => {
+  it("should use workflow.workflowSlug (not workflow.workflowName) for workflowSlug", () => {
     const content = fs.readFileSync(routePath, "utf-8");
-    expect(content).toContain("workflowSlug: workflow.slug");
-    expect(content).not.toContain("workflowSlug: workflow.name");
+    expect(content).toContain("workflowSlug: workflow.workflowSlug");
+    expect(content).not.toContain("workflowSlug: workflow.workflowName");
   });
 });
 

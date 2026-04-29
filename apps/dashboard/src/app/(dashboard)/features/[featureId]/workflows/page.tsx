@@ -31,10 +31,10 @@ export default function FeatureWorkflowsPage() {
 
   const [detailWorkflowId, setDetailWorkflowId] = useState<string | null>(null);
 
-  // Fetch stats grouped by workflow dynasty
+  // Fetch stats grouped by workflowDynastySlug
   const resolvedFeatureSlug = featureDef?.slug;
   const { data: statsData, isLoading } = useAuthQuery(
-    ["featureStats", resolvedFeatureSlug, "byDynasty"],
+    ["featureStats", resolvedFeatureSlug, "byWorkflowDynastySlug"],
     () => fetchFeatureStats(resolvedFeatureSlug!, { groupBy: "workflowDynastySlug" }),
     { enabled: !!resolvedFeatureSlug && featureDef?.implemented === true, ...pollOptions },
   );
