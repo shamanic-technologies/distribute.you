@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "test": "playwright test",
+    "test:e2e": "playwright test",
     "test:ui": "playwright test --ui"
   },
   "dependencies": {
