@@ -1,4 +1,4 @@
-import type { OutletStatusCounts } from "@/lib/api";
+import type { OutletStatusCounts, JournalistStatusBooleans } from "@/lib/api";
 
 /**
  * Shared outreach status constants and helpers.
@@ -141,6 +141,40 @@ export const STATUS_DESCRIPTIONS: Record<string, string> = {
   denied: "Denied",
   ended: "Ended manually",
 };
+
+/**
+ * Derive display status from cumulative JournalistStatusBooleans.
+ * Picks the most advanced status that is true.
+ */
+const BOOLEANS_WATERMARK: Array<{ key: string; display: string }> = [
+  { key: "replied", display: "replied" },
+  { key: "opened", display: "opened" },
+  { key: "delivered", display: "delivered" },
+  { key: "sent", display: "sent" },
+  { key: "bounced", display: "bounced" },
+  { key: "contacted", display: "contacted" },
+  { key: "served", display: "served" },
+  { key: "claimed", display: "claimed" },
+  { key: "buffered", display: "buffered" },
+  { key: "skipped", display: "skipped" },
+];
+
+export function deriveDisplayStatusFromBooleans(
+  booleans: JournalistStatusBooleans | null | undefined,
+): string {
+  if (!booleans) return "buffered";
+  for (const { key, display } of BOOLEANS_WATERMARK) {
+    if (booleans[key as keyof JournalistStatusBooleans] === true) {
+      if (display === "replied") {
+        const rc = booleans.replyClassification;
+        if (rc === "positive" || rc === "negative") return `replied-${rc}`;
+        return "replied-neutral";
+      }
+      return display;
+    }
+  }
+  return "buffered";
+}
 
 export function statusBadgeColor(displayStatus: string): string {
   return STATUS_LABELS[displayStatus]?.color ?? "bg-gray-100 text-gray-500 border-gray-200";

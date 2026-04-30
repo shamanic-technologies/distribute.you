@@ -23,21 +23,19 @@ describe("EnrichedJournalist type matches grouped API response", () => {
     expect(apiContent).toContain("campaigns: JournalistCampaignEntry[]");
   });
 
-  it("should NOT have flat status/relevanceScore/articleUrls on EnrichedJournalist (they belong in campaigns[])", () => {
-    // Extract the EnrichedJournalist interface block
+  it("should have cumulative status booleans on EnrichedJournalist (not outreachStatus string)", () => {
     const match = apiContent.match(
       /export interface EnrichedJournalist \{([\s\S]*?)\n\}/,
     );
     expect(match).not.toBeNull();
     const body = match![1];
-    // These per-campaign fields should be on JournalistCampaignEntry, not EnrichedJournalist
-    // outreachStatus IS expected at top-level (backend high-watermark), but not a bare "status:" field
-    expect(body).not.toMatch(/\bstatus:/);
-    expect(body).toContain("outreachStatus:");
+    expect(body).toContain("brand:");
+    expect(body).toContain("campaign:");
+    expect(body).toContain("byCampaign:");
+    expect(body).toContain("global:");
+    expect(body).not.toContain("outreachStatus:");
     expect(body).not.toContain("relevanceScore:");
     expect(body).not.toContain("articleUrls:");
-    expect(body).not.toContain("whyRelevant:");
-    expect(body).not.toContain("whyNotRelevant:");
   });
 
   it("should have JournalistCampaignEntry type with per-campaign fields", () => {
@@ -47,7 +45,6 @@ describe("EnrichedJournalist type matches grouped API response", () => {
     );
     expect(match).not.toBeNull();
     const body = match![1];
-    expect(body).toContain("outreachStatus:");
     expect(body).toContain("relevanceScore:");
     expect(body).toContain("whyRelevant:");
     expect(body).toContain("articleUrls:");
@@ -74,7 +71,7 @@ describe("Journalist pages use journalistId as key (not flat id)", () => {
   }
 });
 
-describe("Journalist pages use backend top-level outreachStatus (no client-side computation)", () => {
+describe("Journalist pages derive status from cumulative booleans", () => {
   const pages = [
     { name: "feature-level", path: featurePagePath },
     { name: "campaign-level", path: campaignPagePath },
@@ -82,10 +79,10 @@ describe("Journalist pages use backend top-level outreachStatus (no client-side 
   ];
 
   for (const page of pages) {
-    it(`${page.name} page uses journalistDisplayStatus (resolveDisplayStatus from backend field)`, () => {
+    it(`${page.name} page uses journalistDisplayStatus (deriveDisplayStatusFromBooleans)`, () => {
       const content = fs.readFileSync(page.path, "utf-8");
       expect(content).toContain("journalistDisplayStatus(j)");
-      expect(content).toContain("resolveDisplayStatus(j.outreachStatus");
+      expect(content).toContain("deriveDisplayStatusFromBooleans");
       expect(content).not.toContain("bestDisplayStatus");
     });
   }
