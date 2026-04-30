@@ -7,6 +7,7 @@ import {
   listJournalistsEnriched,
   type EnrichedJournalist,
   type JournalistCampaignEntry,
+  type JournalistStatusBooleans,
 } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 import {
@@ -14,7 +15,7 @@ import {
   STATUS_DESCRIPTIONS,
   statusBadgeColor as statusStyle,
   statusLabel,
-  resolveDisplayStatus,
+  deriveDisplayStatusFromBooleans,
 } from "@/lib/outlet-status";
 
 const POLL_INTERVAL = 5_000;
@@ -46,9 +47,9 @@ function timeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString();
 }
 
-/** Resolve the display status from the backend's top-level outreachStatus */
+/** Derive the display status from the backend's cumulative status booleans */
 function journalistDisplayStatus(j: EnrichedJournalist): string {
-  return resolveDisplayStatus(j.outreachStatus, j.replyClassification);
+  return deriveDisplayStatusFromBooleans(j.campaign ?? j.brand);
 }
 
 /* ─── Main Page ──────────────────────────────────────────────────────── */
@@ -336,7 +337,7 @@ function DetailPanel({
         </div>
 
         {/* Email Delivery Status */}
-        {j.emailStatus && <EmailStatusCard emailStatus={j.emailStatus} scope="campaign" />}
+        <StatusBooleansCard booleans={j.campaign ?? j.brand} />
 
         {/* Outlet */}
         {j.outletName && (
@@ -363,7 +364,7 @@ function DetailPanel({
         <div className="space-y-3">
           <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider">Campaign Entries</h4>
           {j.campaigns.map((c) => (
-            <CampaignEntryCard key={c.id} campaign={c} />
+            <CampaignEntryCard key={c.id} campaign={c} statusBooleans={j.byCampaign?.[c.campaignId] ?? j.campaign} />
           ))}
         </div>
       </div>
@@ -386,14 +387,15 @@ function DetailPanel({
   );
 }
 
-function CampaignEntryCard({ campaign: c }: { campaign: JournalistCampaignEntry }) {
+function CampaignEntryCard({ campaign: c, statusBooleans }: { campaign: JournalistCampaignEntry; statusBooleans?: JournalistStatusBooleans | null }) {
   const score = parseFloat(c.relevanceScore);
+  const entryStatus = deriveDisplayStatusFromBooleans(statusBooleans);
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 space-y-3">
       <div className="flex items-center gap-3 flex-wrap">
-        <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${statusStyle(c.outreachStatus)}`}>
-          {statusLabel(c.outreachStatus)}
+        <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${statusStyle(entryStatus)}`}>
+          {statusLabel(entryStatus)}
         </span>
         {c.statusReason && (
           <span className="text-[10px] px-1.5 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">
@@ -410,12 +412,6 @@ function CampaignEntryCard({ campaign: c }: { campaign: JournalistCampaignEntry 
         </span>
       </div>
 
-      {c.statusDetail && (
-        <div>
-          <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Status Detail</span>
-          <p className="text-sm text-gray-700 mt-0.5">{c.statusDetail}</p>
-        </div>
-      )}
       {c.whyRelevant && (
         <div>
           <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Why Relevant</span>
@@ -447,22 +443,19 @@ function CampaignEntryCard({ campaign: c }: { campaign: JournalistCampaignEntry 
   );
 }
 
-function EmailStatusCard({ emailStatus, scope }: { emailStatus: NonNullable<EnrichedJournalist["emailStatus"]>; scope: "campaign" | "brand" }) {
-  const bc = emailStatus.broadcast[scope];
-  const tc = emailStatus.transactional[scope];
-  if (!bc && !tc) return null;
+function StatusBooleansCard({ booleans }: { booleans: JournalistStatusBooleans | null | undefined }) {
+  if (!booleans) return null;
 
-  const items: { label: string; value: boolean }[] = [];
-  if (bc) {
-    items.push({ label: "Contacted", value: bc.contacted });
-    items.push({ label: "Delivered", value: bc.delivered });
-    items.push({ label: "Opened", value: bc.opened });
-    items.push({ label: "Replied", value: bc.replied });
-  }
-  if (tc) {
-    items.push({ label: "Transactional sent", value: tc.contacted });
-    items.push({ label: "Transactional delivered", value: tc.delivered });
-  }
+  const items: { label: string; value: boolean }[] = [
+    { label: "Contacted", value: booleans.contacted === true },
+    { label: "Sent", value: booleans.sent === true },
+    { label: "Delivered", value: booleans.delivered === true },
+    { label: "Opened", value: booleans.opened === true },
+    { label: "Replied", value: booleans.replied === true },
+    { label: "Bounced", value: booleans.bounced === true },
+  ];
+
+  if (!items.some((i) => i.value)) return null;
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4">
@@ -480,15 +473,15 @@ function EmailStatusCard({ emailStatus, scope }: { emailStatus: NonNullable<Enri
             {item.label}
           </span>
         ))}
-        {bc?.replyClassification && (
+        {booleans.replyClassification && (
           <span className={`text-[10px] px-2 py-1 rounded-full border ${
-            bc.replyClassification === "positive"
+            booleans.replyClassification === "positive"
               ? "bg-green-50 text-green-700 border-green-200"
-              : bc.replyClassification === "negative"
+              : booleans.replyClassification === "negative"
                 ? "bg-red-50 text-red-600 border-red-200"
                 : "bg-yellow-50 text-yellow-700 border-yellow-200"
           }`}>
-            Reply: {bc.replyClassification}
+            Reply: {String(booleans.replyClassification)}
           </span>
         )}
       </div>

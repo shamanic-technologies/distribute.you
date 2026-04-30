@@ -1656,7 +1656,6 @@ export interface JournalistCampaignEntry {
   campaignId: string;
   featureSlug: string | null;
   workflowSlug: string | null;
-  outreachStatus: "buffered" | "claimed" | "served" | "contacted" | "sent" | "delivered" | "opened" | "replied" | "bounced" | "skipped";
   relevanceScore: string;
   whyRelevant: string;
   whyNotRelevant: string;
@@ -1667,6 +1666,23 @@ export interface JournalistCampaignEntry {
   statusDetail: string | null;
   runId: string | null;
   createdAt: string;
+}
+
+export interface JournalistStatusBooleans {
+  buffered: boolean;
+  claimed: boolean;
+  served: boolean;
+  skipped: boolean;
+  contacted: boolean;
+  sent: boolean;
+  delivered: boolean;
+  opened: boolean;
+  clicked: boolean;
+  replied: boolean;
+  replyClassification: "positive" | "negative" | "neutral" | null;
+  bounced: boolean;
+  unsubscribed: boolean;
+  lastDeliveredAt: string | null;
 }
 
 export interface EnrichedJournalist {
@@ -1680,9 +1696,10 @@ export interface EnrichedJournalist {
   outletDomain: string | null;
   email: string | null;
   apolloPersonId: string | null;
-  outreachStatus: "buffered" | "claimed" | "served" | "contacted" | "sent" | "delivered" | "opened" | "replied" | "bounced" | "skipped";
-  replyClassification?: "positive" | "negative" | "neutral" | null;
-  emailStatus: EmailStatus | null;
+  brand: JournalistStatusBooleans | null;
+  byCampaign: Record<string, JournalistStatusBooleans> | null;
+  campaign: JournalistStatusBooleans | null;
+  global: { bounced: boolean; unsubscribed: boolean } | null;
   cost: JournalistCost | null;
   campaigns: JournalistCampaignEntry[];
 }
