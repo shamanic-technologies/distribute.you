@@ -125,22 +125,28 @@ describe("api.ts type definitions match per-entity status sets", () => {
     }
   });
 
-  it("journalist types include bounced", () => {
-    // Lines with bounced but NOT open → journalist types
-    const journalistLines = outreachLines.filter(
-      (l) => l.includes('"bounced"') && !l.includes('"open"'),
+  it("JournalistStatusBooleans includes bounced as a boolean field", () => {
+    const match = apiContent.match(
+      /export interface JournalistStatusBooleans \{([\s\S]*?)\n\}/,
     );
-    expect(journalistLines.length).toBeGreaterThanOrEqual(3);
+    expect(match).not.toBeNull();
+    const body = match![1];
+    expect(body).toContain("bounced: boolean");
+    expect(body).toContain("contacted: boolean");
+    expect(body).toContain("sent: boolean");
+    expect(body).toContain("delivered: boolean");
+    expect(body).toContain("opened: boolean");
+    expect(body).toContain("replied: boolean");
   });
 
-  it("journalist types do NOT include open, denied, or ended", () => {
-    const journalistLines = outreachLines.filter(
-      (l) => l.includes('"bounced"') && !l.includes('"open"'),
+  it("EnrichedJournalist uses JournalistStatusBooleans (not outreachStatus string)", () => {
+    const match = apiContent.match(
+      /export interface EnrichedJournalist \{([\s\S]*?)\n\}/,
     );
-    for (const line of journalistLines) {
-      expect(line).not.toContain('"open"');
-      expect(line).not.toContain('"denied"');
-      expect(line).not.toContain('"ended"');
-    }
+    expect(match).not.toBeNull();
+    const body = match![1];
+    expect(body).toContain("brand: JournalistStatusBooleans");
+    expect(body).toContain("campaign: JournalistStatusBooleans");
+    expect(body).not.toContain("outreachStatus:");
   });
 });
