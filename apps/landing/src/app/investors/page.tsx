@@ -37,6 +37,18 @@ function StatCard({
   );
 }
 
+function shortenLabel(label: string): string {
+  // "2026-04-27" → "04-27", "2026-04" → "Apr"
+  const parts = label.split("-");
+  if (parts.length === 3) return `${parts[1]}-${parts[2]}`;
+  if (parts.length === 2) {
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const idx = parseInt(parts[1], 10) - 1;
+    return monthNames[idx] ?? parts[1];
+  }
+  return label;
+}
+
 function BarChart({
   data,
 }: {
@@ -44,24 +56,24 @@ function BarChart({
 }) {
   const max = Math.max(...data.map((d) => d.value), 1);
   return (
-    <div className="bg-gray-800/30 border border-gray-700/50 rounded-xl p-6">
+    <div className="bg-gray-800/30 border border-gray-700/50 rounded-xl p-6 overflow-hidden">
       <p className="text-sm text-gray-400 mb-4 font-medium">Credits Consumed</p>
-      <div className="flex items-end gap-2 h-48">
+      <div className="flex items-end gap-1 h-48">
         {data.map((d) => {
           const pct = (d.value / max) * 100;
           return (
-            <div key={d.label} className="flex-1 flex flex-col items-center gap-1">
-              <span className="text-xs text-gray-400">
+            <div key={d.label} className="flex-1 min-w-0 flex flex-col items-center gap-1">
+              <span className="text-[10px] text-gray-400 truncate w-full text-center">
                 {formatCents(d.value)}
               </span>
-              <div className="w-full flex items-end" style={{ height: "160px" }}>
+              <div className="w-full flex items-end" style={{ height: "140px" }}>
                 <div
                   className="w-full bg-emerald-500/80 rounded-t"
                   style={{ height: `${Math.max(pct, 2)}%` }}
                 />
               </div>
-              <span className="text-xs text-gray-500 truncate max-w-full">
-                {d.label}
+              <span className="text-[10px] text-gray-500 truncate w-full text-center">
+                {shortenLabel(d.label)}
               </span>
             </div>
           );
