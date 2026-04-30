@@ -188,6 +188,12 @@ export default async function InvestorsPage() {
                       Completed Runs
                     </th>
                     <th className="text-right py-3 px-4 font-medium">
+                      Credits Spent
+                    </th>
+                    <th className="text-right py-3 px-4 font-medium">
+                      Revenue
+                    </th>
+                    <th className="text-right py-3 px-4 font-medium">
                       Run Growth
                     </th>
                   </tr>
@@ -221,6 +227,12 @@ export default async function InvestorsPage() {
                           {formatNumber(row.completedRuns)}
                         </td>
                         <td className="py-3 px-4 text-right">
+                          {formatCents(row.consumedCents)}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          {formatCents(row.revenueCents)}
+                        </td>
+                        <td className="py-3 px-4 text-right">
                           {growth ? (
                             <span className="text-emerald-400">
                               +{growth}%
@@ -232,6 +244,54 @@ export default async function InvestorsPage() {
                       </tr>
                     );
                   })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        {/* Weekly Growth */}
+        <section className="pb-12 px-4">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
+              Weekly Growth
+            </h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-700 text-gray-400">
+                    <th className="text-left py-3 px-4 font-medium">Week</th>
+                    <th className="text-right py-3 px-4 font-medium">
+                      Credits Loaded
+                    </th>
+                    <th className="text-right py-3 px-4 font-medium">
+                      Credits Spent
+                    </th>
+                    <th className="text-right py-3 px-4 font-medium">
+                      Revenue
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {metrics.weeklyGrowth.map((row) => (
+                    <tr
+                      key={row.period}
+                      className="border-b border-gray-800 text-gray-300"
+                    >
+                      <td className="py-3 px-4 font-medium text-white">
+                        {row.period}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        {formatCents(row.credited_cents)}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        {formatCents(row.consumed_cents)}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        {formatCents(row.revenue_cents)}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
