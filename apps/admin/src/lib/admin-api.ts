@@ -1,24 +1,24 @@
-const API_SERVICE_URL = process.env.API_SERVICE_URL;
-const API_SERVICE_API_KEY = process.env.API_SERVICE_API_KEY;
+const DISTRIBUTE_API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL;
+const DISTRIBUTE_API_KEY = process.env.ADMIN_DISTRIBUTE_API_KEY;
 
 function getHeaders(): HeadersInit {
-  if (!API_SERVICE_URL) {
-    throw new Error("[admin] API_SERVICE_URL is not configured");
+  if (!DISTRIBUTE_API_URL) {
+    throw new Error("[admin] NEXT_PUBLIC_DISTRIBUTE_API_URL is not configured");
   }
-  if (!API_SERVICE_API_KEY) {
-    throw new Error("[admin] API_SERVICE_API_KEY is not configured");
+  if (!DISTRIBUTE_API_KEY) {
+    throw new Error("[admin] ADMIN_DISTRIBUTE_API_KEY is not configured");
   }
   return {
-    "x-api-key": API_SERVICE_API_KEY,
+    "x-api-key": DISTRIBUTE_API_KEY,
     "Content-Type": "application/json",
   };
 }
 
 function baseUrl(): string {
-  if (!API_SERVICE_URL) {
-    throw new Error("[admin] API_SERVICE_URL is not configured");
+  if (!DISTRIBUTE_API_URL) {
+    throw new Error("[admin] NEXT_PUBLIC_DISTRIBUTE_API_URL is not configured");
   }
-  return `${API_SERVICE_URL}/internal/admin`;
+  return `${DISTRIBUTE_API_URL}/internal/admin`;
 }
 
 export interface ServiceInfo {
