@@ -314,23 +314,16 @@ export default function FeatureOutletsPage() {
     if (first) setActiveTab(first);
   }, [outlets.length, groupedByStatus]);
 
-  // Tab counts: use backend byOutreachStatus when available, fall back to client-side.
-  // "replied" from backend is split into replied-positive/negative/neutral from the array.
-  const backendCounts = data?.byOutreachStatus;
-  const tabCount = (status: string): number => {
-    if (status.startsWith("replied-")) return groupedByStatus.get(status)?.length ?? 0;
-    if (backendCounts && status in backendCounts) return backendCounts[status];
-    return groupedByStatus.get(status)?.length ?? 0;
-  };
-
-  // Static tabs: all statuses in priority order + "all"
+  // Tab counts: always use client-side grouping so counts match the displayed list.
+  // Backend byOutreachStatus counts cumulatively (e.g. "delivered" includes outlets
+  // who progressed to "contacted"), causing mismatches with the current-status grouping.
   const tabs: { key: Tab; label: string; count: number }[] = [
     ...STATUS_PRIORITY.map((status) => ({
       key: status as Tab,
       label: statusLabel(status),
-      count: tabCount(status),
+      count: groupedByStatus.get(status)?.length ?? 0,
     })),
-    { key: "all", label: "All", count: data?.total ?? outlets.length },
+    { key: "all", label: "All", count: outlets.length },
   ];
 
   const displayedOutlets = useMemo(() => {
@@ -364,7 +357,7 @@ export default function FeatureOutletsPage() {
               <Skeleton className="h-4 w-48 mt-1" />
             ) : (
               <p className="text-sm text-gray-500">
-                {data?.total ?? outlets.length} outlet{(data?.total ?? outlets.length) !== 1 ? "s" : ""} across all campaigns
+                {outlets.length.toLocaleString("en-US")} outlet{outlets.length !== 1 ? "s" : ""} across all campaigns
                 {totalCost > 0 && ` \u00b7 Total: $${(totalCost / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                 {avgCostPerOutlet > 0 && ` \u00b7 Avg: $${(avgCostPerOutlet / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/outlet`}
               </p>

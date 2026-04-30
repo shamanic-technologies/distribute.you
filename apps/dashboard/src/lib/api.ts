@@ -213,6 +213,7 @@ export interface Campaign {
   updatedAt: string;
 }
 
+/** @deprecated apollo stats no longer returned by api-service v0.26.0 */
 export interface ApolloStats {
   enrichedLeadsCount: number;
   searchCount: number;
@@ -899,9 +900,14 @@ export interface Lead {
   linkedinUrl: string | null;
   status: "contacted" | "served";
   contacted: boolean;
+  sent: boolean;
   delivered: boolean;
+  opened: boolean;
+  clicked: boolean;
   bounced: boolean;
   replied: boolean;
+  unsubscribed: boolean;
+  global: { bounced?: boolean; unsubscribed?: boolean } | null;
   createdAt: string;
   enrichmentRun: {
     status: string;
@@ -917,13 +923,17 @@ export interface Lead {
   } | null;
 }
 
-export type LeadConsolidatedStatus = "replied" | "bounced" | "delivered" | "contacted" | "served";
+export type LeadConsolidatedStatus = "replied" | "clicked" | "opened" | "delivered" | "sent" | "bounced" | "unsubscribed" | "contacted" | "served";
 
 /** Derive consolidated status from email-gateway booleans + local status, matching journalists page pattern */
 export function getLeadConsolidatedStatus(lead: Lead): LeadConsolidatedStatus {
   if (lead.replied) return "replied";
-  if (lead.bounced) return "bounced";
+  if (lead.clicked) return "clicked";
+  if (lead.opened) return "opened";
   if (lead.delivered) return "delivered";
+  if (lead.sent) return "sent";
+  if (lead.bounced) return "bounced";
+  if (lead.unsubscribed) return "unsubscribed";
   if (lead.contacted) return "contacted";
   return "served";
 }
