@@ -16,7 +16,14 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en">
-        <body className="antialiased min-h-screen">{children}</body>
+        <body className="antialiased min-h-screen">
+          <header className="h-14 border-b border-gray-200 bg-white flex items-center justify-between px-6 shrink-0">
+            <a href="/" className="text-lg font-bold text-gray-900">
+              admin<span className="text-blue-600">.distribute.you</span>
+            </a>
+          </header>
+          <div className="min-h-[calc(100vh-3.5rem)]">{children}</div>
+        </body>
       </html>
     </ClerkProvider>
   );
