@@ -67,7 +67,18 @@ export async function fetchTables(serviceName: string): Promise<TableInfo[]> {
     throw new Error(`[admin] Failed to fetch tables for ${serviceName}: ${res.status} ${res.statusText}`);
   }
   const data = await res.json();
-  return data.tables;
+  const tables: unknown[] = data.tables;
+  if (!Array.isArray(tables)) {
+    throw new Error(`[admin] Expected tables array for ${serviceName}, got: ${JSON.stringify(data)}`);
+  }
+  for (const table of tables) {
+    const t = table as Record<string, unknown>;
+    if (!Array.isArray(t.columns)) {
+      console.error(`[admin] Table "${t.name}" in ${serviceName} is missing "columns" array. Got:`, t);
+      throw new Error(`[admin] Backend returned table "${t.name}" without columns array for ${serviceName}`);
+    }
+  }
+  return tables as TableInfo[];
 }
 
 export async function fetchTableSchema(serviceName: string, tableName: string): Promise<ColumnSchema[]> {
