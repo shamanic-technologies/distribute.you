@@ -29,7 +29,6 @@ export interface ServiceInfo {
 export interface TableInfo {
   name: string;
   rowCount: number;
-  columns: string[];
 }
 
 export interface ColumnSchema {
