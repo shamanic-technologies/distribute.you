@@ -55,7 +55,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: "Sales Cold Emails - The Stripe for Distribution",
+    title: "Sales Cold Emails - The Stripe of Distribution",
     description: "Cold email automation with your own API keys. You give us your URL, we handle everything. 100% open-source.",
     images: [
       {
@@ -68,7 +68,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Sales Cold Emails - The Stripe for Distribution",
+    title: "Sales Cold Emails - The Stripe of Distribution",
     description: "Cold email automation with your own API keys. You give us your URL, we handle everything. 100% open-source.",
     images: ["/og-image.jpg"],
     creator: "@distribute_you",
@@ -100,7 +100,7 @@ const organizationJsonLd = {
   name: "distribute",
   url: URLS.landing,
   logo: `${URLS.landing}/logo-head.jpg`,
-  description: "The Stripe for Distribution",
+  description: "The Stripe of Distribution",
   sameAs: [URLS.github, URLS.twitter],
 };
 

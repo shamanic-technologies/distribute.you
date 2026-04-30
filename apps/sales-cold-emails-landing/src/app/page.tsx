@@ -147,7 +147,7 @@ export default async function Home() {
             <span className="text-gray-800">That Actually Work</span>
           </h1>
           <p className="text-xl text-gray-600 mb-4 max-w-2xl mx-auto">
-            <span className="font-semibold text-brand-600">The Stripe for Distribution</span>, with{" "}
+            <span className="font-semibold text-brand-600">The Stripe of Distribution</span>, with{" "}
             <span className="font-semibold text-violet-600">your own API keys</span>.
           </p>
           <p className="text-lg text-gray-500 mb-8 max-w-2xl mx-auto">

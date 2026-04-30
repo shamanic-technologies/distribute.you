@@ -1,6 +1,6 @@
 export const BRAND = {
   name: "distribute",
-  tagline: "The Stripe for Distribution",
+  tagline: "The Stripe of Distribution",
   hero: "Your distribution, automated.",
   license: "MIT",
   isOpenSource: true,

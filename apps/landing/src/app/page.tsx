@@ -38,7 +38,7 @@ export default async function Home() {
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 bg-gray-50 border border-gray-200 text-gray-600 px-4 py-1.5 rounded-full text-sm mb-8">
             <span className="w-1.5 h-1.5 rounded-full bg-brand-400" />
-            The Stripe for Distribution
+            The Stripe of Distribution
           </div>
 
           <h1 className="font-display text-5xl md:text-7xl font-bold mb-6 text-gray-900 tracking-tight">
@@ -643,7 +643,7 @@ export default async function Home() {
             <span className="font-display font-bold text-white text-lg">distribute</span>
             <span className="text-[10px] text-brand-400 font-medium bg-brand-500/10 px-1.5 py-0.5 rounded uppercase">beta</span>
           </div>
-          <p className="text-sm text-gray-600 mb-4">The Stripe for Distribution</p>
+          <p className="text-sm text-gray-600 mb-4">The Stripe of Distribution</p>
           <div className="flex flex-wrap justify-center gap-6 text-sm">
             <a href={urls.performance} className="hover:text-gray-300 transition">Performance</a>
             <a href={urls.docs} className="hover:text-gray-300 transition">Docs</a>
