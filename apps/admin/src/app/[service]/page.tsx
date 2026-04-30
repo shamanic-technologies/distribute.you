@@ -24,21 +24,6 @@ export default async function ServicePage({
           >
             <h2 className="text-lg font-semibold text-gray-900">{table.name}</h2>
             <p className="mt-1 text-sm text-gray-500">{table.rowCount} rows</p>
-            <div className="mt-2 flex flex-wrap gap-1">
-              {table.columns.slice(0, 5).map((col) => (
-                <span
-                  key={col}
-                  className="inline-block px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded"
-                >
-                  {col}
-                </span>
-              ))}
-              {table.columns.length > 5 && (
-                <span className="inline-block px-2 py-0.5 text-gray-400 text-xs">
-                  +{table.columns.length - 5} more
-                </span>
-              )}
-            </div>
           </Link>
         ))}
       </div>
