@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+:root {
+  --foreground: #1a1a2e;
+  --background: #f8fafc;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --border: #e2e8f0;
+  --ring: #3b82f6;
+  --accent: #3b82f6;
+  --accent-foreground: #ffffff;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+@keyframes slide-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.2s ease-out;
+}

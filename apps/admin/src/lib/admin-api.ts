@@ -1,0 +1,117 @@
+const API_SERVICE_URL = process.env.API_SERVICE_URL;
+const API_SERVICE_API_KEY = process.env.API_SERVICE_API_KEY;
+
+function getHeaders(): HeadersInit {
+  if (!API_SERVICE_URL) {
+    throw new Error("[admin] API_SERVICE_URL is not configured");
+  }
+  if (!API_SERVICE_API_KEY) {
+    throw new Error("[admin] API_SERVICE_API_KEY is not configured");
+  }
+  return {
+    "x-api-key": API_SERVICE_API_KEY,
+    "Content-Type": "application/json",
+  };
+}
+
+function baseUrl(): string {
+  if (!API_SERVICE_URL) {
+    throw new Error("[admin] API_SERVICE_URL is not configured");
+  }
+  return `${API_SERVICE_URL}/internal/admin`;
+}
+
+export interface ServiceInfo {
+  name: string;
+  tableCount: number;
+}
+
+export interface TableInfo {
+  name: string;
+  rowCount: number;
+  columns: string[];
+}
+
+export interface ColumnSchema {
+  name: string;
+  type: string;
+  nullable: boolean;
+  isPrimaryKey: boolean;
+}
+
+export interface RowsResponse {
+  rows: Record<string, unknown>[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export async function fetchServices(): Promise<ServiceInfo[]> {
+  const res = await fetch(`${baseUrl()}/services`, {
+    headers: getHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`[admin] Failed to fetch services: ${res.status} ${res.statusText}`);
+  }
+  const data = await res.json();
+  return data.services;
+}
+
+export async function fetchTables(serviceName: string): Promise<TableInfo[]> {
+  const res = await fetch(`${baseUrl()}/services/${encodeURIComponent(serviceName)}/tables`, {
+    headers: getHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`[admin] Failed to fetch tables for ${serviceName}: ${res.status} ${res.statusText}`);
+  }
+  const data = await res.json();
+  return data.tables;
+}
+
+export async function fetchTableSchema(serviceName: string, tableName: string): Promise<ColumnSchema[]> {
+  const res = await fetch(
+    `${baseUrl()}/services/${encodeURIComponent(serviceName)}/tables/${encodeURIComponent(tableName)}/schema`,
+    {
+      headers: getHeaders(),
+      cache: "no-store",
+    }
+  );
+  if (!res.ok) {
+    throw new Error(`[admin] Failed to fetch schema for ${serviceName}/${tableName}: ${res.status} ${res.statusText}`);
+  }
+  const data = await res.json();
+  return data.columns;
+}
+
+export async function fetchRows(
+  serviceName: string,
+  tableName: string,
+  params: {
+    limit?: number;
+    offset?: number;
+    sort?: string;
+    order?: "asc" | "desc";
+    search?: string;
+  }
+): Promise<RowsResponse> {
+  const searchParams = new URLSearchParams();
+  if (params.limit !== undefined) searchParams.set("limit", String(params.limit));
+  if (params.offset !== undefined) searchParams.set("offset", String(params.offset));
+  if (params.sort) searchParams.set("sort", params.sort);
+  if (params.order) searchParams.set("order", params.order);
+  if (params.search) searchParams.set("search", params.search);
+
+  const res = await fetch(
+    `${baseUrl()}/services/${encodeURIComponent(serviceName)}/tables/${encodeURIComponent(tableName)}/rows?${searchParams.toString()}`,
+    {
+      headers: getHeaders(),
+      cache: "no-store",
+    }
+  );
+  if (!res.ok) {
+    throw new Error(`[admin] Failed to fetch rows for ${serviceName}/${tableName}: ${res.status} ${res.statusText}`);
+  }
+  return res.json();
+}
