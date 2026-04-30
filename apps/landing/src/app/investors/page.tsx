@@ -37,6 +37,40 @@ function StatCard({
   );
 }
 
+function BarChart({
+  data,
+}: {
+  data: { label: string; value: number }[];
+}) {
+  const max = Math.max(...data.map((d) => d.value), 1);
+  return (
+    <div className="bg-gray-800/30 border border-gray-700/50 rounded-xl p-6">
+      <p className="text-sm text-gray-400 mb-4 font-medium">Credits Consumed</p>
+      <div className="flex items-end gap-2 h-48">
+        {data.map((d) => {
+          const pct = (d.value / max) * 100;
+          return (
+            <div key={d.label} className="flex-1 flex flex-col items-center gap-1">
+              <span className="text-xs text-gray-400">
+                {formatCents(d.value)}
+              </span>
+              <div className="w-full flex items-end" style={{ height: "160px" }}>
+                <div
+                  className="w-full bg-emerald-500/80 rounded-t"
+                  style={{ height: `${Math.max(pct, 2)}%` }}
+                />
+              </div>
+              <span className="text-xs text-gray-500 truncate max-w-full">
+                {d.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default async function InvestorsPage() {
   const headersList = await headers();
   const host = headersList.get("host") || "";
@@ -169,154 +203,168 @@ export default async function InvestorsPage() {
 
         {/* Monthly Growth */}
         <section className="pb-12 px-4">
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-6xl mx-auto">
             <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
               Monthly Growth
             </h2>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-700 text-gray-400">
-                    <th className="text-left py-3 px-4 font-medium">Month</th>
-                    <th className="text-right py-3 px-4 font-medium">
-                      New Orgs
-                    </th>
-                    <th className="text-right py-3 px-4 font-medium">
-                      New Users
-                    </th>
-                    <th className="text-right py-3 px-4 font-medium">
-                      Completed Runs
-                    </th>
-                    <th className="text-right py-3 px-4 font-medium">
-                      Credits Spent
-                    </th>
-                    <th className="text-right py-3 px-4 font-medium">
-                      Revenue
-                    </th>
-                    <th className="text-right py-3 px-4 font-medium">
-                      Credits Growth
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {metrics.monthlyGrowth.map((row, i) => {
-                    const prev = metrics.monthlyGrowth[i + 1];
-                    const growth =
-                      prev && prev.consumedCents > 0
-                        ? (
-                            ((row.consumedCents - prev.consumedCents) /
-                              prev.consumedCents) *
-                            100
-                          ).toFixed(0)
-                        : null;
-                    return (
-                      <tr
-                        key={row.month}
-                        className="border-b border-gray-800 text-gray-300"
-                      >
-                        <td className="py-3 px-4 font-medium text-white">
-                          {row.month}
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          {formatNumber(row.newOrgs)}
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          {formatNumber(row.newUsers)}
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          {formatNumber(row.completedRuns)}
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          {formatCents(row.consumedCents)}
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          {formatCents(row.revenueCents)}
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          {growth ? (
-                            <span className={Number(growth) >= 0 ? "text-emerald-400" : "text-red-400"}>
-                              {Number(growth) >= 0 ? "+" : ""}{growth}%
-                            </span>
-                          ) : (
-                            <span className="text-gray-600">--</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-700 text-gray-400">
+                      <th className="text-left py-3 px-4 font-medium">Month</th>
+                      <th className="text-right py-3 px-4 font-medium">
+                        New Orgs
+                      </th>
+                      <th className="text-right py-3 px-4 font-medium">
+                        New Users
+                      </th>
+                      <th className="text-right py-3 px-4 font-medium">
+                        Completed Runs
+                      </th>
+                      <th className="text-right py-3 px-4 font-medium">
+                        Credits Spent
+                      </th>
+                      <th className="text-right py-3 px-4 font-medium">
+                        Revenue
+                      </th>
+                      <th className="text-right py-3 px-4 font-medium">
+                        Credits Growth
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {metrics.monthlyGrowth.map((row, i) => {
+                      const prev = metrics.monthlyGrowth[i + 1];
+                      const growth =
+                        prev && prev.consumedCents > 0
+                          ? (
+                              ((row.consumedCents - prev.consumedCents) /
+                                prev.consumedCents) *
+                              100
+                            ).toFixed(0)
+                          : null;
+                      return (
+                        <tr
+                          key={row.month}
+                          className="border-b border-gray-800 text-gray-300"
+                        >
+                          <td className="py-3 px-4 font-medium text-white">
+                            {row.month}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            {formatNumber(row.newOrgs)}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            {formatNumber(row.newUsers)}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            {formatNumber(row.completedRuns)}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            {formatCents(row.consumedCents)}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            {formatCents(row.revenueCents)}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            {growth ? (
+                              <span className={Number(growth) >= 0 ? "text-emerald-400" : "text-red-400"}>
+                                {Number(growth) >= 0 ? "+" : ""}{growth}%
+                              </span>
+                            ) : (
+                              <span className="text-gray-600">--</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <BarChart
+                data={[...metrics.monthlyGrowth]
+                  .reverse()
+                  .map((row) => ({ label: row.month, value: row.consumedCents }))}
+              />
             </div>
           </div>
         </section>
 
         {/* Weekly Growth */}
         <section className="pb-12 px-4">
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-6xl mx-auto">
             <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
               Weekly Growth
             </h2>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-700 text-gray-400">
-                    <th className="text-left py-3 px-4 font-medium">Week</th>
-                    <th className="text-right py-3 px-4 font-medium">
-                      Credits Loaded
-                    </th>
-                    <th className="text-right py-3 px-4 font-medium">
-                      Credits Spent
-                    </th>
-                    <th className="text-right py-3 px-4 font-medium">
-                      Revenue
-                    </th>
-                    <th className="text-right py-3 px-4 font-medium">
-                      Credits Growth
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {metrics.weeklyGrowth.map((row, i) => {
-                    const prev = metrics.weeklyGrowth[i + 1];
-                    const growth =
-                      prev && prev.consumed_cents > 0
-                        ? (
-                            ((row.consumed_cents - prev.consumed_cents) /
-                              prev.consumed_cents) *
-                            100
-                          ).toFixed(0)
-                        : null;
-                    return (
-                      <tr
-                        key={row.period}
-                        className="border-b border-gray-800 text-gray-300"
-                      >
-                        <td className="py-3 px-4 font-medium text-white">
-                          {row.period}
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          {formatCents(row.credited_cents)}
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          {formatCents(row.consumed_cents)}
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          {formatCents(row.revenue_cents)}
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          {growth ? (
-                            <span className={Number(growth) >= 0 ? "text-emerald-400" : "text-red-400"}>
-                              {Number(growth) >= 0 ? "+" : ""}{growth}%
-                            </span>
-                          ) : (
-                            <span className="text-gray-600">--</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-700 text-gray-400">
+                      <th className="text-left py-3 px-4 font-medium">Week</th>
+                      <th className="text-right py-3 px-4 font-medium">
+                        Credits Loaded
+                      </th>
+                      <th className="text-right py-3 px-4 font-medium">
+                        Credits Spent
+                      </th>
+                      <th className="text-right py-3 px-4 font-medium">
+                        Revenue
+                      </th>
+                      <th className="text-right py-3 px-4 font-medium">
+                        Credits Growth
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {metrics.weeklyGrowth.map((row, i) => {
+                      const prev = metrics.weeklyGrowth[i + 1];
+                      const growth =
+                        prev && prev.consumed_cents > 0
+                          ? (
+                              ((row.consumed_cents - prev.consumed_cents) /
+                                prev.consumed_cents) *
+                              100
+                            ).toFixed(0)
+                          : null;
+                      return (
+                        <tr
+                          key={row.period}
+                          className="border-b border-gray-800 text-gray-300"
+                        >
+                          <td className="py-3 px-4 font-medium text-white">
+                            {row.period}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            {formatCents(row.credited_cents)}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            {formatCents(row.consumed_cents)}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            {formatCents(row.revenue_cents)}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            {growth ? (
+                              <span className={Number(growth) >= 0 ? "text-emerald-400" : "text-red-400"}>
+                                {Number(growth) >= 0 ? "+" : ""}{growth}%
+                              </span>
+                            ) : (
+                              <span className="text-gray-600">--</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <BarChart
+                data={[...metrics.weeklyGrowth]
+                  .reverse()
+                  .map((row) => ({ label: row.period, value: row.consumed_cents }))}
+              />
             </div>
           </div>
         </section>
