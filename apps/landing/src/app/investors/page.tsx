@@ -12,11 +12,26 @@ export const metadata: Metadata = {
 };
 
 function formatCents(cents: number): string {
-  return `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const dollars = cents / 100;
+  return `$${dollars.toFixed(2)}`;
 }
 
 function formatNumber(n: number): string {
   return n.toLocaleString("en-US");
+}
+
+function computeAvgGrowth(values: number[]): string | null {
+  const pairs: { prev: number; curr: number }[] = [];
+  for (let i = 0; i < values.length - 1; i++) {
+    if (values[i + 1] > 0) {
+      pairs.push({ prev: values[i + 1], curr: values[i] });
+    }
+  }
+  if (pairs.length === 0) return null;
+  const avg =
+    pairs.reduce((sum, p) => sum + ((p.curr - p.prev) / p.prev) * 100, 0) /
+    pairs.length;
+  return avg.toFixed(0);
 }
 
 function StatCard({
@@ -50,13 +65,15 @@ function shortenLabel(label: string): string {
 
 function BarChart({
   data,
+  rotateLabels,
 }: {
   data: { label: string; value: number }[];
+  rotateLabels?: boolean;
 }) {
   const max = Math.max(...data.map((d) => d.value), 1);
   return (
     <div className="bg-gray-800/30 border border-gray-700/50 rounded-xl p-6 overflow-hidden">
-      <p className="text-sm text-gray-400 mb-4 font-medium">Credits Consumed</p>
+      <p className="text-sm text-gray-400 mb-4 font-medium">Credits Spent</p>
       <div className="flex items-end gap-1 h-48">
         {data.map((d) => {
           const pct = (d.value / max) * 100;
@@ -71,9 +88,18 @@ function BarChart({
                   style={{ height: `${Math.max(pct, 2)}%` }}
                 />
               </div>
-              <span className="text-[10px] text-gray-500 truncate w-full text-center">
-                {shortenLabel(d.label)}
-              </span>
+              {rotateLabels ? (
+                <span
+                  className="text-[10px] text-gray-500 whitespace-nowrap origin-top-left"
+                  style={{ writingMode: "vertical-rl", height: "50px" }}
+                >
+                  {shortenLabel(d.label)}
+                </span>
+              ) : (
+                <span className="text-[10px] text-gray-500 truncate w-full text-center">
+                  {shortenLabel(d.label)}
+                </span>
+              )}
             </div>
           );
         })}
@@ -94,6 +120,13 @@ export default async function InvestorsPage() {
     totalRuns > 0
       ? ((metrics.runs.completed / totalRuns) * 100).toFixed(1)
       : "0";
+
+  const monthlyAvgGrowth = computeAvgGrowth(
+    metrics.monthlyGrowth.map((r) => r.consumedCents)
+  );
+  const weeklyAvgGrowth = computeAvgGrowth(
+    metrics.weeklyGrowth.map((r) => r.consumed_cents)
+  );
 
   return (
     <>
@@ -130,7 +163,7 @@ export default async function InvestorsPage() {
             <div className="bg-gray-800/30 border border-gray-700/50 rounded-xl p-6 text-gray-300 space-y-4 text-sm leading-relaxed">
               <p>
                 <strong className="text-white">distribute</strong> is the Stripe
-                for Distribution. Users provide a URL and a budget — the
+                of Distribution. Users provide a URL and a budget — the
                 platform automates lead finding, outreach, email generation, and
                 reporting using AI workflows ranked by real performance data.
               </p>
@@ -215,9 +248,19 @@ export default async function InvestorsPage() {
         {/* Monthly Growth */}
         <section className="pb-12 px-4">
           <div className="max-w-6xl mx-auto">
-            <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
-              Monthly Growth
-            </h2>
+            <div className="flex items-baseline justify-between mb-6">
+              <h2 className="font-display text-2xl font-bold text-gray-200">
+                Monthly Growth
+              </h2>
+              {monthlyAvgGrowth && (
+                <p className="text-sm text-gray-400">
+                  Avg. monthly spending growth:{" "}
+                  <span className={Number(monthlyAvgGrowth) >= 0 ? "text-emerald-400 font-semibold" : "text-red-400 font-semibold"}>
+                    {Number(monthlyAvgGrowth) >= 0 ? "+" : ""}{monthlyAvgGrowth}%
+                  </span>
+                </p>
+              )}
+            </div>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 overflow-x-auto">
                 <table className="w-full text-sm">
@@ -240,7 +283,7 @@ export default async function InvestorsPage() {
                         Revenue
                       </th>
                       <th className="text-right py-3 px-4 font-medium">
-                        Credits Growth
+                        Spending Growth
                       </th>
                     </tr>
                   </thead>
@@ -305,9 +348,19 @@ export default async function InvestorsPage() {
         {/* Weekly Growth */}
         <section className="pb-12 px-4">
           <div className="max-w-6xl mx-auto">
-            <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
-              Weekly Growth
-            </h2>
+            <div className="flex items-baseline justify-between mb-6">
+              <h2 className="font-display text-2xl font-bold text-gray-200">
+                Weekly Growth
+              </h2>
+              {weeklyAvgGrowth && (
+                <p className="text-sm text-gray-400">
+                  Avg. weekly spending growth:{" "}
+                  <span className={Number(weeklyAvgGrowth) >= 0 ? "text-emerald-400 font-semibold" : "text-red-400 font-semibold"}>
+                    {Number(weeklyAvgGrowth) >= 0 ? "+" : ""}{weeklyAvgGrowth}%
+                  </span>
+                </p>
+              )}
+            </div>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 overflow-x-auto">
                 <table className="w-full text-sm">
@@ -324,7 +377,7 @@ export default async function InvestorsPage() {
                         Revenue
                       </th>
                       <th className="text-right py-3 px-4 font-medium">
-                        Credits Growth
+                        Spending Growth
                       </th>
                     </tr>
                   </thead>
@@ -372,10 +425,58 @@ export default async function InvestorsPage() {
                 </table>
               </div>
               <BarChart
+                rotateLabels
                 data={[...metrics.weeklyGrowth]
                   .reverse()
                   .map((row) => ({ label: row.period, value: row.consumed_cents }))}
               />
+            </div>
+          </div>
+        </section>
+
+        {/* What We Need */}
+        <section className="pb-12 px-4">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
+              What We Need — May 2026
+            </h2>
+            <div className="bg-gray-800/30 border border-gray-700/50 rounded-xl p-6 text-gray-300 text-sm leading-relaxed space-y-6">
+              <div>
+                <h3 className="text-white font-semibold text-base mb-2">Raise</h3>
+                <p>
+                  We are raising a <strong className="text-white">$500K pre-seed round</strong> to
+                  fund 12 months of runway. The capital will go toward infrastructure costs,
+                  AI model spend, and one full-time hire (growth engineer).
+                </p>
+              </div>
+              <div>
+                <h3 className="text-white font-semibold text-base mb-2">Use of Funds</h3>
+                <ul className="list-disc list-inside space-y-1 text-gray-300">
+                  <li><strong className="text-white">40%</strong> — AI model costs (Anthropic, OpenAI, Google) and infrastructure (Railway, Neon, Vercel)</li>
+                  <li><strong className="text-white">30%</strong> — First growth engineer hire</li>
+                  <li><strong className="text-white">20%</strong> — Customer acquisition and paid distribution experiments</li>
+                  <li><strong className="text-white">10%</strong> — Legal, compliance, and operational buffer</li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="text-white font-semibold text-base mb-2">Key Milestones (Next 6 Months)</h3>
+                <ul className="list-disc list-inside space-y-1 text-gray-300">
+                  <li>Reach <strong className="text-white">$5K MRR</strong> in credit consumption</li>
+                  <li>Onboard <strong className="text-white">50 paying organizations</strong></li>
+                  <li>Launch <strong className="text-white">self-serve onboarding</strong> (no-touch signup to first workflow execution)</li>
+                  <li>Ship <strong className="text-white">MCP marketplace</strong> — third-party developers publish and monetize distribution workflows</li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="text-white font-semibold text-base mb-2">Why Now</h3>
+                <p>
+                  AI model costs are dropping 10x per year. Distribution — lead finding,
+                  outreach, content creation — is the last major business function still done
+                  manually by most companies. The Model Context Protocol (MCP) creates a
+                  standard interface for AI agents to interact with external tools, making
+                  it possible to build a horizontal distribution platform for the first time.
+                </p>
+              </div>
             </div>
           </div>
         </section>
@@ -451,7 +552,7 @@ export default async function InvestorsPage() {
               distribute
             </a>
             <span>--</span>
-            <span>The Stripe for Distribution</span>
+            <span>The Stripe of Distribution</span>
           </div>
           <p className="text-xs text-gray-600">
             This page contains confidential information intended for prospective

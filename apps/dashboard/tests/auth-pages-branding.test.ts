@@ -27,12 +27,12 @@ describe("Auth pages branding", () => {
   });
 
   it("sign-in page should have branding panel with tagline", () => {
-    expect(signInContent).toContain("The Stripe for Distribution");
+    expect(signInContent).toContain("The Stripe of Distribution");
     expect(signInContent).toContain("automated");
   });
 
   it("sign-up page should have branding panel with tagline", () => {
-    expect(signUpContent).toContain("The Stripe for Distribution");
+    expect(signUpContent).toContain("The Stripe of Distribution");
     expect(signUpContent).toContain("automated");
   });
 

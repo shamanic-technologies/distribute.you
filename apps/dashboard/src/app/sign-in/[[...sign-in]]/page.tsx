@@ -50,7 +50,7 @@ export default function SignInPage() {
           </Link>
         </div>
         <div>
-          <p className="text-sm uppercase tracking-widest text-gray-400 mb-3">The Stripe for Distribution</p>
+          <p className="text-sm uppercase tracking-widest text-gray-400 mb-3">The Stripe of Distribution</p>
           <h2 className="font-display text-4xl font-bold leading-tight mb-4">
             Your distribution,<br />automated.
           </h2>

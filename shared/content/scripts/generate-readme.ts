@@ -34,7 +34,7 @@ function generateRootReadme(): string {
 
 ## What is ${BRAND.name}?
 
-${BRAND.name} is the Stripe for Distribution. Create an account, give us your URL — we automate your entire distribution layer with AI workflows ranked by real performance data.
+${BRAND.name} is the Stripe of Distribution. Create an account, give us your URL — we automate your entire distribution layer with AI workflows ranked by real performance data.
 
 ## Distribution Features
 

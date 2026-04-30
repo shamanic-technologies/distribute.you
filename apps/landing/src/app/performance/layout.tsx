@@ -136,7 +136,7 @@ export default async function PerformanceLayout({
               distribute
             </a>
             <span>—</span>
-            <span>The Stripe for Distribution</span>
+            <span>The Stripe of Distribution</span>
           </div>
           <p className="text-xs">
             All data is from real campaigns. Updated hourly.{" "}
