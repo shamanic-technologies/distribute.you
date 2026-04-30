@@ -1,6 +1,6 @@
 # distribute
 
-**The Stripe for Distribution**
+**The Stripe of Distribution**
 
 > Your distribution, automated.
 
@@ -8,7 +8,7 @@
 
 ## What is distribute?
 
-distribute is the Stripe for Distribution. Create an account, give us your URL — we automate your entire distribution layer with AI workflows ranked by real performance data.
+distribute is the Stripe of Distribution. Create an account, give us your URL — we automate your entire distribution layer with AI workflows ranked by real performance data.
 
 ## Distribution Features
 

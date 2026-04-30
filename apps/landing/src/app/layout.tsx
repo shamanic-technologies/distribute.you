@@ -4,7 +4,7 @@ import { PROD_URLS } from "@/lib/env-urls";
 
 const SITE_URL = PROD_URLS.landing;
 const SITE_NAME = "distribute";
-const SITE_DESCRIPTION = "The Stripe for Distribution. Create an account, give us your URL — we automate welcome emails, outreach, webinar flows, and every touchpoint. AI workflows ranked by real performance data.";
+const SITE_DESCRIPTION = "The Stripe of Distribution. Create an account, give us your URL — we automate welcome emails, outreach, webinar flows, and every touchpoint. AI workflows ranked by real performance data.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
     url: SITE_URL,
     siteName: SITE_NAME,
     title: "distribute — Your distribution, automated",
-    description: "The Stripe for Distribution. AI workflows handle your welcome emails, outreach, and lifecycle campaigns. You just build your product.",
+    description: "The Stripe of Distribution. AI workflows handle your welcome emails, outreach, and lifecycle campaigns. You just build your product.",
     images: [
       {
         url: "/og-image.jpg",
@@ -55,7 +55,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "distribute — Your distribution, automated",
-    description: "The Stripe for Distribution. AI-powered welcome emails, outreach, webinar flows. Zero configuration.",
+    description: "The Stripe of Distribution. AI-powered welcome emails, outreach, webinar flows. Zero configuration.",
     images: ["/og-image.jpg"],
     creator: "@distribute_you",
   },
@@ -113,7 +113,7 @@ const organizationJsonLd = {
   "@type": "Organization",
   name: "distribute",
   url: SITE_URL,
-  description: "The Stripe for Distribution",
+  description: "The Stripe of Distribution",
   sameAs: [
     PROD_URLS.github,
     PROD_URLS.twitter,
