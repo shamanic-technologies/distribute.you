@@ -123,7 +123,11 @@ export async function fetchInvestorMetrics(hostname = ""): Promise<InvestorMetri
     monthlyMap.set(month, entry);
   }
 
-  const sortedMonths = [...monthlyMap.keys()].sort();
+  const sortedMonthsDesc = [...monthlyMap.keys()].sort().reverse();
+
+  const sortedWeeklyDesc = [...billing.weeklyGrowth].sort((a, b) =>
+    b.period.localeCompare(a.period),
+  );
 
   return {
     updatedAt: new Date().toISOString(),
@@ -143,7 +147,7 @@ export async function fetchInvestorMetrics(hostname = ""): Promise<InvestorMetri
       failed: runs.byStatus.failed,
       running: runs.byStatus.running,
     },
-    monthlyGrowth: sortedMonths.map((m) => monthlyMap.get(m)!),
-    weeklyGrowth: billing.weeklyGrowth,
+    monthlyGrowth: sortedMonthsDesc.map((m) => monthlyMap.get(m)!),
+    weeklyGrowth: sortedWeeklyDesc,
   };
 }

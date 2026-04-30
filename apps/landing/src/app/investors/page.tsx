@@ -194,18 +194,18 @@ export default async function InvestorsPage() {
                       Revenue
                     </th>
                     <th className="text-right py-3 px-4 font-medium">
-                      Run Growth
+                      Credits Growth
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {metrics.monthlyGrowth.map((row, i) => {
-                    const prev = metrics.monthlyGrowth[i - 1];
+                    const prev = metrics.monthlyGrowth[i + 1];
                     const growth =
-                      prev && prev.completedRuns > 0
+                      prev && prev.consumedCents > 0
                         ? (
-                            ((row.completedRuns - prev.completedRuns) /
-                              prev.completedRuns) *
+                            ((row.consumedCents - prev.consumedCents) /
+                              prev.consumedCents) *
                             100
                           ).toFixed(0)
                         : null;
@@ -234,8 +234,8 @@ export default async function InvestorsPage() {
                         </td>
                         <td className="py-3 px-4 text-right">
                           {growth ? (
-                            <span className="text-emerald-400">
-                              +{growth}%
+                            <span className={Number(growth) >= 0 ? "text-emerald-400" : "text-red-400"}>
+                              {Number(growth) >= 0 ? "+" : ""}{growth}%
                             </span>
                           ) : (
                             <span className="text-gray-600">--</span>
@@ -270,28 +270,51 @@ export default async function InvestorsPage() {
                     <th className="text-right py-3 px-4 font-medium">
                       Revenue
                     </th>
+                    <th className="text-right py-3 px-4 font-medium">
+                      Credits Growth
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {metrics.weeklyGrowth.map((row) => (
-                    <tr
-                      key={row.period}
-                      className="border-b border-gray-800 text-gray-300"
-                    >
-                      <td className="py-3 px-4 font-medium text-white">
-                        {row.period}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        {formatCents(row.credited_cents)}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        {formatCents(row.consumed_cents)}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        {formatCents(row.revenue_cents)}
-                      </td>
-                    </tr>
-                  ))}
+                  {metrics.weeklyGrowth.map((row, i) => {
+                    const prev = metrics.weeklyGrowth[i + 1];
+                    const growth =
+                      prev && prev.consumed_cents > 0
+                        ? (
+                            ((row.consumed_cents - prev.consumed_cents) /
+                              prev.consumed_cents) *
+                            100
+                          ).toFixed(0)
+                        : null;
+                    return (
+                      <tr
+                        key={row.period}
+                        className="border-b border-gray-800 text-gray-300"
+                      >
+                        <td className="py-3 px-4 font-medium text-white">
+                          {row.period}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          {formatCents(row.credited_cents)}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          {formatCents(row.consumed_cents)}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          {formatCents(row.revenue_cents)}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          {growth ? (
+                            <span className={Number(growth) >= 0 ? "text-emerald-400" : "text-red-400"}>
+                              {Number(growth) >= 0 ? "+" : ""}{growth}%
+                            </span>
+                          ) : (
+                            <span className="text-gray-600">--</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
