@@ -114,11 +114,13 @@ export async function fetchInvestorMetrics(hostname = ""): Promise<InvestorMetri
   }
 
   for (const row of billing.monthlyGrowth) {
-    const entry = monthlyMap.get(row.period) ?? emptyRow(row.period);
+    // Normalize "2026-03-01" to "2026-03" to merge with users/runs data
+    const month = row.period.slice(0, 7);
+    const entry = monthlyMap.get(month) ?? emptyRow(month);
     entry.creditedCents = row.credited_cents;
     entry.consumedCents = row.consumed_cents;
     entry.revenueCents = row.revenue_cents;
-    monthlyMap.set(row.period, entry);
+    monthlyMap.set(month, entry);
   }
 
   const sortedMonths = [...monthlyMap.keys()].sort();
