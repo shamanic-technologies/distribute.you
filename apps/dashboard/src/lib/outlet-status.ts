@@ -47,10 +47,10 @@ export const STATUS_PRIORITY: string[] = [
   "bounced",
   "contacted",
   "served",
+  "skipped",
   "claimed",
   "buffered",
   "open",
-  "skipped",
   "denied",
   "ended",
 ];
@@ -104,9 +104,9 @@ const COUNTS_WATERMARK: Array<{ key: string; display: string }> = [
   { key: "bounced", display: "bounced" },
   { key: "contacted", display: "contacted" },
   { key: "served", display: "served" },
+  { key: "skipped", display: "skipped" },
   { key: "claimed", display: "claimed" },
   { key: "buffered", display: "buffered" },
-  { key: "skipped", display: "skipped" },
 ];
 
 /**
@@ -154,9 +154,9 @@ const BOOLEANS_WATERMARK: Array<{ key: string; display: string }> = [
   { key: "bounced", display: "bounced" },
   { key: "contacted", display: "contacted" },
   { key: "served", display: "served" },
+  { key: "skipped", display: "skipped" },
   { key: "claimed", display: "claimed" },
   { key: "buffered", display: "buffered" },
-  { key: "skipped", display: "skipped" },
 ];
 
 export function deriveDisplayStatusFromBooleans(
