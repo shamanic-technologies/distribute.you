@@ -123,11 +123,22 @@ export async function fetchInvestorMetrics(hostname = ""): Promise<InvestorMetri
     monthlyMap.set(month, entry);
   }
 
-  const sortedMonthsDesc = [...monthlyMap.keys()].sort().reverse();
+  // Only show completed periods — exclude the current (in-progress) month and week
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const sortedMonthsDesc = [...monthlyMap.keys()]
+    .sort()
+    .reverse()
+    .filter((m) => m < currentMonth);
 
-  const sortedWeeklyDesc = [...billing.weeklyGrowth].sort((a, b) =>
-    b.period.localeCompare(a.period),
-  );
+  const dayOfWeek = now.getUTCDay();
+  const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const currentWeekStart = new Date(now);
+  currentWeekStart.setUTCDate(now.getUTCDate() - mondayOffset);
+  const currentWeekStr = currentWeekStart.toISOString().slice(0, 10);
+  const sortedWeeklyDesc = [...billing.weeklyGrowth]
+    .sort((a, b) => b.period.localeCompare(a.period))
+    .filter((w) => w.period < currentWeekStr);
 
   return {
     updatedAt: new Date().toISOString(),

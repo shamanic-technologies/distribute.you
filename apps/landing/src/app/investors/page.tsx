@@ -12,26 +12,29 @@ export const metadata: Metadata = {
 };
 
 function formatCents(cents: number): string {
-  const dollars = cents / 100;
-  return `$${dollars.toFixed(2)}`;
+  const dollars = Math.round(cents / 100);
+  return `$${dollars.toLocaleString("en-US")}`;
 }
 
 function formatNumber(n: number): string {
   return n.toLocaleString("en-US");
 }
 
-function computeAvgGrowth(values: number[]): string | null {
-  const pairs: { prev: number; curr: number }[] = [];
-  for (let i = 0; i < values.length - 1; i++) {
-    if (values[i + 1] > 0) {
-      pairs.push({ prev: values[i + 1], curr: values[i] });
+/** Compound growth rate from first period with spend > 0 to last completed period.
+ *  Values are in descending chronological order (newest first). */
+function computeCAGR(values: number[]): string | null {
+  let newestIdx = -1;
+  let oldestIdx = -1;
+  for (let i = 0; i < values.length; i++) {
+    if (values[i] > 0) {
+      if (newestIdx === -1) newestIdx = i;
+      oldestIdx = i;
     }
   }
-  if (pairs.length === 0) return null;
-  const avg =
-    pairs.reduce((sum, p) => sum + ((p.curr - p.prev) / p.prev) * 100, 0) /
-    pairs.length;
-  return avg.toFixed(0);
+  if (newestIdx === -1 || oldestIdx === -1 || newestIdx === oldestIdx) return null;
+  const periods = oldestIdx - newestIdx;
+  const cagr = (Math.pow(values[newestIdx] / values[oldestIdx], 1 / periods) - 1) * 100;
+  return cagr.toFixed(0);
 }
 
 function StatCard({
@@ -121,10 +124,10 @@ export default async function InvestorsPage() {
       ? ((metrics.runs.completed / totalRuns) * 100).toFixed(1)
       : "0";
 
-  const monthlyAvgGrowth = computeAvgGrowth(
+  const monthlyCAGR = computeCAGR(
     metrics.monthlyGrowth.map((r) => r.consumedCents)
   );
-  const weeklyAvgGrowth = computeAvgGrowth(
+  const weeklyCAGR = computeCAGR(
     metrics.weeklyGrowth.map((r) => r.consumed_cents)
   );
 
@@ -248,21 +251,19 @@ export default async function InvestorsPage() {
         {/* Monthly Growth */}
         <section className="pb-12 px-4">
           <div className="max-w-6xl mx-auto">
-            <div className="flex items-baseline justify-between mb-6">
-              <h2 className="font-display text-2xl font-bold text-gray-200">
-                Monthly Growth
-              </h2>
-              {monthlyAvgGrowth && (
-                <p className="text-sm text-gray-400">
-                  Avg. monthly spending growth:{" "}
-                  <span className={Number(monthlyAvgGrowth) >= 0 ? "text-emerald-400 font-semibold" : "text-red-400 font-semibold"}>
-                    {Number(monthlyAvgGrowth) >= 0 ? "+" : ""}{monthlyAvgGrowth}%
-                  </span>
-                </p>
-              )}
-            </div>
+            <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
+              Monthly Growth
+            </h2>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 overflow-x-auto">
+                {monthlyCAGR && (
+                  <p className="text-sm text-gray-400 mb-4 text-right">
+                    Monthly credits spending growth:{" "}
+                    <span className={Number(monthlyCAGR) >= 0 ? "text-emerald-400 font-semibold" : "text-red-400 font-semibold"}>
+                      {Number(monthlyCAGR) >= 0 ? "+" : ""}{monthlyCAGR}%
+                    </span>
+                  </p>
+                )}
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-700 text-gray-400">
@@ -283,7 +284,7 @@ export default async function InvestorsPage() {
                         Revenue
                       </th>
                       <th className="text-right py-3 px-4 font-medium">
-                        Spending Growth
+                        Credits Spent Growth
                       </th>
                     </tr>
                   </thead>
@@ -348,21 +349,19 @@ export default async function InvestorsPage() {
         {/* Weekly Growth */}
         <section className="pb-12 px-4">
           <div className="max-w-6xl mx-auto">
-            <div className="flex items-baseline justify-between mb-6">
-              <h2 className="font-display text-2xl font-bold text-gray-200">
-                Weekly Growth
-              </h2>
-              {weeklyAvgGrowth && (
-                <p className="text-sm text-gray-400">
-                  Avg. weekly spending growth:{" "}
-                  <span className={Number(weeklyAvgGrowth) >= 0 ? "text-emerald-400 font-semibold" : "text-red-400 font-semibold"}>
-                    {Number(weeklyAvgGrowth) >= 0 ? "+" : ""}{weeklyAvgGrowth}%
-                  </span>
-                </p>
-              )}
-            </div>
+            <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
+              Weekly Growth
+            </h2>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 overflow-x-auto">
+                {weeklyCAGR && (
+                  <p className="text-sm text-gray-400 mb-4 text-right">
+                    Weekly credits spending growth:{" "}
+                    <span className={Number(weeklyCAGR) >= 0 ? "text-emerald-400 font-semibold" : "text-red-400 font-semibold"}>
+                      {Number(weeklyCAGR) >= 0 ? "+" : ""}{weeklyCAGR}%
+                    </span>
+                  </p>
+                )}
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-700 text-gray-400">
@@ -377,7 +376,7 @@ export default async function InvestorsPage() {
                         Revenue
                       </th>
                       <th className="text-right py-3 px-4 font-medium">
-                        Spending Growth
+                        Credits Spent Growth
                       </th>
                     </tr>
                   </thead>
