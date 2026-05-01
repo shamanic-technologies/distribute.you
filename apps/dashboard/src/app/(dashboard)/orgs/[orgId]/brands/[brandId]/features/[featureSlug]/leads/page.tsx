@@ -18,6 +18,9 @@ const LEAD_STATUS_ORDER: LeadConsolidatedStatus[] = [
   "unsubscribed",
   "contacted",
   "served",
+  "skipped",
+  "claimed",
+  "buffered",
 ];
 
 type Tab = LeadConsolidatedStatus | "all";
@@ -33,6 +36,9 @@ function leadStatusLabel(status: LeadConsolidatedStatus): string {
     case "unsubscribed": return "Unsubscribed";
     case "contacted": return "Contacted";
     case "served": return "Processing";
+    case "skipped": return "Skipped";
+    case "claimed": return "Claimed";
+    case "buffered": return "Buffered";
   }
 }
 
@@ -47,6 +53,9 @@ function leadStatusStyle(status: LeadConsolidatedStatus): string {
     case "unsubscribed": return "bg-amber-100 text-amber-700 border-amber-200";
     case "contacted": return "bg-teal-100 text-teal-700 border-teal-200";
     case "served": return "bg-orange-100 text-orange-700 border-orange-200";
+    case "skipped": return "bg-gray-100 text-gray-500 border-gray-200";
+    case "claimed": return "bg-yellow-100 text-yellow-700 border-yellow-200";
+    case "buffered": return "bg-blue-100 text-blue-600 border-blue-200";
   }
 }
 
