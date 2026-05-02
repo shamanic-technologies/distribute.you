@@ -41,7 +41,7 @@ describe("outlet pages use client-side grouping for tab counts (not cumulative b
 describe("deriveDisplayStatusFromCounts handles cumulative counts correctly", () => {
   it("picks highest watermark when all counts are non-zero (cumulative)", () => {
     const counts: OutletStatusCounts = {
-      buffered: 5, claimed: 5, served: 5, skipped: 0,
+      open: 5, served: 5, skipped: 0,
       contacted: 3, sent: 3, delivered: 2, opened: 1,
       clicked: 0, replied: 0, repliesPositive: 0, repliesNegative: 0,
       repliesNeutral: 0, bounced: 0, unsubscribed: 0,
@@ -49,19 +49,19 @@ describe("deriveDisplayStatusFromCounts handles cumulative counts correctly", ()
     expect(deriveDisplayStatusFromCounts(counts)).toBe("opened");
   });
 
-  it("returns 'claimed' when only buffered and claimed are non-zero", () => {
+  it("returns 'open' when only open is non-zero", () => {
     const counts: OutletStatusCounts = {
-      buffered: 3, claimed: 3, served: 0, skipped: 0,
+      open: 3, served: 0, skipped: 0,
       contacted: 0, sent: 0, delivered: 0, opened: 0,
       clicked: 0, replied: 0, repliesPositive: 0, repliesNegative: 0,
       repliesNeutral: 0, bounced: 0, unsubscribed: 0,
     };
-    expect(deriveDisplayStatusFromCounts(counts)).toBe("claimed");
+    expect(deriveDisplayStatusFromCounts(counts)).toBe("open");
   });
 
   it("returns 'sent' when sent > 0 but delivered/opened are 0", () => {
     const counts: OutletStatusCounts = {
-      buffered: 2, claimed: 2, served: 2, skipped: 0,
+      open: 2, served: 2, skipped: 0,
       contacted: 1, sent: 1, delivered: 0, opened: 0,
       clicked: 0, replied: 0, repliesPositive: 0, repliesNegative: 0,
       repliesNeutral: 0, bounced: 0, unsubscribed: 0,
@@ -75,7 +75,7 @@ describe("deriveDisplayStatusFromCounts handles cumulative counts correctly", ()
 
   it("returns 'open' when all counts are zero", () => {
     const counts: OutletStatusCounts = {
-      buffered: 0, claimed: 0, served: 0, skipped: 0,
+      open: 0, served: 0, skipped: 0,
       contacted: 0, sent: 0, delivered: 0, opened: 0,
       clicked: 0, replied: 0, repliesPositive: 0, repliesNegative: 0,
       repliesNeutral: 0, bounced: 0, unsubscribed: 0,
@@ -85,7 +85,7 @@ describe("deriveDisplayStatusFromCounts handles cumulative counts correctly", ()
 
   it("returns 'replied-positive' when repliesPositive > 0", () => {
     const counts: OutletStatusCounts = {
-      buffered: 1, claimed: 1, served: 1, skipped: 0,
+      open: 1, served: 1, skipped: 0,
       contacted: 1, sent: 1, delivered: 1, opened: 1,
       clicked: 0, replied: 1, repliesPositive: 1, repliesNegative: 0,
       repliesNeutral: 0, bounced: 0, unsubscribed: 0,

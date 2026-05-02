@@ -6,8 +6,8 @@ import type { OutletStatusCounts, JournalistStatusBooleans } from "@/lib/api";
  * Used by BOTH outlet and journalist pages. This file covers the UNION of
  * statuses from both entity types:
  *   - Outlet-only: open, denied, ended
- *   - Journalist-only: bounced
- *   - Shared: replied, delivered, contacted, served, claimed, buffered, skipped
+ *   - Journalist-only: bounced, claimed, buffered
+ *   - Shared: replied, delivered, contacted, served, skipped
  *
  * "replied" is split into replied-positive/negative/neutral based on replyClassification.
  * Statuses match the backend exactly — no aggregation, no renaming.
@@ -105,8 +105,7 @@ const COUNTS_WATERMARK: Array<{ key: string; display: string }> = [
   { key: "contacted", display: "contacted" },
   { key: "served", display: "served" },
   { key: "skipped", display: "skipped" },
-  { key: "claimed", display: "claimed" },
-  { key: "buffered", display: "buffered" },
+  { key: "open", display: "open" },
 ];
 
 /**
@@ -136,7 +135,7 @@ export const STATUS_DESCRIPTIONS: Record<string, string> = {
   served: "Served to the email sending pipeline",
   claimed: "Claimed by the sending workflow, not yet served",
   buffered: "Created but not yet processed",
-  open: "Waiting in buffer, not yet claimed by the workflow",
+  open: "Discovered, not yet served or skipped",
   skipped: "Skipped (duplicate, blocked, or low relevance)",
   denied: "Denied",
   ended: "Ended manually",
