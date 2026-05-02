@@ -19,7 +19,7 @@ import * as path from "path";
  * Journalist-only: bounced
  */
 const OUTLET_RAW_STATUSES = [
-  "replied", "delivered", "contacted", "served", "claimed", "buffered", "open", "skipped", "denied", "ended",
+  "replied", "delivered", "contacted", "served", "open", "skipped", "denied", "ended",
 ] as const;
 
 const JOURNALIST_RAW_STATUSES = [
