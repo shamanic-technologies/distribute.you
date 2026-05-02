@@ -69,6 +69,14 @@ export default function BillingPage() {
   const [portalLoading, setPortalLoading] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
+  const [manualReloading, setManualReloading] = useState(false);
+
+  async function handleManualReload() {
+    setManualReloading(true);
+    await queryClient.invalidateQueries({ queryKey: ["billingAccount"] });
+    await queryClient.invalidateQueries({ queryKey: ["billingTransactions"] });
+    setManualReloading(false);
+  }
 
   // Inline validation errors (shown on blur)
   const [thresholdError, setThresholdError] = useState<string | null>(null);
@@ -261,9 +269,26 @@ export default function BillingPage() {
 
   return (
     <div className="p-4 md:p-8">
-      <div className="mb-6">
-        <h1 className="font-display text-2xl font-bold text-gray-800">Billing</h1>
-        <p className="text-gray-600">Manage your credits and payment method.</p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-gray-800">Billing</h1>
+          <p className="text-gray-600">Manage your credits and payment method.</p>
+        </div>
+        <button
+          onClick={handleManualReload}
+          disabled={manualReloading}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition disabled:opacity-50"
+        >
+          <svg
+            className={`w-4 h-4 ${manualReloading ? "animate-spin" : ""}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          {manualReloading ? "Refreshing..." : "Refresh"}
+        </button>
       </div>
 
       {showSuccess && (
