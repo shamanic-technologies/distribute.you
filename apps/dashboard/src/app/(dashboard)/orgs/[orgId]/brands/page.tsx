@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import posthog from "posthog-js";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { listBrands, upsertBrand, extractBrandFields, SALES_PROFILE_FIELDS } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
@@ -35,12 +36,19 @@ export default function BrandsPage() {
     const url = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
     setIsCreating(true);
     setCreateError(null);
+    const source = searchParams.get("autoCreate") === rawUrl ? "onboarding" : "manual";
+    posthog.capture("brand_create_started", { source });
     try {
       const { brandId: newBrandId } = await upsertBrand(url);
       extractBrandFields([newBrandId], SALES_PROFILE_FIELDS).catch(() => {});
       await refetch();
+      posthog.capture("brand_create_completed", {
+        brand_id: newBrandId,
+        source,
+      });
       router.replace(`/orgs/${orgId}/brands/${newBrandId}`);
     } catch (err) {
+      posthog.capture("brand_create_failed", { source });
       setCreateError(err instanceof Error ? err.message : "Failed to create brand");
       setShowCreate(true);
       setBrandUrl(rawUrl);
