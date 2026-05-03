@@ -437,43 +437,45 @@ export default async function InvestorsPage() {
         <section className="pb-12 px-4">
           <div className="max-w-4xl mx-auto">
             <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
-              What We Need — May 2026
+              What We Need From Investors in May 2026
             </h2>
             <div className="bg-gray-800/30 border border-gray-700/50 rounded-xl p-6 text-gray-300 text-sm leading-relaxed space-y-6">
               <div>
-                <h3 className="text-white font-semibold text-base mb-2">Raise</h3>
+                <h3 className="text-white font-semibold text-base mb-2">
+                  $20K SAFE - $15K to cover 2026 fixed costs & $5K to accelerate sales growth
+                </h3>
                 <p>
-                  We are raising a <strong className="text-white">$500K pre-seed round</strong> to
-                  fund 12 months of runway. The capital will go toward infrastructure costs,
-                  AI model spend, and one full-time hire (growth engineer).
+                  We are raising a small round via a{" "}
+                  <a
+                    href="https://www.ycombinator.com/documents"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-white underline decoration-gray-500 underline-offset-4 hover:decoration-white"
+                  >
+                    SAFE (Simple Agreement for Future Equity)
+                  </a>, the standard Y Combinator investment instrument. No valuation cap
+                  negotiation needed upfront - your investment converts to equity at the
+                  next priced round.
                 </p>
               </div>
               <div>
-                <h3 className="text-white font-semibold text-base mb-2">Use of Funds</h3>
-                <ul className="list-disc list-inside space-y-1 text-gray-300">
-                  <li><strong className="text-white">40%</strong> — AI model costs (Anthropic, OpenAI, Google) and infrastructure (Railway, Neon, Vercel)</li>
-                  <li><strong className="text-white">30%</strong> — First growth engineer hire</li>
-                  <li><strong className="text-white">20%</strong> — Customer acquisition and paid distribution experiments</li>
-                  <li><strong className="text-white">10%</strong> — Legal, compliance, and operational buffer</li>
-                </ul>
-              </div>
-              <div>
-                <h3 className="text-white font-semibold text-base mb-2">Key Milestones (Next 6 Months)</h3>
-                <ul className="list-disc list-inside space-y-1 text-gray-300">
-                  <li>Reach <strong className="text-white">$5K MRR</strong> in credit consumption</li>
-                  <li>Onboard <strong className="text-white">50 paying organizations</strong></li>
-                  <li>Launch <strong className="text-white">self-serve onboarding</strong> (no-touch signup to first workflow execution)</li>
-                  <li>Ship <strong className="text-white">MCP marketplace</strong> — third-party developers publish and monetize distribution workflows</li>
-                </ul>
-              </div>
-              <div>
-                <h3 className="text-white font-semibold text-base mb-2">Why Now</h3>
+                <h3 className="text-white font-semibold text-base mb-2">
+                  $500K - to convince a risk-averse tech co-founder to join
+                </h3>
                 <p>
-                  AI model costs are dropping 10x per year. Distribution — lead finding,
-                  outreach, content creation — is the last major business function still done
-                  manually by most companies. The Model Context Protocol (MCP) creates a
-                  standard interface for AI agents to interact with external tools, making
-                  it possible to build a horizontal distribution platform for the first time.
+                  A larger raise to de-risk the opportunity for a technical co-founder.
+                  With capital in the bank, we can offer a competitive package that makes
+                  joining an early-stage startup a rational decision.
+                </p>
+              </div>
+              <div>
+                <h3 className="text-white font-semibold text-base mb-2">
+                  Technical Co-Founder Introduction
+                </h3>
+                <p>
+                  We are seeking a technical co-founder to join the team. Ideal profile:
+                  full-stack software engineer. If you know someone who might be a fit,
+                  please reach out.
                 </p>
               </div>
             </div>
