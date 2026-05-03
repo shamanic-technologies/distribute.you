@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
+import { PostHogAuthTracker } from "@/components/posthog-auth-tracker";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
@@ -106,7 +107,10 @@ export default function RootLayout({
           />
         </head>
         <body className="antialiased">
-          <ThemeProvider>{children}</ThemeProvider>
+          <ThemeProvider>
+            <PostHogAuthTracker />
+            {children}
+          </ThemeProvider>
         </body>
       </html>
     </ClerkProvider>

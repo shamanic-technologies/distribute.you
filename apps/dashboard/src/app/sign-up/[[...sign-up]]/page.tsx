@@ -6,6 +6,7 @@ import { useSignUp } from "@clerk/nextjs/legacy";
 import { useAuth } from "@clerk/nextjs";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import posthog from "posthog-js";
 
 export default function SignUpPage() {
   const { signUp, isLoaded } = useSignUp();
@@ -24,12 +25,14 @@ export default function SignUpPage() {
     setLoading(true);
     try {
       sessionStorage.setItem("distribute_auth_intent", "signup");
+      posthog.capture("signup_google_oauth_started", { provider: "google" });
       await signUp.authenticateWithRedirect({
         strategy: "oauth_google",
         redirectUrl: "/sso-callback",
         redirectUrlComplete: "/",
       });
     } catch (error) {
+      posthog.capture("signup_google_oauth_failed", { provider: "google" });
       console.error("Sign up error:", error);
       setLoading(false);
     }

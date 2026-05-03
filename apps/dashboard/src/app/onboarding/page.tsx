@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useOrganizationList } from "@clerk/nextjs";
+import posthog from "posthog-js";
 
 type AccountType = "agency" | "company";
 type Step = "value-prop" | "type-selection" | "url-input";
@@ -30,7 +31,12 @@ export default function OnboardingPage() {
 
   const domain = extractDomain(url);
 
+  useEffect(() => {
+    posthog.capture("onboarding_step_viewed", { step });
+  }, [step]);
+
   const handleTypeSelect = (type: AccountType) => {
+    posthog.capture("onboarding_account_type_selected", { account_type: type });
     setAccountType(type);
     setStep("url-input");
   };
@@ -39,13 +45,26 @@ export default function OnboardingPage() {
     if (!domain || !accountType || !createOrganization || !setActive) return;
     setSubmitting(true);
     setError(null);
+    posthog.capture("onboarding_workspace_create_started", {
+      account_type: accountType,
+      domain,
+    });
     try {
       const brandUrl = /^https?:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`;
       const org = await createOrganization({ name: domain });
       await setActive({ organization: org.id });
+      posthog.capture("onboarding_workspace_create_completed", {
+        account_type: accountType,
+        domain,
+        org_id: org.id,
+      });
       // Full reload so Clerk session cookie is updated before API calls
       window.location.href = `/orgs/${org.id}/brands?autoCreate=${encodeURIComponent(brandUrl)}`;
     } catch (err) {
+      posthog.capture("onboarding_workspace_create_failed", {
+        account_type: accountType,
+        domain,
+      });
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {
       setSubmitting(false);
