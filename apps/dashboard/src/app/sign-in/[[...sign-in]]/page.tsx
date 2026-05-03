@@ -6,6 +6,7 @@ import { useSignIn } from "@clerk/nextjs/legacy";
 import { useAuth } from "@clerk/nextjs";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import posthog from "posthog-js";
 
 export default function SignInPage() {
   const { signIn, isLoaded } = useSignIn();
@@ -23,12 +24,14 @@ export default function SignInPage() {
     if (!isLoaded || isSignedIn) return;
     setLoading(true);
     try {
+      posthog.capture("signin_google_oauth_started", { provider: "google" });
       await signIn.authenticateWithRedirect({
         strategy: "oauth_google",
         redirectUrl: "/sso-callback",
         redirectUrlComplete: "/",
       });
     } catch (error) {
+      posthog.capture("signin_google_oauth_failed", { provider: "google" });
       console.error("Sign in error:", error);
       setLoading(false);
     }
