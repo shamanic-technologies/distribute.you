@@ -449,7 +449,7 @@ export default function CreateCampaignPage() {
 
     try {
       const account = await getBillingAccount();
-      const willExceed = budgetCents > account.creditBalanceCents;
+      const willExceed = budgetCents > parseFloat(account.creditBalanceCents);
       const isRecurring = budgetFrequency !== "one-off";
 
       if ((willExceed || isRecurring) && !account.hasAutoReload) {

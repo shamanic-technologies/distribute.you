@@ -12,17 +12,13 @@ import {
   type BillingTransaction,
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
+import { formatBillingCents } from "@/lib/format-number";
 
 const POLL_INTERVAL = 5_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
 
 const TOPUP_AMOUNTS = [1000, 2500, 5000, 10000]; // cents
 const TX_PAGE_SIZE = 10;
-
-function formatCents(cents: number): string {
-  const usd = cents / 100;
-  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
 
 export default function BillingPage() {
   const params = useParams();
@@ -110,15 +106,15 @@ export default function BillingPage() {
 
   const hasValidationError = !!(thresholdError || customAmountError || reloadAmountError);
 
-  const isDepleted = account ? account.creditBalanceCents <= 0 : false;
+  const isDepleted = account ? parseFloat(account.creditBalanceCents) <= 0 : false;
   const hasAutoReload = account?.hasAutoReload ?? false;
 
   // Pre-fill auto-reload fields from existing config
   useEffect(() => {
     if (account?.hasAutoReload) {
       setEnableAutoReload(true);
-      if (!reloadAmount && account.reloadAmountCents) setReloadAmount((account.reloadAmountCents / 100).toString());
-      if (!reloadThreshold && account.reloadThresholdCents) setReloadThreshold((account.reloadThresholdCents / 100).toString());
+      if (!reloadAmount && account.reloadAmountCents) setReloadAmount((parseFloat(account.reloadAmountCents) / 100).toString());
+      if (!reloadThreshold && account.reloadThresholdCents) setReloadThreshold((parseFloat(account.reloadThresholdCents) / 100).toString());
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account?.hasAutoReload, account?.reloadAmountCents, account?.reloadThresholdCents]);
@@ -309,7 +305,7 @@ export default function BillingPage() {
             <div>
               <p className="text-sm text-gray-500">Credit Balance</p>
               <p className={`text-3xl font-bold mt-1 ${isDepleted ? "text-red-600" : "text-gray-900"}`}>
-                {formatCents(account?.creditBalanceCents ?? 0)}
+                {formatBillingCents(account?.creditBalanceCents ?? 0)}
               </p>
               {hasAutoReload && (
                 <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
@@ -403,8 +399,8 @@ export default function BillingPage() {
                   <button
                     onClick={() => {
                       setEditingReload(false);
-                      if (account?.reloadAmountCents) setReloadAmount((account.reloadAmountCents / 100).toString());
-                      if (account?.reloadThresholdCents) setReloadThreshold((account.reloadThresholdCents / 100).toString());
+                      if (account?.reloadAmountCents) setReloadAmount((parseFloat(account.reloadAmountCents) / 100).toString());
+                      if (account?.reloadThresholdCents) setReloadThreshold((parseFloat(account.reloadThresholdCents) / 100).toString());
                     }}
                     className="px-5 py-2 text-sm text-gray-600 hover:text-gray-800 transition"
                   >
@@ -423,11 +419,11 @@ export default function BillingPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gray-50 rounded-lg p-3">
                   <p className="text-xs text-gray-500">Reload amount</p>
-                  <p className="text-lg font-semibold text-gray-900 mt-0.5">{formatCents(account!.reloadAmountCents!)}</p>
+                  <p className="text-lg font-semibold text-gray-900 mt-0.5">{formatBillingCents(account!.reloadAmountCents!)}</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3">
                   <p className="text-xs text-gray-500">When balance below</p>
-                  <p className="text-lg font-semibold text-gray-900 mt-0.5">{formatCents(account!.reloadThresholdCents ?? 0)}</p>
+                  <p className="text-lg font-semibold text-gray-900 mt-0.5">{formatBillingCents(account!.reloadThresholdCents ?? 0)}</p>
                 </div>
               </div>
             )}
@@ -447,7 +443,7 @@ export default function BillingPage() {
                       : "border-gray-200 text-gray-700 hover:border-gray-300"
                   }`}
                 >
-                  {formatCents(amount)}
+                  {formatBillingCents(amount)}
                 </button>
               ))}
               <input
@@ -523,7 +519,7 @@ export default function BillingPage() {
               disabled={topupLoading || (enableAutoReload && !reloadAmount) || hasValidationError}
               className="bg-brand-600 text-white px-6 py-2.5 rounded-lg hover:bg-brand-700 disabled:opacity-50 text-sm font-medium transition"
             >
-              {topupLoading ? "Redirecting to Stripe..." : `Add ${formatCents(customAmount ? Math.round(parseFloat(customAmount) * 100) || 0 : topupAmount)}`}
+              {topupLoading ? "Redirecting to Stripe..." : `Add ${formatBillingCents(customAmount ? Math.round(parseFloat(customAmount) * 100) || 0 : topupAmount)}`}
             </button>
           </div>
         )}
@@ -561,7 +557,7 @@ export default function BillingPage() {
                       <p className={`text-sm font-medium ${
                         tx.type === "deduction" ? "text-red-600" : "text-green-600"
                       }`}>
-                        {tx.type === "deduction" ? "-" : "+"}{formatCents(Math.abs(tx.amount_cents))}
+                        {tx.type === "deduction" ? "-" : "+"}{formatBillingCents(Math.abs(parseFloat(tx.amount_cents)))}
                       </p>
                       <p className="text-xs text-gray-400 capitalize">{tx.type}</p>
                     </div>

@@ -33,6 +33,18 @@ describe("Investor metrics: billing growth data", () => {
       expect(fetchMetrics).toMatch(/interface MonthlyRow[\s\S]*?consumedCents:/);
       expect(fetchMetrics).toMatch(/interface MonthlyRow[\s\S]*?revenueCents:/);
     });
+
+    it("BillingGrowthRow cent fields are typed as decimal strings", () => {
+      expect(fetchMetrics).toMatch(/credited_cents:\s*string/);
+      expect(fetchMetrics).toMatch(/consumed_cents:\s*string/);
+      expect(fetchMetrics).toMatch(/revenue_cents:\s*string/);
+    });
+
+    it("BillingStatsResponse total cent fields are typed as strings", () => {
+      expect(fetchMetrics).toMatch(/totalCreditBalanceCents:\s*string/);
+      expect(fetchMetrics).toMatch(/totalCreditedCents:\s*string/);
+      expect(fetchMetrics).toMatch(/totalConsumedCents:\s*string/);
+    });
   });
 
   describe("investors/page.tsx", () => {
