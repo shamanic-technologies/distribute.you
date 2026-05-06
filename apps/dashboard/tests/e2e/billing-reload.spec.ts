@@ -25,14 +25,15 @@ async function mockDashboardApi(page: Page) {
     }
 
     if (path === "/billing/accounts") {
+      // billing-service v2 returns *_cents as decimal strings
       await route.fulfill({
         json: {
-          creditBalanceCents: 2,
+          creditBalanceCents: "2.0000000000",
           currency: "usd",
           hasPaymentMethod: true,
           hasAutoReload: true,
-          reloadAmountCents: 2500,
-          reloadThresholdCents: 500,
+          reloadAmountCents: "2500.0000000000",
+          reloadThresholdCents: "500.0000000000",
         },
       });
       return;

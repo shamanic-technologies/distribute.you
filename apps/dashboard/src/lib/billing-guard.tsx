@@ -9,15 +9,22 @@ import {
   getBillingAccount,
   type BillingAccount,
 } from "@/lib/api";
+import { formatBillingCents } from "@/lib/format-number";
 
+// API responses now ship cents as decimal strings (billing-service v2). FE-computed
+// budgets are still integer cents — accept both shapes everywhere they cross.
 interface PaymentRequiredInfo {
-  balance_cents?: number;
-  required_cents?: number;
+  balance_cents?: string | number;
+  required_cents?: string | number;
   error?: string;
   /** When true, this is a proactive warning (campaign may exceed credits) rather than a hard 402 block */
   proactive?: boolean;
   /** Callback invoked after the user dismisses the modal having set up auto-reload (proactive flow only) */
   onAutoReloadConfigured?: () => void;
+}
+
+function toCentsNumber(v: string | number): number {
+  return typeof v === "string" ? parseFloat(v) : v;
 }
 
 interface BillingGuardContextValue {
@@ -32,11 +39,6 @@ const BillingGuardContext = createContext<BillingGuardContextValue>({
 
 export function useBillingGuard() {
   return useContext(BillingGuardContext);
-}
-
-function formatCents(cents: number): string {
-  const usd = cents / 100;
-  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 const TOPUP_AMOUNTS = [1000, 2500, 5000, 10000]; // cents
@@ -104,8 +106,8 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
   const showPaymentRequired = useCallback((paymentInfo: PaymentRequiredInfo) => {
     setInfo(paymentInfo);
     // Pre-select the smallest amount that covers the deficit, or default to $25
-    if (paymentInfo.required_cents && paymentInfo.balance_cents !== undefined) {
-      const deficit = paymentInfo.required_cents - paymentInfo.balance_cents;
+    if (paymentInfo.required_cents !== undefined && paymentInfo.balance_cents !== undefined) {
+      const deficit = toCentsNumber(paymentInfo.required_cents) - toCentsNumber(paymentInfo.balance_cents);
       const match = TOPUP_AMOUNTS.find((a) => a >= deficit);
       const picked = match ?? TOPUP_AMOUNTS[TOPUP_AMOUNTS.length - 1];
       setSelectedAmount(picked);
@@ -130,8 +132,8 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
       setAccount(acct);
       if (acct.hasAutoReload) {
         setEnableAutoReload(true);
-        if (acct.reloadAmountCents) setReloadAmount((acct.reloadAmountCents / 100).toString());
-        if (acct.reloadThresholdCents) setReloadThreshold((acct.reloadThresholdCents / 100).toString());
+        if (acct.reloadAmountCents) setReloadAmount((parseFloat(acct.reloadAmountCents) / 100).toString());
+        if (acct.reloadThresholdCents) setReloadThreshold((parseFloat(acct.reloadThresholdCents) / 100).toString());
       }
     }).catch(() => {});
   }, []);
@@ -246,13 +248,13 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
                 {info.balance_cents !== undefined && (
                   <div className="flex justify-between">
                     <span className="text-gray-500">Current balance</span>
-                    <span className="font-medium text-gray-900">{formatCents(info.balance_cents)}</span>
+                    <span className="font-medium text-gray-900">{formatBillingCents(info.balance_cents)}</span>
                   </div>
                 )}
                 {info.required_cents !== undefined && (
                   <div className="flex justify-between">
                     <span className="text-gray-500">{isProactive ? "Campaign budget" : "Required"}</span>
-                    <span className="font-medium text-gray-900">{formatCents(info.required_cents)}</span>
+                    <span className="font-medium text-gray-900">{formatBillingCents(info.required_cents)}</span>
                   </div>
                 )}
               </div>
@@ -271,7 +273,7 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
                       : "border-gray-200 text-gray-700 hover:border-gray-300"
                   }`}
                 >
-                  {formatCents(amount)}
+                  {formatBillingCents(amount)}
                 </button>
               ))}
             </div>
@@ -369,7 +371,7 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
                   disabled={checkoutLoading || hasValidationError}
                   className="flex-[2] px-4 py-2.5 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 transition disabled:opacity-50"
                 >
-                  {checkoutLoading ? "Redirecting..." : `Add ${formatCents(effectiveAmountCents || 0)} \u2192`}
+                  {checkoutLoading ? "Redirecting..." : `Add ${formatBillingCents(effectiveAmountCents || 0)} \u2192`}
                 </button>
               )}
             </div>

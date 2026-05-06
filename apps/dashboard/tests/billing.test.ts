@@ -375,7 +375,8 @@ describe("Proactive credit check in campaign creation (org-scoped)", () => {
   });
 
   it("should check if budget exceeds balance before creating campaign", () => {
-    expect(content).toContain("budgetCents > account.creditBalanceCents");
+    // billing-service v2 returns creditBalanceCents as decimal string — must be parsed for comparison
+expect(content).toContain("budgetCents > parseFloat(account.creditBalanceCents)");
   });
 
   it("should check for recurring campaigns without auto-reload", () => {
@@ -413,7 +414,8 @@ describe("Proactive credit check in campaign creation (feature-scoped)", () => {
   });
 
   it("should check if budget exceeds balance before creating campaign", () => {
-    expect(content).toContain("budgetCents > account.creditBalanceCents");
+    // billing-service v2 returns creditBalanceCents as decimal string — must be parsed for comparison
+expect(content).toContain("budgetCents > parseFloat(account.creditBalanceCents)");
   });
 
   it("should show proactive modal with onAutoReloadConfigured callback", () => {

@@ -1253,22 +1253,24 @@ export async function createCampaign(
 }
 
 // Billing
+// billing-service v2 returns all `*_cents` / `*Cents` fields as full-precision
+// decimal strings (e.g. "100.4200000000"). Use parseFloat for math; never Number().
 export interface BillingAccount {
-  creditBalanceCents: number;
-  reloadAmountCents: number | null;
-  reloadThresholdCents: number | null;
+  creditBalanceCents: string;
+  reloadAmountCents: string | null;
+  reloadThresholdCents: string | null;
   hasPaymentMethod: boolean;
   hasAutoReload: boolean;
 }
 
 export interface BillingBalance {
-  balance_cents: number;
+  balance_cents: string;
   depleted: boolean;
 }
 
 export interface BillingTransaction {
   id: string;
-  amount_cents: number;
+  amount_cents: string;
   description: string;
   created_at: string;
   type: "deduction" | "credit" | "reload";
