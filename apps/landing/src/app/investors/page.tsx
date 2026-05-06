@@ -3,6 +3,7 @@ import Image from "next/image";
 import { headers } from "next/headers";
 import { Navbar } from "@/components/navbar";
 import { fetchInvestorMetrics } from "@/lib/investors/fetch-metrics";
+import { formatCents, formatNumber, computeCAGR } from "@/lib/investors/format";
 
 export const metadata: Metadata = {
   title: "Investor Information",
@@ -10,32 +11,6 @@ export const metadata: Metadata = {
     "Live platform metrics and company information for distribute investors.",
   robots: { index: false, follow: false },
 };
-
-function formatCents(cents: number): string {
-  const dollars = Math.round(cents / 100);
-  return `$${dollars.toLocaleString("en-US")}`;
-}
-
-function formatNumber(n: number): string {
-  return n.toLocaleString("en-US");
-}
-
-/** Compound growth rate from first period with spend > 0 to last completed period.
- *  Values are in descending chronological order (newest first). */
-function computeCAGR(values: number[]): string | null {
-  let newestIdx = -1;
-  let oldestIdx = -1;
-  for (let i = 0; i < values.length; i++) {
-    if (values[i] > 0) {
-      if (newestIdx === -1) newestIdx = i;
-      oldestIdx = i;
-    }
-  }
-  if (newestIdx === -1 || oldestIdx === -1 || newestIdx === oldestIdx) return null;
-  const periods = oldestIdx - newestIdx;
-  const cagr = (Math.pow(values[newestIdx] / values[oldestIdx], 1 / periods) - 1) * 100;
-  return cagr.toFixed(0);
-}
 
 function StatCard({
   label,
@@ -70,16 +45,17 @@ function BarChart({
   data,
   rotateLabels,
 }: {
-  data: { label: string; value: number }[];
+  data: { label: string; value: string }[];
   rotateLabels?: boolean;
 }) {
-  const max = Math.max(...data.map((d) => d.value), 1);
+  const numericValues = data.map((d) => parseFloat(d.value));
+  const max = Math.max(...numericValues, 1);
   return (
     <div className="bg-gray-800/30 border border-gray-700/50 rounded-xl p-6 overflow-hidden">
       <p className="text-sm text-gray-400 mb-4 font-medium">Credits Spent</p>
       <div className="flex items-end gap-1 h-48">
-        {data.map((d) => {
-          const pct = (d.value / max) * 100;
+        {data.map((d, i) => {
+          const pct = (numericValues[i] / max) * 100;
           return (
             <div key={d.label} className="flex-1 min-w-0 flex flex-col items-center gap-1">
               <span className="text-[10px] text-gray-400 truncate w-full text-center">
@@ -291,11 +267,12 @@ export default async function InvestorsPage() {
                   <tbody>
                     {metrics.monthlyGrowth.map((row, i) => {
                       const prev = metrics.monthlyGrowth[i + 1];
+                      const rowConsumed = parseFloat(row.consumedCents);
+                      const prevConsumed = prev ? parseFloat(prev.consumedCents) : 0;
                       const growth =
-                        prev && prev.consumedCents > 0
+                        prev && prevConsumed > 0
                           ? (
-                              ((row.consumedCents - prev.consumedCents) /
-                                prev.consumedCents) *
+                              ((rowConsumed - prevConsumed) / prevConsumed) *
                               100
                             ).toFixed(0)
                           : null;
@@ -383,11 +360,12 @@ export default async function InvestorsPage() {
                   <tbody>
                     {metrics.weeklyGrowth.map((row, i) => {
                       const prev = metrics.weeklyGrowth[i + 1];
+                      const rowConsumed = parseFloat(row.consumed_cents);
+                      const prevConsumed = prev ? parseFloat(prev.consumed_cents) : 0;
                       const growth =
-                        prev && prev.consumed_cents > 0
+                        prev && prevConsumed > 0
                           ? (
-                              ((row.consumed_cents - prev.consumed_cents) /
-                                prev.consumed_cents) *
+                              ((rowConsumed - prevConsumed) / prevConsumed) *
                               100
                             ).toFixed(0)
                           : null;
