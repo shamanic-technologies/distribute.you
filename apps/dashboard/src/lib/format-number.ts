@@ -14,6 +14,17 @@ export function formatCentsAsUsd(cents: number | string, decimals = 2): string {
   return formatUsd(usd, decimals);
 }
 
+/**
+ * Format billing cents (fractional, full-precision decimal string from billing-service)
+ * as USD, ceiling to the next whole cent so the user is never under-charged in display.
+ * Accepts string ("100.4200000000") or number; both are rounded UP per cent.
+ */
+export function formatBillingCents(cents: string | number): string {
+  const raw = typeof cents === "string" ? parseFloat(cents) : cents;
+  const usd = Math.ceil(raw) / 100;
+  return formatUsd(usd, 2);
+}
+
 /** Format cents as USD, returning null for null/undefined/zero/NaN. */
 export function formatCentsAsUsdOrNull(cents: string | number | null | undefined): string | null {
   if (cents === null || cents === undefined) return null;
