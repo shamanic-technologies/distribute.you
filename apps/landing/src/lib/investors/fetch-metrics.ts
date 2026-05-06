@@ -5,16 +5,16 @@ interface MonthlyRow {
   newOrgs: number;
   newUsers: number;
   completedRuns: number;
-  creditedCents: number;
-  consumedCents: number;
-  revenueCents: number;
+  creditedCents: string;
+  consumedCents: string;
+  revenueCents: string;
 }
 
 interface BillingGrowthRow {
   period: string;
-  credited_cents: number;
-  consumed_cents: number;
-  revenue_cents: number;
+  credited_cents: string;
+  consumed_cents: string;
+  revenue_cents: string;
 }
 
 export interface InvestorMetrics {
@@ -23,9 +23,9 @@ export interface InvestorMetrics {
   billing: {
     totalAccounts: number;
     accountsWithPaymentMethod: number;
-    totalCreditBalanceCents: number;
-    totalCreditedCents: number;
-    totalConsumedCents: number;
+    totalCreditBalanceCents: string;
+    totalCreditedCents: string;
+    totalConsumedCents: string;
   };
   runs: {
     completed: number;
@@ -45,9 +45,9 @@ interface UsersStatsResponse {
 interface BillingStatsResponse {
   totalAccounts: number;
   accountsWithPaymentMethod: number;
-  totalCreditBalanceCents: number;
-  totalCreditedCents: number;
-  totalConsumedCents: number;
+  totalCreditBalanceCents: string;
+  totalCreditedCents: string;
+  totalConsumedCents: string;
   monthlyGrowth: BillingGrowthRow[];
   weeklyGrowth: BillingGrowthRow[];
 }
@@ -95,9 +95,9 @@ export async function fetchInvestorMetrics(hostname = ""): Promise<InvestorMetri
     newOrgs: 0,
     newUsers: 0,
     completedRuns: 0,
-    creditedCents: 0,
-    consumedCents: 0,
-    revenueCents: 0,
+    creditedCents: "0",
+    consumedCents: "0",
+    revenueCents: "0",
   });
 
   for (const row of users.monthlyGrowth) {
