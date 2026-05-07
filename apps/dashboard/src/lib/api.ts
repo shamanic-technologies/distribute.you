@@ -209,6 +209,7 @@ export interface Campaign {
   maxBudgetMonthlyUsd: string | null;
   maxBudgetTotalUsd: string | null;
   endDate: string | null;
+  toResumeAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
