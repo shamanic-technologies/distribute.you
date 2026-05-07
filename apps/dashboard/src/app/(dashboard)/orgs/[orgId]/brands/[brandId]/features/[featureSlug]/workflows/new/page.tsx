@@ -3,12 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
-import { generateWorkflow } from "@/lib/api";
+import { createWorkflow } from "@/lib/api";
 import { useFeatures } from "@/lib/features-context";
 
 /**
  * Intermediate page that shows the workflow-detail skeleton
- * while generateWorkflow runs in the background.
+ * while createWorkflow runs in the background.
  * Navigates to the real workflow page as soon as it's ready.
  */
 export default function NewWorkflowPage() {
@@ -26,7 +26,7 @@ export default function NewWorkflowPage() {
 
   const createMutation = useMutation({
     mutationFn: () =>
-      generateWorkflow({
+      createWorkflow({
         description: `Create a ${wfDef?.name ?? featureSlug} workflow: ${wfDef?.description ?? "automated workflow for this feature"}.`,
         featureSlug: featureSlug,
         hints: {},

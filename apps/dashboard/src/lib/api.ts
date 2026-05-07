@@ -1230,8 +1230,15 @@ export async function fetchRankedWorkflows(params: {
   return data.results;
 }
 
-// Generate workflow via AI
-export interface GenerateWorkflowRequest {
+// Create / Upgrade / Fork workflow via AI
+export interface WorkflowStyle {
+  type: "human" | "brand";
+  name: string;
+  humanId?: string;
+  brandId?: string;
+}
+
+export interface CreateWorkflowRequest {
   description: string;
   featureSlug: string;
   hints?: {
@@ -1239,9 +1246,10 @@ export interface GenerateWorkflowRequest {
     nodeTypes?: string[];
     expectedInputs?: string[];
   };
+  style?: WorkflowStyle;
 }
 
-export interface GenerateWorkflowResult {
+export interface CreateWorkflowResult {
   workflow: {
     id: string;
     name: string;
@@ -1256,12 +1264,67 @@ export interface GenerateWorkflowResult {
   generatedDescription: string;
 }
 
-export async function generateWorkflow(
-  params: GenerateWorkflowRequest,
+export async function createWorkflow(
+  params: CreateWorkflowRequest,
   token?: string,
-): Promise<GenerateWorkflowResult> {
-  return apiCall<GenerateWorkflowResult>("/workflows/generate", {
+): Promise<CreateWorkflowResult> {
+  return apiCall<CreateWorkflowResult>("/workflows/create", {
     method: "POST",
+    body: params as unknown as Record<string, unknown>,
+    token,
+  });
+}
+
+export interface UpgradeWorkflowRequest {
+  workflowSlug: string;
+  description: string;
+  hints?: string[];
+}
+
+export type UpgradeWorkflowResult = CreateWorkflowResult;
+
+export async function upgradeWorkflow(
+  params: UpgradeWorkflowRequest,
+  token?: string,
+): Promise<UpgradeWorkflowResult> {
+  return apiCall<UpgradeWorkflowResult>("/workflows/upgrade", {
+    method: "POST",
+    body: params as unknown as Record<string, unknown>,
+    token,
+  });
+}
+
+export interface ForkWorkflowRequest {
+  name?: string;
+  description?: string;
+  tags?: string[];
+  dag?: DAG;
+}
+
+export interface ForkWorkflowResult {
+  id: string;
+  workflowSlug: string;
+  workflowName: string;
+  workflowDynastyName: string;
+  workflowDynastySlug: string;
+  version: number;
+  signature: string;
+  signatureName: string;
+  featureSlug: string;
+  _action: "updated" | "forked";
+  _forkedFromId?: string;
+  _forkedFromName?: string;
+  _sourceDynastyDeprecated?: boolean;
+  dag?: DAG;
+}
+
+export async function forkWorkflow(
+  workflowId: string,
+  params: ForkWorkflowRequest,
+  token?: string,
+): Promise<ForkWorkflowResult> {
+  return apiCall<ForkWorkflowResult>(`/workflows/${workflowId}`, {
+    method: "PUT",
     body: params as unknown as Record<string, unknown>,
     token,
   });
