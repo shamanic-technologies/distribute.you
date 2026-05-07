@@ -236,13 +236,14 @@ export default function CampaignOverviewPage() {
       )}
 
       {/* Budget info */}
-      {(campaign.maxBudgetDailyUsd || campaign.maxBudgetWeeklyUsd || campaign.maxBudgetMonthlyUsd) && (
+      {(campaign.maxBudgetDailyUsd || campaign.maxBudgetWeeklyUsd || campaign.maxBudgetMonthlyUsd || campaign.maxBudgetTotalUsd) && (
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <h3 className="font-medium text-gray-800 mb-2">Budget</h3>
           <div className="flex gap-4 text-sm text-gray-600">
             {campaign.maxBudgetDailyUsd && <span>Daily: ${campaign.maxBudgetDailyUsd}</span>}
             {campaign.maxBudgetWeeklyUsd && <span>Weekly: ${campaign.maxBudgetWeeklyUsd}</span>}
             {campaign.maxBudgetMonthlyUsd && <span>Monthly: ${campaign.maxBudgetMonthlyUsd}</span>}
+            {campaign.maxBudgetTotalUsd && <span>Total: ${campaign.maxBudgetTotalUsd}</span>}
           </div>
         </div>
       )}
