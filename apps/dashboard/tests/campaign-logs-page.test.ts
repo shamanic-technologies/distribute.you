@@ -84,5 +84,32 @@ describe("Campaign logs page", () => {
     it("should show empty state copy", () => {
       expect(logsPageContent).toMatch(/No logs/i);
     });
+
+    it("should request page size of 100", () => {
+      expect(logsPageContent).toMatch(/limit:\s*100/);
+    });
+
+    it("should expose a service filter", () => {
+      expect(logsPageContent).toMatch(/serviceFilter/);
+    });
+
+    it("should expose a keyword filter", () => {
+      expect(logsPageContent).toMatch(/keyword/i);
+    });
+
+    it("should not auto-expand the most recent run", () => {
+      expect(logsPageContent).not.toMatch(/defaultOpen=\{i === 0\}/);
+      expect(logsPageContent).not.toMatch(/open=\{i === 0\}/);
+    });
+
+    it("should support dark mode hover styles on event rows", () => {
+      expect(logsPageContent).toMatch(/dark:hover:bg-/);
+      expect(logsPageContent).toMatch(/dark:bg-gray-/);
+    });
+
+    it("should support pagination controls", () => {
+      expect(logsPageContent).toMatch(/offset/);
+      expect(logsPageContent).toMatch(/Next|Prev/);
+    });
   });
 });
