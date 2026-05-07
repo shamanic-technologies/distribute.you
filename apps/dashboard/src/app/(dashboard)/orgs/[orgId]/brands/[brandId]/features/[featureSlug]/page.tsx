@@ -54,6 +54,25 @@ function timeAgo(date: string | Date): string {
   return `${years}y ago`;
 }
 
+function timeUntil(date: string | Date): string {
+  const now = Date.now();
+  const then = new Date(date).getTime();
+  const seconds = Math.floor((then - now) / 1000);
+  if (seconds < 60) return "any moment";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `in ${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `in ${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `in ${days}d`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 5) return `in ${weeks}w`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `in ${months}mo`;
+  const years = Math.floor(months / 12);
+  return `in ${years}y`;
+}
+
 function formatTotalCost(cents: number): string | null {
   if (cents === 0) return null;
   const usd = cents / 100;
@@ -238,6 +257,11 @@ export default function FeaturePage() {
                       )}
                       {status}
                     </span>
+                    {status === "stopped" && campaign.toResumeAt && (
+                      <span className="text-xs text-gray-500">
+                        Resumes {timeUntil(campaign.toResumeAt)}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-3">
                     {!statsReady ? (
