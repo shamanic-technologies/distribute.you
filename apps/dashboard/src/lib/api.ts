@@ -865,6 +865,40 @@ export async function listCampaignRuns(campaignId: string, token?: string): Prom
   return apiCall<{ runs: CampaignRun[] }>(`/runs?campaignId=${encodeURIComponent(campaignId)}`, { token });
 }
 
+// ─── Run events (logs) ───────────────────────────────────────────────────────
+
+export type EventLevel = "info" | "warn" | "error";
+
+export interface RunEvent {
+  id: string;
+  runId: string;
+  service: string;
+  event: string;
+  detail: string | null;
+  level: EventLevel;
+  data: unknown;
+  orgId: string | null;
+  userId: string | null;
+  brandIds: string | null;
+  campaignId: string | null;
+  workflowSlug: string | null;
+  featureSlug: string | null;
+  createdAt: string;
+}
+
+/** GET /events?campaignId={id} — returns run events for a campaign via runs-service proxy */
+export async function listCampaignEvents(
+  campaignId: string,
+  options?: { level?: EventLevel; limit?: number; offset?: number; token?: string }
+): Promise<{ events: RunEvent[] }> {
+  const params = new URLSearchParams();
+  params.set("campaignId", campaignId);
+  if (options?.level) params.set("level", options.level);
+  if (options?.limit != null) params.set("limit", String(options.limit));
+  if (options?.offset != null) params.set("offset", String(options.offset));
+  return apiCall<{ events: RunEvent[] }>(`/events?${params.toString()}`, { token: options?.token });
+}
+
 /** GET /brands/:brandId/runs — returns runs or empty list if brand not found (404/500) */
 export async function listBrandRuns(brandId: string, token?: string): Promise<{ runs: BrandRun[] }> {
   try {
