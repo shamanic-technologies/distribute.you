@@ -182,7 +182,7 @@ export default async function Home() {
                     "One command. Everything handled.",
                     "Best model for quality per dollar — automatically",
                     "Full dashboard with tracking and replies",
-                    "At cost. No markup. No surprise bills.",
+                    "Transparent variable costs. Pay only what you use.",
                   ].map((item) => (
                     <div key={item} className="flex items-start gap-2.5">
                       <svg className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -444,16 +444,16 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* At cost pricing */}
+      {/* Transparent variable costs */}
       <section className="py-20 px-4">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="font-display text-3xl md:text-4xl font-bold mb-6 text-gray-900">
-            At cost. No subscription.
+            Transparent costs. Variable, not fixed.
           </h2>
           <p className="text-lg text-gray-500 leading-relaxed mb-8">
-            Credit your account. Pick your channels. We charge the retail price of every API
-            and model we use — nothing more.{" "}
-            <span className="text-gray-700 font-medium">No monthly fee. No commitment.</span>
+            Credit your account. Pick your channels. Every unit cost we re-bill is published live on our{" "}
+            <a href={urls.pricing} className="text-gray-900 font-medium underline underline-offset-2 hover:text-brand-600">pricing page</a>.{" "}
+            <span className="text-gray-700 font-medium">No subscription you only half-use. No commitment.</span>
           </p>
           <div className="grid md:grid-cols-3 gap-6 text-left">
             <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
@@ -462,9 +462,9 @@ export default async function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h3 className="font-semibold text-gray-900 text-sm mb-1">Zero markup</h3>
+              <h3 className="font-semibold text-gray-900 text-sm mb-1">Transparent costs</h3>
               <p className="text-sm text-gray-500">
-                We pass through every cost at raw retail price — AI, APIs, email tools. No markup, ever.
+                Every unit cost we re-bill is listed live on our <a href={urls.pricing} className="text-gray-700 underline underline-offset-2 hover:text-brand-600">pricing page</a> — by provider, by type.
               </p>
             </div>
             <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
@@ -624,7 +624,7 @@ export default async function Home() {
             The dream is one click away
           </h2>
           <p className="text-gray-400 mb-8">
-            No markup, no subscription. Credit your account and let distribution run itself.
+            Transparent variable costs, no subscription. Credit your account and let distribution run itself.
           </p>
           <LinkButton
             href={urls.signUp}
@@ -645,6 +645,7 @@ export default async function Home() {
           </div>
           <p className="text-sm text-gray-600 mb-4">The Stripe of Distribution</p>
           <div className="flex flex-wrap justify-center gap-6 text-sm">
+            <a href={urls.pricing} className="hover:text-gray-300 transition">Pricing</a>
             <a href={urls.performance} className="hover:text-gray-300 transition">Performance</a>
             <a href={urls.docs} className="hover:text-gray-300 transition">Docs</a>
             <a href={urls.apiDocs} className="hover:text-gray-300 transition">API</a>

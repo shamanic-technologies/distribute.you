@@ -115,9 +115,11 @@ export default function DocsHome() {
 
         <h2>Pricing</h2>
         <p>
-          distribute charges at cost — no subscriptions, no markups. You buy credits and only pay for
-          what you use (AI calls, lead enrichment, email sends). See your cost breakdown in real-time
-          in the dashboard.
+          distribute charges transparent variable costs — every unit price we re-bill is published
+          live at <a href="https://distribute.you/pricing">distribute.you/pricing</a>, grouped by
+          provider and cost type. You buy credits and only pay for what you use (AI calls, lead
+          enrichment, email sends). No fixed subscription you only half-use. See your cost
+          breakdown in real-time in the dashboard.
         </p>
       </div>
     </div>

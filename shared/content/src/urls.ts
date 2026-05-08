@@ -12,4 +12,5 @@ export const URLS = {
   signIn: "https://dashboard.distribute.you/sign-in",
   apiKeys: "https://dashboard.distribute.you/api-keys",
   performance: "https://distribute.you/performance",
+  pricing: "https://distribute.you/pricing",
 } as const;
