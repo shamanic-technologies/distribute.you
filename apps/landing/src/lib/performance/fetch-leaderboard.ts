@@ -181,10 +181,10 @@ async function fetchWorkflowRanked(
   const data: WorkflowRankedResponse = await res.json();
 
   return data.results.map((r) => {
-    const sent = num(r.stats, "emailsSent");
-    const opened = num(r.stats, "emailsOpened");
-    const clicked = num(r.stats, "emailsClicked");
-    const replied = num(r.stats, "repliesPositive") + num(r.stats, "repliesNegative") + num(r.stats, "repliesNeutral");
+    const sent = num(r.stats, "recipientsSent");
+    const opened = num(r.stats, "recipientsOpened");
+    const clicked = num(r.stats, "recipientsClicked");
+    const replied = num(r.stats, "recipientsRepliesPositive") + num(r.stats, "recipientsRepliesNegative") + num(r.stats, "recipientsRepliesNeutral");
     const cost = num(r.stats, "totalCostInUsdCents");
 
     return {
@@ -227,10 +227,10 @@ async function fetchBrandRanked(
   const data: BrandRankedResponse = await res.json();
 
   return data.results.map((r) => {
-    const sent = num(r.stats, "emailsSent");
-    const opened = num(r.stats, "emailsOpened");
-    const clicked = num(r.stats, "emailsClicked");
-    const replied = num(r.stats, "repliesPositive") + num(r.stats, "repliesNegative") + num(r.stats, "repliesNeutral");
+    const sent = num(r.stats, "recipientsSent");
+    const opened = num(r.stats, "recipientsOpened");
+    const clicked = num(r.stats, "recipientsClicked");
+    const replied = num(r.stats, "recipientsRepliesPositive") + num(r.stats, "recipientsRepliesNegative") + num(r.stats, "recipientsRepliesNeutral");
     const cost = num(r.stats, "totalCostInUsdCents");
 
     return {
@@ -427,8 +427,8 @@ export async function fetchLeaderboard(hostname = ""): Promise<LeaderboardData |
     // Step 8: Build hero stats
     let hero: HeroStats | null = null;
     if (bestData) {
-      const openRecord = bestData.best["emailsOpened"] ?? null;
-      const replyRecord = bestData.best["repliesPositive"] ?? null;
+      const openRecord = bestData.best["recipientsOpened"] ?? null;
+      const replyRecord = bestData.best["recipientsRepliesPositive"] ?? null;
       hero = {
         bestCostPerOpen: openRecord
           ? { brandDomain: null, costPerOpenCents: openRecord.value }
