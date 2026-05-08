@@ -144,6 +144,10 @@ export default async function PerformanceLayout({
               Open source methodology.
             </a>
           </p>
+          <div className="mt-3 flex flex-wrap justify-center gap-4 text-xs">
+            <a href={URLS.pricing} className="hover:text-gray-300 transition">Pricing</a>
+            <a href={URLS.docs} className="hover:text-gray-300 transition">Docs</a>
+          </div>
           <div className="mt-4 pt-4 border-t border-gray-800">
             <p className="text-xs text-gray-600 mb-2">Also by our team</p>
             <div className="flex flex-wrap justify-center gap-4 text-xs">
