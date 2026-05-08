@@ -106,7 +106,7 @@ const softwareJsonLd = {
     "@type": "Offer",
     price: "0",
     priceCurrency: "USD",
-    description: "At cost — no subscriptions, no markups. Pay only for what you use.",
+    description: "Transparent variable costs — pay only for what you use, no half-used subscriptions. Live unit prices at distribute.you/pricing.",
   },
   featureList: [
     "Sales cold email automation",
@@ -186,7 +186,7 @@ const faqJsonLd = {
       name: "How much does distribute cost?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "distribute charges at cost — no subscriptions, no markups. You buy credits and only pay for what you use (AI calls, lead enrichment, email sends). See your cost breakdown in real-time in the dashboard.",
+        text: "distribute charges transparent variable costs — every unit price we re-bill is published live at distribute.you/pricing, grouped by provider and cost type. You buy credits and only pay for what you use (AI calls, lead enrichment, email sends). No fixed subscription you only half-use. See your cost breakdown in real-time in the dashboard.",
       },
     },
   ],

@@ -20,7 +20,7 @@ const SALES_STEPS = [
 const SALES_FAQ = [
   { question: "Is this really open source?", answer: "Yes! 100% open source under MIT license. You can self-host it, fork it, or contribute. Check out the GitHub repo." },
   { question: "How many emails can I send?", answer: "Free: 500 emails (one-time). Hobby: 3,000/month. Standard: 100,000/month. Growth: 500,000/month. Plus your own API key costs for leads and AI." },
-  { question: "What are the API key costs?", answer: "You pay Apollo for leads (~$0.01/lead) and Anthropic for AI (~$0.01/email) directly at their rates using your own API keys. Full transparency, no markup." },
+  { question: "What are the API key costs?", answer: "You pay Apollo for leads (~$0.01/lead) and Anthropic for AI (~$0.01/email) directly at their rates using your own API keys. Variable costs only — pay for what you use, no half-used subscriptions. Live unit prices at distribute.you/pricing." },
   { question: "Will my emails land in spam?", answer: "We use best practices: proper warmup, optimal send times, throttling, and your own domain. Most users see 95%+ inbox placement." },
   { question: "What AI assistants work with this?", answer: "ChatGPT (Plus, Pro, Team), Claude (Web, Desktop, Code), and Cursor IDE. Any MCP-compatible client works." },
 ];
@@ -274,7 +274,7 @@ export default async function Home() {
               </p>
               <div className="text-sm text-gray-500 space-y-1">
                 <p>{BYOK_COST_ESTIMATES.totalPerEmail} (Apollo + Anthropic)</p>
-                <p>No hidden markups. Full transparency.</p>
+                <p>Transparent variable costs. Pay only what you use.</p>
               </div>
             </div>
           </div>
@@ -480,6 +480,9 @@ export default async function Home() {
           <div className="flex justify-center gap-6 text-sm">
             <a href={URLS.landing} className="hover:text-brand-400 transition">
               Main Site
+            </a>
+            <a href={URLS.pricing} className="hover:text-brand-400 transition">
+              Pricing
             </a>
             <a href={URLS.docs} className="hover:text-brand-400 transition">
               Docs
