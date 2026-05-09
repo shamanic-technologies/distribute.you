@@ -1,20 +1,39 @@
 import { describe, it, expect } from "vitest";
-import { getLeadConsolidatedStatus, type Lead } from "../src/lib/api";
+import { getLeadConsolidatedStatus, type Lead, type LeadApolloEnrichment } from "../src/lib/api";
+
+function makeEnrichment(overrides: Partial<LeadApolloEnrichment> = {}): LeadApolloEnrichment {
+  return {
+    firstName: "Jane",
+    lastName: "Doe",
+    organizationName: "Acme",
+    organizationDomain: "acme.com",
+    organizationLogoUrl: "https://acme.com/logo.png",
+    organizationIndustry: "Software",
+    organizationSize: "100",
+    linkedinUrl: "https://linkedin.com/in/jane",
+    title: "Head of Growth",
+    headline: "Head of Growth at Acme",
+    ...overrides,
+  };
+}
 
 function makeLead(overrides: Partial<Lead> = {}): Lead {
   return {
     id: "test-id",
-    firstName: "Test",
-    lastName: "User",
+    leadId: "lead-1",
     email: "test@example.com",
     emailStatus: null,
-    title: null,
     namespace: null,
-    organizationName: null,
-    organizationDomain: null,
-    organizationIndustry: null,
-    organizationSize: null,
-    linkedinUrl: null,
+    apolloPersonId: null,
+    parentRunId: null,
+    runId: null,
+    brandIds: [],
+    campaignId: "c1",
+    orgId: "o1",
+    userId: null,
+    workflowSlug: null,
+    featureSlug: null,
+    servedAt: "2025-01-01T00:00:00Z",
     status: "served",
     contacted: false,
     sent: false,
@@ -24,9 +43,10 @@ function makeLead(overrides: Partial<Lead> = {}): Lead {
     bounced: false,
     replied: false,
     unsubscribed: false,
+    replyClassification: null,
+    lastDeliveredAt: null,
     global: null,
-    createdAt: "2025-01-01T00:00:00Z",
-    enrichmentRun: null,
+    enrichment: makeEnrichment(),
     ...overrides,
   };
 }
@@ -65,5 +85,35 @@ describe("getLeadConsolidatedStatus", () => {
   it("returns contacted for contacted=true regardless of status", () => {
     const lead = makeLead({ status: "claimed", contacted: true });
     expect(getLeadConsolidatedStatus(lead)).toBe("contacted");
+  });
+});
+
+describe("Lead enrichment shape (lead-service v0.13.4 pass-through)", () => {
+  it("exposes person + organization data via nested enrichment object", () => {
+    const lead = makeLead({
+      enrichment: makeEnrichment({
+        firstName: "Bob",
+        lastName: "Builder",
+        organizationName: "Build Co",
+        organizationDomain: "build.co",
+      }),
+    });
+    expect(lead.enrichment?.firstName).toBe("Bob");
+    expect(lead.enrichment?.lastName).toBe("Builder");
+    expect(lead.enrichment?.organizationName).toBe("Build Co");
+    expect(lead.enrichment?.organizationDomain).toBe("build.co");
+  });
+
+  it("permits null enrichment when Apollo lookup did not resolve", () => {
+    const lead = makeLead({ enrichment: null });
+    expect(lead.enrichment).toBeNull();
+  });
+
+  it("Lead has no top-level firstName / organizationName / enrichmentRun", () => {
+    const lead = makeLead();
+    expect("firstName" in lead).toBe(false);
+    expect("organizationName" in lead).toBe(false);
+    expect("enrichmentRun" in lead).toBe(false);
+    expect("createdAt" in lead).toBe(false);
   });
 });
