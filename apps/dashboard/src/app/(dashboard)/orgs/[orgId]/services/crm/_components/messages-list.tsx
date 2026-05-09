@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { parseGmailPayload, type GmailMessageShape } from "./parse-gmail-payload";
+import { extractErrorDetail } from "./error-detail";
 
 export interface GoogleMessage extends GmailMessageShape {
   id?: string;
@@ -30,7 +31,12 @@ export function MessagesList({ initialPage }: { initialPage: MessagesPage }) {
     if (!res.ok) {
       const body = await res.text();
       console.error("[dashboard] /orgs/google/messages load more failed", res.status, body);
-      setError(`Failed to load more: ${res.status}`);
+      const detail = extractErrorDetail(body, res.headers.get("Content-Type"));
+      setError(
+        detail
+          ? `Failed to load more (${res.status}): ${detail}`
+          : `Failed to load more: ${res.status}`,
+      );
       setLoading(false);
       return;
     }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { extractErrorDetail } from "./error-detail";
 
 interface SyncCounts {
   inserted: number;
@@ -36,7 +37,8 @@ export function SyncNowButton() {
     if (!res.ok) {
       const body = await res.text();
       console.error("[dashboard] /orgs/google/sync failed", res.status, body);
-      setError(`Sync failed: ${res.status}`);
+      const detail = extractErrorDetail(body, res.headers.get("Content-Type"));
+      setError(detail ? `Sync failed (${res.status}): ${detail}` : `Sync failed: ${res.status}`);
       setLoading(false);
       return;
     }

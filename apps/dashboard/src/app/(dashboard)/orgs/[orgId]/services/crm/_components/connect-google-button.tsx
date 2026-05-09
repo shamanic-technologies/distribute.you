@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { extractErrorDetail } from "./error-detail";
 
 export function ConnectGoogleButton() {
   const [loading, setLoading] = useState(false);
@@ -18,14 +19,19 @@ export function ConnectGoogleButton() {
     if (!res.ok) {
       const body = await res.text();
       console.error("[dashboard] /orgs/google/auth/start failed", res.status, body);
-      setError(`Failed to start OAuth: ${res.status}`);
+      const detail = extractErrorDetail(body, res.headers.get("Content-Type"));
+      setError(
+        detail
+          ? `Failed to start OAuth (${res.status}): ${detail}`
+          : `Failed to start OAuth: ${res.status}`,
+      );
       setLoading(false);
       return;
     }
     const data = (await res.json()) as { url?: string };
     if (!data.url) {
       console.error("[dashboard] /orgs/google/auth/start returned no url", data);
-      setError("OAuth start returned no URL");
+      setError("OAuth start returned no URL — check google-service env (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, redirect URI authorized in Google Cloud Console)");
       setLoading(false);
       return;
     }

@@ -14,6 +14,10 @@ interface GoogleAccount {
   connectedAt?: string;
 }
 
+function truncate(s: string, n: number): string {
+  return s.length > n ? `${s.slice(0, n)}...` : s;
+}
+
 async function callApiService<T>(path: string): Promise<{ ok: true; data: T } | { ok: false; status: number; body: string }> {
   if (!API_KEY) {
     console.error("[dashboard] ADMIN_DISTRIBUTE_API_KEY not set");
@@ -76,7 +80,7 @@ export default async function GoogleCrmPage({ params, searchParams }: PageProps)
 
   const messagesLoadError =
     !messagesRes.ok && messagesRes.status !== 404 && messagesRes.status !== 401
-      ? `Failed to load messages (${messagesRes.status})`
+      ? `Failed to load messages (${messagesRes.status}): ${truncate(messagesRes.body, 400)}`
       : null;
   if (!messagesRes.ok) {
     console.error(
