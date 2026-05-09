@@ -1,12 +1,11 @@
 "use client";
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getWorkflow, getWorkflowSummary, getFeature, listWorkflows } from "@/lib/api";
 import { WorkflowOverview } from "@/components/workflows/workflow-overview";
 import { WorkflowChat } from "@/components/workflows/workflow-chat";
-import { WorkflowActionModal } from "@/components/workflows/workflow-action-modal";
 import { workflowDisplayName } from "@/lib/workflow-display-name";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 
@@ -40,13 +39,11 @@ function SidebarSkeleton() {
 
 export default function WorkflowViewerPage() {
   const params = useParams();
-  const router = useRouter();
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
   const initialWorkflowId = params.workflowId as string;
   const featureSlug = params.featureSlug as string;
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [actionModal, setActionModal] = useState<"upgrade" | "fork" | null>(null);
 
   // Track active workflow ID locally so fork navigation doesn't remount the page
   const [activeWorkflowId, setActiveWorkflowId] = useState(initialWorkflowId);
@@ -221,22 +218,6 @@ export default function WorkflowViewerPage() {
                   <p className="text-[10px] text-gray-400 dark:text-gray-500 font-mono truncate mt-0.5">{workflow.workflowName}</p>
                 </div>
               </div>
-              <div className="flex gap-2 mt-3">
-                <button
-                  type="button"
-                  onClick={() => setActionModal("upgrade")}
-                  className="flex-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-300 hover:bg-brand-100 dark:hover:bg-brand-500/20 border border-brand-100 dark:border-brand-500/20"
-                >
-                  Upgrade
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActionModal("fork")}
-                  className="flex-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-50 dark:bg-white/[0.04] text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/[0.08] border border-gray-200 dark:border-white/[0.08]"
-                >
-                  Fork as variant
-                </button>
-              </div>
             </div>
             <div className="flex-1 overflow-y-auto p-5">
               <WorkflowOverview
@@ -299,21 +280,6 @@ export default function WorkflowViewerPage() {
         {/* Chat — render immediately; it handles its own loading state */}
         <WorkflowChat workflowId={activeWorkflowId} workflowContext={workflowContext} onWorkflowUpgraded={handleWorkflowUpgraded} upgradedTo={detectedForkOrUpgradeId} />
       </div>
-      {actionModal && workflow && (
-        <WorkflowActionModal
-          mode={actionModal}
-          workflowId={workflow.id}
-          workflowSlug={workflow.workflowSlug}
-          currentDag={workflow.dag ?? undefined}
-          onClose={() => setActionModal(null)}
-          onSuccess={(newWorkflowId) => {
-            setActionModal(null);
-            router.push(
-              `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/${newWorkflowId}`,
-            );
-          }}
-        />
-      )}
     </div>
   );
 }
