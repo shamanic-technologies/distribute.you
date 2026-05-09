@@ -8,6 +8,7 @@ const pagePath = path.join(crmDir, "page.tsx");
 const callbackPath = path.join(root, "services/crm/oauth/callback/route.ts");
 const connectBtnPath = path.join(crmDir, "_components/connect-google-button.tsx");
 const syncBtnPath = path.join(crmDir, "_components/sync-now-button.tsx");
+const pollHelperPath = path.join(crmDir, "_components/poll-sync-job.ts");
 const messagesListPath = path.join(crmDir, "_components/messages-list.tsx");
 const parsePath = path.join(crmDir, "_components/parse-gmail-payload.ts");
 
@@ -55,20 +56,47 @@ describe("Connect Google button", () => {
   });
 });
 
-describe("Sync now button", () => {
-  const content = fs.readFileSync(syncBtnPath, "utf-8");
+describe("Sync now button (async job + poll)", () => {
+  const btn = fs.readFileSync(syncBtnPath, "utf-8");
+  const helper = fs.readFileSync(pollHelperPath, "utf-8");
 
   it("posts to /api/v1/orgs/google/sync", () => {
-    expect(content).toContain("/api/v1/orgs/google/sync");
-    expect(content).toContain('method: "POST"');
+    expect(btn).toContain("/api/v1/orgs/google/sync");
+    expect(btn).toContain('method: "POST"');
   });
 
-  it("displays sync result fields", () => {
-    expect(content).toContain("accounts");
-    expect(content).toContain("gmail");
-    expect(content).toContain("contacts");
-    expect(content).toContain("inserted");
-    expect(content).toContain("updated");
+  it("captures jobId from 202 response", () => {
+    expect(btn).toContain("jobId");
+  });
+
+  it("polls GET /api/v1/orgs/google/sync/{jobId}", () => {
+    expect(btn).toMatch(/\/api\/v1\/orgs\/google\/sync\/\$\{[^}]*jobId[^}]*\}/);
+  });
+
+  it("helper handles running, succeeded, failed status values", () => {
+    expect(helper).toContain('"running"');
+    expect(helper).toContain('"succeeded"');
+    expect(helper).toContain('"failed"');
+  });
+
+  it("renders summary fields from poll response", () => {
+    expect(btn).toContain("summary");
+    expect(btn).toContain("accounts");
+    expect(btn).toContain("gmail");
+    expect(btn).toContain("contacts");
+    expect(btn).toContain("inserted");
+    expect(btn).toContain("updated");
+  });
+
+  it("cleans up polling on unmount via AbortController", () => {
+    expect(btn).toContain("AbortController");
+    expect(btn).toContain("useEffect");
+    expect(btn).toContain(".abort()");
+  });
+
+  it("caps polling duration via MAX_POLL_MS (10 min)", () => {
+    expect(btn).toContain("MAX_POLL_MS");
+    expect(helper).toMatch(/10\s*\*\s*60\s*\*\s*1000/);
   });
 });
 
