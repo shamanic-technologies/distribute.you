@@ -77,6 +77,18 @@ async function processStream(
     }
 
     switch (event.type) {
+      case "context_usage": {
+        writer.write({
+          type: "data-context-usage",
+          data: {
+            inputTokens: Number(event.inputTokens) || 0,
+            outputTokens: Number(event.outputTokens) || 0,
+            maxTokens: Number(event.maxTokens) || 200000,
+            percent: Number(event.percent) || 0,
+          },
+        });
+        break;
+      }
       case "token": {
         const text = (event.content || event.token || "") as string;
         if (!text) break;
@@ -312,6 +324,83 @@ describe("chat stream proxy", () => {
       { type: "error", errorText: "Something went wrong" },
     ]);
     expect(writer.events.find((e) => e.type === "data-error-info")).toBeUndefined();
+  });
+
+  it("forwards context_usage as data-context-usage", async () => {
+    const reader = createMockReader([
+      'data: {"type":"context_usage","inputTokens":42100,"outputTokens":1280,"maxTokens":200000,"percent":21}\n',
+      "data: [DONE]\n",
+    ]);
+    const writer = createMockWriter();
+
+    await processStream(reader, writer);
+
+    expect(writer.events).toEqual([
+      {
+        type: "data-context-usage",
+        data: {
+          inputTokens: 42100,
+          outputTokens: 1280,
+          maxTokens: 200000,
+          percent: 21,
+        },
+      },
+    ]);
+  });
+
+  it("coerces context_usage with missing fields safely", async () => {
+    const reader = createMockReader([
+      'data: {"type":"context_usage"}\n',
+    ]);
+    const writer = createMockWriter();
+
+    await processStream(reader, writer);
+
+    expect(writer.events).toEqual([
+      {
+        type: "data-context-usage",
+        data: {
+          inputTokens: 0,
+          outputTokens: 0,
+          maxTokens: 200000,
+          percent: 0,
+        },
+      },
+    ]);
+  });
+
+  it("ignores unknown event types without throwing", async () => {
+    const reader = createMockReader([
+      'data: {"type":"future_event_type","payload":{"x":1}}\n',
+      'data: {"type":"token","content":"after"}\n',
+    ]);
+    const writer = createMockWriter();
+
+    await processStream(reader, writer);
+
+    expect(writer.events).toEqual([
+      { type: "text-start", id: "test-text-id" },
+      { type: "text-delta", id: "test-text-id", delta: "after" },
+      { type: "text-end", id: "test-text-id" },
+    ]);
+  });
+
+  it("forwards session_not_found error code via data-error-info", async () => {
+    const reader = createMockReader([
+      'data: {"type":"error","code":"session_not_found","message":"Session not found. The provided sessionId does not exist or belongs to a different org. Omit sessionId to start a new conversation."}\n',
+    ]);
+    const writer = createMockWriter();
+
+    await processStream(reader, writer);
+
+    expect(writer.events[0]).toEqual({
+      type: "data-error-info",
+      data: {
+        code: "session_not_found",
+        message:
+          "Session not found. The provided sessionId does not exist or belongs to a different org. Omit sessionId to start a new conversation.",
+      },
+    });
   });
 
   it("forwards all error code types correctly", async () => {
