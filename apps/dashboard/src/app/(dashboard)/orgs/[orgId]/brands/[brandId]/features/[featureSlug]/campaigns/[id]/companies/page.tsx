@@ -10,16 +10,14 @@ interface DerivedCompany {
   name: string;
   domain: string | null;
   industry: string | null;
-  employeeCount: string | null;
+  employeeCount: number | null;
   leadsCount: number;
-  totalCostInUsdCents: string | null;
-  costs: Array<{ costName: string; quantity: number; totalCostInUsdCents: number }>;
 }
 
 function deriveCompanies(leads: Lead[]): DerivedCompany[] {
   const map = new Map<string, { leads: Lead[] }>();
   for (const lead of leads) {
-    const name = lead.organizationName;
+    const name = lead.lead?.organization?.name ?? null;
     if (!name) continue;
     const entry = map.get(name);
     if (entry) {
@@ -30,51 +28,15 @@ function deriveCompanies(leads: Lead[]): DerivedCompany[] {
   }
 
   return Array.from(map.entries()).map(([name, { leads: companyLeads }]) => {
-    const first = companyLeads[0];
-
-    // Aggregate costs across all leads' enrichment runs
-    let totalCents = 0;
-    const costAgg = new Map<string, { quantity: number; totalCostInUsdCents: number }>();
-    for (const lead of companyLeads) {
-      if (!lead.enrichmentRun) continue;
-      totalCents += parseFloat(lead.enrichmentRun.totalCostInUsdCents) || 0;
-      for (const cost of lead.enrichmentRun.costs) {
-        const existing = costAgg.get(cost.costName);
-        const q = typeof cost.quantity === "number" ? cost.quantity : (parseFloat(String(cost.quantity)) || 0);
-        const t = parseFloat(cost.totalCostInUsdCents) || 0;
-        if (existing) {
-          existing.quantity += q;
-          existing.totalCostInUsdCents += t;
-        } else {
-          costAgg.set(cost.costName, { quantity: q, totalCostInUsdCents: t });
-        }
-      }
-    }
-
+    const firstOrg = companyLeads[0].lead?.organization ?? null;
     return {
       name,
-      domain: first.organizationDomain,
-      industry: first.organizationIndustry,
-      employeeCount: first.organizationSize,
+      domain: firstOrg?.primaryDomain ?? null,
+      industry: firstOrg?.industry ?? null,
+      employeeCount: firstOrg?.estimatedNumEmployees ?? null,
       leadsCount: companyLeads.length,
-      totalCostInUsdCents: totalCents > 0 ? String(totalCents) : null,
-      costs: Array.from(costAgg.entries()).map(([costName, agg]) => ({ costName, ...agg })),
     };
   });
-}
-
-function formatCostRounded(totalCents: string | null): string | null {
-  if (!totalCents) return null;
-  const cents = parseFloat(totalCents);
-  if (isNaN(cents) || cents === 0) return null;
-  const usd = cents / 100;
-  if (usd < 0.01) return "<$0.01";
-  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-function formatCostDetailed(cents: number): string {
-  const val = cents / 100;
-  return `$${val.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`;
 }
 
 export default function CampaignCompaniesPage() {
@@ -125,41 +87,33 @@ export default function CampaignCompaniesPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {filteredCompanies.map((company) => {
-              const cost = formatCostRounded(company.totalCostInUsdCents);
-              return (
-                <button
-                  key={company.name}
-                  onClick={() => setSelectedCompany(company)}
-                  className={`w-full text-left bg-white rounded-xl border p-4 hover:border-brand-300 hover:shadow-sm transition ${
-                    selectedCompany?.name === company.name ? 'border-brand-500 ring-1 ring-brand-500' : 'border-gray-200'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
-                      {company.domain ? (
-                        <BrandLogo domain={company.domain} size={32} className="rounded-lg" />
-                      ) : (
-                        <span className="text-gray-500 font-medium text-sm">
-                          {company.name[0]}
-                        </span>
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-gray-800 truncate">{company.name}</p>
-                      <div className="flex items-center justify-between mt-1">
-                        <p className="text-sm text-gray-500 truncate">
-                          {company.industry || "No industry"} &middot; {company.leadsCount} lead{company.leadsCount !== 1 ? "s" : ""}
-                        </p>
-                        {cost && (
-                          <span className="text-xs text-gray-400 ml-2 shrink-0">{cost}</span>
-                        )}
-                      </div>
-                    </div>
+            {filteredCompanies.map((company) => (
+              <button
+                key={company.name}
+                onClick={() => setSelectedCompany(company)}
+                className={`w-full text-left bg-white rounded-xl border p-4 hover:border-brand-300 hover:shadow-sm transition ${
+                  selectedCompany?.name === company.name ? 'border-brand-500 ring-1 ring-brand-500' : 'border-gray-200'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
+                    {company.domain ? (
+                      <BrandLogo domain={company.domain} size={32} className="rounded-lg" />
+                    ) : (
+                      <span className="text-gray-500 font-medium text-sm">
+                        {company.name[0]}
+                      </span>
+                    )}
                   </div>
-                </button>
-              );
-            })}
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-gray-800 truncate">{company.name}</p>
+                    <p className="text-sm text-gray-500 truncate mt-1">
+                      {company.industry || "No industry"} &middot; {company.leadsCount} lead{company.leadsCount !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                </div>
+              </button>
+            ))}
           </div>
         )}
       </div>
@@ -222,7 +176,7 @@ export default function CampaignCompaniesPage() {
                 </div>
                 <div>
                   <span className="text-gray-500">Size:</span>
-                  <p className="font-medium">{selectedCompany.employeeCount ? `${selectedCompany.employeeCount} employees` : "-"}</p>
+                  <p className="font-medium">{selectedCompany.employeeCount != null ? `${selectedCompany.employeeCount} employees` : "-"}</p>
                 </div>
                 <div>
                   <span className="text-gray-500">Leads:</span>
@@ -234,33 +188,6 @@ export default function CampaignCompaniesPage() {
                 </div>
               </div>
             </div>
-
-            {/* Enrichment Cost */}
-            {selectedCompany.totalCostInUsdCents && (
-              <div className="bg-white rounded-lg border border-gray-200 p-4">
-                <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Enrichment Cost</h3>
-                <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-gray-500">Total ({selectedCompany.leadsCount} enrichments)</span>
-                  <span className="font-medium text-gray-700">
-                    {formatCostDetailed(parseFloat(selectedCompany.totalCostInUsdCents))}
-                  </span>
-                </div>
-                {selectedCompany.costs.length > 0 && (
-                  <div className="space-y-1 border-t border-gray-100 pt-2">
-                    {selectedCompany.costs.map((cost) => (
-                      <div key={cost.costName} className="flex items-center justify-between text-xs text-gray-400">
-                        <span className="font-mono">{cost.costName}</span>
-                        <span>
-                          {cost.quantity.toLocaleString()} × {formatCostDetailed(cost.totalCostInUsdCents / cost.quantity)}
-                          {" = "}
-                          {formatCostDetailed(cost.totalCostInUsdCents)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </div>
       )}
