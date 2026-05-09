@@ -34,6 +34,14 @@ export const DISTRIBUTION_FEATURES: DistributionFeature[] = [
     status: "live",
     color: "violet",
   },
+  {
+    id: "ai-visibility-scoring",
+    title: "AI Visibility Scoring",
+    description: "See how often your brand shows up in answers from ChatGPT, Claude, Perplexity, and Gemini.",
+    metric: "Mention Rate",
+    status: "coming-soon",
+    color: "amber",
+  },
 ];
 
 export interface DistributionStep {
