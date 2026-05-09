@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listBrandLeads, getLeadConsolidatedStatus, type Lead, type LeadConsolidatedStatus, type RunCost, type DescendantRun } from "@/lib/api";
+import { listBrandLeads, getLeadConsolidatedStatus, type Lead, type LeadConsolidatedStatus } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 
 const POLL_INTERVAL = 5_000;
@@ -76,102 +76,7 @@ function timeAgo(date: string | Date): string {
   return `${years}y ago`;
 }
 
-function formatCostRounded(run: Lead["enrichmentRun"]): string | null {
-  if (!run) return null;
-  const cents = parseFloat(run.totalCostInUsdCents);
-  if (isNaN(cents) || cents === 0) return null;
-  const usd = cents / 100;
-  if (usd < 0.01) return "<$0.01";
-  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-function formatCostDetailed(cents: string): string {
-  const val = parseFloat(cents) / 100;
-  return `$${val.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`;
-}
-
-function formatDuration(startedAt: string, completedAt: string | null): string | null {
-  if (!completedAt) return null;
-  const ms = new Date(completedAt).getTime() - new Date(startedAt).getTime();
-  if (ms < 1000) return `${ms}ms`;
-  return `${(ms / 1000).toFixed(1)}s`;
-}
-
-function formatUsd(cents: number): string {
-  const usd = cents / 100;
-  if (usd < 0.01 && usd > 0) return "<$0.01";
-  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-interface CostGroup {
-  serviceName: string;
-  taskName: string;
-  subtotal: string;
-  costs: RunCost[];
-}
-
-function buildCostGroups(
-  ownCosts: RunCost[],
-  serviceName: string,
-  taskName: string,
-  descendantRuns: DescendantRun[]
-): CostGroup[] {
-  const groups: CostGroup[] = [];
-  if (ownCosts.length > 0) {
-    const subtotal = ownCosts.reduce((sum, c) => sum + parseFloat(c.totalCostInUsdCents), 0);
-    groups.push({ serviceName, taskName, subtotal: String(subtotal), costs: ownCosts });
-  }
-  for (const dr of descendantRuns) {
-    if (dr.costs.length > 0) {
-      groups.push({ serviceName: dr.serviceName, taskName: dr.taskName, subtotal: dr.ownCostInUsdCents, costs: dr.costs });
-    }
-  }
-  return groups;
-}
-
-function CostGroupList({ costs, serviceName, taskName, descendantRuns }: {
-  costs: RunCost[];
-  serviceName: string;
-  taskName: string;
-  descendantRuns: DescendantRun[];
-}) {
-  const groups = buildCostGroups(costs, serviceName, taskName, descendantRuns);
-  if (groups.length === 0) return null;
-  if (groups.length === 1 && descendantRuns.length === 0) {
-    return (
-      <div className="space-y-1">
-        {costs.map((cost) => (
-          <div key={cost.costName} className="flex items-center justify-between text-xs text-gray-400">
-            <span className="font-mono">{cost.costName}</span>
-            <span>{formatCostDetailed(cost.totalCostInUsdCents)}</span>
-          </div>
-        ))}
-      </div>
-    );
-  }
-  return (
-    <div className="space-y-3">
-      {groups.map((group) => (
-        <div key={`${group.serviceName}-${group.taskName}`}>
-          <div className="flex items-center justify-between text-xs font-medium text-gray-600 mb-1">
-            <span>{group.serviceName} / {group.taskName}</span>
-            <span>{formatCostDetailed(group.subtotal)}</span>
-          </div>
-          <div className="space-y-0.5 pl-3 border-l-2 border-gray-100">
-            {group.costs.map((cost) => (
-              <div key={cost.costName} className="flex items-center justify-between text-xs text-gray-400">
-                <span className="font-mono">{cost.costName}</span>
-                <span>{formatCostDetailed(cost.totalCostInUsdCents)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function CompanyLogo({ domain, name }: { domain: string | null; name: string | null }) {
+function CompanyLogo({ domain, name }: { domain: string | null | undefined; name: string | null | undefined }) {
   if (domain) {
     return (
       <img
@@ -215,12 +120,12 @@ function LeadsTable({ leads, selectedLead, onSelectLead }: {
             <th className="px-4 py-3">Contact</th>
             <th className="px-4 py-3 hidden sm:table-cell">Status</th>
             <th className="px-4 py-3 hidden md:table-cell">Found</th>
-            <th className="px-4 py-3 text-right">Cost</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-50">
           {leads.map((lead) => {
-            const cost = formatCostRounded(lead.enrichmentRun);
+            const e = lead.enrichment;
+            const foundAt = lead.servedAt;
             return (
               <tr
                 key={lead.id}
@@ -229,17 +134,17 @@ function LeadsTable({ leads, selectedLead, onSelectLead }: {
               >
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2.5">
-                    <CompanyLogo domain={lead.organizationDomain} name={lead.organizationName} />
-                    <span className="font-medium text-gray-800 truncate max-w-[160px]">{lead.organizationName || "Unknown"}</span>
+                    <CompanyLogo domain={e?.organizationDomain} name={e?.organizationName} />
+                    <span className="font-medium text-gray-800 truncate max-w-[160px]">{e?.organizationName || "Unknown"}</span>
                   </div>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <div className="min-w-0">
-                      <p className="font-medium text-gray-800 truncate">{lead.firstName} {lead.lastName}</p>
-                      {lead.title && <p className="text-xs text-gray-500 truncate max-w-[180px]">{lead.title}</p>}
+                      <p className="font-medium text-gray-800 truncate">{e?.firstName} {e?.lastName}</p>
+                      {e?.title && <p className="text-xs text-gray-500 truncate max-w-[180px]">{e.title}</p>}
                     </div>
-                    {lead.linkedinUrl && (
+                    {e?.linkedinUrl && (
                       <span className="text-blue-400 shrink-0">
                         <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19a.66.66 0 000 .14V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z" />
@@ -250,10 +155,11 @@ function LeadsTable({ leads, selectedLead, onSelectLead }: {
                 </td>
                 <td className="px-4 py-3 hidden sm:table-cell"><StatusBadge status={getLeadConsolidatedStatus(lead)} /></td>
                 <td className="px-4 py-3 hidden md:table-cell">
-                  <span className="text-xs text-gray-500" title={new Date(lead.createdAt).toLocaleString()}>{timeAgo(lead.createdAt)}</span>
-                </td>
-                <td className="px-4 py-3 text-right">
-                  {cost ? <span className="text-xs font-medium text-gray-600">{cost}</span> : <span className="text-xs text-gray-300">-</span>}
+                  {foundAt ? (
+                    <span className="text-xs text-gray-500" title={new Date(foundAt).toLocaleString()}>{timeAgo(foundAt)}</span>
+                  ) : (
+                    <span className="text-xs text-gray-300">-</span>
+                  )}
                 </td>
               </tr>
             );
@@ -281,7 +187,11 @@ export default function FeatureLeadsPage() {
   const leads = data?.leads ?? [];
 
   const sortedLeads = useMemo(
-    () => [...leads].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+    () => [...leads].sort((a, b) => {
+      const aT = a.servedAt ? new Date(a.servedAt).getTime() : 0;
+      const bT = b.servedAt ? new Date(b.servedAt).getTime() : 0;
+      return bT - aT;
+    }),
     [leads],
   );
 
@@ -310,10 +220,11 @@ export default function FeatureLeadsPage() {
     if (!search) return activeList;
     const q = search.toLowerCase();
     return activeList.filter((l) => {
-      const name = `${l.firstName} ${l.lastName}`.toLowerCase();
+      const e = l.enrichment;
+      const name = `${e?.firstName ?? ""} ${e?.lastName ?? ""}`.toLowerCase();
       return name.includes(q)
-        || (l.organizationName?.toLowerCase().includes(q) ?? false)
-        || (l.title?.toLowerCase().includes(q) ?? false)
+        || (e?.organizationName?.toLowerCase().includes(q) ?? false)
+        || (e?.title?.toLowerCase().includes(q) ?? false)
         || (l.email?.toLowerCase().includes(q) ?? false);
     });
   }, [activeList, search]);
@@ -327,22 +238,6 @@ export default function FeatureLeadsPage() {
     { key: "all", label: "All", count: sortedLeads.length },
   ];
 
-  const { totalCostCents, avgCostPerContactedCents } = useMemo(() => {
-    let total = 0;
-    let contactedWithCost = 0;
-    let contactedCost = 0;
-    for (const lead of leads) {
-      if (lead.enrichmentRun) {
-        const cents = parseFloat(lead.enrichmentRun.totalCostInUsdCents);
-        if (!isNaN(cents)) {
-          total += cents;
-          if (lead.contacted) { contactedCost += cents; contactedWithCost++; }
-        }
-      }
-    }
-    return { totalCostCents: total, avgCostPerContactedCents: contactedWithCost > 0 ? contactedCost / contactedWithCost : 0 };
-  }, [leads]);
-
   if (isLoading && !data) {
     return (
       <div className="p-4 md:p-8">
@@ -354,6 +249,9 @@ export default function FeatureLeadsPage() {
     );
   }
 
+  const e = selectedLead?.enrichment;
+  const foundAt = selectedLead?.servedAt ?? null;
+
   return (
     <div className="flex flex-col md:flex-row h-full relative">
       <div className={`${selectedLead ? 'hidden md:block md:w-1/2' : 'w-full'} p-4 md:p-8 overflow-y-auto transition-all`}>
@@ -362,14 +260,6 @@ export default function FeatureLeadsPage() {
             Leads
             <span className="ml-2 text-sm font-normal text-gray-500">({leads.length.toLocaleString("en-US")} across all campaigns)</span>
           </h1>
-          {totalCostCents > 0 && (
-            <div className="text-right">
-              <p className="text-lg font-semibold text-gray-800">{formatUsd(totalCostCents)}</p>
-              {avgCostPerContactedCents > 0 && (
-                <p className="text-xs text-gray-500">{formatUsd(avgCostPerContactedCents)} avg/contacted</p>
-              )}
-            </div>
-          )}
         </div>
 
         <div className="flex gap-1 mb-4 border-b border-gray-200 overflow-x-auto">
@@ -416,45 +306,27 @@ export default function FeatureLeadsPage() {
           <div className="p-4 md:p-6">
             <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                <div><span className="text-gray-500">Name:</span><p className="font-medium">{selectedLead.firstName} {selectedLead.lastName}</p></div>
+                <div><span className="text-gray-500">Name:</span><p className="font-medium">{e?.firstName} {e?.lastName}</p></div>
                 <div><span className="text-gray-500">Email:</span><p className="font-medium">{selectedLead.email}</p>
                   {selectedLead.emailStatus && <span className={`text-xs px-1.5 py-0.5 rounded ${selectedLead.emailStatus === "verified" ? "bg-green-100 text-green-700" : selectedLead.emailStatus === "guessed" ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-600"}`}>{selectedLead.emailStatus}</span>}
                 </div>
-                <div><span className="text-gray-500">Title:</span><p className="font-medium">{selectedLead.title || "-"}</p></div>
+                <div><span className="text-gray-500">Title:</span><p className="font-medium">{e?.title || "-"}</p></div>
                 <div><span className="text-gray-500">Status:</span><p className="font-medium flex items-center gap-1.5 flex-wrap"><StatusBadge status={getLeadConsolidatedStatus(selectedLead)} />{selectedLead.global?.bounced && <span className="text-xs px-2 py-0.5 rounded-full border bg-red-50 text-red-600 border-red-200">Global Bounced</span>}{selectedLead.global?.unsubscribed && <span className="text-xs px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">Global Unsubscribed</span>}</p></div>
-                {selectedLead.linkedinUrl && <div className="sm:col-span-2"><span className="text-gray-500">LinkedIn:</span><p><a href={selectedLead.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-sm">{selectedLead.linkedinUrl}</a></p></div>}
+                {e?.linkedinUrl && <div className="sm:col-span-2"><span className="text-gray-500">LinkedIn:</span><p><a href={e.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-sm">{e.linkedinUrl}</a></p></div>}
               </div>
             </div>
-            {(selectedLead.organizationName || selectedLead.organizationDomain || selectedLead.organizationIndustry) && (
+            {(e?.organizationName || e?.organizationDomain || e?.organizationIndustry) && (
               <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
                 <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Organization</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                  <div><span className="text-gray-500">Company:</span><p className="font-medium">{selectedLead.organizationName || "-"}</p></div>
-                  <div><span className="text-gray-500">Domain:</span><p className="font-medium">{selectedLead.organizationDomain || "-"}</p></div>
-                  <div><span className="text-gray-500">Industry:</span><p className="font-medium">{selectedLead.organizationIndustry || "-"}</p></div>
-                  <div><span className="text-gray-500">Size:</span><p className="font-medium">{selectedLead.organizationSize ? `${selectedLead.organizationSize} employees` : "-"}</p></div>
+                  <div><span className="text-gray-500">Company:</span><p className="font-medium">{e?.organizationName || "-"}</p></div>
+                  <div><span className="text-gray-500">Domain:</span><p className="font-medium">{e?.organizationDomain || "-"}</p></div>
+                  <div><span className="text-gray-500">Industry:</span><p className="font-medium">{e?.organizationIndustry || "-"}</p></div>
+                  <div><span className="text-gray-500">Size:</span><p className="font-medium">{e?.organizationSize ? `${e.organizationSize} employees` : "-"}</p></div>
                 </div>
               </div>
             )}
-            {selectedLead.enrichmentRun && (
-              <div className="bg-white rounded-lg border border-gray-200 p-4">
-                <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Enrichment Cost</h3>
-                <div className="flex items-center gap-2 text-xs text-gray-500 mb-3">
-                  <span className={`inline-block w-1.5 h-1.5 rounded-full ${selectedLead.enrichmentRun.status === "completed" ? "bg-green-400" : selectedLead.enrichmentRun.status === "failed" ? "bg-red-400" : "bg-yellow-400"}`} />
-                  <span>{selectedLead.enrichmentRun.status}</span>
-                  {formatDuration(selectedLead.enrichmentRun.startedAt, selectedLead.enrichmentRun.completedAt) && <span>{"\u2022"} {formatDuration(selectedLead.enrichmentRun.startedAt, selectedLead.enrichmentRun.completedAt)}</span>}
-                  <span className="ml-auto font-medium text-gray-700">{formatCostDetailed(selectedLead.enrichmentRun.totalCostInUsdCents)}</span>
-                </div>
-                <CostGroupList costs={selectedLead.enrichmentRun.costs} serviceName={selectedLead.enrichmentRun.serviceName} taskName={selectedLead.enrichmentRun.taskName} descendantRuns={selectedLead.enrichmentRun.descendantRuns} />
-                {selectedLead.enrichmentRun.status === "failed" && selectedLead.enrichmentRun.errorSummary && (
-                  <div className="mt-3 bg-red-50 border border-red-100 rounded-md p-3">
-                    <p className="text-sm text-red-700">{selectedLead.enrichmentRun.errorSummary.rootCause}</p>
-                    <p className="text-xs text-red-500 mt-1">Step: <span className="font-mono">{selectedLead.enrichmentRun.errorSummary.failedStep}</span></p>
-                  </div>
-                )}
-              </div>
-            )}
-            <div className="mt-4 text-xs text-gray-400">Found: {new Date(selectedLead.createdAt).toLocaleString()}</div>
+            {foundAt && <div className="mt-4 text-xs text-gray-400">Found: {new Date(foundAt).toLocaleString()}</div>}
           </div>
         </div>
       )}

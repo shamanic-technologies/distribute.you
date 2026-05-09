@@ -920,19 +920,57 @@ export async function getCampaign(campaignId: string, token?: string): Promise<{
 }
 
 // Campaign sub-resources
+
+/**
+ * Apollo enrichment payload (lead-service ApolloPersonData).
+ * Flat camelCase. No nested `organization` object — org fields are prefixed with `organization`.
+ */
+export interface LeadApolloEnrichment {
+  id?: string;
+  email?: string | null;
+  emailStatus?: string | null;
+  firstName: string;
+  lastName: string;
+  title?: string | null;
+  linkedinUrl?: string | null;
+  photoUrl?: string | null;
+  headline?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  seniority?: string | null;
+  departments?: string[];
+  subdepartments?: string[];
+  functions?: string[];
+  twitterUrl?: string | null;
+  githubUrl?: string | null;
+  facebookUrl?: string | null;
+  organizationName: string;
+  organizationDomain?: string | null;
+  organizationIndustry?: string | null;
+  organizationSize?: string | null;
+  organizationLogoUrl?: string | null;
+  organizationWebsiteUrl?: string | null;
+  organizationLinkedinUrl?: string | null;
+  [key: string]: unknown;
+}
+
 export interface Lead {
   id: string;
-  firstName: string | null;
-  lastName: string | null;
+  leadId: string | null;
   email: string;
   emailStatus: string | null;
-  title: string | null;
   namespace: string | null;
-  organizationName: string | null;
-  organizationDomain: string | null;
-  organizationIndustry: string | null;
-  organizationSize: string | null;
-  linkedinUrl: string | null;
+  apolloPersonId: string | null;
+  parentRunId: string | null;
+  runId: string | null;
+  brandIds: string[];
+  campaignId: string;
+  orgId: string;
+  userId: string | null;
+  workflowSlug: string | null;
+  featureSlug: string | null;
+  servedAt: string | null;
   status: "contacted" | "served" | "buffered" | "skipped" | "claimed";
   contacted: boolean;
   sent: boolean;
@@ -942,20 +980,10 @@ export interface Lead {
   bounced: boolean;
   replied: boolean;
   unsubscribed: boolean;
+  replyClassification: "positive" | "negative" | "neutral" | null;
+  lastDeliveredAt: string | null;
   global: { bounced?: boolean; unsubscribed?: boolean } | null;
-  createdAt: string;
-  enrichmentRun: {
-    status: string;
-    startedAt: string;
-    completedAt: string | null;
-    totalCostInUsdCents: string;
-    costs: RunCost[];
-    serviceName: string;
-    taskName: string;
-    descendantRuns: DescendantRun[];
-    error?: string;
-    errorSummary?: ErrorSummary;
-  } | null;
+  enrichment: LeadApolloEnrichment | null;
 }
 
 export type LeadConsolidatedStatus = "replied" | "clicked" | "opened" | "delivered" | "sent" | "bounced" | "unsubscribed" | "contacted" | "served" | "skipped" | "claimed" | "buffered";

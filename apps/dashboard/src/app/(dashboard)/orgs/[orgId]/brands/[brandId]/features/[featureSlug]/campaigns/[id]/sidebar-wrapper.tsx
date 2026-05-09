@@ -75,7 +75,7 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
   }, [campaign?.workflowSlug, workflowsData?.workflows]);
 
   const companyCount = useMemo(() => {
-    const names = new Set(leads.map((l) => l.organizationName).filter(Boolean));
+    const names = new Set(leads.map((l) => l.enrichment?.organizationName).filter(Boolean));
     return names.size;
   }, [leads]);
 
