@@ -920,42 +920,112 @@ export async function getCampaign(campaignId: string, token?: string): Promise<{
 }
 
 // Campaign sub-resources
+
+/** Snapshot of the lead's CURRENT employer organization (lead-service OrganizationView). */
+export interface LeadOrganizationView {
+  id: string;
+  apolloOrganizationId: string | null;
+  name: string | null;
+  primaryDomain: string | null;
+  websiteUrl: string | null;
+  industry: string | null;
+  estimatedNumEmployees: number | null;
+  annualRevenue: string | null;
+  logoUrl: string | null;
+  shortDescription: string | null;
+  linkedinUrl: string | null;
+  twitterUrl: string | null;
+  facebookUrl: string | null;
+  blogUrl: string | null;
+  crunchbaseUrl: string | null;
+  foundedYear: number | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  streetAddress: string | null;
+  postalCode: string | null;
+  technologyNames: string[] | null;
+  industries: string[] | null;
+  secondaryIndustries: string[] | null;
+}
+
+/** One contact endpoint attached to a lead (lead-service ContactMethodView). */
+export interface LeadContactMethodView {
+  channel: string;
+  value: string;
+  status: string | null;
+  source: string;
+}
+
+/** One row from the lead's employment history (lead-service EmploymentEntryView). */
+export interface LeadEmploymentEntryView {
+  organizationId: string;
+  organizationName: string | null;
+  title: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  current: boolean;
+  description: string | null;
+}
+
+/** Canonical lead payload (lead-service FullLead). */
+export interface FullLead {
+  leadId: string;
+  apolloPersonId: string | null;
+  firstName: string;
+  lastName: string;
+  name: string | null;
+  headline: string | null;
+  linkedinUrl: string | null;
+  photoUrl: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  seniority: string | null;
+  departments: string[] | null;
+  subdepartments: string[] | null;
+  functions: string[] | null;
+  twitterUrl: string | null;
+  githubUrl: string | null;
+  facebookUrl: string | null;
+  enrichedAt: string | null;
+  organization: LeadOrganizationView | null;
+  contacts: LeadContactMethodView[];
+  employmentHistory: LeadEmploymentEntryView[];
+}
+
+/** A leads_campaigns row plus the canonical FullLead — mirrors lead-service LeadDetail. */
 export interface Lead {
   id: string;
-  firstName: string | null;
-  lastName: string | null;
+  leadId: string | null;
+  namespace: string;
   email: string;
+  apolloPersonId: string | null;
   emailStatus: string | null;
-  title: string | null;
-  namespace: string | null;
-  organizationName: string | null;
-  organizationDomain: string | null;
-  organizationIndustry: string | null;
-  organizationSize: string | null;
-  linkedinUrl: string | null;
-  status: "contacted" | "served" | "buffered" | "skipped" | "claimed";
+  status: "buffered" | "skipped" | "claimed" | "served";
+  statusReason: string | null;
+  statusDetails: string | null;
+  parentRunId: string | null;
+  runId: string | null;
+  brandIds: string[];
+  campaignId: string;
+  orgId: string;
+  userId: string | null;
+  workflowSlug: string | null;
+  featureSlug: string | null;
+  servedAt: string | null;
   contacted: boolean;
   sent: boolean;
   delivered: boolean;
   opened: boolean;
   clicked: boolean;
   bounced: boolean;
-  replied: boolean;
   unsubscribed: boolean;
-  global: { bounced?: boolean; unsubscribed?: boolean } | null;
-  createdAt: string;
-  enrichmentRun: {
-    status: string;
-    startedAt: string;
-    completedAt: string | null;
-    totalCostInUsdCents: string;
-    costs: RunCost[];
-    serviceName: string;
-    taskName: string;
-    descendantRuns: DescendantRun[];
-    error?: string;
-    errorSummary?: ErrorSummary;
-  } | null;
+  replied: boolean;
+  replyClassification: "positive" | "negative" | "neutral" | null;
+  lastDeliveredAt: string | null;
+  global: { bounced: boolean; unsubscribed: boolean };
+  lead: FullLead | null;
 }
 
 export type LeadConsolidatedStatus = "replied" | "clicked" | "opened" | "delivered" | "sent" | "bounced" | "unsubscribed" | "contacted" | "served" | "skipped" | "claimed" | "buffered";
