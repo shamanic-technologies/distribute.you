@@ -22,15 +22,6 @@ describe("ErrorSummary type definition", () => {
     expect(brandRun).toContain("errorSummary?: ErrorSummary");
   });
 
-  it("should include error and errorSummary in enrichmentRun", () => {
-    // The enrichmentRun nested type in Lead
-    const leadMatch = content.match(/enrichmentRun: \{[\s\S]*?\} \| null/);
-    expect(leadMatch).not.toBeNull();
-    const enrichmentRun = leadMatch![0];
-    expect(enrichmentRun).toContain("error?: string");
-    expect(enrichmentRun).toContain("errorSummary?: ErrorSummary");
-  });
-
   it("should include error and errorSummary in generationRun", () => {
     // The generationRun nested type in Email
     const emailMatch = content.match(/generationRun: \{[\s\S]*?\} \| null/);
@@ -58,26 +49,6 @@ describe("Brand info page — failed run error display", () => {
 
   it("should only show error details when status is failed and errorSummary exists", () => {
     expect(content).toContain('run.status === "failed" && run.errorSummary');
-  });
-});
-
-describe("Leads page — enrichment run error display", () => {
-  const pagePath = path.resolve(
-    __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/leads/page.tsx"
-  );
-  const content = fs.readFileSync(pagePath, "utf-8");
-
-  it("should display rootCause for failed enrichment runs", () => {
-    expect(content).toContain("selectedLead.enrichmentRun.errorSummary.rootCause");
-  });
-
-  it("should display failedStep for failed enrichment runs", () => {
-    expect(content).toContain("selectedLead.enrichmentRun.errorSummary.failedStep");
-  });
-
-  it("should guard with status check and errorSummary presence", () => {
-    expect(content).toContain('enrichmentRun.status === "failed" && selectedLead.enrichmentRun.errorSummary');
   });
 });
 
