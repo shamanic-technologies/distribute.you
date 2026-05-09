@@ -28,6 +28,15 @@ import {
   ClipboardDocumentCheckIcon,
 } from "@heroicons/react/20/solid";
 import { MermaidDiagram } from "./mermaid-diagram";
+import {
+  ContextUsageGauge,
+  type ContextUsage,
+} from "@/components/chat/context-usage-gauge";
+import {
+  isSessionNotFoundError,
+  clearStoredSession,
+  SESSION_NOT_FOUND_NOTICE,
+} from "@/lib/chat-session";
 
 /* ─── Notification sound ─────────────────────────────────────────────── */
 
@@ -654,11 +663,22 @@ export function WorkflowChat({
   const [showScrollPill, setShowScrollPill] = useState(false);
   const [input, setInput] = useState("");
   const [lastErrorInfo, setLastErrorInfo] = useState<{ code: string; message: string } | null>(null);
+  const [contextUsage, setContextUsage] = useState<ContextUsage | null>(null);
+  const [sessionResetNotice, setSessionResetNotice] = useState(false);
 
   // Load session ID from localStorage on mount / workflow change
   useEffect(() => {
     sessionIdRef.current = loadSessionId(workflowId);
+    setContextUsage(null);
+    setSessionResetNotice(false);
   }, [workflowId]);
+
+  // Auto-hide the session-reset notice after a few seconds
+  useEffect(() => {
+    if (!sessionResetNotice) return;
+    const t = setTimeout(() => setSessionResetNotice(false), 4000);
+    return () => clearTimeout(t);
+  }, [sessionResetNotice]);
 
   // Custom fetch that intercepts 402 responses to show the credits modal
   const billingFetch = useCallback<typeof globalThis.fetch>(
@@ -726,8 +746,21 @@ export function WorkflowChat({
         sessionIdRef.current = d.sessionId;
         saveSessionId(workflowId, d.sessionId);
       }
+      if (data.type === "data-context-usage" && data.data) {
+        setContextUsage(data.data as ContextUsage);
+      }
       if (data.type === "data-error-info" && data.data) {
-        setLastErrorInfo(data.data as { code: string; message: string });
+        const errInfo = data.data as { code: string; message: string };
+        if (isSessionNotFoundError(errInfo)) {
+          // Cached sessionId no longer matches a backend session — wipe it so
+          // the next message starts fresh and surface a non-blocking notice.
+          sessionIdRef.current = null;
+          clearStoredSession(sessionKey(workflowId));
+          setSessionResetNotice(true);
+          setLastErrorInfo(null);
+          return;
+        }
+        setLastErrorInfo(errInfo);
       }
     },
     onFinish: ({ messages: finalMessages }) => {
@@ -923,6 +956,8 @@ export function WorkflowChat({
   const resetChat = useCallback(() => {
     setMessages([]);
     sessionIdRef.current = null;
+    setContextUsage(null);
+    setSessionResetNotice(false);
     clearChat(workflowId);
   }, [workflowId, setMessages]);
 
@@ -977,6 +1012,7 @@ export function WorkflowChat({
       {/* Chat toolbar */}
       {hasMessages && (
         <div className="flex items-center justify-end gap-3 px-4 py-1.5 border-b border-gray-100 dark:border-white/[0.04] bg-white dark:bg-transparent">
+          <ContextUsageGauge usage={contextUsage} className="mr-auto" />
           <button
             type="button"
             onClick={copyConversation}
@@ -1121,6 +1157,14 @@ export function WorkflowChat({
           >
             Scroll to bottom
           </button>
+        </div>
+      )}
+
+      {/* Session-reset notice (data-error-info code=session_not_found) */}
+      {sessionResetNotice && (
+        <div className="flex-shrink-0 px-4 py-2 bg-blue-50 dark:bg-blue-500/[0.08] border-t border-blue-200 dark:border-blue-400/20 text-sm text-blue-700 dark:text-blue-300 flex items-center gap-2">
+          <ArrowPathIcon className="w-4 h-4 flex-shrink-0" />
+          <span>{SESSION_NOT_FOUND_NOTICE}</span>
         </div>
       )}
 

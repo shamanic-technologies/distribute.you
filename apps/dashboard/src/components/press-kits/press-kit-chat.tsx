@@ -27,6 +27,15 @@ import {
   ClipboardDocumentIcon,
   ClipboardDocumentCheckIcon,
 } from "@heroicons/react/20/solid";
+import {
+  ContextUsageGauge,
+  type ContextUsage,
+} from "@/components/chat/context-usage-gauge";
+import {
+  isSessionNotFoundError,
+  clearStoredSession,
+  SESSION_NOT_FOUND_NOTICE,
+} from "@/lib/chat-session";
 
 /* ─── LocalStorage persistence ───────────────────────────────────── */
 
@@ -288,10 +297,20 @@ export function PressKitChat({
   const [showScrollPill, setShowScrollPill] = useState(false);
   const [input, setInput] = useState("");
   const [lastErrorInfo, setLastErrorInfo] = useState<{ code: string; message: string } | null>(null);
+  const [contextUsage, setContextUsage] = useState<ContextUsage | null>(null);
+  const [sessionResetNotice, setSessionResetNotice] = useState(false);
 
   useEffect(() => {
     sessionIdRef.current = loadSessionId(kitId);
+    setContextUsage(null);
+    setSessionResetNotice(false);
   }, [kitId]);
+
+  useEffect(() => {
+    if (!sessionResetNotice) return;
+    const t = setTimeout(() => setSessionResetNotice(false), 4000);
+    return () => clearTimeout(t);
+  }, [sessionResetNotice]);
 
   const billingFetch = useCallback<typeof globalThis.fetch>(
     async (input, init) => {
@@ -346,8 +365,19 @@ export function PressKitChat({
         sessionIdRef.current = d.sessionId;
         saveSessionId(kitId, d.sessionId);
       }
+      if (data.type === "data-context-usage" && data.data) {
+        setContextUsage(data.data as ContextUsage);
+      }
       if (data.type === "data-error-info" && data.data) {
-        setLastErrorInfo(data.data as { code: string; message: string });
+        const errInfo = data.data as { code: string; message: string };
+        if (isSessionNotFoundError(errInfo)) {
+          sessionIdRef.current = null;
+          clearStoredSession(`${STORAGE_PREFIX}-session:${kitId}`);
+          setSessionResetNotice(true);
+          setLastErrorInfo(null);
+          return;
+        }
+        setLastErrorInfo(errInfo);
       }
     },
     onFinish: ({ messages: finalMessages }) => {
@@ -464,6 +494,8 @@ export function PressKitChat({
   const resetChat = useCallback(() => {
     setMessages([]);
     sessionIdRef.current = null;
+    setContextUsage(null);
+    setSessionResetNotice(false);
     clearChat(kitId);
   }, [kitId, setMessages]);
 
@@ -511,6 +543,7 @@ export function PressKitChat({
       {/* Toolbar */}
       {hasMessages && (
         <div className="flex items-center justify-end gap-3 px-4 py-1.5 border-b border-gray-100 bg-white">
+          <ContextUsageGauge usage={contextUsage} className="mr-auto" />
           <button
             type="button"
             onClick={copyConversation}
@@ -639,6 +672,14 @@ export function PressKitChat({
           >
             Scroll to bottom
           </button>
+        </div>
+      )}
+
+      {/* Session-reset notice (data-error-info code=session_not_found) */}
+      {sessionResetNotice && (
+        <div className="flex-shrink-0 px-4 py-2 bg-blue-50 border-t border-blue-200 text-sm text-blue-700 flex items-center gap-2">
+          <ArrowPathIcon className="w-4 h-4 flex-shrink-0" />
+          <span>{SESSION_NOT_FOUND_NOTICE}</span>
         </div>
       )}
 

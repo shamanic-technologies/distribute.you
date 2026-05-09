@@ -153,6 +153,21 @@ export async function POST(req: NextRequest) {
         }
 
         switch (event.type) {
+          case "context_usage": {
+            // chat-service v0.19.0 — emitted once per turn before [DONE].
+            // maxTokens is always 200000 today, but we read what the server sends.
+            writer.write({
+              type: "data-context-usage" as `data-${string}`,
+              data: {
+                inputTokens: Number(event.inputTokens) || 0,
+                outputTokens: Number(event.outputTokens) || 0,
+                maxTokens: Number(event.maxTokens) || 200000,
+                percent: Number(event.percent) || 0,
+              },
+            } as never);
+            break;
+          }
+
           case "token": {
             const text = ((event.content || event.token || "") as string);
             if (!text) break;
