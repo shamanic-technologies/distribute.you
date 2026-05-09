@@ -15,6 +15,7 @@ distribute is the Stripe of Distribution. Create an account, give us your URL �
 - **Sales Outreach** — Find prospects, write personalized cold emails, send and track replies. Automatically. _(Live)_
 - **Journalist Outreach** — Pitch journalists who cover your space. Get press without a PR agency. _(Live)_
 - **Hiring Outreach** — Reach candidates that match your needs. Cold outreach for recruiting. _(Live)_
+- **AI Visibility Scoring** — See how often your brand shows up in answers from ChatGPT, Claude, Perplexity, and Gemini. _(Coming soon)_
 
 ## Available Workflows
 

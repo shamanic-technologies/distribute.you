@@ -329,9 +329,10 @@ export default async function Home() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
             {DISTRIBUTION_FEATURES.map((feature) => {
               const colors = FEATURE_COLOR_CLASSES[feature.color];
+              const isLive = feature.status === "live";
               return (
                 <div
                   key={feature.id}
@@ -344,9 +345,15 @@ export default async function Home() {
                         {feature.title}
                       </h3>
                     </div>
-                    <span className="text-[10px] font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full border border-green-100">
-                      Live
-                    </span>
+                    {isLive ? (
+                      <span className="text-[10px] font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full border border-green-100">
+                        Live
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">
+                        Coming Soon
+                      </span>
+                    )}
                   </div>
                   <p className="text-sm text-gray-500 mb-3 leading-relaxed">
                     {feature.description}
