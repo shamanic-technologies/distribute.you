@@ -31,30 +31,14 @@ describe("Workflow API endpoints (create/upgrade/fork split)", () => {
     expect(fnMatch![0]).toContain('method: "POST"');
   });
 
-  it("exports upgradeWorkflow that POSTs /workflows/upgrade with workflowSlug + hints as string[]", () => {
-    expect(apiContent).toContain("export async function upgradeWorkflow");
-    const fnMatch = apiContent.match(
-      /export async function upgradeWorkflow\([\s\S]*?\n\}/,
-    );
-    expect(fnMatch).toBeTruthy();
-    expect(fnMatch![0]).toContain('"/workflows/upgrade"');
-    expect(fnMatch![0]).toContain('method: "POST"');
-    const reqMatch = apiContent.match(
-      /interface UpgradeWorkflowRequest \{[\s\S]*?\n\}/,
-    );
-    expect(reqMatch).toBeTruthy();
-    expect(reqMatch![0]).toContain("workflowSlug:");
-    expect(reqMatch![0]).toContain("description:");
-    expect(reqMatch![0]).toMatch(/hints\?:\s*string\[\]/);
+  it("does not export upgradeWorkflow (agent-only via api-service tool)", () => {
+    expect(apiContent).not.toMatch(/export async function upgradeWorkflow\b/);
+    expect(apiContent).not.toContain("/workflows/upgrade");
+    expect(apiContent).not.toMatch(/interface UpgradeWorkflowRequest\b/);
   });
 
-  it("exports forkWorkflow that PUTs /workflows/:id", () => {
-    expect(apiContent).toContain("export async function forkWorkflow");
-    const fnMatch = apiContent.match(
-      /export async function forkWorkflow\([\s\S]*?\n\}/,
-    );
-    expect(fnMatch).toBeTruthy();
-    expect(fnMatch![0]).toMatch(/`\/workflows\/\$\{[^}]+\}`/);
-    expect(fnMatch![0]).toContain('method: "PUT"');
+  it("does not export forkWorkflow (agent-only via api-service tool)", () => {
+    expect(apiContent).not.toMatch(/export async function forkWorkflow\b/);
+    expect(apiContent).not.toMatch(/interface ForkWorkflowRequest\b/);
   });
 });

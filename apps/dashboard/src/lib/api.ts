@@ -1275,61 +1275,6 @@ export async function createWorkflow(
   });
 }
 
-export interface UpgradeWorkflowRequest {
-  workflowSlug: string;
-  description: string;
-  hints?: string[];
-}
-
-export type UpgradeWorkflowResult = CreateWorkflowResult;
-
-export async function upgradeWorkflow(
-  params: UpgradeWorkflowRequest,
-  token?: string,
-): Promise<UpgradeWorkflowResult> {
-  return apiCall<UpgradeWorkflowResult>("/workflows/upgrade", {
-    method: "POST",
-    body: params as unknown as Record<string, unknown>,
-    token,
-  });
-}
-
-export interface ForkWorkflowRequest {
-  name?: string;
-  description?: string;
-  tags?: string[];
-  dag?: DAG;
-}
-
-export interface ForkWorkflowResult {
-  id: string;
-  workflowSlug: string;
-  workflowName: string;
-  workflowDynastyName: string;
-  workflowDynastySlug: string;
-  version: number;
-  signature: string;
-  signatureName: string;
-  featureSlug: string;
-  _action: "updated" | "forked";
-  _forkedFromId?: string;
-  _forkedFromName?: string;
-  _sourceDynastyDeprecated?: boolean;
-  dag?: DAG;
-}
-
-export async function forkWorkflow(
-  workflowId: string,
-  params: ForkWorkflowRequest,
-  token?: string,
-): Promise<ForkWorkflowResult> {
-  return apiCall<ForkWorkflowResult>(`/workflows/${workflowId}`, {
-    method: "PUT",
-    body: params as unknown as Record<string, unknown>,
-    token,
-  });
-}
-
 // Create campaign
 export async function createCampaign(
   params: {
