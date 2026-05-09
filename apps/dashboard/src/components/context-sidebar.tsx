@@ -261,6 +261,12 @@ const BillingIcon = () => (
   </svg>
 );
 
+const CrmIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+  </svg>
+);
+
 const PlusIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -407,6 +413,13 @@ function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string 
             isActive={pathname.startsWith(item.href)}
           />
         ))}
+      </div>
+      <div className="pt-2 mt-2 border-t border-gray-100">
+        <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Services</h4>
+        <SidebarLink
+          item={{ id: "crm", label: "CRM (Google)", href: `/orgs/${orgId}/services/crm`, icon: <CrmIcon /> }}
+          isActive={pathname.startsWith(`/orgs/${orgId}/services/crm`)}
+        />
       </div>
       <div className="pt-2 mt-2 border-t border-gray-100">
         <SidebarLink
