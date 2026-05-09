@@ -2035,3 +2035,191 @@ export async function checkPressKitOrgsExist(
   );
 }
 
+// ─── Expert Quote Outreach (journalists-quotes-service) ──────────────────────
+
+export type QuoteRequestStatus =
+  | "fetched"
+  | "scored"
+  | "skipped"
+  | "pitched"
+  | "selected"
+  | "published"
+  | "not_selected"
+  | "error";
+
+export type QuotePitchStatus =
+  | "drafted"
+  | "submitted"
+  | "selected"
+  | "published"
+  | "not_selected"
+  | "error";
+
+export interface QuoteRequest {
+  id: string;
+  campaignId: string | null;
+  brandId: string | null;
+  source: string;
+  externalId: string;
+  title: string;
+  question: string;
+  publication: string | null;
+  deadlineAt: string | null;
+  topics: string[];
+  status: QuoteRequestStatus;
+  priorityScore: number | null;
+  scoringRationale: string | null;
+  fetchedAt: string;
+  updatedAt: string;
+}
+
+export interface QuotePitch {
+  id: string;
+  quoteRequestId: string;
+  campaignId: string | null;
+  brandId: string | null;
+  status: QuotePitchStatus;
+  pitchText: string;
+  expertName: string | null;
+  expertTitle: string | null;
+  submittedAt: string | null;
+  selectedAt: string | null;
+  publishedAt: string | null;
+  publishedUrl: string | null;
+  errorMessage: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface QuoteRequestStats {
+  fetched: number;
+  scored: number;
+  skipped: number;
+  pitched: number;
+  selected: number;
+  published: number;
+  notSelected: number;
+  errored: number;
+}
+
+export interface ListQuoteRequestsParams {
+  campaignId?: string;
+  brandId?: string;
+  status?: QuoteRequestStatus;
+  limit?: number;
+  offset?: number;
+}
+
+export interface ListQuotePitchesParams {
+  campaignId?: string;
+  brandId?: string;
+  status?: QuotePitchStatus;
+  limit?: number;
+  offset?: number;
+}
+
+function buildQuery(params: object): string {
+  const qs = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== "") {
+      qs.set(key, String(value));
+    }
+  }
+  const out = qs.toString();
+  return out ? `?${out}` : "";
+}
+
+export async function listQuoteRequests(
+  params?: ListQuoteRequestsParams,
+  token?: string,
+): Promise<{ requests: QuoteRequest[]; total: number }> {
+  return apiCall<{ requests: QuoteRequest[]; total: number }>(
+    `/quote-requests${buildQuery(params ?? {})}`,
+    { token },
+  );
+}
+
+export async function getQuoteRequest(
+  id: string,
+  token?: string,
+): Promise<{ request: QuoteRequest }> {
+  return apiCall<{ request: QuoteRequest }>(`/quote-requests/${id}`, { token });
+}
+
+export async function getQuoteRequestStats(
+  params?: { brandId?: string; campaignId?: string },
+  token?: string,
+): Promise<{ stats: QuoteRequestStats }> {
+  return apiCall<{ stats: QuoteRequestStats }>(
+    `/quote-requests/stats${buildQuery(params ?? {})}`,
+    { token },
+  );
+}
+
+export async function listQuotePitches(
+  params?: ListQuotePitchesParams,
+  token?: string,
+): Promise<{ pitches: QuotePitch[]; total: number }> {
+  return apiCall<{ pitches: QuotePitch[]; total: number }>(
+    `/quote-pitches${buildQuery(params ?? {})}`,
+    { token },
+  );
+}
+
+export async function getQuotePitch(
+  id: string,
+  token?: string,
+): Promise<{ pitch: QuotePitch }> {
+  return apiCall<{ pitch: QuotePitch }>(`/quote-pitches/${id}`, { token });
+}
+
+/**
+ * Store Featured.com credentials for the active org.
+ * Routed to key-service via /keys POST. The `featured` provider expects
+ * username + password (parallel key-service work registers this provider).
+ */
+export async function setFeaturedCreds(
+  username: string,
+  password: string,
+  token?: string,
+): Promise<{ provider: string; maskedKey: string }> {
+  return apiCall<{ provider: string; maskedKey: string }>("/keys", {
+    token,
+    method: "POST",
+    body: { provider: "featured", username, password },
+  });
+}
+
+/**
+ * Trigger one execution of the workflow with slug `expert-quote-outreach`
+ * for the given brand + campaign. Resolves the workflow by featureSlug
+ * filter and calls /workflows/:id/execute. If no workflow is registered
+ * for the feature yet, throws ApiError with status 404.
+ */
+export async function triggerExpertQuoteRun(
+  params: { brandId: string; campaignId: string },
+  token?: string,
+): Promise<{ workflowRunId: string }> {
+  const { workflows } = await listWorkflows(
+    { featureSlug: "pr-expert-quote-outreach" },
+    token,
+  );
+  const wf = workflows.find(
+    (w) =>
+      w.workflowSlug === "expert-quote-outreach" ||
+      w.workflowDynastySlug === "expert-quote-outreach",
+  );
+  if (!wf) {
+    throw new ApiError(
+      "Workflow `expert-quote-outreach` is not registered yet.",
+      404,
+      { error: "workflow_not_registered" },
+    );
+  }
+  return apiCall<{ workflowRunId: string }>(`/workflows/${wf.id}/execute`, {
+    token,
+    method: "POST",
+    body: { inputs: { brandId: params.brandId, campaignId: params.campaignId } },
+  });
+}
+
