@@ -37,9 +37,10 @@ export const DISTRIBUTION_FEATURES: DistributionFeature[] = [
   {
     id: "ai-visibility-scoring",
     title: "AI Visibility Scoring",
-    description: "See how often your brand shows up in answers from ChatGPT, Claude, Perplexity, and Gemini.",
+    description:
+      "Audit how your brand appears in answers from ChatGPT, Claude, Perplexity, and Gemini. Track mention rate, ranking, and share-of-voice against competitors across a curated prompt set.",
     metric: "Mention Rate",
-    status: "coming-soon",
+    status: "live",
     color: "amber",
   },
 ];
