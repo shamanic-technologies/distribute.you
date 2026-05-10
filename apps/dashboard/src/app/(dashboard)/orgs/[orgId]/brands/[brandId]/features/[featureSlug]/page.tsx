@@ -16,7 +16,7 @@ import { useStopCampaign, useIsStoppingCampaign } from "@/lib/use-stop-campaign"
 import { FunnelMetrics, FunnelMetricsSkeleton } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown, ReplyBreakdownSkeleton } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown, CostBreakdownSkeleton } from "@/components/campaign/cost-breakdown";
-import { ExpertQuoteOutreachPage } from "@/components/expert-quote-outreach/expert-quote-outreach-page";
+import { FeatureBYOKBanner } from "@/components/feature-byok-banner";
 import { formatStatValue } from "@/lib/format-stat";
 
 const POLL_INTERVAL = 5_000;
@@ -86,10 +86,6 @@ export default function FeaturePage() {
   const brandId = params.brandId as string;
   const orgId = params.orgId as string;
   const featureSlug = params.featureSlug as string;
-
-  if (featureSlug === "pr-expert-quote-outreach") {
-    return <ExpertQuoteOutreachPage brandId={brandId} orgId={orgId} />;
-  }
 
   return <GenericFeaturePage brandId={brandId} orgId={orgId} featureSlug={featureSlug} />;
 }
@@ -189,6 +185,11 @@ function GenericFeaturePage({
           </Link>
         </div>
       </div>
+
+      <FeatureBYOKBanner
+        featureSlug={featureSlug}
+        byokProvider={featureDef?.byokProvider}
+      />
 
       {/* Stats Overview — dynamic from charts */}
       {allStatsLoading ? (

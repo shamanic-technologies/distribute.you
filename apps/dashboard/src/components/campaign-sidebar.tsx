@@ -75,6 +75,32 @@ const ICON_MAP: Record<string, () => ReactNode> = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
     </svg>
   ),
+  "help-circle": () => (
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+      <circle cx="12" cy="12" r="9" strokeWidth={1.5} />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.5 9a2.5 2.5 0 015 0c0 1.5-2.5 2-2.5 4M12 17h.01" />
+    </svg>
+  ),
+  quote: () => (
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 7h3v6H7zM7 13c0 2 1 3 3 3M14 7h3v6h-3zM14 13c0 2 1 3 3 3" />
+    </svg>
+  ),
+  sparkles: () => (
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M19 13v4M17 15h4M11 5l1.5 4 4 1.5-4 1.5L11 16l-1.5-4-4-1.5 4-1.5L11 5z" />
+    </svg>
+  ),
+  "message-square": () => (
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+    </svg>
+  ),
+  swords: () => (
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.5 17.5L3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2M14.5 6.5L18 3h3v3l-3.5 3.5M5 14l4 4M5 17l-2 2M3 19l2 2" />
+    </svg>
+  ),
 };
 
 function getEntityIcon(iconName: string): ReactNode {
@@ -130,15 +156,26 @@ export function CampaignSidebar({ campaignId, orgId, brandId, featureSlug, entit
     });
 
   const outcomesGroups: McpSidebarGroup[] = useMemo(() => {
-    return OUTCOME_GROUPS
+    const groupedIds = new Set<string>(OUTCOME_GROUPS.flatMap((g) => g.entityIds));
+    const knownGroups: McpSidebarGroup[] = OUTCOME_GROUPS
       .map((group) => ({
-        id: group.id,
-        label: group.label,
+        id: group.id as string,
+        label: group.label as string,
         items: group.entityIds
           .map((eid) => entityItems.find((item) => item.id === eid))
           .filter((item): item is (typeof entityItems)[number] => item != null),
       }))
       .filter((group) => group.items.length > 0);
+
+    const unmatched = entityItems.filter((item) => !groupedIds.has(item.id));
+    if (unmatched.length > 0) {
+      knownGroups.push({
+        id: "results",
+        label: "Results",
+        items: unmatched,
+      });
+    }
+    return knownGroups;
   }, [entityItems]);
 
   const items = [

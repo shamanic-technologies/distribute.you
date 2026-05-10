@@ -214,14 +214,6 @@ export interface Campaign {
   updatedAt: string;
 }
 
-/** @deprecated apollo stats no longer returned by api-service v0.26.0 */
-export interface ApolloStats {
-  enrichedLeadsCount: number;
-  searchCount: number;
-  fetchedPeopleCount: number;
-  totalMatchingPeople: number;
-}
-
 export interface CostByName {
   costName: string;
   totalCostInUsdCents: string;
@@ -262,7 +254,6 @@ export interface CampaignStats {
   leadsServed: number;
   leadsBuffered: number;
   leadsSkipped: number;
-  apollo?: ApolloStats;
   emailsGenerated: number;
   recipientStats: RecipientStats;
   emailStats: EmailStats;
@@ -635,12 +626,14 @@ export interface Feature {
   outputs: FeatureOutput[];
   charts: FeatureChart[];
   entities: FeatureEntity[];
+  byokProvider?: string | null;
+  workflowSlug?: string | null;
 }
 
 // ─── Stats Registry & Stats Types ────────────────────────────────────────────
 
 export interface StatsRegistryEntry {
-  type: "count" | "rate" | "currency";
+  type: "count" | "rate" | "currency" | "score";
   label: string;
 }
 
@@ -2190,28 +2183,147 @@ export async function setFeaturedCreds(
   });
 }
 
+// ─── AI Visibility Score (ai-visibility-score-service) ──────────────────────
+
+export interface VisibilityRunWeights {
+  brandMentionRate: number;
+  citationRate: number;
+  positionScore: number;
+  shareOfVoice: number;
+  sentiment: number;
+  brandAndUrlRate: number;
+}
+
+export interface VisibilityRun {
+  id: string;
+  orgId: string;
+  brandId: string;
+  parentRunId: string | null;
+  runId: string | null;
+  domain: string;
+  brandName: string;
+  llmProvider: string;
+  llmModel: string;
+  promptGenModel: string;
+  extractionProvider: string;
+  extractionModel: string;
+  nPrompts: number;
+  weights: VisibilityRunWeights;
+  visibilityScore: string | null;
+  brandMentionRate: string | null;
+  shareOfVoice: string | null;
+  netSentiment: string | null;
+  citationRate: string | null;
+  avgPosition: string | null;
+  status: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+}
+
+export interface VisibilityRunWithDelta extends VisibilityRun {
+  visibility_score_delta: string | null;
+  share_of_voice_delta: string | null;
+  net_sentiment_delta: string | null;
+  position_delta: string | null;
+}
+
+export interface VisibilityRunPrompt {
+  id: string;
+  promptIndex: number;
+  promptText: string;
+  responseText: string;
+  responseLengthChars: number | null;
+  brandFound: boolean | null;
+  brandCount: number | null;
+  brandPosition: number | null;
+  urlFound: boolean | null;
+  urlCount: number | null;
+  brandAndUrlCoOccurrence: boolean | null;
+  maxBrandsInResponse: number | null;
+  sentiment: string | null;
+  sentimentScore: string | null;
+  citationUrls: string[] | null;
+  latencyMs: number | null;
+  tokensInput: number | null;
+  tokensOutput: number | null;
+}
+
+export interface VisibilityRunCompetitor {
+  id: string;
+  promptIdFk: string;
+  competitorName: string;
+  competitorUrl: string | null;
+  position: number | null;
+  sentiment: string | null;
+  sentimentScore: string | null;
+  citationUrl: string | null;
+}
+
+export interface VisibilityRunTopCompetitor {
+  name: string;
+  url: string | null;
+  mention_count: number;
+  avg_position: number | null;
+  share_of_voice: number;
+  net_sentiment: number;
+}
+
+export interface VisibilityRunCitationOpportunity {
+  domain: string;
+  count: number;
+}
+
+export interface VisibilityRunDetail {
+  run: VisibilityRun;
+  prompts: VisibilityRunPrompt[];
+  competitors: VisibilityRunCompetitor[];
+  top_competitors: VisibilityRunTopCompetitor[];
+  citation_opportunities: VisibilityRunCitationOpportunity[];
+}
+
+export interface ListVisibilityRunsParams {
+  brandId?: string;
+  domain?: string;
+  from?: string;
+  to?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function listVisibilityRuns(
+  params?: ListVisibilityRunsParams,
+  token?: string,
+): Promise<{ runs: VisibilityRunWithDelta[]; limit: number; offset: number }> {
+  return apiCall<{ runs: VisibilityRunWithDelta[]; limit: number; offset: number }>(
+    `/visibility-score-runs${buildQuery(params ?? {})}`,
+    { token },
+  );
+}
+
+export async function getVisibilityRun(
+  id: string,
+  token?: string,
+): Promise<VisibilityRunDetail> {
+  return apiCall<VisibilityRunDetail>(`/visibility-score-runs/${id}`, { token });
+}
+
 /**
- * Trigger one execution of the workflow with slug `expert-quote-outreach`
- * for the given brand + campaign. Resolves the workflow by featureSlug
- * filter and calls /workflows/:id/execute. If no workflow is registered
- * for the feature yet, throws ApiError with status 404.
+ * Trigger one execution of the workflow attached to a feature.
+ * Resolves the workflow by featureSlug filter and calls
+ * /workflows/:id/execute. Throws ApiError(404) when no workflow is
+ * registered for the feature yet.
  */
-export async function triggerExpertQuoteRun(
+export async function triggerFeatureRun(
+  featureSlug: string,
   params: { brandId: string; campaignId: string },
   token?: string,
 ): Promise<{ workflowRunId: string }> {
-  const { workflows } = await listWorkflows(
-    { featureSlug: "pr-expert-quote-outreach" },
-    token,
-  );
-  const wf = workflows.find(
-    (w) =>
-      w.workflowSlug === "expert-quote-outreach" ||
-      w.workflowDynastySlug === "expert-quote-outreach",
-  );
+  const { workflows } = await listWorkflows({ featureSlug }, token);
+  const wf = workflows[0];
   if (!wf) {
     throw new ApiError(
-      "Workflow `expert-quote-outreach` is not registered yet.",
+      `No workflow registered for feature \`${featureSlug}\`.`,
       404,
       { error: "workflow_not_registered" },
     );
