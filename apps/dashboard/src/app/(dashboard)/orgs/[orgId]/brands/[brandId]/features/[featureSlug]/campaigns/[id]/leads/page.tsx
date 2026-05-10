@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
+import { useParams } from "next/navigation";
 import { getLeadConsolidatedStatus, type Lead, type LeadConsolidatedStatus } from "@/lib/api";
 import { useCampaign } from "@/lib/campaign-context";
 import { EntitySearchBar } from "@/components/entity-search-bar";
+import { LeadsStatsPanel } from "@/components/campaign/leads-stats-panel";
 
 const LEAD_STATUS_ORDER: LeadConsolidatedStatus[] = [
   "replied",
@@ -196,6 +198,9 @@ function LeadsTable({
 }
 
 export default function CampaignLeadsPage() {
+  const params = useParams();
+  const featureSlug = params.featureSlug as string;
+  const campaignId = params.id as string;
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("contacted");
   const [search, setSearch] = useState("");
@@ -280,6 +285,11 @@ export default function CampaignLeadsPage() {
             Leads
             <span className="ml-2 text-sm font-normal text-gray-500">({leads.length.toLocaleString("en-US")})</span>
           </h1>
+        </div>
+
+        {/* Aggregate lead-scoped stats */}
+        <div className="mb-6">
+          <LeadsStatsPanel featureSlug={featureSlug} campaignId={campaignId} />
         </div>
 
         {/* Tabs */}

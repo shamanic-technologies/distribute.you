@@ -214,14 +214,6 @@ export interface Campaign {
   updatedAt: string;
 }
 
-/** @deprecated apollo stats no longer returned by api-service v0.26.0 */
-export interface ApolloStats {
-  enrichedLeadsCount: number;
-  searchCount: number;
-  fetchedPeopleCount: number;
-  totalMatchingPeople: number;
-}
-
 export interface CostByName {
   costName: string;
   totalCostInUsdCents: string;
@@ -262,7 +254,6 @@ export interface CampaignStats {
   leadsServed: number;
   leadsBuffered: number;
   leadsSkipped: number;
-  apollo?: ApolloStats;
   emailsGenerated: number;
   recipientStats: RecipientStats;
   emailStats: EmailStats;
