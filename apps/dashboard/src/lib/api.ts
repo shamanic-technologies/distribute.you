@@ -2118,7 +2118,7 @@ export async function listQuoteRequests(
   token?: string,
 ): Promise<{ requests: QuoteRequest[]; total: number }> {
   return apiCall<{ requests: QuoteRequest[]; total: number }>(
-    `/quote-requests${buildQuery(params ?? {})}`,
+    `/orgs/quote-requests${buildQuery(params ?? {})}`,
     { token },
   );
 }
@@ -2127,7 +2127,7 @@ export async function getQuoteRequest(
   id: string,
   token?: string,
 ): Promise<{ request: QuoteRequest }> {
-  return apiCall<{ request: QuoteRequest }>(`/quote-requests/${id}`, { token });
+  return apiCall<{ request: QuoteRequest }>(`/orgs/quote-requests/${id}`, { token });
 }
 
 export async function getQuoteRequestStats(
@@ -2135,7 +2135,7 @@ export async function getQuoteRequestStats(
   token?: string,
 ): Promise<{ stats: QuoteRequestStats }> {
   return apiCall<{ stats: QuoteRequestStats }>(
-    `/quote-requests/stats${buildQuery(params ?? {})}`,
+    `/orgs/quote-requests/stats${buildQuery(params ?? {})}`,
     { token },
   );
 }
@@ -2145,7 +2145,7 @@ export async function listQuotePitches(
   token?: string,
 ): Promise<{ pitches: QuotePitch[]; total: number }> {
   return apiCall<{ pitches: QuotePitch[]; total: number }>(
-    `/quote-pitches${buildQuery(params ?? {})}`,
+    `/orgs/quote-pitches${buildQuery(params ?? {})}`,
     { token },
   );
 }
@@ -2154,7 +2154,7 @@ export async function getQuotePitch(
   id: string,
   token?: string,
 ): Promise<{ pitch: QuotePitch }> {
-  return apiCall<{ pitch: QuotePitch }>(`/quote-pitches/${id}`, { token });
+  return apiCall<{ pitch: QuotePitch }>(`/orgs/quote-pitches/${id}`, { token });
 }
 
 /**
@@ -2287,7 +2287,7 @@ export async function listVisibilityRuns(
   token?: string,
 ): Promise<{ runs: VisibilityRunWithDelta[]; limit: number; offset: number }> {
   return apiCall<{ runs: VisibilityRunWithDelta[]; limit: number; offset: number }>(
-    `/visibility-score-runs${buildQuery(params ?? {})}`,
+    `/orgs/visibility-score-runs${buildQuery(params ?? {})}`,
     { token },
   );
 }
@@ -2296,7 +2296,7 @@ export async function getVisibilityRun(
   id: string,
   token?: string,
 ): Promise<VisibilityRunDetail> {
-  return apiCall<VisibilityRunDetail>(`/visibility-score-runs/${id}`, { token });
+  return apiCall<VisibilityRunDetail>(`/orgs/visibility-score-runs/${id}`, { token });
 }
 
 /**

@@ -140,7 +140,7 @@ async function mockApi(page: Page) {
       await route.fulfill({ json: CAMPAIGN_FIXTURE });
       return;
     }
-    if (path.startsWith("/visibility-score-runs")) {
+    if (path.startsWith("/orgs/visibility-score-runs")) {
       await route.fulfill({ json: VISIBILITY_RUNS_FIXTURE });
       return;
     }
