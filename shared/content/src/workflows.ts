@@ -87,12 +87,11 @@ export const FEATURE_LABELS: Record<string, string> = {
 
 /** Resolve display name for a workflow name. Returns the last segment capitalized, otherwise title-cases the raw name. */
 export function getWorkflowDisplayName(workflowName: string): string {
-  // Extract the last segment after the featureSlug prefix as the signature name
   for (const def of WORKFLOW_DEFINITIONS) {
     if (workflowName.startsWith(def.featureSlug + "-")) {
-      const signatureName = workflowName.slice(def.featureSlug.length + 1);
-      if (signatureName) {
-        return signatureName.charAt(0).toUpperCase() + signatureName.slice(1);
+      const suffix = workflowName.slice(def.featureSlug.length + 1);
+      if (suffix) {
+        return suffix.charAt(0).toUpperCase() + suffix.slice(1);
       }
     }
   }

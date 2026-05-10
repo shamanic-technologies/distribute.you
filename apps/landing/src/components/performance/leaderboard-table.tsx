@@ -159,9 +159,9 @@ export function WorkflowLeaderboard({ workflows, inSection = false, maxEntries }
                 <td className="px-4 py-4 whitespace-nowrap">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-gray-900">
-                      {inSection && wf.signatureName
-                        ? wf.signatureName.charAt(0).toUpperCase() + wf.signatureName.slice(1)
-                        : wf.dynastyName || formatWorkflowName(wf.workflowName)}
+                      {inSection && wf.workflowDynastySignatureName
+                        ? wf.workflowDynastySignatureName.charAt(0).toUpperCase() + wf.workflowDynastySignatureName.slice(1)
+                        : wf.workflowDynastyName || formatWorkflowName(wf.workflowName)}
                     </span>
                     {!inSection && wf.featureSlug && (
                       <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
@@ -190,9 +190,9 @@ export function WorkflowLeaderboard({ workflows, inSection = false, maxEntries }
 }
 
 function WorkflowDetailPanel({ workflow: wf, onClose }: { workflow: WorkflowLeaderboardEntry; onClose: () => void }) {
-  const name = wf.signatureName
-    ? wf.signatureName.charAt(0).toUpperCase() + wf.signatureName.slice(1)
-    : wf.dynastyName || formatWorkflowName(wf.workflowName);
+  const name = wf.workflowDynastySignatureName
+    ? wf.workflowDynastySignatureName.charAt(0).toUpperCase() + wf.workflowDynastySignatureName.slice(1)
+    : wf.workflowDynastyName || formatWorkflowName(wf.workflowName);
 
   return (
     <>

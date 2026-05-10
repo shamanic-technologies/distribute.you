@@ -15,7 +15,6 @@ const FEATURE_SLUG = "sales-cold-email-outreach@v1";
 
 const SALES_FEATURE = {
   slug: FEATURE_SLUG,
-  dynastySlug: "sales-cold-email-outreach",
   name: "Sales Cold Email Outreach",
   description: "Lead generation + cold email outreach",
   status: "active",

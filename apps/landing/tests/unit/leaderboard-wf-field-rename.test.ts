@@ -21,8 +21,12 @@ describe("Leaderboard fetch uses renamed workflow fields from features-service",
     expect(content).not.toMatch(/r\.workflow\.name[^:]/);
   });
 
-  it("should read r.workflow.workflowDynastyName (not r.workflow.dynastyName)", () => {
+  it("should read r.workflow.workflowDynastyName (not the legacy un-prefixed dynasty field)", () => {
     expect(content).toContain("r.workflow.workflowDynastyName");
-    expect(content).not.toContain("r.workflow.dynastyName");
+    expect(content).not.toMatch(/r\.workflow\.dynasty(Name|Slug)\b/);
+  });
+
+  it("should expose workflowDynastySignatureName (not the legacy signature field) on the leaderboard entry type", () => {
+    expect(content).toContain("workflowDynastySignatureName");
   });
 });

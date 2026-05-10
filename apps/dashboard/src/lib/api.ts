@@ -1121,7 +1121,7 @@ export interface Workflow {
   category?: string;
   channel?: string;
   audienceType?: string;
-  signatureName: string;
+  workflowDynastySignatureName: string;
   dag: DAG | null;
   requiredProviders: string[];
   status?: "active" | "deprecated";
@@ -1294,13 +1294,6 @@ export async function fetchRankedWorkflows(params: {
 }
 
 // Create / Upgrade / Fork workflow via AI
-export interface WorkflowStyle {
-  type: "human" | "brand";
-  name: string;
-  humanId?: string;
-  brandId?: string;
-}
-
 export interface CreateWorkflowRequest {
   description: string;
   featureSlug: string;
@@ -1309,7 +1302,6 @@ export interface CreateWorkflowRequest {
     nodeTypes?: string[];
     expectedInputs?: string[];
   };
-  style?: WorkflowStyle;
 }
 
 export interface CreateWorkflowResult {
@@ -1318,10 +1310,9 @@ export interface CreateWorkflowResult {
     name: string;
     featureSlug: string;
     signature: string;
-    signatureName: string;
+    workflowDynastySignatureName: string;
     action: "created" | "updated";
     humanId: string | null;
-    styleName: string | null;
   };
   dag: { nodes: unknown[]; edges: unknown[] };
   generatedDescription: string;
