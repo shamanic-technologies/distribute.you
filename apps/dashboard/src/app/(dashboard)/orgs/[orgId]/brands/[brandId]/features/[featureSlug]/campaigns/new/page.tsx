@@ -1044,7 +1044,7 @@ function WorkflowRow({
 }: {
   wf: WorkflowTableRow;
   outputs: { key: string; displayOrder: number }[];
-  registry: Record<string, { type: "count" | "rate" | "currency"; label: string }>;
+  registry: Record<string, { type: "count" | "rate" | "currency" | "score"; label: string }>;
   isSelected: boolean;
   selectable: boolean;
   onSelect: () => void;

@@ -33,6 +33,16 @@ describe("formatStatValue", () => {
   it("returns em dash for zero currency", () => {
     expect(formatStatValue(0, { type: "currency", label: "Cost" })).toBe("\u2014");
   });
+
+  it("formats score (0-1 scalar) as percentage", () => {
+    expect(formatStatValue(0.42, { type: "score", label: "Visibility" })).toBe("42.0%");
+    expect(formatStatValue(1, { type: "score", label: "Visibility" })).toBe("100.0%");
+    expect(formatStatValue(0.001, { type: "score", label: "Visibility" })).toBe("0.1%");
+  });
+
+  it("returns em dash for zero score", () => {
+    expect(formatStatValue(0, { type: "score", label: "Visibility" })).toBe("\u2014");
+  });
 });
 
 describe("sortDirectionForType", () => {

@@ -10,6 +10,9 @@ export function formatStatValue(value: number | null | undefined, entry: StatsRe
     case "rate":
       if (value === 0) return "\u2014";
       return `${(value * 100).toFixed(1)}%`;
+    case "score":
+      if (value === 0) return "\u2014";
+      return `${(value * 100).toFixed(1)}%`;
     case "currency": {
       if (value === 0) return "\u2014";
       const usd = value / 100;
