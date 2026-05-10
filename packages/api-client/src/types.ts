@@ -364,15 +364,15 @@ export interface Workflow {
   appId: string;
   name: string;
   slug: string;
-  dynastyName: string;
-  dynastySlug: string;
+  workflowDynastyName: string;
+  workflowDynastySlug: string;
   version: number;
   description: string | null;
   featureSlug: string | null;
   category?: string;
   channel?: string;
   audienceType?: string;
-  signatureName: string;
+  workflowDynastySignatureName: string;
   dag: DAG | null;
   requiredProviders: string[];
   status?: "active" | "deprecated";

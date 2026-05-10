@@ -15,7 +15,7 @@ describe("Feature slug resolution in features-context", () => {
   it("getFeature should match by slug", () => {
     const content = fs.readFileSync(contextPath, "utf-8");
     expect(content).toContain("f.slug === slug");
-    expect(content).not.toContain("dynastySlug");
+    expect(content).not.toMatch(/\bdynasty(Slug|Name)\b/);
   });
 });
 
@@ -72,23 +72,20 @@ describe("All feature links use slug directly", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
     expect(content).toContain("f.slug");
     expect(content).toContain("f.name");
-    expect(content).not.toContain("f.dynastySlug");
-    expect(content).not.toContain("f.dynastyName");
+    expect(content).not.toMatch(/\bf\.dynasty(Slug|Name)\b/);
   });
 
   it("brand page builds feature links with f.slug", () => {
     const content = fs.readFileSync(brandPagePath, "utf-8");
     expect(content).toContain("f.slug");
     expect(content).toContain("f.name");
-    expect(content).not.toContain("f.dynastySlug");
-    expect(content).not.toContain("f.dynastyName");
+    expect(content).not.toMatch(/\bf\.dynasty(Slug|Name)\b/);
   });
 
   it("breadcrumb feature switcher uses f.slug", () => {
     const content = fs.readFileSync(breadcrumbPath, "utf-8");
     expect(content).toContain("f.slug");
     expect(content).toContain("f.name");
-    expect(content).not.toContain("f.dynastySlug");
-    expect(content).not.toContain("f.dynastyName");
+    expect(content).not.toMatch(/\bf\.dynasty(Slug|Name)\b/);
   });
 });

@@ -36,10 +36,10 @@ describe("Feature creation page uses ranked workflows endpoint", () => {
     expect(content).toContain("stats.costPerOutcome");
   });
 
-  it("should display the dynasty name (dynastyName) not signatureName", () => {
+  it("should display the workflowDynastyName not workflowDynastySignatureName", () => {
     expect(content).toContain("formatDisplayName");
-    // Should NOT use signatureName for display in the row
-    expect(content).not.toMatch(/wf\.signatureName\s*\?/);
+    // Should NOT use workflowDynastySignatureName for display in the row
+    expect(content).not.toMatch(/wf\.workflowDynastySignatureName\s*\?/);
   });
 
   it("should send the active workflow slug (not name) for campaign creation", () => {

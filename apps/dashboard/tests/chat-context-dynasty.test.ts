@@ -4,7 +4,7 @@ import * as path from "path";
 
 /**
  * Regression test: workflow chat context must include complete identity fields
- * (id, slug, dynastySlug, dynastyName, version) for workflows.
+ * (id, workflowSlug, workflowDynastySlug, workflowDynastyName, version) for workflows.
  * Features only have id, slug, name — no dynasty concept.
  */
 

@@ -72,8 +72,8 @@ function formatCostCents(cents: number | null): string {
 }
 
 /** Extract the family display name. Strips the featureSlug prefix to show just the codename. */
-function formatDisplayName(dynastyName: string, fallbackName: string): string {
-  const raw = dynastyName || fallbackName;
+function formatDisplayName(workflowDynastyName: string, fallbackName: string): string {
+  const raw = workflowDynastyName || fallbackName;
   const lastDashIdx = raw.lastIndexOf("-");
   const suffix = lastDashIdx >= 0 ? raw.slice(lastDashIdx + 1) : raw;
   return suffix.charAt(0).toUpperCase() + suffix.slice(1);
