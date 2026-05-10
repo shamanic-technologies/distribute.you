@@ -6,26 +6,26 @@ describe("workflowDisplayName", () => {
     expect(
       workflowDisplayName({
         workflowDynastyName: "Cold Outreach Jasmine",
-        signatureName: "mintaka",
+        workflowDynastySignatureName: "mintaka",
         workflowName: "sales-email-cold-outreach-headwater",
       })
     ).toBe("Cold Outreach Jasmine");
   });
 
-  it("falls back to capitalized signatureName when workflowDynastyName is null", () => {
+  it("falls back to capitalized workflowDynastySignatureName when workflowDynastyName is null", () => {
     expect(
       workflowDisplayName({
-        signatureName: "mintaka",
+        workflowDynastySignatureName: "mintaka",
         workflowDynastyName: null,
         workflowName: "sales-email-cold-outreach-headwater",
       })
     ).toBe("Mintaka");
   });
 
-  it("falls back to workflowName when both signatureName and workflowDynastyName are absent", () => {
+  it("falls back to workflowName when both workflowDynastySignatureName and workflowDynastyName are absent", () => {
     expect(
       workflowDisplayName({
-        signatureName: null,
+        workflowDynastySignatureName: null,
         workflowDynastyName: null,
         workflowName: "sales-email-cold-outreach-headwater",
       })
@@ -35,26 +35,26 @@ describe("workflowDisplayName", () => {
   it("falls back to workflowSlug when workflowName is also absent", () => {
     expect(
       workflowDisplayName({
-        signatureName: null,
+        workflowDynastySignatureName: null,
         workflowDynastyName: null,
         workflowSlug: "sales-email-cold-outreach-headwater",
       })
     ).toBe("sales-email-cold-outreach-headwater");
   });
 
-  it("handles empty signatureName as falsy", () => {
+  it("handles empty workflowDynastySignatureName as falsy", () => {
     expect(
       workflowDisplayName({
-        signatureName: "",
+        workflowDynastySignatureName: "",
         workflowDynastyName: "fallback",
       })
     ).toBe("fallback");
   });
 
-  it("handles non-string signatureName without crashing", () => {
+  it("handles non-string workflowDynastySignatureName without crashing", () => {
     expect(
       workflowDisplayName({
-        signatureName: 42 as unknown as string,
+        workflowDynastySignatureName: 42 as unknown as string,
         workflowDynastyName: "fallback",
       })
     ).toBe("fallback");

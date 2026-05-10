@@ -41,7 +41,7 @@ interface WorkflowRankedItem {
     version: number;
     featureSlug: string;
     createdForBrandId: string | null;
-    signatureName?: string;
+    workflowDynastySignatureName?: string;
   };
   stats: Record<string, number | null>;
 }
@@ -107,8 +107,8 @@ export interface BrandLeaderboardEntry {
 
 export interface WorkflowLeaderboardEntry {
   workflowName: string;
-  dynastyName: string;
-  signatureName: string | null;
+  workflowDynastyName: string;
+  workflowDynastySignatureName: string | null;
   category: string | null;
   featureSlug: string | null;
   runCount: number;
@@ -189,8 +189,8 @@ async function fetchWorkflowRanked(
 
     return {
       workflowName: r.workflow.workflowName,
-      dynastyName: r.workflow.workflowDynastyName ?? r.workflow.workflowName,
-      signatureName: r.workflow.signatureName ?? null,
+      workflowDynastyName: r.workflow.workflowDynastyName ?? r.workflow.workflowName,
+      workflowDynastySignatureName: r.workflow.workflowDynastySignatureName ?? null,
       category: null,
       featureSlug: r.workflow.featureSlug ?? null,
       runCount: num(r.stats, "completedRuns"),
