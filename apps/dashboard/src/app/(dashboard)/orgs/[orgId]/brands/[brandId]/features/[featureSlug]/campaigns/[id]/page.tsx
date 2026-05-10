@@ -12,6 +12,11 @@ import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
 import { PressKitResults } from "@/components/campaign/press-kit-results";
+import {
+  RelaunchCampaignModal,
+  buildBudgetParams,
+  type RelaunchBudget,
+} from "@/components/campaigns/relaunch-campaign-modal";
 
 
 
@@ -80,6 +85,7 @@ export default function CampaignOverviewPage() {
   const stopping = useIsStoppingCampaign(campaign?.id ?? "");
   const [relaunching, setRelaunching] = useState(false);
   const [relaunchError, setRelaunchError] = useState<string | null>(null);
+  const [relaunchModalOpen, setRelaunchModalOpen] = useState(false);
 
   // Feature stats for this campaign — same source the list page uses
   const { data: featureStatsData } = useAuthQuery(
@@ -93,7 +99,7 @@ export default function CampaignOverviewPage() {
     stopMutation.mutate(campaign);
   };
 
-  const handleRelaunch = async () => {
+  const handleRelaunchSubmit = async (budget: RelaunchBudget) => {
     if (!campaign || !campaign.workflowSlug) return;
     setRelaunching(true);
     setRelaunchError(null);
@@ -106,12 +112,9 @@ export default function CampaignOverviewPage() {
       workflowSlug: campaign.workflowSlug,
       featureSlug: campaign.featureSlug,
       brandUrls: campaign.brandUrls,
+      ...buildBudgetParams(budget.amount, budget.frequency),
     };
     if (campaign.featureInputs) payload.featureInputs = campaign.featureInputs;
-    if (campaign.maxBudgetDailyUsd) payload.maxBudgetDailyUsd = campaign.maxBudgetDailyUsd;
-    if (campaign.maxBudgetWeeklyUsd) payload.maxBudgetWeeklyUsd = campaign.maxBudgetWeeklyUsd;
-    if (campaign.maxBudgetMonthlyUsd) payload.maxBudgetMonthlyUsd = campaign.maxBudgetMonthlyUsd;
-    if (campaign.maxBudgetTotalUsd) payload.maxBudgetTotalUsd = campaign.maxBudgetTotalUsd;
 
     try {
       const result = await createCampaign(payload as Parameters<typeof createCampaign>[0]);
@@ -125,6 +128,16 @@ export default function CampaignOverviewPage() {
         setRelaunchError(err instanceof Error ? err.message : "Failed to relaunch campaign");
       }
     }
+  };
+
+  const openRelaunchModal = () => {
+    setRelaunchError(null);
+    setRelaunchModalOpen(true);
+  };
+
+  const closeRelaunchModal = () => {
+    if (relaunching) return;
+    setRelaunchModalOpen(false);
   };
 
   if (!campaign) {
@@ -203,7 +216,7 @@ export default function CampaignOverviewPage() {
             )}
             {campaign.status === "stopped" && (
               <button
-                onClick={handleRelaunch}
+                onClick={openRelaunchModal}
                 disabled={relaunching}
                 className="px-3 py-1.5 text-sm font-medium rounded-lg border border-brand-200 text-brand-600 bg-brand-50 hover:bg-brand-100 transition disabled:opacity-50"
               >
@@ -271,6 +284,15 @@ export default function CampaignOverviewPage() {
           </div>
         </div>
       )}
+
+      <RelaunchCampaignModal
+        open={relaunchModalOpen}
+        campaign={campaign}
+        submitting={relaunching}
+        errorMessage={relaunchError}
+        onClose={closeRelaunchModal}
+        onConfirm={handleRelaunchSubmit}
+      />
     </div>
   );
 }
