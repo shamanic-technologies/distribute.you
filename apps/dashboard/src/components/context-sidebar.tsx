@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { keepPreviousData } from "@tanstack/react-query";
@@ -96,95 +96,6 @@ function SidebarSection({ title, backHref, backLabel, children, footer }: {
       </nav>
       {footer}
     </aside>
-  );
-}
-
-// Outcome grouping definitions
-const OUTCOME_GROUPS = [
-  { id: "journalists", label: "Journalists", entityIds: ["outlets", "journalists", "emails", "articles"] },
-  { id: "sales", label: "Sales", entityIds: ["leads", "emails"] },
-  { id: "hiring", label: "Hiring", entityIds: ["leads", "emails"] },
-] as const;
-
-function groupOutcomeItems(items: SidebarItem[]): { id: string; label: string; items: SidebarItem[] }[] {
-  return OUTCOME_GROUPS
-    .map((group) => ({
-      id: group.id,
-      label: group.label,
-      items: group.entityIds
-        .map((eid) => items.find((item) => item.id === eid))
-        .filter((item): item is SidebarItem => item != null),
-    }))
-    .filter((group) => group.items.length > 0);
-}
-
-function CollapsibleGroup({ group, pathname, isActiveGroup, onItemClick }: {
-  group: { id: string; label: string; items: SidebarItem[] };
-  pathname: string;
-  isActiveGroup: boolean;
-  onItemClick: (groupId: string) => void;
-}) {
-  const hasData = group.items.some((item) => item.badge != null && item.badge > 0);
-  const [open, setOpen] = useState(hasData || isActiveGroup);
-
-  return (
-    <div>
-      <button
-        onClick={() => setOpen((prev) => !prev)}
-        className="flex items-center justify-between w-full px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide hover:text-gray-600 transition"
-      >
-        <span>{group.label}</span>
-        <svg
-          className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-90" : ""}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
-      </button>
-      {open && (
-        <div className="space-y-0.5">
-          {group.items.map((item) => (
-            <div key={`${group.id}-${item.id}`} onClick={() => onItemClick(group.id)}>
-              <SidebarLink
-                item={item}
-                isActive={isActiveGroup && pathname.startsWith(item.href)}
-              />
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** Wrapper that tracks which group owns the active highlight for duplicated items */
-function CollapsibleGroupList({ groups, pathname }: {
-  groups: { id: string; label: string; items: SidebarItem[] }[];
-  pathname: string;
-}) {
-  // Default: first group that has a matching item owns the highlight
-  const defaultGroupId = groups.find((g) => g.items.some((item) => pathname.startsWith(item.href)))?.id ?? null;
-  const [activeGroupId, setActiveGroupId] = useState<string | null>(defaultGroupId);
-
-  // If no group was explicitly clicked yet, fall back to first match
-  const effectiveActiveGroupId = activeGroupId && groups.some((g) =>
-    g.id === activeGroupId && g.items.some((item) => pathname.startsWith(item.href))
-  ) ? activeGroupId : defaultGroupId;
-
-  return (
-    <>
-      {groups.map((group) => (
-        <CollapsibleGroup
-          key={group.id}
-          group={group}
-          pathname={pathname}
-          isActiveGroup={effectiveActiveGroupId === group.id}
-          onItemClick={setActiveGroupId}
-        />
-      ))}
-    </>
   );
 }
 
@@ -513,8 +424,6 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
     { id: "emails", label: "Emails", href: `${basePath}/emails`, icon: <EnvelopeIcon />, badge: emailsData?.emails?.length },
   ];
 
-  const outcomeGroups = groupOutcomeItems(outcomeItems);
-
   return (
     <SidebarSection title="Brand" backHref={`/orgs/${orgId}/brands`} backLabel="Brands">
       {topItems.map((item) => (
@@ -524,9 +433,15 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
           isActive={item.id === "overview" ? pathname === item.href : pathname.startsWith(item.href)}
         />
       ))}
-      {outcomeGroups.length > 0 && (
-        <div className="pt-2 mt-2 border-t border-gray-100 space-y-1">
-          <CollapsibleGroupList groups={outcomeGroups} pathname={pathname} />
+      {outcomeItems.length > 0 && (
+        <div className="pt-2 mt-2 border-t border-gray-100">
+          {outcomeItems.map((item) => (
+            <SidebarLink
+              key={item.id}
+              item={item}
+              isActive={pathname.startsWith(item.href)}
+            />
+          ))}
         </div>
       )}
       <div className="pt-2 mt-2 border-t border-gray-100">
@@ -697,14 +612,17 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
           isActive={item.id === "campaigns" ? pathname === item.href : pathname.startsWith(item.href)}
         />
       ))}
-      {entityItems.length > 0 && (() => {
-        const groups = groupOutcomeItems(entityItems);
-        return groups.length > 0 ? (
-          <div className="pt-2 mt-2 border-t border-gray-100 space-y-1">
-            <CollapsibleGroupList groups={groups} pathname={pathname} />
-          </div>
-        ) : null;
-      })()}
+      {entityItems.length > 0 && (
+        <div className="pt-2 mt-2 border-t border-gray-100">
+          {entityItems.map((item) => (
+            <SidebarLink
+              key={item.id}
+              item={item}
+              isActive={pathname.startsWith(item.href)}
+            />
+          ))}
+        </div>
+      )}
       {bottomItems.map((item) => (
         <SidebarLink
           key={item.id}
