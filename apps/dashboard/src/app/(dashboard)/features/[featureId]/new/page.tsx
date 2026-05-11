@@ -24,6 +24,7 @@ import {
   type Brand,
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
+import { extractDomain } from "@/lib/extract-domain";
 import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-panel";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -322,6 +323,11 @@ export default function CreateCampaignPage() {
     // Resolve brandId: use selected or upsert from URL
     let brandId = selectedBrandId;
     if (!brandId) {
+      if (!extractDomain(resolvedBrandUrl)) {
+        setCreateError("Please enter a valid website (e.g. example.com)");
+        setIsLoadingProfile(false);
+        return;
+      }
       try {
         const { brandId: newId } = await upsertBrand(resolvedBrandUrl);
         brandId = newId;

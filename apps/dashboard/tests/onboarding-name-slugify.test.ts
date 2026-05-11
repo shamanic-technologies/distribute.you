@@ -12,7 +12,7 @@ describe("Onboarding uses URL domain as org name", () => {
 
   it("should extract domain from URL input", () => {
     expect(content).toContain("extractDomain");
-    expect(content).toContain("hostname");
+    expect(content).toContain('from "@/lib/extract-domain"');
   });
 
   it("should pass the domain to createOrganization", () => {

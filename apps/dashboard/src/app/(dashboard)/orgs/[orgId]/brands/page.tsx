@@ -6,6 +6,7 @@ import Link from "next/link";
 import posthog from "posthog-js";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { listBrands, upsertBrand, extractBrandFields, SALES_PROFILE_FIELDS } from "@/lib/api";
+import { extractDomain } from "@/lib/extract-domain";
 import { BrandLogo } from "@/components/brand-logo";
 
 const POLL_INTERVAL = 5_000;
@@ -31,8 +32,14 @@ export default function BrandsPage() {
   const brands = data?.brands ?? [];
 
   const createBrandAndRedirect = async (rawUrl: string) => {
+    const domain = extractDomain(rawUrl);
+    if (!domain) {
+      setCreateError("Please enter a valid website (e.g. example.com)");
+      setShowCreate(true);
+      setBrandUrl(rawUrl);
+      return;
+    }
     const trimmed = rawUrl.trim();
-    if (!trimmed) return;
     const url = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
     setIsCreating(true);
     setCreateError(null);
