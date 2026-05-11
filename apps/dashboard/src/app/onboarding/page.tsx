@@ -3,23 +3,10 @@
 import { useEffect, useState } from "react";
 import { useOrganizationList } from "@clerk/nextjs";
 import posthog from "posthog-js";
+import { extractDomain } from "@/lib/extract-domain";
 
 type AccountType = "agency" | "company";
 type Step = "value-prop" | "type-selection" | "url-input";
-
-/** Extract a bare domain from user input (strips protocol, path, query, etc.) */
-function extractDomain(input: string): string | null {
-  const trimmed = input.trim();
-  if (!trimmed) return null;
-  try {
-    const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-    const hostname = new URL(withProtocol).hostname;
-    if (!hostname || !hostname.includes(".")) return null;
-    return hostname;
-  } catch {
-    return null;
-  }
-}
 
 export default function OnboardingPage() {
   const { createOrganization, setActive } = useOrganizationList();
