@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo, type ReactNode } from "react";
-import { McpSidebar, type McpSidebarGroup } from "./mcp-sidebar";
+import { useState, type ReactNode } from "react";
+import { McpSidebar } from "./mcp-sidebar";
 import { useFeatures } from "@/lib/features-context";
 import { useEntityRegistry } from "@/lib/entity-registry-context";
 import { CampaignInputsPanel } from "./campaign/campaign-inputs-panel";
@@ -114,12 +114,6 @@ function getEntityIcon(iconName: string): ReactNode {
   );
 }
 
-const OUTCOME_GROUPS = [
-  { id: "journalists", label: "Journalists", entityIds: ["outlets", "journalists", "emails", "articles"] },
-  { id: "sales", label: "Sales", entityIds: ["leads", "emails"] },
-  { id: "hiring", label: "Hiring", entityIds: ["leads", "emails"] },
-] as const;
-
 interface CampaignSidebarProps {
   campaignId: string;
   orgId: string;
@@ -154,29 +148,6 @@ export function CampaignSidebar({ campaignId, orgId, brandId, featureSlug, entit
         badge: entityCounts?.[e.name] ?? undefined,
       };
     });
-
-  const outcomesGroups: McpSidebarGroup[] = useMemo(() => {
-    const groupedIds = new Set<string>(OUTCOME_GROUPS.flatMap((g) => g.entityIds));
-    const knownGroups: McpSidebarGroup[] = OUTCOME_GROUPS
-      .map((group) => ({
-        id: group.id as string,
-        label: group.label as string,
-        items: group.entityIds
-          .map((eid) => entityItems.find((item) => item.id === eid))
-          .filter((item): item is (typeof entityItems)[number] => item != null),
-      }))
-      .filter((group) => group.items.length > 0);
-
-    const unmatched = entityItems.filter((item) => !groupedIds.has(item.id));
-    if (unmatched.length > 0) {
-      knownGroups.push({
-        id: "results",
-        label: "Results",
-        items: unmatched,
-      });
-    }
-    return knownGroups;
-  }, [entityItems]);
 
   const items = [
     {
@@ -216,7 +187,7 @@ export function CampaignSidebar({ campaignId, orgId, brandId, featureSlug, entit
     <>
       <McpSidebar
         items={items}
-        outcomesGroups={outcomesGroups}
+        outcomesItems={entityItems}
         settingsItems={settingsItems}
         settingsExtra={hasInputs ? (
           <button
