@@ -3,15 +3,22 @@ export interface GmailHeader {
   value?: string;
 }
 
-export interface GmailPayloadShape {
+export interface GmailInnerPayloadShape {
   headers?: GmailHeader[];
+}
+
+export interface GmailEnvelopeShape {
   snippet?: string;
+  labelIds?: string[];
+  threadId?: string;
+  internalDate?: string;
+  payload?: GmailInnerPayloadShape;
 }
 
 export interface GmailMessageShape {
   id?: string;
   snippet?: string;
-  payload?: GmailPayloadShape;
+  payload?: GmailEnvelopeShape;
 }
 
 export interface ParsedGmail {
@@ -33,8 +40,9 @@ function findHeader(headers: GmailHeader[] | undefined, name: string): string | 
 }
 
 export function parseGmailPayload(message: GmailMessageShape): ParsedGmail {
-  const headers = message.payload?.headers;
-  const snippet = message.payload?.snippet ?? message.snippet;
+  const envelope = message.payload;
+  const headers = envelope?.payload?.headers;
+  const snippet = envelope?.snippet ?? message.snippet;
   return {
     subject: findHeader(headers, "Subject"),
     from: findHeader(headers, "From"),

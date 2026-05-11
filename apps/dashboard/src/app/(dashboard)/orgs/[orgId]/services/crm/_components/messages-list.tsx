@@ -1,18 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import { parseGmailPayload, type GmailMessageShape } from "./parse-gmail-payload";
+import {
+  parseGmailPayload,
+  type GmailMessageShape,
+  type GmailEnvelopeShape,
+} from "./parse-gmail-payload";
 import type { GmailPayloadFull } from "./parse-gmail-body";
 import { EmailDetailPanel } from "./email-detail-panel";
 import { extractErrorDetail } from "./error-detail";
 
+export interface GoogleMessageEnvelope extends GmailEnvelopeShape {
+  payload?: GmailPayloadFull;
+}
+
 export interface GoogleMessage extends GmailMessageShape {
   id?: string;
-  externalId?: string;
-  accountEmail?: string;
+  googleAccountId?: string;
+  gmailMessageId?: string;
   threadId?: string;
-  labelIds?: string[];
-  payload?: GmailPayloadFull;
+  historyId?: string;
+  fetchedAt?: string;
+  payload?: GoogleMessageEnvelope;
 }
 
 export interface MessagesPage {
@@ -69,7 +78,7 @@ export function MessagesList({ initialPage }: { initialPage: MessagesPage }) {
       <ul className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
         {items.map((msg, idx) => {
           const parsed = parseGmailPayload(msg);
-          const key = msg.externalId ?? msg.id ?? `row-${idx}`;
+          const key = msg.gmailMessageId ?? msg.id ?? `row-${idx}`;
           return (
             <li key={key}>
               <button
