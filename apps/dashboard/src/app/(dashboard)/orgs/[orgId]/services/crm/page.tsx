@@ -2,6 +2,8 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { ConnectGoogleButton } from "./_components/connect-google-button";
 import { SyncNowButton } from "./_components/sync-now-button";
 import { MessagesList, type MessagesPage, type GoogleMessage } from "./_components/messages-list";
+import { ContactsList, type ContactsPage } from "./_components/contacts-list";
+import type { GoogleContactRow } from "./_components/parse-google-contact";
 
 const API_URL =
   process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
@@ -66,9 +68,10 @@ export default async function GoogleCrmPage({ params, searchParams }: PageProps)
 
   void orgId;
 
-  const [messagesRes, accountsRes] = await Promise.all([
+  const [messagesRes, accountsRes, contactsRes] = await Promise.all([
     callApiService<MessagesPage>("/v1/orgs/google/messages?limit=50"),
     callApiService<{ accounts: GoogleAccount[] }>("/v1/orgs/google/accounts"),
+    callApiService<ContactsPage>("/v1/orgs/google/contacts?limit=50"),
   ]);
 
   const accounts = accountsRes.ok ? accountsRes.data.accounts : [];
@@ -78,15 +81,30 @@ export default async function GoogleCrmPage({ params, searchParams }: PageProps)
     ? messagesRes.data
     : { items: [] as GoogleMessage[], nextCursor: null };
 
+  const contactsPage: ContactsPage = contactsRes.ok
+    ? contactsRes.data
+    : { items: [] as GoogleContactRow[], nextCursor: null };
+
   const messagesLoadError =
     !messagesRes.ok && messagesRes.status !== 404 && messagesRes.status !== 401
       ? `Failed to load messages (${messagesRes.status}): ${truncate(messagesRes.body, 400)}`
+      : null;
+  const contactsLoadError =
+    !contactsRes.ok && contactsRes.status !== 404 && contactsRes.status !== 401
+      ? `Failed to load contacts (${contactsRes.status}): ${truncate(contactsRes.body, 400)}`
       : null;
   if (!messagesRes.ok) {
     console.error(
       "[dashboard] /v1/orgs/google/messages failed",
       messagesRes.status,
       messagesRes.body,
+    );
+  }
+  if (!contactsRes.ok) {
+    console.error(
+      "[dashboard] /v1/orgs/google/contacts failed",
+      contactsRes.status,
+      contactsRes.body,
     );
   }
   if (!accountsRes.ok && accountsRes.status !== 404 && accountsRes.status !== 401) {
@@ -121,6 +139,12 @@ export default async function GoogleCrmPage({ params, searchParams }: PageProps)
       {messagesLoadError && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
           {messagesLoadError}
+        </div>
+      )}
+
+      {contactsLoadError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
+          {contactsLoadError}
         </div>
       )}
 
@@ -167,6 +191,11 @@ export default async function GoogleCrmPage({ params, searchParams }: PageProps)
           <div>
             <h2 className="font-medium text-gray-900 mb-3">Recent Gmail messages</h2>
             <MessagesList initialPage={messagesPage} />
+          </div>
+
+          <div>
+            <h2 className="font-medium text-gray-900 mb-3">Google contacts</h2>
+            <ContactsList initialPage={contactsPage} />
           </div>
         </div>
       )}
