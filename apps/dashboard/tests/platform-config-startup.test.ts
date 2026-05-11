@@ -153,6 +153,40 @@ describe("Platform config registration at startup", () => {
       expect(content).toContain("chat config(s) failed");
       expect(content).toContain("console.warn");
     });
+
+    it("should include the three new workflow tool names in WORKFLOW_ALLOWED_TOOLS", () => {
+      const arrMatch = content.match(/const WORKFLOW_ALLOWED_TOOLS\s*=\s*\[([\s\S]*?)\];/);
+      expect(arrMatch).toBeTruthy();
+      const arr = arrMatch![1];
+      expect(arr).toContain('"create_workflow"');
+      expect(arr).toContain('"upgrade_workflow"');
+      expect(arr).toContain('"fork_workflow"');
+    });
+
+    it("should not include the removed workflow tool names in WORKFLOW_ALLOWED_TOOLS", () => {
+      const arrMatch = content.match(/const WORKFLOW_ALLOWED_TOOLS\s*=\s*\[([\s\S]*?)\];/);
+      expect(arrMatch).toBeTruthy();
+      const arr = arrMatch![1];
+      expect(arr).not.toContain('"update_workflow"');
+      expect(arr).not.toContain('"update_workflow_node_config"');
+      expect(arr).not.toContain('"generate_workflow"');
+    });
+
+    it("should mention each of the three new workflow tools in the system prompt", () => {
+      expect(content).toContain("create_workflow");
+      expect(content).toContain("upgrade_workflow");
+      expect(content).toContain("fork_workflow");
+    });
+
+    it("should not reference any removed workflow tool name anywhere in the file", () => {
+      expect(content).not.toMatch(/\bupdate_workflow\b/);
+      expect(content).not.toMatch(/\bupdate_workflow_node_config\b/);
+      expect(content).not.toMatch(/\bgenerate_workflow\b/);
+    });
+
+    it("should enforce that create_workflow is only for features with no existing workflow", () => {
+      expect(content).toMatch(/create_workflow[\s\S]{0,400}(no\s+workflow|no\s+existing\s+workflow|first\s+workflow|never\s+had\s+a\s+workflow)/i);
+    });
   });
 
   describe("transient network retry", () => {
