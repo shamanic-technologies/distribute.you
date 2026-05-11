@@ -2,12 +2,17 @@
 
 import { useState } from "react";
 import { parseGmailPayload, type GmailMessageShape } from "./parse-gmail-payload";
+import type { GmailPayloadFull } from "./parse-gmail-body";
+import { EmailDetailPanel } from "./email-detail-panel";
 import { extractErrorDetail } from "./error-detail";
 
 export interface GoogleMessage extends GmailMessageShape {
   id?: string;
   externalId?: string;
   accountEmail?: string;
+  threadId?: string;
+  labelIds?: string[];
+  payload?: GmailPayloadFull;
 }
 
 export interface MessagesPage {
@@ -20,6 +25,7 @@ export function MessagesList({ initialPage }: { initialPage: MessagesPage }) {
   const [nextCursor, setNextCursor] = useState<string | null>(initialPage.nextCursor);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
 
   async function loadMore() {
     if (!nextCursor) return;
@@ -56,41 +62,46 @@ export function MessagesList({ initialPage }: { initialPage: MessagesPage }) {
     );
   }
 
+  const selectedMessage = selectedIdx !== null ? items[selectedIdx] : null;
+
   return (
     <div>
-      <ul className="space-y-2">
+      <ul className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
         {items.map((msg, idx) => {
           const parsed = parseGmailPayload(msg);
           const key = msg.externalId ?? msg.id ?? `row-${idx}`;
           return (
-            <li
-              key={key}
-              className="bg-white rounded-xl border border-gray-200 p-4"
-            >
-              <div className="flex items-start justify-between gap-4">
+            <li key={key}>
+              <button
+                type="button"
+                onClick={() => setSelectedIdx(idx)}
+                className="w-full text-left px-4 py-3 hover:bg-gray-50 transition flex items-start gap-4"
+              >
                 <div className="min-w-0 flex-1">
-                  {parsed.subject !== null && (
-                    <h3 className="font-medium text-gray-900 truncate">
-                      {parsed.subject}
-                    </h3>
-                  )}
-                  {parsed.from !== null && (
-                    <p className="text-xs text-gray-500 mt-0.5 truncate">
-                      from {parsed.from}
-                    </p>
-                  )}
+                  <div className="flex items-baseline gap-2">
+                    {parsed.from !== null && (
+                      <p className="text-sm font-medium text-gray-800 truncate flex-shrink-0 max-w-[40%]">
+                        {parsed.from}
+                      </p>
+                    )}
+                    {parsed.subject !== null && (
+                      <p className="text-sm text-gray-700 truncate flex-1">
+                        {parsed.subject}
+                      </p>
+                    )}
+                  </div>
                   {parsed.snippet !== null && (
-                    <p className="text-sm text-gray-600 mt-2 line-clamp-2">
+                    <p className="text-xs text-gray-500 mt-0.5 truncate">
                       {parsed.snippet}
                     </p>
                   )}
                 </div>
                 {parsed.date !== null && (
-                  <time className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
+                  <time className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0 mt-0.5">
                     {parsed.date}
                   </time>
                 )}
-              </div>
+              </button>
             </li>
           );
         })}
@@ -112,6 +123,13 @@ export function MessagesList({ initialPage }: { initialPage: MessagesPage }) {
             {loading ? "Loading..." : "Load more"}
           </button>
         </div>
+      )}
+
+      {selectedMessage !== null && (
+        <EmailDetailPanel
+          message={selectedMessage}
+          onClose={() => setSelectedIdx(null)}
+        />
       )}
     </div>
   );
