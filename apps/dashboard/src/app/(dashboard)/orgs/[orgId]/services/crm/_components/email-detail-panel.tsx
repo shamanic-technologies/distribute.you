@@ -3,14 +3,8 @@
 import { useEffect, useMemo } from "react";
 import type { GoogleMessage } from "./messages-list";
 import { parseGmailPayload } from "./parse-gmail-payload";
-import { parseGmailBody, type GmailPayloadFull } from "./parse-gmail-body";
+import { parseGmailBody } from "./parse-gmail-body";
 import { sanitizeEmailHtml } from "./sanitize-email-html";
-
-interface MessageWithFullPayload extends GoogleMessage {
-  threadId?: string;
-  labelIds?: string[];
-  payload?: GmailPayloadFull;
-}
 
 function findAllHeaders(
   headers: Array<{ name?: string; value?: string }> | undefined,
@@ -37,7 +31,7 @@ export function EmailDetailPanel({
   message,
   onClose,
 }: {
-  message: MessageWithFullPayload;
+  message: GoogleMessage;
   onClose: () => void;
 }) {
   useEffect(() => {
@@ -48,14 +42,18 @@ export function EmailDetailPanel({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
+  const envelope = message.payload;
+  const innerPayload = envelope?.payload;
+  const labelIds = envelope?.labelIds;
+
   const parsed = parseGmailPayload(message);
-  const headers = message.payload?.headers;
+  const headers = innerPayload?.headers;
   const toAddrs = findAllHeaders(headers, "To");
   const ccAddrs = findAllHeaders(headers, "Cc");
   const bccAddrs = findAllHeaders(headers, "Bcc");
   const replyTo = findAllHeaders(headers, "Reply-To");
 
-  const body = useMemo(() => parseGmailBody(message.payload), [message.payload]);
+  const body = useMemo(() => parseGmailBody(innerPayload), [innerPayload]);
   const sanitizedHtml = useMemo(
     () => (body.html !== null ? sanitizeEmailHtml(body.html) : null),
     [body.html],
@@ -65,7 +63,7 @@ export function EmailDetailPanel({
   if (bodyMissing) {
     console.error(
       "[dashboard] EmailDetailPanel: no renderable body found in payload",
-      message.id ?? message.externalId,
+      message.id ?? message.gmailMessageId,
     );
   }
 
@@ -127,9 +125,9 @@ export function EmailDetailPanel({
             </button>
           </div>
 
-          {Array.isArray(message.labelIds) && message.labelIds.length > 0 && (
+          {Array.isArray(labelIds) && labelIds.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-3">
-              {message.labelIds.map((label) => (
+              {labelIds.map((label) => (
                 <span
                   key={label}
                   className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600"
