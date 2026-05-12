@@ -2283,6 +2283,7 @@ export interface VisibilityRunDetail {
 export interface ListVisibilityRunsParams {
   brandId?: string;
   domain?: string;
+  campaignId?: string;
   from?: string;
   to?: string;
   limit?: number;

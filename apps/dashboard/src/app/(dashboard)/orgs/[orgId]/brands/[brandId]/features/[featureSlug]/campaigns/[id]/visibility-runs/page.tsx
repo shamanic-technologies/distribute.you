@@ -72,8 +72,8 @@ export default function VisibilityRunsPage() {
   const featureSlug = params.featureSlug as string;
 
   const { data, isLoading } = useAuthQuery(
-    ["visibilityRuns", { brandId }],
-    () => listVisibilityRuns({ brandId, limit: 50 }),
+    ["visibilityRuns", { brandId, campaignId }],
+    () => listVisibilityRuns({ brandId, campaignId, limit: 50 }),
     pollOptions,
   );
 

@@ -16,10 +16,11 @@ import {
 export default function PromptsPage() {
   const params = useParams();
   const brandId = params.brandId as string;
+  const campaignId = params.id as string;
 
   const { data: runsList, isLoading: runsLoading } = useAuthQuery(
-    ["visibilityRuns", { brandId, latestOnly: true }],
-    () => listVisibilityRuns({ brandId, limit: 1 }),
+    ["visibilityRuns", { brandId, campaignId, latestOnly: true }],
+    () => listVisibilityRuns({ brandId, campaignId, limit: 1 }),
     { placeholderData: keepPreviousData },
   );
 
