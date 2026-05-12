@@ -189,6 +189,23 @@ describe("Platform config registration at startup", () => {
     it("should enforce that create_workflow is only for features with no existing workflow", () => {
       expect(content).toMatch(/create_workflow[\s\S]{0,400}(no\s+workflow|no\s+existing\s+workflow|first\s+workflow|never\s+had\s+a\s+workflow)/i);
     });
+
+    it("should classify fixing missing/misnamed $ref in inputMapping as upgrade_workflow (not fork)", () => {
+      expect(content).toMatch(/upgrade_workflow[\s\S]*\\\$ref[\s\S]*inputMapping/i);
+    });
+
+    it("should include a DAG-topology heuristic distinguishing upgrade vs fork", () => {
+      expect(content).toMatch(/DAG\s+topology\s+unchanged/i);
+    });
+
+    it("should clarify that fork 'changed inputs/outputs' means template/contract change, not $ref wiring fix", () => {
+      expect(content).toMatch(/template\s+contract|contract\s+change|new\s+(?:template\s+)?variable/i);
+      expect(content).toMatch(/not\s+(?:a\s+)?(?:bug.?fix|fix(?:ing)?\s+(?:broken\s+)?\\\$ref|wiring\s+fix)/i);
+    });
+
+    it("should give a concrete inputMapping-rename example in the upgrade_workflow guidance", () => {
+      expect(content).toMatch(/rename\s+inputMapping\s+keys/i);
+    });
   });
 
   describe("transient network retry", () => {
