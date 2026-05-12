@@ -11,7 +11,11 @@ import {
   formatSentiment,
 } from "@/components/visibility/score-card";
 import { DetailTabs } from "@/components/visibility/detail-tabs";
-import { getDetailTabs } from "@/lib/visibility-detail";
+import {
+  getDetailTabs,
+  mergeBrandIntoCompetitors,
+  type RankedCompetitorRow,
+} from "@/lib/visibility-detail";
 
 export default function CompetitorsPage() {
   const params = useParams();
@@ -35,6 +39,15 @@ export default function CompetitorsPage() {
   const [activeKey, setActiveKey] = useState<string>("aggregate");
   const activeTab = tabs.find((t) => t.key === activeKey) ?? tabs[0];
 
+  const rows: RankedCompetitorRow[] = useMemo(() => {
+    if (!activeTab) return [];
+    return mergeBrandIntoCompetitors(
+      activeTab.top_competitors,
+      activeTab.run,
+      activeTab.prompts,
+    );
+  }, [activeTab]);
+
   const isLoading = runsLoading || (!!latestRunId && detailLoading);
 
   return (
@@ -42,7 +55,7 @@ export default function CompetitorsPage() {
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-gray-800">Competitors</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Top competing brands surfaced in the most recent visibility run.
+          Your brand ranked against competing brands surfaced in the most recent visibility run.
         </p>
       </div>
 
@@ -55,7 +68,7 @@ export default function CompetitorsPage() {
       ) : (
         <>
           <DetailTabs tabs={tabs} activeKey={activeTab.key} onChange={setActiveKey} />
-          {activeTab.top_competitors.length === 0 ? (
+          {rows.length === 0 ? (
             <EmptyState message="No competitor mentions detected in this view." />
           ) : (
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -70,15 +83,27 @@ export default function CompetitorsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {activeTab.top_competitors.map((c) => (
-                    <tr key={c.name} className="border-t border-gray-100">
-                      <td className="px-4 py-3 text-gray-800">
+                  {rows.map((c) => (
+                    <tr
+                      key={`${c._isBrand ? "brand" : "competitor"}-${c.name}`}
+                      className={`border-t border-gray-100 ${
+                        c._isBrand
+                          ? "bg-brand-50 border-l-4 border-l-brand-500 font-semibold"
+                          : ""
+                      }`}
+                      data-is-brand={c._isBrand ? "true" : "false"}
+                    >
+                      <td
+                        className={`px-4 py-3 ${
+                          c._isBrand ? "text-brand-700" : "text-gray-800"
+                        }`}
+                      >
                         {c.url ? (
                           <a
                             href={c.url}
                             target="_blank"
                             rel="noreferrer"
-                            className="hover:text-brand-600 hover:underline"
+                            className="hover:underline"
                           >
                             {c.name}
                           </a>
