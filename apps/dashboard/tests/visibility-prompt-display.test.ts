@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
   mergeBrandIntoCompetitors,
+  getPromptDebugFields,
+  getRunDebugFields,
+  DEBUG_FIELD_PLACEHOLDER,
   type PromptWithProvider,
 } from "../src/lib/visibility-detail";
 import { formatProviderModelName } from "../src/components/visibility/provider-label";
@@ -45,6 +48,8 @@ function makeRun(overrides: Partial<VisibilityRun> = {}): VisibilityRun {
     createdAt: "2026-05-12T00:00:00Z",
     judgeKind: "aggregate",
     aggregateRunId: null,
+    promptGenSystemPrompt: null,
+    promptGenUserMessage: null,
     ...overrides,
   };
 }
@@ -69,6 +74,10 @@ function makePrompt(brandFound: boolean, overrides: Partial<VisibilityRunPrompt>
     latencyMs: null,
     tokensInput: null,
     tokensOutput: null,
+    judgeSystemPrompt: null,
+    judgeUserMessage: null,
+    extractorSystemPrompt: null,
+    extractorUserMessage: null,
     ...overrides,
   };
   return { ...base, _provider: "google", _model: "pro" };
@@ -166,5 +175,67 @@ describe("mergeBrandIntoCompetitors", () => {
     const run = makeRun({ domain: "distribute.you" });
     const rows = mergeBrandIntoCompetitors([], run, []);
     expect(rows[0].url).toBe("https://distribute.you");
+  });
+});
+
+describe("getPromptDebugFields (v0.5.2 debug payload surfacing)", () => {
+  it("returns judge + extractor strings verbatim when all 4 present", () => {
+    const prompt = makePrompt(false, {
+      judgeSystemPrompt: "JUDGE-SYS",
+      judgeUserMessage: "JUDGE-USER",
+      extractorSystemPrompt: "EXTRACT-SYS",
+      extractorUserMessage: "EXTRACT-USER",
+    });
+    const fields = getPromptDebugFields(prompt);
+    expect(fields).toEqual([
+      { label: "Judge system prompt", value: "JUDGE-SYS" },
+      { label: "Judge user message", value: "JUDGE-USER" },
+      { label: "Extractor system prompt", value: "EXTRACT-SYS" },
+      { label: "Extractor user message", value: "EXTRACT-USER" },
+    ]);
+  });
+
+  it("returns null values for all 4 fields when run predates v0.5.2", () => {
+    const prompt = makePrompt(false);
+    const fields = getPromptDebugFields(prompt);
+    expect(fields.map((f) => f.value)).toEqual([null, null, null, null]);
+    expect(fields.map((f) => f.label)).toEqual([
+      "Judge system prompt",
+      "Judge user message",
+      "Extractor system prompt",
+      "Extractor user message",
+    ]);
+  });
+
+  it("preserves newlines + whitespace in returned strings", () => {
+    const multiline = "line1\nline2\n  indented";
+    const prompt = makePrompt(false, { judgeUserMessage: multiline });
+    const fields = getPromptDebugFields(prompt);
+    expect(fields[1].value).toBe(multiline);
+  });
+});
+
+describe("getRunDebugFields (v0.5.2 prompt-gen payload surfacing)", () => {
+  it("returns prompt-gen strings verbatim when both present", () => {
+    const run = makeRun({
+      promptGenSystemPrompt: "PG-SYS",
+      promptGenUserMessage: "PG-USER",
+    });
+    const fields = getRunDebugFields(run);
+    expect(fields).toEqual([
+      { label: "Prompt-gen system prompt", value: "PG-SYS" },
+      { label: "Prompt-gen user message", value: "PG-USER" },
+    ]);
+  });
+
+  it("returns null values when run predates v0.5.2", () => {
+    const fields = getRunDebugFields(makeRun());
+    expect(fields.map((f) => f.value)).toEqual([null, null]);
+  });
+});
+
+describe("DEBUG_FIELD_PLACEHOLDER", () => {
+  it("is the canonical 'not recorded' fallback string used by both panels", () => {
+    expect(DEBUG_FIELD_PLACEHOLDER).toBe("Not recorded for this run.");
   });
 });

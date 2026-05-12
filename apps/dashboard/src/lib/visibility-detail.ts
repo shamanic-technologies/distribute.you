@@ -7,6 +7,29 @@ import type {
 } from "./api";
 import { parseDecimal } from "../components/visibility/score-card";
 
+export const DEBUG_FIELD_PLACEHOLDER = "Not recorded for this run.";
+
+export interface DebugField {
+  label: string;
+  value: string | null;
+}
+
+export function getPromptDebugFields(prompt: VisibilityRunPrompt): DebugField[] {
+  return [
+    { label: "Judge system prompt", value: prompt.judgeSystemPrompt },
+    { label: "Judge user message", value: prompt.judgeUserMessage },
+    { label: "Extractor system prompt", value: prompt.extractorSystemPrompt },
+    { label: "Extractor user message", value: prompt.extractorUserMessage },
+  ];
+}
+
+export function getRunDebugFields(run: VisibilityRun): DebugField[] {
+  return [
+    { label: "Prompt-gen system prompt", value: run.promptGenSystemPrompt },
+    { label: "Prompt-gen user message", value: run.promptGenUserMessage },
+  ];
+}
+
 export interface PromptWithProvider extends VisibilityRunPrompt {
   _provider: string;
   _model: string;
