@@ -109,11 +109,13 @@ export default function VisibilityRunsPage() {
                 label="Visibility"
                 value={formatScore(parseDecimal(latest.visibilityScore))}
                 delta={parseDecimal(latest.visibility_score_delta)}
+                deltaFormat="percent"
               />
               <ScoreCard
                 label="Share of voice"
                 value={formatScore(parseDecimal(latest.shareOfVoice))}
                 delta={parseDecimal(latest.share_of_voice_delta)}
+                deltaFormat="percent"
               />
               <ScoreCard
                 label="Brand mention rate"
@@ -127,11 +129,13 @@ export default function VisibilityRunsPage() {
                 label="Net sentiment"
                 value={formatSentiment(parseDecimal(latest.netSentiment))}
                 delta={parseDecimal(latest.net_sentiment_delta)}
+                deltaFormat="absolute"
               />
               <ScoreCard
                 label="Avg position"
                 value={formatPosition(parseDecimal(latest.avgPosition))}
                 delta={parseDecimal(latest.position_delta)}
+                deltaFormat="absolute"
                 deltaInverted
               />
             </section>
