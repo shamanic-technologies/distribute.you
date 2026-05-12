@@ -25,7 +25,6 @@ const quotePitchesPath = path.resolve(
 );
 
 const featurePageContent = fs.readFileSync(featurePagePath, "utf-8");
-const byokBannerContent = fs.readFileSync(byokBannerPath, "utf-8");
 const runButtonContent = fs.readFileSync(runButtonPath, "utf-8");
 const apiLibContent = fs.readFileSync(apiLibPath, "utf-8");
 const quoteRequestsContent = fs.readFileSync(quoteRequestsPath, "utf-8");
@@ -37,32 +36,15 @@ describe("Feature page — generic routing (no per-slug branch)", () => {
     expect(featurePageContent).not.toContain("ExpertQuoteOutreachPage");
   });
 
-  it("renders FeatureBYOKBanner so any feature can require credentials", () => {
-    expect(featurePageContent).toContain("FeatureBYOKBanner");
+  it("does not render FeatureBYOKBanner — Featured creds come from platform env (Vercel)", () => {
+    expect(featurePageContent).not.toContain("FeatureBYOKBanner");
+    expect(featurePageContent).not.toContain("feature-byok-banner");
   });
 });
 
-describe("FeatureBYOKBanner — Featured creds form", () => {
-  it("client component", () => {
-    expect(byokBannerContent).toContain('"use client"');
-  });
-
-  it("renders form with username + password inputs", () => {
-    expect(byokBannerContent).toContain('data-testid="featured-creds-form"');
-    expect(byokBannerContent).toContain('autoComplete="username"');
-    expect(byokBannerContent).toContain('autoComplete="current-password"');
-  });
-
-  it("submits via setFeaturedCreds", () => {
-    expect(byokBannerContent).toContain("setFeaturedCreds(");
-  });
-
-  it("surfaces error visibly (no silent fallback)", () => {
-    expect(byokBannerContent).toContain('data-testid="featured-creds-error"');
-  });
-
-  it("falls back to slug→provider map when feature.byokProvider absent", () => {
-    expect(byokBannerContent).toContain('"pr-expert-quote-outreach": "featured"');
+describe("FeatureBYOKBanner component removed", () => {
+  it("feature-byok-banner.tsx no longer exists", () => {
+    expect(fs.existsSync(byokBannerPath)).toBe(false);
   });
 });
 
@@ -87,12 +69,8 @@ describe("Quote requests + pitches — generic entity routes", () => {
 });
 
 describe("api client functions", () => {
-  it("setFeaturedCreds posts username + password to /keys for `featured` provider", () => {
-    expect(apiLibContent).toContain("export async function setFeaturedCreds(");
-    const setBlock = apiLibContent.split("export async function setFeaturedCreds(")[1];
-    expect(setBlock).toContain('provider: "featured"');
-    expect(setBlock).toContain("username");
-    expect(setBlock).toContain("password");
+  it("does not export setFeaturedCreds — Featured creds are platform-managed via env", () => {
+    expect(apiLibContent).not.toContain("setFeaturedCreds");
   });
 
   it("declares the journalists-quotes endpoints", () => {
