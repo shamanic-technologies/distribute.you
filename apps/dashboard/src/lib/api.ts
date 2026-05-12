@@ -2157,23 +2157,6 @@ export async function getQuotePitch(
   return apiCall<{ pitch: QuotePitch }>(`/orgs/quote-pitches/${id}`, { token });
 }
 
-/**
- * Store Featured.com credentials for the active org.
- * Routed to key-service via /keys POST. The `featured` provider expects
- * username + password (parallel key-service work registers this provider).
- */
-export async function setFeaturedCreds(
-  username: string,
-  password: string,
-  token?: string,
-): Promise<{ provider: string; maskedKey: string }> {
-  return apiCall<{ provider: string; maskedKey: string }>("/keys", {
-    token,
-    method: "POST",
-    body: { provider: "featured", username, password },
-  });
-}
-
 // ─── AI Visibility Score (ai-visibility-score-service) ──────────────────────
 
 export interface VisibilityRunWeights {
