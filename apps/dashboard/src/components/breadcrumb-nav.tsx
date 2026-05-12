@@ -37,7 +37,7 @@ export function BreadcrumbNav() {
   const pathname = usePathname();
   const router = useRouter();
   const { organization } = useOrganization();
-  const { userMemberships, setActive } = useOrganizationList({
+  const { userMemberships } = useOrganizationList({
     userMemberships: { infinite: true },
   });
   const { features, getFeature } = useFeatures();
@@ -142,12 +142,13 @@ export function BreadcrumbNav() {
   };
 
   const handleOrgSwitch = (clerkOrgId: string) => {
-    if (setActive) {
-      clearBreadcrumbCaches();
-      setActive({ organization: clerkOrgId });
-      // OrgCacheInvalidator handles React Query clearing and navigation
-    }
     setOpenDropdown(null);
+    clearBreadcrumbCaches();
+    // Drive the URL change first. clerkMiddleware's organizationSyncOptions sees
+    // the new /orgs/<id> URL and auto-setActives the matching org on the server,
+    // so subsequent /api/v1/* calls run under the org the URL points at.
+    // OrgCacheInvalidator clears the React Query cache once useOrganization() sees the switch.
+    router.push(`/orgs/${clerkOrgId}`);
   };
 
   const handleBrandSwitch = (newBrandId: string) => {
