@@ -16,7 +16,6 @@ import { useStopCampaign, useIsStoppingCampaign } from "@/lib/use-stop-campaign"
 import { FunnelMetrics, FunnelMetricsSkeleton } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown, ReplyBreakdownSkeleton } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown, CostBreakdownSkeleton } from "@/components/campaign/cost-breakdown";
-import { FeatureBYOKBanner } from "@/components/feature-byok-banner";
 import { formatStatValue } from "@/lib/format-stat";
 
 const POLL_INTERVAL = 5_000;
@@ -185,11 +184,6 @@ function GenericFeaturePage({
           </Link>
         </div>
       </div>
-
-      <FeatureBYOKBanner
-        featureSlug={featureSlug}
-        byokProvider={featureDef?.byokProvider}
-      />
 
       {/* Stats Overview — dynamic from charts */}
       {allStatsLoading ? (
