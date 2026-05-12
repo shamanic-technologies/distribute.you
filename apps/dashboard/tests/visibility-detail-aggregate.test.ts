@@ -44,6 +44,8 @@ function makeRun(overrides: Partial<VisibilityRun> = {}): VisibilityRun {
     createdAt: "2026-05-12T00:00:00Z",
     judgeKind: "aggregate",
     aggregateRunId: null,
+    promptGenSystemPrompt: null,
+    promptGenUserMessage: null,
     ...overrides,
   };
 }
@@ -68,6 +70,10 @@ function makePrompt(id: string): VisibilityRunPrompt {
     latencyMs: null,
     tokensInput: null,
     tokensOutput: null,
+    judgeSystemPrompt: null,
+    judgeUserMessage: null,
+    extractorSystemPrompt: null,
+    extractorUserMessage: null,
   };
 }
 

@@ -5,7 +5,12 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { XMarkIcon } from "@heroicons/react/20/solid";
 import { ProviderModelBadge } from "./provider-label";
-import type { PromptWithProvider } from "@/lib/visibility-detail";
+import {
+  DEBUG_FIELD_PLACEHOLDER,
+  getPromptDebugFields,
+  type DebugField,
+  type PromptWithProvider,
+} from "@/lib/visibility-detail";
 
 interface PromptDetailPaneProps {
   prompt: PromptWithProvider | null;
@@ -95,9 +100,48 @@ export function PromptDetailPane({ prompt, onClose }: PromptDetailPaneProps) {
               </Markdown>
             </div>
           </Section>
+
+          <DebugSection
+            title="Debug — exact LLM payloads"
+            fields={getPromptDebugFields(prompt)}
+          />
         </div>
       </aside>
     </div>
+  );
+}
+
+export function DebugSection({
+  title,
+  fields,
+}: {
+  title: string;
+  fields: DebugField[];
+}) {
+  return (
+    <details className="border border-gray-200 rounded-lg bg-white">
+      <summary className="cursor-pointer select-none px-4 py-2 text-xs font-semibold uppercase tracking-wider text-gray-500 hover:text-gray-700">
+        {title}
+      </summary>
+      <div className="border-t border-gray-200 px-4 py-3 space-y-4">
+        {fields.map((field) => (
+          <div key={field.label}>
+            <p className="text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-1">
+              {field.label}
+            </p>
+            {field.value === null ? (
+              <p className="text-xs text-gray-400 italic">
+                {DEBUG_FIELD_PLACEHOLDER}
+              </p>
+            ) : (
+              <pre className="text-xs font-mono text-gray-800 bg-gray-50 border border-gray-200 rounded p-3 overflow-x-auto whitespace-pre">
+                {field.value}
+              </pre>
+            )}
+          </div>
+        ))}
+      </div>
+    </details>
   );
 }
 
