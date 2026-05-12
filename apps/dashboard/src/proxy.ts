@@ -14,21 +14,32 @@ const isAuthRoute = createRouteMatcher([
   "/claim(.*)",
 ]);
 
-export default clerkMiddleware(async (auth, req) => {
-  const { userId } = await auth();
+export default clerkMiddleware(
+  async (auth, req) => {
+    const { userId } = await auth();
 
-  // Redirect authenticated users away from auth pages
-  if (isAuthRoute(req) && userId) {
-    return NextResponse.redirect(new URL("/", req.url));
-  }
+    // Redirect authenticated users away from auth pages
+    if (isAuthRoute(req) && userId) {
+      return NextResponse.redirect(new URL("/", req.url));
+    }
 
-  // Protect non-public routes
-  if (!isPublicRoute(req) && !userId) {
-    return NextResponse.redirect(new URL("/sign-in", req.url));
-  }
+    // Protect non-public routes
+    if (!isPublicRoute(req) && !userId) {
+      return NextResponse.redirect(new URL("/sign-in", req.url));
+    }
 
-  return NextResponse.next();
-});
+    return NextResponse.next();
+  },
+  {
+    // URL [orgId] segment is the source of truth for Clerk's active org.
+    // When the URL and Clerk's active org disagree, Clerk auto-setActives to the URL id
+    // (or redirects if the user is not a member). Prevents the dashboard from issuing
+    // API calls under a stale active org after navigation or tab switching.
+    organizationSyncOptions: {
+      organizationPatterns: ["/orgs/:id", "/orgs/:id/(.*)"],
+    },
+  },
+);
 
 export const config = {
   matcher: [
