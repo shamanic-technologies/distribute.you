@@ -2,15 +2,23 @@
 
 import type { ReactNode } from "react";
 
-interface ScoreCardProps {
+export type DeltaFormat = "percent" | "absolute";
+
+type ScoreCardCommon = {
   label: string;
   value: string;
-  delta?: number | null;
-  deltaInverted?: boolean;
   subtitle?: ReactNode;
-}
+};
 
-function formatDelta(delta: number | null | undefined, inverted: boolean): {
+type ScoreCardProps =
+  | (ScoreCardCommon & { delta?: null | undefined; deltaFormat?: never; deltaInverted?: never })
+  | (ScoreCardCommon & { delta: number | null; deltaFormat: DeltaFormat; deltaInverted?: boolean });
+
+export function formatDelta(
+  delta: number | null | undefined,
+  format: DeltaFormat,
+  inverted: boolean,
+): {
   text: string;
   className: string;
   arrow: string;
@@ -20,12 +28,16 @@ function formatDelta(delta: number | null | undefined, inverted: boolean): {
   const arrow = delta > 0 ? "▲" : "▼";
   const className = positive ? "text-green-600" : "text-red-600";
   const abs = Math.abs(delta);
-  const text = abs >= 1 ? abs.toFixed(2) : `${(abs * 100).toFixed(1)}pp`;
+  const text = format === "percent" ? `${(abs * 100).toFixed(1)}pp` : abs.toFixed(2);
   return { text: `${arrow} ${text}`, className, arrow };
 }
 
-export function ScoreCard({ label, value, delta, deltaInverted = false, subtitle }: ScoreCardProps) {
-  const fmt = formatDelta(delta, deltaInverted);
+export function ScoreCard(props: ScoreCardProps) {
+  const { label, value, subtitle } = props;
+  const fmt =
+    "deltaFormat" in props && props.deltaFormat
+      ? formatDelta(props.delta, props.deltaFormat, props.deltaInverted ?? false)
+      : null;
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4">
       <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">{label}</p>
