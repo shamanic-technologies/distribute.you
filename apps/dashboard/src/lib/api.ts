@@ -2195,6 +2195,11 @@ export interface VisibilityRun {
   createdAt: string;
   judgeKind: "aggregate" | "per_provider";
   aggregateRunId: string | null;
+  // ai-visibility-score-service v0.5.2 debug fields: exact strings sent to
+  // the prompt-generation LLM call. Null on runs created before v0.5.2.
+  // TODO: switch to generated SDK types once api-service hotfix lands.
+  promptGenSystemPrompt: string | null;
+  promptGenUserMessage: string | null;
 }
 
 export interface VisibilityRunWithDelta extends VisibilityRun {
@@ -2223,6 +2228,14 @@ export interface VisibilityRunPrompt {
   latencyMs: number | null;
   tokensInput: number | null;
   tokensOutput: number | null;
+  // ai-visibility-score-service v0.5.2 debug fields: exact strings sent to
+  // the judge + extractor LLM calls per prompt. Null on rows created
+  // before v0.5.2. TODO: switch to generated SDK types once api-service
+  // hotfix lands.
+  judgeSystemPrompt: string | null;
+  judgeUserMessage: string | null;
+  extractorSystemPrompt: string | null;
+  extractorUserMessage: string | null;
 }
 
 export interface VisibilityRunCompetitor {

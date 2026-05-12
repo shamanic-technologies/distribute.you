@@ -13,7 +13,8 @@ import {
   parseDecimal,
 } from "@/components/visibility/score-card";
 import { DetailTabs } from "@/components/visibility/detail-tabs";
-import { getDetailTabs } from "@/lib/visibility-detail";
+import { getDetailTabs, getRunDebugFields } from "@/lib/visibility-detail";
+import { DebugSection } from "@/components/visibility/prompt-detail-pane";
 
 export default function VisibilityRunDetailPage() {
   const params = useParams();
@@ -76,6 +77,13 @@ export default function VisibilityRunDetailPage() {
           · {judgeLabel} · {run.nPrompts} prompts
         </p>
       </div>
+
+      <section className="mb-6">
+        <DebugSection
+          title="Debug — prompt-gen LLM payload"
+          fields={getRunDebugFields(run)}
+        />
+      </section>
 
       <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
         <ScoreCard label="Visibility" value={formatScore(parseDecimal(run.visibilityScore))} />
