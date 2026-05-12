@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
@@ -9,6 +10,8 @@ import {
   formatScore,
   formatSentiment,
 } from "@/components/visibility/score-card";
+import { DetailTabs } from "@/components/visibility/detail-tabs";
+import { getDetailTabs } from "@/lib/visibility-detail";
 
 export default function CompetitorsPage() {
   const params = useParams();
@@ -28,6 +31,10 @@ export default function CompetitorsPage() {
     { enabled: !!latestRunId },
   );
 
+  const tabs = useMemo(() => (detail ? getDetailTabs(detail) : []), [detail]);
+  const [activeKey, setActiveKey] = useState<string>("aggregate");
+  const activeTab = tabs.find((t) => t.key === activeKey) ?? tabs[0];
+
   const isLoading = runsLoading || (!!latestRunId && detailLoading);
 
   return (
@@ -43,46 +50,53 @@ export default function CompetitorsPage() {
         <Skeleton />
       ) : !latestRunId ? (
         <EmptyState message="No visibility runs yet — competitor data will appear once the first run completes." />
-      ) : !detail || detail.top_competitors.length === 0 ? (
+      ) : !detail || !activeTab ? (
         <EmptyState message="No competitor mentions detected in the latest run." />
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
-              <tr>
-                <th className="px-4 py-2 text-left">Name</th>
-                <th className="px-4 py-2 text-left">Mentions</th>
-                <th className="px-4 py-2 text-left">Share of voice</th>
-                <th className="px-4 py-2 text-left">Avg position</th>
-                <th className="px-4 py-2 text-left">Net sentiment</th>
-              </tr>
-            </thead>
-            <tbody>
-              {detail.top_competitors.map((c) => (
-                <tr key={c.name} className="border-t border-gray-100">
-                  <td className="px-4 py-3 text-gray-800">
-                    {c.url ? (
-                      <a
-                        href={c.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="hover:text-brand-600 hover:underline"
-                      >
-                        {c.name}
-                      </a>
-                    ) : (
-                      c.name
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-gray-700">{c.mention_count}</td>
-                  <td className="px-4 py-3 text-gray-700">{formatScore(c.share_of_voice)}</td>
-                  <td className="px-4 py-3 text-gray-700">{formatPosition(c.avg_position)}</td>
-                  <td className="px-4 py-3 text-gray-700">{formatSentiment(c.net_sentiment)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <>
+          <DetailTabs tabs={tabs} activeKey={activeTab.key} onChange={setActiveKey} />
+          {activeTab.top_competitors.length === 0 ? (
+            <EmptyState message="No competitor mentions detected in this view." />
+          ) : (
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+                  <tr>
+                    <th className="px-4 py-2 text-left">Name</th>
+                    <th className="px-4 py-2 text-left">Mentions</th>
+                    <th className="px-4 py-2 text-left">Share of voice</th>
+                    <th className="px-4 py-2 text-left">Avg position</th>
+                    <th className="px-4 py-2 text-left">Net sentiment</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeTab.top_competitors.map((c) => (
+                    <tr key={c.name} className="border-t border-gray-100">
+                      <td className="px-4 py-3 text-gray-800">
+                        {c.url ? (
+                          <a
+                            href={c.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="hover:text-brand-600 hover:underline"
+                          >
+                            {c.name}
+                          </a>
+                        ) : (
+                          c.name
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-gray-700">{c.mention_count}</td>
+                      <td className="px-4 py-3 text-gray-700">{formatScore(c.share_of_voice)}</td>
+                      <td className="px-4 py-3 text-gray-700">{formatPosition(c.avg_position)}</td>
+                      <td className="px-4 py-3 text-gray-700">{formatSentiment(c.net_sentiment)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

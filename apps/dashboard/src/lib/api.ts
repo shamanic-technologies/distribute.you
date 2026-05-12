@@ -2193,6 +2193,8 @@ export interface VisibilityRun {
   startedAt: string | null;
   completedAt: string | null;
   createdAt: string;
+  judgeKind: "aggregate" | "per_provider";
+  aggregateRunId: string | null;
 }
 
 export interface VisibilityRunWithDelta extends VisibilityRun {
@@ -2248,10 +2250,19 @@ export interface VisibilityRunCitationOpportunity {
   count: number;
 }
 
-export interface VisibilityRunDetail {
+export interface VisibilityRunByProvider {
+  provider: string;
+  model: string;
   run: VisibilityRun;
   prompts: VisibilityRunPrompt[];
   competitors: VisibilityRunCompetitor[];
+  top_competitors: VisibilityRunTopCompetitor[];
+  citation_opportunities: VisibilityRunCitationOpportunity[];
+}
+
+export interface VisibilityRunDetail {
+  run: VisibilityRun;
+  by_provider: VisibilityRunByProvider[];
   top_competitors: VisibilityRunTopCompetitor[];
   citation_opportunities: VisibilityRunCitationOpportunity[];
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
@@ -11,6 +12,8 @@ import {
   formatSentiment,
   parseDecimal,
 } from "@/components/visibility/score-card";
+import { DetailTabs } from "@/components/visibility/detail-tabs";
+import { getDetailTabs } from "@/lib/visibility-detail";
 
 export default function VisibilityRunDetailPage() {
   const params = useParams();
@@ -26,9 +29,13 @@ export default function VisibilityRunDetailPage() {
     {},
   );
 
+  const tabs = useMemo(() => (data ? getDetailTabs(data) : []), [data]);
+  const [activeKey, setActiveKey] = useState<string>("aggregate");
+  const activeTab = tabs.find((t) => t.key === activeKey) ?? tabs[0];
+
   const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/${campaignId}`;
 
-  if (isLoading || !data) {
+  if (isLoading || !data || !activeTab) {
     return (
       <div className="p-4 md:p-8">
         <div className="animate-pulse space-y-3">
@@ -40,7 +47,12 @@ export default function VisibilityRunDetailPage() {
     );
   }
 
-  const { run, prompts, top_competitors, citation_opportunities } = data;
+  const { run } = data;
+  const { prompts, top_competitors, citation_opportunities } = activeTab;
+  const judgeLabel =
+    activeTab.provider && activeTab.model
+      ? `${activeTab.provider}/${activeTab.model}`
+      : `aggregated across ${data.by_provider.length} judge${data.by_provider.length === 1 ? "" : "s"}`;
 
   return (
     <div className="p-4 md:p-8" data-testid="visibility-run-detail-page">
@@ -61,7 +73,7 @@ export default function VisibilityRunDetailPage() {
           {run.completedAt
             ? `Completed ${new Date(run.completedAt).toLocaleString()}`
             : `Status: ${run.status}`}{" "}
-          · {run.llmProvider}/{run.llmModel} · {run.nPrompts} prompts
+          · {judgeLabel} · {run.nPrompts} prompts
         </p>
       </div>
 
@@ -73,6 +85,8 @@ export default function VisibilityRunDetailPage() {
         <ScoreCard label="Net sentiment" value={formatSentiment(parseDecimal(run.netSentiment))} />
         <ScoreCard label="Avg position" value={formatPosition(parseDecimal(run.avgPosition))} />
       </section>
+
+      <DetailTabs tabs={tabs} activeKey={activeTab.key} onChange={setActiveKey} />
 
       <section className="mb-6">
         <h2 className="text-sm font-semibold text-gray-700 mb-3">Top competitors</h2>
@@ -127,10 +141,15 @@ export default function VisibilityRunDetailPage() {
         </h2>
         <div className="space-y-2">
           {prompts.map((p) => (
-            <div key={p.id} className="bg-white rounded-xl border border-gray-200 p-4">
+            <div key={`${p._provider}-${p._model}-${p.id}`} className="bg-white rounded-xl border border-gray-200 p-4">
               <div className="flex items-start justify-between gap-3 mb-2">
                 <p className="text-sm font-medium text-gray-800">{p.promptText}</p>
                 <div className="flex items-center gap-2 flex-shrink-0">
+                  {activeTab.key === "aggregate" && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
+                      {p._provider}/{p._model}
+                    </span>
+                  )}
                   {p.brandFound ? (
                     <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200">
                       Found
