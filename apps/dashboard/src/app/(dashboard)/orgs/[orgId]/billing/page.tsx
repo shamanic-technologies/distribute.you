@@ -6,10 +6,12 @@ import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import {
   getBillingAccount,
   listBillingTransactions,
+  listOrgRuns,
   createCheckoutSession,
   createPortalSession,
   type BillingAccount,
   type BillingTransaction,
+  type OrgRun,
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
 import { formatBillingCents } from "@/lib/format-number";
@@ -42,6 +44,17 @@ export default function BillingPage() {
   const { data: txData, isLoading: txLoading } = useAuthQuery<{ transactions: BillingTransaction[]; has_more: boolean }>(
     ["billingTransactions"],
     () => listBillingTransactions(),
+    pollOptions,
+  );
+
+  // Tabs for the transaction history card
+  const [activeTab, setActiveTab] = useState<"payments" | "runs">("payments");
+  const [runsPage, setRunsPage] = useState(0);
+
+  // Runs ledger (server-paginated via runs-service proxy)
+  const { data: runsData, isLoading: runsLoading } = useAuthQuery<{ runs: OrgRun[]; offset: number; limit?: number }>(
+    ["orgRuns", runsPage],
+    () => listOrgRuns(TX_PAGE_SIZE, runsPage * TX_PAGE_SIZE),
     pollOptions,
   );
 
@@ -106,7 +119,7 @@ export default function BillingPage() {
 
   const hasValidationError = !!(thresholdError || customAmountError || reloadAmountError);
 
-  const isDepleted = account ? parseFloat(account.creditBalanceCents) <= 0 : false;
+  const isDepleted = account ? parseFloat(account.availableCents) <= 0 : false;
   const hasAutoReload = account?.hasAutoReload ?? false;
 
   // Pre-fill auto-reload fields from existing config
@@ -257,6 +270,35 @@ export default function BillingPage() {
   const txTotalPages = Math.max(1, Math.ceil(transactions.length / TX_PAGE_SIZE));
   const txPageItems = transactions.slice(txPage * TX_PAGE_SIZE, (txPage + 1) * TX_PAGE_SIZE);
 
+  const orgRuns: OrgRun[] = runsData?.runs ?? [];
+  const runsHasNext = orgRuns.length === TX_PAGE_SIZE;
+  const runsHasPrev = runsPage > 0;
+
+  function runRowLabel(run: OrgRun): string {
+    if (run.costs.length === 1) return run.costs[0].costName;
+    if (run.costs.length > 1) {
+      const names = run.costs.map((c) => c.costName);
+      const head = names.slice(0, 2).join(", ");
+      return names.length > 2 ? `${head} +${names.length - 2}` : head;
+    }
+    return run.taskName ?? run.serviceName ?? "Run";
+  }
+
+  function runRowAmount(run: OrgRun): string {
+    if (run.totalCostInUsdCents) return run.totalCostInUsdCents;
+    const sum = run.costs.reduce((acc, c) => acc + parseFloat(c.totalCostInUsdCents), 0);
+    return String(sum);
+  }
+
+  function runRowTimestamp(run: OrgRun): string | null {
+    return run.completedAt ?? run.startedAt;
+  }
+
+  function runRowKey(run: OrgRun, idx: number): string {
+    if (run.id) return run.id;
+    return `${run.startedAt ?? ""}:${run.serviceName ?? ""}:${run.taskName ?? ""}:${idx}`;
+  }
+
   return (
     <div className="p-4 md:p-8">
       <div className="mb-6 flex items-start justify-between max-w-2xl">
@@ -266,7 +308,7 @@ export default function BillingPage() {
         </div>
         <button
           onClick={() => showPaymentRequired({
-            balance_cents: account?.creditBalanceCents,
+            balance_cents: account?.availableCents,
           })}
           className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 transition"
         >
@@ -305,7 +347,7 @@ export default function BillingPage() {
             <div>
               <p className="text-sm text-gray-500">Credit Balance</p>
               <p className={`text-3xl font-bold mt-1 ${isDepleted ? "text-red-600" : "text-gray-900"}`}>
-                {formatBillingCents(account?.creditBalanceCents ?? 0)}
+                {formatBillingCents(account?.availableCents ?? "0")}
               </p>
               {hasAutoReload && (
                 <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
@@ -524,74 +566,170 @@ export default function BillingPage() {
           </div>
         )}
 
-        {/* Transaction History */}
+        {/* Transaction History — split into Payments and Runs tabs */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Transaction History</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-medium text-gray-900">Transaction History</h2>
+          </div>
 
-          {txLoading ? (
-            <div className="space-y-3 animate-pulse">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-12 bg-gray-100 rounded-lg" />
-              ))}
-            </div>
-          ) : transactions.length === 0 ? (
-            <p className="text-sm text-gray-500">No transactions yet.</p>
-          ) : (
-            <>
-              <div className="divide-y divide-gray-100">
-                {txPageItems.map((tx) => (
-                  <div key={tx.id} className="flex items-center justify-between py-3">
-                    <div>
-                      <p className="text-sm text-gray-800">{tx.description}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {new Date(tx.created_at).toLocaleDateString(undefined, {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className={`text-sm font-medium ${
-                        tx.type === "deduction" ? "text-red-600" : "text-green-600"
-                      }`}>
-                        {tx.type === "deduction" ? "-" : "+"}{formatBillingCents(Math.abs(parseFloat(tx.amount_cents)))}
-                      </p>
-                      <p className="text-xs text-gray-400 capitalize">{tx.type}</p>
-                    </div>
-                  </div>
+          <div className="flex items-center gap-1 border-b border-gray-200 mb-4 -mt-1">
+            <button
+              onClick={() => setActiveTab("payments")}
+              className={`px-3 py-2 text-sm font-medium border-b-2 transition -mb-px ${
+                activeTab === "payments"
+                  ? "border-brand-600 text-brand-700"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Payments
+              {!txLoading && transactions.length > 0 && (
+                <span className="ml-1.5 text-xs text-gray-400">({transactions.length})</span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab("runs")}
+              className={`px-3 py-2 text-sm font-medium border-b-2 transition -mb-px ${
+                activeTab === "runs"
+                  ? "border-brand-600 text-brand-700"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Runs
+            </button>
+          </div>
+
+          {activeTab === "payments" ? (
+            txLoading ? (
+              <div className="space-y-3 animate-pulse">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-12 bg-gray-100 rounded-lg" />
                 ))}
               </div>
-
-              {txTotalPages > 1 && (
-                <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-2">
-                  <p className="text-xs text-gray-400">
-                    {(txPage * TX_PAGE_SIZE + 1).toLocaleString("en-US")}–{Math.min((txPage + 1) * TX_PAGE_SIZE, transactions.length).toLocaleString("en-US")} of {transactions.length.toLocaleString("en-US")}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setTxPage((p) => Math.max(0, p - 1))}
-                      disabled={txPage === 0}
-                      className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                    >
-                      Previous
-                    </button>
-                    <span className="text-xs text-gray-500">
-                      {txPage + 1} / {txTotalPages}
-                    </span>
-                    <button
-                      onClick={() => setTxPage((p) => Math.min(txTotalPages - 1, p + 1))}
-                      disabled={txPage >= txTotalPages - 1}
-                      className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                    >
-                      Next
-                    </button>
-                  </div>
+            ) : transactions.length === 0 ? (
+              <p className="text-sm text-gray-500">No payments yet.</p>
+            ) : (
+              <>
+                <div className="divide-y divide-gray-100">
+                  {txPageItems.map((tx) => (
+                    <div key={tx.id} className="flex items-center justify-between py-3">
+                      <div>
+                        <p className="text-sm text-gray-800">{tx.description}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {new Date(tx.created_at).toLocaleDateString(undefined, {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className={`text-sm font-medium ${
+                          tx.type === "deduction" ? "text-red-600" : "text-green-600"
+                        }`}>
+                          {tx.type === "deduction" ? "-" : "+"}{formatBillingCents(Math.abs(parseFloat(tx.amount_cents)))}
+                        </p>
+                        <p className="text-xs text-gray-400 capitalize">{tx.type}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              )}
-            </>
+
+                {txTotalPages > 1 && (
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-2">
+                    <p className="text-xs text-gray-400">
+                      {(txPage * TX_PAGE_SIZE + 1).toLocaleString("en-US")}–{Math.min((txPage + 1) * TX_PAGE_SIZE, transactions.length).toLocaleString("en-US")} of {transactions.length.toLocaleString("en-US")}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setTxPage((p) => Math.max(0, p - 1))}
+                        disabled={txPage === 0}
+                        className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                      >
+                        Previous
+                      </button>
+                      <span className="text-xs text-gray-500">
+                        {txPage + 1} / {txTotalPages}
+                      </span>
+                      <button
+                        onClick={() => setTxPage((p) => Math.min(txTotalPages - 1, p + 1))}
+                        disabled={txPage >= txTotalPages - 1}
+                        className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )
+          ) : (
+            runsLoading ? (
+              <div className="space-y-3 animate-pulse">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-12 bg-gray-100 rounded-lg" />
+                ))}
+              </div>
+            ) : orgRuns.length === 0 ? (
+              <p className="text-sm text-gray-500">No runs yet.</p>
+            ) : (
+              <>
+                <div className="divide-y divide-gray-100">
+                  {orgRuns.map((run, idx) => {
+                    const ts = runRowTimestamp(run);
+                    return (
+                      <div key={runRowKey(run, idx)} className="flex items-center justify-between py-3">
+                        <div>
+                          <p className="text-sm text-gray-800">{runRowLabel(run)}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {ts
+                              ? new Date(ts).toLocaleDateString(undefined, {
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })
+                              : "—"}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-medium text-red-600">
+                            -{formatBillingCents(Math.abs(parseFloat(runRowAmount(run))))}
+                          </p>
+                          <p className="text-xs text-gray-400 capitalize">{run.status}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {(runsHasPrev || runsHasNext) && (
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-2">
+                    <p className="text-xs text-gray-400">
+                      Page {runsPage + 1}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setRunsPage((p) => Math.max(0, p - 1))}
+                        disabled={!runsHasPrev}
+                        className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                      >
+                        Previous
+                      </button>
+                      <button
+                        onClick={() => setRunsPage((p) => p + 1)}
+                        disabled={!runsHasNext}
+                        className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )
           )}
         </div>
       </div>

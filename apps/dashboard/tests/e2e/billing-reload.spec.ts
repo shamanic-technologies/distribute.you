@@ -25,10 +25,12 @@ async function mockDashboardApi(page: Page) {
     }
 
     if (path === "/billing/accounts") {
-      // billing-service v2 returns *_cents as decimal strings
+      // billing-service v3 splits credit into grants/runsSpent/available — all decimal strings
       await route.fulfill({
         json: {
-          creditBalanceCents: "2.0000000000",
+          grantsCents: "2.0000000000",
+          runsSpentCents: "0.0000000000",
+          availableCents: "2.0000000000",
           currency: "usd",
           hasPaymentMethod: true,
           hasAutoReload: true,
