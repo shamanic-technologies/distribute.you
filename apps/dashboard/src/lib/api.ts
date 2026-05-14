@@ -1399,23 +1399,16 @@ export async function listBillingTransactions(
   );
 }
 
-// Org-wide runs ledger (runs-service via api-service proxy).
-// Used by the billing page Runs tab. Each row = one run (cost breakdown is in `costs[]`).
-export interface OrgRunCostEntry {
-  costName: string;
-  totalCostInUsdCents: string;
-  actualCostInUsdCents: string;
-  provisionedCostInUsdCents: string;
-  quantity: number;
-}
-
+// Org-wide runs ledger (runs-service /v1/runs via api-service proxy).
+// Used by the billing page Runs tab. List endpoint returns one item per run with
+// own-cost totals only — per-cost-name breakdown is on GET /v1/runs/{id}.
+// Per runs-service: id is required, default sort is startedAt DESC.
 export interface OrgRun {
-  id?: string;
+  id: string;
   status: string;
   startedAt: string | null;
   completedAt: string | null;
-  totalCostInUsdCents: string | null;
-  costs: OrgRunCostEntry[];
+  ownCostInUsdCents: string | null;
   serviceName: string | null;
   taskName: string | null;
 }
