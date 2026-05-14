@@ -281,7 +281,9 @@ async function mockDashboardApi(page: Page) {
     if (path === "/billing/accounts") {
       await route.fulfill({
         json: {
-          creditBalanceCents: "5000.0000000000",
+          grantsCents: "5000.0000000000",
+          runsSpentCents: "0.0000000000",
+          availableCents: "5000.0000000000",
           currency: "usd",
           hasPaymentMethod: true,
           hasAutoReload: false,

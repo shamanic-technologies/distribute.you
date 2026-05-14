@@ -147,7 +147,9 @@ async function mockApi(page: Page) {
     if (path === "/billing/accounts") {
       await route.fulfill({
         json: {
-          creditBalanceCents: "100.00",
+          grantsCents: "100.00",
+          runsSpentCents: "0.00",
+          availableCents: "100.00",
           currency: "usd",
           hasPaymentMethod: true,
           hasAutoReload: false,
