@@ -76,11 +76,22 @@ describe("Billing API wrappers", () => {
   });
 
   it("should export BillingAccount interface with required fields", () => {
-    expect(content).toContain("creditBalanceCents");
+    expect(content).toContain("grantsCents");
+    expect(content).toContain("runsSpentCents");
+    expect(content).toContain("availableCents");
     expect(content).toContain("hasPaymentMethod");
     expect(content).toContain("hasAutoReload");
     expect(content).toContain("reloadAmountCents");
     expect(content).toContain("reloadThresholdCents");
+  });
+
+  it("should NOT have creditBalanceCents (removed in billing-service v3)", () => {
+    expect(content).not.toContain("creditBalanceCents");
+  });
+
+  it("should export listOrgRuns function for the Runs tab", () => {
+    expect(content).toContain("export async function listOrgRuns");
+    expect(content).toContain("/runs");
   });
 });
 
@@ -186,8 +197,8 @@ describe("Billing page", () => {
     expect(content).toContain("disableAutoReload");
   });
 
-  it("should display credit balance", () => {
-    expect(content).toContain("creditBalanceCents");
+  it("should display credit balance via availableCents", () => {
+    expect(content).toContain("availableCents");
     expect(content).toContain("Credit Balance");
   });
 
@@ -302,6 +313,12 @@ describe("Billing page", () => {
     expect(content).toContain("text-green-600");
   });
 
+  it("should split transaction history into Payments and Runs tabs", () => {
+    expect(content).toContain('"payments"');
+    expect(content).toContain('"runs"');
+    expect(content).toContain("listOrgRuns");
+  });
+
   it("should have loading skeleton state", () => {
     expect(content).toContain("animate-pulse");
     expect(content).toContain("accountLoading");
@@ -375,8 +392,8 @@ describe("Proactive credit check in campaign creation (org-scoped)", () => {
   });
 
   it("should check if budget exceeds balance before creating campaign", () => {
-    // billing-service v2 returns creditBalanceCents as decimal string — must be parsed for comparison
-expect(content).toContain("budgetCents > parseFloat(account.creditBalanceCents)");
+    // billing-service v3 splits creditBalance into grants/runsSpent/available — use availableCents
+    expect(content).toContain("budgetCents > parseFloat(account.availableCents)");
   });
 
   it("should check for recurring campaigns without auto-reload", () => {
@@ -414,8 +431,8 @@ describe("Proactive credit check in campaign creation (feature-scoped)", () => {
   });
 
   it("should check if budget exceeds balance before creating campaign", () => {
-    // billing-service v2 returns creditBalanceCents as decimal string — must be parsed for comparison
-expect(content).toContain("budgetCents > parseFloat(account.creditBalanceCents)");
+    // billing-service v3 splits creditBalance into grants/runsSpent/available — use availableCents
+    expect(content).toContain("budgetCents > parseFloat(account.availableCents)");
   });
 
   it("should show proactive modal with onAutoReloadConfigured callback", () => {

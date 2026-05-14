@@ -496,7 +496,7 @@ export default function FeatureCreateCampaignPage() {
 
     try {
       const account = await getBillingAccount();
-      const willExceed = budgetCents > parseFloat(account.creditBalanceCents);
+      const willExceed = budgetCents > parseFloat(account.availableCents);
       const isRecurring = budgetFrequency !== "one-off";
 
       if ((willExceed || isRecurring) && !account.hasAutoReload) {
@@ -514,7 +514,7 @@ export default function FeatureCreateCampaignPage() {
         isCreatingRef.current = false;
         setIsCreating(false);
         showPaymentRequired({
-          balance_cents: account.creditBalanceCents,
+          balance_cents: account.availableCents,
           required_cents: budgetCents,
           proactive: true,
           onAutoReloadConfigured: () => {

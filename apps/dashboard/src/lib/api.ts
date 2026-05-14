@@ -1350,10 +1350,14 @@ export async function createCampaign(
 }
 
 // Billing
-// billing-service v2 returns all `*_cents` / `*Cents` fields as full-precision
-// decimal strings (e.g. "100.4200000000"). Use parseFloat for math; never Number().
+// billing-service v3 returns all `*Cents` fields as full-precision decimal strings
+// (e.g. "100.4200000000"). Use parseFloat for math; never Number().
+// `availableCents` = grants minus runs-service usage; use it for depletion and budget checks.
+// `grantsCents` is gross of usage and will over-state credit — do NOT gate on it.
 export interface BillingAccount {
-  creditBalanceCents: string;
+  grantsCents: string;
+  runsSpentCents: string;
+  availableCents: string;
   reloadAmountCents: string | null;
   reloadThresholdCents: string | null;
   hasPaymentMethod: boolean;
@@ -1392,6 +1396,39 @@ export async function listBillingTransactions(
   return apiCall<{ transactions: BillingTransaction[]; has_more: boolean }>(
     "/billing/accounts/transactions",
     { token }
+  );
+}
+
+// Org-wide runs ledger (runs-service via api-service proxy).
+// Used by the billing page Runs tab. Each row = one run (cost breakdown is in `costs[]`).
+export interface OrgRunCostEntry {
+  costName: string;
+  totalCostInUsdCents: string;
+  actualCostInUsdCents: string;
+  provisionedCostInUsdCents: string;
+  quantity: number;
+}
+
+export interface OrgRun {
+  id?: string;
+  status: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  totalCostInUsdCents: string | null;
+  costs: OrgRunCostEntry[];
+  serviceName: string | null;
+  taskName: string | null;
+}
+
+export async function listOrgRuns(
+  limit: number,
+  offset: number,
+  token?: string,
+): Promise<{ runs: OrgRun[]; offset: number; limit?: number }> {
+  const qs = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  return apiCall<{ runs: OrgRun[]; offset: number; limit?: number }>(
+    `/runs?${qs.toString()}`,
+    { token },
   );
 }
 
