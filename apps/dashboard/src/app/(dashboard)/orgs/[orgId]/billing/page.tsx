@@ -275,28 +275,12 @@ export default function BillingPage() {
   const runsHasPrev = runsPage > 0;
 
   function runRowLabel(run: OrgRun): string {
-    if (run.costs.length === 1) return run.costs[0].costName;
-    if (run.costs.length > 1) {
-      const names = run.costs.map((c) => c.costName);
-      const head = names.slice(0, 2).join(", ");
-      return names.length > 2 ? `${head} +${names.length - 2}` : head;
-    }
+    if (run.taskName && run.serviceName) return `${run.serviceName}.${run.taskName}`;
     return run.taskName ?? run.serviceName ?? "Run";
-  }
-
-  function runRowAmount(run: OrgRun): string {
-    if (run.totalCostInUsdCents) return run.totalCostInUsdCents;
-    const sum = run.costs.reduce((acc, c) => acc + parseFloat(c.totalCostInUsdCents), 0);
-    return String(sum);
   }
 
   function runRowTimestamp(run: OrgRun): string | null {
     return run.completedAt ?? run.startedAt;
-  }
-
-  function runRowKey(run: OrgRun, idx: number): string {
-    if (run.id) return run.id;
-    return `${run.startedAt ?? ""}:${run.serviceName ?? ""}:${run.taskName ?? ""}:${idx}`;
   }
 
   return (
@@ -676,10 +660,11 @@ export default function BillingPage() {
             ) : (
               <>
                 <div className="divide-y divide-gray-100">
-                  {orgRuns.map((run, idx) => {
+                  {orgRuns.map((run) => {
                     const ts = runRowTimestamp(run);
+                    const cost = run.ownCostInUsdCents ? parseFloat(run.ownCostInUsdCents) : 0;
                     return (
-                      <div key={runRowKey(run, idx)} className="flex items-center justify-between py-3">
+                      <div key={run.id} className="flex items-center justify-between py-3">
                         <div>
                           <p className="text-sm text-gray-800">{runRowLabel(run)}</p>
                           <p className="text-xs text-gray-400 mt-0.5">
@@ -696,7 +681,7 @@ export default function BillingPage() {
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-medium text-red-600">
-                            -{formatBillingCents(Math.abs(parseFloat(runRowAmount(run))))}
+                            -{formatBillingCents(Math.abs(cost))}
                           </p>
                           <p className="text-xs text-gray-400 capitalize">{run.status}</p>
                         </div>
