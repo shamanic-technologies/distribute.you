@@ -1349,22 +1349,25 @@ export async function createCampaign(
   });
 }
 
-// Billing
-// billing-service v3 returns all `*Cents` fields as full-precision decimal strings
-// (e.g. "100.4200000000"). Use parseFloat for math; never Number().
-// `availableCents` = grants minus runs-service usage; use it for depletion and budget checks.
-// `grantsCents` is gross of usage and will over-state credit — do NOT gate on it.
-// Auto-topup fields keep the legacy `reload*` / `hasAutoReload` names on the response
-// because billing-service has not yet renamed its response shape — api-service only
-// renamed the request path + body fields. Track billing-service rename separately.
+// Billing — wire shape per billing-service v3 (snake_case, post-PR #112).
+// `*_cents` string fields are full-precision decimal strings (e.g. "100.4200000000").
+// Use parseFloat for math; never Number().
+// `available_cents` = balance minus usage; use it for depletion and budget checks.
+// `balance_cents` is gross of usage and will over-state credit — do NOT gate on it.
+// `topup_amount_cents` and `topup_threshold_cents` are integers in cents (or null).
+// Live spec: https://billing.distribute.you/openapi.json
 export interface BillingAccount {
-  grantsCents: string;
-  runsSpentCents: string;
-  availableCents: string;
-  reloadAmountCents: string | null;
-  reloadThresholdCents: string | null;
-  hasPaymentMethod: boolean;
-  hasAutoReload: boolean;
+  id: string;
+  org_id: string;
+  balance_cents: string;
+  usage_cents: string;
+  available_cents: string;
+  topup_amount_cents: number | null;
+  topup_threshold_cents: number | null;
+  has_payment_method: boolean;
+  has_auto_topup: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface BillingBalance {

@@ -496,11 +496,11 @@ export default function FeatureCreateCampaignPage() {
 
     try {
       const account = await getBillingAccount();
-      const willExceed = budgetCents > parseFloat(account.availableCents);
+      const willExceed = budgetCents > parseFloat(account.available_cents);
       const isRecurring = budgetFrequency !== "one-off";
 
-      if ((willExceed || isRecurring) && !account.hasAutoReload) {
-        if (account.hasPaymentMethod) {
+      if ((willExceed || isRecurring) && !account.has_auto_topup) {
+        if (account.has_payment_method) {
           // Saved card exists — silently enable auto-topup and proceed.
           // The backend will charge the card automatically during deduction.
           const topupCents = Math.max(1000, budgetCents);
@@ -514,7 +514,7 @@ export default function FeatureCreateCampaignPage() {
         isCreatingRef.current = false;
         setIsCreating(false);
         showPaymentRequired({
-          balance_cents: account.availableCents,
+          balance_cents: account.available_cents,
           required_cents: budgetCents,
           proactive: true,
           onAutoTopupConfigured: () => {

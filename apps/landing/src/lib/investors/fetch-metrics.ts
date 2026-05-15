@@ -13,7 +13,6 @@ interface MonthlyRow {
 interface BillingGrowthRow {
   period: string;
   credited_cents: string;
-  consumed_cents: string;
   revenue_cents: string;
 }
 
@@ -42,15 +41,18 @@ interface UsersStatsResponse {
   monthlyGrowth: { month: string; newOrgs: number; newUsers: number }[];
 }
 
-// billing-service /public/stats/billing — registry-verified shape (camelCase top-level,
-// snake_case row keys, plus snake_case total_revenue_cents added by billing-service PR #113).
+// billing-service /public/stats/billing — wire shape per live spec
+// (snake_case throughout, post billing-service v3). Live spec:
+// https://billing.distribute.you/openapi.json
 interface BillingStatsResponse {
-  totalAccounts: number;
-  accountsWithPaymentMethod: number;
-  totalCreditedCents: string;
+  total_accounts: number;
+  accounts_with_payment_method: number;
+  total_credited_cents: string;
+  total_paid_cents: string;
   total_revenue_cents: string;
-  monthlyGrowth: BillingGrowthRow[];
-  weeklyGrowth: BillingGrowthRow[];
+  total_local_credits_cents: string;
+  monthly_growth: BillingGrowthRow[];
+  weekly_growth: BillingGrowthRow[];
 }
 
 // runs-service /public/stats/runs — registry-verified shape.
@@ -119,7 +121,7 @@ export async function fetchInvestorMetrics(hostname = ""): Promise<InvestorMetri
     monthlyMap.set(row.month, entry);
   }
 
-  for (const row of billing.monthlyGrowth) {
+  for (const row of billing.monthly_growth) {
     // Normalize "2026-03-01" to "2026-03" to merge with users/runs data
     const month = row.period.slice(0, 7);
     const entry = monthlyMap.get(month) ?? emptyRow(month);
@@ -141,7 +143,7 @@ export async function fetchInvestorMetrics(hostname = ""): Promise<InvestorMetri
   const currentWeekStart = new Date(now);
   currentWeekStart.setUTCDate(now.getUTCDate() - mondayOffset);
   const currentWeekStr = currentWeekStart.toISOString().slice(0, 10);
-  const sortedWeeklyDesc = [...billing.weeklyGrowth]
+  const sortedWeeklyDesc = [...billing.weekly_growth]
     .sort((a, b) => b.period.localeCompare(a.period))
     .filter((w) => w.period < currentWeekStr);
 
@@ -152,9 +154,9 @@ export async function fetchInvestorMetrics(hostname = ""): Promise<InvestorMetri
       orgs: users.totalOrgs,
     },
     billing: {
-      totalAccounts: billing.totalAccounts,
-      accountsWithPaymentMethod: billing.accountsWithPaymentMethod,
-      totalCreditedCents: billing.totalCreditedCents,
+      totalAccounts: billing.total_accounts,
+      accountsWithPaymentMethod: billing.accounts_with_payment_method,
+      totalCreditedCents: billing.total_credited_cents,
       totalRevenueCents: billing.total_revenue_cents,
     },
     runs: {

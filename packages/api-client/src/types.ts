@@ -580,16 +580,25 @@ export interface MediaKitViewStats {
 
 // ─── Billing ─────────────────────────────────────────────────────────────────
 
+// Wire shape per billing-service v3 (snake_case). Live spec:
+// https://billing.distribute.you/openapi.json
+// `*_cents` string fields are decimal strings; `topup_*_cents` are integers.
 export interface BillingAccount {
-  creditBalanceCents: number;
-  reloadAmountCents: number | null;
-  reloadThresholdCents: number | null;
-  hasPaymentMethod: boolean;
-  hasAutoReload: boolean;
+  id: string;
+  org_id: string;
+  balance_cents: string;
+  usage_cents: string;
+  available_cents: string;
+  topup_amount_cents: number | null;
+  topup_threshold_cents: number | null;
+  has_payment_method: boolean;
+  has_auto_topup: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface BillingBalance {
-  balance_cents: number;
+  balance_cents: string;
   depleted: boolean;
 }
 
