@@ -147,14 +147,17 @@ async function mockApi(page: Page) {
     if (path === "/billing/accounts") {
       await route.fulfill({
         json: {
-          grantsCents: "100.00",
-          runsSpentCents: "0.00",
-          availableCents: "100.00",
-          currency: "usd",
-          hasPaymentMethod: true,
-          hasAutoReload: false,
-          reloadAmountCents: "0",
-          reloadThresholdCents: "0",
+          id: "00000000-0000-0000-0000-000000000001",
+          org_id: "00000000-0000-0000-0000-00000000000a",
+          balance_cents: "100.00",
+          usage_cents: "0.00",
+          available_cents: "100.00",
+          topup_amount_cents: null,
+          topup_threshold_cents: null,
+          has_payment_method: true,
+          has_auto_topup: false,
+          created_at: "2026-01-01T00:00:00.000Z",
+          updated_at: "2026-05-15T00:00:00.000Z",
         },
       });
       return;

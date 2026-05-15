@@ -281,14 +281,17 @@ async function mockDashboardApi(page: Page) {
     if (path === "/billing/accounts") {
       await route.fulfill({
         json: {
-          grantsCents: "5000.0000000000",
-          runsSpentCents: "0.0000000000",
-          availableCents: "5000.0000000000",
-          currency: "usd",
-          hasPaymentMethod: true,
-          hasAutoReload: false,
-          reloadAmountCents: "0",
-          reloadThresholdCents: "0",
+          id: "00000000-0000-0000-0000-000000000001",
+          org_id: "00000000-0000-0000-0000-00000000000a",
+          balance_cents: "5000.0000000000",
+          usage_cents: "0.0000000000",
+          available_cents: "5000.0000000000",
+          topup_amount_cents: null,
+          topup_threshold_cents: null,
+          has_payment_method: true,
+          has_auto_topup: false,
+          created_at: "2026-01-01T00:00:00.000Z",
+          updated_at: "2026-05-15T00:00:00.000Z",
         },
       });
       return;

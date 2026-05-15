@@ -25,19 +25,21 @@ async function mockDashboardApi(page: Page) {
     }
 
     if (path === "/billing/accounts") {
-      // billing-service v3 splits credit into grants/runsSpent/available — all decimal strings.
-      // Response keeps legacy reload* / hasAutoReload field names (billing-service has not
-      // yet renamed its response shape; api-service only renamed request paths + bodies).
+      // billing-service v3 wire shape (snake_case). Decimal strings for *_cents,
+      // integers (or null) for topup_*_cents.
       await route.fulfill({
         json: {
-          grantsCents: "2.0000000000",
-          runsSpentCents: "0.0000000000",
-          availableCents: "2.0000000000",
-          currency: "usd",
-          hasPaymentMethod: true,
-          hasAutoReload: true,
-          reloadAmountCents: "2500.0000000000",
-          reloadThresholdCents: "500.0000000000",
+          id: "00000000-0000-0000-0000-000000000001",
+          org_id: "00000000-0000-0000-0000-00000000000a",
+          balance_cents: "2.0000000000",
+          usage_cents: "0.0000000000",
+          available_cents: "2.0000000000",
+          topup_amount_cents: 2500,
+          topup_threshold_cents: 500,
+          has_payment_method: true,
+          has_auto_topup: true,
+          created_at: "2026-01-01T00:00:00.000Z",
+          updated_at: "2026-05-15T00:00:00.000Z",
         },
       });
       return;
