@@ -204,21 +204,16 @@ export default async function InvestorsPage() {
             <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
               Revenue & Credits
             </h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <StatCard
-                label="Total Credits Loaded"
-                value={formatCents(metrics.billing.totalCreditedCents)}
-                sub="Cumulative top-ups"
+                label="Total Consumed"
+                value={formatCents(metrics.runs.totalCostInUsdCents)}
+                sub="Cumulative platform run costs (runs-service)"
               />
               <StatCard
-                label="Credits Consumed"
-                value={formatCents(metrics.billing.totalConsumedCents)}
-                sub="Total platform spend"
-              />
-              <StatCard
-                label="Outstanding Balance"
-                value={formatCents(metrics.billing.totalCreditBalanceCents)}
-                sub="Across all accounts"
+                label="Revenue"
+                value={formatCents(metrics.billing.totalRevenueCents)}
+                sub="Cumulative net Stripe revenue"
               />
             </div>
           </div>

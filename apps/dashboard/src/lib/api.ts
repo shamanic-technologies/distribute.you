@@ -1354,6 +1354,9 @@ export async function createCampaign(
 // (e.g. "100.4200000000"). Use parseFloat for math; never Number().
 // `availableCents` = grants minus runs-service usage; use it for depletion and budget checks.
 // `grantsCents` is gross of usage and will over-state credit — do NOT gate on it.
+// Auto-topup fields keep the legacy `reload*` / `hasAutoReload` names on the response
+// because billing-service has not yet renamed its response shape — api-service only
+// renamed the request path + body fields. Track billing-service rename separately.
 export interface BillingAccount {
   grantsCents: string;
   runsSpentCents: string;
@@ -1369,14 +1372,6 @@ export interface BillingBalance {
   depleted: boolean;
 }
 
-export interface BillingTransaction {
-  id: string;
-  amount_cents: string;
-  description: string;
-  created_at: string;
-  type: "deduction" | "credit" | "reload";
-}
-
 export interface CheckoutSession {
   url: string;
   session_id: string;
@@ -1388,15 +1383,6 @@ export async function getBillingAccount(token?: string): Promise<BillingAccount>
 
 export async function getBillingBalance(token?: string): Promise<BillingBalance> {
   return apiCall<BillingBalance>("/billing/accounts/balance", { token });
-}
-
-export async function listBillingTransactions(
-  token?: string
-): Promise<{ transactions: BillingTransaction[]; has_more: boolean }> {
-  return apiCall<{ transactions: BillingTransaction[]; has_more: boolean }>(
-    "/billing/accounts/transactions",
-    { token }
-  );
 }
 
 // Org-wide runs ledger (runs-service /v1/runs via api-service proxy).
@@ -1425,22 +1411,22 @@ export async function listOrgRuns(
   );
 }
 
-export async function configureAutoReload(
-  reloadAmountCents: number,
-  reloadThresholdCents?: number,
+export async function configureAutoTopup(
+  topupAmountCents: number,
+  topupThresholdCents?: number,
   token?: string
 ): Promise<BillingAccount> {
-  const body: Record<string, unknown> = { reload_amount_cents: reloadAmountCents };
-  if (reloadThresholdCents !== undefined) body.reload_threshold_cents = reloadThresholdCents;
-  return apiCall<BillingAccount>("/billing/accounts/auto-reload", { token, method: "PATCH", body });
+  const body: Record<string, unknown> = { topup_amount_cents: topupAmountCents };
+  if (topupThresholdCents !== undefined) body.topup_threshold_cents = topupThresholdCents;
+  return apiCall<BillingAccount>("/billing/accounts/auto_topup", { token, method: "PATCH", body });
 }
 
-export async function disableAutoReload(token?: string): Promise<BillingAccount> {
-  return apiCall<BillingAccount>("/billing/accounts/auto-reload", { token, method: "DELETE" });
+export async function disableAutoTopup(token?: string): Promise<BillingAccount> {
+  return apiCall<BillingAccount>("/billing/accounts/auto_topup", { token, method: "DELETE" });
 }
 
 export async function createCheckoutSession(
-  params: { reload_amount_cents: number; success_url: string; cancel_url: string },
+  params: { topup_amount_cents: number; success_url: string; cancel_url: string },
   token?: string
 ): Promise<CheckoutSession> {
   return apiCall<CheckoutSession>("/billing/checkout-sessions", {

@@ -101,8 +101,7 @@ const TOOL_CATEGORIES = [
     name: "Billing",
     tools: [
       { name: "billing_balance", description: "Check your current credit balance and whether it's depleted." },
-      { name: "billing_account", description: "Get your billing account details — credit balance, auto-reload settings, and payment method status." },
-      { name: "billing_transactions", description: "List recent billing transactions — credits, deductions, and reloads with amounts and descriptions." },
+      { name: "billing_account", description: "Get your billing account details — credit balance, auto-topup settings, and payment method status." },
     ],
   },
   {

@@ -593,14 +593,6 @@ export interface BillingBalance {
   depleted: boolean;
 }
 
-export interface BillingTransaction {
-  id: string;
-  amount_cents: number;
-  description: string;
-  created_at: string;
-  type: "deduction" | "credit" | "reload";
-}
-
 // ─── Costs ───────────────────────────────────────────────────────────────────
 
 export interface CostStatsGroup {

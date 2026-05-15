@@ -25,7 +25,9 @@ async function mockDashboardApi(page: Page) {
     }
 
     if (path === "/billing/accounts") {
-      // billing-service v3 splits credit into grants/runsSpent/available — all decimal strings
+      // billing-service v3 splits credit into grants/runsSpent/available — all decimal strings.
+      // Response keeps legacy reload* / hasAutoReload field names (billing-service has not
+      // yet renamed its response shape; api-service only renamed request paths + bodies).
       await route.fulfill({
         json: {
           grantsCents: "2.0000000000",
@@ -41,8 +43,8 @@ async function mockDashboardApi(page: Page) {
       return;
     }
 
-    if (path === "/billing/accounts/transactions") {
-      await route.fulfill({ json: { transactions: [], has_more: false } });
+    if (path.startsWith("/runs")) {
+      await route.fulfill({ json: { runs: [], offset: 0, limit: 10 } });
       return;
     }
 
@@ -58,13 +60,13 @@ async function mockDashboardApi(page: Page) {
   });
 }
 
-test.describe("Billing reload", () => {
+test.describe("Billing topup", () => {
   test.beforeEach(async ({ page }) => {
     await setupClerkTestingToken({ page });
     await mockDashboardApi(page);
   });
 
-  test("opens the credit reload modal from the billing header", async ({ page }) => {
+  test("opens the credit top-up modal from the billing header", async ({ page }) => {
     const emailAddress = requiredEnv("E2E_CLERK_USER_EMAIL");
     const orgId = requiredEnv("E2E_DASHBOARD_ORG_ID");
 
@@ -74,14 +76,14 @@ test.describe("Billing reload", () => {
     await page.goto(`/orgs/${orgId}/billing`);
 
     await expect(page.getByRole("heading", { name: "Billing" })).toBeVisible();
-    const reloadButton = page.getByRole("button", { name: "Reload Credits" });
-    await expect(reloadButton).toBeVisible();
+    const topupButton = page.getByRole("button", { name: "Top Up Credits" });
+    await expect(topupButton).toBeVisible();
 
-    await reloadButton.click();
+    await topupButton.click();
 
     await expect(page.getByRole("heading", { name: "Insufficient Credits" })).toBeVisible();
     await expect(page.getByText("Add Credits")).toBeVisible();
-    await expect(page.getByLabel("Enable auto-reload")).toBeChecked();
-    await expect(page.getByText("Reload amount ($)")).toBeVisible();
+    await expect(page.getByLabel("Enable auto-topup")).toBeChecked();
+    await expect(page.getByText("Top-up amount ($)")).toBeVisible();
   });
 });

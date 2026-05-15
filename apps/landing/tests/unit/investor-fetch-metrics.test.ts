@@ -13,9 +13,8 @@ const mockUsers = {
 const mockBilling = {
   totalAccounts: 15,
   accountsWithPaymentMethod: 8,
-  totalCreditBalanceCents: "1234.5678901234",
   totalCreditedCents: "10000.4200000000",
-  totalConsumedCents: "8765.5800000000",
+  total_revenue_cents: "8000.5500000000",
   monthlyGrowth: [
     {
       period: "2026-04-01",
@@ -48,9 +47,10 @@ const mockBilling = {
 
 const mockRuns = {
   byStatus: { completed: 100, failed: 5, running: 2 },
+  totalCostInUsdCents: "12345.6789012345",
   monthly: [
-    { month: "2026-04", completed: 60, failed: 3, running: 1 },
-    { month: "2026-03", completed: 40, failed: 2, running: 1 },
+    { month: "2026-04", completed: 60, failed: 3, running: 1, totalCostInUsdCents: "6000.1234567890" },
+    { month: "2026-03", completed: 40, failed: 2, running: 1, totalCostInUsdCents: "6345.5554444455" },
   ],
 };
 
@@ -82,22 +82,28 @@ describe("fetchInvestorMetrics — fractional decimal-string cents", () => {
     vi.unstubAllEnvs();
   });
 
-  it("preserves decimal-string cents on billing summary fields", async () => {
+  it("exposes totalCreditedCents and totalRevenueCents on billing summary", async () => {
     const result = await fetchInvestorMetrics("test.local");
     expect(result.billing.totalCreditedCents).toBe("10000.4200000000");
-    expect(result.billing.totalConsumedCents).toBe("8765.5800000000");
-    expect(result.billing.totalCreditBalanceCents).toBe("1234.5678901234");
+    expect(result.billing.totalRevenueCents).toBe("8000.5500000000");
+    expect(result.billing.totalAccounts).toBe(15);
+    expect(result.billing.accountsWithPaymentMethod).toBe(8);
   });
 
-  it("preserves decimal-string cents on monthly rows", async () => {
+  it("exposes totalCostInUsdCents on runs summary (authoritative source for consumption)", async () => {
+    const result = await fetchInvestorMetrics("test.local");
+    expect(result.runs.totalCostInUsdCents).toBe("12345.6789012345");
+  });
+
+  it("sources monthly consumedCents from runs-service (not billing-service)", async () => {
     const result = await fetchInvestorMetrics("test.local");
     const apr = result.monthlyGrowth.find((r) => r.month === "2026-04");
+    expect(apr?.consumedCents).toBe("6000.1234567890");
     expect(apr?.creditedCents).toBe("5000.4200000000");
-    expect(apr?.consumedCents).toBe("4000.1100000000");
     expect(apr?.revenueCents).toBe("3500.0000000000");
   });
 
-  it("preserves decimal-string cents on weekly rows", async () => {
+  it("preserves decimal-string cents on weekly rows (billing-service pass-through)", async () => {
     const result = await fetchInvestorMetrics("test.local");
     const wk = result.weeklyGrowth.find((r) => r.period === "2026-04-20");
     expect(wk?.consumed_cents).toBe("850.5000000000");
@@ -111,17 +117,18 @@ describe("fetchInvestorMetrics — fractional decimal-string cents", () => {
     expect(apr).toBeTruthy();
     expect(apr?.newOrgs).toBe(2);
     expect(apr?.completedRuns).toBe(60);
-    expect(apr?.consumedCents).toBe("4000.1100000000");
+    expect(apr?.consumedCents).toBe("6000.1234567890");
   });
 
-  it("returns empty cent strings (zero) for months missing from billing growth", async () => {
+  it("returns zero cent strings for months missing from runs and billing growth", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (url: string) => {
         if (url.includes("/public/stats/users")) return jsonResponse(mockUsers);
         if (url.includes("/public/stats/billing"))
           return jsonResponse({ ...mockBilling, monthlyGrowth: [] });
-        if (url.includes("/public/stats/runs")) return jsonResponse(mockRuns);
+        if (url.includes("/public/stats/runs"))
+          return jsonResponse({ ...mockRuns, monthly: [] });
         throw new Error(`unexpected fetch ${url}`);
       })
     );

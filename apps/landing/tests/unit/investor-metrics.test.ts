@@ -14,7 +14,7 @@ const pagePath = path.resolve(
 );
 const page = fs.readFileSync(pagePath, "utf-8");
 
-describe("Investor metrics: billing growth data", () => {
+describe("Investor metrics: billing + runs aggregates", () => {
   describe("fetch-metrics.ts", () => {
     it("BillingStatsResponse includes monthlyGrowth array", () => {
       expect(fetchMetrics).toMatch(/interface BillingStatsResponse[\s\S]*?monthlyGrowth:/);
@@ -22,6 +22,29 @@ describe("Investor metrics: billing growth data", () => {
 
     it("BillingStatsResponse includes weeklyGrowth array", () => {
       expect(fetchMetrics).toMatch(/interface BillingStatsResponse[\s\S]*?weeklyGrowth:/);
+    });
+
+    it("BillingStatsResponse includes snake_case total_revenue_cents", () => {
+      expect(fetchMetrics).toMatch(/total_revenue_cents:\s*string/);
+    });
+
+    it("BillingStatsResponse does NOT reference dropped totalConsumedCents or totalCreditBalanceCents", () => {
+      expect(fetchMetrics).not.toMatch(/totalConsumedCents/);
+      expect(fetchMetrics).not.toMatch(/totalCreditBalanceCents/);
+    });
+
+    it("RunsStatsResponse includes totalCostInUsdCents top-level + per-month", () => {
+      expect(fetchMetrics).toMatch(/interface RunsStatsResponse[\s\S]*?totalCostInUsdCents:\s*string/);
+      expect(fetchMetrics).toMatch(/monthly:\s*\{[\s\S]*?totalCostInUsdCents:\s*string/);
+    });
+
+    it("InvestorMetrics.billing exposes totalRevenueCents (drops totalConsumedCents / totalCreditBalanceCents)", () => {
+      expect(fetchMetrics).toMatch(/totalRevenueCents:\s*string/);
+      expect(fetchMetrics).not.toMatch(/totalConsumedCents:\s*string;\s*\n\s*\};/);
+    });
+
+    it("InvestorMetrics.runs exposes totalCostInUsdCents", () => {
+      expect(fetchMetrics).toMatch(/runs:\s*\{[\s\S]*?totalCostInUsdCents:\s*string/);
     });
 
     it("InvestorMetrics exposes weeklyGrowth", () => {
@@ -39,15 +62,21 @@ describe("Investor metrics: billing growth data", () => {
       expect(fetchMetrics).toMatch(/consumed_cents:\s*string/);
       expect(fetchMetrics).toMatch(/revenue_cents:\s*string/);
     });
-
-    it("BillingStatsResponse total cent fields are typed as strings", () => {
-      expect(fetchMetrics).toMatch(/totalCreditBalanceCents:\s*string/);
-      expect(fetchMetrics).toMatch(/totalCreditedCents:\s*string/);
-      expect(fetchMetrics).toMatch(/totalConsumedCents:\s*string/);
-    });
   });
 
   describe("investors/page.tsx", () => {
+    it("Revenue & Credits section renders Total Consumed and Revenue cards", () => {
+      expect(page).toContain("Total Consumed");
+      expect(page).toContain("Revenue");
+      expect(page).toContain("metrics.runs.totalCostInUsdCents");
+      expect(page).toContain("metrics.billing.totalRevenueCents");
+    });
+
+    it("does NOT render dropped Outstanding Balance / Credits Loaded cards", () => {
+      expect(page).not.toContain("Outstanding Balance");
+      expect(page).not.toContain("Total Credits Loaded");
+    });
+
     it("Monthly Growth table has Credits Spent and Revenue columns", () => {
       expect(page).toContain("Credits Spent");
       expect(page).toContain("Revenue");
@@ -58,8 +87,6 @@ describe("Investor metrics: billing growth data", () => {
     });
 
     it("Weekly Growth table has period, Credits Loaded, Credits Spent, Revenue columns", () => {
-      // The weekly table should render billing growth columns
-      // We check for the section + column headers existing in the page
       const weeklySection = page.slice(page.indexOf("Weekly Growth"));
       expect(weeklySection).toContain("Credits Loaded");
       expect(weeklySection).toContain("Credits Spent");

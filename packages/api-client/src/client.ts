@@ -32,7 +32,6 @@ import type {
   MediaKitViewStats,
   BillingAccount,
   BillingBalance,
-  BillingTransaction,
   CostStatsGroup,
   BrandDeliveryStats,
   CostByName,
@@ -393,13 +392,6 @@ export class DistributeClient {
 
   async getBillingAccount(): Promise<BillingAccount> {
     return this.request<BillingAccount>("GET", "/billing/accounts");
-  }
-
-  async listBillingTransactions(): Promise<{ transactions: BillingTransaction[]; has_more: boolean }> {
-    return this.request<{ transactions: BillingTransaction[]; has_more: boolean }>(
-      "GET",
-      "/billing/accounts/transactions",
-    );
   }
 
   // ─── Cost Analytics ──────────────────────────────────────────────────────
