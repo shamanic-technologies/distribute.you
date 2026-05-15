@@ -89,19 +89,28 @@ describe("Billing API wrappers", () => {
     expect(content).toMatch(/method\?:.*"DELETE"/);
   });
 
-  // BillingAccount response shape — billing-service still emits camelCase reload* / hasAutoReload.
-  // Track separately if/when billing-service ships a shape rename.
-  it("should keep BillingAccount response fields as camelCase (billing-service pass-through)", () => {
-    expect(content).toContain("grantsCents");
-    expect(content).toContain("runsSpentCents");
-    expect(content).toContain("availableCents");
-    expect(content).toContain("hasPaymentMethod");
-    expect(content).toContain("hasAutoReload");
-    expect(content).toContain("reloadAmountCents");
-    expect(content).toContain("reloadThresholdCents");
+  // BillingAccount response shape — billing-service v3 (snake_case).
+  it("should expose BillingAccount fields in snake_case (billing-service v3 wire shape)", () => {
+    expect(content).toContain("id: string");
+    expect(content).toContain("org_id: string");
+    expect(content).toContain("balance_cents: string");
+    expect(content).toContain("usage_cents: string");
+    expect(content).toContain("available_cents: string");
+    expect(content).toContain("topup_amount_cents: number | null");
+    expect(content).toContain("topup_threshold_cents: number | null");
+    expect(content).toContain("has_payment_method: boolean");
+    expect(content).toContain("has_auto_topup: boolean");
+    expect(content).toContain("created_at: string");
+    expect(content).toContain("updated_at: string");
   });
 
-  it("should NOT have creditBalanceCents (removed in billing-service v3)", () => {
+  it("should NOT keep legacy camelCase BillingAccount fields", () => {
+    expect(content).not.toContain("grantsCents");
+    expect(content).not.toContain("runsSpentCents");
+    expect(content).not.toContain("availableCents");
+    expect(content).not.toContain("hasAutoReload");
+    expect(content).not.toContain("reloadAmountCents");
+    expect(content).not.toContain("reloadThresholdCents");
     expect(content).not.toContain("creditBalanceCents");
   });
 
@@ -208,8 +217,8 @@ describe("Billing page", () => {
     expect(content).not.toContain('"payments"');
   });
 
-  it("should still read hasAutoReload (response field name kept until billing-service renames)", () => {
-    expect(content).toContain("hasAutoReload");
+  it("should read has_auto_topup from snake_case response", () => {
+    expect(content).toContain("has_auto_topup");
   });
 
   it("should use configureAutoTopup to enable auto-topup", () => {
@@ -225,8 +234,8 @@ describe("Billing page", () => {
     expect(content).not.toContain("disableAutoReload");
   });
 
-  it("should display credit balance via availableCents", () => {
-    expect(content).toContain("availableCents");
+  it("should display credit balance via available_cents", () => {
+    expect(content).toContain("available_cents");
     expect(content).toContain("Credit Balance");
   });
 
@@ -263,7 +272,7 @@ describe("Billing page", () => {
   });
 
   it("should only save auto-topup before checkout when payment method exists", () => {
-    expect(content).toContain("account?.hasPaymentMethod");
+    expect(content).toContain("account?.has_payment_method");
     expect(content).toContain("configureAutoTopup");
   });
 
@@ -413,13 +422,12 @@ describe("Proactive credit check in campaign creation (org-scoped)", () => {
   });
 
   it("should check if budget exceeds balance before creating campaign", () => {
-    // billing-service v3 splits creditBalance into grants/runsSpent/available — use availableCents
-    expect(content).toContain("budgetCents > parseFloat(account.availableCents)");
+    expect(content).toContain("budgetCents > parseFloat(account.available_cents)");
   });
 
-  it("should check for recurring campaigns without auto-topup (reads response field hasAutoReload)", () => {
+  it("should check for recurring campaigns without auto-topup", () => {
     expect(content).toContain('budgetFrequency !== "one-off"');
-    expect(content).toContain("!account.hasAutoReload");
+    expect(content).toContain("!account.has_auto_topup");
   });
 
   it("should call configureAutoTopup when card on file", () => {
@@ -460,8 +468,7 @@ describe("Proactive credit check in campaign creation (feature-scoped)", () => {
   });
 
   it("should check if budget exceeds balance before creating campaign", () => {
-    // billing-service v3 splits creditBalance into grants/runsSpent/available — use availableCents
-    expect(content).toContain("budgetCents > parseFloat(account.availableCents)");
+    expect(content).toContain("budgetCents > parseFloat(account.available_cents)");
   });
 
   it("should show proactive modal with onAutoTopupConfigured callback", () => {

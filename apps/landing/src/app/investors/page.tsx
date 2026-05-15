@@ -44,15 +44,17 @@ function shortenLabel(label: string): string {
 function BarChart({
   data,
   rotateLabels,
+  title,
 }: {
   data: { label: string; value: string }[];
   rotateLabels?: boolean;
+  title: string;
 }) {
   const numericValues = data.map((d) => parseFloat(d.value));
   const max = Math.max(...numericValues, 1);
   return (
     <div className="bg-gray-800/30 border border-gray-700/50 rounded-xl p-6 overflow-hidden">
-      <p className="text-sm text-gray-400 mb-4 font-medium">Credits Spent</p>
+      <p className="text-sm text-gray-400 mb-4 font-medium">{title}</p>
       <div className="flex items-end gap-1 h-48">
         {data.map((d, i) => {
           const pct = (numericValues[i] / max) * 100;
@@ -104,7 +106,7 @@ export default async function InvestorsPage() {
     metrics.monthlyGrowth.map((r) => r.consumedCents)
   );
   const weeklyCAGR = computeCAGR(
-    metrics.weeklyGrowth.map((r) => r.consumed_cents)
+    metrics.weeklyGrowth.map((r) => r.revenue_cents)
   );
 
   return (
@@ -310,6 +312,7 @@ export default async function InvestorsPage() {
                 </table>
               </div>
               <BarChart
+                title="Credits Spent"
                 data={[...metrics.monthlyGrowth]
                   .reverse()
                   .map((row) => ({ label: row.month, value: row.consumedCents }))}
@@ -328,7 +331,7 @@ export default async function InvestorsPage() {
               <div className="lg:col-span-2 overflow-x-auto">
                 {weeklyCAGR && (
                   <p className="text-sm text-gray-400 mb-4 text-right">
-                    Weekly credits spending growth:{" "}
+                    Weekly revenue growth:{" "}
                     <span className={Number(weeklyCAGR) >= 0 ? "text-emerald-400 font-semibold" : "text-red-400 font-semibold"}>
                       {Number(weeklyCAGR) >= 0 ? "+" : ""}{weeklyCAGR}%
                     </span>
@@ -342,25 +345,22 @@ export default async function InvestorsPage() {
                         Credits Loaded
                       </th>
                       <th className="text-right py-3 px-4 font-medium">
-                        Credits Spent
-                      </th>
-                      <th className="text-right py-3 px-4 font-medium">
                         Revenue
                       </th>
                       <th className="text-right py-3 px-4 font-medium">
-                        Credits Spent Growth
+                        Revenue Growth
                       </th>
                     </tr>
                   </thead>
                   <tbody>
                     {metrics.weeklyGrowth.map((row, i) => {
                       const prev = metrics.weeklyGrowth[i + 1];
-                      const rowConsumed = parseFloat(row.consumed_cents);
-                      const prevConsumed = prev ? parseFloat(prev.consumed_cents) : 0;
+                      const rowRevenue = parseFloat(row.revenue_cents);
+                      const prevRevenue = prev ? parseFloat(prev.revenue_cents) : 0;
                       const growth =
-                        prev && prevConsumed > 0
+                        prev && prevRevenue > 0
                           ? (
-                              ((rowConsumed - prevConsumed) / prevConsumed) *
+                              ((rowRevenue - prevRevenue) / prevRevenue) *
                               100
                             ).toFixed(0)
                           : null;
@@ -374,9 +374,6 @@ export default async function InvestorsPage() {
                           </td>
                           <td className="py-3 px-4 text-right">
                             {formatCents(row.credited_cents)}
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            {formatCents(row.consumed_cents)}
                           </td>
                           <td className="py-3 px-4 text-right">
                             {formatCents(row.revenue_cents)}
@@ -398,9 +395,10 @@ export default async function InvestorsPage() {
               </div>
               <BarChart
                 rotateLabels
+                title="Revenue"
                 data={[...metrics.weeklyGrowth]
                   .reverse()
-                  .map((row) => ({ label: row.period, value: row.consumed_cents }))}
+                  .map((row) => ({ label: row.period, value: row.revenue_cents }))}
               />
             </div>
           </div>

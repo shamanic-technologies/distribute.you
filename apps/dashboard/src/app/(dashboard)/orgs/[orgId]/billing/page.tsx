@@ -106,18 +106,18 @@ export default function BillingPage() {
 
   const hasValidationError = !!(thresholdError || customAmountError || topupAmountError);
 
-  const isDepleted = account ? parseFloat(account.availableCents) <= 0 : false;
-  const hasAutoTopup = account?.hasAutoReload ?? false;
+  const isDepleted = account ? parseFloat(account.available_cents) <= 0 : false;
+  const hasAutoTopup = account?.has_auto_topup ?? false;
 
-  // Pre-fill auto-topup fields from existing config (server still names fields `reload*`).
+  // Pre-fill auto-topup fields from existing config
   useEffect(() => {
-    if (account?.hasAutoReload) {
+    if (account?.has_auto_topup) {
       setEnableAutoTopup(true);
-      if (!topupAmount && account.reloadAmountCents) setTopupAmount((parseFloat(account.reloadAmountCents) / 100).toString());
-      if (!topupThreshold && account.reloadThresholdCents) setTopupThreshold((parseFloat(account.reloadThresholdCents) / 100).toString());
+      if (!topupAmount && account.topup_amount_cents !== null) setTopupAmount((account.topup_amount_cents / 100).toString());
+      if (!topupThreshold && account.topup_threshold_cents !== null) setTopupThreshold((account.topup_threshold_cents / 100).toString());
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [account?.hasAutoReload, account?.reloadAmountCents, account?.reloadThresholdCents]);
+  }, [account?.has_auto_topup, account?.topup_amount_cents, account?.topup_threshold_cents]);
 
   // After successful Stripe checkout, save pending auto-topup settings
   useEffect(() => {
@@ -170,7 +170,7 @@ export default function BillingPage() {
     try {
       // If user already has a payment method, save auto-topup now.
       // Otherwise, pass settings via URL params to save after checkout.
-      if (account?.hasPaymentMethod) {
+      if (account?.has_payment_method) {
         if (enableAutoTopup && topupAmount) {
           const topupCents = Math.round(parseFloat(topupAmount) * 100);
           const thresholdCents = topupThreshold ? Math.round(parseFloat(topupThreshold) * 100) : 500;
@@ -185,7 +185,7 @@ export default function BillingPage() {
       // Build success URL — if no payment method yet, pass pending auto-topup params
       const successUrl = new URL(`${window.location.origin}${window.location.pathname}`);
       successUrl.searchParams.set("success", "true");
-      if (enableAutoTopup && topupAmount && !account?.hasPaymentMethod) {
+      if (enableAutoTopup && topupAmount && !account?.has_payment_method) {
         const topupCents = Math.round(parseFloat(topupAmount) * 100);
         const thresholdCents = topupThreshold ? Math.round(parseFloat(topupThreshold) * 100) : 500;
         successUrl.searchParams.set("pending_topup", topupCents.toString());
@@ -275,7 +275,7 @@ export default function BillingPage() {
         </div>
         <button
           onClick={() => showPaymentRequired({
-            balance_cents: account?.availableCents,
+            balance_cents: account?.available_cents,
           })}
           className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 transition"
         >
@@ -314,7 +314,7 @@ export default function BillingPage() {
             <div>
               <p className="text-sm text-gray-500">Credit Balance</p>
               <p className={`text-3xl font-bold mt-1 ${isDepleted ? "text-red-600" : "text-gray-900"}`}>
-                {formatBillingCents(account?.availableCents ?? "0")}
+                {formatBillingCents(account?.available_cents ?? "0")}
               </p>
               {hasAutoTopup && (
                 <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
@@ -327,12 +327,12 @@ export default function BillingPage() {
             </div>
             <div className="text-right">
               <div className="flex items-center gap-1.5">
-                <div className={`w-2 h-2 rounded-full ${account?.hasPaymentMethod ? "bg-green-500" : "bg-gray-300"}`} />
+                <div className={`w-2 h-2 rounded-full ${account?.has_payment_method ? "bg-green-500" : "bg-gray-300"}`} />
                 <span className="text-sm text-gray-500">
-                  {account?.hasPaymentMethod ? "Card connected" : "No card"}
+                  {account?.has_payment_method ? "Card connected" : "No card"}
                 </span>
               </div>
-              {account?.hasPaymentMethod && (
+              {account?.has_payment_method && (
                 <button
                   onClick={handleManagePayment}
                   disabled={portalLoading}
@@ -408,8 +408,8 @@ export default function BillingPage() {
                   <button
                     onClick={() => {
                       setEditingTopup(false);
-                      if (account?.reloadAmountCents) setTopupAmount((parseFloat(account.reloadAmountCents) / 100).toString());
-                      if (account?.reloadThresholdCents) setTopupThreshold((parseFloat(account.reloadThresholdCents) / 100).toString());
+                      if (account?.topup_amount_cents !== null && account?.topup_amount_cents !== undefined) setTopupAmount((account.topup_amount_cents / 100).toString());
+                      if (account?.topup_threshold_cents !== null && account?.topup_threshold_cents !== undefined) setTopupThreshold((account.topup_threshold_cents / 100).toString());
                     }}
                     className="px-5 py-2 text-sm text-gray-600 hover:text-gray-800 transition"
                   >
@@ -428,11 +428,11 @@ export default function BillingPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gray-50 rounded-lg p-3">
                   <p className="text-xs text-gray-500">Top-up amount</p>
-                  <p className="text-lg font-semibold text-gray-900 mt-0.5">{formatBillingCents(account!.reloadAmountCents!)}</p>
+                  <p className="text-lg font-semibold text-gray-900 mt-0.5">{formatBillingCents(account!.topup_amount_cents ?? 0)}</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3">
                   <p className="text-xs text-gray-500">When balance below</p>
-                  <p className="text-lg font-semibold text-gray-900 mt-0.5">{formatBillingCents(account!.reloadThresholdCents ?? 0)}</p>
+                  <p className="text-lg font-semibold text-gray-900 mt-0.5">{formatBillingCents(account!.topup_threshold_cents ?? 0)}</p>
                 </div>
               </div>
             )}

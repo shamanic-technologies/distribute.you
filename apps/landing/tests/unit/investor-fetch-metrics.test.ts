@@ -11,35 +11,33 @@ const mockUsers = {
 };
 
 const mockBilling = {
-  totalAccounts: 15,
-  accountsWithPaymentMethod: 8,
-  totalCreditedCents: "10000.4200000000",
+  total_accounts: 15,
+  accounts_with_payment_method: 8,
+  total_credited_cents: "10000.4200000000",
+  total_paid_cents: "8000.5500000000",
   total_revenue_cents: "8000.5500000000",
-  monthlyGrowth: [
+  total_local_credits_cents: "1999.8700000000",
+  monthly_growth: [
     {
       period: "2026-04-01",
       credited_cents: "5000.4200000000",
-      consumed_cents: "4000.1100000000",
       revenue_cents: "3500.0000000000",
     },
     {
       period: "2026-03-01",
       credited_cents: "5000.0000000000",
-      consumed_cents: "4765.4700000000",
       revenue_cents: "4200.0000000000",
     },
   ],
-  weeklyGrowth: [
+  weekly_growth: [
     {
       period: "2026-04-20",
       credited_cents: "1000.0000000000",
-      consumed_cents: "850.5000000000",
       revenue_cents: "750.0000000000",
     },
     {
       period: "2026-04-13",
       credited_cents: "900.0000000000",
-      consumed_cents: "750.0000000000",
       revenue_cents: "700.0000000000",
     },
   ],
@@ -95,7 +93,7 @@ describe("fetchInvestorMetrics — fractional decimal-string cents", () => {
     expect(result.runs.totalCostInUsdCents).toBe("12345.6789012345");
   });
 
-  it("sources monthly consumedCents from runs-service (not billing-service)", async () => {
+  it("sources monthly consumedCents from runs-service (billing-service no longer emits it)", async () => {
     const result = await fetchInvestorMetrics("test.local");
     const apr = result.monthlyGrowth.find((r) => r.month === "2026-04");
     expect(apr?.consumedCents).toBe("6000.1234567890");
@@ -103,10 +101,9 @@ describe("fetchInvestorMetrics — fractional decimal-string cents", () => {
     expect(apr?.revenueCents).toBe("3500.0000000000");
   });
 
-  it("preserves decimal-string cents on weekly rows (billing-service pass-through)", async () => {
+  it("preserves decimal-string cents on weekly rows (credited + revenue only — consumed dropped)", async () => {
     const result = await fetchInvestorMetrics("test.local");
     const wk = result.weeklyGrowth.find((r) => r.period === "2026-04-20");
-    expect(wk?.consumed_cents).toBe("850.5000000000");
     expect(wk?.credited_cents).toBe("1000.0000000000");
     expect(wk?.revenue_cents).toBe("750.0000000000");
   });
@@ -126,7 +123,7 @@ describe("fetchInvestorMetrics — fractional decimal-string cents", () => {
       vi.fn(async (url: string) => {
         if (url.includes("/public/stats/users")) return jsonResponse(mockUsers);
         if (url.includes("/public/stats/billing"))
-          return jsonResponse({ ...mockBilling, monthlyGrowth: [] });
+          return jsonResponse({ ...mockBilling, monthly_growth: [] });
         if (url.includes("/public/stats/runs"))
           return jsonResponse({ ...mockRuns, monthly: [] });
         throw new Error(`unexpected fetch ${url}`);
