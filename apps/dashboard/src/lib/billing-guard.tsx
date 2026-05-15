@@ -4,8 +4,8 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 import { usePathname } from "next/navigation";
 import {
   createCheckoutSession,
-  configureAutoReload,
-  disableAutoReload,
+  configureAutoTopup,
+  disableAutoTopup,
   getBillingAccount,
   type BillingAccount,
 } from "@/lib/api";
@@ -19,8 +19,8 @@ interface PaymentRequiredInfo {
   error?: string;
   /** When true, this is a proactive warning (campaign may exceed credits) rather than a hard 402 block */
   proactive?: boolean;
-  /** Callback invoked after the user dismisses the modal having set up auto-reload (proactive flow only) */
-  onAutoReloadConfigured?: () => void;
+  /** Callback invoked after the user dismisses the modal having set up auto-topup (proactive flow only) */
+  onAutoTopupConfigured?: () => void;
 }
 
 function toCentsNumber(v: string | number): number {
@@ -53,37 +53,37 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const pathname = usePathname();
 
-  // Auto-reload state
-  const [enableAutoReload, setEnableAutoReload] = useState(true);
-  const [reloadAmount, setReloadAmount] = useState("25");
-  const [reloadThreshold, setReloadThreshold] = useState("5");
-  const [reloadAmountError, setReloadAmountError] = useState<string | null>(null);
+  // Auto-topup state
+  const [enableAutoTopup, setEnableAutoTopup] = useState(true);
+  const [topupAmount, setTopupAmount] = useState("25");
+  const [topupThreshold, setTopupThreshold] = useState("5");
+  const [topupAmountError, setTopupAmountError] = useState<string | null>(null);
   const [thresholdError, setThresholdError] = useState<string | null>(null);
   const [account, setAccount] = useState<BillingAccount | null>(null);
-  const [savingAutoReload, setSavingAutoReload] = useState(false);
+  const [savingAutoTopup, setSavingAutoTopup] = useState(false);
 
-  const hasValidationError = !!(thresholdError || customAmountError || reloadAmountError);
+  const hasValidationError = !!(thresholdError || customAmountError || topupAmountError);
 
   function handleThresholdBlur() {
-    if (!reloadThreshold) {
-      setReloadThreshold("5");
+    if (!topupThreshold) {
+      setTopupThreshold("5");
       setThresholdError(null);
-    } else if (parseFloat(reloadThreshold) < 5) {
+    } else if (parseFloat(topupThreshold) < 5) {
       setThresholdError("Minimum threshold is $5.");
     } else {
       setThresholdError(null);
     }
   }
 
-  function handleReloadAmountBlur() {
-    if (!reloadAmount) {
-      const defaultReload = customAmount ? customAmount : (selectedAmount / 100).toString();
-      setReloadAmount(defaultReload);
-      setReloadAmountError(null);
-    } else if (parseFloat(reloadAmount) < 10) {
-      setReloadAmountError("Minimum reload amount is $10.");
+  function handleTopupAmountBlur() {
+    if (!topupAmount) {
+      const defaultTopup = customAmount ? customAmount : (selectedAmount / 100).toString();
+      setTopupAmount(defaultTopup);
+      setTopupAmountError(null);
+    } else if (parseFloat(topupAmount) < 10) {
+      setTopupAmountError("Minimum top-up amount is $10.");
     } else {
-      setReloadAmountError(null);
+      setTopupAmountError(null);
     }
   }
 
@@ -99,8 +99,8 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
     setSelectedAmount(amount);
     setCustomAmount("");
     setCustomAmountError(null);
-    setReloadAmount((amount / 100).toString());
-    setReloadAmountError(null);
+    setTopupAmount((amount / 100).toString());
+    setTopupAmountError(null);
   }
 
   const showPaymentRequired = useCallback((paymentInfo: PaymentRequiredInfo) => {
@@ -111,29 +111,29 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
       const match = TOPUP_AMOUNTS.find((a) => a >= deficit);
       const picked = match ?? TOPUP_AMOUNTS[TOPUP_AMOUNTS.length - 1];
       setSelectedAmount(picked);
-      setReloadAmount((picked / 100).toString());
+      setTopupAmount((picked / 100).toString());
     } else {
       setSelectedAmount(2500);
-      setReloadAmount("25");
+      setTopupAmount("25");
     }
     setCustomAmount("");
     setCustomAmountError(null);
-    setReloadAmountError(null);
+    setTopupAmountError(null);
     setThresholdError(null);
-    setEnableAutoReload(true);
-    setReloadThreshold("5");
+    setEnableAutoTopup(true);
+    setTopupThreshold("5");
     setCheckoutError(null);
     setCheckoutLoading(false);
-    setSavingAutoReload(false);
+    setSavingAutoTopup(false);
     setVisible(true);
 
-    // Fetch latest account info to pre-fill auto-reload from existing config
+    // Fetch latest account info to pre-fill auto-topup from existing config
     getBillingAccount().then((acct) => {
       setAccount(acct);
       if (acct.hasAutoReload) {
-        setEnableAutoReload(true);
-        if (acct.reloadAmountCents) setReloadAmount((parseFloat(acct.reloadAmountCents) / 100).toString());
-        if (acct.reloadThresholdCents) setReloadThreshold((parseFloat(acct.reloadThresholdCents) / 100).toString());
+        setEnableAutoTopup(true);
+        if (acct.reloadAmountCents) setTopupAmount((parseFloat(acct.reloadAmountCents) / 100).toString());
+        if (acct.reloadThresholdCents) setTopupThreshold((parseFloat(acct.reloadThresholdCents) / 100).toString());
       }
     }).catch(() => {});
   }, []);
@@ -162,33 +162,33 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
     setCheckoutLoading(true);
     setCheckoutError(null);
     try {
-      // If user already has a payment method, save auto-reload now
+      // If user already has a payment method, save auto-topup now
       if (account?.hasPaymentMethod) {
-        if (enableAutoReload && reloadAmount) {
-          const reloadCents = Math.round(parseFloat(reloadAmount) * 100);
-          const thresholdCents = reloadThreshold ? Math.round(parseFloat(reloadThreshold) * 100) : 500;
-          await configureAutoReload(reloadCents, thresholdCents);
-        } else if (!enableAutoReload && account.hasAutoReload) {
-          await disableAutoReload();
+        if (enableAutoTopup && topupAmount) {
+          const topupCents = Math.round(parseFloat(topupAmount) * 100);
+          const thresholdCents = topupThreshold ? Math.round(parseFloat(topupThreshold) * 100) : 500;
+          await configureAutoTopup(topupCents, thresholdCents);
+        } else if (!enableAutoTopup && account.hasAutoReload) {
+          await disableAutoTopup();
         }
       }
 
-      // Build success URL with pending auto-reload params if no payment method yet
+      // Build success URL with pending auto-topup params if no payment method yet
       const successUrl = new URL(window.location.href);
       // Mark that this checkout was triggered from a pending action (e.g. campaign creation)
       if (info.proactive) {
         successUrl.searchParams.set("pending_campaign", "true");
       }
       successUrl.searchParams.set("success", "true");
-      if (enableAutoReload && reloadAmount && !account?.hasPaymentMethod) {
-        const reloadCents = Math.round(parseFloat(reloadAmount) * 100);
-        const thresholdCents = reloadThreshold ? Math.round(parseFloat(reloadThreshold) * 100) : 500;
-        successUrl.searchParams.set("pending_reload", reloadCents.toString());
+      if (enableAutoTopup && topupAmount && !account?.hasPaymentMethod) {
+        const topupCents = Math.round(parseFloat(topupAmount) * 100);
+        const thresholdCents = topupThreshold ? Math.round(parseFloat(topupThreshold) * 100) : 500;
+        successUrl.searchParams.set("pending_topup", topupCents.toString());
         successUrl.searchParams.set("pending_threshold", thresholdCents.toString());
       }
 
       const session = await createCheckoutSession({
-        reload_amount_cents: effectiveAmountCents,
+        topup_amount_cents: effectiveAmountCents,
         success_url: successUrl.toString(),
         cancel_url: window.location.href,
       });
@@ -199,22 +199,22 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  /** Proactive flow: just configure auto-reload and proceed without checkout */
-  async function handleSetupAutoReloadOnly() {
+  /** Proactive flow: just configure auto-topup and proceed without checkout */
+  async function handleSetupAutoTopupOnly() {
     if (hasValidationError) return;
-    if (!enableAutoReload || !reloadAmount) return;
-    setSavingAutoReload(true);
+    if (!enableAutoTopup || !topupAmount) return;
+    setSavingAutoTopup(true);
     setCheckoutError(null);
     try {
-      const reloadCents = Math.round(parseFloat(reloadAmount) * 100);
-      const thresholdCents = reloadThreshold ? Math.round(parseFloat(reloadThreshold) * 100) : 500;
-      await configureAutoReload(reloadCents, thresholdCents);
+      const topupCents = Math.round(parseFloat(topupAmount) * 100);
+      const thresholdCents = topupThreshold ? Math.round(parseFloat(topupThreshold) * 100) : 500;
+      await configureAutoTopup(topupCents, thresholdCents);
       setVisible(false);
-      info.onAutoReloadConfigured?.();
+      info.onAutoTopupConfigured?.();
     } catch (err) {
-      setCheckoutError(err instanceof Error ? err.message : "Failed to configure auto-reload");
+      setCheckoutError(err instanceof Error ? err.message : "Failed to configure auto-topup");
     } finally {
-      setSavingAutoReload(false);
+      setSavingAutoTopup(false);
     }
   }
 
@@ -239,7 +239,7 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
 
             <p className="text-gray-600 text-sm mb-4">
               {isProactive
-                ? "Your campaign budget may exceed your current credit balance. Set up auto-reload to ensure your campaign is never interrupted."
+                ? "Your campaign budget may exceed your current credit balance. Set up auto-topup to ensure your campaign is never interrupted."
                 : "Your account doesn\u2019t have enough credits to complete this action. Add credits to continue."}
             </p>
 
@@ -291,47 +291,47 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
               <p className="text-xs text-red-600 mb-2">{customAmountError}</p>
             )}
 
-            {/* Auto-reload option */}
+            {/* Auto-topup option */}
             <div className="border-t border-gray-100 pt-4 mt-3 mb-4">
               <div className="flex items-start gap-3">
                 <input
                   type="checkbox"
-                  checked={enableAutoReload}
-                  onChange={(e) => setEnableAutoReload(e.target.checked)}
+                  checked={enableAutoTopup}
+                  onChange={(e) => setEnableAutoTopup(e.target.checked)}
                   className="mt-0.5 w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
-                  id="modal-auto-reload"
+                  id="modal-auto-topup"
                 />
-                <label htmlFor="modal-auto-reload" className="flex-1 cursor-pointer">
-                  <p className="text-sm font-medium text-gray-800">Enable auto-reload</p>
+                <label htmlFor="modal-auto-topup" className="flex-1 cursor-pointer">
+                  <p className="text-sm font-medium text-gray-800">Enable auto-topup</p>
                   <p className="text-xs text-gray-500 mt-0.5">
                     Automatically add credits when your balance gets low, so your campaigns never stop.
                   </p>
                 </label>
               </div>
 
-              {enableAutoReload && (
+              {enableAutoTopup && (
                 <div className="grid grid-cols-2 gap-3 mt-3 ml-7">
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Reload amount ($)</label>
+                    <label className="block text-xs text-gray-500 mb-1">Top-up amount ($)</label>
                     <input
                       type="number"
-                      value={reloadAmount}
-                      onChange={(e) => { setReloadAmount(e.target.value); setReloadAmountError(null); }}
-                      onBlur={handleReloadAmountBlur}
+                      value={topupAmount}
+                      onChange={(e) => { setTopupAmount(e.target.value); setTopupAmountError(null); }}
+                      onBlur={handleTopupAmountBlur}
                       placeholder="e.g. 25"
-                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 ${reloadAmountError ? "border-red-300" : "border-gray-200"}`}
+                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 ${topupAmountError ? "border-red-300" : "border-gray-200"}`}
                       min="10"
                     />
-                    {reloadAmountError && (
-                      <p className="text-xs text-red-600 mt-1">{reloadAmountError}</p>
+                    {topupAmountError && (
+                      <p className="text-xs text-red-600 mt-1">{topupAmountError}</p>
                     )}
                   </div>
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">When balance below ($)</label>
                     <input
                       type="number"
-                      value={reloadThreshold}
-                      onChange={(e) => { setReloadThreshold(e.target.value); setThresholdError(null); }}
+                      value={topupThreshold}
+                      onChange={(e) => { setTopupThreshold(e.target.value); setThresholdError(null); }}
                       onBlur={handleThresholdBlur}
                       placeholder="e.g. 5"
                       className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 ${thresholdError ? "border-red-300" : "border-gray-200"}`}
@@ -357,13 +357,13 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
                 Cancel
               </button>
 
-              {isProactive && enableAutoReload && account?.hasPaymentMethod ? (
+              {isProactive && enableAutoTopup && account?.hasPaymentMethod ? (
                 <button
-                  onClick={handleSetupAutoReloadOnly}
-                  disabled={savingAutoReload || hasValidationError || !reloadAmount}
+                  onClick={handleSetupAutoTopupOnly}
+                  disabled={savingAutoTopup || hasValidationError || !topupAmount}
                   className="flex-[2] px-4 py-2.5 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 transition disabled:opacity-50"
                 >
-                  {savingAutoReload ? "Saving..." : "Enable Auto-Reload & Continue"}
+                  {savingAutoTopup ? "Saving..." : "Enable Auto-Topup & Continue"}
                 </button>
               ) : (
                 <button

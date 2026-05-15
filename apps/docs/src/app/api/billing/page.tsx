@@ -3,7 +3,7 @@ import { CopyForLLM } from "@/components/copy-for-llm";
 
 export const metadata: Metadata = {
   title: "Billing API",
-  description: "Check balance, account settings, and transaction history via the distribute API.",
+  description: "Check balance and account settings via the distribute API.",
 };
 
 const LLM_INSTRUCTIONS = `# Billing API
@@ -15,13 +15,9 @@ Returns: balance_cents, depleted
 ## Get Account
 GET /v1/billing/accounts
 
-## List Transactions
-GET /v1/billing/accounts/transactions
-
 ## TypeScript Client
 const balance = await client.getBillingBalance();
-const account = await client.getBillingAccount();
-const { transactions } = await client.listBillingTransactions();`;
+const account = await client.getBillingAccount();`;
 
 export default function BillingApiPage() {
   return (
@@ -31,7 +27,7 @@ export default function BillingApiPage() {
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
       <p className="text-base text-gray-500 mb-8">
-        Balance, account settings, and transaction history.
+        Balance and account settings.
       </p>
 
       <div className="prose">
@@ -52,40 +48,12 @@ X-API-Key: dist_YOUR_KEY`}</code>
           <code>{`GET /v1/billing/accounts
 X-API-Key: dist_YOUR_KEY`}</code>
         </pre>
-        <p>Returns credit balance, auto-reload settings, and payment method status.</p>
-
-        <h2>List Transactions</h2>
-        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`GET /v1/billing/accounts/transactions
-X-API-Key: dist_YOUR_KEY`}</code>
-        </pre>
-        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`{
-  "transactions": [
-    {
-      "id": "tx_abc",
-      "amount_cents": -42,
-      "description": "Campaign: Q2 Sales Outreach",
-      "type": "deduction",
-      "created_at": "2026-04-01T12:00:00Z"
-    },
-    {
-      "id": "tx_def",
-      "amount_cents": 5000,
-      "description": "Credit purchase",
-      "type": "credit",
-      "created_at": "2026-03-28T00:00:00Z"
-    }
-  ],
-  "has_more": false
-}`}</code>
-        </pre>
+        <p>Returns credit balance, auto-topup settings, and payment method status.</p>
 
         <h2>TypeScript Client</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`const balance = await client.getBillingBalance();
-const account = await client.getBillingAccount();
-const { transactions } = await client.listBillingTransactions();`}</code>
+const account = await client.getBillingAccount();`}</code>
         </pre>
       </div>
     </div>

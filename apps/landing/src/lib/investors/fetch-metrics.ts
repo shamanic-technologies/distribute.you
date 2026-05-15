@@ -23,14 +23,14 @@ export interface InvestorMetrics {
   billing: {
     totalAccounts: number;
     accountsWithPaymentMethod: number;
-    totalCreditBalanceCents: string;
     totalCreditedCents: string;
-    totalConsumedCents: string;
+    totalRevenueCents: string;
   };
   runs: {
     completed: number;
     failed: number;
     running: number;
+    totalCostInUsdCents: string;
   };
   monthlyGrowth: MonthlyRow[];
   weeklyGrowth: BillingGrowthRow[];
@@ -42,19 +42,24 @@ interface UsersStatsResponse {
   monthlyGrowth: { month: string; newOrgs: number; newUsers: number }[];
 }
 
+// billing-service /public/stats/billing — registry-verified shape (camelCase top-level,
+// snake_case row keys, plus snake_case total_revenue_cents added by billing-service PR #113).
 interface BillingStatsResponse {
   totalAccounts: number;
   accountsWithPaymentMethod: number;
-  totalCreditBalanceCents: string;
   totalCreditedCents: string;
-  totalConsumedCents: string;
+  total_revenue_cents: string;
   monthlyGrowth: BillingGrowthRow[];
   weeklyGrowth: BillingGrowthRow[];
 }
 
+// runs-service /public/stats/runs — registry-verified shape.
+// `totalCostInUsdCents` is the all-time cumulative cost across all completed/non-cancelled
+// platform runs (10-decimal string). Authoritative source for "Total Consumed".
 interface RunsStatsResponse {
   byStatus: { completed: number; failed: number; running: number };
-  monthly: { month: string; completed: number; failed: number; running: number }[];
+  totalCostInUsdCents: string;
+  monthly: { month: string; completed: number; failed: number; running: number; totalCostInUsdCents: string }[];
 }
 
 function resolveApiUrl(hostname: string): string {
@@ -110,6 +115,7 @@ export async function fetchInvestorMetrics(hostname = ""): Promise<InvestorMetri
   for (const row of runs.monthly) {
     const entry = monthlyMap.get(row.month) ?? emptyRow(row.month);
     entry.completedRuns = row.completed;
+    entry.consumedCents = row.totalCostInUsdCents;
     monthlyMap.set(row.month, entry);
   }
 
@@ -118,7 +124,6 @@ export async function fetchInvestorMetrics(hostname = ""): Promise<InvestorMetri
     const month = row.period.slice(0, 7);
     const entry = monthlyMap.get(month) ?? emptyRow(month);
     entry.creditedCents = row.credited_cents;
-    entry.consumedCents = row.consumed_cents;
     entry.revenueCents = row.revenue_cents;
     monthlyMap.set(month, entry);
   }
@@ -149,14 +154,14 @@ export async function fetchInvestorMetrics(hostname = ""): Promise<InvestorMetri
     billing: {
       totalAccounts: billing.totalAccounts,
       accountsWithPaymentMethod: billing.accountsWithPaymentMethod,
-      totalCreditBalanceCents: billing.totalCreditBalanceCents,
       totalCreditedCents: billing.totalCreditedCents,
-      totalConsumedCents: billing.totalConsumedCents,
+      totalRevenueCents: billing.total_revenue_cents,
     },
     runs: {
       completed: runs.byStatus.completed,
       failed: runs.byStatus.failed,
       running: runs.byStatus.running,
+      totalCostInUsdCents: runs.totalCostInUsdCents,
     },
     monthlyGrowth: sortedMonthsDesc.map((m) => monthlyMap.get(m)!),
     weeklyGrowth: sortedWeeklyDesc,

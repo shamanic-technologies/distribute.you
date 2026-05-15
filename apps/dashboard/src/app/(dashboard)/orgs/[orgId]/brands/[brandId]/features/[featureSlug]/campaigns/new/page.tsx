@@ -18,7 +18,7 @@ import {
   prefillFeatureInputs,
   prefillToStringMap,
   getBillingAccount,
-  configureAutoReload,
+  configureAutoTopup,
   ApiError,
   type Brand,
   type Campaign,
@@ -478,8 +478,8 @@ export default function FeatureCreateCampaignPage() {
     }));
   }, [selectedRow, budgetAmount, budgetFrequency, formData, additionalBrands]);
 
-  /** Proactive credit check: if budget may exceed balance and no auto-reload, show the modal.
-   *  If the user already has a saved payment method, silently configure auto-reload and proceed. */
+  /** Proactive credit check: if budget may exceed balance and no auto-topup, show the modal.
+   *  If the user already has a saved payment method, silently configure auto-topup and proceed. */
   const handleCreateCampaign = useCallback(async () => {
     if (!selectedRow || !budgetAmount) return;
     if (isCreatingRef.current) return;
@@ -501,10 +501,10 @@ export default function FeatureCreateCampaignPage() {
 
       if ((willExceed || isRecurring) && !account.hasAutoReload) {
         if (account.hasPaymentMethod) {
-          // Saved card exists — silently enable auto-reload and proceed.
+          // Saved card exists — silently enable auto-topup and proceed.
           // The backend will charge the card automatically during deduction.
-          const reloadCents = Math.max(1000, budgetCents);
-          await configureAutoReload(reloadCents, 500).catch(() => {});
+          const topupCents = Math.max(1000, budgetCents);
+          await configureAutoTopup(topupCents, 500).catch(() => {});
           doCreateCampaign();
           return;
         }
@@ -517,7 +517,7 @@ export default function FeatureCreateCampaignPage() {
           balance_cents: account.availableCents,
           required_cents: budgetCents,
           proactive: true,
-          onAutoReloadConfigured: () => {
+          onAutoTopupConfigured: () => {
             sessionStorage.removeItem("pendingCampaign");
             doCreateCampaign();
           },
@@ -547,7 +547,7 @@ export default function FeatureCreateCampaignPage() {
     const url = new URL(window.location.href);
     url.searchParams.delete("success");
     url.searchParams.delete("pending_campaign");
-    url.searchParams.delete("pending_reload");
+    url.searchParams.delete("pending_topup");
     url.searchParams.delete("pending_threshold");
     window.history.replaceState({}, "", url.toString());
 
