@@ -438,7 +438,7 @@ export default function CreateCampaignPage() {
     }));
   }, [selectedRow, budgetAmount, budgetFrequency, formData]);
 
-  /** Proactive credit check: if budget may exceed balance and no auto-reload, show the modal */
+  /** Proactive credit check: if budget may exceed balance and no auto-topup, show the modal */
   const handleCreateCampaign = useCallback(async () => {
     if (!selectedRow || !budgetAmount) return;
     if (isCreatingRef.current) return;
@@ -467,7 +467,7 @@ export default function CreateCampaignPage() {
           balance_cents: account.availableCents,
           required_cents: budgetCents,
           proactive: true,
-          onAutoReloadConfigured: () => {
+          onAutoTopupConfigured: () => {
             sessionStorage.removeItem("pendingCampaign");
             doCreateCampaign();
           },
@@ -497,7 +497,7 @@ export default function CreateCampaignPage() {
     const url = new URL(window.location.href);
     url.searchParams.delete("success");
     url.searchParams.delete("pending_campaign");
-    url.searchParams.delete("pending_reload");
+    url.searchParams.delete("pending_topup");
     url.searchParams.delete("pending_threshold");
     window.history.replaceState({}, "", url.toString());
 

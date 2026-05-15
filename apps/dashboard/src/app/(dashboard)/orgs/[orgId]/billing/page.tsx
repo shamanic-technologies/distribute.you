@@ -5,12 +5,10 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import {
   getBillingAccount,
-  listBillingTransactions,
   listOrgRuns,
   createCheckoutSession,
   createPortalSession,
   type BillingAccount,
-  type BillingTransaction,
   type OrgRun,
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
@@ -20,7 +18,7 @@ const POLL_INTERVAL = 5_000;
 const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
 
 const TOPUP_AMOUNTS = [1000, 2500, 5000, 10000]; // cents
-const TX_PAGE_SIZE = 10;
+const RUNS_PAGE_SIZE = 10;
 
 export default function BillingPage() {
   const params = useParams();
@@ -31,7 +29,7 @@ export default function BillingPage() {
   const { showPaymentRequired } = useBillingGuard();
 
   const showSuccess = searchParams.get("success") === "true";
-  const pendingReload = searchParams.get("pending_reload");
+  const pendingTopup = searchParams.get("pending_topup");
   const pendingThreshold = searchParams.get("pending_threshold");
 
   // Data fetching
@@ -41,40 +39,29 @@ export default function BillingPage() {
     pollOptions,
   );
 
-  const { data: txData, isLoading: txLoading } = useAuthQuery<{ transactions: BillingTransaction[]; has_more: boolean }>(
-    ["billingTransactions"],
-    () => listBillingTransactions(),
-    pollOptions,
-  );
-
-  // Tabs for the transaction history card
-  const [activeTab, setActiveTab] = useState<"payments" | "runs">("payments");
   const [runsPage, setRunsPage] = useState(0);
 
   // Runs ledger (server-paginated via runs-service proxy)
   const { data: runsData, isLoading: runsLoading } = useAuthQuery<{ runs: OrgRun[]; offset: number; limit?: number }>(
     ["orgRuns", runsPage],
-    () => listOrgRuns(TX_PAGE_SIZE, runsPage * TX_PAGE_SIZE),
+    () => listOrgRuns(RUNS_PAGE_SIZE, runsPage * RUNS_PAGE_SIZE),
     pollOptions,
   );
 
   // Top-up state
-  const [topupAmount, setTopupAmount] = useState(2500);
+  const [topupSelected, setTopupSelected] = useState(2500);
   const [customAmount, setCustomAmount] = useState("");
   const [topupLoading, setTopupLoading] = useState(false);
 
-  // Auto-reload toggle (integrated into top-up flow) — pre-selected by default
-  const [enableAutoReload, setEnableAutoReload] = useState(true);
-  const [reloadAmount, setReloadAmount] = useState("25");
-  const [reloadThreshold, setReloadThreshold] = useState("5");
+  // Auto-topup toggle (integrated into top-up flow) — pre-selected by default
+  const [enableAutoTopup, setEnableAutoTopup] = useState(true);
+  const [topupAmount, setTopupAmount] = useState("25");
+  const [topupThreshold, setTopupThreshold] = useState("5");
 
-  // Edit mode for existing auto-reload config
-  const [editingReload, setEditingReload] = useState(false);
-  const [savingReload, setSavingReload] = useState(false);
-  const [disablingReload, setDisablingReload] = useState(false);
-
-  // Pagination state
-  const [txPage, setTxPage] = useState(0);
+  // Edit mode for existing auto-topup config
+  const [editingTopup, setEditingTopup] = useState(false);
+  const [savingTopup, setSavingTopup] = useState(false);
+  const [disablingTopup, setDisablingTopup] = useState(false);
 
   // Portal state
   const [portalLoading, setPortalLoading] = useState(false);
@@ -84,28 +71,28 @@ export default function BillingPage() {
   // Inline validation errors (shown on blur)
   const [thresholdError, setThresholdError] = useState<string | null>(null);
   const [customAmountError, setCustomAmountError] = useState<string | null>(null);
-  const [reloadAmountError, setReloadAmountError] = useState<string | null>(null);
+  const [topupAmountError, setTopupAmountError] = useState<string | null>(null);
 
   function handleThresholdBlur() {
-    if (!reloadThreshold) {
-      setReloadThreshold("5");
+    if (!topupThreshold) {
+      setTopupThreshold("5");
       setThresholdError(null);
-    } else if (parseFloat(reloadThreshold) < 5) {
+    } else if (parseFloat(topupThreshold) < 5) {
       setThresholdError("Minimum threshold is $5.");
     } else {
       setThresholdError(null);
     }
   }
 
-  function handleReloadAmountBlur() {
-    if (!reloadAmount) {
-      const defaultReload = customAmount ? customAmount : (topupAmount / 100).toString();
-      setReloadAmount(defaultReload);
-      setReloadAmountError(null);
-    } else if (parseFloat(reloadAmount) < 10) {
-      setReloadAmountError("Minimum reload amount is $10.");
+  function handleTopupAmountBlur() {
+    if (!topupAmount) {
+      const defaultTopup = customAmount ? customAmount : (topupSelected / 100).toString();
+      setTopupAmount(defaultTopup);
+      setTopupAmountError(null);
+    } else if (parseFloat(topupAmount) < 10) {
+      setTopupAmountError("Minimum top-up amount is $10.");
     } else {
-      setReloadAmountError(null);
+      setTopupAmountError(null);
     }
   }
 
@@ -117,45 +104,45 @@ export default function BillingPage() {
     }
   }
 
-  const hasValidationError = !!(thresholdError || customAmountError || reloadAmountError);
+  const hasValidationError = !!(thresholdError || customAmountError || topupAmountError);
 
   const isDepleted = account ? parseFloat(account.availableCents) <= 0 : false;
-  const hasAutoReload = account?.hasAutoReload ?? false;
+  const hasAutoTopup = account?.hasAutoReload ?? false;
 
-  // Pre-fill auto-reload fields from existing config
+  // Pre-fill auto-topup fields from existing config (server still names fields `reload*`).
   useEffect(() => {
     if (account?.hasAutoReload) {
-      setEnableAutoReload(true);
-      if (!reloadAmount && account.reloadAmountCents) setReloadAmount((parseFloat(account.reloadAmountCents) / 100).toString());
-      if (!reloadThreshold && account.reloadThresholdCents) setReloadThreshold((parseFloat(account.reloadThresholdCents) / 100).toString());
+      setEnableAutoTopup(true);
+      if (!topupAmount && account.reloadAmountCents) setTopupAmount((parseFloat(account.reloadAmountCents) / 100).toString());
+      if (!topupThreshold && account.reloadThresholdCents) setTopupThreshold((parseFloat(account.reloadThresholdCents) / 100).toString());
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account?.hasAutoReload, account?.reloadAmountCents, account?.reloadThresholdCents]);
 
-  // After successful Stripe checkout, save pending auto-reload settings
+  // After successful Stripe checkout, save pending auto-topup settings
   useEffect(() => {
-    if (showSuccess && pendingReload) {
-      const reloadCents = parseInt(pendingReload, 10);
+    if (showSuccess && pendingTopup) {
+      const topupCents = parseInt(pendingTopup, 10);
       const thresholdCents = pendingThreshold ? parseInt(pendingThreshold, 10) : 500;
-      import("@/lib/api").then(({ configureAutoReload }) =>
-        configureAutoReload(reloadCents, thresholdCents)
+      import("@/lib/api").then(({ configureAutoTopup }) =>
+        configureAutoTopup(topupCents, thresholdCents)
       ).then(() => {
         queryClient.invalidateQueries({ queryKey: ["billingAccount"] });
       }).catch(() => {});
       // Clean URL params
       const url = new URL(window.location.href);
-      url.searchParams.delete("pending_reload");
+      url.searchParams.delete("pending_topup");
       url.searchParams.delete("pending_threshold");
       window.history.replaceState({}, "", url.toString());
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showSuccess, pendingReload, pendingThreshold]);
+  }, [showSuccess, pendingTopup, pendingThreshold]);
 
-  // When the user selects a top-up amount, sync both topup and reload amount
+  // When the user selects a top-up amount, sync both selected and auto-topup amount
   function handleSelectTopup(amount: number) {
-    setTopupAmount(amount);
+    setTopupSelected(amount);
     setCustomAmount("");
-    setReloadAmount((amount / 100).toString());
+    setTopupAmount((amount / 100).toString());
   }
 
   async function handleManagePayment() {
@@ -173,7 +160,7 @@ export default function BillingPage() {
   }
 
   async function handleTopup() {
-    const amountCents = customAmount ? Math.round(parseFloat(customAmount) * 100) : topupAmount;
+    const amountCents = customAmount ? Math.round(parseFloat(customAmount) * 100) : topupSelected;
     if (!amountCents || amountCents <= 0) return;
 
     if (hasValidationError) return;
@@ -181,32 +168,32 @@ export default function BillingPage() {
     setTopupLoading(true);
     setError(null);
     try {
-      // If user already has a payment method, save auto-reload now.
+      // If user already has a payment method, save auto-topup now.
       // Otherwise, pass settings via URL params to save after checkout.
       if (account?.hasPaymentMethod) {
-        if (enableAutoReload && reloadAmount) {
-          const reloadCents = Math.round(parseFloat(reloadAmount) * 100);
-          const thresholdCents = reloadThreshold ? Math.round(parseFloat(reloadThreshold) * 100) : 500;
-          const { configureAutoReload } = await import("@/lib/api");
-          await configureAutoReload(reloadCents, thresholdCents);
-        } else if (!enableAutoReload && hasAutoReload) {
-          const { disableAutoReload } = await import("@/lib/api");
-          await disableAutoReload();
+        if (enableAutoTopup && topupAmount) {
+          const topupCents = Math.round(parseFloat(topupAmount) * 100);
+          const thresholdCents = topupThreshold ? Math.round(parseFloat(topupThreshold) * 100) : 500;
+          const { configureAutoTopup } = await import("@/lib/api");
+          await configureAutoTopup(topupCents, thresholdCents);
+        } else if (!enableAutoTopup && hasAutoTopup) {
+          const { disableAutoTopup } = await import("@/lib/api");
+          await disableAutoTopup();
         }
       }
 
-      // Build success URL — if no payment method yet, pass pending auto-reload params
+      // Build success URL — if no payment method yet, pass pending auto-topup params
       const successUrl = new URL(`${window.location.origin}${window.location.pathname}`);
       successUrl.searchParams.set("success", "true");
-      if (enableAutoReload && reloadAmount && !account?.hasPaymentMethod) {
-        const reloadCents = Math.round(parseFloat(reloadAmount) * 100);
-        const thresholdCents = reloadThreshold ? Math.round(parseFloat(reloadThreshold) * 100) : 500;
-        successUrl.searchParams.set("pending_reload", reloadCents.toString());
+      if (enableAutoTopup && topupAmount && !account?.hasPaymentMethod) {
+        const topupCents = Math.round(parseFloat(topupAmount) * 100);
+        const thresholdCents = topupThreshold ? Math.round(parseFloat(topupThreshold) * 100) : 500;
+        successUrl.searchParams.set("pending_topup", topupCents.toString());
         successUrl.searchParams.set("pending_threshold", thresholdCents.toString());
       }
 
       const session = await createCheckoutSession({
-        reload_amount_cents: amountCents,
+        topup_amount_cents: amountCents,
         success_url: successUrl.toString(),
         cancel_url: `${window.location.origin}${window.location.pathname}`,
       });
@@ -217,36 +204,36 @@ export default function BillingPage() {
     }
   }
 
-  async function handleSaveReload() {
-    if (hasValidationError || !reloadAmount) return;
-    setSavingReload(true);
+  async function handleSaveTopup() {
+    if (hasValidationError || !topupAmount) return;
+    setSavingTopup(true);
     setError(null);
     try {
-      const reloadCents = Math.round(parseFloat(reloadAmount) * 100);
-      const thresholdCents = reloadThreshold ? Math.round(parseFloat(reloadThreshold) * 100) : 500;
-      const { configureAutoReload } = await import("@/lib/api");
-      await configureAutoReload(reloadCents, thresholdCents);
+      const topupCents = Math.round(parseFloat(topupAmount) * 100);
+      const thresholdCents = topupThreshold ? Math.round(parseFloat(topupThreshold) * 100) : 500;
+      const { configureAutoTopup } = await import("@/lib/api");
+      await configureAutoTopup(topupCents, thresholdCents);
       queryClient.invalidateQueries({ queryKey: ["billingAccount"] });
-      setEditingReload(false);
+      setEditingTopup(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update auto-reload settings");
+      setError(err instanceof Error ? err.message : "Failed to update auto-topup settings");
     } finally {
-      setSavingReload(false);
+      setSavingTopup(false);
     }
   }
 
-  async function handleDisableReload() {
-    setDisablingReload(true);
+  async function handleDisableTopup() {
+    setDisablingTopup(true);
     setError(null);
     try {
-      const { disableAutoReload } = await import("@/lib/api");
-      await disableAutoReload();
+      const { disableAutoTopup } = await import("@/lib/api");
+      await disableAutoTopup();
       queryClient.invalidateQueries({ queryKey: ["billingAccount"] });
-      setEditingReload(false);
+      setEditingTopup(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to disable auto-reload");
+      setError(err instanceof Error ? err.message : "Failed to disable auto-topup");
     } finally {
-      setDisablingReload(false);
+      setDisablingTopup(false);
     }
   }
 
@@ -266,12 +253,8 @@ export default function BillingPage() {
     );
   }
 
-  const transactions = txData?.transactions ?? [];
-  const txTotalPages = Math.max(1, Math.ceil(transactions.length / TX_PAGE_SIZE));
-  const txPageItems = transactions.slice(txPage * TX_PAGE_SIZE, (txPage + 1) * TX_PAGE_SIZE);
-
   const orgRuns: OrgRun[] = runsData?.runs ?? [];
-  const runsHasNext = orgRuns.length === TX_PAGE_SIZE;
+  const runsHasNext = orgRuns.length === RUNS_PAGE_SIZE;
   const runsHasPrev = runsPage > 0;
 
   function runRowLabel(run: OrgRun): string {
@@ -299,7 +282,7 @@ export default function BillingPage() {
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
           </svg>
-          Reload Credits
+          Top Up Credits
         </button>
       </div>
 
@@ -333,12 +316,12 @@ export default function BillingPage() {
               <p className={`text-3xl font-bold mt-1 ${isDepleted ? "text-red-600" : "text-gray-900"}`}>
                 {formatBillingCents(account?.availableCents ?? "0")}
               </p>
-              {hasAutoReload && (
+              {hasAutoTopup && (
                 <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
-                  Auto-reload active
+                  Auto-topup active
                 </p>
               )}
             </div>
@@ -362,17 +345,17 @@ export default function BillingPage() {
           </div>
         </div>
 
-        {/* Auto-Reload Settings (when already configured) */}
-        {hasAutoReload ? (
+        {/* Auto-Topup Settings (when already configured) */}
+        {hasAutoTopup ? (
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-green-500" />
-                <h2 className="text-lg font-medium text-gray-900">Auto-Reload</h2>
+                <h2 className="text-lg font-medium text-gray-900">Auto-Topup</h2>
               </div>
-              {!editingReload && (
+              {!editingTopup && (
                 <button
-                  onClick={() => setEditingReload(true)}
+                  onClick={() => setEditingTopup(true)}
                   className="text-sm text-brand-600 hover:text-brand-700 font-medium"
                 >
                   Edit
@@ -380,30 +363,30 @@ export default function BillingPage() {
               )}
             </div>
 
-            {editingReload ? (
+            {editingTopup ? (
               <>
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Reload amount ($)</label>
+                    <label className="block text-xs text-gray-500 mb-1">Top-up amount ($)</label>
                     <input
                       type="number"
-                      value={reloadAmount}
-                      onChange={(e) => { setReloadAmount(e.target.value); setReloadAmountError(null); }}
-                      onBlur={handleReloadAmountBlur}
+                      value={topupAmount}
+                      onChange={(e) => { setTopupAmount(e.target.value); setTopupAmountError(null); }}
+                      onBlur={handleTopupAmountBlur}
                       placeholder="e.g. 25"
-                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 ${reloadAmountError ? "border-red-300" : "border-gray-200"}`}
+                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 ${topupAmountError ? "border-red-300" : "border-gray-200"}`}
                       min="10"
                     />
-                    {reloadAmountError && (
-                      <p className="text-xs text-red-600 mt-1">{reloadAmountError}</p>
+                    {topupAmountError && (
+                      <p className="text-xs text-red-600 mt-1">{topupAmountError}</p>
                     )}
                   </div>
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">When balance below ($)</label>
                     <input
                       type="number"
-                      value={reloadThreshold}
-                      onChange={(e) => { setReloadThreshold(e.target.value); setThresholdError(null); }}
+                      value={topupThreshold}
+                      onChange={(e) => { setTopupThreshold(e.target.value); setThresholdError(null); }}
                       onBlur={handleThresholdBlur}
                       placeholder="e.g. 5"
                       className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 ${thresholdError ? "border-red-300" : "border-gray-200"}`}
@@ -416,35 +399,35 @@ export default function BillingPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <button
-                    onClick={handleSaveReload}
-                    disabled={savingReload || hasValidationError || !reloadAmount}
+                    onClick={handleSaveTopup}
+                    disabled={savingTopup || hasValidationError || !topupAmount}
                     className="bg-brand-600 text-white px-5 py-2 rounded-lg hover:bg-brand-700 disabled:opacity-50 text-sm font-medium transition"
                   >
-                    {savingReload ? "Saving..." : "Save changes"}
+                    {savingTopup ? "Saving..." : "Save changes"}
                   </button>
                   <button
                     onClick={() => {
-                      setEditingReload(false);
-                      if (account?.reloadAmountCents) setReloadAmount((parseFloat(account.reloadAmountCents) / 100).toString());
-                      if (account?.reloadThresholdCents) setReloadThreshold((parseFloat(account.reloadThresholdCents) / 100).toString());
+                      setEditingTopup(false);
+                      if (account?.reloadAmountCents) setTopupAmount((parseFloat(account.reloadAmountCents) / 100).toString());
+                      if (account?.reloadThresholdCents) setTopupThreshold((parseFloat(account.reloadThresholdCents) / 100).toString());
                     }}
                     className="px-5 py-2 text-sm text-gray-600 hover:text-gray-800 transition"
                   >
                     Cancel
                   </button>
                   <button
-                    onClick={handleDisableReload}
-                    disabled={disablingReload}
+                    onClick={handleDisableTopup}
+                    disabled={disablingTopup}
                     className="ml-auto text-sm text-red-600 hover:text-red-700 font-medium disabled:opacity-50 transition"
                   >
-                    {disablingReload ? "Disabling..." : "Disable auto-reload"}
+                    {disablingTopup ? "Disabling..." : "Disable auto-topup"}
                   </button>
                 </div>
               </>
             ) : (
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-xs text-gray-500">Reload amount</p>
+                  <p className="text-xs text-gray-500">Top-up amount</p>
                   <p className="text-lg font-semibold text-gray-900 mt-0.5">{formatBillingCents(account!.reloadAmountCents!)}</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3">
@@ -455,7 +438,7 @@ export default function BillingPage() {
             )}
           </div>
         ) : (
-          /* Add Credits + Auto-Reload (when not yet configured) */
+          /* Add Credits + Auto-Topup (when not yet configured) */
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <h2 className="text-lg font-medium text-gray-900 mb-4">Add Credits</h2>
             <div className="flex flex-wrap gap-2 mb-4">
@@ -464,7 +447,7 @@ export default function BillingPage() {
                   key={amount}
                   onClick={() => handleSelectTopup(amount)}
                   className={`px-4 py-2 text-sm rounded-lg border transition ${
-                    topupAmount === amount && !customAmount
+                    topupSelected === amount && !customAmount
                       ? "border-brand-300 bg-brand-50 text-brand-700 font-medium"
                       : "border-gray-200 text-gray-700 hover:border-gray-300"
                   }`}
@@ -487,46 +470,46 @@ export default function BillingPage() {
               <p className="text-xs text-red-600 mt-1">{customAmountError}</p>
             )}
 
-            {/* Auto-reload option */}
+            {/* Auto-topup option */}
             <div className="border-t border-gray-100 pt-4 mt-4 mb-4">
               <div className="flex items-start gap-3">
                 <input
                   type="checkbox"
-                  checked={enableAutoReload}
-                  onChange={(e) => setEnableAutoReload(e.target.checked)}
+                  checked={enableAutoTopup}
+                  onChange={(e) => setEnableAutoTopup(e.target.checked)}
                   className="mt-0.5 w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
                 />
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-800">Enable auto-reload</p>
+                  <p className="text-sm font-medium text-gray-800">Enable auto-topup</p>
                   <p className="text-xs text-gray-500 mt-0.5">
                     Automatically add credits when your balance gets low, so your campaigns never stop.
                   </p>
                 </div>
               </div>
 
-              {enableAutoReload && (
+              {enableAutoTopup && (
                 <div className="grid grid-cols-2 gap-3 mt-3 ml-7">
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Reload amount ($)</label>
+                    <label className="block text-xs text-gray-500 mb-1">Top-up amount ($)</label>
                     <input
                       type="number"
-                      value={reloadAmount}
-                      onChange={(e) => { setReloadAmount(e.target.value); setReloadAmountError(null); }}
-                      onBlur={handleReloadAmountBlur}
+                      value={topupAmount}
+                      onChange={(e) => { setTopupAmount(e.target.value); setTopupAmountError(null); }}
+                      onBlur={handleTopupAmountBlur}
                       placeholder="e.g. 25"
-                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 ${reloadAmountError ? "border-red-300" : "border-gray-200"}`}
+                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 ${topupAmountError ? "border-red-300" : "border-gray-200"}`}
                       min="10"
                     />
-                    {reloadAmountError && (
-                      <p className="text-xs text-red-600 mt-1">{reloadAmountError}</p>
+                    {topupAmountError && (
+                      <p className="text-xs text-red-600 mt-1">{topupAmountError}</p>
                     )}
                   </div>
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">When balance below ($)</label>
                     <input
                       type="number"
-                      value={reloadThreshold}
-                      onChange={(e) => { setReloadThreshold(e.target.value); setThresholdError(null); }}
+                      value={topupThreshold}
+                      onChange={(e) => { setTopupThreshold(e.target.value); setThresholdError(null); }}
                       onBlur={handleThresholdBlur}
                       placeholder="e.g. 5"
                       className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 ${thresholdError ? "border-red-300" : "border-gray-200"}`}
@@ -542,179 +525,85 @@ export default function BillingPage() {
 
             <button
               onClick={handleTopup}
-              disabled={topupLoading || (enableAutoReload && !reloadAmount) || hasValidationError}
+              disabled={topupLoading || (enableAutoTopup && !topupAmount) || hasValidationError}
               className="bg-brand-600 text-white px-6 py-2.5 rounded-lg hover:bg-brand-700 disabled:opacity-50 text-sm font-medium transition"
             >
-              {topupLoading ? "Redirecting to Stripe..." : `Add ${formatBillingCents(customAmount ? Math.round(parseFloat(customAmount) * 100) || 0 : topupAmount)}`}
+              {topupLoading ? "Redirecting to Stripe..." : `Add ${formatBillingCents(customAmount ? Math.round(parseFloat(customAmount) * 100) || 0 : topupSelected)}`}
             </button>
           </div>
         )}
 
-        {/* Transaction History — split into Payments and Runs tabs */}
+        {/* Runs Ledger — per-run cost history (sourced from runs-service) */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-medium text-gray-900">Transaction History</h2>
+            <h2 className="text-lg font-medium text-gray-900">Runs</h2>
           </div>
 
-          <div className="flex items-center gap-1 border-b border-gray-200 mb-4 -mt-1">
-            <button
-              onClick={() => setActiveTab("payments")}
-              className={`px-3 py-2 text-sm font-medium border-b-2 transition -mb-px ${
-                activeTab === "payments"
-                  ? "border-brand-600 text-brand-700"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              Payments
-              {!txLoading && transactions.length > 0 && (
-                <span className="ml-1.5 text-xs text-gray-400">({transactions.length})</span>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab("runs")}
-              className={`px-3 py-2 text-sm font-medium border-b-2 transition -mb-px ${
-                activeTab === "runs"
-                  ? "border-brand-600 text-brand-700"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              Runs
-            </button>
-          </div>
-
-          {activeTab === "payments" ? (
-            txLoading ? (
-              <div className="space-y-3 animate-pulse">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-12 bg-gray-100 rounded-lg" />
-                ))}
-              </div>
-            ) : transactions.length === 0 ? (
-              <p className="text-sm text-gray-500">No payments yet.</p>
-            ) : (
-              <>
-                <div className="divide-y divide-gray-100">
-                  {txPageItems.map((tx) => (
-                    <div key={tx.id} className="flex items-center justify-between py-3">
+          {runsLoading ? (
+            <div className="space-y-3 animate-pulse">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-12 bg-gray-100 rounded-lg" />
+              ))}
+            </div>
+          ) : orgRuns.length === 0 ? (
+            <p className="text-sm text-gray-500">No runs yet.</p>
+          ) : (
+            <>
+              <div className="divide-y divide-gray-100">
+                {orgRuns.map((run) => {
+                  const ts = runRowTimestamp(run);
+                  const cost = run.ownCostInUsdCents ? parseFloat(run.ownCostInUsdCents) : 0;
+                  return (
+                    <div key={run.id} className="flex items-center justify-between py-3">
                       <div>
-                        <p className="text-sm text-gray-800">{tx.description}</p>
+                        <p className="text-sm text-gray-800">{runRowLabel(run)}</p>
                         <p className="text-xs text-gray-400 mt-0.5">
-                          {new Date(tx.created_at).toLocaleDateString(undefined, {
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
+                          {ts
+                            ? new Date(ts).toLocaleDateString(undefined, {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })
+                            : "—"}
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className={`text-sm font-medium ${
-                          tx.type === "deduction" ? "text-red-600" : "text-green-600"
-                        }`}>
-                          {tx.type === "deduction" ? "-" : "+"}{formatBillingCents(Math.abs(parseFloat(tx.amount_cents)))}
+                        <p className="text-sm font-medium text-red-600">
+                          -{formatBillingCents(Math.abs(cost))}
                         </p>
-                        <p className="text-xs text-gray-400 capitalize">{tx.type}</p>
+                        <p className="text-xs text-gray-400 capitalize">{run.status}</p>
                       </div>
                     </div>
-                  ))}
-                </div>
-
-                {txTotalPages > 1 && (
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-2">
-                    <p className="text-xs text-gray-400">
-                      {(txPage * TX_PAGE_SIZE + 1).toLocaleString("en-US")}–{Math.min((txPage + 1) * TX_PAGE_SIZE, transactions.length).toLocaleString("en-US")} of {transactions.length.toLocaleString("en-US")}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setTxPage((p) => Math.max(0, p - 1))}
-                        disabled={txPage === 0}
-                        className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                      >
-                        Previous
-                      </button>
-                      <span className="text-xs text-gray-500">
-                        {txPage + 1} / {txTotalPages}
-                      </span>
-                      <button
-                        onClick={() => setTxPage((p) => Math.min(txTotalPages - 1, p + 1))}
-                        disabled={txPage >= txTotalPages - 1}
-                        className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                      >
-                        Next
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </>
-            )
-          ) : (
-            runsLoading ? (
-              <div className="space-y-3 animate-pulse">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-12 bg-gray-100 rounded-lg" />
-                ))}
+                  );
+                })}
               </div>
-            ) : orgRuns.length === 0 ? (
-              <p className="text-sm text-gray-500">No runs yet.</p>
-            ) : (
-              <>
-                <div className="divide-y divide-gray-100">
-                  {orgRuns.map((run) => {
-                    const ts = runRowTimestamp(run);
-                    const cost = run.ownCostInUsdCents ? parseFloat(run.ownCostInUsdCents) : 0;
-                    return (
-                      <div key={run.id} className="flex items-center justify-between py-3">
-                        <div>
-                          <p className="text-sm text-gray-800">{runRowLabel(run)}</p>
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            {ts
-                              ? new Date(ts).toLocaleDateString(undefined, {
-                                  year: "numeric",
-                                  month: "short",
-                                  day: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })
-                              : "—"}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-medium text-red-600">
-                            -{formatBillingCents(Math.abs(cost))}
-                          </p>
-                          <p className="text-xs text-gray-400 capitalize">{run.status}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
 
-                {(runsHasPrev || runsHasNext) && (
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-2">
-                    <p className="text-xs text-gray-400">
-                      Page {runsPage + 1}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setRunsPage((p) => Math.max(0, p - 1))}
-                        disabled={!runsHasPrev}
-                        className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                      >
-                        Previous
-                      </button>
-                      <button
-                        onClick={() => setRunsPage((p) => p + 1)}
-                        disabled={!runsHasNext}
-                        className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                      >
-                        Next
-                      </button>
-                    </div>
+              {(runsHasPrev || runsHasNext) && (
+                <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-2">
+                  <p className="text-xs text-gray-400">
+                    Page {runsPage + 1}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setRunsPage((p) => Math.max(0, p - 1))}
+                      disabled={!runsHasPrev}
+                      className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      onClick={() => setRunsPage((p) => p + 1)}
+                      disabled={!runsHasNext}
+                      className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                    >
+                      Next
+                    </button>
                   </div>
-                )}
-              </>
-            )
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

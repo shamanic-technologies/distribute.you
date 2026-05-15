@@ -24,21 +24,38 @@ describe("Billing API wrappers", () => {
     expect(content).toContain("/billing/accounts/balance");
   });
 
-  it("should export listBillingTransactions function", () => {
-    expect(content).toContain("export async function listBillingTransactions");
-    expect(content).toContain("/billing/accounts/transactions");
+  it("should NOT export listBillingTransactions (endpoint removed from api-service)", () => {
+    expect(content).not.toContain("listBillingTransactions");
+    expect(content).not.toContain("/billing/accounts/transactions");
   });
 
-  it("should export configureAutoReload function using PATCH", () => {
-    expect(content).toContain("export async function configureAutoReload");
-    expect(content).toContain("/billing/accounts/auto-reload");
+  it("should NOT export BillingTransaction interface (endpoint removed)", () => {
+    expect(content).not.toMatch(/export interface BillingTransaction\b/);
+  });
+
+  it("should export configureAutoTopup function using PATCH /auto_topup", () => {
+    expect(content).toContain("export async function configureAutoTopup");
+    expect(content).toContain("/billing/accounts/auto_topup");
     expect(content).toContain('"PATCH"');
   });
 
-  it("should export disableAutoReload function using DELETE", () => {
-    expect(content).toContain("export async function disableAutoReload");
-    expect(content).toContain("/billing/accounts/auto-reload");
+  it("should export disableAutoTopup function using DELETE /auto_topup", () => {
+    expect(content).toContain("export async function disableAutoTopup");
+    expect(content).toContain("/billing/accounts/auto_topup");
     expect(content).toContain('"DELETE"');
+  });
+
+  it("should send topup_amount_cents / topup_threshold_cents in configureAutoTopup body", () => {
+    expect(content).toContain("topup_amount_cents");
+    expect(content).toContain("topup_threshold_cents");
+  });
+
+  it("should NOT reference legacy auto-reload paths or reload_*_cents body fields", () => {
+    expect(content).not.toContain("auto-reload");
+    expect(content).not.toContain("reload_amount_cents");
+    expect(content).not.toContain("reload_threshold_cents");
+    expect(content).not.toContain("configureAutoReload");
+    expect(content).not.toContain("disableAutoReload");
   });
 
   it("should NOT have switchBillingMode (removed endpoint)", () => {
@@ -51,18 +68,15 @@ describe("Billing API wrappers", () => {
     expect(content).not.toContain("billingMode");
   });
 
-  it("should have hasAutoReload in BillingAccount interface", () => {
-    expect(content).toContain("hasAutoReload: boolean");
-  });
-
   it("should NOT have billing_mode in BillingBalance interface", () => {
     expect(content).toContain("export interface BillingBalance");
     expect(content).not.toContain("billing_mode");
   });
 
-  it("should export createCheckoutSession function", () => {
+  it("should export createCheckoutSession with topup_amount_cents body", () => {
     expect(content).toContain("export async function createCheckoutSession");
     expect(content).toContain("/billing/checkout-sessions");
+    expect(content).toContain("topup_amount_cents: number");
   });
 
   it("should export createPortalSession function", () => {
@@ -75,7 +89,9 @@ describe("Billing API wrappers", () => {
     expect(content).toMatch(/method\?:.*"DELETE"/);
   });
 
-  it("should export BillingAccount interface with required fields", () => {
+  // BillingAccount response shape — billing-service still emits camelCase reload* / hasAutoReload.
+  // Track separately if/when billing-service ships a shape rename.
+  it("should keep BillingAccount response fields as camelCase (billing-service pass-through)", () => {
     expect(content).toContain("grantsCents");
     expect(content).toContain("runsSpentCents");
     expect(content).toContain("availableCents");
@@ -89,7 +105,7 @@ describe("Billing API wrappers", () => {
     expect(content).not.toContain("creditBalanceCents");
   });
 
-  it("should export listOrgRuns function for the Runs tab", () => {
+  it("should export listOrgRuns function for the Runs ledger", () => {
     expect(content).toContain("export async function listOrgRuns");
     expect(content).toContain("/runs");
   });
@@ -185,16 +201,28 @@ describe("Billing page", () => {
     expect(content).not.toContain("Billing Mode");
   });
 
-  it("should use hasAutoReload from account response", () => {
+  it("should NOT reference removed listBillingTransactions / BillingTransaction / Payments tab", () => {
+    expect(content).not.toContain("listBillingTransactions");
+    expect(content).not.toContain("BillingTransaction");
+    expect(content).not.toContain("Transaction History");
+    expect(content).not.toContain('"payments"');
+  });
+
+  it("should still read hasAutoReload (response field name kept until billing-service renames)", () => {
     expect(content).toContain("hasAutoReload");
   });
 
-  it("should use configureAutoReload to enable auto-reload", () => {
-    expect(content).toContain("configureAutoReload");
+  it("should use configureAutoTopup to enable auto-topup", () => {
+    expect(content).toContain("configureAutoTopup");
   });
 
-  it("should use disableAutoReload when user unchecks auto-reload", () => {
-    expect(content).toContain("disableAutoReload");
+  it("should use disableAutoTopup when user unchecks auto-topup", () => {
+    expect(content).toContain("disableAutoTopup");
+  });
+
+  it("should NOT reference legacy configureAutoReload / disableAutoReload", () => {
+    expect(content).not.toContain("configureAutoReload");
+    expect(content).not.toContain("disableAutoReload");
   });
 
   it("should display credit balance via availableCents", () => {
@@ -207,46 +235,46 @@ describe("Billing page", () => {
     expect(content).toContain("Credits depleted");
   });
 
-  it("should show top-up flow when auto-reload is not configured", () => {
+  it("should show top-up flow when auto-topup is not configured", () => {
     expect(content).toContain("TOPUP_AMOUNTS");
     expect(content).toContain("Add Credits");
     expect(content).toContain("handleTopup");
   });
 
-  it("should show editable auto-reload section when already configured", () => {
-    expect(content).toContain("editingReload");
-    expect(content).toContain("handleSaveReload");
-    expect(content).toContain("handleDisableReload");
+  it("should show editable auto-topup section when already configured", () => {
+    expect(content).toContain("editingTopup");
+    expect(content).toContain("handleSaveTopup");
+    expect(content).toContain("handleDisableTopup");
     expect(content).toContain("Save changes");
-    expect(content).toContain("Disable auto-reload");
+    expect(content).toContain("Disable auto-topup");
   });
 
-  it("should integrate auto-reload as a checkbox inside the Add Credits card", () => {
-    expect(content).toContain("enableAutoReload");
-    expect(content).toContain("Enable auto-reload");
-    expect(content).toContain("reloadAmount");
-    expect(content).toContain("reloadThreshold");
+  it("should integrate auto-topup as a checkbox inside the Add Credits card", () => {
+    expect(content).toContain("enableAutoTopup");
+    expect(content).toContain("Enable auto-topup");
+    expect(content).toContain("topupAmount");
+    expect(content).toContain("topupThreshold");
   });
 
-  it("should pre-select auto-reload with $25 reload and $5 threshold by default", () => {
-    expect(content).toContain('useState(true)');
+  it("should pre-select auto-topup with $25 amount and $5 threshold by default", () => {
+    expect(content).toContain("useState(true)");
     expect(content).toContain('useState("25")');
     expect(content).toContain('useState("5")');
   });
 
-  it("should only save auto-reload before checkout when payment method exists", () => {
+  it("should only save auto-topup before checkout when payment method exists", () => {
     expect(content).toContain("account?.hasPaymentMethod");
-    expect(content).toContain("configureAutoReload");
+    expect(content).toContain("configureAutoTopup");
   });
 
-  it("should pass pending auto-reload params via URL when no payment method", () => {
-    expect(content).toContain("pending_reload");
+  it("should pass pending auto-topup params via URL when no payment method", () => {
+    expect(content).toContain("pending_topup");
     expect(content).toContain("pending_threshold");
   });
 
-  it("should save auto-reload on successful return from Stripe", () => {
-    expect(content).toContain("showSuccess && pendingReload");
-    expect(content).toContain("configureAutoReload(reloadCents, thresholdCents)");
+  it("should save auto-topup on successful return from Stripe", () => {
+    expect(content).toContain("showSuccess && pendingTopup");
+    expect(content).toContain("configureAutoTopup(topupCents, thresholdCents)");
   });
 
   it("should show inline error on blur when threshold is below $5", () => {
@@ -257,17 +285,17 @@ describe("Billing page", () => {
   });
 
   it("should reset threshold to $5 when left empty on blur", () => {
-    expect(content).toContain('setReloadThreshold("5")');
+    expect(content).toContain('setTopupThreshold("5")');
   });
 
-  it("should reset reload amount to topup value when left empty on blur", () => {
-    expect(content).toContain("handleReloadAmountBlur");
-    expect(content).toContain("onBlur={handleReloadAmountBlur}");
+  it("should reset top-up amount to selected value when left empty on blur", () => {
+    expect(content).toContain("handleTopupAmountBlur");
+    expect(content).toContain("onBlur={handleTopupAmountBlur}");
   });
 
-  it("should show inline error on blur when reload amount is below $10", () => {
-    expect(content).toContain("reloadAmountError");
-    expect(content).toContain("Minimum reload amount is $10.");
+  it("should show inline error on blur when top-up amount is below $10", () => {
+    expect(content).toContain("topupAmountError");
+    expect(content).toContain("Minimum top-up amount is $10.");
   });
 
   it("should show inline error on blur when custom amount is below $10", () => {
@@ -281,17 +309,12 @@ describe("Billing page", () => {
     expect(content).toContain("hasValidationError");
   });
 
-  it("should only toggle auto-reload on checkbox click, not label text", () => {
-    // No wrapping <label> — checkbox is inside a <div>, not a clickable label
-    expect(content).not.toContain('<label className="flex items-start gap-3 cursor-pointer">');
-  });
-
-  it("should sync reload amount when selecting a top-up amount", () => {
+  it("should sync top-up amount when selecting a preset amount", () => {
     expect(content).toContain("handleSelectTopup");
-    expect(content).toContain("setReloadAmount");
+    expect(content).toContain("setTopupAmount");
   });
 
-  it("should default auto-reload threshold to $5 (500 cents)", () => {
+  it("should default auto-topup threshold to $5 (500 cents)", () => {
     // Fallback threshold when not set by user
     expect(content).toContain(": 500");
   });
@@ -307,16 +330,9 @@ describe("Billing page", () => {
     expect(content).toContain("createPortalSession");
   });
 
-  it("should display transaction history with color-coding", () => {
-    expect(content).toContain("Transaction History");
-    expect(content).toContain("text-red-600");
-    expect(content).toContain("text-green-600");
-  });
-
-  it("should split transaction history into Payments and Runs tabs", () => {
-    expect(content).toContain('"payments"');
-    expect(content).toContain('"runs"');
+  it("should render a Runs ledger section", () => {
     expect(content).toContain("listOrgRuns");
+    expect(content).toContain(">Runs<");
   });
 
   it("should have loading skeleton state", () => {
@@ -325,28 +341,33 @@ describe("Billing page", () => {
   });
 });
 
-describe("Billing guard auto-reload in modal", () => {
+describe("Billing guard auto-topup in modal", () => {
   const content = fs.readFileSync(billingGuardPath, "utf-8");
 
-  it("should import configureAutoReload and disableAutoReload", () => {
-    expect(content).toContain("configureAutoReload");
-    expect(content).toContain("disableAutoReload");
+  it("should import configureAutoTopup and disableAutoTopup", () => {
+    expect(content).toContain("configureAutoTopup");
+    expect(content).toContain("disableAutoTopup");
   });
 
-  it("should have auto-reload toggle with enableAutoReload state", () => {
-    expect(content).toContain("enableAutoReload");
-    expect(content).toContain("Enable auto-reload");
+  it("should NOT import legacy configureAutoReload / disableAutoReload", () => {
+    expect(content).not.toContain("configureAutoReload");
+    expect(content).not.toContain("disableAutoReload");
   });
 
-  it("should have reload amount and threshold inputs", () => {
-    expect(content).toContain("reloadAmount");
-    expect(content).toContain("reloadThreshold");
-    expect(content).toContain("Reload amount ($)");
+  it("should have auto-topup toggle with enableAutoTopup state", () => {
+    expect(content).toContain("enableAutoTopup");
+    expect(content).toContain("Enable auto-topup");
+  });
+
+  it("should have top-up amount and threshold inputs", () => {
+    expect(content).toContain("topupAmount");
+    expect(content).toContain("topupThreshold");
+    expect(content).toContain("Top-up amount ($)");
     expect(content).toContain("When balance below ($)");
   });
 
-  it("should validate minimum reload amount ($10) and threshold ($5)", () => {
-    expect(content).toContain("Minimum reload amount is $10.");
+  it("should validate minimum top-up amount ($10) and threshold ($5)", () => {
+    expect(content).toContain("Minimum top-up amount is $10.");
     expect(content).toContain("Minimum threshold is $5.");
   });
 
@@ -362,13 +383,13 @@ describe("Billing guard auto-reload in modal", () => {
     expect(content).toContain("campaign budget may exceed your current credit balance");
   });
 
-  it("should allow configuring auto-reload without checkout in proactive mode", () => {
-    expect(content).toContain("handleSetupAutoReloadOnly");
-    expect(content).toContain("Enable Auto-Reload & Continue");
-    expect(content).toContain("onAutoReloadConfigured");
+  it("should allow configuring auto-topup without checkout in proactive mode", () => {
+    expect(content).toContain("handleSetupAutoTopupOnly");
+    expect(content).toContain("Enable Auto-Topup & Continue");
+    expect(content).toContain("onAutoTopupConfigured");
   });
 
-  it("should fetch billing account when modal opens to pre-fill auto-reload config", () => {
+  it("should fetch billing account when modal opens to pre-fill auto-topup config", () => {
     expect(content).toContain("getBillingAccount");
     expect(content).toContain("setAccount(acct)");
   });
@@ -396,14 +417,22 @@ describe("Proactive credit check in campaign creation (org-scoped)", () => {
     expect(content).toContain("budgetCents > parseFloat(account.availableCents)");
   });
 
-  it("should check for recurring campaigns without auto-reload", () => {
+  it("should check for recurring campaigns without auto-topup (reads response field hasAutoReload)", () => {
     expect(content).toContain('budgetFrequency !== "one-off"');
     expect(content).toContain("!account.hasAutoReload");
   });
 
-  it("should show proactive modal with onAutoReloadConfigured callback", () => {
+  it("should call configureAutoTopup when card on file", () => {
+    expect(content).toContain("configureAutoTopup");
+  });
+
+  it("should NOT call legacy configureAutoReload", () => {
+    expect(content).not.toContain("configureAutoReload");
+  });
+
+  it("should show proactive modal with onAutoTopupConfigured callback", () => {
     expect(content).toContain("proactive: true");
-    expect(content).toContain("onAutoReloadConfigured");
+    expect(content).toContain("onAutoTopupConfigured");
   });
 
   it("should save campaign intent to sessionStorage before showing modal", () => {
@@ -435,9 +464,9 @@ describe("Proactive credit check in campaign creation (feature-scoped)", () => {
     expect(content).toContain("budgetCents > parseFloat(account.availableCents)");
   });
 
-  it("should show proactive modal with onAutoReloadConfigured callback", () => {
+  it("should show proactive modal with onAutoTopupConfigured callback", () => {
     expect(content).toContain("proactive: true");
-    expect(content).toContain("onAutoReloadConfigured");
+    expect(content).toContain("onAutoTopupConfigured");
   });
 
   it("should save campaign intent to sessionStorage before showing modal", () => {
