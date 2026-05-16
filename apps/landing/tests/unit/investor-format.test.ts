@@ -2,8 +2,12 @@ import { describe, it, expect } from "vitest";
 import { formatCents, computeCAGR } from "@/lib/investors/format";
 
 describe("formatCents — fractional decimal-string cents", () => {
-  it("ceils sub-dollar fractional cents to next whole dollar", () => {
-    expect(formatCents("100.4200000000")).toBe("$2");
+  it("rounds sub-dollar fractional cents to $0 (sub-dollar = noise)", () => {
+    expect(formatCents("0.9900000000")).toBe("$0");
+  });
+
+  it("rounds 100.42 cents ($1.0042) down to $1", () => {
+    expect(formatCents("100.4200000000")).toBe("$1");
   });
 
   it("returns $0 for zero string", () => {
@@ -14,7 +18,7 @@ describe("formatCents — fractional decimal-string cents", () => {
     expect(formatCents(0)).toBe("$0");
   });
 
-  it("ceils 99 cents up to $1", () => {
+  it("rounds 99 cents ($0.99) up to $1 (nearest dollar)", () => {
     expect(formatCents("99")).toBe("$1");
   });
 
@@ -22,7 +26,7 @@ describe("formatCents — fractional decimal-string cents", () => {
     expect(formatCents("100")).toBe("$1");
   });
 
-  it("ceils $1.50 up to $2", () => {
+  it("rounds $1.50 to $2 (round half up)", () => {
     expect(formatCents("150")).toBe("$2");
   });
 

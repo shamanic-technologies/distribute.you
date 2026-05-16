@@ -137,6 +137,17 @@ describe("Investor metrics: billing + runs aggregates", () => {
       expect(surface).toContain("Weekly revenue growth");
     });
 
+    it("Weekly Growth cards mention they are baselined since March", () => {
+      const weeklyFn = dataSections.slice(dataSections.indexOf("function WeeklyGrowthSection"));
+      expect(weeklyFn).toMatch(/sub="Since March"/);
+    });
+
+    it("Weekly CAGR is computed over rows from 2026-03-02 onwards (sub-dollar Feb noise excluded)", () => {
+      const weeklyFn = dataSections.slice(dataSections.indexOf("function WeeklyGrowthSection"));
+      expect(weeklyFn).toMatch(/period\s*>=\s*WEEKLY_CAGR_START/);
+      expect(dataSections).toMatch(/WEEKLY_CAGR_START\s*=\s*"2026-03-02"/);
+    });
+
     it("Weekly Growth section renders both Credits Spent and Revenue bar charts", () => {
       const weeklyFn = dataSections.slice(dataSections.indexOf("function WeeklyGrowthSection"));
       expect(weeklyFn).toMatch(/BarChart[\s\S]*?title="Credits Spent"/);
