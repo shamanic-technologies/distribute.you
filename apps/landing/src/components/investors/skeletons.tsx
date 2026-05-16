@@ -96,24 +96,39 @@ function BarChartSkeleton() {
   );
 }
 
-function GrowthSectionSkeleton({ tableRows }: { tableRows: number }) {
+function GrowthCardSkeleton() {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-2 space-y-4">
-        <div className="flex justify-end">
-          <ShimmerBlock className="h-4 w-48" />
-        </div>
-        <TableSkeleton rows={tableRows} cols={6} />
+    <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-6">
+      <ShimmerBlock className="h-3 w-40 mb-3" />
+      <ShimmerBlock className="h-7 w-20" />
+    </div>
+  );
+}
+
+function GrowthSectionSkeleton({
+  tableRows,
+  tableCols,
+}: {
+  tableRows: number;
+  tableCols: number;
+}) {
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <GrowthCardSkeleton />
+        <GrowthCardSkeleton />
       </div>
+      <TableSkeleton rows={tableRows} cols={tableCols} />
+      <BarChartSkeleton />
       <BarChartSkeleton />
     </div>
   );
 }
 
 export function MonthlyGrowthSkeleton() {
-  return <GrowthSectionSkeleton tableRows={3} />;
+  return <GrowthSectionSkeleton tableRows={3} tableCols={5} />;
 }
 
 export function WeeklyGrowthSkeleton() {
-  return <GrowthSectionSkeleton tableRows={6} />;
+  return <GrowthSectionSkeleton tableRows={6} tableCols={4} />;
 }
