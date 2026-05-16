@@ -94,6 +94,21 @@ describe("Investor metrics: billing + runs aggregates", () => {
       expect(surface).toContain("Revenue");
     });
 
+    it("Monthly Growth table does NOT render dropped New Orgs / New Users columns", () => {
+      expect(surface).not.toContain(">New Orgs<");
+      expect(surface).not.toContain(">New Users<");
+    });
+
+    it("Monthly Growth section exposes both Credits Spent and Revenue growth cards", () => {
+      expect(surface).toContain("Monthly credits spent growth");
+      expect(surface).toContain("Monthly revenue growth");
+    });
+
+    it("Monthly Growth section renders both Credits Spent and Revenue bar charts", () => {
+      expect(surface).toMatch(/BarChart[\s\S]*?title="Credits Spent"/);
+      expect(surface).toMatch(/BarChart[\s\S]*?title="Revenue"/);
+    });
+
     it("has a Weekly Growth section", () => {
       expect(surface).toContain("Weekly Growth");
     });

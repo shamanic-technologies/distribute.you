@@ -173,28 +173,45 @@ export async function RevenueCreditsSection() {
   );
 }
 
+function GrowthCard({ label, value }: { label: string; value: string | null }) {
+  const numeric = value === null ? null : Number(value);
+  const colorClass =
+    numeric === null
+      ? "text-gray-500"
+      : numeric >= 0
+        ? "text-emerald-400"
+        : "text-red-400";
+  const display =
+    numeric === null
+      ? "n/a"
+      : `${numeric >= 0 ? "+" : ""}${value}%`;
+  return (
+    <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-6">
+      <p className="text-sm text-gray-400 mb-1">{label}</p>
+      <p className={`text-2xl font-display font-bold ${colorClass}`}>{display}</p>
+    </div>
+  );
+}
+
 export async function MonthlyGrowthSection() {
   const metrics = await loadMetrics();
-  const monthlyCAGR = computeCAGR(
+  const monthlyCreditsCAGR = computeCAGR(
     metrics.monthlyGrowth.map((r) => r.consumedCents)
   );
+  const monthlyRevenueCAGR = computeCAGR(
+    metrics.monthlyGrowth.map((r) => r.revenueCents)
+  );
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-2 overflow-x-auto">
-        {monthlyCAGR && (
-          <p className="text-sm text-gray-400 mb-4 text-right">
-            Monthly credits spending growth:{" "}
-            <span className={Number(monthlyCAGR) >= 0 ? "text-emerald-400 font-semibold" : "text-red-400 font-semibold"}>
-              {Number(monthlyCAGR) >= 0 ? "+" : ""}{monthlyCAGR}%
-            </span>
-          </p>
-        )}
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <GrowthCard label="Monthly credits spent growth" value={monthlyCreditsCAGR} />
+        <GrowthCard label="Monthly revenue growth" value={monthlyRevenueCAGR} />
+      </div>
+      <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-700 text-gray-400">
               <th className="text-left py-3 px-4 font-medium">Month</th>
-              <th className="text-right py-3 px-4 font-medium">New Orgs</th>
-              <th className="text-right py-3 px-4 font-medium">New Users</th>
               <th className="text-right py-3 px-4 font-medium">Completed Runs</th>
               <th className="text-right py-3 px-4 font-medium">Credits Spent</th>
               <th className="text-right py-3 px-4 font-medium">Revenue</th>
@@ -219,8 +236,6 @@ export async function MonthlyGrowthSection() {
                   className="border-b border-gray-800 text-gray-300"
                 >
                   <td className="py-3 px-4 font-medium text-white">{row.month}</td>
-                  <td className="py-3 px-4 text-right">{formatNumber(row.newOrgs)}</td>
-                  <td className="py-3 px-4 text-right">{formatNumber(row.newUsers)}</td>
                   <td className="py-3 px-4 text-right">{formatNumber(row.completedRuns)}</td>
                   <td className="py-3 px-4 text-right">{formatCents(row.consumedCents)}</td>
                   <td className="py-3 px-4 text-right">{formatCents(row.revenueCents)}</td>
@@ -244,6 +259,12 @@ export async function MonthlyGrowthSection() {
         data={[...metrics.monthlyGrowth]
           .reverse()
           .map((row) => ({ label: row.month, value: row.consumedCents }))}
+      />
+      <BarChart
+        title="Revenue"
+        data={[...metrics.monthlyGrowth]
+          .reverse()
+          .map((row) => ({ label: row.month, value: row.revenueCents }))}
       />
     </div>
   );
