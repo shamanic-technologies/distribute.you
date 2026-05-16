@@ -1,9 +1,22 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import { Suspense } from "react";
 import { headers } from "next/headers";
 import { Navbar } from "@/components/navbar";
-import { fetchInvestorMetrics } from "@/lib/investors/fetch-metrics";
-import { formatCents, formatNumber, computeCAGR } from "@/lib/investors/format";
+import {
+  CompanyOverviewSection,
+  PlatformMetricsSection,
+  RevenueCreditsSection,
+  MonthlyGrowthSection,
+  WeeklyGrowthSection,
+} from "@/components/investors/data-sections";
+import {
+  CompanyOverviewSkeleton,
+  PlatformMetricsSkeleton,
+  RevenueCreditsSkeleton,
+  MonthlyGrowthSkeleton,
+  WeeklyGrowthSkeleton,
+} from "@/components/investors/skeletons";
 
 export const metadata: Metadata = {
   title: "Investor Information",
@@ -12,106 +25,18 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-function StatCard({
-  label,
-  value,
-  sub,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-}) {
-  return (
-    <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-6">
-      <p className="text-sm text-gray-400 mb-1">{label}</p>
-      <p className="text-2xl font-display font-bold text-white">{value}</p>
-      {sub && <p className="text-xs text-gray-500 mt-1">{sub}</p>}
-    </div>
-  );
-}
-
-function shortenLabel(label: string): string {
-  const parts = label.split("-");
-  if (parts.length === 3) return `${parts[1]}-${parts[2]}`;
-  if (parts.length === 2) {
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const idx = parseInt(parts[1], 10) - 1;
-    return monthNames[idx] ?? parts[1];
-  }
-  return label;
-}
-
-function BarChart({
-  data,
-  rotateLabels,
-  title,
-}: {
-  data: { label: string; value: string }[];
-  rotateLabels?: boolean;
-  title: string;
-}) {
-  const numericValues = data.map((d) => parseFloat(d.value));
-  const max = Math.max(...numericValues, 1);
-  return (
-    <div className="bg-gray-800/30 border border-gray-700/50 rounded-xl p-6 overflow-hidden">
-      <p className="text-sm text-gray-400 mb-4 font-medium">{title}</p>
-      <div className="flex items-end gap-1 h-48">
-        {data.map((d, i) => {
-          const pct = (numericValues[i] / max) * 100;
-          return (
-            <div key={d.label} className="flex-1 min-w-0 flex flex-col items-center gap-1">
-              <span className="text-[10px] text-gray-400 truncate w-full text-center">
-                {formatCents(d.value)}
-              </span>
-              <div className="w-full flex items-end" style={{ height: "140px" }}>
-                <div
-                  className="w-full bg-emerald-500/80 rounded-t"
-                  style={{ height: `${Math.max(pct, 2)}%` }}
-                />
-              </div>
-              {rotateLabels ? (
-                <span
-                  className="text-[10px] text-gray-500 whitespace-nowrap origin-top-left"
-                  style={{ writingMode: "vertical-rl", height: "50px" }}
-                >
-                  {shortenLabel(d.label)}
-                </span>
-              ) : (
-                <span className="text-[10px] text-gray-500 truncate w-full text-center">
-                  {shortenLabel(d.label)}
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-export default async function InvestorsPage() {
+async function ResolvedNavbar() {
   const headersList = await headers();
   const host = headersList.get("host") || "";
+  return <Navbar host={host} />;
+}
 
-  const metrics = await fetchInvestorMetrics(host);
-
-  const totalRuns =
-    metrics.runs.completed + metrics.runs.failed + metrics.runs.running;
-  const successRate =
-    totalRuns > 0
-      ? ((metrics.runs.completed / totalRuns) * 100).toFixed(1)
-      : "0";
-
-  const monthlyCAGR = computeCAGR(
-    metrics.monthlyGrowth.map((r) => r.consumedCents)
-  );
-  const weeklyCAGR = computeCAGR(
-    metrics.weeklyGrowth.map((r) => r.revenue_cents)
-  );
-
+export default function InvestorsPage() {
   return (
     <>
-      <Navbar host={host} />
+      <Suspense fallback={<div className="h-16" />}>
+        <ResolvedNavbar />
+      </Suspense>
       <main className="min-h-screen bg-gray-950 text-white">
         {/* Header */}
         <section className="pt-24 pb-12 px-4">
@@ -126,9 +51,7 @@ export default async function InvestorsPage() {
               />
               <h1 className="font-display text-4xl font-bold">distribute</h1>
             </div>
-            <p className="text-xl text-gray-400 mb-2">
-              Investor Information
-            </p>
+            <p className="text-xl text-gray-400 mb-2">Investor Information</p>
             <p className="text-sm text-gray-600">
               Live data — updated on every page load
             </p>
@@ -141,31 +64,9 @@ export default async function InvestorsPage() {
             <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
               Company Overview
             </h2>
-            <div className="bg-gray-800/30 border border-gray-700/50 rounded-xl p-6 text-gray-300 space-y-4 text-sm leading-relaxed">
-              <p>
-                <strong className="text-white">distribute</strong> is the Stripe
-                of Distribution. Users provide a URL and a budget — the
-                platform automates lead finding, outreach, email generation, and
-                reporting using AI workflows ranked by real performance data.
-              </p>
-              <p>
-                The business model is{" "}
-                <strong className="text-white">credit-based</strong> with no
-                subscriptions. Users top up their account balance and pay per
-                workflow execution. Revenue scales linearly with usage.
-              </p>
-              <p>
-                The platform runs{" "}
-                <strong className="text-white">
-                  {formatNumber(totalRuns)}+ workflow executions
-                </strong>{" "}
-                to date across{" "}
-                <strong className="text-white">{metrics.users.orgs}</strong>{" "}
-                organizations and{" "}
-                <strong className="text-white">{metrics.users.total}</strong>{" "}
-                users.
-              </p>
-            </div>
+            <Suspense fallback={<CompanyOverviewSkeleton />}>
+              <CompanyOverviewSection />
+            </Suspense>
           </div>
         </section>
 
@@ -175,28 +76,9 @@ export default async function InvestorsPage() {
             <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
               Platform Metrics
             </h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <StatCard
-                label="Organizations"
-                value={formatNumber(metrics.users.orgs)}
-                sub={`${metrics.users.total} individual users`}
-              />
-              <StatCard
-                label="Billing Accounts"
-                value={formatNumber(metrics.billing.totalAccounts)}
-                sub={`${metrics.billing.accountsWithPaymentMethod} with saved payment method`}
-              />
-              <StatCard
-                label="Completed Runs"
-                value={formatNumber(metrics.runs.completed)}
-                sub={`${successRate}% success rate`}
-              />
-              <StatCard
-                label="Total Runs"
-                value={formatNumber(totalRuns)}
-                sub="All-time executions"
-              />
-            </div>
+            <Suspense fallback={<PlatformMetricsSkeleton />}>
+              <PlatformMetricsSection />
+            </Suspense>
           </div>
         </section>
 
@@ -206,18 +88,9 @@ export default async function InvestorsPage() {
             <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
               Revenue & Credits
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <StatCard
-                label="Total Consumed"
-                value={formatCents(metrics.runs.totalCostInUsdCents)}
-                sub="Cumulative platform run costs (runs-service)"
-              />
-              <StatCard
-                label="Revenue"
-                value={formatCents(metrics.billing.totalRevenueCents)}
-                sub="Cumulative net Stripe revenue"
-              />
-            </div>
+            <Suspense fallback={<RevenueCreditsSkeleton />}>
+              <RevenueCreditsSection />
+            </Suspense>
           </div>
         </section>
 
@@ -227,97 +100,9 @@ export default async function InvestorsPage() {
             <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
               Monthly Growth
             </h2>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 overflow-x-auto">
-                {monthlyCAGR && (
-                  <p className="text-sm text-gray-400 mb-4 text-right">
-                    Monthly credits spending growth:{" "}
-                    <span className={Number(monthlyCAGR) >= 0 ? "text-emerald-400 font-semibold" : "text-red-400 font-semibold"}>
-                      {Number(monthlyCAGR) >= 0 ? "+" : ""}{monthlyCAGR}%
-                    </span>
-                  </p>
-                )}
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-700 text-gray-400">
-                      <th className="text-left py-3 px-4 font-medium">Month</th>
-                      <th className="text-right py-3 px-4 font-medium">
-                        New Orgs
-                      </th>
-                      <th className="text-right py-3 px-4 font-medium">
-                        New Users
-                      </th>
-                      <th className="text-right py-3 px-4 font-medium">
-                        Completed Runs
-                      </th>
-                      <th className="text-right py-3 px-4 font-medium">
-                        Credits Spent
-                      </th>
-                      <th className="text-right py-3 px-4 font-medium">
-                        Revenue
-                      </th>
-                      <th className="text-right py-3 px-4 font-medium">
-                        Credits Spent Growth
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {metrics.monthlyGrowth.map((row, i) => {
-                      const prev = metrics.monthlyGrowth[i + 1];
-                      const rowConsumed = parseFloat(row.consumedCents);
-                      const prevConsumed = prev ? parseFloat(prev.consumedCents) : 0;
-                      const growth =
-                        prev && prevConsumed > 0
-                          ? (
-                              ((rowConsumed - prevConsumed) / prevConsumed) *
-                              100
-                            ).toFixed(0)
-                          : null;
-                      return (
-                        <tr
-                          key={row.month}
-                          className="border-b border-gray-800 text-gray-300"
-                        >
-                          <td className="py-3 px-4 font-medium text-white">
-                            {row.month}
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            {formatNumber(row.newOrgs)}
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            {formatNumber(row.newUsers)}
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            {formatNumber(row.completedRuns)}
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            {formatCents(row.consumedCents)}
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            {formatCents(row.revenueCents)}
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            {growth ? (
-                              <span className={Number(growth) >= 0 ? "text-emerald-400" : "text-red-400"}>
-                                {Number(growth) >= 0 ? "+" : ""}{growth}%
-                              </span>
-                            ) : (
-                              <span className="text-gray-600">--</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-              <BarChart
-                title="Credits Spent"
-                data={[...metrics.monthlyGrowth]
-                  .reverse()
-                  .map((row) => ({ label: row.month, value: row.consumedCents }))}
-              />
-            </div>
+            <Suspense fallback={<MonthlyGrowthSkeleton />}>
+              <MonthlyGrowthSection />
+            </Suspense>
           </div>
         </section>
 
@@ -327,80 +112,9 @@ export default async function InvestorsPage() {
             <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
               Weekly Growth
             </h2>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 overflow-x-auto">
-                {weeklyCAGR && (
-                  <p className="text-sm text-gray-400 mb-4 text-right">
-                    Weekly revenue growth:{" "}
-                    <span className={Number(weeklyCAGR) >= 0 ? "text-emerald-400 font-semibold" : "text-red-400 font-semibold"}>
-                      {Number(weeklyCAGR) >= 0 ? "+" : ""}{weeklyCAGR}%
-                    </span>
-                  </p>
-                )}
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-700 text-gray-400">
-                      <th className="text-left py-3 px-4 font-medium">Week</th>
-                      <th className="text-right py-3 px-4 font-medium">
-                        Credits Loaded
-                      </th>
-                      <th className="text-right py-3 px-4 font-medium">
-                        Revenue
-                      </th>
-                      <th className="text-right py-3 px-4 font-medium">
-                        Revenue Growth
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {metrics.weeklyGrowth.map((row, i) => {
-                      const prev = metrics.weeklyGrowth[i + 1];
-                      const rowRevenue = parseFloat(row.revenue_cents);
-                      const prevRevenue = prev ? parseFloat(prev.revenue_cents) : 0;
-                      const growth =
-                        prev && prevRevenue > 0
-                          ? (
-                              ((rowRevenue - prevRevenue) / prevRevenue) *
-                              100
-                            ).toFixed(0)
-                          : null;
-                      return (
-                        <tr
-                          key={row.period}
-                          className="border-b border-gray-800 text-gray-300"
-                        >
-                          <td className="py-3 px-4 font-medium text-white">
-                            {row.period}
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            {formatCents(row.credited_cents)}
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            {formatCents(row.revenue_cents)}
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            {growth ? (
-                              <span className={Number(growth) >= 0 ? "text-emerald-400" : "text-red-400"}>
-                                {Number(growth) >= 0 ? "+" : ""}{growth}%
-                              </span>
-                            ) : (
-                              <span className="text-gray-600">--</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-              <BarChart
-                rotateLabels
-                title="Revenue"
-                data={[...metrics.weeklyGrowth]
-                  .reverse()
-                  .map((row) => ({ label: row.period, value: row.revenue_cents }))}
-              />
-            </div>
+            <Suspense fallback={<WeeklyGrowthSkeleton />}>
+              <WeeklyGrowthSection />
+            </Suspense>
           </div>
         </section>
 
