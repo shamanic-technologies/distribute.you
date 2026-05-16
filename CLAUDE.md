@@ -20,6 +20,13 @@ pnpm --filter @distribute/<package> vitest run tests/unit/specific.test.ts
 
 **Shared workspace packages must be built before app tests/build.** Vitest + Vite resolve workspace deps via their `dist/` (per `package.json` exports), so an unbuilt `shared/*` package surfaces as `Failed to resolve entry for package "@distribute/<name>"` in unrelated test files. Run `pnpm -r build` (or `pnpm --filter @distribute/<name> build`) once after `pnpm install` or after pulling changes that touch `shared/`.
 
+## Release flow (distribute.you specifics)
+
+This monorepo does NOT use `release.sh hotfix` (the user-level release script targets Railway-deployed services with semver tags). Vercel deploys this repo on every `main` merge — no tag, no bump.
+
+- **Hotfix** → branch from `origin/main`, PR target `main`, ship with `gh pr merge --auto --squash` (or hold for deploy-ordering blockers).
+- **Bugfix / Feature** → branch from `origin/staging`, PR target `staging`, ship with `gh pr merge --auto --squash`. Promotion to `main` happens via the existing staging→main PR flow.
+
 ## Architecture
 
 **Monorepo** — pnpm workspaces + Turborepo. Three workspace roots: `apps/`, `packages/`, `shared/`.
