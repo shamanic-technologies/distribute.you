@@ -12,7 +12,17 @@ const pagePath = path.resolve(
   __dirname,
   "../../src/app/investors/page.tsx"
 );
+const dataSectionsPath = path.resolve(
+  __dirname,
+  "../../src/components/investors/data-sections.tsx"
+);
 const page = fs.readFileSync(pagePath, "utf-8");
+const dataSections = fs.existsSync(dataSectionsPath)
+  ? fs.readFileSync(dataSectionsPath, "utf-8")
+  : "";
+// Investor surface is split between page.tsx (shell) and data-sections.tsx (data).
+// Tests target the union of both files since either may host a given string.
+const surface = `${page}\n${dataSections}`;
 
 describe("Investor metrics: billing + runs aggregates", () => {
   describe("fetch-metrics.ts", () => {
@@ -66,30 +76,30 @@ describe("Investor metrics: billing + runs aggregates", () => {
     });
   });
 
-  describe("investors/page.tsx", () => {
+  describe("investors surface (page.tsx + data-sections.tsx)", () => {
     it("Revenue & Credits section renders Total Consumed and Revenue cards", () => {
-      expect(page).toContain("Total Consumed");
-      expect(page).toContain("Revenue");
-      expect(page).toContain("metrics.runs.totalCostInUsdCents");
-      expect(page).toContain("metrics.billing.totalRevenueCents");
+      expect(surface).toContain("Total Consumed");
+      expect(surface).toContain("Revenue");
+      expect(surface).toContain("metrics.runs.totalCostInUsdCents");
+      expect(surface).toContain("metrics.billing.totalRevenueCents");
     });
 
     it("does NOT render dropped Outstanding Balance / Credits Loaded cards", () => {
-      expect(page).not.toContain("Outstanding Balance");
-      expect(page).not.toContain("Total Credits Loaded");
+      expect(surface).not.toContain("Outstanding Balance");
+      expect(surface).not.toContain("Total Credits Loaded");
     });
 
     it("Monthly Growth table has Credits Spent and Revenue columns", () => {
-      expect(page).toContain("Credits Spent");
-      expect(page).toContain("Revenue");
+      expect(surface).toContain("Credits Spent");
+      expect(surface).toContain("Revenue");
     });
 
     it("has a Weekly Growth section", () => {
-      expect(page).toContain("Weekly Growth");
+      expect(surface).toContain("Weekly Growth");
     });
 
     it("Weekly Growth section uses revenue_cents per row (consumed_cents dropped from wire)", () => {
-      const weeklySection = page.slice(page.indexOf("Weekly Growth"));
+      const weeklySection = surface.slice(surface.indexOf("Weekly Growth"));
       expect(weeklySection).toContain("Credits Loaded");
       expect(weeklySection).toContain("Revenue");
       expect(weeklySection).not.toContain("row.consumed_cents");
