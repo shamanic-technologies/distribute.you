@@ -173,7 +173,15 @@ export async function RevenueCreditsSection() {
   );
 }
 
-function GrowthCard({ label, value }: { label: string; value: string | null }) {
+function GrowthCard({
+  label,
+  value,
+  sub,
+}: {
+  label: string;
+  value: string | null;
+  sub?: string;
+}) {
   const numeric = value === null ? null : Number(value);
   const colorClass =
     numeric === null
@@ -189,6 +197,7 @@ function GrowthCard({ label, value }: { label: string; value: string | null }) {
     <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-6">
       <p className="text-sm text-gray-400 mb-1">{label}</p>
       <p className={`text-2xl font-display font-bold ${colorClass}`}>{display}</p>
+      {sub && <p className="text-xs text-gray-500 mt-1">{sub}</p>}
     </div>
   );
 }
@@ -274,19 +283,32 @@ export async function MonthlyGrowthSection() {
   );
 }
 
+// CAGR baseline for weekly cards. Pre-March 2026 weeks had sub-dollar spend
+// (mostly noise from grant credits), which distorts the geometric mean badly
+// (e.g. $0.99 → $250 = +25000%). Anchor the series at the first full Monday
+// of March 2026 so the growth rate reflects real revenue traction.
+const WEEKLY_CAGR_START = "2026-03-02";
+
 export async function WeeklyGrowthSection() {
   const metrics = await loadMetrics();
-  const weeklyCreditsCAGR = computeCAGR(
-    metrics.weeklyGrowth.map((r) => r.consumedCents)
+  const cagrRows = metrics.weeklyGrowth.filter(
+    (r) => r.period >= WEEKLY_CAGR_START
   );
-  const weeklyRevenueCAGR = computeCAGR(
-    metrics.weeklyGrowth.map((r) => r.revenueCents)
-  );
+  const weeklyCreditsCAGR = computeCAGR(cagrRows.map((r) => r.consumedCents));
+  const weeklyRevenueCAGR = computeCAGR(cagrRows.map((r) => r.revenueCents));
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <GrowthCard label="Weekly credits spent growth" value={weeklyCreditsCAGR} />
-        <GrowthCard label="Weekly revenue growth" value={weeklyRevenueCAGR} />
+        <GrowthCard
+          label="Weekly credits spent growth"
+          value={weeklyCreditsCAGR}
+          sub="Since March"
+        />
+        <GrowthCard
+          label="Weekly revenue growth"
+          value={weeklyRevenueCAGR}
+          sub="Since March"
+        />
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 overflow-x-auto">

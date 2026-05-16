@@ -2,8 +2,9 @@
  * Format helpers for investor metrics.
  *
  * Cent values arrive as full-precision decimal strings from billing-service
- * (e.g. "100.4200000000"). Display rounds UP at the dollar boundary so the
- * page never under-states revenue or spend.
+ * (e.g. "100.4200000000"). Display rounds to the nearest dollar so sub-dollar
+ * amounts (e.g. 0.99 cents = $0.0099) render as "$0" rather than being
+ * inflated to "$1".
  */
 
 function toNumber(value: string | number): number {
@@ -15,7 +16,7 @@ export function formatCents(centsStr: string | number): string {
   if (!Number.isFinite(cents)) {
     console.error("[landing] formatCents received non-numeric value:", centsStr);
   }
-  const dollars = Math.ceil(cents / 100);
+  const dollars = Math.round(cents / 100);
   return `$${dollars.toLocaleString("en-US")}`;
 }
 
