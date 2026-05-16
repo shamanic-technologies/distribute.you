@@ -455,7 +455,7 @@ export default function CreateCampaignPage() {
 
     try {
       const account = await getBillingAccount();
-      const willExceed = budgetCents > parseFloat(account.available_cents);
+      const willExceed = budgetCents > parseFloat(account.balance_cents);
       const isRecurring = budgetFrequency !== "one-off";
 
       if ((willExceed || isRecurring) && !account.has_auto_topup) {
@@ -464,7 +464,7 @@ export default function CreateCampaignPage() {
         isCreatingRef.current = false;
         setIsCreating(false);
         showPaymentRequired({
-          balance_cents: account.available_cents,
+          balance_cents: account.balance_cents,
           required_cents: budgetCents,
           proactive: true,
           onAutoTopupConfigured: () => {
