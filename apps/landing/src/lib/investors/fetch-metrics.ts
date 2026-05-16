@@ -16,6 +16,13 @@ interface BillingGrowthRow {
   revenue_cents: string;
 }
 
+interface WeeklyRow {
+  period: string;
+  creditedCents: string;
+  consumedCents: string;
+  revenueCents: string;
+}
+
 export interface InvestorMetrics {
   updatedAt: string;
   users: { total: number; orgs: number };
@@ -32,7 +39,7 @@ export interface InvestorMetrics {
     totalCostInUsdCents: string;
   };
   monthlyGrowth: MonthlyRow[];
-  weeklyGrowth: BillingGrowthRow[];
+  weeklyGrowth: WeeklyRow[];
 }
 
 interface UsersStatsResponse {
@@ -62,6 +69,7 @@ interface RunsStatsResponse {
   byStatus: { completed: number; failed: number; running: number };
   totalCostInUsdCents: string;
   monthly: { month: string; completed: number; failed: number; running: number; totalCostInUsdCents: string }[];
+  weekly: { period: string; completed: number; failed: number; running: number; totalCostInUsdCents: string }[];
 }
 
 function resolveApiUrl(hostname: string): string {
@@ -138,14 +146,38 @@ export async function fetchInvestorMetrics(hostname = ""): Promise<InvestorMetri
     .reverse()
     .filter((m) => m < currentMonth);
 
+  // Merge weekly data from billing (credited + revenue) and runs (consumed) into a unified row
+  const weeklyMap = new Map<string, WeeklyRow>();
+  const emptyWeeklyRow = (period: string): WeeklyRow => ({
+    period,
+    creditedCents: "0",
+    consumedCents: "0",
+    revenueCents: "0",
+  });
+
+  for (const row of billing.weekly_growth) {
+    const entry = weeklyMap.get(row.period) ?? emptyWeeklyRow(row.period);
+    entry.creditedCents = row.credited_cents;
+    entry.revenueCents = row.revenue_cents;
+    weeklyMap.set(row.period, entry);
+  }
+
+  for (const row of runs.weekly) {
+    const entry = weeklyMap.get(row.period) ?? emptyWeeklyRow(row.period);
+    entry.consumedCents = row.totalCostInUsdCents;
+    weeklyMap.set(row.period, entry);
+  }
+
   const dayOfWeek = now.getUTCDay();
   const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
   const currentWeekStart = new Date(now);
   currentWeekStart.setUTCDate(now.getUTCDate() - mondayOffset);
   const currentWeekStr = currentWeekStart.toISOString().slice(0, 10);
-  const sortedWeeklyDesc = [...billing.weekly_growth]
-    .sort((a, b) => b.period.localeCompare(a.period))
-    .filter((w) => w.period < currentWeekStr);
+  const sortedWeeklyDesc = [...weeklyMap.keys()]
+    .sort()
+    .reverse()
+    .filter((p) => p < currentWeekStr)
+    .map((p) => weeklyMap.get(p)!);
 
   return {
     updatedAt: new Date().toISOString(),

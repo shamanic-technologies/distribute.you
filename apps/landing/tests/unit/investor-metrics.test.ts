@@ -51,9 +51,17 @@ describe("Investor metrics: billing + runs aggregates", () => {
       expect(block?.[0]).toContain("revenue_cents");
     });
 
-    it("RunsStatsResponse includes totalCostInUsdCents top-level + per-month", () => {
+    it("RunsStatsResponse includes monthly + weekly buckets", () => {
       expect(fetchMetrics).toMatch(/interface RunsStatsResponse[\s\S]*?totalCostInUsdCents:\s*string/);
       expect(fetchMetrics).toMatch(/monthly:\s*\{[\s\S]*?totalCostInUsdCents:\s*string/);
+      expect(fetchMetrics).toMatch(/weekly:\s*\{[\s\S]*?totalCostInUsdCents:\s*string/);
+    });
+
+    it("WeeklyRow includes period, creditedCents, consumedCents, revenueCents (camelCase)", () => {
+      expect(fetchMetrics).toMatch(/interface WeeklyRow[\s\S]*?period:\s*string/);
+      expect(fetchMetrics).toMatch(/interface WeeklyRow[\s\S]*?creditedCents:\s*string/);
+      expect(fetchMetrics).toMatch(/interface WeeklyRow[\s\S]*?consumedCents:\s*string/);
+      expect(fetchMetrics).toMatch(/interface WeeklyRow[\s\S]*?revenueCents:\s*string/);
     });
 
     it("InvestorMetrics.billing exposes totalRevenueCents + totalCreditedCents", () => {
@@ -105,19 +113,34 @@ describe("Investor metrics: billing + runs aggregates", () => {
     });
 
     it("Monthly Growth section renders both Credits Spent and Revenue bar charts", () => {
-      expect(surface).toMatch(/BarChart[\s\S]*?title="Credits Spent"/);
-      expect(surface).toMatch(/BarChart[\s\S]*?title="Revenue"/);
+      const monthlyFn = dataSections.slice(
+        dataSections.indexOf("function MonthlyGrowthSection"),
+        dataSections.indexOf("function WeeklyGrowthSection")
+      );
+      expect(monthlyFn).toMatch(/BarChart[\s\S]*?title="Credits Spent"/);
+      expect(monthlyFn).toMatch(/BarChart[\s\S]*?title="Revenue"/);
     });
 
     it("has a Weekly Growth section", () => {
       expect(surface).toContain("Weekly Growth");
     });
 
-    it("Weekly Growth section uses revenue_cents per row (consumed_cents dropped from wire)", () => {
+    it("Weekly Growth section renders Credits Spent + Revenue columns", () => {
       const weeklySection = surface.slice(surface.indexOf("Weekly Growth"));
-      expect(weeklySection).toContain("Credits Loaded");
+      expect(weeklySection).toContain("Credits Spent");
       expect(weeklySection).toContain("Revenue");
-      expect(weeklySection).not.toContain("row.consumed_cents");
+      expect(weeklySection).not.toContain("Credits Loaded");
+    });
+
+    it("Weekly Growth section exposes both Credits Spent and Revenue growth cards", () => {
+      expect(surface).toContain("Weekly credits spent growth");
+      expect(surface).toContain("Weekly revenue growth");
+    });
+
+    it("Weekly Growth section renders both Credits Spent and Revenue bar charts", () => {
+      const weeklyFn = dataSections.slice(dataSections.indexOf("function WeeklyGrowthSection"));
+      expect(weeklyFn).toMatch(/BarChart[\s\S]*?title="Credits Spent"/);
+      expect(weeklyFn).toMatch(/BarChart[\s\S]*?title="Revenue"/);
     });
   });
 });

@@ -50,6 +50,10 @@ const mockRuns = {
     { month: "2026-04", completed: 60, failed: 3, running: 1, totalCostInUsdCents: "6000.1234567890" },
     { month: "2026-03", completed: 40, failed: 2, running: 1, totalCostInUsdCents: "6345.5554444455" },
   ],
+  weekly: [
+    { period: "2026-04-20", completed: 35, failed: 1, running: 0, totalCostInUsdCents: "3200.1100000000" },
+    { period: "2026-04-13", completed: 25, failed: 2, running: 1, totalCostInUsdCents: "2800.5500000000" },
+  ],
 };
 
 function jsonResponse(body: unknown): Response {
@@ -101,11 +105,28 @@ describe("fetchInvestorMetrics — fractional decimal-string cents", () => {
     expect(apr?.revenueCents).toBe("3500.0000000000");
   });
 
-  it("preserves decimal-string cents on weekly rows (credited + revenue only — consumed dropped)", async () => {
+  it("merges billing credited+revenue with runs consumed on weekly rows (camelCase)", async () => {
     const result = await fetchInvestorMetrics("test.local");
     const wk = result.weeklyGrowth.find((r) => r.period === "2026-04-20");
-    expect(wk?.credited_cents).toBe("1000.0000000000");
-    expect(wk?.revenue_cents).toBe("750.0000000000");
+    expect(wk?.creditedCents).toBe("1000.0000000000");
+    expect(wk?.revenueCents).toBe("750.0000000000");
+    expect(wk?.consumedCents).toBe("3200.1100000000");
+  });
+
+  it("returns zero cent strings for weeks present in billing but missing from runs", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (url.includes("/public/stats/users")) return jsonResponse(mockUsers);
+        if (url.includes("/public/stats/billing")) return jsonResponse(mockBilling);
+        if (url.includes("/public/stats/runs"))
+          return jsonResponse({ ...mockRuns, weekly: [] });
+        throw new Error(`unexpected fetch ${url}`);
+      })
+    );
+    const result = await fetchInvestorMetrics("test.local");
+    const wk = result.weeklyGrowth.find((r) => r.period === "2026-04-20");
+    expect(wk?.consumedCents).toBe("0");
   });
 
   it("merges users + runs + billing into unified monthly rows without precision loss", async () => {
