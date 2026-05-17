@@ -397,6 +397,15 @@ describe("Billing guard auto-topup in modal", () => {
     expect(content).toContain("campaign budget may exceed your current credit balance");
   });
 
+  it("should show recurring-specific copy when balance covers budget (recurring without auto-topup)", () => {
+    expect(content).toContain("Recurring Campaign Needs Auto-Topup");
+    expect(content).toContain("recurring campaign");
+  });
+
+  it("should pick proactive copy branch by comparing balance_cents to required_cents", () => {
+    expect(content).toMatch(/toCentsNumber\(\s*info\.balance_cents\s*\)\s*<\s*toCentsNumber\(\s*info\.required_cents\s*\)/);
+  });
+
   it("should allow configuring auto-topup without checkout in proactive mode", () => {
     expect(content).toContain("handleSetupAutoTopupOnly");
     expect(content).toContain("Enable Auto-Topup & Continue");
