@@ -219,6 +219,16 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
   }
 
   const isProactive = info.proactive === true;
+  const balanceBelowRequired =
+    info.balance_cents !== undefined &&
+    info.required_cents !== undefined &&
+    toCentsNumber(info.balance_cents) < toCentsNumber(info.required_cents);
+  const proactiveTitle = balanceBelowRequired
+    ? "Campaign May Exceed Credits"
+    : "Recurring Campaign Needs Auto-Topup";
+  const proactiveDescription = balanceBelowRequired
+    ? "Your campaign budget may exceed your current credit balance. Set up auto-topup to ensure your campaign is never interrupted."
+    : "Your recurring campaign needs auto-topup so it never stops mid-cycle when credits run out.";
 
   return (
     <BillingGuardContext.Provider value={{ showPaymentRequired, dismissPaymentRequired }}>
@@ -233,13 +243,13 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
                 </svg>
               </div>
               <h2 className="text-lg font-semibold text-gray-900">
-                {isProactive ? "Campaign May Exceed Credits" : "Insufficient Credits"}
+                {isProactive ? proactiveTitle : "Insufficient Credits"}
               </h2>
             </div>
 
             <p className="text-gray-600 text-sm mb-4">
               {isProactive
-                ? "Your campaign budget may exceed your current credit balance. Set up auto-topup to ensure your campaign is never interrupted."
+                ? proactiveDescription
                 : "Your account doesn\u2019t have enough credits to complete this action. Add credits to continue."}
             </p>
 
