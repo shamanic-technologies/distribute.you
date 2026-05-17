@@ -68,6 +68,94 @@ describe("Quote requests + pitches — generic entity routes", () => {
   });
 });
 
+describe("QuoteRequest type — matches journalists-quotes-service shape", () => {
+  const quoteRequestBlock =
+    apiLibContent.split("export interface QuoteRequest {")[1]?.split("\n}")[0] ?? "";
+
+  it("declares fields returned by GET /orgs/quote-requests", () => {
+    expect(quoteRequestBlock).toMatch(/opportunityText:\s*string/);
+    expect(quoteRequestBlock).toMatch(/mediaOutlet:\s*string \| null/);
+    expect(quoteRequestBlock).toMatch(/deadline:\s*string \| null/);
+    expect(quoteRequestBlock).toMatch(/fetchedAt:\s*string/);
+    expect(quoteRequestBlock).toMatch(/provider:\s*string/);
+    expect(quoteRequestBlock).toMatch(/externalId:\s*string/);
+  });
+
+  it("does NOT declare aspirational fields the backend never returns", () => {
+    expect(quoteRequestBlock).not.toContain("title:");
+    expect(quoteRequestBlock).not.toContain("question:");
+    expect(quoteRequestBlock).not.toContain("publication:");
+    expect(quoteRequestBlock).not.toContain("priorityScore");
+    expect(quoteRequestBlock).not.toMatch(/\bstatus:/);
+    expect(quoteRequestBlock).not.toContain("topics:");
+    expect(quoteRequestBlock).not.toContain("deadlineAt");
+    expect(quoteRequestBlock).not.toContain("scoringRationale");
+    expect(quoteRequestBlock).not.toContain("brandId:");
+  });
+});
+
+describe("listQuoteRequests — backend contract", () => {
+  const fnBlock =
+    apiLibContent
+      .split("export async function listQuoteRequests(")[1]
+      ?.split("\nexport async function")[0] ?? "";
+  const paramsBlock =
+    apiLibContent
+      .split("export interface ListQuoteRequestsParams {")[1]
+      ?.split("\n}")[0] ?? "";
+
+  it("declares campaign_id snake_case in params (not campaignId)", () => {
+    expect(paramsBlock).toContain("campaign_id");
+    expect(paramsBlock).not.toContain("campaignId");
+    expect(paramsBlock).not.toContain("brandId");
+    expect(paramsBlock).not.toContain("status");
+  });
+
+  it("returns { providerQuoteRequests } not { requests }", () => {
+    expect(fnBlock).toContain("providerQuoteRequests");
+    expect(fnBlock).not.toMatch(/\brequests:\s*QuoteRequest/);
+  });
+
+  it("validates response with Zod safeParse and console.errors on mismatch", () => {
+    expect(fnBlock).toContain("safeParse");
+    expect(fnBlock).toContain("[dashboard]");
+  });
+});
+
+describe("Quote requests page — renders real backend shape", () => {
+  it("renders opportunityText, not request.title/question", () => {
+    expect(quoteRequestsContent).toContain("opportunityText");
+    expect(quoteRequestsContent).not.toContain("request.title");
+    expect(quoteRequestsContent).not.toContain("request.question");
+  });
+
+  it("renders mediaOutlet, not request.publication", () => {
+    expect(quoteRequestsContent).toContain("mediaOutlet");
+    expect(quoteRequestsContent).not.toContain("request.publication");
+  });
+
+  it("uses request.deadline, not request.deadlineAt", () => {
+    expect(quoteRequestsContent).toContain("request.deadline");
+    expect(quoteRequestsContent).not.toContain("deadlineAt");
+  });
+
+  it("drops priorityScore, status filter, STATUS_STYLES", () => {
+    expect(quoteRequestsContent).not.toContain("priorityScore");
+    expect(quoteRequestsContent).not.toContain("statusFilter");
+    expect(quoteRequestsContent).not.toContain("STATUS_STYLES");
+    expect(quoteRequestsContent).not.toContain("QuoteRequestStatus");
+  });
+
+  it("reads providerQuoteRequests from response, not data.requests", () => {
+    expect(quoteRequestsContent).toContain("providerQuoteRequests");
+    expect(quoteRequestsContent).not.toContain("data.requests");
+  });
+
+  it("forwards campaign_id snake_case to listQuoteRequests", () => {
+    expect(quoteRequestsContent).toContain("campaign_id");
+  });
+});
+
 describe("api client functions", () => {
   it("does not export setFeaturedCreds — Featured creds are platform-managed via env", () => {
     expect(apiLibContent).not.toContain("setFeaturedCreds");
