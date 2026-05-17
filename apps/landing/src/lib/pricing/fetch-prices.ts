@@ -66,9 +66,9 @@ export function groupByProvider(rows: PlatformPrice[]): ProviderGroup[] {
 }
 
 /**
- * Format pricePerUnitInUsdCents (decimal-string cents) as a readable string.
- * Below $0.01: cents notation with up to 4 significant digits.
- * Above: dollars with 2-4 decimals depending on magnitude.
+ * Format pricePerUnitInUsdCents (decimal-string cents) as a readable dollar string.
+ * Always uses $ notation — never cents — because users misread "0.0006 ¢" as "$0.0006".
+ * $1+: 2 decimals. $0.01–$1: 4 decimals. Below $0.01: 6 decimals.
  */
 export function formatPrice(pricePerUnitInUsdCents: string): string {
   const cents = parseFloat(pricePerUnitInUsdCents);
@@ -83,6 +83,5 @@ export function formatPrice(pricePerUnitInUsdCents: string): string {
   if (dollars >= 0.01) {
     return `$${dollars.toFixed(4)}`;
   }
-  // sub-cent magnitudes — show as ¢ with 4 significant digits
-  return `${cents.toPrecision(4)} ¢`;
+  return `$${dollars.toFixed(6)}`;
 }

@@ -77,9 +77,9 @@ describe("formatPrice", () => {
     expect(formatPrice("2.66")).toBe("$0.0266");
   });
 
-  it("formats sub-cent magnitudes as cents with 4 significant digits", () => {
-    expect(formatPrice("0.0006000000")).toBe("0.0006000 ¢");
-    expect(formatPrice("0.0030000000")).toBe("0.003000 ¢");
+  it("formats sub-cent magnitudes as dollars with 6 decimals", () => {
+    expect(formatPrice("0.0006000000")).toBe("$0.000006");
+    expect(formatPrice("0.0030000000")).toBe("$0.000030");
   });
 
   it("returns $0 for zero", () => {
