@@ -106,7 +106,7 @@ export default function BillingPage() {
 
   const hasValidationError = !!(thresholdError || customAmountError || topupAmountError);
 
-  const isDepleted = account ? parseFloat(account.available_cents) <= 0 : false;
+  const isDepleted = account ? parseFloat(account.balance_cents) <= 0 : false;
   const hasAutoTopup = account?.has_auto_topup ?? false;
 
   // Pre-fill auto-topup fields from existing config
@@ -275,7 +275,7 @@ export default function BillingPage() {
         </div>
         <button
           onClick={() => showPaymentRequired({
-            balance_cents: account?.available_cents,
+            balance_cents: account?.balance_cents,
           })}
           className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 transition"
         >
@@ -314,7 +314,7 @@ export default function BillingPage() {
             <div>
               <p className="text-sm text-gray-500">Credit Balance</p>
               <p className={`text-3xl font-bold mt-1 ${isDepleted ? "text-red-600" : "text-gray-900"}`}>
-                {formatBillingCents(account?.available_cents ?? "0")}
+                {formatBillingCents(account?.balance_cents ?? "0")}
               </p>
               {hasAutoTopup && (
                 <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
