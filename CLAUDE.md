@@ -81,6 +81,12 @@ When changing content: update `shared/content/src/`, run `pnpm generate:readme`,
 
 If the dashboard needs a field, endpoint, or capability that the backend doesn't provide, NEVER work around it client-side (regex, slugifying, name-derivation, aggregation heuristics, etc.). Instead, immediately draft a message for Kevin to forward to the backend team requesting what you need. Block on the backend change.
 
+### Verify backend shape before writing client types
+
+Before declaring a typed dashboard helper for any backend endpoint (`listX`, `getX`, response interface, Zod schema), fetch the actual returned shape via the `api-registry` / `api-registry-staging` MCP. Never invent a type from "what feels right" or copy from an aspirational PR description — the deployed openapi is ground truth. If you want a richer shape, file a backend request and block (see "Missing Backend Fields"). Skipping this produces page crashes like `Cannot read property 'X' of undefined` because `data.X` does not exist on the real response.
+
+Incident 2026-05-17 (distribute.you#1079): `quote-requests/page.tsx` was scaffolded against an aspirational `QuoteRequest` (`title`, `question`, `publication`, `priorityScore`, `status`, `deadlineAt`). Backend `GET /v1/orgs/quote-requests` actually returns `{ providerQuoteRequests: [{ opportunityText, mediaOutlet, deadline, … }] }`. Page crashed with "This page couldn't load" on first user visit. A 30-second `api-registry` lookup before declaring the type would have caught it.
+
 ### No Fallbacks — Fail Visibly
 
 NEVER add fallback logic (|| alternatives, silent defaults, graceful degradation) when data is missing or doesn't match. Instead, log a clear `console.error` with the mismatched value and context so the bug surfaces immediately. If a required field is absent, show an error UI — don't hide the problem. This applies everywhere: lookups, field resolution, display logic.
