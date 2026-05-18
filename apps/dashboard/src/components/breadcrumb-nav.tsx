@@ -37,7 +37,7 @@ export function BreadcrumbNav() {
   const pathname = usePathname();
   const router = useRouter();
   const { organization } = useOrganization();
-  const { userMemberships } = useOrganizationList({
+  const { userMemberships, setActive } = useOrganizationList({
     userMemberships: { infinite: true },
   });
   const { features, getFeature } = useFeatures();
@@ -144,10 +144,15 @@ export function BreadcrumbNav() {
   const handleOrgSwitch = (clerkOrgId: string) => {
     setOpenDropdown(null);
     clearBreadcrumbCaches();
-    // Drive the URL change first. clerkMiddleware's organizationSyncOptions sees
-    // the new /orgs/<id> URL and auto-setActives the matching org on the server,
-    // so subsequent /api/v1/* calls run under the org the URL points at.
-    // OrgCacheInvalidator clears the React Query cache once useOrganization() sees the switch.
+    // Update Clerk's client-side active org so useOrganization() reflects the switch
+    // immediately (breadcrumb name, OrgCacheInvalidator firing to clear React Query).
+    // Then push the URL so middleware's organizationSyncOptions confirms server-side
+    // and /api/v1/* calls run under the new org. Both directions are required:
+    // setActive alone left the URL stale (PR #1058 prod incident, polls 404'd);
+    // router.push alone left the client UI stale until the session cookie refreshed.
+    if (setActive) {
+      setActive({ organization: clerkOrgId });
+    }
     router.push(`/orgs/${clerkOrgId}`);
   };
 
