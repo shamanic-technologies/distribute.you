@@ -251,6 +251,17 @@ export async function WeeklyGrowthSection() {
   );
   const weeklyCreditsCAGR = computeCAGR(cagrRows.map((r) => r.consumedCents));
   const weeklyRevenueCAGR = computeCAGR(cagrRows.map((r) => r.revenueCents));
+
+  // CGR line anchor (per investor feedback): first non-zero week from March
+  // 2026 onwards, and only render the line chart once at least 3 points of
+  // history exist past that anchor — otherwise the line is meaningless.
+  const cagrRowsAsc = [...cagrRows].reverse();
+  const firstNonZeroIdx = cagrRowsAsc.findIndex(
+    (r) => parseFloat(r.consumedCents) > 0 || parseFloat(r.revenueCents) > 0
+  );
+  const cgrLineRowsAsc =
+    firstNonZeroIdx === -1 ? [] : cagrRowsAsc.slice(firstNonZeroIdx);
+  const showCgrLine = cgrLineRowsAsc.length >= 3;
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -326,20 +337,26 @@ export async function WeeklyGrowthSection() {
               .reverse()
               .map((row) => ({ label: row.period, value: row.revenueCents }))}
           />
-          <CGRLineChart
-            rotateLabels
-            title="Compound weekly growth — Credits Spent"
-            data={[...cagrRows]
-              .reverse()
-              .map((row) => ({ label: row.period, value: row.consumedCents }))}
-          />
-          <CGRLineChart
-            rotateLabels
-            title="Compound weekly growth — Revenue"
-            data={[...cagrRows]
-              .reverse()
-              .map((row) => ({ label: row.period, value: row.revenueCents }))}
-          />
+          {showCgrLine && (
+            <>
+              <CGRLineChart
+                rotateLabels
+                title="Compound weekly growth — Credits Spent"
+                data={cgrLineRowsAsc.map((row) => ({
+                  label: row.period,
+                  value: row.consumedCents,
+                }))}
+              />
+              <CGRLineChart
+                rotateLabels
+                title="Compound weekly growth — Revenue"
+                data={cgrLineRowsAsc.map((row) => ({
+                  label: row.period,
+                  value: row.revenueCents,
+                }))}
+              />
+            </>
+          )}
         </div>
       </div>
     </div>
