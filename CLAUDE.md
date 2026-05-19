@@ -12,10 +12,10 @@ pnpm build                  # Build all (Turbo-orchestrated)
 pnpm lint                   # Lint all packages
 pnpm generate:readme        # Regenerate README.md from shared/content
 
-# Per-package testing
-pnpm --filter @distribute/<package> test
-pnpm --filter @distribute/<package> test:unit
-pnpm --filter @distribute/<package> vitest run tests/unit/specific.test.ts
+# Per-package testing — scripts use `test`/`test:unit`, NOT `vitest` directly
+pnpm --filter @distribute/<package> test                                   # all tests
+pnpm --filter @distribute/<package> test:unit                              # unit tests only
+pnpm --filter @distribute/<package> test tests/unit/specific.test.ts       # single file
 ```
 
 **Shared workspace packages must be built before app tests/build.** Vitest + Vite resolve workspace deps via their `dist/` (per `package.json` exports), so an unbuilt `shared/*` package surfaces as `Failed to resolve entry for package "@distribute/<name>"` in unrelated test files. Run `pnpm -r build` (or `pnpm --filter @distribute/<name> build`) once after `pnpm install` or after pulling changes that touch `shared/`.
