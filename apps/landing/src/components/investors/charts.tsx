@@ -1,4 +1,4 @@
-import { formatCents, computeCGRSeries } from "@/lib/investors/format";
+import { formatCents, computeCGRSeries, niceTicks } from "@/lib/investors/format";
 
 function shortenLabel(label: string): string {
   const parts = label.split("-");
@@ -26,7 +26,6 @@ function shortenLabel(label: string): string {
 
 const CHART_HEIGHT_PX = 90;
 const Y_AXIS_WIDTH_PX = 56;
-const GRID_LINES = 4;
 
 export function BarChart({
   data,
@@ -38,10 +37,8 @@ export function BarChart({
   title: string;
 }) {
   const numericValues = data.map((d) => parseFloat(d.value));
-  const max = Math.max(...numericValues, 0);
-  const gridSteps = Array.from({ length: GRID_LINES + 1 }, (_, i) =>
-    Math.round((max * (GRID_LINES - i)) / GRID_LINES)
-  );
+  const rawMax = Math.max(...numericValues, 0);
+  const { max, ticks: gridSteps } = niceTicks(0, rawMax);
   return (
     <div className="bg-gray-800/30 border border-gray-700/50 rounded-xl p-4 overflow-hidden">
       <p className="text-sm text-gray-400 mb-3 font-medium">{title}</p>
@@ -59,7 +56,7 @@ export function BarChart({
             <div
               key={i}
               className="absolute left-0 right-0 border-t border-gray-700/40"
-              style={{ top: `${(i / GRID_LINES) * 100}%` }}
+              style={{ top: `${(i / (gridSteps.length - 1)) * 100}%` }}
             />
           ))}
           <div className="absolute inset-0 flex items-end gap-1 px-1">
@@ -123,15 +120,13 @@ export function CGRLineChart({
   const numericCgrs = points
     .map((p) => p.cgr)
     .filter((v): v is number => v !== null);
-  const rawMax = numericCgrs.length > 0 ? Math.max(...numericCgrs) : 0;
+  const rawMax = numericCgrs.length > 0 ? Math.max(...numericCgrs, 0) : 0;
   const rawMin = numericCgrs.length > 0 ? Math.min(...numericCgrs, 0) : 0;
-  const span = rawMax - rawMin || 1;
-  const gridSteps = Array.from({ length: GRID_LINES + 1 }, (_, i) =>
-    Math.round(rawMax - (span * i) / GRID_LINES)
-  );
+  const { min, max, ticks: gridSteps } = niceTicks(rawMin, rawMax);
+  const span = max - min || 1;
   const n = points.length;
   const yFor = (cgr: number) =>
-    CHART_HEIGHT_PX - ((cgr - rawMin) / span) * CHART_HEIGHT_PX;
+    CHART_HEIGHT_PX - ((cgr - min) / span) * CHART_HEIGHT_PX;
   const xFor = (i: number) => (n <= 1 ? 0 : (i / (n - 1)) * 100);
   const linePoints = points
     .map((p, i) => (p.cgr === null ? null : `${xFor(i)},${yFor(p.cgr)}`))
@@ -158,7 +153,7 @@ export function CGRLineChart({
                   ? "border-t border-gray-500/70"
                   : "border-t border-gray-700/40"
               }`}
-              style={{ top: `${(i / GRID_LINES) * 100}%` }}
+              style={{ top: `${(i / (gridSteps.length - 1)) * 100}%` }}
             />
           ))}
           <svg

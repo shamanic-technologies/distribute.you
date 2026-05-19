@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { formatCents, computeCAGR, computeCGRSeries } from "@/lib/investors/format";
+import {
+  formatCents,
+  computeCAGR,
+  computeCGRSeries,
+  niceTicks,
+} from "@/lib/investors/format";
 
 describe("formatCents — fractional decimal-string cents", () => {
   it("rounds sub-dollar fractional cents to $0 (sub-dollar = noise)", () => {
@@ -103,5 +108,64 @@ describe("computeCGRSeries — compound growth rate per period (ASC input)", () 
 
   it("handles decreasing series with negative compound rate", () => {
     expect(computeCGRSeries([100, 50])).toEqual([null, "-50"]);
+  });
+});
+
+describe("niceTicks — round-number axis ticks", () => {
+  it("produces clean ticks for [0, 100] with step 20", () => {
+    expect(niceTicks(0, 100)).toEqual({
+      min: 0,
+      max: 100,
+      ticks: [100, 80, 60, 40, 20, 0],
+    });
+  });
+
+  it("rounds [0, 1234] up to nice max with step 500", () => {
+    expect(niceTicks(0, 1234)).toEqual({
+      min: 0,
+      max: 1500,
+      ticks: [1500, 1000, 500, 0],
+    });
+  });
+
+  it("rounds [0, 87] up to 100 with step 20", () => {
+    expect(niceTicks(0, 87)).toEqual({
+      min: 0,
+      max: 100,
+      ticks: [100, 80, 60, 40, 20, 0],
+    });
+  });
+
+  it("handles negative range [-50, 150] with symmetric step 50", () => {
+    expect(niceTicks(-50, 150)).toEqual({
+      min: -50,
+      max: 150,
+      ticks: [150, 100, 50, 0, -50],
+    });
+  });
+
+  it("degenerate [0, 0] returns safe fallback", () => {
+    const result = niceTicks(0, 0);
+    expect(result.max).toBeGreaterThan(result.min);
+    expect(result.ticks.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("small range [0, 3] uses step 1", () => {
+    expect(niceTicks(0, 3)).toEqual({
+      min: 0,
+      max: 3,
+      ticks: [3, 2, 1, 0],
+    });
+  });
+
+  it("large range [0, 50000] uses clean step", () => {
+    const result = niceTicks(0, 50000);
+    expect(result.min).toBe(0);
+    expect(result.max).toBe(50000);
+    expect(result.ticks[0]).toBe(50000);
+    expect(result.ticks[result.ticks.length - 1]).toBe(0);
+    for (const tick of result.ticks) {
+      expect(tick % 10000).toBe(0);
+    }
   });
 });
