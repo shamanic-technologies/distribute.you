@@ -2,6 +2,7 @@ import { cache } from "react";
 import { headers } from "next/headers";
 import { fetchInvestorMetrics } from "@/lib/investors/fetch-metrics";
 import { formatCents, formatNumber, computeCAGR } from "@/lib/investors/format";
+import { BarChart, CGREvolutionChart } from "@/components/investors/charts";
 
 const getMetrics = cache((host: string) => fetchInvestorMetrics(host));
 
@@ -29,64 +30,6 @@ function StatCard({
   );
 }
 
-function shortenLabel(label: string): string {
-  const parts = label.split("-");
-  if (parts.length === 3) return `${parts[1]}-${parts[2]}`;
-  if (parts.length === 2) {
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const idx = parseInt(parts[1], 10) - 1;
-    return monthNames[idx] ?? parts[1];
-  }
-  return label;
-}
-
-function BarChart({
-  data,
-  rotateLabels,
-  title,
-}: {
-  data: { label: string; value: string }[];
-  rotateLabels?: boolean;
-  title: string;
-}) {
-  const numericValues = data.map((d) => parseFloat(d.value));
-  const max = Math.max(...numericValues, 1);
-  return (
-    <div className="bg-gray-800/30 border border-gray-700/50 rounded-xl p-6 overflow-hidden">
-      <p className="text-sm text-gray-400 mb-4 font-medium">{title}</p>
-      <div className="flex items-end gap-1 h-48">
-        {data.map((d, i) => {
-          const pct = (numericValues[i] / max) * 100;
-          return (
-            <div key={d.label} className="flex-1 min-w-0 flex flex-col items-center gap-1">
-              <span className="text-[10px] text-gray-400 truncate w-full text-center">
-                {formatCents(d.value)}
-              </span>
-              <div className="w-full flex items-end" style={{ height: "140px" }}>
-                <div
-                  className="w-full bg-emerald-500/80 rounded-t"
-                  style={{ height: `${Math.max(pct, 2)}%` }}
-                />
-              </div>
-              {rotateLabels ? (
-                <span
-                  className="text-[10px] text-gray-500 whitespace-nowrap origin-top-left"
-                  style={{ writingMode: "vertical-rl", height: "50px" }}
-                >
-                  {shortenLabel(d.label)}
-                </span>
-              ) : (
-                <span className="text-[10px] text-gray-500 truncate w-full text-center">
-                  {shortenLabel(d.label)}
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 export async function CompanyOverviewSection() {
   const metrics = await loadMetrics();
@@ -279,6 +222,20 @@ export async function MonthlyGrowthSection() {
           />
         </div>
       </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <CGREvolutionChart
+          title="Compound monthly growth — Credits Spent"
+          data={[...metrics.monthlyGrowth]
+            .reverse()
+            .map((row) => ({ label: row.month, value: row.consumedCents }))}
+        />
+        <CGREvolutionChart
+          title="Compound monthly growth — Revenue"
+          data={[...metrics.monthlyGrowth]
+            .reverse()
+            .map((row) => ({ label: row.month, value: row.revenueCents }))}
+        />
+      </div>
     </div>
   );
 }
@@ -372,6 +329,22 @@ export async function WeeklyGrowthSection() {
               .map((row) => ({ label: row.period, value: row.revenueCents }))}
           />
         </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <CGREvolutionChart
+          rotateLabels
+          title="Compound weekly growth — Credits Spent"
+          data={[...cagrRows]
+            .reverse()
+            .map((row) => ({ label: row.period, value: row.consumedCents }))}
+        />
+        <CGREvolutionChart
+          rotateLabels
+          title="Compound weekly growth — Revenue"
+          data={[...cagrRows]
+            .reverse()
+            .map((row) => ({ label: row.period, value: row.revenueCents }))}
+        />
       </div>
     </div>
   );
