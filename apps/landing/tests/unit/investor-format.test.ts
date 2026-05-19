@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatCents, computeCAGR } from "@/lib/investors/format";
+import { formatCents, computeCAGR, computeCGRSeries } from "@/lib/investors/format";
 
 describe("formatCents — fractional decimal-string cents", () => {
   it("rounds sub-dollar fractional cents to $0 (sub-dollar = noise)", () => {
@@ -62,5 +62,46 @@ describe("computeCAGR — fractional decimal-string inputs", () => {
 
   it("accepts plain numbers (back-compat)", () => {
     expect(computeCAGR([400, 100])).toBe("300");
+  });
+});
+
+describe("computeCGRSeries — compound growth rate per period (ASC input)", () => {
+  it("returns empty array for empty input", () => {
+    expect(computeCGRSeries([])).toEqual([]);
+  });
+
+  it("returns [null] for single-value series (no comparison possible)", () => {
+    expect(computeCGRSeries([100])).toEqual([null]);
+  });
+
+  it("computes 1-period growth: [100, 110] -> [null, +10%]", () => {
+    expect(computeCGRSeries([100, 110])).toEqual([null, "10"]);
+  });
+
+  it("compounds geometric mean over 2 periods: [100, 110, 121] -> [null, +10, +10]", () => {
+    expect(computeCGRSeries([100, 110, 121])).toEqual([null, "10", "10"]);
+  });
+
+  it("compresses 21% total over 1 period as 21% (not compound): [100, 121] -> [null, +21]", () => {
+    expect(computeCGRSeries([100, 121])).toEqual([null, "21"]);
+  });
+
+  it("returns null entries when anchor is zero", () => {
+    expect(computeCGRSeries([0, 50])).toEqual([null, null]);
+  });
+
+  it("skips zero-value periods (computes against anchor only when both positive)", () => {
+    const result = computeCGRSeries([100, 0, 200]);
+    expect(result[0]).toBe(null);
+    expect(result[1]).toBe(null);
+    expect(Number(result[2])).toBeCloseTo(41, 0);
+  });
+
+  it("accepts decimal-string inputs (back-compat with billing cents)", () => {
+    expect(computeCGRSeries(["100", "110", "121"])).toEqual([null, "10", "10"]);
+  });
+
+  it("handles decreasing series with negative compound rate", () => {
+    expect(computeCGRSeries([100, 50])).toEqual([null, "-50"]);
   });
 });

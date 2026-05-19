@@ -44,3 +44,24 @@ export function computeCAGR(values: Array<string | number>): string | null {
   const cagr = (Math.pow(nums[newestIdx] / nums[oldestIdx], 1 / periods) - 1) * 100;
   return cagr.toFixed(0);
 }
+
+/**
+ * Per-period compound growth rate from anchor (idx 0) to each subsequent index.
+ * Input is in ASCENDING chronological order (oldest first).
+ * Returns array of same length as input. Result[0] is always null (baseline).
+ * Result[i] = ((v_i / v_0)^(1/i) - 1) * 100, rounded toFixed(0).
+ * Null entries when v_0 <= 0 or v_i <= 0.
+ */
+export function computeCGRSeries(
+  values: Array<string | number>
+): Array<string | null> {
+  if (values.length === 0) return [];
+  const nums = values.map(toNumber);
+  const anchor = nums[0];
+  return nums.map((v, i) => {
+    if (i === 0) return null;
+    if (anchor <= 0 || v <= 0) return null;
+    const cgr = (Math.pow(v / anchor, 1 / i) - 1) * 100;
+    return cgr.toFixed(0);
+  });
+}
