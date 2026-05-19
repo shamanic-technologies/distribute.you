@@ -2,7 +2,7 @@ import { cache } from "react";
 import { headers } from "next/headers";
 import { fetchInvestorMetrics } from "@/lib/investors/fetch-metrics";
 import { formatCents, formatNumber, computeCAGR } from "@/lib/investors/format";
-import { BarChart, CGREvolutionChart } from "@/components/investors/charts";
+import { BarChart, CGRLineChart } from "@/components/investors/charts";
 
 const getMetrics = cache((host: string) => fetchInvestorMetrics(host));
 
@@ -207,7 +207,7 @@ export async function MonthlyGrowthSection() {
             </tbody>
           </table>
         </div>
-        <div className="space-y-6">
+        <div className="space-y-4">
           <BarChart
             title="Credits Spent"
             data={[...metrics.monthlyGrowth]
@@ -220,21 +220,19 @@ export async function MonthlyGrowthSection() {
               .reverse()
               .map((row) => ({ label: row.month, value: row.revenueCents }))}
           />
+          <CGRLineChart
+            title="Compound monthly growth — Credits Spent"
+            data={[...metrics.monthlyGrowth]
+              .reverse()
+              .map((row) => ({ label: row.month, value: row.consumedCents }))}
+          />
+          <CGRLineChart
+            title="Compound monthly growth — Revenue"
+            data={[...metrics.monthlyGrowth]
+              .reverse()
+              .map((row) => ({ label: row.month, value: row.revenueCents }))}
+          />
         </div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <CGREvolutionChart
-          title="Compound monthly growth — Credits Spent"
-          data={[...metrics.monthlyGrowth]
-            .reverse()
-            .map((row) => ({ label: row.month, value: row.consumedCents }))}
-        />
-        <CGREvolutionChart
-          title="Compound monthly growth — Revenue"
-          data={[...metrics.monthlyGrowth]
-            .reverse()
-            .map((row) => ({ label: row.month, value: row.revenueCents }))}
-        />
       </div>
     </div>
   );
@@ -313,38 +311,36 @@ export async function WeeklyGrowthSection() {
             </tbody>
           </table>
         </div>
-        <div className="space-y-6">
+        <div className="space-y-4">
           <BarChart
             rotateLabels
             title="Credits Spent"
-            data={[...metrics.weeklyGrowth]
+            data={[...cagrRows]
               .reverse()
               .map((row) => ({ label: row.period, value: row.consumedCents }))}
           />
           <BarChart
             rotateLabels
             title="Revenue"
-            data={[...metrics.weeklyGrowth]
+            data={[...cagrRows]
+              .reverse()
+              .map((row) => ({ label: row.period, value: row.revenueCents }))}
+          />
+          <CGRLineChart
+            rotateLabels
+            title="Compound weekly growth — Credits Spent"
+            data={[...cagrRows]
+              .reverse()
+              .map((row) => ({ label: row.period, value: row.consumedCents }))}
+          />
+          <CGRLineChart
+            rotateLabels
+            title="Compound weekly growth — Revenue"
+            data={[...cagrRows]
               .reverse()
               .map((row) => ({ label: row.period, value: row.revenueCents }))}
           />
         </div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <CGREvolutionChart
-          rotateLabels
-          title="Compound weekly growth — Credits Spent"
-          data={[...cagrRows]
-            .reverse()
-            .map((row) => ({ label: row.period, value: row.consumedCents }))}
-        />
-        <CGREvolutionChart
-          rotateLabels
-          title="Compound weekly growth — Revenue"
-          data={[...cagrRows]
-            .reverse()
-            .map((row) => ({ label: row.period, value: row.revenueCents }))}
-        />
       </div>
     </div>
   );

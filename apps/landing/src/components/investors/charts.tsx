@@ -24,19 +24,7 @@ function shortenLabel(label: string): string {
   return label;
 }
 
-function niceMax(rawMax: number): number {
-  if (rawMax <= 0) return 1;
-  const magnitude = Math.pow(10, Math.floor(Math.log10(rawMax)));
-  const normalized = rawMax / magnitude;
-  let niceNormalized: number;
-  if (normalized <= 1) niceNormalized = 1;
-  else if (normalized <= 2) niceNormalized = 2;
-  else if (normalized <= 5) niceNormalized = 5;
-  else niceNormalized = 10;
-  return niceNormalized * magnitude;
-}
-
-const CHART_HEIGHT_PX = 180;
+const CHART_HEIGHT_PX = 90;
 const Y_AXIS_WIDTH_PX = 56;
 const GRID_LINES = 4;
 
@@ -50,16 +38,14 @@ export function BarChart({
   title: string;
 }) {
   const numericValues = data.map((d) => parseFloat(d.value));
-  const rawMax = Math.max(...numericValues, 0);
-  const max = niceMax(rawMax);
+  const max = Math.max(...numericValues, 0);
   const gridSteps = Array.from({ length: GRID_LINES + 1 }, (_, i) =>
     Math.round((max * (GRID_LINES - i)) / GRID_LINES)
   );
   return (
-    <div className="bg-gray-800/30 border border-gray-700/50 rounded-xl p-6 overflow-hidden">
-      <p className="text-sm text-gray-400 mb-4 font-medium">{title}</p>
+    <div className="bg-gray-800/30 border border-gray-700/50 rounded-xl p-4 overflow-hidden">
+      <p className="text-sm text-gray-400 mb-3 font-medium">{title}</p>
       <div className="flex">
-        {/* Y-axis */}
         <div
           className="flex flex-col justify-between text-[10px] text-gray-500 pr-2 text-right"
           style={{ height: `${CHART_HEIGHT_PX}px`, width: `${Y_AXIS_WIDTH_PX}px` }}
@@ -68,9 +54,7 @@ export function BarChart({
             <span key={i}>{formatCents(step)}</span>
           ))}
         </div>
-        {/* Bars + gridlines */}
         <div className="flex-1 relative" style={{ height: `${CHART_HEIGHT_PX}px` }}>
-          {/* Horizontal gridlines */}
           {gridSteps.map((_, i) => (
             <div
               key={i}
@@ -78,7 +62,6 @@ export function BarChart({
               style={{ top: `${(i / GRID_LINES) * 100}%` }}
             />
           ))}
-          {/* Bars */}
           <div className="absolute inset-0 flex items-end gap-1 px-1">
             {data.map((d, i) => {
               const pct = max > 0 ? (numericValues[i] / max) * 100 : 0;
@@ -98,7 +81,6 @@ export function BarChart({
           </div>
         </div>
       </div>
-      {/* X-axis labels */}
       <div className="flex pt-2" style={{ paddingLeft: `${Y_AXIS_WIDTH_PX}px` }}>
         <div className="flex-1 flex gap-1 px-1">
           {data.map((d) => (
@@ -123,7 +105,7 @@ export function BarChart({
   );
 }
 
-export function CGREvolutionChart({
+export function CGRLineChart({
   data,
   rotateLabels,
   title,
@@ -141,18 +123,24 @@ export function CGREvolutionChart({
   const numericCgrs = points
     .map((p) => p.cgr)
     .filter((v): v is number => v !== null);
-  const absMax = niceMax(Math.max(...numericCgrs.map(Math.abs), 0));
+  const rawMax = numericCgrs.length > 0 ? Math.max(...numericCgrs) : 0;
+  const rawMin = numericCgrs.length > 0 ? Math.min(...numericCgrs, 0) : 0;
+  const span = rawMax - rawMin || 1;
   const gridSteps = Array.from({ length: GRID_LINES + 1 }, (_, i) =>
-    Math.round((absMax * (GRID_LINES - i * 2)) / GRID_LINES)
+    Math.round(rawMax - (span * i) / GRID_LINES)
   );
+  const n = points.length;
+  const yFor = (cgr: number) =>
+    CHART_HEIGHT_PX - ((cgr - rawMin) / span) * CHART_HEIGHT_PX;
+  const xFor = (i: number) => (n <= 1 ? 0 : (i / (n - 1)) * 100);
+  const linePoints = points
+    .map((p, i) => (p.cgr === null ? null : `${xFor(i)},${yFor(p.cgr)}`))
+    .filter((s): s is string => s !== null);
+  const polylinePts = linePoints.join(" ");
   return (
-    <div className="bg-gray-800/30 border border-gray-700/50 rounded-xl p-6 overflow-hidden">
-      <p className="text-sm text-gray-400 mb-4 font-medium">{title}</p>
-      <p className="text-[10px] text-gray-500 mb-2">
-        Compound growth rate from anchor period
-      </p>
+    <div className="bg-gray-800/30 border border-gray-700/50 rounded-xl p-4 overflow-hidden">
+      <p className="text-sm text-gray-400 mb-3 font-medium">{title}</p>
       <div className="flex">
-        {/* Y-axis */}
         <div
           className="flex flex-col justify-between text-[10px] text-gray-500 pr-2 text-right"
           style={{ height: `${CHART_HEIGHT_PX}px`, width: `${Y_AXIS_WIDTH_PX}px` }}
@@ -161,7 +149,6 @@ export function CGREvolutionChart({
             <span key={i}>{step >= 0 ? `+${step}%` : `${step}%`}</span>
           ))}
         </div>
-        {/* Bars + gridlines */}
         <div className="flex-1 relative" style={{ height: `${CHART_HEIGHT_PX}px` }}>
           {gridSteps.map((step, i) => (
             <div
@@ -174,35 +161,33 @@ export function CGREvolutionChart({
               style={{ top: `${(i / GRID_LINES) * 100}%` }}
             />
           ))}
-          <div className="absolute inset-0 flex items-stretch gap-1 px-1">
-            {points.map((p) => {
-              const pct = p.cgr === null ? 0 : (p.cgr / absMax) * 50;
-              const isPositive = (p.cgr ?? 0) >= 0;
-              const tooltip =
-                p.cgr === null
-                  ? `${p.label} — n/a (anchor or value <= 0)`
-                  : `${p.label} — ${p.cgr >= 0 ? "+" : ""}${p.cgr}% compound from anchor`;
+          <svg
+            className="absolute inset-0"
+            width="100%"
+            height={CHART_HEIGHT_PX}
+            preserveAspectRatio="none"
+            viewBox={`0 0 100 ${CHART_HEIGHT_PX}`}
+          >
+            <polyline
+              points={polylinePts}
+              fill="none"
+              stroke="rgb(52, 211, 153)"
+              strokeWidth="1.5"
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
+          <div className="absolute inset-0">
+            {points.map((p, i) => {
+              if (p.cgr === null) return null;
+              const left = xFor(i);
+              const top = yFor(p.cgr);
               return (
                 <div
                   key={p.label}
-                  className="flex-1 min-w-0 h-full relative"
-                  title={tooltip}
-                >
-                  {p.cgr !== null && (
-                    <div
-                      className={`absolute left-0 right-0 rounded ${
-                        isPositive
-                          ? "bg-emerald-500/80 hover:bg-emerald-400"
-                          : "bg-red-500/80 hover:bg-red-400"
-                      } transition-colors`}
-                      style={
-                        isPositive
-                          ? { bottom: "50%", height: `${Math.max(Math.abs(pct), 0.5)}%` }
-                          : { top: "50%", height: `${Math.max(Math.abs(pct), 0.5)}%` }
-                      }
-                    />
-                  )}
-                </div>
+                  className="absolute -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-emerald-400 hover:bg-emerald-300 hover:w-3 hover:h-3 transition-all cursor-pointer"
+                  style={{ left: `${left}%`, top: `${top}px` }}
+                  title={`${p.label} — ${p.cgr >= 0 ? "+" : ""}${p.cgr}% compound from anchor`}
+                />
               );
             })}
           </div>
