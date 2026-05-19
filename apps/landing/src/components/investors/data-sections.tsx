@@ -116,6 +116,18 @@ export async function RevenueCreditsSection() {
   );
 }
 
+function findCgrAnchorRows<T>(
+  ascRows: T[],
+  getValue: (r: T) => string,
+  minPoints: number
+): T[] | null {
+  const firstIdx = ascRows.findIndex((r) => parseFloat(getValue(r)) > 0);
+  if (firstIdx === -1) return null;
+  const sliced = ascRows.slice(firstIdx);
+  if (sliced.length < minPoints) return null;
+  return sliced;
+}
+
 function GrowthCard({
   label,
   value,
@@ -152,6 +164,21 @@ export async function MonthlyGrowthSection() {
   );
   const monthlyRevenueCAGR = computeCAGR(
     metrics.monthlyGrowth.map((r) => r.revenueCents)
+  );
+
+  // Per-metric CGR line anchors: each chart starts at the first month with a
+  // non-zero value for THAT specific metric. Render only if >=2 data points
+  // exist past the anchor (1 anchor + 1+ compounded growth points).
+  const monthlyAsc = [...metrics.monthlyGrowth].reverse();
+  const monthlyCreditsCgrRows = findCgrAnchorRows(
+    monthlyAsc,
+    (r) => r.consumedCents,
+    2
+  );
+  const monthlyRevenueCgrRows = findCgrAnchorRows(
+    monthlyAsc,
+    (r) => r.revenueCents,
+    2
   );
   return (
     <div className="space-y-6">
@@ -220,18 +247,24 @@ export async function MonthlyGrowthSection() {
               .reverse()
               .map((row) => ({ label: row.month, value: row.revenueCents }))}
           />
-          <CGRLineChart
-            title="Compound monthly growth — Credits Spent"
-            data={[...metrics.monthlyGrowth]
-              .reverse()
-              .map((row) => ({ label: row.month, value: row.consumedCents }))}
-          />
-          <CGRLineChart
-            title="Compound monthly growth — Revenue"
-            data={[...metrics.monthlyGrowth]
-              .reverse()
-              .map((row) => ({ label: row.month, value: row.revenueCents }))}
-          />
+          {monthlyCreditsCgrRows && (
+            <CGRLineChart
+              title="Compound monthly growth — Credits Spent"
+              data={monthlyCreditsCgrRows.map((row) => ({
+                label: row.month,
+                value: row.consumedCents,
+              }))}
+            />
+          )}
+          {monthlyRevenueCgrRows && (
+            <CGRLineChart
+              title="Compound monthly growth — Revenue"
+              data={monthlyRevenueCgrRows.map((row) => ({
+                label: row.month,
+                value: row.revenueCents,
+              }))}
+            />
+          )}
         </div>
       </div>
     </div>
@@ -252,16 +285,21 @@ export async function WeeklyGrowthSection() {
   const weeklyCreditsCAGR = computeCAGR(cagrRows.map((r) => r.consumedCents));
   const weeklyRevenueCAGR = computeCAGR(cagrRows.map((r) => r.revenueCents));
 
-  // CGR line anchor (per investor feedback): first non-zero week from March
-  // 2026 onwards, and only render the line chart once at least 3 points of
-  // history exist past that anchor — otherwise the line is meaningless.
+  // Per-metric CGR line anchors: each chart starts at the first non-zero week
+  // for THAT specific metric within the WEEKLY_CAGR_START window. Render only
+  // if >=3 data points exist past the anchor (anchor + >=2 compounded growth
+  // points) so the line conveys an actual trend.
   const cagrRowsAsc = [...cagrRows].reverse();
-  const firstNonZeroIdx = cagrRowsAsc.findIndex(
-    (r) => parseFloat(r.consumedCents) > 0 || parseFloat(r.revenueCents) > 0
+  const weeklyCreditsCgrRows = findCgrAnchorRows(
+    cagrRowsAsc,
+    (r) => r.consumedCents,
+    3
   );
-  const cgrLineRowsAsc =
-    firstNonZeroIdx === -1 ? [] : cagrRowsAsc.slice(firstNonZeroIdx);
-  const showCgrLine = cgrLineRowsAsc.length >= 3;
+  const weeklyRevenueCgrRows = findCgrAnchorRows(
+    cagrRowsAsc,
+    (r) => r.revenueCents,
+    3
+  );
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -337,25 +375,25 @@ export async function WeeklyGrowthSection() {
               .reverse()
               .map((row) => ({ label: row.period, value: row.revenueCents }))}
           />
-          {showCgrLine && (
-            <>
-              <CGRLineChart
-                rotateLabels
-                title="Compound weekly growth — Credits Spent"
-                data={cgrLineRowsAsc.map((row) => ({
-                  label: row.period,
-                  value: row.consumedCents,
-                }))}
-              />
-              <CGRLineChart
-                rotateLabels
-                title="Compound weekly growth — Revenue"
-                data={cgrLineRowsAsc.map((row) => ({
-                  label: row.period,
-                  value: row.revenueCents,
-                }))}
-              />
-            </>
+          {weeklyCreditsCgrRows && (
+            <CGRLineChart
+              rotateLabels
+              title="Compound weekly growth — Credits Spent"
+              data={weeklyCreditsCgrRows.map((row) => ({
+                label: row.period,
+                value: row.consumedCents,
+              }))}
+            />
+          )}
+          {weeklyRevenueCgrRows && (
+            <CGRLineChart
+              rotateLabels
+              title="Compound weekly growth — Revenue"
+              data={weeklyRevenueCgrRows.map((row) => ({
+                label: row.period,
+                value: row.revenueCents,
+              }))}
+            />
           )}
         </div>
       </div>
