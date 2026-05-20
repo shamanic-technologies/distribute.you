@@ -4,6 +4,7 @@ import type {
   NewApiKey,
   Brand,
   BrandDetail,
+  BrandSummary,
   UpsertBrandResult,
   ExtractFieldDef,
   ExtractFieldsResponse,
@@ -122,6 +123,15 @@ export class DistributeClient {
 
   async createBrand(url: string): Promise<UpsertBrandResult> {
     return this.request<UpsertBrandResult>("POST", "/brands", { url });
+  }
+
+  /** Batch lookup of brands by UUID. Returns the deployed shape from
+   *  api-service /v1/brands/by-ids (passthrough from brand-service).
+   *  Missing ids are silently omitted from the response. Caller maps by id. */
+  async listBrandsByIds(ids: string[]): Promise<{ brands: BrandSummary[] }> {
+    if (ids.length === 0) return { brands: [] };
+    const query = encodeURIComponent(ids.join(","));
+    return this.request<{ brands: BrandSummary[] }>("GET", `/brands/by-ids?ids=${query}`);
   }
 
   async extractBrandFields(

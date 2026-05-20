@@ -77,6 +77,29 @@ describe("DistributeClient", () => {
         }),
       );
     });
+
+    it("listBrandsByIds calls GET /v1/brands/by-ids with csv ids", async () => {
+      mockFetch.mockResolvedValue(
+        mockResponse({
+          brands: [
+            { id: "b1", url: "https://one.com", name: "One", domain: "one.com", logoUrl: null, createdAt: null, updatedAt: null },
+            { id: "b2", url: "https://two.com", name: "Two", domain: "two.com", logoUrl: null, createdAt: null, updatedAt: null },
+          ],
+        }),
+      );
+      const result = await client.listBrandsByIds(["b1", "b2"]);
+      expect(result.brands).toHaveLength(2);
+      expect(mockFetch).toHaveBeenCalledWith(
+        "https://api.test.com/v1/brands/by-ids?ids=b1%2Cb2",
+        expect.objectContaining({ method: "GET" }),
+      );
+    });
+
+    it("listBrandsByIds skips network on empty ids", async () => {
+      const result = await client.listBrandsByIds([]);
+      expect(result).toEqual({ brands: [] });
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
   });
 
   describe("campaigns", () => {
