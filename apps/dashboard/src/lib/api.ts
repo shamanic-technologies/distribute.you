@@ -204,6 +204,8 @@ export interface Campaign {
   workflowSlug: string | null;
   featureSlug: string | null;
   brandIds: string[];
+  // Client-enriched via /v1/brands/by-ids. Raw api-service response no longer
+  // carries this field since v0.42.2 (PR #469).
   brandUrls: string[];
   featureInputs: Record<string, string> | null;
   maxBudgetDailyUsd: string | null;
@@ -261,8 +263,63 @@ export interface CampaignStats {
   emailStats: EmailStats;
 }
 
+// Raw campaign shape as returned by api-service ≥ v0.42.2 (no brandUrls).
+type RawCampaign = Omit<Campaign, "brandUrls">;
+
+/** Batch lookup of brands by UUID. Proxies api-service /v1/brands/by-ids,
+ *  which itself proxies brand-service /internal/brands?ids=...
+ *  Missing ids are silently omitted from the response; caller maps by id. */
+export interface BrandSummary {
+  id: string;
+  url: string | null;
+  name: string | null;
+  domain: string | null;
+  logoUrl: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export async function getBrandsByIds(
+  ids: string[],
+  token?: string,
+): Promise<{ brands: BrandSummary[] }> {
+  if (ids.length === 0) return { brands: [] };
+  const query = encodeURIComponent(ids.join(","));
+  return apiCall<{ brands: BrandSummary[] }>(`/brands/by-ids?ids=${query}`, { token });
+}
+
+/** Attach brandUrls to each raw campaign by resolving brandIds via
+ *  /v1/brands/by-ids in a single batched call. Missing ids are logged
+ *  loudly and omitted from the resulting urls array. */
+async function enrichCampaignsWithBrandUrls(
+  rawCampaigns: RawCampaign[],
+  token?: string,
+): Promise<Campaign[]> {
+  const allBrandIds = [...new Set(rawCampaigns.flatMap((c) => c.brandIds))];
+  if (allBrandIds.length === 0) {
+    return rawCampaigns.map((c) => ({ ...c, brandUrls: [] }));
+  }
+  const { brands } = await getBrandsByIds(allBrandIds, token);
+  const brandById = new Map(brands.map((b) => [b.id, b]));
+  return rawCampaigns.map((c) => {
+    const brandUrls: string[] = [];
+    for (const id of c.brandIds) {
+      const brand = brandById.get(id);
+      if (!brand) {
+        console.error(
+          `[dashboard] brand id ${id} missing from /v1/brands/by-ids response (campaign ${c.id})`,
+        );
+        continue;
+      }
+      if (brand.url) brandUrls.push(brand.url);
+    }
+    return { ...c, brandUrls };
+  });
+}
+
 export async function listCampaigns(token?: string): Promise<{ campaigns: Campaign[] }> {
-  return apiCall<{ campaigns: Campaign[] }>("/campaigns", { token });
+  const { campaigns } = await apiCall<{ campaigns: RawCampaign[] }>("/campaigns", { token });
+  return { campaigns: await enrichCampaignsWithBrandUrls(campaigns, token) };
 }
 
 export async function getCampaignStats(campaignId: string, token?: string): Promise<CampaignStats> {
@@ -906,12 +963,18 @@ export async function listBrandRuns(brandId: string, token?: string): Promise<{ 
 
 // Campaign by brand
 export async function listCampaignsByBrand(brandId: string, token?: string): Promise<{ campaigns: Campaign[] }> {
-  return apiCall<{ campaigns: Campaign[] }>(`/campaigns?brandId=${brandId}&status=all`, { token });
+  const { campaigns } = await apiCall<{ campaigns: RawCampaign[] }>(
+    `/campaigns?brandId=${brandId}&status=all`,
+    { token },
+  );
+  return { campaigns: await enrichCampaignsWithBrandUrls(campaigns, token) };
 }
 
 // Single campaign
 export async function getCampaign(campaignId: string, token?: string): Promise<{ campaign: Campaign }> {
-  return apiCall<{ campaign: Campaign }>(`/campaigns/${campaignId}`, { token });
+  const { campaign } = await apiCall<{ campaign: RawCampaign }>(`/campaigns/${campaignId}`, { token });
+  const [enriched] = await enrichCampaignsWithBrandUrls([campaign], token);
+  return { campaign: enriched };
 }
 
 // Campaign sub-resources
@@ -1344,11 +1407,13 @@ export async function createCampaign(
   } & Record<string, unknown>,
   token?: string
 ): Promise<{ campaign: Campaign }> {
-  return apiCall<{ campaign: Campaign }>("/campaigns", {
+  const { campaign } = await apiCall<{ campaign: RawCampaign }>("/campaigns", {
     token,
     method: "POST",
     body: params as unknown as Record<string, unknown>,
   });
+  const [enriched] = await enrichCampaignsWithBrandUrls([campaign], token);
+  return { campaign: enriched };
 }
 
 // Billing — wire shape per billing-service post-rename hotfix.
