@@ -49,6 +49,19 @@ export interface UpsertBrandResult {
   created: boolean;
 }
 
+/** Compact brand row returned by GET /v1/brands/by-ids. Passthrough from
+ *  brand-service /internal/brands?ids=...  Missing ids are silently omitted
+ *  from the response — callers map by id. */
+export interface BrandSummary {
+  id: string;
+  url: string | null;
+  name: string | null;
+  domain: string | null;
+  logoUrl: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
 export interface ExtractFieldDef {
   key: string;
   description: string;
@@ -206,7 +219,8 @@ export interface Campaign {
   workflowSlug: string | null;
   featureSlug: string | null;
   brandIds: string[];
-  brandUrls: string[];
+  // Note: api-service no longer returns brandUrls on campaign responses
+  // (dropped in v0.42.2, PR #469). Resolve URLs via listBrandsByIds(brandIds).
   featureInputs: Record<string, string> | null;
   maxBudgetDailyUsd: string | null;
   maxBudgetWeeklyUsd: string | null;
