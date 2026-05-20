@@ -66,7 +66,7 @@ const CAMPAIGN_FIXTURE = {
     status: "ongoing",
     featureSlug: FIXTURE_FEATURE_SLUG,
     workflowSlug: null,
-    brandUrls: [],
+    brandIds: [],
     createdAt: new Date().toISOString(),
   },
 };

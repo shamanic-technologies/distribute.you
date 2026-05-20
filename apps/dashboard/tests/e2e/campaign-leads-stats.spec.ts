@@ -217,7 +217,6 @@ const CAMPAIGN = {
   workflowSlug: "sales-cold-email-outreach@v1",
   featureSlug: FEATURE_SLUG,
   brandIds: [BRAND_ID],
-  brandUrls: ["https://example.com"],
   featureInputs: null,
   maxBudgetDailyUsd: null,
   maxBudgetWeeklyUsd: null,
@@ -260,6 +259,25 @@ async function mockDashboardApi(page: Page) {
 
     if (path === `/campaigns/${CAMPAIGN_ID}`) {
       await route.fulfill({ json: { campaign: CAMPAIGN } });
+      return;
+    }
+
+    if (path === "/brands/by-ids") {
+      await route.fulfill({
+        json: {
+          brands: [
+            {
+              id: BRAND_ID,
+              url: "https://example.com",
+              name: "Example",
+              domain: "example.com",
+              logoUrl: null,
+              createdAt: null,
+              updatedAt: null,
+            },
+          ],
+        },
+      });
       return;
     }
 
