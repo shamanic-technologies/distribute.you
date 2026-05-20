@@ -11,9 +11,12 @@ export function useStopCampaign() {
     mutationKey: MUTATION_KEY,
     mutationFn: (campaign: { id: string } & Partial<Campaign>) =>
       stopCampaign(campaign.id),
-    onSuccess: (_data, campaign) => {
+    onSuccess: (data, campaign) => {
       sendCampaignEmail("campaign_stopped", campaign as Campaign).catch(() => {});
-      queryClient.invalidateQueries({ queryKey: ["campaign", campaign.id] });
+      // Write the fresh campaign from the stop response directly to the cache
+      // so the UI flips to "stopped" immediately, without depending on the next
+      // polling refetch of GET /campaigns/{id} — which may be returning 5xx.
+      queryClient.setQueryData(["campaign", campaign.id], data);
       queryClient.invalidateQueries({ queryKey: ["campaigns"] });
     },
   });
