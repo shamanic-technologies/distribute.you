@@ -277,13 +277,14 @@ export async function MonthlyGrowthSection() {
 // of March 2026 so the growth rate reflects real revenue traction.
 const WEEKLY_CAGR_START = "2026-03-02";
 
-// Weekly CGR line charts anchor a few weeks later than the bar/card window:
-// March still had isolated revenue spikes off near-zero baselines that pinned
-// the compounded growth axis to >+10000% and made April-onward movement
-// unreadable. April 13 is the first Monday where both credits and revenue
-// have continuous weekly activity, so the line conveys actual trajectory
-// rather than the early-traction outlier.
-const WEEKLY_CGR_LINE_START = "2026-04-13";
+// Weekly CGR line charts compute the compound growth rate against the first
+// non-zero week in WEEKLY_CAGR_START (per metric), but only render points from
+// WEEKLY_CGR_LINE_DISPLAY_START onward. The early-March weeks pin the Y axis
+// to >+10000% from near-zero baselines and make April-onward trajectory
+// unreadable; restricting only the visible range (not the computation anchor)
+// preserves the "compound from the very first dollar" semantics while keeping
+// the chart legible.
+const WEEKLY_CGR_LINE_DISPLAY_START = "2026-04-13";
 
 export async function WeeklyGrowthSection() {
   const metrics = await loadMetrics();
@@ -293,14 +294,21 @@ export async function WeeklyGrowthSection() {
   const weeklyCreditsCAGR = computeCAGR(cagrRows.map((r) => r.consumedCents));
   const weeklyRevenueCAGR = computeCAGR(cagrRows.map((r) => r.revenueCents));
 
-  // Weekly CGR line charts use a shared, hardcoded anchor (WEEKLY_CGR_LINE_START)
-  // for both metrics so the two charts line up week-for-week on the X axis.
-  // Render only if >=3 data points exist past the anchor.
+  // Per-metric CGR computation anchor: each chart computes compound growth
+  // against the first non-zero week for THAT specific metric within the
+  // WEEKLY_CAGR_START window. The rendered range is then clipped to
+  // WEEKLY_CGR_LINE_DISPLAY_START inside the chart itself.
   const cagrRowsAsc = [...cagrRows].reverse();
-  const weeklyCgrLineRowsAsc = cagrRowsAsc.filter(
-    (r) => r.period >= WEEKLY_CGR_LINE_START
+  const weeklyCreditsCgrRows = findCgrAnchorRows(
+    cagrRowsAsc,
+    (r) => r.consumedCents,
+    3
   );
-  const showWeeklyCgrLine = weeklyCgrLineRowsAsc.length >= 3;
+  const weeklyRevenueCgrRows = findCgrAnchorRows(
+    cagrRowsAsc,
+    (r) => r.revenueCents,
+    3
+  );
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -376,25 +384,27 @@ export async function WeeklyGrowthSection() {
               .reverse()
               .map((row) => ({ label: row.period, value: row.revenueCents }))}
           />
-          {showWeeklyCgrLine && (
-            <>
-              <CGRLineChart
-                rotateLabels
-                title="Compound weekly growth — Credits Spent"
-                data={weeklyCgrLineRowsAsc.map((row) => ({
-                  label: row.period,
-                  value: row.consumedCents,
-                }))}
-              />
-              <CGRLineChart
-                rotateLabels
-                title="Compound weekly growth — Revenue"
-                data={weeklyCgrLineRowsAsc.map((row) => ({
-                  label: row.period,
-                  value: row.revenueCents,
-                }))}
-              />
-            </>
+          {weeklyCreditsCgrRows && (
+            <CGRLineChart
+              rotateLabels
+              displayStart={WEEKLY_CGR_LINE_DISPLAY_START}
+              title="Compound weekly growth — Credits Spent"
+              data={weeklyCreditsCgrRows.map((row) => ({
+                label: row.period,
+                value: row.consumedCents,
+              }))}
+            />
+          )}
+          {weeklyRevenueCgrRows && (
+            <CGRLineChart
+              rotateLabels
+              displayStart={WEEKLY_CGR_LINE_DISPLAY_START}
+              title="Compound weekly growth — Revenue"
+              data={weeklyRevenueCgrRows.map((row) => ({
+                label: row.period,
+                value: row.revenueCents,
+              }))}
+            />
           )}
         </div>
       </div>
