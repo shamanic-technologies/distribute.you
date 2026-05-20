@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 
 interface ApiOptions {
@@ -2060,19 +2062,21 @@ export type QuotePitchStatus =
 
 export interface QuoteRequest {
   id: string;
-  campaignId: string | null;
-  brandId: string | null;
-  source: string;
+  provider: string;
+  ingestionChannel: string;
   externalId: string;
-  title: string;
-  question: string;
-  publication: string | null;
-  deadlineAt: string | null;
-  topics: string[];
-  status: QuoteRequestStatus;
-  priorityScore: number | null;
-  scoringRationale: string | null;
+  featuredQuestionId: number | null;
+  mediaOutlet: string | null;
+  journalistName: string | null;
+  journalistEmail: string | null;
+  pitchEmail: string | null;
+  category: string | null;
+  opportunityText: string;
+  pitchUrl: string | null;
+  deadline: string | null;
   fetchedAt: string;
+  orgId: string;
+  createdAt: string;
   updatedAt: string;
 }
 
@@ -2106,9 +2110,9 @@ export interface QuoteRequestStats {
 }
 
 export interface ListQuoteRequestsParams {
-  campaignId?: string;
-  brandId?: string;
-  status?: QuoteRequestStatus;
+  campaign_id?: string;
+  provider?: string;
+  ingestion_channel?: string;
   limit?: number;
   offset?: number;
 }
@@ -2132,14 +2136,47 @@ function buildQuery(params: object): string {
   return out ? `?${out}` : "";
 }
 
+const QuoteRequestSchema = z.object({
+  id: z.string(),
+  provider: z.string(),
+  ingestionChannel: z.string(),
+  externalId: z.string(),
+  featuredQuestionId: z.number().nullable(),
+  mediaOutlet: z.string().nullable(),
+  journalistName: z.string().nullable(),
+  journalistEmail: z.string().nullable(),
+  pitchEmail: z.string().nullable(),
+  category: z.string().nullable(),
+  opportunityText: z.string(),
+  pitchUrl: z.string().nullable(),
+  deadline: z.string().nullable(),
+  fetchedAt: z.string(),
+  orgId: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+const ListQuoteRequestsResponseSchema = z.object({
+  providerQuoteRequests: z.array(QuoteRequestSchema),
+});
+
 export async function listQuoteRequests(
   params?: ListQuoteRequestsParams,
   token?: string,
-): Promise<{ requests: QuoteRequest[]; total: number }> {
-  return apiCall<{ requests: QuoteRequest[]; total: number }>(
+): Promise<{ providerQuoteRequests: QuoteRequest[] }> {
+  const raw = await apiCall<unknown>(
     `/orgs/quote-requests${buildQuery(params ?? {})}`,
     { token },
   );
+  const parsed = ListQuoteRequestsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error(
+      "[dashboard] listQuoteRequests: response shape mismatch",
+      { issues: parsed.error.issues, raw },
+    );
+    throw new Error("[dashboard] listQuoteRequests: invalid response shape");
+  }
+  return parsed.data;
 }
 
 export async function getQuoteRequest(
