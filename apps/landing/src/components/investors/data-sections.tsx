@@ -277,6 +277,14 @@ export async function MonthlyGrowthSection() {
 // of March 2026 so the growth rate reflects real revenue traction.
 const WEEKLY_CAGR_START = "2026-03-02";
 
+// Weekly CGR line charts anchor a few weeks later than the bar/card window:
+// March still had isolated revenue spikes off near-zero baselines that pinned
+// the compounded growth axis to >+10000% and made April-onward movement
+// unreadable. April 13 is the first Monday where both credits and revenue
+// have continuous weekly activity, so the line conveys actual trajectory
+// rather than the early-traction outlier.
+const WEEKLY_CGR_LINE_START = "2026-04-13";
+
 export async function WeeklyGrowthSection() {
   const metrics = await loadMetrics();
   const cagrRows = metrics.weeklyGrowth.filter(
@@ -285,21 +293,14 @@ export async function WeeklyGrowthSection() {
   const weeklyCreditsCAGR = computeCAGR(cagrRows.map((r) => r.consumedCents));
   const weeklyRevenueCAGR = computeCAGR(cagrRows.map((r) => r.revenueCents));
 
-  // Per-metric CGR line anchors: each chart starts at the first non-zero week
-  // for THAT specific metric within the WEEKLY_CAGR_START window. Render only
-  // if >=3 data points exist past the anchor (anchor + >=2 compounded growth
-  // points) so the line conveys an actual trend.
+  // Weekly CGR line charts use a shared, hardcoded anchor (WEEKLY_CGR_LINE_START)
+  // for both metrics so the two charts line up week-for-week on the X axis.
+  // Render only if >=3 data points exist past the anchor.
   const cagrRowsAsc = [...cagrRows].reverse();
-  const weeklyCreditsCgrRows = findCgrAnchorRows(
-    cagrRowsAsc,
-    (r) => r.consumedCents,
-    3
+  const weeklyCgrLineRowsAsc = cagrRowsAsc.filter(
+    (r) => r.period >= WEEKLY_CGR_LINE_START
   );
-  const weeklyRevenueCgrRows = findCgrAnchorRows(
-    cagrRowsAsc,
-    (r) => r.revenueCents,
-    3
-  );
+  const showWeeklyCgrLine = weeklyCgrLineRowsAsc.length >= 3;
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -375,25 +376,25 @@ export async function WeeklyGrowthSection() {
               .reverse()
               .map((row) => ({ label: row.period, value: row.revenueCents }))}
           />
-          {weeklyCreditsCgrRows && (
-            <CGRLineChart
-              rotateLabels
-              title="Compound weekly growth — Credits Spent"
-              data={weeklyCreditsCgrRows.map((row) => ({
-                label: row.period,
-                value: row.consumedCents,
-              }))}
-            />
-          )}
-          {weeklyRevenueCgrRows && (
-            <CGRLineChart
-              rotateLabels
-              title="Compound weekly growth — Revenue"
-              data={weeklyRevenueCgrRows.map((row) => ({
-                label: row.period,
-                value: row.revenueCents,
-              }))}
-            />
+          {showWeeklyCgrLine && (
+            <>
+              <CGRLineChart
+                rotateLabels
+                title="Compound weekly growth — Credits Spent"
+                data={weeklyCgrLineRowsAsc.map((row) => ({
+                  label: row.period,
+                  value: row.consumedCents,
+                }))}
+              />
+              <CGRLineChart
+                rotateLabels
+                title="Compound weekly growth — Revenue"
+                data={weeklyCgrLineRowsAsc.map((row) => ({
+                  label: row.period,
+                  value: row.revenueCents,
+                }))}
+              />
+            </>
           )}
         </div>
       </div>
