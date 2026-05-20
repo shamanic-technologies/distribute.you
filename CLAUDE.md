@@ -91,6 +91,14 @@ Incident 2026-05-17 (distribute.you#1079): `quote-requests/page.tsx` was scaffol
 
 NEVER add fallback logic (|| alternatives, silent defaults, graceful degradation) when data is missing or doesn't match. Instead, log a clear `console.error` with the mismatched value and context so the bug surfaces immediately. If a required field is absent, show an error UI — don't hide the problem. This applies everywhere: lookups, field resolution, display logic.
 
+### React Query mutations: write the response to the cache, don't just invalidate
+
+When a mutation returns the fresh entity (e.g. POST `/campaigns/{id}/stop` returns `{ campaign }` with the new status), write it into the single-entity cache via `queryClient.setQueryData(["entity", id], data)` instead of (or in addition to) `invalidateQueries`. The downstream GET endpoint can return 5xx, and with `placeholderData: keepPreviousData` an invalidate-then-failed-refetch leaves the cache holding the stale pre-mutation row. The user sees the button revert / status unchanged and concludes the click did nothing.
+
+`invalidateQueries` is still correct for list caches the mutation cannot rebuild on its own (`["campaigns"]`, `["leads"]`, etc.) — there the upside of a fresh list outweighs the risk of a flaky GET, and the mutation has no full list to write.
+
+Incident 2026-05-20 (distribute.you#1090): `useStopCampaign` only invalidated `["campaign", id]`. With api-service `GET /v1/campaigns/{id}` returning 500, single-click Stop appeared to do nothing — user had to click twice. Fix: `setQueryData(["campaign", id], data)` on success.
+
 ### Dynasty-First Display Rule (Workflows Only)
 
 Always display `dynastyName` for workflows, never the versioned name. The only exception is settings/debug panels where the specific version matters — there, show the version number and versioned name alongside the dynasty name. This applies to page titles, table rows, cards, breadcrumbs, and any user-facing text.
