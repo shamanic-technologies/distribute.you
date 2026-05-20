@@ -106,17 +106,29 @@ export function CGRLineChart({
   data,
   rotateLabels,
   title,
+  displayStart,
 }: {
   data: { label: string; value: string }[];
   rotateLabels?: boolean;
   title: string;
+  /**
+   * Optional label cutoff. CGR is still computed against the first index of
+   * `data` (the true anchor), but only points whose label >= displayStart are
+   * rendered. Lets the chart "compute from March, show from April" so the
+   * Y-axis scale isn't pinned by early-traction outliers.
+   */
+  displayStart?: string;
 }) {
   const ascNumeric = data.map((d) => parseFloat(d.value));
   const cgrSeries = computeCGRSeries(ascNumeric);
-  const points = data.map((d, i) => ({
+  const allPoints = data.map((d, i) => ({
     label: d.label,
     cgr: cgrSeries[i] === null ? null : Number(cgrSeries[i]),
   }));
+  const visStart = displayStart
+    ? allPoints.findIndex((p) => p.label >= displayStart)
+    : 0;
+  const points = visStart === -1 ? [] : allPoints.slice(visStart);
   const numericCgrs = points
     .map((p) => p.cgr)
     .filter((v): v is number => v !== null);
