@@ -21,7 +21,7 @@ describe("Multi-brand campaign support", () => {
 
   it("builds brandUrls array from primary + additional brands", () => {
     expect(content).toContain("formData.brandUrl");
-    expect(content).toContain("additionalBrands.map((b) => b.brandUrl)");
+    expect(content).toContain("additionalBrands.map((b) => b.url)");
     expect(content).toContain("brandUrls");
   });
 

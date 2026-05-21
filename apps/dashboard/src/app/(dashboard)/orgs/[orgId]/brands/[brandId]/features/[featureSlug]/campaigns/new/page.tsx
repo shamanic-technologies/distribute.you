@@ -332,7 +332,7 @@ export default function FeatureCreateCampaignPage() {
     };
   }, [mode, selectedWorkflowId, sorted]);
 
-  const resolvedBrandUrl = brand?.brandUrl ?? "";
+  const resolvedBrandUrl = brand?.url ?? "";
 
   const handleGo = useCallback(async () => {
     if (!selectedRow || !budgetAmount || !resolvedBrandUrl) return;
@@ -411,7 +411,7 @@ export default function FeatureCreateCampaignPage() {
 
       const brandUrls = [
         formData.brandUrl,
-        ...additionalBrands.map((b) => b.brandUrl).filter((u): u is string => u != null),
+        ...additionalBrands.map((b) => b.url).filter((u): u is string => u != null),
       ];
       const campaignPayload: Record<string, unknown> = {
         workflowSlug: selectedRow.workflowSlug,
@@ -467,7 +467,7 @@ export default function FeatureCreateCampaignPage() {
     const { brandUrl: intentBrandUrl, ...intentInputFields } = formData;
     const intentBrandUrls = [
       intentBrandUrl,
-      ...additionalBrands.map((b) => b.brandUrl).filter((u): u is string => u != null),
+      ...additionalBrands.map((b) => b.url).filter((u): u is string => u != null),
     ];
     sessionStorage.setItem("pendingCampaign", JSON.stringify({
       workflowSlug: selectedRow.workflowSlug,
