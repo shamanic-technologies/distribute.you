@@ -306,7 +306,7 @@ export default function CreateCampaignPage() {
   // Resolve the brand URL from either the selected brand or the new URL input
   const resolvedBrandUrl = useMemo(() => {
     const raw = selectedBrandId && selectedBrandId !== "__new__"
-      ? brands.find((b) => b.id === selectedBrandId)?.brandUrl ?? ""
+      ? brands.find((b) => b.id === selectedBrandId)?.url ?? ""
       : newBrandUrl;
     const trimmed = raw.trim();
     if (!trimmed) return "";
@@ -701,7 +701,7 @@ export default function CreateCampaignPage() {
                 <option value="">Select a brand...</option>
                 {brands.map((b) => (
                   <option key={b.id} value={b.id}>
-                    {b.name || b.domain || b.brandUrl}
+                    {b.name || b.domain || b.url}
                   </option>
                 ))}
                 <option value="__new__">+ New brand</option>

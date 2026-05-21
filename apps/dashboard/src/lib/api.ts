@@ -437,22 +437,34 @@ export interface Brand {
   id: string;
   domain: string | null;
   name: string | null;
+  url: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  logoUrl: string | null;
+}
+
+export type BrandDetail = Brand;
+
+// brand-service /orgs/brands still emits `brandUrl`; /internal/brands/:id and
+// /internal/brands?ids= emit `url`. Normalize at the client boundary.
+interface BrandWireOrgs {
+  id: string;
+  domain: string | null;
+  name: string | null;
   brandUrl: string | null;
   createdAt: string | null;
   updatedAt: string | null;
   logoUrl: string | null;
-  elevatorPitch: string | null;
 }
 
-export interface BrandDetail extends Brand {
-  bio: string | null;
-  mission: string | null;
-  location: string | null;
-  categories: string | null;
+function normalizeBrandFromOrgs(raw: BrandWireOrgs): Brand {
+  const { brandUrl, ...rest } = raw;
+  return { ...rest, url: brandUrl };
 }
 
 export async function listBrands(token?: string): Promise<{ brands: Brand[] }> {
-  return apiCall<{ brands: Brand[] }>("/brands", { token });
+  const { brands } = await apiCall<{ brands: BrandWireOrgs[] }>("/brands", { token });
+  return { brands: brands.map(normalizeBrandFromOrgs) };
 }
 
 /** GET /brands/:brandId — returns brand detail or null if not found (404/500 from missing brand) */

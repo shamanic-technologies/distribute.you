@@ -95,18 +95,25 @@ describe("API brand functions", () => {
     expect(content).toContain("sourceUrls: string[] | null");
   });
 
-  it("should have Brand interface with new fields (logoUrl, elevatorPitch, updatedAt)", () => {
+  it("should have Brand interface matching deployed wire shape", () => {
     expect(content).toContain("logoUrl: string | null");
-    expect(content).toContain("elevatorPitch: string | null");
+    expect(content).toContain("url: string | null");
     expect(content).toContain("updatedAt: string | null");
+    // Fields removed: brand-service /internal/brands/:id no longer returns these.
+    expect(content).not.toContain("elevatorPitch: string | null");
   });
 
-  it("should have BrandDetail extending Brand", () => {
-    expect(content).toContain("interface BrandDetail extends Brand");
-    expect(content).toContain("bio: string | null");
-    expect(content).toContain("mission: string | null");
-    expect(content).toContain("location: string | null");
-    expect(content).toContain("categories: string | null");
+  it("BrandDetail is an alias for Brand (deployed /internal/brands/:id returns minimal Brand)", () => {
+    expect(content).toContain("export type BrandDetail = Brand");
+    // Fields removed: brand-service /internal/brands/:id no longer returns these.
+    expect(content).not.toContain("bio: string | null");
+    expect(content).not.toContain("mission: string | null");
+    expect(content).not.toContain("categories: string | null");
+  });
+
+  it("listBrands normalizes wire `brandUrl` from /orgs/brands to canonical `url`", () => {
+    expect(content).toContain("normalizeBrandFromOrgs");
+    expect(content).toContain("BrandWireOrgs");
   });
 
   it("should have BrandRun without id field", () => {
