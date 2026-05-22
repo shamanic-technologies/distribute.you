@@ -2,7 +2,7 @@
 
 **The Stripe of Distribution**
 
-> Your distribution, automated.
+> Your distribution, on autopilot.
 
 [distribute.you](https://distribute.you) | [Dashboard](https://dashboard.distribute.you)
 
