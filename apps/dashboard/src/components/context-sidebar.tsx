@@ -184,6 +184,22 @@ const PlusIcon = () => (
   </svg>
 );
 
+const ReportIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+  </svg>
+);
+
+const ExternalLinkIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-3.5 h-3.5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+  </svg>
+);
+
+// Features that expose the public client report. Generic across features
+// once a backend public-proxy lands; gated to one for v1.
+const REPORT_ENABLED_FEATURES = new Set(["sales-cold-email-outreach"]);
+
 const ICON_NAME_MAP: Record<string, () => React.ReactNode> = {
   globe: () => <BrandIcon />,
   megaphone: () => <NewspaperIcon />,
@@ -599,6 +615,9 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
     { id: "settings", label: "Settings", href: `${basePath}/settings`, icon: <SettingsIcon /> },
   ];
 
+  const reportEnabled = REPORT_ENABLED_FEATURES.has(featureSlug);
+  const reportHref = `/report/${orgId}/${brandId}/${featureSlug}`;
+
   return (
     <SidebarSection
       title={title}
@@ -630,6 +649,20 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
           isActive={pathname.startsWith(item.href)}
         />
       ))}
+      {reportEnabled && (
+        <div className="pt-2 mt-2 border-t border-gray-100">
+          <a
+            href={reportHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition text-gray-600 hover:bg-gray-50 hover:text-gray-800"
+          >
+            <span className="w-5 h-5 text-gray-400"><ReportIcon /></span>
+            <span className="flex-1">Report</span>
+            <span className="text-gray-300"><ExternalLinkIcon /></span>
+          </a>
+        </div>
+      )}
     </SidebarSection>
   );
 }

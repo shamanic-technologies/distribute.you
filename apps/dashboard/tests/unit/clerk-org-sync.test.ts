@@ -11,12 +11,15 @@ describe("Clerk org/URL sync guards", () => {
     expect(src).toMatch(/organizationPatterns\s*:\s*\[\s*['"]\/orgs\/:id['"]\s*,\s*['"]\/orgs\/:id\/\(\.\*\)['"]\s*\]/);
   });
 
-  it("breadcrumb handleOrgSwitch navigates via router.push, no imperative setActive", () => {
+  it("breadcrumb handleOrgSwitch calls BOTH setActive and router.push to prevent client/URL drift", () => {
     const src = readFileSync(resolve(ROOT, "src/components/breadcrumb-nav.tsx"), "utf8");
     const handlerMatch = src.match(/const handleOrgSwitch[\s\S]*?\n\s*\};/);
     expect(handlerMatch, "handleOrgSwitch handler not found").toBeTruthy();
     const handler = handlerMatch![0];
+    // router.push updates the URL so middleware's organizationSyncOptions confirms server-side
     expect(handler).toMatch(/router\.push\(`\/orgs\/\$\{[^}]+\}`\)/);
-    expect(handler).not.toContain("setActive(");
+    // setActive updates Clerk's client-side active org immediately so useOrganization()
+    // reflects the new org without waiting for a session cookie refresh round-trip
+    expect(handler).toMatch(/setActive\(\s*\{\s*organization\s*:/);
   });
 });

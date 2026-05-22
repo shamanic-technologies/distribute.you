@@ -239,14 +239,14 @@ export default function BrandOverviewPage() {
             {brand.name || brand.domain}
           </h1>
         </div>
-        {brand.brandUrl && (
+        {brand.url && (
           <a
-            href={brand.brandUrl}
+            href={brand.url}
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm text-brand-600 hover:underline"
           >
-            {brand.brandUrl}
+            {brand.url}
           </a>
         )}
       </div>

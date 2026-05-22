@@ -9,9 +9,9 @@ export function StatsBar({ stats }: { stats: FeatureGroupStats }) {
       <Divider />
       <Stat label="$/Open" value={formatCostCents(stats.costPerOpenCents)} />
       <Divider />
-      <Stat label="Reply Rate" value={formatPercent(stats.replyRate)} />
+      <Stat label="Positive Reply Rate" value={formatPercent(stats.replyRate)} />
       <Divider />
-      <Stat label="$/Reply" value={formatCostCents(stats.costPerReplyCents)} />
+      <Stat label="$/Positive Reply" value={formatCostCents(stats.costPerReplyCents)} />
     </div>
   );
 }

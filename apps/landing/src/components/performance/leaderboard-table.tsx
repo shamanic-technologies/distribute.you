@@ -70,8 +70,8 @@ export function BrandLeaderboard({ brands, maxEntries }: { brands: BrandLeaderbo
             <SortHeader label="$/Open" sortKey="costPerOpenCents" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
             <SortHeader label="% Clicks" sortKey="clickRate" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
             <SortHeader label="$/Click" sortKey="costPerClickCents" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
-            <SortHeader label="% Replies" sortKey="replyRate" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
-            <SortHeader label="$/Reply" sortKey="costPerReplyCents" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+            <SortHeader label="% Positive Replies" sortKey="replyRate" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+            <SortHeader label="$/Positive Reply" sortKey="costPerReplyCents" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
@@ -145,8 +145,8 @@ export function WorkflowLeaderboard({ workflows, inSection = false, maxEntries }
               <SortHeader label="$/Open" sortKey="costPerOpenCents" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
               <SortHeader label="% Clicks" sortKey="clickRate" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
               <SortHeader label="$/Click" sortKey="costPerClickCents" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
-              <SortHeader label="% Replies" sortKey="replyRate" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
-              <SortHeader label="$/Reply" sortKey="costPerReplyCents" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+              <SortHeader label="% Positive Replies" sortKey="replyRate" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+              <SortHeader label="$/Positive Reply" sortKey="costPerReplyCents" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -214,7 +214,7 @@ function WorkflowDetailPanel({ workflow: wf, onClose }: { workflow: WorkflowLead
             <div className="space-y-2">
               <DetailRow label="Open Rate" value={wf.emailsSent > 0 ? formatPercent(wf.openRate) : "—"} sub={`${wf.emailsOpened.toLocaleString()} opens`} />
               <DetailRow label="Click Rate" value={wf.emailsSent > 0 ? formatPercent(wf.clickRate) : "—"} sub={`${wf.emailsClicked.toLocaleString()} clicks`} />
-              <DetailRow label="Reply Rate" value={wf.emailsSent > 0 ? formatPercent(wf.replyRate) : "—"} sub={`${wf.emailsReplied.toLocaleString()} replies`} />
+              <DetailRow label="Positive Reply Rate" value={wf.emailsSent > 0 ? formatPercent(wf.replyRate) : "—"} sub={`${wf.emailsReplied.toLocaleString()} positive replies`} />
             </div>
           </div>
 
@@ -223,7 +223,7 @@ function WorkflowDetailPanel({ workflow: wf, onClose }: { workflow: WorkflowLead
             <div className="space-y-2">
               <DetailRow label="$/Open" value={formatCostCents(wf.costPerOpenCents)} />
               <DetailRow label="$/Click" value={formatCostCents(wf.costPerClickCents)} />
-              <DetailRow label="$/Reply" value={formatCostCents(wf.costPerReplyCents)} />
+              <DetailRow label="$/Positive Reply" value={formatCostCents(wf.costPerReplyCents)} />
             </div>
           </div>
         </div>

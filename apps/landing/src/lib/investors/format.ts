@@ -44,3 +44,63 @@ export function computeCAGR(values: Array<string | number>): string | null {
   const cagr = (Math.pow(nums[newestIdx] / nums[oldestIdx], 1 / periods) - 1) * 100;
   return cagr.toFixed(0);
 }
+
+/**
+ * Round a raw step up to a "nice" number (1, 2, or 5 times a power of 10).
+ * Used to pick axis tick intervals that read cleanly.
+ */
+function niceStep(rawStep: number): number {
+  if (rawStep <= 0) return 1;
+  const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  const normalized = rawStep / magnitude;
+  if (normalized <= 1) return 1 * magnitude;
+  if (normalized <= 2) return 2 * magnitude;
+  if (normalized <= 5) return 5 * magnitude;
+  return 10 * magnitude;
+}
+
+/**
+ * Compute round-number Y-axis ticks for a value range. Picks a step from the
+ * {1, 2, 5} x 10^k family so ticks read as 0/25/50/75/100, 0/500/1000/1500, etc.
+ * Returns ticks in DESCENDING order (max first, suitable for top-to-bottom axis labels).
+ */
+export function niceTicks(
+  rawMin: number,
+  rawMax: number,
+  targetTicks = 5
+): { min: number; max: number; ticks: number[] } {
+  if (rawMax === rawMin) {
+    return { min: rawMin, max: rawMax + 1, ticks: [rawMax + 1, rawMin] };
+  }
+  const span = rawMax - rawMin;
+  const step = niceStep(span / targetTicks);
+  const min = Math.floor(rawMin / step) * step;
+  const max = Math.ceil(rawMax / step) * step;
+  const ticks: number[] = [];
+  const tol = step * 1e-6;
+  for (let v = max; v >= min - tol; v -= step) {
+    ticks.push(Math.round(v));
+  }
+  return { min, max, ticks };
+}
+
+/**
+ * Per-period compound growth rate from anchor (idx 0) to each subsequent index.
+ * Input is in ASCENDING chronological order (oldest first).
+ * Returns array of same length as input. Result[0] is always null (baseline).
+ * Result[i] = ((v_i / v_0)^(1/i) - 1) * 100, rounded toFixed(0).
+ * Null entries when v_0 <= 0 or v_i <= 0.
+ */
+export function computeCGRSeries(
+  values: Array<string | number>
+): Array<string | null> {
+  if (values.length === 0) return [];
+  const nums = values.map(toNumber);
+  const anchor = nums[0];
+  return nums.map((v, i) => {
+    if (i === 0) return null;
+    if (anchor <= 0 || v <= 0) return null;
+    const cgr = (Math.pow(v / anchor, 1 / i) - 1) * 100;
+    return cgr.toFixed(0);
+  });
+}

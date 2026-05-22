@@ -173,18 +173,21 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* For builders, not businesses */}
+      {/* Stay solo. Go big. */}
       <section className="py-20 px-4">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="font-display text-3xl md:text-4xl font-bold mb-6 text-gray-900">
-            For builders, not businesses
+            Stay solo. <span className="gradient-text-subtle">Go big.</span>
           </h2>
           <p className="text-lg text-gray-500 leading-relaxed mb-4">
-            You ship 3 products a year. You don&apos;t need 3 marketing subscriptions.
+            You ship 3 products a year. One of them is going to take off.
+            Our job is to make sure it does — and to keep up with you when it does.
           </p>
           <p className="text-lg text-gray-700 font-medium leading-relaxed">
-            Drop a URL. Set a daily budget. We send, qualify, and forward replies.
-            Track cost per reply per product. Kill what doesn&apos;t convert. Scale what does.
+            Drop a URL. Set a daily budget per product. We send, AI-qualify replies,
+            forward leads to your inbox. You watch cost per reply per product,
+            double down on the winner, and ride the one that takes you from
+            $0 to $1M MRR — solo.
           </p>
         </div>
       </section>
@@ -313,10 +316,10 @@ export default async function Home() {
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-10">
             <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
-              Cost per qualified reply, not vanity metrics
+              Cost per positive reply, not vanity metrics
             </h2>
             <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-              Every workflow ranked by real cost per qualified reply.
+              Every workflow ranked by real cost per positive reply.
               All data is public — no black boxes.
             </p>
           </div>

@@ -87,11 +87,23 @@ Before declaring a typed dashboard helper for any backend endpoint (`listX`, `ge
 
 Incident 2026-05-17 (distribute.you#1079): `quote-requests/page.tsx` was scaffolded against an aspirational `QuoteRequest` (`title`, `question`, `publication`, `priorityScore`, `status`, `deadlineAt`). Backend `GET /v1/orgs/quote-requests` actually returns `{ providerQuoteRequests: [{ opportunityText, mediaOutlet, deadline, … }] }`. Page crashed with "This page couldn't load" on first user visit. A 30-second `api-registry` lookup before declaring the type would have caught it.
 
+Incident 2026-05-21 (distribute.you#1094): `BrandDetail` declared `brandUrl` + `bio`/`mission`/`location`/`categories`/`elevatorPitch`. Brand-service had refactored `/internal/brands/:id` (and `/internal/brands?ids=`) to a minimal `{ id, domain, url, name, logoUrl, createdAt, updatedAt }` shape months ago — none of the extras are returned and `brandUrl` is now just `url`. Dashboard's old type silently rotted; `brand?.brandUrl` resolved to `undefined`, `resolvedBrandUrl = ""`, Go button stayed disabled on campaign creation even with a budget typed in. The matching `?? ""` silent-fallback at the use site is what hid this for so long. Two lessons: (a) when an endpoint is refactored in another repo, the consumer-side type isn't auto-invalidated — schedule a periodic re-check of long-lived response types against the live registry, not just at type-creation time. (b) calling `mcp__api-registry__call_api` (or the brand-service direct `/internal/brands/:id`) is faster and more accurate than reading source from a local clone of the upstream repo — local clones go stale and a subagent inspecting them will confidently report the wrong wire shape. Live > source > local clone.
+
+When an investigator subagent reports on a different repo's wire shape, prefer the live MCP call (`mcp__api-registry__call_api` or `mcp__api-registry-staging__call_api`) as the verification step before trusting the report. The investigator's local clone may be behind `origin/main` and surface an obsolete schema.
+
 ### No Fallbacks — Fail Visibly
 
 NEVER add fallback logic (|| alternatives, silent defaults, graceful degradation) when data is missing or doesn't match. Instead, log a clear `console.error` with the mismatched value and context so the bug surfaces immediately. If a required field is absent, show an error UI — don't hide the problem. This applies everywhere: lookups, field resolution, display logic.
 
 **Exception — Vercel build-time prerender steps.** During `next build` static generation (sitemap.ts, generateStaticParams, dynamic OG routes), an unhandled throw aborts the entire deploy, not just the failing page. When the failure mode is data-shape (missing table, unreachable DB on a not-yet-migrated preview branch) rather than logic, prefer `try / console.error(loud) / continue with empty result` over throwing. The fix path is still to repair the data layer; the catch+log keeps the rest of the site shippable while you do. This applies ONLY to build-time prerender — runtime requests still follow the fail-loud rule. Incident 2026-05-22 (distribute.you#1120): sitemap.ts threw `relation "blog_articles" does not exist` during `/sitemap.xml` prerender, blocked the entire landing deploy across 16 pages. The existing `process.env.DATABASE_URL` guard checked the URL, not the schema; one missing table killed everything.
+
+### React Query mutations: write the response to the cache, don't just invalidate
+
+When a mutation returns the fresh entity (e.g. POST `/campaigns/{id}/stop` returns `{ campaign }` with the new status), write it into the single-entity cache via `queryClient.setQueryData(["entity", id], data)` instead of (or in addition to) `invalidateQueries`. The downstream GET endpoint can return 5xx, and with `placeholderData: keepPreviousData` an invalidate-then-failed-refetch leaves the cache holding the stale pre-mutation row. The user sees the button revert / status unchanged and concludes the click did nothing.
+
+`invalidateQueries` is still correct for list caches the mutation cannot rebuild on its own (`["campaigns"]`, `["leads"]`, etc.) — there the upside of a fresh list outweighs the risk of a flaky GET, and the mutation has no full list to write.
+
+Incident 2026-05-20 (distribute.you#1090): `useStopCampaign` only invalidated `["campaign", id]`. With api-service `GET /v1/campaigns/{id}` returning 500, single-click Stop appeared to do nothing — user had to click twice. Fix: `setQueryData(["campaign", id], data)` on success.
 
 ### Dynasty-First Display Rule (Workflows Only)
 

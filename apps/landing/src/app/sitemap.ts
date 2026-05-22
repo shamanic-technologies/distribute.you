@@ -11,18 +11,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   let articles: { slug: string; updatedAt: string }[] = [];
   if (process.env.DATABASE_URL) {
-    try {
-      const rows = await listArticles(500);
-      articles = rows.map((a) => ({ slug: a.slug, updatedAt: a.updatedAt }));
-    } catch (err) {
-      // Schema not migrated yet (blog_articles missing) or DB unreachable.
-      // Log loudly so the gap is visible; skip article rows rather than
-      // crash the entire sitemap (which kills the Vercel build).
-      console.error(
-        "[landing] sitemap: blog article fetch failed, omitting article rows:",
-        err instanceof Error ? err.message : String(err),
-      );
-    }
+    // listArticles already catches the "table missing" case (Postgres 42P01)
+    // and returns []; any other DB error propagates per fail-loud policy.
+    const rows = await listArticles(500);
+    articles = rows.map((a) => ({ slug: a.slug, updatedAt: a.updatedAt }));
   }
 
   const staticEntries: MetadataRoute.Sitemap = [
