@@ -1,10 +1,12 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { Navbar } from "@/components/navbar";
 import { listArticles, type BlogArticle } from "@/lib/blog/db";
 
 export const revalidate = 60;
+// Force dynamic so build doesn't try to prerender without DATABASE_URL.
+// Runtime is fast (listArticles is a single Neon query, cached for 60s).
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Blog — distribute",
@@ -25,13 +27,11 @@ async function fetchArticles(): Promise<BlogArticle[]> {
 }
 
 export default async function BlogIndexPage() {
-  const headersList = await headers();
-  const host = headersList.get("host") ?? "";
   const articles = await fetchArticles();
 
   return (
     <main className="min-h-screen">
-      <Navbar host={host} />
+      <Navbar />
 
       <section className="pt-20 pb-8 px-4">
         <div className="max-w-3xl mx-auto text-center">

@@ -8,15 +8,11 @@ import {
 
 const LOGO_DEV_TOKEN = process.env.NEXT_PUBLIC_LOGO_DEV_TOKEN;
 
-interface ProviderTablesAsyncProps {
-  host: string;
-}
-
-export async function ProviderTablesAsync({ host }: ProviderTablesAsyncProps) {
+export async function ProviderTablesAsync() {
   let groups: ProviderGroup[] | null = null;
   let fetchError: string | null = null;
   try {
-    const rows = await fetchPlatformPrices(host);
+    const rows = await fetchPlatformPrices("");
     groups = groupByProvider(rows);
   } catch (err) {
     fetchError = err instanceof Error ? err.message : String(err);

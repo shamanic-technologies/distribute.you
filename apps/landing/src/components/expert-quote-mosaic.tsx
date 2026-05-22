@@ -1,39 +1,28 @@
-import { EXPERT_QUOTES, type ExpertQuote } from "@/data/expert-quotes";
-
-const ACCENT_CLASSES: Record<ExpertQuote["accent"], { bg: string; text: string; border: string }> = {
-  amber: { bg: "bg-amber-100", text: "text-amber-700", border: "border-amber-200" },
-  violet: { bg: "bg-violet-100", text: "text-violet-700", border: "border-violet-200" },
-  blue: { bg: "bg-blue-100", text: "text-blue-700", border: "border-blue-200" },
-  emerald: { bg: "bg-emerald-100", text: "text-emerald-700", border: "border-emerald-200" },
-  pink: { bg: "bg-pink-100", text: "text-pink-700", border: "border-pink-200" },
-  cyan: { bg: "bg-cyan-100", text: "text-cyan-700", border: "border-cyan-200" },
-  rose: { bg: "bg-rose-100", text: "text-rose-700", border: "border-rose-200" },
-};
-
-function initials(name: string): string {
-  return name
-    .split(" ")
-    .map((p) => p[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
+import Image from "next/image";
+import {
+  EXPERT_QUOTES,
+  QUOTE_ROW_1,
+  QUOTE_ROW_2,
+  QUOTE_ROW_3,
+  type ExpertQuote,
+} from "@/data/expert-quotes";
 
 function QuoteCard({ q }: { q: ExpertQuote }) {
-  const a = ACCENT_CLASSES[q.accent];
   return (
     <figure
-      className="bg-white rounded-2xl border border-gray-200 p-5 md:p-6 hover:border-gray-300 hover:shadow-sm transition flex flex-col"
+      className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 w-[360px] flex-shrink-0 flex flex-col"
       itemScope
       itemType="https://schema.org/Quotation"
     >
-      <div className="flex items-center gap-3 mb-4">
-        <div
-          className={`w-11 h-11 rounded-full ${a.bg} ${a.text} ${a.border} border flex items-center justify-center font-display font-bold text-sm flex-shrink-0`}
-          aria-hidden="true"
-        >
-          {initials(q.name)}
-        </div>
+      <div className="flex items-center gap-3 mb-3">
+        <Image
+          src={q.avatarUrl}
+          alt={q.name}
+          width={44}
+          height={44}
+          className="rounded-full flex-shrink-0 bg-gray-100"
+          unoptimized
+        />
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
             <p
@@ -55,20 +44,20 @@ function QuoteCard({ q }: { q: ExpertQuote }) {
       </div>
       <blockquote
         cite={q.sourceUrl}
-        className="text-gray-800 text-[15px] leading-relaxed flex-1"
+        className="text-gray-800 text-[14px] leading-relaxed flex-1 line-clamp-4"
         itemProp="text"
       >
         &ldquo;{q.quote}&rdquo;
       </blockquote>
-      <figcaption className="mt-4 pt-3 border-t border-gray-100">
+      <figcaption className="mt-3 pt-2.5 border-t border-gray-100">
         <a
           href={q.sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs text-gray-500 hover:text-gray-700 inline-flex items-center gap-1"
+          className="text-[11px] text-gray-400 hover:text-gray-600 inline-flex items-center gap-1"
           itemProp="citation"
         >
-          Source: <span className="underline underline-offset-2">{q.sourceLabel}</span>
+          <span className="underline underline-offset-2">{q.sourceLabel}</span>
           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
           </svg>
@@ -78,12 +67,31 @@ function QuoteCard({ q }: { q: ExpertQuote }) {
   );
 }
 
+interface MarqueeRowProps {
+  quotes: ExpertQuote[];
+  direction: "ltr" | "rtl";
+}
+
+function MarqueeRow({ quotes, direction }: MarqueeRowProps) {
+  const animClass = direction === "ltr" ? "animate-marquee-ltr" : "animate-marquee-rtl";
+  const doubled = [...quotes, ...quotes];
+  return (
+    <div className="overflow-hidden marquee-mask">
+      <div className={`flex gap-4 w-max ${animClass}`}>
+        {doubled.map((q, idx) => (
+          <QuoteCard key={`${q.id}-${idx}`} q={q} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function ExpertQuoteMosaic() {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {EXPERT_QUOTES.map((q) => (
-        <QuoteCard key={q.id} q={q} />
-      ))}
+    <div className="space-y-4">
+      <MarqueeRow quotes={QUOTE_ROW_1} direction="ltr" />
+      <MarqueeRow quotes={QUOTE_ROW_2} direction="rtl" />
+      <MarqueeRow quotes={QUOTE_ROW_3} direction="ltr" />
     </div>
   );
 }

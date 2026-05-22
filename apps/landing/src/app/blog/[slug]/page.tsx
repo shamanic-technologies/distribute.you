@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -7,6 +6,7 @@ import { Navbar } from "@/components/navbar";
 import { getArticleBySlug } from "@/lib/blog/db";
 
 export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -35,9 +35,6 @@ function formatDate(iso: string): string {
 
 export default async function BlogArticlePage({ params }: Props) {
   const { slug } = await params;
-  const headersList = await headers();
-  const host = headersList.get("host") ?? "";
-
   const article = await getArticleBySlug(slug);
   if (!article) notFound();
 
@@ -45,7 +42,7 @@ export default async function BlogArticlePage({ params }: Props) {
 
   return (
     <main className="min-h-screen bg-white">
-      <Navbar host={host} />
+      <Navbar />
 
       <article className="max-w-2xl mx-auto px-4 pt-20 pb-24">
         <Link

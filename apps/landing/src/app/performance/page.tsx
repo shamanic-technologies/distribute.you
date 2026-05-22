@@ -1,16 +1,13 @@
 import { URLS } from "@distribute/content";
 import { fetchLeaderboard } from "@/lib/performance/fetch-leaderboard";
 import { FeatureGroup } from "@/components/performance/feature-group";
-import { resolveUrls } from "@/lib/env-urls";
-import { headers } from "next/headers";
+import { PROD_URLS } from "@/lib/env-urls";
 
 export const revalidate = 300;
 
 export default async function PerformancePage() {
-  const headersList = await headers();
-  const host = headersList.get("host") || "";
-  const urls = resolveUrls(host);
-  const data = await fetchLeaderboard(host);
+  const urls = PROD_URLS;
+  const data = await fetchLeaderboard();
   const sections = data?.featureGroups || [];
 
   return (

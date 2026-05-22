@@ -1,15 +1,12 @@
 import { cache } from "react";
-import { headers } from "next/headers";
 import { fetchInvestorMetrics } from "@/lib/investors/fetch-metrics";
 import { formatCents, formatNumber, computeCAGR } from "@/lib/investors/format";
 import { BarChart, CGRLineChart } from "@/components/investors/charts";
 
-const getMetrics = cache((host: string) => fetchInvestorMetrics(host));
+const getMetrics = cache(() => fetchInvestorMetrics(""));
 
 async function loadMetrics() {
-  const headersList = await headers();
-  const host = headersList.get("host") || "";
-  return getMetrics(host);
+  return getMetrics();
 }
 
 function StatCard({

@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { LinkButton } from "./link-button";
-import { resolveUrls } from "@/lib/env-urls";
+import { PROD_URLS } from "@/lib/env-urls";
 
-export function Navbar({ host }: { host: string }) {
+export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const urls = useMemo(() => resolveUrls(host), [host]);
+  const urls = PROD_URLS;
 
   return (
     <nav className="bg-white/80 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50">
