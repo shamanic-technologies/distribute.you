@@ -14,7 +14,7 @@ import {
 // browser. With ISR (revalidate), Next.js buffers the full render until
 // every fetch resolves, so the user sees a blank tab instead of a skeleton.
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 interface PageProps {
   params: Promise<{ orgId: string; brandId: string; featureSlug: string }>;

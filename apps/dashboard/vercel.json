@@ -2,7 +2,7 @@
   "functions": {
     "src/app/report/**/*": {
       "memory": 3009,
-      "maxDuration": 60
+      "maxDuration": 300
     }
   }
 }
