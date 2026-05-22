@@ -14,9 +14,8 @@ import { LeaderboardPreviewSkeleton } from "@/components/leaderboard-preview-ske
 import { ExpertQuoteMosaic, expertQuoteJsonLd } from "@/components/expert-quote-mosaic";
 import { ColdEmailPainStats } from "@/components/sourced-stats";
 import { DISTRIBUTION_FEATURES, DISTRIBUTION_STEPS } from "@distribute/content";
-import { resolveUrls } from "@/lib/env-urls";
+import { PROD_URLS } from "@/lib/env-urls";
 import type { FeatureColor } from "@distribute/content";
-import { headers } from "next/headers";
 
 export const revalidate = 300;
 
@@ -86,10 +85,8 @@ const faqJsonLd = {
   ],
 };
 
-export default async function Home() {
-  const headersList = await headers();
-  const host = headersList.get("host") || "";
-  const urls = resolveUrls(host);
+export default function Home() {
+  const urls = PROD_URLS;
 
   return (
     <main className="min-h-screen">
@@ -105,7 +102,7 @@ export default async function Home() {
         />
       ))}
 
-      <Navbar host={host} />
+      <Navbar />
 
       {/* Hero */}
       <section className="pt-20 pb-8 px-4">
@@ -324,7 +321,7 @@ export default async function Home() {
             </p>
           </div>
           <Suspense fallback={<LeaderboardPreviewSkeleton />}>
-            <LeaderboardSectionAsync host={host} />
+            <LeaderboardSectionAsync />
           </Suspense>
         </div>
       </section>

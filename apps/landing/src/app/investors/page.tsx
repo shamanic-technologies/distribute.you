@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { Suspense } from "react";
-import { headers } from "next/headers";
 import { Navbar } from "@/components/navbar";
 import { PROD_URLS } from "@/lib/env-urls";
 import {
@@ -79,12 +78,6 @@ const investorsBreadcrumbJsonLd = {
   ],
 };
 
-async function ResolvedNavbar() {
-  const headersList = await headers();
-  const host = headersList.get("host") || "";
-  return <Navbar host={host} />;
-}
-
 export default function InvestorsPage() {
   return (
     <>
@@ -96,9 +89,7 @@ export default function InvestorsPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(investorsBreadcrumbJsonLd) }}
       />
-      <Suspense fallback={<div className="h-16" />}>
-        <ResolvedNavbar />
-      </Suspense>
+      <Navbar />
       <main className="min-h-screen bg-gray-950 text-white">
         {/* Header */}
         <section className="pt-24 pb-12 px-4">

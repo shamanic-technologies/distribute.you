@@ -3,7 +3,6 @@ import Image from "next/image";
 import { URLS } from "@distribute/content";
 import { PROD_URLS } from "@/lib/env-urls";
 import { Navbar } from "@/components/navbar";
-import { headers } from "next/headers";
 
 const PRICING_URL = `${PROD_URLS.landing}/pricing`;
 const SITE_NAME = "distribute Pricing";
@@ -59,12 +58,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function PricingLayout({ children }: { children: React.ReactNode }) {
-  const headersList = await headers();
-  const host = headersList.get("host") || "";
+export default function PricingLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <Navbar host={host} />
+      <Navbar />
       {children}
       <footer className="bg-gray-900 text-gray-400 py-10 px-4">
         <div className="max-w-4xl mx-auto text-center text-sm">
