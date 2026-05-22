@@ -67,10 +67,10 @@ export const fetchOrgName = cache(async (orgId: string): Promise<string> => {
   }
 });
 
-// Cap responses so the report function stays under Vercel's 1024MB default
-// memory budget. Reports with >REPORT_FETCH_LIMIT rows show a "first N of M"
-// caveat in the section card.
-export const REPORT_FETCH_LIMIT = 500;
+// Cap responses so the report function stays under Vercel's memory budget.
+// 200 keeps a worst-case (~500KB per lead) under ~100MB; report shows a
+// "first N of M" caveat in the section card when truncated.
+export const REPORT_FETCH_LIMIT = 200;
 
 export const fetchLeads = cache(async (orgId: string, brandId: string, featureSlug: string): Promise<Lead[]> => {
   const result = await adminGet<{ leads: Lead[] }>(
@@ -89,10 +89,31 @@ export const fetchEmails = cache(async (orgId: string, brandId: string): Promise
     orgId,
   );
   const emails = result?.emails ?? [];
-  // The generationRun blob includes the full run cost breakdown + descendant
-  // run tree, which can be ~50KB per email. Drop it server-side so the RSC
-  // payload stays small and Vercel doesn't OOM.
-  return emails.map(({ generationRun: _gr, ...rest }) => ({ ...rest, generationRun: null }));
+  // Drop the heavy fields the report never displays. generationRun alone is
+  // ~50KB per email (run cost breakdown + descendant tree); bodyHtml duplicates
+  // bodyText for our render; sequence is unused.
+  return emails.map(({ generationRun: _gr, bodyHtml: _bh, sequence: _sq, ...rest }) => ({
+    ...rest,
+    generationRun: null,
+    bodyHtml: null,
+    sequence: null,
+  }));
+});
+
+/** Aggregated stats for a brand × feature. Avoids fetching every lead just
+ *  to count statuses on Overview. Returns the raw stats dict — callers know
+ *  which keys they need. */
+export interface FeatureStats {
+  systemStats: { totalCostInUsdCents?: number | string } & Record<string, unknown>;
+  stats: Record<string, number>;
+}
+
+export const fetchFeatureStats = cache(async (orgId: string, brandId: string, featureSlug: string): Promise<FeatureStats | null> => {
+  return adminGet<FeatureStats>(
+    "featureStats",
+    `/features/${encodeURIComponent(featureSlug)}/stats?brandId=${brandId}`,
+    orgId,
+  );
 });
 
 export const fetchCampaigns = cache(async (orgId: string, brandId: string, featureSlug: string): Promise<Campaign[]> => {
