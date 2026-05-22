@@ -1,14 +1,36 @@
+import { Suspense } from "react";
 import { SectionCard } from "@/components/report/section-card";
 import { DataTable, type TableColumn } from "@/components/report/data-table";
 import { CsvDownloadButton, GoogleSheetsButton, type CsvColumn } from "@/components/report/csv-button";
+import { TableSectionSkeleton } from "@/components/report/skeletons";
 import { fetchLeads, deriveCompaniesFromLeads, type CompanyRow } from "@/lib/report-api";
 
 interface PageProps {
   params: Promise<{ orgId: string; brandId: string; featureSlug: string }>;
 }
 
+const COMPANY_COLUMNS = ["Company", "Industry", "Employees", "Location", "Leads", "Links"];
+
 export default async function CompaniesPage({ params }: PageProps) {
   const { orgId, brandId, featureSlug } = await params;
+  return (
+    <div className="p-6 md:p-8 space-y-6 max-w-6xl">
+      <Suspense
+        fallback={
+          <TableSectionSkeleton
+            title="Companies"
+            description="Unique organizations targeted across the feature's campaigns. Derived from enriched lead data."
+            columnLabels={COMPANY_COLUMNS}
+          />
+        }
+      >
+        <CompaniesSection orgId={orgId} brandId={brandId} featureSlug={featureSlug} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function CompaniesSection({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
   const leads = await fetchLeads(orgId, brandId, featureSlug);
   const companies = deriveCompaniesFromLeads(leads);
 
@@ -64,20 +86,18 @@ export default async function CompaniesPage({ params }: PageProps) {
   ];
 
   return (
-    <div className="p-6 md:p-8 space-y-6 max-w-6xl">
-      <SectionCard
-        title="Companies"
-        description="Unique organizations targeted across the feature's campaigns. Derived from enriched lead data."
-        count={companies.length}
-        actions={
-          <>
-            <CsvDownloadButton filename={`companies-${brandId}.csv`} rows={companies} columns={csvColumns} />
-            <GoogleSheetsButton />
-          </>
-        }
-      >
-        <DataTable rows={companies} columns={columns} rowKey={(c, i) => `${c.name}-${i}`} emptyMessage="No companies yet." />
-      </SectionCard>
-    </div>
+    <SectionCard
+      title="Companies"
+      description="Unique organizations targeted across the feature's campaigns. Derived from enriched lead data."
+      count={companies.length}
+      actions={
+        <>
+          <CsvDownloadButton filename={`companies-${brandId}.csv`} rows={companies} columns={csvColumns} />
+          <GoogleSheetsButton />
+        </>
+      }
+    >
+      <DataTable rows={companies} columns={columns} rowKey={(c, i) => `${c.name}-${i}`} emptyMessage="No companies yet." />
+    </SectionCard>
   );
 }

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { ReportSidebar } from "@/components/report/sidebar";
 import { ReportHeader } from "@/components/report/header";
+import { HeaderSkeleton } from "@/components/report/skeletons";
 import { fetchBrand } from "@/lib/report-api";
 
 export const metadata: Metadata = {
@@ -32,12 +34,13 @@ interface LayoutProps {
 export default async function ReportLayout({ children, params }: LayoutProps) {
   const { orgId, brandId, featureSlug } = await params;
   const basePath = `/report/${orgId}/${brandId}/${featureSlug}`;
-  const brand = await fetchBrand(orgId, brandId);
   const generatedAt = new Date();
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
-      <ReportHeader brand={brand} brandId={brandId} orgId={orgId} featureSlug={featureSlug} generatedAt={generatedAt} />
+      <Suspense fallback={<HeaderSkeleton />}>
+        <BrandHeader orgId={orgId} brandId={brandId} featureSlug={featureSlug} generatedAt={generatedAt} />
+      </Suspense>
       <div className="flex flex-1 overflow-hidden">
         <div className="hidden md:flex h-full">
           <ReportSidebar basePath={basePath} />
@@ -46,4 +49,9 @@ export default async function ReportLayout({ children, params }: LayoutProps) {
       </div>
     </div>
   );
+}
+
+async function BrandHeader({ orgId, brandId, featureSlug, generatedAt }: { orgId: string; brandId: string; featureSlug: string; generatedAt: Date }) {
+  const brand = await fetchBrand(orgId, brandId);
+  return <ReportHeader brand={brand} brandId={brandId} orgId={orgId} featureSlug={featureSlug} generatedAt={generatedAt} />;
 }

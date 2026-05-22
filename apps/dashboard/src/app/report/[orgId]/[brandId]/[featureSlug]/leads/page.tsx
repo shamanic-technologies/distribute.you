@@ -1,6 +1,8 @@
+import { Suspense } from "react";
 import { SectionCard } from "@/components/report/section-card";
 import { DataTable, type TableColumn } from "@/components/report/data-table";
 import { CsvDownloadButton, GoogleSheetsButton, type CsvColumn } from "@/components/report/csv-button";
+import { TableSectionSkeleton } from "@/components/report/skeletons";
 import { fetchLeads } from "@/lib/report-api";
 import { getLeadConsolidatedStatus, type Lead } from "@/lib/api";
 
@@ -37,6 +39,8 @@ interface LeadRow {
   campaignId: string;
 }
 
+const LEADS_COLUMNS = ["Name", "Email", "Title", "Company", "Industry", "Country", "Status"];
+
 function toRow(lead: Lead): LeadRow {
   const org = lead.lead?.organization;
   const job = lead.lead?.employmentHistory?.find((e) => e.current);
@@ -57,6 +61,24 @@ function toRow(lead: Lead): LeadRow {
 
 export default async function LeadsPage({ params }: PageProps) {
   const { orgId, brandId, featureSlug } = await params;
+  return (
+    <div className="p-6 md:p-8 space-y-6 max-w-6xl">
+      <Suspense
+        fallback={
+          <TableSectionSkeleton
+            title="Leads"
+            description="Every prospect (company × person) targeted by Sales Cold Email Outreach."
+            columnLabels={LEADS_COLUMNS}
+          />
+        }
+      >
+        <LeadsSection orgId={orgId} brandId={brandId} featureSlug={featureSlug} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function LeadsSection({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
   const leads = await fetchLeads(orgId, brandId, featureSlug);
   const rows = leads.map(toRow);
 
@@ -102,20 +124,18 @@ export default async function LeadsPage({ params }: PageProps) {
   ];
 
   return (
-    <div className="p-6 md:p-8 space-y-6 max-w-6xl">
-      <SectionCard
-        title="Leads"
-        description="Every prospect (company × person) targeted by Sales Cold Email Outreach."
-        count={rows.length}
-        actions={
-          <>
-            <CsvDownloadButton filename={`leads-${brandId}.csv`} rows={rows} columns={csvColumns} />
-            <GoogleSheetsButton />
-          </>
-        }
-      >
-        <DataTable rows={rows} columns={columns} rowKey={(_, i) => String(i)} emptyMessage="No leads yet." />
-      </SectionCard>
-    </div>
+    <SectionCard
+      title="Leads"
+      description="Every prospect (company × person) targeted by Sales Cold Email Outreach."
+      count={rows.length}
+      actions={
+        <>
+          <CsvDownloadButton filename={`leads-${brandId}.csv`} rows={rows} columns={csvColumns} />
+          <GoogleSheetsButton />
+        </>
+      }
+    >
+      <DataTable rows={rows} columns={columns} rowKey={(_, i) => String(i)} emptyMessage="No leads yet." />
+    </SectionCard>
   );
 }

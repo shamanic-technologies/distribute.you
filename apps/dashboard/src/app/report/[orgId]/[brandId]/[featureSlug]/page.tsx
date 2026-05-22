@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { SectionCard } from "@/components/report/section-card";
 import { fetchBrand, fetchLeads, fetchEmails, fetchCampaigns, fetchWorkflows, deriveCompaniesFromLeads, deriveIndividualsFromLeads } from "@/lib/report-api";
 
@@ -8,6 +9,37 @@ interface PageProps {
 export default async function OverviewPage({ params }: PageProps) {
   const { orgId, brandId, featureSlug } = await params;
 
+  return (
+    <div className="p-6 md:p-8 space-y-6 max-w-6xl">
+      <div>
+        <h2 className="font-display text-xl font-bold text-gray-800 mb-1">Overview</h2>
+        <p className="text-sm text-gray-500">
+          Snapshot of all Sales Cold Email Outreach activity for this brand.
+        </p>
+      </div>
+
+      <Suspense fallback={<StatsAndFunnelSkeleton />}>
+        <StatsAndFunnel orgId={orgId} brandId={brandId} featureSlug={featureSlug} />
+      </Suspense>
+
+      <SectionCard
+        title="What's in this report"
+        description="Use the left sidebar to navigate each section. Every table includes CSV export."
+      >
+        <ul className="px-5 py-4 space-y-2 text-sm text-gray-700">
+          <li><strong>Leads</strong> — every prospect (company × person) with email and current status.</li>
+          <li><strong>Companies</strong> — unique organizations targeted, with enrichment data.</li>
+          <li><strong>Individuals</strong> — every person enriched, with role and contact details.</li>
+          <li><strong>Emails</strong> — every email generated, including subject and body.</li>
+          <li><strong>Workflows</strong> — pipelines used to generate emails, including prompts.</li>
+          <li><strong>Campaigns</strong> — programs run with budget, status and associated workflow.</li>
+        </ul>
+      </SectionCard>
+    </div>
+  );
+}
+
+async function StatsAndFunnel({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
   const [brand, leads, emails, campaigns, workflows] = await Promise.all([
     fetchBrand(orgId, brandId),
     fetchLeads(orgId, brandId, featureSlug),
@@ -15,6 +47,7 @@ export default async function OverviewPage({ params }: PageProps) {
     fetchCampaigns(orgId, brandId, featureSlug),
     fetchWorkflows(orgId, featureSlug),
   ]);
+  void brand;
 
   const companies = deriveCompaniesFromLeads(leads);
   const individuals = deriveIndividualsFromLeads(leads);
@@ -34,14 +67,7 @@ export default async function OverviewPage({ params }: PageProps) {
   const replied = leads.filter((l) => l.replied).length;
 
   return (
-    <div className="p-6 md:p-8 space-y-6 max-w-6xl">
-      <div>
-        <h2 className="font-display text-xl font-bold text-gray-800 mb-1">Overview</h2>
-        <p className="text-sm text-gray-500">
-          Snapshot of all Sales Cold Email Outreach activity{brand?.name ? ` for ${brand.name}` : ""}.
-        </p>
-      </div>
-
+    <>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {stats.map((s) => (
           <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-4">
@@ -65,21 +91,7 @@ export default async function OverviewPage({ params }: PageProps) {
           </div>
         </div>
       </SectionCard>
-
-      <SectionCard
-        title="What's in this report"
-        description="Use the left sidebar to navigate each section. Every table includes CSV export."
-      >
-        <ul className="px-5 py-4 space-y-2 text-sm text-gray-700">
-          <li><strong>Leads</strong> — every prospect (company × person) with email and current status.</li>
-          <li><strong>Companies</strong> — unique organizations targeted, with enrichment data.</li>
-          <li><strong>Individuals</strong> — every person enriched, with role and contact details.</li>
-          <li><strong>Emails</strong> — every email generated, including subject and body.</li>
-          <li><strong>Workflows</strong> — pipelines used to generate emails, including prompts.</li>
-          <li><strong>Campaigns</strong> — programs run with budget, status and associated workflow.</li>
-        </ul>
-      </SectionCard>
-    </div>
+    </>
   );
 }
 
@@ -91,3 +103,30 @@ function FunnelStep({ label, value }: { label: string; value: number }) {
     </div>
   );
 }
+
+function StatsAndFunnelSkeleton() {
+  return (
+    <>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
+            <div className="h-3 w-16 bg-gray-100 rounded animate-pulse" />
+            <div className="h-7 w-12 bg-gray-100 rounded animate-pulse" />
+            <div className="h-3 w-24 bg-gray-100 rounded animate-pulse" />
+          </div>
+        ))}
+      </div>
+      <SectionCard title="Funnel" description="Lead progression across the outreach pipeline.">
+        <div className="px-5 py-4 grid grid-cols-2 md:grid-cols-5 gap-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="bg-gray-50 rounded-lg p-3 space-y-2">
+              <div className="h-3 w-12 bg-gray-100 rounded animate-pulse mx-auto" />
+              <div className="h-6 w-8 bg-gray-100 rounded animate-pulse mx-auto" />
+            </div>
+          ))}
+        </div>
+      </SectionCard>
+    </>
+  );
+}
+

@@ -1,14 +1,36 @@
+import { Suspense } from "react";
 import { SectionCard } from "@/components/report/section-card";
 import { DataTable, type TableColumn } from "@/components/report/data-table";
 import { CsvDownloadButton, GoogleSheetsButton, type CsvColumn } from "@/components/report/csv-button";
+import { TableSectionSkeleton } from "@/components/report/skeletons";
 import { fetchLeads, deriveIndividualsFromLeads, type IndividualRow } from "@/lib/report-api";
 
 interface PageProps {
   params: Promise<{ orgId: string; brandId: string; featureSlug: string }>;
 }
 
+const INDIVIDUAL_COLUMNS = ["Name", "Email", "Title", "Seniority", "Department", "Company", "Location", "Links"];
+
 export default async function IndividualsPage({ params }: PageProps) {
   const { orgId, brandId, featureSlug } = await params;
+  return (
+    <div className="p-6 md:p-8 space-y-6 max-w-6xl">
+      <Suspense
+        fallback={
+          <TableSectionSkeleton
+            title="Individuals"
+            description="Every person enriched and queued for outreach, with the maximum metadata available."
+            columnLabels={INDIVIDUAL_COLUMNS}
+          />
+        }
+      >
+        <IndividualsSection orgId={orgId} brandId={brandId} featureSlug={featureSlug} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function IndividualsSection({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
   const leads = await fetchLeads(orgId, brandId, featureSlug);
   const individuals = deriveIndividualsFromLeads(leads);
 
@@ -68,20 +90,18 @@ export default async function IndividualsPage({ params }: PageProps) {
   ];
 
   return (
-    <div className="p-6 md:p-8 space-y-6 max-w-6xl">
-      <SectionCard
-        title="Individuals"
-        description="Every person enriched and queued for outreach, with the maximum metadata available."
-        count={individuals.length}
-        actions={
-          <>
-            <CsvDownloadButton filename={`individuals-${brandId}.csv`} rows={individuals} columns={csvColumns} />
-            <GoogleSheetsButton />
-          </>
-        }
-      >
-        <DataTable rows={individuals} columns={columns} rowKey={(i, idx) => `${i.email}-${idx}`} emptyMessage="No individuals yet." />
-      </SectionCard>
-    </div>
+    <SectionCard
+      title="Individuals"
+      description="Every person enriched and queued for outreach, with the maximum metadata available."
+      count={individuals.length}
+      actions={
+        <>
+          <CsvDownloadButton filename={`individuals-${brandId}.csv`} rows={individuals} columns={csvColumns} />
+          <GoogleSheetsButton />
+        </>
+      }
+    >
+      <DataTable rows={individuals} columns={columns} rowKey={(i, idx) => `${i.email}-${idx}`} emptyMessage="No individuals yet." />
+    </SectionCard>
   );
 }

@@ -1,6 +1,8 @@
+import { Suspense } from "react";
 import { SectionCard } from "@/components/report/section-card";
 import { DataTable, type TableColumn } from "@/components/report/data-table";
 import { CsvDownloadButton, GoogleSheetsButton, type CsvColumn } from "@/components/report/csv-button";
+import { TableSectionSkeleton } from "@/components/report/skeletons";
 import { fetchCampaigns, fetchLeads, fetchEmails } from "@/lib/report-api";
 import type { Campaign } from "@/lib/api";
 
@@ -15,6 +17,8 @@ const STATUS_STYLES: Record<string, string> = {
   completed: "bg-green-100 text-green-700",
   failed: "bg-red-100 text-red-600",
 };
+
+const CAMPAIGN_COLUMNS = ["Campaign", "Status", "Workflow", "Budget", "Leads", "Emails", "Created"];
 
 interface CampaignRow {
   id: string;
@@ -37,6 +41,24 @@ function formatBudget(c: Campaign): string {
 
 export default async function CampaignsPage({ params }: PageProps) {
   const { orgId, brandId, featureSlug } = await params;
+  return (
+    <div className="p-6 md:p-8 space-y-6 max-w-6xl">
+      <Suspense
+        fallback={
+          <TableSectionSkeleton
+            title="Campaigns"
+            description="Outreach programs running on this feature. Each campaign uses one workflow."
+            columnLabels={CAMPAIGN_COLUMNS}
+          />
+        }
+      >
+        <CampaignsSection orgId={orgId} brandId={brandId} featureSlug={featureSlug} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function CampaignsSection({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
   const [campaigns, leads, emails] = await Promise.all([
     fetchCampaigns(orgId, brandId, featureSlug),
     fetchLeads(orgId, brandId, featureSlug),
@@ -47,8 +69,6 @@ export default async function CampaignsPage({ params }: PageProps) {
   for (const l of leads) {
     leadCountByCampaign.set(l.campaignId, (leadCountByCampaign.get(l.campaignId) ?? 0) + 1);
   }
-  // Email → campaign linkage not present on the Email payload yet; emit
-  // aggregate (sum across the brand) when only one campaign exists.
   const soleEmailCount = campaigns.length === 1 ? emails.length : 0;
 
   const rows: CampaignRow[] = campaigns.map((c) => ({
@@ -100,22 +120,20 @@ export default async function CampaignsPage({ params }: PageProps) {
   ];
 
   return (
-    <div className="p-6 md:p-8 space-y-6 max-w-6xl">
-      <SectionCard
-        title="Campaigns"
-        description="Outreach programs running on this feature. Each campaign uses one workflow."
-        count={rows.length}
-        actions={
-          <>
-            <CsvDownloadButton filename={`campaigns-${brandId}.csv`} rows={rows} columns={csvColumns} />
-            <GoogleSheetsButton />
-          </>
-        }
-        placeholder={campaigns.length > 1}
-        placeholderNote={campaigns.length > 1 ? "Per-campaign email counts unavailable — backend join pending. Lead counts are accurate." : undefined}
-      >
-        <DataTable rows={rows} columns={columns} rowKey={(r) => r.id} emptyMessage="No campaigns yet." />
-      </SectionCard>
-    </div>
+    <SectionCard
+      title="Campaigns"
+      description="Outreach programs running on this feature. Each campaign uses one workflow."
+      count={rows.length}
+      actions={
+        <>
+          <CsvDownloadButton filename={`campaigns-${brandId}.csv`} rows={rows} columns={csvColumns} />
+          <GoogleSheetsButton />
+        </>
+      }
+      placeholder={campaigns.length > 1}
+      placeholderNote={campaigns.length > 1 ? "Per-campaign email counts unavailable — backend join pending. Lead counts are accurate." : undefined}
+    >
+      <DataTable rows={rows} columns={columns} rowKey={(r) => r.id} emptyMessage="No campaigns yet." />
+    </SectionCard>
   );
 }
