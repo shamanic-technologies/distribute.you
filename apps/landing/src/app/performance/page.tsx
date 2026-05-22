@@ -15,14 +15,14 @@ export default async function PerformancePage() {
 
   return (
     <main className="min-h-screen">
-      {/* Hero */}
+      {/* Hero — MUST stay in sync with loading.tsx so the streaming swap is seamless. */}
       <section className="py-12 md:py-16 px-4 gradient-bg">
         <div className="max-w-6xl mx-auto text-center">
           <div className="inline-block bg-emerald-100 text-emerald-700 px-4 py-1.5 rounded-full text-sm font-medium mb-6 border border-emerald-200">
-            CAC, not vanity metrics
+            Cost per qualified reply
           </div>
           <h1 className="font-display text-4xl md:text-5xl font-bold mb-4 text-gray-800">
-            Workflows ranked by <span className="gradient-text">real CAC</span>
+            Workflows ranked by <span className="gradient-text">real cost per reply</span>
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             Every workflow ranked by cost per qualified reply, not reply rate.

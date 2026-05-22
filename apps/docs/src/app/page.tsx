@@ -1,35 +1,50 @@
 import Link from "next/link";
-import { URLS } from "@distribute/content";
+import { URLS, DISTRIBUTION_FEATURES } from "@distribute/content";
 import { CopyForLLM } from "@/components/copy-for-llm";
+
+const liveFeatures = DISTRIBUTION_FEATURES.filter((f) => f.status === "live");
+const comingFeatures = DISTRIBUTION_FEATURES.filter((f) => f.status === "coming-soon");
+const liveCount = liveFeatures.length;
+
+const channelList = liveFeatures
+  .map((f) => `- ${f.title} — ${f.description}`)
+  .join("\n");
+
+const comingList = comingFeatures
+  .map((f) => `- ${f.title} (coming) — ${f.description}`)
+  .join("\n");
 
 const LLM_INSTRUCTIONS = `# distribute Documentation
 
 ## What is distribute?
-AI-powered distribution automation. Provide a URL + budget, distribute handles lead finding, content generation, outreach, and reporting.
+The Stripe of Distribution. One API for sales, PR, VC, hiring, and more.
+Provide a URL + a daily budget; distribute handles lead finding, content generation,
+sending, and AI-qualified reply forwarding.
 
-## Channels
-- Sales Outreach — Cold email to prospects matching your ICP
-- Journalist Outreach — Pitch journalists for press coverage
-- Hiring Outreach — Reach matching candidates
+## Channels (${liveCount} live)
+${channelList}
+
+## Coming Soon
+${comingList}
 
 ## Key Concepts
 - Brands: your company/product profile, auto-analyzed from URL
 - Features: campaign types (Sales Cold Email, Journalist Pitch, etc.)
-- Workflows: execution engines behind features, auto-optimized
+- Workflows: execution engines behind features, auto-optimized by cost per qualified reply
 - Campaigns: running instances with budget limits
 
 ## Quick Start
-1. Sign up at dashboard.distribute.you
+1. Sign up at dashboard.distribute.you ($2 welcome credits)
 2. Get API key (dist_xxx format)
 3. Install MCP: claude mcp add distribute -- npx @distribute/mcp --api-key=YOUR_KEY
 4. "Create a brand for acme.com"
-5. "Launch a cold email campaign targeting CTOs, $10/day budget"
+5. "Launch a cold email campaign targeting CTOs, $5/day budget"
 
 ## Access Methods
-- MCP Server: npx @distribute/mcp (35 tools)
+- Dashboard: dashboard.distribute.you (default)
 - REST API: api.distribute.you/v1
 - TypeScript Client: @distribute/api-client
-- Dashboard: dashboard.distribute.you`;
+- MCP Server: npx @distribute/mcp`;
 
 export default function DocsHome() {
   return (
@@ -39,22 +54,38 @@ export default function DocsHome() {
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
       <p className="text-base text-gray-500 mb-8">
-        Your distribution, automated. Provide a URL and a budget — distribute handles lead finding,
-        content generation, outreach, and reporting.
+        The Stripe of Distribution. Provide a URL and a budget — distribute finds the right people,
+        writes personalized outreach, sends it on your behalf, AI-qualifies the replies,
+        and forwards the good ones to your inbox.
       </p>
 
       <div className="prose">
         <h2>What is distribute?</h2>
         <p>
-          distribute is an AI-powered distribution automation platform. You provide your website URL and a daily budget.
-          distribute finds the right people, writes personalized outreach, sends it, and notifies you when someone replies.
+          distribute is an AI-powered, multi-channel distribution platform. One account, one API,
+          many channels. You provide a URL and a daily budget per channel. We handle sending
+          infrastructure, deliverability, reply qualification, and CAC attribution.
         </p>
-        <p>Three channels are live today:</p>
+        <p>{liveCount} channels are live today:</p>
         <ul>
-          <li><strong>Sales Outreach</strong> — Cold email campaigns to prospects matching your ICP</li>
-          <li><strong>Journalist Outreach</strong> — Pitch journalists who cover your space for press coverage</li>
-          <li><strong>Hiring Outreach</strong> — Reach candidates that match your needs</li>
+          {liveFeatures.map((f) => (
+            <li key={f.id}>
+              <strong>{f.title}</strong> — {f.description}
+            </li>
+          ))}
         </ul>
+        {comingFeatures.length > 0 && (
+          <>
+            <p>Coming soon:</p>
+            <ul>
+              {comingFeatures.map((f) => (
+                <li key={f.id}>
+                  <strong>{f.title}</strong> — {f.description}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
 
         <h2>Getting Started</h2>
         <ol>
