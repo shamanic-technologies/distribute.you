@@ -1,20 +1,19 @@
 import { Suspense } from "react";
 import { SectionCard } from "@/components/report/section-card";
-
-export const dynamic = "force-dynamic";
-export const maxDuration = 60;
-
-import { DataTable, type TableColumn } from "@/components/report/data-table";
 import { CsvDownloadButton, GoogleSheetsButton } from "@/components/report/csv-button";
 import { toCsv, type CsvColumn } from "@/components/report/csv";
 import { TableSectionSkeleton } from "@/components/report/skeletons";
+import { IndividualsTable } from "@/components/report/individuals-table";
 import { fetchLeads, deriveIndividualsFromLeads, type IndividualRow } from "@/lib/report-api";
+
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 interface PageProps {
   params: Promise<{ orgId: string; brandId: string; featureSlug: string }>;
 }
 
-const INDIVIDUAL_COLUMNS = ["Name", "Email", "Title", "Seniority", "Department", "Company", "Location", "Links"];
+const INDIVIDUAL_COLUMNS = ["Name", "Email", "Title", "Seniority", "Department", "Company", "Location", "Status"];
 
 export default async function IndividualsPage({ params }: PageProps) {
   const { orgId, brandId, featureSlug } = await params;
@@ -38,43 +37,6 @@ export default async function IndividualsPage({ params }: PageProps) {
 async function IndividualsSection({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
   const leads = await fetchLeads(orgId, brandId, featureSlug);
   const individuals = deriveIndividualsFromLeads(leads);
-
-  const columns: TableColumn<IndividualRow>[] = [
-    {
-      key: "name",
-      label: "Name",
-      render: (i) => (
-        <div>
-          <div className="font-medium text-gray-900">{i.firstName} {i.lastName}</div>
-          {i.headline && <div className="text-xs text-gray-400">{i.headline}</div>}
-        </div>
-      ),
-    },
-    { key: "email", label: "Email", render: (i) => <span className="font-mono text-xs">{i.email}</span> },
-    { key: "title", label: "Title", render: (i) => i.title ?? "—" },
-    { key: "seniority", label: "Seniority", render: (i) => i.seniority ?? "—" },
-    { key: "department", label: "Department", render: (i) => i.department ?? "—" },
-    { key: "company", label: "Company", render: (i) => i.company ?? "—" },
-    { key: "location", label: "Location", render: (i) => [i.city, i.state, i.country].filter(Boolean).join(", ") || "—" },
-    {
-      key: "links",
-      label: "Links",
-      render: (i) => (
-        <div className="flex gap-2">
-          {i.linkedinUrl && (
-            <a href={i.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-600 hover:underline">
-              LinkedIn
-            </a>
-          )}
-          {i.twitterUrl && (
-            <a href={i.twitterUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-600 hover:underline">
-              Twitter
-            </a>
-          )}
-        </div>
-      ),
-    },
-  ];
 
   const csvColumns: CsvColumn<IndividualRow>[] = [
     { label: "First name", value: (i) => i.firstName },
@@ -106,7 +68,7 @@ async function IndividualsSection({ orgId, brandId, featureSlug }: { orgId: stri
         </>
       }
     >
-      <DataTable rows={individuals} columns={columns} rowKey={(i, idx) => `${i.email}-${idx}`} emptyMessage="No individuals yet." />
+      <IndividualsTable rows={individuals} />
     </SectionCard>
   );
 }

@@ -1,20 +1,19 @@
 import { Suspense } from "react";
 import { SectionCard } from "@/components/report/section-card";
-
-export const dynamic = "force-dynamic";
-export const maxDuration = 60;
-
-import { DataTable, type TableColumn } from "@/components/report/data-table";
 import { CsvDownloadButton, GoogleSheetsButton } from "@/components/report/csv-button";
 import { toCsv, type CsvColumn } from "@/components/report/csv";
 import { TableSectionSkeleton } from "@/components/report/skeletons";
+import { CompaniesTable } from "@/components/report/companies-table";
 import { fetchLeads, deriveCompaniesFromLeads, type CompanyRow } from "@/lib/report-api";
+
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 interface PageProps {
   params: Promise<{ orgId: string; brandId: string; featureSlug: string }>;
 }
 
-const COMPANY_COLUMNS = ["Company", "Industry", "Employees", "Location", "Leads", "Links"];
+const COMPANY_COLUMNS = ["Company", "Industry", "Employees", "Location", "Leads"];
 
 export default async function CompaniesPage({ params }: PageProps) {
   const { orgId, brandId, featureSlug } = await params;
@@ -38,45 +37,6 @@ export default async function CompaniesPage({ params }: PageProps) {
 async function CompaniesSection({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
   const leads = await fetchLeads(orgId, brandId, featureSlug);
   const companies = deriveCompaniesFromLeads(leads);
-
-  const columns: TableColumn<CompanyRow>[] = [
-    {
-      key: "name",
-      label: "Company",
-      render: (c) => (
-        <div>
-          <div className="font-medium text-gray-900">{c.name || "—"}</div>
-          {c.domain && <div className="text-xs text-gray-400">{c.domain}</div>}
-        </div>
-      ),
-    },
-    { key: "industry", label: "Industry", render: (c) => c.industry ?? "—" },
-    { key: "employees", label: "Employees", render: (c) => c.employees?.toLocaleString("en-US") ?? "—" },
-    { key: "location", label: "Location", render: (c) => [c.city, c.country].filter(Boolean).join(", ") || "—" },
-    {
-      key: "leadCount",
-      label: "Leads",
-      render: (c) => <span className="font-medium text-brand-700">{c.leadCount}</span>,
-    },
-    {
-      key: "links",
-      label: "Links",
-      render: (c) => (
-        <div className="flex gap-2">
-          {c.websiteUrl && (
-            <a href={c.websiteUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-600 hover:underline">
-              Site
-            </a>
-          )}
-          {c.linkedinUrl && (
-            <a href={c.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-600 hover:underline">
-              LinkedIn
-            </a>
-          )}
-        </div>
-      ),
-    },
-  ];
 
   const csvColumns: CsvColumn<CompanyRow>[] = [
     { label: "Name", value: (c) => c.name },
@@ -102,7 +62,7 @@ async function CompaniesSection({ orgId, brandId, featureSlug }: { orgId: string
         </>
       }
     >
-      <DataTable rows={companies} columns={columns} rowKey={(c, i) => `${c.name}-${i}`} emptyMessage="No companies yet." />
+      <CompaniesTable rows={companies} />
     </SectionCard>
   );
 }
