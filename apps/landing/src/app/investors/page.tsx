@@ -3,6 +3,7 @@ import Image from "next/image";
 import { Suspense } from "react";
 import { headers } from "next/headers";
 import { Navbar } from "@/components/navbar";
+import { PROD_URLS } from "@/lib/env-urls";
 import {
   CompanyOverviewSection,
   PlatformMetricsSection,
@@ -18,11 +19,64 @@ import {
   WeeklyGrowthSkeleton,
 } from "@/components/investors/skeletons";
 
+const INVESTORS_URL = `${PROD_URLS.landing}/investors`;
+const PAGE_DESCRIPTION =
+  "Live platform metrics, growth data, infrastructure, and SAFE-round details for distribute. Public investor page — updated on every load.";
+
 export const metadata: Metadata = {
   title: "Investor Information",
-  description:
-    "Live platform metrics and company information for distribute investors.",
-  robots: { index: false, follow: false },
+  description: PAGE_DESCRIPTION,
+  keywords: [
+    "distribute investors",
+    "distribute SAFE round",
+    "distribute platform metrics",
+    "distribute revenue",
+    "cold email startup investors",
+    "Y Combinator SAFE",
+    "distribute growth metrics",
+  ],
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: INVESTORS_URL,
+    siteName: "distribute Investors",
+    title: "distribute — Investor Information",
+    description: PAGE_DESCRIPTION,
+    images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "distribute Investor Information" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "distribute — Investor Information",
+    description: PAGE_DESCRIPTION,
+    images: ["/og-image.jpg"],
+    creator: "@distribute_you",
+  },
+  alternates: { canonical: INVESTORS_URL },
+  robots: { index: true, follow: true },
+};
+
+const investorsOrganizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "distribute",
+  url: PROD_URLS.landing,
+  description: "The Stripe of Distribution — pay-as-you-go cloud platform for cold outbound channels.",
+  foundingDate: "2024",
+  sameAs: [PROD_URLS.github, PROD_URLS.twitter],
+  contactPoint: {
+    "@type": "ContactPoint",
+    email: "investors@distribute.you",
+    contactType: "Investor Relations",
+  },
+};
+
+const investorsBreadcrumbJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "distribute", item: PROD_URLS.landing },
+    { "@type": "ListItem", position: 2, name: "Investor Information", item: INVESTORS_URL },
+  ],
 };
 
 async function ResolvedNavbar() {
@@ -34,6 +88,14 @@ async function ResolvedNavbar() {
 export default function InvestorsPage() {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(investorsOrganizationJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(investorsBreadcrumbJsonLd) }}
+      />
       <Suspense fallback={<div className="h-16" />}>
         <ResolvedNavbar />
       </Suspense>

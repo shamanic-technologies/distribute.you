@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { Suspense } from "react";
 import { HeroForm } from "@/components/hero-form";
 import { LinkButton } from "@/components/link-button";
 import { Navbar } from "@/components/navbar";
@@ -7,9 +8,11 @@ import { GmailInbox } from "@/components/gmail-inbox";
 import { FreeVsCloud } from "@/components/free-vs-cloud";
 import { WorkflowRecipe } from "@/components/workflow-recipe";
 import { ToolsMarquee } from "@/components/tools-marquee";
-import { PerformancePreview } from "@/components/performance-preview";
 import { StatusIndicator } from "@/components/status-indicator";
-import { fetchLeaderboard } from "@/lib/performance/fetch-leaderboard";
+import { LeaderboardSectionAsync } from "@/components/leaderboard-section-async";
+import { LeaderboardPreviewSkeleton } from "@/components/leaderboard-preview-skeleton";
+import { ExpertQuoteMosaic, expertQuoteJsonLd } from "@/components/expert-quote-mosaic";
+import { ColdEmailPainStats } from "@/components/sourced-stats";
 import { DISTRIBUTION_FEATURES, DISTRIBUTION_STEPS } from "@distribute/content";
 import { resolveUrls } from "@/lib/env-urls";
 import type { FeatureColor } from "@distribute/content";
@@ -28,14 +31,80 @@ const FEATURE_COLOR_CLASSES: Record<FeatureColor, { bg: string; text: string; bo
 
 const liveCount = DISTRIBUTION_FEATURES.filter((f) => f.status === "live").length;
 
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: [
+    {
+      "@type": "Question",
+      name: "What is distribute?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "distribute is a pay-as-you-go cloud platform that runs cold email, PR, hiring, and other outbound channels on your behalf. You give us a URL and a daily budget; we send from agency-warmed inboxes, qualify replies with AI, and forward only the positive ones to your Gmail.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "How much does distribute cost?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "$2 in welcome credits. No subscription. Every unit cost is published live at distribute.you/pricing — you pay the raw provider price plus a transparent margin. No hidden fees.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Can I run distribute myself?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Yes. Every workflow is open source under MIT on GitHub. You can self-host with your own API keys, your own mailbox warmup, and your own infrastructure.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Which channels does distribute support?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: `${liveCount} channels are live today, including sales cold email, PR outreach, hiring cold email, VC outreach, journalist pitch, influencer pitch, podcast pitch, and Google Ads. More channels ship every month.`,
+      },
+    },
+    {
+      "@type": "Question",
+      name: "What is the average cold email reply rate?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Industry studies put the average B2B cold email reply rate at 3.43% in 2025 (TheDigitalBloom). Top-quartile campaigns reach 15–25% through tight ICP targeting and follow-up sequencing.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "How long does it take to warm up a cold mailbox?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "3 to 5 weeks of progressive sending before a cold inbox can safely run real outreach at 40 emails per day (Lemlist Warmup Guide, 2025). distribute uses pre-warmed agency inboxes so you skip this entirely.",
+      },
+    },
+  ],
+};
+
 export default async function Home() {
   const headersList = await headers();
   const host = headersList.get("host") || "";
   const urls = resolveUrls(host);
-  const leaderboard = await fetchLeaderboard(host);
 
   return (
     <main className="min-h-screen">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
+      {expertQuoteJsonLd().map((q, i) => (
+        <script
+          key={`quote-jsonld-${i}`}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(q) }}
+        />
+      ))}
+
       <Navbar host={host} />
 
       {/* Hero */}
@@ -86,6 +155,24 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* Cold email pain — sourced industry stats (AI-search citation surface) */}
+      <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <p className="text-xs uppercase tracking-wider text-gray-400 font-medium mb-2">
+              The state of cold outbound in 2025
+            </p>
+            <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+              Why distribution kills most solo products
+            </h2>
+            <p className="text-gray-500 text-lg max-w-2xl mx-auto">
+              Independent benchmarks from Lemlist and TheDigitalBloom. Every number linked to source.
+            </p>
+          </div>
+          <ColdEmailPainStats />
+        </div>
+      </section>
+
       {/* For builders, not businesses */}
       <section className="py-20 px-4">
         <div className="max-w-3xl mx-auto text-center">
@@ -118,9 +205,9 @@ export default async function Home() {
             {[
               "Buy a sending domain",
               "Set up SPF / DKIM / DMARC",
-              "Warm up mailboxes for 6 weeks",
+              "Warm up mailboxes for 3–5 weeks",
               "Monitor bounces, blacklists, reputation",
-              "Triage 200 raw replies to find 3 real leads",
+              "Triage raw replies to find real leads",
               "Build a reply classifier yourself",
               "Wire Apollo + Resend + Claude into 4 services",
               "Track cost per reply per product × per channel by hand",
@@ -221,26 +308,45 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Performance Leaderboard */}
-      {leaderboard && leaderboard.featureGroups.length > 0 && (
-        <section className="py-20 px-4">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-10">
-              <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
-                Cost per reply, not vanity metrics
-              </h2>
-              <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-                Every workflow ranked by real cost per qualified reply.
-                All data is public — no black boxes.
-              </p>
-            </div>
-            <PerformancePreview featureGroups={leaderboard.featureGroups} />
+      {/* Performance Leaderboard — Suspense streams in, hero/static above paint instantly */}
+      <section className="py-20 px-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-10">
+            <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+              Cost per qualified reply, not vanity metrics
+            </h2>
+            <p className="text-gray-500 text-lg max-w-2xl mx-auto">
+              Every workflow ranked by real cost per qualified reply.
+              All data is public — no black boxes.
+            </p>
           </div>
-        </section>
-      )}
+          <Suspense fallback={<LeaderboardPreviewSkeleton />}>
+            <LeaderboardSectionAsync host={host} />
+          </Suspense>
+        </div>
+      </section>
+
+      {/* What builders we look up to actually said — public quotes, AI-search citation surface */}
+      <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <p className="text-xs uppercase tracking-wider text-gray-400 font-medium mb-2">
+              Public quotes — not testimonials
+            </p>
+            <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+              What the builders we look up to actually said
+            </h2>
+            <p className="text-gray-500 text-lg max-w-2xl mx-auto">
+              Every quote attributed and sourced. Click through to the original.
+              This is the mindset behind distribute.
+            </p>
+          </div>
+          <ExpertQuoteMosaic />
+        </div>
+      </section>
 
       {/* Gmail inbox — the email you want to read */}
-      <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
+      <section className="py-20 px-4">
         <div className="max-w-3xl mx-auto text-center mb-12">
           <h2 className="font-display text-3xl md:text-4xl font-bold mb-4 text-gray-900">
             The email you want to read
@@ -253,15 +359,15 @@ export default async function Home() {
         <GmailInbox />
       </section>
 
-      {/* Free vs Cloud */}
-      <section className="py-20 px-4">
+      {/* Pricing — single cloud plan */}
+      <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
-              Free or Cloud. Same workflows.
+              Pay only for what you use.
             </h2>
             <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-              Every workflow is open source on GitHub. Run it yourself, or let us run it for you.
+              Cloud — fully managed. We send, qualify, forward. You ship products.
             </p>
           </div>
           <FreeVsCloud signUpUrl={urls.signUp} />
@@ -269,7 +375,7 @@ export default async function Home() {
       </section>
 
       {/* Works from your stack — demoted Claude Code / MCP mention */}
-      <section className="py-16 px-4 bg-gray-50 border-y border-gray-100">
+      <section className="py-16 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="font-display text-2xl md:text-3xl font-bold text-gray-900 mb-3">
             Works from your stack
@@ -308,7 +414,7 @@ export default async function Home() {
       </section>
 
       {/* How it works */}
-      <section id="how-it-works" className="py-20 px-4">
+      <section id="how-it-works" className="py-20 px-4 bg-gray-50 border-y border-gray-100">
         <div className="max-w-4xl mx-auto">
           <h2 className="font-display text-3xl md:text-4xl font-bold text-center mb-14 text-gray-900">
             Three steps. That&apos;s it.
@@ -339,8 +445,7 @@ export default async function Home() {
             Start your portfolio
           </h2>
           <p className="text-gray-400 mb-8">
-            $2 free credits to start. Then $5/day per product, or whatever budget you set.
-            No subscription. No credit card to try.
+            $2 free credits to start. No subscription. No credit card to try.
           </p>
           <LinkButton
             href={urls.signUp}

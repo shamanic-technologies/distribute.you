@@ -172,7 +172,7 @@ async function fetchWorkflowRanked(
 ): Promise<WorkflowLeaderboardEntry[]> {
   const res = await fetch(
     `${apiUrl}/v1/public/features/ranked?featureSlug=${encodeURIComponent(featureSlug)}&objective=emailsSent&groupBy=workflow&limit=100`,
-    { headers, cache: "no-store" },
+    { headers, next: { revalidate: 300 } },
   );
   if (!res.ok) {
     console.error(`[landing] Workflow ranked fetch failed for ${featureSlug}: ${res.status}`);
@@ -218,7 +218,7 @@ async function fetchBrandRanked(
 ): Promise<BrandLeaderboardEntry[]> {
   const res = await fetch(
     `${apiUrl}/v1/public/features/ranked?featureSlug=${encodeURIComponent(featureSlug)}&objective=emailsSent&groupBy=brand&limit=100`,
-    { headers, cache: "no-store" },
+    { headers, next: { revalidate: 300 } },
   );
   if (!res.ok) {
     console.error(`[landing] Brand ranked fetch failed for ${featureSlug}: ${res.status}`);
@@ -364,7 +364,7 @@ export async function fetchLeaderboard(hostname = ""): Promise<LeaderboardData |
     // Step 1: Fetch feature list from api-service
     const featuresRes = await fetch(`${apiUrl}/public/features`, {
       headers,
-      cache: "no-store",
+      next: { revalidate: 300 },
     });
     if (!featuresRes.ok) {
       console.error(`[landing] Performance: features fetch failed: ${featuresRes.status}`);
@@ -413,7 +413,7 @@ export async function fetchLeaderboard(hostname = ""): Promise<LeaderboardData |
     // Step 5: Fetch best stats for hero
     const bestRes = await fetch(
       `${apiUrl}/v1/public/features/best?featureSlug=${encodeURIComponent(heroFeature.slug)}&groupBy=workflow`,
-      { headers, cache: "no-store" },
+      { headers, next: { revalidate: 300 } },
     );
     const bestData: BestResponse | null = bestRes.ok ? await bestRes.json() : null;
 

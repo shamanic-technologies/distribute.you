@@ -122,9 +122,9 @@ describe("FreeVsCloud component", () => {
     expect(content).toMatch(/export function FreeVsCloud/);
   });
 
-  it("renders both Free (self-host) and Cloud (pay-as-you-go) tiers", () => {
-    expect(content).toMatch(/Self-host|self.host/i);
+  it("renders the single Pay-as-you-go cloud tier (self-host removed per ICP simplification)", () => {
     expect(content).toMatch(/Pay-as-you-go|pay.as.you.go|\$2.*credit/i);
+    expect(content).not.toMatch(/Self-host|self.host/i);
   });
 });
 

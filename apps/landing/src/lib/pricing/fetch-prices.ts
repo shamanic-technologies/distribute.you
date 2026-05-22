@@ -32,7 +32,7 @@ function resolveApiUrl(hostname: string): string {
 export async function fetchPlatformPrices(hostname: string): Promise<PlatformPrice[]> {
   const baseUrl = resolveApiUrl(hostname);
   const url = `${baseUrl}/v1/costs/platform-prices`;
-  const res = await fetch(url, { cache: "no-store" });
+  const res = await fetch(url, { next: { revalidate: 300 } });
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`[landing] /v1/costs/platform-prices returned ${res.status}: ${body}`);
