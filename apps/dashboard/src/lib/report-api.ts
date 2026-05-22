@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { clerkClient } from "@clerk/nextjs/server";
 import type {
   Brand,
@@ -43,14 +44,19 @@ async function adminGet<T>(label: string, path: string, orgId: string): Promise<
   }
 }
 
-export async function fetchBrand(orgId: string, brandId: string): Promise<Brand | null> {
+// All fetchers are wrapped in `react.cache()` so multiple Suspense boundaries
+// in the same request share one HTTP roundtrip. Without it, Overview ends up
+// firing /v1/leads twice (once for the stats grid, once for the CPA funnel),
+// doubling the slowest-path latency.
+
+export const fetchBrand = cache(async (orgId: string, brandId: string): Promise<Brand | null> => {
   const result = await adminGet<{ brand: Brand }>("getBrand", `/brands/${brandId}`, orgId);
   return result?.brand ?? null;
-}
+});
 
 /** Clerk org display name. Returns the raw orgId on failure so the header
  *  never collapses, but logs the cause. */
-export async function fetchOrgName(orgId: string): Promise<string> {
+export const fetchOrgName = cache(async (orgId: string): Promise<string> => {
   try {
     const client = await clerkClient();
     const org = await client.organizations.getOrganization({ organizationId: orgId });
@@ -59,40 +65,40 @@ export async function fetchOrgName(orgId: string): Promise<string> {
     console.error(`[dashboard-report] fetchOrgName(${orgId}) failed:`, err);
     return orgId;
   }
-}
+});
 
-export async function fetchLeads(orgId: string, brandId: string, featureSlug: string): Promise<Lead[]> {
+export const fetchLeads = cache(async (orgId: string, brandId: string, featureSlug: string): Promise<Lead[]> => {
   const result = await adminGet<{ leads: Lead[] }>("listBrandLeads", `/leads?brandId=${brandId}`, orgId);
   const leads = result?.leads ?? [];
   return leads.filter((l) => !l.featureSlug || l.featureSlug === featureSlug);
-}
+});
 
-export async function fetchEmails(orgId: string, brandId: string): Promise<Email[]> {
+export const fetchEmails = cache(async (orgId: string, brandId: string): Promise<Email[]> => {
   const result = await adminGet<{ emails: Email[] }>("listBrandEmails", `/emails?brandId=${brandId}`, orgId);
   return result?.emails ?? [];
-}
+});
 
-export async function fetchCampaigns(orgId: string, brandId: string, featureSlug: string): Promise<Campaign[]> {
+export const fetchCampaigns = cache(async (orgId: string, brandId: string, featureSlug: string): Promise<Campaign[]> => {
   const result = await adminGet<{ campaigns: Campaign[] }>("listCampaignsByBrand", `/campaigns?brandId=${brandId}`, orgId);
   const campaigns = result?.campaigns ?? [];
   return campaigns.filter((c) => c.featureSlug === featureSlug);
-}
+});
 
-export async function fetchWorkflows(orgId: string, featureSlug: string): Promise<Workflow[]> {
+export const fetchWorkflows = cache(async (orgId: string, featureSlug: string): Promise<Workflow[]> => {
   const result = await adminGet<{ workflows: Workflow[] }>(
     "listWorkflows",
     `/workflows?featureSlug=${encodeURIComponent(featureSlug)}`,
     orgId,
   );
   return result?.workflows ?? [];
-}
+});
 
 interface CostStatsResponse {
   groups: { totalCostInUsdCents: string }[];
 }
 
 /** Total spend (USD cents) for this brand × feature across all run costs. */
-export async function fetchTotalCostCents(orgId: string, brandId: string, featureSlug: string): Promise<number> {
+export const fetchTotalCostCents = cache(async (orgId: string, brandId: string, featureSlug: string): Promise<number> => {
   const params = new URLSearchParams({ brandId, groupBy: "costName", featureSlug });
   const result = await adminGet<CostStatsResponse>(
     "runsCostStats",
@@ -101,7 +107,7 @@ export async function fetchTotalCostCents(orgId: string, brandId: string, featur
   );
   if (!result) return 0;
   return result.groups.reduce((sum, g) => sum + Number(g.totalCostInUsdCents || 0), 0);
-}
+});
 
 /** A row representing one company derived from enriched leads. */
 export interface CompanyRow {
