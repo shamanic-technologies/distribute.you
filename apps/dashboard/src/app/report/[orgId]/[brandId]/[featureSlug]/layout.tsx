@@ -5,6 +5,11 @@ import { ReportHeader } from "@/components/report/header";
 import { HeaderSkeleton } from "@/components/report/skeletons";
 import { fetchBrand, fetchOrgName } from "@/lib/report-api";
 
+// Upstream cost-stats endpoint can take ~30s; default 10s Vercel timeout
+// kills the request. 60s gives headroom and matches the existing /api/v1
+// proxy in this app.
+export const maxDuration = 60;
+
 export const metadata: Metadata = {
   title: "Client Report",
   robots: {
