@@ -6,6 +6,7 @@ import { PortfolioDashboard } from "@/components/portfolio-dashboard";
 import { GmailInbox } from "@/components/gmail-inbox";
 import { FreeVsCloud } from "@/components/free-vs-cloud";
 import { WorkflowRecipe } from "@/components/workflow-recipe";
+import { ToolsMarquee } from "@/components/tools-marquee";
 import { PerformancePreview } from "@/components/performance-preview";
 import { StatusIndicator } from "@/components/status-indicator";
 import { fetchLeaderboard } from "@/lib/performance/fetch-leaderboard";
@@ -52,7 +53,7 @@ export default async function Home() {
 
           <p className="text-lg md:text-xl text-gray-500 mb-10 max-w-2xl mx-auto leading-relaxed">
             Sales, PR, VCs, hiring, accelerators — {liveCount} channels live.
-            Pay per email. Track CAC. Scale what works.
+            Pay per email. Track cost per reply. Scale what works.
           </p>
 
           <HeroForm signUpUrl={urls.signUp} />
@@ -70,6 +71,21 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* Tools the builder lives in */}
+      <section className="py-16 px-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-10">
+            <p className="text-xs uppercase tracking-wider text-gray-400 font-medium mb-2">
+              You live here. We meet you here.
+            </p>
+            <h2 className="font-display text-2xl md:text-3xl font-bold text-gray-900">
+              Built to slot into your stack
+            </h2>
+          </div>
+          <ToolsMarquee />
+        </div>
+      </section>
+
       {/* For builders, not businesses */}
       <section className="py-20 px-4">
         <div className="max-w-3xl mx-auto text-center">
@@ -81,7 +97,7 @@ export default async function Home() {
           </p>
           <p className="text-lg text-gray-700 font-medium leading-relaxed">
             Drop a URL. Set a daily budget. We send, qualify, and forward replies.
-            Track CAC per product. Kill what doesn&apos;t convert. Scale what does.
+            Track cost per reply per product. Kill what doesn&apos;t convert. Scale what does.
           </p>
         </div>
       </section>
@@ -107,7 +123,7 @@ export default async function Home() {
               "Triage 200 raw replies to find 3 real leads",
               "Build a reply classifier yourself",
               "Wire Apollo + Resend + Claude into 4 services",
-              "Track CAC per product × per channel by hand",
+              "Track cost per reply per product × per channel by hand",
             ].map((item) => (
               <div
                 key={item}
@@ -211,7 +227,7 @@ export default async function Home() {
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-10">
               <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
-                CAC, not vanity metrics
+                Cost per reply, not vanity metrics
               </h2>
               <p className="text-gray-500 text-lg max-w-2xl mx-auto">
                 Every workflow ranked by real cost per qualified reply.

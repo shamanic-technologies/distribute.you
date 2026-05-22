@@ -87,8 +87,8 @@ export default async function PricingPage() {
                 Outcomes
               </h3>
               <p className="text-sm text-gray-500 leading-relaxed">
-                Derived a posteriori. $/qualified reply, $/paid conversion —
-                your real CAC, tracked per product × channel.
+                Derived a posteriori. Cost per qualified reply, cost per paid conversion —
+                tracked per product × channel, live in your dashboard.
               </p>
             </div>
           </div>
