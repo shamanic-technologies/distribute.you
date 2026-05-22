@@ -3,7 +3,7 @@ import { SectionCard } from "@/components/report/section-card";
 import { DataTable, type TableColumn } from "@/components/report/data-table";
 import { CsvDownloadButton, GoogleSheetsButton, type CsvColumn } from "@/components/report/csv-button";
 import { TableSectionSkeleton } from "@/components/report/skeletons";
-import { fetchCampaigns, fetchLeads, fetchEmails } from "@/lib/report-api";
+import { fetchCampaigns, fetchLeads, fetchEmails, fetchWorkflows } from "@/lib/report-api";
 import type { Campaign } from "@/lib/api";
 
 interface PageProps {
@@ -59,10 +59,11 @@ export default async function CampaignsPage({ params }: PageProps) {
 }
 
 async function CampaignsSection({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
-  const [campaigns, leads, emails] = await Promise.all([
+  const [campaigns, leads, emails, workflows] = await Promise.all([
     fetchCampaigns(orgId, brandId, featureSlug),
     fetchLeads(orgId, brandId, featureSlug),
     fetchEmails(orgId, brandId),
+    fetchWorkflows(orgId, featureSlug),
   ]);
 
   const leadCountByCampaign = new Map<string, number>();
@@ -70,12 +71,13 @@ async function CampaignsSection({ orgId, brandId, featureSlug }: { orgId: string
     leadCountByCampaign.set(l.campaignId, (leadCountByCampaign.get(l.campaignId) ?? 0) + 1);
   }
   const soleEmailCount = campaigns.length === 1 ? emails.length : 0;
+  const workflowNameBySlug = new Map(workflows.map((w) => [w.workflowSlug, w.workflowDynastyName]));
 
   const rows: CampaignRow[] = campaigns.map((c) => ({
     id: c.id,
     name: c.name,
     status: c.status,
-    workflow: c.workflowSlug ?? "",
+    workflow: (c.workflowSlug && workflowNameBySlug.get(c.workflowSlug)) || "",
     budget: formatBudget(c),
     leadCount: leadCountByCampaign.get(c.id) ?? 0,
     emailCount: campaigns.length === 1 ? soleEmailCount : 0,
@@ -93,7 +95,7 @@ async function CampaignsSection({ orgId, brandId, featureSlug }: { orgId: string
         </span>
       ),
     },
-    { key: "workflow", label: "Workflow", render: (r) => <span className="font-mono text-xs">{r.workflow || "—"}</span> },
+    { key: "workflow", label: "Workflow", render: (r) => r.workflow || "—" },
     { key: "budget", label: "Budget", render: (r) => r.budget },
     { key: "leadCount", label: "Leads", render: (r) => r.leadCount.toLocaleString("en-US") },
     {
@@ -109,7 +111,6 @@ async function CampaignsSection({ orgId, brandId, featureSlug }: { orgId: string
   ];
 
   const csvColumns: CsvColumn<CampaignRow>[] = [
-    { label: "Campaign ID", value: (r) => r.id },
     { label: "Name", value: (r) => r.name },
     { label: "Status", value: (r) => r.status },
     { label: "Workflow", value: (r) => r.workflow },
@@ -126,7 +127,7 @@ async function CampaignsSection({ orgId, brandId, featureSlug }: { orgId: string
       count={rows.length}
       actions={
         <>
-          <CsvDownloadButton filename={`campaigns-${brandId}.csv`} rows={rows} columns={csvColumns} />
+          <CsvDownloadButton filename={`campaigns-${featureSlug}.csv`} rows={rows} columns={csvColumns} />
           <GoogleSheetsButton />
         </>
       }

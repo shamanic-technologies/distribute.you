@@ -3,7 +3,7 @@ import type { Brand } from "@/lib/api";
 interface ReportHeaderProps {
   brand: Brand | null;
   brandId: string;
-  orgId: string;
+  orgName: string;
   featureSlug: string;
   generatedAt: Date;
 }
@@ -12,9 +12,10 @@ const FEATURE_LABELS: Record<string, string> = {
   "sales-cold-email-outreach": "Sales Cold Email Outreach",
 };
 
-export function ReportHeader({ brand, brandId, orgId, featureSlug, generatedAt }: ReportHeaderProps) {
+export function ReportHeader({ brand, brandId, orgName, featureSlug, generatedAt }: ReportHeaderProps) {
   const featureLabel = FEATURE_LABELS[featureSlug] ?? featureSlug;
-  const brandName = brand?.name || brand?.domain || brandId;
+  const brandName = brand?.name || brand?.domain || "this brand";
+  void brandId;
 
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-5">
@@ -36,9 +37,8 @@ export function ReportHeader({ brand, brandId, orgId, featureSlug, generatedAt }
           )}
           <div>
             <h1 className="font-display text-2xl font-bold text-gray-800">{brandName}</h1>
-            <p className="text-sm text-gray-500 mt-0.5">
-              {featureLabel} report
-            </p>
+            <p className="text-sm text-gray-500 mt-0.5">{featureLabel} report</p>
+            <p className="text-xs text-gray-400 mt-0.5">Prepared by {orgName}</p>
           </div>
         </div>
         <div className="text-right text-xs text-gray-500">
@@ -51,7 +51,6 @@ export function ReportHeader({ brand, brandId, orgId, featureSlug, generatedAt }
               })}
             </time>
           </div>
-          <div className="mt-0.5 font-mono text-[10px] text-gray-400">org: {orgId.slice(0, 14)}…</div>
         </div>
       </div>
     </header>

@@ -92,7 +92,7 @@ async function CompaniesSection({ orgId, brandId, featureSlug }: { orgId: string
       count={companies.length}
       actions={
         <>
-          <CsvDownloadButton filename={`companies-${brandId}.csv`} rows={companies} columns={csvColumns} />
+          <CsvDownloadButton filename={`companies-${featureSlug}.csv`} rows={companies} columns={csvColumns} />
           <GoogleSheetsButton />
         </>
       }

@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { SectionCard } from "@/components/report/section-card";
 import { CsvDownloadButton, GoogleSheetsButton, type CsvColumn } from "@/components/report/csv-button";
 import { ListSectionSkeleton } from "@/components/report/skeletons";
-import { fetchEmails, fetchCampaigns } from "@/lib/report-api";
+import { fetchEmails, fetchCampaigns, fetchWorkflows } from "@/lib/report-api";
 import type { Email } from "@/lib/api";
 
 interface PageProps {
@@ -14,7 +14,7 @@ interface EmailRow {
   to: string;
   toCompany: string;
   workflow: string;
-  campaignId: string;
+  campaign: string;
   createdAt: string;
   bodyText: string;
 }
@@ -38,20 +38,23 @@ export default async function EmailsPage({ params }: PageProps) {
 }
 
 async function EmailsSection({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
-  const [emails, campaigns] = await Promise.all([
+  const [emails, campaigns, workflows] = await Promise.all([
     fetchEmails(orgId, brandId),
     fetchCampaigns(orgId, brandId, featureSlug),
+    fetchWorkflows(orgId, featureSlug),
   ]);
 
   const sole = campaigns.length === 1 ? campaigns[0] : null;
+  const workflowNameBySlug = new Map(workflows.map((w) => [w.workflowSlug, w.workflowDynastyName]));
 
   function toRow(e: Email): EmailRow {
+    const wfSlug = sole?.workflowSlug ?? "";
     return {
       subject: e.subject,
       to: `${e.leadFirstName} ${e.leadLastName}`.trim(),
       toCompany: e.leadCompany,
-      workflow: e.generationRun?.taskName ?? sole?.workflowSlug ?? "",
-      campaignId: sole?.id ?? "",
+      workflow: workflowNameBySlug.get(wfSlug) ?? e.generationRun?.taskName ?? "",
+      campaign: sole?.name ?? "",
       createdAt: e.createdAt,
       bodyText: e.bodyText ?? "",
     };
@@ -64,7 +67,7 @@ async function EmailsSection({ orgId, brandId, featureSlug }: { orgId: string; b
     { label: "Recipient", value: (r) => r.to },
     { label: "Company", value: (r) => r.toCompany },
     { label: "Workflow", value: (r) => r.workflow },
-    { label: "Campaign ID", value: (r) => r.campaignId },
+    { label: "Campaign", value: (r) => r.campaign },
     { label: "Created at", value: (r) => r.createdAt },
     { label: "Body text", value: (r) => r.bodyText },
   ];
@@ -76,7 +79,7 @@ async function EmailsSection({ orgId, brandId, featureSlug }: { orgId: string; b
       count={rows.length}
       actions={
         <>
-          <CsvDownloadButton filename={`emails-${brandId}.csv`} rows={rows} columns={csvColumns} />
+          <CsvDownloadButton filename={`emails-${featureSlug}.csv`} rows={rows} columns={csvColumns} />
           <GoogleSheetsButton />
         </>
       }

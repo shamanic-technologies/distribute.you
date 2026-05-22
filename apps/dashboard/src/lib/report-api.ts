@@ -1,4 +1,5 @@
 import "server-only";
+import { clerkClient } from "@clerk/nextjs/server";
 import type {
   Brand,
   Campaign,
@@ -45,6 +46,19 @@ async function adminGet<T>(label: string, path: string, orgId: string): Promise<
 export async function fetchBrand(orgId: string, brandId: string): Promise<Brand | null> {
   const result = await adminGet<{ brand: Brand }>("getBrand", `/brands/${brandId}`, orgId);
   return result?.brand ?? null;
+}
+
+/** Clerk org display name. Returns the raw orgId on failure so the header
+ *  never collapses, but logs the cause. */
+export async function fetchOrgName(orgId: string): Promise<string> {
+  try {
+    const client = await clerkClient();
+    const org = await client.organizations.getOrganization({ organizationId: orgId });
+    return org.name || orgId;
+  } catch (err) {
+    console.error(`[dashboard-report] fetchOrgName(${orgId}) failed:`, err);
+    return orgId;
+  }
 }
 
 export async function fetchLeads(orgId: string, brandId: string, featureSlug: string): Promise<Lead[]> {
