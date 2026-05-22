@@ -1,16 +1,14 @@
 import { Suspense } from "react";
 import { SectionCard } from "@/components/report/section-card";
 import {
-  fetchLeads,
-  fetchEmails,
+  fetchFeatureStats,
   fetchCampaigns,
   fetchWorkflows,
   fetchTotalCostCents,
-  deriveCompaniesFromLeads,
-  deriveIndividualsFromLeads,
 } from "@/lib/report-api";
 
 export const revalidate = 30;
+export const maxDuration = 60;
 
 interface PageProps {
   params: Promise<{ orgId: string; brandId: string; featureSlug: string }>;
@@ -53,29 +51,38 @@ export default async function OverviewPage({ params }: PageProps) {
   );
 }
 
+// Pick a stat by trying multiple candidate keys. Backend stat naming varies
+// across feature versions; this avoids hard-coding one and shows 0 only when
+// none of the candidates exist.
+function pickStat(stats: Record<string, number>, ...keys: string[]): number {
+  for (const key of keys) {
+    const v = stats[key];
+    if (typeof v === "number") return v;
+  }
+  return 0;
+}
+
 async function StatsGrid({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
-  const [leads, emails, campaigns, workflows] = await Promise.all([
-    fetchLeads(orgId, brandId, featureSlug),
-    fetchEmails(orgId, brandId),
+  const [featureStats, campaigns, workflows] = await Promise.all([
+    fetchFeatureStats(orgId, brandId, featureSlug),
     fetchCampaigns(orgId, brandId, featureSlug),
     fetchWorkflows(orgId, featureSlug),
   ]);
 
-  const companies = deriveCompaniesFromLeads(leads);
-  const individuals = deriveIndividualsFromLeads(leads);
+  const stats = featureStats?.stats ?? {};
 
-  const stats = [
-    { label: "Leads", value: leads.length, note: "Targeted prospects across campaigns" },
-    { label: "Companies", value: companies.length, note: "Unique organizations targeted" },
-    { label: "Individuals", value: individuals.length, note: "People reached or queued" },
-    { label: "Emails sent", value: emails.length, note: "Total emails generated" },
+  const cards = [
+    { label: "Leads", value: pickStat(stats, "leads", "leadsCount", "leadsTotal", "leadsServed", "leadsBuffered"), note: "Targeted prospects across campaigns" },
+    { label: "Companies", value: pickStat(stats, "companies", "companiesCount", "companiesEnriched", "organizations"), note: "Unique organizations targeted" },
+    { label: "Individuals", value: pickStat(stats, "individuals", "individualsCount", "people", "peopleEnriched"), note: "People reached or queued" },
+    { label: "Emails sent", value: pickStat(stats, "emailsSent", "emails", "emailsGenerated", "leadsSent"), note: "Total emails generated" },
     { label: "Workflows", value: workflows.length, note: "Email generation pipelines" },
     { label: "Campaigns", value: campaigns.length, note: "Outreach programs" },
   ];
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-      {stats.map((s) => (
+      {cards.map((s) => (
         <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-4">
           <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">{s.label}</div>
           <div className="text-2xl font-bold text-gray-800 mt-1">
@@ -89,17 +96,19 @@ async function StatsGrid({ orgId, brandId, featureSlug }: { orgId: string; brand
 }
 
 async function CpaFunnel({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
-  const [leads, totalCostCents] = await Promise.all([
-    fetchLeads(orgId, brandId, featureSlug),
+  const [featureStats, totalCostCents] = await Promise.all([
+    fetchFeatureStats(orgId, brandId, featureSlug),
     fetchTotalCostCents(orgId, brandId, featureSlug),
   ]);
 
+  const stats = featureStats?.stats ?? {};
+
   const cpaStages = [
-    { label: "Sent", count: leads.filter((l) => l.sent).length },
-    { label: "Delivered", count: leads.filter((l) => l.delivered).length },
-    { label: "Opened", count: leads.filter((l) => l.opened).length },
-    { label: "Clicked", count: leads.filter((l) => l.clicked).length },
-    { label: "Positive reply", count: leads.filter((l) => l.replied && l.replyClassification === "positive").length },
+    { label: "Sent", count: pickStat(stats, "leadsSent", "emailsSent", "sent") },
+    { label: "Delivered", count: pickStat(stats, "leadsDelivered", "delivered") },
+    { label: "Opened", count: pickStat(stats, "leadsOpened", "opened") },
+    { label: "Clicked", count: pickStat(stats, "leadsClicked", "clicked") },
+    { label: "Positive reply", count: pickStat(stats, "repliesPositive", "leadsRepliedPositive", "positiveReplies") },
   ];
 
   return (
