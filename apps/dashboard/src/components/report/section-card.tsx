@@ -13,7 +13,7 @@ interface SectionCardProps {
 export function SectionCard({ title, description, count, actions, children, placeholder, placeholderNote }: SectionCardProps) {
   return (
     <section className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <header className="px-5 py-4 border-b border-gray-100 flex items-start justify-between gap-4 flex-wrap">
+      <header className="px-5 py-4 border-b border-gray-200 flex items-start justify-between gap-4 flex-wrap">
         <div>
           <div className="flex items-center gap-2">
             <h2 className="font-display text-lg font-bold text-gray-800">{title}</h2>

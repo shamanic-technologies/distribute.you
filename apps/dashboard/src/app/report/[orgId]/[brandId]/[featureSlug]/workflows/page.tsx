@@ -1,7 +1,8 @@
 import { Suspense } from "react";
 import { SectionCard } from "@/components/report/section-card";
 
-export const revalidate = 30;
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 import { CsvDownloadButton, GoogleSheetsButton } from "@/components/report/csv-button";
 import { toCsv, type CsvColumn } from "@/components/report/csv";

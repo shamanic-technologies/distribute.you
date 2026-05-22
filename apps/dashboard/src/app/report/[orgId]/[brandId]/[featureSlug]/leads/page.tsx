@@ -7,7 +7,7 @@ import { LeadsTable, type LeadRow } from "@/components/report/leads-table";
 import { fetchLeads, fetchCampaigns, REPORT_FETCH_LIMIT } from "@/lib/report-api";
 import { getLeadConsolidatedStatus, type Lead } from "@/lib/api";
 
-export const revalidate = 30;
+export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 interface PageProps {
