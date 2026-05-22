@@ -10,7 +10,10 @@ import {
   deriveIndividualsFromLeads,
 } from "@/lib/report-api";
 
-export const revalidate = 30;
+// Dynamic so Suspense / loading.tsx skeletons actually stream to the
+// browser. With ISR (revalidate), Next.js buffers the full render until
+// every fetch resolves, so the user sees a blank tab instead of a skeleton.
+export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 interface PageProps {
