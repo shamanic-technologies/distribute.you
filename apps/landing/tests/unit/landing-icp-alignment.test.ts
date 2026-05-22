@@ -50,8 +50,14 @@ describe("Landing page: ICP-only alignment", () => {
     expect(page).toMatch(/from\s+["']@\/components\/workflow-recipe["']/);
   });
 
-  it("includes 'For builders, not businesses' section", () => {
-    expect(page).toMatch(/For builders,\s+not businesses/i);
+  it("includes the 'Stay solo. Go big.' aspiration section (no anti-business dichotomy)", () => {
+    expect(page).toMatch(/Stay solo\.\s*<span[^>]*>Go big\./i);
+    expect(page).not.toMatch(/not businesses/i);
+  });
+
+  it("references the ICP's millionaire-solo dream explicitly", () => {
+    expect(page).toMatch(/\$0 to \$1M MRR/);
+    expect(page).toMatch(/solo/i);
   });
 
   it("includes 'What you don't have to do' email-infra section", () => {
@@ -86,8 +92,9 @@ describe("PortfolioDashboard component", () => {
     expect(content).toMatch(/products/i);
   });
 
-  it("shows a CAC / $-per-reply column", () => {
-    expect(content).toMatch(/\$\/.*reply|CAC|cost.*per/i);
+  it("shows a positive-reply column (CAC / $-per-reply variant)", () => {
+    expect(content).toMatch(/positive reply/i);
+    expect(content).toMatch(/\$\/positive reply/i);
   });
 });
 
@@ -207,20 +214,20 @@ describe("Pricing page: ICP framing", () => {
   });
 });
 
-describe("Performance page: cost-per-reply framing", () => {
+describe("Performance page: cost-per-positive-reply framing", () => {
   const content = fs.readFileSync(performancePagePath, "utf-8");
   const loadingPath = path.resolve(__dirname, "../../src/app/performance/loading.tsx");
   const loading = fs.readFileSync(loadingPath, "utf-8");
 
-  it("hero frames the leaderboard by cost per reply (no bare 'CAC')", () => {
-    expect(content).toMatch(/cost per (qualified )?reply/i);
+  it("hero frames the leaderboard by cost per positive reply (no bare 'CAC')", () => {
+    expect(content).toMatch(/cost per positive reply/i);
     expect(content).not.toMatch(/\bCAC\b/);
   });
 
   it("loading.tsx hero copy stays in sync with page.tsx hero (no visual flash)", () => {
-    expect(loading).toMatch(/Cost per qualified reply/);
-    expect(loading).toMatch(/Workflows ranked by[\s\S]*real cost per reply/);
-    expect(loading).toMatch(/Every workflow ranked by cost per qualified reply/);
+    expect(loading).toMatch(/Cost per positive reply/);
+    expect(loading).toMatch(/Workflows ranked by[\s\S]*real cost per positive reply/);
+    expect(loading).toMatch(/Every workflow ranked by cost per positive reply/);
   });
 });
 

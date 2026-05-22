@@ -88,6 +88,18 @@ export default function InvestorsPage() {
                 to me — founder reachable, bugs fixed fast, features shipped fast.&quot;
               </blockquote>
 
+              <div className="rounded-lg bg-gradient-to-br from-brand-500/10 to-violet-500/10 border border-brand-500/30 p-4">
+                <p className="text-[10px] uppercase tracking-wider text-brand-300 font-semibold mb-2">
+                  The dream
+                </p>
+                <p className="text-gray-200 italic">
+                  &quot;One of my products is going to take off. I want it to take off because of my
+                  marketing — not because I hired a team or raised a Series A. I want to ride
+                  one product from $0 to $1M MRR while staying solo. distribute.you is the
+                  lever that makes that math work.&quot;
+                </p>
+              </div>
+
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
                   <p className="text-gray-500 text-xs mb-1">Age</p>

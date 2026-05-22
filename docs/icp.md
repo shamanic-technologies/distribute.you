@@ -11,6 +11,12 @@
 
 > "I'm 16-40. CEO-founder, mostly solo. I build non-stop. I always have several SaaS in bench. I don't have time to breathe between newsletter, content, distribute.you campaigns, meetings, monitoring, replies, workflows, and refining the ICP of my own campaigns. I want someone close to me — founder reachable, bugs fixed fast, features shipped fast."
 
+### The dream (never forget this)
+
+> "One of my products is going to take off. I want it to take off because of my marketing, my distribution, my ICP — not because I hired a marketing team or raised a Series A. I want to stay solo. I want to ride one product from $0 to $1M MRR without ever needing to become a 'real company.' distribute.you is the lever that makes that math work."
+
+The dream is **stay solo, go big.** Every product decision, every roadmap item, every line of copy must support this trajectory: a single founder, riding the right product, becoming a millionaire on their own terms. Anything that implies "you're too small for this" or "wait until you're a real company" is wrong.
+
 ### Demographics & context
 
 | Dimension | Value |

@@ -2,8 +2,8 @@ interface PortfolioRow {
   product: string;
   spend: string;
   sent: number;
-  qualifiedReplies: number;
-  costPerReply: string;
+  positiveReplies: number;
+  costPerPositiveReply: string;
   status: "scale" | "watch" | "kill";
 }
 
@@ -27,10 +27,10 @@ const STATUS_BADGE: Record<PortfolioRow["status"], { label: string; classes: str
 
 export function PortfolioDashboard() {
   const products: PortfolioRow[] = [
-    { product: "mailmesh.com", spend: "$34", sent: 82, qualifiedReplies: 12, costPerReply: "$2.83", status: "scale" },
-    { product: "voiceform.io", spend: "$35", sent: 61, qualifiedReplies: 4, costPerReply: "$8.75", status: "watch" },
-    { product: "linearclone.dev", spend: "$34", sent: 74, qualifiedReplies: 1, costPerReply: "$34.00", status: "kill" },
-    { product: "prompthub.ai", spend: "$34", sent: 88, qualifiedReplies: 22, costPerReply: "$1.55", status: "scale" },
+    { product: "mailmesh.com", spend: "$34", sent: 82, positiveReplies: 12, costPerPositiveReply: "$2.83", status: "scale" },
+    { product: "voiceform.io", spend: "$35", sent: 61, positiveReplies: 4, costPerPositiveReply: "$8.75", status: "watch" },
+    { product: "linearclone.dev", spend: "$34", sent: 74, positiveReplies: 1, costPerPositiveReply: "$34.00", status: "kill" },
+    { product: "prompthub.ai", spend: "$34", sent: 88, positiveReplies: 22, costPerPositiveReply: "$1.55", status: "scale" },
   ];
 
   return (
@@ -74,8 +74,8 @@ export function PortfolioDashboard() {
                 <th className="text-left font-medium px-6 py-3">Product</th>
                 <th className="text-right font-medium px-3 py-3">Spend</th>
                 <th className="text-right font-medium px-3 py-3 hidden sm:table-cell">Sent</th>
-                <th className="text-right font-medium px-3 py-3">Qualified replies</th>
-                <th className="text-right font-medium px-3 py-3">$/qual reply</th>
+                <th className="text-right font-medium px-3 py-3">Positive replies</th>
+                <th className="text-right font-medium px-3 py-3">$/positive reply</th>
                 <th className="text-right font-medium px-6 py-3">Status</th>
               </tr>
             </thead>
@@ -90,7 +90,7 @@ export function PortfolioDashboard() {
                       {row.sent}
                     </td>
                     <td className="text-right px-3 py-3 text-gray-200 font-medium">
-                      {row.qualifiedReplies}
+                      {row.positiveReplies}
                     </td>
                     <td
                       className={`text-right px-3 py-3 font-medium tabular-nums ${
@@ -101,7 +101,7 @@ export function PortfolioDashboard() {
                             : "text-emerald-300"
                       }`}
                     >
-                      {row.costPerReply}
+                      {row.costPerPositiveReply}
                     </td>
                     <td className="text-right px-6 py-3">
                       <span
@@ -120,7 +120,7 @@ export function PortfolioDashboard() {
 
         {/* Footer hint */}
         <div className="px-6 py-3 border-t border-gray-800/60 bg-gray-900/30 text-[10px] text-gray-500 flex items-center justify-between">
-          <span>4 products · $137 spent · 39 qualified replies · avg $3.51 per reply</span>
+          <span>4 products · $137 spent · 39 positive replies · avg $3.51 per positive reply</span>
           <span className="text-gray-600">Updated 12s ago</span>
         </div>
       </div>
