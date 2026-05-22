@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { OutrankWebhookSchema, extractArticle } from "@/lib/blog/outrank-schema";
+import { OutrankWebhookSchema, extractArticles } from "@/lib/blog/outrank-schema";
 import { upsertArticle } from "@/lib/blog/db";
 
 export const runtime = "nodejs";
@@ -16,18 +16,14 @@ function getExpectedToken(): string {
 function isAuthorized(request: NextRequest): boolean {
   const expected = getExpectedToken();
   const header = request.headers.get("authorization") ?? "";
-  if (header.toLowerCase().startsWith("bearer ")) {
-    return header.slice(7).trim() === expected;
-  }
-  const xToken = request.headers.get("x-outrank-token") ?? "";
-  if (xToken && xToken === expected) return true;
-  return false;
+  if (!header.toLowerCase().startsWith("bearer ")) return false;
+  return header.slice(7).trim() === expected;
 }
 
 export async function POST(request: NextRequest) {
   if (!isAuthorized(request)) {
     console.warn("[landing/outrank] unauthorized webhook attempt");
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
   const raw = await request.json();
@@ -35,25 +31,32 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     console.warn("[landing/outrank] invalid payload", JSON.stringify(parsed.error.issues));
     return NextResponse.json(
-      { error: "invalid payload", issues: parsed.error.issues },
+      { message: "Invalid payload", issues: parsed.error.issues },
       { status: 400 },
     );
   }
 
-  const article = extractArticle(parsed.data);
-  const saved = await upsertArticle(article);
+  const articles = extractArticles(parsed.data);
 
-  console.log(`[landing/outrank] upserted article slug=${saved.slug} id=${saved.id}`);
+  for (const article of articles) {
+    const saved = await upsertArticle(article);
+    console.log(
+      `[landing/outrank] upserted slug=${saved.slug} id=${saved.id} event=${parsed.data.event_type}`,
+    );
+    revalidatePath(`/blog/${saved.slug}`);
+  }
   revalidatePath("/blog");
-  revalidatePath(`/blog/${saved.slug}`);
+  revalidatePath("/sitemap.xml");
 
-  return NextResponse.json({ ok: true, slug: saved.slug, id: saved.id });
+  return NextResponse.json({ message: "Webhook processed successfully" });
 }
 
 export async function GET() {
   return NextResponse.json({
     endpoint: "outrank-webhook",
     method: "POST",
-    auth: "Authorization: Bearer <OUTRANK_WEBHOOK_SECRET> (or X-Outrank-Token header)",
+    auth: "Authorization: Bearer <OUTRANK_WEBHOOK_SECRET>",
+    supportedEvents: ["publish_articles", "update_article"],
+    docs: "https://www.outrank.so/docs/webhook",
   });
 }
