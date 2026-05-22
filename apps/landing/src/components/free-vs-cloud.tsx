@@ -9,29 +9,23 @@ export function FreeVsCloud({ signUpUrl }: CloudPlanCardProps) {
     <div className="max-w-xl mx-auto">
       <div className="bg-gray-950 text-white rounded-2xl border-2 border-brand-500/40 p-6 md:p-8 shadow-2xl relative">
         <div className="absolute -top-3 left-6 px-3 py-1 bg-brand-500 text-white text-[10px] font-medium uppercase tracking-wider rounded-full">
-          Recommended
+          Pay as you go
         </div>
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-xs font-medium text-brand-400 uppercase tracking-wider">
-            Pay-as-you-go · cloud
-          </span>
-        </div>
-        <h3 className="font-display text-2xl font-bold mb-2">
-          We run it for you.
-        </h3>
-        <p className="text-sm text-gray-400 mb-6 leading-relaxed">
-          $2 welcome credits. No subscription. We handle the sending infrastructure,
-          warmed inboxes, reply qualification, and Gmail forwarding.
+        <p className="text-sm text-gray-400 mb-6 leading-relaxed mt-2">
+          $2 welcome credits. No subscription.
         </p>
         <ul className="space-y-2.5 text-sm text-gray-300 mb-8">
           <li className="flex items-start gap-2">
+            <span className="text-brand-400 mt-0.5">✓</span> We handle the sending infrastructure
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-brand-400 mt-0.5">✓</span> Pre-warmed inboxes, agency-style sender
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-brand-400 mt-0.5">✓</span> AI qualifies every reply, forwards positives to your Gmail
+          </li>
+          <li className="flex items-start gap-2">
             <span className="text-brand-400 mt-0.5">✓</span> 9 channels live, more every month
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-brand-400 mt-0.5">✓</span> Agency-style sender, fully managed
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-brand-400 mt-0.5">✓</span> AI qualifies replies, forwards to your Gmail
           </li>
           <li className="flex items-start gap-2">
             <span className="text-brand-400 mt-0.5">✓</span> Public unit prices, no hidden margin
