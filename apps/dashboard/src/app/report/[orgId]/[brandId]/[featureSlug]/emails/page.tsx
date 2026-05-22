@@ -1,5 +1,8 @@
 import { Suspense } from "react";
 import { SectionCard } from "@/components/report/section-card";
+
+export const revalidate = 30;
+
 import { CsvDownloadButton, GoogleSheetsButton } from "@/components/report/csv-button";
 import { toCsv, type CsvColumn } from "@/components/report/csv";
 import { ListSectionSkeleton } from "@/components/report/skeletons";
