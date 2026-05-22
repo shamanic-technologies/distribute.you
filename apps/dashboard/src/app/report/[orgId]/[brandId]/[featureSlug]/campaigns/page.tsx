@@ -1,7 +1,8 @@
 import { Suspense } from "react";
 import { SectionCard } from "@/components/report/section-card";
 import { DataTable, type TableColumn } from "@/components/report/data-table";
-import { CsvDownloadButton, GoogleSheetsButton, type CsvColumn } from "@/components/report/csv-button";
+import { CsvDownloadButton, GoogleSheetsButton } from "@/components/report/csv-button";
+import { toCsv, type CsvColumn } from "@/components/report/csv";
 import { TableSectionSkeleton } from "@/components/report/skeletons";
 import { fetchCampaigns, fetchLeads, fetchEmails, fetchWorkflows } from "@/lib/report-api";
 import type { Campaign } from "@/lib/api";
@@ -127,7 +128,7 @@ async function CampaignsSection({ orgId, brandId, featureSlug }: { orgId: string
       count={rows.length}
       actions={
         <>
-          <CsvDownloadButton filename={`campaigns-${featureSlug}.csv`} rows={rows} columns={csvColumns} />
+          <CsvDownloadButton filename={`campaigns-${featureSlug}.csv`} csv={toCsv(rows, csvColumns)} isEmpty={rows.length === 0} />
           <GoogleSheetsButton />
         </>
       }
