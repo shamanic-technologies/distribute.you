@@ -5,6 +5,9 @@ import {
   fetchCampaigns,
   fetchWorkflows,
   fetchTotalCostCents,
+  fetchLeads,
+  deriveCompaniesFromLeads,
+  deriveIndividualsFromLeads,
 } from "@/lib/report-api";
 
 export const revalidate = 30;
@@ -63,18 +66,24 @@ function pickStat(stats: Record<string, number>, ...keys: string[]): number {
 }
 
 async function StatsGrid({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
-  const [featureStats, campaigns, workflows] = await Promise.all([
+  // Stats endpoint covers leads/emails counts; companies + individuals are
+  // derived client-side from the leads payload (capped at REPORT_FETCH_LIMIT
+  // in fetchLeads).
+  const [featureStats, leads, campaigns, workflows] = await Promise.all([
     fetchFeatureStats(orgId, brandId, featureSlug),
+    fetchLeads(orgId, brandId, featureSlug),
     fetchCampaigns(orgId, brandId, featureSlug),
     fetchWorkflows(orgId, featureSlug),
   ]);
 
   const stats = featureStats?.stats ?? {};
+  const companies = deriveCompaniesFromLeads(leads);
+  const individuals = deriveIndividualsFromLeads(leads);
 
   const cards = [
-    { label: "Leads", value: pickStat(stats, "leads", "leadsCount", "leadsTotal", "leadsServed", "leadsBuffered"), note: "Targeted prospects across campaigns" },
-    { label: "Companies", value: pickStat(stats, "companies", "companiesCount", "companiesEnriched", "organizations"), note: "Unique organizations targeted" },
-    { label: "Individuals", value: pickStat(stats, "individuals", "individualsCount", "people", "peopleEnriched"), note: "People reached or queued" },
+    { label: "Leads", value: pickStat(stats, "leads", "leadsCount", "leadsTotal", "leadsServed", "leadsBuffered") || leads.length, note: "Targeted prospects across campaigns" },
+    { label: "Companies", value: companies.length, note: "Unique organizations targeted" },
+    { label: "Individuals", value: individuals.length, note: "People reached or queued" },
     { label: "Emails sent", value: pickStat(stats, "emailsSent", "emails", "emailsGenerated", "leadsSent"), note: "Total emails generated" },
     { label: "Workflows", value: workflows.length, note: "Email generation pipelines" },
     { label: "Campaigns", value: campaigns.length, note: "Outreach programs" },

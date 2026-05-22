@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -70,7 +70,7 @@ export function ReportSidebar({ basePath }: ReportSidebarProps) {
   ];
 
   return (
-    <aside className="w-56 bg-white border-r border-gray-200 flex flex-col flex-shrink-0 h-full">
+    <aside className="w-44 bg-white border-r border-gray-200 flex flex-col flex-shrink-0 h-full">
       <div className="px-4 py-3 border-b border-gray-100">
         <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Report</h3>
       </div>
@@ -81,14 +81,14 @@ export function ReportSidebar({ basePath }: ReportSidebarProps) {
             <Link
               key={item.id}
               href={item.href}
+              prefetch
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${
                 isActive
                   ? "bg-brand-50 text-brand-700 font-medium border border-brand-200"
                   : "text-gray-600 hover:bg-gray-50 hover:text-gray-800"
               }`}
             >
-              <span className={`w-5 h-5 ${isActive ? "text-brand-600" : "text-gray-400"}`}>{item.icon}</span>
-              <span className="flex-1">{item.label}</span>
+              <LinkBody item={item} isActive={isActive} />
             </Link>
           );
         })}
@@ -97,5 +97,26 @@ export function ReportSidebar({ basePath }: ReportSidebarProps) {
         Confidential client report. Public URL, do not share publicly.
       </div>
     </aside>
+  );
+}
+
+function Spinner() {
+  return (
+    <svg className="w-3.5 h-3.5 animate-spin text-current" fill="none" viewBox="0 0 24 24">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+    </svg>
+  );
+}
+
+function LinkBody({ item, isActive }: { item: SidebarItem; isActive: boolean }) {
+  const { pending } = useLinkStatus();
+  return (
+    <>
+      <span className={`w-5 h-5 ${isActive ? "text-brand-600" : "text-gray-400"}`}>
+        {pending ? <Spinner /> : item.icon}
+      </span>
+      <span className="flex-1">{item.label}</span>
+    </>
   );
 }
