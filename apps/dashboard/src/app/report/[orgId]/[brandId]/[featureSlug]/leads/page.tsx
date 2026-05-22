@@ -28,6 +28,8 @@ function toRow(lead: Lead, campaignName: string): LeadRow {
     companyDomain: org?.primaryDomain ?? "",
     industry: org?.industry ?? "",
     country: org?.country ?? "",
+    city: lead.lead?.city ?? "",
+    linkedinUrl: lead.lead?.linkedinUrl ?? null,
     status: getLeadConsolidatedStatus(lead),
     emailStatus: lead.emailStatus ?? "",
     campaign: campaignName,
