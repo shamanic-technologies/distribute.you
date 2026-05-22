@@ -110,23 +110,60 @@ export async function upsertArticle(input: UpsertArticleInput): Promise<BlogArti
   return mapRow(rows[0]);
 }
 
+// Postgres `relation does not exist` code. Surfaced when the migration in
+// apps/landing/migrations/0001_init_blog.sql has not been applied yet to the
+// Neon database pointed to by DATABASE_URL. In that pre-migration window we
+// treat the table as empty so that /blog, /blog/[slug] and /sitemap.xml all
+// render rather than throwing and bringing the Vercel build down. Any other
+// DB error still propagates per the project's fail-loud policy.
+const POSTGRES_UNDEFINED_TABLE = "42P01";
+
+function isMissingBlogTable(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    (err as { code: string }).code === POSTGRES_UNDEFINED_TABLE
+  );
+}
+
 export async function listArticles(limit = 50): Promise<BlogArticle[]> {
   const sql = getSql();
-  const rows = (await sql`
-    SELECT * FROM blog_articles
-    ORDER BY published_at DESC
-    LIMIT ${limit}
-  `) as RawBlogArticle[];
-  return rows.map(mapRow);
+  try {
+    const rows = (await sql`
+      SELECT * FROM blog_articles
+      ORDER BY published_at DESC
+      LIMIT ${limit}
+    `) as RawBlogArticle[];
+    return rows.map(mapRow);
+  } catch (err) {
+    if (isMissingBlogTable(err)) {
+      console.warn(
+        "[landing/blog] blog_articles table missing; run migrations/0001_init_blog.sql against DATABASE_URL",
+      );
+      return [];
+    }
+    throw err;
+  }
 }
 
 export async function getArticleBySlug(slug: string): Promise<BlogArticle | null> {
   const sql = getSql();
-  const rows = (await sql`
-    SELECT * FROM blog_articles
-    WHERE slug = ${slug}
-    LIMIT 1
-  `) as RawBlogArticle[];
-  if (rows.length === 0) return null;
-  return mapRow(rows[0]);
+  try {
+    const rows = (await sql`
+      SELECT * FROM blog_articles
+      WHERE slug = ${slug}
+      LIMIT 1
+    `) as RawBlogArticle[];
+    if (rows.length === 0) return null;
+    return mapRow(rows[0]);
+  } catch (err) {
+    if (isMissingBlogTable(err)) {
+      console.warn(
+        "[landing/blog] blog_articles table missing; run migrations/0001_init_blog.sql against DATABASE_URL",
+      );
+      return null;
+    }
+    throw err;
+  }
 }
