@@ -56,8 +56,8 @@ function toRow(lead: Lead): LeadRow {
 }
 
 export default async function LeadsPage({ params }: PageProps) {
-  const { brandId, featureSlug } = await params;
-  const leads = await fetchLeads(brandId, featureSlug);
+  const { orgId, brandId, featureSlug } = await params;
+  const leads = await fetchLeads(orgId, brandId, featureSlug);
   const rows = leads.map(toRow);
 
   const columns: TableColumn<LeadRow>[] = [

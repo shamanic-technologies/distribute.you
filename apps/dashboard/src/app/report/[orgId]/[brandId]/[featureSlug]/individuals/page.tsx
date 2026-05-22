@@ -8,8 +8,8 @@ interface PageProps {
 }
 
 export default async function IndividualsPage({ params }: PageProps) {
-  const { brandId, featureSlug } = await params;
-  const leads = await fetchLeads(brandId, featureSlug);
+  const { orgId, brandId, featureSlug } = await params;
+  const leads = await fetchLeads(orgId, brandId, featureSlug);
   const individuals = deriveIndividualsFromLeads(leads);
 
   const columns: TableColumn<IndividualRow>[] = [

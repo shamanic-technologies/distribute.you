@@ -1,59 +1,75 @@
 import "server-only";
-import {
-  getBrand,
-  listBrandLeads,
-  listBrandEmails,
-  listCampaignsByBrand,
-  listWorkflows,
-  type Brand,
-  type Campaign,
-  type Email,
-  type Lead,
-  type Workflow,
+import type {
+  Brand,
+  Campaign,
+  Email,
+  Lead,
+  Workflow,
 } from "@/lib/api";
 
+const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 const ADMIN_KEY = process.env.ADMIN_DISTRIBUTE_API_KEY;
 
-/** Wraps an api-service call with the admin API key so the public report
- *  page can fetch data without a Clerk session. Returns `null` on failure
- *  instead of throwing — placeholder rendering takes over downstream. */
-async function safeFetch<T>(label: string, fn: () => Promise<T>): Promise<T | null> {
+/** GET against api-service with admin auth + org context. Returns the parsed
+ *  body on 2xx, null on any failure. Logs full status + body on failure so
+ *  Vercel runtime logs surface the real upstream reason. */
+async function adminGet<T>(label: string, path: string, orgId: string): Promise<T | null> {
   if (!ADMIN_KEY) {
     console.error(`[dashboard-report] ADMIN_DISTRIBUTE_API_KEY missing; ${label} returns null`);
     return null;
   }
+  const url = `${API_URL}/v1${path}`;
   try {
-    return await fn();
+    const res = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": ADMIN_KEY,
+        "x-external-org-id": orgId,
+        "x-external-user-id": `report-public:${orgId}`,
+      },
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      console.error(`[dashboard-report] ${label} ${url} → ${res.status}: ${body.slice(0, 500)}`);
+      return null;
+    }
+    return (await res.json()) as T;
   } catch (err) {
-    console.error(`[dashboard-report] ${label} failed:`, err);
+    console.error(`[dashboard-report] ${label} ${url} threw:`, err);
     return null;
   }
 }
 
-export async function fetchBrand(brandId: string): Promise<Brand | null> {
-  const result = await safeFetch("getBrand", () => getBrand(brandId, ADMIN_KEY));
+export async function fetchBrand(orgId: string, brandId: string): Promise<Brand | null> {
+  const result = await adminGet<{ brand: Brand }>("getBrand", `/brands/${brandId}`, orgId);
   return result?.brand ?? null;
 }
 
-export async function fetchLeads(brandId: string, featureSlug: string): Promise<Lead[]> {
-  const result = await safeFetch("listBrandLeads", () => listBrandLeads(brandId, ADMIN_KEY));
+export async function fetchLeads(orgId: string, brandId: string, featureSlug: string): Promise<Lead[]> {
+  const result = await adminGet<{ leads: Lead[] }>("listBrandLeads", `/leads?brandId=${brandId}`, orgId);
   const leads = result?.leads ?? [];
   return leads.filter((l) => !l.featureSlug || l.featureSlug === featureSlug);
 }
 
-export async function fetchEmails(brandId: string): Promise<Email[]> {
-  const result = await safeFetch("listBrandEmails", () => listBrandEmails(brandId, ADMIN_KEY));
+export async function fetchEmails(orgId: string, brandId: string): Promise<Email[]> {
+  const result = await adminGet<{ emails: Email[] }>("listBrandEmails", `/emails?brandId=${brandId}`, orgId);
   return result?.emails ?? [];
 }
 
-export async function fetchCampaigns(brandId: string, featureSlug: string): Promise<Campaign[]> {
-  const result = await safeFetch("listCampaignsByBrand", () => listCampaignsByBrand(brandId, ADMIN_KEY));
+export async function fetchCampaigns(orgId: string, brandId: string, featureSlug: string): Promise<Campaign[]> {
+  const result = await adminGet<{ campaigns: Campaign[] }>("listCampaignsByBrand", `/campaigns?brandId=${brandId}`, orgId);
   const campaigns = result?.campaigns ?? [];
   return campaigns.filter((c) => c.featureSlug === featureSlug);
 }
 
-export async function fetchWorkflows(featureSlug: string): Promise<Workflow[]> {
-  const result = await safeFetch("listWorkflows", () => listWorkflows({ featureSlug }, ADMIN_KEY));
+export async function fetchWorkflows(orgId: string, featureSlug: string): Promise<Workflow[]> {
+  const result = await adminGet<{ workflows: Workflow[] }>(
+    "listWorkflows",
+    `/workflows?featureSlug=${encodeURIComponent(featureSlug)}`,
+    orgId,
+  );
   return result?.workflows ?? [];
 }
 

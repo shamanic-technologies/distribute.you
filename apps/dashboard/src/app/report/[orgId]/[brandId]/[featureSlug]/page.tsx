@@ -6,14 +6,14 @@ interface PageProps {
 }
 
 export default async function OverviewPage({ params }: PageProps) {
-  const { brandId, featureSlug } = await params;
+  const { orgId, brandId, featureSlug } = await params;
 
   const [brand, leads, emails, campaigns, workflows] = await Promise.all([
-    fetchBrand(brandId),
-    fetchLeads(brandId, featureSlug),
-    fetchEmails(brandId),
-    fetchCampaigns(brandId, featureSlug),
-    fetchWorkflows(featureSlug),
+    fetchBrand(orgId, brandId),
+    fetchLeads(orgId, brandId, featureSlug),
+    fetchEmails(orgId, brandId),
+    fetchCampaigns(orgId, brandId, featureSlug),
+    fetchWorkflows(orgId, featureSlug),
   ]);
 
   const companies = deriveCompaniesFromLeads(leads);

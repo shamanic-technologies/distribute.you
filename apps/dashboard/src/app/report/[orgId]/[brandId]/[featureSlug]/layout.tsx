@@ -32,7 +32,7 @@ interface LayoutProps {
 export default async function ReportLayout({ children, params }: LayoutProps) {
   const { orgId, brandId, featureSlug } = await params;
   const basePath = `/report/${orgId}/${brandId}/${featureSlug}`;
-  const brand = await fetchBrand(brandId);
+  const brand = await fetchBrand(orgId, brandId);
   const generatedAt = new Date();
 
   return (

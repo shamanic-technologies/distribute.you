@@ -18,8 +18,8 @@ interface WorkflowFlatRow {
 }
 
 export default async function WorkflowsPage({ params }: PageProps) {
-  const { brandId, featureSlug } = await params;
-  const workflows = await fetchWorkflows(featureSlug);
+  const { orgId, brandId, featureSlug } = await params;
+  const workflows = await fetchWorkflows(orgId, featureSlug);
 
   const flatRows: WorkflowFlatRow[] = [];
   for (const w of workflows) {

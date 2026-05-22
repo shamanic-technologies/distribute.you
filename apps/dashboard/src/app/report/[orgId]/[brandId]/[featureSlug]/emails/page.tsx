@@ -18,10 +18,10 @@ interface EmailRow {
 }
 
 export default async function EmailsPage({ params }: PageProps) {
-  const { brandId, featureSlug } = await params;
+  const { orgId, brandId, featureSlug } = await params;
   const [emails, campaigns] = await Promise.all([
-    fetchEmails(brandId),
-    fetchCampaigns(brandId, featureSlug),
+    fetchEmails(orgId, brandId),
+    fetchCampaigns(orgId, brandId, featureSlug),
   ]);
 
   // No direct workflow/campaign link on the Email payload yet — surface the

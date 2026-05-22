@@ -36,11 +36,11 @@ function formatBudget(c: Campaign): string {
 }
 
 export default async function CampaignsPage({ params }: PageProps) {
-  const { brandId, featureSlug } = await params;
+  const { orgId, brandId, featureSlug } = await params;
   const [campaigns, leads, emails] = await Promise.all([
-    fetchCampaigns(brandId, featureSlug),
-    fetchLeads(brandId, featureSlug),
-    fetchEmails(brandId),
+    fetchCampaigns(orgId, brandId, featureSlug),
+    fetchLeads(orgId, brandId, featureSlug),
+    fetchEmails(orgId, brandId),
   ]);
 
   const leadCountByCampaign = new Map<string, number>();
