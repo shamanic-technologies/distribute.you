@@ -2,38 +2,14 @@
 
 import { useCallback } from "react";
 
-type CsvValue = string | number | boolean | null | undefined;
-
-export interface CsvColumn<T> {
-  label: string;
-  value: (row: T) => CsvValue;
-}
-
-interface CsvButtonProps<T> {
+interface CsvButtonProps {
   filename: string;
-  rows: T[];
-  columns: CsvColumn<T>[];
-  disabled?: boolean;
+  csv: string;
+  isEmpty?: boolean;
 }
 
-function escapeCsvCell(value: CsvValue): string {
-  if (value === null || value === undefined) return "";
-  const str = String(value);
-  if (/[",\r\n]/.test(str)) {
-    return `"${str.replace(/"/g, '""')}"`;
-  }
-  return str;
-}
-
-function toCsv<T>(rows: T[], columns: CsvColumn<T>[]): string {
-  const header = columns.map((c) => escapeCsvCell(c.label)).join(",");
-  const body = rows.map((row) => columns.map((c) => escapeCsvCell(c.value(row))).join(",")).join("\n");
-  return `${header}\n${body}`;
-}
-
-export function CsvDownloadButton<T>({ filename, rows, columns, disabled }: CsvButtonProps<T>) {
+export function CsvDownloadButton({ filename, csv, isEmpty }: CsvButtonProps) {
   const onClick = useCallback(() => {
-    const csv = toCsv(rows, columns);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -43,14 +19,12 @@ export function CsvDownloadButton<T>({ filename, rows, columns, disabled }: CsvB
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  }, [filename, rows, columns]);
-
-  const isEmpty = rows.length === 0;
+  }, [filename, csv]);
 
   return (
     <button
       onClick={onClick}
-      disabled={disabled || isEmpty}
+      disabled={isEmpty}
       className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
     >
       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

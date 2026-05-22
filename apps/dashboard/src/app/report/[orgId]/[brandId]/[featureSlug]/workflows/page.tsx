@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { SectionCard } from "@/components/report/section-card";
-import { CsvDownloadButton, GoogleSheetsButton, type CsvColumn } from "@/components/report/csv-button";
+import { CsvDownloadButton, GoogleSheetsButton } from "@/components/report/csv-button";
+import { toCsv, type CsvColumn } from "@/components/report/csv";
 import { ListSectionSkeleton } from "@/components/report/skeletons";
 import { fetchWorkflows, extractWorkflowPrompts } from "@/lib/report-api";
 import type { Workflow } from "@/lib/api";
@@ -87,7 +88,7 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
       count={workflows.length}
       actions={
         <>
-          <CsvDownloadButton filename={`workflows-${featureSlug}.csv`} rows={flatRows} columns={csvColumns} />
+          <CsvDownloadButton filename={`workflows-${featureSlug}.csv`} csv={toCsv(flatRows, csvColumns)} isEmpty={flatRows.length === 0} />
           <GoogleSheetsButton />
         </>
       }
