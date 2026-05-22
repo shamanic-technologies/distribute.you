@@ -12,6 +12,14 @@
  *
  * Invocation: `pnpm --filter @distribute/landing prebuild` (chained from
  * Vercel `next build` via package.json prebuild script).
+ *
+ * Caveat — the Neon HTTP driver wraps every `sql.query(...)` call in a
+ * prepared statement, which Postgres restricts to ONE command per
+ * statement. We therefore split each .sql file into individual statements
+ * (terminated by `;`) and execute them one at a time. The splitter strips
+ * line comments (`--`) and ignores empty fragments. Migrations that need
+ * to span multiple commands inside a single transaction will require a
+ * different driver (e.g. `pg.Client`); none of the current migrations do.
  */
 
 import { readFileSync, readdirSync } from "node:fs";
@@ -21,6 +29,19 @@ import { neon } from "@neondatabase/serverless";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MIGRATIONS_DIR = join(__dirname, "..", "migrations");
+
+function splitSqlStatements(body) {
+  return body
+    .split("\n")
+    .map((line) => {
+      const idx = line.indexOf("--");
+      return idx === -1 ? line : line.slice(0, idx);
+    })
+    .join("\n")
+    .split(";")
+    .map((stmt) => stmt.trim())
+    .filter((stmt) => stmt.length > 0);
+}
 
 async function main() {
   const url = process.env.DATABASE_URL;
@@ -43,10 +64,11 @@ async function main() {
   for (const file of files) {
     const path = join(MIGRATIONS_DIR, file);
     const body = readFileSync(path, "utf8");
-    console.log(`[landing/migrations] Applying ${file}…`);
-    // neon's http driver executes one statement per call when invoked as a
-    // function. Use the `query` method to send a multi-statement SQL blob.
-    await sql.query(body);
+    const statements = splitSqlStatements(body);
+    console.log(`[landing/migrations] Applying ${file} (${statements.length} statement(s))…`);
+    for (const stmt of statements) {
+      await sql.query(stmt);
+    }
     console.log(`[landing/migrations] OK ${file}`);
   }
 
