@@ -6,20 +6,61 @@ import { BrandLeaderboard } from "@/components/performance/leaderboard-table";
 export const revalidate = 300;
 
 const PERF_URL = `${PROD_URLS.landing}/performance`;
+const PAGE_URL = `${PERF_URL}/brands`;
+const PAGE_DESCRIPTION =
+  "Public brand leaderboard for distribute cold email campaigns. Real open rates, website visits, replies, and cost per action — sortable, transparent, updated hourly.";
 
 export const metadata: Metadata = {
   title: "Brand Leaderboard",
-  description:
-    "See how each brand performs with distribute cold email campaigns. Open rates, website visits, replies, and cost per action.",
+  description: PAGE_DESCRIPTION,
+  keywords: [
+    "cold email brand leaderboard",
+    "cold email reply rate by brand",
+    "cost per reply benchmarks",
+    "open source cold email performance",
+    "distribute brands",
+  ],
   openGraph: {
     title: "Brand Leaderboard — distribute Performance",
-    description:
-      "Compare brand performance across distribute cold email campaigns. Real open rates, visit rates, reply rates, and cost per action.",
-    url: `${PERF_URL}/brands`,
+    description: PAGE_DESCRIPTION,
+    url: PAGE_URL,
+    images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "distribute Brand Leaderboard" }],
   },
-  alternates: {
-    canonical: `${PERF_URL}/brands`,
+  twitter: {
+    card: "summary_large_image",
+    title: "Brand Leaderboard — distribute Performance",
+    description: PAGE_DESCRIPTION,
+    images: ["/og-image.jpg"],
+    creator: "@distribute_you",
   },
+  alternates: { canonical: PAGE_URL },
+  robots: { index: true, follow: true },
+};
+
+const breadcrumbJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "distribute", item: PROD_URLS.landing },
+    { "@type": "ListItem", position: 2, name: "Performance", item: PERF_URL },
+    { "@type": "ListItem", position: 3, name: "Brand Leaderboard", item: PAGE_URL },
+  ],
+};
+
+const datasetJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Dataset",
+  name: "distribute Brand Performance Leaderboard",
+  description: PAGE_DESCRIPTION,
+  url: PAGE_URL,
+  license: "https://creativecommons.org/licenses/by/4.0/",
+  creator: { "@type": "Organization", name: "distribute", url: PROD_URLS.landing },
+  variableMeasured: [
+    { "@type": "PropertyValue", name: "Open Rate", unitText: "percent" },
+    { "@type": "PropertyValue", name: "Click Rate", unitText: "percent" },
+    { "@type": "PropertyValue", name: "Reply Rate", unitText: "percent" },
+    { "@type": "PropertyValue", name: "Cost Per Reply", unitText: "USD cents" },
+  ],
 };
 
 export default async function BrandsPage() {
@@ -28,6 +69,14 @@ export default async function BrandsPage() {
 
   return (
     <main className="min-h-screen bg-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(datasetJsonLd) }}
+      />
       <section className="py-12 px-4">
         <div className="max-w-6xl mx-auto">
           <h1 className="font-display text-3xl font-bold mb-2 text-gray-800">
