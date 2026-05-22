@@ -4,9 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/run-migrations.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "migrate": "node scripts/run-migrations.mjs",
     "test": "vitest run",
     "test:unit": "vitest run tests/unit"
   },
