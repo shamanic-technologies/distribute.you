@@ -91,6 +91,8 @@ Incident 2026-05-17 (distribute.you#1079): `quote-requests/page.tsx` was scaffol
 
 NEVER add fallback logic (|| alternatives, silent defaults, graceful degradation) when data is missing or doesn't match. Instead, log a clear `console.error` with the mismatched value and context so the bug surfaces immediately. If a required field is absent, show an error UI — don't hide the problem. This applies everywhere: lookups, field resolution, display logic.
 
+**Exception — Vercel build-time prerender steps.** During `next build` static generation (sitemap.ts, generateStaticParams, dynamic OG routes), an unhandled throw aborts the entire deploy, not just the failing page. When the failure mode is data-shape (missing table, unreachable DB on a not-yet-migrated preview branch) rather than logic, prefer `try / console.error(loud) / continue with empty result` over throwing. The fix path is still to repair the data layer; the catch+log keeps the rest of the site shippable while you do. This applies ONLY to build-time prerender — runtime requests still follow the fail-loud rule. Incident 2026-05-22 (distribute.you#1120): sitemap.ts threw `relation "blog_articles" does not exist` during `/sitemap.xml` prerender, blocked the entire landing deploy across 16 pages. The existing `process.env.DATABASE_URL` guard checked the URL, not the schema; one missing table killed everything.
+
 ### Dynasty-First Display Rule (Workflows Only)
 
 Always display `dynastyName` for workflows, never the versioned name. The only exception is settings/debug panels where the specific version matters — there, show the version number and versioned name alongside the dynasty name. This applies to page titles, table rows, cards, breadcrumbs, and any user-facing text.
