@@ -48,6 +48,53 @@ export default async function PricingPage() {
         </div>
       </section>
 
+      {/* 3-layer pricing stack */}
+      <section className="py-12 px-4 border-b border-gray-100">
+        <div className="max-w-4xl mx-auto">
+          <p className="text-center text-xs uppercase tracking-wider text-gray-400 font-medium mb-6">
+            How pricing works
+          </p>
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="rounded-xl border border-gray-200 bg-white p-5">
+              <div className="text-[10px] uppercase tracking-wider text-gray-400 font-medium mb-2">
+                Layer 1
+              </div>
+              <h3 className="font-display text-lg font-bold text-gray-900 mb-1">
+                Primitives
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed">
+                50+ priced API operations. Each one listed below.
+                Fixed unit price per call.
+              </p>
+            </div>
+            <div className="rounded-xl border border-gray-200 bg-white p-5">
+              <div className="text-[10px] uppercase tracking-wider text-gray-400 font-medium mb-2">
+                Layer 2
+              </div>
+              <h3 className="font-display text-lg font-bold text-gray-900 mb-1">
+                Workflows
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed">
+                Recipes that combine primitives. One run = sum of primitives.
+                Forkable, customizable.
+              </p>
+            </div>
+            <div className="rounded-xl border border-gray-200 bg-white p-5">
+              <div className="text-[10px] uppercase tracking-wider text-gray-400 font-medium mb-2">
+                Layer 3
+              </div>
+              <h3 className="font-display text-lg font-bold text-gray-900 mb-1">
+                Outcomes
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed">
+                Derived a posteriori. $/qualified reply, $/paid conversion —
+                your real CAC, tracked per product × channel.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Body */}
       <section className="py-12 px-4">
         <div className="max-w-5xl mx-auto">

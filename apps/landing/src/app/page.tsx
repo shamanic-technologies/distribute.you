@@ -2,7 +2,10 @@ import Image from "next/image";
 import { HeroForm } from "@/components/hero-form";
 import { LinkButton } from "@/components/link-button";
 import { Navbar } from "@/components/navbar";
-import { DashboardPreview } from "@/components/dashboard-preview";
+import { PortfolioDashboard } from "@/components/portfolio-dashboard";
+import { GmailInbox } from "@/components/gmail-inbox";
+import { FreeVsCloud } from "@/components/free-vs-cloud";
+import { WorkflowRecipe } from "@/components/workflow-recipe";
 import { PerformancePreview } from "@/components/performance-preview";
 import { StatusIndicator } from "@/components/status-indicator";
 import { fetchLeaderboard } from "@/lib/performance/fetch-leaderboard";
@@ -13,8 +16,6 @@ import { headers } from "next/headers";
 
 export const revalidate = 300;
 
-const LOGO_DEV_TOKEN = process.env.NEXT_PUBLIC_LOGO_DEV_TOKEN;
-
 const FEATURE_COLOR_CLASSES: Record<FeatureColor, { bg: string; text: string; border: string; dot: string; hover: string }> = {
   emerald: { bg: "bg-emerald-100", text: "text-emerald-600", border: "border-emerald-200", dot: "bg-emerald-400", hover: "group-hover:text-emerald-600" },
   cyan: { bg: "bg-cyan-100", text: "text-cyan-600", border: "border-cyan-200", dot: "bg-cyan-400", hover: "group-hover:text-cyan-600" },
@@ -24,11 +25,14 @@ const FEATURE_COLOR_CLASSES: Record<FeatureColor, { bg: string; text: string; bo
   amber: { bg: "bg-amber-100", text: "text-amber-600", border: "border-amber-200", dot: "bg-amber-400", hover: "group-hover:text-amber-600" },
 };
 
+const liveCount = DISTRIBUTION_FEATURES.filter((f) => f.status === "live").length;
+
 export default async function Home() {
   const headersList = await headers();
   const host = headersList.get("host") || "";
   const urls = resolveUrls(host);
   const leaderboard = await fetchLeaderboard(host);
+
   return (
     <main className="min-h-screen">
       <Navbar host={host} />
@@ -42,294 +46,105 @@ export default async function Home() {
           </div>
 
           <h1 className="font-display text-5xl md:text-7xl font-bold mb-6 text-gray-900 tracking-tight">
-            Your distribution,{" "}
-            <span className="gradient-text-subtle">automated.</span>
+            One API for every{" "}
+            <span className="gradient-text-subtle">distribution channel.</span>
           </h1>
 
           <p className="text-lg md:text-xl text-gray-500 mb-10 max-w-2xl mx-auto leading-relaxed">
-            Send cold emails from Claude, no setup.
+            Sales, PR, VCs, hiring, accelerators — {liveCount} channels live.
+            Pay per email. Track CAC. Scale what works.
           </p>
 
           <HeroForm signUpUrl={urls.signUp} />
 
           <p className="text-sm text-gray-400 mt-6">
-            Free to start. No subscription. You only pay the raw cost of AI and APIs.
+            $2 welcome credits. No subscription. No setup. We send on your behalf.
           </p>
         </div>
       </section>
 
-      {/* Dashboard Preview */}
+      {/* Portfolio Dashboard — money shot */}
       <section className="py-12 px-4">
         <div className="max-w-5xl mx-auto">
-          <DashboardPreview />
+          <PortfolioDashboard />
         </div>
       </section>
 
-      {/* Vision */}
+      {/* For builders, not businesses */}
       <section className="py-20 px-4">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="font-display text-3xl md:text-4xl font-bold mb-6 text-gray-900">
-            Your product deserves to be known
+            For builders, not businesses
           </h2>
-          <p className="text-lg text-gray-500 leading-relaxed">
-            You create value. We make sure the right people hear about it.
-            Set a daily budget. Pick your channels.{" "}
-            <span className="text-gray-700 font-medium">Distribution runs itself.</span>
+          <p className="text-lg text-gray-500 leading-relaxed mb-4">
+            You ship 3 products a year. You don&apos;t need 3 marketing subscriptions.
+          </p>
+          <p className="text-lg text-gray-700 font-medium leading-relaxed">
+            Drop a URL. Set a daily budget. We send, qualify, and forward replies.
+            Track CAC per product. Kill what doesn&apos;t convert. Scale what does.
           </p>
         </div>
       </section>
 
-      {/* Use Case: Claude Code */}
+      {/* What you don't have to do */}
       <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-14">
-            <div className="inline-flex items-center gap-2.5 bg-white border border-gray-200 px-4 py-2 rounded-full mb-6">
-              {LOGO_DEV_TOKEN ? (
-                <Image
-                  src={`https://img.logo.dev/claude.ai?token=${LOGO_DEV_TOKEN}&size=64`}
-                  alt="Claude"
-                  width={24}
-                  height={24}
-                  className="rounded-md"
-                  unoptimized
-                />
-              ) : (
-                <div className="w-6 h-6 bg-orange-500 rounded-md flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">{'>'}_</span>
-                </div>
-              )}
-              <span className="text-sm font-medium text-gray-900">Claude Code</span>
-            </div>
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-12">
             <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
-              From your terminal to distribution
+              What you don&apos;t have to do
             </h2>
             <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-              You&apos;re already building with Claude Code. Now tell it to distribute.
+              Everything that wastes a builder&apos;s week. We handle it.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Without distribute.you */}
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              <div className="px-5 py-3 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
-                {LOGO_DEV_TOKEN && (
-                  <Image
-                    src={`https://img.logo.dev/claude.ai?token=${LOGO_DEV_TOKEN}&size=32`}
-                    alt="Claude"
-                    width={16}
-                    height={16}
-                    className="rounded-sm"
-                    unoptimized
-                  />
-                )}
-                <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Without distribute.you</span>
+          <div className="grid md:grid-cols-2 gap-4">
+            {[
+              "Buy a sending domain",
+              "Set up SPF / DKIM / DMARC",
+              "Warm up mailboxes for 6 weeks",
+              "Monitor bounces, blacklists, reputation",
+              "Triage 200 raw replies to find 3 real leads",
+              "Build a reply classifier yourself",
+              "Wire Apollo + Resend + Claude into 4 services",
+              "Track CAC per product × per channel by hand",
+            ].map((item) => (
+              <div
+                key={item}
+                className="flex items-start gap-3 bg-white rounded-lg p-4 border border-gray-200"
+              >
+                <svg className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                <span className="text-sm text-gray-700">{item}</span>
               </div>
-              <div className="p-5">
-                {/* Terminal mockup */}
-                <div className="bg-gray-950 rounded-lg p-4 mb-4 font-mono text-xs">
-                  <p className="text-gray-500">{'>'} Send cold emails to journalists about my product</p>
-                  <p className="text-gray-400 mt-2">I&apos;ll need a few API keys:</p>
-                  <p className="text-amber-400">- Apollo API key for lead discovery</p>
-                  <p className="text-amber-400">- Instantly or Resend API key to send</p>
-                  <p className="text-amber-400">- Let me generate emails with Opus 4.6...</p>
-                  <p className="text-red-400 mt-2">{'>'} 47 emails sent. Cost: $83.20</p>
-                  <p className="text-red-400">{'>'} 0 replies tracked. No dashboard.</p>
-                </div>
-                <div className="space-y-2.5">
-                  {[
-                    "$10+ per email sent",
-                    "Wrong model for the job — 100x overspend",
-                    "Excel files with mixed-up rows",
-                    "No tracking, no dashboard, no idea what worked",
-                  ].map((item) => (
-                    <div key={item} className="flex items-start gap-2.5">
-                      <svg className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                      <span className="text-sm text-gray-600">{item}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* With distribute.you */}
-            <div className="bg-white rounded-xl border-2 border-emerald-200 shadow-sm overflow-hidden">
-              <div className="px-5 py-3 bg-emerald-50 border-b border-emerald-100 flex items-center gap-2">
-                {LOGO_DEV_TOKEN && (
-                  <Image
-                    src={`https://img.logo.dev/claude.ai?token=${LOGO_DEV_TOKEN}&size=32`}
-                    alt="Claude"
-                    width={16}
-                    height={16}
-                    className="rounded-sm"
-                    unoptimized
-                  />
-                )}
-                <span className="text-xs font-medium text-emerald-600 uppercase tracking-wider">With distribute.you</span>
-              </div>
-              <div className="p-5">
-                {/* Terminal mockup */}
-                <div className="bg-gray-950 rounded-lg p-4 mb-4 font-mono text-xs">
-                  <p className="text-gray-500">{'>'} Use distribute.you to run journalist outreach</p>
-                  <p className="text-gray-500">{'>'} Budget: $5/day. URL: myproduct.com</p>
-                  <p className="text-emerald-400 mt-2">Campaign started. Best workflow auto-selected.</p>
-                  <p className="text-emerald-400">Emails sending at $0.42/reply average.</p>
-                  <p className="text-emerald-400 mt-2">You&apos;ll get notified when someone replies.</p>
-                </div>
-                <div className="space-y-2.5">
-                  {[
-                    "One command. Everything handled.",
-                    "Best model for quality per dollar — automatically",
-                    "Full dashboard with tracking and replies",
-                    "Transparent variable costs. Pay only what you use.",
-                  ].map((item) => (
-                    <div key={item} className="flex items-start gap-2.5">
-                      <svg className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span className="text-sm text-gray-600">{item}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
+
+          <p className="text-center text-gray-600 mt-10 max-w-2xl mx-auto">
+            All you do is add a URL and a budget.{" "}
+            <span className="text-gray-900 font-medium">
+              We send from an agency address on your behalf, AI qualifies the replies,
+              and the good ones land in your Gmail.
+            </span>
+          </p>
         </div>
       </section>
 
-      {/* Use Case: OpenClaw */}
-      <section className="py-20 px-4">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-14">
-            <div className="inline-flex items-center gap-2.5 bg-white border border-gray-200 px-4 py-2 rounded-full mb-6">
-              {LOGO_DEV_TOKEN ? (
-                <Image
-                  src={`https://img.logo.dev/openclaw.ai?token=${LOGO_DEV_TOKEN}&size=64`}
-                  alt="OpenClaw"
-                  width={24}
-                  height={24}
-                  className="rounded-md"
-                  unoptimized
-                />
-              ) : (
-                <div className="w-6 h-6 bg-gray-900 rounded-md flex items-center justify-center">
-                  <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-              )}
-              <span className="text-sm font-medium text-gray-900">OpenClaw</span>
-            </div>
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
-              From OpenClaw to distribution
-            </h2>
-            <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-              Ask OpenClaw to launch a campaign. It calls distribute.you. Done.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Without distribute.you */}
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              <div className="px-5 py-3 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
-                {LOGO_DEV_TOKEN && (
-                  <Image
-                    src={`https://img.logo.dev/openclaw.ai?token=${LOGO_DEV_TOKEN}&size=32`}
-                    alt="OpenClaw"
-                    width={16}
-                    height={16}
-                    className="rounded-sm"
-                    unoptimized
-                  />
-                )}
-                <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Without distribute.you</span>
-              </div>
-              <div className="p-5">
-                <div className="bg-gray-950 rounded-lg p-4 mb-4 font-mono text-xs">
-                  <p className="text-gray-500">{'>'} Set up a sales cold email campaign for my SaaS</p>
-                  <p className="text-gray-400 mt-2">Setting up Apollo scraping... Resend integration...</p>
-                  <p className="text-gray-400">Generating 200 emails with Opus 4.6...</p>
-                  <p className="text-red-400 mt-2">{'>'} Total cost: $186.40</p>
-                  <p className="text-red-400">{'>'} Rows mismatched. 23 emails sent to wrong contacts.</p>
-                  <p className="text-red-400">{'>'} No reply tracking. No way to know what worked.</p>
-                </div>
-                <div className="space-y-2.5">
-                  {[
-                    "Multiple API keys to manage yourself",
-                    "Most expensive model for every email",
-                    "Data errors — wrong emails to wrong people",
-                    "Zero visibility on results",
-                  ].map((item) => (
-                    <div key={item} className="flex items-start gap-2.5">
-                      <svg className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                      <span className="text-sm text-gray-600">{item}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* With distribute.you */}
-            <div className="bg-white rounded-xl border-2 border-emerald-200 shadow-sm overflow-hidden">
-              <div className="px-5 py-3 bg-emerald-50 border-b border-emerald-100 flex items-center gap-2">
-                {LOGO_DEV_TOKEN && (
-                  <Image
-                    src={`https://img.logo.dev/openclaw.ai?token=${LOGO_DEV_TOKEN}&size=32`}
-                    alt="OpenClaw"
-                    width={16}
-                    height={16}
-                    className="rounded-sm"
-                    unoptimized
-                  />
-                )}
-                <span className="text-xs font-medium text-emerald-600 uppercase tracking-wider">With distribute.you</span>
-              </div>
-              <div className="p-5">
-                <div className="bg-gray-950 rounded-lg p-4 mb-4 font-mono text-xs">
-                  <p className="text-gray-500">{'>'} Use distribute.you: sales outreach, $3/day, myapp.com</p>
-                  <p className="text-emerald-400 mt-2">Campaign live. Budget: $3/day.</p>
-                  <p className="text-emerald-400">Crowdsourced workflow selected: apex-v4 (4.8% reply rate)</p>
-                  <p className="text-emerald-400 mt-2">Dashboard: dashboard.distribute.you</p>
-                  <p className="text-emerald-400">Notifications enabled. You&apos;re all set.</p>
-                </div>
-                <div className="space-y-2.5">
-                  {[
-                    "One sentence. Campaign running.",
-                    "Crowdsourced best prompts and models",
-                    "Full dashboard — replies, metrics, costs",
-                    "Phone notifications when leads reply",
-                  ].map((item) => (
-                    <div key={item} className="flex items-start gap-2.5">
-                      <svg className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span className="text-sm text-gray-600">{item}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Feature Channels */}
+      {/* Channels grid */}
       <section className="py-20 px-4">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
-              Three channels. One click.
+              {liveCount} channels live. More every month.
             </h2>
             <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-              Each channel has hundreds of AI workflows competing on real metrics.
-              The best one runs by default.
+              Each channel has hundreds of competing workflows.
+              The cheapest one — by $/qualified reply — runs by default.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {DISTRIBUTION_FEATURES.map((feature) => {
               const colors = FEATURE_COLOR_CLASSES[feature.color];
               const isLive = feature.status === "live";
@@ -371,16 +186,35 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* Workflow recipe */}
+      <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-10">
+            <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+              Workflows are priced recipes
+            </h2>
+            <p className="text-gray-500 text-lg max-w-2xl mx-auto">
+              Every workflow combines a handful of priced API primitives.
+              One run = sum of primitives. Each primitive listed publicly on{" "}
+              <a href={urls.pricing} className="underline underline-offset-2 hover:text-gray-700">
+                our pricing page
+              </a>.
+            </p>
+          </div>
+          <WorkflowRecipe />
+        </div>
+      </section>
+
       {/* Performance Leaderboard */}
       {leaderboard && leaderboard.featureGroups.length > 0 && (
-        <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
+        <section className="py-20 px-4">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-10">
               <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
-                Real performance, real data
+                CAC, not vanity metrics
               </h2>
               <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-                Every feature is ranked by actual metrics.
+                Every workflow ranked by real cost per qualified reply.
                 All data is public — no black boxes.
               </p>
             </div>
@@ -389,212 +223,70 @@ export default async function Home() {
         </section>
       )}
 
-      {/* Always the best workflow */}
+      {/* Gmail inbox — the email you want to read */}
       <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            Always the best workflow. Automatically.
-          </h2>
-          <p className="text-gray-500 text-lg mb-6 leading-relaxed">
-            Hundreds of workflows compete on real data. Different prompts,
-            different models, different sequences. The winner runs by default.
-          </p>
-          <p className="text-gray-700 font-medium text-lg mb-12">
-            If a new model launches tomorrow with better quality per dollar — we switch. You don&apos;t need to think about it.
-          </p>
-
-          <div className="bg-white rounded-2xl p-6 md:p-8 border border-gray-200 text-left shadow-sm">
-            <div className="text-xs text-gray-400 uppercase tracking-wider mb-4 font-medium">
-              Example: Sales Outreach workflows
-            </div>
-            <div className="space-y-3">
-              {[
-                { name: "apex-v4", metric: "4.8% reply rate", cost: "$0.42/reply", selected: true },
-                { name: "signal-v3", metric: "4.1% reply rate", cost: "$0.51/reply", selected: false },
-                { name: "ember-v2", metric: "3.6% reply rate", cost: "$0.63/reply", selected: false },
-              ].map((wf) => (
-                <div
-                  key={wf.name}
-                  className={`flex items-center justify-between px-4 py-3 rounded-lg ${
-                    wf.selected
-                      ? "bg-cyan-50 border-2 border-cyan-200 shadow-sm"
-                      : "bg-gray-50 border border-gray-200"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    {wf.selected && (
-                      <div className="w-5 h-5 bg-cyan-500 rounded-full flex items-center justify-center">
-                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                    )}
-                    <span className={`font-mono text-sm ${wf.selected ? "text-gray-900 font-medium" : "text-gray-500"}`}>
-                      {wf.name}
-                    </span>
-                    {wf.selected && (
-                      <span className="text-[10px] text-cyan-600 bg-cyan-50 px-2 py-0.5 rounded-full font-medium border border-cyan-200">
-                        Auto-selected
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-4 text-sm">
-                    <span className={wf.selected ? "text-gray-900 font-medium" : "text-gray-400"}>
-                      {wf.metric}
-                    </span>
-                    <span className="text-gray-400">{wf.cost}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Transparent variable costs */}
-      <section className="py-20 px-4">
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 className="font-display text-3xl md:text-4xl font-bold mb-6 text-gray-900">
-            Transparent costs. Variable, not fixed.
-          </h2>
-          <p className="text-lg text-gray-500 leading-relaxed mb-8">
-            Credit your account. Pick your channels. Every unit cost we re-bill is published live on our{" "}
-            <a href={urls.pricing} className="text-gray-900 font-medium underline underline-offset-2 hover:text-brand-600">pricing page</a>.{" "}
-            <span className="text-gray-700 font-medium">No subscription you only half-use. No commitment.</span>
-          </p>
-          <div className="grid md:grid-cols-3 gap-6 text-left">
-            <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
-              <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center mb-3">
-                <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h3 className="font-semibold text-gray-900 text-sm mb-1">Transparent costs</h3>
-              <p className="text-sm text-gray-500">
-                Every unit cost we re-bill is listed live on our <a href={urls.pricing} className="text-gray-700 underline underline-offset-2 hover:text-brand-600">pricing page</a> — by provider, by type.
-              </p>
-            </div>
-            <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
-              <div className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center mb-3">
-                <svg className="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                </svg>
-              </div>
-              <h3 className="font-semibold text-gray-900 text-sm mb-1">Credits, not subscriptions</h3>
-              <p className="text-sm text-gray-500">
-                Add credits when you want. Use them when you want. No recurring charge.
-              </p>
-            </div>
-            <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
-              <div className="w-8 h-8 bg-cyan-100 rounded-lg flex items-center justify-center mb-3">
-                <svg className="w-4 h-4 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-              <h3 className="font-semibold text-gray-900 text-sm mb-1">Transparent average costs</h3>
-              <p className="text-sm text-gray-500">
-                We show the average cost per reply across all accounts. You know what to expect.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Open source */}
-      <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 className="font-display text-3xl md:text-4xl font-bold mb-6 text-gray-900">
-            Fully open. Fully yours.
-          </h2>
-          <p className="text-lg text-gray-500 leading-relaxed mb-8">
-            Every workflow is open source. See the prompts. Modify them. Contribute your own.
-            That&apos;s how we crowdsource the best strategies.
-          </p>
-          <div className="grid md:grid-cols-3 gap-6 text-left">
-            <div className="bg-white rounded-xl p-5 border border-gray-200">
-              <div className="font-mono text-xs text-gray-400 mb-3">$ claude / openclaw</div>
-              <h3 className="font-semibold text-gray-900 text-sm mb-1">Works from Claude Code &amp; OpenClaw</h3>
-              <p className="text-sm text-gray-500">
-                Use our MCP server from Claude Code, OpenClaw, or any MCP client.
-                One command to launch a campaign.
-              </p>
-            </div>
-            <div className="bg-white rounded-xl p-5 border border-gray-200">
-              <div className="font-mono text-xs text-gray-400 mb-3">POST /v1/distribute</div>
-              <h3 className="font-semibold text-gray-900 text-sm mb-1">Full API</h3>
-              <p className="text-sm text-gray-500">
-                Everything you can do in the dashboard, you can do via API.
-                Build your own integrations.
-              </p>
-            </div>
-            <div className="bg-white rounded-xl p-5 border border-gray-200">
-              <div className="font-mono text-xs text-gray-400 mb-3">MIT License</div>
-              <h3 className="font-semibold text-gray-900 text-sm mb-1">Open source workflows</h3>
-              <p className="text-sm text-gray-500">
-                See every prompt. Fork any workflow. Submit a better one.
-                The best rises to the top.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Phone notification */}
-      <section className="py-20 px-4">
-        <div className="max-w-xl mx-auto text-center">
+        <div className="max-w-3xl mx-auto text-center mb-12">
           <h2 className="font-display text-3xl md:text-4xl font-bold mb-4 text-gray-900">
-            The notification you want to receive
+            The email you want to read
           </h2>
-          <p className="text-gray-500 text-lg mb-10">
-            Set it up once. Get notified when it works.
+          <p className="text-gray-500 text-lg">
+            We send on your behalf. AI qualifies every reply. Only the gold lands
+            in your Gmail — full thread, ready to reply directly.
           </p>
+        </div>
+        <GmailInbox />
+      </section>
 
-          {/* Phone notification mockup */}
-          <div className="mx-auto max-w-sm">
-            <div className="bg-gray-950 rounded-3xl p-2 shadow-2xl">
-              <div className="bg-gray-900 rounded-2xl overflow-hidden">
-                {/* Status bar */}
-                <div className="flex items-center justify-between px-6 py-2 text-[10px] text-gray-400">
-                  <span>9:41</span>
-                  <div className="flex items-center gap-1">
-                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 18c3.31 0 6-2.69 6-6s-2.69-6-6-6-6 2.69-6 6 2.69 6 6 6z" /></svg>
-                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M2 22h20V2z" /></svg>
-                  </div>
-                </div>
+      {/* Free vs Cloud */}
+      <section className="py-20 px-4">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+              Free or Cloud. Same workflows.
+            </h2>
+            <p className="text-gray-500 text-lg max-w-2xl mx-auto">
+              Every workflow is open source on GitHub. Run it yourself, or let us run it for you.
+            </p>
+          </div>
+          <FreeVsCloud signUpUrl={urls.signUp} />
+        </div>
+      </section>
 
-                {/* Notifications */}
-                <div className="px-4 pb-6 space-y-2 pt-4">
-                  {[
-                    { type: "logo" as const, domain: "techcrunch.com", label: "TechCrunch", time: "now", text: "Sarah from TechCrunch wants to cover your launch" },
-                    { type: "logo" as const, domain: "shopify.com", label: "Shopify", time: "2m ago", text: "Mike from Shopify is interested in a demo" },
-                    { type: "avatar" as const, domain: null, label: "Lisa", time: "5m ago", text: "Lisa, Senior Frontend Engineer — open to chat about the role" },
-                  ].map((notif) => (
-                    <div key={notif.text} className="bg-white/10 backdrop-blur-lg rounded-xl px-3.5 py-2.5 border border-white/5 flex items-center gap-2.5">
-                      {notif.type === "logo" && LOGO_DEV_TOKEN ? (
-                        <Image
-                          src={`https://img.logo.dev/${notif.domain}?token=${LOGO_DEV_TOKEN}&size=48`}
-                          alt={notif.label}
-                          width={20}
-                          height={20}
-                          className="rounded flex-shrink-0"
-                          unoptimized
-                        />
-                      ) : (
-                        <div className="w-5 h-5 rounded-full bg-violet-400 flex items-center justify-center flex-shrink-0">
-                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                          </svg>
-                        </div>
-                      )}
-                      <p className="text-xs text-gray-300 flex-1 truncate">{notif.text}</p>
-                      <span className="text-[10px] text-gray-600 flex-shrink-0">{notif.time}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+      {/* Works from your stack — demoted Claude Code / MCP mention */}
+      <section className="py-16 px-4 bg-gray-50 border-y border-gray-100">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="font-display text-2xl md:text-3xl font-bold text-gray-900 mb-3">
+            Works from your stack
+          </h2>
+          <p className="text-gray-500 mb-8 max-w-2xl mx-auto">
+            Dashboard, REST API, or MCP. Whatever you&apos;re building with.
+          </p>
+          <div className="grid md:grid-cols-3 gap-4 text-left">
+            <div className="bg-white rounded-xl p-5 border border-gray-200">
+              <div className="font-mono text-xs text-gray-400 mb-2">app.distribute.you</div>
+              <h3 className="font-semibold text-gray-900 text-sm mb-1">Dashboard</h3>
+              <p className="text-sm text-gray-500">
+                Add a product, pick channels, set a budget. We take it from there.
+              </p>
             </div>
-            {/* Glow */}
-            <div className="absolute -inset-4 bg-gradient-to-r from-brand-400/10 via-emerald-500/10 to-cyan-500/10 rounded-3xl blur-3xl -z-10" />
+            <div className="bg-white rounded-xl p-5 border border-gray-200">
+              <div className="font-mono text-xs text-gray-400 mb-2">POST /v1/campaigns</div>
+              <h3 className="font-semibold text-gray-900 text-sm mb-1">REST API</h3>
+              <p className="text-sm text-gray-500">
+                Everything you can do in the dashboard, you can do via API.{" "}
+                <a href={urls.apiDocs} className="text-gray-700 underline underline-offset-2">
+                  Docs →
+                </a>
+              </p>
+            </div>
+            <div className="bg-white rounded-xl p-5 border border-gray-200">
+              <div className="font-mono text-xs text-gray-400 mb-2">$ claude / openclaw</div>
+              <h3 className="font-semibold text-gray-900 text-sm mb-1">MCP server</h3>
+              <p className="text-sm text-gray-500">
+                Use distribute from Claude Code, OpenClaw, or any MCP client.
+                One sentence to launch a campaign.
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -628,16 +320,17 @@ export default async function Home() {
       <section className="py-20 px-4 bg-gray-900">
         <div className="max-w-xl mx-auto text-center">
           <h2 className="font-display text-3xl font-bold mb-3 text-white">
-            The dream is one click away
+            Start your portfolio
           </h2>
           <p className="text-gray-400 mb-8">
-            Transparent variable costs, no subscription. Credit your account and let distribution run itself.
+            $2 free credits to start. Then $5/day per product, or whatever budget you set.
+            No subscription. No credit card to try.
           </p>
           <LinkButton
             href={urls.signUp}
             className="inline-block bg-white text-gray-900 px-8 py-3 rounded-lg font-medium hover:bg-gray-100 transition text-sm"
           >
-            Get Started Free
+            Start free — $2 credits
           </LinkButton>
         </div>
       </section>
