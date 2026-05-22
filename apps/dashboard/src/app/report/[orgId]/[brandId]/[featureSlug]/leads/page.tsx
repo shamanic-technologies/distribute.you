@@ -1,49 +1,20 @@
 import { Suspense } from "react";
 import { SectionCard } from "@/components/report/section-card";
-
-export const revalidate = 30;
-
-import { DataTable, type TableColumn } from "@/components/report/data-table";
 import { CsvDownloadButton, GoogleSheetsButton } from "@/components/report/csv-button";
 import { toCsv, type CsvColumn } from "@/components/report/csv";
 import { TableSectionSkeleton } from "@/components/report/skeletons";
-import { fetchLeads, fetchCampaigns } from "@/lib/report-api";
+import { LeadsTable, type LeadRow } from "@/components/report/leads-table";
+import { fetchLeads, fetchCampaigns, REPORT_FETCH_LIMIT } from "@/lib/report-api";
 import { getLeadConsolidatedStatus, type Lead } from "@/lib/api";
+
+export const revalidate = 30;
+export const maxDuration = 60;
 
 interface PageProps {
   params: Promise<{ orgId: string; brandId: string; featureSlug: string }>;
 }
 
-const STATUS_STYLES: Record<string, string> = {
-  replied: "bg-green-100 text-green-700",
-  clicked: "bg-emerald-100 text-emerald-700",
-  opened: "bg-blue-100 text-blue-700",
-  delivered: "bg-sky-100 text-sky-700",
-  sent: "bg-indigo-100 text-indigo-700",
-  bounced: "bg-red-100 text-red-600",
-  unsubscribed: "bg-gray-200 text-gray-600",
-  contacted: "bg-purple-100 text-purple-700",
-  served: "bg-cyan-100 text-cyan-700",
-  skipped: "bg-yellow-100 text-yellow-700",
-  buffered: "bg-gray-100 text-gray-500",
-  claimed: "bg-gray-100 text-gray-500",
-};
-
-interface LeadRow {
-  email: string;
-  firstName: string;
-  lastName: string;
-  title: string;
-  company: string;
-  companyDomain: string;
-  industry: string;
-  country: string;
-  status: string;
-  emailStatus: string;
-  campaign: string;
-}
-
-const LEADS_COLUMNS = ["Name", "Email", "Title", "Company", "Industry", "Country", "Status"];
+const LEADS_COLUMNS = ["Name", "Email", "Title", "Company", "Industry", "Country", "Status", "Campaign"];
 
 function toRow(lead: Lead, campaignName: string): LeadRow {
   const org = lead.lead?.organization;
@@ -90,33 +61,6 @@ async function LeadsSection({ orgId, brandId, featureSlug }: { orgId: string; br
   const campaignNameById = new Map(campaigns.map((c) => [c.id, c.name]));
   const rows = leads.map((l) => toRow(l, campaignNameById.get(l.campaignId) ?? ""));
 
-  const columns: TableColumn<LeadRow>[] = [
-    { key: "name", label: "Name", render: (r) => <span className="font-medium text-gray-900">{r.firstName} {r.lastName}</span> },
-    { key: "email", label: "Email", render: (r) => <span className="font-mono text-xs">{r.email}</span> },
-    { key: "title", label: "Title", render: (r) => r.title },
-    {
-      key: "company",
-      label: "Company",
-      render: (r) => (
-        <div>
-          <div>{r.company}</div>
-          {r.companyDomain && <div className="text-xs text-gray-400">{r.companyDomain}</div>}
-        </div>
-      ),
-    },
-    { key: "industry", label: "Industry", render: (r) => r.industry },
-    { key: "country", label: "Country", render: (r) => r.country },
-    {
-      key: "status",
-      label: "Status",
-      render: (r) => (
-        <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_STYLES[r.status] ?? "bg-gray-100 text-gray-500"}`}>
-          {r.status}
-        </span>
-      ),
-    },
-  ];
-
   const csvColumns: CsvColumn<LeadRow>[] = [
     { label: "First name", value: (r) => r.firstName },
     { label: "Last name", value: (r) => r.lastName },
@@ -131,6 +75,8 @@ async function LeadsSection({ orgId, brandId, featureSlug }: { orgId: string; br
     { label: "Campaign", value: (r) => r.campaign },
   ];
 
+  const truncated = rows.length >= REPORT_FETCH_LIMIT;
+
   return (
     <SectionCard
       title="Leads"
@@ -142,8 +88,10 @@ async function LeadsSection({ orgId, brandId, featureSlug }: { orgId: string; br
           <GoogleSheetsButton />
         </>
       }
+      placeholder={truncated}
+      placeholderNote={truncated ? `Showing first ${REPORT_FETCH_LIMIT} leads. Backend pagination needed to surface more.` : undefined}
     >
-      <DataTable rows={rows} columns={columns} rowKey={(_, i) => String(i)} emptyMessage="No leads yet." />
+      <LeadsTable rows={rows} />
     </SectionCard>
   );
 }
