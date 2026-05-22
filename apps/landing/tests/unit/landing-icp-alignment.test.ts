@@ -13,6 +13,7 @@ const portfolioDashboardPath = path.resolve(
 const gmailInboxPath = path.resolve(__dirname, "../../src/components/gmail-inbox.tsx");
 const freeVsCloudPath = path.resolve(__dirname, "../../src/components/free-vs-cloud.tsx");
 const workflowRecipePath = path.resolve(__dirname, "../../src/components/workflow-recipe.tsx");
+const toolsMarqueePath = path.resolve(__dirname, "../../src/components/tools-marquee.tsx");
 
 describe("Landing page: ICP-only alignment", () => {
   const page = fs.readFileSync(landingPagePath, "utf-8");
@@ -127,6 +128,57 @@ describe("FreeVsCloud component", () => {
   });
 });
 
+describe("ToolsMarquee component", () => {
+  it("exists at src/components/tools-marquee.tsx", () => {
+    expect(fs.existsSync(toolsMarqueePath)).toBe(true);
+  });
+
+  const content = fs.existsSync(toolsMarqueePath)
+    ? fs.readFileSync(toolsMarqueePath, "utf-8")
+    : "";
+
+  it("exports a ToolsMarquee component", () => {
+    expect(content).toMatch(/export function ToolsMarquee/);
+  });
+
+  it("uses logo.dev for tool icons", () => {
+    expect(content).toMatch(/img\.logo\.dev/);
+    expect(content).toMatch(/NEXT_PUBLIC_LOGO_DEV_TOKEN/);
+  });
+
+  it("renders 3 rows with alternating directions (ltr, rtl, ltr)", () => {
+    const ltrMatches = (content.match(/direction="ltr"/g) || []).length;
+    const rtlMatches = (content.match(/direction="rtl"/g) || []).length;
+    expect(ltrMatches).toBe(2);
+    expect(rtlMatches).toBe(1);
+  });
+
+  it("doubles the tool list for seamless infinite scroll", () => {
+    expect(content).toMatch(/\[\.\.\.tools,\s*\.\.\.tools\]/);
+  });
+});
+
+describe("Landing page: tools marquee section", () => {
+  const page = fs.readFileSync(landingPagePath, "utf-8");
+
+  it("renders the ToolsMarquee component", () => {
+    expect(page).toMatch(/<ToolsMarquee/);
+    expect(page).toMatch(/from\s+["']@\/components\/tools-marquee["']/);
+  });
+});
+
+describe("GmailInbox component: real logos", () => {
+  const content = fs.readFileSync(gmailInboxPath, "utf-8");
+
+  it("loads the Gmail brand icon from logo.dev (not a hand-drawn SVG)", () => {
+    expect(content).toMatch(/img\.logo\.dev\/gmail\.com/);
+  });
+
+  it("uses logo.dev for sender avatars", () => {
+    expect(content).toMatch(/img\.logo\.dev\/\$\{entry\.senderDomain\}/);
+  });
+});
+
 describe("WorkflowRecipe component", () => {
   it("exists at src/components/workflow-recipe.tsx", () => {
     expect(fs.existsSync(workflowRecipePath)).toBe(true);
@@ -155,11 +207,20 @@ describe("Pricing page: ICP framing", () => {
   });
 });
 
-describe("Performance page: CAC framing", () => {
+describe("Performance page: cost-per-reply framing", () => {
   const content = fs.readFileSync(performancePagePath, "utf-8");
+  const loadingPath = path.resolve(__dirname, "../../src/app/performance/loading.tsx");
+  const loading = fs.readFileSync(loadingPath, "utf-8");
 
-  it("hero mentions CAC, not just reply rate", () => {
-    expect(content).toMatch(/CAC|cost.*per.*acquisition|\$.*per.*reply/i);
+  it("hero frames the leaderboard by cost per reply (no bare 'CAC')", () => {
+    expect(content).toMatch(/cost per (qualified )?reply/i);
+    expect(content).not.toMatch(/\bCAC\b/);
+  });
+
+  it("loading.tsx hero copy stays in sync with page.tsx hero (no visual flash)", () => {
+    expect(loading).toMatch(/Cost per qualified reply/);
+    expect(loading).toMatch(/Workflows ranked by[\s\S]*real cost per reply/);
+    expect(loading).toMatch(/Every workflow ranked by cost per qualified reply/);
   });
 });
 

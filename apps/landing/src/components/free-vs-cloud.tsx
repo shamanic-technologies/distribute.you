@@ -79,7 +79,7 @@ export function FreeVsCloud({ signUpUrl }: TierProps) {
             <span className="text-brand-400 mt-0.5">✓</span> Public unit prices, no hidden margin
           </li>
           <li className="flex items-start gap-2">
-            <span className="text-brand-400 mt-0.5">✓</span> CAC tracked per product × per channel
+            <span className="text-brand-400 mt-0.5">✓</span> Cost per reply tracked per product × per channel
           </li>
         </ul>
         <LinkButton
