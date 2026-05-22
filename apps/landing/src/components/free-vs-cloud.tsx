@@ -1,54 +1,12 @@
-import { URLS } from "@distribute/content";
 import { LinkButton } from "@/components/link-button";
 
-interface TierProps {
+interface CloudPlanCardProps {
   signUpUrl: string;
 }
 
-export function FreeVsCloud({ signUpUrl }: TierProps) {
+export function FreeVsCloud({ signUpUrl }: CloudPlanCardProps) {
   return (
-    <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-      {/* Free / self-host */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Free · self-host
-          </span>
-        </div>
-        <h3 className="font-display text-2xl font-bold text-gray-900 mb-2">
-          Run it yourself.
-        </h3>
-        <p className="text-sm text-gray-500 mb-6 leading-relaxed">
-          20+ open-source repos under MIT. Bring your own API keys, your own deliverability,
-          your own infrastructure. Pay only the raw API providers.
-        </p>
-        <ul className="space-y-2.5 text-sm text-gray-700 mb-8">
-          <li className="flex items-start gap-2">
-            <span className="text-gray-400 mt-0.5">✓</span> All workflows, fully open source
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-gray-400 mt-0.5">✓</span> Run anywhere — your laptop, your VPS
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-gray-400 mt-0.5">✓</span> Modify prompts, models, sequences
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-gray-400 mt-0.5">✓</span> Contribute back via PR
-          </li>
-        </ul>
-        <LinkButton
-          href={URLS.github}
-          external
-          className="inline-block w-full text-center px-5 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm font-medium hover:bg-gray-50 transition"
-        >
-          View on GitHub →
-        </LinkButton>
-        <p className="text-xs text-gray-400 mt-3 text-center">
-          $0 / month. 20+ repos.
-        </p>
-      </div>
-
-      {/* Pay-as-you-go */}
+    <div className="max-w-xl mx-auto">
       <div className="bg-gray-950 text-white rounded-2xl border-2 border-brand-500/40 p-6 md:p-8 shadow-2xl relative">
         <div className="absolute -top-3 left-6 px-3 py-1 bg-brand-500 text-white text-[10px] font-medium uppercase tracking-wider rounded-full">
           Recommended
