@@ -1,8 +1,0 @@
-{
-  "functions": {
-    "src/app/report/**/*": {
-      "memory": 3009,
-      "maxDuration": 300
-    }
-  }
-}
