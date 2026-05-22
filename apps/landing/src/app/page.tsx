@@ -367,7 +367,7 @@ export default function Home() {
               Pay only for what you use.
             </h2>
             <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-              Cloud — fully managed. We send, qualify, forward. You ship products.
+              We send, qualify, forward. You ship products.
             </p>
           </div>
           <FreeVsCloud signUpUrl={urls.signUp} />
