@@ -74,10 +74,12 @@ export const fetchOrgName = cache(async (orgId: string): Promise<string> => {
   }
 });
 
-// Cap responses so the report function stays under Vercel's memory budget.
-// 200 keeps a worst-case (~500KB per lead) under ~100MB; report shows a
-// "first N of M" caveat in the section card when truncated.
-export const REPORT_FETCH_LIMIT = 200;
+// Cap responses tightly so per-call latency fits inside the per-fetch
+// 25s upstream abort (lead-service assembles FullLead with multi-table
+// joins; even 200 rows routinely exceeded 25s in prod). 50 rows is the
+// largest sample we can reliably load. Report shows a "first N of M"
+// caveat in the section card when truncated.
+export const REPORT_FETCH_LIMIT = 50;
 
 export const fetchLeads = cache(async (orgId: string, brandId: string, featureSlug: string): Promise<Lead[]> => {
   const result = await adminGet<{ leads: Lead[] }>(
