@@ -1,6 +1,15 @@
 import { Suspense } from "react";
 import { SectionCard } from "@/components/report/section-card";
-import { fetchBrand, fetchLeads, fetchEmails, fetchCampaigns, fetchWorkflows, deriveCompaniesFromLeads, deriveIndividualsFromLeads } from "@/lib/report-api";
+import {
+  fetchBrand,
+  fetchLeads,
+  fetchEmails,
+  fetchCampaigns,
+  fetchWorkflows,
+  fetchTotalCostCents,
+  deriveCompaniesFromLeads,
+  deriveIndividualsFromLeads,
+} from "@/lib/report-api";
 
 interface PageProps {
   params: Promise<{ orgId: string; brandId: string; featureSlug: string }>;
@@ -40,12 +49,13 @@ export default async function OverviewPage({ params }: PageProps) {
 }
 
 async function StatsAndFunnel({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
-  const [brand, leads, emails, campaigns, workflows] = await Promise.all([
+  const [brand, leads, emails, campaigns, workflows, totalCostCents] = await Promise.all([
     fetchBrand(orgId, brandId),
     fetchLeads(orgId, brandId, featureSlug),
     fetchEmails(orgId, brandId),
     fetchCampaigns(orgId, brandId, featureSlug),
     fetchWorkflows(orgId, featureSlug),
+    fetchTotalCostCents(orgId, brandId, featureSlug),
   ]);
   void brand;
 
@@ -61,10 +71,13 @@ async function StatsAndFunnel({ orgId, brandId, featureSlug }: { orgId: string; 
     { label: "Campaigns", value: campaigns.length, note: "Outreach programs" },
   ];
 
-  const contacted = leads.filter((l) => l.contacted).length;
-  const delivered = leads.filter((l) => l.delivered).length;
-  const opened = leads.filter((l) => l.opened).length;
-  const replied = leads.filter((l) => l.replied).length;
+  const cpaStages = [
+    { label: "Sent", count: leads.filter((l) => l.sent).length },
+    { label: "Delivered", count: leads.filter((l) => l.delivered).length },
+    { label: "Opened", count: leads.filter((l) => l.opened).length },
+    { label: "Clicked", count: leads.filter((l) => l.clicked).length },
+    { label: "Positive reply", count: leads.filter((l) => l.replied && l.replyClassification === "positive").length },
+  ];
 
   return (
     <>
@@ -80,26 +93,40 @@ async function StatsAndFunnel({ orgId, brandId, featureSlug }: { orgId: string; 
         ))}
       </div>
 
-      <SectionCard title="Funnel" description="Lead progression across the outreach pipeline.">
-        <div className="px-5 py-4">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <FunnelStep label="Leads" value={leads.length} />
-            <FunnelStep label="Contacted" value={contacted} />
-            <FunnelStep label="Delivered" value={delivered} />
-            <FunnelStep label="Opened" value={opened} />
-            <FunnelStep label="Replied" value={replied} />
-          </div>
+      <SectionCard
+        title="Cost per acquisition"
+        description="Effective cost to reach each milestone, computed from total spend divided by count at that stage."
+      >
+        <div className="px-5 py-4 grid grid-cols-2 md:grid-cols-5 gap-3">
+          {cpaStages.map((s) => (
+            <CpaCard key={s.label} label={s.label} count={s.count} totalCostCents={totalCostCents} />
+          ))}
         </div>
       </SectionCard>
     </>
   );
 }
 
-function FunnelStep({ label, value }: { label: string; value: number }) {
+function formatUsd(cents: number): string {
+  const usd = cents / 100;
+  if (usd === 0) return "$0";
+  if (usd < 0.01) return "<$0.01";
+  if (usd < 1) return `$${usd.toFixed(2)}`;
+  if (usd < 100) return `$${usd.toFixed(2)}`;
+  return `$${usd.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+}
+
+function CpaCard({ label, count, totalCostCents }: { label: string; count: number; totalCostCents: number }) {
+  const cpa = count > 0 ? totalCostCents / count : null;
   return (
     <div className="bg-gray-50 rounded-lg p-3 text-center">
       <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</div>
-      <div className="text-xl font-bold text-gray-800 mt-0.5">{value.toLocaleString("en-US")}</div>
+      <div className="text-xl font-bold text-gray-800 mt-0.5">
+        {cpa != null ? formatUsd(cpa) : "—"}
+      </div>
+      <div className="text-[10px] text-gray-400 mt-0.5">
+        {count.toLocaleString("en-US")} {count === 1 ? "lead" : "leads"}
+      </div>
     </div>
   );
 }
@@ -116,12 +143,16 @@ function StatsAndFunnelSkeleton() {
           </div>
         ))}
       </div>
-      <SectionCard title="Funnel" description="Lead progression across the outreach pipeline.">
+      <SectionCard
+        title="Cost per acquisition"
+        description="Effective cost to reach each milestone, computed from total spend divided by count at that stage."
+      >
         <div className="px-5 py-4 grid grid-cols-2 md:grid-cols-5 gap-3">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="bg-gray-50 rounded-lg p-3 space-y-2">
-              <div className="h-3 w-12 bg-gray-100 rounded animate-pulse mx-auto" />
-              <div className="h-6 w-8 bg-gray-100 rounded animate-pulse mx-auto" />
+              <div className="h-3 w-16 bg-gray-100 rounded animate-pulse mx-auto" />
+              <div className="h-6 w-12 bg-gray-100 rounded animate-pulse mx-auto" />
+              <div className="h-2 w-10 bg-gray-100 rounded animate-pulse mx-auto" />
             </div>
           ))}
         </div>
@@ -129,4 +160,3 @@ function StatsAndFunnelSkeleton() {
     </>
   );
 }
-
