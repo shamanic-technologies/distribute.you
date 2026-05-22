@@ -6,6 +6,7 @@ const isPublicRoute = createRouteMatcher([
   "/sign-up(.*)",
   "/sso-callback(.*)",
   "/claim(.*)",
+  "/report(.*)",
 ]);
 
 const isAuthRoute = createRouteMatcher([
