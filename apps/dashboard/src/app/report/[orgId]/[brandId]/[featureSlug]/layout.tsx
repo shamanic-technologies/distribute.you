@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { ReportSidebar } from "@/components/report/sidebar";
 import { ReportHeader } from "@/components/report/header";
 import { HeaderSkeleton } from "@/components/report/skeletons";
-import { fetchBrand } from "@/lib/report-api";
+import { fetchBrand, fetchOrgName } from "@/lib/report-api";
 
 export const metadata: Metadata = {
   title: "Client Report",
@@ -52,6 +52,9 @@ export default async function ReportLayout({ children, params }: LayoutProps) {
 }
 
 async function BrandHeader({ orgId, brandId, featureSlug, generatedAt }: { orgId: string; brandId: string; featureSlug: string; generatedAt: Date }) {
-  const brand = await fetchBrand(orgId, brandId);
-  return <ReportHeader brand={brand} brandId={brandId} orgId={orgId} featureSlug={featureSlug} generatedAt={generatedAt} />;
+  const [brand, orgName] = await Promise.all([
+    fetchBrand(orgId, brandId),
+    fetchOrgName(orgId),
+  ]);
+  return <ReportHeader brand={brand} brandId={brandId} orgName={orgName} featureSlug={featureSlug} generatedAt={generatedAt} />;
 }

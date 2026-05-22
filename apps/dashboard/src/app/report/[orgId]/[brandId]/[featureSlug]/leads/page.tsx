@@ -3,7 +3,7 @@ import { SectionCard } from "@/components/report/section-card";
 import { DataTable, type TableColumn } from "@/components/report/data-table";
 import { CsvDownloadButton, GoogleSheetsButton, type CsvColumn } from "@/components/report/csv-button";
 import { TableSectionSkeleton } from "@/components/report/skeletons";
-import { fetchLeads } from "@/lib/report-api";
+import { fetchLeads, fetchCampaigns } from "@/lib/report-api";
 import { getLeadConsolidatedStatus, type Lead } from "@/lib/api";
 
 interface PageProps {
@@ -36,12 +36,12 @@ interface LeadRow {
   country: string;
   status: string;
   emailStatus: string;
-  campaignId: string;
+  campaign: string;
 }
 
 const LEADS_COLUMNS = ["Name", "Email", "Title", "Company", "Industry", "Country", "Status"];
 
-function toRow(lead: Lead): LeadRow {
+function toRow(lead: Lead, campaignName: string): LeadRow {
   const org = lead.lead?.organization;
   const job = lead.lead?.employmentHistory?.find((e) => e.current);
   return {
@@ -55,7 +55,7 @@ function toRow(lead: Lead): LeadRow {
     country: org?.country ?? "",
     status: getLeadConsolidatedStatus(lead),
     emailStatus: lead.emailStatus ?? "",
-    campaignId: lead.campaignId,
+    campaign: campaignName,
   };
 }
 
@@ -79,8 +79,12 @@ export default async function LeadsPage({ params }: PageProps) {
 }
 
 async function LeadsSection({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
-  const leads = await fetchLeads(orgId, brandId, featureSlug);
-  const rows = leads.map(toRow);
+  const [leads, campaigns] = await Promise.all([
+    fetchLeads(orgId, brandId, featureSlug),
+    fetchCampaigns(orgId, brandId, featureSlug),
+  ]);
+  const campaignNameById = new Map(campaigns.map((c) => [c.id, c.name]));
+  const rows = leads.map((l) => toRow(l, campaignNameById.get(l.campaignId) ?? ""));
 
   const columns: TableColumn<LeadRow>[] = [
     { key: "name", label: "Name", render: (r) => <span className="font-medium text-gray-900">{r.firstName} {r.lastName}</span> },
@@ -120,7 +124,7 @@ async function LeadsSection({ orgId, brandId, featureSlug }: { orgId: string; br
     { label: "Country", value: (r) => r.country },
     { label: "Status", value: (r) => r.status },
     { label: "Email status", value: (r) => r.emailStatus },
-    { label: "Campaign ID", value: (r) => r.campaignId },
+    { label: "Campaign", value: (r) => r.campaign },
   ];
 
   return (
@@ -130,7 +134,7 @@ async function LeadsSection({ orgId, brandId, featureSlug }: { orgId: string; br
       count={rows.length}
       actions={
         <>
-          <CsvDownloadButton filename={`leads-${brandId}.csv`} rows={rows} columns={csvColumns} />
+          <CsvDownloadButton filename={`leads-${featureSlug}.csv`} rows={rows} columns={csvColumns} />
           <GoogleSheetsButton />
         </>
       }

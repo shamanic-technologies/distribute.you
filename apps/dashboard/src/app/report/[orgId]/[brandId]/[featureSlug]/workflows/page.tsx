@@ -11,10 +11,8 @@ interface PageProps {
 
 interface WorkflowFlatRow {
   workflowName: string;
-  workflowSlug: string;
   version: number;
-  nodeId: string;
-  nodeType: string;
+  step: string;
   promptField: string;
   promptValue: string;
 }
@@ -27,7 +25,7 @@ export default async function WorkflowsPage({ params }: PageProps) {
         fallback={
           <ListSectionSkeleton
             title="Workflows"
-            description="Pipelines used to generate emails. Includes the LLM prompts at each node."
+            description="Pipelines used to generate emails. Includes the LLM prompts at each step."
           />
         }
       >
@@ -35,6 +33,16 @@ export default async function WorkflowsPage({ params }: PageProps) {
       </Suspense>
     </div>
   );
+}
+
+function humanizeStep(nodeId: string, nodeType: string): string {
+  // Workflow node IDs look like "brand-extract", "draft-email". Make them
+  // readable: "Brand extract", "Draft email". Fallback to node type.
+  const base = nodeId || nodeType;
+  return base
+    .split(/[-_]/)
+    .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+    .join(" ");
 }
 
 async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
@@ -46,10 +54,8 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
     if (prompts.length === 0) {
       flatRows.push({
         workflowName: w.workflowDynastyName,
-        workflowSlug: w.workflowSlug,
         version: w.version,
-        nodeId: "",
-        nodeType: "",
+        step: "",
         promptField: "",
         promptValue: "",
       });
@@ -58,10 +64,8 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
     for (const p of prompts) {
       flatRows.push({
         workflowName: w.workflowDynastyName,
-        workflowSlug: w.workflowSlug,
         version: w.version,
-        nodeId: p.nodeId,
-        nodeType: p.nodeType,
+        step: humanizeStep(p.nodeId, p.nodeType),
         promptField: p.field,
         promptValue: p.value,
       });
@@ -69,11 +73,9 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
   }
 
   const csvColumns: CsvColumn<WorkflowFlatRow>[] = [
-    { label: "Workflow name", value: (r) => r.workflowName },
-    { label: "Workflow slug", value: (r) => r.workflowSlug },
+    { label: "Workflow", value: (r) => r.workflowName },
     { label: "Version", value: (r) => r.version },
-    { label: "Node ID", value: (r) => r.nodeId },
-    { label: "Node type", value: (r) => r.nodeType },
+    { label: "Step", value: (r) => r.step },
     { label: "Prompt field", value: (r) => r.promptField },
     { label: "Prompt value", value: (r) => r.promptValue },
   ];
@@ -81,11 +83,11 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
   return (
     <SectionCard
       title="Workflows"
-      description="Pipelines used to generate emails. Includes the LLM prompts at each node."
+      description="Pipelines used to generate emails. Includes the LLM prompts at each step."
       count={workflows.length}
       actions={
         <>
-          <CsvDownloadButton filename={`workflows-${brandId}.csv`} rows={flatRows} columns={csvColumns} />
+          <CsvDownloadButton filename={`workflows-${featureSlug}.csv`} rows={flatRows} columns={csvColumns} />
           <GoogleSheetsButton />
         </>
       }
@@ -109,7 +111,7 @@ function WorkflowItem({ workflow }: { workflow: Workflow }) {
     <li className="px-5 py-4">
       <div className="flex items-baseline justify-between gap-4 mb-1 flex-wrap">
         <div className="font-medium text-gray-900">{workflow.workflowDynastyName}</div>
-        <div className="text-xs text-gray-400">v{workflow.version} · {workflow.workflowSlug}</div>
+        <div className="text-xs text-gray-400">v{workflow.version}</div>
       </div>
       {workflow.description && <p className="text-xs text-gray-500 mb-2">{workflow.description}</p>}
       {prompts.length === 0 ? (
@@ -123,7 +125,8 @@ function WorkflowItem({ workflow }: { workflow: Workflow }) {
             {prompts.map((p, i) => (
               <div key={`${p.nodeId}-${p.field}-${i}`} className="bg-gray-50 border border-gray-100 rounded p-3">
                 <div className="text-xs text-gray-500 mb-1">
-                  <span className="font-mono">{p.nodeId}</span> · {p.nodeType} · <span className="text-gray-400">{p.field}</span>
+                  <span className="font-medium text-gray-700">{humanizeStep(p.nodeId, p.nodeType)}</span>
+                  <span className="text-gray-400"> · {p.field}</span>
                 </div>
                 <pre className="text-xs text-gray-700 whitespace-pre-wrap font-sans">{p.value}</pre>
               </div>

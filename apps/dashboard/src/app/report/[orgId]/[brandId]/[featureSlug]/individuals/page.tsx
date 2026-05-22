@@ -96,7 +96,7 @@ async function IndividualsSection({ orgId, brandId, featureSlug }: { orgId: stri
       count={individuals.length}
       actions={
         <>
-          <CsvDownloadButton filename={`individuals-${brandId}.csv`} rows={individuals} columns={csvColumns} />
+          <CsvDownloadButton filename={`individuals-${featureSlug}.csv`} rows={individuals} columns={csvColumns} />
           <GoogleSheetsButton />
         </>
       }
