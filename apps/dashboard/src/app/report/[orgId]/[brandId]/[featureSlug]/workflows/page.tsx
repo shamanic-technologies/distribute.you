@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import { SectionCard } from "@/components/report/section-card";
 import { CsvDownloadButton, GoogleSheetsButton, type CsvColumn } from "@/components/report/csv-button";
+import { ListSectionSkeleton } from "@/components/report/skeletons";
 import { fetchWorkflows, extractWorkflowPrompts } from "@/lib/report-api";
 import type { Workflow } from "@/lib/api";
 
@@ -19,6 +21,23 @@ interface WorkflowFlatRow {
 
 export default async function WorkflowsPage({ params }: PageProps) {
   const { orgId, brandId, featureSlug } = await params;
+  return (
+    <div className="p-6 md:p-8 space-y-6 max-w-6xl">
+      <Suspense
+        fallback={
+          <ListSectionSkeleton
+            title="Workflows"
+            description="Pipelines used to generate emails. Includes the LLM prompts at each node."
+          />
+        }
+      >
+        <WorkflowsSection orgId={orgId} brandId={brandId} featureSlug={featureSlug} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
   const workflows = await fetchWorkflows(orgId, featureSlug);
 
   const flatRows: WorkflowFlatRow[] = [];
@@ -60,29 +79,27 @@ export default async function WorkflowsPage({ params }: PageProps) {
   ];
 
   return (
-    <div className="p-6 md:p-8 space-y-6 max-w-6xl">
-      <SectionCard
-        title="Workflows"
-        description="Pipelines used to generate emails. Includes the LLM prompts at each node."
-        count={workflows.length}
-        actions={
-          <>
-            <CsvDownloadButton filename={`workflows-${brandId}.csv`} rows={flatRows} columns={csvColumns} />
-            <GoogleSheetsButton />
-          </>
-        }
-      >
-        {workflows.length === 0 ? (
-          <div className="px-5 py-10 text-center text-sm text-gray-500">No workflows available for this feature.</div>
-        ) : (
-          <ul className="divide-y divide-gray-100">
-            {workflows.map((w) => (
-              <WorkflowItem key={w.id} workflow={w} />
-            ))}
-          </ul>
-        )}
-      </SectionCard>
-    </div>
+    <SectionCard
+      title="Workflows"
+      description="Pipelines used to generate emails. Includes the LLM prompts at each node."
+      count={workflows.length}
+      actions={
+        <>
+          <CsvDownloadButton filename={`workflows-${brandId}.csv`} rows={flatRows} columns={csvColumns} />
+          <GoogleSheetsButton />
+        </>
+      }
+    >
+      {workflows.length === 0 ? (
+        <div className="px-5 py-10 text-center text-sm text-gray-500">No workflows available for this feature.</div>
+      ) : (
+        <ul className="divide-y divide-gray-100">
+          {workflows.map((w) => (
+            <WorkflowItem key={w.id} workflow={w} />
+          ))}
+        </ul>
+      )}
+    </SectionCard>
   );
 }
 

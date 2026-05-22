@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import { SectionCard } from "@/components/report/section-card";
 import { CsvDownloadButton, GoogleSheetsButton, type CsvColumn } from "@/components/report/csv-button";
+import { ListSectionSkeleton } from "@/components/report/skeletons";
 import { fetchEmails, fetchCampaigns } from "@/lib/report-api";
 import type { Email } from "@/lib/api";
 
@@ -19,14 +21,28 @@ interface EmailRow {
 
 export default async function EmailsPage({ params }: PageProps) {
   const { orgId, brandId, featureSlug } = await params;
+  return (
+    <div className="p-6 md:p-8 space-y-6 max-w-6xl">
+      <Suspense
+        fallback={
+          <ListSectionSkeleton
+            title="Emails generated"
+            description="Every email produced by the workflows, including subject and body."
+          />
+        }
+      >
+        <EmailsSection orgId={orgId} brandId={brandId} featureSlug={featureSlug} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function EmailsSection({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
   const [emails, campaigns] = await Promise.all([
     fetchEmails(orgId, brandId),
     fetchCampaigns(orgId, brandId, featureSlug),
   ]);
 
-  // No direct workflow/campaign link on the Email payload yet — surface the
-  // single-campaign hint when only one campaign exists; otherwise leave blank
-  // and call out the placeholder. Backend join endpoint pending.
   const sole = campaigns.length === 1 ? campaigns[0] : null;
 
   function toRow(e: Email): EmailRow {
@@ -54,31 +70,29 @@ export default async function EmailsPage({ params }: PageProps) {
   ];
 
   return (
-    <div className="p-6 md:p-8 space-y-6 max-w-6xl">
-      <SectionCard
-        title="Emails generated"
-        description="Every email produced by the workflows, including subject and body."
-        count={rows.length}
-        actions={
-          <>
-            <CsvDownloadButton filename={`emails-${brandId}.csv`} rows={rows} columns={csvColumns} />
-            <GoogleSheetsButton />
-          </>
-        }
-        placeholder={campaigns.length > 1}
-        placeholderNote={campaigns.length > 1 ? "Workflow + campaign columns unavailable until backend exposes the join. Showing emails without per-campaign attribution." : undefined}
-      >
-        {rows.length === 0 ? (
-          <div className="px-5 py-10 text-center text-sm text-gray-500">No emails generated yet.</div>
-        ) : (
-          <ul className="divide-y divide-gray-100">
-            {emails.map((e) => (
-              <EmailItem key={e.id} email={e} />
-            ))}
-          </ul>
-        )}
-      </SectionCard>
-    </div>
+    <SectionCard
+      title="Emails generated"
+      description="Every email produced by the workflows, including subject and body."
+      count={rows.length}
+      actions={
+        <>
+          <CsvDownloadButton filename={`emails-${brandId}.csv`} rows={rows} columns={csvColumns} />
+          <GoogleSheetsButton />
+        </>
+      }
+      placeholder={campaigns.length > 1}
+      placeholderNote={campaigns.length > 1 ? "Workflow + campaign columns unavailable until backend exposes the join. Showing emails without per-campaign attribution." : undefined}
+    >
+      {rows.length === 0 ? (
+        <div className="px-5 py-10 text-center text-sm text-gray-500">No emails generated yet.</div>
+      ) : (
+        <ul className="divide-y divide-gray-100">
+          {emails.map((e) => (
+            <EmailItem key={e.id} email={e} />
+          ))}
+        </ul>
+      )}
+    </SectionCard>
   );
 }
 
