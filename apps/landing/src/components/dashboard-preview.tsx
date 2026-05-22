@@ -98,14 +98,14 @@ export function DashboardPreview() {
             <div className="grid grid-cols-3 gap-3 mb-6">
               <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/30">
                 <p className="text-[10px] text-gray-500 uppercase tracking-wider">
-                  Reply Rate
+                  Positive Reply Rate
                 </p>
                 <p className="text-xl font-bold text-white mt-1">4.8%</p>
                 <p className="text-[10px] text-green-400 mt-0.5">+1.2% vs avg</p>
               </div>
               <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/30">
                 <p className="text-[10px] text-gray-500 uppercase tracking-wider">
-                  Cost / Reply
+                  Cost / Positive Reply
                 </p>
                 <p className="text-xl font-bold text-white mt-1">$0.42</p>
                 <p className="text-[10px] text-green-400 mt-0.5">-22% vs avg</p>
