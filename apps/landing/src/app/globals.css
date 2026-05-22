@@ -45,6 +45,19 @@ h1, h2, h3, .font-display {
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
+
+  .animate-marquee-ltr {
+    animation: marqueeLtr 60s linear infinite;
+  }
+
+  .animate-marquee-rtl {
+    animation: marqueeRtl 60s linear infinite;
+  }
+
+  .marquee-mask {
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 64px, #000 calc(100% - 64px), transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0, #000 64px, #000 calc(100% - 64px), transparent 100%);
+  }
 }
 
 @keyframes slideIn {
@@ -53,5 +66,23 @@ h1, h2, h3, .font-display {
   }
   to {
     transform: translateX(0);
+  }
+}
+
+@keyframes marqueeLtr {
+  from {
+    transform: translateX(-50%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes marqueeRtl {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
   }
 }

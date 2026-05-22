@@ -120,7 +120,7 @@ export function PortfolioDashboard() {
 
         {/* Footer hint */}
         <div className="px-6 py-3 border-t border-gray-800/60 bg-gray-900/30 text-[10px] text-gray-500 flex items-center justify-between">
-          <span>4 products · $137 spent · 39 qualified replies · avg CAC $3.51</span>
+          <span>4 products · $137 spent · 39 qualified replies · avg $3.51 per reply</span>
           <span className="text-gray-600">Updated 12s ago</span>
         </div>
       </div>
