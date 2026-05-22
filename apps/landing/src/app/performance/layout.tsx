@@ -85,8 +85,8 @@ const datasetJsonLd = {
   variableMeasured: [
     { "@type": "PropertyValue", name: "Open Rate", unitText: "percent" },
     { "@type": "PropertyValue", name: "Click Rate", unitText: "percent" },
-    { "@type": "PropertyValue", name: "Reply Rate", unitText: "percent" },
-    { "@type": "PropertyValue", name: "Cost Per Reply", unitText: "USD cents" },
+    { "@type": "PropertyValue", name: "Positive Reply Rate", unitText: "percent" },
+    { "@type": "PropertyValue", name: "Cost Per Positive Reply", unitText: "USD cents" },
   ],
 };
 
