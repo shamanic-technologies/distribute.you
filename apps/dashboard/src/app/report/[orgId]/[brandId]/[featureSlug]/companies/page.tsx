@@ -7,7 +7,7 @@ import { CompaniesTable } from "@/components/report/companies-table";
 import { fetchLeads, deriveCompaniesFromLeads, type CompanyRow } from "@/lib/report-api";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 interface PageProps {
   params: Promise<{ orgId: string; brandId: string; featureSlug: string }>;

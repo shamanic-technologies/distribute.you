@@ -8,7 +8,7 @@ import { fetchEmails, fetchCampaigns, fetchWorkflows } from "@/lib/report-api";
 import type { Email } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 interface PageProps {
   params: Promise<{ orgId: string; brandId: string; featureSlug: string }>;

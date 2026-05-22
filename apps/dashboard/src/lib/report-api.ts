@@ -12,6 +12,12 @@ import type {
 const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 const ADMIN_KEY = process.env.ADMIN_DISTRIBUTE_API_KEY;
 
+// Per-fetch timeout so a single slow upstream call (cost-stats has been
+// observed at 30s+) can't take the whole page past Vercel's function ceiling.
+// On timeout the Suspense boundary that requested this data flips to its
+// empty/0 render path — the rest of the page is unaffected.
+const UPSTREAM_TIMEOUT_MS = 25_000;
+
 /** GET against api-service with admin auth + org context. Returns the parsed
  *  body on 2xx, null on any failure. Logs full status + body on failure so
  *  Vercel runtime logs surface the real upstream reason. */
@@ -31,6 +37,7 @@ async function adminGet<T>(label: string, path: string, orgId: string): Promise<
         "x-external-user-id": `report-public:${orgId}`,
       },
       cache: "no-store",
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     });
     if (!res.ok) {
       const body = await res.text().catch(() => "");
