@@ -70,6 +70,117 @@ export default function InvestorsPage() {
           </div>
         </section>
 
+        {/* Who We Serve — ICP #1 */}
+        <section className="pb-12 px-4">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="font-display text-2xl font-bold mb-2 text-gray-200">
+              Who We Serve — ICP #1
+            </h2>
+            <p className="text-sm text-gray-500 mb-6">
+              The Serial Builder. The single user persona we optimize the product, pricing, and roadmap for.
+            </p>
+
+            <div className="bg-gray-800/30 border border-gray-700/50 rounded-xl p-6 text-gray-300 text-sm leading-relaxed space-y-6">
+              <blockquote className="border-l-2 border-brand-500/60 pl-4 italic text-gray-300">
+                &quot;16-40 years old. CEO-founder, mostly solo. I always have several SaaS in bench.
+                I have no time between newsletter, content, distribute.you campaigns, meetings,
+                monitoring, replies, and refining the ICP of my own campaigns. I want someone close
+                to me — founder reachable, bugs fixed fast, features shipped fast.&quot;
+              </blockquote>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                  <p className="text-gray-500 text-xs mb-1">Age</p>
+                  <p className="text-white">16-40</p>
+                </div>
+                <div>
+                  <p className="text-gray-500 text-xs mb-1">Status</p>
+                  <p className="text-white">Solo CEO-founder, 1-3 ppl max</p>
+                </div>
+                <div>
+                  <p className="text-gray-500 text-xs mb-1">Portfolio</p>
+                  <p className="text-white">3-10 products active</p>
+                </div>
+                <div>
+                  <p className="text-gray-500 text-xs mb-1">Monthly budget</p>
+                  <p className="text-white">$50-$500 across products</p>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-white font-semibold text-base mb-3">Time poverty</h3>
+                <p className="text-gray-400 mb-2">No time between:</p>
+                <ul className="list-disc list-inside space-y-1 text-gray-300 marker:text-gray-600">
+                  <li>Writing the newsletter</li>
+                  <li>Producing content</li>
+                  <li>Launching distribute.you campaigns across multiple products</li>
+                  <li>Meetings these generate</li>
+                  <li>Monitoring + qualified replies</li>
+                  <li>Refining own workflows / templates / ICPs</li>
+                </ul>
+                <p className="text-gray-400 mt-3">
+                  Buys <span className="text-white font-medium">time</span> and{" "}
+                  <span className="text-white font-medium">leverage</span>, not a tool.
+                </p>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="text-white font-semibold text-base mb-3">Refuses</h3>
+                  <ul className="list-disc list-inside space-y-1 text-gray-400 marker:text-red-500/60">
+                    <li>Buying a sending domain</li>
+                    <li>SPF / DKIM / DMARC setup</li>
+                    <li>Warming mailboxes for 6 weeks</li>
+                    <li>Triaging raw replies (spam vs lead)</li>
+                    <li>Subscriptions ($99/mo × N products = impossible)</li>
+                    <li>Lock-in / opaque pricing</li>
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold text-base mb-3">Accepts</h3>
+                  <ul className="list-disc list-inside space-y-1 text-gray-400 marker:text-emerald-500/60">
+                    <li>Agency-style sender on his behalf</li>
+                    <li>AI-qualified replies forwarded to Gmail</li>
+                    <li>Public unit prices + 2x margin baked in</li>
+                    <li>Pay-as-you-go credits, $2 free to start</li>
+                    <li>Multi-brand portfolio in one dashboard</li>
+                    <li>Open source as a safety valve</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-white font-semibold text-base mb-3">North-star metric</h3>
+                <p className="text-gray-300">
+                  Real <span className="text-white font-medium">CAC</span> ($/qualified reply, $/paid conversion)
+                  per product × per channel × per workflow. Kills losers under 4 weeks.
+                  Scales winners 10x when CAC &lt; LTV/3.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-white font-semibold text-base mb-3">Founder proximity</h3>
+                <p className="text-gray-300">
+                  Wants the founder reachable. Twitter DM, GitHub issue, direct email —
+                  all acceptable. Bug fixed fast, feature shipped fast, roadmap public.
+                  No enterprise support, no ticketing system.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-white font-semibold text-base mb-3">Catalog expectation</h3>
+                <p className="text-gray-300">
+                  A growing marketplace of channels. <span className="text-white font-medium">Stripe taken literally:</span>{" "}
+                  1 payment method → 50+ payment methods over time. distribute.you ships
+                  at least one new channel per month. Today: 9 live
+                  (Sales, PR, VC, Hiring, Accelerators, PR Expert Quote, Outlets, Press Kit, AI Visibility).
+                  Coming: Influencers, LinkedIn Outreach, more.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Platform Metrics */}
         <section className="pb-12 px-4">
           <div className="max-w-4xl mx-auto">
