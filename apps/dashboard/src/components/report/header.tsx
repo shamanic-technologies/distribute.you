@@ -1,4 +1,3 @@
-import Image from "next/image";
 import type { Brand } from "@/lib/api";
 
 interface ReportHeaderProps {
@@ -22,13 +21,13 @@ export function ReportHeader({ brand, brandId, orgId, featureSlug, generatedAt }
       <div className="flex items-start justify-between gap-6 flex-wrap">
         <div className="flex items-center gap-4">
           {brand?.logoUrl ? (
-            <Image
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
               src={brand.logoUrl}
               alt={`${brandName} logo`}
               width={56}
               height={56}
-              className="rounded-lg border border-gray-200 bg-white"
-              unoptimized
+              className="rounded-lg border border-gray-200 bg-white object-contain"
             />
           ) : (
             <div className="w-14 h-14 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400 text-xl font-semibold">
