@@ -67,15 +67,32 @@ export const fetchOrgName = cache(async (orgId: string): Promise<string> => {
   }
 });
 
+// Cap responses so the report function stays under Vercel's 1024MB default
+// memory budget. Reports with >REPORT_FETCH_LIMIT rows show a "first N of M"
+// caveat in the section card.
+export const REPORT_FETCH_LIMIT = 500;
+
 export const fetchLeads = cache(async (orgId: string, brandId: string, featureSlug: string): Promise<Lead[]> => {
-  const result = await adminGet<{ leads: Lead[] }>("listBrandLeads", `/leads?brandId=${brandId}`, orgId);
+  const result = await adminGet<{ leads: Lead[] }>(
+    "listBrandLeads",
+    `/leads?brandId=${brandId}&limit=${REPORT_FETCH_LIMIT}`,
+    orgId,
+  );
   const leads = result?.leads ?? [];
   return leads.filter((l) => !l.featureSlug || l.featureSlug === featureSlug);
 });
 
 export const fetchEmails = cache(async (orgId: string, brandId: string): Promise<Email[]> => {
-  const result = await adminGet<{ emails: Email[] }>("listBrandEmails", `/emails?brandId=${brandId}`, orgId);
-  return result?.emails ?? [];
+  const result = await adminGet<{ emails: Email[] }>(
+    "listBrandEmails",
+    `/emails?brandId=${brandId}&limit=${REPORT_FETCH_LIMIT}`,
+    orgId,
+  );
+  const emails = result?.emails ?? [];
+  // The generationRun blob includes the full run cost breakdown + descendant
+  // run tree, which can be ~50KB per email. Drop it server-side so the RSC
+  // payload stays small and Vercel doesn't OOM.
+  return emails.map(({ generationRun: _gr, ...rest }) => ({ ...rest, generationRun: null }));
 });
 
 export const fetchCampaigns = cache(async (orgId: string, brandId: string, featureSlug: string): Promise<Campaign[]> => {
