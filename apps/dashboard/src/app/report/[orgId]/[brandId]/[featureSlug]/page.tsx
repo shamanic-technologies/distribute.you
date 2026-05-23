@@ -120,7 +120,7 @@ async function CpaFunnel({ orgId, brandId, featureSlug }: { orgId: string; brand
     { label: "Delivered", count: pickStat(stats, "leadsDelivered", "delivered") },
     { label: "Opened", count: pickStat(stats, "leadsOpened", "opened") },
     { label: "Clicked", count: pickStat(stats, "leadsClicked", "clicked") },
-    { label: "Positive reply", count: pickStat(stats, "repliesPositive", "leadsRepliedPositive", "positiveReplies") },
+    { label: "Positive reply", count: pickStat(stats, "leadsRepliesPositive", "repliesPositive", "leadsRepliedPositive", "positiveReplies") },
   ];
 
   return (
