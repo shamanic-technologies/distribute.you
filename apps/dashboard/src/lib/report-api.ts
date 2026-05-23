@@ -131,6 +131,24 @@ export const fetchFeatureStats = cache(async (orgId: string, brandId: string, fe
   );
 });
 
+/** Per-workflow grouped stats for a brand × feature. Used by the Workflows
+ *  page to compute CAC per workflow (A/B comparison). */
+export interface FeatureStatsGroupedByWorkflow {
+  groups: Array<{
+    workflowSlug: string | null;
+    systemStats: { totalCostInUsdCents?: number | string } & Record<string, unknown>;
+    stats: Record<string, number>;
+  }>;
+}
+
+export const fetchFeatureStatsByWorkflow = cache(async (orgId: string, brandId: string, featureSlug: string): Promise<FeatureStatsGroupedByWorkflow> => {
+  return adminGet<FeatureStatsGroupedByWorkflow>(
+    "featureStatsByWorkflow",
+    `/features/${encodeURIComponent(featureSlug)}/stats?brandId=${brandId}&groupBy=workflowSlug`,
+    orgId,
+  );
+});
+
 export const fetchCampaigns = cache(async (orgId: string, brandId: string, featureSlug: string): Promise<Campaign[]> => {
   const result = await adminGet<{ campaigns: Campaign[] }>("listCampaignsByBrand", `/campaigns?brandId=${brandId}`, orgId);
   const campaigns = result.campaigns ?? [];
