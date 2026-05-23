@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import { SectionCard } from "@/components/report/section-card";
 import {
   fetchFeatureStats,
-  fetchCampaigns,
   fetchWorkflows,
 } from "@/lib/report-api";
 
@@ -43,8 +42,7 @@ export default async function OverviewPage({ params }: PageProps) {
         <ul className="px-5 py-4 space-y-2 text-sm text-gray-700">
           <li><strong>Leads</strong> — every prospect targeted, with company, email and current status.</li>
           <li><strong>Emails</strong> — every email generated, including subject and body.</li>
-          <li><strong>Workflows</strong> — pipelines used to generate emails, including prompts.</li>
-          <li><strong>Campaigns</strong> — programs run with budget, status and associated workflow.</li>
+          <li><strong>Workflows</strong> — pipelines used to generate emails, with prompts and per-workflow CAC.</li>
         </ul>
       </SectionCard>
     </div>
@@ -65,23 +63,21 @@ function pickStat(stats: Record<string, number>, ...keys: string[]): number {
 async function StatsGrid({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
   // Stats endpoint provides all the counts we need — no transactional list
   // fetches on Overview. fetchCampaigns + fetchWorkflows are small and fast.
-  const [featureStats, campaigns, workflows] = await Promise.all([
+  const [featureStats, workflows] = await Promise.all([
     fetchFeatureStats(orgId, brandId, featureSlug),
-    fetchCampaigns(orgId, brandId, featureSlug),
     fetchWorkflows(orgId, featureSlug),
   ]);
 
   const stats = featureStats?.stats ?? {};
 
   const cards = [
-    { label: "Leads", value: pickStat(stats, "leadsServed", "leads", "leadsCount", "leadsTotal", "leadsBuffered"), note: "Targeted prospects across campaigns" },
+    { label: "Leads", value: pickStat(stats, "leadsServed", "leads", "leadsCount", "leadsTotal", "leadsBuffered"), note: "Targeted prospects" },
     { label: "Emails sent", value: pickStat(stats, "emailsSent", "leadsSent", "emails", "emailsGenerated"), note: "Total emails generated" },
     { label: "Workflows", value: workflows.length, note: "Email generation pipelines" },
-    { label: "Campaigns", value: campaigns.length, note: "Outreach programs" },
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
       {cards.map((s) => (
         <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-4">
           <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">{s.label}</div>
@@ -150,8 +146,8 @@ function CpaCard({ label, count, totalCostCents }: { label: string; count: numbe
 
 function StatsGridSkeleton() {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-      {Array.from({ length: 4 }).map((_, i) => (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      {Array.from({ length: 3 }).map((_, i) => (
         <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
           <div className="h-3 w-16 bg-gray-100 rounded animate-pulse" />
           <div className="h-7 w-12 bg-gray-100 rounded animate-pulse" />
