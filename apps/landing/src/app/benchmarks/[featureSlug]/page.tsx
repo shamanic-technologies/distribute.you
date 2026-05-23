@@ -18,19 +18,10 @@ import {
 } from "@/lib/performance/fetch-leaderboard";
 
 export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 interface PageProps {
   params: Promise<{ featureSlug: string }>;
-}
-
-export async function generateStaticParams() {
-  try {
-    const features = await fetchBenchmarkFeatures();
-    return features.map((f) => ({ featureSlug: f.slug }));
-  } catch (err) {
-    console.error("[landing] benchmarks: generateStaticParams fetch failed", err);
-    return [];
-  }
 }
 
 export async function generateMetadata({

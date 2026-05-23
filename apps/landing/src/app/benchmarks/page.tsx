@@ -5,6 +5,7 @@ import { PROD_URLS } from "@/lib/env-urls";
 import { fetchBenchmarkFeatures } from "@/lib/benchmarks/fetch-benchmark";
 
 export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 const PAGE_URL = `${PROD_URLS.landing}/benchmarks`;
 const PAGE_DESCRIPTION =
