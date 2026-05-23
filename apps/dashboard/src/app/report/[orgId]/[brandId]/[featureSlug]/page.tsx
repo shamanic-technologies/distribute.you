@@ -4,7 +4,6 @@ import {
   fetchFeatureStats,
   fetchCampaigns,
   fetchWorkflows,
-  fetchTotalCostCents,
   fetchLeads,
   deriveCompaniesFromLeads,
   deriveIndividualsFromLeads,
@@ -108,12 +107,12 @@ async function StatsGrid({ orgId, brandId, featureSlug }: { orgId: string; brand
 }
 
 async function CpaFunnel({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
-  const [featureStats, totalCostCents] = await Promise.all([
-    fetchFeatureStats(orgId, brandId, featureSlug),
-    fetchTotalCostCents(orgId, brandId, featureSlug),
-  ]);
-
+  // featureStats.systemStats.totalCostInUsdCents is the same number the
+  // separate /v1/runs/stats/costs call returned, embedded in the stats
+  // response. No need for a second slow upstream call.
+  const featureStats = await fetchFeatureStats(orgId, brandId, featureSlug);
   const stats = featureStats?.stats ?? {};
+  const totalCostCents = Number(featureStats?.systemStats?.totalCostInUsdCents ?? 0);
 
   const cpaStages = [
     { label: "Sent", count: pickStat(stats, "leadsSent", "emailsSent", "sent") },
