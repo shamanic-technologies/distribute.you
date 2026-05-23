@@ -4,6 +4,8 @@ import { Suspense } from "react";
 import { headers } from "next/headers";
 import { Navbar } from "@/components/navbar";
 import { PROD_URLS } from "@/lib/env-urls";
+import { DISTRIBUTION_FEATURES } from "@distribute/content";
+import type { FeatureColor } from "@distribute/content";
 import {
   CompanyOverviewSection,
   PlatformMetricsSection,
@@ -18,6 +20,20 @@ import {
   MonthlyGrowthSkeleton,
   WeeklyGrowthSkeleton,
 } from "@/components/investors/skeletons";
+
+const FEATURE_DOT: Record<FeatureColor, string> = {
+  emerald: "bg-emerald-400",
+  cyan: "bg-cyan-400",
+  blue: "bg-blue-400",
+  violet: "bg-violet-400",
+  pink: "bg-pink-400",
+  amber: "bg-amber-400",
+};
+
+const liveFeatureCount = DISTRIBUTION_FEATURES.filter((f) => f.status === "live").length;
+const comingSoonFeatureCount = DISTRIBUTION_FEATURES.filter(
+  (f) => f.status === "coming-soon"
+).length;
 
 const INVESTORS_URL = `${PROD_URLS.landing}/investors`;
 const PAGE_DESCRIPTION =
@@ -129,6 +145,59 @@ export default function InvestorsPage() {
             <Suspense fallback={<CompanyOverviewSkeleton />}>
               <CompanyOverviewSection />
             </Suspense>
+          </div>
+        </section>
+
+        {/* Product — Channels Catalog */}
+        <section className="pb-12 px-4">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="font-display text-2xl font-bold mb-2 text-gray-200">
+              Product — {liveFeatureCount} Channels Live, {comingSoonFeatureCount} Coming
+            </h2>
+            <p className="text-sm text-gray-500 mb-6">
+              Each channel is a priced outbound surface. Builders enable one or many,
+              set a per-channel budget, and only pay for executions that run.
+              At least one new channel ships per month. The Stripe-of-Distribution
+              metaphor is literal: one payment method → 50+ payment methods over time.
+            </p>
+
+            <div className="grid md:grid-cols-2 gap-3">
+              {DISTRIBUTION_FEATURES.map((feature) => {
+                const isLive = feature.status === "live";
+                return (
+                  <div
+                    key={feature.id}
+                    className="bg-gray-800/40 border border-gray-700/50 rounded-xl p-4 hover:border-gray-600 transition"
+                  >
+                    <div className="flex items-start justify-between mb-2 gap-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div
+                          className={`w-2 h-2 rounded-full flex-shrink-0 ${FEATURE_DOT[feature.color]}`}
+                        />
+                        <h3 className="font-semibold text-white text-sm">
+                          {feature.title}
+                        </h3>
+                      </div>
+                      {isLive ? (
+                        <span className="text-[10px] font-medium text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30 flex-shrink-0">
+                          Live
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-medium text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/30 flex-shrink-0">
+                          Coming Soon
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-400 leading-relaxed mb-3">
+                      {feature.description}
+                    </p>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider">
+                      Ranked by {feature.metric}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </section>
 
@@ -246,9 +315,8 @@ export default function InvestorsPage() {
                 <p className="text-gray-300">
                   A growing marketplace of channels. <span className="text-white font-medium">Stripe taken literally:</span>{" "}
                   1 payment method → 50+ payment methods over time. distribute.you ships
-                  at least one new channel per month. Today: 9 live
-                  (Sales, PR, VC, Hiring, Accelerators, PR Expert Quote, Outlets, Press Kit, AI Visibility).
-                  Coming: Influencers, LinkedIn Outreach, more.
+                  at least one new channel per month. See the full catalog in the{" "}
+                  <span className="text-white font-medium">Product</span> section above.
                 </p>
               </div>
             </div>
