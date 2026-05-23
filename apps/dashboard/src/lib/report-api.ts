@@ -146,21 +146,6 @@ export const fetchWorkflows = cache(async (orgId: string, featureSlug: string): 
   return result.workflows ?? [];
 });
 
-interface CostStatsResponse {
-  groups: { totalCostInUsdCents: string }[];
-}
-
-/** Total spend (USD cents) for this brand × feature across all run costs. */
-export const fetchTotalCostCents = cache(async (orgId: string, brandId: string, featureSlug: string): Promise<number> => {
-  const params = new URLSearchParams({ brandId, groupBy: "costName", featureSlug });
-  const result = await adminGet<CostStatsResponse>(
-    "runsCostStats",
-    `/runs/stats/costs?${params.toString()}`,
-    orgId,
-  );
-  return result.groups.reduce((sum, g) => sum + Number(g.totalCostInUsdCents || 0), 0);
-});
-
 /** A row representing one company derived from enriched leads. */
 export interface CompanyRow {
   name: string;
