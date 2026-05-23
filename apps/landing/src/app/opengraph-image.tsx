@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "distribute — The Stripe of Distribution";
+export const alt = "distribute — Your distribution, on autopilot.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -58,7 +58,7 @@ export default async function OG() {
               maxWidth: 1000,
             }}
           >
-            One API for every distribution channel.
+            Your distribution, on autopilot.
           </div>
           <div
             style={{
@@ -68,8 +68,8 @@ export default async function OG() {
               maxWidth: 1000,
             }}
           >
-            Pay-as-you-go cloud for cold email, PR, hiring, VC outreach.
-            $2 welcome credits.
+            Sales, PR, VCs, hiring, accelerators. Drop a URL, set a budget —
+            we send, qualify, forward.
           </div>
         </div>
         <div

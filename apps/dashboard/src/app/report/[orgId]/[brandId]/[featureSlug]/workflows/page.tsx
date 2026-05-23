@@ -4,7 +4,13 @@ import { CsvDownloadButton, GoogleSheetsButton } from "@/components/report/csv-b
 import { toCsv, type CsvColumn } from "@/components/report/csv";
 import { TableSectionSkeleton } from "@/components/report/skeletons";
 import { WorkflowsTable, type WorkflowRow } from "@/components/report/workflows-table";
-import { fetchWorkflows, extractWorkflowPrompts } from "@/lib/report-api";
+import {
+  fetchWorkflows,
+  fetchCampaigns,
+  fetchFeatureStats,
+  fetchFeatureStatsByWorkflow,
+  extractWorkflowPrompts,
+} from "@/lib/report-api";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -13,7 +19,7 @@ interface PageProps {
   params: Promise<{ orgId: string; brandId: string; featureSlug: string }>;
 }
 
-const WORKFLOW_COLUMNS = ["Workflow", "Version", "Status", "Prompts"];
+const WORKFLOW_COLUMNS = ["Workflow", "Version", "Status", "Emails sent", "Positive replies", "CAC / reply"];
 
 function humanizeStep(nodeId: string, nodeType: string): string {
   const base = nodeId || nodeType;
@@ -21,6 +27,22 @@ function humanizeStep(nodeId: string, nodeType: string): string {
     .split(/[-_]/)
     .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
     .join(" ");
+}
+
+function pickStat(stats: Record<string, number>, ...keys: string[]): number {
+  for (const k of keys) {
+    const v = stats[k];
+    if (typeof v === "number") return v;
+  }
+  return 0;
+}
+
+function formatUsd(cents: number): string {
+  const usd = cents / 100;
+  if (usd === 0) return "$0";
+  if (usd < 0.01) return "<$0.01";
+  if (usd < 100) return `$${usd.toFixed(2)}`;
+  return `$${usd.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 }
 
 export default async function WorkflowsPage({ params }: PageProps) {
@@ -31,7 +53,7 @@ export default async function WorkflowsPage({ params }: PageProps) {
         fallback={
           <TableSectionSkeleton
             title="Workflows"
-            description="Pipelines used to generate emails. Includes the LLM prompts at each step."
+            description="Pipelines actually used for this brand, with cost-per-positive-reply for A/B comparison."
             columnLabels={WORKFLOW_COLUMNS}
           />
         }
@@ -43,60 +65,111 @@ export default async function WorkflowsPage({ params }: PageProps) {
 }
 
 async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
-  const workflows = await fetchWorkflows(orgId, featureSlug);
+  const [allWorkflows, campaigns, totalStats, groupedStats] = await Promise.all([
+    fetchWorkflows(orgId, featureSlug),
+    fetchCampaigns(orgId, brandId, featureSlug),
+    fetchFeatureStats(orgId, brandId, featureSlug),
+    fetchFeatureStatsByWorkflow(orgId, brandId, featureSlug),
+  ]);
 
-  const rows: WorkflowRow[] = workflows.map((w) => ({
-    id: w.id,
-    name: w.workflowDynastyName,
-    version: w.version,
-    status: w.status ?? "active",
-    description: w.description ?? "",
-    prompts: extractWorkflowPrompts(w).map((p) => ({
-      step: humanizeStep(p.nodeId, p.nodeType),
-      field: p.field,
-      value: p.value,
-    })),
+  // Filter to workflows actually used by this brand's campaigns.
+  const brandWorkflowSlugs = new Set(campaigns.map((c) => c.workflowSlug).filter((s): s is string => !!s));
+  const workflows = allWorkflows.filter((w) => brandWorkflowSlugs.has(w.workflowSlug));
+
+  // Per-workflow stats index
+  const statsBySlug = new Map(groupedStats.groups.map((g) => [g.workflowSlug ?? "", g]));
+
+  const rows: WorkflowRow[] = workflows.map((w) => {
+    const g = statsBySlug.get(w.workflowSlug);
+    const stats = g?.stats ?? {};
+    const cost = Number(g?.systemStats?.totalCostInUsdCents ?? 0);
+    return {
+      id: w.id,
+      name: w.workflowDynastyName,
+      version: w.version,
+      status: w.status ?? "active",
+      description: w.description ?? "",
+      prompts: extractWorkflowPrompts(w).map((p) => ({
+        step: humanizeStep(p.nodeId, p.nodeType),
+        field: p.field,
+        value: p.value,
+      })),
+      emailsSent: pickStat(stats, "leadsSent", "emailsSent"),
+      positiveReplies: pickStat(stats, "leadsRepliesPositive", "repliesPositive"),
+      totalCostCents: cost,
+    };
+  });
+
+  // Brand-level totals for header card
+  const brandStats = totalStats?.stats ?? {};
+  const brandTotalCost = Number(totalStats?.systemStats?.totalCostInUsdCents ?? 0);
+  const brandPositiveReplies = pickStat(brandStats, "leadsRepliesPositive", "repliesPositive");
+  const brandCacPerReply = brandPositiveReplies > 0 ? formatUsd(brandTotalCost / brandPositiveReplies) : "—";
+  const brandEmailsSent = pickStat(brandStats, "leadsSent", "emailsSent");
+
+  interface FlatRow {
+    workflow: string;
+    version: number;
+    emailsSent: number;
+    positiveReplies: number;
+    totalCostUsd: string;
+    cacPerReply: string;
+  }
+
+  const csvRows: FlatRow[] = rows.map((r) => ({
+    workflow: r.name,
+    version: r.version,
+    emailsSent: r.emailsSent,
+    positiveReplies: r.positiveReplies,
+    totalCostUsd: formatUsd(r.totalCostCents),
+    cacPerReply: r.positiveReplies > 0 ? formatUsd(r.totalCostCents / r.positiveReplies) : "",
   }));
 
-  interface FlatPromptRow {
-    workflowName: string;
-    version: number;
-    step: string;
-    promptField: string;
-    promptValue: string;
-  }
-  const flatRows: FlatPromptRow[] = [];
-  for (const w of rows) {
-    if (w.prompts.length === 0) {
-      flatRows.push({ workflowName: w.name, version: w.version, step: "", promptField: "", promptValue: "" });
-    } else {
-      for (const p of w.prompts) {
-        flatRows.push({ workflowName: w.name, version: w.version, step: p.step, promptField: p.field, promptValue: p.value });
-      }
-    }
-  }
-
-  const csvColumns: CsvColumn<FlatPromptRow>[] = [
-    { label: "Workflow", value: (r) => r.workflowName },
+  const csvColumns: CsvColumn<FlatRow>[] = [
+    { label: "Workflow", value: (r) => r.workflow },
     { label: "Version", value: (r) => r.version },
-    { label: "Step", value: (r) => r.step },
-    { label: "Prompt field", value: (r) => r.promptField },
-    { label: "Prompt value", value: (r) => r.promptValue },
+    { label: "Emails sent", value: (r) => r.emailsSent },
+    { label: "Positive replies", value: (r) => r.positiveReplies },
+    { label: "Total cost", value: (r) => r.totalCostUsd },
+    { label: "CAC per positive reply", value: (r) => r.cacPerReply },
   ];
 
   return (
-    <SectionCard
-      title="Workflows"
-      description="Pipelines used to generate emails. Includes the LLM prompts at each step."
-      count={rows.length}
-      actions={
-        <>
-          <CsvDownloadButton filename={`workflows-${featureSlug}.csv`} csv={toCsv(flatRows, csvColumns)} isEmpty={flatRows.length === 0} />
-          <GoogleSheetsButton />
-        </>
-      }
-    >
-      <WorkflowsTable rows={rows} />
-    </SectionCard>
+    <>
+      <SectionCard
+        title="Brand totals"
+        description="All workflows combined for this brand. Use the per-workflow table below to compare performance."
+      >
+        <div className="px-5 py-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+          <SummaryTile label="Workflows in use" value={workflows.length.toLocaleString("en-US")} />
+          <SummaryTile label="Emails sent" value={brandEmailsSent.toLocaleString("en-US")} />
+          <SummaryTile label="Positive replies" value={brandPositiveReplies.toLocaleString("en-US")} />
+          <SummaryTile label="CAC / positive reply" value={brandCacPerReply} highlight />
+        </div>
+      </SectionCard>
+
+      <SectionCard
+        title="Workflows"
+        description="Pipelines actually used for this brand. Sort by CAC to identify the best performer."
+        count={rows.length}
+        actions={
+          <>
+            <CsvDownloadButton filename={`workflows-${featureSlug}.csv`} csv={toCsv(csvRows, csvColumns)} isEmpty={csvRows.length === 0} />
+            <GoogleSheetsButton />
+          </>
+        }
+      >
+        <WorkflowsTable rows={rows} />
+      </SectionCard>
+    </>
+  );
+}
+
+function SummaryTile({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <div className={`rounded-lg p-3 text-center ${highlight ? "bg-brand-50 border border-brand-200" : "bg-gray-50"}`}>
+      <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</div>
+      <div className={`text-xl font-bold mt-0.5 ${highlight ? "text-brand-700" : "text-gray-800"}`}>{value}</div>
+    </div>
   );
 }

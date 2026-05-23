@@ -1,0 +1,46 @@
+# distribute
+
+> Pay-as-you-go cloud platform that runs cold email, PR, hiring, VC, and other
+> outbound channels on behalf of solo founders. You give us a URL and a daily
+> budget; we send from agency-warmed inboxes, AI-qualify replies, and forward
+> only the positive ones to your Gmail. Every workflow is open source on
+> GitHub under MIT. Every unit cost is published live. No subscription.
+
+## Brand
+
+- Name: distribute
+- Tagline: The Stripe of Distribution
+- ICP: The Serial Builder — 16-40 years old, solo CEO-founder, ships 3+ products
+  per year, refuses subscriptions, wants founder reachable
+- Pricing model: Pay-as-you-go credits, $2 welcome credits, no subscription
+- Open source: All workflows on https://github.com/shamanic-technologies
+
+## Key pages
+
+- [Home](https://distribute.you/): hero, channels live, pricing summary, expert quotes mosaic, sourced industry stats
+- [Pricing](https://distribute.you/pricing): live unit-cost catalog grouped by provider, 3-layer pricing stack (primitives / workflows / outcomes)
+- [Performance](https://distribute.you/performance): public leaderboard of workflow performance by cost per positive reply
+- [Performance · Brands](https://distribute.you/performance/brands): per-brand campaign performance leaderboard
+- [Performance · Workflows](https://distribute.you/performance/models): per-workflow comparison leaderboard
+- [Investors](https://distribute.you/investors): live platform metrics, growth data, infrastructure, SAFE round details, ICP definition
+- [Blog](https://distribute.you/blog): playbooks, benchmarks, field notes for solo builders
+
+## Cited industry stats (live on home page)
+
+- 3.43% average B2B cold email reply rate in 2025 — [TheDigitalBloom](https://thedigitalbloom.com/learn/cold-outbound-reply-rate-benchmarks/)
+- 3–5 weeks to warm up a cold mailbox to 40 emails/day — [Lemlist Warmup Guide](https://www.lemlist.com/blog/warm-up-email-account)
+- 2–3× more replies with personalization (only 5% of senders do it) — TheDigitalBloom
+- 15–25% reply rate for top-quartile campaigns — TheDigitalBloom
+
+## Channels live
+
+Sales cold email · PR outreach · Hiring cold email · VC outreach · Journalist pitch · Influencer pitch · Podcaster pitch · Thought leader pitch · Google Ads · Reddit Ads (more every month)
+
+## Pricing pages of record
+
+- Live unit costs: https://api.distribute.you/v1/costs/platform-prices
+- Pricing UI: https://distribute.you/pricing
+
+## Robots policy
+
+distribute.you welcomes AI training crawlers and AI-search crawlers. Full robots.txt at https://distribute.you/robots.txt.

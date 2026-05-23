@@ -1,16 +1,13 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
+import { URLS } from "@distribute/content";
 import { StatusIndicator } from "./status-indicator";
-import { resolveUrls } from "@/lib/env-urls";
-
-type ResolvedUrls = ReturnType<typeof resolveUrls>;
 
 interface FooterProps {
-  urls: ResolvedUrls;
   disclaimer?: ReactNode;
 }
 
-export function Footer({ urls, disclaimer }: FooterProps) {
+export function Footer({ disclaimer }: FooterProps) {
   return (
     <footer className="bg-gray-950 text-gray-500 py-10 px-4">
       <div className="max-w-4xl mx-auto text-center">
@@ -25,13 +22,13 @@ export function Footer({ urls, disclaimer }: FooterProps) {
         </div>
         <p className="text-sm text-gray-600 mb-4">The Stripe of Distribution</p>
         <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm">
-          <a href={urls.pricing} className="hover:text-gray-300 transition">Pricing</a>
-          <a href={urls.performance} className="hover:text-gray-300 transition">Performance</a>
+          <a href="/pricing" className="hover:text-gray-300 transition">Pricing</a>
+          <a href="/performance" className="hover:text-gray-300 transition">Performance</a>
           <a href="/blog" className="hover:text-gray-300 transition">Blog</a>
-          <a href={urls.docs} className="hover:text-gray-300 transition">Docs</a>
-          <a href={urls.apiDocs} className="hover:text-gray-300 transition">API</a>
+          <a href={URLS.docs} className="hover:text-gray-300 transition">Docs</a>
+          <a href={URLS.apiDocs} className="hover:text-gray-300 transition">API</a>
           <a
-            href={urls.github}
+            href={URLS.github}
             target="_blank"
             rel="noopener noreferrer"
             className="hover:text-gray-300 transition"

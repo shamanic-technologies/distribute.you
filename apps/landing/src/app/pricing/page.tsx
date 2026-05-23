@@ -1,5 +1,4 @@
 import { Suspense } from "react";
-import { headers } from "next/headers";
 import { PROD_URLS } from "@/lib/env-urls";
 import { ProviderTablesAsync } from "@/components/pricing/provider-tables-async";
 import { ProviderTablesSkeleton } from "@/components/pricing/provider-tables-skeleton";
@@ -28,10 +27,7 @@ const pricingJsonLd = {
   },
 };
 
-export default async function PricingPage() {
-  const headersList = await headers();
-  const host = headersList.get("host") || "";
-
+export default function PricingPage() {
   return (
     <main className="min-h-screen bg-white">
       <script
@@ -110,7 +106,7 @@ export default async function PricingPage() {
       <section className="py-12 px-4">
         <div className="max-w-5xl mx-auto">
           <Suspense fallback={<ProviderTablesSkeleton />}>
-            <ProviderTablesAsync host={host} />
+            <ProviderTablesAsync />
           </Suspense>
         </div>
       </section>

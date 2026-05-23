@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
-import { resolveUrls } from "@/lib/env-urls";
 import { getArticleBySlug } from "@/lib/blog/db";
 
 export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -37,10 +36,6 @@ function formatDate(iso: string): string {
 
 export default async function BlogArticlePage({ params }: Props) {
   const { slug } = await params;
-  const headersList = await headers();
-  const host = headersList.get("host") ?? "";
-  const urls = resolveUrls(host);
-
   const article = await getArticleBySlug(slug);
   if (!article) notFound();
 
@@ -48,7 +43,7 @@ export default async function BlogArticlePage({ params }: Props) {
 
   return (
     <main className="min-h-screen bg-white">
-      <Navbar host={host} />
+      <Navbar />
 
       <div className="max-w-3xl mx-auto px-4 pt-16 pb-8">
         <Link
@@ -138,7 +133,7 @@ export default async function BlogArticlePage({ params }: Props) {
         </div>
       </article>
 
-      <Footer urls={urls} />
+      <Footer />
     </main>
   );
 }

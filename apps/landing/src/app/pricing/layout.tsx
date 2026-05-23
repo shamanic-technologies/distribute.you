@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import { PROD_URLS, resolveUrls } from "@/lib/env-urls";
+import { PROD_URLS } from "@/lib/env-urls";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
-import { headers } from "next/headers";
 
 const PRICING_URL = `${PROD_URLS.landing}/pricing`;
 const SITE_NAME = "distribute Pricing";
@@ -58,16 +57,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function PricingLayout({ children }: { children: React.ReactNode }) {
-  const headersList = await headers();
-  const host = headersList.get("host") || "";
-  const urls = resolveUrls(host);
+export default function PricingLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <Navbar host={host} />
+      <Navbar />
       {children}
       <Footer
-        urls={urls}
         disclaimer={
           <>
             Prices fetched live from{" "}

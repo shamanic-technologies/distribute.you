@@ -13,9 +13,8 @@ import { LeaderboardPreviewSkeleton } from "@/components/leaderboard-preview-ske
 import { ExpertQuoteMosaic, expertQuoteJsonLd } from "@/components/expert-quote-mosaic";
 import { ColdEmailPainStats } from "@/components/sourced-stats";
 import { DISTRIBUTION_FEATURES, DISTRIBUTION_STEPS } from "@distribute/content";
-import { resolveUrls } from "@/lib/env-urls";
+import { PROD_URLS } from "@/lib/env-urls";
 import type { FeatureColor } from "@distribute/content";
-import { headers } from "next/headers";
 
 export const revalidate = 300;
 
@@ -85,10 +84,8 @@ const faqJsonLd = {
   ],
 };
 
-export default async function Home() {
-  const headersList = await headers();
-  const host = headersList.get("host") || "";
-  const urls = resolveUrls(host);
+export default function Home() {
+  const urls = PROD_URLS;
 
   return (
     <main className="min-h-screen">
@@ -104,7 +101,7 @@ export default async function Home() {
         />
       ))}
 
-      <Navbar host={host} />
+      <Navbar />
 
       {/* Hero */}
       <section className="pt-20 pb-8 px-4">
@@ -115,13 +112,13 @@ export default async function Home() {
           </div>
 
           <h1 className="font-display text-5xl md:text-7xl font-bold mb-6 text-gray-900 tracking-tight">
-            One API for every{" "}
-            <span className="gradient-text-subtle">distribution channel.</span>
+            Your distribution,{" "}
+            <span className="gradient-text-subtle">on autopilot.</span>
           </h1>
 
           <p className="text-lg md:text-xl text-gray-500 mb-10 max-w-2xl mx-auto leading-relaxed">
-            Sales, PR, VCs, hiring, accelerators — {liveCount} channels live.
-            Pay per email. Track cost per reply. Scale what works.
+            Sales, PR, VCs, hiring, accelerators. Drop a URL, set a budget —
+            we send, qualify, forward.
           </p>
 
           <HeroForm signUpUrl={urls.signUp} />
@@ -323,7 +320,7 @@ export default async function Home() {
             </p>
           </div>
           <Suspense fallback={<LeaderboardPreviewSkeleton />}>
-            <LeaderboardSectionAsync host={host} />
+            <LeaderboardSectionAsync />
           </Suspense>
         </div>
       </section>
@@ -369,7 +366,7 @@ export default async function Home() {
               Pay only for what you use.
             </h2>
             <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-              Cloud — fully managed. We send, qualify, forward. You ship products.
+              We send, qualify, forward. You ship products.
             </p>
           </div>
           <FreeVsCloud signUpUrl={urls.signUp} />
@@ -458,7 +455,7 @@ export default async function Home() {
         </div>
       </section>
 
-      <Footer urls={urls} />
+      <Footer />
     </main>
   );
 }

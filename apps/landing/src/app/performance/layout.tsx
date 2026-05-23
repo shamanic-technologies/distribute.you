@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { PROD_URLS, resolveUrls } from "@/lib/env-urls";
+import { URLS } from "@distribute/content";
+import { PROD_URLS } from "@/lib/env-urls";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
-import { headers } from "next/headers";
 
 const PERF_URL = `${PROD_URLS.landing}/performance`;
 const SITE_NAME = "distribute Performance";
@@ -108,14 +108,11 @@ const breadcrumbJsonLd = {
   ],
 };
 
-export default async function PerformanceLayout({
+export default function PerformanceLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const headersList = await headers();
-  const host = headersList.get("host") || "";
-  const urls = resolveUrls(host);
   return (
     <>
       <script
@@ -126,14 +123,13 @@ export default async function PerformanceLayout({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
-      <Navbar host={host} />
+      <Navbar />
       {children}
       <Footer
-        urls={urls}
         disclaimer={
           <>
             All data is from real campaigns. Updated hourly.{" "}
-            <a href={urls.github} className="underline hover:text-gray-300">
+            <a href={URLS.github} className="underline hover:text-gray-300">
               Open source methodology.
             </a>
           </>

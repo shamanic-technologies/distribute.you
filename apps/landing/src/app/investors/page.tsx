@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { Suspense } from "react";
-import { headers } from "next/headers";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
-import { PROD_URLS, resolveUrls } from "@/lib/env-urls";
+import { PROD_URLS } from "@/lib/env-urls";
 import { DISTRIBUTION_FEATURES } from "@distribute/content";
 import type { FeatureColor } from "@distribute/content";
 import {
@@ -96,24 +95,6 @@ const investorsBreadcrumbJsonLd = {
   ],
 };
 
-async function ResolvedNavbar() {
-  const headersList = await headers();
-  const host = headersList.get("host") || "";
-  return <Navbar host={host} />;
-}
-
-async function ResolvedFooter() {
-  const headersList = await headers();
-  const host = headersList.get("host") || "";
-  const urls = resolveUrls(host);
-  return (
-    <Footer
-      urls={urls}
-      disclaimer="This page contains confidential information intended for prospective investors only."
-    />
-  );
-}
-
 export default function InvestorsPage() {
   return (
     <>
@@ -125,9 +106,7 @@ export default function InvestorsPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(investorsBreadcrumbJsonLd) }}
       />
-      <Suspense fallback={<div className="h-16" />}>
-        <ResolvedNavbar />
-      </Suspense>
+      <Navbar />
       <main className="min-h-screen bg-gray-950 text-white">
         {/* Header */}
         <section className="pt-24 pb-12 px-4">
@@ -489,9 +468,8 @@ export default function InvestorsPage() {
         </section>
       </main>
 
-      <Suspense fallback={<div className="h-40" />}>
-        <ResolvedFooter />
-      </Suspense>
+      {/* Footer */}
+      <Footer disclaimer="This page contains confidential information intended for prospective investors only." />
     </>
   );
 }
