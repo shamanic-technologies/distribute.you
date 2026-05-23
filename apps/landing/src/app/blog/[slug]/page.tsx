@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
+import { Footer } from "@/components/footer";
 import { getArticleBySlug } from "@/lib/blog/db";
 
 export const revalidate = 60;
@@ -44,45 +45,71 @@ export default async function BlogArticlePage({ params }: Props) {
     <main className="min-h-screen bg-white">
       <Navbar />
 
-      <article className="max-w-2xl mx-auto px-4 pt-20 pb-24">
+      <div className="max-w-3xl mx-auto px-4 pt-16 pb-8">
         <Link
           href="/blog"
-          className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-brand-600 transition mb-6"
+          className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-brand-600 transition mb-8"
         >
           ← All articles
         </Link>
 
-        <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400 mb-4">
-          <time dateTime={article.publishedAt}>{formatDate(article.publishedAt)}</time>
-          {article.tags.slice(0, 4).map((t) => (
-            <span key={t} className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
-              {t}
-            </span>
-          ))}
-        </div>
+        <header className="mb-10">
+          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 mb-4">
+            <time dateTime={article.publishedAt} className="font-medium">
+              {formatDate(article.publishedAt)}
+            </time>
+            {article.tags.slice(0, 4).map((t) => (
+              <span
+                key={t}
+                className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600"
+              >
+                {t}
+              </span>
+            ))}
+          </div>
 
-        <h1 className="font-display text-3xl md:text-4xl font-bold text-gray-900 tracking-tight mb-4">
-          {article.title}
-        </h1>
+          <h1 className="font-display text-3xl md:text-5xl font-bold text-gray-900 tracking-tight leading-tight mb-5">
+            {article.title}
+          </h1>
 
-        {article.excerpt && (
-          <p className="text-lg text-gray-500 leading-relaxed mb-8">{article.excerpt}</p>
-        )}
+          {article.excerpt && (
+            <p className="text-lg md:text-xl text-gray-500 leading-relaxed">
+              {article.excerpt}
+            </p>
+          )}
+        </header>
 
         {article.coverImageUrl && (
-          <Image
-            src={article.coverImageUrl}
-            alt={article.title}
-            width={1280}
-            height={720}
-            unoptimized
-            className="rounded-xl border border-gray-200 mb-10 w-full h-auto"
-          />
+          <div className="relative w-full aspect-[16/9] mb-12 overflow-hidden rounded-2xl border border-gray-200 bg-gray-100">
+            <Image
+              src={article.coverImageUrl}
+              alt={article.title}
+              fill
+              unoptimized
+              priority
+              sizes="(max-width: 768px) 100vw, 768px"
+              className="object-cover"
+            />
+          </div>
         )}
+      </div>
 
+      <article className="max-w-2xl mx-auto px-4 pb-20">
         {body ? (
           <div
-            className="prose prose-gray max-w-none prose-headings:font-display prose-headings:text-gray-900 prose-a:text-brand-600"
+            className="
+              prose prose-lg prose-gray max-w-none
+              prose-headings:font-display prose-headings:text-gray-900 prose-headings:tracking-tight
+              prose-h1:text-3xl prose-h2:text-2xl prose-h2:mt-12 prose-h3:text-xl
+              prose-p:text-gray-700 prose-p:leading-relaxed
+              prose-a:text-brand-600 prose-a:no-underline hover:prose-a:underline
+              prose-strong:text-gray-900
+              prose-blockquote:border-l-brand-400 prose-blockquote:bg-gray-50 prose-blockquote:py-1 prose-blockquote:not-italic
+              prose-code:text-brand-700 prose-code:bg-brand-50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none
+              prose-pre:bg-gray-900 prose-pre:text-gray-100
+              prose-img:rounded-xl prose-img:border prose-img:border-gray-200
+              prose-li:text-gray-700
+            "
             dangerouslySetInnerHTML={{ __html: body }}
           />
         ) : article.contentMarkdown ? (
@@ -92,7 +119,21 @@ export default async function BlogArticlePage({ params }: Props) {
         ) : (
           <p className="text-gray-400">No content available for this article.</p>
         )}
+
+        <div className="mt-16 pt-8 border-t border-gray-100 flex items-center justify-between text-sm">
+          <Link
+            href="/blog"
+            className="inline-flex items-center gap-1 text-gray-500 hover:text-brand-600 transition"
+          >
+            ← All articles
+          </Link>
+          <span className="text-gray-400">
+            Updated {formatDate(article.updatedAt)}
+          </span>
+        </div>
       </article>
+
+      <Footer />
     </main>
   );
 }

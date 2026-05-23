@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import { URLS } from "@distribute/content";
 import { PROD_URLS } from "@/lib/env-urls";
 import { Navbar } from "@/components/navbar";
+import { Footer } from "@/components/footer";
 
 const PERF_URL = `${PROD_URLS.landing}/performance`;
 const SITE_NAME = "distribute Performance";
@@ -125,36 +125,16 @@ export default function PerformanceLayout({
       />
       <Navbar />
       {children}
-      <footer className="bg-gray-900 text-gray-400 py-8 px-4">
-        <div className="max-w-4xl mx-auto text-center text-sm">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <Image src="/logo-head.jpg" alt="distribute" width={20} height={20} className="rounded" />
-            <a href="/" className="hover:text-brand-400 transition">
-              distribute
-            </a>
-            <span>—</span>
-            <span>The Stripe of Distribution</span>
-          </div>
-          <p className="text-xs">
+      <Footer
+        disclaimer={
+          <>
             All data is from real campaigns. Updated hourly.{" "}
             <a href={URLS.github} className="underline hover:text-gray-300">
               Open source methodology.
             </a>
-          </p>
-          <div className="mt-3 flex flex-wrap justify-center gap-4 text-xs">
-            <a href={URLS.pricing} className="hover:text-gray-300 transition">Pricing</a>
-            <a href={URLS.docs} className="hover:text-gray-300 transition">Docs</a>
-          </div>
-          <div className="mt-4 pt-4 border-t border-gray-800">
-            <p className="text-xs text-gray-600 mb-2">Also by our team</p>
-            <div className="flex flex-wrap justify-center gap-4 text-xs">
-              <a href="https://pressbeat.io" target="_blank" className="hover:text-gray-300 transition">PressBeat.io — Organic Press on Demand</a>
-              <a href="https://growthagency.dev" target="_blank" className="hover:text-gray-300 transition">GrowthAgency.dev — Growth Agency for Humans</a>
-              <a href="https://growthservice.org" target="_blank" className="hover:text-gray-300 transition">GrowthService.org — Increase AI Search Ranking</a>
-            </div>
-          </div>
-        </div>
-      </footer>
+          </>
+        }
+      />
     </>
   );
 }
