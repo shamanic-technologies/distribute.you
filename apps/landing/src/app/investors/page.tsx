@@ -3,7 +3,8 @@ import Image from "next/image";
 import { Suspense } from "react";
 import { headers } from "next/headers";
 import { Navbar } from "@/components/navbar";
-import { PROD_URLS } from "@/lib/env-urls";
+import { Footer } from "@/components/footer";
+import { PROD_URLS, resolveUrls } from "@/lib/env-urls";
 import { DISTRIBUTION_FEATURES } from "@distribute/content";
 import type { FeatureColor } from "@distribute/content";
 import {
@@ -99,6 +100,18 @@ async function ResolvedNavbar() {
   const headersList = await headers();
   const host = headersList.get("host") || "";
   return <Navbar host={host} />;
+}
+
+async function ResolvedFooter() {
+  const headersList = await headers();
+  const host = headersList.get("host") || "";
+  const urls = resolveUrls(host);
+  return (
+    <Footer
+      urls={urls}
+      disclaimer="This page contains confidential information intended for prospective investors only."
+    />
+  );
 }
 
 export default function InvestorsPage() {
@@ -476,29 +489,9 @@ export default function InvestorsPage() {
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-gray-400 py-8 px-4">
-        <div className="max-w-4xl mx-auto text-center text-sm">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <Image
-              src="/logo-head.jpg"
-              alt="distribute"
-              width={20}
-              height={20}
-              className="rounded"
-            />
-            <a href="/" className="hover:text-brand-400 transition">
-              distribute
-            </a>
-            <span>--</span>
-            <span>The Stripe of Distribution</span>
-          </div>
-          <p className="text-xs text-gray-600">
-            This page contains confidential information intended for prospective
-            investors only.
-          </p>
-        </div>
-      </footer>
+      <Suspense fallback={<div className="h-40" />}>
+        <ResolvedFooter />
+      </Suspense>
     </>
   );
 }
