@@ -4,7 +4,7 @@ import { CsvDownloadButton, GoogleSheetsButton } from "@/components/report/csv-b
 import { toCsv, type CsvColumn } from "@/components/report/csv";
 import { TableSectionSkeleton } from "@/components/report/skeletons";
 import { CampaignsTable, type CampaignRow } from "@/components/report/campaigns-table";
-import { fetchCampaigns, fetchLeads, fetchEmails, fetchWorkflows } from "@/lib/report-api";
+import { fetchCampaigns, fetchLeads, fetchWorkflows } from "@/lib/report-api";
 import type { Campaign } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +14,7 @@ interface PageProps {
   params: Promise<{ orgId: string; brandId: string; featureSlug: string }>;
 }
 
-const CAMPAIGN_COLUMNS = ["Campaign", "Status", "Workflow", "Budget", "Leads", "Emails", "Created"];
+const CAMPAIGN_COLUMNS = ["Campaign", "Status", "Workflow", "Budget", "Leads", "Created"];
 
 function formatBudget(c: Campaign): string {
   if (c.maxBudgetMonthlyUsd) return `$${Number(c.maxBudgetMonthlyUsd).toLocaleString("en-US")} / month`;
@@ -44,10 +44,9 @@ export default async function CampaignsPage({ params }: PageProps) {
 }
 
 async function CampaignsSection({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
-  const [campaigns, leads, emails, workflows] = await Promise.all([
+  const [campaigns, leads, workflows] = await Promise.all([
     fetchCampaigns(orgId, brandId, featureSlug),
     fetchLeads(orgId, brandId, featureSlug),
-    fetchEmails(orgId, brandId),
     fetchWorkflows(orgId, featureSlug),
   ]);
 
@@ -55,7 +54,6 @@ async function CampaignsSection({ orgId, brandId, featureSlug }: { orgId: string
   for (const l of leads) {
     leadCountByCampaign.set(l.campaignId, (leadCountByCampaign.get(l.campaignId) ?? 0) + 1);
   }
-  const soleEmailCount = campaigns.length === 1 ? emails.length : null;
   const workflowNameBySlug = new Map(workflows.map((w) => [w.workflowSlug, w.workflowDynastyName]));
 
   const rows: CampaignRow[] = campaigns.map((c) => ({
@@ -65,7 +63,6 @@ async function CampaignsSection({ orgId, brandId, featureSlug }: { orgId: string
     workflow: (c.workflowSlug && workflowNameBySlug.get(c.workflowSlug)) || "",
     budget: formatBudget(c),
     leadCount: leadCountByCampaign.get(c.id) ?? 0,
-    emailCount: campaigns.length === 1 ? soleEmailCount : null,
     createdAt: c.createdAt,
   }));
 
@@ -75,7 +72,6 @@ async function CampaignsSection({ orgId, brandId, featureSlug }: { orgId: string
     { label: "Workflow", value: (r) => r.workflow },
     { label: "Budget", value: (r) => r.budget },
     { label: "Leads", value: (r) => r.leadCount },
-    { label: "Emails", value: (r) => r.emailCount ?? "" },
     { label: "Created at", value: (r) => r.createdAt },
   ];
 
@@ -90,8 +86,6 @@ async function CampaignsSection({ orgId, brandId, featureSlug }: { orgId: string
           <GoogleSheetsButton />
         </>
       }
-      placeholder={campaigns.length > 1}
-      placeholderNote={campaigns.length > 1 ? "Per-campaign email counts unavailable — backend join pending. Lead counts are accurate." : undefined}
     >
       <CampaignsTable rows={rows} />
     </SectionCard>

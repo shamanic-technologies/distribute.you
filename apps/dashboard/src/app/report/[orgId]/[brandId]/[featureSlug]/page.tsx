@@ -4,9 +4,6 @@ import {
   fetchFeatureStats,
   fetchCampaigns,
   fetchWorkflows,
-  fetchLeads,
-  deriveCompaniesFromLeads,
-  deriveIndividualsFromLeads,
 } from "@/lib/report-api";
 
 // Dynamic so Suspense / loading.tsx skeletons actually stream to the
@@ -44,9 +41,7 @@ export default async function OverviewPage({ params }: PageProps) {
         description="Use the left sidebar to navigate each section. Every table includes CSV export."
       >
         <ul className="px-5 py-4 space-y-2 text-sm text-gray-700">
-          <li><strong>Leads</strong> — every prospect (company × person) with email and current status.</li>
-          <li><strong>Companies</strong> — unique organizations targeted, with enrichment data.</li>
-          <li><strong>Individuals</strong> — every person enriched, with role and contact details.</li>
+          <li><strong>Leads</strong> — every prospect targeted, with company, email and current status.</li>
           <li><strong>Emails</strong> — every email generated, including subject and body.</li>
           <li><strong>Workflows</strong> — pipelines used to generate emails, including prompts.</li>
           <li><strong>Campaigns</strong> — programs run with budget, status and associated workflow.</li>
@@ -68,31 +63,25 @@ function pickStat(stats: Record<string, number>, ...keys: string[]): number {
 }
 
 async function StatsGrid({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
-  // Stats endpoint covers leads/emails counts; companies + individuals are
-  // derived client-side from the leads payload (capped at REPORT_FETCH_LIMIT
-  // in fetchLeads).
-  const [featureStats, leads, campaigns, workflows] = await Promise.all([
+  // Stats endpoint provides all the counts we need — no transactional list
+  // fetches on Overview. fetchCampaigns + fetchWorkflows are small and fast.
+  const [featureStats, campaigns, workflows] = await Promise.all([
     fetchFeatureStats(orgId, brandId, featureSlug),
-    fetchLeads(orgId, brandId, featureSlug),
     fetchCampaigns(orgId, brandId, featureSlug),
     fetchWorkflows(orgId, featureSlug),
   ]);
 
   const stats = featureStats?.stats ?? {};
-  const companies = deriveCompaniesFromLeads(leads);
-  const individuals = deriveIndividualsFromLeads(leads);
 
   const cards = [
-    { label: "Leads", value: pickStat(stats, "leads", "leadsCount", "leadsTotal", "leadsServed", "leadsBuffered") || leads.length, note: "Targeted prospects across campaigns" },
-    { label: "Companies", value: companies.length, note: "Unique organizations targeted" },
-    { label: "Individuals", value: individuals.length, note: "People reached or queued" },
-    { label: "Emails sent", value: pickStat(stats, "emailsSent", "emails", "emailsGenerated", "leadsSent"), note: "Total emails generated" },
+    { label: "Leads", value: pickStat(stats, "leadsServed", "leads", "leadsCount", "leadsTotal", "leadsBuffered"), note: "Targeted prospects across campaigns" },
+    { label: "Emails sent", value: pickStat(stats, "emailsSent", "leadsSent", "emails", "emailsGenerated"), note: "Total emails generated" },
     { label: "Workflows", value: workflows.length, note: "Email generation pipelines" },
     { label: "Campaigns", value: campaigns.length, note: "Outreach programs" },
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
       {cards.map((s) => (
         <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-4">
           <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">{s.label}</div>
@@ -161,8 +150,8 @@ function CpaCard({ label, count, totalCostCents }: { label: string; count: numbe
 
 function StatsGridSkeleton() {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-      {Array.from({ length: 6 }).map((_, i) => (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {Array.from({ length: 4 }).map((_, i) => (
         <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
           <div className="h-3 w-16 bg-gray-100 rounded animate-pulse" />
           <div className="h-7 w-12 bg-gray-100 rounded animate-pulse" />
