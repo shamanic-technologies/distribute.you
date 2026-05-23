@@ -10,7 +10,6 @@ export interface CampaignRow {
   workflow: string;
   budget: string;
   leadCount: number;
-  emailCount: number | null;
   createdAt: string;
 }
 
@@ -31,12 +30,6 @@ const columns: ReportTableColumn<CampaignRow>[] = [
     render: (r) => r.leadCount.toLocaleString("en-US"),
   },
   {
-    key: "emailCount",
-    label: "Emails",
-    sortValue: (r) => String(r.emailCount ?? 0).padStart(8, "0"),
-    render: (r) => r.emailCount != null ? r.emailCount.toLocaleString("en-US") : <span className="text-gray-300">—</span>,
-  },
-  {
     key: "createdAt",
     label: "Created",
     sortValue: (r) => r.createdAt,
@@ -50,7 +43,6 @@ function drawerEntries(r: CampaignRow): DrawerEntry[] {
     { label: "Workflow", value: r.workflow },
     { label: "Budget", value: r.budget },
     { label: "Leads", value: r.leadCount.toLocaleString("en-US") },
-    { label: "Emails", value: r.emailCount != null ? r.emailCount.toLocaleString("en-US") : "—" },
     { label: "Created", value: new Date(r.createdAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }) },
   ];
 }

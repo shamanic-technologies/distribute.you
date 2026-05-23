@@ -23,18 +23,6 @@ const LeadsIcon = () => (
   </svg>
 );
 
-const CompaniesIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-  </svg>
-);
-
-const IndividualsIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-  </svg>
-);
-
 const EmailsIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -62,8 +50,6 @@ export function ReportSidebar({ basePath }: ReportSidebarProps) {
   const items: SidebarItem[] = [
     { id: "overview", label: "Overview", href: basePath, icon: <OverviewIcon /> },
     { id: "leads", label: "Leads", href: `${basePath}/leads`, icon: <LeadsIcon /> },
-    { id: "companies", label: "Companies", href: `${basePath}/companies`, icon: <CompaniesIcon /> },
-    { id: "individuals", label: "Individuals", href: `${basePath}/individuals`, icon: <IndividualsIcon /> },
     { id: "emails", label: "Emails", href: `${basePath}/emails`, icon: <EmailsIcon /> },
     { id: "workflows", label: "Workflows", href: `${basePath}/workflows`, icon: <WorkflowsIcon /> },
     { id: "campaigns", label: "Campaigns", href: `${basePath}/campaigns`, icon: <CampaignsIcon /> },
