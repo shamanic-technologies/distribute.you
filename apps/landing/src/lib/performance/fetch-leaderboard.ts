@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { URLS } from "@distribute/content";
 
 const API_KEY = process.env.ADMIN_DISTRIBUTE_API_KEY;
@@ -356,6 +357,12 @@ function buildFeatureGroups(
 // ─── Main fetch function ────────────────────────────��───────────────────────
 
 export async function fetchLeaderboard(hostname = ""): Promise<LeaderboardData | null> {
+  // Opt every caller (homepage Suspense subtree, /performance/* pages,
+  // /performance/api/leaderboard route) into dynamic rendering. fetchLeaderboard
+  // makes ~10 round-trips to api-service; under any backend load this blows past
+  // Vercel's 60s per-page prerender timeout. ISR still caches at runtime via
+  // revalidate = 300 on each page export.
+  await connection();
   try {
     const apiUrl = resolveApiUrl(hostname);
     const headers: Record<string, string> = { Accept: "application/json" };
