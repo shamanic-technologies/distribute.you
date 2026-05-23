@@ -1,14 +1,13 @@
-import Image from "next/image";
 import { Suspense } from "react";
 import { HeroForm } from "@/components/hero-form";
 import { LinkButton } from "@/components/link-button";
 import { Navbar } from "@/components/navbar";
+import { Footer } from "@/components/footer";
 import { PortfolioDashboard } from "@/components/portfolio-dashboard";
 import { GmailInbox } from "@/components/gmail-inbox";
 import { FreeVsCloud } from "@/components/free-vs-cloud";
 import { WorkflowRecipe } from "@/components/workflow-recipe";
 import { ToolsMarquee } from "@/components/tools-marquee";
-import { StatusIndicator } from "@/components/status-indicator";
 import { LeaderboardSectionAsync } from "@/components/leaderboard-section-async";
 import { LeaderboardPreviewSkeleton } from "@/components/leaderboard-preview-skeleton";
 import { ExpertQuoteMosaic, expertQuoteJsonLd } from "@/components/expert-quote-mosaic";
@@ -459,38 +458,7 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-gray-950 text-gray-500 py-10 px-4">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <Image src="/logo-head.jpg" alt="distribute" width={24} height={24} className="rounded-lg" />
-            <span className="font-display font-bold text-white text-lg">distribute</span>
-            <span className="text-[10px] text-brand-400 font-medium bg-brand-500/10 px-1.5 py-0.5 rounded uppercase">beta</span>
-          </div>
-          <p className="text-sm text-gray-600 mb-4">The Stripe of Distribution</p>
-          <div className="flex flex-wrap justify-center gap-6 text-sm">
-            <a href={urls.pricing} className="hover:text-gray-300 transition">Pricing</a>
-            <a href={urls.performance} className="hover:text-gray-300 transition">Performance</a>
-            <a href={urls.docs} className="hover:text-gray-300 transition">Docs</a>
-            <a href={urls.apiDocs} className="hover:text-gray-300 transition">API</a>
-            <a href={urls.github} target="_blank" rel="noopener noreferrer" className="hover:text-gray-300 transition">GitHub</a>
-            <a href="#" className="hover:text-gray-300 transition">Privacy</a>
-            <a href="/investors" className="hover:text-gray-300 transition">Investor Information</a>
-          </div>
-          <div className="flex justify-center mt-5">
-            <StatusIndicator />
-          </div>
-          <div className="mt-6 pt-6 border-t border-gray-800">
-            <p className="text-xs text-gray-600 mb-3">Also by our team</p>
-            <div className="flex flex-wrap justify-center gap-4 text-xs">
-              <a href="https://pressbeat.io" target="_blank" className="hover:text-gray-300 transition">PressBeat.io — Organic Press on Demand</a>
-              <a href="https://growthagency.dev" target="_blank" className="hover:text-gray-300 transition">GrowthAgency.dev — Growth Agency for Humans</a>
-              <a href="https://growthservice.org" target="_blank" className="hover:text-gray-300 transition">GrowthService.org — Increase AI Search Ranking</a>
-            </div>
-          </div>
-          <p className="text-xs mt-4 text-gray-700">MIT License. Open Source.</p>
-        </div>
-      </footer>
+      <Footer urls={urls} />
     </main>
   );
 }
