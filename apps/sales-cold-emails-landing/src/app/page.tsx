@@ -484,6 +484,9 @@ export default async function Home() {
             <a href={URLS.pricing} className="hover:text-brand-400 transition">
               Pricing
             </a>
+            <a href={`${URLS.landing}/benchmarks`} className="hover:text-brand-400 transition">
+              Benchmarks
+            </a>
             <a href={URLS.docs} className="hover:text-brand-400 transition">
               Docs
             </a>
