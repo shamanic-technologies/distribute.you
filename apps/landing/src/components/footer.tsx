@@ -24,6 +24,7 @@ export function Footer({ disclaimer }: FooterProps) {
         <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm">
           <a href="/pricing" className="hover:text-gray-300 transition">Pricing</a>
           <a href="/performance" className="hover:text-gray-300 transition">Performance</a>
+          <a href="/benchmarks" className="hover:text-gray-300 transition">Benchmarks</a>
           <a href="/blog" className="hover:text-gray-300 transition">Blog</a>
           <a href={URLS.docs} className="hover:text-gray-300 transition">Docs</a>
           <a href={URLS.apiDocs} className="hover:text-gray-300 transition">API</a>
