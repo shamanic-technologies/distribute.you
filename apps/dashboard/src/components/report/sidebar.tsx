@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -72,21 +73,32 @@ export function ReportSidebar({ basePath }: ReportSidebarProps) {
           );
         })}
       </nav>
-      <div className="px-4 py-3 border-t border-gray-100 text-[10px] text-gray-400 leading-relaxed">
-        Distributed with{" "}
-        <span aria-label="love" role="img">
-          ❤️
-        </span>{" "}
-        by{" "}
-        <a
-          href="https://distribute.you"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-brand-600 hover:text-brand-700 hover:underline"
-        >
-          distribute.you
-        </a>
-      </div>
+      <a
+        href="https://distribute.you"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="group block border-t border-gray-100 px-4 py-4 transition hover:bg-gradient-to-br hover:from-brand-50 hover:to-purple-50"
+      >
+        <div className="text-[10px] text-gray-500 leading-snug mb-2">
+          Distributed with{" "}
+          <span aria-label="love" role="img" className="inline-block group-hover:scale-110 transition-transform">
+            ❤️
+          </span>{" "}
+          by
+        </div>
+        <div className="flex items-center gap-2">
+          <Image
+            src="/logo-head.jpg"
+            alt="distribute.you"
+            width={22}
+            height={22}
+            className="rounded-md shadow-sm flex-shrink-0"
+          />
+          <span className="font-display text-sm font-semibold bg-gradient-to-r from-brand-600 to-purple-600 bg-clip-text text-transparent">
+            distribute.you
+          </span>
+        </div>
+      </a>
     </aside>
   );
 }
