@@ -7,7 +7,6 @@ import { Footer } from "@/components/footer";
 import { getArticleBySlug } from "@/lib/blog/db";
 
 export const revalidate = 60;
-export const dynamic = "force-dynamic";
 
 type Props = { params: Promise<{ slug: string }> };
 

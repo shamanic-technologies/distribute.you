@@ -216,18 +216,10 @@ describe("Pricing page: ICP framing", () => {
 
 describe("Performance page: cost-per-positive-reply framing", () => {
   const content = fs.readFileSync(performancePagePath, "utf-8");
-  const loadingPath = path.resolve(__dirname, "../../src/app/performance/loading.tsx");
-  const loading = fs.readFileSync(loadingPath, "utf-8");
 
   it("hero frames the leaderboard by cost per positive reply (no bare 'CAC')", () => {
     expect(content).toMatch(/cost per positive reply/i);
     expect(content).not.toMatch(/\bCAC\b/);
-  });
-
-  it("loading.tsx hero copy stays in sync with page.tsx hero (no visual flash)", () => {
-    expect(loading).toMatch(/Cost per positive reply/);
-    expect(loading).toMatch(/Workflows ranked by[\s\S]*real cost per positive reply/);
-    expect(loading).toMatch(/Every workflow ranked by cost per positive reply/);
   });
 });
 

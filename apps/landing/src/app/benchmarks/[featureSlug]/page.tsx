@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { headers } from "next/headers";
-import { PROD_URLS, resolveUrls } from "@/lib/env-urls";
+import { PROD_URLS } from "@/lib/env-urls";
 import {
   fetchBenchmarkFeatures,
   fetchFeatureBenchmark,
@@ -23,10 +22,19 @@ import { WhyMattersSection } from "@/components/benchmarks/why-matters-section";
 import { ValueRecap } from "@/components/benchmarks/value-recap";
 
 export const revalidate = 300;
-export const dynamic = "force-dynamic";
 
 interface PageProps {
   params: Promise<{ featureSlug: string }>;
+}
+
+export async function generateStaticParams() {
+  try {
+    const features = await fetchBenchmarkFeatures();
+    return features.map((f) => ({ featureSlug: f.slug }));
+  } catch (err) {
+    console.error("[landing] benchmarks: generateStaticParams fetch failed", err);
+    return [];
+  }
 }
 
 export async function generateMetadata({
@@ -103,11 +111,12 @@ function HeroStat({
 
 export default async function FeatureBenchmarkPage({ params }: PageProps) {
   const { featureSlug } = await params;
-  const headersList = await headers();
-  const host = headersList.get("host") || "";
-  const signUpUrl = resolveUrls(host).signUp;
+  // Resolved at build time (PROD_URLS = resolveUrls("")); preview/staging
+  // deployments link to prod dashboard sign-up. Trade-off for ISR static
+  // prerender, which requires no per-request headers().
+  const signUpUrl = PROD_URLS.signUp;
 
-  const data = await fetchFeatureBenchmark(featureSlug, host);
+  const data = await fetchFeatureBenchmark(featureSlug);
   if (!data) notFound();
 
   const content = getBenchmarkContent(featureSlug);

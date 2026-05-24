@@ -1,5 +1,5 @@
-import { connection } from "next/server";
 import { URLS } from "@distribute/content";
+import { unstable_cache } from "next/cache";
 
 const API_KEY = process.env.ADMIN_DISTRIBUTE_API_KEY;
 
@@ -356,13 +356,8 @@ function buildFeatureGroups(
 
 // ─── Main fetch function ────────────────────────────��───────────────────────
 
-export async function fetchLeaderboard(hostname = ""): Promise<LeaderboardData | null> {
-  // Opt every caller (homepage Suspense subtree, /performance/* pages,
-  // /performance/api/leaderboard route) into dynamic rendering. fetchLeaderboard
-  // makes ~10 round-trips to api-service; under any backend load this blows past
-  // Vercel's 60s per-page prerender timeout. ISR still caches at runtime via
-  // revalidate = 300 on each page export.
-  await connection();
+export const fetchLeaderboard = unstable_cache(
+  async (hostname = ""): Promise<LeaderboardData | null> => {
   try {
     const apiUrl = resolveApiUrl(hostname);
     const headers: Record<string, string> = { Accept: "application/json" };
@@ -457,7 +452,10 @@ export async function fetchLeaderboard(hostname = ""): Promise<LeaderboardData |
     console.error("[landing] Performance: leaderboard fetch error:", error);
     return null;
   }
-}
+  },
+  ["leaderboard"],
+  { revalidate: 300, tags: ["leaderboard"] },
+);
 
 export function formatWorkflowName(name: string): string {
   return name
