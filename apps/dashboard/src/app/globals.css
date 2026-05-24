@@ -73,14 +73,16 @@ html.dark .to-gray-50 { --tw-gradient-to: #0f172a; }
 html.dark .bg-gray-100 { background-color: #1e293b; }
 html.dark .bg-gray-200 { background-color: #334155; }
 
-/* Text */
+/* Text — every step bumped one notch brighter so secondary text on
+ * slate-800/slate-900 backgrounds stays readable (was 4.0:1 on #64748b,
+ * now ~6.5:1 on #94a3b8 / ~9:1 on #cbd5e1). */
 html.dark .text-gray-900 { color: #f1f5f9; }
 html.dark .text-gray-800 { color: #e2e8f0; }
 html.dark .text-gray-700 { color: #cbd5e1; }
-html.dark .text-gray-600 { color: #94a3b8; }
-html.dark .text-gray-500 { color: #94a3b8; }
-html.dark .text-gray-400 { color: #64748b; }
-html.dark .text-gray-300 { color: #64748b; }
+html.dark .text-gray-600 { color: #cbd5e1; }
+html.dark .text-gray-500 { color: #cbd5e1; }
+html.dark .text-gray-400 { color: #94a3b8; }
+html.dark .text-gray-300 { color: #94a3b8; }
 
 /* Borders */
 html.dark .border-gray-200 { border-color: #334155; }
@@ -120,9 +122,10 @@ html.dark .ring-gray-300 { --tw-ring-color: #475569; }
 html.dark .focus\:ring-brand-500:focus { --tw-ring-color: #db2777; }
 html.dark .focus\:border-brand-500:focus { border-color: #db2777; }
 
-/* Placeholder text */
-html.dark .placeholder-gray-400::placeholder { color: #475569; }
-html.dark .placeholder-gray-500::placeholder { color: #475569; }
+/* Placeholder text — bumped to slate-400 (#94a3b8) so search/form
+ * placeholders are visible against the slate-800 input background. */
+html.dark .placeholder-gray-400::placeholder { color: #94a3b8; }
+html.dark .placeholder-gray-500::placeholder { color: #94a3b8; }
 
 /* Divide colors */
 html.dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) { border-color: #334155; }
@@ -135,7 +138,7 @@ html.dark input, html.dark textarea, html.dark select {
   color: #e2e8f0;
 }
 html.dark input::placeholder, html.dark textarea::placeholder {
-  color: #64748b;
+  color: #94a3b8;
 }
 
 /* Amber accent (thinking blocks) in dark mode */
