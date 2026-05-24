@@ -63,7 +63,7 @@ describe("sidebar components use formatCount for badges", () => {
 
   it("brand overview page uses formatCount for outcome counts", () => {
     const content = fs.readFileSync(
-      path.join(__dirname, "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx"),
+      path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx"),
       "utf-8"
     );
     expect(content).toContain('import { formatCount } from "@/lib/format-number"');
@@ -72,7 +72,7 @@ describe("sidebar components use formatCount for badges", () => {
 
   it("press-kit page uses formatCount for view stats", () => {
     const content = fs.readFileSync(
-      path.join(__dirname, "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/[kitId]/page.tsx"),
+      path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/[kitId]/page.tsx"),
       "utf-8"
     );
     expect(content).toContain('import { formatCount } from "@/lib/format-number"');

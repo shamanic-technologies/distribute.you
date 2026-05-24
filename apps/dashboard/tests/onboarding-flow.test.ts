@@ -3,7 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 describe("Onboarding flow", () => {
-  const pagePath = path.join(__dirname, "../src/app/onboarding/page.tsx");
+  const pagePath = path.join(__dirname, "../src/app/(authed)/onboarding/page.tsx");
 
   it("should have an onboarding page", () => {
     expect(fs.existsSync(pagePath)).toBe(true);
@@ -59,7 +59,7 @@ describe("Onboarding flow", () => {
 });
 
 describe("Onboarding layout", () => {
-  const layoutPath = path.join(__dirname, "../src/app/onboarding/layout.tsx");
+  const layoutPath = path.join(__dirname, "../src/app/(authed)/onboarding/layout.tsx");
 
   it("should have an onboarding layout", () => {
     expect(fs.existsSync(layoutPath)).toBe(true);

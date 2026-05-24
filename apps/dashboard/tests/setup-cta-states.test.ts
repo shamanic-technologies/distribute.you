@@ -6,7 +6,7 @@ describe("Dashboard home page redirects to active org", () => {
   it("should redirect to /orgs/{activeOrgId}", () => {
     const pagePath = path.join(
       __dirname,
-      "../src/app/(dashboard)/page.tsx"
+      "../src/app/(authed)/(dashboard)/page.tsx"
     );
     const content = fs.readFileSync(pagePath, "utf-8");
     expect(content).toContain("useOrganization");

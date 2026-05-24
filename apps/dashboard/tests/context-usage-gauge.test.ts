@@ -90,7 +90,7 @@ describe("chat components wire ContextUsageGauge", () => {
 });
 
 describe("chat proxy forwards context_usage", () => {
-  const routePath = path.join(SRC, "src/app/api/v1/chat/route.ts");
+  const routePath = path.join(SRC, "src/app/(authed)/api/v1/chat/route.ts");
   const src = fs.readFileSync(routePath, "utf-8");
 
   it("has a context_usage case in the event switch", () => {

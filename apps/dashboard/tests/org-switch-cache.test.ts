@@ -5,7 +5,7 @@ import * as path from "path";
 describe("Org switch cache invalidation", () => {
   const layoutPath = path.join(
     __dirname,
-    "../src/app/(dashboard)/layout.tsx"
+    "../src/app/(authed)/(dashboard)/layout.tsx"
   );
   const invalidatorPath = path.join(
     __dirname,

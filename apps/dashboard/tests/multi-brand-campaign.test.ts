@@ -3,7 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 describe("Multi-brand campaign support", () => {
-  const pageRel = "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx";
+  const pageRel = "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx";
   const content = fs.readFileSync(path.join(__dirname, pageRel), "utf-8");
 
   const apiRel = "../src/lib/api.ts";
@@ -81,11 +81,11 @@ describe("Multi-brand campaign support", () => {
   });
 
   it("callers of extractBrandFields pass brandIds array as first arg", () => {
-    const brandsPageRel = "../src/app/(dashboard)/orgs/[orgId]/brands/page.tsx";
+    const brandsPageRel = "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/page.tsx";
     const brandsPage = fs.readFileSync(path.join(__dirname, brandsPageRel), "utf-8");
     expect(brandsPage).toContain("extractBrandFields([newBrandId]");
 
-    const brandInfoRel = "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/brand-info/page.tsx";
+    const brandInfoRel = "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/brand-info/page.tsx";
     const brandInfo = fs.readFileSync(path.join(__dirname, brandInfoRel), "utf-8");
     expect(brandInfo).toContain("extractBrandFields([brandId]");
   });

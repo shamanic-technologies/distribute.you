@@ -5,7 +5,7 @@ import * as path from "path";
 describe("Feature overview page", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/features/[featureId]/page.tsx"
+    "../src/app/(authed)/(dashboard)/features/[featureId]/page.tsx"
   );
 
   it("should exist", () => {

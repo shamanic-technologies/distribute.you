@@ -5,7 +5,7 @@ import * as path from "path";
 describe("Feature campaigns list page", () => {
   const pagePath = path.resolve(
     __dirname,
-    "../src/app/(dashboard)/features/[featureId]/page.tsx"
+    "../src/app/(authed)/(dashboard)/features/[featureId]/page.tsx"
   );
   const content = fs.readFileSync(pagePath, "utf-8");
 
@@ -110,7 +110,7 @@ describe("Feature campaigns list page", () => {
 describe("Create campaign page", () => {
   const pagePath = path.resolve(
     __dirname,
-    "../src/app/(dashboard)/features/[featureId]/new/page.tsx"
+    "../src/app/(authed)/(dashboard)/features/[featureId]/new/page.tsx"
   );
   const content = fs.readFileSync(pagePath, "utf-8");
 

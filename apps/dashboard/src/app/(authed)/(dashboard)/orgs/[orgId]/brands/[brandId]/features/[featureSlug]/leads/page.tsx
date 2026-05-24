@@ -76,11 +76,17 @@ function timeAgo(date: string | Date): string {
   return `${years}y ago`;
 }
 
+// Shared logo.dev token (also used in `BrandLogo`, public
+// `components/report/leads-table.tsx`, and the landing's
+// `provider-avatar.tsx`). Replaces the old Google S2 favicons surface to
+// keep the company-avatar treatment consistent across the whole app.
+const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
+
 function CompanyLogo({ domain, name }: { domain: string | null; name: string | null }) {
   if (domain) {
     return (
       <img
-        src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=32`}
+        src={`https://img.logo.dev/${encodeURIComponent(domain)}?token=${LOGO_DEV_TOKEN}&size=32`}
         alt=""
         className="w-6 h-6 rounded"
         loading="lazy"

@@ -16,7 +16,7 @@ import * as path from "path";
 describe("Dashboard layout should not flash before onboarding redirect", () => {
   const layoutPath = path.join(
     __dirname,
-    "../src/app/(dashboard)/layout.tsx"
+    "../src/app/(authed)/(dashboard)/layout.tsx"
   );
   const content = fs.readFileSync(layoutPath, "utf-8");
 

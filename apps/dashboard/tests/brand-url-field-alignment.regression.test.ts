@@ -13,19 +13,19 @@ const apiContent = fs.readFileSync(apiPath, "utf-8");
 
 const newCampaignPagePath = path.resolve(
   __dirname,
-  "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx",
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx",
 );
 const newCampaignPage = fs.readFileSync(newCampaignPagePath, "utf-8");
 
 const brandDetailPagePath = path.resolve(
   __dirname,
-  "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
 );
 const brandDetailPage = fs.readFileSync(brandDetailPagePath, "utf-8");
 
 const legacyNewPagePath = path.resolve(
   __dirname,
-  "../src/app/(dashboard)/features/[featureId]/new/page.tsx",
+  "../src/app/(authed)/(dashboard)/features/[featureId]/new/page.tsx",
 );
 const legacyNewPage = fs.readFileSync(legacyNewPagePath, "utf-8");
 

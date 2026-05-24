@@ -22,6 +22,13 @@ export interface TabSpec<T> {
   key: string;
   label: string;
   match: (row: T) => boolean;
+  /** Optional per-tab sort key. When set on the active tab, the table
+   *  pre-sorts rows by this value DESC (empty / null last) before column
+   *  sort applies. User-click on a column header still wins. Used by the
+   *  public-report leads table to surface "most-recently active for THIS
+   *  tab's milestone" first — e.g. Replied tab shows newest reply on top,
+   *  Intake tabs show newest served on top. */
+  sortValue?: (row: T) => string | null | undefined;
 }
 
 interface ReportTableProps<T> {
@@ -134,21 +141,44 @@ export function ReportTable<T>({
   }, [rows, query, filterValue, filter, tabs, activeTabKey, searchValue]);
 
   const sorted = useMemo(() => {
-    if (!sortKey) return filtered;
-    const col = columns.find((c) => c.key === sortKey);
-    if (!col) return filtered;
-    const get = col.sortValue ?? ((r: T) => String(col.render(r) ?? ""));
-    const dir = sortDir === "asc" ? 1 : -1;
-    const copy = [...filtered];
-    copy.sort((a, b) => {
-      const av = get(a).toLowerCase();
-      const bv = get(b).toLowerCase();
-      if (av < bv) return -1 * dir;
-      if (av > bv) return 1 * dir;
-      return 0;
-    });
-    return copy;
-  }, [filtered, columns, sortKey, sortDir]);
+    // If a column-sort is active (user clicked a header), it wins.
+    if (sortKey) {
+      const col = columns.find((c) => c.key === sortKey);
+      if (!col) return filtered;
+      const get = col.sortValue ?? ((r: T) => String(col.render(r) ?? ""));
+      const dir = sortDir === "asc" ? 1 : -1;
+      const copy = [...filtered];
+      copy.sort((a, b) => {
+        const av = get(a).toLowerCase();
+        const bv = get(b).toLowerCase();
+        if (av < bv) return -1 * dir;
+        if (av > bv) return 1 * dir;
+        return 0;
+      });
+      return copy;
+    }
+    // Otherwise, if the active tab declares a `sortValue`, apply it desc
+    // (empty / null last). Lets each tab default-sort by its own milestone
+    // date — Replied by most-recent reply, Intake by most-recent served,
+    // etc. — without leaking that knowledge into the shared component.
+    if (tabs && activeTabKey) {
+      const tab = tabs.find((t) => t.key === activeTabKey);
+      if (tab?.sortValue) {
+        const get = tab.sortValue;
+        const copy = [...filtered];
+        copy.sort((a, b) => {
+          const av = get(a) ?? "";
+          const bv = get(b) ?? "";
+          if (av === bv) return 0;
+          if (!av) return 1;
+          if (!bv) return -1;
+          return av < bv ? 1 : -1;
+        });
+        return copy;
+      }
+    }
+    return filtered;
+  }, [filtered, columns, sortKey, sortDir, tabs, activeTabKey]);
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const pageClamped = Math.min(page, totalPages);
@@ -169,13 +199,29 @@ export function ReportTable<T>({
   return (
     <div>
       <div className="px-5 py-3 border-b border-gray-200 flex flex-wrap gap-3 items-center bg-gray-50/40">
-        <input
-          type="search"
-          placeholder={searchPlaceholder}
-          value={query}
-          onChange={(e) => { setQuery(e.target.value); setPage(1); }}
-          className="flex-1 min-w-[200px] text-sm px-3 py-1.5 border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-400"
-        />
+        <div className="relative flex-1 min-w-[200px]">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="search"
+            placeholder={searchPlaceholder}
+            value={query}
+            onChange={(e) => { setQuery(e.target.value); setPage(1); }}
+            className="w-full text-sm pl-10 pr-9 py-1.5 border border-gray-200 rounded-lg bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition"
+          />
+          {query.length > 0 && (
+            <button
+              onClick={() => { setQuery(""); setPage(1); }}
+              aria-label="Clear search"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
         {filter && !tabs && (
           <select
             value={filterValue}
@@ -301,21 +347,25 @@ export function ReportTable<T>({
   );
 }
 
-// Shared colorful status badge — used across every report table.
+// Shared colorful status badge. Lead-status palette mirrors operator-side
+// `leadStatusStyle()` from `(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/leads/page.tsx`
+// so the public report and the internal page speak the same visual
+// language. Public-side label override: `served` shows "Served" (operator
+// labels it "Processing"; public explicitly restored "Served" in PR #1165).
 const STATUS_STYLES: Record<string, string> = {
-  // Lead status (consolidated)
-  replied: "bg-green-100 text-green-700 border-green-200",
-  clicked: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  opened: "bg-blue-100 text-blue-700 border-blue-200",
-  delivered: "bg-sky-100 text-sky-700 border-sky-200",
-  sent: "bg-indigo-100 text-indigo-700 border-indigo-200",
-  bounced: "bg-red-100 text-red-700 border-red-200",
-  unsubscribed: "bg-zinc-200 text-zinc-700 border-zinc-300",
-  contacted: "bg-purple-100 text-purple-700 border-purple-200",
-  served: "bg-cyan-100 text-cyan-700 border-cyan-200",
-  skipped: "bg-yellow-100 text-yellow-800 border-yellow-200",
-  buffered: "bg-amber-100 text-amber-800 border-amber-200",
-  claimed: "bg-orange-100 text-orange-800 border-orange-200",
+  // Lead consolidated status
+  replied: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  clicked: "bg-violet-100 text-violet-700 border-violet-200",
+  opened: "bg-indigo-100 text-indigo-700 border-indigo-200",
+  delivered: "bg-green-100 text-green-700 border-green-200",
+  sent: "bg-cyan-100 text-cyan-700 border-cyan-200",
+  bounced: "bg-red-100 text-red-600 border-red-200",
+  unsubscribed: "bg-amber-100 text-amber-700 border-amber-200",
+  contacted: "bg-teal-100 text-teal-700 border-teal-200",
+  served: "bg-orange-100 text-orange-700 border-orange-200",
+  skipped: "bg-gray-100 text-gray-500 border-gray-200",
+  claimed: "bg-yellow-100 text-yellow-700 border-yellow-200",
+  buffered: "bg-blue-100 text-blue-600 border-blue-200",
   // Campaign / workflow status
   ongoing: "bg-blue-100 text-blue-700 border-blue-200",
   paused: "bg-yellow-100 text-yellow-800 border-yellow-200",
@@ -326,11 +376,34 @@ const STATUS_STYLES: Record<string, string> = {
   deprecated: "bg-zinc-200 text-zinc-600 border-zinc-300",
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  replied: "Replied",
+  clicked: "Clicked",
+  opened: "Opened",
+  delivered: "Delivered",
+  sent: "Sent",
+  bounced: "Bounced",
+  unsubscribed: "Unsubscribed",
+  contacted: "Contacted",
+  served: "Served",
+  skipped: "Skipped",
+  claimed: "Claimed",
+  buffered: "Buffered",
+  ongoing: "Ongoing",
+  paused: "Paused",
+  stopped: "Stopped",
+  completed: "Completed",
+  failed: "Failed",
+  active: "Active",
+  deprecated: "Deprecated",
+};
+
 export function StatusBadge({ status }: { status: string }) {
   const cls = STATUS_STYLES[status] ?? "bg-gray-100 text-gray-600 border-gray-200";
+  const label = STATUS_LABELS[status] ?? status;
   return (
     <span className={`inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full border whitespace-nowrap ${cls}`}>
-      {status}
+      {label}
     </span>
   );
 }

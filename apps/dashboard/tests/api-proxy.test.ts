@@ -4,7 +4,7 @@ import * as path from "path";
 
 const proxyPath = path.resolve(
   __dirname,
-  "../src/app/api/v1/[...path]/route.ts"
+  "../src/app/(authed)/api/v1/[...path]/route.ts"
 );
 
 const apiPath = path.resolve(__dirname, "../src/lib/api.ts");

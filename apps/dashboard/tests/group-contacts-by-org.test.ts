@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { groupContactsByOrg } from "../src/app/(dashboard)/orgs/[orgId]/services/crm/_components/group-contacts-by-org";
+import { groupContactsByOrg } from "../src/app/(authed)/(dashboard)/orgs/[orgId]/services/crm/_components/group-contacts-by-org";
 
 describe("groupContactsByOrg", () => {
   it("groups contacts by organizations[0].name", () => {

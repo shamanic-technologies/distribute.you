@@ -15,11 +15,11 @@ import * as path from "path";
 describe("Google auth button should not spinner on initial load", () => {
   const signInPath = path.join(
     __dirname,
-    "../src/app/sign-in/[[...sign-in]]/page.tsx"
+    "../src/app/(authed)/sign-in/[[...sign-in]]/page.tsx"
   );
   const signUpPath = path.join(
     __dirname,
-    "../src/app/sign-up/[[...sign-up]]/page.tsx"
+    "../src/app/(authed)/sign-up/[[...sign-up]]/page.tsx"
   );
   const signInContent = fs.readFileSync(signInPath, "utf-8");
   const signUpContent = fs.readFileSync(signUpPath, "utf-8");
