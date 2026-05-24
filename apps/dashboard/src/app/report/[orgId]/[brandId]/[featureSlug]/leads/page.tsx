@@ -32,11 +32,15 @@ function indexEmailsByLead(
   for (const e of emails) {
     const k = leadKey(e.campaignId, e.leadFirstName ?? "", e.leadLastName ?? "");
     const taskName = e.generationRun?.taskName ?? "";
+    // Only surface the workflow tag when we have a mapped human-readable
+    // display name. Falling back to the raw `taskName` (e.g.
+    // "single-generation") leaks an internal pipeline label that is not
+    // meaningful to the recipient and clutters the per-email row.
     const summary: LeadEmailSummary = {
       subject: e.subject ?? "",
       bodyText: e.bodyText ?? "",
       sentAt: e.createdAt,
-      workflow: workflowNameByTask.get(taskName) ?? taskName ?? "",
+      workflow: workflowNameByTask.get(taskName) ?? "",
     };
     const existing = map.get(k);
     if (existing) existing.push(summary);
