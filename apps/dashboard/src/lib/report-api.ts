@@ -1,6 +1,5 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
-import { clerkClient } from "@clerk/nextjs/server";
 import type {
   Brand,
   Campaign,
@@ -93,17 +92,41 @@ export async function fetchBrand(orgId: string, brandId: string): Promise<Brand 
   )();
 }
 
-/** Clerk org display name. Cached for 4h alongside everything else on the
- *  report — org name renames are very rare, so this is fine. */
+/** Clerk org display name. Cached for 4h — org renames are rare and we
+ *  don't need fresher than that for a public report header.
+ *
+ *  Calls the Clerk Backend REST API directly with `CLERK_SECRET_KEY`
+ *  instead of `clerkClient()` from `@clerk/nextjs/server`. The SDK
+ *  client transparently failed when called from inside `unstable_cache`
+ *  (caught here and silently fell back to the raw orgId, which is what
+ *  the recipient saw as "Prepared by org_3ANN…"). A bare fetch has no
+ *  request-context dependency and surfaces real failures in the log. */
 export async function fetchOrgName(orgId: string): Promise<string> {
   return unstable_cache(
     async () => {
+      const secret = process.env.CLERK_SECRET_KEY;
+      if (!secret) {
+        console.error(`[dashboard-report] fetchOrgName(${orgId}): CLERK_SECRET_KEY missing`);
+        return orgId;
+      }
       try {
-        const client = await clerkClient();
-        const org = await client.organizations.getOrganization({ organizationId: orgId });
+        const res = await fetch(`https://api.clerk.com/v1/organizations/${orgId}`, {
+          headers: {
+            Authorization: `Bearer ${secret}`,
+            "Content-Type": "application/json",
+          },
+          cache: "no-store",
+          signal: AbortSignal.timeout(10_000),
+        });
+        if (!res.ok) {
+          const body = await res.text().catch(() => "");
+          console.error(`[dashboard-report] fetchOrgName(${orgId}) → ${res.status}: ${body.slice(0, 300)}`);
+          return orgId;
+        }
+        const org = (await res.json()) as { name?: string | null };
         return org.name || orgId;
       } catch (err) {
-        console.error(`[dashboard-report] fetchOrgName(${orgId}) failed:`, err);
+        console.error(`[dashboard-report] fetchOrgName(${orgId}) threw:`, err);
         return orgId;
       }
     },
