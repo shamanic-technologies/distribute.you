@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -73,32 +72,17 @@ export function ReportSidebar({ basePath }: ReportSidebarProps) {
           );
         })}
       </nav>
-      <div className="border-t-2 border-gray-200 bg-gray-50 p-3">
+      <div className="border-t border-gray-200 px-4 py-3 text-[11px] text-gray-600 leading-snug">
+        Distributed with{" "}
+        <span aria-label="love" role="img">❤️</span>{" "}
+        by{" "}
         <a
           href="https://distribute.you"
           target="_blank"
           rel="noopener noreferrer"
-          className="group block rounded-lg bg-white border border-gray-200 px-3 py-3 shadow-sm transition hover:border-brand-300 hover:shadow-md"
+          className="font-semibold text-gray-900 underline decoration-gray-300 underline-offset-2 hover:decoration-gray-700"
         >
-          <div className="text-[10px] text-gray-600 leading-snug mb-2">
-            Distributed with{" "}
-            <span aria-label="love" role="img" className="inline-block group-hover:scale-110 transition-transform">
-              ❤️
-            </span>{" "}
-            by
-          </div>
-          <div className="flex items-center gap-2">
-            <Image
-              src="/logo-head.jpg"
-              alt="distribute.you"
-              width={22}
-              height={22}
-              className="rounded-md shadow-sm flex-shrink-0"
-            />
-            <span className="font-display text-sm font-semibold bg-gradient-to-r from-brand-600 to-purple-600 bg-clip-text text-transparent">
-              distribute.you
-            </span>
-          </div>
+          distribute.you
         </a>
       </div>
     </aside>
