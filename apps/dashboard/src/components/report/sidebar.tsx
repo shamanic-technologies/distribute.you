@@ -73,7 +73,19 @@ export function ReportSidebar({ basePath }: ReportSidebarProps) {
         })}
       </nav>
       <div className="px-4 py-3 border-t border-gray-100 text-[10px] text-gray-400 leading-relaxed">
-        Confidential client report. Public URL, do not share publicly.
+        Distributed with{" "}
+        <span aria-label="love" role="img">
+          ❤️
+        </span>{" "}
+        by{" "}
+        <a
+          href="https://distribute.you"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-brand-600 hover:text-brand-700 hover:underline"
+        >
+          distribute.you
+        </a>
       </div>
     </aside>
   );
