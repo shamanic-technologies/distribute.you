@@ -30,11 +30,17 @@ export async function GET(
   // get all workflows for the brand (the function filters by featureSlug
   // server-side, which means we get the union we need).
   const featureSlug = req.nextUrl.searchParams.get("featureSlug") ?? "";
+  // Optional campaignId filter — when provided, the proxy fetches only that
+  // campaign's emails instead of all brand emails. The drawer-open path
+  // passes the selected row's campaignId so each fetch is small enough to
+  // beat the 25s upstream abort. Without it we'd time out on brands with
+  // many campaigns.
+  const campaignId = req.nextUrl.searchParams.get("campaignId") ?? undefined;
 
   const startedAt = Date.now();
   try {
     const [emails, workflows] = await Promise.all([
-      fetchEmails(orgId, brandId),
+      fetchEmails(orgId, brandId, campaignId),
       featureSlug
         ? fetchWorkflows(orgId, featureSlug).catch(() => [])
         : Promise.resolve([]),
@@ -56,11 +62,11 @@ export async function GET(
       };
     });
     const elapsed = Date.now() - startedAt;
-    console.log(`[dashboard-report] emails ${orgId}/${brandId} → ${slim.length} rows in ${elapsed}ms`);
+    console.log(`[dashboard-report] emails ${orgId}/${brandId}${campaignId ? `/${campaignId}` : ""} → ${slim.length} rows in ${elapsed}ms`);
     return NextResponse.json({ emails: slim });
   } catch (err) {
     const elapsed = Date.now() - startedAt;
-    console.error(`[dashboard-report] /api/public/report/${orgId}/${brandId}/emails failed after ${elapsed}ms:`, err);
+    console.error(`[dashboard-report] /api/public/report/${orgId}/${brandId}/emails${campaignId ? `?campaignId=${campaignId}` : ""} failed after ${elapsed}ms:`, err);
     return NextResponse.json(
       { error: "Upstream emails endpoint failed", detail: err instanceof Error ? err.message : String(err) },
       { status: 502 },

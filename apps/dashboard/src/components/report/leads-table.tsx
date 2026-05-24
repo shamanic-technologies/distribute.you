@@ -7,6 +7,7 @@ import { ReportTable, StatusBadge, type ReportTableColumn, type TabSpec } from "
 // with a more-advanced status (e.g. replied) appearing in a less-advanced
 // tab (e.g. opened) made the badge look mismatched.
 import type { DrawerEntry } from "./data-drawer";
+import { WorkflowTag } from "./workflow-tag";
 
 export interface LeadEmailSummary {
   subject: string;
@@ -63,27 +64,34 @@ const MILESTONES: Milestone[] = [
   { key: "unsubscribed", label: "Unsubscribed" },
 ];
 
+const INTAKE_STATUSES: { key: LeadRow["intakeStatus"]; label: string }[] = [
+  { key: "buffered", label: "Buffered" },
+  { key: "claimed", label: "Claimed" },
+  { key: "skipped", label: "Skipped" },
+  { key: "served", label: "Processing" },
+];
+
 const columns: ReportTableColumn<LeadRow>[] = [
   {
     key: "name",
     label: "Name",
     sortValue: (r) => `${r.firstName} ${r.lastName}`,
     render: (r) => <span className="font-medium text-gray-900 truncate block">{r.firstName} {r.lastName}</span>,
-    className: "w-[15%]",
+    className: "w-[16%]",
   },
   {
     key: "email",
     label: "Email",
     sortValue: (r) => r.email,
     render: (r) => <span className="font-mono text-xs truncate block" title={r.email}>{r.email}</span>,
-    className: "w-[20%]",
+    className: "w-[22%]",
   },
   {
     key: "title",
     label: "Title",
     sortValue: (r) => r.title,
     render: (r) => <span className="truncate block" title={r.title || undefined}>{r.title || "—"}</span>,
-    className: "w-[15%]",
+    className: "w-[17%]",
   },
   {
     key: "company",
@@ -95,27 +103,20 @@ const columns: ReportTableColumn<LeadRow>[] = [
         {r.companyDomain && <div className="text-xs text-gray-500 truncate" title={r.companyDomain}>{r.companyDomain}</div>}
       </div>
     ),
-    className: "w-[15%]",
+    className: "w-[18%]",
   },
   {
     key: "industry",
     label: "Industry",
     sortValue: (r) => r.industry,
     render: (r) => <span className="truncate block" title={r.industry || undefined}>{r.industry || "—"}</span>,
-    className: "w-[13%]",
+    className: "w-[15%]",
   },
   {
     key: "country",
     label: "Country",
     sortValue: (r) => r.country,
     render: (r) => <span className="truncate block" title={r.country || undefined}>{r.country || "—"}</span>,
-    className: "w-[10%]",
-  },
-  {
-    key: "workflow",
-    label: "Workflow",
-    sortValue: (r) => r.workflow,
-    render: (r) => <span className="truncate block text-xs text-indigo-700" title={r.workflow || undefined}>{r.workflow || "—"}</span>,
     className: "w-[12%]",
   },
 ];
@@ -144,6 +145,27 @@ const TABS: TabSpec<LeadRow>[] = [
 function StatusTimeline({ row }: { row: LeadRow }) {
   return (
     <ul className="space-y-1.5">
+      <li className="text-[10px] uppercase tracking-wide text-gray-400 font-semibold pt-1">Intake</li>
+      {INTAKE_STATUSES.map((s) => {
+        const hit = row.intakeStatus === s.key;
+        return (
+          <li key={s.key} className="flex items-center gap-2 text-xs">
+            <span className={`inline-flex items-center justify-center w-4 h-4 rounded-full border ${
+              hit
+                ? "bg-blue-100 border-blue-300 text-blue-700"
+                : "bg-gray-50 border-gray-200 text-gray-300"
+            }`}>
+              {hit ? (
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : null}
+            </span>
+            <span className={hit ? "text-gray-800 font-medium" : "text-gray-500"}>{s.label}</span>
+          </li>
+        );
+      })}
+      <li className="text-[10px] uppercase tracking-wide text-gray-400 font-semibold pt-2">Milestones</li>
       {MILESTONES.map((m) => {
         const hit = row[m.key];
         const dim = m.key === "bounced" || m.key === "unsubscribed";
@@ -162,7 +184,7 @@ function StatusTimeline({ row }: { row: LeadRow }) {
                 </svg>
               ) : null}
             </span>
-            <span className={hit ? "text-gray-800 font-medium" : "text-gray-400"}>{m.label}</span>
+            <span className={hit ? "text-gray-800 font-medium" : "text-gray-500"}>{m.label}</span>
             {m.key === "replied" && hit && row.replyClassification && (
               <span className={`ml-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full border ${
                 row.replyClassification === "positive"
@@ -188,7 +210,7 @@ function EmailSection({ emails, isLoading, error }: { emails: LeadEmailSummary[]
         <div className="h-3 w-24 bg-gray-200 rounded animate-pulse" />
         <div className="h-4 w-3/4 bg-gray-200 rounded animate-pulse" />
         <div className="h-20 w-full bg-gray-100 rounded animate-pulse" />
-        <p className="text-xs text-gray-400 italic">Loading emails — can take up to 25s for large brands…</p>
+        <p className="text-xs text-gray-500 italic">Loading emails…</p>
       </div>
     );
   }
@@ -197,12 +219,12 @@ function EmailSection({ emails, isLoading, error }: { emails: LeadEmailSummary[]
       <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 space-y-1">
         <div className="font-medium">Emails unavailable.</div>
         <div className="font-mono break-all">{error}</div>
-        <div className="text-red-600/80">Upstream /v1/emails likely timed out. Reload to retry.</div>
+        <div className="text-red-600/80">Upstream /v1/emails timed out. Reload to retry.</div>
       </div>
     );
   }
   if (emails.length === 0) {
-    return <em className="text-gray-400">No email recorded for this lead.</em>;
+    return <em className="text-gray-500">No email recorded for this lead.</em>;
   }
   return (
     <div className="space-y-4">
@@ -210,24 +232,25 @@ function EmailSection({ emails, isLoading, error }: { emails: LeadEmailSummary[]
         <div key={i} className="space-y-1.5">
           <div className="text-xs text-gray-500">
             {new Date(e.sentAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}
-            {e.workflow && <> · <span className="text-indigo-700">{e.workflow}</span></>}
+            {e.workflow && <> · <WorkflowTag name={e.workflow} /></>}
           </div>
-          <div className="font-medium text-gray-800">{e.subject || <em className="text-gray-400">(no subject)</em>}</div>
+          <div className="font-medium text-gray-800">{e.subject || <em className="text-gray-500">(no subject)</em>}</div>
           {e.bodyText
             ? <pre className="text-xs text-gray-700 bg-gray-50 border border-gray-100 rounded p-3 whitespace-pre-wrap font-sans">{e.bodyText}</pre>
-            : <em className="text-xs text-gray-400">No body text available.</em>}
+            : <em className="text-xs text-gray-500">No body text available.</em>}
         </div>
       ))}
     </div>
   );
 }
 
-interface BrandEmailsState {
-  status: "idle" | "loading" | "ready" | "error";
-  emails: LeadEmailSummary[];
-  byKey: Map<string, LeadEmailSummary[]>;
+interface CampaignEmailsEntry {
+  status: "loading" | "ready" | "error";
+  byLead: Map<string, LeadEmailSummary[]>;
   error: string | null;
 }
+
+type CampaignEmailsCache = Map<string, CampaignEmailsEntry>;
 
 function leadKey(campaignId: string, firstName: string, lastName: string): string {
   return `${campaignId}::${firstName.toLowerCase()}::${lastName.toLowerCase()}`;
@@ -255,16 +278,26 @@ interface LeadsTableProps {
 
 export function LeadsTable({ rows, orgId, brandId, featureSlug }: LeadsTableProps) {
   const [selected, setSelected] = useState<LeadRow | null>(null);
-  const [emailsState, setEmailsState] = useState<BrandEmailsState>({ status: "idle", emails: [], byKey: new Map(), error: null });
+  const [emailsCache, setEmailsCache] = useState<CampaignEmailsCache>(new Map());
 
-  // Fire ONE brand-scoped fetch the first time a drawer is opened. Cache
-  // result for the session; subsequent row clicks just index into the map.
+  // Per-campaign fetch. The brand-wide /v1/emails fetch was reliably
+  // timing out for brands with multiple campaigns; campaignId-scoped
+  // fetches finish in well under a second. Each campaign is fetched at
+  // most once per session and the result is cached.
   useEffect(() => {
     if (!selected) return;
-    if (emailsState.status !== "idle") return;
+    const campaignId = selected.campaignId;
+    if (!campaignId) return;
+    if (emailsCache.has(campaignId)) return;
+
     let aborted = false;
-    setEmailsState((s) => ({ ...s, status: "loading" }));
-    const url = `/api/public/report/${orgId}/${brandId}/emails?featureSlug=${encodeURIComponent(featureSlug)}`;
+    setEmailsCache((prev) => {
+      const next = new Map(prev);
+      next.set(campaignId, { status: "loading", byLead: new Map(), error: null });
+      return next;
+    });
+
+    const url = `/api/public/report/${orgId}/${brandId}/emails?featureSlug=${encodeURIComponent(featureSlug)}&campaignId=${encodeURIComponent(campaignId)}`;
     const startedAt = Date.now();
     fetch(url, { cache: "no-store" })
       .then(async (res) => {
@@ -277,31 +310,40 @@ export function LeadsTable({ rows, orgId, brandId, featureSlug }: LeadsTableProp
       })
       .then((data) => {
         if (aborted) return;
-        const list = data.emails ?? [];
-        setEmailsState({
-          status: "ready",
-          emails: list,
-          byKey: indexByLead(list),
-          error: null,
+        const byLead = indexByLead(data.emails ?? []);
+        setEmailsCache((prev) => {
+          const next = new Map(prev);
+          next.set(campaignId, { status: "ready", byLead, error: null });
+          return next;
         });
       })
       .catch((err) => {
         if (aborted) return;
         // eslint-disable-next-line no-console
-        console.error(`[report-leads] emails fetch failed for brand ${brandId}:`, err);
-        setEmailsState({ status: "error", emails: [], byKey: new Map(), error: err instanceof Error ? err.message : String(err) });
+        console.error(`[report-leads] emails fetch failed for campaign ${campaignId}:`, err);
+        setEmailsCache((prev) => {
+          const next = new Map(prev);
+          next.set(campaignId, {
+            status: "error",
+            byLead: new Map(),
+            error: err instanceof Error ? err.message : String(err),
+          });
+          return next;
+        });
       });
     return () => { aborted = true; };
-  }, [selected, emailsState.status, orgId, brandId, featureSlug]);
+  }, [selected, emailsCache, orgId, brandId, featureSlug]);
 
   const drawerEntries = useMemo<(row: LeadRow) => DrawerEntry[]>(() => {
     return (r: LeadRow) => {
-      const k = leadKey(r.campaignId, r.firstName, r.lastName);
-      const emailsForLead = emailsState.byKey.get(k) ?? [];
-      const isLoading = emailsState.status === "idle" || emailsState.status === "loading";
+      const campaignEntry = emailsCache.get(r.campaignId);
+      const isLoading = !campaignEntry || campaignEntry.status === "loading";
+      const error = campaignEntry?.status === "error" ? campaignEntry.error : null;
+      const emailsForLead = campaignEntry?.byLead.get(leadKey(r.campaignId, r.firstName, r.lastName)) ?? [];
       return [
         { label: "Email", value: r.email, monospace: true },
         { label: "Current status", value: <StatusBadge status={r.status} /> },
+        { label: "Workflow", value: <WorkflowTag name={r.workflow} /> },
         { label: "Title", value: r.title },
         { label: "Company", value: r.company },
         { label: "Company domain", value: r.companyDomain, monospace: true },
@@ -310,16 +352,15 @@ export function LeadsTable({ rows, orgId, brandId, featureSlug }: LeadsTableProp
         { label: "Country", value: r.country },
         { label: "LinkedIn", value: r.linkedinUrl ? <a href={r.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:underline">{r.linkedinUrl}</a> : null, block: true },
         { label: "Email delivery state", value: r.emailStatus },
-        { label: "Workflow", value: r.workflow || null },
-        { label: "Milestones reached", value: <StatusTimeline row={r} />, block: true },
+        { label: "Statuses", value: <StatusTimeline row={r} />, block: true },
         {
           label: emailsForLead.length > 1 ? `Emails sent (${emailsForLead.length})` : "Email sent",
-          value: <EmailSection emails={emailsForLead} isLoading={isLoading} error={emailsState.error} />,
+          value: <EmailSection emails={emailsForLead} isLoading={isLoading} error={error} />,
           block: true,
         },
       ];
     };
-  }, [emailsState]);
+  }, [emailsCache]);
 
   return (
     <ReportTable
