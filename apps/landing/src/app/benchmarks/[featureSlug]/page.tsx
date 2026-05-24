@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { headers } from "next/headers";
 import { PROD_URLS } from "@/lib/env-urls";
 import {
   fetchBenchmarkFeatures,
@@ -107,10 +106,8 @@ function HeroStat({
 
 export default async function FeatureBenchmarkPage({ params }: PageProps) {
   const { featureSlug } = await params;
-  const headersList = await headers();
-  const host = headersList.get("host") || "";
 
-  const data = await fetchFeatureBenchmark(featureSlug, host);
+  const data = await fetchFeatureBenchmark(featureSlug);
   if (!data) notFound();
 
   const { feature, brands, workflows, aggregate, updatedAt } = data;

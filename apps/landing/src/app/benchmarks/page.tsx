@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { headers } from "next/headers";
 import { PROD_URLS } from "@/lib/env-urls";
 import { fetchBenchmarkFeatures } from "@/lib/benchmarks/fetch-benchmark";
 
@@ -48,9 +47,7 @@ export const metadata: Metadata = {
 };
 
 export default async function BenchmarksIndexPage() {
-  const headersList = await headers();
-  const host = headersList.get("host") || "";
-  const features = await fetchBenchmarkFeatures(host);
+  const features = await fetchBenchmarkFeatures();
 
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",

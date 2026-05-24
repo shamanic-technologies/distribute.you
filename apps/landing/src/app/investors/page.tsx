@@ -21,6 +21,8 @@ import {
   WeeklyGrowthSkeleton,
 } from "@/components/investors/skeletons";
 
+export const revalidate = 86400;
+
 const FEATURE_DOT: Record<FeatureColor, string> = {
   emerald: "bg-emerald-400",
   cyan: "bg-cyan-400",

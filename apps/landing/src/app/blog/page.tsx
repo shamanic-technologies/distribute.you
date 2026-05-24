@@ -6,9 +6,6 @@ import { Footer } from "@/components/footer";
 import { listArticles, type BlogArticle } from "@/lib/blog/db";
 
 export const revalidate = 60;
-// Force dynamic so build doesn't try to prerender without DATABASE_URL.
-// Runtime is fast (listArticles is a single Neon query, cached for 60s).
-export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Blog — distribute",

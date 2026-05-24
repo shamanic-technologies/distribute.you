@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { OutrankWebhookSchema, extractArticles } from "@/lib/blog/outrank-schema";
 import { upsertArticle } from "@/lib/blog/db";
 
@@ -44,9 +44,11 @@ export async function POST(request: NextRequest) {
       `[landing/outrank] upserted slug=${saved.slug} id=${saved.id} event=${parsed.data.event_type}`,
     );
     revalidatePath(`/blog/${saved.slug}`);
+    revalidateTag(`blog-article-${saved.slug}`, "default");
   }
   revalidatePath("/blog");
   revalidatePath("/sitemap.xml");
+  revalidateTag("blog-articles", "default");
 
   return NextResponse.json({ message: "Webhook processed successfully" });
 }
