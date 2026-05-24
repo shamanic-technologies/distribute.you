@@ -26,6 +26,7 @@ This monorepo does NOT use `release.sh hotfix` (the user-level release script ta
 
 - **Hotfix** → branch from `origin/main`, PR target `main`, ship with `gh pr merge --auto --squash` (or hold for deploy-ordering blockers).
 - **Bugfix / Feature** → branch from `origin/staging`, PR target `staging`, ship with `gh pr merge --auto --squash`. Promotion to `main` happens via the existing staging→main PR flow.
+- **Observed exception (`apps/dashboard/` and `apps/landing/` only):** dashboard-only and landing-only PRs have been merging straight to `main` in recent practice (see #1146–1151). When touching ONLY those two app dirs, follow the convention of the last 5 merges on the file you're editing; when in doubt, ship to `staging` per the rule above. Cross-cutting changes (shared/, packages/, multi-app) MUST go through staging.
 
 ## Architecture
 
