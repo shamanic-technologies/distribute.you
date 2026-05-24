@@ -1,6 +1,6 @@
 "use client";
 
-import { ReportTable, StatusBadge, type ReportTableColumn, type TabSpec } from "./report-table";
+import { ReportTable, type ReportTableColumn, type TabSpec } from "./report-table";
 // `status` is still surfaced in the row drawer; we no longer render it as a
 // column because the active tab already conveys the milestone — and a row
 // with a more-advanced status (e.g. replied) appearing in a less-advanced
@@ -44,6 +44,14 @@ export interface LeadRow {
   unsubscribed: boolean;
   replied: boolean;
   replyClassification: string | null;
+  /** Last delivery / status event from the lead-service.
+   *  Used as default sort proxy ("most-recent activity first") because
+   *  the lead-service does not expose per-milestone timestamps
+   *  (`openedAt`, `clickedAt`, `repliedAt`, …) — only this aggregate.
+   *  When backend ships per-status timestamps we can sort each tab by
+   *  its own status date desc. Until then, lastDeliveredAt is the
+   *  closest proxy available. */
+  lastDeliveredAt: string | null;
   /** Emails sent to this lead, indexed at page-render time on the server.
    *  Embedded here so the drawer can show them with zero client-side fetch
    *  — the public report is cached for 4h via `unstable_cache`, so the full
@@ -207,9 +215,6 @@ function StatusTimeline({ row }: { row: LeadRow }) {
 }
 
 function EmailSection({ emails }: { emails: LeadEmailSummary[] }) {
-  if (emails.length === 0) {
-    return <em className="text-gray-500">No email recorded for this lead.</em>;
-  }
   return (
     <div className="space-y-4">
       {emails.map((e, i) => (
@@ -229,25 +234,25 @@ function EmailSection({ emails }: { emails: LeadEmailSummary[] }) {
 }
 
 function drawerEntries(r: LeadRow): DrawerEntry[] {
-  return [
+  const entries: DrawerEntry[] = [
     { label: "Email", value: r.email, monospace: true },
-    { label: "Current status", value: <StatusBadge status={r.status} /> },
     { label: "Workflow", value: <WorkflowTag name={r.workflow} /> },
     { label: "Title", value: r.title },
     { label: "Company", value: r.company },
-    { label: "Company domain", value: r.companyDomain, monospace: true },
-    { label: "Industry", value: r.industry },
     { label: "City", value: r.city },
-    { label: "Country", value: r.country },
     { label: "LinkedIn", value: r.linkedinUrl ? <a href={r.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:underline">{r.linkedinUrl}</a> : null, block: true },
-    { label: "Email delivery state", value: r.emailStatus },
     { label: "Statuses", value: <StatusTimeline row={r} />, block: true },
-    {
+  ];
+  // Email-sent section is shown ONLY when there's at least one email — no
+  // empty placeholder, per UX feedback.
+  if (r.emails.length > 0) {
+    entries.push({
       label: r.emails.length > 1 ? `Emails sent (${r.emails.length})` : "Email sent",
       value: <EmailSection emails={r.emails} />,
       block: true,
-    },
-  ];
+    });
+  }
+  return entries;
 }
 
 interface LeadsTableProps {
@@ -255,13 +260,25 @@ interface LeadsTableProps {
 }
 
 export function LeadsTable({ rows }: LeadsTableProps) {
+  // Pre-sort by lastDeliveredAt desc (nulls last) — most-recent activity
+  // first across every tab. ReportTable's internal sort is disabled by
+  // passing an empty defaultSortKey so this order is preserved unless the
+  // user clicks a column header.
+  const sortedRows = [...rows].sort((a, b) => {
+    const av = a.lastDeliveredAt ?? "";
+    const bv = b.lastDeliveredAt ?? "";
+    if (av === bv) return 0;
+    if (!av) return 1;
+    if (!bv) return -1;
+    return av < bv ? 1 : -1;
+  });
   return (
     <ReportTable
-      rows={rows}
+      rows={sortedRows}
       columns={columns}
       rowKey={(r) => r.email}
-      defaultSortKey="name"
-      defaultSortDir="asc"
+      defaultSortKey=""
+      defaultSortDir="desc"
       searchPlaceholder="Search name, email, company…"
       searchValue={(r) => `${r.firstName} ${r.lastName} ${r.email} ${r.title} ${r.company} ${r.industry} ${r.country} ${r.workflow}`}
       tabs={TABS}

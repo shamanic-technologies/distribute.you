@@ -23,12 +23,6 @@ const LeadsIcon = () => (
   </svg>
 );
 
-const EmailsIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-  </svg>
-);
-
 const WorkflowsIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
@@ -44,7 +38,6 @@ export function ReportSidebar({ basePath }: ReportSidebarProps) {
   const items: SidebarItem[] = [
     { id: "overview", label: "Overview", href: basePath, icon: <OverviewIcon /> },
     { id: "leads", label: "Leads", href: `${basePath}/leads`, icon: <LeadsIcon /> },
-    { id: "emails", label: "Emails", href: `${basePath}/emails`, icon: <EmailsIcon /> },
     { id: "workflows", label: "Workflows", href: `${basePath}/workflows`, icon: <WorkflowsIcon /> },
   ];
 
