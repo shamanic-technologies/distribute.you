@@ -2,7 +2,7 @@ import { SectionCard } from "@/components/report/section-card";
 
 export default function OverviewLoading() {
   return (
-    <div className="p-6 md:p-8 space-y-6 max-w-6xl">
+    <div className="p-6 md:p-8 space-y-6">
       <div>
         <div className="h-6 w-32 bg-gray-100 rounded animate-pulse mb-2" />
         <div className="h-4 w-96 bg-gray-100 rounded animate-pulse" />
