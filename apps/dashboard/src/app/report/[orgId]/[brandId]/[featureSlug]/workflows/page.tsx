@@ -12,7 +12,7 @@ import {
   extractWorkflowPrompts,
 } from "@/lib/report-api";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 14400;
 export const maxDuration = 300;
 
 interface PageProps {

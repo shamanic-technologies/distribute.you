@@ -5,10 +5,12 @@ import {
   fetchWorkflows,
 } from "@/lib/report-api";
 
-// Dynamic so Suspense / loading.tsx skeletons actually stream to the
-// browser. With ISR (revalidate), Next.js buffers the full render until
-// every fetch resolves, so the user sees a blank tab instead of a skeleton.
-export const dynamic = "force-dynamic";
+// ISR with a 4h TTL — the recipient gets HTML served from edge cache on
+// every visit; fills happen at most once per (orgId, brandId, featureSlug)
+// per 4h window. Stale-while-revalidate hides cache refreshes from users.
+// `maxDuration` is still needed for the rare cold-fill render that pays
+// the upstream cost.
+export const revalidate = 14400;
 export const maxDuration = 300;
 
 interface PageProps {

@@ -1,5 +1,5 @@
 import "server-only";
-import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { clerkClient } from "@clerk/nextjs/server";
 import type {
   Brand,
@@ -12,16 +12,25 @@ import type {
 const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 const ADMIN_KEY = process.env.ADMIN_DISTRIBUTE_API_KEY;
 
-// Per-fetch timeout so a single slow upstream call (cost-stats has been
-// observed at 30s+) can't take the whole page past Vercel's function ceiling.
-// On timeout the Suspense boundary that requested this data flips to its
-// empty/0 render path — the rest of the page is unaffected.
-const UPSTREAM_TIMEOUT_MS = 25_000;
+// Per-fetch timeout so a single slow upstream call can't take the whole
+// cache-fill request past Vercel's function ceiling. The previous 25s value
+// was tuned for live page renders; under unstable_cache the fetch is now
+// shared across all visitors within a 4h window, so a longer fill window
+// (60s) is acceptable — only one visitor pays it and everyone else gets the
+// cached HTML for the next 4h.
+const UPSTREAM_TIMEOUT_MS = 60_000;
+
+// Cache lifetime for every public-report data fetch. The recipient sees
+// data up to this old; on next visit after expiry, Next.js serves the
+// stale HTML and refreshes in the background (stale-while-revalidate),
+// so no visitor ever waits for the upstream. Phase 2 (backend webhook +
+// revalidateTag) will drop staleness to ~0 without changing this.
+const REPORT_REVALIDATE_SECONDS = 4 * 60 * 60;
 
 /** GET against api-service with admin auth + org context. Returns the parsed
  *  body on 2xx. THROWS on any failure (non-2xx, network error, timeout) so
- *  the Suspense boundary catches it and React renders error.tsx with a
- *  retry button — visually distinct from a real "no rows" result. */
+ *  the caller can fall back to an empty/null result rather than poisoning
+ *  the unstable_cache entry for the next 4 hours. */
 async function adminGet<T>(label: string, path: string, orgId: string): Promise<T> {
   if (!ADMIN_KEY) {
     throw new Error(`[dashboard-report] ADMIN_DISTRIBUTE_API_KEY missing; ${label} failed`);
@@ -52,85 +61,142 @@ async function adminGet<T>(label: string, path: string, orgId: string): Promise<
   return (await res.json()) as T;
 }
 
-// All fetchers are wrapped in `react.cache()` so multiple Suspense boundaries
-// in the same request share one HTTP roundtrip. Without it, Overview ends up
-// firing /v1/leads twice (once for the stats grid, once for the CPA funnel),
-// doubling the slowest-path latency.
+// Tag namespace. Phase 2 will let a backend webhook call
+// `revalidateTag('report:brand:<brandId>', 'default')` whenever a lead /
+// email status changes — flushing this brand's cached HTML across every
+// feature/section in one shot. Until then, the 4h TTL drives expiry.
+function reportTags(orgId: string, brandId: string, featureSlug: string): string[] {
+  return [
+    `report:${orgId}:${brandId}:${featureSlug}`,
+    `report:brand:${brandId}`,
+    `report:org:${orgId}`,
+  ];
+}
 
-export const fetchBrand = cache(async (orgId: string, brandId: string): Promise<Brand | null> => {
-  // Brand fetch is allowed to fail silently — header shows brandId fallback.
-  try {
-    const result = await adminGet<{ brand: Brand }>("getBrand", `/brands/${brandId}`, orgId);
-    return result.brand ?? null;
-  } catch {
-    return null;
-  }
-});
-
-/** Clerk org display name. Returns the raw orgId on failure so the header
- *  never collapses, but logs the cause. */
-export const fetchOrgName = cache(async (orgId: string): Promise<string> => {
-  try {
-    const client = await clerkClient();
-    const org = await client.organizations.getOrganization({ organizationId: orgId });
-    return org.name || orgId;
-  } catch (err) {
-    console.error(`[dashboard-report] fetchOrgName(${orgId}) failed:`, err);
-    return orgId;
-  }
-});
-
-// Cap responses tightly so per-call latency fits inside the per-fetch
-// 25s upstream abort (lead-service assembles FullLead with multi-table
-// joins; even 200 rows routinely exceeded 25s in prod). 50 rows is the
-// largest sample we can reliably load. Report shows a "first N of M"
-// caveat in the section card when truncated.
 export const REPORT_FETCH_LIMIT = 50;
 
-export const fetchLeads = cache(async (orgId: string, brandId: string, featureSlug: string): Promise<Lead[]> => {
-  const result = await adminGet<{ leads: Lead[] }>(
-    "listBrandLeads",
-    `/leads?brandId=${brandId}&limit=${REPORT_FETCH_LIMIT}`,
-    orgId,
-  );
-  const leads = result.leads ?? [];
-  return leads.filter((l) => !l.featureSlug || l.featureSlug === featureSlug);
-});
+export async function fetchBrand(orgId: string, brandId: string): Promise<Brand | null> {
+  return unstable_cache(
+    async () => {
+      try {
+        const result = await adminGet<{ brand: Brand }>("getBrand", `/brands/${brandId}`, orgId);
+        return result.brand ?? null;
+      } catch {
+        return null;
+      }
+    },
+    [`fetchBrand`, orgId, brandId],
+    {
+      tags: [`brand:${brandId}`, `report:org:${orgId}`],
+      revalidate: REPORT_REVALIDATE_SECONDS,
+    },
+  )();
+}
 
-export const fetchEmails = cache(async (
-  orgId: string,
-  brandId: string,
-  campaignId?: string,
-): Promise<Email[]> => {
-  // campaignId filter shrinks the response from "all brand emails" to "one
-  // campaign's emails" — drawer-open fetch path uses this so the lead's
-  // emails arrive in under a second instead of timing out at 25s on
-  // brand-wide fetches. Backend /v1/emails has no per-lead filter
-  // (DIS-XX tracks adding one); campaignId is the next-best proxy.
-  const campaignQs = campaignId ? `&campaignId=${campaignId}` : "";
-  const result = await adminGet<{ emails: Email[] }>(
-    "listBrandEmails",
-    `/emails?brandId=${brandId}&limit=${REPORT_FETCH_LIMIT}${campaignQs}`,
-    orgId,
-  );
-  const emails = result.emails ?? [];
-  // Strip the heavy fields the report never displays but KEEP the small
-  // generationRun metadata (taskName, status) so the emails table can
-  // attribute the email to its workflow. The killers are `costs` and
-  // `descendantRuns` (run cost breakdown + child run tree, ~50KB per row);
-  // taskName + status are sub-100B.
-  return emails.map((e) => {
-    const gr = e.generationRun;
-    return {
-      ...e,
-      generationRun: gr
-        ? { ...gr, costs: [], descendantRuns: [] }
-        : null,
-      bodyHtml: null,
-      sequence: null,
-    };
-  });
-});
+/** Clerk org display name. Cached for 4h alongside everything else on the
+ *  report — org name renames are very rare, so this is fine. */
+export async function fetchOrgName(orgId: string): Promise<string> {
+  return unstable_cache(
+    async () => {
+      try {
+        const client = await clerkClient();
+        const org = await client.organizations.getOrganization({ organizationId: orgId });
+        return org.name || orgId;
+      } catch (err) {
+        console.error(`[dashboard-report] fetchOrgName(${orgId}) failed:`, err);
+        return orgId;
+      }
+    },
+    [`fetchOrgName`, orgId],
+    {
+      tags: [`report:org:${orgId}`],
+      revalidate: REPORT_REVALIDATE_SECONDS,
+    },
+  )();
+}
+
+export async function fetchLeads(orgId: string, brandId: string, featureSlug: string): Promise<Lead[]> {
+  return unstable_cache(
+    async () => {
+      const result = await adminGet<{ leads: Lead[] }>(
+        "listBrandLeads",
+        `/leads?brandId=${brandId}&limit=${REPORT_FETCH_LIMIT}`,
+        orgId,
+      );
+      const leads = result.leads ?? [];
+      return leads.filter((l) => !l.featureSlug || l.featureSlug === featureSlug);
+    },
+    [`fetchLeads`, orgId, brandId, featureSlug],
+    {
+      tags: reportTags(orgId, brandId, featureSlug),
+      revalidate: REPORT_REVALIDATE_SECONDS,
+    },
+  )();
+}
+
+/** Per-campaign email fetch. Each cache entry is small + cheap to fill, so
+ *  brand-wide fan-out (see `fetchAllEmails`) stays well under the upstream
+ *  abort even on multi-campaign brands. */
+async function fetchEmailsForCampaign(orgId: string, brandId: string, campaignId: string): Promise<Email[]> {
+  return unstable_cache(
+    async () => {
+      const result = await adminGet<{ emails: Email[] }>(
+        "listCampaignEmails",
+        `/emails?brandId=${brandId}&campaignId=${campaignId}&limit=${REPORT_FETCH_LIMIT}`,
+        orgId,
+      );
+      const emails = result.emails ?? [];
+      // Strip the heavy fields the report never displays but KEEP the small
+      // generationRun metadata (taskName, status) so the emails table can
+      // attribute the email to its workflow. The killers are `costs` and
+      // `descendantRuns` (run cost breakdown + child run tree, ~50KB per row);
+      // taskName + status are sub-100B.
+      return emails.map((e) => {
+        const gr = e.generationRun;
+        return {
+          ...e,
+          generationRun: gr
+            ? { ...gr, costs: [], descendantRuns: [] }
+            : null,
+          bodyHtml: null,
+          sequence: null,
+        };
+      });
+    },
+    [`fetchEmailsForCampaign`, orgId, brandId, campaignId],
+    {
+      tags: [`emails:campaign:${campaignId}`, `report:brand:${brandId}`, `report:org:${orgId}`],
+      revalidate: REPORT_REVALIDATE_SECONDS,
+    },
+  )();
+}
+
+/** All emails for a brand × feature, fanned out per campaign in parallel and
+ *  cached at both the per-campaign layer and the per-brand layer. Used by:
+ *  - /report/.../leads (server-embeds each lead's emails for instant drawer)
+ *  - /report/.../emails (table of every generated email) */
+export async function fetchAllEmails(orgId: string, brandId: string, featureSlug: string): Promise<Email[]> {
+  return unstable_cache(
+    async () => {
+      const campaigns = await fetchCampaigns(orgId, brandId, featureSlug);
+      if (campaigns.length === 0) return [];
+      const buckets = await Promise.all(
+        campaigns.map((c) =>
+          fetchEmailsForCampaign(orgId, brandId, c.id).catch((err) => {
+            console.error(`[dashboard-report] fetchEmailsForCampaign failed for ${c.id}:`, err);
+            return [] as Email[];
+          }),
+        ),
+      );
+      return buckets.flat();
+    },
+    [`fetchAllEmails`, orgId, brandId, featureSlug],
+    {
+      tags: reportTags(orgId, brandId, featureSlug),
+      revalidate: REPORT_REVALIDATE_SECONDS,
+    },
+  )();
+}
 
 /** Aggregated stats for a brand × feature. Avoids fetching every lead just
  *  to count statuses on Overview. Returns the raw stats dict — callers know
@@ -140,13 +206,22 @@ export interface FeatureStats {
   stats: Record<string, number>;
 }
 
-export const fetchFeatureStats = cache(async (orgId: string, brandId: string, featureSlug: string): Promise<FeatureStats> => {
-  return adminGet<FeatureStats>(
-    "featureStats",
-    `/features/${encodeURIComponent(featureSlug)}/stats?brandId=${brandId}`,
-    orgId,
-  );
-});
+export async function fetchFeatureStats(orgId: string, brandId: string, featureSlug: string): Promise<FeatureStats> {
+  return unstable_cache(
+    async () => {
+      return adminGet<FeatureStats>(
+        "featureStats",
+        `/features/${encodeURIComponent(featureSlug)}/stats?brandId=${brandId}`,
+        orgId,
+      );
+    },
+    [`fetchFeatureStats`, orgId, brandId, featureSlug],
+    {
+      tags: reportTags(orgId, brandId, featureSlug),
+      revalidate: REPORT_REVALIDATE_SECONDS,
+    },
+  )();
+}
 
 /** Per-workflow grouped stats for a brand × feature. Used by the Workflows
  *  page to compute CAC per workflow (A/B comparison). */
@@ -158,28 +233,55 @@ export interface FeatureStatsGroupedByWorkflow {
   }>;
 }
 
-export const fetchFeatureStatsByWorkflow = cache(async (orgId: string, brandId: string, featureSlug: string): Promise<FeatureStatsGroupedByWorkflow> => {
-  return adminGet<FeatureStatsGroupedByWorkflow>(
-    "featureStatsByWorkflow",
-    `/features/${encodeURIComponent(featureSlug)}/stats?brandId=${brandId}&groupBy=workflowSlug`,
-    orgId,
-  );
-});
+export async function fetchFeatureStatsByWorkflow(orgId: string, brandId: string, featureSlug: string): Promise<FeatureStatsGroupedByWorkflow> {
+  return unstable_cache(
+    async () => {
+      return adminGet<FeatureStatsGroupedByWorkflow>(
+        "featureStatsByWorkflow",
+        `/features/${encodeURIComponent(featureSlug)}/stats?brandId=${brandId}&groupBy=workflowSlug`,
+        orgId,
+      );
+    },
+    [`fetchFeatureStatsByWorkflow`, orgId, brandId, featureSlug],
+    {
+      tags: reportTags(orgId, brandId, featureSlug),
+      revalidate: REPORT_REVALIDATE_SECONDS,
+    },
+  )();
+}
 
-export const fetchCampaigns = cache(async (orgId: string, brandId: string, featureSlug: string): Promise<Campaign[]> => {
-  const result = await adminGet<{ campaigns: Campaign[] }>("listCampaignsByBrand", `/campaigns?brandId=${brandId}`, orgId);
-  const campaigns = result.campaigns ?? [];
-  return campaigns.filter((c) => c.featureSlug === featureSlug);
-});
+export async function fetchCampaigns(orgId: string, brandId: string, featureSlug: string): Promise<Campaign[]> {
+  return unstable_cache(
+    async () => {
+      const result = await adminGet<{ campaigns: Campaign[] }>("listCampaignsByBrand", `/campaigns?brandId=${brandId}`, orgId);
+      const campaigns = result.campaigns ?? [];
+      return campaigns.filter((c) => c.featureSlug === featureSlug);
+    },
+    [`fetchCampaigns`, orgId, brandId, featureSlug],
+    {
+      tags: reportTags(orgId, brandId, featureSlug),
+      revalidate: REPORT_REVALIDATE_SECONDS,
+    },
+  )();
+}
 
-export const fetchWorkflows = cache(async (orgId: string, featureSlug: string): Promise<Workflow[]> => {
-  const result = await adminGet<{ workflows: Workflow[] }>(
-    "listWorkflows",
-    `/workflows?featureSlug=${encodeURIComponent(featureSlug)}`,
-    orgId,
-  );
-  return result.workflows ?? [];
-});
+export async function fetchWorkflows(orgId: string, featureSlug: string): Promise<Workflow[]> {
+  return unstable_cache(
+    async () => {
+      const result = await adminGet<{ workflows: Workflow[] }>(
+        "listWorkflows",
+        `/workflows?featureSlug=${encodeURIComponent(featureSlug)}`,
+        orgId,
+      );
+      return result.workflows ?? [];
+    },
+    [`fetchWorkflows`, orgId, featureSlug],
+    {
+      tags: [`workflows:org:${orgId}`, `report:org:${orgId}`],
+      revalidate: REPORT_REVALIDATE_SECONDS,
+    },
+  )();
+}
 
 /** Extract human-readable prompt strings from a workflow DAG. Looks for
  *  prompt / promptTemplate / systemPrompt / userPrompt fields on any node config. */

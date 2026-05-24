@@ -3,11 +3,11 @@ import { SectionCard } from "@/components/report/section-card";
 import { CsvDownloadButton, GoogleSheetsButton } from "@/components/report/csv-button";
 import { toCsv, type CsvColumn } from "@/components/report/csv";
 import { TableSectionSkeleton } from "@/components/report/skeletons";
-import { LeadsTable, type LeadRow } from "@/components/report/leads-table";
-import { fetchLeads, fetchWorkflows, REPORT_FETCH_LIMIT } from "@/lib/report-api";
-import { getLeadConsolidatedStatus, type Lead } from "@/lib/api";
+import { LeadsTable, type LeadRow, type LeadEmailSummary } from "@/components/report/leads-table";
+import { fetchAllEmails, fetchLeads, fetchWorkflows, REPORT_FETCH_LIMIT } from "@/lib/report-api";
+import { getLeadConsolidatedStatus, type Email, type Lead } from "@/lib/api";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 14400;
 export const maxDuration = 300;
 
 interface PageProps {
@@ -16,13 +16,45 @@ interface PageProps {
 
 const LEADS_COLUMNS = ["Name", "Email", "Title", "Company", "Industry", "Country"];
 
-function toRow(lead: Lead, workflowName: string): LeadRow {
+function leadKey(campaignId: string, firstName: string, lastName: string): string {
+  return `${campaignId}::${firstName.toLowerCase()}::${lastName.toLowerCase()}`;
+}
+
+function indexEmailsByLead(
+  emails: Email[],
+  workflowNameByTask: Map<string, string>,
+): Map<string, LeadEmailSummary[]> {
+  const map = new Map<string, LeadEmailSummary[]>();
+  for (const e of emails) {
+    const k = leadKey(e.campaignId, e.leadFirstName ?? "", e.leadLastName ?? "");
+    const taskName = e.generationRun?.taskName ?? "";
+    const summary: LeadEmailSummary = {
+      subject: e.subject ?? "",
+      bodyText: e.bodyText ?? "",
+      sentAt: e.createdAt,
+      workflow: workflowNameByTask.get(taskName) ?? taskName ?? "",
+    };
+    const existing = map.get(k);
+    if (existing) existing.push(summary);
+    else map.set(k, [summary]);
+  }
+  for (const list of map.values()) list.sort((a, b) => (a.sentAt < b.sentAt ? 1 : -1));
+  return map;
+}
+
+function toRow(
+  lead: Lead,
+  workflowName: string,
+  emailsByLead: Map<string, LeadEmailSummary[]>,
+): LeadRow {
   const org = lead.lead?.organization;
   const job = lead.lead?.employmentHistory?.find((e) => e.current);
+  const firstName = lead.lead?.firstName ?? "";
+  const lastName = lead.lead?.lastName ?? "";
   return {
     email: lead.email,
-    firstName: lead.lead?.firstName ?? "",
-    lastName: lead.lead?.lastName ?? "",
+    firstName,
+    lastName,
     title: job?.title ?? lead.lead?.headline ?? "",
     company: org?.name ?? "",
     companyDomain: org?.primaryDomain ?? "",
@@ -44,6 +76,7 @@ function toRow(lead: Lead, workflowName: string): LeadRow {
     unsubscribed: lead.unsubscribed,
     replied: lead.replied,
     replyClassification: lead.replyClassification,
+    emails: emailsByLead.get(leadKey(lead.campaignId, firstName, lastName)) ?? [],
   };
 }
 
@@ -67,20 +100,26 @@ export default async function LeadsPage({ params }: PageProps) {
 }
 
 async function LeadsSection({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
-  // ONLY leads + workflows server-side. Emails are fetched lazily by the
-  // drawer when the user clicks a row — avoids the slow /v1/emails call
-  // from blocking the page render. Workflows give us the human-readable
-  // dynasty name for the Workflow column.
-  const [leads, workflows] = await Promise.all([
+  // Leads + workflows + emails server-side, in parallel. Emails are now
+  // embedded into each LeadRow so the drawer opens with zero client-side
+  // fetch — all three calls are individually `unstable_cache`-wrapped, so
+  // the second visitor in a 4h window pays nothing.
+  const [leads, workflows, emails] = await Promise.all([
     fetchLeads(orgId, brandId, featureSlug),
     fetchWorkflows(orgId, featureSlug).catch((err) => {
       console.error(`[report-leads] fetchWorkflows failed (workflow names will show as —):`, err);
       return [];
     }),
+    fetchAllEmails(orgId, brandId, featureSlug).catch((err) => {
+      console.error(`[report-leads] fetchAllEmails failed (drawer will show empty):`, err);
+      return [] as Email[];
+    }),
   ]);
 
   const workflowNameBySlug = new Map(workflows.map((w) => [w.workflowSlug, w.workflowDynastyName]));
-  const rows = leads.map((l) => toRow(l, l.workflowSlug ? (workflowNameBySlug.get(l.workflowSlug) ?? "") : ""));
+  const workflowNameByTask = new Map(workflows.map((w) => [w.workflowSlug, w.workflowDynastyName]));
+  const emailsByLead = indexEmailsByLead(emails, workflowNameByTask);
+  const rows = leads.map((l) => toRow(l, l.workflowSlug ? (workflowNameBySlug.get(l.workflowSlug) ?? "") : "", emailsByLead));
 
   const yesNo = (v: boolean) => (v ? "yes" : "no");
 
@@ -125,7 +164,7 @@ async function LeadsSection({ orgId, brandId, featureSlug }: { orgId: string; br
         </>
       }
     >
-      <LeadsTable rows={rows} orgId={orgId} brandId={brandId} featureSlug={featureSlug} />
+      <LeadsTable rows={rows} />
     </SectionCard>
   );
 }
