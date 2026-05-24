@@ -12,6 +12,8 @@ import { LeaderboardSectionAsync } from "@/components/leaderboard-section-async"
 import { LeaderboardPreviewSkeleton } from "@/components/leaderboard-preview-skeleton";
 import { ExpertQuoteMosaic, expertQuoteJsonLd } from "@/components/expert-quote-mosaic";
 import { ColdEmailPainStats } from "@/components/sourced-stats";
+import { ProviderAvatar } from "@/components/provider-avatar";
+import { FEATURE_PROVIDERS } from "@/data/feature-providers";
 import { DISTRIBUTION_FEATURES, DISTRIBUTION_STEPS } from "@distribute/content";
 import { PROD_URLS } from "@/lib/env-urls";
 import type { FeatureColor } from "@distribute/content";
@@ -151,39 +153,34 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Cold email pain — sourced industry stats (AI-search citation surface) */}
+      {/* Industry stats — sourced (AI-search citation surface) */}
       <section className="py-20 bg-gray-50 border-y border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <p className="text-xs uppercase tracking-wider text-gray-400 font-medium mb-2">
-              The state of cold outbound in 2025
+              The state of distribution in 2026
             </p>
             <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
-              Why distribution kills most solo products
+              Why distribution kills most products
             </h2>
             <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-              Independent benchmarks from Lemlist and TheDigitalBloom. Every number linked to source.
+              Independent benchmarks from Lemlist, Saleshandy, Adobe, and Gartner.
             </p>
           </div>
           <ColdEmailPainStats />
         </div>
       </section>
 
-      {/* Stay solo. Go big. */}
+      {/* Ship more. Scale what works. */}
       <section className="py-20">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="font-display text-3xl md:text-4xl font-bold mb-6 text-gray-900">
-            Stay solo. <span className="gradient-text-subtle">Go big.</span>
+            Ship more. <span className="gradient-text-subtle">Scale what works.</span>
           </h2>
-          <p className="text-lg text-gray-500 leading-relaxed mb-4">
-            You ship 3 products a year. One of them is going to take off.
-            Our job is to make sure it does — and to keep up with you when it does.
-          </p>
           <p className="text-lg text-gray-700 font-medium leading-relaxed">
-            Drop a URL. Set a daily budget per product. We send, AI-qualify replies,
-            forward leads to your inbox. You watch cost per reply per product,
-            double down on the winner, and ride the one that takes you from
-            $0 to $1M MRR — solo.
+            You ship 3 products a year. One will take off. We track real cost per
+            qualified reply across every channel, kill what doesn&apos;t work,
+            double down on what does.
           </p>
         </div>
       </section>
@@ -230,6 +227,31 @@ export default function Home() {
               and the good ones land in your Gmail.
             </span>
           </p>
+
+          <div className="mt-8 flex flex-col items-center gap-3">
+            <p className="text-xs uppercase tracking-wider text-gray-400 font-medium">
+              Under the hood
+            </p>
+            <div className="flex items-center gap-3 flex-wrap justify-center">
+              {[
+                { name: "Apollo", domain: "apollo.io" },
+                { name: "Anthropic", domain: "anthropic.com" },
+                { name: "Resend", domain: "resend.com" },
+                { name: "OpenAI", domain: "openai.com" },
+                { name: "Firecrawl", domain: "firecrawl.dev" },
+                { name: "Perplexity", domain: "perplexity.ai" },
+                { name: "Vercel", domain: "vercel.com" },
+              ].map((p) => (
+                <div
+                  key={p.name}
+                  className="flex items-center gap-2 bg-white border border-gray-200 rounded-full px-3 py-1.5"
+                >
+                  <ProviderAvatar provider={p.name} providerDomain={p.domain} size={16} />
+                  <span className="text-xs text-gray-700">{p.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
@@ -250,10 +272,11 @@ export default function Home() {
             {DISTRIBUTION_FEATURES.map((feature) => {
               const colors = FEATURE_COLOR_CLASSES[feature.color];
               const isLive = feature.status === "live";
+              const providers = FEATURE_PROVIDERS[feature.id] ?? [];
               return (
                 <div
                   key={feature.id}
-                  className="bg-white rounded-xl p-5 border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all duration-200 group"
+                  className="bg-white rounded-xl p-5 border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all duration-200 group flex flex-col"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2">
@@ -272,14 +295,29 @@ export default function Home() {
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-gray-500 mb-3 leading-relaxed">
+                  <p className="text-sm text-gray-500 mb-3 leading-relaxed flex-1">
                     {feature.description}
                   </p>
-                  <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                    Ranked by {feature.metric}
+                  <div className="flex items-center justify-between gap-3 pt-3 border-t border-gray-100">
+                    <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      </svg>
+                      {feature.metric}
+                    </div>
+                    {providers.length > 0 && (
+                      <div className="flex items-center -space-x-1.5">
+                        {providers.map((p) => (
+                          <div
+                            key={p.name}
+                            className="ring-2 ring-white rounded-md"
+                            title={p.name}
+                          >
+                            <ProviderAvatar provider={p.name} providerDomain={p.domain} size={20} />
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               );

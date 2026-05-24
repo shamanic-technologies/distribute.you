@@ -1,15 +1,18 @@
+import { ProviderAvatar } from "@/components/provider-avatar";
+
 interface Primitive {
   name: string;
   provider: string;
+  providerDomain: string;
   cost: string;
 }
 
 export function WorkflowRecipe() {
   const primitives: Primitive[] = [
-    { name: "Apollo lead enrichment", provider: "Apollo", cost: "$0.012" },
-    { name: "Claude Sonnet 4.6 — email generation", provider: "Anthropic", cost: "$0.018" },
-    { name: "Resend send via agency address", provider: "Resend", cost: "$0.004" },
-    { name: "AI reply classifier (Haiku)", provider: "Anthropic", cost: "$0.002" },
+    { name: "Apollo lead enrichment", provider: "Apollo", providerDomain: "apollo.io", cost: "$0.012" },
+    { name: "Claude Sonnet 4.6 — email generation", provider: "Anthropic", providerDomain: "anthropic.com", cost: "$0.018" },
+    { name: "Resend send via agency address", provider: "Resend", providerDomain: "resend.com", cost: "$0.004" },
+    { name: "AI reply classifier (Haiku)", provider: "Anthropic", providerDomain: "anthropic.com", cost: "$0.002" },
   ];
 
   return (
@@ -17,21 +20,18 @@ export function WorkflowRecipe() {
       <div className="text-xs text-gray-400 uppercase tracking-wider mb-2 font-medium">
         Workflow recipe
       </div>
-      <h3 className="font-mono text-base text-gray-900 mb-1">sales-outreach · apex-v4</h3>
-      <p className="text-xs text-gray-500 mb-6">
-        Each workflow stacks priced API primitives. One run = sum of primitives.
-        The same outcome can be reached by many recipes — the cheapest one wins.
-      </p>
+      <h3 className="font-mono text-base text-gray-900 mb-6">sales-outreach · apex-v4</h3>
 
       <div className="space-y-2 mb-6">
         {primitives.map((p, idx) => (
           <div
-            key={p.name}
+            key={`${p.name}-${idx}`}
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-gray-50 border border-gray-100"
           >
             <span className="w-6 h-6 rounded-md bg-white border border-gray-200 text-[10px] font-mono text-gray-500 flex items-center justify-center flex-shrink-0">
               {idx + 1}
             </span>
+            <ProviderAvatar provider={p.provider} providerDomain={p.providerDomain} size={20} />
             <div className="flex-1 min-w-0">
               <p className="text-sm text-gray-900 truncate">{p.name}</p>
               <p className="text-[11px] text-gray-400">{p.provider}</p>
@@ -55,10 +55,6 @@ export function WorkflowRecipe() {
           <p className="text-lg font-semibold text-gray-900 font-mono">$1.42</p>
         </div>
       </div>
-
-      <p className="text-xs text-gray-400 mt-4 text-center">
-        Every primitive priced publicly. Fork the workflow. Beat the recipe.
-      </p>
     </div>
   );
 }

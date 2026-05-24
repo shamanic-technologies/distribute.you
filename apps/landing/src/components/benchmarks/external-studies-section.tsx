@@ -1,27 +1,5 @@
-import Image from "next/image";
 import type { ExternalStudy } from "@/data/benchmarks-content";
-
-const LOGO_DEV_TOKEN = process.env.NEXT_PUBLIC_LOGO_DEV_TOKEN;
-
-function ProviderAvatar({ provider, providerDomain }: { provider: string; providerDomain: string }) {
-  if (providerDomain && LOGO_DEV_TOKEN) {
-    return (
-      <Image
-        src={`https://img.logo.dev/${providerDomain}?token=${LOGO_DEV_TOKEN}&size=64`}
-        alt={provider}
-        width={32}
-        height={32}
-        className="rounded-md flex-shrink-0"
-        unoptimized
-      />
-    );
-  }
-  return (
-    <div className="w-8 h-8 bg-gray-100 rounded-md flex items-center justify-center text-gray-500 text-sm font-bold flex-shrink-0">
-      {provider[0]?.toUpperCase()}
-    </div>
-  );
-}
+import { ProviderAvatar } from "@/components/provider-avatar";
 
 function ExternalStudyCard({ study }: { study: ExternalStudy }) {
   return (
@@ -32,7 +10,7 @@ function ExternalStudyCard({ study }: { study: ExternalStudy }) {
       className="group flex flex-col bg-white rounded-2xl border border-gray-200 p-5 hover:border-gray-300 hover:shadow-md transition"
     >
       <div className="flex items-center gap-3 mb-4">
-        <ProviderAvatar provider={study.provider} providerDomain={study.providerDomain} />
+        <ProviderAvatar provider={study.provider} providerDomain={study.providerDomain} size={32} />
         <div className="min-w-0">
           <div className="text-sm font-semibold text-gray-900 truncate">{study.provider}</div>
           <div className="text-xs text-gray-400">{study.year}</div>

@@ -123,7 +123,7 @@ const SALES_COLD_EMAIL: BenchmarkContent = {
     cta: "Start free — $2 credits",
   },
   ctaClosing: {
-    headline: "Stay solo. Go big.",
+    headline: "Ship more. Scale what works.",
     sub: "Pick the winning workflow from this leaderboard and clone it for your brand. $2 credits to try, no subscription.",
     cta: "Launch on autopilot",
   },

@@ -218,10 +218,10 @@ export default function InvestorsPage() {
                   The dream
                 </p>
                 <p className="text-gray-200 italic">
-                  &quot;One of my products is going to take off. I want it to take off because of my
-                  marketing — not because I hired a team or raised a Series A. I want to ride
-                  one product from $0 to $1M MRR while staying solo. distribute.you is the
-                  lever that makes that math work.&quot;
+                  &quot;One of my products is going to take off. I need to monitor closely the
+                  CAC because I am looking for my marketing channel to scale. distribute.you is
+                  the lever that makes that math actionable — whether I stay 1 person or grow
+                  to 10.&quot;
                 </p>
               </div>
 
