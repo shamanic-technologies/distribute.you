@@ -4,7 +4,7 @@ import { CsvDownloadButton, GoogleSheetsButton } from "@/components/report/csv-b
 import { toCsv, type CsvColumn } from "@/components/report/csv";
 import { TableSectionSkeleton } from "@/components/report/skeletons";
 import { EmailsTable, type EmailRow } from "@/components/report/emails-table";
-import { fetchEmails } from "@/lib/report-api";
+import { fetchEmails, fetchWorkflows } from "@/lib/report-api";
 import type { Email } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +14,7 @@ interface PageProps {
   params: Promise<{ orgId: string; brandId: string; featureSlug: string }>;
 }
 
-const EMAIL_COLUMNS = ["Subject", "To", "Company", "Sent"];
+const EMAIL_COLUMNS = ["Subject", "To", "Company", "Workflow", "Sent"];
 
 export default async function EmailsPage({ params }: PageProps) {
   const { orgId, brandId, featureSlug } = await params;
@@ -36,15 +36,28 @@ export default async function EmailsPage({ params }: PageProps) {
 }
 
 async function EmailsSection({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
-  const emails = await fetchEmails(orgId, brandId);
+  const [emails, workflows] = await Promise.all([
+    fetchEmails(orgId, brandId),
+    fetchWorkflows(orgId, featureSlug),
+  ]);
+
+  // generationRun.taskName is the workflow's task name (e.g. "sienna-v3").
+  // Map it to the human-readable workflow name via the workflow registry.
+  const workflowNameByTask = new Map<string, string>();
+  for (const w of workflows) {
+    workflowNameByTask.set(w.workflowSlug, w.workflowDynastyName);
+  }
 
   function toRow(e: Email): EmailRow {
+    const taskName = e.generationRun?.taskName ?? "";
+    const workflow = workflowNameByTask.get(taskName) ?? taskName ?? "";
     return {
       id: e.id,
       subject: e.subject,
       recipient: `${e.leadFirstName} ${e.leadLastName}`.trim(),
       recipientCompany: e.leadCompany,
       recipientTitle: e.leadTitle,
+      workflow,
       createdAt: e.createdAt,
       bodyText: e.bodyText ?? "",
     };
@@ -57,6 +70,7 @@ async function EmailsSection({ orgId, brandId, featureSlug }: { orgId: string; b
     { label: "Recipient", value: (r) => r.recipient },
     { label: "Recipient title", value: (r) => r.recipientTitle },
     { label: "Company", value: (r) => r.recipientCompany },
+    { label: "Workflow", value: (r) => r.workflow },
     { label: "Created at", value: (r) => r.createdAt },
     { label: "Body text", value: (r) => r.bodyText },
   ];

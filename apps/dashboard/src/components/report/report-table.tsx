@@ -26,6 +26,8 @@ interface ReportTableProps<T> {
   searchPlaceholder?: string;
   searchValue: (row: T) => string;
   filter?: FilterSpec<T>;
+  defaultSortKey?: string;
+  defaultSortDir?: SortDir;
   drawerTitle?: (row: T) => string;
   drawerSubtitle?: (row: T) => string;
   drawerEntries?: (row: T) => DrawerEntry[];
@@ -42,6 +44,8 @@ export function ReportTable<T>({
   searchPlaceholder = "Search…",
   searchValue,
   filter,
+  defaultSortKey,
+  defaultSortDir = "asc",
   drawerTitle,
   drawerSubtitle,
   drawerEntries,
@@ -49,8 +53,8 @@ export function ReportTable<T>({
 }: ReportTableProps<T>) {
   const [query, setQuery] = useState("");
   const [filterValue, setFilterValue] = useState<string>("all");
-  const [sortKey, setSortKey] = useState<string>(columns[0]?.key ?? "");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [sortKey, setSortKey] = useState<string>(defaultSortKey ?? columns[0]?.key ?? "");
+  const [sortDir, setSortDir] = useState<SortDir>(defaultSortDir);
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<T | null>(null);
 
