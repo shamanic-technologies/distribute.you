@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
+import { Section } from "@/components/section";
 import { getArticleBySlug } from "@/lib/blog/db";
 
 export const revalidate = 60;
@@ -44,7 +45,7 @@ export default async function BlogArticlePage({ params }: Props) {
     <main className="min-h-screen bg-white">
       <Navbar />
 
-      <div className="max-w-3xl mx-auto px-4 pt-16 pb-8">
+      <Section variant="prose" outerClassName="pt-16 pb-8" as="div">
         <Link
           href="/blog"
           className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-brand-600 transition mb-8"
@@ -91,9 +92,9 @@ export default async function BlogArticlePage({ params }: Props) {
             />
           </div>
         )}
-      </div>
+      </Section>
 
-      <article className="max-w-2xl mx-auto px-4 pb-20">
+      <Section variant="prose" outerClassName="pb-20" as="article">
         {body ? (
           <div
             className="
@@ -130,7 +131,7 @@ export default async function BlogArticlePage({ params }: Props) {
             Updated {formatDate(article.updatedAt)}
           </span>
         </div>
-      </article>
+      </Section>
 
       <Footer />
     </main>

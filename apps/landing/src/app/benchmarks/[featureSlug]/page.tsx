@@ -183,8 +183,8 @@ export default async function FeatureBenchmarkPage({ params }: PageProps) {
       />
 
       {/* Hero */}
-      <section className="py-12 md:py-16 px-4 gradient-bg">
-        <div className="max-w-6xl mx-auto">
+      <section className="py-12 md:py-16 gradient-bg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="text-sm text-gray-600 mb-4 flex items-center gap-2">
             <Link href="/benchmarks" className="hover:text-brand-600 underline">
               Benchmarks
@@ -232,8 +232,8 @@ export default async function FeatureBenchmarkPage({ params }: PageProps) {
       )}
 
       {/* Platform averages — our open dataset */}
-      <section className="py-10 md:py-12 px-4 bg-white">
-        <div className="max-w-6xl mx-auto">
+      <section className="py-10 md:py-12 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <p className="text-xs uppercase tracking-wider text-gray-400 font-medium mb-2">
             From the distribute open dataset
           </p>
@@ -277,8 +277,8 @@ export default async function FeatureBenchmarkPage({ params }: PageProps) {
       {content && <BenchmarkCTA copy={content.ctaPrimary} signUpUrl={signUpUrl} variant="primary" />}
 
       {/* Brand leaderboard */}
-      <section className="py-10 md:py-12 px-4 bg-white">
-        <div className="max-w-6xl mx-auto">
+      <section className="py-10 md:py-12 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-end justify-between mb-4">
             <div>
               <h2 className="font-display text-xl md:text-2xl font-bold text-gray-900">
@@ -313,8 +313,8 @@ export default async function FeatureBenchmarkPage({ params }: PageProps) {
       )}
 
       {/* Workflow leaderboard */}
-      <section className="py-10 md:py-12 px-4 bg-gray-50">
-        <div className="max-w-6xl mx-auto">
+      <section className="py-10 md:py-12 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-end justify-between mb-4">
             <div>
               <h2 className="font-display text-xl md:text-2xl font-bold text-gray-900">
@@ -356,8 +356,8 @@ export default async function FeatureBenchmarkPage({ params }: PageProps) {
       )}
 
       {/* See another feature */}
-      <section className="py-16 px-4 bg-white border-t border-gray-100">
-        <div className="max-w-3xl mx-auto text-center">
+      <section className="py-16 bg-white border-t border-gray-100">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="font-display text-2xl font-bold mb-4 text-gray-800">
             See another feature
           </h2>

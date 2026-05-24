@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PROD_URLS } from "@/lib/env-urls";
 import { fetchBenchmarkFeatures } from "@/lib/benchmarks/fetch-benchmark";
+import { Section } from "@/components/section";
 
 export const revalidate = 300;
 
@@ -99,70 +100,64 @@ export default async function BenchmarksIndexPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(datasetJsonLd) }}
       />
 
-      <section className="py-16 md:py-20 px-4 gradient-bg">
-        <div className="max-w-5xl mx-auto text-center">
-          <div className="inline-block bg-emerald-100 text-emerald-700 px-4 py-1.5 rounded-full text-sm font-medium mb-6 border border-emerald-200">
-            Open data · Updated hourly · {features.length} features
+      <Section variant="content" outerClassName="py-16 md:py-20 gradient-bg" className="text-center">
+        <div className="inline-block bg-emerald-100 text-emerald-700 px-4 py-1.5 rounded-full text-sm font-medium mb-6 border border-emerald-200">
+          Open data · Updated hourly · {features.length} features
+        </div>
+        <h1 className="font-display text-4xl md:text-5xl font-bold mb-4 text-gray-800">
+          Benchmarks &{" "}
+          <span className="gradient-text">Statistics</span> for AI-driven
+          outreach
+        </h1>
+        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          Every campaign run through distribute contributes to these public
+          leaderboards. Pick a feature to see the full ranking — brand by
+          brand, workflow by workflow.
+        </p>
+      </Section>
+
+      <Section variant="wide" outerClassName="py-12 md:py-16 bg-white">
+        {features.length === 0 ? (
+          <div className="text-center py-16">
+            <p className="text-gray-500">
+              Benchmarks loading. Check back in a moment.
+            </p>
           </div>
-          <h1 className="font-display text-4xl md:text-5xl font-bold mb-4 text-gray-800">
-            Benchmarks &{" "}
-            <span className="gradient-text">Statistics</span> for AI-driven
-            outreach
-          </h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Every campaign run through distribute contributes to these public
-            leaderboards. Pick a feature to see the full ranking — brand by
-            brand, workflow by workflow.
-          </p>
-        </div>
-      </section>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {features.map((feature) => (
+              <Link
+                key={feature.slug}
+                href={`/benchmarks/${feature.slug}`}
+                className="group block bg-white border border-gray-200 rounded-xl p-6 hover:border-brand-300 hover:shadow-md transition"
+              >
+                <h2 className="font-display text-lg font-semibold text-gray-900 group-hover:text-brand-600 transition mb-2">
+                  {feature.name}
+                </h2>
+                <p className="text-sm text-gray-600 leading-relaxed mb-4 line-clamp-3">
+                  {feature.description}
+                </p>
+                <span className="text-xs font-medium text-brand-600 group-hover:underline">
+                  View benchmarks →
+                </span>
+              </Link>
+            ))}
+          </div>
+        )}
+      </Section>
 
-      <section className="py-12 md:py-16 px-4 bg-white">
-        <div className="max-w-6xl mx-auto">
-          {features.length === 0 ? (
-            <div className="text-center py-16">
-              <p className="text-gray-500">
-                Benchmarks loading. Check back in a moment.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {features.map((feature) => (
-                <Link
-                  key={feature.slug}
-                  href={`/benchmarks/${feature.slug}`}
-                  className="group block bg-white border border-gray-200 rounded-xl p-6 hover:border-brand-300 hover:shadow-md transition"
-                >
-                  <h2 className="font-display text-lg font-semibold text-gray-900 group-hover:text-brand-600 transition mb-2">
-                    {feature.name}
-                  </h2>
-                  <p className="text-sm text-gray-600 leading-relaxed mb-4 line-clamp-3">
-                    {feature.description}
-                  </p>
-                  <span className="text-xs font-medium text-brand-600 group-hover:underline">
-                    View benchmarks →
-                  </span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-
-      <section className="py-16 px-4 bg-gray-50">
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 className="font-display text-2xl font-bold mb-4 text-gray-800">
-            Why we publish everything
-          </h2>
-          <p className="text-gray-600">
-            Most outreach platforms hide their real numbers. We don&apos;t. Every
-            campaign that runs through distribute contributes to these public
-            benchmarks — sortable, transparent, no cherry-picking. Use them to
-            calibrate what &ldquo;good&rdquo; looks like before you spend a
-            dollar on outreach.
-          </p>
-        </div>
-      </section>
+      <Section variant="content" outerClassName="py-16 bg-gray-50" className="text-center">
+        <h2 className="font-display text-2xl font-bold mb-4 text-gray-800">
+          Why we publish everything
+        </h2>
+        <p className="text-gray-600 max-w-3xl mx-auto">
+          Most outreach platforms hide their real numbers. We don&apos;t. Every
+          campaign that runs through distribute contributes to these public
+          benchmarks — sortable, transparent, no cherry-picking. Use them to
+          calibrate what &ldquo;good&rdquo; looks like before you spend a
+          dollar on outreach.
+        </p>
+      </Section>
     </main>
   );
 }

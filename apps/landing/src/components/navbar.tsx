@@ -11,7 +11,7 @@ export function Navbar() {
 
   return (
     <nav className="bg-white/80 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50">
-      <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
         {/* Logo */}
         <a href="/" className="flex items-center gap-2">
           <Image src="/logo-head.jpg" alt="distribute" width={28} height={28} className="rounded-lg" />
@@ -99,7 +99,7 @@ export function Navbar() {
       {/* Mobile menu dropdown */}
       {menuOpen && (
         <div className="md:hidden border-t border-gray-100 bg-white">
-          <div className="max-w-6xl mx-auto px-4 py-3 space-y-1">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 space-y-1">
             <a
               href={urls.pricing}
               className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm"

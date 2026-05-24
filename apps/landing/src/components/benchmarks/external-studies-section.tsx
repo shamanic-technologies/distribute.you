@@ -60,8 +60,8 @@ function ExternalStudyCard({ study }: { study: ExternalStudy }) {
 export function ExternalStudiesSection({ studies, featureName }: { studies: ExternalStudy[]; featureName: string }) {
   if (studies.length === 0) return null;
   return (
-    <section className="py-12 md:py-16 px-4 bg-white border-y border-gray-100">
-      <div className="max-w-6xl mx-auto">
+    <section className="py-12 md:py-16 bg-white border-y border-gray-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
           <p className="text-xs uppercase tracking-wider text-gray-400 font-medium mb-2">
             What the industry says
