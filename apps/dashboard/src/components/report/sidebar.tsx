@@ -72,7 +72,7 @@ export function ReportSidebar({ basePath }: ReportSidebarProps) {
           );
         })}
       </nav>
-      <div className="border-t border-gray-200 bg-gray-50 px-4 py-3 text-[11px] text-gray-600 leading-snug">
+      <div className="border-t border-gray-200 px-4 py-3 text-[11px] text-gray-600 leading-snug">
         Distributed with{" "}
         <span aria-label="love" role="img">❤️</span>{" "}
         by{" "}
@@ -80,7 +80,7 @@ export function ReportSidebar({ basePath }: ReportSidebarProps) {
           href="https://distribute.you"
           target="_blank"
           rel="noopener noreferrer"
-          className="font-medium text-brand-600 hover:text-brand-700 hover:underline"
+          className="font-semibold text-gray-900 underline decoration-gray-300 underline-offset-2 hover:decoration-gray-700"
         >
           distribute.you
         </a>
