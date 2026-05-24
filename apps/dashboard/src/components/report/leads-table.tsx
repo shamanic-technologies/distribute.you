@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ReportTable, StatusBadge, type ReportTableColumn } from "./report-table";
+import { ReportTable, StatusBadge, type ReportTableColumn, type TabSpec } from "./report-table";
 import type { DrawerEntry } from "./data-drawer";
 
 export interface LeadEmailSummary {
@@ -22,10 +22,15 @@ export interface LeadRow {
   country: string;
   city: string;
   linkedinUrl: string | null;
-  /** Most-advanced milestone reached. */
+  /** Most-advanced milestone reached. Used by sort + StatusBadge. */
   status: string;
+  /** Raw intake status (served / skipped / claimed / buffered). Used by the
+   *  tab predicates for the intake-side tabs. The consolidated `status`
+   *  above shadows this whenever an email milestone is hit. */
+  intakeStatus: "buffered" | "skipped" | "claimed" | "served";
   emailStatus: string;
-  campaign: string;
+  workflow: string;
+  /** Kept for email-list matching only — never rendered. */
   campaignId: string;
   contacted: boolean;
   sent: boolean;
@@ -59,30 +64,84 @@ const columns: ReportTableColumn<LeadRow>[] = [
     key: "name",
     label: "Name",
     sortValue: (r) => `${r.firstName} ${r.lastName}`,
-    render: (r) => <span className="font-medium text-gray-900">{r.firstName} {r.lastName}</span>,
+    render: (r) => <span className="font-medium text-gray-900 truncate block">{r.firstName} {r.lastName}</span>,
+    className: "w-[14%]",
   },
   {
     key: "email",
     label: "Email",
     sortValue: (r) => r.email,
-    render: (r) => <span className="font-mono text-xs">{r.email}</span>,
+    render: (r) => <span className="font-mono text-xs truncate block" title={r.email}>{r.email}</span>,
+    className: "w-[18%]",
   },
-  { key: "title", label: "Title", sortValue: (r) => r.title, render: (r) => r.title || "—" },
+  {
+    key: "title",
+    label: "Title",
+    sortValue: (r) => r.title,
+    render: (r) => <span className="truncate block" title={r.title || undefined}>{r.title || "—"}</span>,
+    className: "w-[14%]",
+  },
   {
     key: "company",
     label: "Company",
     sortValue: (r) => r.company,
     render: (r) => (
-      <div>
-        <div>{r.company || "—"}</div>
-        {r.companyDomain && <div className="text-xs text-gray-400">{r.companyDomain}</div>}
+      <div className="min-w-0">
+        <div className="truncate" title={r.company || undefined}>{r.company || "—"}</div>
+        {r.companyDomain && <div className="text-xs text-gray-400 truncate" title={r.companyDomain}>{r.companyDomain}</div>}
       </div>
     ),
+    className: "w-[14%]",
   },
-  { key: "industry", label: "Industry", sortValue: (r) => r.industry, render: (r) => r.industry || "—" },
-  { key: "country", label: "Country", sortValue: (r) => r.country, render: (r) => r.country || "—" },
-  { key: "status", label: "Status", sortValue: (r) => r.status, render: (r) => <StatusBadge status={r.status} /> },
-  { key: "campaign", label: "Campaign", sortValue: (r) => r.campaign, render: (r) => r.campaign || "—" },
+  {
+    key: "industry",
+    label: "Industry",
+    sortValue: (r) => r.industry,
+    render: (r) => <span className="truncate block" title={r.industry || undefined}>{r.industry || "—"}</span>,
+    className: "w-[12%]",
+  },
+  {
+    key: "country",
+    label: "Country",
+    sortValue: (r) => r.country,
+    render: (r) => <span className="truncate block" title={r.country || undefined}>{r.country || "—"}</span>,
+    className: "w-[8%]",
+  },
+  {
+    key: "status",
+    label: "Status",
+    sortValue: (r) => r.status,
+    render: (r) => <StatusBadge status={r.status} />,
+    className: "w-[9%]",
+  },
+  {
+    key: "workflow",
+    label: "Workflow",
+    sortValue: (r) => r.workflow,
+    render: (r) => <span className="truncate block text-xs text-indigo-700" title={r.workflow || undefined}>{r.workflow || "—"}</span>,
+    className: "w-[11%]",
+  },
+];
+
+// Tab order: most-advanced milestone leftmost, intake statuses last (right of
+// the milestone band, before "All"). Each lead row appears in every tab whose
+// predicate is true — a replied lead also shows under Clicked / Opened /
+// Delivered / Sent. Intake tabs (served / skipped / claimed / buffered) are
+// mutually exclusive per lead and orthogonal to the email-milestone tabs.
+const TABS: TabSpec<LeadRow>[] = [
+  { key: "replied", label: "Replied", match: (r) => r.replied },
+  { key: "clicked", label: "Clicked", match: (r) => r.clicked },
+  { key: "opened", label: "Opened", match: (r) => r.opened },
+  { key: "delivered", label: "Delivered", match: (r) => r.delivered },
+  { key: "sent", label: "Sent", match: (r) => r.sent },
+  { key: "bounced", label: "Bounced", match: (r) => r.bounced },
+  { key: "unsubscribed", label: "Unsubscribed", match: (r) => r.unsubscribed },
+  { key: "contacted", label: "Contacted", match: (r) => r.contacted },
+  { key: "served", label: "Processing", match: (r) => r.intakeStatus === "served" },
+  { key: "skipped", label: "Skipped", match: (r) => r.intakeStatus === "skipped" },
+  { key: "claimed", label: "Claimed", match: (r) => r.intakeStatus === "claimed" },
+  { key: "buffered", label: "Buffered", match: (r) => r.intakeStatus === "buffered" },
+  { key: "all", label: "All", match: () => true },
 ];
 
 function StatusTimeline({ row }: { row: LeadRow }) {
@@ -132,11 +191,18 @@ function EmailSection({ emails, isLoading, error }: { emails: LeadEmailSummary[]
         <div className="h-3 w-24 bg-gray-200 rounded animate-pulse" />
         <div className="h-4 w-3/4 bg-gray-200 rounded animate-pulse" />
         <div className="h-20 w-full bg-gray-100 rounded animate-pulse" />
+        <p className="text-xs text-gray-400 italic">Loading emails — can take up to 25s for large brands…</p>
       </div>
     );
   }
   if (error) {
-    return <em className="text-xs text-gray-400">Emails unavailable: {error}</em>;
+    return (
+      <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 space-y-1">
+        <div className="font-medium">Emails unavailable.</div>
+        <div className="font-mono break-all">{error}</div>
+        <div className="text-red-600/80">Upstream /v1/emails likely timed out. Reload to retry.</div>
+      </div>
+    );
   }
   if (emails.length === 0) {
     return <em className="text-gray-400">No email recorded for this lead.</em>;
@@ -201,12 +267,18 @@ export function LeadsTable({ rows, orgId, brandId, featureSlug }: LeadsTableProp
     if (emailsState.status !== "idle") return;
     let aborted = false;
     setEmailsState((s) => ({ ...s, status: "loading" }));
-    fetch(`/api/public/report/${orgId}/${brandId}/emails?featureSlug=${encodeURIComponent(featureSlug)}`, { cache: "no-store" })
-      .then((res) => {
-        if (!res.ok) throw new Error(`${res.status}`);
-        return res.json();
+    const url = `/api/public/report/${orgId}/${brandId}/emails?featureSlug=${encodeURIComponent(featureSlug)}`;
+    const startedAt = Date.now();
+    fetch(url, { cache: "no-store" })
+      .then(async (res) => {
+        const elapsed = Date.now() - startedAt;
+        if (!res.ok) {
+          const body = await res.text().catch(() => "");
+          throw new Error(`HTTP ${res.status} after ${elapsed}ms: ${body.slice(0, 200)}`);
+        }
+        return res.json() as Promise<{ emails: { campaignId: string; leadFirstName: string; leadLastName: string; subject: string; bodyText: string; sentAt: string; workflow: string }[] }>;
       })
-      .then((data: { emails: { campaignId: string; leadFirstName: string; leadLastName: string; subject: string; bodyText: string; sentAt: string; workflow: string }[] }) => {
+      .then((data) => {
         if (aborted) return;
         const list = data.emails ?? [];
         setEmailsState({
@@ -218,6 +290,8 @@ export function LeadsTable({ rows, orgId, brandId, featureSlug }: LeadsTableProp
       })
       .catch((err) => {
         if (aborted) return;
+        // eslint-disable-next-line no-console
+        console.error(`[report-leads] emails fetch failed for brand ${brandId}:`, err);
         setEmailsState({ status: "error", emails: [], byKey: new Map(), error: err instanceof Error ? err.message : String(err) });
       });
     return () => { aborted = true; };
@@ -239,7 +313,7 @@ export function LeadsTable({ rows, orgId, brandId, featureSlug }: LeadsTableProp
         { label: "Country", value: r.country },
         { label: "LinkedIn", value: r.linkedinUrl ? <a href={r.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:underline">{r.linkedinUrl}</a> : null, block: true },
         { label: "Email delivery state", value: r.emailStatus },
-        { label: "Campaign", value: r.campaign },
+        { label: "Workflow", value: r.workflow || null },
         { label: "Milestones reached", value: <StatusTimeline row={r} />, block: true },
         {
           label: emailsForLead.length > 1 ? `Emails sent (${emailsForLead.length})` : "Email sent",
@@ -258,8 +332,9 @@ export function LeadsTable({ rows, orgId, brandId, featureSlug }: LeadsTableProp
       defaultSortKey="status"
       defaultSortDir="asc"
       searchPlaceholder="Search name, email, company…"
-      searchValue={(r) => `${r.firstName} ${r.lastName} ${r.email} ${r.title} ${r.company} ${r.industry} ${r.country} ${r.campaign}`}
-      filter={{ label: "Status", value: (r) => r.status }}
+      searchValue={(r) => `${r.firstName} ${r.lastName} ${r.email} ${r.title} ${r.company} ${r.industry} ${r.country} ${r.workflow}`}
+      tabs={TABS}
+      fixedLayout
       drawerTitle={(r) => `${r.firstName} ${r.lastName}`.trim() || r.email}
       drawerSubtitle={(r) => r.email}
       drawerEntries={drawerEntries}

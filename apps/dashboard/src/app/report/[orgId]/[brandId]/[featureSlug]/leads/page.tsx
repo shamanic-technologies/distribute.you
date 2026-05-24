@@ -4,7 +4,7 @@ import { CsvDownloadButton, GoogleSheetsButton } from "@/components/report/csv-b
 import { toCsv, type CsvColumn } from "@/components/report/csv";
 import { TableSectionSkeleton } from "@/components/report/skeletons";
 import { LeadsTable, type LeadRow } from "@/components/report/leads-table";
-import { fetchLeads, fetchCampaigns, REPORT_FETCH_LIMIT } from "@/lib/report-api";
+import { fetchLeads, fetchWorkflows, REPORT_FETCH_LIMIT } from "@/lib/report-api";
 import { getLeadConsolidatedStatus, type Lead } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
@@ -14,9 +14,9 @@ interface PageProps {
   params: Promise<{ orgId: string; brandId: string; featureSlug: string }>;
 }
 
-const LEADS_COLUMNS = ["Name", "Email", "Title", "Company", "Industry", "Country", "Status", "Campaign"];
+const LEADS_COLUMNS = ["Name", "Email", "Title", "Company", "Industry", "Country", "Status", "Workflow"];
 
-function toRow(lead: Lead, campaignName: string): LeadRow {
+function toRow(lead: Lead, workflowName: string): LeadRow {
   const org = lead.lead?.organization;
   const job = lead.lead?.employmentHistory?.find((e) => e.current);
   return {
@@ -31,8 +31,9 @@ function toRow(lead: Lead, campaignName: string): LeadRow {
     city: lead.lead?.city ?? "",
     linkedinUrl: lead.lead?.linkedinUrl ?? null,
     status: getLeadConsolidatedStatus(lead),
+    intakeStatus: lead.status,
     emailStatus: lead.emailStatus ?? "",
-    campaign: campaignName,
+    workflow: workflowName,
     campaignId: lead.campaignId,
     contacted: lead.contacted,
     sent: lead.sent,
@@ -66,16 +67,20 @@ export default async function LeadsPage({ params }: PageProps) {
 }
 
 async function LeadsSection({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
-  // ONLY leads + campaigns server-side. Emails are fetched lazily by the
+  // ONLY leads + workflows server-side. Emails are fetched lazily by the
   // drawer when the user clicks a row — avoids the slow /v1/emails call
-  // from blocking the page render.
-  const [leads, campaigns] = await Promise.all([
+  // from blocking the page render. Workflows give us the human-readable
+  // dynasty name for the Workflow column.
+  const [leads, workflows] = await Promise.all([
     fetchLeads(orgId, brandId, featureSlug),
-    fetchCampaigns(orgId, brandId, featureSlug),
+    fetchWorkflows(orgId, featureSlug).catch((err) => {
+      console.error(`[report-leads] fetchWorkflows failed (workflow names will show as —):`, err);
+      return [];
+    }),
   ]);
 
-  const campaignNameById = new Map(campaigns.map((c) => [c.id, c.name]));
-  const rows = leads.map((l) => toRow(l, campaignNameById.get(l.campaignId) ?? ""));
+  const workflowNameBySlug = new Map(workflows.map((w) => [w.workflowSlug, w.workflowDynastyName]));
+  const rows = leads.map((l) => toRow(l, l.workflowSlug ? (workflowNameBySlug.get(l.workflowSlug) ?? "") : ""));
 
   const yesNo = (v: boolean) => (v ? "yes" : "no");
 
@@ -90,7 +95,7 @@ async function LeadsSection({ orgId, brandId, featureSlug }: { orgId: string; br
     { label: "Country", value: (r) => r.country },
     { label: "Current status", value: (r) => r.status },
     { label: "Email delivery state", value: (r) => r.emailStatus },
-    { label: "Campaign", value: (r) => r.campaign },
+    { label: "Workflow", value: (r) => r.workflow },
     { label: "Contacted", value: (r) => yesNo(r.contacted) },
     { label: "Sent", value: (r) => yesNo(r.sent) },
     { label: "Delivered", value: (r) => yesNo(r.delivered) },
