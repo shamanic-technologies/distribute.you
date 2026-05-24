@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
-import { PROD_URLS } from "@/lib/env-urls";
+import { PROD_URLS, resolveUrls } from "@/lib/env-urls";
 import {
   fetchBenchmarkFeatures,
   fetchFeatureBenchmark,
@@ -16,6 +16,11 @@ import {
   formatCostDollars,
   formatPercent,
 } from "@/lib/performance/fetch-leaderboard";
+import { getBenchmarkContent } from "@/data/benchmarks-content";
+import { ExternalStudiesSection } from "@/components/benchmarks/external-studies-section";
+import { BenchmarkCTA } from "@/components/benchmarks/benchmark-cta";
+import { WhyMattersSection } from "@/components/benchmarks/why-matters-section";
+import { ValueRecap } from "@/components/benchmarks/value-recap";
 
 export const revalidate = 300;
 export const dynamic = "force-dynamic";
@@ -100,10 +105,12 @@ export default async function FeatureBenchmarkPage({ params }: PageProps) {
   const { featureSlug } = await params;
   const headersList = await headers();
   const host = headersList.get("host") || "";
+  const signUpUrl = resolveUrls(host).signUp;
 
   const data = await fetchFeatureBenchmark(featureSlug, host);
   if (!data) notFound();
 
+  const content = getBenchmarkContent(featureSlug);
   const { feature, brands, workflows, aggregate, updatedAt } = data;
   const indexUrl = `${PROD_URLS.landing}/benchmarks`;
   const pageUrl = `${indexUrl}/${feature.slug}`;
@@ -166,6 +173,7 @@ export default async function FeatureBenchmarkPage({ params }: PageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(datasetJsonLd) }}
       />
 
+      {/* Hero */}
       <section className="py-12 md:py-16 px-4 gradient-bg">
         <div className="max-w-6xl mx-auto">
           <nav className="text-sm text-gray-600 mb-4 flex items-center gap-2">
@@ -206,8 +214,20 @@ export default async function FeatureBenchmarkPage({ params }: PageProps) {
         </div>
       </section>
 
-      <section className="py-10 md:py-12 px-4 bg-white border-b border-gray-100">
+      {/* Why this feature matters — feature-specific narrative */}
+      {content && <WhyMattersSection data={content.whyMatters} />}
+
+      {/* External industry studies — sourced from established providers */}
+      {content && (
+        <ExternalStudiesSection studies={content.studies} featureName={feature.name} />
+      )}
+
+      {/* Platform averages — our open dataset */}
+      <section className="py-10 md:py-12 px-4 bg-white">
         <div className="max-w-6xl mx-auto">
+          <p className="text-xs uppercase tracking-wider text-gray-400 font-medium mb-2">
+            From the distribute open dataset
+          </p>
           <h2 className="font-display text-xl md:text-2xl font-bold text-gray-900 mb-2">
             Platform averages
           </h2>
@@ -241,6 +261,13 @@ export default async function FeatureBenchmarkPage({ params }: PageProps) {
         </div>
       </section>
 
+      {/* Value recap #1 → CTA primary, right before brand leaderboard */}
+      {content && content.valueRecaps[0] && (
+        <ValueRecap data={content.valueRecaps[0]} eyebrow="Why distribute" />
+      )}
+      {content && <BenchmarkCTA copy={content.ctaPrimary} signUpUrl={signUpUrl} variant="primary" />}
+
+      {/* Brand leaderboard */}
       <section className="py-10 md:py-12 px-4 bg-white">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-end justify-between mb-4">
@@ -271,6 +298,12 @@ export default async function FeatureBenchmarkPage({ params }: PageProps) {
         </div>
       </section>
 
+      {/* Value recap #2 — interleaved between leaderboards */}
+      {content && content.valueRecaps[1] && (
+        <ValueRecap data={content.valueRecaps[1]} eyebrow="How it works" />
+      )}
+
+      {/* Workflow leaderboard */}
       <section className="py-10 md:py-12 px-4 bg-gray-50">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-end justify-between mb-4">
@@ -303,6 +336,17 @@ export default async function FeatureBenchmarkPage({ params }: PageProps) {
         </div>
       </section>
 
+      {/* Value recap #3 — last reminder before closing CTA */}
+      {content && content.valueRecaps[2] && (
+        <ValueRecap data={content.valueRecaps[2]} eyebrow="What you get" />
+      )}
+
+      {/* Closing CTA */}
+      {content && (
+        <BenchmarkCTA copy={content.ctaClosing} signUpUrl={signUpUrl} variant="closing" />
+      )}
+
+      {/* See another feature */}
       <section className="py-16 px-4 bg-white border-t border-gray-100">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="font-display text-2xl font-bold mb-4 text-gray-800">
