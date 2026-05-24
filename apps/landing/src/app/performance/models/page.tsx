@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { PROD_URLS } from "@/lib/env-urls";
 import { fetchLeaderboard } from "@/lib/performance/fetch-leaderboard";
 import { WorkflowLeaderboardFiltered } from "@/components/performance/workflow-leaderboard-filtered";
+import { Section } from "@/components/section";
 
 export const revalidate = 300;
 
@@ -78,31 +79,29 @@ export default async function WorkflowsPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(datasetJsonLd) }}
       />
-      <section className="py-12 px-4">
-        <div className="max-w-6xl mx-auto">
-          <h1 className="font-display text-3xl font-bold mb-2 text-gray-800">
-            Workflow Leaderboard
-          </h1>
-          <p className="text-gray-600 mb-8">
-            Compare outreach workflows by real campaign performance.
-            Which workflow delivers the best open rates, visits, and replies?
-          </p>
+      <Section variant="wide" outerClassName="py-12">
+        <h1 className="font-display text-3xl font-bold mb-2 text-gray-800">
+          Workflow Leaderboard
+        </h1>
+        <p className="text-gray-600 mb-8">
+          Compare outreach workflows by real campaign performance.
+          Which workflow delivers the best open rates, visits, and replies?
+        </p>
 
-          {workflows.length > 0 ? (
-            <>
-              <WorkflowLeaderboardFiltered workflows={workflows} />
-              <p className="text-xs text-gray-400 mt-4 text-center">
-                Updated {data?.updatedAt ? new Date(data.updatedAt).toLocaleString() : "hourly"}.
-                All data from real campaigns.
-              </p>
-            </>
-          ) : (
-            <div className="text-center py-16">
-              <p className="text-gray-500">No workflow data yet. Check back soon.</p>
-            </div>
-          )}
-        </div>
-      </section>
+        {workflows.length > 0 ? (
+          <>
+            <WorkflowLeaderboardFiltered workflows={workflows} />
+            <p className="text-xs text-gray-400 mt-4 text-center">
+              Updated {data?.updatedAt ? new Date(data.updatedAt).toLocaleString() : "hourly"}.
+              All data from real campaigns.
+            </p>
+          </>
+        ) : (
+          <div className="text-center py-16">
+            <p className="text-gray-500">No workflow data yet. Check back soon.</p>
+          </div>
+        )}
+      </Section>
     </main>
   );
 }

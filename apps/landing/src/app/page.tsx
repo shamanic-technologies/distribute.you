@@ -104,8 +104,8 @@ export default function Home() {
       <Navbar />
 
       {/* Hero */}
-      <section className="pt-20 pb-8 px-4">
-        <div className="max-w-4xl mx-auto text-center">
+      <section className="pt-20 pb-8">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="inline-flex items-center gap-2 bg-gray-50 border border-gray-200 text-gray-600 px-4 py-1.5 rounded-full text-sm mb-8">
             <span className="w-1.5 h-1.5 rounded-full bg-brand-400" />
             The Stripe of Distribution
@@ -130,15 +130,15 @@ export default function Home() {
       </section>
 
       {/* Portfolio Dashboard — money shot */}
-      <section className="py-12 px-4">
-        <div className="max-w-5xl mx-auto">
+      <section className="py-12">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <PortfolioDashboard />
         </div>
       </section>
 
       {/* Tools the builder lives in */}
-      <section className="py-16 px-4">
-        <div className="max-w-6xl mx-auto">
+      <section className="py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
             <p className="text-xs uppercase tracking-wider text-gray-400 font-medium mb-2">
               You live here. We meet you here.
@@ -152,8 +152,8 @@ export default function Home() {
       </section>
 
       {/* Cold email pain — sourced industry stats (AI-search citation surface) */}
-      <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
-        <div className="max-w-6xl mx-auto">
+      <section className="py-20 bg-gray-50 border-y border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <p className="text-xs uppercase tracking-wider text-gray-400 font-medium mb-2">
               The state of cold outbound in 2025
@@ -170,8 +170,8 @@ export default function Home() {
       </section>
 
       {/* Stay solo. Go big. */}
-      <section className="py-20 px-4">
-        <div className="max-w-3xl mx-auto text-center">
+      <section className="py-20">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="font-display text-3xl md:text-4xl font-bold mb-6 text-gray-900">
             Stay solo. <span className="gradient-text-subtle">Go big.</span>
           </h2>
@@ -189,8 +189,8 @@ export default function Home() {
       </section>
 
       {/* What you don't have to do */}
-      <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
-        <div className="max-w-4xl mx-auto">
+      <section className="py-20 bg-gray-50 border-y border-gray-100">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
               What you don&apos;t have to do
@@ -234,8 +234,8 @@ export default function Home() {
       </section>
 
       {/* Channels grid */}
-      <section className="py-20 px-4">
-        <div className="max-w-5xl mx-auto">
+      <section className="py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
               {liveCount} channels live. More every month.
@@ -289,8 +289,8 @@ export default function Home() {
       </section>
 
       {/* Workflow recipe */}
-      <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
-        <div className="max-w-4xl mx-auto">
+      <section className="py-20 bg-gray-50 border-y border-gray-100">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
             <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
               Workflows are priced recipes
@@ -308,8 +308,8 @@ export default function Home() {
       </section>
 
       {/* Performance Leaderboard — Suspense streams in, hero/static above paint instantly */}
-      <section className="py-20 px-4">
-        <div className="max-w-4xl mx-auto">
+      <section className="py-20">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
             <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
               Cost per positive reply, not vanity metrics
@@ -326,8 +326,8 @@ export default function Home() {
       </section>
 
       {/* What builders we look up to actually said — public quotes, AI-search citation surface */}
-      <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
-        <div className="max-w-6xl mx-auto">
+      <section className="py-20 bg-gray-50 border-y border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <p className="text-xs uppercase tracking-wider text-gray-400 font-medium mb-2">
               Public quotes — not testimonials
@@ -345,8 +345,8 @@ export default function Home() {
       </section>
 
       {/* Gmail inbox — the email you want to read */}
-      <section className="py-20 px-4">
-        <div className="max-w-3xl mx-auto text-center mb-12">
+      <section className="py-20">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center mb-12">
           <h2 className="font-display text-3xl md:text-4xl font-bold mb-4 text-gray-900">
             The email you want to read
           </h2>
@@ -359,8 +359,8 @@ export default function Home() {
       </section>
 
       {/* Pricing — single cloud plan */}
-      <section className="py-20 px-4 bg-gray-50 border-y border-gray-100">
-        <div className="max-w-5xl mx-auto">
+      <section className="py-20 bg-gray-50 border-y border-gray-100">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
               Pay only for what you use.
@@ -374,8 +374,8 @@ export default function Home() {
       </section>
 
       {/* Works from your stack — demoted Claude Code / MCP mention */}
-      <section className="py-16 px-4">
-        <div className="max-w-4xl mx-auto text-center">
+      <section className="py-16">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="font-display text-2xl md:text-3xl font-bold text-gray-900 mb-3">
             Works from your stack
           </h2>
@@ -414,7 +414,7 @@ export default function Home() {
 
       {/* How it works */}
       <section id="how-it-works" className="py-20 px-4 bg-gray-50 border-y border-gray-100">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="font-display text-3xl md:text-4xl font-bold text-center mb-14 text-gray-900">
             Three steps. That&apos;s it.
           </h2>
@@ -438,8 +438,8 @@ export default function Home() {
       </section>
 
       {/* CTA */}
-      <section className="py-20 px-4 bg-gray-900">
-        <div className="max-w-xl mx-auto text-center">
+      <section className="py-20 bg-gray-900">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="font-display text-3xl font-bold mb-3 text-white">
             Start your portfolio
           </h2>

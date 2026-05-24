@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { PROD_URLS } from "@/lib/env-urls";
 import { fetchLeaderboard } from "@/lib/performance/fetch-leaderboard";
 import { BrandLeaderboard } from "@/components/performance/leaderboard-table";
+import { Section } from "@/components/section";
 
 export const revalidate = 300;
 
@@ -77,33 +78,31 @@ export default async function BrandsPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(datasetJsonLd) }}
       />
-      <section className="py-12 px-4">
-        <div className="max-w-6xl mx-auto">
-          <h1 className="font-display text-3xl font-bold mb-2 text-gray-800">
-            Brand Leaderboard
-          </h1>
-          <p className="text-gray-600 mb-8">
-            Performance data for every brand running campaigns through distribute.
-            Click column headers to sort.
-          </p>
+      <Section variant="wide" outerClassName="py-12">
+        <h1 className="font-display text-3xl font-bold mb-2 text-gray-800">
+          Brand Leaderboard
+        </h1>
+        <p className="text-gray-600 mb-8">
+          Performance data for every brand running campaigns through distribute.
+          Click column headers to sort.
+        </p>
 
-          {brands.length > 0 ? (
-            <>
-              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-                <BrandLeaderboard brands={brands} />
-              </div>
-              <p className="text-xs text-gray-400 mt-4 text-center">
-                Updated {data?.updatedAt ? new Date(data.updatedAt).toLocaleString() : "hourly"}.
-                Brands are opted-in by default.
-              </p>
-            </>
-          ) : (
-            <div className="text-center py-16">
-              <p className="text-gray-500">No campaign data yet. Check back soon.</p>
+        {brands.length > 0 ? (
+          <>
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+              <BrandLeaderboard brands={brands} />
             </div>
-          )}
-        </div>
-      </section>
+            <p className="text-xs text-gray-400 mt-4 text-center">
+              Updated {data?.updatedAt ? new Date(data.updatedAt).toLocaleString() : "hourly"}.
+              Brands are opted-in by default.
+            </p>
+          </>
+        ) : (
+          <div className="text-center py-16">
+            <p className="text-gray-500">No campaign data yet. Check back soon.</p>
+          </div>
+        )}
+      </Section>
     </main>
   );
 }

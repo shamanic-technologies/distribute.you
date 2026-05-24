@@ -3,6 +3,7 @@ import Image from "next/image";
 import type { Metadata } from "next";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
+import { Section } from "@/components/section";
 import { listArticles, type BlogArticle } from "@/lib/blog/db";
 
 export const revalidate = 60;
@@ -98,37 +99,33 @@ export default async function BlogIndexPage() {
     <main className="min-h-screen bg-white">
       <Navbar />
 
-      <section className="pt-20 pb-12 px-4">
-        <div className="max-w-3xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-gray-50 border border-gray-200 text-gray-600 px-4 py-1.5 rounded-full text-sm mb-6">
-            <span className="w-1.5 h-1.5 rounded-full bg-brand-400" />
-            distribute blog
-          </div>
-          <h1 className="font-display text-4xl md:text-5xl font-bold mb-4 text-gray-900 tracking-tight">
-            Stories from the solo path
-          </h1>
-          <p className="text-base md:text-lg text-gray-500 max-w-xl mx-auto">
-            Playbooks, benchmarks, and field notes on running distribution for a
-            portfolio of products — without a marketing team.
-          </p>
+      <Section variant="prose" outerClassName="pt-20 pb-12" className="text-center">
+        <div className="inline-flex items-center gap-2 bg-gray-50 border border-gray-200 text-gray-600 px-4 py-1.5 rounded-full text-sm mb-6">
+          <span className="w-1.5 h-1.5 rounded-full bg-brand-400" />
+          distribute blog
         </div>
-      </section>
+        <h1 className="font-display text-4xl md:text-5xl font-bold mb-4 text-gray-900 tracking-tight">
+          Stories from the solo path
+        </h1>
+        <p className="text-base md:text-lg text-gray-500 max-w-xl mx-auto">
+          Playbooks, benchmarks, and field notes on running distribution for a
+          portfolio of products — without a marketing team.
+        </p>
+      </Section>
 
-      <section className="px-4 pb-24">
-        <div className="max-w-6xl mx-auto">
-          {articles.length === 0 ? (
-            <div className="text-center py-16 text-gray-400 text-sm">
-              No articles yet. Come back soon.
-            </div>
-          ) : (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {articles.map((a) => (
-                <ArticleCard key={a.id} article={a} />
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
+      <Section variant="wide" outerClassName="pb-24">
+        {articles.length === 0 ? (
+          <div className="text-center py-16 text-gray-400 text-sm">
+            No articles yet. Come back soon.
+          </div>
+        ) : (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {articles.map((a) => (
+              <ArticleCard key={a.id} article={a} />
+            ))}
+          </div>
+        )}
+      </Section>
 
       <Footer />
     </main>

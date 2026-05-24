@@ -97,7 +97,7 @@ export function Footer({ disclaimer }: FooterProps) {
   const year = new Date().getFullYear();
   return (
     <footer className="bg-gray-950 text-gray-400">
-      <div className="max-w-6xl mx-auto px-4 pt-16 pb-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8">
         {/* Top brand block */}
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-8 mb-12">
           <div className="max-w-md">

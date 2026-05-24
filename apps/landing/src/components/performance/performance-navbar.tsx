@@ -9,8 +9,8 @@ export function PerformanceNavbar({ host }: { host: string }) {
   const urls = useMemo(() => resolveUrls(host), [host]);
 
   return (
-    <nav className="bg-white border-b border-gray-200 px-4 py-3">
-      <div className="max-w-6xl mx-auto flex items-center justify-between">
+    <nav className="bg-white border-b border-gray-200 py-3">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         <div className="flex items-center gap-6">
           <Link href="/performance" className="flex items-center gap-2 font-display font-bold text-xl text-gray-800">
             <Image src="/logo-head.jpg" alt="distribute" width={28} height={28} className="rounded-lg" />

@@ -2,6 +2,7 @@ import { URLS } from "@distribute/content";
 import { fetchLeaderboard } from "@/lib/performance/fetch-leaderboard";
 import { FeatureGroup } from "@/components/performance/feature-group";
 import { PROD_URLS } from "@/lib/env-urls";
+import { Section } from "@/components/section";
 
 export const revalidate = 300;
 
@@ -12,21 +13,19 @@ export default async function PerformancePage() {
 
   return (
     <main className="min-h-screen">
-      {/* Hero — MUST stay in sync with loading.tsx so the streaming swap is seamless. */}
-      <section className="py-12 md:py-16 px-4 gradient-bg">
-        <div className="max-w-6xl mx-auto text-center">
-          <div className="inline-block bg-emerald-100 text-emerald-700 px-4 py-1.5 rounded-full text-sm font-medium mb-6 border border-emerald-200">
-            Cost per positive reply
-          </div>
-          <h1 className="font-display text-4xl md:text-5xl font-bold mb-4 text-gray-800">
-            Workflows ranked by <span className="gradient-text">real cost per positive reply</span>
-          </h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Every workflow ranked by cost per positive reply, not raw reply rate.
-            Every campaign contributes. No cherry-picking, no hidden numbers.
-          </p>
+      {/* Hero */}
+      <Section variant="wide" outerClassName="py-12 md:py-16 gradient-bg" className="text-center">
+        <div className="inline-block bg-emerald-100 text-emerald-700 px-4 py-1.5 rounded-full text-sm font-medium mb-6 border border-emerald-200">
+          Cost per positive reply
         </div>
-      </section>
+        <h1 className="font-display text-4xl md:text-5xl font-bold mb-4 text-gray-800">
+          Workflows ranked by <span className="gradient-text">real cost per positive reply</span>
+        </h1>
+        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          Every workflow ranked by cost per positive reply, not raw reply rate.
+          Every campaign contributes. No cherry-picking, no hidden numbers.
+        </p>
+      </Section>
 
       {/* Feature sections */}
       {sections.length > 0 ? (
@@ -50,32 +49,30 @@ export default async function PerformancePage() {
       )}
 
       {/* Why transparency */}
-      <section className="py-16 px-4 bg-gray-50">
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 className="font-display text-2xl font-bold mb-4 text-gray-800">
-            Why We Publish Everything
-          </h2>
-          <p className="text-gray-600 mb-6">
-            Most outreach platforms hide their real numbers. We don&apos;t.
-            Every campaign that runs through distribute contributes to these public leaderboards.
-            This means you can make informed decisions based on real data, not marketing claims.
-          </p>
-          <div className="flex flex-wrap gap-4 justify-center text-sm">
-            <a
-              href={urls.signUp}
-              className="px-6 py-3 bg-brand-500 text-white rounded-full hover:bg-brand-600 transition font-medium"
-            >
-              See All Brands
-            </a>
-            <a
-              href={urls.docs}
-              className="px-6 py-3 bg-white border border-gray-200 text-gray-700 rounded-full hover:border-brand-300 transition font-medium"
-            >
-              Compare Workflows
-            </a>
-          </div>
+      <Section variant="prose" outerClassName="py-16 bg-gray-50" className="text-center">
+        <h2 className="font-display text-2xl font-bold mb-4 text-gray-800">
+          Why We Publish Everything
+        </h2>
+        <p className="text-gray-600 mb-6">
+          Most outreach platforms hide their real numbers. We don&apos;t.
+          Every campaign that runs through distribute contributes to these public leaderboards.
+          This means you can make informed decisions based on real data, not marketing claims.
+        </p>
+        <div className="flex flex-wrap gap-4 justify-center text-sm">
+          <a
+            href={urls.signUp}
+            className="px-6 py-3 bg-brand-500 text-white rounded-full hover:bg-brand-600 transition font-medium"
+          >
+            See All Brands
+          </a>
+          <a
+            href={urls.docs}
+            className="px-6 py-3 bg-white border border-gray-200 text-gray-700 rounded-full hover:border-brand-300 transition font-medium"
+          >
+            Compare Workflows
+          </a>
         </div>
-      </section>
+      </Section>
     </main>
   );
 }
