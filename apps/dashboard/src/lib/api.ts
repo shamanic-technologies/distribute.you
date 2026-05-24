@@ -1130,6 +1130,7 @@ export interface EmailSequenceStep {
 
 export interface Email {
   id: string;
+  campaignId: string;
   subject: string;
   bodyHtml: string | null;
   bodyText: string | null;
