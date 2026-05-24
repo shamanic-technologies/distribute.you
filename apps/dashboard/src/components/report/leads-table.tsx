@@ -71,7 +71,7 @@ const INTAKE_STATUSES: { key: LeadRow["intakeStatus"]; label: string }[] = [
   { key: "buffered", label: "Buffered" },
   { key: "claimed", label: "Claimed" },
   { key: "skipped", label: "Skipped" },
-  { key: "served", label: "Processing" },
+  { key: "served", label: "Served" },
 ];
 
 const columns: ReportTableColumn<LeadRow>[] = [
@@ -138,7 +138,7 @@ const TABS: TabSpec<LeadRow>[] = [
   { key: "bounced", label: "Bounced", match: (r) => r.bounced },
   { key: "unsubscribed", label: "Unsubscribed", match: (r) => r.unsubscribed },
   { key: "contacted", label: "Contacted", match: (r) => r.contacted },
-  { key: "served", label: "Processing", match: (r) => r.intakeStatus === "served" },
+  { key: "served", label: "Served", match: (r) => r.intakeStatus === "served" },
   { key: "skipped", label: "Skipped", match: (r) => r.intakeStatus === "skipped" },
   { key: "claimed", label: "Claimed", match: (r) => r.intakeStatus === "claimed" },
   { key: "buffered", label: "Buffered", match: (r) => r.intakeStatus === "buffered" },
