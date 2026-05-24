@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { DataDrawer, type DrawerEntry } from "./data-drawer";
 
 export interface ReportTableColumn<T> {
@@ -31,6 +31,9 @@ interface ReportTableProps<T> {
   drawerTitle?: (row: T) => string;
   drawerSubtitle?: (row: T) => string;
   drawerEntries?: (row: T) => DrawerEntry[];
+  /** Fires whenever the row selection changes (drawer open / close).
+   *  Use this to trigger lazy fetches keyed off the selected row. */
+  onRowSelect?: (row: T | null) => void;
   emptyMessage?: string;
 }
 
@@ -49,6 +52,7 @@ export function ReportTable<T>({
   drawerTitle,
   drawerSubtitle,
   drawerEntries,
+  onRowSelect,
   emptyMessage = "No rows",
 }: ReportTableProps<T>) {
   const [query, setQuery] = useState("");
@@ -57,6 +61,10 @@ export function ReportTable<T>({
   const [sortDir, setSortDir] = useState<SortDir>(defaultSortDir);
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<T | null>(null);
+
+  useEffect(() => {
+    if (onRowSelect) onRowSelect(selected);
+  }, [selected, onRowSelect]);
 
   const filterOptions = useMemo<string[]>(() => {
     if (!filter) return [];

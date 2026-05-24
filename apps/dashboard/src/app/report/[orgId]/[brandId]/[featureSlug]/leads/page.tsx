@@ -3,9 +3,9 @@ import { SectionCard } from "@/components/report/section-card";
 import { CsvDownloadButton, GoogleSheetsButton } from "@/components/report/csv-button";
 import { toCsv, type CsvColumn } from "@/components/report/csv";
 import { TableSectionSkeleton } from "@/components/report/skeletons";
-import { LeadsTable, type LeadRow, type LeadEmailSummary } from "@/components/report/leads-table";
-import { fetchLeads, fetchCampaigns, fetchEmails, fetchWorkflows, REPORT_FETCH_LIMIT } from "@/lib/report-api";
-import { getLeadConsolidatedStatus, type Lead, type Email } from "@/lib/api";
+import { LeadsTable, type LeadRow } from "@/components/report/leads-table";
+import { fetchLeads, fetchCampaigns, REPORT_FETCH_LIMIT } from "@/lib/report-api";
+import { getLeadConsolidatedStatus, type Lead } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -16,11 +16,7 @@ interface PageProps {
 
 const LEADS_COLUMNS = ["Name", "Email", "Title", "Company", "Industry", "Country", "Status", "Campaign"];
 
-function leadKey(campaignId: string, firstName: string, lastName: string): string {
-  return `${campaignId}::${firstName.toLowerCase()}::${lastName.toLowerCase()}`;
-}
-
-function toRow(lead: Lead, campaignName: string, emails: LeadEmailSummary[]): LeadRow {
+function toRow(lead: Lead, campaignName: string): LeadRow {
   const org = lead.lead?.organization;
   const job = lead.lead?.employmentHistory?.find((e) => e.current);
   return {
@@ -37,7 +33,7 @@ function toRow(lead: Lead, campaignName: string, emails: LeadEmailSummary[]): Le
     status: getLeadConsolidatedStatus(lead),
     emailStatus: lead.emailStatus ?? "",
     campaign: campaignName,
-    emails,
+    campaignId: lead.campaignId,
     contacted: lead.contacted,
     sent: lead.sent,
     delivered: lead.delivered,
@@ -70,55 +66,16 @@ export default async function LeadsPage({ params }: PageProps) {
 }
 
 async function LeadsSection({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
-  // Leads + campaigns are required (page can't render without them).
-  // Emails + workflows are optional — they only enrich the right drawer
-  // with the actual email body sent to each lead. If the upstream emails
-  // endpoint times out, render the page without drawer emails rather than
-  // letting one slow fetch crash the whole leads view.
-  const [leads, campaigns, emailsSettled, workflowsSettled] = await Promise.all([
+  // ONLY leads + campaigns server-side. Emails are fetched lazily by the
+  // drawer when the user clicks a row — avoids the slow /v1/emails call
+  // from blocking the page render.
+  const [leads, campaigns] = await Promise.all([
     fetchLeads(orgId, brandId, featureSlug),
     fetchCampaigns(orgId, brandId, featureSlug),
-    fetchEmails(orgId, brandId).catch((err) => {
-      console.warn(`[dashboard-report] leads page degraded: emails fetch failed`, err);
-      return [];
-    }),
-    fetchWorkflows(orgId, featureSlug).catch((err) => {
-      console.warn(`[dashboard-report] leads page degraded: workflows fetch failed`, err);
-      return [];
-    }),
   ]);
-  const emails = emailsSettled;
-  const workflows = workflowsSettled;
 
   const campaignNameById = new Map(campaigns.map((c) => [c.id, c.name]));
-  const workflowNameBySlug = new Map(workflows.map((w) => [w.workflowSlug, w.workflowDynastyName]));
-
-  // Index emails by (campaignId, firstName, lastName). The /v1/emails payload
-  // doesn't carry the lead's email address, so we match on the campaign +
-  // recipient name tuple, which is the closest stable join available today.
-  const emailsByKey = new Map<string, LeadEmailSummary[]>();
-  for (const e of emails) {
-    const key = leadKey(e.campaignId, e.leadFirstName, e.leadLastName);
-    const taskName = e.generationRun?.taskName ?? "";
-    const summary: LeadEmailSummary = {
-      subject: e.subject,
-      bodyText: e.bodyText ?? "",
-      sentAt: e.createdAt,
-      workflow: workflowNameBySlug.get(taskName) ?? taskName ?? "",
-    };
-    const existing = emailsByKey.get(key);
-    if (existing) existing.push(summary);
-    else emailsByKey.set(key, [summary]);
-  }
-
-  const rows = leads.map((l) => {
-    const fn = l.lead?.firstName ?? "";
-    const ln = l.lead?.lastName ?? "";
-    const matched = emailsByKey.get(leadKey(l.campaignId, fn, ln)) ?? [];
-    // Newest first
-    matched.sort((a, b) => (a.sentAt < b.sentAt ? 1 : -1));
-    return toRow(l, campaignNameById.get(l.campaignId) ?? "", matched);
-  });
+  const rows = leads.map((l) => toRow(l, campaignNameById.get(l.campaignId) ?? ""));
 
   const yesNo = (v: boolean) => (v ? "yes" : "no");
 
@@ -134,8 +91,6 @@ async function LeadsSection({ orgId, brandId, featureSlug }: { orgId: string; br
     { label: "Current status", value: (r) => r.status },
     { label: "Email delivery state", value: (r) => r.emailStatus },
     { label: "Campaign", value: (r) => r.campaign },
-    // Per-milestone columns in chronological order. yes/no booleans so the
-    // CSV is greppable and the client can pivot in a spreadsheet.
     { label: "Contacted", value: (r) => yesNo(r.contacted) },
     { label: "Sent", value: (r) => yesNo(r.sent) },
     { label: "Delivered", value: (r) => yesNo(r.delivered) },
@@ -145,7 +100,6 @@ async function LeadsSection({ orgId, brandId, featureSlug }: { orgId: string; br
     { label: "Reply classification", value: (r) => r.replyClassification ?? "" },
     { label: "Bounced", value: (r) => yesNo(r.bounced) },
     { label: "Unsubscribed", value: (r) => yesNo(r.unsubscribed) },
-    { label: "Emails sent count", value: (r) => r.emails.length },
   ];
 
   const truncated = rows.length >= REPORT_FETCH_LIMIT;
@@ -166,7 +120,7 @@ async function LeadsSection({ orgId, brandId, featureSlug }: { orgId: string; br
         </>
       }
     >
-      <LeadsTable rows={rows} />
+      <LeadsTable rows={rows} orgId={orgId} brandId={brandId} featureSlug={featureSlug} />
     </SectionCard>
   );
 }
