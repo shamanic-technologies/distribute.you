@@ -76,6 +76,7 @@ function toRow(
     unsubscribed: lead.unsubscribed,
     replied: lead.replied,
     replyClassification: lead.replyClassification,
+    lastDeliveredAt: lead.lastDeliveredAt,
     emails: emailsByLead.get(leadKey(lead.campaignId, firstName, lastName)) ?? [],
   };
 }

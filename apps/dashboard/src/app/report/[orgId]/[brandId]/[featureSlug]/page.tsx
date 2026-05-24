@@ -43,7 +43,6 @@ export default async function OverviewPage({ params }: PageProps) {
       >
         <ul className="px-5 py-4 space-y-2 text-sm text-gray-700">
           <li><strong>Leads</strong> — every prospect targeted, with company, email and current status.</li>
-          <li><strong>Emails</strong> — every email generated, including subject and body.</li>
           <li><strong>Workflows</strong> — pipelines used to generate emails, with prompts and per-workflow CAC.</li>
         </ul>
       </SectionCard>
