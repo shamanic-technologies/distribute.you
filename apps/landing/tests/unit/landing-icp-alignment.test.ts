@@ -5,6 +5,7 @@ import * as path from "path";
 const landingPagePath = path.resolve(__dirname, "../../src/app/page.tsx");
 const pricingPagePath = path.resolve(__dirname, "../../src/app/pricing/page.tsx");
 const performancePagePath = path.resolve(__dirname, "../../src/app/performance/page.tsx");
+const investorsPagePath = path.resolve(__dirname, "../../src/app/investors/page.tsx");
 const featuresPath = path.resolve(__dirname, "../../../../shared/content/src/features.ts");
 const portfolioDashboardPath = path.resolve(
   __dirname,
@@ -14,6 +15,11 @@ const gmailInboxPath = path.resolve(__dirname, "../../src/components/gmail-inbox
 const freeVsCloudPath = path.resolve(__dirname, "../../src/components/free-vs-cloud.tsx");
 const workflowRecipePath = path.resolve(__dirname, "../../src/components/workflow-recipe.tsx");
 const toolsMarqueePath = path.resolve(__dirname, "../../src/components/tools-marquee.tsx");
+const sourcedStatsDataPath = path.resolve(__dirname, "../../src/data/sourced-stats.ts");
+const sourcedStatsCmpPath = path.resolve(__dirname, "../../src/components/sourced-stats.tsx");
+const providerAvatarPath = path.resolve(__dirname, "../../src/components/provider-avatar.tsx");
+const featureProvidersPath = path.resolve(__dirname, "../../src/data/feature-providers.ts");
+const benchmarksContentPath = path.resolve(__dirname, "../../src/data/benchmarks-content.ts");
 
 describe("Landing page: ICP-only alignment", () => {
   const page = fs.readFileSync(landingPagePath, "utf-8");
@@ -50,14 +56,15 @@ describe("Landing page: ICP-only alignment", () => {
     expect(page).toMatch(/from\s+["']@\/components\/workflow-recipe["']/);
   });
 
-  it("includes the 'Stay solo. Go big.' aspiration section (no anti-business dichotomy)", () => {
-    expect(page).toMatch(/Stay solo\.\s*<span[^>]*>Go big\./i);
+  it("includes the 'Ship more. Scale what works.' aspiration section (no solo-celebration)", () => {
+    expect(page).toMatch(/Ship more\.\s*<span[^>]*>Scale what works\./i);
+    expect(page).not.toMatch(/Stay solo\.\s*<span/);
     expect(page).not.toMatch(/not businesses/i);
   });
 
-  it("references the ICP's millionaire-solo dream explicitly", () => {
-    expect(page).toMatch(/\$0 to \$1M MRR/);
-    expect(page).toMatch(/solo/i);
+  it("does NOT celebrate staying solo in the aspiration paragraph", () => {
+    expect(page).not.toMatch(/\$1M MRR\s*[—-]\s*solo/);
+    expect(page).not.toMatch(/staying solo/i);
   });
 
   it("includes 'What you don't have to do' email-infra section", () => {
@@ -211,6 +218,140 @@ describe("Pricing page: ICP framing", () => {
     expect(content).toMatch(/primitive/i);
     expect(content).toMatch(/workflow/i);
     expect(content).toMatch(/outcome/i);
+  });
+});
+
+describe("Landing page: industry stats section", () => {
+  const page = fs.readFileSync(landingPagePath, "utf-8");
+
+  it("uses the broadened 'Why distribution kills most products' h2 (no 'solo' qualifier)", () => {
+    expect(page).toMatch(/Why distribution kills most products/);
+    expect(page).not.toMatch(/Why distribution kills most solo products/);
+  });
+
+  it("cites the new source organizations in the section sub", () => {
+    expect(page).toMatch(/Lemlist, Saleshandy, Adobe, and Gartner/);
+  });
+});
+
+describe("sourced-stats data: 4 new ICP-aligned picks with provider logos", () => {
+  const content = fs.readFileSync(sourcedStatsDataPath, "utf-8");
+
+  it("extends SourcedStat with providerDomain", () => {
+    expect(content).toMatch(/providerDomain:\s*string/);
+  });
+
+  it("uses Lemlist warmup as stat 1", () => {
+    expect(content).toMatch(/3.5 weeks/);
+    expect(content).toMatch(/lemlist\.com/);
+  });
+
+  it("uses Saleshandy follow-up lift as stat 2", () => {
+    expect(content).toMatch(/8\.3% vs 4\.1%/);
+    expect(content).toMatch(/saleshandy\.com/);
+  });
+
+  it("uses Adobe GenAI referral as stat 3", () => {
+    expect(content).toMatch(/\+1,200%/);
+    expect(content).toMatch(/adobe\.com/);
+  });
+
+  it("uses Gartner search decline as stat 4", () => {
+    expect(content).toMatch(/.25%/);
+    expect(content).toMatch(/gartner\.com/);
+  });
+});
+
+describe("sourced-stats component: renders provider logo via shared ProviderAvatar", () => {
+  const content = fs.readFileSync(sourcedStatsCmpPath, "utf-8");
+
+  it("imports the shared ProviderAvatar", () => {
+    expect(content).toMatch(/from\s+["']@\/components\/provider-avatar["']/);
+    expect(content).toMatch(/<ProviderAvatar/);
+  });
+});
+
+describe("ProviderAvatar shared helper", () => {
+  it("exists at src/components/provider-avatar.tsx", () => {
+    expect(fs.existsSync(providerAvatarPath)).toBe(true);
+  });
+
+  const content = fs.existsSync(providerAvatarPath)
+    ? fs.readFileSync(providerAvatarPath, "utf-8")
+    : "";
+
+  it("exports a ProviderAvatar component using logo.dev", () => {
+    expect(content).toMatch(/export function ProviderAvatar/);
+    expect(content).toMatch(/img\.logo\.dev/);
+    expect(content).toMatch(/NEXT_PUBLIC_LOGO_DEV_TOKEN/);
+  });
+});
+
+describe("Feature providers map (channels-grid logos)", () => {
+  it("exists at src/data/feature-providers.ts", () => {
+    expect(fs.existsSync(featureProvidersPath)).toBe(true);
+  });
+
+  const content = fs.existsSync(featureProvidersPath)
+    ? fs.readFileSync(featureProvidersPath, "utf-8")
+    : "";
+
+  it("maps each live feature to a provider stack with logo.dev domains", () => {
+    for (const id of [
+      "sales-outreach",
+      "journalist-outreach",
+      "vc-outreach",
+      "hiring-outreach",
+      "accelerators-outreach",
+      "pr-expert-quote-outreach",
+      "outlet-discovery",
+      "press-kit-generation",
+      "ai-visibility-scoring",
+    ]) {
+      expect(content).toMatch(new RegExp(`"${id}"`));
+    }
+  });
+});
+
+describe("WorkflowRecipe trimmed copy + provider logos", () => {
+  const content = fs.readFileSync(workflowRecipePath, "utf-8");
+
+  it("drops the verbose 'Each workflow stacks priced API primitives' paragraph", () => {
+    expect(content).not.toMatch(/Each workflow stacks priced API primitives/);
+  });
+
+  it("drops the 'Fork the workflow. Beat the recipe.' footer line", () => {
+    expect(content).not.toMatch(/Fork the workflow\. Beat the recipe\./);
+  });
+
+  it("renders a provider logo per primitive via shared ProviderAvatar", () => {
+    expect(content).toMatch(/from\s+["']@\/components\/provider-avatar["']/);
+    expect(content).toMatch(/<ProviderAvatar/);
+    expect(content).toMatch(/providerDomain:\s*["']apollo\.io["']/);
+    expect(content).toMatch(/providerDomain:\s*["']anthropic\.com["']/);
+    expect(content).toMatch(/providerDomain:\s*["']resend\.com["']/);
+  });
+});
+
+describe("Investors page: dream quote reframed (CAC/scale, not staying solo)", () => {
+  const content = fs.readFileSync(investorsPagePath, "utf-8");
+
+  it("contains the new CAC-actionable scale framing", () => {
+    expect(content).toMatch(/CAC because I am looking for my marketing channel to scale/);
+    expect(content).toMatch(/whether I stay 1 person or grow/);
+  });
+
+  it("removes the 'while staying solo' phrasing from the dream", () => {
+    expect(content).not.toMatch(/while staying solo/i);
+  });
+});
+
+describe("benchmarks-content: SALES ctaClosing rewritten", () => {
+  const content = fs.readFileSync(benchmarksContentPath, "utf-8");
+
+  it("replaces 'Stay solo. Go big.' with 'Ship more. Scale what works.' for sales-cold-email", () => {
+    expect(content).not.toMatch(/headline:\s*"Stay solo\. Go big\.",/);
+    expect(content).toMatch(/headline:\s*"Ship more\. Scale what works\.",/);
   });
 });
 

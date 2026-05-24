@@ -1,8 +1,16 @@
 import { COLD_EMAIL_PAIN_STATS, type SourcedStat } from "@/data/sourced-stats";
+import { ProviderAvatar } from "@/components/provider-avatar";
 
 function StatCard({ stat }: { stat: SourcedStat }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-6 flex flex-col">
+      <div className="mb-4">
+        <ProviderAvatar
+          provider={stat.provider}
+          providerDomain={stat.providerDomain}
+          size={36}
+        />
+      </div>
       <p className="font-display text-4xl md:text-5xl font-bold text-gray-900 mb-2 tabular-nums">
         {stat.value}
       </p>
