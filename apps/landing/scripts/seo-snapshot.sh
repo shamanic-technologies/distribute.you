@@ -34,10 +34,12 @@ for route in "${ROUTES[@]}"; do
     printf "%-30s %5s %5s %8s %5s %4s\n" "$route" "ERR" "-" "-" "-" "-"
     continue
   fi
-  h1=$(printf "%s" "$html" | grep -cE "<h1[ >]" || true)
-  h2=$(printf "%s" "$html" | grep -cE "<h2[ >]" || true)
-  article=$(printf "%s" "$html" | grep -cE "<article[ >]" || true)
-  jsonld=$(printf "%s" "$html" | grep -cE 'type="application/ld\+json"' || true)
+  # grep -oE prints each match on its own line; wc -l counts occurrences.
+  # `{ ...; } || true` swallows grep's exit 1 (no match) under `set -e`/pipefail.
+  h1=$(printf "%s" "$html" | { grep -oE "<h1[ >]" || true; } | wc -l | tr -d ' ')
+  h2=$(printf "%s" "$html" | { grep -oE "<h2[ >]" || true; } | wc -l | tr -d ' ')
+  article=$(printf "%s" "$html" | { grep -oE "<article[ >]" || true; } | wc -l | tr -d ' ')
+  jsonld=$(printf "%s" "$html" | { grep -oE 'type="application/ld\+json"' || true; } | wc -l | tr -d ' ')
   size=$(printf "%s" "$html" | wc -c | tr -d ' ')
   printf "%-30s %5s %5s %8s %5s %4s\n" "$route" "$h1" "$h2" "$article" "$jsonld" "$size"
 done
