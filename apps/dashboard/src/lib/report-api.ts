@@ -97,10 +97,20 @@ export const fetchLeads = cache(async (orgId: string, brandId: string, featureSl
   return leads.filter((l) => !l.featureSlug || l.featureSlug === featureSlug);
 });
 
-export const fetchEmails = cache(async (orgId: string, brandId: string): Promise<Email[]> => {
+export const fetchEmails = cache(async (
+  orgId: string,
+  brandId: string,
+  campaignId?: string,
+): Promise<Email[]> => {
+  // campaignId filter shrinks the response from "all brand emails" to "one
+  // campaign's emails" — drawer-open fetch path uses this so the lead's
+  // emails arrive in under a second instead of timing out at 25s on
+  // brand-wide fetches. Backend /v1/emails has no per-lead filter
+  // (DIS-XX tracks adding one); campaignId is the next-best proxy.
+  const campaignQs = campaignId ? `&campaignId=${campaignId}` : "";
   const result = await adminGet<{ emails: Email[] }>(
     "listBrandEmails",
-    `/emails?brandId=${brandId}&limit=${REPORT_FETCH_LIMIT}`,
+    `/emails?brandId=${brandId}&limit=${REPORT_FETCH_LIMIT}${campaignQs}`,
     orgId,
   );
   const emails = result.emails ?? [];

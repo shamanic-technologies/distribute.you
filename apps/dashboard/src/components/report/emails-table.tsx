@@ -2,6 +2,7 @@
 
 import { ReportTable, type ReportTableColumn } from "./report-table";
 import type { DrawerEntry } from "./data-drawer";
+import { WorkflowTag } from "./workflow-tag";
 
 export interface EmailRow {
   id: string;
@@ -14,20 +15,11 @@ export interface EmailRow {
   bodyText: string;
 }
 
-function WorkflowChip({ name }: { name: string }) {
-  if (!name) return <span className="text-gray-300">—</span>;
-  return (
-    <span className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full border bg-indigo-50 text-indigo-700 border-indigo-200 whitespace-nowrap">
-      {name}
-    </span>
-  );
-}
-
 const baseColumns: ReportTableColumn<EmailRow>[] = [
   { key: "subject", label: "Subject", sortValue: (r) => r.subject, render: (r) => <span className="font-medium text-gray-900">{r.subject}</span> },
   { key: "recipient", label: "To", sortValue: (r) => r.recipient, render: (r) => r.recipient || "—" },
   { key: "company", label: "Company", sortValue: (r) => r.recipientCompany, render: (r) => r.recipientCompany || "—" },
-  { key: "workflow", label: "Workflow", sortValue: (r) => r.workflow, render: (r) => <WorkflowChip name={r.workflow} /> },
+  { key: "workflow", label: "Workflow", sortValue: (r) => r.workflow, render: (r) => <WorkflowTag name={r.workflow} /> },
   {
     key: "createdAt",
     label: "Sent",
@@ -41,7 +33,7 @@ function drawerEntries(r: EmailRow): DrawerEntry[] {
     { label: "To", value: r.recipient },
     { label: "Title", value: r.recipientTitle },
     { label: "Company", value: r.recipientCompany },
-    { label: "Workflow", value: r.workflow ? <WorkflowChip name={r.workflow} /> : null },
+    { label: "Workflow", value: r.workflow ? <WorkflowTag name={r.workflow} /> : null },
     { label: "Sent at", value: new Date(r.createdAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }) },
     { label: "Subject", value: r.subject, block: true },
     {
