@@ -104,15 +104,22 @@ export const fetchEmails = cache(async (orgId: string, brandId: string): Promise
     orgId,
   );
   const emails = result.emails ?? [];
-  // Drop the heavy fields the report never displays. generationRun alone is
-  // ~50KB per email (run cost breakdown + descendant tree); bodyHtml duplicates
-  // bodyText for our render; sequence is unused.
-  return emails.map(({ generationRun: _gr, bodyHtml: _bh, sequence: _sq, ...rest }) => ({
-    ...rest,
-    generationRun: null,
-    bodyHtml: null,
-    sequence: null,
-  }));
+  // Strip the heavy fields the report never displays but KEEP the small
+  // generationRun metadata (taskName, status) so the emails table can
+  // attribute the email to its workflow. The killers are `costs` and
+  // `descendantRuns` (run cost breakdown + child run tree, ~50KB per row);
+  // taskName + status are sub-100B.
+  return emails.map((e) => {
+    const gr = e.generationRun;
+    return {
+      ...e,
+      generationRun: gr
+        ? { ...gr, costs: [], descendantRuns: [] }
+        : null,
+      bodyHtml: null,
+      sequence: null,
+    };
+  });
 });
 
 /** Aggregated stats for a brand × feature. Avoids fetching every lead just
