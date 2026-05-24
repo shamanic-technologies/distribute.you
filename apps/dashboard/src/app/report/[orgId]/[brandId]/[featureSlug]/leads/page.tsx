@@ -70,12 +70,25 @@ export default async function LeadsPage({ params }: PageProps) {
 }
 
 async function LeadsSection({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
-  const [leads, campaigns, emails, workflows] = await Promise.all([
+  // Leads + campaigns are required (page can't render without them).
+  // Emails + workflows are optional — they only enrich the right drawer
+  // with the actual email body sent to each lead. If the upstream emails
+  // endpoint times out, render the page without drawer emails rather than
+  // letting one slow fetch crash the whole leads view.
+  const [leads, campaigns, emailsSettled, workflowsSettled] = await Promise.all([
     fetchLeads(orgId, brandId, featureSlug),
     fetchCampaigns(orgId, brandId, featureSlug),
-    fetchEmails(orgId, brandId),
-    fetchWorkflows(orgId, featureSlug),
+    fetchEmails(orgId, brandId).catch((err) => {
+      console.warn(`[dashboard-report] leads page degraded: emails fetch failed`, err);
+      return [];
+    }),
+    fetchWorkflows(orgId, featureSlug).catch((err) => {
+      console.warn(`[dashboard-report] leads page degraded: workflows fetch failed`, err);
+      return [];
+    }),
   ]);
+  const emails = emailsSettled;
+  const workflows = workflowsSettled;
 
   const campaignNameById = new Map(campaigns.map((c) => [c.id, c.name]));
   const workflowNameBySlug = new Map(workflows.map((w) => [w.workflowSlug, w.workflowDynastyName]));
