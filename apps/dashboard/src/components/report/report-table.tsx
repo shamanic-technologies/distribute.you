@@ -208,7 +208,7 @@ export function ReportTable<T>({
                 }`}
               >
                 {t.label}
-                <span className="ml-1.5 text-xs font-normal text-gray-400">({count.toLocaleString("en-US")})</span>
+                <span className="ml-1.5 text-xs font-normal text-gray-500">({count.toLocaleString("en-US")})</span>
               </button>
             );
           })}

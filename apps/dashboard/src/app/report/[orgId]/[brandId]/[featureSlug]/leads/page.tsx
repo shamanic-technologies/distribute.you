@@ -14,7 +14,7 @@ interface PageProps {
   params: Promise<{ orgId: string; brandId: string; featureSlug: string }>;
 }
 
-const LEADS_COLUMNS = ["Name", "Email", "Title", "Company", "Industry", "Country", "Status", "Workflow"];
+const LEADS_COLUMNS = ["Name", "Email", "Title", "Company", "Industry", "Country", "Workflow"];
 
 function toRow(lead: Lead, workflowName: string): LeadRow {
   const org = lead.lead?.organization;

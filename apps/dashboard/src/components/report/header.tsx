@@ -50,7 +50,7 @@ export function ReportHeader({ brand, brandId, orgName, featureSlug, generatedAt
               })}
             </time>
           </div>
-          <div className="text-gray-400 mt-0.5">Prepared by {orgName}</div>
+          <div className="text-gray-500 mt-0.5">Prepared by {orgName}</div>
         </div>
       </div>
     </header>

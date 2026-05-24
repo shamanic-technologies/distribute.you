@@ -137,7 +137,7 @@ function CpaCard({ label, count, totalCostCents }: { label: string; count: numbe
       <div className="text-xl font-bold text-gray-800 mt-0.5">
         {cpa != null ? formatUsd(cpa) : "—"}
       </div>
-      <div className="text-[10px] text-gray-400 mt-0.5">
+      <div className="text-[10px] text-gray-500 mt-0.5">
         {count.toLocaleString("en-US")} {count === 1 ? "lead" : "leads"}
       </div>
     </div>

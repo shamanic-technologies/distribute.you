@@ -37,7 +37,7 @@ const columns: ReportTableColumn<WorkflowRow>[] = [
     render: (r) => (
       <div>
         <div className="font-medium text-gray-900">{r.name}</div>
-        {r.description && <div className="text-xs text-gray-400 line-clamp-1">{r.description}</div>}
+        {r.description && <div className="text-xs text-gray-500 line-clamp-1">{r.description}</div>}
       </div>
     ),
   },
