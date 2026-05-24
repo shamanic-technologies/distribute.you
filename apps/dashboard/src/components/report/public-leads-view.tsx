@@ -487,12 +487,10 @@ function EmailsList({ emails }: { emails: LeadEmailSummary[] }) {
           <div className="font-medium text-gray-800">
             {e.subject || <em className="text-gray-500">(no subject)</em>}
           </div>
-          {e.bodyText ? (
+          {e.bodyText && (
             <pre className="text-xs text-gray-700 bg-gray-50 border border-gray-100 rounded p-3 whitespace-pre-wrap font-sans">
               {e.bodyText}
             </pre>
-          ) : (
-            <em className="text-xs text-gray-500">No body text available.</em>
           )}
         </div>
       ))}
