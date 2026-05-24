@@ -3,9 +3,13 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listBrandLeads, listWorkflows, getLeadConsolidatedStatus, type Lead, type LeadConsolidatedStatus } from "@/lib/api";
+import { listBrandLeads, listWorkflows, getLeadConsolidatedStatus, type Lead, type LeadConsolidatedStatus, type ManualQualificationStatus } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 import { WorkflowTag } from "@/components/report/workflow-tag";
+import { ManualQualificationBadge } from "@/components/leads/manual-qualification-badge";
+import { EditLeadStatusModal } from "@/components/leads/edit-lead-status-modal";
+import { useManualQualifications } from "@/lib/use-manual-qualification";
+import { buildLatestQualificationMap, qualificationKey } from "@/lib/manual-qualification";
 
 const POLL_INTERVAL = 5_000;
 
@@ -184,6 +188,7 @@ export default function FeatureLeadsPage() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("contacted");
   const [search, setSearch] = useState("");
+  const [editStatusOpen, setEditStatusOpen] = useState(false);
   const hasAutoSelectedTab = useRef(false);
 
   const { data, isLoading } = useAuthQuery(
@@ -207,6 +212,12 @@ export default function FeatureLeadsPage() {
     }
     return map;
   }, [workflowsData]);
+
+  const { data: qualificationsData } = useManualQualifications(brandId);
+  const qualificationByKey = useMemo(
+    () => buildLatestQualificationMap(qualificationsData?.qualifications ?? []),
+    [qualificationsData],
+  );
 
   const leads = data?.leads ?? [];
 
@@ -235,6 +246,10 @@ export default function FeatureLeadsPage() {
     const first = LEAD_STATUS_ORDER.find((s) => (groupedByStatus.get(s)?.length ?? 0) > 0);
     if (first) setActiveTab(first);
   }, [sortedLeads.length, groupedByStatus]);
+
+  useEffect(() => {
+    if (!selectedLead && editStatusOpen) setEditStatusOpen(false);
+  }, [selectedLead, editStatusOpen]);
 
   const activeList = activeTab === "all"
     ? sortedLeads
@@ -275,6 +290,9 @@ export default function FeatureLeadsPage() {
 
   const selectedFull = selectedLead?.lead ?? null;
   const selectedOrg = selectedFull?.organization ?? null;
+  const selectedManualStatus: ManualQualificationStatus | null = selectedLead
+    ? qualificationByKey.get(qualificationKey(selectedLead.campaignId, selectedLead.email))?.status ?? null
+    : null;
 
   return (
     <div className="flex flex-col md:flex-row h-full relative">
@@ -336,6 +354,24 @@ export default function FeatureLeadsPage() {
                 </div>
                 <div><span className="text-gray-500">Title:</span><p className="font-medium">{selectedFull?.headline || "-"}</p></div>
                 <div><span className="text-gray-500">Status:</span><p className="font-medium flex items-center gap-1.5 flex-wrap"><StatusBadge status={getLeadConsolidatedStatus(selectedLead)} />{selectedLead.global?.bounced && <span className="text-xs px-2 py-0.5 rounded-full border bg-red-50 text-red-600 border-red-200">Global Bounced</span>}{selectedLead.global?.unsubscribed && <span className="text-xs px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">Global Unsubscribed</span>}</p></div>
+                <div className="sm:col-span-2">
+                  <span className="text-gray-500">Manual qualif:</span>
+                  <p className="mt-1 flex items-center gap-2 flex-wrap">
+                    {selectedManualStatus ? (
+                      <ManualQualificationBadge status={selectedManualStatus} />
+                    ) : (
+                      <span className="text-xs text-gray-400">—</span>
+                    )}
+                    <button
+                      type="button"
+                      data-testid="open-edit-status-modal"
+                      onClick={() => setEditStatusOpen(true)}
+                      className="text-xs px-2.5 py-1 rounded-md border border-gray-200 text-gray-700 hover:bg-gray-50"
+                    >
+                      Edit status
+                    </button>
+                  </p>
+                </div>
                 {selectedLead.workflowSlug && (
                   <div className="sm:col-span-2">
                     <span className="text-gray-500">Workflow:</span>
@@ -361,6 +397,14 @@ export default function FeatureLeadsPage() {
             )}
           </div>
         </div>
+      )}
+      {editStatusOpen && selectedLead && (
+        <EditLeadStatusModal
+          lead={selectedLead}
+          brandId={brandId}
+          currentStatus={selectedManualStatus}
+          onClose={() => setEditStatusOpen(false)}
+        />
       )}
     </div>
   );
