@@ -2,6 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ReportTable, StatusBadge, type ReportTableColumn, type TabSpec } from "./report-table";
+// `status` is still surfaced in the row drawer; we no longer render it as a
+// column because the active tab already conveys the milestone — and a row
+// with a more-advanced status (e.g. replied) appearing in a less-advanced
+// tab (e.g. opened) made the badge look mismatched.
 import type { DrawerEntry } from "./data-drawer";
 
 export interface LeadEmailSummary {
@@ -65,21 +69,21 @@ const columns: ReportTableColumn<LeadRow>[] = [
     label: "Name",
     sortValue: (r) => `${r.firstName} ${r.lastName}`,
     render: (r) => <span className="font-medium text-gray-900 truncate block">{r.firstName} {r.lastName}</span>,
-    className: "w-[14%]",
+    className: "w-[15%]",
   },
   {
     key: "email",
     label: "Email",
     sortValue: (r) => r.email,
     render: (r) => <span className="font-mono text-xs truncate block" title={r.email}>{r.email}</span>,
-    className: "w-[18%]",
+    className: "w-[20%]",
   },
   {
     key: "title",
     label: "Title",
     sortValue: (r) => r.title,
     render: (r) => <span className="truncate block" title={r.title || undefined}>{r.title || "—"}</span>,
-    className: "w-[14%]",
+    className: "w-[15%]",
   },
   {
     key: "company",
@@ -88,38 +92,31 @@ const columns: ReportTableColumn<LeadRow>[] = [
     render: (r) => (
       <div className="min-w-0">
         <div className="truncate" title={r.company || undefined}>{r.company || "—"}</div>
-        {r.companyDomain && <div className="text-xs text-gray-400 truncate" title={r.companyDomain}>{r.companyDomain}</div>}
+        {r.companyDomain && <div className="text-xs text-gray-500 truncate" title={r.companyDomain}>{r.companyDomain}</div>}
       </div>
     ),
-    className: "w-[14%]",
+    className: "w-[15%]",
   },
   {
     key: "industry",
     label: "Industry",
     sortValue: (r) => r.industry,
     render: (r) => <span className="truncate block" title={r.industry || undefined}>{r.industry || "—"}</span>,
-    className: "w-[12%]",
+    className: "w-[13%]",
   },
   {
     key: "country",
     label: "Country",
     sortValue: (r) => r.country,
     render: (r) => <span className="truncate block" title={r.country || undefined}>{r.country || "—"}</span>,
-    className: "w-[8%]",
-  },
-  {
-    key: "status",
-    label: "Status",
-    sortValue: (r) => r.status,
-    render: (r) => <StatusBadge status={r.status} />,
-    className: "w-[9%]",
+    className: "w-[10%]",
   },
   {
     key: "workflow",
     label: "Workflow",
     sortValue: (r) => r.workflow,
     render: (r) => <span className="truncate block text-xs text-indigo-700" title={r.workflow || undefined}>{r.workflow || "—"}</span>,
-    className: "w-[11%]",
+    className: "w-[12%]",
   },
 ];
 
@@ -329,7 +326,7 @@ export function LeadsTable({ rows, orgId, brandId, featureSlug }: LeadsTableProp
       rows={rows}
       columns={columns}
       rowKey={(r) => r.email}
-      defaultSortKey="status"
+      defaultSortKey="name"
       defaultSortDir="asc"
       searchPlaceholder="Search name, email, company…"
       searchValue={(r) => `${r.firstName} ${r.lastName} ${r.email} ${r.title} ${r.company} ${r.industry} ${r.country} ${r.workflow}`}
