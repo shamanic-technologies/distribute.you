@@ -22,15 +22,15 @@ describe("Feature slug resolution in features-context", () => {
 describe("Feature pages use featureSlug for API calls", () => {
   const featurePagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/page.tsx",
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/page.tsx",
   );
   const campaignNewPath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx",
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx",
   );
   const workflowsPath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/workflows/page.tsx",
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/workflows/page.tsx",
   );
 
   it("feature page uses featureSlug directly for API calls", () => {
@@ -64,7 +64,7 @@ describe("All feature links use slug directly", () => {
   const sidebarPath = path.join(__dirname, "../src/components/context-sidebar.tsx");
   const brandPagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
   );
   const breadcrumbPath = path.join(__dirname, "../src/components/breadcrumb-nav.tsx");
 

@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
-const routesDir = path.resolve(__dirname, "../src/app/api/v1");
+const routesDir = path.resolve(__dirname, "../src/app/(authed)/api/v1");
 const apiPath = path.resolve(__dirname, "../src/lib/api.ts");
 const registryPath = path.resolve(__dirname, "../src/lib/api-registry.ts");
 

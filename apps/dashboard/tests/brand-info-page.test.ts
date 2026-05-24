@@ -5,7 +5,7 @@ import * as path from "path";
 describe("Brand info page", () => {
   const pagePath = path.resolve(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/brand-info/page.tsx"
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/brand-info/page.tsx"
   );
   const content = fs.readFileSync(pagePath, "utf-8");
 

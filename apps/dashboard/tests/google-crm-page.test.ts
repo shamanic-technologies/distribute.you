@@ -3,9 +3,9 @@ import * as fs from "fs";
 import * as path from "path";
 
 const root = path.join(__dirname, "../src/app");
-const crmDir = path.join(root, "(dashboard)/orgs/[orgId]/services/crm");
+const crmDir = path.join(root, "(authed)/(dashboard)/orgs/[orgId]/services/crm");
 const pagePath = path.join(crmDir, "page.tsx");
-const callbackPath = path.join(root, "services/crm/oauth/callback/route.ts");
+const callbackPath = path.join(root, "(authed)/services/crm/oauth/callback/route.ts");
 const connectBtnPath = path.join(crmDir, "_components/connect-google-button.tsx");
 const syncBtnPath = path.join(crmDir, "_components/sync-now-button.tsx");
 const pollHelperPath = path.join(crmDir, "_components/poll-sync-job.ts");

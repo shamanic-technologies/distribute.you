@@ -7,13 +7,13 @@ const apiContent = fs.readFileSync(apiPath, "utf-8");
 
 const brandInfoPath = path.resolve(
   __dirname,
-  "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/brand-info/page.tsx"
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/brand-info/page.tsx"
 );
 const brandInfoContent = fs.readFileSync(brandInfoPath, "utf-8");
 
 const brandOverviewPath = path.resolve(
   __dirname,
-  "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx"
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx"
 );
 const brandOverviewContent = fs.readFileSync(brandOverviewPath, "utf-8");
 

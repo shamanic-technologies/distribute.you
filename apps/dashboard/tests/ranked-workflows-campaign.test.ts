@@ -4,7 +4,7 @@ import * as path from "path";
 
 const pagePath = path.resolve(
   __dirname,
-  "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx"
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx"
 );
 const content = fs.readFileSync(pagePath, "utf-8");
 

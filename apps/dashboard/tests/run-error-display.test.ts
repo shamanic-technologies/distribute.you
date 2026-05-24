@@ -35,7 +35,7 @@ describe("ErrorSummary type definition", () => {
 describe("Brand info page — failed run error display", () => {
   const pagePath = path.resolve(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/brand-info/page.tsx"
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/brand-info/page.tsx"
   );
   const content = fs.readFileSync(pagePath, "utf-8");
 
@@ -55,7 +55,7 @@ describe("Brand info page — failed run error display", () => {
 describe("Emails page — generation run error display", () => {
   const pagePath = path.resolve(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/emails/page.tsx"
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/emails/page.tsx"
   );
   const content = fs.readFileSync(pagePath, "utf-8");
 

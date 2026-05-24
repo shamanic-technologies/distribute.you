@@ -2,10 +2,11 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
-import { getLeadConsolidatedStatus, type Lead, type LeadConsolidatedStatus } from "@/lib/api";
-import { useCampaign } from "@/lib/campaign-context";
+import { useAuthQuery } from "@/lib/use-auth-query";
+import { listBrandLeads, getLeadConsolidatedStatus, type Lead, type LeadConsolidatedStatus } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
-import { LeadsStatsPanel } from "@/components/campaign/leads-stats-panel";
+
+const POLL_INTERVAL = 5_000;
 
 const LEAD_STATUS_ORDER: LeadConsolidatedStatus[] = [
   "replied",
@@ -75,18 +76,23 @@ function timeAgo(date: string | Date): string {
   return `${years}y ago`;
 }
 
+// Shared logo.dev token (also used in `BrandLogo`, public
+// `components/report/leads-table.tsx`, and the landing's
+// `provider-avatar.tsx`). Replaces the old Google S2 favicons surface to
+// keep the company-avatar treatment consistent across the whole app.
+const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
+
 function CompanyLogo({ domain, name }: { domain: string | null; name: string | null }) {
   if (domain) {
     return (
       <img
-        src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=32`}
+        src={`https://img.logo.dev/${encodeURIComponent(domain)}?token=${LOGO_DEV_TOKEN}&size=32`}
         alt=""
         className="w-6 h-6 rounded"
         loading="lazy"
       />
     );
   }
-
   return (
     <div className="w-6 h-6 rounded bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-500">
       {name ? name.charAt(0).toUpperCase() : "?"}
@@ -99,11 +105,7 @@ function StatusBadge({ status }: { status: LeadConsolidatedStatus }) {
 }
 
 
-function LeadsTable({
-  leads,
-  selectedLead,
-  onSelectLead,
-}: {
+function LeadsTable({ leads, selectedLead, onSelectLead }: {
   leads: Lead[];
   selectedLead: Lead | null;
   onSelectLead: (lead: Lead) => void;
@@ -115,7 +117,6 @@ function LeadsTable({
       </div>
     );
   }
-
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
       <table className="w-full text-sm">
@@ -135,30 +136,19 @@ function LeadsTable({
               <tr
                 key={lead.id}
                 onClick={() => onSelectLead(lead)}
-                className={`cursor-pointer hover:bg-gray-50 transition ${
-                  selectedLead?.id === lead.id ? 'bg-brand-50' : ''
-                }`}
+                className={`cursor-pointer hover:bg-gray-50 transition ${selectedLead?.id === lead.id ? 'bg-brand-50' : ''}`}
               >
-                {/* Company */}
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2.5">
                     <CompanyLogo domain={org?.primaryDomain ?? null} name={org?.name ?? null} />
-                    <span className="font-medium text-gray-800 truncate max-w-[160px]">
-                      {org?.name || "Unknown"}
-                    </span>
+                    <span className="font-medium text-gray-800 truncate max-w-[160px]">{org?.name || "Unknown"}</span>
                   </div>
                 </td>
-
-                {/* Contact */}
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <div className="min-w-0">
-                      <p className="font-medium text-gray-800 truncate">
-                        {full?.firstName ?? ""} {full?.lastName ?? ""}
-                      </p>
-                      {full?.headline && (
-                        <p className="text-xs text-gray-500 truncate max-w-[180px]">{full.headline}</p>
-                      )}
+                      <p className="font-medium text-gray-800 truncate">{full?.firstName ?? ""} {full?.lastName ?? ""}</p>
+                      {full?.headline && <p className="text-xs text-gray-500 truncate max-w-[180px]">{full.headline}</p>}
                     </div>
                     {full?.linkedinUrl && (
                       <span className="text-blue-400 shrink-0">
@@ -169,21 +159,10 @@ function LeadsTable({
                     )}
                   </div>
                 </td>
-
-                {/* Status */}
-                <td className="px-4 py-3 hidden sm:table-cell">
-                  <StatusBadge status={getLeadConsolidatedStatus(lead)} />
-                </td>
-
-                {/* Found date */}
+                <td className="px-4 py-3 hidden sm:table-cell"><StatusBadge status={getLeadConsolidatedStatus(lead)} /></td>
                 <td className="px-4 py-3 hidden md:table-cell">
                   {lead.servedAt ? (
-                    <span
-                      className="text-xs text-gray-500"
-                      title={new Date(lead.servedAt).toLocaleString()}
-                    >
-                      {timeAgo(lead.servedAt)}
-                    </span>
+                    <span className="text-xs text-gray-500" title={new Date(lead.servedAt).toLocaleString()}>{timeAgo(lead.servedAt)}</span>
                   ) : (
                     <span className="text-xs text-gray-300">-</span>
                   )}
@@ -197,15 +176,21 @@ function LeadsTable({
   );
 }
 
-export default function CampaignLeadsPage() {
+export default function FeatureLeadsPage() {
   const params = useParams();
-  const featureSlug = params.featureSlug as string;
-  const campaignId = params.id as string;
+  const brandId = params.brandId as string;
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("contacted");
   const [search, setSearch] = useState("");
   const hasAutoSelectedTab = useRef(false);
-  const { leads, loading: isLoading } = useCampaign();
+
+  const { data, isLoading } = useAuthQuery(
+    ["brandLeads", brandId],
+    () => listBrandLeads(brandId),
+    { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false },
+  );
+
+  const leads = data?.leads ?? [];
 
   const sortedLeads = useMemo(
     () => [...leads].sort((a, b) => {
@@ -213,7 +198,7 @@ export default function CampaignLeadsPage() {
       const bTime = b.servedAt ? new Date(b.servedAt).getTime() : 0;
       return bTime - aTime;
     }),
-    [leads]
+    [leads],
   );
 
   const groupedByStatus = useMemo(() => {
@@ -259,14 +244,12 @@ export default function CampaignLeadsPage() {
     { key: "all", label: "All", count: sortedLeads.length },
   ];
 
-  if (isLoading && leads.length === 0) {
+  if (isLoading && !data) {
     return (
       <div className="p-4 md:p-8">
         <div className="animate-pulse space-y-4">
           <div className="h-8 w-32 bg-gray-200 rounded" />
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-12 bg-gray-100 rounded-lg" />
-          ))}
+          {[1, 2, 3].map((i) => <div key={i} className="h-12 bg-gray-100 rounded-lg" />)}
         </div>
       </div>
     );
@@ -277,22 +260,14 @@ export default function CampaignLeadsPage() {
 
   return (
     <div className="flex flex-col md:flex-row h-full relative">
-      {/* Lead Table */}
       <div className={`${selectedLead ? 'hidden md:block md:w-1/2' : 'w-full'} p-4 md:p-8 overflow-y-auto transition-all`}>
-        {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <h1 className="font-display text-xl font-bold text-gray-800">
             Leads
-            <span className="ml-2 text-sm font-normal text-gray-500">({leads.length.toLocaleString("en-US")})</span>
+            <span className="ml-2 text-sm font-normal text-gray-500">({leads.length.toLocaleString("en-US")} across all campaigns)</span>
           </h1>
         </div>
 
-        {/* Aggregate lead-scoped stats */}
-        <div className="mb-6">
-          <LeadsStatsPanel featureSlug={featureSlug} campaignId={campaignId} />
-        </div>
-
-        {/* Tabs */}
         <div className="flex gap-1 mb-4 border-b border-gray-200 overflow-x-auto">
           {tabs.map((tab) => (
             <button
@@ -314,128 +289,51 @@ export default function CampaignLeadsPage() {
 
         {leads.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-            <div className="text-4xl mb-4">&#128101;</div>
             <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No leads yet</h3>
-            <p className="text-gray-600 text-sm">Leads will appear here once the campaign runs.</p>
+            <p className="text-gray-600 text-sm">Leads will appear here once campaigns run.</p>
           </div>
         ) : (
-          <LeadsTable
-            leads={filteredLeads}
-            selectedLead={selectedLead}
-            onSelectLead={setSelectedLead}
-          />
+          <LeadsTable leads={filteredLeads} selectedLead={selectedLead} onSelectLead={setSelectedLead} />
         )}
       </div>
 
-      {/* Lead Detail Panel */}
       {selectedLead && (
         <div className="absolute inset-0 md:relative md:w-1/2 bg-gray-50 md:border-l border-gray-200 overflow-y-auto z-10">
           <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
-            <button
-              onClick={() => setSelectedLead(null)}
-              className="md:hidden flex items-center gap-2 text-gray-600"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
+            <button onClick={() => setSelectedLead(null)} className="md:hidden flex items-center gap-2 text-gray-600">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
               Back
             </button>
             <h2 className="font-semibold text-gray-800 hidden md:block">Lead Details</h2>
-            <button
-              onClick={() => setSelectedLead(null)}
-              className="text-gray-400 hover:text-gray-600 hidden md:block"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+            <button onClick={() => setSelectedLead(null)} className="text-gray-400 hover:text-gray-600 hidden md:block">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
           </div>
-
           <div className="p-4 md:p-6">
-            {/* Contact Info */}
             <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                <div>
-                  <span className="text-gray-500">Name:</span>
-                  <p className="font-medium">{selectedFull?.firstName ?? ""} {selectedFull?.lastName ?? ""}</p>
+                <div><span className="text-gray-500">Name:</span><p className="font-medium">{selectedFull?.firstName ?? ""} {selectedFull?.lastName ?? ""}</p></div>
+                <div><span className="text-gray-500">Email:</span><p className="font-medium">{selectedLead.email}</p>
+                  {selectedLead.emailStatus && <span className={`text-xs px-1.5 py-0.5 rounded ${selectedLead.emailStatus === "verified" ? "bg-green-100 text-green-700" : selectedLead.emailStatus === "guessed" ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-600"}`}>{selectedLead.emailStatus}</span>}
                 </div>
-                <div>
-                  <span className="text-gray-500">Email:</span>
-                  <p className="font-medium">{selectedLead.email}</p>
-                  {selectedLead.emailStatus && (
-                    <span className={`text-xs px-1.5 py-0.5 rounded ${
-                      selectedLead.emailStatus === "verified" ? "bg-green-100 text-green-700" :
-                      selectedLead.emailStatus === "guessed" ? "bg-yellow-100 text-yellow-700" :
-                      "bg-gray-100 text-gray-600"
-                    }`}>
-                      {selectedLead.emailStatus}
-                    </span>
-                  )}
-                </div>
-                <div>
-                  <span className="text-gray-500">Title:</span>
-                  <p className="font-medium">{selectedFull?.headline || "-"}</p>
-                </div>
-                <div>
-                  <span className="text-gray-500">Status:</span>
-                  <p className="font-medium flex items-center gap-1.5 flex-wrap">
-                    <StatusBadge status={getLeadConsolidatedStatus(selectedLead)} />
-                    {selectedLead.global?.bounced && (
-                      <span className="text-xs px-2 py-0.5 rounded-full border bg-red-50 text-red-600 border-red-200">Global Bounced</span>
-                    )}
-                    {selectedLead.global?.unsubscribed && (
-                      <span className="text-xs px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">Global Unsubscribed</span>
-                    )}
-                  </p>
-                </div>
-                {selectedFull?.linkedinUrl && (
-                  <div className="sm:col-span-2">
-                    <span className="text-gray-500">LinkedIn:</span>
-                    <p>
-                      <a
-                        href={selectedFull.linkedinUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-500 hover:underline text-sm"
-                      >
-                        {selectedFull.linkedinUrl}
-                      </a>
-                    </p>
-                  </div>
-                )}
+                <div><span className="text-gray-500">Title:</span><p className="font-medium">{selectedFull?.headline || "-"}</p></div>
+                <div><span className="text-gray-500">Status:</span><p className="font-medium flex items-center gap-1.5 flex-wrap"><StatusBadge status={getLeadConsolidatedStatus(selectedLead)} />{selectedLead.global?.bounced && <span className="text-xs px-2 py-0.5 rounded-full border bg-red-50 text-red-600 border-red-200">Global Bounced</span>}{selectedLead.global?.unsubscribed && <span className="text-xs px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">Global Unsubscribed</span>}</p></div>
+                {selectedFull?.linkedinUrl && <div className="sm:col-span-2"><span className="text-gray-500">LinkedIn:</span><p><a href={selectedFull.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-sm">{selectedFull.linkedinUrl}</a></p></div>}
               </div>
             </div>
-
-            {/* Organization Info */}
             {selectedOrg && (selectedOrg.name || selectedOrg.primaryDomain || selectedOrg.industry) && (
               <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
                 <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Organization</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <span className="text-gray-500">Company:</span>
-                    <p className="font-medium">{selectedOrg.name || "-"}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Domain:</span>
-                    <p className="font-medium">{selectedOrg.primaryDomain || "-"}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Industry:</span>
-                    <p className="font-medium">{selectedOrg.industry || "-"}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Size:</span>
-                    <p className="font-medium">{selectedOrg.estimatedNumEmployees != null ? `${selectedOrg.estimatedNumEmployees} employees` : "-"}</p>
-                  </div>
+                  <div><span className="text-gray-500">Company:</span><p className="font-medium">{selectedOrg.name || "-"}</p></div>
+                  <div><span className="text-gray-500">Domain:</span><p className="font-medium">{selectedOrg.primaryDomain || "-"}</p></div>
+                  <div><span className="text-gray-500">Industry:</span><p className="font-medium">{selectedOrg.industry || "-"}</p></div>
+                  <div><span className="text-gray-500">Size:</span><p className="font-medium">{selectedOrg.estimatedNumEmployees != null ? `${selectedOrg.estimatedNumEmployees} employees` : "-"}</p></div>
                 </div>
               </div>
             )}
-
-            {/* Metadata */}
             {selectedLead.servedAt && (
-              <div className="mt-4 text-xs text-gray-400">
-                Served: {new Date(selectedLead.servedAt).toLocaleString()}
-              </div>
+              <div className="mt-4 text-xs text-gray-400">Served: {new Date(selectedLead.servedAt).toLocaleString()}</div>
             )}
           </div>
         </div>

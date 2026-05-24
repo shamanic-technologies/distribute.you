@@ -15,7 +15,7 @@ import * as path from "path";
  *    On error, it shows a retry screen instead of redirecting.
  */
 describe("Dashboard should not loop to onboarding on API errors", () => {
-  const layoutPath = path.join(__dirname, "../src/app/(dashboard)/layout.tsx");
+  const layoutPath = path.join(__dirname, "../src/app/(authed)/(dashboard)/layout.tsx");
   const contextPath = path.join(__dirname, "../src/lib/org-context.tsx");
   const layoutContent = fs.readFileSync(layoutPath, "utf-8");
   const contextContent = fs.readFileSync(contextPath, "utf-8");

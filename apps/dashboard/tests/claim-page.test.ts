@@ -4,7 +4,7 @@ import * as path from "path";
 
 const claimPagePath = path.resolve(
   __dirname,
-  "../src/app/claim/[code]/page.tsx"
+  "../src/app/(authed)/claim/[code]/page.tsx"
 );
 const proxyPath = path.resolve(__dirname, "../src/proxy.ts");
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseGmailPayload } from "../src/app/(dashboard)/orgs/[orgId]/services/crm/_components/parse-gmail-payload";
+import { parseGmailPayload } from "../src/app/(authed)/(dashboard)/orgs/[orgId]/services/crm/_components/parse-gmail-payload";
 
 describe("parseGmailPayload", () => {
   it("extracts subject, from, date from inner Gmail payload headers, snippet from envelope", () => {

@@ -11,7 +11,7 @@ import * as path from "path";
 describe("Workflow chat context — dynasty identity fields", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/workflows/[workflowId]/page.tsx"
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/workflows/[workflowId]/page.tsx"
   );
   const content = fs.readFileSync(pagePath, "utf-8");
 

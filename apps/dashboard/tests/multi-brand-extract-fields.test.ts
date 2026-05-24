@@ -43,11 +43,11 @@ describe("Multi-brand extract-fields response types", () => {
 
   it("callers pass brandIds as array parameter", () => {
     const brandsPage = fs.readFileSync(
-      path.join(__dirname, "../src/app/(dashboard)/orgs/[orgId]/brands/page.tsx"),
+      path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/page.tsx"),
       "utf-8",
     );
     const brandInfoPage = fs.readFileSync(
-      path.join(__dirname, "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/brand-info/page.tsx"),
+      path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/brand-info/page.tsx"),
       "utf-8",
     );
     expect(brandsPage).toContain("extractBrandFields([newBrandId]");

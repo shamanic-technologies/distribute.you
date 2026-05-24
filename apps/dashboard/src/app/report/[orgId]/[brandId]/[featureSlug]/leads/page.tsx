@@ -14,7 +14,10 @@ interface PageProps {
   params: Promise<{ orgId: string; brandId: string; featureSlug: string }>;
 }
 
-const LEADS_COLUMNS = ["Name", "Email", "Title", "Company", "Industry", "Country"];
+// Mirror the live table column order so the loading skeleton matches the
+// rendered table 1:1 — Industry + Country were dropped from the live
+// table in favor of a "Last activity" column.
+const LEADS_COLUMNS = ["Name", "Email", "Title", "Company", "Last activity"];
 
 function leadKey(campaignId: string, firstName: string, lastName: string): string {
   return `${campaignId}::${firstName.toLowerCase()}::${lastName.toLowerCase()}`;
@@ -76,6 +79,7 @@ function toRow(
     unsubscribed: lead.unsubscribed,
     replied: lead.replied,
     replyClassification: lead.replyClassification,
+    servedAt: lead.servedAt,
     lastDeliveredAt: lead.lastDeliveredAt,
     emails: emailsByLead.get(leadKey(lead.campaignId, firstName, lastName)) ?? [],
   };

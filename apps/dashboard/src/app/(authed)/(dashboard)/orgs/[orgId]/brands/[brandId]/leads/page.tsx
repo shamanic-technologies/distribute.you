@@ -76,11 +76,13 @@ function timeAgo(date: string | Date): string {
   return `${years}y ago`;
 }
 
+const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
+
 function CompanyLogo({ domain, name }: { domain: string | null; name: string | null }) {
   if (domain) {
     return (
       <img
-        src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=32`}
+        src={`https://img.logo.dev/${encodeURIComponent(domain)}?token=${LOGO_DEV_TOKEN}&size=32`}
         alt=""
         className="w-6 h-6 rounded"
         loading="lazy"
@@ -170,7 +172,7 @@ function LeadsTable({ leads, selectedLead, onSelectLead }: {
   );
 }
 
-export default function FeatureLeadsPage() {
+export default function BrandLeadsPage() {
   const params = useParams();
   const brandId = params.brandId as string;
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -195,6 +197,7 @@ export default function FeatureLeadsPage() {
     [leads],
   );
 
+  // Group leads by consolidated status
   const groupedByStatus = useMemo(() => {
     const groups = new Map<LeadConsolidatedStatus, Lead[]>();
     for (const status of LEAD_STATUS_ORDER) groups.set(status, []);
@@ -205,6 +208,7 @@ export default function FeatureLeadsPage() {
     return groups;
   }, [sortedLeads]);
 
+  // Auto-select first non-empty tab
   useEffect(() => {
     if (hasAutoSelectedTab.current || sortedLeads.length === 0) return;
     hasAutoSelectedTab.current = true;

@@ -170,7 +170,7 @@ describe("WorkflowChat component (useChat + AI SDK)", () => {
 describe("Chat proxy route (SSE → Data Stream Protocol)", () => {
   const routePath = path.join(
     __dirname,
-    "../src/app/api/v1/chat/route.ts"
+    "../src/app/(authed)/api/v1/chat/route.ts"
   );
 
   it("should exist", () => {
@@ -238,7 +238,7 @@ describe("Chat proxy route (SSE → Data Stream Protocol)", () => {
 describe("Workflow viewer page composition", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/workflows/[workflowId]/page.tsx"
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/workflows/[workflowId]/page.tsx"
   );
 
   it("should NOT import dagToMermaid or mermaid", () => {

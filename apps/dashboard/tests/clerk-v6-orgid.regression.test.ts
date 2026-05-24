@@ -21,7 +21,13 @@ describe("@clerk/nextjs v6 compatibility", () => {
   });
 
   it("ClerkProvider should use dynamic prop", () => {
-    const layoutPath = path.resolve(__dirname, "../src/app/layout.tsx");
+    // Moved out of root `src/app/layout.tsx` into the `(authed)` route group
+    // so `/report/*` can render statically (ISR). ClerkProvider's `dynamic`
+    // prop force-marks every descendant page as dynamic, defeating
+    // `export const revalidate`. The `dynamic` requirement itself is
+    // unchanged — Next 15 made `headers()` async, and Clerk v6 needs
+    // `dynamic` to await it before resolving `auth().orgId`.
+    const layoutPath = path.resolve(__dirname, "../src/app/(authed)/layout.tsx");
     const content = fs.readFileSync(layoutPath, "utf-8");
     expect(content).toContain("<ClerkProvider dynamic>");
   });
@@ -29,7 +35,7 @@ describe("@clerk/nextjs v6 compatibility", () => {
   it("onboarding should use full page reload after setActive", () => {
     const onboardingPath = path.resolve(
       __dirname,
-      "../src/app/onboarding/page.tsx"
+      "../src/app/(authed)/onboarding/page.tsx"
     );
     const content = fs.readFileSync(onboardingPath, "utf-8");
     expect(content).toContain('window.location.href =');
@@ -39,7 +45,7 @@ describe("@clerk/nextjs v6 compatibility", () => {
   it("API proxy should await auth() for orgId", () => {
     const proxyPath = path.resolve(
       __dirname,
-      "../src/app/api/v1/[...path]/route.ts"
+      "../src/app/(authed)/api/v1/[...path]/route.ts"
     );
     const content = fs.readFileSync(proxyPath, "utf-8");
     expect(content).toContain("await auth()");

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseGmailBody } from "../src/app/(dashboard)/orgs/[orgId]/services/crm/_components/parse-gmail-body";
+import { parseGmailBody } from "../src/app/(authed)/(dashboard)/orgs/[orgId]/services/crm/_components/parse-gmail-body";
 
 function b64url(input: string): string {
   return Buffer.from(input, "utf-8")

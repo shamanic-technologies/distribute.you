@@ -5,7 +5,7 @@ import * as path from "path";
 describe("Brands list page", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/page.tsx"
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/page.tsx"
   );
 
   it("should exist", () => {

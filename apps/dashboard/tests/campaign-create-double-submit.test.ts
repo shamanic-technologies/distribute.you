@@ -4,11 +4,11 @@ import * as path from "path";
 
 describe("Campaign creation pages guard against double-submit", () => {
   const campaignCreatePages = [
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx",
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx",
   ];
 
   for (const rel of campaignCreatePages) {
-    const short = rel.replace("../src/app/(dashboard)/", "");
+    const short = rel.replace("../src/app/(authed)/(dashboard)/", "");
     const content = fs.readFileSync(path.join(__dirname, rel), "utf-8");
 
     it(`${short} uses a ref guard to prevent double-submit`, () => {

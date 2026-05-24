@@ -5,11 +5,11 @@ import * as path from "path";
 describe("Campaign sidebar uses feature stats via entity.countKey", () => {
   const sidebarWrapperPath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/sidebar-wrapper.tsx"
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/sidebar-wrapper.tsx"
   );
   const overviewPagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/page.tsx"
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/page.tsx"
   );
 
   const sidebarContent = fs.readFileSync(sidebarWrapperPath, "utf-8");
