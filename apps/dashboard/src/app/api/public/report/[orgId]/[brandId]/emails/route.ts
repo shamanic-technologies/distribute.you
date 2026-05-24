@@ -31,6 +31,7 @@ export async function GET(
   // server-side, which means we get the union we need).
   const featureSlug = req.nextUrl.searchParams.get("featureSlug") ?? "";
 
+  const startedAt = Date.now();
   try {
     const [emails, workflows] = await Promise.all([
       fetchEmails(orgId, brandId),
@@ -54,9 +55,12 @@ export async function GET(
         workflow: workflowNameByTask.get(taskName) ?? taskName ?? "",
       };
     });
+    const elapsed = Date.now() - startedAt;
+    console.log(`[dashboard-report] emails ${orgId}/${brandId} → ${slim.length} rows in ${elapsed}ms`);
     return NextResponse.json({ emails: slim });
   } catch (err) {
-    console.error(`[dashboard-report] /api/public/report/${orgId}/${brandId}/emails failed:`, err);
+    const elapsed = Date.now() - startedAt;
+    console.error(`[dashboard-report] /api/public/report/${orgId}/${brandId}/emails failed after ${elapsed}ms:`, err);
     return NextResponse.json(
       { error: "Upstream emails endpoint failed", detail: err instanceof Error ? err.message : String(err) },
       { status: 502 },

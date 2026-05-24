@@ -18,6 +18,12 @@ export interface FilterSpec<T> {
   options?: string[];
 }
 
+export interface TabSpec<T> {
+  key: string;
+  label: string;
+  match: (row: T) => boolean;
+}
+
 interface ReportTableProps<T> {
   rows: T[];
   columns: ReportTableColumn<T>[];
@@ -26,6 +32,10 @@ interface ReportTableProps<T> {
   searchPlaceholder?: string;
   searchValue: (row: T) => string;
   filter?: FilterSpec<T>;
+  /** Tab strip that filters by row predicate. Mutually exclusive with `filter`.
+   *  A row can match multiple tabs (intentional duplication). The active tab
+   *  auto-picks the first tab with a non-empty count on first render. */
+  tabs?: TabSpec<T>[];
   defaultSortKey?: string;
   defaultSortDir?: SortDir;
   drawerTitle?: (row: T) => string;
@@ -35,6 +45,10 @@ interface ReportTableProps<T> {
    *  Use this to trigger lazy fetches keyed off the selected row. */
   onRowSelect?: (row: T | null) => void;
   emptyMessage?: string;
+  /** Force a fixed table layout so columns share the container width and
+   *  long strings truncate inside their cell instead of pushing the table
+   *  past the page width (which triggers horizontal scroll). */
+  fixedLayout?: boolean;
 }
 
 type SortDir = "asc" | "desc";
@@ -47,6 +61,7 @@ export function ReportTable<T>({
   searchPlaceholder = "Search…",
   searchValue,
   filter,
+  tabs,
   defaultSortKey,
   defaultSortDir = "asc",
   drawerTitle,
@@ -54,9 +69,11 @@ export function ReportTable<T>({
   drawerEntries,
   onRowSelect,
   emptyMessage = "No rows",
+  fixedLayout = false,
 }: ReportTableProps<T>) {
   const [query, setQuery] = useState("");
   const [filterValue, setFilterValue] = useState<string>("all");
+  const [activeTabKey, setActiveTabKey] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<string>(defaultSortKey ?? columns[0]?.key ?? "");
   const [sortDir, setSortDir] = useState<SortDir>(defaultSortDir);
   const [page, setPage] = useState(1);
@@ -77,14 +94,44 @@ export function ReportTable<T>({
     return Array.from(set).sort();
   }, [rows, filter]);
 
+  // Counts are computed against the search-narrowed (but pre-tab) set so the
+  // user sees how many rows each tab would yield given their current query.
+  const searchNarrowed = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) => searchValue(r).toLowerCase().includes(q));
+  }, [rows, query, searchValue]);
+
+  const tabCounts = useMemo<Map<string, number>>(() => {
+    const map = new Map<string, number>();
+    if (!tabs) return map;
+    for (const t of tabs) {
+      map.set(t.key, searchNarrowed.filter((r) => t.match(r)).length);
+    }
+    return map;
+  }, [tabs, searchNarrowed]);
+
+  // Auto-pick the leftmost tab whose count > 0 on first paint with data.
+  // Once the user picks any tab, leave their pick alone even if its count
+  // later drops to 0 — that's a more honest signal than auto-jumping.
+  useEffect(() => {
+    if (!tabs || activeTabKey) return;
+    const first = tabs.find((t) => (tabCounts.get(t.key) ?? 0) > 0);
+    if (first) setActiveTabKey(first.key);
+  }, [tabs, tabCounts, activeTabKey]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return rows.filter((r) => {
       if (filter && filterValue !== "all" && filter.value(r) !== filterValue) return false;
+      if (tabs && activeTabKey) {
+        const tab = tabs.find((t) => t.key === activeTabKey);
+        if (tab && !tab.match(r)) return false;
+      }
       if (!q) return true;
       return searchValue(r).toLowerCase().includes(q);
     });
-  }, [rows, query, filterValue, filter, searchValue]);
+  }, [rows, query, filterValue, filter, tabs, activeTabKey, searchValue]);
 
   const sorted = useMemo(() => {
     if (!sortKey) return filtered;
@@ -129,7 +176,7 @@ export function ReportTable<T>({
           onChange={(e) => { setQuery(e.target.value); setPage(1); }}
           className="flex-1 min-w-[200px] text-sm px-3 py-1.5 border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-400"
         />
-        {filter && (
+        {filter && !tabs && (
           <select
             value={filterValue}
             onChange={(e) => { setFilterValue(e.target.value); setPage(1); }}
@@ -145,10 +192,33 @@ export function ReportTable<T>({
         <span className="text-xs text-gray-500">{sorted.length.toLocaleString("en-US")} matching</span>
       </div>
 
+      {tabs && tabs.length > 0 && (
+        <div className="px-5 pt-3 border-b border-gray-200 flex gap-1 overflow-x-auto bg-gray-50/40">
+          {tabs.map((t) => {
+            const count = tabCounts.get(t.key) ?? 0;
+            const isActive = activeTabKey === t.key;
+            return (
+              <button
+                key={t.key}
+                onClick={() => { setActiveTabKey(t.key); setPage(1); setSelected(null); }}
+                className={`px-3 py-2 text-sm font-medium border-b-2 transition whitespace-nowrap -mb-px ${
+                  isActive
+                    ? "border-brand-600 text-brand-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                {t.label}
+                <span className="ml-1.5 text-xs font-normal text-gray-400">({count.toLocaleString("en-US")})</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {pageRows.length === 0 ? (
         <div className="px-5 py-10 text-center text-sm text-gray-500">{emptyMessage}</div>
       ) : (
-        <table className="w-full text-sm border-collapse">
+        <table className={`w-full text-sm border-collapse ${fixedLayout ? "table-fixed" : ""}`}>
           <thead className="bg-gray-50">
             <tr>
               {columns.map((col) => {
@@ -181,7 +251,7 @@ export function ReportTable<T>({
                 className={`border-t border-gray-100 hover:bg-gray-50 transition ${clickable ? "cursor-pointer" : ""}`}
               >
                 {columns.map((col) => (
-                  <td key={col.key} className={`px-4 py-2.5 text-gray-700 align-top ${col.className ?? ""}`}>
+                  <td key={col.key} className={`px-4 py-2.5 text-gray-700 align-top ${fixedLayout ? "overflow-hidden text-ellipsis whitespace-nowrap" : ""} ${col.className ?? ""}`}>
                     {col.render(row)}
                   </td>
                 ))}
