@@ -2,7 +2,7 @@ import { TableSectionSkeleton } from "@/components/report/skeletons";
 
 export default function LeadsLoading() {
   return (
-    <div className="p-6 md:p-8 space-y-6 max-w-6xl">
+    <div className="p-6 md:p-8 space-y-6">
       <TableSectionSkeleton
         title="Leads"
         description="Every prospect targeted, with company, email and current status."
