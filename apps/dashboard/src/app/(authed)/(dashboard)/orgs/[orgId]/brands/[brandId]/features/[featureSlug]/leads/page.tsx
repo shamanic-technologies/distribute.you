@@ -3,8 +3,9 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listBrandLeads, getLeadConsolidatedStatus, type Lead, type LeadConsolidatedStatus } from "@/lib/api";
+import { listBrandLeads, listWorkflows, getLeadConsolidatedStatus, type Lead, type LeadConsolidatedStatus } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
+import { WorkflowTag } from "@/components/report/workflow-tag";
 
 const POLL_INTERVAL = 5_000;
 
@@ -179,6 +180,7 @@ function LeadsTable({ leads, selectedLead, onSelectLead }: {
 export default function FeatureLeadsPage() {
   const params = useParams();
   const brandId = params.brandId as string;
+  const featureSlug = params.featureSlug as string;
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("contacted");
   const [search, setSearch] = useState("");
@@ -189,6 +191,22 @@ export default function FeatureLeadsPage() {
     () => listBrandLeads(brandId),
     { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false },
   );
+
+  // Workflow display names — fetched once per feature and looked up by
+  // `lead.workflowSlug` so the side panel can render a colored
+  // `<WorkflowTag>` for the lead's workflow. Same hue across the public
+  // report and the internal page (deterministic hash on the display name).
+  const { data: workflowsData } = useAuthQuery(
+    ["featureWorkflows", featureSlug],
+    () => listWorkflows({ featureSlug }),
+  );
+  const workflowNameBySlug = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const w of workflowsData?.workflows ?? []) {
+      map.set(w.workflowSlug, w.workflowDynastyName);
+    }
+    return map;
+  }, [workflowsData]);
 
   const leads = data?.leads ?? [];
 
@@ -318,6 +336,12 @@ export default function FeatureLeadsPage() {
                 </div>
                 <div><span className="text-gray-500">Title:</span><p className="font-medium">{selectedFull?.headline || "-"}</p></div>
                 <div><span className="text-gray-500">Status:</span><p className="font-medium flex items-center gap-1.5 flex-wrap"><StatusBadge status={getLeadConsolidatedStatus(selectedLead)} />{selectedLead.global?.bounced && <span className="text-xs px-2 py-0.5 rounded-full border bg-red-50 text-red-600 border-red-200">Global Bounced</span>}{selectedLead.global?.unsubscribed && <span className="text-xs px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">Global Unsubscribed</span>}</p></div>
+                {selectedLead.workflowSlug && (
+                  <div className="sm:col-span-2">
+                    <span className="text-gray-500">Workflow:</span>
+                    <p className="mt-1"><WorkflowTag name={workflowNameBySlug.get(selectedLead.workflowSlug) ?? selectedLead.workflowSlug} /></p>
+                  </div>
+                )}
                 {selectedFull?.linkedinUrl && <div className="sm:col-span-2"><span className="text-gray-500">LinkedIn:</span><p><a href={selectedFull.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-sm">{selectedFull.linkedinUrl}</a></p></div>}
               </div>
             </div>

@@ -3,7 +3,8 @@ import { SectionCard } from "@/components/report/section-card";
 import { CsvDownloadButton, GoogleSheetsButton } from "@/components/report/csv-button";
 import { toCsv, type CsvColumn } from "@/components/report/csv";
 import { TableSectionSkeleton } from "@/components/report/skeletons";
-import { LeadsTable, type LeadRow, type LeadEmailSummary } from "@/components/report/leads-table";
+import { PublicLeadsView } from "@/components/report/public-leads-view";
+import type { LeadRow, LeadEmailSummary } from "@/components/report/leads-table";
 import { fetchAllEmails, fetchLeads, fetchWorkflows, REPORT_FETCH_LIMIT } from "@/lib/report-api";
 import { getLeadConsolidatedStatus, type Email, type Lead } from "@/lib/api";
 
@@ -64,6 +65,7 @@ function toRow(
     industry: org?.industry ?? "",
     country: org?.country ?? "",
     city: lead.lead?.city ?? "",
+    companyEmployees: org?.estimatedNumEmployees ?? null,
     linkedinUrl: lead.lead?.linkedinUrl ?? null,
     status: getLeadConsolidatedStatus(lead),
     intakeStatus: lead.status,
@@ -79,6 +81,8 @@ function toRow(
     unsubscribed: lead.unsubscribed,
     replied: lead.replied,
     replyClassification: lead.replyClassification,
+    globalBounced: lead.global?.bounced ?? false,
+    globalUnsubscribed: lead.global?.unsubscribed ?? false,
     servedAt: lead.servedAt,
     lastDeliveredAt: lead.lastDeliveredAt,
     emails: emailsByLead.get(leadKey(lead.campaignId, firstName, lastName)) ?? [],
@@ -169,7 +173,7 @@ async function LeadsSection({ orgId, brandId, featureSlug }: { orgId: string; br
         </>
       }
     >
-      <LeadsTable rows={rows} />
+      <PublicLeadsView rows={rows} />
     </SectionCard>
   );
 }
