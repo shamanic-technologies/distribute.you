@@ -4,10 +4,10 @@ import { CsvDownloadButton, GoogleSheetsButton } from "@/components/report/csv-b
 import { toCsv, type CsvColumn } from "@/components/report/csv";
 import { TableSectionSkeleton } from "@/components/report/skeletons";
 import { EmailsTable, type EmailRow } from "@/components/report/emails-table";
-import { fetchEmails, fetchWorkflows } from "@/lib/report-api";
+import { fetchAllEmails, fetchWorkflows } from "@/lib/report-api";
 import type { Email } from "@/lib/api";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 14400;
 export const maxDuration = 300;
 
 interface PageProps {
@@ -37,7 +37,7 @@ export default async function EmailsPage({ params }: PageProps) {
 
 async function EmailsSection({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
   const [emails, workflows] = await Promise.all([
-    fetchEmails(orgId, brandId),
+    fetchAllEmails(orgId, brandId, featureSlug),
     fetchWorkflows(orgId, featureSlug),
   ]);
 
