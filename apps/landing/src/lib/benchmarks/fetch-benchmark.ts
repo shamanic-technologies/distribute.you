@@ -1,4 +1,5 @@
 import { URLS } from "@distribute/content";
+import { unstable_cache } from "next/cache";
 import {
   type BrandLeaderboardEntry,
   type WorkflowLeaderboardEntry,
@@ -57,40 +58,42 @@ interface FeatureListResponse {
   features: RawFeature[];
 }
 
-export async function fetchBenchmarkFeatures(
-  hostname = "",
-): Promise<BenchmarkFeature[]> {
-  const apiUrl = resolveApiUrl(hostname);
-  const res = await fetch(`${apiUrl}/public/features`, {
-    headers: buildHeaders(),
-    next: { revalidate: 300 },
-  });
-  if (!res.ok) {
-    console.error(
-      `[landing] Benchmarks: features fetch failed: ${res.status} ${res.statusText}`,
+export const fetchBenchmarkFeatures = unstable_cache(
+  async (hostname = ""): Promise<BenchmarkFeature[]> => {
+    const apiUrl = resolveApiUrl(hostname);
+    const res = await fetch(`${apiUrl}/public/features`, {
+      headers: buildHeaders(),
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) {
+      console.error(
+        `[landing] Benchmarks: features fetch failed: ${res.status} ${res.statusText}`,
+      );
+      return [];
+    }
+    const data: FeatureListResponse = await res.json();
+    const live = data.features.filter(
+      (f) => f.implemented === true && f.status === "active",
     );
-    return [];
-  }
-  const data: FeatureListResponse = await res.json();
-  const live = data.features.filter(
-    (f) => f.implemented === true && f.status === "active",
-  );
-  return live
-    .map((f) => {
-      const defaultOutput = f.outputs?.find((o) => o.defaultSort === true);
-      return {
-        id: f.id,
-        slug: f.slug,
-        name: f.name,
-        description: f.description,
-        icon: f.icon,
-        displayOrder: f.displayOrder,
-        defaultSortKey: defaultOutput?.key ?? null,
-        defaultSortDirection: defaultOutput?.sortDirection ?? "desc",
-      };
-    })
-    .sort((a, b) => a.displayOrder - b.displayOrder);
-}
+    return live
+      .map((f) => {
+        const defaultOutput = f.outputs?.find((o) => o.defaultSort === true);
+        return {
+          id: f.id,
+          slug: f.slug,
+          name: f.name,
+          description: f.description,
+          icon: f.icon,
+          displayOrder: f.displayOrder,
+          defaultSortKey: defaultOutput?.key ?? null,
+          defaultSortDirection: defaultOutput?.sortDirection ?? "desc",
+        };
+      })
+      .sort((a, b) => a.displayOrder - b.displayOrder);
+  },
+  ["benchmark-features"],
+  { revalidate: 300, tags: ["benchmark-features"] },
+);
 
 // ─── Per-feature ranked data (brand + workflow leaderboards) ─────────────────
 
@@ -216,6 +219,18 @@ export interface FeatureBenchmarkData {
 }
 
 export async function fetchFeatureBenchmark(
+  featureSlug: string,
+  hostname = "",
+): Promise<FeatureBenchmarkData | null> {
+  const cached = unstable_cache(
+    () => _fetchFeatureBenchmarkUncached(featureSlug, hostname),
+    ["feature-benchmark", featureSlug, hostname],
+    { revalidate: 300, tags: ["benchmark-features", `benchmark-${featureSlug}`] },
+  );
+  return cached();
+}
+
+async function _fetchFeatureBenchmarkUncached(
   featureSlug: string,
   hostname = "",
 ): Promise<FeatureBenchmarkData | null> {

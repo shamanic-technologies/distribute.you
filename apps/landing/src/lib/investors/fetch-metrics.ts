@@ -1,4 +1,5 @@
 import { URLS } from "@distribute/content";
+import { unstable_cache } from "next/cache";
 
 interface MonthlyRow {
   month: string;
@@ -82,16 +83,17 @@ function resolveApiUrl(hostname: string): string {
   return URLS.api;
 }
 
-export async function fetchInvestorMetrics(hostname = ""): Promise<InvestorMetrics> {
+export const fetchInvestorMetrics = unstable_cache(
+  async (hostname = ""): Promise<InvestorMetrics> => {
   const apiUrl = resolveApiUrl(hostname);
   const headers: Record<string, string> = { Accept: "application/json" };
   const apiKey = process.env.ADMIN_DISTRIBUTE_API_KEY;
   if (apiKey) headers["X-API-Key"] = apiKey;
 
   const [usersRes, billingRes, runsRes] = await Promise.all([
-    fetch(`${apiUrl}/public/stats/users`, { headers, cache: "no-store" }),
-    fetch(`${apiUrl}/public/stats/billing`, { headers, cache: "no-store" }),
-    fetch(`${apiUrl}/public/stats/runs`, { headers, cache: "no-store" }),
+    fetch(`${apiUrl}/public/stats/users`, { headers, next: { revalidate: 86400 } }),
+    fetch(`${apiUrl}/public/stats/billing`, { headers, next: { revalidate: 86400 } }),
+    fetch(`${apiUrl}/public/stats/runs`, { headers, next: { revalidate: 86400 } }),
   ]);
 
   if (!usersRes.ok) throw new Error(`[landing] /public/stats/users failed: ${usersRes.status}`);
@@ -200,4 +202,7 @@ export async function fetchInvestorMetrics(hostname = ""): Promise<InvestorMetri
     monthlyGrowth: sortedMonthsDesc.map((m) => monthlyMap.get(m)!),
     weeklyGrowth: sortedWeeklyDesc,
   };
-}
+  },
+  ["investor-metrics"],
+  { revalidate: 86400, tags: ["investor-metrics"] },
+);

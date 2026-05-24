@@ -122,7 +122,7 @@ describe("Outrank webhook route — auth + parse", () => {
 
   it("returns 401 without Authorization header", async () => {
     vi.doMock("@/lib/blog/db", () => ({ upsertArticle: vi.fn() }));
-    vi.doMock("next/cache", () => ({ revalidatePath: vi.fn() }));
+    vi.doMock("next/cache", () => ({ revalidatePath: vi.fn(), revalidateTag: vi.fn() }));
     const { POST } = await import("@/app/api/outrank/webhook/route");
     const res = await POST(makeRequest({ body: {} }));
     expect(res.status).toBe(401);
@@ -130,7 +130,7 @@ describe("Outrank webhook route — auth + parse", () => {
 
   it("returns 401 with wrong bearer token", async () => {
     vi.doMock("@/lib/blog/db", () => ({ upsertArticle: vi.fn() }));
-    vi.doMock("next/cache", () => ({ revalidatePath: vi.fn() }));
+    vi.doMock("next/cache", () => ({ revalidatePath: vi.fn(), revalidateTag: vi.fn() }));
     const { POST } = await import("@/app/api/outrank/webhook/route");
     const res = await POST(makeRequest({ body: {}, auth: "Bearer wrong" }));
     expect(res.status).toBe(401);
@@ -138,7 +138,7 @@ describe("Outrank webhook route — auth + parse", () => {
 
   it("returns 400 on a payload that fails the discriminated union", async () => {
     vi.doMock("@/lib/blog/db", () => ({ upsertArticle: vi.fn() }));
-    vi.doMock("next/cache", () => ({ revalidatePath: vi.fn() }));
+    vi.doMock("next/cache", () => ({ revalidatePath: vi.fn(), revalidateTag: vi.fn() }));
     const { POST } = await import("@/app/api/outrank/webhook/route");
     const res = await POST(
       makeRequest({
@@ -154,9 +154,13 @@ describe("Outrank webhook route — auth + parse", () => {
       .fn()
       .mockResolvedValueOnce({ id: "r1", slug: "first" })
       .mockResolvedValueOnce({ id: "r2", slug: "second" });
-    const revalSpy = vi.fn();
+    const revalPathSpy = vi.fn();
+    const revalTagSpy = vi.fn();
     vi.doMock("@/lib/blog/db", () => ({ upsertArticle: upsertSpy }));
-    vi.doMock("next/cache", () => ({ revalidatePath: revalSpy }));
+    vi.doMock("next/cache", () => ({
+      revalidatePath: revalPathSpy,
+      revalidateTag: revalTagSpy,
+    }));
     const { POST } = await import("@/app/api/outrank/webhook/route");
     const res = await POST(
       makeRequest({
@@ -177,17 +181,23 @@ describe("Outrank webhook route — auth + parse", () => {
     const body = await res.json();
     expect(body.message).toBe("Webhook processed successfully");
     expect(upsertSpy).toHaveBeenCalledTimes(2);
-    expect(revalSpy).toHaveBeenCalledWith("/blog");
-    expect(revalSpy).toHaveBeenCalledWith("/blog/first");
-    expect(revalSpy).toHaveBeenCalledWith("/blog/second");
-    expect(revalSpy).toHaveBeenCalledWith("/sitemap.xml");
+    expect(revalPathSpy).toHaveBeenCalledWith("/blog");
+    expect(revalPathSpy).toHaveBeenCalledWith("/blog/first");
+    expect(revalPathSpy).toHaveBeenCalledWith("/blog/second");
+    expect(revalPathSpy).toHaveBeenCalledWith("/sitemap.xml");
+    expect(revalTagSpy).toHaveBeenCalledWith("blog-articles", "default");
+    expect(revalTagSpy).toHaveBeenCalledWith("blog-article-first", "default");
+    expect(revalTagSpy).toHaveBeenCalledWith("blog-article-second", "default");
   });
 
   it("upserts a single article on update_article", async () => {
     const upsertSpy = vi.fn().mockResolvedValue({ id: "r1", slug: "the-slug" });
-    const revalSpy = vi.fn();
+    const revalTagSpy = vi.fn();
     vi.doMock("@/lib/blog/db", () => ({ upsertArticle: upsertSpy }));
-    vi.doMock("next/cache", () => ({ revalidatePath: revalSpy }));
+    vi.doMock("next/cache", () => ({
+      revalidatePath: vi.fn(),
+      revalidateTag: revalTagSpy,
+    }));
     const { POST } = await import("@/app/api/outrank/webhook/route");
     const res = await POST(
       makeRequest({
@@ -209,5 +219,7 @@ describe("Outrank webhook route — auth + parse", () => {
         publishedAt: "2026-05-22T10:00:00Z",
       }),
     );
+    expect(revalTagSpy).toHaveBeenCalledWith("blog-articles", "default");
+    expect(revalTagSpy).toHaveBeenCalledWith("blog-article-the-slug", "default");
   });
 });

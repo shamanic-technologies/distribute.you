@@ -1,4 +1,5 @@
 import { neon } from "@neondatabase/serverless";
+import { unstable_cache } from "next/cache";
 
 export interface BlogArticle {
   id: string;
@@ -34,10 +35,17 @@ interface RawBlogArticle {
 
 function getSql() {
   const url = process.env.DATABASE_URL;
-  if (!url) {
-    throw new Error("[landing/blog] DATABASE_URL is not configured");
-  }
+  if (!url) return null;
   return neon(url);
+}
+
+// Project CLAUDE.md exception — build-time prerender (next build) must not
+// throw on missing config. Runtime reads/writes still fail loud because
+// upsertArticle calls getSql() directly without this guard.
+function warnUnconfigured(): void {
+  console.warn(
+    "[landing/blog] DATABASE_URL is not configured; returning empty result for build-time prerender",
+  );
 }
 
 function mapRow(row: RawBlogArticle): BlogArticle {
@@ -73,6 +81,9 @@ export interface UpsertArticleInput {
 
 export async function upsertArticle(input: UpsertArticleInput): Promise<BlogArticle> {
   const sql = getSql();
+  if (!sql) {
+    throw new Error("[landing/blog] DATABASE_URL is not configured");
+  }
   const rows = (await sql`
     INSERT INTO blog_articles (
       slug, title, excerpt, content_html, content_markdown,
@@ -127,43 +138,62 @@ function isMissingBlogTable(err: unknown): boolean {
   );
 }
 
-export async function listArticles(limit = 50): Promise<BlogArticle[]> {
-  const sql = getSql();
-  try {
-    const rows = (await sql`
-      SELECT * FROM blog_articles
-      ORDER BY published_at DESC
-      LIMIT ${limit}
-    `) as RawBlogArticle[];
-    return rows.map(mapRow);
-  } catch (err) {
-    if (isMissingBlogTable(err)) {
-      console.warn(
-        "[landing/blog] blog_articles table missing; run migrations/0001_init_blog.sql against DATABASE_URL",
-      );
+export const listArticles = unstable_cache(
+  async (limit = 50): Promise<BlogArticle[]> => {
+    const sql = getSql();
+    if (!sql) {
+      warnUnconfigured();
       return [];
     }
-    throw err;
-  }
-}
+    try {
+      const rows = (await sql`
+        SELECT * FROM blog_articles
+        ORDER BY published_at DESC
+        LIMIT ${limit}
+      `) as RawBlogArticle[];
+      return rows.map(mapRow);
+    } catch (err) {
+      if (isMissingBlogTable(err)) {
+        console.warn(
+          "[landing/blog] blog_articles table missing; run migrations/0001_init_blog.sql against DATABASE_URL",
+        );
+        return [];
+      }
+      throw err;
+    }
+  },
+  ["blog-articles-list"],
+  { revalidate: 60, tags: ["blog-articles"] },
+);
 
 export async function getArticleBySlug(slug: string): Promise<BlogArticle | null> {
-  const sql = getSql();
-  try {
-    const rows = (await sql`
-      SELECT * FROM blog_articles
-      WHERE slug = ${slug}
-      LIMIT 1
-    `) as RawBlogArticle[];
-    if (rows.length === 0) return null;
-    return mapRow(rows[0]);
-  } catch (err) {
-    if (isMissingBlogTable(err)) {
-      console.warn(
-        "[landing/blog] blog_articles table missing; run migrations/0001_init_blog.sql against DATABASE_URL",
-      );
-      return null;
-    }
-    throw err;
-  }
+  const cached = unstable_cache(
+    async () => {
+      const sql = getSql();
+      if (!sql) {
+        warnUnconfigured();
+        return null;
+      }
+      try {
+        const rows = (await sql`
+          SELECT * FROM blog_articles
+          WHERE slug = ${slug}
+          LIMIT 1
+        `) as RawBlogArticle[];
+        if (rows.length === 0) return null;
+        return mapRow(rows[0]);
+      } catch (err) {
+        if (isMissingBlogTable(err)) {
+          console.warn(
+            "[landing/blog] blog_articles table missing; run migrations/0001_init_blog.sql against DATABASE_URL",
+          );
+          return null;
+        }
+        throw err;
+      }
+    },
+    ["blog-article", slug],
+    { revalidate: 60, tags: ["blog-articles", `blog-article-${slug}`] },
+  );
+  return cached();
 }

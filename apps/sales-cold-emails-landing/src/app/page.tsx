@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { unstable_cache } from "next/cache";
 import { URLS } from "@distribute/content";
 
 const SALES_FEATURES = [
@@ -49,31 +50,36 @@ function formatCostCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
-async function getHeroStats(): Promise<HeroStats | null> {
-  try {
-    const apiUrl = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
-    const res = await fetch(`${apiUrl}/v1/public/features/best?featureSlug=sales-cold-email-outreach&groupBy=workflow`, {
-      headers: { Accept: "application/json" },
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) return null;
-    const data: {
-      best: { [metricKey: string]: { value: number; createdForBrandId: string | null } | null };
-    } = await res.json();
-    const openRecord = data.best["opened"] ?? null;
-    const replyRecord = data.best["replied"] ?? null;
-    return {
-      bestCostPerOpen: openRecord
-        ? { brandDomain: null, costPerOpenCents: openRecord.value }
-        : null,
-      bestCostPerReply: replyRecord
-        ? { brandDomain: null, costPerReplyCents: replyRecord.value }
-        : null,
-    };
-  } catch {
-    return null;
-  }
-}
+const getHeroStats = unstable_cache(
+  async (): Promise<HeroStats | null> => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
+      const res = await fetch(`${apiUrl}/v1/public/features/best?featureSlug=sales-cold-email-outreach&groupBy=workflow`, {
+        headers: { Accept: "application/json" },
+        next: { revalidate: 3600 },
+      });
+      if (!res.ok) return null;
+      const data: {
+        best: { [metricKey: string]: { value: number; createdForBrandId: string | null } | null };
+      } = await res.json();
+      const openRecord = data.best["opened"] ?? null;
+      const replyRecord = data.best["replied"] ?? null;
+      return {
+        bestCostPerOpen: openRecord
+          ? { brandDomain: null, costPerOpenCents: openRecord.value }
+          : null,
+        bestCostPerReply: replyRecord
+          ? { brandDomain: null, costPerReplyCents: replyRecord.value }
+          : null,
+      };
+    } catch (err) {
+      console.error("[sales-cold-emails-landing] getHeroStats failed:", err);
+      return null;
+    }
+  },
+  ["sales-hero-stats"],
+  { revalidate: 3600, tags: ["sales-hero-stats"] },
+);
 
 export default async function Home() {
   const heroStats = await getHeroStats();

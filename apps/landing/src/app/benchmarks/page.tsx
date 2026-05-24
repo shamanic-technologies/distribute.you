@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { headers } from "next/headers";
 import { PROD_URLS } from "@/lib/env-urls";
 import { fetchBenchmarkFeatures } from "@/lib/benchmarks/fetch-benchmark";
 
 export const revalidate = 300;
-export const dynamic = "force-dynamic";
 
 const PAGE_URL = `${PROD_URLS.landing}/benchmarks`;
 const PAGE_DESCRIPTION =
@@ -49,9 +47,7 @@ export const metadata: Metadata = {
 };
 
 export default async function BenchmarksIndexPage() {
-  const headersList = await headers();
-  const host = headersList.get("host") || "";
-  const features = await fetchBenchmarkFeatures(host);
+  const features = await fetchBenchmarkFeatures();
 
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
