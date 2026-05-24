@@ -1164,6 +1164,70 @@ export async function listBrandEmails(brandId: string, token?: string): Promise<
   return apiCall<{ emails: Email[] }>(`/emails?brandId=${brandId}`, { token });
 }
 
+// Manual reply qualifications (api-service proxy → email-gateway → instantly-service).
+// Wire shape is snake_case (request) + camelCase (response) per the upstream contract;
+// helpers below translate camelCase request inputs to snake_case query / body.
+export type ManualQualificationStatus =
+  | "lead_interested"
+  | "lead_meeting_booked"
+  | "lead_closed"
+  | "lead_not_interested"
+  | "lead_wrong_person"
+  | "lead_neutral"
+  | "lead_out_of_office"
+  | "auto_reply_received";
+
+export type ManualQualificationClassification = "positive" | "negative" | "neutral";
+
+export interface ManualQualification {
+  id: string;
+  orgId: string;
+  campaignId: string;
+  instantlyCampaignId: string;
+  email: string;
+  status: ManualQualificationStatus;
+  qualifiedBy: string;
+  notes: string | null;
+  qualifiedAt: string;
+}
+
+export interface SetManualQualificationResponse {
+  idempotent: boolean;
+  qualification: ManualQualification;
+}
+
+export interface ListManualQualificationsResponse {
+  qualifications: ManualQualification[];
+}
+
+export async function setManualQualification(
+  body: { campaignId: string; email: string; status: ManualQualificationStatus; notes?: string },
+  token?: string,
+): Promise<SetManualQualificationResponse> {
+  return apiCall<SetManualQualificationResponse>("/emails/manual-qualifications", {
+    token,
+    method: "POST",
+    body: {
+      campaign_id: body.campaignId,
+      email: body.email,
+      status: body.status,
+      ...(body.notes !== undefined ? { notes: body.notes } : {}),
+    },
+  });
+}
+
+export async function listManualQualifications(
+  params: { campaignId?: string; email?: string; limit?: number } = {},
+  token?: string,
+): Promise<ListManualQualificationsResponse> {
+  const qs = new URLSearchParams();
+  if (params.campaignId) qs.set("campaign_id", params.campaignId);
+  if (params.email) qs.set("email", params.email);
+  if (params.limit != null) qs.set("limit", String(params.limit));
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return apiCall<ListManualQualificationsResponse>(`/emails/manual-qualifications${suffix}`, { token });
+}
+
 
 // Workflows
 export interface DAGNode {
