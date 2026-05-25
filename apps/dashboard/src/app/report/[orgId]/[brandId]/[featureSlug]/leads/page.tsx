@@ -5,7 +5,7 @@ import { toCsv, type CsvColumn } from "@/components/report/csv";
 import { TableSectionSkeleton } from "@/components/report/skeletons";
 import { PublicLeadsView } from "@/components/report/public-leads-view";
 import type { LeadRow, LeadEmailSummary } from "@/components/report/leads-table";
-import { fetchAllEmails, fetchLeads, fetchWorkflows, REPORT_FETCH_LIMIT } from "@/lib/report-api";
+import { fetchAllEmails, fetchLeads, fetchWorkflows } from "@/lib/report-api";
 import { getLeadConsolidatedStatus, type Email, type Lead } from "@/lib/api";
 
 export const revalidate = 14400;
@@ -101,7 +101,7 @@ export default async function LeadsPage({ params }: PageProps) {
         fallback={
           <TableSectionSkeleton
             title="Leads"
-            description="Every prospect targeted, with company, email and current status."
+            description="Every prospect considered."
             columnLabels={LEADS_COLUMNS}
           />
         }
@@ -155,16 +155,10 @@ async function LeadsSection({ orgId, brandId, featureSlug }: { orgId: string; br
     { label: "Unsubscribed", value: (r) => yesNo(r.unsubscribed) },
   ];
 
-  const truncated = rows.length >= REPORT_FETCH_LIMIT;
-
   return (
     <SectionCard
       title="Leads"
-      description={
-        truncated
-          ? `Every prospect targeted. Showing first ${REPORT_FETCH_LIMIT}.`
-          : "Every prospect targeted, with company, email and current status."
-      }
+      description="Every prospect considered."
       count={rows.length}
       actions={
         <CsvDownloadButton filename={`leads-${featureSlug}.csv`} csv={toCsv(rows, csvColumns)} isEmpty={rows.length === 0} />
