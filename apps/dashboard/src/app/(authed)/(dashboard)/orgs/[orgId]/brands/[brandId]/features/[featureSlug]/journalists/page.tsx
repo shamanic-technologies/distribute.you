@@ -8,6 +8,8 @@ import {
   type EnrichedJournalist,
   type JournalistCampaignEntry,
   type JournalistStatusBooleans,
+  type ManualQualification,
+  type ManualQualificationStatus,
 } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 import {
@@ -17,6 +19,10 @@ import {
   statusLabel,
   deriveDisplayStatusFromBooleans,
 } from "@/lib/outlet-status";
+import { useManualQualifications } from "@/lib/use-manual-qualification";
+import { buildLatestQualificationMap, qualificationKey } from "@/lib/manual-qualification";
+import { EditManualQualificationModal } from "@/components/manual-qualification/edit-manual-qualification-modal";
+import { ManualQualificationBadge } from "@/components/leads/manual-qualification-badge";
 
 const POLL_INTERVAL = 5_000;
 const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
@@ -61,12 +67,21 @@ export default function FeatureJournalistsPage() {
   const [activeTab, setActiveTab] = useState<Tab>("contacted");
   const [selected, setSelected] = useState<EnrichedJournalist | null>(null);
   const [search, setSearch] = useState("");
+  const [editStatusContext, setEditStatusContext] = useState<
+    { campaignId: string; email: string } | null
+  >(null);
   const hasAutoSelectedTab = useRef(false);
 
   const { data: journalistsData, isLoading: journalistsLoading } = useAuthQuery(
     ["enrichedJournalists", brandId, featureSlug],
     () => listJournalistsEnriched(brandId, { featureSlug }),
     { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false },
+  );
+
+  const { data: qualificationsData } = useManualQualifications(brandId);
+  const qualificationByKey = useMemo(
+    () => buildLatestQualificationMap(qualificationsData?.qualifications ?? []),
+    [qualificationsData],
   );
 
   const journalists = journalistsData?.journalists ?? [];
@@ -252,7 +267,23 @@ export default function FeatureJournalistsPage() {
       {selected && (
         <DetailPanel
           journalist={selected}
+          qualificationByKey={qualificationByKey}
+          onEditStatus={(ctx) => setEditStatusContext(ctx)}
           onClose={() => setSelected(null)}
+        />
+      )}
+
+      {editStatusContext && (
+        <EditManualQualificationModal
+          campaignId={editStatusContext.campaignId}
+          email={editStatusContext.email}
+          brandId={brandId}
+          currentStatus={
+            qualificationByKey.get(
+              qualificationKey(editStatusContext.campaignId, editStatusContext.email),
+            )?.status ?? null
+          }
+          onClose={() => setEditStatusContext(null)}
         />
       )}
     </div>
@@ -261,9 +292,13 @@ export default function FeatureJournalistsPage() {
 
 function DetailPanel({
   journalist: j,
+  qualificationByKey,
+  onEditStatus,
   onClose,
 }: {
   journalist: EnrichedJournalist;
+  qualificationByKey: Map<string, ManualQualification>;
+  onEditStatus: (ctx: { campaignId: string; email: string }) => void;
   onClose: () => void;
 }) {
   const cost = j.cost?.totalCostInUsdCents ?? 0;
@@ -375,9 +410,22 @@ function DetailPanel({
         {/* Per-Campaign Details */}
         <div className="space-y-3">
           <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider">Campaign Entries</h4>
-          {j.campaigns.map((c) => (
-            <CampaignEntryCard key={c.id} campaign={c} statusBooleans={j.byCampaign?.[c.campaignId] ?? j.campaign} />
-          ))}
+          {j.campaigns.map((c) => {
+            const effectiveEmail = c.email ?? j.email;
+            const manualStatus: ManualQualificationStatus | null = effectiveEmail
+              ? qualificationByKey.get(qualificationKey(c.campaignId, effectiveEmail))?.status ?? null
+              : null;
+            return (
+              <CampaignEntryCard
+                key={c.id}
+                campaign={c}
+                statusBooleans={j.byCampaign?.[c.campaignId] ?? j.campaign}
+                effectiveEmail={effectiveEmail}
+                manualStatus={manualStatus}
+                onEditStatus={onEditStatus}
+              />
+            );
+          })}
         </div>
       </div>
 
@@ -399,9 +447,22 @@ function DetailPanel({
   );
 }
 
-function CampaignEntryCard({ campaign: c, statusBooleans }: { campaign: JournalistCampaignEntry; statusBooleans?: JournalistStatusBooleans | null }) {
+function CampaignEntryCard({
+  campaign: c,
+  statusBooleans,
+  effectiveEmail,
+  manualStatus,
+  onEditStatus,
+}: {
+  campaign: JournalistCampaignEntry;
+  statusBooleans?: JournalistStatusBooleans | null;
+  effectiveEmail: string | null;
+  manualStatus: ManualQualificationStatus | null;
+  onEditStatus: (ctx: { campaignId: string; email: string }) => void;
+}) {
   const score = parseFloat(c.relevanceScore);
   const entryStatus = deriveDisplayStatusFromBooleans(statusBooleans);
+  const canEdit = effectiveEmail !== null;
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 space-y-3">
@@ -422,6 +483,31 @@ function CampaignEntryCard({ campaign: c, statusBooleans }: { campaign: Journali
         <span className="text-[10px] text-gray-400 ml-auto">
           {new Date(c.createdAt).toLocaleDateString()} ({timeAgo(c.createdAt)})
         </span>
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Manual qualif</span>
+        {manualStatus ? (
+          <ManualQualificationBadge status={manualStatus} />
+        ) : (
+          <span className="text-xs text-gray-400">—</span>
+        )}
+        <button
+          type="button"
+          data-testid="open-edit-status-modal"
+          disabled={!canEdit}
+          title={canEdit ? undefined : "No email — cannot qualify"}
+          onClick={() => {
+            if (effectiveEmail) onEditStatus({ campaignId: c.campaignId, email: effectiveEmail });
+          }}
+          className={`text-xs px-2.5 py-1 rounded-md border transition ${
+            canEdit
+              ? "border-gray-200 text-gray-700 hover:bg-gray-50 cursor-pointer"
+              : "border-gray-100 text-gray-300 cursor-not-allowed"
+          }`}
+        >
+          Edit status
+        </button>
       </div>
 
       {c.whyRelevant && (
