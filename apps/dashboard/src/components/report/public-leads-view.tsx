@@ -4,34 +4,37 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode 
 import { EntitySearchBar } from "@/components/entity-search-bar";
 import { WorkflowTag } from "./workflow-tag";
 import type { LeadRow, LeadEmailSummary } from "./leads-table";
+import {
+  bucketRowsByStatus,
+  type PublicReportStatus,
+} from "@/lib/public-report-bucketing";
 
 /**
  * Public-report leads view — bespoke client component that mirrors the
- * operator-side `(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/leads/page.tsx`
- * layout: flex container with a left list and an in-container right side
- * panel (NOT a modal drawer). Mutually-exclusive tabs by max-milestone via
- * the pre-computed `LeadRow.status` field (the consolidated status — same
- * function the internal page uses).
+ * operator-side leads page layout: flex container with a left list and an
+ * in-container right side panel (NOT a modal drawer).
  *
- * Replaces the previous `<LeadsTable>` (ReportTable wrapper + DataDrawer
- * modal), which suffered from a tab-change bug: TABS used boolean
- * predicates (`r.replied`, `r.clicked`, …), so a replied lead matched
- * every milestone tab simultaneously. Switching tabs visually showed
- * mostly the same rows in the same order. Internal page's `groupedByStatus`
- * pattern keys each lead by its single max milestone — each lead lives in
- * exactly one milestone tab.
+ * Tabs are CUMULATIVE / multi-status: every lead appears in every funnel
+ * bucket whose boolean flag is true (a clicked lead lives in Clicked AND
+ * Opened AND Delivered AND Sent). This matches the backend's `leads*`
+ * stats (also cumulative) so per-tab counts equal the funnel counts shown
+ * on the overview page. Intake buckets (Served / Buffered / Skipped /
+ * Claimed) key on `intakeStatus` so a lead stays in its intake tab even
+ * after progressing through the funnel.
  *
- * Data is pre-fetched server-side and embedded into each `LeadRow`
- * (including `emails[]`, `globalBounced`, `globalUnsubscribed`,
- * `companyEmployees`). No client-side polling — public report is ISR-
- * cached for 4h; the recipient sees a snapshot, not a live feed.
+ * Note: this diverges from the operator-side `getLeadConsolidatedStatus`
+ * max-milestone bucketing on purpose; operator UI expects each lead in
+ * one tab, public report optimizes for "funnel and tab counts match".
+ *
+ * Data is pre-fetched server-side and embedded into each `LeadRow`. No
+ * client-side polling — public report is ISR-cached for 4h.
  */
 
-// Tab order: replied first (most-engaged), buffered last (not yet served).
-// Matches the internal page's LEAD_STATUS_ORDER 1:1 — recipient and
-// operator see the same milestone columns in the same order.
-const LEAD_STATUS_ORDER: ReadonlyArray<LeadRow["status"]> = [
-  "replied",
+// Tab order: most-engaged first. Boolean funnel tabs precede intake tabs
+// because a sent / opened / replied lead is more interesting to a viewer
+// than a buffered one.
+const LEAD_STATUS_ORDER: ReadonlyArray<PublicReportStatus> = [
+  "positive-reply",
   "clicked",
   "opened",
   "delivered",
@@ -45,13 +48,16 @@ const LEAD_STATUS_ORDER: ReadonlyArray<LeadRow["status"]> = [
   "buffered",
 ];
 
-type Tab = LeadRow["status"] | "all";
+type Tab = PublicReportStatus | "all";
 
 // Capitalized labels for each status. Public-side override: `served` shows
 // "Served" (operator labels it "Processing"); see PR #1165 history.
+// `positive-reply` matches the funnel's "Leads Positive" stage — every
+// lead bucketed here also appears in Sent / Delivered / Opened / Clicked,
+// so we never need a separate "Replied" tab.
 function leadStatusLabel(status: string): string {
   switch (status) {
-    case "replied": return "Replied";
+    case "positive-reply": return "Positive reply";
     case "clicked": return "Clicked";
     case "opened": return "Opened";
     case "delivered": return "Delivered";
@@ -63,6 +69,7 @@ function leadStatusLabel(status: string): string {
     case "skipped": return "Skipped";
     case "claimed": return "Claimed";
     case "buffered": return "Buffered";
+    case "replied": return "Replied";
     default: return status;
   }
 }
@@ -73,6 +80,7 @@ function leadStatusLabel(status: string): string {
 // tables). Keep the three in sync.
 function leadStatusStyle(status: string): string {
   switch (status) {
+    case "positive-reply": return "bg-emerald-100 text-emerald-700 border-emerald-200";
     case "replied": return "bg-emerald-100 text-emerald-700 border-emerald-200";
     case "clicked": return "bg-violet-100 text-violet-700 border-violet-200";
     case "opened": return "bg-indigo-100 text-indigo-700 border-indigo-200";
@@ -165,11 +173,7 @@ export function PublicLeadsView({ rows, emailsApiUrl }: PublicLeadsViewProps) {
   const deferredSearch = useDeferredValue(search);
   const isStale = deferredTab !== activeTab || deferredSearch !== search;
 
-  // Pre-sort by servedAt desc (most-recently intaken first). Internal page
-  // uses the same global sort; per-tab sortValue overrides shipped in PR
-  // #1172 are dropped here because the new tabs are mutually exclusive —
-  // every row in a milestone tab has the same milestone, so the sort key
-  // reduces to one global order.
+  // Pre-sort by servedAt desc (most-recently intaken first).
   const sortedRows = useMemo(
     () => [...rows].sort((a, b) => {
       const aTime = a.servedAt ? new Date(a.servedAt).getTime() : 0;
@@ -179,18 +183,13 @@ export function PublicLeadsView({ rows, emailsApiUrl }: PublicLeadsViewProps) {
     [rows],
   );
 
-  // Bucket each row by its single consolidated max-milestone status.
-  // Replied → Replied tab only (NOT also Clicked / Opened / Delivered / Sent).
-  // Internal page uses exactly this pattern (`getLeadConsolidatedStatus`).
-  const groupedByStatus = useMemo(() => {
-    const groups = new Map<string, LeadRow[]>();
-    for (const status of LEAD_STATUS_ORDER) groups.set(status, []);
-    for (const row of sortedRows) {
-      const list = groups.get(row.status);
-      if (list) list.push(row);
-    }
-    return groups;
-  }, [sortedRows]);
+  // Bucket cumulatively: a lead with sent=true appears in the Sent tab
+  // regardless of whether it later got clicked / replied. Tab counts
+  // therefore equal the funnel's lead* stats (which are also cumulative).
+  const groupedByStatus = useMemo(
+    () => bucketRowsByStatus(sortedRows, LEAD_STATUS_ORDER),
+    [sortedRows],
+  );
 
   // Auto-pick the leftmost non-empty tab on first paint. Once the user
   // picks any tab, leave it alone even if its count later drops to 0 —
