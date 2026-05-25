@@ -306,20 +306,3 @@ export async function fetchWorkflows(orgId: string, featureSlug: string): Promis
   )();
 }
 
-/** Extract human-readable prompt strings from a workflow DAG. Looks for
- *  prompt / promptTemplate / systemPrompt / userPrompt fields on any node config. */
-export function extractWorkflowPrompts(workflow: Workflow): { nodeId: string; nodeType: string; field: string; value: string }[] {
-  const prompts: { nodeId: string; nodeType: string; field: string; value: string }[] = [];
-  const nodes = workflow.dag?.nodes ?? [];
-  const PROMPT_FIELDS = ["prompt", "promptTemplate", "systemPrompt", "userPrompt", "instructions", "template"];
-  for (const node of nodes) {
-    const config = node.config ?? {};
-    for (const field of PROMPT_FIELDS) {
-      const value = config[field];
-      if (typeof value === "string" && value.length > 0) {
-        prompts.push({ nodeId: node.id, nodeType: node.type, field, value });
-      }
-    }
-  }
-  return prompts;
-}

@@ -9,7 +9,6 @@ import {
   fetchCampaigns,
   fetchFeatureStats,
   fetchFeatureStatsByWorkflow,
-  extractWorkflowPrompts,
 } from "@/lib/report-api";
 
 export const revalidate = 14400;
@@ -19,15 +18,7 @@ interface PageProps {
   params: Promise<{ orgId: string; brandId: string; featureSlug: string }>;
 }
 
-const WORKFLOW_COLUMNS = ["Workflow", "Version", "Emails sent", "Positive replies", "CAC / reply"];
-
-function humanizeStep(nodeId: string, nodeType: string): string {
-  const base = nodeId || nodeType;
-  return base
-    .split(/[-_]/)
-    .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
-    .join(" ");
-}
+const WORKFLOW_COLUMNS = ["Workflow", "Version", "Emails sent", "Positive replies", "CAC / positive reply"];
 
 function pickStat(stats: Record<string, number>, ...keys: string[]): number {
   for (const k of keys) {
@@ -89,11 +80,6 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
       version: w.version,
       status: w.status ?? "active",
       description: w.description ?? "",
-      prompts: extractWorkflowPrompts(w).map((p) => ({
-        step: humanizeStep(p.nodeId, p.nodeType),
-        field: p.field,
-        value: p.value,
-      })),
       emailsSent: pickStat(stats, "leadsSent", "emailsSent"),
       positiveReplies: pickStat(stats, "leadsRepliesPositive", "repliesPositive"),
       totalCostCents: cost,

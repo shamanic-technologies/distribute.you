@@ -9,7 +9,6 @@ export interface WorkflowRow {
   version: number;
   status: string;
   description: string;
-  prompts: { step: string; field: string; value: string }[];
   emailsSent: number;
   positiveReplies: number;
   /** USD cents of total run cost attributed to this workflow */
@@ -63,32 +62,21 @@ const columns: ReportTableColumn<WorkflowRow>[] = [
   },
   {
     key: "cacReply",
-    label: "CAC / reply",
+    label: "CAC / positive reply",
     sortValue: (r) => String(r.positiveReplies > 0 ? r.totalCostCents / r.positiveReplies : Number.MAX_SAFE_INTEGER).padStart(12, "0"),
     render: (r) => <span className="font-medium text-gray-900">{cpa(r.totalCostCents, r.positiveReplies)}</span>,
   },
 ];
 
 function drawerEntries(r: WorkflowRow): DrawerEntry[] {
-  const entries: DrawerEntry[] = [
+  return [
     { label: "Version", value: `v${r.version}` },
     { label: "Emails sent", value: r.emailsSent.toLocaleString("en-US") },
     { label: "Positive replies", value: r.positiveReplies.toLocaleString("en-US") },
     { label: "Total cost", value: formatUsd(r.totalCostCents) },
-    { label: "CAC per reply", value: cpa(r.totalCostCents, r.positiveReplies) },
+    { label: "CAC / positive reply", value: cpa(r.totalCostCents, r.positiveReplies) },
     { label: "Description", value: r.description, block: true },
   ];
-  for (const p of r.prompts) {
-    entries.push({
-      label: `${p.step} · ${p.field}`,
-      value: <pre className="text-xs text-gray-700 bg-gray-50 border border-gray-100 rounded p-3 whitespace-pre-wrap font-sans">{p.value}</pre>,
-      block: true,
-    });
-  }
-  if (r.prompts.length === 0) {
-    entries.push({ label: "Prompts", value: <em className="text-gray-400">No prompts exposed.</em>, block: true });
-  }
-  return entries;
 }
 
 export function WorkflowsTable({ rows }: { rows: WorkflowRow[] }) {
