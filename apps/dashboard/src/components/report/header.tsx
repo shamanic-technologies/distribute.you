@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { Brand } from "@/lib/api";
+import { GeneratedAt } from "./generated-at";
 
 interface ReportHeaderProps {
   brand: Brand | null;
@@ -47,13 +48,7 @@ export function ReportHeader({ brand, brandId, orgName, featureSlug, generatedAt
         </div>
         <div className="text-left sm:text-right text-xs text-gray-500 w-full sm:w-auto">
           <div>
-            Generated{" "}
-            <time dateTime={generatedAt.toISOString()}>
-              {generatedAt.toLocaleString("en-US", {
-                dateStyle: "medium",
-                timeStyle: "short",
-              })}
-            </time>
+            Generated <GeneratedAt iso={generatedAt.toISOString()} />
           </div>
           <div className="text-gray-500 mt-0.5">Prepared by {orgName}</div>
         </div>
