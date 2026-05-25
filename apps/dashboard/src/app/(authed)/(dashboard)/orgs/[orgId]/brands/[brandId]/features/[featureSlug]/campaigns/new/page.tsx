@@ -10,6 +10,7 @@ import { useFeatures } from "@/lib/features-context";
 import {
   listWorkflows,
   fetchFeatureStats,
+  fetchGlobalRankedWorkflows,
   createCampaign,
   sendCampaignEmail,
   getBrand,
@@ -23,7 +24,6 @@ import {
   type Brand,
   type Campaign,
   type FeatureInput,
-  type SystemStats,
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
 import { formatStatValue, sortDirectionForType } from "@/lib/format-stat";
@@ -203,11 +203,16 @@ export default function FeatureCreateCampaignPage() {
     pollOptions,
   );
 
-  // Fetch feature stats grouped by workflowDynastySlug (aggregated across all versions)
-  const { data: statsData, isLoading } = useAuthQuery(
-    ["featureStats", featureSlug, "byWorkflowDynastySlug"],
-    () => fetchFeatureStats(featureSlug, { groupBy: "workflowDynastySlug" }),
-    { enabled: featureDef?.implemented === true, ...pollOptions },
+  // Fetch cross-org/brand ranked workflow stats (global leaderboard)
+  const { data: rankedData, isLoading } = useAuthQuery(
+    ["globalRankedWorkflows", featureSlug, defaultSortKey],
+    () => fetchGlobalRankedWorkflows({
+      featureSlug,
+      objective: defaultSortKey,
+      groupBy: "workflow",
+      limit: 100,
+    }),
+    { enabled: featureDef?.implemented === true && defaultSortKey !== "", ...pollOptions },
   );
 
   // Fetch brand-specific stats to know when each workflow was last used by this brand
@@ -229,9 +234,9 @@ export default function FeatureCreateCampaignPage() {
       }
     }
 
-    const statsMap = new Map<string, { stats: Record<string, number>; systemStats?: SystemStats }>();
-    for (const g of statsData?.groups ?? []) {
-      if (g.workflowDynastySlug) statsMap.set(g.workflowDynastySlug, { stats: g.stats, systemStats: g.systemStats });
+    const statsMap = new Map<string, Record<string, number | null>>();
+    for (const r of rankedData ?? []) {
+      if (r.workflow.workflowDynastySlug) statsMap.set(r.workflow.workflowDynastySlug, r.stats);
     }
 
     // Brand-specific stats: lastRunAt per workflow dynasty for this brand
@@ -248,12 +253,12 @@ export default function FeatureCreateCampaignPage() {
         workflowSlug: wf.workflowSlug,
         workflowDynastyName: wf.workflowDynastyName,
         featureSlug: wf.featureSlug ?? null,
-        stats: s?.stats ?? {},
+        stats: (s ?? {}) as Record<string, number>,
         brandLastRunAt: brandLastRunMap.get(wf.workflowDynastySlug) ?? null,
         updatedAt: wf.updatedAt,
       };
     });
-  }, [workflowsData, statsData, brandStatsData]);
+  }, [workflowsData, rankedData, brandStatsData]);
 
   // Workflow IDs for key status check
   const featureWorkflowIds = useMemo(() => rows.map((r) => r.id), [rows]);

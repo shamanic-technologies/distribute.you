@@ -55,7 +55,7 @@ describe("Feature pages use featureSlug for API calls", () => {
   it("workflows page uses featureSlug directly for API calls", () => {
     const content = fs.readFileSync(workflowsPath, "utf-8");
     expect(content).toContain("featureSlug");
-    expect(content).toContain("fetchFeatureStats(featureSlug");
+    expect(content).toContain("fetchGlobalRankedWorkflows({");
     expect(content).toContain("listWorkflows({ featureSlug })");
   });
 });

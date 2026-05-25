@@ -1435,6 +1435,44 @@ export async function fetchRankedWorkflows(params: {
   return data.results;
 }
 
+/** GET /v1/public/features/ranked — cross-org/brand workflow performance leaderboard. */
+export interface GlobalRankedWorkflowItem {
+  workflow: {
+    id: string;
+    workflowSlug: string;
+    workflowName: string;
+    workflowDynastyName: string;
+    workflowDynastySlug: string;
+    version: number;
+    createdForBrandId: string | null;
+    featureSlug: string;
+  };
+  brand?: { id: string; name: string | null; domain: string | null };
+  stats: Record<string, number | null>;
+}
+
+export interface GlobalRankedResponse {
+  objective: string;
+  sortDirection: "asc" | "desc";
+  results: GlobalRankedWorkflowItem[];
+}
+
+export async function fetchGlobalRankedWorkflows(params: {
+  featureSlug: string;
+  objective: string;
+  groupBy: "workflow" | "brand";
+  limit?: number;
+}, token?: string): Promise<GlobalRankedWorkflowItem[]> {
+  const query = new URLSearchParams();
+  query.set("featureSlug", params.featureSlug);
+  query.set("objective", params.objective);
+  query.set("groupBy", params.groupBy);
+  if (params.limit) query.set("limit", String(params.limit));
+  const qs = query.toString();
+  const data = await apiCall<GlobalRankedResponse>(`/public/features/ranked${qs ? `?${qs}` : ""}`, { token });
+  return data.results;
+}
+
 // Create / Upgrade / Fork workflow via AI
 export interface CreateWorkflowRequest {
   description: string;

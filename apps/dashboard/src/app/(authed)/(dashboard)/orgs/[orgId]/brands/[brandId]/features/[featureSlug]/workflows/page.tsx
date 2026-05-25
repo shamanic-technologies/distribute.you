@@ -5,9 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
-  fetchFeatureStats,
+  fetchGlobalRankedWorkflows,
   listWorkflows,
-  type SystemStats,
 } from "@/lib/api";
 import { useFeatures } from "@/lib/features-context";
 import { formatStatValue, sortDirectionForType } from "@/lib/format-stat";
@@ -66,11 +65,16 @@ export default function FeatureWorkflowsPage() {
     router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/new`);
   }, [router, orgId, brandId, featureSlug]);
 
-  // Fetch stats grouped by workflowDynastySlug (aggregated across all versions)
-  const { data: statsData, isLoading } = useAuthQuery(
-    ["featureStats", featureSlug, "byWorkflowDynastySlug"],
-    () => fetchFeatureStats(featureSlug, { groupBy: "workflowDynastySlug" }),
-    { enabled: wfDef?.implemented === true, ...pollOptions },
+  // Fetch cross-org/brand ranked workflow stats (global leaderboard)
+  const { data: rankedData, isLoading } = useAuthQuery(
+    ["globalRankedWorkflows", featureSlug, defaultSortKey],
+    () => fetchGlobalRankedWorkflows({
+      featureSlug,
+      objective: defaultSortKey,
+      groupBy: "workflow",
+      limit: 100,
+    }),
+    { enabled: wfDef?.implemented === true && defaultSortKey !== "", ...pollOptions },
   );
 
   // Fetch workflows filtered by feature slug
@@ -95,22 +99,18 @@ export default function FeatureWorkflowsPage() {
   }, [workflowsData]);
 
   const rows = useMemo(() => {
-    const statsMap = new Map<string, { stats: Record<string, number>; systemStats?: SystemStats }>();
-    for (const g of statsData?.groups ?? []) {
-      if (g.workflowDynastySlug) statsMap.set(g.workflowDynastySlug, { stats: g.stats, systemStats: g.systemStats });
+    const statsMap = new Map<string, Record<string, number | null>>();
+    for (const r of rankedData ?? []) {
+      if (r.workflow.workflowDynastySlug) statsMap.set(r.workflow.workflowDynastySlug, r.stats);
     }
 
-    return dynastyWorkflows.map((wf) => {
-      const s = statsMap.get(wf.workflowDynastySlug);
-      return {
-        id: wf.id,
-        workflowSlug: wf.workflowSlug,
-        workflowDynastyName: wf.workflowDynastyName,
-        stats: s?.stats ?? {},
-        systemStats: s?.systemStats,
-      };
-    });
-  }, [statsData, dynastyWorkflows]);
+    return dynastyWorkflows.map((wf) => ({
+      id: wf.id,
+      workflowSlug: wf.workflowSlug,
+      workflowDynastyName: wf.workflowDynastyName,
+      stats: statsMap.get(wf.workflowDynastySlug) ?? {},
+    }));
+  }, [rankedData, dynastyWorkflows]);
 
   const handleSort = useCallback((key: string) => {
     setMetric((prev) => {
