@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 import { WorkflowTag } from "./workflow-tag";
 import type { LeadRow, LeadEmailSummary } from "./leads-table";
@@ -151,6 +151,15 @@ export function PublicLeadsView({ rows }: PublicLeadsViewProps) {
   const [search, setSearch] = useState("");
   const hasAutoSelectedTab = useRef(false);
 
+  // Defer the heavy work (re-bucketing the active list + re-running the
+  // search filter + re-rendering up to 5,000 rows) so the tab pill /
+  // search input updates feel instant. React keeps showing the previous
+  // table while computing the next one; `isStale` flips true during the
+  // pending commit so we can swap in a skeleton instead.
+  const deferredTab = useDeferredValue(activeTab);
+  const deferredSearch = useDeferredValue(search);
+  const isStale = deferredTab !== activeTab || deferredSearch !== search;
+
   // Pre-sort by servedAt desc (most-recently intaken first). Internal page
   // uses the same global sort; per-tab sortValue overrides shipped in PR
   // #1172 are dropped here because the new tabs are mutually exclusive —
@@ -188,13 +197,17 @@ export function PublicLeadsView({ rows }: PublicLeadsViewProps) {
     if (first) setActiveTab(first);
   }, [sortedRows.length, groupedByStatus]);
 
-  const activeList = activeTab === "all"
+  // activeList + filteredLeads are derived from the DEFERRED state so the
+  // pending heavy re-render is decoupled from the urgent UI update. The
+  // table briefly shows the previous tab's data (we mask it with a
+  // skeleton when `isStale` is true) while React commits the new one.
+  const activeList = deferredTab === "all"
     ? sortedRows
-    : groupedByStatus.get(activeTab) ?? [];
+    : groupedByStatus.get(deferredTab) ?? [];
 
   const filteredLeads = useMemo(() => {
-    if (!search) return activeList;
-    const q = search.toLowerCase();
+    if (!deferredSearch) return activeList;
+    const q = deferredSearch.toLowerCase();
     return activeList.filter((r) => {
       const name = `${r.firstName} ${r.lastName}`.toLowerCase();
       return name.includes(q)
@@ -203,7 +216,7 @@ export function PublicLeadsView({ rows }: PublicLeadsViewProps) {
         || r.email.toLowerCase().includes(q)
         || r.workflow.toLowerCase().includes(q);
     });
-  }, [activeList, search]);
+  }, [activeList, deferredSearch]);
 
   const tabs: { key: Tab; label: string; count: number }[] = [
     ...LEAD_STATUS_ORDER.map((status) => ({
@@ -250,6 +263,8 @@ export function PublicLeadsView({ rows }: PublicLeadsViewProps) {
             <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No leads yet</h3>
             <p className="text-gray-600 text-sm">Leads will appear here once campaigns run.</p>
           </div>
+        ) : isStale ? (
+          <LeadsTableSkeleton />
         ) : (
           <PublicLeadsTable leads={filteredLeads} selectedLead={selected} onSelectLead={setSelected} />
         )}
@@ -302,14 +317,17 @@ function PublicLeadsTable({
     );
   }
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <table className="w-full text-sm">
+    // overflow-x-auto on the card lets the user swipe horizontally on
+    // narrow viewports instead of having columns either disappear or
+    // collapse into unreadable cells.
+    <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+      <table className="min-w-full text-sm">
         <thead>
           <tr className="border-b border-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            <th className="px-4 py-3">Company</th>
-            <th className="px-4 py-3">Contact</th>
-            <th className="px-4 py-3 hidden sm:table-cell">Status</th>
-            <th className="px-4 py-3 hidden md:table-cell">Found</th>
+            <th className="px-4 py-3 whitespace-nowrap">Company</th>
+            <th className="px-4 py-3 whitespace-nowrap">Contact</th>
+            <th className="px-4 py-3 whitespace-nowrap">Status</th>
+            <th className="px-4 py-3 whitespace-nowrap">Found</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-50">
@@ -319,18 +337,18 @@ function PublicLeadsTable({
               onClick={() => onSelectLead(row)}
               className={`cursor-pointer hover:bg-gray-50 transition ${selectedLead?.email === row.email ? 'bg-brand-50' : ''}`}
             >
-              <td className="px-4 py-3">
+              <td className="px-4 py-3 whitespace-nowrap">
                 <div className="flex items-center gap-2.5">
                   <CompanyLogo domain={row.companyDomain} name={row.company} />
-                  <span className="font-medium text-gray-800 truncate max-w-[160px]">{row.company || "Unknown"}</span>
+                  <span className="font-medium text-gray-800 truncate max-w-[200px]">{row.company || "Unknown"}</span>
                 </div>
               </td>
-              <td className="px-4 py-3">
+              <td className="px-4 py-3 whitespace-nowrap">
                 <div className="flex items-center gap-2">
                   <div className="min-w-0">
-                    <p className="font-medium text-gray-800 truncate">{row.firstName} {row.lastName}</p>
+                    <p className="font-medium text-gray-800 truncate max-w-[200px]">{row.firstName} {row.lastName}</p>
                     {row.title && (
-                      <p className="text-xs text-gray-500 truncate max-w-[180px]">{row.title}</p>
+                      <p className="text-xs text-gray-500 truncate max-w-[200px]">{row.title}</p>
                     )}
                   </div>
                   {row.linkedinUrl && (
@@ -342,10 +360,10 @@ function PublicLeadsTable({
                   )}
                 </div>
               </td>
-              <td className="px-4 py-3 hidden sm:table-cell">
+              <td className="px-4 py-3 whitespace-nowrap">
                 <StatusBadge status={row.status} />
               </td>
-              <td className="px-4 py-3 hidden md:table-cell">
+              <td className="px-4 py-3 whitespace-nowrap">
                 {row.servedAt ? (
                   <span
                     className="text-xs text-gray-500"
@@ -356,6 +374,50 @@ function PublicLeadsTable({
                 ) : (
                   <span className="text-xs text-gray-300">-</span>
                 )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// Skeleton swapped in while `useDeferredValue` is still computing the
+// next tab/search bucket. 10 rows, 4 columns, matching the live table's
+// row geometry so the swap doesn't shift surrounding layout.
+function LeadsTableSkeleton() {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+      <table className="min-w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="px-4 py-3 whitespace-nowrap">Company</th>
+            <th className="px-4 py-3 whitespace-nowrap">Contact</th>
+            <th className="px-4 py-3 whitespace-nowrap">Status</th>
+            <th className="px-4 py-3 whitespace-nowrap">Found</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-50">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <tr key={i}>
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-6 h-6 rounded bg-gray-100 animate-pulse flex-shrink-0" />
+                  <div className="h-3 w-28 bg-gray-100 rounded animate-pulse" />
+                </div>
+              </td>
+              <td className="px-4 py-3">
+                <div className="space-y-1.5">
+                  <div className="h-3 w-32 bg-gray-100 rounded animate-pulse" />
+                  <div className="h-2.5 w-24 bg-gray-100 rounded animate-pulse" />
+                </div>
+              </td>
+              <td className="px-4 py-3">
+                <div className="h-5 w-20 bg-gray-100 rounded-full animate-pulse" />
+              </td>
+              <td className="px-4 py-3">
+                <div className="h-3 w-14 bg-gray-100 rounded animate-pulse" />
               </td>
             </tr>
           ))}

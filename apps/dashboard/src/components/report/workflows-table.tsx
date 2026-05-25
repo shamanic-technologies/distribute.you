@@ -47,14 +47,12 @@ const columns: ReportTableColumn<WorkflowRow>[] = [
     label: "Version",
     sortValue: (r) => String(r.version).padStart(4, "0"),
     render: (r) => <span className="text-xs text-gray-500">v{r.version}</span>,
-    className: "hidden md:table-cell",
   },
   {
     key: "emailsSent",
     label: "Emails sent",
     sortValue: (r) => String(r.emailsSent).padStart(8, "0"),
     render: (r) => r.emailsSent.toLocaleString("en-US"),
-    className: "hidden sm:table-cell",
   },
   {
     key: "positiveReplies",

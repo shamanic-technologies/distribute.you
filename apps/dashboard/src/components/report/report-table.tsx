@@ -264,47 +264,53 @@ export function ReportTable<T>({
       {pageRows.length === 0 ? (
         <div className="px-5 py-10 text-center text-sm text-gray-500">{emptyMessage}</div>
       ) : (
-        <table className={`w-full text-sm border-collapse ${fixedLayout ? "table-fixed" : ""}`}>
-          <thead className="bg-gray-50">
-            <tr>
-              {columns.map((col) => {
-                const isActive = sortKey === col.key;
-                return (
-                  <th
-                    key={col.key}
-                    onClick={() => toggleSort(col.key)}
-                    className={`px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer select-none hover:text-gray-700 ${col.className ?? ""}`}
-                  >
-                    <span className="inline-flex items-center gap-1">
-                      {col.label}
-                      {isActive && (
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                            d={sortDir === "asc" ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"} />
-                        </svg>
-                      )}
-                    </span>
-                  </th>
-                );
-              })}
-            </tr>
-          </thead>
-          <tbody>
-            {pageRows.map((row) => (
-              <tr
-                key={rowKey(row)}
-                onClick={clickable ? () => setSelected(row) : undefined}
-                className={`border-t border-gray-100 hover:bg-gray-50 transition ${clickable ? "cursor-pointer" : ""}`}
-              >
-                {columns.map((col) => (
-                  <td key={col.key} className={`px-4 py-2.5 text-gray-700 align-top ${fixedLayout ? "overflow-hidden text-ellipsis whitespace-nowrap" : ""} ${col.className ?? ""}`}>
-                    {col.render(row)}
-                  </td>
-                ))}
+        // Wrap the table in a horizontal scroll container so narrow viewports
+        // (phones, small embed iframes) can swipe to reveal hidden columns
+        // instead of having text shrink/wrap into unreadable cells.
+        // `min-w-full` lets the table expand past 100% when cells force it.
+        <div className="overflow-x-auto">
+          <table className={`min-w-full text-sm border-collapse ${fixedLayout ? "table-fixed" : ""}`}>
+            <thead className="bg-gray-50">
+              <tr>
+                {columns.map((col) => {
+                  const isActive = sortKey === col.key;
+                  return (
+                    <th
+                      key={col.key}
+                      onClick={() => toggleSort(col.key)}
+                      className={`px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer select-none hover:text-gray-700 whitespace-nowrap ${col.className ?? ""}`}
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        {col.label}
+                        {isActive && (
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                              d={sortDir === "asc" ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"} />
+                          </svg>
+                        )}
+                      </span>
+                    </th>
+                  );
+                })}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {pageRows.map((row) => (
+                <tr
+                  key={rowKey(row)}
+                  onClick={clickable ? () => setSelected(row) : undefined}
+                  className={`border-t border-gray-100 hover:bg-gray-50 transition ${clickable ? "cursor-pointer" : ""}`}
+                >
+                  {columns.map((col) => (
+                    <td key={col.key} className={`px-4 py-2.5 text-gray-700 align-top whitespace-nowrap ${fixedLayout ? "overflow-hidden text-ellipsis" : ""} ${col.className ?? ""}`}>
+                      {col.render(row)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {sorted.length > pageSize && (
