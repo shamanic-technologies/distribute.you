@@ -35,9 +35,14 @@ const columns: ReportTableColumn<WorkflowRow>[] = [
     key: "name",
     label: "Workflow",
     sortValue: (r) => r.name,
+    // Override ReportTable's default `whitespace-nowrap` on this column —
+    // long workflow names (e.g. "sales-cold-email-outreach-deep-research-v2")
+    // would push the table several screens wide otherwise. Cap at 280px,
+    // wrap normally, and let long unbroken slugs break inside the cell.
+    className: "!whitespace-normal max-w-[280px]",
     render: (r) => (
-      <div>
-        <div className="font-medium text-gray-900">{r.name}</div>
+      <div className="max-w-[280px]">
+        <div className="font-medium text-gray-900 break-words">{r.name}</div>
         {r.description && <div className="text-xs text-gray-500 line-clamp-1">{r.description}</div>}
       </div>
     ),
