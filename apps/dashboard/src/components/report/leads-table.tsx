@@ -67,9 +67,4 @@ export interface LeadRow {
    *  timestamps (DIS-28) the per-tab sort can switch to literal columns;
    *  until then, `servedAt` drives the global table sort. */
   lastDeliveredAt: string | null;
-  /** Emails sent to this lead, indexed at page-render time on the server.
-   *  Embedded here so the right side panel can show them with zero
-   *  client-side fetch — the public report is cached for 4h via
-   *  `unstable_cache`, so the full HTML reaches the recipient pre-baked. */
-  emails: LeadEmailSummary[];
 }

@@ -4,9 +4,9 @@ import { CsvDownloadButton } from "@/components/report/csv-button";
 import { toCsv, type CsvColumn } from "@/components/report/csv";
 import { TableSectionSkeleton } from "@/components/report/skeletons";
 import { PublicLeadsView } from "@/components/report/public-leads-view";
-import type { LeadRow, LeadEmailSummary } from "@/components/report/leads-table";
-import { fetchAllEmails, fetchLeads, fetchWorkflows } from "@/lib/report-api";
-import { getLeadConsolidatedStatus, type Email, type Lead } from "@/lib/api";
+import type { LeadRow } from "@/components/report/leads-table";
+import { fetchLeads, fetchWorkflows } from "@/lib/report-api";
+import { getLeadConsolidatedStatus, type Lead } from "@/lib/api";
 
 export const revalidate = 14400;
 export const maxDuration = 300;
@@ -20,41 +20,7 @@ interface PageProps {
 // table in favor of a "Last activity" column.
 const LEADS_COLUMNS = ["Name", "Email", "Title", "Company", "Last activity"];
 
-function leadKey(campaignId: string, firstName: string, lastName: string): string {
-  return `${campaignId}::${firstName.toLowerCase()}::${lastName.toLowerCase()}`;
-}
-
-function indexEmailsByLead(
-  emails: Email[],
-  workflowNameByTask: Map<string, string>,
-): Map<string, LeadEmailSummary[]> {
-  const map = new Map<string, LeadEmailSummary[]>();
-  for (const e of emails) {
-    const k = leadKey(e.campaignId, e.leadFirstName ?? "", e.leadLastName ?? "");
-    const taskName = e.generationRun?.taskName ?? "";
-    // Only surface the workflow tag when we have a mapped human-readable
-    // display name. Falling back to the raw `taskName` (e.g.
-    // "single-generation") leaks an internal pipeline label that is not
-    // meaningful to the recipient and clutters the per-email row.
-    const summary: LeadEmailSummary = {
-      subject: e.subject ?? "",
-      bodyText: e.bodyText ?? "",
-      sentAt: e.createdAt,
-      workflow: workflowNameByTask.get(taskName) ?? "",
-    };
-    const existing = map.get(k);
-    if (existing) existing.push(summary);
-    else map.set(k, [summary]);
-  }
-  for (const list of map.values()) list.sort((a, b) => (a.sentAt < b.sentAt ? 1 : -1));
-  return map;
-}
-
-function toRow(
-  lead: Lead,
-  workflowName: string,
-  emailsByLead: Map<string, LeadEmailSummary[]>,
-): LeadRow {
+function toRow(lead: Lead, workflowName: string): LeadRow {
   const org = lead.lead?.organization;
   const job = lead.lead?.employmentHistory?.find((e) => e.current);
   const firstName = lead.lead?.firstName ?? "";
@@ -89,7 +55,6 @@ function toRow(
     globalUnsubscribed: lead.global?.unsubscribed ?? false,
     servedAt: lead.servedAt,
     lastDeliveredAt: lead.lastDeliveredAt,
-    emails: emailsByLead.get(leadKey(lead.campaignId, firstName, lastName)) ?? [],
   };
 }
 
@@ -113,26 +78,23 @@ export default async function LeadsPage({ params }: PageProps) {
 }
 
 async function LeadsSection({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
-  // Leads + workflows + emails server-side, in parallel. Emails are now
-  // embedded into each LeadRow so the drawer opens with zero client-side
-  // fetch — all three calls are individually `unstable_cache`-wrapped, so
-  // the second visitor in a 4h window pays nothing.
-  const [leads, workflows, emails] = await Promise.all([
+  // Leads + workflows server-side, in parallel. Emails are no longer
+  // embedded — the per-row payload exploded the HTML to ~15MB / ~25s
+  // streaming time, even on warm cache. The drawer now lazy-fetches
+  // emails via `GET /api/report/.../lead-emails` when the user clicks a
+  // row; that endpoint is backed by the same `unstable_cache`-wrapped
+  // `fetchEmailsForCampaign` call, so the first drawer open within a 4h
+  // window pays the upstream fill and every later open hits the cache.
+  const [leads, workflows] = await Promise.all([
     fetchLeads(orgId, brandId, featureSlug),
     fetchWorkflows(orgId, featureSlug).catch((err) => {
       console.error(`[report-leads] fetchWorkflows failed (workflow names will show as —):`, err);
       return [];
     }),
-    fetchAllEmails(orgId, brandId, featureSlug).catch((err) => {
-      console.error(`[report-leads] fetchAllEmails failed (drawer will show empty):`, err);
-      return [] as Email[];
-    }),
   ]);
 
   const workflowNameBySlug = new Map(workflows.map((w) => [w.workflowSlug, w.workflowDynastyName]));
-  const workflowNameByTask = new Map(workflows.map((w) => [w.workflowSlug, w.workflowDynastyName]));
-  const emailsByLead = indexEmailsByLead(emails, workflowNameByTask);
-  const rows = leads.map((l) => toRow(l, l.workflowSlug ? (workflowNameBySlug.get(l.workflowSlug) ?? "") : "", emailsByLead));
+  const rows = leads.map((l) => toRow(l, l.workflowSlug ? (workflowNameBySlug.get(l.workflowSlug) ?? "") : ""));
 
   const yesNo = (v: boolean) => (v ? "yes" : "no");
 
@@ -164,7 +126,10 @@ async function LeadsSection({ orgId, brandId, featureSlug }: { orgId: string; br
         <CsvDownloadButton filename={`leads-${featureSlug}.csv`} csv={toCsv(rows, csvColumns)} isEmpty={rows.length === 0} />
       }
     >
-      <PublicLeadsView rows={rows} />
+      <PublicLeadsView
+        rows={rows}
+        emailsApiUrl={`/api/report/${orgId}/${brandId}/${featureSlug}/lead-emails`}
+      />
     </SectionCard>
   );
 }

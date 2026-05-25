@@ -143,9 +143,14 @@ function StatusBadge({ status }: { status: string }) {
 
 interface PublicLeadsViewProps {
   rows: LeadRow[];
+  /** Base URL of the lazy email-fetch Route Handler, e.g.
+   *  `/api/report/${orgId}/${brandId}/${featureSlug}/lead-emails`. The
+   *  drawer's emails section hits this on first open of each lead and
+   *  caches the response in-process so reopening is instant. */
+  emailsApiUrl: string;
 }
 
-export function PublicLeadsView({ rows }: PublicLeadsViewProps) {
+export function PublicLeadsView({ rows, emailsApiUrl }: PublicLeadsViewProps) {
   const [selected, setSelected] = useState<LeadRow | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("contacted");
   const [search, setSearch] = useState("");
@@ -293,7 +298,7 @@ export function PublicLeadsView({ rows }: PublicLeadsViewProps) {
               </svg>
             </button>
           </div>
-          <SidePanel row={selected} />
+          <SidePanel row={selected} emailsApiUrl={emailsApiUrl} />
         </div>
       )}
     </div>
@@ -432,9 +437,9 @@ function LeadsTableSkeleton() {
 }
 
 // Right side panel content — Lead summary card + Organization card +
-// optional Emails-sent block (server-embedded in row.emails[]) + Served
-// timestamp footer. Mirrors the internal page's right panel 1:1.
-function SidePanel({ row }: { row: LeadRow }) {
+// lazy-loaded Emails-sent block + Served timestamp footer. Mirrors the
+// internal page's right panel 1:1.
+function SidePanel({ row, emailsApiUrl }: { row: LeadRow; emailsApiUrl: string }) {
   const hasOrg = row.company || row.companyDomain || row.industry;
   return (
     <div className="p-4 md:p-6">
@@ -514,14 +519,13 @@ function SidePanel({ row }: { row: LeadRow }) {
         </div>
       )}
 
-      {row.emails.length > 0 && (
-        <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
-          <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">
-            {row.emails.length > 1 ? `Emails sent (${row.emails.length})` : "Email sent"}
-          </h3>
-          <EmailsList emails={row.emails} />
-        </div>
-      )}
+      <LeadEmailsCard
+        apiUrl={emailsApiUrl}
+        campaignId={row.campaignId}
+        firstName={row.firstName}
+        lastName={row.lastName}
+      />
+
 
       {row.servedAt && (
         <div className="mt-4 text-xs text-gray-400">
@@ -537,6 +541,119 @@ function Field({ label, value }: { label: string; value: ReactNode }) {
     <div>
       <span className="text-gray-500">{label}:</span>
       <p className="font-medium">{value}</p>
+    </div>
+  );
+}
+
+// Module-level cache so reopening the same lead's drawer is instant.
+// Key: `${campaignId}::${firstName.lower}::${lastName.lower}`. We also
+// store the in-flight Promise so two near-simultaneous opens of the
+// same lead don't trigger two fetches.
+type EmailsState =
+  | { status: "loading"; promise: Promise<LeadEmailSummary[]> }
+  | { status: "ready"; emails: LeadEmailSummary[] }
+  | { status: "error"; error: string };
+
+const emailsCache = new Map<string, EmailsState>();
+
+function leadCacheKey(campaignId: string, firstName: string, lastName: string): string {
+  return `${campaignId}::${firstName.toLowerCase()}::${lastName.toLowerCase()}`;
+}
+
+function LeadEmailsCard({
+  apiUrl,
+  campaignId,
+  firstName,
+  lastName,
+}: {
+  apiUrl: string;
+  campaignId: string;
+  firstName: string;
+  lastName: string;
+}) {
+  const cacheKey = leadCacheKey(campaignId, firstName, lastName);
+  const cached = emailsCache.get(cacheKey);
+  const initial: EmailsState =
+    cached && cached.status === "ready"
+      ? cached
+      : { status: "loading", promise: Promise.resolve([]) };
+  const [state, setState] = useState<EmailsState>(initial);
+
+  useEffect(() => {
+    const existing = emailsCache.get(cacheKey);
+    if (existing && existing.status === "ready") {
+      setState(existing);
+      return;
+    }
+    if (existing && existing.status === "loading") {
+      existing.promise
+        .then((emails) => setState({ status: "ready", emails }))
+        .catch((err) => setState({ status: "error", error: String(err) }));
+      return;
+    }
+
+    const params = new URLSearchParams({
+      campaignId,
+      firstName,
+      lastName,
+    });
+    const promise = fetch(`${apiUrl}?${params.toString()}`)
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = (await res.json()) as { emails: LeadEmailSummary[] };
+        return data.emails ?? [];
+      });
+
+    emailsCache.set(cacheKey, { status: "loading", promise });
+    setState({ status: "loading", promise });
+
+    promise
+      .then((emails) => {
+        emailsCache.set(cacheKey, { status: "ready", emails });
+        setState({ status: "ready", emails });
+      })
+      .catch((err) => {
+        emailsCache.set(cacheKey, { status: "error", error: String(err) });
+        setState({ status: "error", error: String(err) });
+      });
+  }, [apiUrl, cacheKey, campaignId, firstName, lastName]);
+
+  if (state.status === "loading") {
+    return (
+      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+        <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Emails</h3>
+        <div className="space-y-4">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="space-y-1.5">
+              <div className="h-3 w-40 bg-gray-200 rounded animate-pulse" />
+              <div className="h-3.5 w-56 bg-gray-200 rounded animate-pulse" />
+              <div className="h-16 w-full bg-gray-100 rounded animate-pulse" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (state.status === "error") {
+    return (
+      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+        <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Emails</h3>
+        <p className="text-xs text-gray-500">Failed to load emails.</p>
+      </div>
+    );
+  }
+
+  if (state.emails.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+      <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">
+        {state.emails.length > 1 ? `Emails sent (${state.emails.length})` : "Email sent"}
+      </h3>
+      <EmailsList emails={state.emails} />
     </div>
   );
 }

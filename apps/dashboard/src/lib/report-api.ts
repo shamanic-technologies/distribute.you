@@ -159,8 +159,10 @@ export async function fetchLeads(orgId: string, brandId: string, featureSlug: st
 
 /** Per-campaign email fetch. Each cache entry is small + cheap to fill, so
  *  brand-wide fan-out (see `fetchAllEmails`) stays well under the upstream
- *  abort even on multi-campaign brands. */
-async function fetchEmailsForCampaign(orgId: string, brandId: string, campaignId: string): Promise<Email[]> {
+ *  abort even on multi-campaign brands. Exported so the lazy-drawer
+ *  Route Handler (`/api/report/.../lead-emails`) can reuse the same
+ *  cached entries the server-rendered fan-out would hit. */
+export async function fetchEmailsForCampaign(orgId: string, brandId: string, campaignId: string): Promise<Email[]> {
   return unstable_cache(
     async () => {
       const result = await adminGet<{ emails: Email[] }>(
