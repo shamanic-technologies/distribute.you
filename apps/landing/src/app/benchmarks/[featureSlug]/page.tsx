@@ -12,6 +12,7 @@ import {
 } from "@/components/performance/leaderboard-table";
 import {
   formatCostCents,
+  formatCostCentsWhole,
   formatCostDollars,
   formatPercent,
 } from "@/lib/performance/fetch-leaderboard";
@@ -264,7 +265,7 @@ export default async function FeatureBenchmarkPage({ params }: PageProps) {
             />
             <HeroStat
               label="$ / positive reply"
-              value={formatCostCents(aggregate.costPerReplyCents)}
+              value={formatCostCentsWhole(aggregate.costPerReplyCents)}
             />
           </div>
         </div>

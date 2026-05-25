@@ -1,4 +1,4 @@
-import { formatPercent, formatCostCents, type FeatureGroupStats } from "@/lib/performance/fetch-leaderboard";
+import { formatPercent, formatCostCents, formatCostCentsWhole, type FeatureGroupStats } from "@/lib/performance/fetch-leaderboard";
 
 export function StatsBar({ stats }: { stats: FeatureGroupStats }) {
   return (
@@ -11,7 +11,7 @@ export function StatsBar({ stats }: { stats: FeatureGroupStats }) {
       <Divider />
       <Stat label="Positive Reply Rate" value={formatPercent(stats.replyRate)} />
       <Divider />
-      <Stat label="$/Positive Reply" value={formatCostCents(stats.costPerReplyCents)} />
+      <Stat label="$/Positive Reply" value={formatCostCentsWhole(stats.costPerReplyCents)} />
     </div>
   );
 }

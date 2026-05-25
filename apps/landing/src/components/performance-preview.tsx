@@ -1,6 +1,6 @@
 import Image from "next/image";
 import type { FeatureGroupData, BrandLeaderboardEntry } from "@/lib/performance/fetch-leaderboard";
-import { formatPercent, formatCostCents } from "@/lib/performance/fetch-leaderboard";
+import { formatPercent, formatCostCentsWhole } from "@/lib/performance/fetch-leaderboard";
 import { computeBestStats } from "@/lib/performance/best-stats";
 
 const LOGO_DEV_TOKEN = process.env.NEXT_PUBLIC_LOGO_DEV_TOKEN;
@@ -50,7 +50,7 @@ export function PerformancePreview({ featureGroups }: PerformancePreviewProps) {
                         $ per Positive Reply
                       </p>
                       <p className="text-2xl font-bold text-gray-900 font-mono">
-                        {formatCostCents(best.costPerReplyCents)}
+                        {formatCostCentsWhole(best.costPerReplyCents)}
                       </p>
                     </div>
                   </div>
@@ -82,7 +82,7 @@ export function PerformancePreview({ featureGroups }: PerformancePreviewProps) {
                               )}
                               <span className="text-xs text-gray-700 flex-1 truncate">{label}</span>
                               <span className="text-xs font-mono text-gray-600">
-                                {formatCostCents(brand.costPerReplyCents)}
+                                {formatCostCentsWhole(brand.costPerReplyCents)}
                               </span>
                             </div>
                           );
