@@ -1,6 +1,6 @@
 "use client";
 
-import { ReportTable, StatusBadge, type ReportTableColumn } from "./report-table";
+import { ReportTable, type ReportTableColumn } from "./report-table";
 import type { DrawerEntry } from "./data-drawer";
 
 export interface WorkflowRow {
@@ -49,7 +49,6 @@ const columns: ReportTableColumn<WorkflowRow>[] = [
     sortValue: (r) => String(r.version).padStart(4, "0"),
     render: (r) => <span className="text-xs text-gray-500">v{r.version}</span>,
   },
-  { key: "status", label: "Status", sortValue: (r) => r.status, render: (r) => <StatusBadge status={r.status || "active"} /> },
   {
     key: "emailsSent",
     label: "Emails sent",
@@ -73,7 +72,6 @@ const columns: ReportTableColumn<WorkflowRow>[] = [
 function drawerEntries(r: WorkflowRow): DrawerEntry[] {
   const entries: DrawerEntry[] = [
     { label: "Version", value: `v${r.version}` },
-    { label: "Status", value: <StatusBadge status={r.status || "active"} /> },
     { label: "Emails sent", value: r.emailsSent.toLocaleString("en-US") },
     { label: "Positive replies", value: r.positiveReplies.toLocaleString("en-US") },
     { label: "Total cost", value: formatUsd(r.totalCostCents) },
