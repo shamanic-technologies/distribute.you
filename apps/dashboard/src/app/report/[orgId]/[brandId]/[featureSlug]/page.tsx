@@ -83,9 +83,18 @@ async function StatsGrid({ orgId, brandId, featureSlug }: { orgId: string; brand
   // Each card pulls its label from the registry so the displayed copy can
   // never drift from what the underlying stat key actually counts. Notes
   // are authored copy (registry only exposes a label, no longer-form note).
+  //
+  // "Sent" sources from `leadsSent` (NOT `recipientsSent`) so the count
+  // matches the CPA funnel + the Leads page "Sent" tab. Both `leadsSent`
+  // and `recipientsSent` are spec'd as COUNT DISTINCT lead (per the
+  // email-gateway + lead-service OpenAPI docs), but the two upstream
+  // queries diverge in production (~5% drift on this brand). Until the
+  // backend reconciles, the dashboard picks `leadsSent` as the single
+  // surface-wide source of truth — funnel + tabs both already use it,
+  // so the overview card matches by construction.
   const statCards: Array<{ statKey: string; note: string }> = [
     { statKey: "leadsServed", note: "Targeted prospects" },
-    { statKey: "recipientsSent", note: "Total emails sent" },
+    { statKey: "leadsSent", note: "Leads we sent at least one email to" },
   ];
 
   return (
