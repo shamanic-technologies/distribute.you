@@ -185,7 +185,7 @@ async function fetchWorkflowRanked(
     const sent = num(r.stats, "recipientsSent");
     const opened = num(r.stats, "recipientsOpened");
     const clicked = num(r.stats, "recipientsClicked");
-    const replied = num(r.stats, "recipientsRepliesPositive") + num(r.stats, "recipientsRepliesNegative") + num(r.stats, "recipientsRepliesNeutral");
+    const replied = num(r.stats, "recipientsRepliesPositive");
     const cost = num(r.stats, "totalCostInUsdCents");
 
     return {
@@ -231,7 +231,7 @@ async function fetchBrandRanked(
     const sent = num(r.stats, "recipientsSent");
     const opened = num(r.stats, "recipientsOpened");
     const clicked = num(r.stats, "recipientsClicked");
-    const replied = num(r.stats, "recipientsRepliesPositive") + num(r.stats, "recipientsRepliesNegative") + num(r.stats, "recipientsRepliesNeutral");
+    const replied = num(r.stats, "recipientsRepliesPositive");
     const cost = num(r.stats, "totalCostInUsdCents");
 
     return {
@@ -474,7 +474,12 @@ export function formatCostCents(cents: number | null): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
+export function formatCostCentsWhole(cents: number | null): string {
+  if (cents === null || cents === 0) return "—";
+  return `$${Math.round(cents / 100).toLocaleString("en-US")}`;
+}
+
 export function formatCostDollars(cents: number): string {
   if (cents === 0) return "—";
-  return `$${(cents / 100).toFixed(2)}`;
+  return `$${Math.round(cents / 100).toLocaleString("en-US")}`;
 }

@@ -25,12 +25,9 @@ describe("Leaderboard fetch reads recipient-based stat keys (matches features-se
     expect(content).toContain('"recipientsRepliesPositive"');
   });
 
-  it('reads "recipientsRepliesNegative"', () => {
-    expect(content).toContain('"recipientsRepliesNegative"');
-  });
-
-  it('reads "recipientsRepliesNeutral"', () => {
-    expect(content).toContain('"recipientsRepliesNeutral"');
+  it('reply count uses positive-only (does NOT sum Negative + Neutral)', () => {
+    expect(content).not.toContain('"recipientsRepliesNegative"');
+    expect(content).not.toContain('"recipientsRepliesNeutral"');
   });
 
   it('does not read deprecated "emailsSent" stat key', () => {

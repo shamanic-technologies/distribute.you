@@ -137,10 +137,7 @@ function mapBrandEntry(item: BrandRankedItem): BrandLeaderboardEntry {
   const sent = num(item.stats, "recipientsSent");
   const opened = num(item.stats, "recipientsOpened");
   const clicked = num(item.stats, "recipientsClicked");
-  const replied =
-    num(item.stats, "recipientsRepliesPositive") +
-    num(item.stats, "recipientsRepliesNegative") +
-    num(item.stats, "recipientsRepliesNeutral");
+  const replied = num(item.stats, "recipientsRepliesPositive");
   const cost = num(item.stats, "totalCostInUsdCents");
   return {
     brandId: item.brand.id,
@@ -165,10 +162,7 @@ function mapWorkflowEntry(item: WorkflowRankedItem): WorkflowLeaderboardEntry {
   const sent = num(item.stats, "recipientsSent");
   const opened = num(item.stats, "recipientsOpened");
   const clicked = num(item.stats, "recipientsClicked");
-  const replied =
-    num(item.stats, "recipientsRepliesPositive") +
-    num(item.stats, "recipientsRepliesNegative") +
-    num(item.stats, "recipientsRepliesNeutral");
+  const replied = num(item.stats, "recipientsRepliesPositive");
   const cost = num(item.stats, "totalCostInUsdCents");
   return {
     workflowName: item.workflow.workflowName,

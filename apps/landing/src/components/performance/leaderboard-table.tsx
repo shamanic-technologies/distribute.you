@@ -6,6 +6,7 @@ import { FEATURE_LABELS } from "@distribute/content";
 import {
   formatPercent,
   formatCostCents,
+  formatCostCentsWhole,
   formatWorkflowName,
   formatCostDollars,
   type BrandLeaderboardEntry,
@@ -103,7 +104,7 @@ export function BrandLeaderboard({ brands, maxEntries }: { brands: BrandLeaderbo
               <td className="px-4 py-4 text-sm text-gray-600">{brand.emailsSent > 0 ? formatPercent(brand.clickRate) : "—"}</td>
               <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(brand.costPerClickCents)}</td>
               <td className="px-4 py-4 text-sm text-gray-600">{brand.emailsSent > 0 ? formatPercent(brand.replyRate) : "—"}</td>
-              <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(brand.costPerReplyCents)}</td>
+              <td className="px-4 py-4 text-sm text-gray-600">{formatCostCentsWhole(brand.costPerReplyCents)}</td>
             </tr>
           ))}
         </tbody>
@@ -175,7 +176,7 @@ export function WorkflowLeaderboard({ workflows, inSection = false, maxEntries }
                 <td className="px-4 py-4 text-sm text-gray-600">{wf.emailsSent > 0 ? formatPercent(wf.clickRate) : "—"}</td>
                 <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(wf.costPerClickCents)}</td>
                 <td className="px-4 py-4 text-sm text-gray-600">{wf.emailsSent > 0 ? formatPercent(wf.replyRate) : "—"}</td>
-                <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(wf.costPerReplyCents)}</td>
+                <td className="px-4 py-4 text-sm text-gray-600">{formatCostCentsWhole(wf.costPerReplyCents)}</td>
               </tr>
             ))}
           </tbody>
@@ -223,7 +224,7 @@ function WorkflowDetailPanel({ workflow: wf, onClose }: { workflow: WorkflowLead
             <div className="space-y-2">
               <DetailRow label="$/Open" value={formatCostCents(wf.costPerOpenCents)} />
               <DetailRow label="$/Click" value={formatCostCents(wf.costPerClickCents)} />
-              <DetailRow label="$/Positive Reply" value={formatCostCents(wf.costPerReplyCents)} />
+              <DetailRow label="$/Positive Reply" value={formatCostCentsWhole(wf.costPerReplyCents)} />
             </div>
           </div>
         </div>
