@@ -9,9 +9,15 @@ const pagePath = path.resolve(
 const content = fs.readFileSync(pagePath, "utf-8");
 
 describe("Campaign creation page uses feature stats + workflow list", () => {
-  it("should fetch feature stats grouped by workflowDynastySlug for display columns", () => {
+  it("should fetch cross-org/brand ranked workflow stats for display columns", () => {
+    expect(content).toContain("fetchGlobalRankedWorkflows");
+    expect(content).toContain('groupBy: "workflow"');
+  });
+
+  it("should still fetch brand-scoped feature stats for the lastRunAt tiebreaker", () => {
     expect(content).toContain("fetchFeatureStats");
-    expect(content).toContain('groupBy: "workflowDynastySlug"');
+    expect(content).toContain("brandStatsData");
+    expect(content).toContain("brandLastRunAt");
   });
 
   it("should fetch workflows filtered by featureSlug", () => {
