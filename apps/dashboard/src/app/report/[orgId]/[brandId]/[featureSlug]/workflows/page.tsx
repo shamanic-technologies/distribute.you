@@ -97,7 +97,21 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
       emailsSent: pickStat(stats, "leadsSent", "emailsSent"),
       positiveReplies: pickStat(stats, "leadsRepliesPositive", "repliesPositive"),
       totalCostCents: cost,
+      createdAt: w.createdAt,
     };
+  });
+
+  // Default order for the public report: cheapest CAC first (the metric
+  // that matters), tie-broken by highest send volume (signal strength),
+  // then by newest workflow (recency). Zero-reply rows sink to the bottom
+  // because their CAC is treated as +Infinity. User can still click a
+  // column header to override with a single-column sort.
+  rows.sort((a, b) => {
+    const aCac = a.positiveReplies > 0 ? a.totalCostCents / a.positiveReplies : Number.POSITIVE_INFINITY;
+    const bCac = b.positiveReplies > 0 ? b.totalCostCents / b.positiveReplies : Number.POSITIVE_INFINITY;
+    if (aCac !== bCac) return aCac - bCac;
+    if (a.emailsSent !== b.emailsSent) return b.emailsSent - a.emailsSent;
+    return b.createdAt.localeCompare(a.createdAt);
   });
 
   // Brand-level totals for header card
@@ -167,9 +181,9 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
 
 function SummaryTile({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
-    <div className={`rounded-lg p-3 text-center ${highlight ? "bg-brand-50 border border-brand-200" : "bg-gray-50"}`}>
+    <div className={`rounded-lg p-3 text-center ${highlight ? "bg-green-50 border border-green-200" : "bg-gray-50"}`}>
       <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</div>
-      <div className={`text-xl font-bold mt-0.5 ${highlight ? "text-brand-700" : "text-gray-800"}`}>{value}</div>
+      <div className={`text-xl font-bold mt-0.5 ${highlight ? "text-green-700" : "text-gray-800"}`}>{value}</div>
     </div>
   );
 }

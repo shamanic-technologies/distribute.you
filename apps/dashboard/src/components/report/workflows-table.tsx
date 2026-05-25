@@ -14,6 +14,8 @@ export interface WorkflowRow {
   positiveReplies: number;
   /** USD cents of total run cost attributed to this workflow */
   totalCostCents: number;
+  /** ISO timestamp from the Workflow row; used by the page's default composite sort. */
+  createdAt: string;
 }
 
 function formatUsd(cents: number): string {
@@ -99,6 +101,10 @@ export function WorkflowsTable({ rows }: { rows: WorkflowRow[] }) {
       rowKey={(r) => r.id}
       searchPlaceholder="Search workflow name, description…"
       searchValue={(r) => `${r.name} ${r.description} v${r.version} ${r.status}`}
+      // Empty defaultSortKey preserves the page's pre-sorted order (CAC asc →
+      // emails desc → createdAt desc). ReportTable's sort memo short-circuits
+      // on falsy sortKey. Column headers stay clickable for single-column sort.
+      defaultSortKey=""
       drawerTitle={(r) => r.name}
       drawerSubtitle={(r) => `v${r.version}`}
       drawerEntries={drawerEntries}
