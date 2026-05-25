@@ -1,19 +1,21 @@
+import type { ReactNode } from "react";
 import { SectionCard } from "./section-card";
 
-export function HeaderSkeleton() {
+export function HeaderSkeleton({ leftSlot }: { leftSlot?: ReactNode } = {}) {
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-5">
-      <div className="flex items-start justify-between gap-6 flex-wrap">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-lg bg-gray-100 animate-pulse" />
+    <header className="bg-white border-b border-gray-200 px-4 py-3 sm:px-6 sm:py-5">
+      <div className="flex items-start justify-between gap-3 sm:gap-6 flex-wrap">
+        <div className="flex items-center gap-3 sm:gap-4">
+          {leftSlot}
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg bg-gray-100 animate-pulse" />
           <div className="space-y-2">
-            <div className="h-6 w-48 bg-gray-100 rounded animate-pulse" />
-            <div className="h-4 w-32 bg-gray-100 rounded animate-pulse" />
+            <div className="h-5 sm:h-6 w-36 sm:w-48 bg-gray-100 rounded animate-pulse" />
+            <div className="h-3 sm:h-4 w-24 sm:w-32 bg-gray-100 rounded animate-pulse" />
           </div>
         </div>
-        <div className="space-y-1 text-right">
-          <div className="h-3 w-40 bg-gray-100 rounded animate-pulse ml-auto" />
-          <div className="h-3 w-24 bg-gray-100 rounded animate-pulse ml-auto" />
+        <div className="space-y-1 text-left sm:text-right w-full sm:w-auto">
+          <div className="h-3 w-40 bg-gray-100 rounded animate-pulse sm:ml-auto" />
+          <div className="h-3 w-24 bg-gray-100 rounded animate-pulse sm:ml-auto" />
         </div>
       </div>
     </header>
@@ -53,7 +55,7 @@ export function TableSectionSkeleton({ title, description, columnLabels, rowCoun
       {/* Mirror ReportTable's filter bar so the swap to real data
           doesn't cause layout shift. */}
       <div className="px-5 py-3 border-b border-gray-200 flex flex-wrap gap-3 items-center bg-gray-50/40">
-        <div className="flex-1 min-w-[200px] h-7 bg-gray-200 rounded-lg animate-pulse" />
+        <div className="flex-1 min-w-0 sm:min-w-[200px] h-7 bg-gray-200 rounded-lg animate-pulse" />
         <div className="h-7 w-28 bg-gray-200 rounded-lg animate-pulse" />
         <div className="h-3 w-20 bg-gray-200 rounded animate-pulse" />
       </div>
@@ -94,7 +96,7 @@ export function ListSectionSkeleton({ title, description, rowCount = 4 }: { titl
 
 export function OverviewSkeleton() {
   return (
-    <div className="p-6 md:p-8 space-y-6 max-w-6xl">
+    <div className="p-4 sm:p-6 md:p-8 space-y-6 max-w-6xl">
       <div>
         <div className="h-6 w-32 bg-gray-100 rounded animate-pulse mb-2" />
         <div className="h-4 w-96 bg-gray-100 rounded animate-pulse" />

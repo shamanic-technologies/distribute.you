@@ -39,7 +39,7 @@ function formatUsd(cents: number): string {
 export default async function WorkflowsPage({ params }: PageProps) {
   const { orgId, brandId, featureSlug } = await params;
   return (
-    <div className="p-6 md:p-8 space-y-6">
+    <div className="p-4 sm:p-6 md:p-8 space-y-6">
       <Suspense
         fallback={
           <TableSectionSkeleton
