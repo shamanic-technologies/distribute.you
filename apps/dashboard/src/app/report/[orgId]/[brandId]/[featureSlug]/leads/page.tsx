@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { SectionCard } from "@/components/report/section-card";
-import { CsvDownloadButton, GoogleSheetsButton } from "@/components/report/csv-button";
+import { CsvDownloadButton } from "@/components/report/csv-button";
 import { toCsv, type CsvColumn } from "@/components/report/csv";
 import { TableSectionSkeleton } from "@/components/report/skeletons";
 import { PublicLeadsView } from "@/components/report/public-leads-view";
@@ -142,10 +142,6 @@ async function LeadsSection({ orgId, brandId, featureSlug }: { orgId: string; br
     { label: "Email", value: (r) => r.email },
     { label: "Title", value: (r) => r.title },
     { label: "Company", value: (r) => r.company },
-    { label: "Company domain", value: (r) => r.companyDomain },
-    { label: "Industry", value: (r) => r.industry },
-    { label: "Country", value: (r) => r.country },
-    { label: "Current status", value: (r) => r.status },
     { label: "Email delivery state", value: (r) => r.emailStatus },
     { label: "Workflow", value: (r) => r.workflow },
     { label: "Contacted", value: (r) => yesNo(r.contacted) },
@@ -171,10 +167,7 @@ async function LeadsSection({ orgId, brandId, featureSlug }: { orgId: string; br
       }
       count={rows.length}
       actions={
-        <>
-          <CsvDownloadButton filename={`leads-${featureSlug}.csv`} csv={toCsv(rows, csvColumns)} isEmpty={rows.length === 0} />
-          <GoogleSheetsButton />
-        </>
+        <CsvDownloadButton filename={`leads-${featureSlug}.csv`} csv={toCsv(rows, csvColumns)} isEmpty={rows.length === 0} />
       }
     >
       <PublicLeadsView rows={rows} />

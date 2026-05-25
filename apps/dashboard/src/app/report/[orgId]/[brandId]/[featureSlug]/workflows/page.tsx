@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { SectionCard } from "@/components/report/section-card";
-import { CsvDownloadButton, GoogleSheetsButton } from "@/components/report/csv-button";
+import { CsvDownloadButton } from "@/components/report/csv-button";
 import { toCsv, type CsvColumn } from "@/components/report/csv";
 import { TableSectionSkeleton } from "@/components/report/skeletons";
 import { WorkflowsTable, type WorkflowRow } from "@/components/report/workflows-table";
@@ -19,7 +19,7 @@ interface PageProps {
   params: Promise<{ orgId: string; brandId: string; featureSlug: string }>;
 }
 
-const WORKFLOW_COLUMNS = ["Workflow", "Version", "Status", "Emails sent", "Positive replies", "CAC / reply"];
+const WORKFLOW_COLUMNS = ["Workflow", "Version", "Emails sent", "Positive replies", "CAC / reply"];
 
 function humanizeStep(nodeId: string, nodeType: string): string {
   const base = nodeId || nodeType;
@@ -155,7 +155,7 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
         description="All workflows combined for this brand. Use the per-workflow table below to compare performance."
       >
         <div className="px-5 py-4 grid grid-cols-2 md:grid-cols-4 gap-3">
-          <SummaryTile label="Workflows in use" value={workflows.length.toLocaleString("en-US")} />
+          <SummaryTile label="Workflows used" value={workflows.length.toLocaleString("en-US")} />
           <SummaryTile label="Emails sent" value={brandEmailsSent.toLocaleString("en-US")} />
           <SummaryTile label="Positive replies" value={brandPositiveReplies.toLocaleString("en-US")} />
           <SummaryTile label="CAC / positive reply" value={brandCacPerReply} highlight />
@@ -167,10 +167,7 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
         description="Pipelines actually used for this brand. Sort by CAC to identify the best performer."
         count={rows.length}
         actions={
-          <>
-            <CsvDownloadButton filename={`workflows-${featureSlug}.csv`} csv={toCsv(csvRows, csvColumns)} isEmpty={csvRows.length === 0} />
-            <GoogleSheetsButton />
-          </>
+          <CsvDownloadButton filename={`workflows-${featureSlug}.csv`} csv={toCsv(csvRows, csvColumns)} isEmpty={csvRows.length === 0} />
         }
       >
         <WorkflowsTable rows={rows} />
