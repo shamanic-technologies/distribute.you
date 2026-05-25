@@ -5,6 +5,7 @@ import type {
   Campaign,
   Email,
   Lead,
+  StatsRegistry,
   Workflow,
 } from "@/lib/api";
 
@@ -285,6 +286,29 @@ export async function fetchCampaigns(orgId: string, brandId: string, featureSlug
     [`fetchCampaigns`, orgId, brandId, featureSlug],
     {
       tags: reportTags(orgId, brandId, featureSlug),
+      revalidate: REPORT_REVALIDATE_SECONDS,
+    },
+  )();
+}
+
+/** Stats key registry — `key -> { type, label }`. Single source of truth for
+ *  every stats label rendered on the public report; mirrors the operator-side
+ *  `useFeatures().registry` consumption pattern (see
+ *  `components/campaign/leads-stats-panel.tsx`). Registry is org-agnostic but
+ *  the api-service gateway requires `x-org-id`; `adminGet` supplies it. */
+export async function fetchStatsRegistry(orgId: string): Promise<StatsRegistry> {
+  return unstable_cache(
+    async () => {
+      const result = await adminGet<{ registry: StatsRegistry }>(
+        "statsRegistry",
+        `/features/stats/registry`,
+        orgId,
+      );
+      return result.registry ?? {};
+    },
+    [`fetchStatsRegistry`, orgId],
+    {
+      tags: [`stats-registry`, `report:org:${orgId}`],
       revalidate: REPORT_REVALIDATE_SECONDS,
     },
   )();
