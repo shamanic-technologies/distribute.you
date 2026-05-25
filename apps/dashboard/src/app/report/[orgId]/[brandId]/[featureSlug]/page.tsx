@@ -21,7 +21,7 @@ export default async function OverviewPage({ params }: PageProps) {
   const { orgId, brandId, featureSlug } = await params;
 
   return (
-    <div className="p-6 md:p-8 space-y-6">
+    <div className="p-4 sm:p-6 md:p-8 space-y-6">
       <div>
         <h2 className="font-display text-xl font-bold text-gray-800 mb-1">Overview</h2>
         <p className="text-sm text-gray-500">
