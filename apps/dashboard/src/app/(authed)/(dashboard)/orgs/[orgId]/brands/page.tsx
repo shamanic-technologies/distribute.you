@@ -85,20 +85,7 @@ export default function BrandsPage() {
     );
   }
 
-  if (isLoading && !data) {
-    return (
-      <div className="p-4 md:p-8">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-48" />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-32 bg-gray-200 rounded-xl" />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const showSkeleton = isLoading && !data;
 
   return (
     <div className="p-4 md:p-8 max-w-4xl">
@@ -144,7 +131,13 @@ export default function BrandsPage() {
         </div>
       )}
 
-      {brands.length === 0 ? (
+      {showSkeleton ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-pulse">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-[124px] bg-gray-200 rounded-xl" />
+          ))}
+        </div>
+      ) : brands.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
           <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -47,15 +47,21 @@ describe("listBrandRuns handles 404/500 gracefully", () => {
 });
 
 describe("Brand overview page handles missing brand", () => {
-  it("should use isLoading for skeleton guard, not !brandData", () => {
+  it("should track loading state from the brand query", () => {
+    // The page reads the React Query loading flag (brandLoading) and uses it
+    // alongside `brand` to drive both the inline header skeleton and the
+    // not-found empty state. The exact gate shape changed when the full-page
+    // skeleton block was inlined; verify the underlying state is still wired.
     expect(brandOverviewContent).toMatch(/isLoading:\s*brandLoading/);
-    expect(brandOverviewContent).toContain("if (brandLoading)");
+    expect(brandOverviewContent).toMatch(/!brandLoading\s*&&\s*!brand/);
     expect(brandOverviewContent).not.toMatch(/if\s*\(\s*!brandData\s*\)/);
   });
 
-  it("should show 'Brand not found' when brand is null", () => {
+  it("should show 'Brand not found' when brand resolved to null", () => {
+    // Guard must distinguish loading from genuinely-missing brand to avoid
+    // flashing the empty state during the initial fetch.
     expect(brandOverviewContent).toContain("Brand not found");
-    expect(brandOverviewContent).toMatch(/if\s*\(\s*!brand\s*\)/);
+    expect(brandOverviewContent).toMatch(/!brandLoading\s*&&\s*!brand/);
   });
 });
 

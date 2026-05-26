@@ -107,8 +107,9 @@ function GenericFeaturePage({
     [outputs]
   );
 
-  // Campaigns
-  const { data: campaignsData, isLoading } = useAuthQuery(
+  // All queries fire in parallel on mount — no cascading enabled gates.
+  // Backend handles empty results gracefully when a brand has no campaigns for this feature.
+  const { data: campaignsData } = useAuthQuery(
     ["campaigns", { brandId }],
     () => listCampaignsByBrand(brandId),
     pollOptions,
@@ -120,17 +121,17 @@ function GenericFeaturePage({
   );
 
   // Feature-level stats (aggregated, no groupBy)
-  const { data: featureStatsData, isLoading: statsLoading } = useAuthQuery(
+  const { data: featureStatsData } = useAuthQuery(
     ["featureStats", featureSlug, brandId],
     () => fetchFeatureStats(featureSlug, { brandId }),
-    { enabled: campaigns.length > 0, ...pollOptions },
+    pollOptions,
   );
 
   // Per-campaign stats (groupBy=campaignId)
   const { data: campaignStatsData, isLoading: campaignStatsLoading } = useAuthQuery(
     ["featureStats", featureSlug, brandId, "byCampaign"],
     () => fetchFeatureStats(featureSlug, { groupBy: "campaignId", brandId }),
-    { enabled: campaigns.length > 0, ...pollOptions },
+    pollOptions,
   );
 
   const campaignStatsMap = useMemo(() => {
@@ -141,16 +142,19 @@ function GenericFeaturePage({
     return map;
   }, [campaignStatsData]);
 
-  const { data: brandCostData, isLoading: isLoadingCosts } = useAuthQuery(
+  const { data: brandCostData } = useAuthQuery(
     ["brandCostBreakdown", { brandId, featureSlug }],
     () => getBrandCostBreakdown(brandId, { featureSlug }),
     pollOptions,
   );
   const brandCostBreakdown = brandCostData?.costs ?? [];
 
-  const hasData = campaignsData !== undefined;
-  const allStatsLoading = featuresLoading || !hasData || (campaigns.length > 0 && statsLoading);
-  const costsLoading = featuresLoading || isLoadingCosts;
+  // Skeleton conditions: render skeleton only while we have NO data for that section.
+  // With global keepPreviousData, refetches keep data on screen — skeletons appear only on first-ever mount.
+  const campaignsReady = campaignsData !== undefined;
+  const featureStatsReady = featureStatsData !== undefined;
+  const costsReady = brandCostData !== undefined;
+  const featureDefReady = !featuresLoading;
 
   const totalCostCents = featureStatsData?.systemStats?.totalCostInUsdCents ?? 0;
   const featureStats = featureStatsData?.stats ?? {};
@@ -166,7 +170,7 @@ function GenericFeaturePage({
           <p className="text-gray-600">Performance overview and campaigns for this feature.</p>
         </div>
         <div className="flex items-center gap-3">
-          {costsLoading ? (
+          {!featureStatsReady ? (
             <div className="h-5 w-20 bg-gray-200 rounded animate-pulse" />
           ) : formatTotalCost(totalCostCents) ? (
             <span className="text-sm font-semibold text-gray-700">
@@ -182,8 +186,8 @@ function GenericFeaturePage({
         </div>
       </div>
 
-      {/* Stats Overview — dynamic from charts */}
-      {allStatsLoading ? (
+      {/* Stats Overview — dynamic from charts. Renders skeleton on first load, real chart on data, hidden when nothing to show. */}
+      {(!featureDefReady || !featureStatsReady || !campaignsReady) ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
           {(funnelChart || !featureDef) && <FunnelMetricsSkeleton />}
           {(breakdownChart || !featureDef) && <ReplyBreakdownSkeleton />}
@@ -208,7 +212,7 @@ function GenericFeaturePage({
       ) : null}
 
       {/* Cost Breakdown */}
-      {costsLoading ? (
+      {!costsReady ? (
         <div className="mb-6">
           <CostBreakdownSkeleton />
         </div>
@@ -221,7 +225,7 @@ function GenericFeaturePage({
       {/* Campaigns List */}
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-gray-700">Campaigns</h2>
-        {(!hasData || featuresLoading) ? (
+        {(!campaignsReady || !featureDefReady) ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
               <CampaignRowSkeleton key={i} />

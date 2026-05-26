@@ -137,10 +137,12 @@ export default function BrandOverviewPage() {
 
   const campaignIds = useMemo(() => campaigns.map(c => c.id), [campaigns]);
 
+  // Fires immediately on mount — backend scopes by brandId so empty campaigns array
+  // simply returns an empty object. Drops the cascade waiting on campaigns to resolve.
   const { data: batchStats } = useAuthQuery(
     ["campaignBatchStats", { brandId }, campaignIds],
     () => getCampaignBatchStats(campaignIds, undefined, brandId),
-    { enabled: campaignIds.length > 0, ...pollOptions },
+    pollOptions,
   );
   const campaignStats = batchStats ?? {};
 
@@ -206,18 +208,7 @@ export default function BrandOverviewPage() {
     return sections;
   }, [campaigns, getFeatureDef]);
 
-  if (brandLoading) {
-    return (
-      <div className="p-4 md:p-8">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-48"></div>
-          <div className="h-32 bg-gray-200 rounded"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!brand) {
+  if (!brandLoading && !brand) {
     return (
       <div className="p-4 md:p-8">
         <p className="text-gray-500">Brand not found</p>
@@ -227,17 +218,25 @@ export default function BrandOverviewPage() {
 
   return (
     <div className="p-4 md:p-8 max-w-4xl">
-      {/* Brand Header */}
-      <div className="mb-8">
+      {/* Brand Header — placeholder while brand loads; inner content renders immediately */}
+      <div className="mb-8 min-h-[60px]">
         <div className="flex items-center gap-3 mb-1">
           <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center overflow-hidden">
-            <BrandLogo domain={brand.domain} size={28} fallbackClassName="h-6 w-6 text-gray-400" />
+            {brand ? (
+              <BrandLogo domain={brand.domain} size={28} fallbackClassName="h-6 w-6 text-gray-400" />
+            ) : (
+              <div className="w-7 h-7 bg-gray-200 rounded animate-pulse" />
+            )}
           </div>
-          <h1 className="text-2xl font-semibold text-gray-900">
-            {brand.name || brand.domain}
-          </h1>
+          {brand ? (
+            <h1 className="text-2xl font-semibold text-gray-900">
+              {brand.name || brand.domain}
+            </h1>
+          ) : (
+            <div className="h-7 w-48 bg-gray-200 rounded animate-pulse" />
+          )}
         </div>
-        {brand.url && (
+        {brand?.url ? (
           <a
             href={brand.url}
             target="_blank"
@@ -246,6 +245,8 @@ export default function BrandOverviewPage() {
           >
             {brand.url}
           </a>
+        ) : (
+          <div className="h-4 w-32 bg-gray-100 rounded animate-pulse" />
         )}
       </div>
 
@@ -273,7 +274,7 @@ export default function BrandOverviewPage() {
       {/* Outcomes Section */}
       <div className="mb-6">
         <h2 className="text-lg font-medium text-gray-900 mb-4">Outcomes</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 min-h-[96px]">
           {([
             { key: "outlets", label: "Outlets", icon: "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" },
             { key: "journalists", label: "Journalists", icon: "M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" },

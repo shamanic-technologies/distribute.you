@@ -140,33 +140,6 @@ export default function CampaignOverviewPage() {
     setRelaunchModalOpen(false);
   };
 
-  if (!campaign) {
-    if (loading) {
-      return (
-        <div className="p-4 md:p-8">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 w-64 bg-gray-200 rounded" />
-            <div className="h-4 w-96 bg-gray-100 rounded" />
-            <div className="grid grid-cols-2 gap-4 mt-6">
-              <div className="h-48 bg-gray-100 rounded-xl" />
-              <div className="h-48 bg-gray-100 rounded-xl" />
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="p-4 md:p-8">
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-          <div className="text-4xl mb-4">&#10060;</div>
-          <h3 className="font-display font-bold text-lg text-gray-800 mb-2">Campaign not found</h3>
-          <p className="text-gray-600 text-sm">This campaign does not exist or you don&apos;t have access.</p>
-        </div>
-      </div>
-    );
-  }
-
   function getStatusColor(status: string): string {
     switch (status) {
       case "ongoing": return "bg-green-100 text-green-700 border-green-200";
@@ -182,6 +155,41 @@ export default function CampaignOverviewPage() {
       )
     : {};
   const statsRecord: Record<string, number> = { ...campaignStatsRecord, ...featureStats };
+
+  // Loading: no campaign yet, still fetching → page shell + placeholder header + skeleton body
+  if (!campaign && loading) {
+    return (
+      <div className="p-4 md:p-8">
+        {/* Placeholder header — matches real header layout */}
+        <div className="mb-6">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2 animate-pulse">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="h-8 w-64 bg-gray-200 rounded" />
+              <div className="h-5 w-16 bg-gray-100 rounded-full" />
+            </div>
+          </div>
+          <div className="h-4 w-40 bg-gray-100 rounded animate-pulse" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6 animate-pulse">
+          <div className="h-48 bg-gray-100 rounded-xl" />
+          <div className="h-48 bg-gray-100 rounded-xl" />
+        </div>
+      </div>
+    );
+  }
+
+  // Empty: not loading and no campaign → "Campaign not found"
+  if (!campaign) {
+    return (
+      <div className="p-4 md:p-8">
+        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+          <div className="text-4xl mb-4">&#10060;</div>
+          <h3 className="font-display font-bold text-lg text-gray-800 mb-2">Campaign not found</h3>
+          <p className="text-gray-600 text-sm">This campaign does not exist or you don&apos;t have access.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-8">
