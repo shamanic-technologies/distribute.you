@@ -3,7 +3,6 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { keepPreviousData } from "@tanstack/react-query";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { useOrg } from "@/lib/org-context";
 import { useFeatures } from "@/lib/features-context";
@@ -27,6 +26,7 @@ import {
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
 import { formatStatValue, sortDirectionForType } from "@/lib/format-stat";
+import { pollOptions } from "@/lib/query-options";
 import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-panel";
 import { CampaignAIPanel } from "@/components/campaigns/campaign-ai-panel";
 import { BrandLogo } from "@/components/brand-logo";
@@ -35,9 +35,6 @@ import { SparklesIcon, XMarkIcon, EllipsisVerticalIcon, PlusIcon } from "@heroic
 
 type Mode = "autopilot" | "manual";
 type BudgetFrequency = "one-off" | "daily" | "weekly" | "monthly";
-
-const POLL_INTERVAL = 5_000;
-const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false, placeholderData: keepPreviousData };
 
 const BUDGET_FREQUENCIES: { value: BudgetFrequency; label: string }[] = [
   { value: "one-off", label: "One-off" },

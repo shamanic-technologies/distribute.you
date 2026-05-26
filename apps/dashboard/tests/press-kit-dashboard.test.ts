@@ -103,8 +103,7 @@ describe("press-kit-dashboard", () => {
     });
 
     it("polls for updates", () => {
-      expect(pageSrc).toContain("POLL_INTERVAL");
-      expect(pageSrc).toContain("refetchInterval");
+      expect(pageSrc).toMatch(/pollOptions(Slow|Slower)?/);
     });
 
     it("handles failed status with retry action", () => {

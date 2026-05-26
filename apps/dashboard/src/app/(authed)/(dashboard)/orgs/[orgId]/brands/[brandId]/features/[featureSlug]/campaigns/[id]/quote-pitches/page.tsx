@@ -2,20 +2,13 @@
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import { keepPreviousData } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
+import { pollOptionsSlow } from "@/lib/query-options";
 import {
   listQuotePitches,
   type QuotePitch,
   type QuotePitchStatus,
 } from "@/lib/api";
-
-const POLL_INTERVAL = 10_000;
-const pollOptions = {
-  refetchInterval: POLL_INTERVAL,
-  refetchIntervalInBackground: false,
-  placeholderData: keepPreviousData,
-};
 
 const STATUS_STYLES: Record<QuotePitchStatus, string> = {
   drafted: "bg-gray-100 text-gray-700 border-gray-200",
@@ -61,7 +54,7 @@ export default function QuotePitchesPage() {
         status: statusFilter || undefined,
         limit: 100,
       }),
-    pollOptions,
+    pollOptionsSlow,
   );
 
   return (

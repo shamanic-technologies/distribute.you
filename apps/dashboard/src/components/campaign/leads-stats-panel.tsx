@@ -62,7 +62,6 @@ export function LeadsStatsPanel({ featureSlug, campaignId }: LeadsStatsPanelProp
     () => fetchFeatureStats(featureSlug, { campaignId }),
     {
       refetchInterval: 5_000,
-      refetchIntervalInBackground: false,
       placeholderData: keepPreviousData,
     },
   );

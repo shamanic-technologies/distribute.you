@@ -19,9 +19,7 @@ import {
   type KeySourcePreference,
 } from "@/lib/api";
 import { SkeletonApiKey } from "@/components/skeleton";
-
-const POLL_INTERVAL = 5_000;
-const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
+import { pollOptions } from "@/lib/query-options";
 
 /** Providers that should always appear in the BYOK section, even if no workflow requires them yet. */
 const ALWAYS_VISIBLE_PROVIDERS = ["serper-dev"] as const;

@@ -3,10 +3,9 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
+import { POLL_INTERVAL } from "@/lib/query-options";
 import { listBrandLeads, getLeadConsolidatedStatus, type Lead, type LeadConsolidatedStatus } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
-
-const POLL_INTERVAL = 5_000;
 
 const LEAD_STATUS_ORDER: LeadConsolidatedStatus[] = [
   "replied",
@@ -183,7 +182,7 @@ export default function BrandLeadsPage() {
   const { data, isLoading } = useAuthQuery(
     ["brandLeads", brandId],
     () => listBrandLeads(brandId),
-    { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false },
+    { refetchInterval: POLL_INTERVAL },
   );
 
   const leads = data?.leads ?? [];

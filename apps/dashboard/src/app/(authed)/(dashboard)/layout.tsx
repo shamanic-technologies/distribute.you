@@ -10,6 +10,7 @@ import { UserActivityTracker } from "@/components/user-activity-tracker";
 import { UserResolver } from "@/components/user-resolver";
 import { OrgCacheInvalidator } from "@/components/org-cache-invalidator";
 import { MobileSidebarProvider, useMobileSidebar } from "@/components/mobile-sidebar-context";
+import { TopRefetchBar } from "@/components/top-refetch-bar";
 import { QueryProvider } from "@/lib/query-provider";
 import { OrgContextProvider, useOrg } from "@/lib/org-context";
 import { BillingGuardProvider } from "@/lib/billing-guard";
@@ -50,6 +51,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
+      <TopRefetchBar />
       <OrgActivator />
       <OrgCacheInvalidator />
       <AuthEventTracker />

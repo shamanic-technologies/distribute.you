@@ -13,9 +13,7 @@ import {
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
 import { formatBillingCents } from "@/lib/format-number";
-
-const POLL_INTERVAL = 5_000;
-const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
+import { pollOptions } from "@/lib/query-options";
 
 const TOPUP_AMOUNTS = [1000, 2500, 5000, 10000]; // cents
 const RUNS_PAGE_SIZE = 10;

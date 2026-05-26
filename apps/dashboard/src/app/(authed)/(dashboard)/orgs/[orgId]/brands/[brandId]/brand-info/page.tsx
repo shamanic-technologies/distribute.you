@@ -5,9 +5,7 @@ import { useParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrand, extractBrandFields, listExtractedFields, SALES_PROFILE_FIELDS, listBrandRuns, type BrandRun, type RunCost } from "@/lib/api";
-
-const POLL_INTERVAL = 5_000;
-const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
+import { pollOptions } from "@/lib/query-options";
 
 /** Check if a field value has meaningful content */
 function hasContent(value: unknown): boolean {

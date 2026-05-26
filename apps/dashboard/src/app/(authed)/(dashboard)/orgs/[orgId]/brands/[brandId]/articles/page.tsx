@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
+import { POLL_INTERVAL } from "@/lib/query-options";
 import {
   listBrandArticles,
   listBrandOutlets,
@@ -10,8 +11,6 @@ import {
   type ArticleDiscoveryItem,
 } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
-
-const POLL_INTERVAL = 5_000;
 
 function getArticleTitle(item: ArticleDiscoveryItem): string {
   return item.article.ogTitle || item.article.twitterTitle || item.article.snippet?.slice(0, 80) || "Untitled";
@@ -43,7 +42,7 @@ export default function BrandArticlesPage() {
   const { data, isLoading } = useAuthQuery(
     ["brandArticles", brandId],
     () => listBrandArticles(brandId),
-    { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false },
+    { refetchInterval: POLL_INTERVAL },
   );
 
   const { data: outletsData } = useAuthQuery(

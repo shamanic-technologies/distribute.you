@@ -3,10 +3,9 @@
 import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
+import { POLL_INTERVAL } from "@/lib/query-options";
 import { listBrandEmails, type Email } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
-
-const POLL_INTERVAL = 5_000;
 
 function getEmailBody(email: Email): { html: string | null; text: string | null } {
   if (email.bodyHtml || email.bodyText) {
@@ -97,7 +96,7 @@ export default function FeatureEmailsPage() {
   const { data, isLoading } = useAuthQuery(
     ["brandEmails", brandId],
     () => listBrandEmails(brandId),
-    { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false },
+    { refetchInterval: POLL_INTERVAL },
   );
 
   const emails = data?.emails ?? [];

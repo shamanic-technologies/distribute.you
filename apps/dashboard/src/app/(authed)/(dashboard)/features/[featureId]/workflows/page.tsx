@@ -2,15 +2,12 @@
 
 import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
-import { keepPreviousData } from "@tanstack/react-query";
 import { useFeatures } from "@/lib/features-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { fetchFeatureStats } from "@/lib/api";
 import { formatStatValue, sortDirectionForType } from "@/lib/format-stat";
+import { pollOptions } from "@/lib/query-options";
 import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-panel";
-
-const POLL_INTERVAL = 5_000;
-const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false, placeholderData: keepPreviousData };
 
 function formatDisplayName(name: string): string {
   const lastDashIdx = name.lastIndexOf("-");

@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
+import { POLL_INTERVAL } from "@/lib/query-options";
 import { listBrandLeads, listWorkflows, getLeadConsolidatedStatus, type Lead, type LeadConsolidatedStatus, type ManualQualificationStatus } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 import { WorkflowTag } from "@/components/report/workflow-tag";
@@ -10,8 +11,6 @@ import { ManualQualificationBadge } from "@/components/leads/manual-qualificatio
 import { EditLeadStatusModal } from "@/components/leads/edit-lead-status-modal";
 import { useManualQualifications } from "@/lib/use-manual-qualification";
 import { buildLatestQualificationMap, qualificationKey } from "@/lib/manual-qualification";
-
-const POLL_INTERVAL = 5_000;
 
 const LEAD_STATUS_ORDER: LeadConsolidatedStatus[] = [
   "replied",
@@ -194,7 +193,7 @@ export default function FeatureLeadsPage() {
   const { data, isLoading } = useAuthQuery(
     ["brandLeads", brandId],
     () => listBrandLeads(brandId),
-    { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false },
+    { refetchInterval: POLL_INTERVAL },
   );
 
   // Workflow display names — fetched once per feature and looked up by

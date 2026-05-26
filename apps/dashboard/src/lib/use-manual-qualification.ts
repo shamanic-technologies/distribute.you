@@ -8,8 +8,7 @@ import {
   type SetManualQualificationResponse,
 } from "./api";
 import { useAuthQuery, useQueryClient } from "./use-auth-query";
-
-const POLL_INTERVAL = 5_000;
+import { POLL_INTERVAL } from "./query-options";
 
 export function manualQualificationsQueryKey(brandId: string) {
   return ["manualQualifications", "brand", brandId] as const;
@@ -23,7 +22,7 @@ export function useManualQualifications(brandId: string) {
   return useAuthQuery<ListManualQualificationsResponse>(
     manualQualificationsQueryKey(brandId),
     () => listManualQualifications({ limit: 500 }),
-    { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false },
+    { refetchInterval: POLL_INTERVAL },
   );
 }
 

@@ -275,7 +275,7 @@ export default function CampaignPressKitDetailPage() {
   const { data: kit, isLoading } = useAuthQuery(
     ["mediaKit", kitId],
     () => getMediaKit(kitId, { headers: contextHeaders }),
-    { refetchInterval: 5_000, refetchIntervalInBackground: false },
+    { refetchInterval: 5_000 },
   );
 
   const { data: stats } = useAuthQuery(

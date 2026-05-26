@@ -14,11 +14,9 @@ import { BrandLogo } from "@/components/brand-logo";
 import { Skeleton } from "@/components/skeleton";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 import { STATUS_PRIORITY, statusBadgeColor, statusLabel, deriveDisplayStatusFromCounts } from "@/lib/outlet-status";
+import { pollOptions } from "@/lib/query-options";
 
 type Tab = string | "all";
-
-const POLL_INTERVAL = 5_000;
-const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
 
 function formatCost(cents: string | number | null | undefined): string | null {
   if (cents == null) return null;

@@ -11,9 +11,7 @@ import {
   type Campaign,
 } from "@/lib/api";
 import { formatStatValue } from "@/lib/format-stat";
-
-const POLL_INTERVAL = 5_000;
-const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
+import { pollOptions } from "@/lib/query-options";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 

@@ -3,7 +3,6 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { keepPreviousData } from "@tanstack/react-query";
 import { useFeatures } from "@/lib/features-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { useOrg } from "@/lib/org-context";
@@ -25,6 +24,7 @@ import {
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
 import { extractDomain } from "@/lib/extract-domain";
+import { pollOptions } from "@/lib/query-options";
 import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-panel";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -41,8 +41,6 @@ const METRIC_OPTIONS: MetricOption[] = [
 ];
 
 // Cost metrics: lower is better → default asc. Rate metrics: higher is better → default desc.
-const POLL_INTERVAL = 5_000;
-const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false, placeholderData: keepPreviousData };
 
 const COST_METRICS: Set<SortKey> = new Set(["costPerOutcome"]);
 function defaultSortDir(key: SortKey): "asc" | "desc" {

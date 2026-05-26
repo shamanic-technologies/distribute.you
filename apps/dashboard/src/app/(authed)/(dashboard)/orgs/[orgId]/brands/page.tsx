@@ -8,9 +8,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { listBrands, upsertBrand, extractBrandFields, SALES_PROFILE_FIELDS } from "@/lib/api";
 import { extractDomain } from "@/lib/extract-domain";
 import { BrandLogo } from "@/components/brand-logo";
-
-const POLL_INTERVAL = 5_000;
-const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
+import { pollOptions } from "@/lib/query-options";
 
 export default function BrandsPage() {
   const params = useParams();

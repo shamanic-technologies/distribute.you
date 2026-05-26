@@ -107,6 +107,50 @@ When a mutation returns the fresh entity (e.g. POST `/campaigns/{id}/stop` retur
 
 Incident 2026-05-20 (distribute.you#1090): `useStopCampaign` only invalidated `["campaign", id]`. With api-service `GET /v1/campaigns/{id}` returning 500, single-click Stop appeared to do nothing — user had to click twice. Fix: `setQueryData(["campaign", id], data)` on success.
 
+### Dashboard data fetching — ONE framework (homogeneous SWR via React Query v5)
+
+Stack: TanStack React Query v5 on every client component. No SWR. No mixing. Server components for the shell only; everything interactive uses `useAuthQuery` / `useMutation`.
+
+**Global config (`apps/dashboard/src/lib/query-provider.tsx`) — single source of truth:**
+- `staleTime: 60_000` (1 min). Default `0` causes flash on every mount/window-focus.
+- `gcTime: 5 * 60_000`.
+- `placeholderData: keepPreviousData` (GLOBAL). Stale data stays on screen during refetch — true stale-while-revalidate. Never re-set per query.
+- `refetchOnWindowFocus: true`, `refetchOnReconnect: true`.
+- `retry: 1` (queries), `retry: 0` (mutations).
+
+**Shared poll cadences (`apps/dashboard/src/lib/query-options.ts`):**
+- `pollOptions` → 5s (default for active pages).
+- `pollOptionsSlow` → 10s (quote-pitches, quote-requests, press-kits).
+- `pollOptionsSlower` → 30s (visibility-runs, low-frequency).
+- Import + pass to `useAuthQuery(..., pollOptions)`. Never declare a local `const pollOptions`.
+
+**V5 status flags — render rule:**
+- `isPending` → no data ever → render SKELETON.
+- `isLoading` (= `isPending && isFetching`) → equivalent for initial load → render SKELETON.
+- `isFetching && !isPending` → background refetch with cached data → render CONTENT, never skeleton.
+- Skeleton condition is exclusively the "no data" case. The global top-bar `<TopRefetchBar />` provides the only background-refresh affordance.
+
+**Page composition:**
+- Shell + nav + header render INSTANTLY (no query gates them).
+- Each card/section owns its own `useAuthQuery` + skeleton. Parallel, never cascaded unless data truly depends.
+- Skeleton must match the real layout (heights, columns) — zero layout shift on resolve.
+- Spinner only for button-scoped actions (Save, Send). Never for content.
+- `<Suspense>` is NOT used in dashboard pages (use `isPending` checks). Reserved for public marketing pages only.
+
+**Mutations (extends incident #1090):**
+- If the mutation returns the new entity → `queryClient.setQueryData(["entity", id], response)` FIRST.
+- THEN `invalidateQueries({ queryKey: listKey })` for any list cache the mutation cannot rebuild.
+- Return the invalidation promise from `onSuccess` so the button stays loading until lists refresh.
+
+**Forbidden patterns:**
+- Local `const pollOptions = {...}` (use shared module).
+- `refetchIntervalInBackground: false` (it's the v5 default — drop).
+- `placeholderData: keepPreviousData` in per-query options (now global default — drop).
+- Skeleton on `isFetching` when data exists.
+- `<Suspense>` for any dashboard content.
+
+Incident 2026-05-26 (distribute.you): user reported "data flashes in/out and components arrive at staggered times" across the dashboard. Root cause was a combination of (a) no global `placeholderData: keepPreviousData`, so v5 dropped cached data to `undefined` on every refetch, and (b) 21 page files declaring redundant local `pollOptions` constants that drifted (3 included `keepPreviousData`, 18 omitted it). Fixed by lifting `keepPreviousData` to the global default + collapsing all pollOptions to a 3-variant shared module + adding a faint top-bar `useIsFetching()` indicator + dropping all `refetchIntervalInBackground: false` (default in v5).
+
 ### Public marketing pages — SEO + AI-scraper rendering
 
 For any public landing/marketing/docs page (anything under `apps/landing/`, `apps/sales-cold-emails-landing/`, `apps/docs/`), the default rendering strategy is **ISR + `unstable_cache` + edge cache**, NEVER Suspense streaming on indexable content.

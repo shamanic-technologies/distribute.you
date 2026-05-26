@@ -2,10 +2,9 @@
 
 import { useMemo } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
+import { POLL_INTERVAL } from "@/lib/query-options";
 import { getBrandCostsByFeature, getBrandCostBreakdown, type FeatureCostGroup, type CostByName } from "@/lib/api";
 import { useFeatures } from "@/lib/features-context";
-
-const POLL_INTERVAL = 5_000;
 
 const COLORS = [
   "#6366f1", // indigo
@@ -46,13 +45,13 @@ export function BrandUsageSection({ brandId }: { brandId: string }) {
   const { data: featureGroupsData, isLoading: featureGroupsLoading } = useAuthQuery(
     ["brandCostsByFeature", brandId],
     () => getBrandCostsByFeature(brandId),
-    { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false },
+    { refetchInterval: POLL_INTERVAL },
   );
 
   const { data: totalCostData, isLoading: totalCostLoading } = useAuthQuery(
     ["brandCostBreakdown", { brandId }],
     () => getBrandCostBreakdown(brandId),
-    { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false },
+    { refetchInterval: POLL_INTERVAL },
   );
 
   const isLoading = featureGroupsLoading || totalCostLoading;

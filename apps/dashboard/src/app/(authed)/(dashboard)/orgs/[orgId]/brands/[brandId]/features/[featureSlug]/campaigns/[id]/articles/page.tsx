@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
+import { POLL_INTERVAL } from "@/lib/query-options";
 import {
   listCampaignArticles,
   listCampaignOutlets,
@@ -10,8 +11,6 @@ import {
   type ArticleDiscoveryItem,
 } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
-
-const POLL_INTERVAL = 5_000;
 
 function getArticleTitle(item: ArticleDiscoveryItem): string {
   return item.article.ogTitle || item.article.twitterTitle || item.article.snippet?.slice(0, 80) || "Untitled";
@@ -43,19 +42,19 @@ export default function CampaignArticlesPage() {
   const { data, isLoading } = useAuthQuery(
     ["campaignArticles", campaignId],
     () => listCampaignArticles(campaignId),
-    { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false },
+    { refetchInterval: POLL_INTERVAL },
   );
 
   const { data: outletsData } = useAuthQuery(
     ["campaignOutlets", campaignId],
     () => listCampaignOutlets(campaignId),
-    { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false },
+    { refetchInterval: POLL_INTERVAL },
   );
 
   const { data: journalistsData } = useAuthQuery(
     ["campaignJournalists", campaignId],
     () => listCampaignJournalists(campaignId),
-    { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false },
+    { refetchInterval: POLL_INTERVAL },
   );
 
   const outletMap = useMemo(() => {

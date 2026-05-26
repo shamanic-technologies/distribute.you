@@ -5,9 +5,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { listWorkflows, type Workflow } from "@/lib/api";
 import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-panel";
 import { workflowDisplayName } from "@/lib/workflow-display-name";
-
-const POLL_INTERVAL = 5_000;
-const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
+import { pollOptions } from "@/lib/query-options";
 
 export default function BrandWorkflowsPage() {
   const [detailWorkflowId, setDetailWorkflowId] = useState<string | null>(null);

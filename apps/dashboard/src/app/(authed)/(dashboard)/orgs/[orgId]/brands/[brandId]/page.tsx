@@ -22,6 +22,7 @@ import { BrandUsageSection } from "@/components/brand-usage";
 import { Skeleton } from "@/components/skeleton";
 import { formatCount } from "@/lib/format-number";
 import { useFeatures } from "@/lib/features-context";
+import { pollOptions } from "@/lib/query-options";
 import {
   GlobeAltIcon,
   MegaphoneIcon,
@@ -50,9 +51,6 @@ const ICON_MAP: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   bolt: BoltIcon,
   cog: Cog6ToothIcon,
 };
-
-const POLL_INTERVAL = 5_000;
-const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
 
 function formatCost(cents: string | null | undefined): string | null {
   if (!cents) return null;

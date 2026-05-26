@@ -172,7 +172,7 @@ export default function CampaignRunsPage() {
   const { data, isLoading } = useAuthQuery(
     ["campaignRuns", campaignId],
     () => listCampaignRuns(campaignId),
-    { refetchInterval: 5_000, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
+    { refetchInterval: 5_000, placeholderData: keepPreviousData },
   );
 
   const runs = data?.runs ?? [];
