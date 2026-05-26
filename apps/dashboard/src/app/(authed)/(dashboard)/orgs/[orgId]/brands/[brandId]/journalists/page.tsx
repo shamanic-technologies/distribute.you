@@ -131,20 +131,6 @@ export default function BrandJournalistsPage() {
     { key: "all", label: "All", count: journalistsData?.total ?? journalists.length },
   ];
 
-  if (isFirstLoad) {
-    return (
-      <div className="p-4 md:p-8">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 w-48 bg-gray-200 rounded" />
-          <div className="h-10 w-64 bg-gray-100 rounded" />
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-16 bg-gray-100 rounded-xl" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col md:flex-row h-full relative">
       {/* Journalist List */}
@@ -176,7 +162,13 @@ export default function BrandJournalistsPage() {
 
         <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by journalist or outlet name..." resultCount={filteredList.length} totalCount={activeList.length} />
 
-        {filteredList.length === 0 ? (
+        {isFirstLoad ? (
+          <div className="space-y-2 animate-pulse">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-[76px] bg-gray-100 rounded-xl border border-gray-200" />
+            ))}
+          </div>
+        ) : filteredList.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
             <h3 className="font-display font-bold text-lg text-gray-800 mb-2">
               {activeList.length === 0 ? "No journalists" : "No matching journalists"}

@@ -241,16 +241,7 @@ export default function BrandLeadsPage() {
     { key: "all", label: "All", count: sortedLeads.length },
   ];
 
-  if (isLoading && !data) {
-    return (
-      <div className="p-4 md:p-8">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 w-32 bg-gray-200 rounded" />
-          {[1, 2, 3].map((i) => <div key={i} className="h-12 bg-gray-100 rounded-lg" />)}
-        </div>
-      </div>
-    );
-  }
+  const showSkeleton = isLoading && !data;
 
   const selectedFull = selectedLead?.lead ?? null;
   const selectedOrg = selectedFull?.organization ?? null;
@@ -284,7 +275,14 @@ export default function BrandLeadsPage() {
 
         <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by name, company, title, or email..." resultCount={filteredLeads.length} totalCount={activeList.length} />
 
-        {leads.length === 0 ? (
+        {showSkeleton ? (
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden animate-pulse">
+            <div className="h-10 bg-gray-100 border-b border-gray-100" />
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-14 border-b border-gray-50 last:border-b-0" />
+            ))}
+          </div>
+        ) : leads.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
             <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No leads yet</h3>
             <p className="text-gray-600 text-sm">Leads will appear here once campaigns run.</p>

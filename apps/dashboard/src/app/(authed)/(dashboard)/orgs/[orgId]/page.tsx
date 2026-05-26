@@ -25,14 +25,14 @@ export default function OrgOverviewPage() {
   const orgId = params.orgId as string;
   const { features } = useFeatures();
 
-  const { data: brandsData, isLoading: brandsLoading } = useAuthQuery(
+  const { data: brandsData } = useAuthQuery(
     ["brands"],
     () => listBrands(),
     pollOptions,
   );
   const brands = brandsData?.brands ?? [];
 
-  const { data: campaignsData, isLoading: campaignsLoading } = useAuthQuery(
+  const { data: campaignsData } = useAuthQuery(
     ["campaigns"],
     () => listCampaigns(),
     pollOptions,
@@ -59,34 +59,27 @@ export default function OrgOverviewPage() {
     totalCostCents: globalStats?.systemStats?.totalCostInUsdCents ?? 0,
   }), [globalStats]);
 
-  const isLoading = brandsLoading || campaignsLoading;
-
-  if (isLoading && !brandsData && !campaignsData) {
-    return (
-      <div className="p-4 md:p-8">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-48" />
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-24 bg-gray-200 rounded-xl" />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const statsReady = brandsData || campaignsData;
 
   return (
     <div className="p-4 md:p-8 max-w-5xl">
       <h1 className="text-2xl font-semibold text-gray-900 mb-6">Overview</h1>
 
       {/* Quick Stats */}
-      <div data-testid="overview-stats" className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Brands" value={brands.length} />
-        <StatCard label="Campaigns" value={campaigns.length} />
-        <StatCard label="Emails Sent" value={totals.emailsSent} />
-        <StatCard label="Replies" value={totals.emailsReplied} />
-      </div>
+      {statsReady ? (
+        <div data-testid="overview-stats" className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+          <StatCard label="Brands" value={brands.length} />
+          <StatCard label="Campaigns" value={campaigns.length} />
+          <StatCard label="Emails Sent" value={totals.emailsSent} />
+          <StatCard label="Replies" value={totals.emailsReplied} />
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8 animate-pulse">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-[76px] bg-gray-200 rounded-xl" />
+          ))}
+        </div>
+      )}
 
       {/* Brands Summary */}
       <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
