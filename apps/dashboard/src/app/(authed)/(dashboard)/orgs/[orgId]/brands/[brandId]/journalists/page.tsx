@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
+import { POLL_INTERVAL } from "@/lib/query-options";
 import {
   listJournalistsEnriched,
   type EnrichedJournalist,
@@ -18,7 +19,6 @@ import {
   deriveDisplayStatusFromBooleans,
 } from "@/lib/outlet-status";
 
-const POLL_INTERVAL = 5_000;
 const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
 
 type Tab = string | "all";
@@ -65,7 +65,7 @@ export default function BrandJournalistsPage() {
   const { data: journalistsData, isLoading: journalistsLoading } = useAuthQuery(
     ["enrichedJournalists", brandId],
     () => listJournalistsEnriched(brandId),
-    { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false },
+    { refetchInterval: POLL_INTERVAL },
   );
 
   const journalists = journalistsData?.journalists ?? [];

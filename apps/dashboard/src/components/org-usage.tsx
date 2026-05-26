@@ -2,9 +2,8 @@
 
 import { useMemo } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
+import { POLL_INTERVAL } from "@/lib/query-options";
 import { getOrgCostsByBrand, getOrgCostBreakdown, type Brand } from "@/lib/api";
-
-const POLL_INTERVAL = 5_000;
 
 const COLORS = [
   "#6366f1", // indigo
@@ -42,13 +41,13 @@ export function OrgUsageSection({ brands }: { brands: Brand[] }) {
   const { data: brandGroupsData, isLoading: brandGroupsLoading } = useAuthQuery(
     ["orgCostsByBrand"],
     () => getOrgCostsByBrand(),
-    { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false },
+    { refetchInterval: POLL_INTERVAL },
   );
 
   const { data: totalCostData, isLoading: totalCostLoading } = useAuthQuery(
     ["orgCostBreakdown"],
     () => getOrgCostBreakdown(),
-    { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false },
+    { refetchInterval: POLL_INTERVAL },
   );
 
   const isLoading = brandGroupsLoading || totalCostLoading;

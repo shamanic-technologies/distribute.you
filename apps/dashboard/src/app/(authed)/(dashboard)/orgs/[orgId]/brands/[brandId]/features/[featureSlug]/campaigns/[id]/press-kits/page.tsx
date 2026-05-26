@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useMutation } from "@tanstack/react-query";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
+import { pollOptionsSlow } from "@/lib/query-options";
 import {
   listMediaKitsByCampaign,
   editMediaKit,
@@ -35,9 +36,6 @@ function timeAgo(date: string | Date): string {
   const years = Math.floor(months / 12);
   return `${years}y ago`;
 }
-
-const POLL_INTERVAL = 10_000;
-const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false };
 
 const STATUS_STYLES: Record<MediaKitStatus, string> = {
   generating: "bg-blue-100 text-blue-700 border-blue-200",
@@ -385,7 +383,7 @@ export default function CampaignPressKitsPage() {
   const { data: kits, isLoading } = useAuthQuery(
     ["campaignMediaKits", campaignId],
     () => listMediaKitsByCampaign(campaignId, { headers: contextHeaders }),
-    pollOptions,
+    pollOptionsSlow,
   );
 
   const { data: costsByKit } = useAuthQuery(

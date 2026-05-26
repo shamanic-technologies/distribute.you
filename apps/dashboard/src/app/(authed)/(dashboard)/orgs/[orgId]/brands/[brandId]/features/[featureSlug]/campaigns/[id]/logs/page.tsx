@@ -168,7 +168,7 @@ export default function CampaignLogsPage() {
         limit: 100,
         offset,
       }),
-    { refetchInterval: 5_000, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
+    { refetchInterval: 5_000, placeholderData: keepPreviousData },
   );
 
   const events = data?.events ?? [];

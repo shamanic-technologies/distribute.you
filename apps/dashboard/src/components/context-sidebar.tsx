@@ -409,27 +409,27 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
   const { data: outletsData } = useAuthQuery(
     ["brandOutlets", brandId],
     () => listBrandOutlets(brandId),
-    { refetchInterval: 5_000, refetchIntervalInBackground: false },
+    { refetchInterval: 5_000 },
   );
   const { data: journalistsData } = useAuthQuery(
     ["enrichedJournalists", brandId],
     () => listJournalistsEnriched(brandId),
-    { refetchInterval: 5_000, refetchIntervalInBackground: false },
+    { refetchInterval: 5_000 },
   );
   const { data: leadsData } = useAuthQuery(
     ["brandLeads", brandId],
     () => listBrandLeads(brandId),
-    { refetchInterval: 5_000, refetchIntervalInBackground: false },
+    { refetchInterval: 5_000 },
   );
   const { data: emailsData } = useAuthQuery(
     ["brandEmails", brandId],
     () => listBrandEmails(brandId),
-    { refetchInterval: 5_000, refetchIntervalInBackground: false },
+    { refetchInterval: 5_000 },
   );
   const { data: articlesData } = useAuthQuery(
     ["brandArticles", brandId],
     () => listBrandArticles(brandId),
-    { refetchInterval: 5_000, refetchIntervalInBackground: false },
+    { refetchInterval: 5_000 },
   );
 
   const outcomeItems: SidebarItem[] = [
@@ -541,7 +541,7 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   const { data: featureStatsData } = useAuthQuery(
     ["featureStats", resolvedFeatureSlug, "brand", brandId],
     () => fetchFeatureStats(resolvedFeatureSlug!, { brandId }),
-    { enabled: !!resolvedFeatureSlug, refetchInterval: 5_000, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
+    { enabled: !!resolvedFeatureSlug, refetchInterval: 5_000, placeholderData: keepPreviousData },
   );
   const fStats = featureStatsData?.stats ?? {};
 
@@ -549,27 +549,27 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   const { data: outletsData } = useAuthQuery(
     ["brandOutlets", brandId, featureSlug],
     () => listBrandOutlets(brandId, featureSlug),
-    { enabled: entityNames.includes("outlets"), refetchInterval: 5_000, refetchIntervalInBackground: false },
+    { enabled: entityNames.includes("outlets"), refetchInterval: 5_000 },
   );
   const { data: journalistsData } = useAuthQuery(
     ["enrichedJournalists", brandId, featureSlug],
     () => listJournalistsEnriched(brandId, { featureSlug }),
-    { enabled: entityNames.includes("journalists"), refetchInterval: 5_000, refetchIntervalInBackground: false },
+    { enabled: entityNames.includes("journalists"), refetchInterval: 5_000 },
   );
   const { data: leadsData } = useAuthQuery(
     ["brandLeads", brandId],
     () => listBrandLeads(brandId),
-    { enabled: entityNames.includes("leads"), refetchInterval: 5_000, refetchIntervalInBackground: false },
+    { enabled: entityNames.includes("leads"), refetchInterval: 5_000 },
   );
   const { data: emailsData } = useAuthQuery(
     ["brandEmails", brandId],
     () => listBrandEmails(brandId),
-    { enabled: entityNames.includes("emails"), refetchInterval: 5_000, refetchIntervalInBackground: false },
+    { enabled: entityNames.includes("emails"), refetchInterval: 5_000 },
   );
   const { data: articlesData } = useAuthQuery(
     ["brandArticles", brandId, featureSlug],
     () => listBrandArticles(brandId, featureSlug),
-    { enabled: entityNames.includes("articles"), refetchInterval: 5_000, refetchIntervalInBackground: false },
+    { enabled: entityNames.includes("articles"), refetchInterval: 5_000 },
   );
 
   const listingFallback: Record<string, number | undefined> = {

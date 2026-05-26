@@ -33,26 +33,26 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
   const { data: featureStatsData, isLoading: featureStatsLoading } = useAuthQuery(
     ["featureStats", featureSlug, "campaign", campaignId],
     () => fetchFeatureStats(featureSlug, { campaignId }),
-    { enabled: true, refetchInterval: 5_000, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
+    { enabled: true, refetchInterval: 5_000, placeholderData: keepPreviousData },
   );
   const fStats = featureStatsData?.stats ?? {};
 
   const { data: outletsData, isLoading: outletsLoading } = useAuthQuery(
     ["campaignOutlets", campaignId],
     () => listCampaignOutlets(campaignId),
-    { enabled: entityNames.includes("outlets"), refetchInterval: 5_000, refetchIntervalInBackground: false },
+    { enabled: entityNames.includes("outlets"), refetchInterval: 5_000 },
   );
 
   const { data: journalistsData, isLoading: journalistsLoading } = useAuthQuery(
     ["enrichedJournalists", brandId, campaignId],
     () => listJournalistsEnriched(brandId, { campaignId }),
-    { enabled: entityNames.includes("journalists"), refetchInterval: 5_000, refetchIntervalInBackground: false },
+    { enabled: entityNames.includes("journalists"), refetchInterval: 5_000 },
   );
 
   const { data: pressKitsData, isLoading: pressKitsLoading } = useAuthQuery(
     ["campaignPressKits", campaignId],
     () => listMediaKitsByCampaign(campaignId),
-    { enabled: entityNames.includes("press-kits"), refetchInterval: 5_000, refetchIntervalInBackground: false },
+    { enabled: entityNames.includes("press-kits"), refetchInterval: 5_000 },
   );
 
   const entityLoading: Record<string, boolean> = {

@@ -24,7 +24,7 @@ export function PressKitResults({ campaignId, detailBasePath }: PressKitResultsP
   const { data: kits, isLoading: kitsLoading } = useAuthQuery(
     ["mediaKits", "campaign", campaignId],
     () => listMediaKitsByCampaign(campaignId),
-    { refetchInterval: 5_000, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
+    { refetchInterval: 5_000, placeholderData: keepPreviousData },
   );
 
   if (kitsLoading) {

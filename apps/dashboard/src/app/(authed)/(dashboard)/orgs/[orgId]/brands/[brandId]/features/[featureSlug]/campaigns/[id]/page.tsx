@@ -91,7 +91,7 @@ export default function CampaignOverviewPage() {
   const { data: featureStatsData } = useAuthQuery(
     ["featureStats", featureSlug, "campaign", campaignId],
     () => fetchFeatureStats(featureSlug, { campaignId }),
-    { enabled: true, refetchInterval: 5_000, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
+    { enabled: true, refetchInterval: 5_000, placeholderData: keepPreviousData },
   );
 
   const handleStop = () => {

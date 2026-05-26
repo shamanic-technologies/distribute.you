@@ -1,16 +1,9 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { keepPreviousData } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
+import { pollOptionsSlow } from "@/lib/query-options";
 import { listQuoteRequests, type QuoteRequest } from "@/lib/api";
-
-const POLL_INTERVAL = 10_000;
-const pollOptions = {
-  refetchInterval: POLL_INTERVAL,
-  refetchIntervalInBackground: false,
-  placeholderData: keepPreviousData,
-};
 
 export default function QuoteRequestsPage() {
   const params = useParams();
@@ -23,7 +16,7 @@ export default function QuoteRequestsPage() {
         campaign_id: campaignId,
         limit: 100,
       }),
-    pollOptions,
+    pollOptionsSlow,
   );
 
   const requests = data?.providerQuoteRequests ?? [];

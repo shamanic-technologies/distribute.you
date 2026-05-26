@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
+import { POLL_INTERVAL } from "@/lib/query-options";
 import {
   listJournalistsEnriched,
   type EnrichedJournalist,
@@ -24,7 +25,6 @@ import { buildLatestQualificationMap, qualificationKey } from "@/lib/manual-qual
 import { EditManualQualificationModal } from "@/components/manual-qualification/edit-manual-qualification-modal";
 import { ManualQualificationBadge } from "@/components/leads/manual-qualification-badge";
 
-const POLL_INTERVAL = 5_000;
 const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
 
 type Tab = string | "all";
@@ -75,7 +75,7 @@ export default function FeatureJournalistsPage() {
   const { data: journalistsData, isLoading: journalistsLoading } = useAuthQuery(
     ["enrichedJournalists", brandId, featureSlug],
     () => listJournalistsEnriched(brandId, { featureSlug }),
-    { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false },
+    { refetchInterval: POLL_INTERVAL },
   );
 
   const { data: qualificationsData } = useManualQualifications(brandId);

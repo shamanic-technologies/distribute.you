@@ -2,7 +2,6 @@
 
 import { useMemo, useCallback, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { keepPreviousData } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   fetchGlobalRankedWorkflows,
@@ -10,11 +9,9 @@ import {
 } from "@/lib/api";
 import { useFeatures } from "@/lib/features-context";
 import { formatStatValue, sortDirectionForType } from "@/lib/format-stat";
+import { pollOptions } from "@/lib/query-options";
 import { PlusIcon } from "@heroicons/react/20/solid";
 import { Skeleton } from "@/components/skeleton";
-
-const POLL_INTERVAL = 5_000;
-const pollOptions = { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false, placeholderData: keepPreviousData };
 
 function SortHeader({
   label,

@@ -3,7 +3,6 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { keepPreviousData } from "@tanstack/react-query";
 import {
   CartesianGrid,
   Legend,
@@ -15,6 +14,7 @@ import {
   YAxis,
 } from "recharts";
 import { useAuthQuery } from "@/lib/use-auth-query";
+import { pollOptionsSlower } from "@/lib/query-options";
 import { listVisibilityRuns, type VisibilityRunWithDelta } from "@/lib/api";
 import {
   ScoreCard,
@@ -23,13 +23,6 @@ import {
   formatSentiment,
   parseDecimal,
 } from "@/components/visibility/score-card";
-
-const POLL_INTERVAL = 30_000;
-const pollOptions = {
-  refetchInterval: POLL_INTERVAL,
-  refetchIntervalInBackground: false,
-  placeholderData: keepPreviousData,
-};
 
 interface ChartPoint {
   ts: number;
@@ -74,7 +67,7 @@ export default function VisibilityRunsPage() {
   const { data, isLoading } = useAuthQuery(
     ["visibilityRuns", { brandId, campaignId }],
     () => listVisibilityRuns({ brandId, campaignId, limit: 50 }),
-    pollOptions,
+    pollOptionsSlower,
   );
 
   const runs = data?.runs ?? [];

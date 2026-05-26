@@ -3,9 +3,8 @@
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from "react";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
+import { POLL_INTERVAL } from "@/lib/query-options";
 import { getCampaign, getCampaignStats, listCampaignEmails, listCampaignLeads, type Campaign, type CampaignStats, type Email, type Lead } from "./api";
-
-const POLL_INTERVAL = 5_000;
 
 interface CampaignContextType {
   campaign: Campaign | null;
@@ -34,14 +33,13 @@ export function CampaignProvider({ children, campaignId }: CampaignProviderProps
   const { data: campaignData, isLoading: campaignLoading } = useAuthQuery(
     ["campaign", campaignId],
     () => getCampaign(campaignId),
-    { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
+    { refetchInterval: POLL_INTERVAL, placeholderData: keepPreviousData },
   );
 
   // Only poll secondary data while the campaign is active
   const isActive = campaignData?.campaign?.status === "ongoing";
   const pollOptions = {
     refetchInterval: isActive ? POLL_INTERVAL : false as const,
-    refetchIntervalInBackground: false,
     placeholderData: keepPreviousData,
   };
 
