@@ -149,12 +149,14 @@ function GenericFeaturePage({
   );
   const brandCostBreakdown = brandCostData?.costs ?? [];
 
-  // Skeleton conditions: render skeleton only while we have NO data for that section.
-  // With global keepPreviousData, refetches keep data on screen — skeletons appear only on first-ever mount.
+  // One unified "all sections ready" gate so the body reveals together, not in a staggered cascade.
+  // With global `placeholderData: keepPreviousData`, refetches keep data on screen — this gate
+  // only governs the first-mount paint when the page has no cached data yet.
   const campaignsReady = campaignsData !== undefined;
   const featureStatsReady = featureStatsData !== undefined;
   const costsReady = brandCostData !== undefined;
   const featureDefReady = !featuresLoading;
+  const allReady = campaignsReady && featureStatsReady && costsReady && featureDefReady;
 
   const totalCostCents = featureStatsData?.systemStats?.totalCostInUsdCents ?? 0;
   const featureStats = featureStatsData?.stats ?? {};
@@ -170,7 +172,7 @@ function GenericFeaturePage({
           <p className="text-gray-600">Performance overview and campaigns for this feature.</p>
         </div>
         <div className="flex items-center gap-3">
-          {!featureStatsReady ? (
+          {!allReady ? (
             <div className="h-5 w-20 bg-gray-200 rounded animate-pulse" />
           ) : formatTotalCost(totalCostCents) ? (
             <span className="text-sm font-semibold text-gray-700">
@@ -186,52 +188,58 @@ function GenericFeaturePage({
         </div>
       </div>
 
-      {/* Stats Overview — dynamic from charts. Renders skeleton on first load, real chart on data, hidden when nothing to show. */}
-      {(!featureDefReady || !featureStatsReady || !campaignsReady) ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-          {(funnelChart || !featureDef) && <FunnelMetricsSkeleton />}
-          {(breakdownChart || !featureDef) && <ReplyBreakdownSkeleton />}
-        </div>
-      ) : campaigns.length > 0 && (funnelChart || breakdownChart) ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-          {funnelChart && funnelChart.type === "funnel-bar" && (
-            <FunnelMetrics
-              steps={funnelChart.steps}
-              stats={featureStats}
-              registry={registry}
-            />
-          )}
-          {breakdownChart && breakdownChart.type === "breakdown-bar" && (
-            <ReplyBreakdown
-              segments={breakdownChart.segments}
-              stats={featureStats}
-              registry={registry}
-            />
-          )}
-        </div>
-      ) : null}
-
-      {/* Cost Breakdown */}
-      {!costsReady ? (
-        <div className="mb-6">
-          <CostBreakdownSkeleton />
-        </div>
-      ) : brandCostBreakdown.length > 0 ? (
-        <div className="mb-6">
-          <CostBreakdown costBreakdown={brandCostBreakdown} />
-        </div>
-      ) : null}
-
-      {/* Campaigns List */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-gray-700">Campaigns</h2>
-        {(!campaignsReady || !featureDefReady) ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <CampaignRowSkeleton key={i} />
-            ))}
+      {!allReady ? (
+        <>
+          {/* Stats + cost + campaigns skeletons render together so the body reveals as a single block */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+            {(funnelChart || !featureDef) && <FunnelMetricsSkeleton />}
+            {(breakdownChart || !featureDef) && <ReplyBreakdownSkeleton />}
           </div>
-        ) : campaigns.length === 0 ? (
+          <div className="mb-6">
+            <CostBreakdownSkeleton />
+          </div>
+          <div className="space-y-3">
+            <h2 className="text-sm font-semibold text-gray-700">Campaigns</h2>
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <CampaignRowSkeleton key={i} />
+              ))}
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Stats Overview — dynamic from charts. Hidden when nothing to show. */}
+          {campaigns.length > 0 && (funnelChart || breakdownChart) ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+              {funnelChart && funnelChart.type === "funnel-bar" && (
+                <FunnelMetrics
+                  steps={funnelChart.steps}
+                  stats={featureStats}
+                  registry={registry}
+                />
+              )}
+              {breakdownChart && breakdownChart.type === "breakdown-bar" && (
+                <ReplyBreakdown
+                  segments={breakdownChart.segments}
+                  stats={featureStats}
+                  registry={registry}
+                />
+              )}
+            </div>
+          ) : null}
+
+          {/* Cost Breakdown */}
+          {brandCostBreakdown.length > 0 ? (
+            <div className="mb-6">
+              <CostBreakdown costBreakdown={brandCostBreakdown} />
+            </div>
+          ) : null}
+
+          {/* Campaigns List */}
+          <div className="space-y-3">
+            <h2 className="text-sm font-semibold text-gray-700">Campaigns</h2>
+            {campaigns.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
             <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No campaigns yet</h3>
             <p className="text-gray-600 text-sm max-w-md mx-auto mb-4">
@@ -313,7 +321,9 @@ function GenericFeaturePage({
             );
           })
         )}
-      </div>
+          </div>
+        </>
+      )}
 
     </div>
   );
