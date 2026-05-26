@@ -3,15 +3,14 @@ import * as fs from "fs";
 import * as path from "path";
 
 /**
- * Regression test: Dashboard layout must NOT render dashboard chrome (header, sidebar, etc.)
- * while the onboarding check is still loading.
+ * Regression test: Dashboard `<main>` content must NOT render before Clerk has resolved
+ * the user's org. Otherwise users land briefly on dashboard pages with empty data while
+ * the onboarding redirect is queued.
  *
- * Root cause: OnboardingRedirect was a separate component that returned null and only
- * redirected via useEffect after the API call resolved. Meanwhile, the Header, sidebar,
- * and other dashboard UI rendered normally — causing a visible flash before redirect.
- *
- * Fix: The onboarding check is now inline in DashboardContent. When isLoading or !hasOrg,
- * we return an empty div instead of rendering the full dashboard layout.
+ * Note: the layout shell (Header, sidebar, QueryProvider, OrgCacheInvalidator) stays
+ * mounted across Clerk re-loads so React Query observers in `children` don't unmount
+ * mid-session and re-paint as skeletons. Only the `<main>` area swaps to a blank
+ * placeholder when the org is missing.
  */
 describe("Dashboard layout should not flash before onboarding redirect", () => {
   const layoutPath = path.join(
@@ -24,8 +23,10 @@ describe("Dashboard layout should not flash before onboarding redirect", () => {
     expect(content).not.toMatch(/function OnboardingRedirect/);
   });
 
-  it("should gate dashboard rendering on org loading state", () => {
-    expect(content).toMatch(/if\s*\(isLoading\s*\|\|\s*!hasOrg\)/);
+  it("should gate main content rendering on org loading state", () => {
+    // `<main>` swaps between children and a blank placeholder based on the resolved org.
+    expect(content).toMatch(/!isLoading\s*&&\s*hasOrg/);
+    expect(content).toMatch(/showContent\s*\?\s*children/);
   });
 
   it("should use useOrg() in DashboardContent directly", () => {

@@ -173,14 +173,6 @@ export default function BrandOverviewPage() {
     pollOptions,
   );
 
-  const outcomeLoading: Record<string, boolean> = {
-    outlets: outletsLoading,
-    journalists: journalistsLoading,
-    articles: articlesLoading,
-    leads: leadsLoading,
-    emails: emailsLoading,
-  };
-
   const outcomeCounts = useMemo(() => ({
     outlets: outletsData?.outlets?.length ?? 0,
     journalists: journalistsData?.journalists?.length ?? 0,
@@ -188,6 +180,17 @@ export default function BrandOverviewPage() {
     leads: leadsData?.leads?.length ?? 0,
     emails: emailsData?.emails?.length ?? 0,
   }), [outletsData, journalistsData, articlesData, leadsData, emailsData]);
+
+  // Unified ready gate so outcomes + features sections reveal together (no staggered wave).
+  const allReady =
+    !brandLoading
+    && campaignsData !== undefined
+    && batchStats !== undefined
+    && !outletsLoading
+    && !journalistsLoading
+    && !leadsLoading
+    && !emailsLoading
+    && !articlesLoading;
 
   // Build workflow sections from actual campaigns, grouped by feature slug
   const workflowSections = useMemo(() => {
@@ -271,7 +274,8 @@ export default function BrandOverviewPage() {
         </div>
       </Link>
 
-      {/* Outcomes Section */}
+      {/* Outcomes Section — render every card with a skeleton until ALL data is ready,
+          then swap every card's count together. Avoids staggered wave on first load. */}
       <div className="mb-6">
         <h2 className="text-lg font-medium text-gray-900 mb-4">Outcomes</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 min-h-[96px]">
@@ -291,7 +295,7 @@ export default function BrandOverviewPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={icon} />
               </svg>
               <p className="text-sm font-medium text-gray-700 group-hover:text-brand-600 transition">{label}</p>
-              {outcomeLoading[key] ? (
+              {!allReady ? (
                 <Skeleton className="h-6 w-8 mx-auto mt-1" />
               ) : (
                 <p className="text-lg font-semibold text-gray-900 mt-1">{formatCount(outcomeCounts[key])}</p>
@@ -301,11 +305,27 @@ export default function BrandOverviewPage() {
         </div>
       </div>
 
-      {/* Features Section */}
+      {/* Features Section — skeleton cards until allReady, then real grid in one swap. */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-medium text-gray-900">Features</h2>
         </div>
+        {!allReady ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-white rounded-lg border border-gray-200 p-5 min-h-[116px]">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 bg-gray-100 rounded animate-pulse" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-5 w-32 bg-gray-200 rounded animate-pulse" />
+                    <div className="h-3 w-52 bg-gray-100 rounded animate-pulse" />
+                    <div className="h-3 w-40 bg-gray-100 rounded animate-pulse" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {features.map((f) => {
             const section = workflowSections.find(s => s.featureSlug === f.slug);
@@ -362,6 +382,7 @@ export default function BrandOverviewPage() {
             );
           })}
         </div>
+        )}
       </div>
 
       {/* Usage Section */}

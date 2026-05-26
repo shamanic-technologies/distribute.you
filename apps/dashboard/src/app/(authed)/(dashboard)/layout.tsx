@@ -45,9 +45,11 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (isLoading || !hasOrg) {
-    return <div className="h-screen bg-gray-50" />;
-  }
+  // Keep the layout shell mounted across Clerk re-loads so React Query observers in `children`
+  // don't unmount, lose their data references, and re-paint as skeletons when Clerk briefly
+  // flips back to `isLoading`. Only the main content area swaps to a skeleton when we
+  // genuinely have no org (initial app load or sign-out).
+  const showContent = !isLoading && hasOrg;
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
@@ -80,7 +82,9 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
           <ContextSidebar />
         </div>
 
-        <main className="flex-1 overflow-y-auto">{children}</main>
+        <main className="flex-1 overflow-y-auto">
+          {showContent ? children : <div className="h-full bg-gray-50" />}
+        </main>
       </div>
     </div>
   );
