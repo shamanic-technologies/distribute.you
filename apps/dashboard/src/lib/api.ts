@@ -2393,6 +2393,137 @@ export async function getQuotePitch(
   return apiCall<{ pitch: QuotePitch }>(`/orgs/quote-pitches/${id}`, { token });
 }
 
+// ─── Ranked HITL opportunities (pr-expert-quote-opportunities) ──────────────
+
+export interface RankedOpportunity {
+  opportunityId: string;
+  provider: string;
+  ingestionChannel: string;
+  featuredQuestionId: number | null;
+  mediaOutlet: string | null;
+  journalistName: string | null;
+  opportunityText: string;
+  deadline: string | null;
+  pitchUrl: string | null;
+  pitchEmail: string | null;
+  category: string | null;
+  score: number;
+  whyRelevant: string | null;
+}
+
+const RankedOpportunitySchema = z.object({
+  opportunityId: z.string(),
+  provider: z.string(),
+  ingestionChannel: z.string(),
+  featuredQuestionId: z.number().nullable(),
+  mediaOutlet: z.string().nullable(),
+  journalistName: z.string().nullable(),
+  opportunityText: z.string(),
+  deadline: z.string().nullable(),
+  pitchUrl: z.string().nullable(),
+  pitchEmail: z.string().nullable(),
+  category: z.string().nullable(),
+  score: z.number(),
+  whyRelevant: z.string().nullable(),
+});
+
+const ListRankedOpportunitiesResponseSchema = z.object({
+  status: z.string(),
+  opportunities: z.array(RankedOpportunitySchema),
+  total: z.number(),
+});
+
+export interface ListRankedOpportunitiesParams {
+  campaignId: string;
+  brandId: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function listRankedOpportunities(
+  params: ListRankedOpportunitiesParams,
+  token?: string,
+): Promise<{ status: string; opportunities: RankedOpportunity[]; total: number }> {
+  const raw = await apiCall<unknown>("/orgs/opportunities/ranked", {
+    token,
+    method: "POST",
+    body: { ...params },
+  });
+  const parsed = ListRankedOpportunitiesResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error(
+      "[dashboard] listRankedOpportunities: response shape mismatch",
+      { issues: parsed.error.issues, raw },
+    );
+    throw new Error("[dashboard] listRankedOpportunities: invalid response shape");
+  }
+  return parsed.data;
+}
+
+export interface GenerateQuoteDraftBody {
+  brandId: string;
+  campaignId: string;
+  spokesperson: string;
+  expertiseTopics: string;
+  responseStyle: string;
+  companyContext: string;
+  valueProposition: string;
+  additionalContext?: string;
+}
+
+export interface GenerateQuoteDraftResponse {
+  pitch: string;
+  charCount: number;
+  attempts: number;
+  tokensInput: number;
+  tokensOutput: number;
+}
+
+export async function generateQuoteDraft(
+  quoteRequestId: string,
+  body: GenerateQuoteDraftBody,
+  token?: string,
+): Promise<GenerateQuoteDraftResponse> {
+  return apiCall<GenerateQuoteDraftResponse>(
+    `/orgs/quote-requests/${quoteRequestId}/draft`,
+    { token, method: "POST", body: { ...body } },
+  );
+}
+
+export type SubmitQuotePitchStatus =
+  | "submitted"
+  | "already_submitted"
+  | "rate_limited"
+  | "error";
+
+export interface SubmitQuotePitchBody {
+  pitchContent: string;
+  brandId: string;
+  campaignId: string;
+  subject?: string;
+}
+
+export interface SubmitQuotePitchResponse {
+  status: SubmitQuotePitchStatus;
+  pitchId?: string;
+  deliveryMethod?: "featured_api" | "email_reply";
+  outboundMessageId?: string | null;
+  featuredQuestionId?: number | null;
+  retryAfter?: number;
+  error?: string;
+}
+
+export async function submitQuoteOpportunityReply(
+  opportunityId: string,
+  body: SubmitQuotePitchBody,
+  token?: string,
+): Promise<SubmitQuotePitchResponse> {
+  return apiCall<SubmitQuotePitchResponse>(
+    `/orgs/opportunities/${opportunityId}/reply`,
+    { token, method: "POST", body: { ...body } },
+  );
+}
+
 // ─── AI Visibility Score (ai-visibility-score-service) ──────────────────────
 
 export interface VisibilityRunWeights {
