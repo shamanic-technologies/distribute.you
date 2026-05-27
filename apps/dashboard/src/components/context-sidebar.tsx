@@ -198,7 +198,10 @@ const ExternalLinkIcon = () => (
 
 // Features that expose the public client report. Generic across features
 // once a backend public-proxy lands; gated to one for v1.
-const REPORT_ENABLED_FEATURES = new Set(["sales-cold-email-outreach"]);
+const REPORT_ENABLED_FEATURES = new Set([
+  "sales-cold-email-outreach",
+  "pr-expert-quote-opportunities",
+]);
 
 const ICON_NAME_MAP: Record<string, () => React.ReactNode> = {
   globe: () => <BrandIcon />,

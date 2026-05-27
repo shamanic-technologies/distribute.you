@@ -43,7 +43,7 @@ export default async function ReportLayout({ children, params }: LayoutProps) {
   const generatedAt = new Date();
   // Single mobile-nav instance threaded through header. The component is a
   // client component and self-hides on md+ via its own className.
-  const mobileNav = <MobileNav basePath={basePath} />;
+  const mobileNav = <MobileNav basePath={basePath} featureSlug={featureSlug} />;
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
@@ -58,7 +58,7 @@ export default async function ReportLayout({ children, params }: LayoutProps) {
       </Suspense>
       <div className="flex flex-1 overflow-hidden">
         <div className="hidden md:flex h-full">
-          <ReportSidebar basePath={basePath} />
+          <ReportSidebar basePath={basePath} featureSlug={featureSlug} />
         </div>
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>

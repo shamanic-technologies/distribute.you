@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
 import { SectionCard } from "@/components/report/section-card";
 import {
   fetchFeatureStats,
@@ -15,12 +16,21 @@ import type { StatsRegistry } from "@/lib/api";
 export const revalidate = 14400;
 export const maxDuration = 300;
 
+// Features whose public report has no "Overview" surface — their primary
+// surface is an interactive HITL queue, not a stats funnel. The overview
+// route redirects straight to that surface.
+const REDIRECT_TO_OPPORTUNITIES = new Set(["pr-expert-quote-opportunities"]);
+
 interface PageProps {
   params: Promise<{ orgId: string; brandId: string; featureSlug: string }>;
 }
 
 export default async function OverviewPage({ params }: PageProps) {
   const { orgId, brandId, featureSlug } = await params;
+
+  if (REDIRECT_TO_OPPORTUNITIES.has(featureSlug)) {
+    redirect(`/report/${orgId}/${brandId}/${featureSlug}/opportunities`);
+  }
 
   return (
     <div className="p-4 sm:p-6 md:p-8 space-y-6">

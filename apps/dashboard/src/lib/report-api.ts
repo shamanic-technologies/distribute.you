@@ -61,6 +61,47 @@ async function adminGet<T>(label: string, path: string, orgId: string): Promise<
   return (await res.json()) as T;
 }
 
+/** POST against api-service with admin auth + org context. Symmetric to
+ *  `adminGet` but for write proxies used by the public report Route
+ *  Handlers (draft generation, pitch submission). The Next.js Route
+ *  Handlers in `/api/report/.../{draft,reply}` use this so the public page
+ *  never holds an admin key client-side. */
+export async function adminPost<T>(
+  label: string,
+  path: string,
+  orgId: string,
+  body: unknown,
+): Promise<T> {
+  if (!ADMIN_KEY) {
+    throw new Error(`[dashboard-report] ADMIN_DISTRIBUTE_API_KEY missing; ${label} failed`);
+  }
+  const url = `${API_URL}/v1${path}`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": ADMIN_KEY,
+        "x-external-org-id": orgId,
+        "x-external-user-id": `report-public:${orgId}`,
+      },
+      body: JSON.stringify(body),
+      cache: "no-store",
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+    });
+  } catch (err) {
+    console.error(`[dashboard-report] ${label} ${url} threw:`, err);
+    throw new Error(`${label} failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    console.error(`[dashboard-report] ${label} ${url} → ${res.status}: ${text.slice(0, 500)}`);
+    throw new Error(`${label} returned ${res.status}: ${text.slice(0, 200)}`);
+  }
+  return (await res.json()) as T;
+}
+
 // Tag namespace. Phase 2 will let a backend webhook call
 // `revalidateTag('report:brand:<brandId>', 'default')` whenever a lead /
 // email status changes — flushing this brand's cached HTML across every
@@ -309,6 +350,76 @@ export async function fetchStatsRegistry(orgId: string): Promise<StatsRegistry> 
     [`fetchStatsRegistry`, orgId],
     {
       tags: [`stats-registry`, `report:org:${orgId}`],
+      revalidate: REPORT_REVALIDATE_SECONDS,
+    },
+  )();
+}
+
+// ─── HITL — pr-expert-quote-opportunities ───────────────────────────────────
+// The public report for this feature is interactive: the client sees a
+// ranked queue and triggers draft generation + pitch submission. All three
+// surfaces are brand-scoped (not campaign-scoped) — the public URL has no
+// campaignId. journalists-quotes-service accepts brand-only requests and
+// auto-resolves generation inputs (spokesperson, expertiseTopics, …) from
+// brand-service `extract-fields`.
+
+export interface RankedOpportunityRow {
+  opportunityId: string;
+  provider: string;
+  ingestionChannel: string;
+  featuredQuestionId: number | null;
+  mediaOutlet: string | null;
+  journalistName: string | null;
+  opportunityText: string;
+  deadline: string | null;
+  pitchUrl: string | null;
+  pitchEmail: string | null;
+  category: string | null;
+  score: number;
+  whyRelevant: string | null;
+}
+
+export interface RankedOpportunitiesResponse {
+  status: string;
+  opportunities: RankedOpportunityRow[];
+  total: number;
+}
+
+/** Ranked HITL queue, BRAND-SCOPED. The public report URL is
+ *  `/report/{orgId}/{brandId}/pr-expert-quote-opportunities` — there is no
+ *  campaignId in the path. journalists-quotes-service dedups + scores at
+ *  the brand level. Cached for 4h via unstable_cache; mutations on this
+ *  brand should call revalidateTag from the corresponding route handler. */
+export async function fetchRankedOpportunitiesByBrand(
+  orgId: string,
+  brandId: string,
+  limit = 50,
+): Promise<RankedOpportunityRow[]> {
+  return unstable_cache(
+    async () => {
+      try {
+        const result = await adminPost<RankedOpportunitiesResponse>(
+          "rankedOpportunitiesByBrand",
+          `/orgs/opportunities/ranked`,
+          orgId,
+          { brandId, limit },
+        );
+        return result.opportunities ?? [];
+      } catch (err) {
+        console.error(
+          `[dashboard-report] fetchRankedOpportunitiesByBrand(${brandId}) failed:`,
+          err,
+        );
+        return [];
+      }
+    },
+    [`fetchRankedOpportunitiesByBrand`, orgId, brandId, String(limit)],
+    {
+      tags: [
+        `opportunities:brand:${brandId}`,
+        `report:brand:${brandId}`,
+        `report:org:${orgId}`,
+      ],
       revalidate: REPORT_REVALIDATE_SECONDS,
     },
   )();

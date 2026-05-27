@@ -6,9 +6,10 @@ import { ReportSidebar } from "./sidebar";
 
 interface MobileNavProps {
   basePath: string;
+  featureSlug: string;
 }
 
-export function MobileNav({ basePath }: MobileNavProps) {
+export function MobileNav({ basePath, featureSlug }: MobileNavProps) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
@@ -57,7 +58,7 @@ export function MobileNav({ basePath }: MobileNavProps) {
         <div
           className={`relative h-full w-44 transform transition-transform duration-200 ease-out ${open ? "translate-x-0" : "-translate-x-full"}`}
         >
-          <ReportSidebar basePath={basePath} />
+          <ReportSidebar basePath={basePath} featureSlug={featureSlug} />
         </div>
       </div>
     </>

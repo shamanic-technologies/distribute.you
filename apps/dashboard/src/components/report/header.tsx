@@ -15,6 +15,7 @@ interface ReportHeaderProps {
 
 const FEATURE_LABELS: Record<string, string> = {
   "sales-cold-email-outreach": "Sales Cold Email Outreach",
+  "pr-expert-quote-opportunities": "PR Expert Quote Opportunities",
 };
 
 export function ReportHeader({ brand, brandId, orgName, featureSlug, generatedAt, leftSlot }: ReportHeaderProps) {
