@@ -4,9 +4,12 @@ import { adminPost } from "@/lib/report-api";
 
 // Public-report pitch submission proxy. Hits journalists-quotes-service
 // `/orgs/opportunities/:id/reply` via api-service with admin key + org
-// context. Body is brand-scoped (no campaignId). After a successful submit
-// the public opportunities cache for this brand is invalidated so the next
-// page open hides the just-pitched opportunity.
+// context. `:id` is the Gold cluster id (quote_opportunities.id) round-
+// tripped from /ranked. Brand identity flows via the `x-brand-id` header
+// (journalists-quotes-service v0.8.1 contract); body carries only
+// pitchContent + optional subject. After a successful submit the public
+// opportunities cache for this brand is invalidated so the next page open
+// hides the just-pitched opportunity.
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -19,7 +22,6 @@ const HITL_SLUG = "pr-expert-quote-opportunities";
 
 interface ReplyRequestBody {
   opportunityId?: string;
-  brandId?: string;
   pitchContent?: string;
   subject?: string;
 }
@@ -35,7 +37,7 @@ interface ReplyUpstreamResponse {
 }
 
 export async function POST(req: Request, ctx: RouteContext) {
-  const { orgId, brandId: brandIdParam, featureSlug } = await ctx.params;
+  const { orgId, brandId, featureSlug } = await ctx.params;
 
   if (featureSlug !== HITL_SLUG) {
     return NextResponse.json(
@@ -52,7 +54,6 @@ export async function POST(req: Request, ctx: RouteContext) {
   }
 
   const opportunityId = body.opportunityId;
-  const brandId = body.brandId ?? brandIdParam;
   const pitchContent = body.pitchContent;
 
   if (!opportunityId) {
@@ -61,18 +62,12 @@ export async function POST(req: Request, ctx: RouteContext) {
   if (!pitchContent || pitchContent.trim().length === 0) {
     return NextResponse.json({ error: "pitchContent is required" }, { status: 400 });
   }
-  if (brandId !== brandIdParam) {
-    return NextResponse.json(
-      { error: "brandId in body must match URL brandId" },
-      { status: 400 },
-    );
-  }
 
   try {
-    const upstreamBody: Record<string, unknown> = {
-      brandId,
-      pitchContent,
-    };
+    // journalists-quotes-service v0.8.1 reads brand identity from the
+    // `x-brand-id` header (api-service forwards it via buildInternalHeaders).
+    // Body carries only pitchContent (+ optional subject).
+    const upstreamBody: Record<string, unknown> = { pitchContent };
     if (body.subject) {
       upstreamBody.subject = body.subject;
     }
@@ -81,6 +76,7 @@ export async function POST(req: Request, ctx: RouteContext) {
       `/orgs/opportunities/${opportunityId}/reply`,
       orgId,
       upstreamBody,
+      { "x-brand-id": brandId },
     );
 
     if (result.status === "submitted" || result.status === "already_submitted") {

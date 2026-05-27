@@ -30,8 +30,17 @@ const REPORT_REVALIDATE_SECONDS = 4 * 60 * 60;
 /** GET against api-service with admin auth + org context. Returns the parsed
  *  body on 2xx. THROWS on any failure (non-2xx, network error, timeout) so
  *  the caller can fall back to an empty/null result rather than poisoning
- *  the unstable_cache entry for the next 4 hours. */
-async function adminGet<T>(label: string, path: string, orgId: string): Promise<T> {
+ *  the unstable_cache entry for the next 4 hours.
+ *
+ *  `extraHeaders` lets callers add identity headers like `x-brand-id` that
+ *  api-service forwards to downstream services (per the multi-brand CSV
+ *  header convention shipped in api-service PR #270). */
+export async function adminGet<T>(
+  label: string,
+  path: string,
+  orgId: string,
+  extraHeaders?: Record<string, string>,
+): Promise<T> {
   if (!ADMIN_KEY) {
     throw new Error(`[dashboard-report] ADMIN_DISTRIBUTE_API_KEY missing; ${label} failed`);
   }
@@ -45,6 +54,7 @@ async function adminGet<T>(label: string, path: string, orgId: string): Promise<
         "X-API-Key": ADMIN_KEY,
         "x-external-org-id": orgId,
         "x-external-user-id": `report-public:${orgId}`,
+        ...extraHeaders,
       },
       cache: "no-store",
       signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
@@ -65,12 +75,17 @@ async function adminGet<T>(label: string, path: string, orgId: string): Promise<
  *  `adminGet` but for write proxies used by the public report Route
  *  Handlers (draft generation, pitch submission). The Next.js Route
  *  Handlers in `/api/report/.../{draft,reply}` use this so the public page
- *  never holds an admin key client-side. */
+ *  never holds an admin key client-side.
+ *
+ *  `extraHeaders` lets callers add identity headers like `x-brand-id` that
+ *  api-service forwards to downstream services (per api-service PR #270
+ *  multi-brand CSV header convention). */
 export async function adminPost<T>(
   label: string,
   path: string,
   orgId: string,
   body: unknown,
+  extraHeaders?: Record<string, string>,
 ): Promise<T> {
   if (!ADMIN_KEY) {
     throw new Error(`[dashboard-report] ADMIN_DISTRIBUTE_API_KEY missing; ${label} failed`);
@@ -85,6 +100,7 @@ export async function adminPost<T>(
         "X-API-Key": ADMIN_KEY,
         "x-external-org-id": orgId,
         "x-external-user-id": `report-public:${orgId}`,
+        ...extraHeaders,
       },
       body: JSON.stringify(body),
       cache: "no-store",
@@ -388,8 +404,10 @@ export interface RankedOpportunitiesResponse {
 /** Ranked HITL queue, BRAND-SCOPED. The public report URL is
  *  `/report/{orgId}/{brandId}/pr-expert-quote-opportunities` — there is no
  *  campaignId in the path. journalists-quotes-service dedups + scores at
- *  the brand level. Cached for 4h via unstable_cache; mutations on this
- *  brand should call revalidateTag from the corresponding route handler. */
+ *  the brand level. Brand identity flows via the `x-brand-id` header (CSV
+ *  for multi-brand, per the v0.8.1 contract); body carries only `limit` /
+ *  `offset`. Cached for 4h via unstable_cache; mutations on this brand
+ *  should call revalidateTag from the corresponding route handler. */
 export async function fetchRankedOpportunitiesByBrand(
   orgId: string,
   brandId: string,
@@ -402,7 +420,8 @@ export async function fetchRankedOpportunitiesByBrand(
           "rankedOpportunitiesByBrand",
           `/orgs/opportunities/ranked`,
           orgId,
-          { brandId, limit },
+          { limit },
+          { "x-brand-id": brandId },
         );
         return result.opportunities ?? [];
       } catch (err) {

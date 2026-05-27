@@ -182,3 +182,54 @@ describe("api client functions", () => {
     expect(block).toContain("404");
   });
 });
+
+describe("HITL helpers — journalists-quotes-service v0.8.1 contract (x-brand-id header, Gold ids)", () => {
+  const rankedBlock =
+    apiLibContent
+      .split("export async function listRankedOpportunities(")[1]
+      ?.split("\nexport ")[0] ?? "";
+  const replyBlock =
+    apiLibContent
+      .split("export async function submitQuoteOpportunityReply(")[1]
+      ?.split("\nexport ")[0] ?? "";
+  const draftBlock =
+    apiLibContent
+      .split("export async function generateQuoteDraft(")[1]
+      ?.split("\nexport ")[0] ?? "";
+
+  it("listRankedOpportunities sends x-brand-id header, body has no brandId/campaignId", () => {
+    expect(rankedBlock).toContain("/orgs/opportunities/ranked");
+    expect(rankedBlock).toContain('"x-brand-id"');
+    expect(rankedBlock).not.toMatch(/brandId\s*[:,]\s*brandId/);
+    expect(rankedBlock).not.toMatch(/campaignId\s*[:,]/);
+  });
+
+  it("submitQuoteOpportunityReply sends x-brand-id header, body has no brandId/campaignId", () => {
+    expect(replyBlock).toContain("/orgs/opportunities/");
+    expect(replyBlock).toContain("/reply");
+    expect(replyBlock).toContain('"x-brand-id"');
+    expect(replyBlock).not.toMatch(/brandId\s*[:,]\s*brandId/);
+    expect(replyBlock).not.toMatch(/campaignId\s*[:,]/);
+  });
+
+  it("generateQuoteDraft hits content-gen via api-service /orgs/quote-pitches/generate with x-brand-id header", () => {
+    expect(draftBlock).toContain("/orgs/quote-pitches/generate");
+    expect(draftBlock).toContain('"x-brand-id"');
+    // Old upstream endpoint must NOT be referenced
+    expect(draftBlock).not.toContain("/orgs/quote-requests/");
+    expect(draftBlock).not.toMatch(/\/draft['"`]/);
+  });
+});
+
+describe("Authed HITL quote-requests page — handleGenerate passes opportunity context", () => {
+  const handleGenerateBlock =
+    quoteRequestsContent.split("const handleGenerate")[1]?.split("};")[0] ?? "";
+  it("forwards opportunityText/mediaOutlet/deadline into the generate mutation", () => {
+    expect(handleGenerateBlock).toContain("opportunityText");
+    expect(handleGenerateBlock).toContain("mediaOutlet");
+    expect(handleGenerateBlock).toContain("deadline");
+  });
+  it("no longer passes campaignId into the generate mutation body", () => {
+    expect(handleGenerateBlock).not.toMatch(/campaignId\s*[:,]/);
+  });
+});

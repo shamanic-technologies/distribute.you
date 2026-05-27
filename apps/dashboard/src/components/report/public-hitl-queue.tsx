@@ -75,7 +75,6 @@ export function PublicHitlQueue({
       />
       <DetailPanel
         opportunity={selected}
-        brandId={brandId}
         draftUrl={draftUrl}
         replyUrl={replyUrl}
       />
@@ -153,12 +152,10 @@ function ScoreBadge({ score }: { score: number }) {
 
 function DetailPanel({
   opportunity,
-  brandId,
   draftUrl,
   replyUrl,
 }: {
   opportunity: PublicRankedOpportunity | null;
-  brandId: string;
   draftUrl: string;
   replyUrl: string;
 }) {
@@ -191,12 +188,18 @@ function DetailPanel({
     setSubmitResult(null);
     setSubmitIsError(false);
     try {
+      // Route Handler composes the pitch from three calls (platform-prompts
+      // + brands/extract-fields + orgs/quote-pitches/generate) and needs the
+      // opportunity context (text / outlet / deadline) as content-gen
+      // template variables.
       const res = await fetch(draftUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          quoteRequestId: opportunity.opportunityId,
-          brandId,
+          opportunityId: opportunity.opportunityId,
+          opportunityText: opportunity.opportunityText,
+          mediaOutlet: opportunity.mediaOutlet,
+          deadline: opportunity.deadline,
         }),
       });
       if (!res.ok) {
@@ -222,12 +225,13 @@ function DetailPanel({
     setSubmitResult(null);
     setSubmitIsError(false);
     try {
+      // Route Handler reads brandId from the URL and sets it as `x-brand-id`
+      // header — body carries only opportunityId + pitchContent per v0.8.1.
       const res = await fetch(replyUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           opportunityId: opportunity.opportunityId,
-          brandId,
           pitchContent: draft,
         }),
       });

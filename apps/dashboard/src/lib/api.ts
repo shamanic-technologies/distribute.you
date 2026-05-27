@@ -2434,20 +2434,27 @@ const ListRankedOpportunitiesResponseSchema = z.object({
 });
 
 export interface ListRankedOpportunitiesParams {
-  campaignId: string;
   brandId: string;
   limit?: number;
   offset?: number;
 }
 
+/** Lists ranked Gold opportunities for the given brand.
+ *  v0.8.1 contract: brand identity via `x-brand-id` header (multi-brand CSV
+ *  allowed); body carries `limit` / `offset` only. */
 export async function listRankedOpportunities(
   params: ListRankedOpportunitiesParams,
   token?: string,
 ): Promise<{ status: string; opportunities: RankedOpportunity[]; total: number }> {
+  const { brandId, limit, offset } = params;
+  const body: Record<string, unknown> = {};
+  if (typeof limit === "number") body.limit = limit;
+  if (typeof offset === "number") body.offset = offset;
   const raw = await apiCall<unknown>("/orgs/opportunities/ranked", {
     token,
     method: "POST",
-    body: { ...params },
+    body,
+    headers: { "x-brand-id": brandId },
   });
   const parsed = ListRankedOpportunitiesResponseSchema.safeParse(raw);
   if (!parsed.success) {
@@ -2460,15 +2467,15 @@ export async function listRankedOpportunities(
   return parsed.data;
 }
 
+/** Body for `generateQuoteDraft`. v0.8.1 contract: variables are caller-
+ *  decided shape (matching the `expert-quote-pitch` platform-prompt
+ *  template); `brandId` is the brand the pitch is for and is sent both as
+ *  the `x-brand-id` header AND as `brandIds: [brandId]` in the body for
+ *  content-generation-service tracking. */
 export interface GenerateQuoteDraftBody {
   brandId: string;
-  campaignId: string;
-  spokesperson: string;
-  expertiseTopics: string;
-  responseStyle: string;
-  companyContext: string;
-  valueProposition: string;
-  additionalContext?: string;
+  variables: Record<string, unknown>;
+  featureSlug?: string;
 }
 
 export interface GenerateQuoteDraftResponse {
@@ -2479,14 +2486,30 @@ export interface GenerateQuoteDraftResponse {
   tokensOutput: number;
 }
 
+/** Generates a pitch via content-generation-service `/generate-expert-quote-
+ *  pitch`, proxied by api-service `POST /v1/orgs/quote-pitches/generate`.
+ *  The legacy `/orgs/quote-requests/:id/draft` endpoint was removed from
+ *  journalists-quotes-service in v0.8.1 — composition now lives in the
+ *  caller (see `apps/dashboard/src/app/api/report/.../draft/route.ts` for
+ *  the public-report variant). */
 export async function generateQuoteDraft(
-  quoteRequestId: string,
   body: GenerateQuoteDraftBody,
   token?: string,
 ): Promise<GenerateQuoteDraftResponse> {
+  const { brandId, variables, featureSlug } = body;
+  const upstreamBody: Record<string, unknown> = {
+    variables,
+    brandIds: [brandId],
+  };
+  if (featureSlug) upstreamBody.featureSlug = featureSlug;
   return apiCall<GenerateQuoteDraftResponse>(
-    `/orgs/quote-requests/${quoteRequestId}/draft`,
-    { token, method: "POST", body: { ...body } },
+    `/orgs/quote-pitches/generate`,
+    {
+      token,
+      method: "POST",
+      body: upstreamBody,
+      headers: { "x-brand-id": brandId },
+    },
   );
 }
 
@@ -2498,8 +2521,6 @@ export type SubmitQuotePitchStatus =
 
 export interface SubmitQuotePitchBody {
   pitchContent: string;
-  brandId: string;
-  campaignId: string;
   subject?: string;
 }
 
@@ -2513,14 +2534,23 @@ export interface SubmitQuotePitchResponse {
   error?: string;
 }
 
+/** Submits a HITL pitch for the given Gold opportunity. v0.8.1 contract:
+ *  brand identity flows via `x-brand-id` header; body carries pitchContent
+ *  (+ optional subject) only. */
 export async function submitQuoteOpportunityReply(
   opportunityId: string,
   body: SubmitQuotePitchBody,
+  brandId: string,
   token?: string,
 ): Promise<SubmitQuotePitchResponse> {
   return apiCall<SubmitQuotePitchResponse>(
     `/orgs/opportunities/${opportunityId}/reply`,
-    { token, method: "POST", body: { ...body } },
+    {
+      token,
+      method: "POST",
+      body: { ...body },
+      headers: { "x-brand-id": brandId },
+    },
   );
 }
 

@@ -43,6 +43,14 @@ const reportApiContent = fs.readFileSync(reportApiPath, "utf-8");
 const reportOverviewContent = fs.readFileSync(reportOverviewPath, "utf-8");
 const reportSidebarContent = fs.readFileSync(reportSidebarPath, "utf-8");
 
+/** Strip block + line comments so assertions don't false-positive on doc
+ *  references to old endpoints / fields. */
+function stripComments(src: string): string {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/[^\n]*/g, "");
+}
+
 describe("Sidebar — Report link enabled for pr-expert-quote-opportunities", () => {
   it("REPORT_ENABLED_FEATURES contains the PR slug", () => {
     expect(sidebarContent).toContain(`"${HITL_SLUG}"`);
@@ -57,10 +65,13 @@ describe("Sidebar — Report link enabled for pr-expert-quote-opportunities", ()
 });
 
 describe("report-api.ts — brand-scoped HITL fetchers", () => {
-  it("declares adminPost helper for write proxies", () => {
-    expect(reportApiContent).toMatch(/async function adminPost</);
+  it("declares adminPost helper for write proxies with optional headers", () => {
+    expect(reportApiContent).toMatch(/(?:async function|export async function) adminPost</);
     expect(reportApiContent).toContain("X-API-Key");
     expect(reportApiContent).toContain("x-external-org-id");
+    // adminPost must accept an optional `extraHeaders` arg so callers can set
+    // identity headers like `x-brand-id`.
+    expect(reportApiContent).toMatch(/adminPost<[\s\S]*?extraHeaders\??:\s*Record<string,\s*string>/);
   });
 
   it("declares fetchRankedOpportunitiesByBrand (brand-scoped)", () => {
@@ -70,15 +81,27 @@ describe("report-api.ts — brand-scoped HITL fetchers", () => {
     );
   });
 
-  it("ranked-by-brand POST body uses brandId, no campaignId", () => {
-    const block =
+  it("ranked-by-brand POST sends x-brand-id header, no brandId/campaignId in body", () => {
+    const rawBlock =
       reportApiContent
         .split("export async function fetchRankedOpportunitiesByBrand")[1]
         ?.split("export ")[0] ?? "";
+    const block = stripComments(rawBlock);
     expect(block).toContain("/orgs/opportunities/ranked");
-    expect(block).toContain("brandId");
-    // POST body builder must not embed campaignId
-    expect(block).not.toMatch(/campaignId\s*[:,]/);
+    // x-brand-id header must be present
+    expect(block).toContain('"x-brand-id"');
+    // The adminPost body argument is the 4th positional arg. Isolate the
+    // body-object literal and assert it has neither brandId nor campaignId
+    // (brand identity flows via header per v0.8.1).
+    const callMatch = block.match(/adminPost<[\s\S]*?>\s*\([\s\S]*?\)\s*;/);
+    expect(callMatch).not.toBeNull();
+    // The body literal is everything between the orgId arg and the headers
+    // arg. Use a permissive check: search the call text for occurrences of
+    // brandId / campaignId followed by a value-introducer ( : or , ) — type
+    // annotations would not appear here since this is a call, not a sig.
+    const callText = callMatch![0];
+    expect(callText).not.toMatch(/\bbrandId\s*[:,]/);
+    expect(callText).not.toMatch(/\bcampaignId\s*[:,]/);
   });
 });
 
@@ -153,28 +176,56 @@ describe("PublicHitlQueue client component — uses dashboard route handlers", (
   });
 });
 
-describe("Draft route handler — admin-key proxy, brand-scoped", () => {
+describe("Draft route handler — admin-key composite (extract-fields + content-gen)", () => {
   it("exists", () => {
     expect(fs.existsSync(draftRoutePath)).toBe(true);
   });
 
-  it("delegates to adminPost (which holds admin key + org context)", () => {
+  it("delegates to adminPost + adminGet (admin key + org context held server-side)", () => {
     const content = fs.readFileSync(draftRoutePath, "utf-8");
     expect(content).toContain("adminPost");
+    expect(content).toContain("adminGet");
     expect(content).toContain('from "@/lib/report-api"');
   });
 
-  it("targets /orgs/quote-requests/<id>/draft", () => {
+  it("orchestrates 3 calls: platform-prompts + brands/extract-fields + orgs/quote-pitches/generate", () => {
     const content = fs.readFileSync(draftRoutePath, "utf-8");
-    expect(content).toContain("/orgs/quote-requests/");
-    expect(content).toContain("/draft");
+    // 1. Fetch template variable spec
+    expect(content).toContain("/platform-prompts");
+    expect(content).toContain("expert-quote-pitch");
+    // 2. Extract brand-derivable fields
+    expect(content).toContain("/brands/extract-fields");
+    // 3. Generate pitch via content-generation-service
+    expect(content).toContain("/orgs/quote-pitches/generate");
   });
 
-  it("body forwards brandId (campaignId optional / absent)", () => {
+  it("does NOT call the removed /orgs/quote-requests/:id/draft endpoint", () => {
+    const content = stripComments(fs.readFileSync(draftRoutePath, "utf-8"));
+    // No active adminPost call references the removed upstream path
+    expect(content).not.toMatch(/`\/orgs\/quote-requests\//);
+    expect(content).not.toContain("quoteRequestId");
+  });
+
+  it("accepts opportunity context (text, outlet, deadline) in body — supplied by client", () => {
     const content = fs.readFileSync(draftRoutePath, "utf-8");
-    expect(content).toContain("brandId");
-    // No campaignId in the upstream body
-    expect(content).not.toMatch(/campaignId\s*[:,]/);
+    expect(content).toContain("opportunityId");
+    expect(content).toContain("opportunityText");
+    expect(content).toContain("mediaOutlet");
+    expect(content).toContain("deadline");
+  });
+
+  it("sets x-brand-id header on brand-extract + generate calls", () => {
+    const content = fs.readFileSync(draftRoutePath, "utf-8");
+    expect(content).toContain('"x-brand-id"');
+  });
+
+  it("forwards no campaignId in upstream POST bodies", () => {
+    const content = stripComments(fs.readFileSync(draftRoutePath, "utf-8"));
+    expect(content).not.toMatch(/\bcampaignId\s*[:,]/);
+    // Brand identity flows via `brandIds: [brandId]` (plural array for content-
+    // gen tracking) + `x-brand-id` header — not as a bare scalar in any body.
+    // The brandIds plural form is the only allowed brand reference in body.
+    expect(content).toContain("brandIds: [brandId]");
   });
 
   it("is POST-only", () => {
@@ -183,7 +234,7 @@ describe("Draft route handler — admin-key proxy, brand-scoped", () => {
   });
 });
 
-describe("Reply route handler — admin-key proxy, brand-scoped", () => {
+describe("Reply route handler — admin-key proxy, brand-scoped via header", () => {
   it("exists", () => {
     expect(fs.existsSync(replyRoutePath)).toBe(true);
   });
@@ -200,11 +251,12 @@ describe("Reply route handler — admin-key proxy, brand-scoped", () => {
     expect(content).toContain("/reply");
   });
 
-  it("body forwards brandId + pitchContent", () => {
+  it("sets x-brand-id header and forwards pitchContent in body; no brandId/campaignId in body", () => {
     const content = fs.readFileSync(replyRoutePath, "utf-8");
-    expect(content).toContain("brandId");
     expect(content).toContain("pitchContent");
-    // No campaignId in the upstream body
+    expect(content).toContain('"x-brand-id"');
+    // No brandId/campaignId in upstream body per journalists-quotes-service v0.8.1
+    expect(content).not.toMatch(/brandId\s*[:,]\s*brandId/);
     expect(content).not.toMatch(/campaignId\s*[:,]/);
   });
 
@@ -217,5 +269,15 @@ describe("Reply route handler — admin-key proxy, brand-scoped", () => {
   it("is POST-only", () => {
     const content = fs.readFileSync(replyRoutePath, "utf-8");
     expect(content).toMatch(/export\s+async\s+function\s+POST/);
+  });
+});
+
+describe("PublicHitlQueue client — draft body carries opportunity context", () => {
+  it("draft POST body includes opportunityText/mediaOutlet/deadline (Route Handler composes pitch)", () => {
+    const content = fs.readFileSync(publicHitlPath, "utf-8");
+    // Route Handler needs these fields to build content-gen variables
+    expect(content).toContain("opportunityText");
+    expect(content).toContain("mediaOutlet");
+    expect(content).toContain("deadline");
   });
 });
