@@ -4,8 +4,6 @@ import { useEffect, useState } from "react";
 import { useOrganizationList } from "@clerk/nextjs";
 import posthog from "posthog-js";
 import { extractDomain } from "@/lib/extract-domain";
-import { readInviteCookie, clearInviteCookie } from "@/lib/invite-cookie";
-import { claimInvite } from "@/lib/api-invite";
 
 type AccountType = "agency" | "company";
 type Step = "value-prop" | "type-selection" | "url-input";
@@ -47,24 +45,6 @@ export default function OnboardingPage() {
         domain,
         org_id: org.id,
       });
-
-      const inviteCode = readInviteCookie();
-      if (inviteCode) {
-        try {
-          await claimInvite(org.id, inviteCode);
-          posthog.capture("invite_claimed", { invite_code: inviteCode, org_id: org.id });
-        } catch (claimErr) {
-          console.error("[dashboard] invite claim failed", claimErr);
-          posthog.capture("invite_claim_failed", {
-            invite_code: inviteCode,
-            org_id: org.id,
-            error: claimErr instanceof Error ? claimErr.message : String(claimErr),
-          });
-        } finally {
-          clearInviteCookie();
-        }
-      }
-
       // Full reload so Clerk session cookie is updated before API calls
       window.location.href = `/orgs/${org.id}/brands?autoCreate=${encodeURIComponent(brandUrl)}`;
     } catch (err) {

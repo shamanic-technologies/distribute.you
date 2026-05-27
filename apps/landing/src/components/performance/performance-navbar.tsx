@@ -1,9 +1,13 @@
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { resolveUrls } from "@/lib/env-urls";
 
-export function PerformanceNavbar({ host: _host }: { host: string }) {
+export function PerformanceNavbar({ host }: { host: string }) {
+  const urls = useMemo(() => resolveUrls(host), [host]);
+
   return (
     <nav className="bg-white border-b border-gray-200 py-3">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
@@ -32,7 +36,7 @@ export function PerformanceNavbar({ host: _host }: { host: string }) {
             distribute
           </a>
           <a
-            href="/get-started"
+            href={urls.signUp}
             className="px-4 py-2 bg-brand-500 text-white rounded-full hover:bg-brand-600 transition text-sm font-medium"
           >
             Get Started

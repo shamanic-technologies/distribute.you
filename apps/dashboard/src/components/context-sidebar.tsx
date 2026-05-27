@@ -16,7 +16,6 @@ import {
   listBrandArticles,
 } from "@/lib/api";
 import { formatCount } from "@/lib/format-number";
-import { InviteWidget } from "@/components/invite-widget";
 
 interface SidebarItem {
   id: string;
@@ -327,7 +326,7 @@ function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string 
   }));
 
   return (
-    <SidebarSection title="Organization" footer={<InviteWidget orgId={orgId} />}>
+    <SidebarSection title="Organization">
       {topItems.map((item) => (
         <SidebarLink
           key={item.id}
@@ -445,12 +444,7 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
   ];
 
   return (
-    <SidebarSection
-      title="Brand"
-      backHref={`/orgs/${orgId}/brands`}
-      backLabel="Brands"
-      footer={<InviteWidget orgId={orgId} />}
-    >
+    <SidebarSection title="Brand" backHref={`/orgs/${orgId}/brands`} backLabel="Brands">
       {topItems.map((item) => (
         <SidebarLink
           key={item.id}
@@ -502,12 +496,7 @@ function BrandSettingsLevelSidebar({ orgId, brandId, pathname }: {
   ];
 
   return (
-    <SidebarSection
-      title="Settings"
-      backHref={`/orgs/${orgId}/brands/${brandId}`}
-      backLabel="Brand"
-      footer={<InviteWidget orgId={orgId} />}
-    >
+    <SidebarSection title="Settings" backHref={`/orgs/${orgId}/brands/${brandId}`} backLabel="Brand">
       {items.map((item) => (
         <SidebarLink
           key={item.id}
@@ -637,7 +626,6 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
       title={title}
       backHref={`/orgs/${orgId}/brands/${brandId}`}
       backLabel="Brand"
-      footer={<InviteWidget orgId={orgId} />}
     >
       {topItems.map((item) => (
         <SidebarLink
@@ -728,12 +716,7 @@ function FeatureSettingsLevelSidebar({ orgId, brandId, featureSlug, pathname }: 
   ];
 
   return (
-    <SidebarSection
-      title={title}
-      backHref={`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`}
-      backLabel="Feature"
-      footer={<InviteWidget orgId={orgId} />}
-    >
+    <SidebarSection title={title} backHref={`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`} backLabel="Feature">
       {items.map((item) => (
         <SidebarLink
           key={item.id}
@@ -763,12 +746,7 @@ function WorkflowLevelSidebar({ orgId, brandId, featureSlug, workflowId, pathnam
   ];
 
   return (
-    <SidebarSection
-      title={title}
-      backHref={`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows`}
-      backLabel="Workflows"
-      footer={<InviteWidget orgId={orgId} />}
-    >
+    <SidebarSection title={title} backHref={`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows`} backLabel="Workflows">
       {items.map((item) => (
         <SidebarLink
           key={item.id}
