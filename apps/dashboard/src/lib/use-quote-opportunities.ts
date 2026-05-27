@@ -13,15 +13,14 @@ export function useGenerateQuoteDraft() {
   return useMutation<
     GenerateQuoteDraftResponse,
     Error,
-    { quoteRequestId: string; body: GenerateQuoteDraftBody }
+    { body: GenerateQuoteDraftBody }
   >({
     mutationKey: ["generateQuoteDraft"],
-    mutationFn: ({ quoteRequestId, body }) =>
-      generateQuoteDraft(quoteRequestId, body),
+    mutationFn: ({ body }) => generateQuoteDraft(body),
   });
 }
 
-export function useSubmitQuotePitch(campaignId: string, brandId: string) {
+export function useSubmitQuotePitch(brandId: string) {
   const queryClient = useQueryClient();
   return useMutation<
     SubmitQuotePitchResponse,
@@ -30,14 +29,14 @@ export function useSubmitQuotePitch(campaignId: string, brandId: string) {
   >({
     mutationKey: ["submitQuotePitch"],
     mutationFn: ({ opportunityId, body }) =>
-      submitQuoteOpportunityReply(opportunityId, body),
+      submitQuoteOpportunityReply(opportunityId, body, brandId),
     onSuccess: () => {
       return Promise.all([
         queryClient.invalidateQueries({
-          queryKey: ["rankedOpportunities", { campaignId, brandId }],
+          queryKey: ["rankedOpportunities", { brandId }],
         }),
         queryClient.invalidateQueries({
-          queryKey: ["quotePitches", { brandId, campaignId }],
+          queryKey: ["quotePitches", { brandId }],
         }),
         queryClient.invalidateQueries({
           queryKey: ["featureStats"],

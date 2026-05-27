@@ -40,15 +40,14 @@ export default function QuoteRequestsPage() {
 
 function HitlQueuePage() {
   const params = useParams();
-  const campaignId = params.id as string;
   const brandId = params.brandId as string;
   const { campaign } = useCampaign();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const { data, isPending } = useAuthQuery(
-    ["rankedOpportunities", { campaignId, brandId }],
-    () => listRankedOpportunities({ campaignId, brandId, limit: 50 }),
+    ["rankedOpportunities", { brandId }],
+    () => listRankedOpportunities({ brandId, limit: 50 }),
     pollOptionsSlow,
   );
 
@@ -95,7 +94,6 @@ function HitlQueuePage() {
           />
           <DetailPanel
             opportunity={selected}
-            campaignId={campaignId}
             brandId={brandId}
             featureInputs={featureInputs}
             missingInputs={missingInputs}
@@ -177,13 +175,11 @@ function ScoreBadge({ score }: { score: number }) {
 
 function DetailPanel({
   opportunity,
-  campaignId,
   brandId,
   featureInputs,
   missingInputs,
 }: {
   opportunity: RankedOpportunity | null;
-  campaignId: string;
   brandId: string;
   featureInputs: Record<string, string> | null;
   missingInputs: HitlInputKey[];
@@ -192,7 +188,7 @@ function DetailPanel({
   const [submitResult, setSubmitResult] = useState<string | null>(null);
 
   const generateMutation = useGenerateQuoteDraft();
-  const submitMutation = useSubmitQuotePitch(campaignId, brandId);
+  const submitMutation = useSubmitQuotePitch(brandId);
 
   const currentId = opportunity?.opportunityId ?? null;
   useEffect(() => {
@@ -214,17 +210,26 @@ function DetailPanel({
   const handleGenerate = () => {
     if (!featureInputs) return;
     setSubmitResult(null);
+    // v0.8.1 contract: caller assembles all template variables (5 brand-side
+    // from operator-supplied campaign inputs + 3 opportunity-context fields)
+    // and posts to /v1/orgs/quote-pitches/generate (content-generation-service
+    // expert-quote-pitch template). Operator UX unchanged — featureInputs
+    // still drive the 5 brand-side variables.
     generateMutation.mutate(
       {
-        quoteRequestId: opportunity.opportunityId,
         body: {
           brandId,
-          campaignId,
-          spokesperson: featureInputs.spokesperson ?? "",
-          expertiseTopics: featureInputs.expertiseTopics ?? "",
-          responseStyle: featureInputs.responseStyle ?? "",
-          companyContext: featureInputs.companyContext ?? "",
-          valueProposition: featureInputs.valueProposition ?? "",
+          featureSlug: HITL_SLUG,
+          variables: {
+            spokesperson: featureInputs.spokesperson ?? "",
+            expertiseTopics: featureInputs.expertiseTopics ?? "",
+            responseStyle: featureInputs.responseStyle ?? "",
+            companyContext: featureInputs.companyContext ?? "",
+            valueProposition: featureInputs.valueProposition ?? "",
+            opportunityText: opportunity.opportunityText,
+            mediaOutlet: opportunity.mediaOutlet,
+            deadline: opportunity.deadline,
+          },
         },
       },
       {
@@ -245,8 +250,6 @@ function DetailPanel({
         opportunityId: opportunity.opportunityId,
         body: {
           pitchContent: draft,
-          brandId,
-          campaignId,
         },
       },
       {
