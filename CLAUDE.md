@@ -18,6 +18,8 @@ pnpm --filter @distribute/<package> test:unit                              # uni
 pnpm --filter @distribute/<package> test tests/unit/specific.test.ts       # single file
 ```
 
+**Next 16 `next lint` + `pnpm --filter` is broken.** `pnpm --filter @distribute/dashboard lint` fails with `Invalid project directory provided, no such directory: apps/dashboard/lint` — Next 16 misreads the forwarded script name as a positional dir arg. Run from the package dir instead: `cd apps/dashboard && npx next lint`. Direct invocation is clean (0/0). Same pattern applies to other Next apps in this repo.
+
 **Shared workspace packages must be built before app tests/build.** Vitest + Vite resolve workspace deps via their `dist/` (per `package.json` exports), so an unbuilt `shared/*` package surfaces as `Failed to resolve entry for package "@distribute/<name>"` in unrelated test files. Run `pnpm -r build` (or `pnpm --filter @distribute/<name> build`) once after `pnpm install` or after pulling changes that touch `shared/`.
 
 ## Release flow (distribute.you specifics)
