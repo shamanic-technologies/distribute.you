@@ -1,11 +1,413 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptionsSlow } from "@/lib/query-options";
-import { listQuoteRequests, type QuoteRequest } from "@/lib/api";
+import {
+  listQuoteRequests,
+  listRankedOpportunities,
+  type QuoteRequest,
+  type RankedOpportunity,
+} from "@/lib/api";
+import { useCampaign } from "@/lib/campaign-context";
+import {
+  useGenerateQuoteDraft,
+  useSubmitQuotePitch,
+} from "@/lib/use-quote-opportunities";
+
+const HITL_SLUG = "pr-expert-quote-opportunities";
+const PITCH_MIN = 100;
+const PITCH_MAX = 2500;
+
+const HITL_INPUT_KEYS = [
+  "spokesperson",
+  "expertiseTopics",
+  "responseStyle",
+  "companyContext",
+  "valueProposition",
+] as const;
+type HitlInputKey = (typeof HITL_INPUT_KEYS)[number];
 
 export default function QuoteRequestsPage() {
+  const params = useParams();
+  const featureSlug = params.featureSlug as string;
+  if (featureSlug === HITL_SLUG) return <HitlQueuePage />;
+  return <FlatQuoteRequestsPage />;
+}
+
+// ───────── HITL queue page (pr-expert-quote-opportunities) ──────────────────
+
+function HitlQueuePage() {
+  const params = useParams();
+  const campaignId = params.id as string;
+  const brandId = params.brandId as string;
+  const { campaign } = useCampaign();
+
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const { data, isPending } = useAuthQuery(
+    ["rankedOpportunities", { campaignId, brandId }],
+    () => listRankedOpportunities({ campaignId, brandId, limit: 50 }),
+    pollOptionsSlow,
+  );
+
+  const opportunities = data?.opportunities ?? [];
+  const selected = useMemo(
+    () => opportunities.find((o) => o.opportunityId === selectedId) ?? null,
+    [opportunities, selectedId],
+  );
+
+  const featureInputs = campaign?.featureInputs ?? null;
+  const missingInputs = HITL_INPUT_KEYS.filter(
+    (k) => !featureInputs?.[k]?.trim(),
+  );
+
+  return (
+    <div className="p-4 md:p-8" data-testid="quote-opportunities-hitl-page">
+      <div className="mb-6">
+        <h1 className="font-display text-2xl font-bold text-gray-800">
+          Quote Opportunities
+        </h1>
+        <p className="text-sm text-gray-500 mt-1">
+          Ranked queue of Featured.com journalist quote requests for this campaign.
+          Click an opportunity to generate, edit, and send a quote.
+        </p>
+      </div>
+
+      {missingInputs.length > 0 && (
+        <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800">
+          Campaign is missing required inputs: <strong>{missingInputs.join(", ")}</strong>.
+          AI draft generation is disabled until these are set.
+        </div>
+      )}
+
+      {isPending && !data ? (
+        <QueueSkeleton />
+      ) : opportunities.length === 0 ? (
+        <EmptyState message="No ranked opportunities yet. They appear here after the next scoring run." />
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-4">
+          <QueueList
+            opportunities={opportunities}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+          />
+          <DetailPanel
+            opportunity={selected}
+            campaignId={campaignId}
+            brandId={brandId}
+            featureInputs={featureInputs}
+            missingInputs={missingInputs}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function QueueList({
+  opportunities,
+  selectedId,
+  onSelect,
+}: {
+  opportunities: RankedOpportunity[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="px-4 py-2 bg-gray-50 text-xs uppercase tracking-wider text-gray-500 border-b border-gray-200">
+        Ranked queue ({opportunities.length})
+      </div>
+      <ul className="divide-y divide-gray-100 max-h-[calc(100vh-280px)] overflow-y-auto">
+        {opportunities.map((o) => (
+          <li key={o.opportunityId}>
+            <button
+              type="button"
+              onClick={() => onSelect(o.opportunityId)}
+              className={`w-full text-left p-3 hover:bg-gray-50 transition ${
+                selectedId === o.opportunityId
+                  ? "bg-brand-50 border-l-4 border-brand-500"
+                  : "border-l-4 border-transparent"
+              }`}
+              data-testid={`opportunity-row-${o.opportunityId}`}
+            >
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <span className="text-xs font-medium text-gray-600 truncate">
+                  {o.mediaOutlet ?? "Unknown outlet"}
+                </span>
+                <ScoreBadge score={o.score} />
+              </div>
+              <p className="text-sm text-gray-800 line-clamp-3">
+                {o.opportunityText}
+              </p>
+              <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                {o.journalistName && <span>{o.journalistName}</span>}
+                {o.deadline && (
+                  <span>
+                    Deadline {new Date(o.deadline).toLocaleDateString()}
+                  </span>
+                )}
+              </div>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function ScoreBadge({ score }: { score: number }) {
+  const pct = Math.round(score * 100);
+  const color =
+    pct >= 80
+      ? "bg-green-100 text-green-700 border-green-200"
+      : pct >= 50
+        ? "bg-blue-100 text-blue-700 border-blue-200"
+        : "bg-gray-100 text-gray-600 border-gray-200";
+  return (
+    <span
+      className={`text-xs px-2 py-0.5 rounded-full border flex-shrink-0 ${color}`}
+    >
+      {pct}
+    </span>
+  );
+}
+
+function DetailPanel({
+  opportunity,
+  campaignId,
+  brandId,
+  featureInputs,
+  missingInputs,
+}: {
+  opportunity: RankedOpportunity | null;
+  campaignId: string;
+  brandId: string;
+  featureInputs: Record<string, string> | null;
+  missingInputs: HitlInputKey[];
+}) {
+  const [draft, setDraft] = useState("");
+  const [submitResult, setSubmitResult] = useState<string | null>(null);
+
+  const generateMutation = useGenerateQuoteDraft();
+  const submitMutation = useSubmitQuotePitch(campaignId, brandId);
+
+  const currentId = opportunity?.opportunityId ?? null;
+  useEffect(() => {
+    setDraft("");
+    setSubmitResult(null);
+  }, [currentId]);
+
+  if (!opportunity) {
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-sm text-gray-500">
+        Select an opportunity from the queue to view details, generate a draft, and send.
+      </div>
+    );
+  }
+
+  const canGenerate =
+    missingInputs.length === 0 && !generateMutation.isPending;
+
+  const handleGenerate = () => {
+    if (!featureInputs) return;
+    setSubmitResult(null);
+    generateMutation.mutate(
+      {
+        quoteRequestId: opportunity.opportunityId,
+        body: {
+          brandId,
+          campaignId,
+          spokesperson: featureInputs.spokesperson ?? "",
+          expertiseTopics: featureInputs.expertiseTopics ?? "",
+          responseStyle: featureInputs.responseStyle ?? "",
+          companyContext: featureInputs.companyContext ?? "",
+          valueProposition: featureInputs.valueProposition ?? "",
+        },
+      },
+      {
+        onSuccess: (res) => {
+          setDraft(res.pitch);
+        },
+      },
+    );
+  };
+
+  const charCount = draft.length;
+  const inRange = charCount >= PITCH_MIN && charCount <= PITCH_MAX;
+  const canSend = inRange && !submitMutation.isPending;
+
+  const handleSend = () => {
+    submitMutation.mutate(
+      {
+        opportunityId: opportunity.opportunityId,
+        body: {
+          pitchContent: draft,
+          brandId,
+          campaignId,
+        },
+      },
+      {
+        onSuccess: (res) => {
+          setSubmitResult(
+            res.status === "submitted" || res.status === "already_submitted"
+              ? `Pitch ${res.status === "already_submitted" ? "already submitted" : "submitted"} via ${res.deliveryMethod ?? "—"}.`
+              : `Submit returned status: ${res.status}${res.error ? ` (${res.error})` : ""}`,
+          );
+        },
+        onError: (err) => {
+          setSubmitResult(`Send failed: ${err.message}`);
+        },
+      },
+    );
+  };
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-5 space-y-4">
+      <div>
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+            {opportunity.mediaOutlet ?? "Unknown outlet"}
+            {opportunity.journalistName && (
+              <> · {opportunity.journalistName}</>
+            )}
+          </span>
+          <ScoreBadge score={opportunity.score} />
+        </div>
+        <p className="text-sm text-gray-800 whitespace-pre-line">
+          {opportunity.opportunityText}
+        </p>
+        <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-gray-500">
+          {opportunity.deadline && (
+            <span>
+              Deadline {new Date(opportunity.deadline).toLocaleString()}
+            </span>
+          )}
+          {opportunity.pitchUrl && (
+            <a
+              href={opportunity.pitchUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-brand-600 hover:underline"
+            >
+              Original on Featured →
+            </a>
+          )}
+          <span>Source: {opportunity.provider}</span>
+        </div>
+        {opportunity.whyRelevant && (
+          <div className="mt-3 bg-brand-50 border border-brand-100 rounded-lg p-2 text-xs text-brand-800">
+            <strong>Why relevant:</strong> {opportunity.whyRelevant}
+          </div>
+        )}
+      </div>
+
+      <div className="border-t border-gray-100 pt-4">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-semibold text-gray-800">Draft</h3>
+          <button
+            type="button"
+            onClick={handleGenerate}
+            disabled={!canGenerate}
+            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            data-testid="generate-quote-btn"
+          >
+            {generateMutation.isPending
+              ? "Generating…"
+              : draft
+                ? "Regenerate"
+                : "Generate Quote"}
+          </button>
+        </div>
+
+        {generateMutation.isError && (
+          <p className="text-xs text-red-600 mb-2">
+            Generation failed: {(generateMutation.error as Error).message}
+          </p>
+        )}
+
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          rows={10}
+          placeholder={
+            missingInputs.length > 0
+              ? "Set missing campaign inputs to enable draft generation."
+              : "Click Generate Quote to draft a response, then edit before sending."
+          }
+          className="w-full text-sm border border-gray-200 rounded-lg p-3 font-mono focus:outline-none focus:border-brand-400"
+          data-testid="quote-draft-textarea"
+        />
+
+        <div className="flex items-center justify-between mt-2 text-xs">
+          <span
+            className={
+              charCount === 0
+                ? "text-gray-400"
+                : inRange
+                  ? "text-gray-500"
+                  : "text-red-600"
+            }
+          >
+            {charCount} / {PITCH_MIN}–{PITCH_MAX} chars
+            {!inRange && charCount > 0 && (
+              <>
+                {" "}
+                — {charCount < PITCH_MIN ? "too short" : "too long"}
+              </>
+            )}
+          </span>
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={!canSend}
+            className="px-4 py-1.5 text-sm font-medium rounded-lg bg-green-600 text-white hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            data-testid="send-quote-btn"
+          >
+            {submitMutation.isPending ? "Sending…" : "Send"}
+          </button>
+        </div>
+
+        {submitResult && (
+          <p
+            className={`text-xs mt-2 ${
+              submitMutation.isError ||
+              submitResult.startsWith("Send failed") ||
+              submitResult.startsWith("Submit returned")
+                ? "text-red-600"
+                : "text-green-700"
+            }`}
+            data-testid="submit-result"
+          >
+            {submitResult}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function QueueSkeleton() {
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-4">
+      <div className="space-y-2">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div
+            key={i}
+            className="bg-white rounded-xl border border-gray-200 p-4 h-20 animate-pulse"
+          />
+        ))}
+      </div>
+      <div className="bg-white rounded-xl border border-gray-200 p-4 h-96 animate-pulse" />
+    </div>
+  );
+}
+
+// ───────── Flat list page (existing — used by every non-HITL slug) ──────────
+
+function FlatQuoteRequestsPage() {
   const params = useParams();
   const campaignId = params.id as string;
 
