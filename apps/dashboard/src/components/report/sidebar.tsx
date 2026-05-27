@@ -29,17 +29,43 @@ const WorkflowsIcon = () => (
   </svg>
 );
 
+const OpportunitiesIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2H7a2 2 0 00-2 2v2m4 6h.01M14 17h.01" />
+  </svg>
+);
+
 interface ReportSidebarProps {
   basePath: string;
+  featureSlug: string;
 }
 
-export function ReportSidebar({ basePath }: ReportSidebarProps) {
-  const pathname = usePathname();
-  const items: SidebarItem[] = [
+const HITL_SLUG = "pr-expert-quote-opportunities";
+
+function buildItems(basePath: string, featureSlug: string): SidebarItem[] {
+  if (featureSlug === HITL_SLUG) {
+    return [
+      { id: "overview", label: "Overview", href: basePath, icon: <OverviewIcon /> },
+      {
+        id: "opportunities",
+        label: "Opportunities",
+        href: `${basePath}/opportunities`,
+        icon: <OpportunitiesIcon />,
+      },
+    ];
+  }
+  // Default — Sales Cold Email Outreach layout (and any future slug that
+  // matches the leads-+-workflows shape).
+  return [
     { id: "overview", label: "Overview", href: basePath, icon: <OverviewIcon /> },
     { id: "leads", label: "Leads", href: `${basePath}/leads`, icon: <LeadsIcon /> },
     { id: "workflows", label: "Workflows", href: `${basePath}/workflows`, icon: <WorkflowsIcon /> },
   ];
+}
+
+export function ReportSidebar({ basePath, featureSlug }: ReportSidebarProps) {
+  const pathname = usePathname();
+  const items = buildItems(basePath, featureSlug);
 
   return (
     <aside className="w-44 bg-white border-r border-gray-200 flex flex-col flex-shrink-0 h-full">
