@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
+import { EMAIL_TEMPLATES } from "../src/instrumentation";
 
 const instrumentationPath = path.resolve(__dirname, "../src/instrumentation.ts");
 
@@ -22,9 +23,6 @@ describe("Email template deployment at startup", () => {
 
   it("should authenticate with X-API-Key only (no org/user headers in fetch calls)", () => {
     expect(content).toContain('"X-API-Key"');
-    // Extract just the register() function body (after the prompt constants) to check
-    // that actual fetch calls don't send identity headers — the system prompt documentation
-    // legitimately references these header names.
     const registerBody = content.slice(content.indexOf("export async function register()"));
     expect(registerBody).not.toContain("x-org-id");
     expect(registerBody).not.toContain("x-user-id");
@@ -48,6 +46,9 @@ describe("Email template deployment at startup", () => {
     "signup_notification",
     "signin_notification",
     "user_active",
+    "waitlist-confirmed",
+    "invite-claimed-welcome",
+    "invite-success-notification",
   ];
 
   for (const name of templateNames) {
@@ -56,12 +57,12 @@ describe("Email template deployment at startup", () => {
     });
   }
 
-  it("should deploy exactly 7 templates", () => {
-    const arrMatch = content.match(/const EMAIL_TEMPLATES\s*=\s*\[([\s\S]*?)\n\];/);
+  it("should deploy exactly 10 templates", () => {
+    const arrMatch = content.match(/EMAIL_TEMPLATES\s*=\s*\[([\s\S]*?)\n\];/);
     expect(arrMatch).toBeTruthy();
     const arr = arrMatch![1];
     const matches = arr.match(/name: "/g);
-    expect(matches).toHaveLength(7);
+    expect(matches).toHaveLength(10);
   });
 
   it("should be best-effort (not crash on failure)", () => {
@@ -71,5 +72,55 @@ describe("Email template deployment at startup", () => {
 
   it("should skip deployment when API key is missing", () => {
     expect(content).toContain("if (!apiKey)");
+  });
+});
+
+describe("DIS-64 lifecycle templates: render with spec metadata", () => {
+  const render = (s: string, vars: Record<string, unknown>): string =>
+    s.replace(/\{\{(\w+)\}\}/g, (_, k) => (k in vars ? String(vars[k]) : `{{${k}}}`));
+
+  const cases: { name: string; vars: Record<string, unknown> }[] = [
+    {
+      name: "waitlist-confirmed",
+      vars: { email: "person@example.com", position: 42, brandUrl: "https://stripe.com" },
+    },
+    {
+      name: "invite-claimed-welcome",
+      vars: { email: "invitee@example.com", inviterOrgName: "Acme Co", balanceCents: 2500 },
+    },
+    {
+      name: "invite-success-notification",
+      vars: {
+        email: "inviter@example.com",
+        inviteeOrgName: "Beta Inc",
+        balanceCents: 5000,
+        invitesUsed: 1,
+        invitesTotal: 3,
+      },
+    },
+  ];
+
+  for (const { name, vars } of cases) {
+    it(`${name}: has at least one {{var}} placeholder`, () => {
+      const tpl = EMAIL_TEMPLATES.find((t) => t.name === name);
+      expect(tpl, `template "${name}" missing from EMAIL_TEMPLATES`).toBeDefined();
+      const source = `${tpl!.subject}\n${tpl!.htmlBody}\n${tpl!.textBody}`;
+      expect(source).toMatch(/\{\{\w+\}\}/);
+    });
+
+    it(`${name}: renders with spec metadata leaving zero {{...}} placeholders`, () => {
+      const tpl = EMAIL_TEMPLATES.find((t) => t.name === name);
+      expect(tpl).toBeDefined();
+      const rendered = [tpl!.subject, tpl!.htmlBody, tpl!.textBody]
+        .map((s) => render(s, vars))
+        .join("\n");
+      expect(rendered).not.toMatch(/\{\{\w+\}\}/);
+    });
+  }
+
+  it("waitlist-confirmed slug is distinct from legacy waitlist template", () => {
+    const slugs = EMAIL_TEMPLATES.map((t) => t.name);
+    expect(slugs).toContain("waitlist");
+    expect(slugs).toContain("waitlist-confirmed");
   });
 });
