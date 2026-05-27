@@ -1,6 +1,10 @@
 import { LinkButton } from "@/components/link-button";
 
-export function FreeVsCloud() {
+interface CloudPlanCardProps {
+  signUpUrl: string;
+}
+
+export function FreeVsCloud({ signUpUrl }: CloudPlanCardProps) {
   return (
     <div className="max-w-xl mx-auto">
       <div className="bg-gray-950 text-white rounded-2xl border-2 border-brand-500/40 p-6 md:p-8 shadow-2xl relative">
@@ -31,10 +35,10 @@ export function FreeVsCloud() {
           </li>
         </ul>
         <LinkButton
-          href="/get-started"
+          href={signUpUrl}
           className="inline-block w-full text-center px-5 py-2.5 rounded-lg bg-white text-gray-900 text-sm font-medium hover:bg-gray-100 transition"
         >
-          Get started
+          Start free — $2 credits
         </LinkButton>
         <p className="text-xs text-gray-500 mt-3 text-center">
           No credit card. Pay only what you use.

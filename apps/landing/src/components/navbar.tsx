@@ -63,7 +63,7 @@ export function Navbar() {
             Sign In
           </a>
           <LinkButton
-            href="/get-started"
+            href={urls.signUp}
             className="bg-gray-900 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition"
           >
             Get Started
@@ -73,7 +73,7 @@ export function Navbar() {
         {/* Mobile nav */}
         <div className="flex md:hidden items-center gap-2">
           <LinkButton
-            href="/get-started"
+            href={urls.signUp}
             className="bg-gray-900 text-white px-3 py-1.5 rounded-lg text-sm font-medium"
           >
             Start
@@ -149,7 +149,7 @@ export function Navbar() {
             </a>
             <div className="pt-2 border-t border-gray-100">
               <LinkButton
-                href="/get-started"
+                href={urls.signUp}
                 className="w-full bg-gray-900 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 text-center block"
               >
                 Get Started

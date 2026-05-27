@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-export function HeroForm() {
+export function HeroForm({ signUpUrl }: { signUpUrl: string }) {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -14,7 +14,7 @@ export function HeroForm() {
       params.set("url", url.trim());
     }
     const query = params.toString();
-    window.location.href = query ? `/get-started?${query}` : "/get-started";
+    window.location.href = query ? `${signUpUrl}?${query}` : signUpUrl;
   };
 
   return (
@@ -55,12 +55,9 @@ export function HeroForm() {
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
             </svg>
           )}
-          Get Started
+          Get Started Free
         </button>
       </div>
-      <p className="text-xs text-gray-400 mt-3 text-center">
-        Invite-only — request access in 30 seconds
-      </p>
     </form>
   );
 }
