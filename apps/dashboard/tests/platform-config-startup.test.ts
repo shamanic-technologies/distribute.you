@@ -81,7 +81,7 @@ describe("Platform config registration at startup", () => {
       expect(content).toContain('type: "cold-email"');
     });
 
-    it("should include all 6 template variables", () => {
+    it("should include all 6 template variables as {name, description} objects", () => {
       const vars = [
         "leadFirstName",
         "leadLastName",
@@ -91,8 +91,17 @@ describe("Platform config registration at startup", () => {
         "clientCompanyName",
       ];
       for (const v of vars) {
-        expect(content).toContain(`"${v}"`);
+        expect(content).toContain(`name: "${v}"`);
       }
+    });
+
+    it("should declare COLD_EMAIL_VARIABLES as an array of {name, description} objects, not strings", () => {
+      const arrMatch = content.match(/const COLD_EMAIL_VARIABLES\s*=\s*\[([\s\S]*?)\];/);
+      expect(arrMatch).toBeTruthy();
+      const arr = arrMatch![1];
+      const entryMatches = arr.match(/\{\s*name:\s*"[^"]+",\s*description:\s*[^}]+\}/g);
+      expect(entryMatches).toHaveLength(6);
+      expect(arr).not.toMatch(/^\s*"[a-zA-Z]+",?\s*$/m);
     });
 
     it("should dynamically insert today's date in the prompt", () => {

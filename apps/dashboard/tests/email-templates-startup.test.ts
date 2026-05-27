@@ -57,7 +57,10 @@ describe("Email template deployment at startup", () => {
   }
 
   it("should deploy exactly 7 templates", () => {
-    const matches = content.match(/name: "/g);
+    const arrMatch = content.match(/const EMAIL_TEMPLATES\s*=\s*\[([\s\S]*?)\n\];/);
+    expect(arrMatch).toBeTruthy();
+    const arr = arrMatch![1];
+    const matches = arr.match(/name: "/g);
     expect(matches).toHaveLength(7);
   });
 

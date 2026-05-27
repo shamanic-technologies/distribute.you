@@ -217,12 +217,16 @@ Now write the sequence for:
 - Company: {{clientCompanyName}}`;
 
 const COLD_EMAIL_VARIABLES = [
-  "leadFirstName",
-  "leadLastName",
-  "leadTitle",
-  "leadCompanyName",
-  "leadCompanyIndustry",
-  "clientCompanyName",
+  { name: "leadFirstName", description: "Lead first name (string)." },
+  { name: "leadLastName", description: "Lead last name (string)." },
+  { name: "leadTitle", description: "Lead job title (string)." },
+  { name: "leadCompanyName", description: "Lead's employer name (string)." },
+  { name: "leadCompanyIndustry", description: "Lead's industry (string)." },
+  {
+    name: "clientCompanyName",
+    description:
+      "Client brand identity. Scalar string for single-brand campaigns; object or array of objects in multibrand. Reference naturally — never invent a primary if multiple are given.",
+  },
 ];
 
 const PRESS_KIT_CHAT_SYSTEM_PROMPT = `You are an expert press kit editor embedded in a media kit management dashboard.
