@@ -123,7 +123,7 @@ export default function Home() {
             we send, qualify, forward.
           </p>
 
-          <HeroForm signUpUrl={urls.signUp} />
+          <HeroForm />
 
           <p className="text-sm text-gray-400 mt-6">
             $2 welcome credits. No subscription. No setup. We send on your behalf.
@@ -407,7 +407,7 @@ export default function Home() {
               We send, qualify, forward. You ship products.
             </p>
           </div>
-          <FreeVsCloud signUpUrl={urls.signUp} />
+          <FreeVsCloud />
         </div>
       </section>
 
@@ -485,10 +485,10 @@ export default function Home() {
             $2 free credits to start. No subscription. No credit card to try.
           </p>
           <LinkButton
-            href={urls.signUp}
+            href="/get-started"
             className="inline-block bg-white text-gray-900 px-8 py-3 rounded-lg font-medium hover:bg-gray-100 transition text-sm"
           >
-            Start free — $2 credits
+            Get started
           </LinkButton>
         </div>
       </section>
