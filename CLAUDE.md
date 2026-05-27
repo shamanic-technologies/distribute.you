@@ -128,7 +128,7 @@ Stack: TanStack React Query v5 on every client component. No SWR. No mixing. Ser
 - `isPending` → no data ever → render SKELETON.
 - `isLoading` (= `isPending && isFetching`) → equivalent for initial load → render SKELETON.
 - `isFetching && !isPending` → background refetch with cached data → render CONTENT, never skeleton.
-- Skeleton condition is exclusively the "no data" case. The global top-bar `<TopRefetchBar />` provides the only background-refresh affordance.
+- Skeleton condition is exclusively the "no data" case. Background refetches are SILENT — no top-bar, no spinner, no flash. Modern SWR philosophy: stale-while-revalidate is invisible by design (matches Linear, Vercel, GitHub). User-initiated refresh / mutations still surface via button-scoped spinners.
 
 **Page composition:**
 - Shell + nav + header render INSTANTLY (no query gates them).
@@ -149,7 +149,9 @@ Stack: TanStack React Query v5 on every client component. No SWR. No mixing. Ser
 - Skeleton on `isFetching` when data exists.
 - `<Suspense>` for any dashboard content.
 
-Incident 2026-05-26 (distribute.you): user reported "data flashes in/out and components arrive at staggered times" across the dashboard. Root cause was a combination of (a) no global `placeholderData: keepPreviousData`, so v5 dropped cached data to `undefined` on every refetch, and (b) 21 page files declaring redundant local `pollOptions` constants that drifted (3 included `keepPreviousData`, 18 omitted it). Fixed by lifting `keepPreviousData` to the global default + collapsing all pollOptions to a 3-variant shared module + adding a faint top-bar `useIsFetching()` indicator + dropping all `refetchIntervalInBackground: false` (default in v5).
+Incident 2026-05-26 (distribute.you): user reported "data flashes in/out and components arrive at staggered times" across the dashboard. Root cause was a combination of (a) no global `placeholderData: keepPreviousData`, so v5 dropped cached data to `undefined` on every refetch, and (b) 21 page files declaring redundant local `pollOptions` constants that drifted (3 included `keepPreviousData`, 18 omitted it). Fixed by lifting `keepPreviousData` to the global default + collapsing all pollOptions to a 3-variant shared module + dropping all `refetchIntervalInBackground: false` (default in v5).
+
+Incident 2026-05-27 (distribute.you): initial fix shipped a faint top-bar `useIsFetching()` indicator as a "background-refresh affordance". User reported the bar flashed every ~5s on every poll cycle ("chiant de voir ça toutes les 5 secondes"). The affordance was the wrong default — modern SWR UX (Linear, Vercel, GitHub) keeps background refetches fully invisible because the cached content stays on screen the whole time. The top-bar was deleted; the rule was changed from "only background-refresh affordance" to "background refetches are SILENT". Skeletons remain for initial load; button spinners remain for mutations.
 
 ### Public marketing pages — SEO + AI-scraper rendering
 
