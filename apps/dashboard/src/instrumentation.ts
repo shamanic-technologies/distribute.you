@@ -17,7 +17,7 @@ function emailLayout(content: string): string {
 </html>`;
 }
 
-const EMAIL_TEMPLATES = [
+export const EMAIL_TEMPLATES = [
   // ── Campaign templates (branded) ──
   {
     name: "campaign_created",
@@ -103,6 +103,60 @@ const EMAIL_TEMPLATES = [
     subject: "User active: {{email}}",
     htmlBody: "<p>User is back: <strong>{{email}}</strong> at {{timestamp}}</p>",
     textBody: "User is back: {{email}} at {{timestamp}}",
+  },
+
+  // ── DIS-64 Wave 0.5: invite-only gate + $25 referral lifecycle ──
+  // Variables sent by api-service in `metadata` (deployed transactional-email-service
+  // schema: { eventType, recipientEmail, metadata }). Unused metadata keys are
+  // silently dropped by the renderer.
+  //   waitlist-confirmed         → { email, position, brandUrl }
+  //   invite-claimed-welcome     → { email, inviterOrgName, balanceCents }
+  //   invite-success-notification → { email, inviteeOrgName, balanceCents, invitesUsed, invitesTotal }
+  {
+    name: "waitlist-confirmed",
+    subject: "You're on the distribute waitlist",
+    htmlBody: emailLayout(`
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">Hey,</p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
+        You're #{{position}} on the distribute waitlist. I took a quick look at {{brandUrl}} — looks like a good fit for what we're building. I'll start opening slots over the next few days; your turn isn't far.
+      </p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
+        Want to skip the line? Ask someone already using distribute for their invite link. Each invite drops $25 in credits into both sides.
+      </p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">See you inside soon.</p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute</p>`),
+    textBody: `Hey,\n\nYou're #{{position}} on the distribute waitlist. I took a quick look at {{brandUrl}} — looks like a good fit for what we're building. I'll start opening slots over the next few days; your turn isn't far.\n\nWant to skip the line? Ask someone already using distribute for their invite link. Each invite drops $25 in credits into both sides.\n\nSee you inside soon.\n\n— Kevin, founder of distribute`,
+  },
+  {
+    name: "invite-claimed-welcome",
+    subject: "Welcome to distribute — you have $25 in credits",
+    htmlBody: emailLayout(`
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">Hey,</p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
+        Thanks to {{inviterOrgName}}, you start with $25 in product credits — enough for a real first campaign, not a demo.
+      </p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
+        Open your dashboard and run your first AI-driven outreach today: <a href="${DASHBOARD_URL}" style="color:#6366f1;">${DASHBOARD_URL}</a>
+      </p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
+        You also have 3 invites to share. Each one drops $25 into both sides.
+      </p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute</p>`),
+    textBody: `Hey,\n\nThanks to {{inviterOrgName}}, you start with $25 in product credits — enough for a real first campaign, not a demo.\n\nOpen your dashboard and run your first AI-driven outreach today: ${DASHBOARD_URL}\n\nYou also have 3 invites to share. Each one drops $25 into both sides.\n\n— Kevin, founder of distribute`,
+  },
+  {
+    name: "invite-success-notification",
+    subject: "{{inviteeOrgName}} joined distribute — you earned $25",
+    htmlBody: emailLayout(`
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">Hey,</p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
+        {{inviteeOrgName}} just joined distribute with your invite. $25 is now in your account.
+      </p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
+        You've used {{invitesUsed}}/{{invitesTotal}} invites. Keep sending them — the link is in your dashboard sidebar: <a href="${DASHBOARD_URL}" style="color:#6366f1;">${DASHBOARD_URL}</a>
+      </p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin</p>`),
+    textBody: `Hey,\n\n{{inviteeOrgName}} just joined distribute with your invite. $25 is now in your account.\n\nYou've used {{invitesUsed}}/{{invitesTotal}} invites. Keep sending them — the link is in your dashboard sidebar: ${DASHBOARD_URL}\n\n— Kevin`,
   },
 ];
 
