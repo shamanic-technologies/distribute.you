@@ -21,6 +21,10 @@ import { ExternalStudiesSection } from "@/components/benchmarks/external-studies
 import { BenchmarkCTA } from "@/components/benchmarks/benchmark-cta";
 import { WhyMattersSection } from "@/components/benchmarks/why-matters-section";
 import { ValueRecap } from "@/components/benchmarks/value-recap";
+import {
+  buildBenchmarkTitle,
+  buildBenchmarkDescription,
+} from "@/lib/benchmarks/seo";
 
 export const revalidate = 300;
 
@@ -49,11 +53,14 @@ export async function generateMetadata({
   }
 
   const pageUrl = `${PROD_URLS.landing}/benchmarks/${feature.slug}`;
-  const title = `${feature.name} Benchmarks & Statistics (2026)`;
-  const description = `${feature.description} Real performance data from every brand running ${feature.name} through distribute — sortable leaderboard, full ranking, no cherry-picking.`;
+  const title = buildBenchmarkTitle(feature.name);
+  const description = buildBenchmarkDescription(feature.name, feature.description);
 
   return {
-    title,
+    // `absolute` bypasses the `/benchmarks` layout template
+    // (`%s | distribute Benchmarks`) so the final title stays under
+    // Google's ~60-char truncation limit.
+    title: { absolute: title },
     description,
     keywords: [
       `${feature.name.toLowerCase()} benchmarks`,
