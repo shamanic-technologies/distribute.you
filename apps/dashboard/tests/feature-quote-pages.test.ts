@@ -80,16 +80,24 @@ describe("Feature-level quote pages", () => {
       expect(content).toContain("pollOptionsSlow");
     });
 
-    it("filters returned pitches to the current brandId", () => {
-      expect(content).toMatch(/p\.brandId\s*===\s*brandId/);
+    it("filters returned pitches to the current brandId (brandIds is a string[] on the wire)", () => {
+      expect(content).toMatch(/p\.brandIds\.includes\(brandId\)/);
+      expect(content).not.toMatch(/p\.brandId\s*===\s*brandId/);
+    });
+
+    it("reads the wire response key `quotePitches` (not the legacy `pitches`)", () => {
+      expect(content).toContain("data?.quotePitches");
+      expect(content).not.toMatch(/data\.pitches\b/);
+      expect(content).not.toMatch(/data\?\.pitches\b/);
     });
 
     it("exposes data-testid feature-quote-pitches-page", () => {
       expect(content).toContain('data-testid="feature-quote-pitches-page"');
     });
 
-    it("includes a status filter select with the documented statuses", () => {
+    it("includes a status filter select with every status the wire enum declares", () => {
       expect(content).toContain('data-testid="feature-quote-pitches-status-filter"');
+      // 10 statuses per journalists-quotes-service GET /orgs/quote-pitches openapi (verified 2026-05-28)
       for (const status of [
         "drafted",
         "submitted",
@@ -97,6 +105,10 @@ describe("Feature-level quote pages", () => {
         "published",
         "not_selected",
         "error",
+        "length_violation",
+        "template_missing",
+        "brand_missing_fields",
+        "insufficient_credits",
       ]) {
         expect(content).toContain(`"${status}"`);
       }
