@@ -4,14 +4,25 @@ import type { Metadata } from "next";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { Section } from "@/components/section";
+import { PROD_URLS } from "@/lib/env-urls";
 import { listArticles, type BlogArticle } from "@/lib/blog/db";
 
 export const revalidate = 60;
+
+const BLOG_URL = `${PROD_URLS.landing}/blog`;
 
 export const metadata: Metadata = {
   title: "Blog — distribute",
   description:
     "Stories, playbooks, and benchmarks for solo builders running their own distribution.",
+  alternates: { canonical: BLOG_URL },
+  openGraph: {
+    type: "website",
+    url: BLOG_URL,
+    title: "Blog — distribute",
+    description:
+      "Stories, playbooks, and benchmarks for solo builders running their own distribution.",
+  },
 };
 
 function formatDate(iso: string): string {

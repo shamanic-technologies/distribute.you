@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { Section } from "@/components/section";
+import { PROD_URLS } from "@/lib/env-urls";
 import { getArticleBySlug } from "@/lib/blog/db";
 
 export const revalidate = 60;
@@ -15,10 +16,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const article = await getArticleBySlug(slug);
   if (!article) return { title: "Article not found — distribute" };
+  const articleUrl = `${PROD_URLS.landing}/blog/${article.slug}`;
   return {
     title: `${article.title} — distribute`,
     description: article.excerpt ?? undefined,
+    alternates: { canonical: articleUrl },
     openGraph: {
+      type: "article",
+      url: articleUrl,
       title: article.title,
       description: article.excerpt ?? undefined,
       images: article.coverImageUrl ? [{ url: article.coverImageUrl }] : undefined,
