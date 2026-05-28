@@ -17,6 +17,10 @@ const STATUS_STYLES: Record<QuotePitchStatus, string> = {
   published: "bg-green-100 text-green-700 border-green-200",
   not_selected: "bg-gray-100 text-gray-500 border-gray-200",
   error: "bg-red-100 text-red-600 border-red-200",
+  length_violation: "bg-red-100 text-red-600 border-red-200",
+  template_missing: "bg-red-100 text-red-600 border-red-200",
+  brand_missing_fields: "bg-red-100 text-red-600 border-red-200",
+  insufficient_credits: "bg-red-100 text-red-600 border-red-200",
 };
 
 const STATUSES: QuotePitchStatus[] = [
@@ -26,6 +30,10 @@ const STATUSES: QuotePitchStatus[] = [
   "published",
   "not_selected",
   "error",
+  "length_violation",
+  "template_missing",
+  "brand_missing_fields",
+  "insufficient_credits",
 ];
 
 function formatDate(iso: string | null): string {
@@ -41,21 +49,21 @@ function formatDate(iso: string | null): string {
 export default function QuotePitchesPage() {
   const params = useParams();
   const campaignId = params.id as string;
-  const brandId = params.brandId as string;
 
   const [statusFilter, setStatusFilter] = useState<QuotePitchStatus | "">("");
 
   const { data, isLoading } = useAuthQuery(
-    ["quotePitches", { brandId, campaignId, status: statusFilter }],
+    ["quotePitches", { campaignId, status: statusFilter }],
     () =>
       listQuotePitches({
-        brandId,
-        campaignId,
+        campaign_id: campaignId,
         status: statusFilter || undefined,
         limit: 100,
       }),
     pollOptionsSlow,
   );
+
+  const pitches = data?.quotePitches ?? [];
 
   return (
     <div className="p-4 md:p-8" data-testid="quote-pitches-page">
@@ -83,11 +91,11 @@ export default function QuotePitchesPage() {
 
       {isLoading && !data ? (
         <ListSkeleton />
-      ) : !data || data.pitches.length === 0 ? (
+      ) : pitches.length === 0 ? (
         <EmptyState message="No pitches yet." />
       ) : (
         <div className="space-y-2">
-          {data.pitches.map((p) => (
+          {pitches.map((p) => (
             <Row key={p.id} pitch={p} />
           ))}
         </div>
@@ -101,14 +109,15 @@ function Row({ pitch }: { pitch: QuotePitch }) {
     <div className="bg-white rounded-xl border border-gray-200 p-4">
       <div className="flex items-start justify-between mb-2 gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-medium text-gray-800">
-            {pitch.expertName ?? "—"}
-            {pitch.expertTitle && (
-              <span className="text-gray-500 font-normal"> · {pitch.expertTitle}</span>
-            )}
-          </p>
           <p className="text-xs text-gray-500 mt-0.5">
             Quote request: <span className="font-mono">{pitch.quoteRequestId}</span>
+          </p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Delivery: {pitch.deliveryMethod}
+            {pitch.pitchCharCount != null && <> · {pitch.pitchCharCount} chars</>}
+            {pitch.pitchAttempts != null && pitch.pitchAttempts > 1 && (
+              <> · {pitch.pitchAttempts} attempts</>
+            )}
           </p>
         </div>
         <span
@@ -117,15 +126,16 @@ function Row({ pitch }: { pitch: QuotePitch }) {
           {pitch.status}
         </span>
       </div>
-      <p className="text-sm text-gray-700 line-clamp-3 whitespace-pre-line">
-        {pitch.pitchText}
-      </p>
+      {pitch.draft && (
+        <p className="text-sm text-gray-700 line-clamp-3 whitespace-pre-line">
+          {pitch.draft}
+        </p>
+      )}
       <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
         {pitch.submittedAt && <span>Submitted {formatDate(pitch.submittedAt)}</span>}
-        {pitch.publishedAt && <span>Published {formatDate(pitch.publishedAt)}</span>}
-        {pitch.publishedUrl && (
+        {pitch.featuredArticleUrl && (
           <a
-            href={pitch.publishedUrl}
+            href={pitch.featuredArticleUrl}
             target="_blank"
             rel="noreferrer"
             className="text-brand-600 hover:underline"
@@ -134,8 +144,8 @@ function Row({ pitch }: { pitch: QuotePitch }) {
           </a>
         )}
       </div>
-      {pitch.errorMessage && (
-        <p className="text-xs text-red-600 mt-2">{pitch.errorMessage}</p>
+      {pitch.error && (
+        <p className="text-xs text-red-600 mt-2">{pitch.error}</p>
       )}
     </div>
   );

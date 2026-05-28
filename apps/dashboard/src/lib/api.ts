@@ -2232,13 +2232,21 @@ export type QuoteRequestStatus =
   | "not_selected"
   | "error";
 
+// Backend openapi: journalists-quotes-service GET /orgs/quote-pitches.
+// Verified 2026-05-28 via mcp__api-registry. Do NOT add fields not on the wire.
 export type QuotePitchStatus =
   | "drafted"
   | "submitted"
   | "selected"
   | "published"
   | "not_selected"
-  | "error";
+  | "error"
+  | "length_violation"
+  | "template_missing"
+  | "brand_missing_fields"
+  | "insufficient_credits";
+
+export type QuotePitchDeliveryMethod = "featured_api" | "email_reply";
 
 export interface QuoteRequest {
   id: string;
@@ -2263,17 +2271,28 @@ export interface QuoteRequest {
 export interface QuotePitch {
   id: string;
   quoteRequestId: string;
+  quoteOpportunityId: string | null;
+  featuredQuestionId: number | null;
+  featuredProfileId: number | null;
   campaignId: string | null;
-  brandId: string | null;
-  status: QuotePitchStatus;
-  pitchText: string;
-  expertName: string | null;
-  expertTitle: string | null;
+  brandIds: string[];
+  draft: string | null;
+  pitchCharCount: number | null;
+  pitchAttempts: number | null;
+  contentGenRunId: string | null;
   submittedAt: string | null;
-  selectedAt: string | null;
-  publishedAt: string | null;
-  publishedUrl: string | null;
-  errorMessage: string | null;
+  status: QuotePitchStatus;
+  deliveryMethod: QuotePitchDeliveryMethod;
+  deliveryTarget: string | null;
+  outboundMessageId: string | null;
+  replyInThreadMessageId: string | null;
+  bounceStatus: string | null;
+  featuredArticleUrl: string | null;
+  error: string | null;
+  errorDetails: unknown;
+  parentRunId: string | null;
+  runId: string | null;
+  orgId: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -2297,9 +2316,10 @@ export interface ListQuoteRequestsParams {
   offset?: number;
 }
 
+// Wire query params (snake_case). Backend openapi: only campaign_id/status/
+// limit/offset are accepted; brand filtering is done client-side via brandIds[].
 export interface ListQuotePitchesParams {
-  campaignId?: string;
-  brandId?: string;
+  campaign_id?: string;
   status?: QuotePitchStatus;
   limit?: number;
   offset?: number;
@@ -2379,8 +2399,8 @@ export async function getQuoteRequestStats(
 export async function listQuotePitches(
   params?: ListQuotePitchesParams,
   token?: string,
-): Promise<{ pitches: QuotePitch[]; total: number }> {
-  return apiCall<{ pitches: QuotePitch[]; total: number }>(
+): Promise<{ quotePitches: QuotePitch[] }> {
+  return apiCall<{ quotePitches: QuotePitch[] }>(
     `/orgs/quote-pitches${buildQuery(params ?? {})}`,
     { token },
   );
@@ -2389,8 +2409,8 @@ export async function listQuotePitches(
 export async function getQuotePitch(
   id: string,
   token?: string,
-): Promise<{ pitch: QuotePitch }> {
-  return apiCall<{ pitch: QuotePitch }>(`/orgs/quote-pitches/${id}`, { token });
+): Promise<{ quotePitch: QuotePitch }> {
+  return apiCall<{ quotePitch: QuotePitch }>(`/orgs/quote-pitches/${id}`, { token });
 }
 
 // ─── Ranked HITL opportunities (pr-expert-quote-opportunities) ──────────────

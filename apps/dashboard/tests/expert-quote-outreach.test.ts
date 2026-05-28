@@ -183,6 +183,72 @@ describe("api client functions", () => {
   });
 });
 
+describe("QuotePitch type + listQuotePitches — matches journalists-quotes-service GET /orgs/quote-pitches openapi", () => {
+  const quotePitchBlock =
+    apiLibContent.split("export interface QuotePitch {")[1]?.split("\n}")[0] ?? "";
+  const listPitchesBlock =
+    apiLibContent
+      .split("export async function listQuotePitches(")[1]
+      ?.split("\nexport async function")[0] ?? "";
+  const listPitchesParamsBlock =
+    apiLibContent
+      .split("export interface ListQuotePitchesParams {")[1]
+      ?.split("\n}")[0] ?? "";
+
+  it("declares fields returned by the wire (brandIds[] not brandId, draft not pitchText, error not errorMessage, featuredArticleUrl not publishedUrl)", () => {
+    expect(quotePitchBlock).toMatch(/brandIds:\s*string\[\]/);
+    expect(quotePitchBlock).toMatch(/draft:\s*string \| null/);
+    expect(quotePitchBlock).toMatch(/error:\s*string \| null/);
+    expect(quotePitchBlock).toMatch(/featuredArticleUrl:\s*string \| null/);
+    expect(quotePitchBlock).toMatch(/deliveryMethod:\s*QuotePitchDeliveryMethod/);
+    expect(quotePitchBlock).toMatch(/pitchCharCount:\s*number \| null/);
+    expect(quotePitchBlock).toMatch(/pitchAttempts:\s*number \| null/);
+    expect(quotePitchBlock).toMatch(/quoteOpportunityId:\s*string \| null/);
+  });
+
+  it("does NOT declare aspirational fields the wire never returns", () => {
+    expect(quotePitchBlock).not.toMatch(/\bpitchText:/);
+    expect(quotePitchBlock).not.toMatch(/\bbrandId:/);
+    expect(quotePitchBlock).not.toMatch(/\bexpertName:/);
+    expect(quotePitchBlock).not.toMatch(/\bexpertTitle:/);
+    expect(quotePitchBlock).not.toMatch(/\bselectedAt:/);
+    expect(quotePitchBlock).not.toMatch(/\bpublishedAt:/);
+    expect(quotePitchBlock).not.toMatch(/\bpublishedUrl:/);
+    expect(quotePitchBlock).not.toMatch(/\berrorMessage:/);
+  });
+
+  it("QuotePitchStatus enum declares all 10 wire statuses", () => {
+    const enumBlock =
+      apiLibContent.split("export type QuotePitchStatus =")[1]?.split(";")[0] ?? "";
+    for (const status of [
+      "drafted",
+      "submitted",
+      "selected",
+      "published",
+      "not_selected",
+      "error",
+      "length_violation",
+      "template_missing",
+      "brand_missing_fields",
+      "insufficient_credits",
+    ]) {
+      expect(enumBlock).toContain(`"${status}"`);
+    }
+  });
+
+  it("ListQuotePitchesParams uses snake_case campaign_id (not camelCase) and drops brandId", () => {
+    expect(listPitchesParamsBlock).toContain("campaign_id");
+    expect(listPitchesParamsBlock).not.toMatch(/\bcampaignId\b/);
+    expect(listPitchesParamsBlock).not.toMatch(/\bbrandId\b/);
+  });
+
+  it("returns { quotePitches } not { pitches }", () => {
+    expect(listPitchesBlock).toContain("quotePitches");
+    expect(listPitchesBlock).not.toMatch(/\bpitches:\s*QuotePitch/);
+    expect(listPitchesBlock).not.toMatch(/\btotal:\s*number\b/);
+  });
+});
+
 describe("HITL helpers — journalists-quotes-service v0.8.1 contract (x-brand-id header, Gold ids)", () => {
   const rankedBlock =
     apiLibContent
