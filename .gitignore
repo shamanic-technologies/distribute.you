@@ -32,6 +32,9 @@ coverage/
 # MCP
 .mcp.json
 
+# Claude Code workspace state (per-workspace, never committed)
+.claude/scheduled_tasks.lock
+
 # Generated OpenAPI specs
 openapi.json
 
