@@ -212,8 +212,8 @@ describe("HITL helpers — journalists-quotes-service v0.8.1 contract (x-brand-i
     expect(replyBlock).not.toMatch(/campaignId\s*[:,]/);
   });
 
-  it("generateQuoteDraft hits content-gen via api-service /orgs/quote-pitches/generate with x-brand-id header", () => {
-    expect(draftBlock).toContain("/orgs/quote-pitches/generate");
+  it("generateQuoteDraft hits content-gen via api-service /content/generate-expert-quote-pitch with x-brand-id header", () => {
+    expect(draftBlock).toContain("/content/generate-expert-quote-pitch");
     expect(draftBlock).toContain('"x-brand-id"');
     // Old upstream endpoint must NOT be referenced
     expect(draftBlock).not.toContain("/orgs/quote-requests/");

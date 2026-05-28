@@ -6,11 +6,11 @@ import { adminGet, adminPost } from "@/lib/report-api";
 // commit 4982ea4) — the service is now a pure opportunity catalog + submit.
 // Pitch generation is composed client-side from three calls through
 // api-service:
-//   1. GET  /v1/platform-prompts?type=expert-quote-pitch
+//   1. GET  /v1/content/platform-prompts?type=expert-quote-pitch
 //        → discover which variables the prompt template expects
 //   2. POST /v1/brands/extract-fields
 //        → extract brand-derivable variables via brand-service
-//   3. POST /v1/orgs/quote-pitches/generate
+//   3. POST /v1/content/generate-expert-quote-pitch
 //        → render template + run content-generation-service
 //
 // The public page never holds an admin key client-side; this Route Handler
@@ -110,7 +110,7 @@ export async function POST(req: Request, ctx: RouteContext) {
     //    still go via api-service for consistent auth.
     const template = await adminGet<PromptTemplate>(
       "getExpertQuotePitchTemplate",
-      `/platform-prompts?type=${encodeURIComponent(PROMPT_TYPE)}`,
+      `/content/platform-prompts?type=${encodeURIComponent(PROMPT_TYPE)}`,
       orgId,
     );
 
@@ -150,7 +150,7 @@ export async function POST(req: Request, ctx: RouteContext) {
 
     const result = await adminPost<GenerateResponse>(
       "generateExpertQuotePitch",
-      `/orgs/quote-pitches/generate`,
+      `/content/generate-expert-quote-pitch`,
       orgId,
       {
         variables,

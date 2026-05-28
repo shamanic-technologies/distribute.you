@@ -188,15 +188,15 @@ describe("Draft route handler — admin-key composite (extract-fields + content-
     expect(content).toContain('from "@/lib/report-api"');
   });
 
-  it("orchestrates 3 calls: platform-prompts + brands/extract-fields + orgs/quote-pitches/generate", () => {
+  it("orchestrates 3 calls: content/platform-prompts + brands/extract-fields + content/generate-expert-quote-pitch", () => {
     const content = fs.readFileSync(draftRoutePath, "utf-8");
     // 1. Fetch template variable spec
-    expect(content).toContain("/platform-prompts");
+    expect(content).toContain("/content/platform-prompts");
     expect(content).toContain("expert-quote-pitch");
     // 2. Extract brand-derivable fields
     expect(content).toContain("/brands/extract-fields");
     // 3. Generate pitch via content-generation-service
-    expect(content).toContain("/orgs/quote-pitches/generate");
+    expect(content).toContain("/content/generate-expert-quote-pitch");
   });
 
   it("does NOT call the removed /orgs/quote-requests/:id/draft endpoint", () => {

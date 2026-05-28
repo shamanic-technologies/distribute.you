@@ -2487,9 +2487,9 @@ export interface GenerateQuoteDraftResponse {
 }
 
 /** Generates a pitch via content-generation-service `/generate-expert-quote-
- *  pitch`, proxied by api-service `POST /v1/orgs/quote-pitches/generate`.
- *  The legacy `/orgs/quote-requests/:id/draft` endpoint was removed from
- *  journalists-quotes-service in v0.8.1 — composition now lives in the
+ *  pitch`, proxied by api-service `POST /v1/content/generate-expert-quote-
+ *  pitch`. The legacy `/orgs/quote-requests/:id/draft` endpoint was removed
+ *  from journalists-quotes-service in v0.8.1 — composition now lives in the
  *  caller (see `apps/dashboard/src/app/api/report/.../draft/route.ts` for
  *  the public-report variant). */
 export async function generateQuoteDraft(
@@ -2503,7 +2503,7 @@ export async function generateQuoteDraft(
   };
   if (featureSlug) upstreamBody.featureSlug = featureSlug;
   return apiCall<GenerateQuoteDraftResponse>(
-    `/orgs/quote-pitches/generate`,
+    `/content/generate-expert-quote-pitch`,
     {
       token,
       method: "POST",
