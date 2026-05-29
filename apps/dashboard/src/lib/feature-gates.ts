@@ -34,8 +34,9 @@ export const FEATURE_GATES = {
 
 export type FeatureGateKey = keyof typeof FEATURE_GATES;
 
-/** Tailwind pill classes per maturity level. */
+/** Tailwind pill classes per maturity level. Saturated fills so the tag reads
+ * clearly against the white sidebar (pale amber-on-amber was too faint). */
 export const MATURITY_STYLES: Record<Maturity, string> = {
-  alpha: "bg-amber-100 text-amber-700",
-  beta: "bg-violet-100 text-violet-700",
+  alpha: "bg-amber-400 text-amber-950",
+  beta: "bg-violet-500 text-white",
 };

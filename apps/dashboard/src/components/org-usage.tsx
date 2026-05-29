@@ -3,7 +3,8 @@
 import { useMemo } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
-import { getOrgCostsByBrand, getOrgCostBreakdown, type Brand } from "@/lib/api";
+import { getOrgCostsByBrand, getOrgCostBreakdown, getPlatformPrices, type Brand } from "@/lib/api";
+import { ProviderLogo } from "@/components/provider-logo";
 
 const COLORS = [
   "#6366f1", // indigo
@@ -49,6 +50,20 @@ export function OrgUsageSection({ brands }: { brands: Brand[] }) {
     () => getOrgCostBreakdown(),
     { refetchInterval: POLL_INTERVAL },
   );
+
+  // Static catalog → `costName -> providerDomain` for the provider logos.
+  // Best-effort enrichment: on failure the cost labels still render, just without logos.
+  const { data: platformPrices } = useAuthQuery(
+    ["platformPrices"],
+    () => getPlatformPrices(),
+    { staleTime: 60 * 60 * 1000 },
+  );
+
+  const domainByCost = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of platformPrices ?? []) map.set(p.name, p.providerDomain);
+    return map;
+  }, [platformPrices]);
 
   const isLoading = brandGroupsLoading || totalCostLoading;
   const hasData = !!(brandGroupsData || totalCostData);
@@ -179,7 +194,10 @@ export function OrgUsageSection({ brands }: { brands: Brand[] }) {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1.5">
             {totalCostBreakdown.map((c) => (
               <div key={c.name} className="flex items-center justify-between text-sm">
-                <span className="text-gray-500 truncate mr-2">{formatCostName(c.name)}</span>
+                <span className="flex items-center gap-1.5 min-w-0 mr-2">
+                  <ProviderLogo domain={domainByCost.get(c.name) ?? null} size={16} />
+                  <span className="text-gray-500 truncate">{formatCostName(c.name)}</span>
+                </span>
                 <span className="text-gray-800 font-medium flex-shrink-0">{formatUsdCents(c.cents)}</span>
               </div>
             ))}

@@ -427,6 +427,34 @@ export async function getOrgCostBreakdown(token?: string): Promise<{ costs: Cost
   return { costs };
 }
 
+// Platform price catalog — authoritative `costName -> providerDomain` mapping.
+// Public, no auth. Used to show a provider logo next to each cost label.
+export interface PlatformPrice {
+  name: string;
+  provider: string;
+  providerDomain: string;
+}
+
+const PlatformPriceSchema = z.object({
+  name: z.string(),
+  provider: z.string(),
+  providerDomain: z.string(),
+});
+const PlatformPricesResponseSchema = z.array(PlatformPriceSchema);
+
+export async function getPlatformPrices(token?: string): Promise<PlatformPrice[]> {
+  const raw = await apiCall<unknown>(`/costs/platform-prices`, { token });
+  const parsed = PlatformPricesResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error(
+      "[dashboard] getPlatformPrices: response shape mismatch",
+      { issues: parsed.error.issues, raw },
+    );
+    throw new Error("[dashboard] getPlatformPrices: invalid response shape");
+  }
+  return parsed.data;
+}
+
 export async function stopCampaign(campaignId: string, token?: string): Promise<{ campaign: Campaign }> {
   return apiCall<{ campaign: Campaign }>(`/campaigns/${campaignId}/stop`, { token, method: "POST" });
 }

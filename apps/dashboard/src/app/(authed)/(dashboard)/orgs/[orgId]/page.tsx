@@ -1,11 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { useFeatures } from "@/lib/features-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listBrands, listCampaigns } from "@/lib/api";
+import { listBrands } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
 import { OrgUsageSection } from "@/components/org-usage";
 import { pollOptions } from "@/lib/query-options";
@@ -13,7 +11,6 @@ import { pollOptions } from "@/lib/query-options";
 export default function OrgOverviewPage() {
   const params = useParams();
   const orgId = params.orgId as string;
-  const { features } = useFeatures();
 
   const { data: brandsData } = useAuthQuery(
     ["brands"],
@@ -21,21 +18,6 @@ export default function OrgOverviewPage() {
     pollOptions,
   );
   const brands = brandsData?.brands ?? [];
-
-  const { data: campaignsData } = useAuthQuery(
-    ["campaigns"],
-    () => listCampaigns(),
-    pollOptions,
-  );
-  const campaigns = campaignsData?.campaigns ?? [];
-
-  const recentCampaigns = useMemo(
-    () =>
-      [...campaigns]
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-        .slice(0, 5),
-    [campaigns]
-  );
 
   return (
     <div className="p-4 md:p-8 max-w-5xl">
@@ -95,73 +77,9 @@ export default function OrgOverviewPage() {
       </div>
 
       {/* Usage */}
-      <div className="mb-6">
+      <div>
         <OrgUsageSection brands={brands} />
       </div>
-
-      {/* Recent Campaigns */}
-      {recentCampaigns.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Recent Campaigns</h2>
-          <div className="space-y-1 overflow-x-auto">
-            {recentCampaigns.map((campaign) => {
-              const featureSlug = campaign.featureSlug ?? null;
-              const primaryBrandId = campaign.brandIds[0] ?? null;
-              const brand = primaryBrandId ? brands.find((b) => b.id === primaryBrandId) : undefined;
-              const feature = featureSlug ? features.find((f) => f.slug === featureSlug) : null;
-              const href = featureSlug && primaryBrandId
-                ? `/orgs/${orgId}/brands/${primaryBrandId}/features/${featureSlug}/campaigns/${campaign.id}`
-                : null;
-
-              const row = (
-                <div className="flex items-center gap-3 py-2 px-3">
-                  {/* Brand */}
-                  <div className="flex items-center gap-2 min-w-0 w-36 shrink-0">
-                    {brand ? (
-                      <>
-                        <BrandLogo domain={brand.domain} size={20} fallbackClassName="h-4 w-4 text-gray-400" />
-                        <span className="text-sm font-medium text-gray-700 truncate">{brand.name || brand.domain}</span>
-                      </>
-                    ) : (
-                      <span className="text-sm text-gray-400">—</span>
-                    )}
-                  </div>
-                  {/* Feature */}
-                  <span className="text-xs text-gray-500 truncate w-32 shrink-0">
-                    {feature?.name ?? featureSlug ?? "—"}
-                  </span>
-                  {/* Date */}
-                  <span className="text-xs text-gray-400 w-20 shrink-0">
-                    {new Date(campaign.createdAt).toLocaleDateString()}
-                  </span>
-                  {/* Status */}
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full ml-auto shrink-0 ${
-                      campaign.status === "ongoing"
-                        ? "bg-blue-100 text-blue-700"
-                        : campaign.status === "completed"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-gray-100 text-gray-600"
-                    }`}
-                  >
-                    {campaign.status}
-                  </span>
-                </div>
-              );
-
-              return href ? (
-                <Link key={campaign.id} href={href} className="block rounded-lg hover:bg-gray-50 transition">
-                  {row}
-                </Link>
-              ) : (
-                <div key={campaign.id} className="rounded-lg">
-                  {row}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
