@@ -2568,6 +2568,15 @@ const PromptAssignmentSchema = z.object({
   isDefault: z.boolean(),
 });
 
+// The PUT (fork+assign) response intentionally omits `isDefault` — a freshly
+// saved fork is by definition an override, never the platform default.
+const SavedPromptAssignmentSchema = z.object({
+  featureSlug: z.string(),
+  promptType: z.string(),
+  prompt: z.string(),
+  variables: z.array(PromptVariableSchema),
+});
+
 /** Reads the resolved generation prompt for a feature (default or fork). */
 export async function getPromptAssignment(
   featureSlug: string,
@@ -2613,7 +2622,7 @@ export async function savePromptAssignment(
     method: "PUT",
     body: requestBody,
   });
-  const parsed = PromptAssignmentSchema.safeParse(raw);
+  const parsed = SavedPromptAssignmentSchema.safeParse(raw);
   if (!parsed.success) {
     console.error("[dashboard] savePromptAssignment: response shape mismatch", {
       issues: parsed.error.issues,
@@ -2621,7 +2630,8 @@ export async function savePromptAssignment(
     });
     throw new Error("[dashboard] savePromptAssignment: invalid response shape");
   }
-  return parsed.data;
+  // A saved fork is an override, not the platform default.
+  return { ...parsed.data, isDefault: false };
 }
 
 export type SubmitQuotePitchStatus =
