@@ -2568,6 +2568,14 @@ const PromptAssignmentSchema = z.object({
   isDefault: z.boolean(),
 });
 
+// The deployed content-generation-service PUT /prompt-assignments 200 response
+// OMITS isDefault (GET returns it, PUT does not — confirmed against prod +
+// staging api-registry). Parse the PUT response with its own schema rather than
+// the GET one, then set isDefault explicitly below.
+const SavePromptAssignmentResponseSchema = PromptAssignmentSchema.omit({
+  isDefault: true,
+});
+
 /** Reads the resolved generation prompt for a feature (default or fork). */
 export async function getPromptAssignment(
   featureSlug: string,
@@ -2613,7 +2621,7 @@ export async function savePromptAssignment(
     method: "PUT",
     body: requestBody,
   });
-  const parsed = PromptAssignmentSchema.safeParse(raw);
+  const parsed = SavePromptAssignmentResponseSchema.safeParse(raw);
   if (!parsed.success) {
     console.error("[dashboard] savePromptAssignment: response shape mismatch", {
       issues: parsed.error.issues,
@@ -2621,7 +2629,11 @@ export async function savePromptAssignment(
     });
     throw new Error("[dashboard] savePromptAssignment: invalid response shape");
   }
-  return parsed.data;
+  // A fork+reassign just created an override, so the feature is definitionally
+  // no longer on the platform default — isDefault is false by construction
+  // (the PUT response does not carry it). Not a masking fallback: it's the
+  // documented post-fork invariant.
+  return { ...parsed.data, isDefault: false };
 }
 
 export type SubmitQuotePitchStatus =
