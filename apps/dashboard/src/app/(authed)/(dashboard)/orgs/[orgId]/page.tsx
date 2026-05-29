@@ -5,20 +5,10 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useFeatures } from "@/lib/features-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listBrands, listCampaigns, fetchGlobalStats } from "@/lib/api";
+import { listBrands, listCampaigns } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
 import { OrgUsageSection } from "@/components/org-usage";
 import { pollOptions } from "@/lib/query-options";
-
-function StatCard({ label, value }: { label: string; value: number | string }) {
-  const display = typeof value === "number" ? value.toLocaleString("en-US") : value;
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4">
-      <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">{label}</p>
-      <p className="text-2xl font-semibold text-gray-800">{display}</p>
-    </div>
-  );
-}
 
 export default function OrgOverviewPage() {
   const params = useParams();
@@ -47,39 +37,9 @@ export default function OrgOverviewPage() {
     [campaigns]
   );
 
-  const { data: globalStats } = useAuthQuery(
-    ["globalStats", "overview"],
-    () => fetchGlobalStats(),
-    pollOptions,
-  );
-
-  const totals = useMemo(() => ({
-    emailsSent: globalStats?.stats?.emailsSent ?? 0,
-    emailsReplied: globalStats?.stats?.emailsReplied ?? 0,
-    totalCostCents: globalStats?.systemStats?.totalCostInUsdCents ?? 0,
-  }), [globalStats]);
-
-  const statsReady = brandsData || campaignsData;
-
   return (
     <div className="p-4 md:p-8 max-w-5xl">
       <h1 className="text-2xl font-semibold text-gray-900 mb-6">Overview</h1>
-
-      {/* Quick Stats */}
-      {statsReady ? (
-        <div data-testid="overview-stats" className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-          <StatCard label="Brands" value={brands.length} />
-          <StatCard label="Campaigns" value={campaigns.length} />
-          <StatCard label="Emails Sent" value={totals.emailsSent} />
-          <StatCard label="Replies" value={totals.emailsReplied} />
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8 animate-pulse">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-[76px] bg-gray-200 rounded-xl" />
-          ))}
-        </div>
-      )}
 
       {/* Brands Summary */}
       <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
@@ -132,41 +92,6 @@ export default function OrgOverviewPage() {
             ))}
           </div>
         )}
-      </div>
-
-      {/* Features Summary */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-medium text-gray-900">Features</h2>
-          {features.length > 6 && (
-            <Link
-              href={`/features`}
-              className="text-sm text-gray-400 hover:text-gray-600"
-            >
-              View all →
-            </Link>
-          )}
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {features.map((f) => (
-            <Link
-              key={f.slug}
-              href={f.implemented ? `/features/${f.slug}` : "#"}
-              className={`flex items-center gap-3 p-3 rounded-lg border transition ${
-                f.implemented
-                  ? "border-gray-200 hover:border-brand-300 hover:shadow-sm"
-                  : "border-gray-100 opacity-60 cursor-default"
-              }`}
-            >
-              <span className="text-sm font-medium text-gray-700">{f.name}</span>
-              {!f.implemented && (
-                <span className="text-[10px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full whitespace-nowrap ml-auto">
-                  Coming soon
-                </span>
-              )}
-            </Link>
-          ))}
-        </div>
       </div>
 
       {/* Usage */}

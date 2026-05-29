@@ -20,6 +20,8 @@ pnpm --filter @distribute/<package> test tests/unit/specific.test.ts       # sin
 
 **Next 16 `next lint` + `pnpm --filter` is broken.** `pnpm --filter @distribute/dashboard lint` fails with `Invalid project directory provided, no such directory: apps/dashboard/lint` — Next 16 misreads the forwarded script name as a positional dir arg. Run from the package dir instead: `cd apps/dashboard && npx next lint`. Direct invocation is clean (0/0). Same pattern applies to other Next apps in this repo.
 
+**RTK summarizes `next lint` / `next build` output — don't trust the summary.** The rtk hook rewrites these commands and replaces real stdout with a one-line `Errors: N | Warnings: M` (plus a fake sub-second `Time:`). The count can be WRONG — observed a phantom `Errors: 1` when the real lint was clean (0 results). To verify a frontend lint/build for real: bypass rtk with `rtk proxy -- npx next build` (the `--` is required, else rtk's own parser eats `--file`/flags), OR have Next write the result itself — `npx next lint --format compact --output-file <f>` then read `<f>` (Next writes the file, rtk can't touch it). Trust the real log + process exit code, never the rtk one-liner.
+
 **Shared workspace packages must be built before app tests/build.** Vitest + Vite resolve workspace deps via their `dist/` (per `package.json` exports), so an unbuilt `shared/*` package surfaces as `Failed to resolve entry for package "@distribute/<name>"` in unrelated test files. Run `pnpm -r build` (or `pnpm --filter @distribute/<name> build`) once after `pnpm install` or after pulling changes that touch `shared/`.
 
 ## Release flow (distribute.you specifics)
@@ -184,6 +186,36 @@ The ICP (`/investors` page, "The Serial Builder") is a solo / 1–3-person team 
 ### Landing logo discipline — borrow trust from upstream providers
 
 distribute is the "Stripe of Distribution" — a thin wrapper over Apollo, Anthropic, Resend, LinkedIn, Muck Rack, Featured, Adobe, Gartner, etc. Wherever a provider, source, or upstream tool is named on a public marketing page, show its logo via the shared `apps/landing/src/components/provider-avatar.tsx` (`logo.dev` with `NEXT_PUBLIC_LOGO_DEV_TOKEN`, initial-letter fallback). Workflow primitives, channel cards, sourced stats, "under the hood" strips, study citations — all get logos. Borrowed trust is the moat: a user who already trusts Apollo / Claude / Resend will trust the same primitives orchestrated by distribute. NEVER hand-roll an SVG of a known provider's logo, NEVER ship the initial-letter fallback as the intended UI — set the env token in every env (preview, prod) and surface a build-time warning if it's missing. New provider mappings for the Channels grid live in `apps/landing/src/data/feature-providers.ts`; add an entry whenever a new feature lands so the grid card shows the provider stack. Stat-card / study-card mappings live next to the data (`SourcedStat.providerDomain`, `ExternalStudy.providerDomain`).
+
+### Feature maturity gating (alpha / beta / ga) — dashboard
+
+Immature features stay in prod (so the founder generates real data with them) but are hidden from non-staff via **PostHog feature flags**, NOT `NODE_ENV` (env-gating couples visibility to deploy — can't flip per-user, can't onboard a beta tester without a redeploy).
+
+Three levels:
+- `alpha` → staff only. PostHog flag targeted at the staff person-property `email = kevin.lourd@gmail.com`.
+- `beta` → opt-in cohort. PostHog flag targeted at a beta cohort.
+- `ga` → everyone. **No flag** — always rendered, never in the registry.
+
+**Single source of truth:** `apps/dashboard/src/lib/feature-gates.ts` — `FEATURE_GATES` maps a surface key → `{ flag, maturity }`. Flag naming convention is `<maturity>-<surface>` (e.g. `alpha-services-crm`).
+
+**Two primitives, reused for every gated surface:**
+- `useFeatureFlag(flag): boolean` (`src/lib/use-feature-flag.ts`) — **default-hidden**: returns `false` until PostHog loads flags, so a gated surface NEVER flashes for a non-staff viewer during the async flag fetch. Subscribes to `posthog.onFeatureFlags` so it re-resolves after `posthog.identify(...)` (which is what sets the `email` person-property the alpha flags target — done in `PostHogAuthTracker`).
+- `<MaturityBadge level>` (`src/components/maturity-badge.tsx`) — amber `alpha` / violet `beta` pill. Rendered next to a gated surface; since the surface is hidden from everyone else, in practice only staff/beta viewers ever see the badge.
+
+**Pattern:** call `useFeatureFlag` at the top of the component (hooks rule — never inside JSX conditionals), gate the render, attach the badge:
+```tsx
+const ok = useFeatureFlag(FEATURE_GATES["services-crm"].flag);
+// ...
+{ok && <SidebarLink item={{ ..., maturity: FEATURE_GATES["services-crm"].maturity }} />}
+```
+
+**Graduation needs no redeploy for the audience change** — widen the flag's targeting in the PostHog UI (email → cohort → 100%). Code changes only to relabel maturity, or to fully GA-ify (delete the flag + drop the gate so the surface renders unconditionally).
+
+**Flags are created/edited via the PostHog MCP** (`mcp__posthog__exec` → `create-feature-flag` / `update-feature-flag`), not by hand in code. Adding a new gated surface = add a registry line + create the matching flag.
+
+"Disappear for everyone" (not a per-viewer toggle) is a **hard removal of the JSX**, NOT a flag defaulted-off — a permanently-off flag is dead infra.
+
+First landed: distribute.you#batch-1 (org overview page + org sidebar). Flags `alpha-services-crm` (id 195453) + `alpha-keys` (id 195454).
 
 ### Dynasty-First Display Rule (Workflows Only)
 
