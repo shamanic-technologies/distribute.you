@@ -30,9 +30,25 @@ export interface FeatureGate {
 export const FEATURE_GATES = {
   "services-crm": { flag: "alpha-services-crm", maturity: "alpha" },
   keys: { flag: "alpha-keys", maturity: "alpha" },
+  "brand-info": { flag: "alpha-brand-info", maturity: "alpha" },
+  "brand-features": { flag: "alpha-brand-features", maturity: "alpha" },
 } as const satisfies Record<string, FeatureGate>;
 
 export type FeatureGateKey = keyof typeof FEATURE_GATES;
+
+/**
+ * Brand-page features that are GA — always rendered, no flag, no badge.
+ *
+ * Every OTHER feature on a brand overview page (sidebar list + body grid)
+ * renders under the `brand-features` alpha gate (staff-only). Consumed by both
+ * surfaces so they stay in lockstep — single source of truth. Graduate a
+ * feature by adding its slug here (then drop the whole gate once the
+ * `brand-features` flag goes GA).
+ */
+export const GA_BRAND_FEATURES: ReadonlySet<string> = new Set([
+  "pr-cold-email-outreach",
+  "sales-cold-email-outreach",
+]);
 
 /** Tailwind pill classes per maturity level. Saturated fills so the tag reads
  * clearly against the white sidebar (pale amber-on-amber was too faint). */

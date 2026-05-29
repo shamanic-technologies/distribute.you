@@ -219,6 +219,8 @@ const ok = useFeatureFlag(FEATURE_GATES["services-crm"].flag);
 
 First landed: distribute.you#batch-1 (org overview page + org sidebar). Flags `alpha-services-crm` (id 195453) + `alpha-keys` (id 195454).
 
+Batch-2 (brand overview page — sidebar + body). Flags `alpha-brand-info` (id 195479, gates the Brand Info button/card) + `alpha-brand-features` (id 195480, gates every feature EXCEPT the GA exceptions). The GA-exception slugs live in `apps/dashboard/src/lib/feature-gates.ts` → `GA_BRAND_FEATURES` (`pr-cold-email-outreach`, `sales-cold-email-outreach`) — single source of truth consumed by both the sidebar (`BrandLevelSidebar`) and the body (`brands/[brandId]/page.tsx`). The brand sidebar's "Outcomes" section header is GA (no flag, all users). When a feature graduates, add its slug to `GA_BRAND_FEATURES`; when the whole surface goes GA, widen the flag in PostHog and drop the gate.
+
 ### Dynasty-First Display Rule (Workflows Only)
 
 Always display `dynastyName` for workflows, never the versioned name. The only exception is settings/debug panels where the specific version matters — there, show the version number and versioned name alongside the dynasty name. This applies to page titles, table rows, cards, breadcrumbs, and any user-facing text.

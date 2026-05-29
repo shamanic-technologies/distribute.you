@@ -18,7 +18,7 @@ import {
 import { formatCount } from "@/lib/format-number";
 import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { MaturityBadge } from "@/components/maturity-badge";
-import { FEATURE_GATES, type Maturity } from "@/lib/feature-gates";
+import { FEATURE_GATES, GA_BRAND_FEATURES, type Maturity } from "@/lib/feature-gates";
 
 interface SidebarItem {
   id: string;
@@ -400,19 +400,36 @@ const SettingsIcon = () => (
 // Brand Level Sidebar
 function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandId: string; pathname: string }) {
   const { features } = useFeatures();
+  // Brand Info + immature features are alpha (staff-only). Default-hidden until
+  // PostHog resolves the flag, so they never flash for a non-staff viewer.
+  const brandInfoOk = useFeatureFlag(FEATURE_GATES["brand-info"].flag);
+  const featuresAlphaOk = useFeatureFlag(FEATURE_GATES["brand-features"].flag);
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
   const topItems: SidebarItem[] = [
     { id: "overview", label: "Overview", href: basePath, icon: <HomeIcon /> },
-    { id: "brand-info", label: "Brand Info", href: `${basePath}/brand-info`, icon: <InfoIcon /> },
   ];
+  if (brandInfoOk) {
+    topItems.push({
+      id: "brand-info",
+      label: "Brand Info",
+      href: `${basePath}/brand-info`,
+      icon: <InfoIcon />,
+      maturity: FEATURE_GATES["brand-info"].maturity,
+    });
+  }
 
-  const featureItems: SidebarItem[] = features.map((f) => ({
-    id: f.slug,
-    label: f.name,
-    href: `${basePath}/features/${f.slug}`,
-    icon: getFeatureIcon(f.slug, f.icon),
-    comingSoon: !f.implemented,
-  }));
+  // Every feature except the GA exceptions renders under the brand-features
+  // alpha gate; the exceptions stay GA (no flag, no badge).
+  const featureItems: SidebarItem[] = features
+    .filter((f) => GA_BRAND_FEATURES.has(f.slug) || featuresAlphaOk)
+    .map((f) => ({
+      id: f.slug,
+      label: f.name,
+      href: `${basePath}/features/${f.slug}`,
+      icon: getFeatureIcon(f.slug, f.icon),
+      comingSoon: !f.implemented,
+      maturity: GA_BRAND_FEATURES.has(f.slug) ? undefined : FEATURE_GATES["brand-features"].maturity,
+    }));
 
   // Brand-level outcome counts
   const { data: outletsData } = useAuthQuery(
@@ -460,6 +477,7 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
       ))}
       {outcomeItems.length > 0 && (
         <div className="pt-2 mt-2 border-t border-gray-100">
+          <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Outcomes</h4>
           {outcomeItems.map((item) => (
             <SidebarLink
               key={item.id}

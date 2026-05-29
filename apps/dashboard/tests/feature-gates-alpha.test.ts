@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
-import { FEATURE_GATES, MATURITY_STYLES } from "../src/lib/feature-gates";
+import { FEATURE_GATES, MATURITY_STYLES, GA_BRAND_FEATURES } from "../src/lib/feature-gates";
 
 const read = (rel: string) => fs.readFileSync(path.join(__dirname, rel), "utf-8");
 
@@ -11,10 +11,23 @@ describe("feature-gates registry", () => {
     expect(FEATURE_GATES["keys"]).toEqual({ flag: "alpha-keys", maturity: "alpha" });
   });
 
+  it("gates brand-info + brand-features as alpha with alpha-* flags", () => {
+    expect(FEATURE_GATES["brand-info"]).toEqual({ flag: "alpha-brand-info", maturity: "alpha" });
+    expect(FEATURE_GATES["brand-features"]).toEqual({ flag: "alpha-brand-features", maturity: "alpha" });
+  });
+
   it("every flag follows the <maturity>-<surface> naming convention", () => {
     for (const gate of Object.values(FEATURE_GATES)) {
       expect(gate.flag.startsWith(`${gate.maturity}-`)).toBe(true);
     }
+  });
+});
+
+describe("GA_BRAND_FEATURES — brand-page GA exceptions", () => {
+  it("contains exactly the two launched cold-email features", () => {
+    expect(GA_BRAND_FEATURES.has("pr-cold-email-outreach")).toBe(true);
+    expect(GA_BRAND_FEATURES.has("sales-cold-email-outreach")).toBe(true);
+    expect(GA_BRAND_FEATURES.size).toBe(2);
   });
 });
 
@@ -71,5 +84,43 @@ describe("context-sidebar — alpha gating + maturity badges", () => {
 
   it("OrgLevelSidebar keeps Billing ungated (GA)", () => {
     expect(org).toMatch(/label:\s*"Billing"/);
+  });
+
+  // Scope to the BrandLevelSidebar function body only.
+  const brand = sidebar.slice(
+    sidebar.indexOf("function BrandLevelSidebar"),
+    sidebar.indexOf("function BrandSettingsLevelSidebar"),
+  );
+
+  it("BrandLevelSidebar gates Brand Info behind its alpha flag", () => {
+    expect(brand.length).toBeGreaterThan(0);
+    expect(brand).toMatch(/FEATURE_GATES\["brand-info"\]/);
+  });
+
+  it("BrandLevelSidebar gates features behind brand-features alpha flag + GA set", () => {
+    expect(brand).toMatch(/FEATURE_GATES\["brand-features"\]/);
+    expect(brand).toMatch(/GA_BRAND_FEATURES/);
+  });
+
+  it("BrandLevelSidebar renders a GA Outcomes section header (for all users)", () => {
+    expect(brand).toMatch(/Outcomes<\/h4>/);
+  });
+});
+
+describe("brand overview page — alpha gating + Outcomes", () => {
+  const page = read(
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
+  );
+
+  it("imports the shared gating primitives", () => {
+    expect(page).toMatch(/useFeatureFlag/);
+    expect(page).toMatch(/MaturityBadge/);
+    expect(page).toMatch(/FEATURE_GATES/);
+    expect(page).toMatch(/GA_BRAND_FEATURES/);
+  });
+
+  it("gates the Brand Info card + features behind their alpha flags", () => {
+    expect(page).toMatch(/FEATURE_GATES\["brand-info"\]/);
+    expect(page).toMatch(/FEATURE_GATES\["brand-features"\]/);
   });
 });
