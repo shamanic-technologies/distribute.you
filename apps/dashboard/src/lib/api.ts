@@ -2533,6 +2533,97 @@ export async function generateQuoteDraft(
   );
 }
 
+// ───────── Prompt assignment (per-feature generation prompt) ────────────────
+// The prompt the GENERATE button renders for a feature is resolved by
+// content-generation-service: feature assignment ▸ platform default. The editor
+// reads the resolved prompt, lets the operator fork-edit it, and the fork
+// becomes the feature's prompt going forward. Scope is feature-level (global),
+// the prompt is brand-agnostic.
+
+export interface PromptVariable {
+  name: string;
+  description: string;
+}
+
+export interface PromptAssignment {
+  featureSlug: string;
+  /** The resolved prompt-template type/slug, e.g. `expert-quote-pitch-v2`. */
+  promptType: string;
+  prompt: string;
+  variables: PromptVariable[];
+  /** True when no override exists and this is the platform default. */
+  isDefault: boolean;
+}
+
+const PromptVariableSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+});
+
+const PromptAssignmentSchema = z.object({
+  featureSlug: z.string(),
+  promptType: z.string(),
+  prompt: z.string(),
+  variables: z.array(PromptVariableSchema),
+  isDefault: z.boolean(),
+});
+
+/** Reads the resolved generation prompt for a feature (default or fork). */
+export async function getPromptAssignment(
+  featureSlug: string,
+  token?: string,
+): Promise<PromptAssignment> {
+  const raw = await apiCall<unknown>(
+    `/content/prompt-assignments${buildQuery({ featureSlug })}`,
+    { token },
+  );
+  const parsed = PromptAssignmentSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getPromptAssignment: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getPromptAssignment: invalid response shape");
+  }
+  return parsed.data;
+}
+
+export interface SavePromptAssignmentBody {
+  featureSlug: string;
+  prompt: string;
+  variables: PromptVariable[];
+}
+
+/**
+ * Forks the feature's current prompt with the edited text + variables and
+ * reassigns the feature to the fork. Backend rejects with 400 if the edited
+ * prompt drops/renames/adds a template variable.
+ */
+export async function savePromptAssignment(
+  body: SavePromptAssignmentBody,
+  token?: string,
+): Promise<PromptAssignment> {
+  const requestBody: Record<string, unknown> = {
+    featureSlug: body.featureSlug,
+    prompt: body.prompt,
+    variables: body.variables,
+  };
+  const raw = await apiCall<unknown>(`/content/prompt-assignments`, {
+    token,
+    method: "PUT",
+    body: requestBody,
+  });
+  const parsed = PromptAssignmentSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] savePromptAssignment: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] savePromptAssignment: invalid response shape");
+  }
+  return parsed.data;
+}
+
 export type SubmitQuotePitchStatus =
   | "submitted"
   | "already_submitted"
