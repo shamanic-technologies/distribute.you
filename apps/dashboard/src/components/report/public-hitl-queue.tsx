@@ -189,9 +189,9 @@ function DetailPanel({
     setSubmitIsError(false);
     try {
       // Route Handler composes the pitch from three calls (platform-prompts
-      // + brands/extract-fields + orgs/quote-pitches/generate) and needs the
-      // opportunity context (text / outlet / deadline) as content-gen
-      // template variables.
+      // + brands/extract-fields + content/generate-expert-quote-pitch) and
+      // needs the full opportunity context for the {{request}} +
+      // {{additionalContext}} template variables.
       const res = await fetch(draftUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -199,7 +199,10 @@ function DetailPanel({
           opportunityId: opportunity.opportunityId,
           opportunityText: opportunity.opportunityText,
           mediaOutlet: opportunity.mediaOutlet,
+          journalistName: opportunity.journalistName,
           deadline: opportunity.deadline,
+          whyRelevant: opportunity.whyRelevant,
+          category: opportunity.category,
         }),
       });
       if (!res.ok) {

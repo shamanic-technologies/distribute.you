@@ -290,10 +290,20 @@ describe("HITL helpers — journalists-quotes-service v0.8.1 contract (x-brand-i
 describe("Authed HITL quote-requests page — handleGenerate passes opportunity context", () => {
   const handleGenerateBlock =
     quoteRequestsContent.split("const handleGenerate")[1]?.split("};")[0] ?? "";
-  it("forwards opportunityText/mediaOutlet/deadline into the generate mutation", () => {
-    expect(handleGenerateBlock).toContain("opportunityText");
-    expect(handleGenerateBlock).toContain("mediaOutlet");
-    expect(handleGenerateBlock).toContain("deadline");
+  it("assembles the expert-quote-pitch template contract (brand/request/additionalContext)", () => {
+    // The deployed template (DIS-52) declares brand/request/additionalContext.
+    // handleGenerate builds those three via the shared helpers, which carry the
+    // opportunity context (question/source/outlet/deadline) into {{request}}.
+    expect(handleGenerateBlock).toContain("brand: buildBrandVariableFromInputs");
+    expect(handleGenerateBlock).toContain("request: buildQuoteRequestVariable");
+    expect(handleGenerateBlock).toContain(
+      "additionalContext: buildAdditionalContextVariable",
+    );
+  });
+  it("no longer assembles legacy flat template variables", () => {
+    expect(handleGenerateBlock).not.toContain("opportunityText:");
+    expect(handleGenerateBlock).not.toContain("spokesperson:");
+    expect(handleGenerateBlock).not.toContain("expertiseTopics:");
   });
   it("no longer passes campaignId into the generate mutation body", () => {
     expect(handleGenerateBlock).not.toMatch(/campaignId\s*[:,]/);

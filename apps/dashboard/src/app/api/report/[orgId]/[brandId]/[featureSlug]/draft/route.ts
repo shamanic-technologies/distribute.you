@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { adminGet, adminPost } from "@/lib/report-api";
+import {
+  buildQuoteRequestVariable,
+  buildAdditionalContextVariable,
+} from "@/lib/quote-pitch-variables";
 
 // Public-report draft generation. The upstream `/orgs/quote-requests/:id/draft`
 // endpoint on journalists-quotes-service was removed in v0.8.1 (PR #41,
@@ -26,22 +30,22 @@ interface RouteContext {
 const HITL_SLUG = "pr-expert-quote-opportunities";
 const PROMPT_TYPE = "expert-quote-pitch";
 
-// Template variables that come from the SELECTED OPPORTUNITY row, not from
-// brand-service. The client always has these on the ranked-queue row, so the
-// dashboard composes them in directly rather than trying to brand-extract
-// them. If the template adds a new opportunity-context variable, list it
-// here so the dashboard does not mistakenly try to brand-extract it.
-const OPPORTUNITY_VARS = new Set([
-  "opportunityText",
-  "mediaOutlet",
-  "deadline",
-]);
+// Template variables built from the SELECTED OPPORTUNITY row, not brand-service.
+// The deployed `expert-quote-pitch` template (DIS-52) declares three variables:
+// {{brand}} (brand-derivable), {{request}} + {{additionalContext}} (opportunity
+// context the client already holds). Only {{brand}} is brand-extracted; the
+// other two are composed from the opportunity. If the template adds a new
+// opportunity-context variable, list its name here so it is not brand-extracted.
+const CLIENT_SUPPLIED_VARS = new Set(["request", "additionalContext"]);
 
 interface DraftRequestBody {
   opportunityId?: string;
   opportunityText?: string;
   mediaOutlet?: string | null;
+  journalistName?: string | null;
   deadline?: string | null;
+  whyRelevant?: string | null;
+  category?: string | null;
 }
 
 interface PromptTemplate {
@@ -94,7 +98,15 @@ export async function POST(req: Request, ctx: RouteContext) {
     return NextResponse.json({ error: "invalid JSON body" }, { status: 400 });
   }
 
-  const { opportunityId, opportunityText, mediaOutlet, deadline } = body;
+  const {
+    opportunityId,
+    opportunityText,
+    mediaOutlet,
+    journalistName,
+    deadline,
+    whyRelevant,
+    category,
+  } = body;
   if (!opportunityId || !opportunityText) {
     return NextResponse.json(
       { error: "opportunityId and opportunityText are required" },
@@ -117,7 +129,7 @@ export async function POST(req: Request, ctx: RouteContext) {
     // 2. Split template variables into brand-derivable (extract via
     //    brand-service) vs opportunity-context (supplied by client).
     const brandFields = template.variables.filter(
-      (v) => !OPPORTUNITY_VARS.has(v.name),
+      (v) => !CLIENT_SUPPLIED_VARS.has(v.name),
     );
 
     const extracted = await adminPost<ExtractFieldsResponse>(
@@ -139,13 +151,21 @@ export async function POST(req: Request, ctx: RouteContext) {
       brandValues[v.name] = extracted.fields?.[v.name]?.value ?? null;
     }
 
-    // 3. Assemble variables (brand-extracted + opportunity context) and
+    // 3. Assemble the three template variables ({{brand}} from brand-extract,
+    //    {{request}} + {{additionalContext}} from opportunity context) and
     //    render via content-generation-service /generate-expert-quote-pitch.
+    const opportunityContext = {
+      opportunityText,
+      mediaOutlet,
+      journalistName,
+      deadline,
+      whyRelevant,
+      category,
+    };
     const variables: Record<string, unknown> = {
       ...brandValues,
-      opportunityText,
-      mediaOutlet: mediaOutlet ?? null,
-      deadline: deadline ?? null,
+      request: buildQuoteRequestVariable(opportunityContext),
+      additionalContext: buildAdditionalContextVariable(opportunityContext),
     };
 
     const result = await adminPost<GenerateResponse>(
