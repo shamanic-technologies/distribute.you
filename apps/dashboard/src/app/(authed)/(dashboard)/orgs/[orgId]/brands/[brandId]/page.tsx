@@ -23,6 +23,9 @@ import { Skeleton } from "@/components/skeleton";
 import { formatCount } from "@/lib/format-number";
 import { useFeatures } from "@/lib/features-context";
 import { pollOptions } from "@/lib/query-options";
+import { useFeatureFlag } from "@/lib/use-feature-flag";
+import { MaturityBadge } from "@/components/maturity-badge";
+import { FEATURE_GATES, GA_BRAND_FEATURES } from "@/lib/feature-gates";
 import {
   GlobeAltIcon,
   MegaphoneIcon,
@@ -120,6 +123,14 @@ export default function BrandOverviewPage() {
   const brandId = params.brandId as string;
   const orgId = params.orgId as string;
   const { features, getFeature: getFeatureDef } = useFeatures();
+  // Brand Info + immature features are alpha (staff-only). Default-hidden until
+  // PostHog resolves the flag, so they never flash for a non-staff viewer.
+  const brandInfoOk = useFeatureFlag(FEATURE_GATES["brand-info"].flag);
+  const featuresAlphaOk = useFeatureFlag(FEATURE_GATES["brand-features"].flag);
+  const visibleFeatures = useMemo(
+    () => features.filter((f) => GA_BRAND_FEATURES.has(f.slug) || featuresAlphaOk),
+    [features, featuresAlphaOk],
+  );
 
   const { data: brandData, isLoading: brandLoading } = useAuthQuery(
     ["brand", brandId],
@@ -253,26 +264,31 @@ export default function BrandOverviewPage() {
         )}
       </div>
 
-      {/* Brand Info Card */}
-      <Link
-        href={`/orgs/${orgId}/brands/${brandId}/brand-info`}
-        className="block bg-white rounded-lg border border-gray-200 p-5 mb-6 hover:border-brand-300 hover:shadow-sm transition group"
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-lg">
-              &#8505;&#65039;
+      {/* Brand Info Card — alpha (staff-only) */}
+      {brandInfoOk && (
+        <Link
+          href={`/orgs/${orgId}/brands/${brandId}/brand-info`}
+          className="block bg-white rounded-lg border border-gray-200 p-5 mb-6 hover:border-brand-300 hover:shadow-sm transition group"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-lg">
+                &#8505;&#65039;
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-medium text-gray-900 group-hover:text-brand-600 transition">Brand Info</h3>
+                  <MaturityBadge level={FEATURE_GATES["brand-info"].maturity} />
+                </div>
+                <p className="text-sm text-gray-500">Company details, value proposition, sales profile</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-medium text-gray-900 group-hover:text-brand-600 transition">Brand Info</h3>
-              <p className="text-sm text-gray-500">Company details, value proposition, sales profile</p>
-            </div>
+            <svg className="w-5 h-5 text-gray-400 group-hover:text-brand-600 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
           </div>
-          <svg className="w-5 h-5 text-gray-400 group-hover:text-brand-600 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </div>
-      </Link>
+        </Link>
+      )}
 
       {/* Outcomes Section — render every card with a skeleton until ALL data is ready,
           then swap every card's count together. Avoids staggered wave on first load. */}
@@ -327,9 +343,10 @@ export default function BrandOverviewPage() {
           </div>
         ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {features.map((f) => {
+          {visibleFeatures.map((f) => {
             const section = workflowSections.find(s => s.featureSlug === f.slug);
             const activeCampaigns = section?.campaigns.filter(c => c.status === "ongoing") ?? [];
+            const isAlpha = !GA_BRAND_FEATURES.has(f.slug);
 
             if (f.implemented) {
               return (
@@ -341,7 +358,10 @@ export default function BrandOverviewPage() {
                   <div className="flex items-start gap-3">
                     <FeatureIcon featureSlug={f.slug} icon={f.icon} className="w-8 h-8 text-brand-600" />
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-gray-900 group-hover:text-brand-600 transition">{f.name}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-medium text-gray-900 group-hover:text-brand-600 transition">{f.name}</h3>
+                        {isAlpha && <MaturityBadge level={FEATURE_GATES["brand-features"].maturity} />}
+                      </div>
                       <p className="text-sm text-gray-500 mt-1">{f.description}</p>
                       {section && (
                         <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
@@ -371,6 +391,7 @@ export default function BrandOverviewPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="font-medium text-gray-400">{f.name}</h3>
+                      {isAlpha && <MaturityBadge level={FEATURE_GATES["brand-features"].maturity} />}
                       <span className="text-[10px] bg-gray-200 text-gray-400 px-1.5 py-0.5 rounded-full whitespace-nowrap">
                         Coming soon
                       </span>
