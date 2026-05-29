@@ -20,6 +20,8 @@ pnpm --filter @distribute/<package> test tests/unit/specific.test.ts       # sin
 
 **Next 16 `next lint` + `pnpm --filter` is broken.** `pnpm --filter @distribute/dashboard lint` fails with `Invalid project directory provided, no such directory: apps/dashboard/lint` — Next 16 misreads the forwarded script name as a positional dir arg. Run from the package dir instead: `cd apps/dashboard && npx next lint`. Direct invocation is clean (0/0). Same pattern applies to other Next apps in this repo.
 
+**RTK summarizes `next lint` / `next build` output — don't trust the summary.** The rtk hook rewrites these commands and replaces real stdout with a one-line `Errors: N | Warnings: M` (plus a fake sub-second `Time:`). The count can be WRONG — observed a phantom `Errors: 1` when the real lint was clean (0 results). To verify a frontend lint/build for real: bypass rtk with `rtk proxy -- npx next build` (the `--` is required, else rtk's own parser eats `--file`/flags), OR have Next write the result itself — `npx next lint --format compact --output-file <f>` then read `<f>` (Next writes the file, rtk can't touch it). Trust the real log + process exit code, never the rtk one-liner.
+
 **Shared workspace packages must be built before app tests/build.** Vitest + Vite resolve workspace deps via their `dist/` (per `package.json` exports), so an unbuilt `shared/*` package surfaces as `Failed to resolve entry for package "@distribute/<name>"` in unrelated test files. Run `pnpm -r build` (or `pnpm --filter @distribute/<name> build`) once after `pnpm install` or after pulling changes that touch `shared/`.
 
 ## Release flow (distribute.you specifics)
