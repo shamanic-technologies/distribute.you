@@ -15,6 +15,11 @@ import {
   useGenerateQuoteDraft,
   useSubmitQuotePitch,
 } from "@/lib/use-quote-opportunities";
+import {
+  buildBrandVariableFromInputs,
+  buildQuoteRequestVariable,
+  buildAdditionalContextVariable,
+} from "@/lib/quote-pitch-variables";
 
 const HITL_SLUG = "pr-expert-quote-opportunities";
 const PITCH_MIN = 100;
@@ -210,25 +215,21 @@ function DetailPanel({
   const handleGenerate = () => {
     if (!featureInputs) return;
     setSubmitResult(null);
-    // v0.8.1 contract: caller assembles all template variables (5 brand-side
-    // from operator-supplied campaign inputs + 3 opportunity-context fields)
-    // and posts to /v1/orgs/quote-pitches/generate (content-generation-service
-    // expert-quote-pitch template). Operator UX unchanged — featureInputs
-    // still drive the 5 brand-side variables.
+    // The deployed `expert-quote-pitch` template (DIS-52) declares exactly
+    // three variables: {{brand}}, {{request}}, {{additionalContext}}. Assemble
+    // those three keys — operator `featureInputs` drive {{brand}}, the selected
+    // opportunity drives {{request}} + {{additionalContext}}. Sending flat keys
+    // (spokesperson, opportunityText, …) renders the template empty → the model
+    // gets no grounding → low-quality pitch.
     generateMutation.mutate(
       {
         body: {
           brandId,
           featureSlug: HITL_SLUG,
           variables: {
-            spokesperson: featureInputs.spokesperson ?? "",
-            expertiseTopics: featureInputs.expertiseTopics ?? "",
-            responseStyle: featureInputs.responseStyle ?? "",
-            companyContext: featureInputs.companyContext ?? "",
-            valueProposition: featureInputs.valueProposition ?? "",
-            opportunityText: opportunity.opportunityText,
-            mediaOutlet: opportunity.mediaOutlet,
-            deadline: opportunity.deadline,
+            brand: buildBrandVariableFromInputs(featureInputs),
+            request: buildQuoteRequestVariable(opportunity),
+            additionalContext: buildAdditionalContextVariable(opportunity),
           },
         },
       },
