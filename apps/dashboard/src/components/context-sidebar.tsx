@@ -16,6 +16,9 @@ import {
   listBrandArticles,
 } from "@/lib/api";
 import { formatCount } from "@/lib/format-number";
+import { useFeatureFlag } from "@/lib/use-feature-flag";
+import { MaturityBadge } from "@/components/maturity-badge";
+import { FEATURE_GATES, type Maturity } from "@/lib/feature-gates";
 
 interface SidebarItem {
   id: string;
@@ -24,6 +27,7 @@ interface SidebarItem {
   icon: React.ReactNode;
   comingSoon?: boolean;
   badge?: number;
+  maturity?: Maturity;
 }
 
 function SidebarLink({ item, isActive }: { item: SidebarItem; isActive: boolean }) {
@@ -44,6 +48,7 @@ function SidebarLink({ item, isActive }: { item: SidebarItem; isActive: boolean 
         {item.icon}
       </span>
       <span className="flex-1">{item.label}</span>
+      {item.maturity && <MaturityBadge level={item.maturity} />}
       {item.badge !== undefined && (
         <span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? "bg-brand-100 text-brand-700" : "bg-gray-100 text-gray-500"}`}>
           {formatCount(item.badge)}
@@ -311,19 +316,14 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
 
 // Org Level Sidebar
 function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string }) {
-  const { features } = useFeatures();
+  // Features are no longer surfaced at the org granularity — they live under
+  // brands and the app-level nav. CRM + Keys are alpha (staff-only); Billing is GA.
+  const crmEnabled = useFeatureFlag(FEATURE_GATES["services-crm"].flag);
+  const keysEnabled = useFeatureFlag(FEATURE_GATES["keys"].flag);
   const topItems: SidebarItem[] = [
     { id: "overview", label: "Overview", href: `/orgs/${orgId}`, icon: <HomeIcon /> },
     { id: "brands", label: "Brands", href: `/orgs/${orgId}/brands`, icon: <BrandIcon /> },
   ];
-
-  const featureItems: SidebarItem[] = features.map((f) => ({
-    id: f.slug,
-    label: f.name,
-    href: `/features/${f.slug}`,
-    icon: getFeatureIcon(f.slug, f.icon),
-    comingSoon: !f.implemented,
-  }));
 
   return (
     <SidebarSection title="Organization">
@@ -334,28 +334,34 @@ function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string 
           isActive={item.id === "overview" ? pathname === item.href : pathname.startsWith(item.href)}
         />
       ))}
-      <div className="pt-2 mt-2 border-t border-gray-100">
-        <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Features</h4>
-        {featureItems.map((item) => (
+      {crmEnabled && (
+        <div className="pt-2 mt-2 border-t border-gray-100">
+          <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Services</h4>
           <SidebarLink
-            key={item.id}
-            item={item}
-            isActive={pathname.startsWith(item.href)}
+            item={{
+              id: "crm",
+              label: "CRM (Google)",
+              href: `/orgs/${orgId}/services/crm`,
+              icon: <CrmIcon />,
+              maturity: FEATURE_GATES["services-crm"].maturity,
+            }}
+            isActive={pathname.startsWith(`/orgs/${orgId}/services/crm`)}
           />
-        ))}
-      </div>
+        </div>
+      )}
       <div className="pt-2 mt-2 border-t border-gray-100">
-        <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Services</h4>
-        <SidebarLink
-          item={{ id: "crm", label: "CRM (Google)", href: `/orgs/${orgId}/services/crm`, icon: <CrmIcon /> }}
-          isActive={pathname.startsWith(`/orgs/${orgId}/services/crm`)}
-        />
-      </div>
-      <div className="pt-2 mt-2 border-t border-gray-100">
-        <SidebarLink
-          item={{ id: "api-keys", label: "Keys", href: `/orgs/${orgId}/api-keys`, icon: <KeyIcon /> }}
-          isActive={pathname.startsWith(`/orgs/${orgId}/api-keys`) || pathname.startsWith(`/orgs/${orgId}/provider-keys`)}
-        />
+        {keysEnabled && (
+          <SidebarLink
+            item={{
+              id: "api-keys",
+              label: "Keys",
+              href: `/orgs/${orgId}/api-keys`,
+              icon: <KeyIcon />,
+              maturity: FEATURE_GATES["keys"].maturity,
+            }}
+            isActive={pathname.startsWith(`/orgs/${orgId}/api-keys`) || pathname.startsWith(`/orgs/${orgId}/provider-keys`)}
+          />
+        )}
         <SidebarLink
           item={{ id: "billing", label: "Billing", href: `/orgs/${orgId}/billing`, icon: <BillingIcon /> }}
           isActive={pathname.startsWith(`/orgs/${orgId}/billing`)}
