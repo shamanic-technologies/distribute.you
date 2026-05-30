@@ -93,7 +93,7 @@ export default function OnboardingPage() {
           The done-for-you distribution automation platform.
         </p>
         <p className="text-gray-500 mb-8 max-w-md mx-auto">
-          Full control over your distribution strategy. Crowdsourced best practices from the industry — always the best available strategy, at API prices.
+          Full control over your distribution strategy. Crowdsourced best practices from the industry — always the best available strategy. $2 free to start, no subscription.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 text-left">
           <div className="bg-gray-50 rounded-xl p-4">
@@ -121,7 +121,7 @@ export default function OnboardingPage() {
               </svg>
             </div>
             <h3 className="font-medium text-gray-900 text-sm mb-1">Crowdsourced</h3>
-            <p className="text-xs text-gray-500">Best strategies from the community, at API-level prices</p>
+            <p className="text-xs text-gray-500">Proven best strategies from the community</p>
           </div>
         </div>
         <button
