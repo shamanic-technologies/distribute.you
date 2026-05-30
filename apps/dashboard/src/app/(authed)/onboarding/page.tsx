@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useOrganizationList } from "@clerk/nextjs";
+import { useSearchParams } from "next/navigation";
+import { useOrganizationList, useOrganization } from "@clerk/nextjs";
 import posthog from "posthog-js";
 import { extractDomain } from "@/lib/extract-domain";
 
@@ -10,6 +11,12 @@ type Step = "value-prop" | "type-selection" | "url-input";
 
 export default function OnboardingPage() {
   const { createOrganization, setActive } = useOrganizationList();
+  const { organization } = useOrganization();
+  const searchParams = useSearchParams();
+  // The "New organization" dropdown entry passes ?new=1 to force a brand-new org
+  // even when a populated org is already active. A fresh signup arrives here with
+  // no param and an auto-created (brand-less) active org → that org is reused.
+  const forceNew = searchParams.get("new") === "1";
   const [step, setStep] = useState<Step>("value-prop");
   const [accountType, setAccountType] = useState<AccountType | null>(null);
   const [url, setUrl] = useState("");
@@ -29,7 +36,7 @@ export default function OnboardingPage() {
   };
 
   const handleSubmit = async () => {
-    if (!domain || !accountType || !createOrganization || !setActive) return;
+    if (!domain || !accountType) return;
     setSubmitting(true);
     setError(null);
     posthog.capture("onboarding_workspace_create_started", {
@@ -38,15 +45,27 @@ export default function OnboardingPage() {
     });
     try {
       const brandUrl = /^https?:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`;
-      const org = await createOrganization({ name: domain });
-      await setActive({ organization: org.id });
+      // Reuse the active org (signup auto-creates one) unless ?new=1 forces a
+      // brand-new org. The org now exists before onboarding runs, so creating a
+      // second one would orphan the auto-created org with no brand.
+      const reuseOrg = !forceNew && organization !== null;
+      let targetOrgId: string;
+      if (reuseOrg) {
+        targetOrgId = organization!.id;
+      } else {
+        if (!createOrganization || !setActive) return;
+        const org = await createOrganization({ name: domain });
+        await setActive({ organization: org.id });
+        targetOrgId = org.id;
+      }
       posthog.capture("onboarding_workspace_create_completed", {
         account_type: accountType,
         domain,
-        org_id: org.id,
+        org_id: targetOrgId,
+        reused_org: reuseOrg,
       });
       // Full reload so Clerk session cookie is updated before API calls
-      window.location.href = `/orgs/${org.id}/brands?autoCreate=${encodeURIComponent(brandUrl)}`;
+      window.location.href = `/orgs/${targetOrgId}/brands?autoCreate=${encodeURIComponent(brandUrl)}`;
     } catch (err) {
       posthog.capture("onboarding_workspace_create_failed", {
         account_type: accountType,

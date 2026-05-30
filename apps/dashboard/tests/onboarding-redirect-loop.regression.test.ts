@@ -26,8 +26,10 @@ describe("Dashboard should not loop to onboarding on API errors", () => {
   });
 
   it("DashboardContent should check isError before redirecting", () => {
-    expect(layoutContent).toContain("!isError");
-    expect(layoutContent).toMatch(/!hasOrg\s*&&\s*!isError/);
+    // DIS-91: the gate now keys on brand count, but it must STILL bail out on
+    // error before any redirect so a failed API call can't loop into onboarding.
+    expect(layoutContent).toContain("isError");
+    expect(layoutContent).toMatch(/if\s*\(\s*isLoading\s*\|\|\s*isError\s*\)\s*return/);
   });
 
   it("DashboardContent should show retry UI on error", () => {
