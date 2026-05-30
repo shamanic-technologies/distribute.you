@@ -4,33 +4,38 @@ import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptionsSlow } from "@/lib/query-options";
-import { listQuoteRequests, type QuoteRequest } from "@/lib/api";
+import { listRankedOpportunities, type RankedOpportunity } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 
+// Reads the SAME gold catalog (GET /orgs/opportunities, scored above
+// SCORE_THRESHOLD) that the sidebar badge counts and the campaign HITL queue
+// renders — so the "Quote requests" badge always equals the page count.
+// Brand-scoped (no campaignId) → brand-set wide "across all campaigns".
 export default function FeatureQuoteRequestsPage() {
   const params = useParams();
-  const featureSlug = params.featureSlug as string;
+  const brandId = params.brandId as string;
   const [search, setSearch] = useState("");
 
   const { data, isPending } = useAuthQuery(
-    ["featureQuoteRequests", featureSlug],
-    () => listQuoteRequests({ limit: 200 }),
+    ["rankedOpportunities", { brandId }],
+    () => listRankedOpportunities({ brandId, limit: 50 }),
     pollOptionsSlow,
   );
 
-  const requests = data?.providerQuoteRequests ?? [];
+  const opportunities = data?.opportunities ?? [];
+  const total = data?.total ?? opportunities.length;
 
   const filtered = useMemo(() => {
-    if (!search) return requests;
+    if (!search) return opportunities;
     const q = search.toLowerCase();
-    return requests.filter(
-      (r) =>
-        r.opportunityText.toLowerCase().includes(q) ||
-        (r.mediaOutlet?.toLowerCase().includes(q) ?? false) ||
-        (r.journalistName?.toLowerCase().includes(q) ?? false) ||
-        (r.category?.toLowerCase().includes(q) ?? false),
+    return opportunities.filter(
+      (o) =>
+        o.opportunityText.toLowerCase().includes(q) ||
+        (o.mediaOutlet?.toLowerCase().includes(q) ?? false) ||
+        (o.journalistName?.toLowerCase().includes(q) ?? false) ||
+        (o.category?.toLowerCase().includes(q) ?? false),
     );
-  }, [requests, search]);
+  }, [opportunities, search]);
 
   return (
     <div className="p-4 md:p-8" data-testid="feature-quote-requests-page">
@@ -38,11 +43,11 @@ export default function FeatureQuoteRequestsPage() {
         <h1 className="font-display text-2xl font-bold text-gray-800">
           Quote requests
           <span className="ml-2 text-sm font-normal text-gray-500">
-            ({requests.length.toLocaleString("en-US")} across all campaigns)
+            ({total.toLocaleString("en-US")} ranked across all campaigns)
           </span>
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          Journalist quote opportunities pulled for this org.
+          Ranked journalist quote opportunities scored for this brand.
         </p>
       </div>
 
@@ -51,13 +56,13 @@ export default function FeatureQuoteRequestsPage() {
         onChange={setSearch}
         placeholder="Search by opportunity, outlet, journalist, or category..."
         resultCount={filtered.length}
-        totalCount={requests.length}
+        totalCount={opportunities.length}
       />
 
       {isPending && !data ? (
         <ListSkeleton />
-      ) : requests.length === 0 ? (
-        <EmptyState message="No quote requests yet. They'll appear here after the next run." />
+      ) : opportunities.length === 0 ? (
+        <EmptyState message="No ranked opportunities yet. They appear here after the next scoring run." />
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <table className="w-full text-sm">
@@ -65,13 +70,14 @@ export default function FeatureQuoteRequestsPage() {
               <tr>
                 <th className="px-4 py-2 text-left">Opportunity</th>
                 <th className="px-4 py-2 text-left">Outlet</th>
+                <th className="px-4 py-2 text-left">Score</th>
                 <th className="px-4 py-2 text-left">Deadline</th>
                 <th className="px-4 py-2 text-left">Source</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((r) => (
-                <Row key={r.id} request={r} />
+              {filtered.map((o) => (
+                <Row key={o.opportunityId} opportunity={o} />
               ))}
             </tbody>
           </table>
@@ -81,19 +87,19 @@ export default function FeatureQuoteRequestsPage() {
   );
 }
 
-function Row({ request }: { request: QuoteRequest }) {
+function Row({ opportunity }: { opportunity: RankedOpportunity }) {
   return (
     <tr className="border-t border-gray-100">
       <td className="px-4 py-3 text-gray-800 max-w-md">
         <div
           className="text-xs text-gray-700 line-clamp-3"
-          title={request.opportunityText}
+          title={opportunity.opportunityText}
         >
-          {request.opportunityText}
+          {opportunity.opportunityText}
         </div>
-        {request.pitchUrl && (
+        {opportunity.pitchUrl && (
           <a
-            href={request.pitchUrl}
+            href={opportunity.pitchUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="text-xs text-blue-600 mt-1 inline-block"
@@ -102,11 +108,16 @@ function Row({ request }: { request: QuoteRequest }) {
           </a>
         )}
       </td>
-      <td className="px-4 py-3 text-gray-600">{request.mediaOutlet ?? "—"}</td>
+      <td className="px-4 py-3 text-gray-600">{opportunity.mediaOutlet ?? "—"}</td>
       <td className="px-4 py-3 text-gray-600">
-        {request.deadline ? new Date(request.deadline).toLocaleDateString() : "—"}
+        {Math.round(opportunity.score * 100)}
       </td>
-      <td className="px-4 py-3 text-gray-600">{request.provider}</td>
+      <td className="px-4 py-3 text-gray-600">
+        {opportunity.deadline
+          ? new Date(opportunity.deadline).toLocaleDateString()
+          : "—"}
+      </td>
+      <td className="px-4 py-3 text-gray-600">{opportunity.provider}</td>
     </tr>
   );
 }

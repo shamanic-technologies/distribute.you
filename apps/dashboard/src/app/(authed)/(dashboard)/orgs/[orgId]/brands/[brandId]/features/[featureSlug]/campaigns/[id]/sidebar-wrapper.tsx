@@ -7,7 +7,7 @@ import { CampaignSidebar } from "@/components/campaign-sidebar";
 import { useCampaign } from "@/lib/campaign-context";
 import { useFeatures } from "@/lib/features-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listWorkflows, listCampaignOutlets, listJournalistsEnriched, listMediaKitsByCampaign, fetchFeatureStats } from "@/lib/api";
+import { listWorkflows, listCampaignOutlets, listJournalistsEnriched, listMediaKitsByCampaign, fetchFeatureStats, listRankedOpportunities } from "@/lib/api";
 
 interface Props {
   orgId: string;
@@ -55,6 +55,15 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
     { enabled: entityNames.includes("press-kits"), refetchInterval: 5_000 },
   );
 
+  // Gold catalog (GET /orgs/opportunities) — same source the quote-requests
+  // page renders, so the sidebar badge equals the page count (not the silver
+  // feature-stat). Shared queryKey dedups with the page's own fetch.
+  const { data: rankedOppsData, isLoading: rankedOppsLoading } = useAuthQuery(
+    ["rankedOpportunities", { brandId }],
+    () => listRankedOpportunities({ brandId, limit: 50 }),
+    { enabled: entityNames.includes("quote-requests"), refetchInterval: 5_000 },
+  );
+
   const entityLoading: Record<string, boolean> = {
     leads: campaignLoading,
     companies: campaignLoading,
@@ -63,6 +72,7 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
     emails: campaignLoading,
     articles: featureStatsLoading,
     "press-kits": pressKitsLoading,
+    "quote-requests": rankedOppsLoading,
   };
 
   const workflowId = useMemo(() => {
@@ -88,6 +98,7 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
     journalists: journalistsData?.journalists?.length,
     articles: undefined,
     "press-kits": pressKitsData?.length,
+    "quote-requests": rankedOppsData?.total,
   };
 
   // Build entity counts: prefer listing total (shows ALL items), fall back to feature stats
