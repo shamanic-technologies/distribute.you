@@ -112,6 +112,22 @@ describe("Context sidebar", () => {
     expect(content).toContain('"Workflows"');
     expect(content).toContain('`${basePath}/workflows`');
   });
+
+  it("should NOT have orphaned featureSettings nav level (settings page route was removed)", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    expect(content).not.toContain("featureSettings");
+    expect(content).not.toContain("FeatureSettingsLevelSidebar");
+  });
+
+  it("should NOT link feature-level Settings to a non-existent settings route", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    expect(content).not.toContain('id: "settings", label: "Settings"');
+  });
+
+  it("should keep the feature-level Workflows link after removing dead Settings link", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    expect(content).toContain('`${basePath}/workflows`');
+  });
 });
 
 describe("Old sidebar removed", () => {

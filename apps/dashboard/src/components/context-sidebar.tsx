@@ -231,7 +231,7 @@ function getFeatureIcon(featureSlug: string, icon?: string): React.ReactNode {
 }
 
 interface NavigationLevel {
-  type: "app" | "appFeature" | "org" | "brand" | "brandSettings" | "feature" | "featureSettings" | "workflow" | "campaign";
+  type: "app" | "appFeature" | "org" | "brand" | "brandSettings" | "feature" | "workflow" | "campaign";
   orgId?: string;
   brandId?: string;
   featureSlug?: string;
@@ -259,9 +259,6 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
         }
         if (segments[6] === "workflows" && segments[7]) {
           return { type: "workflow", orgId, brandId, featureSlug, workflowId: segments[7] };
-        }
-        if (segments[6] === "settings") {
-          return { type: "featureSettings", orgId, brandId, featureSlug };
         }
         return { type: "feature", orgId, brandId, featureSlug };
       }
@@ -635,11 +632,7 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   const topItems: SidebarItem[] = [
     { id: "campaigns", label: "Campaigns", href: basePath, icon: <EnvelopeIcon /> },
     { id: "create", label: "Create Campaign", href: `${basePath}/campaigns/new`, icon: <PlusIcon /> },
-  ];
-
-  const bottomItems: SidebarItem[] = [
     { id: "workflows", label: "Workflows", href: `${basePath}/workflows`, icon: <WorkflowIcon /> },
-    { id: "settings", label: "Settings", href: `${basePath}/settings`, icon: <SettingsIcon /> },
   ];
 
   const reportEnabled = REPORT_ENABLED_FEATURES.has(featureSlug);
@@ -670,16 +663,6 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
           ))}
         </div>
       )}
-      <div className="pt-2 mt-2 border-t border-gray-100">
-        <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Settings</h4>
-        {bottomItems.map((item) => (
-          <SidebarLink
-            key={item.id}
-            item={item}
-            isActive={pathname.startsWith(item.href)}
-          />
-        ))}
-      </div>
       {reportEnabled && (
         <div className="pt-2 mt-2 border-t border-gray-100">
           <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Report</h4>
@@ -722,35 +705,6 @@ function AppFeatureLevelSidebar({ featureId, pathname }: {
           key={item.id}
           item={item}
           isActive={item.id === "campaigns" ? pathname === item.href : pathname.startsWith(item.href)}
-        />
-      ))}
-    </SidebarSection>
-  );
-}
-
-// Feature Settings Level Sidebar
-function FeatureSettingsLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
-  orgId: string;
-  brandId: string;
-  featureSlug: string;
-  pathname: string;
-}) {
-  const { getFeature } = useFeatures();
-  const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/settings`;
-  const feature = getFeature(featureSlug);
-  const title = feature?.name ?? featureSlug;
-
-  const items: SidebarItem[] = [
-    { id: "settings", label: "Feature Settings", href: basePath, icon: <SettingsIcon /> },
-  ];
-
-  return (
-    <SidebarSection title={title} backHref={`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`} backLabel="Feature">
-      {items.map((item) => (
-        <SidebarLink
-          key={item.id}
-          item={item}
-          isActive={pathname === item.href || pathname.startsWith(item.href + "/")}
         />
       ))}
     </SidebarSection>
@@ -805,8 +759,6 @@ export function ContextSidebar() {
       return <BrandSettingsLevelSidebar orgId={level.orgId!} brandId={level.brandId!} pathname={pathname} />;
     case "feature":
       return <FeatureLevelSidebar orgId={level.orgId!} brandId={level.brandId!} featureSlug={level.featureSlug!} pathname={pathname} />;
-    case "featureSettings":
-      return <FeatureSettingsLevelSidebar orgId={level.orgId!} brandId={level.brandId!} featureSlug={level.featureSlug!} pathname={pathname} />;
     case "workflow":
       return <WorkflowLevelSidebar orgId={level.orgId!} brandId={level.brandId!} featureSlug={level.featureSlug!} workflowId={level.workflowId!} pathname={pathname} />;
     case "campaign":
