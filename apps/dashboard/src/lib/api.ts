@@ -2487,21 +2487,23 @@ export interface ListRankedOpportunitiesParams {
   offset?: number;
 }
 
-/** Lists ranked Gold opportunities for the given brand.
- *  v0.8.1 contract: brand identity via `x-brand-id` header (multi-brand CSV
- *  allowed); body carries `limit` / `offset` only. */
+/** Lists scored Gold opportunities for the given brand.
+ *  Canonical read surface (DIS-102): GET /orgs/opportunities with
+ *  `limit` / `offset` in the query string. Brand identity via the
+ *  `x-brand-id` header (multi-brand CSV allowed). */
 export async function listRankedOpportunities(
   params: ListRankedOpportunitiesParams,
   token?: string,
 ): Promise<{ status: string; opportunities: RankedOpportunity[]; total: number }> {
   const { brandId, limit, offset } = params;
-  const body: Record<string, unknown> = {};
-  if (typeof limit === "number") body.limit = limit;
-  if (typeof offset === "number") body.offset = offset;
-  const raw = await apiCall<unknown>("/orgs/opportunities/ranked", {
+  const query = new URLSearchParams();
+  if (typeof limit === "number") query.set("limit", String(limit));
+  if (typeof offset === "number") query.set("offset", String(offset));
+  const qs = query.toString();
+  const path = qs ? `/orgs/opportunities?${qs}` : "/orgs/opportunities";
+  const raw = await apiCall<unknown>(path, {
     token,
-    method: "POST",
-    body,
+    method: "GET",
     headers: { "x-brand-id": brandId },
   });
   const parsed = ListRankedOpportunitiesResponseSchema.safeParse(raw);
