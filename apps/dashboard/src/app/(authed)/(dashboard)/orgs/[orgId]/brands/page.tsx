@@ -45,6 +45,11 @@ export default function BrandsPage() {
     posthog.capture("brand_create_started", { source });
     try {
       const { brandId: newBrandId } = await upsertBrand(url);
+      // Mark onboarding complete (edge-gate signal — see proxy.ts / DIS-111).
+      // The org now has a brand → it's a usable workspace. Idempotent server-side.
+      await fetch("/api/onboarding/complete", { method: "POST" }).catch((e) =>
+        console.error("[dashboard] failed to mark onboarding complete:", e)
+      );
       extractBrandFields([newBrandId], SALES_PROFILE_FIELDS).catch(() => {});
       await refetch();
       posthog.capture("brand_create_completed", {
