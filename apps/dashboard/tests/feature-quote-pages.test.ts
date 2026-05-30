@@ -27,10 +27,17 @@ describe("Feature-level quote pages", () => {
       expect(content).toContain("export default function FeatureQuoteRequestsPage");
     });
 
-    it("calls listQuoteRequests via useAuthQuery (no campaign filter)", () => {
-      expect(content).toContain("listQuoteRequests");
+    it("reads the gold catalog via listRankedOpportunities (NOT silver listQuoteRequests)", () => {
+      // Coherence fix: the feature page must read the SAME GET /orgs/opportunities
+      // (gold, scored) surface the sidebar badge counts, so badge == page count.
+      expect(content).toContain("listRankedOpportunities");
       expect(content).toContain("useAuthQuery");
-      expect(content).not.toMatch(/listQuoteRequests\(\s*\{[^}]*campaign_id/);
+      expect(content).not.toContain("listQuoteRequests");
+      expect(content).not.toContain("providerQuoteRequests");
+    });
+
+    it("is brand-scoped (no campaignId) — brand-set wide 'across all campaigns'", () => {
+      expect(content).not.toMatch(/listRankedOpportunities\(\s*\{[^}]*campaignId/);
     });
 
     it("uses the shared pollOptionsSlow cadence", () => {
@@ -46,8 +53,9 @@ describe("Feature-level quote pages", () => {
       expect(content).toContain('data-testid="feature-quote-requests-page"');
     });
 
-    it("renders the providerQuoteRequests array from the response", () => {
-      expect(content).toContain("providerQuoteRequests");
+    it("renders the gold opportunities array with the relevance score", () => {
+      expect(content).toContain("opportunities");
+      expect(content).toContain(".score");
     });
 
     it("renders an empty state with the matching testid", () => {

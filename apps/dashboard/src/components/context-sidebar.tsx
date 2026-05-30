@@ -14,6 +14,7 @@ import {
   listBrandLeads,
   listBrandEmails,
   listBrandArticles,
+  listRankedOpportunities,
 } from "@/lib/api";
 import { formatCount } from "@/lib/format-number";
 import { useFeatureFlag } from "@/lib/use-feature-flag";
@@ -595,6 +596,13 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
     () => listBrandArticles(brandId, featureSlug),
     { enabled: entityNames.includes("articles"), refetchInterval: 5_000 },
   );
+  // Gold catalog (GET /orgs/opportunities) — same source the feature
+  // quote-requests page renders, so the badge equals the page count.
+  const { data: rankedOppsData } = useAuthQuery(
+    ["rankedOpportunities", { brandId }],
+    () => listRankedOpportunities({ brandId, limit: 50 }),
+    { enabled: entityNames.includes("quote-requests"), refetchInterval: 5_000 },
+  );
 
   const listingFallback: Record<string, number | undefined> = {
     leads: leadsData?.leads?.length,
@@ -602,6 +610,7 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
     outlets: outletsData?.total,
     journalists: journalistsData?.total ?? journalistsData?.journalists?.length,
     articles: articlesData?.discoveries?.length,
+    "quote-requests": rankedOppsData?.total,
   };
 
   const entityCounts = useMemo(() => {
