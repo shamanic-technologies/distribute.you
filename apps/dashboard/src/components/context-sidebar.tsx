@@ -660,6 +660,7 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
       ))}
       {entityItems.length > 0 && (
         <div className="pt-2 mt-2 border-t border-gray-100">
+          <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Outcomes</h4>
           {entityItems.map((item) => (
             <SidebarLink
               key={item.id}
@@ -669,15 +670,19 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
           ))}
         </div>
       )}
-      {bottomItems.map((item) => (
-        <SidebarLink
-          key={item.id}
-          item={item}
-          isActive={pathname.startsWith(item.href)}
-        />
-      ))}
+      <div className="pt-2 mt-2 border-t border-gray-100">
+        <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Settings</h4>
+        {bottomItems.map((item) => (
+          <SidebarLink
+            key={item.id}
+            item={item}
+            isActive={pathname.startsWith(item.href)}
+          />
+        ))}
+      </div>
       {reportEnabled && (
         <div className="pt-2 mt-2 border-t border-gray-100">
+          <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Report</h4>
           <a
             href={reportHref}
             target="_blank"

@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
-import type { CostByName } from "@/lib/api";
+import { getPlatformPrices, type CostByName } from "@/lib/api";
+import { useAuthQuery } from "@/lib/use-auth-query";
+import { ProviderLogo } from "@/components/provider-logo";
 
 interface CostBreakdownProps {
   costBreakdown: CostByName[];
@@ -76,6 +78,19 @@ export function CostBreakdown({ costBreakdown }: CostBreakdownProps) {
     }));
   }, [costBreakdown]);
 
+  // Static catalog → `costName -> providerDomain` for the provider logos.
+  // Best-effort enrichment: on failure the cost labels still render, just without logos.
+  const { data: platformPrices } = useAuthQuery(
+    ["platformPrices"],
+    () => getPlatformPrices(),
+    { staleTime: 60 * 60 * 1000 },
+  );
+  const domainByCost = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of platformPrices ?? []) map.set(p.name, p.providerDomain);
+    return map;
+  }, [platformPrices]);
+
   const totalCents = segments.reduce((sum, s) => sum + s.cents, 0);
 
   if (totalCents === 0) {
@@ -124,6 +139,7 @@ export function CostBreakdown({ costBreakdown }: CostBreakdownProps) {
                 className="w-3 h-3 rounded-full flex-shrink-0"
                 style={{ backgroundColor: seg.color }}
               />
+              <ProviderLogo domain={domainByCost.get(seg.name) ?? null} size={16} />
               <span className="text-sm text-gray-700 flex-1 truncate">
                 {formatCostName(seg.name)}
               </span>
