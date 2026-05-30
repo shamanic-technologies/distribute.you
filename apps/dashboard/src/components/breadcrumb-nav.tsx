@@ -270,7 +270,7 @@ export function BreadcrumbNav() {
             ))}
             <div className="border-t border-gray-100 mt-1 pt-1">
               <button
-                onClick={() => { setOpenDropdown(null); router.push("/onboarding"); }}
+                onClick={() => { setOpenDropdown(null); router.push("/onboarding?new=1"); }}
                 className="w-full text-left px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 flex items-center gap-2 transition"
               >
                 <div className="w-6 h-6 border-2 border-dashed border-gray-300 rounded flex items-center justify-center flex-shrink-0">

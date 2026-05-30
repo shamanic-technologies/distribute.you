@@ -1,7 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
+import { useAuthQuery } from "@/lib/use-auth-query";
+import { listBrands } from "@/lib/api";
 import { ContextSidebar } from "@/components/context-sidebar";
 import { Header } from "@/components/header";
 import { OrgActivator } from "@/components/org-activator";
@@ -20,12 +22,39 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const { isOpen, close } = useMobileSidebar();
   const { hasOrg, isLoading, isError } = useOrg();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // The brands page receives `?autoCreate=<url>` and creates the first brand
+  // in-place; during that window the org has 0 brands but must NOT bounce.
+  const autoCreateInFlight = searchParams.get("autoCreate") !== null;
+
+  // First-run gate (DIS-91). A Clerk org is auto-created at signup, so `!hasOrg`
+  // never fires for a fresh user — the real first-run signal is an active org
+  // with no brand yet. Query the active org's brands and route brand-less orgs
+  // into onboarding. `enabled: hasOrg` keeps it from firing before the org
+  // resolves; `brandsError` is treated as "unknown" (no redirect → no loop).
+  const {
+    data: brandsData,
+    isPending: brandsPending,
+    isError: brandsError,
+  } = useAuthQuery(["brands"], () => listBrands(), { enabled: hasOrg });
+
+  const orgHasNoBrands =
+    hasOrg &&
+    !brandsPending &&
+    !brandsError &&
+    (brandsData?.brands.length ?? 0) === 0;
+
+  const redirectingToOnboarding =
+    !isLoading &&
+    !isError &&
+    (!hasOrg || (orgHasNoBrands && !autoCreateInFlight));
 
   useEffect(() => {
-    if (!isLoading && !hasOrg && !isError) {
+    if (isLoading || isError) return;
+    if (redirectingToOnboarding) {
       router.push("/onboarding");
     }
-  }, [isLoading, hasOrg, isError, router]);
+  }, [isLoading, isError, redirectingToOnboarding, router]);
 
   if (isError) {
     return (
@@ -48,7 +77,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   // don't unmount, lose their data references, and re-paint as skeletons when Clerk briefly
   // flips back to `isLoading`. Only the main content area swaps to a skeleton when we
   // genuinely have no org (initial app load or sign-out).
-  const showContent = !isLoading && hasOrg;
+  const showContent = !isLoading && hasOrg && !redirectingToOnboarding;
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
