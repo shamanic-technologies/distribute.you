@@ -263,8 +263,13 @@ describe("HITL helpers — journalists-quotes-service v0.8.1 contract (x-brand-i
       .split("export async function generateQuoteDraft(")[1]
       ?.split("\nexport ")[0] ?? "";
 
-  it("listRankedOpportunities sends x-brand-id header, body has no brandId/campaignId", () => {
-    expect(rankedBlock).toContain("/orgs/opportunities/ranked");
+  it("listRankedOpportunities is a GET on /orgs/opportunities with x-brand-id header, no brandId/campaignId", () => {
+    // Canonical read surface (DIS-102): GET /orgs/opportunities with query
+    // params. The deprecated POST /orgs/opportunities/ranked must not appear
+    // in the dashboard — clean cut, no legacy/fallback path.
+    expect(rankedBlock).toContain("/orgs/opportunities");
+    expect(rankedBlock).not.toContain("/orgs/opportunities/ranked");
+    expect(rankedBlock).toMatch(/method:\s*["']GET["']/);
     expect(rankedBlock).toContain('"x-brand-id"');
     expect(rankedBlock).not.toMatch(/brandId\s*[:,]\s*brandId/);
     expect(rankedBlock).not.toMatch(/campaignId\s*[:,]/);

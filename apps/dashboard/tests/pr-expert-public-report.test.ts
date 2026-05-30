@@ -81,24 +81,25 @@ describe("report-api.ts — brand-scoped HITL fetchers", () => {
     );
   });
 
-  it("ranked-by-brand POST sends x-brand-id header, no brandId/campaignId in body", () => {
+  it("ranked-by-brand GET sends x-brand-id header, limit in query, no brandId/campaignId", () => {
     const rawBlock =
       reportApiContent
         .split("export async function fetchRankedOpportunitiesByBrand")[1]
         ?.split("export ")[0] ?? "";
     const block = stripComments(rawBlock);
-    expect(block).toContain("/orgs/opportunities/ranked");
+    // Canonical read surface (DIS-102): GET /orgs/opportunities. The
+    // deprecated POST /orgs/opportunities/ranked must not appear — clean cut,
+    // no legacy/fallback path.
+    expect(block).toContain("/orgs/opportunities");
+    expect(block).not.toContain("/orgs/opportunities/ranked");
     // x-brand-id header must be present
     expect(block).toContain('"x-brand-id"');
-    // The adminPost body argument is the 4th positional arg. Isolate the
-    // body-object literal and assert it has neither brandId nor campaignId
-    // (brand identity flows via header per v0.8.1).
-    const callMatch = block.match(/adminPost<[\s\S]*?>\s*\([\s\S]*?\)\s*;/);
+    // The read uses adminGet (no request body): brand identity flows via the
+    // x-brand-id header, pagination via the query string.
+    const callMatch = block.match(/adminGet<[\s\S]*?>\s*\([\s\S]*?\)\s*;/);
     expect(callMatch).not.toBeNull();
-    // The body literal is everything between the orgId arg and the headers
-    // arg. Use a permissive check: search the call text for occurrences of
-    // brandId / campaignId followed by a value-introducer ( : or , ) — type
-    // annotations would not appear here since this is a call, not a sig.
+    // The call must carry neither brandId nor campaignId as a value-introducer
+    // ( : or , ) — brand identity flows via header, not the args.
     const callText = callMatch![0];
     expect(callText).not.toMatch(/\bbrandId\s*[:,]/);
     expect(callText).not.toMatch(/\bcampaignId\s*[:,]/);

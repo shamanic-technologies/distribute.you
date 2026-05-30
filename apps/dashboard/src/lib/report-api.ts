@@ -405,9 +405,10 @@ export interface RankedOpportunitiesResponse {
  *  `/report/{orgId}/{brandId}/pr-expert-quote-opportunities` — there is no
  *  campaignId in the path. journalists-quotes-service dedups + scores at
  *  the brand level. Brand identity flows via the `x-brand-id` header (CSV
- *  for multi-brand, per the v0.8.1 contract); body carries only `limit` /
- *  `offset`. Cached for 4h via unstable_cache; mutations on this brand
- *  should call revalidateTag from the corresponding route handler. */
+ *  for multi-brand); pagination via the `limit` query param. Canonical read
+ *  surface (DIS-102): GET /orgs/opportunities. Cached for 4h via
+ *  unstable_cache; mutations on this brand should call revalidateTag from
+ *  the corresponding route handler. */
 export async function fetchRankedOpportunitiesByBrand(
   orgId: string,
   brandId: string,
@@ -416,11 +417,10 @@ export async function fetchRankedOpportunitiesByBrand(
   return unstable_cache(
     async () => {
       try {
-        const result = await adminPost<RankedOpportunitiesResponse>(
+        const result = await adminGet<RankedOpportunitiesResponse>(
           "rankedOpportunitiesByBrand",
-          `/orgs/opportunities/ranked`,
+          `/orgs/opportunities?limit=${limit}`,
           orgId,
-          { limit },
           { "x-brand-id": brandId },
         );
         return result.opportunities ?? [];
