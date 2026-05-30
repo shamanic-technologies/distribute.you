@@ -10,7 +10,7 @@ const PRICING_URL = `${PROD_URLS.landing}/pricing`;
 
 const pricingJsonLd = {
   "@context": "https://schema.org",
-  "@type": "Product",
+  "@type": "Service",
   name: "distribute — Pay-as-you-go cloud distribution",
   description:
     "Cloud distribution platform with pay-as-you-go pricing. We send cold email, PR pitches, and other outbound channels on your behalf. Every unit cost is published live.",
