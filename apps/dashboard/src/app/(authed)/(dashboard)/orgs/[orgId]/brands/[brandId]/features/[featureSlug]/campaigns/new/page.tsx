@@ -72,6 +72,9 @@ const BUDGET_TIERS: { key: Exclude<BudgetTier, "other">; label: string; factor: 
   { key: "growth", label: "Growth", factor: 2 },
 ];
 
+/** Recommended budget is sized for this many closes per month (Starter ×0.5, Growth ×2). */
+const TARGET_CLOSES_PER_MONTH = 10;
+
 /** Default conversion economics shown until the user edits them.
  *  TODO(backend): persist per (brandId, featureSlug) in features-service + seed by industry. */
 const SALES_ECON_DEFAULTS = { ltv: "4000", replyToMeeting: "40", meetingToClose: "25", clickToClose: "5" };
@@ -189,7 +192,6 @@ export default function FeatureCreateCampaignPage() {
 
   // ── Sales funnel state (sales-cold-email only) ──
   const [salesObjective, setSalesObjective] = useState<SalesObjective>("meeting-booked");
-  const [revenueGoal, setRevenueGoal] = useState("10000");
   const [econLtv, setEconLtv] = useState(SALES_ECON_DEFAULTS.ltv);
   const [econReplyToMeeting, setEconReplyToMeeting] = useState(SALES_ECON_DEFAULTS.replyToMeeting);
   const [econMeetingToClose, setEconMeetingToClose] = useState(SALES_ECON_DEFAULTS.meetingToClose);
@@ -354,11 +356,11 @@ export default function FeatureCreateCampaignPage() {
         cacPct: revenue > 0 ? (budget / revenue) * 100 : null, cacAbs: closes > 0 ? budget / closes : null };
     };
 
-    // Reverse: budget required to hit the revenue goal.
-    const revenue = parseFloat(revenueGoal) || 0;
+    // Recommended budget sized for a fixed target of 10 closes / month.
+    // Starter/Growth scale this ×0.5 / ×2 via BUDGET_TIERS.
+    const closes = TARGET_CLOSES_PER_MONTH;
     let recommendedBudget: number | null = null;
-    if (costPerPrimary != null && revenue > 0 && ltv > 0) {
-      const closes = revenue / ltv;
+    if (costPerPrimary != null) {
       if (salesObjective === "self-serve") {
         if (c2c > 0) recommendedBudget = (closes / c2c) * costPerPrimary;
       } else if (m2c > 0 && r2m > 0) {
@@ -366,9 +368,9 @@ export default function FeatureCreateCampaignPage() {
       }
     }
     return { costPerPrimary, recommendedBudget, project };
-  }, [salesObjective, revenueGoal, econLtv, econReplyToMeeting, econMeetingToClose, econClickToClose, salesAutoPick]);
+  }, [salesObjective, econLtv, econReplyToMeeting, econMeetingToClose, econClickToClose, salesAutoPick]);
 
-  // Google-Ads-style budget tiers seeded from the goal-budget, + the chosen amount.
+  // Google-Ads-style budget tiers seeded from the 10-closes/mo target, + the chosen amount.
   const budgetPresets = useMemo(() => {
     const rec = salesPlan.recommendedBudget;
     if (rec == null) return null;
@@ -930,38 +932,11 @@ export default function FeatureCreateCampaignPage() {
             </div>
           </div>
 
-          {/* 2 · Revenue goal */}
-          <div className="bg-white rounded-xl border border-gray-200">
-            <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
-              <span className="w-5 h-5 inline-flex items-center justify-center text-[11px] font-bold text-white bg-brand-500 rounded-full">2</span>
-              <h2 className="font-display font-semibold text-gray-800">Revenue goal</h2>
-            </div>
-            <div className="p-5">
-              <p className="text-sm text-gray-500 mb-3">How much revenue do you want to generate with us?</p>
-              <div className="flex items-center gap-3 flex-wrap">
-                <div className="flex items-center gap-1">
-                  <span className="text-2xl text-gray-400">$</span>
-                  <input type="text" inputMode="numeric" value={revenueGoal === "" ? "" : Number(revenueGoal).toLocaleString("en-US")}
-                    onChange={(e) => setRevenueGoal(e.target.value.replace(/[^0-9]/g, ""))}
-                    className="w-44 text-2xl font-bold text-gray-800 bg-transparent border-0 border-b-2 border-gray-200 focus:border-brand-500 focus:outline-none px-1 py-1" />
-                </div>
-                <span className="text-gray-500">per</span>
-                <select value={budgetFrequency} onChange={(e) => setBudgetFrequency(e.target.value as BudgetFrequency)}
-                  className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-300">
-                  <option value="one-off">one-off</option>
-                  <option value="daily">day</option>
-                  <option value="weekly">week</option>
-                  <option value="monthly">month</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* 3 · Conversion metrics (feature-level, adapts to objective) */}
+          {/* 2 · Conversion metrics (feature-level, adapts to objective) */}
           <div className="bg-white rounded-xl border border-gray-200">
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="w-5 h-5 inline-flex items-center justify-center text-[11px] font-bold text-white bg-brand-500 rounded-full">3</span>
+                <span className="w-5 h-5 inline-flex items-center justify-center text-[11px] font-bold text-white bg-brand-500 rounded-full">2</span>
                 <h2 className="font-display font-semibold text-gray-800">Your conversion metrics</h2>
               </div>
               <span className="text-[11px] font-semibold text-brand-700 bg-brand-50 rounded-full px-2.5 py-1">feature-level · reused</span>
@@ -1015,10 +990,10 @@ export default function FeatureCreateCampaignPage() {
             </div>
           </div>
 
-          {/* 4 · Budget */}
+          {/* 3 · Budget */}
           <div className="bg-white rounded-xl border border-gray-200">
             <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
-              <span className="w-5 h-5 inline-flex items-center justify-center text-[11px] font-bold text-white bg-brand-500 rounded-full">4</span>
+              <span className="w-5 h-5 inline-flex items-center justify-center text-[11px] font-bold text-white bg-brand-500 rounded-full">3</span>
               <h2 className="font-display font-semibold text-gray-800">Budget</h2>
             </div>
             <div className="p-5">
@@ -1036,16 +1011,17 @@ export default function FeatureCreateCampaignPage() {
                     const proj = salesPlan.project(p.amount);
                     const active = budgetTier === p.key;
                     return (
-                      <button key={p.key} type="button" onClick={() => setBudgetTier(p.key)}
+                      <button key={p.key} type="button" onClick={() => { setBudgetTier(p.key); setBudgetFrequency("monthly"); }}
                         className={`text-left p-4 rounded-xl border transition ${active ? "border-brand-500 bg-brand-50 ring-1 ring-brand-200" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"}`}>
                         <div className="flex items-center justify-between">
                           <span className={`text-xs font-semibold uppercase tracking-wide ${active ? "text-brand-700" : "text-gray-500"}`}>{p.label}</span>
                           {p.key === "recommended" && <span className="text-[10px] text-brand-600">★</span>}
                         </div>
-                        <div className="text-xl font-bold text-gray-800 mt-1">{fmtUsd0(p.amount)}<span className="text-xs font-medium text-gray-400"> / {REVENUE_INTERVAL_LABEL[budgetFrequency]}</span></div>
+                        <div className="text-xl font-bold text-gray-800 mt-1">{fmtUsd0(p.amount)}<span className="text-xs font-medium text-gray-400"> / month</span></div>
+                        <div className="text-[11px] text-gray-400 mt-0.5">targets ~{Math.round(TARGET_CLOSES_PER_MONTH * p.factor)} closes / mo</div>
                         {proj && (
                           <div className="mt-2 text-[11px] leading-relaxed">
-                            <div className="text-green-700 font-semibold">~{fmtUsd0(proj.revenue)} revenue{budgetFrequency === "one-off" ? "" : ` / ${REVENUE_INTERVAL_LABEL[budgetFrequency]}`}</div>
+                            <div className="text-green-700 font-semibold">~{fmtUsd0(proj.revenue)} revenue / month</div>
                             <div className="text-gray-500">CAC {proj.cacPct != null ? `${fmtNum(proj.cacPct, 1)}%` : "—"}</div>
                           </div>
                         )}
