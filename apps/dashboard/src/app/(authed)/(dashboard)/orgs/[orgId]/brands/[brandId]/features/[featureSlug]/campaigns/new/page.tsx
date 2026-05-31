@@ -941,8 +941,9 @@ export default function FeatureCreateCampaignPage() {
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center gap-1">
                   <span className="text-2xl text-gray-400">$</span>
-                  <input type="number" min="0" step="500" value={revenueGoal} onChange={(e) => setRevenueGoal(e.target.value)}
-                    className="w-40 text-2xl font-bold text-gray-800 bg-transparent border-0 border-b-2 border-gray-200 focus:border-brand-500 focus:outline-none px-1 py-1" />
+                  <input type="text" inputMode="numeric" value={revenueGoal === "" ? "" : Number(revenueGoal).toLocaleString("en-US")}
+                    onChange={(e) => setRevenueGoal(e.target.value.replace(/[^0-9]/g, ""))}
+                    className="w-44 text-2xl font-bold text-gray-800 bg-transparent border-0 border-b-2 border-gray-200 focus:border-brand-500 focus:outline-none px-1 py-1" />
                 </div>
                 <span className="text-gray-500">per</span>
                 <select value={budgetFrequency} onChange={(e) => setBudgetFrequency(e.target.value as BudgetFrequency)}
@@ -1060,6 +1061,14 @@ export default function FeatureCreateCampaignPage() {
                         onChange={(e) => { setBudgetCustom(e.target.value); setBudgetTier("other"); }}
                         placeholder="0" className="w-full pl-6 pr-2 py-1.5 text-lg font-bold text-gray-800 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
                     </div>
+                    <select value={budgetFrequency} onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => { setBudgetFrequency(e.target.value as BudgetFrequency); setBudgetTier("other"); }}
+                      className="mt-2 w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-300">
+                      <option value="one-off">per one-off</option>
+                      <option value="daily">per day</option>
+                      <option value="weekly">per week</option>
+                      <option value="monthly">per month</option>
+                    </select>
                     {(() => {
                       const cp = salesPlan.project(parseFloat(budgetCustom) || 0);
                       return budgetTier === "other" && cp ? (
@@ -1069,12 +1078,21 @@ export default function FeatureCreateCampaignPage() {
                   </button>
                 </div>
               ) : (
-                <div className="relative max-w-xs">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
-                  <input type="number" min="0" step="50" value={budgetCustom}
-                    onChange={(e) => { setBudgetCustom(e.target.value); setBudgetTier("other"); }}
-                    placeholder="0" className="w-full pl-7 pr-20 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">/ {REVENUE_INTERVAL_LABEL[budgetFrequency]}</span>
+                <div className="flex items-center gap-2 max-w-sm">
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                    <input type="number" min="0" step="50" value={budgetCustom}
+                      onChange={(e) => { setBudgetCustom(e.target.value); setBudgetTier("other"); }}
+                      placeholder="0" className="w-full pl-7 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
+                  </div>
+                  <span className="text-gray-500 text-sm">per</span>
+                  <select value={budgetFrequency} onChange={(e) => setBudgetFrequency(e.target.value as BudgetFrequency)}
+                    className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-300">
+                    <option value="one-off">one-off</option>
+                    <option value="daily">day</option>
+                    <option value="weekly">week</option>
+                    <option value="monthly">month</option>
+                  </select>
                 </div>
               )}
 
@@ -1083,27 +1101,30 @@ export default function FeatureCreateCampaignPage() {
                 if (!proj) return null;
                 const steps = salesObjective === "self-serve"
                   ? [
-                      { v: fmtNum(proj.closes, proj.closes < 10 ? 1 : 0), k: "closes" },
-                      { v: fmtNum(proj.primary), k: proj.primaryLabel },
                       { v: fmtUsd0(effectiveBudget), k: "budget" },
+                      { v: fmtNum(proj.primary), k: proj.primaryLabel },
+                      { v: fmtNum(proj.closes, proj.closes < 10 ? 1 : 0), k: "closes" },
                     ]
                   : [
-                      { v: fmtNum(proj.closes, proj.closes < 10 ? 1 : 0), k: "closes" },
-                      { v: fmtNum(proj.meetings ?? 0, (proj.meetings ?? 0) < 10 ? 1 : 0), k: "meetings" },
-                      { v: fmtNum(proj.primary), k: proj.primaryLabel },
                       { v: fmtUsd0(effectiveBudget), k: "budget" },
+                      { v: fmtNum(proj.primary), k: proj.primaryLabel },
+                      { v: fmtNum(proj.meetings ?? 0, (proj.meetings ?? 0) < 10 ? 1 : 0), k: "meetings" },
+                      { v: fmtNum(proj.closes, proj.closes < 10 ? 1 : 0), k: "closes" },
                     ];
                 return (
-                  <div className="flex items-center justify-center gap-2 flex-wrap mt-4">
-                    {steps.map((s, i) => (
-                      <Fragment key={s.k}>
-                        {i > 0 && <span className="text-gray-300">&larr;</span>}
-                        <div className="flex flex-col items-center px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 min-w-[78px]">
-                          <span className="text-base font-semibold text-gray-800">{s.v}</span>
-                          <span className="text-[11px] text-gray-500">{s.k}</span>
-                        </div>
-                      </Fragment>
-                    ))}
+                  <div className="mt-4">
+                    <p className="text-center text-[11px] uppercase tracking-wide text-gray-400 mb-2">Projected per {REVENUE_INTERVAL_LABEL[budgetFrequency]}</p>
+                    <div className="flex items-center justify-center gap-2 flex-wrap">
+                      {steps.map((s, i) => (
+                        <Fragment key={s.k}>
+                          {i > 0 && <span className="text-gray-300">&rarr;</span>}
+                          <div className="flex flex-col items-center px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 min-w-[78px]">
+                            <span className="text-base font-semibold text-gray-800">{s.v}</span>
+                            <span className="text-[11px] text-gray-500">{s.k}</span>
+                          </div>
+                        </Fragment>
+                      ))}
+                    </div>
                   </div>
                 );
               })()}
@@ -1119,6 +1140,13 @@ export default function FeatureCreateCampaignPage() {
 
               <details className="mt-4 border-t border-gray-100 pt-3">
                 <summary className="cursor-pointer text-sm text-gray-500 font-medium select-none">Campaign details</summary>
+                <div className="mt-3 flex justify-end">
+                  <button type="button" onClick={() => setShowChat(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition text-gray-500 hover:text-brand-600 hover:bg-brand-50 border border-gray-200">
+                    <SparklesIcon className="w-3.5 h-3.5" />
+                    Edit with AI
+                  </button>
+                </div>
                 {isLoadingProfile ? (
                   <p className="mt-3 text-sm text-gray-400">Analyzing brand profile&hellip;</p>
                 ) : (
@@ -1151,6 +1179,38 @@ export default function FeatureCreateCampaignPage() {
               </button>
             </div>
           </div>
+
+          <CampaignAIPanel
+            open={showChat}
+            onClose={() => setShowChat(false)}
+            chatId={`${brandId}-${featureSlug}`}
+            campaignContext={{
+              brandId,
+              brandUrl: resolvedBrandUrl,
+              brandName: brand?.name ?? brand?.domain ?? undefined,
+              featureSlug: featureSlug,
+              featureName: featureDef?.name ?? featureSlug,
+              currentFields: formData,
+              fieldDefinitions: featureInputs.map((f) => ({ key: f.key, label: f.label, description: f.description })),
+              instruction: [
+                "You are helping the user refine campaign input fields before launching a campaign.",
+                "The current field values are in `currentFields`. The field definitions are in `fieldDefinitions`.",
+                "When the user asks to change fields, use the `update_campaign_fields` tool with the updated key-value pairs.",
+                "You can also use brand extraction tools to pull information from the brand's website.",
+              ].join("\n"),
+            }}
+            formData={formData}
+            featureInputs={featureInputs}
+            onFieldsUpdate={(fields) => {
+              setFormData((prev) => {
+                const next = { ...prev };
+                for (const [key, value] of Object.entries(fields)) {
+                  if (key in next) next[key] = value;
+                }
+                return next;
+              });
+            }}
+          />
         </div>
       )}
 
