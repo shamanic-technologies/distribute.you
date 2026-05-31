@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useRef, useEffect, Fragment } from "rea
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
+import { useMutation } from "@tanstack/react-query";
 import { useOrg } from "@/lib/org-context";
 import { useFeatures } from "@/lib/features-context";
 import {
@@ -14,6 +15,9 @@ import {
   sendCampaignEmail,
   getBrand,
   listBrands,
+  getBrandSalesEconomics,
+  saveBrandSalesEconomics,
+  type BrandSalesEconomicsInput,
   getWorkflowKeyStatus,
   prefillFeatureInputs,
   prefillToStringMap,
@@ -78,8 +82,8 @@ const BUDGET_TIERS: { key: Exclude<BudgetTier, "other">; label: string; factor: 
 /** Recommended budget is sized for this many closes per month (Starter ×0.5, Growth ×2). */
 const TARGET_CLOSES_PER_MONTH = 10;
 
-/** Default conversion economics shown until the user edits them.
- *  TODO(backend): persist per (brandId, featureSlug) in features-service + seed by industry. */
+/** Conversion-economics defaults shown until the brand's saved set loads (or when none
+ *  is saved yet). Persisted per brand in brand-service; see getBrandSalesEconomics. */
 const SALES_ECON_DEFAULTS = { ltv: "4000", replyToMeeting: "40", meetingToClose: "25", visitToMeeting: "20", clickToClose: "5" };
 
 const DAYS_PER_MONTH = 30.4;
@@ -226,6 +230,69 @@ export default function FeatureCreateCampaignPage() {
   const [budgetTier, setBudgetTier] = useState<BudgetTier>("recommended");
   const [budgetCustom, setBudgetCustom] = useState("");
   const salesPrefilledRef = useRef(false);
+
+  // ── Persist the brand's sales economics (auto-upsert per brand, no Save button) ──
+  // Load on mount (sales path only): seed the 5 inputs from the saved set, else keep
+  // SALES_ECON_DEFAULTS. A debounced PUT mirrors every edit back to brand-service.
+  const { data: salesEconData } = useAuthQuery(
+    ["brandSalesEconomics", brandId],
+    () => getBrandSalesEconomics(brandId),
+    { enabled: isSalesFunnel },
+  );
+  const econHydrated = useRef(false);
+  useEffect(() => {
+    if (!isSalesFunnel || econHydrated.current || salesEconData === undefined) return;
+    const e = salesEconData.salesEconomics;
+    if (e) {
+      setEconLtv(String(e.lifetimeRevenueUsd));
+      setEconReplyToMeeting(String(e.replyToMeetingPct));
+      setEconVisitToMeeting(String(e.visitToMeetingPct));
+      setEconMeetingToClose(String(e.meetingToClosePct));
+      setEconClickToClose(String(e.visitToClosePct));
+    }
+    // Mark hydrated even when unset so later background refetches never clobber edits.
+    econHydrated.current = true;
+  }, [isSalesFunnel, salesEconData]);
+
+  const { mutate: mutateSalesEcon } = useMutation({
+    mutationFn: (input: BrandSalesEconomicsInput) => saveBrandSalesEconomics(brandId, input),
+    onSuccess: (data) => queryClient.setQueryData(["brandSalesEconomics", brandId], data),
+    onError: (err) => console.error("[dashboard] saveBrandSalesEconomics failed", err),
+  });
+
+  const econSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Update one metric input + schedule a debounced upsert of the full set. Hydration
+  // uses the raw setters (not this), so loading saved values never triggers a write.
+  const updateEcon = (
+    field: "ltv" | "replyToMeeting" | "visitToMeeting" | "meetingToClose" | "clickToClose",
+    value: string,
+  ) => {
+    const next = {
+      ltv: econLtv,
+      replyToMeeting: econReplyToMeeting,
+      visitToMeeting: econVisitToMeeting,
+      meetingToClose: econMeetingToClose,
+      clickToClose: econClickToClose,
+      [field]: value,
+    };
+    if (field === "ltv") setEconLtv(value);
+    else if (field === "replyToMeeting") setEconReplyToMeeting(value);
+    else if (field === "visitToMeeting") setEconVisitToMeeting(value);
+    else if (field === "meetingToClose") setEconMeetingToClose(value);
+    else setEconClickToClose(value);
+
+    if (!isSalesFunnel) return;
+    if (econSaveTimer.current) clearTimeout(econSaveTimer.current);
+    econSaveTimer.current = setTimeout(() => {
+      mutateSalesEcon({
+        lifetimeRevenueUsd: Math.round(parseFloat(next.ltv) || 0),
+        replyToMeetingPct: Math.round(parseFloat(next.replyToMeeting) || 0),
+        visitToMeetingPct: Math.round(parseFloat(next.visitToMeeting) || 0),
+        meetingToClosePct: Math.round(parseFloat(next.meetingToClose) || 0),
+        visitToClosePct: Math.round(parseFloat(next.clickToClose) || 0),
+      });
+    }, 700);
+  };
 
   const sortedOutputs = useMemo(
     () => [...outputs].sort((a, b) => a.displayOrder - b.displayOrder),
@@ -1090,7 +1157,7 @@ export default function FeatureCreateCampaignPage() {
                   <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Customer Lifetime Revenue" tip="Average total revenue (not gross margin) one customer brings over their lifetime." /></label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
-                    <input type="number" min="0" step="100" value={econLtv} onChange={(e) => setEconLtv(e.target.value)}
+                    <input type="number" min="0" step="100" value={econLtv} onChange={(e) => updateEcon("ltv", e.target.value)}
                       className="w-full pl-7 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
                   </div>
                 </div>
@@ -1099,7 +1166,7 @@ export default function FeatureCreateCampaignPage() {
                     <div>
                       <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Positive reply → meeting" tip="Of leads who reply positively, the share you turn into a booked meeting." /></label>
                       <div className="relative">
-                        <input type="number" min="0" max="100" step="1" value={econReplyToMeeting} onChange={(e) => setEconReplyToMeeting(e.target.value)}
+                        <input type="number" min="0" max="100" step="1" value={econReplyToMeeting} onChange={(e) => updateEcon("replyToMeeting", e.target.value)}
                           className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
                       </div>
@@ -1107,7 +1174,7 @@ export default function FeatureCreateCampaignPage() {
                     <div>
                       <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Website visit → meeting" tip="Of leads who click through to your website, the share that book a meeting." /></label>
                       <div className="relative">
-                        <input type="number" min="0" max="100" step="1" value={econVisitToMeeting} onChange={(e) => setEconVisitToMeeting(e.target.value)}
+                        <input type="number" min="0" max="100" step="1" value={econVisitToMeeting} onChange={(e) => updateEcon("visitToMeeting", e.target.value)}
                           className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
                       </div>
@@ -1115,7 +1182,7 @@ export default function FeatureCreateCampaignPage() {
                     <div>
                       <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Meeting → close" tip="Of booked meetings, the share that become paying customers." /></label>
                       <div className="relative">
-                        <input type="number" min="0" max="100" step="1" value={econMeetingToClose} onChange={(e) => setEconMeetingToClose(e.target.value)}
+                        <input type="number" min="0" max="100" step="1" value={econMeetingToClose} onChange={(e) => updateEcon("meetingToClose", e.target.value)}
                           className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
                       </div>
@@ -1125,7 +1192,7 @@ export default function FeatureCreateCampaignPage() {
                   <div>
                     <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Website visit → close" tip="Of leads who visit your website, the share that buy without a meeting (self-serve)." /></label>
                     <div className="relative">
-                      <input type="number" min="0" max="100" step="1" value={econClickToClose} onChange={(e) => setEconClickToClose(e.target.value)}
+                      <input type="number" min="0" max="100" step="1" value={econClickToClose} onChange={(e) => updateEcon("clickToClose", e.target.value)}
                         className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
                     </div>
