@@ -34,7 +34,7 @@ import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-pane
 import { CampaignAIPanel } from "@/components/campaigns/campaign-ai-panel";
 import { BrandLogo } from "@/components/brand-logo";
 import { Skeleton } from "@/components/skeleton";
-import { SparklesIcon, XMarkIcon, EllipsisVerticalIcon, PlusIcon, PencilSquareIcon } from "@heroicons/react/20/solid";
+import { SparklesIcon, XMarkIcon, EllipsisVerticalIcon, PlusIcon, PencilSquareIcon, InformationCircleIcon } from "@heroicons/react/20/solid";
 
 type Mode = "autopilot" | "manual";
 type BudgetFrequency = "one-off" | "daily" | "weekly" | "monthly";
@@ -80,7 +80,9 @@ const TARGET_CLOSES_PER_MONTH = 10;
 
 /** Default conversion economics shown until the user edits them.
  *  TODO(backend): persist per (brandId, featureSlug) in features-service + seed by industry. */
-const SALES_ECON_DEFAULTS = { ltv: "4000", replyToMeeting: "40", meetingToClose: "25", clickToClose: "5" };
+const SALES_ECON_DEFAULTS = { ltv: "4000", replyToMeeting: "40", meetingToClose: "25", visitToMeeting: "20", clickToClose: "5" };
+
+const DAYS_PER_MONTH = 30.4;
 
 const REVENUE_INTERVAL_LABEL: Record<BudgetFrequency, string> = {
   "one-off": "one-off",
@@ -123,6 +125,20 @@ function prefillToFormData(
     form[input.key] = prefilled[input.key] ?? "";
   }
   return form;
+}
+
+function InfoLabel({ label, tip }: { label: string; tip: string }) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      {label}
+      <span className="group relative inline-flex align-middle">
+        <InformationCircleIcon className="w-3.5 h-3.5 text-gray-400 cursor-help" />
+        <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-20 w-48 rounded-lg bg-gray-900 text-white text-[11px] font-normal normal-case leading-snug px-2 py-1.5 shadow-lg whitespace-normal">
+          {tip}
+        </span>
+      </span>
+    </span>
+  );
 }
 
 function SortHeader({
@@ -181,7 +197,7 @@ export default function FeatureCreateCampaignPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">(defaultSortDir);
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
   const [budgetAmount, setBudgetAmount] = useState("");
-  const [budgetFrequency, setBudgetFrequency] = useState<BudgetFrequency>("monthly");
+  const [budgetFrequency, setBudgetFrequency] = useState<BudgetFrequency>("daily");
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState<Record<string, string>>({ brandUrl: "" });
   const [isCreating, setIsCreating] = useState(false);
@@ -198,6 +214,7 @@ export default function FeatureCreateCampaignPage() {
   const [econLtv, setEconLtv] = useState(SALES_ECON_DEFAULTS.ltv);
   const [econReplyToMeeting, setEconReplyToMeeting] = useState(SALES_ECON_DEFAULTS.replyToMeeting);
   const [econMeetingToClose, setEconMeetingToClose] = useState(SALES_ECON_DEFAULTS.meetingToClose);
+  const [econVisitToMeeting, setEconVisitToMeeting] = useState(SALES_ECON_DEFAULTS.visitToMeeting);
   const [econClickToClose, setEconClickToClose] = useState(SALES_ECON_DEFAULTS.clickToClose);
   const [showWorkflowPicker, setShowWorkflowPicker] = useState(false);
   const [salesWorkflowOverrideId, setSalesWorkflowOverrideId] = useState<string | null>(null);
@@ -393,12 +410,15 @@ export default function FeatureCreateCampaignPage() {
   const budgetPresets = useMemo(() => {
     const rec = salesPlan.recommendedBudget;
     if (rec == null) return null;
-    return BUDGET_TIERS.map((t) => ({ ...t, amount: Math.max(1, Math.round(rec * t.factor)) }));
+    return BUDGET_TIERS.map((t) => {
+      const monthly = Math.max(1, Math.round(rec * t.factor));
+      return { ...t, monthly, daily: Math.max(1, Math.round(monthly / DAYS_PER_MONTH)) };
+    });
   }, [salesPlan.recommendedBudget]);
 
   const effectiveBudget = useMemo(() => {
     if (budgetTier === "other") return parseFloat(budgetCustom) || 0;
-    return budgetPresets?.find((p) => p.key === budgetTier)?.amount ?? 0;
+    return budgetPresets?.find((p) => p.key === budgetTier)?.daily ?? 0;
   }, [budgetTier, budgetCustom, budgetPresets]);
 
   // ── Workflow test runs (real campaigns capped at 3 leads) ──
@@ -1036,9 +1056,9 @@ export default function FeatureCreateCampaignPage() {
             </div>
             <div className="p-5">
               <p className="text-sm text-gray-500 mb-4">Reused across every sales campaign for this brand. Edit anytime. Industry defaults coming soon.</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Customer LTV</label>
+                  <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Customer LTV" tip="Average total revenue one customer brings over their lifetime." /></label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
                     <input type="number" min="0" step="100" value={econLtv} onChange={(e) => setEconLtv(e.target.value)}
@@ -1048,7 +1068,7 @@ export default function FeatureCreateCampaignPage() {
                 {salesObjective === "meeting-booked" ? (
                   <>
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">Positive reply → meeting</label>
+                      <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Positive reply → meeting" tip="Of leads who reply positively, the share you turn into a booked meeting." /></label>
                       <div className="relative">
                         <input type="number" min="0" max="100" step="1" value={econReplyToMeeting} onChange={(e) => setEconReplyToMeeting(e.target.value)}
                           className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
@@ -1056,7 +1076,15 @@ export default function FeatureCreateCampaignPage() {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">Meeting → close</label>
+                      <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Website visit → meeting" tip="Of leads who click through to your website, the share that book a meeting." /></label>
+                      <div className="relative">
+                        <input type="number" min="0" max="100" step="1" value={econVisitToMeeting} onChange={(e) => setEconVisitToMeeting(e.target.value)}
+                          className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Meeting → close" tip="Of booked meetings, the share that become paying customers." /></label>
                       <div className="relative">
                         <input type="number" min="0" max="100" step="1" value={econMeetingToClose} onChange={(e) => setEconMeetingToClose(e.target.value)}
                           className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
@@ -1066,7 +1094,7 @@ export default function FeatureCreateCampaignPage() {
                   </>
                 ) : (
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Click → close</label>
+                    <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Click → close" tip="Of leads who click through to your website, the share that buy without a meeting (self-serve)." /></label>
                     <div className="relative">
                       <input type="number" min="0" max="100" step="1" value={econClickToClose} onChange={(e) => setEconClickToClose(e.target.value)}
                         className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
@@ -1096,21 +1124,21 @@ export default function FeatureCreateCampaignPage() {
               {budgetPresets != null ? (
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                   {budgetPresets.map((p) => {
-                    const proj = salesPlan.project(p.amount);
+                    const proj = salesPlan.project(p.monthly);
                     const active = budgetTier === p.key;
                     return (
-                      <button key={p.key} type="button" onClick={() => { setBudgetTier(p.key); setBudgetFrequency("monthly"); }}
+                      <button key={p.key} type="button" onClick={() => { setBudgetTier(p.key); setBudgetFrequency("daily"); }}
                         className={`text-left p-4 rounded-xl border transition ${active ? "border-brand-500 bg-brand-50 ring-1 ring-brand-200" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"}`}>
                         <div className="flex items-center justify-between">
                           <span className={`text-xs font-semibold uppercase tracking-wide ${active ? "text-brand-700" : "text-gray-500"}`}>{p.label}</span>
                           {p.key === "recommended" && <span className="text-[10px] text-brand-600">★</span>}
                         </div>
-                        <div className="text-xl font-bold text-gray-800 mt-1">{fmtUsd0(p.amount)}<span className="text-xs font-medium text-gray-400"> / month</span></div>
+                        <div className="text-xl font-bold text-gray-800 mt-1">{fmtUsd0(p.daily)}<span className="text-xs font-medium text-gray-400"> / day</span></div>
                         <div className="text-[11px] text-gray-400 mt-0.5">targets ~{Math.round(TARGET_CLOSES_PER_MONTH * p.factor)} closes / mo</div>
                         {proj && (
                           <div className="mt-2 text-[11px] leading-relaxed">
                             <div className="text-green-700 font-semibold">~{fmtUsd0(proj.revenue)} revenue / month</div>
-                            <div className="text-gray-500">CAC {proj.cacPct != null ? `${fmtNum(proj.cacPct, 1)}%` : "—"}</div>
+                            <div className="text-gray-500">CAC {proj.cacPct != null ? `${fmtNum(proj.cacPct, 1)}%` : "—"} / month</div>
                           </div>
                         )}
                       </button>
