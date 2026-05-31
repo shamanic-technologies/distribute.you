@@ -58,6 +58,13 @@ describe("Feature-level quote pages", () => {
       expect(content).toContain(".score");
     });
 
+    it("renders the score directly as a percent — never `score * 100` (was '9500')", () => {
+      // Relevance judge (DIS-79) emits a 0–100 score (e.g. 95). Render it
+      // directly: `Math.round(opportunity.score)` + '%'. `* 100` produced "9500".
+      expect(content).not.toMatch(/score\s*\*\s*100/);
+      expect(content).toContain("Math.round(opportunity.score)");
+    });
+
     it("renders an empty state with the matching testid", () => {
       expect(content).toContain('data-testid="feature-quote-requests-empty"');
     });
