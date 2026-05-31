@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { ContextSidebar } from "@/components/context-sidebar";
 import { Header } from "@/components/header";
 import { OrgActivator } from "@/components/org-activator";
@@ -44,7 +45,15 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   // don't unmount, lose their data references, and re-paint as skeletons when Clerk briefly
   // flips back to `isLoading`. Only the main content area swaps to a skeleton when we
   // genuinely have no org (initial app load or sign-out).
-  const showContent = !isLoading && hasOrg;
+  //
+  // Monotonic readiness latch: Clerk flips `isLoaded` back to false (and `organization` can
+  // blink null) during background session-JWT rotation / revalidation. Gating the body on the
+  // live `!isLoading` made the whole `<main>` disappear and reappear every rotation. Once the
+  // org has resolved at least once, keep the body mounted — only blank before the FIRST resolve.
+  // The ref resets naturally on sign-out (the whole layout unmounts).
+  const hasResolvedOnce = useRef(false);
+  if (!isLoading && hasOrg) hasResolvedOnce.current = true;
+  const showContent = hasResolvedOnce.current || (!isLoading && hasOrg);
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
