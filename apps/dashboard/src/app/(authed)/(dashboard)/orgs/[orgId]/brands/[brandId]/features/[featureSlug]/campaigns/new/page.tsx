@@ -23,6 +23,9 @@ import {
   type Brand,
   type Campaign,
   type FeatureInput,
+  getCampaign,
+  listCampaignEmails,
+  type Email,
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
 import { formatStatValue, sortDirectionForType } from "@/lib/format-stat";
@@ -198,6 +201,11 @@ export default function FeatureCreateCampaignPage() {
   const [econClickToClose, setEconClickToClose] = useState(SALES_ECON_DEFAULTS.clickToClose);
   const [showWorkflowPicker, setShowWorkflowPicker] = useState(false);
   const [salesWorkflowOverrideId, setSalesWorkflowOverrideId] = useState<string | null>(null);
+  const [modalSelectedWorkflowId, setModalSelectedWorkflowId] = useState<string | null>(null);
+  // Test runs keyed by workflow id — real campaigns capped at 3 leads. Persist across modal open/close.
+  const [tests, setTests] = useState<Record<string, { campaignId: string; status: string; emails: Email[] }>>({});
+  const [testStarting, setTestStarting] = useState<Record<string, boolean>>({});
+  const [testError, setTestError] = useState<Record<string, string>>({});
   const [budgetTier, setBudgetTier] = useState<BudgetTier>("recommended");
   const [budgetCustom, setBudgetCustom] = useState("");
   const salesPrefilledRef = useRef(false);
@@ -392,6 +400,81 @@ export default function FeatureCreateCampaignPage() {
     if (budgetTier === "other") return parseFloat(budgetCustom) || 0;
     return budgetPresets?.find((p) => p.key === budgetTier)?.amount ?? 0;
   }, [budgetTier, budgetCustom, budgetPresets]);
+
+  // ── Workflow test runs (real campaigns capped at 3 leads) ──
+  const runningTestIds = useMemo(
+    () => Object.values(tests).filter((t) => t.status === "active").map((t) => t.campaignId),
+    [tests],
+  );
+
+  const { data: testPoll } = useAuthQuery(
+    ["salesWorkflowTests", runningTestIds],
+    async () => {
+      const out: Record<string, { status: string; emails: Email[] }> = {};
+      await Promise.all(
+        runningTestIds.map(async (cid) => {
+          const [{ campaign }, { emails }] = await Promise.all([getCampaign(cid), listCampaignEmails(cid)]);
+          out[cid] = { status: campaign.status, emails };
+        }),
+      );
+      return out;
+    },
+    { enabled: runningTestIds.length > 0, ...pollOptions },
+  );
+
+  useEffect(() => {
+    if (!testPoll) return;
+    setTests((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const [wfId, t] of Object.entries(prev)) {
+        const d = testPoll[t.campaignId];
+        if (d && (d.status !== t.status || d.emails.length !== t.emails.length)) {
+          next[wfId] = { ...t, status: d.status, emails: d.emails };
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [testPoll]);
+
+  const runWorkflowTest = useCallback(async (wf: WorkflowTableRow) => {
+    const baseUrl = brand?.url ?? "";
+    if (!baseUrl || testStarting[wf.id]) return;
+    setTestError((s) => ({ ...s, [wf.id]: "" }));
+    setTestStarting((s) => ({ ...s, [wf.id]: true }));
+    try {
+      const inputValues: Record<string, unknown> = {};
+      for (const input of featureInputs) {
+        const v = formData[input.key]?.trim();
+        if (v) inputValues[input.key] = v;
+      }
+      const brandUrls = [
+        formData.brandUrl || baseUrl,
+        ...additionalBrands.map((b) => b.url).filter((u): u is string => u != null),
+      ];
+      const now = new Date();
+      const name = `Test — ${wf.workflowDynastyName} — ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}.${String(now.getMilliseconds()).padStart(3, "0")}`;
+      const { campaign } = await createCampaign({
+        name,
+        workflowSlug: wf.workflowSlug,
+        brandUrls,
+        featureSlug,
+        featureInputs: inputValues,
+        maxLeads: 3,
+      } as unknown as Parameters<typeof createCampaign>[0]);
+      setTests((t) => ({ ...t, [wf.id]: { campaignId: campaign.id, status: campaign.status || "active", emails: [] } }));
+    } catch (err) {
+      setTestError((s) => ({
+        ...s,
+        [wf.id]: err instanceof ApiError && err.status === 402
+          ? "Insufficient credits to run a test."
+          : err instanceof Error ? err.message : "Failed to start test.",
+      }));
+    } finally {
+      setTestStarting((s) => ({ ...s, [wf.id]: false }));
+    }
+  }, [brand, testStarting, featureInputs, formData, additionalBrands, featureSlug]);
 
   // Workflow IDs for key status check
   const featureWorkflowIds = useMemo(() => rows.map((r) => r.id), [rows]);
@@ -1125,7 +1208,7 @@ export default function FeatureCreateCampaignPage() {
                   <span>{salesWorkflowOverrideId ? "selected workflow" : "auto-selected workflow"}</span>
                   <span className="font-medium text-gray-800">{salesPick.workflowDynastyName}</span>
                   <span>&mdash; {fmtUsd0(Number(salesPick.stats[SALES_PICK_METRIC]) / 100)} / positive reply</span>
-                  <button type="button" onClick={() => setShowWorkflowPicker(true)} title="Change workflow"
+                  <button type="button" onClick={() => { setModalSelectedWorkflowId(salesPick?.id ?? null); setShowWorkflowPicker(true); }} title="Change workflow"
                     className="ml-0.5 p-1 rounded text-gray-400 hover:text-brand-600 hover:bg-brand-50 transition">
                     <PencilSquareIcon className="w-3.5 h-3.5" />
                   </button>
@@ -1176,7 +1259,7 @@ export default function FeatureCreateCampaignPage() {
 
           {showWorkflowPicker && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowWorkflowPicker(false)}>
-              <div className="bg-white rounded-xl border border-gray-200 shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+              <div className="bg-white rounded-xl border border-gray-200 shadow-xl w-full max-w-4xl max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                   <div>
                     <h3 className="font-display font-semibold text-gray-800">Choose a workflow</h3>
@@ -1186,47 +1269,109 @@ export default function FeatureCreateCampaignPage() {
                     <XMarkIcon className="w-5 h-5" />
                   </button>
                 </div>
-                <div className="overflow-y-auto p-3 space-y-2">
-                  {[...rows].sort((a, b) => {
-                    const ca = a.stats[SALES_PICK_METRIC]; const cb = b.stats[SALES_PICK_METRIC];
-                    const va = typeof ca === "number" && ca > 0 ? ca : Infinity;
-                    const vb = typeof cb === "number" && cb > 0 ? cb : Infinity;
-                    return va - vb;
-                  }).map((w) => {
-                    const cost = w.stats[SALES_PICK_METRIC];
-                    const isPick = salesPick?.id === w.id;
-                    const isReco = salesAutoPick?.id === w.id;
-                    const openRate = w.stats.recipientOpenRate;
-                    return (
-                      <button key={w.id} type="button"
-                        onClick={() => { setSalesWorkflowOverrideId(isReco ? null : w.id); setShowWorkflowPicker(false); }}
-                        className={`w-full text-left p-3 rounded-lg border transition flex items-center gap-3 ${isPick ? "border-brand-500 bg-brand-50 ring-1 ring-brand-200" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"}`}>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-gray-800 truncate">{w.workflowDynastyName}</span>
-                            {isReco && <span className="text-[10px] font-semibold text-brand-700 bg-brand-100 rounded px-1.5 py-0.5">Recommended</span>}
+                <div className="flex-1 min-h-0 flex divide-x divide-gray-100">
+                  {/* LEFT: workflow list */}
+                  <div className="w-1/2 overflow-y-auto p-3 space-y-2">
+                    {[...rows].sort((a, b) => {
+                      const ca = a.stats[SALES_PICK_METRIC]; const cb = b.stats[SALES_PICK_METRIC];
+                      const va = typeof ca === "number" && ca > 0 ? ca : Infinity;
+                      const vb = typeof cb === "number" && cb > 0 ? cb : Infinity;
+                      return va - vb;
+                    }).map((w) => {
+                      const cost = w.stats[SALES_PICK_METRIC];
+                      const isSel = modalSelectedWorkflowId === w.id;
+                      const isReco = salesAutoPick?.id === w.id;
+                      const isOverride = salesWorkflowOverrideId === w.id;
+                      const openRate = w.stats.recipientOpenRate;
+                      const testing = tests[w.id]?.status === "active" || testStarting[w.id];
+                      return (
+                        <button key={w.id} type="button"
+                          onClick={() => setModalSelectedWorkflowId(w.id)}
+                          className={`w-full text-left p-3 rounded-lg border transition flex items-center gap-3 ${isSel ? "border-brand-500 bg-brand-50 ring-1 ring-brand-200" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"}`}>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-medium text-gray-800 truncate">{w.workflowDynastyName}</span>
+                              {isReco && <span className="text-[10px] font-semibold text-brand-700 bg-brand-100 rounded px-1.5 py-0.5">Recommended</span>}
+                              {isOverride && <span className="text-[10px] font-semibold text-green-700 bg-green-100 rounded px-1.5 py-0.5">In use</span>}
+                              {testing && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700">
+                                  <span className="w-2.5 h-2.5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                                  Testing
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex gap-3 mt-1 text-[11px] text-gray-500">
+                              <span>Sent {fmtNum(Number(w.stats.recipientsSent) || 0)}</span>
+                              <span>Open {typeof openRate === "number" ? `${(openRate * 100).toFixed(0)}%` : "—"}</span>
+                              <span>Pos. {fmtNum(Number(w.stats.recipientsRepliesPositive) || 0)}</span>
+                            </div>
                           </div>
-                          <div className="flex gap-3 mt-1 text-[11px] text-gray-500">
-                            <span>Sent {fmtNum(Number(w.stats.recipientsSent) || 0)}</span>
-                            <span>Open {typeof openRate === "number" ? `${(openRate * 100).toFixed(0)}%` : "—"}</span>
-                            <span>Pos. replies {fmtNum(Number(w.stats.recipientsRepliesPositive) || 0)}</span>
+                          <div className="text-right shrink-0">
+                            <div className="text-sm font-semibold text-gray-800">{typeof cost === "number" && cost > 0 ? fmtUsd0(cost / 100) : "—"}</div>
+                            <div className="text-[10px] text-gray-400">/ pos. reply</div>
                           </div>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <div className="text-sm font-semibold text-gray-800">{typeof cost === "number" && cost > 0 ? fmtUsd0(cost / 100) : "—"}</div>
-                          <div className="text-[10px] text-gray-400">/ pos. reply</div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                  {rows.length === 0 && <p className="text-sm text-gray-400 text-center py-6">No workflows available.</p>}
-                </div>
-                {salesWorkflowOverrideId && (
-                  <div className="px-5 py-3 border-t border-gray-100">
-                    <button type="button" onClick={() => { setSalesWorkflowOverrideId(null); setShowWorkflowPicker(false); }}
-                      className="text-xs font-medium text-brand-600 hover:text-brand-700">Reset to recommended</button>
+                        </button>
+                      );
+                    })}
+                    {rows.length === 0 && <p className="text-sm text-gray-400 text-center py-6">No workflows available.</p>}
                   </div>
-                )}
+
+                  {/* RIGHT: test emails */}
+                  <div className="w-1/2 overflow-y-auto p-4 bg-gray-50/50">
+                    {(() => {
+                      const wf = rows.find((r) => r.id === modalSelectedWorkflowId);
+                      if (!wf) return <p className="text-sm text-gray-400 text-center py-8">Select a workflow to test it.</p>;
+                      const t = tests[wf.id];
+                      const active = t?.status === "active";
+                      const starting = testStarting[wf.id];
+                      const emails = t?.emails ?? [];
+                      return (
+                        <div>
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <span className="text-sm font-medium text-gray-800 truncate">{wf.workflowDynastyName}</span>
+                            <button type="button" disabled={active || starting || !resolvedBrandUrl}
+                              onClick={() => runWorkflowTest(wf)}
+                              className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                              {active || starting ? (
+                                <>
+                                  <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                  Testing…
+                                </>
+                              ) : (t ? "Run test again" : "Run test · 3 leads")}
+                            </button>
+                          </div>
+                          <p className="text-[11px] text-amber-600 mb-3">⚠ Sends real emails to 3 leads.</p>
+                          {testError[wf.id] && <p className="text-xs text-red-600 mb-3">{testError[wf.id]}</p>}
+                          {!t && !starting && <p className="text-sm text-gray-400 py-6 text-center">No test yet. Run one to preview real emails for this workflow.</p>}
+                          {(active || starting) && emails.length === 0 && <p className="text-sm text-gray-400 py-6 text-center">Generating emails…</p>}
+                          <div className="space-y-2">
+                            {emails.map((e) => (
+                              <div key={e.id} className="bg-white rounded-lg border border-gray-200 p-3">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-xs font-medium text-gray-800 truncate">{[e.leadFirstName, e.leadLastName].filter(Boolean).join(" ") || "Lead"}{e.leadCompany ? ` · ${e.leadCompany}` : ""}</span>
+                                  {e.generationRun?.status && <span className="text-[10px] text-gray-400 shrink-0">{e.generationRun.status}</span>}
+                                </div>
+                                {e.subject && <div className="text-xs font-semibold text-gray-700 mt-1 truncate">{e.subject}</div>}
+                                {e.bodyText && <div className="text-[11px] text-gray-500 mt-1 line-clamp-3 whitespace-pre-wrap">{e.bodyText}</div>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+                <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between">
+                  {salesWorkflowOverrideId ? (
+                    <button type="button" onClick={() => { setSalesWorkflowOverrideId(null); setShowWorkflowPicker(false); }}
+                      className="text-xs font-medium text-gray-500 hover:text-gray-700">Reset to recommended</button>
+                  ) : <span />}
+                  <button type="button" disabled={!modalSelectedWorkflowId}
+                    onClick={() => { setSalesWorkflowOverrideId(modalSelectedWorkflowId && modalSelectedWorkflowId !== salesAutoPick?.id ? modalSelectedWorkflowId : null); setShowWorkflowPicker(false); }}
+                    className="px-4 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition disabled:opacity-40 disabled:cursor-not-allowed">
+                    Use selected workflow
+                  </button>
+                </div>
               </div>
             </div>
           )}
