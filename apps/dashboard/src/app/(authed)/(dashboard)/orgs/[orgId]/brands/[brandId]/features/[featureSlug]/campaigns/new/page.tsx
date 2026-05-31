@@ -1097,30 +1097,37 @@ export default function FeatureCreateCampaignPage() {
               )}
 
               {(() => {
-                const proj = salesPlan.project(effectiveBudget);
+                // Outcomes are always normalized to a monthly run-rate (multiply the chosen
+                // cadence up to a month); the budget chip stays at the chosen cadence. One-off
+                // is shown as-is (no normalization, no "per month").
+                const MONTH_MULT: Record<BudgetFrequency, number> = { "one-off": 1, daily: 30.4, weekly: 4.345, monthly: 1 };
+                const oneOff = budgetFrequency === "one-off";
+                const proj = salesPlan.project(effectiveBudget * MONTH_MULT[budgetFrequency]);
                 if (!proj) return null;
+                const perMonth = oneOff ? "" : " per month";
+                const budgetSuffix = oneOff ? "" : ` per ${REVENUE_INTERVAL_LABEL[budgetFrequency]}`;
                 const steps = salesObjective === "self-serve"
                   ? [
-                      { v: fmtUsd0(effectiveBudget), k: "budget" },
-                      { v: fmtNum(proj.primary), k: proj.primaryLabel },
-                      { v: fmtNum(proj.closes, proj.closes < 10 ? 1 : 0), k: "closes" },
+                      { v: fmtUsd0(effectiveBudget), k: `budget${budgetSuffix}` },
+                      { v: fmtNum(proj.primary), k: `${proj.primaryLabel}${perMonth}` },
+                      { v: fmtNum(proj.closes, proj.closes < 10 ? 1 : 0), k: `closes${perMonth}` },
                     ]
                   : [
-                      { v: fmtUsd0(effectiveBudget), k: "budget" },
-                      { v: fmtNum(proj.primary), k: proj.primaryLabel },
-                      { v: fmtNum(proj.meetings ?? 0, (proj.meetings ?? 0) < 10 ? 1 : 0), k: "meetings" },
-                      { v: fmtNum(proj.closes, proj.closes < 10 ? 1 : 0), k: "closes" },
+                      { v: fmtUsd0(effectiveBudget), k: `budget${budgetSuffix}` },
+                      { v: fmtNum(proj.primary), k: `${proj.primaryLabel}${perMonth}` },
+                      { v: fmtNum(proj.meetings ?? 0, (proj.meetings ?? 0) < 10 ? 1 : 0), k: `meetings${perMonth}` },
+                      { v: fmtNum(proj.closes, proj.closes < 10 ? 1 : 0), k: `closes${perMonth}` },
                     ];
                 return (
                   <div className="mt-4">
-                    <p className="text-center text-[11px] uppercase tracking-wide text-gray-400 mb-2">Projected per {REVENUE_INTERVAL_LABEL[budgetFrequency]}</p>
+                    <p className="text-center text-[11px] uppercase tracking-wide text-gray-400 mb-2">{oneOff ? "Projected outcome" : "Projected per month"}</p>
                     <div className="flex items-center justify-center gap-2 flex-wrap">
                       {steps.map((s, i) => (
                         <Fragment key={s.k}>
                           {i > 0 && <span className="text-gray-300">&rarr;</span>}
-                          <div className="flex flex-col items-center px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 min-w-[78px]">
+                          <div className="flex flex-col items-center px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 min-w-[84px]">
                             <span className="text-base font-semibold text-gray-800">{s.v}</span>
-                            <span className="text-[11px] text-gray-500">{s.k}</span>
+                            <span className="text-[11px] text-gray-500 text-center">{s.k}</span>
                           </div>
                         </Fragment>
                       ))}
