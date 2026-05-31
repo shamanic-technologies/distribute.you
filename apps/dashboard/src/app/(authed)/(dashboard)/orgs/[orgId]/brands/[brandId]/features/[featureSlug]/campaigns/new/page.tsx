@@ -1045,7 +1045,7 @@ export default function FeatureCreateCampaignPage() {
                         <div className="text-xl font-bold text-gray-800 mt-1">{fmtUsd0(p.amount)}<span className="text-xs font-medium text-gray-400"> / {REVENUE_INTERVAL_LABEL[budgetFrequency]}</span></div>
                         {proj && (
                           <div className="mt-2 text-[11px] leading-relaxed">
-                            <div className="text-green-700 font-semibold">~{fmtUsd0(proj.revenue)} revenue</div>
+                            <div className="text-green-700 font-semibold">~{fmtUsd0(proj.revenue)} revenue{budgetFrequency === "one-off" ? "" : ` / ${REVENUE_INTERVAL_LABEL[budgetFrequency]}`}</div>
                             <div className="text-gray-500">CAC {proj.cacPct != null ? `${fmtNum(proj.cacPct, 1)}%` : "—"}</div>
                           </div>
                         )}
@@ -1072,7 +1072,7 @@ export default function FeatureCreateCampaignPage() {
                     {(() => {
                       const cp = salesPlan.project(parseFloat(budgetCustom) || 0);
                       return budgetTier === "other" && cp ? (
-                        <div className="mt-2 text-[11px] text-green-700 font-semibold">~{fmtUsd0(cp.revenue)} revenue</div>
+                        <div className="mt-2 text-[11px] text-green-700 font-semibold">~{fmtUsd0(cp.revenue)} revenue{budgetFrequency === "one-off" ? "" : ` / ${REVENUE_INTERVAL_LABEL[budgetFrequency]}`}</div>
                       ) : null;
                     })()}
                   </button>
@@ -1108,15 +1108,17 @@ export default function FeatureCreateCampaignPage() {
                 const budgetSuffix = oneOff ? "" : ` per ${REVENUE_INTERVAL_LABEL[budgetFrequency]}`;
                 const steps = salesObjective === "self-serve"
                   ? [
-                      { v: fmtUsd0(effectiveBudget), k: `budget${budgetSuffix}` },
-                      { v: fmtNum(proj.primary), k: `${proj.primaryLabel}${perMonth}` },
-                      { v: fmtNum(proj.closes, proj.closes < 10 ? 1 : 0), k: `closes${perMonth}` },
+                      { v: fmtUsd0(effectiveBudget), k: `budget${budgetSuffix}`, green: false },
+                      { v: fmtNum(proj.primary), k: `${proj.primaryLabel}${perMonth}`, green: false },
+                      { v: fmtNum(proj.closes, proj.closes < 10 ? 1 : 0), k: `closes${perMonth}`, green: false },
+                      { v: fmtUsd0(proj.revenue), k: `revenue${perMonth}`, green: true },
                     ]
                   : [
-                      { v: fmtUsd0(effectiveBudget), k: `budget${budgetSuffix}` },
-                      { v: fmtNum(proj.primary), k: `${proj.primaryLabel}${perMonth}` },
-                      { v: fmtNum(proj.meetings ?? 0, (proj.meetings ?? 0) < 10 ? 1 : 0), k: `meetings${perMonth}` },
-                      { v: fmtNum(proj.closes, proj.closes < 10 ? 1 : 0), k: `closes${perMonth}` },
+                      { v: fmtUsd0(effectiveBudget), k: `budget${budgetSuffix}`, green: false },
+                      { v: fmtNum(proj.primary), k: `${proj.primaryLabel}${perMonth}`, green: false },
+                      { v: fmtNum(proj.meetings ?? 0, (proj.meetings ?? 0) < 10 ? 1 : 0), k: `meetings${perMonth}`, green: false },
+                      { v: fmtNum(proj.closes, proj.closes < 10 ? 1 : 0), k: `closes${perMonth}`, green: false },
+                      { v: fmtUsd0(proj.revenue), k: `revenue${perMonth}`, green: true },
                     ];
                 return (
                   <div className="mt-4">
@@ -1125,8 +1127,8 @@ export default function FeatureCreateCampaignPage() {
                       {steps.map((s, i) => (
                         <Fragment key={s.k}>
                           {i > 0 && <span className="text-gray-300">&rarr;</span>}
-                          <div className="flex flex-col items-center px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 min-w-[84px]">
-                            <span className="text-base font-semibold text-gray-800">{s.v}</span>
+                          <div className={`flex flex-col items-center px-3 py-2 rounded-lg border min-w-[84px] ${s.green ? "border-green-200 bg-green-50" : "border-gray-200 bg-gray-50"}`}>
+                            <span className={`text-base font-semibold ${s.green ? "text-green-700" : "text-gray-800"}`}>{s.v}</span>
                             <span className="text-[11px] text-gray-500 text-center">{s.k}</span>
                           </div>
                         </Fragment>
