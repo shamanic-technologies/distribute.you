@@ -1181,7 +1181,7 @@ export default function FeatureCreateCampaignPage() {
                     <select value={budgetFrequency} onClick={(e) => e.stopPropagation()}
                       onChange={(e) => { setBudgetFrequency(e.target.value as BudgetFrequency); setBudgetTier("other"); }}
                       className="mt-2 w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-300">
-                      <option value="one-off">per one-off</option>
+                      <option value="one-off">One-off</option>
                       <option value="daily">per day</option>
                       <option value="weekly">per week</option>
                       <option value="monthly">per month</option>
