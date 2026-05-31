@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect, Fragment } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
@@ -42,6 +42,37 @@ const BUDGET_FREQUENCIES: { value: BudgetFrequency; label: string }[] = [
   { value: "weekly", label: "Weekly" },
   { value: "monthly", label: "Monthly" },
 ];
+
+// ── Sales-cold-email funnel redesign (revenue goal → conversion metrics → budget) ──
+// Gated to this one feature; every other feature keeps the workflow-table UI.
+type SalesObjective = "booked-meetings" | "sales-via-meetings" | "self-serve";
+
+const SALES_FUNNEL_FEATURE_SLUG = "sales-cold-email-outreach";
+
+/** Auto-pick + budget projection rank on the populated recipients* family,
+ *  NOT the empty leads* family (sidesteps DIS-114). */
+const SALES_COST_METRIC = "costPerRecipientPositiveReplyCents";
+
+const SALES_OBJECTIVES: { key: SalesObjective; label: string }[] = [
+  { key: "booked-meetings", label: "Booked meetings" },
+  { key: "sales-via-meetings", label: "Sales via meetings" },
+  { key: "self-serve", label: "Self-serve" },
+];
+
+/** Default conversion economics shown until the user edits them.
+ *  TODO(backend): persist per (brandId, featureSlug) in features-service + seed by industry. */
+const SALES_ECON_DEFAULTS = { ltv: "4000", replyToMeeting: "40", meetingToClose: "25" };
+
+const REVENUE_INTERVAL_LABEL: Record<BudgetFrequency, string> = {
+  "one-off": "one-off",
+  daily: "day",
+  weekly: "week",
+  monthly: "month",
+};
+
+const fmtUsd0 = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
+const fmtNum = (n: number, decimals = 0) =>
+  decimals ? n.toFixed(decimals) : Math.round(n).toLocaleString("en-US");
 
 /** A workflow row combining workflow metadata with feature stats. */
 interface WorkflowTableRow {
@@ -115,6 +146,7 @@ export default function FeatureCreateCampaignPage() {
   const featureDef = getFeature(featureSlug);
   const featureInputs = featureDef?.inputs ?? [];
   const outputs = featureDef?.outputs ?? [];
+  const isSalesFunnel = featureSlug === SALES_FUNNEL_FEATURE_SLUG;
 
   // Determine default sort from outputs
   const defaultSortOutput = outputs.find((o) => o.defaultSort);
@@ -141,6 +173,15 @@ export default function FeatureCreateCampaignPage() {
   const [additionalBrandIds, setAdditionalBrandIds] = useState<string[]>([]);
   const [showBrandPicker, setShowBrandPicker] = useState(false);
   const brandPickerRef = useRef<HTMLDivElement>(null);
+
+  // ── Sales funnel state (sales-cold-email only) ──
+  const [salesObjective, setSalesObjective] = useState<SalesObjective>("booked-meetings");
+  const [revenueGoal, setRevenueGoal] = useState("10000");
+  const [econLtv, setEconLtv] = useState(SALES_ECON_DEFAULTS.ltv);
+  const [econReplyToMeeting, setEconReplyToMeeting] = useState(SALES_ECON_DEFAULTS.replyToMeeting);
+  const [econMeetingToClose, setEconMeetingToClose] = useState(SALES_ECON_DEFAULTS.meetingToClose);
+  const [econSaved, setEconSaved] = useState(false);
+  const salesPrefilledRef = useRef(false);
 
   const sortedOutputs = useMemo(
     () => [...outputs].sort((a, b) => a.displayOrder - b.displayOrder),
@@ -257,6 +298,36 @@ export default function FeatureCreateCampaignPage() {
     });
   }, [workflowsData, rankedData, brandStatsData]);
 
+  // Sales auto-pick: cheapest active workflow per positive reply (recipients* family).
+  const salesAutoPick = useMemo(() => {
+    if (!isSalesFunnel) return null;
+    const candidates = rows.filter((r) => {
+      const c = r.stats[SALES_COST_METRIC];
+      return typeof c === "number" && c > 0;
+    });
+    if (candidates.length === 0) return null;
+    return [...candidates].sort(
+      (a, b) => Number(a.stats[SALES_COST_METRIC]) - Number(b.stats[SALES_COST_METRIC]),
+    )[0];
+  }, [isSalesFunnel, rows]);
+
+  // Reverse funnel: revenue goal → closes → meetings → positive replies → budget.
+  const salesPlan = useMemo(() => {
+    const revenue = parseFloat(revenueGoal) || 0;
+    const ltv = parseFloat(econLtv) || 0;
+    const r2m = (parseFloat(econReplyToMeeting) || 0) / 100;
+    const m2c = (parseFloat(econMeetingToClose) || 0) / 100;
+    const costPerReply =
+      salesAutoPick != null ? Number(salesAutoPick.stats[SALES_COST_METRIC]) / 100 : null;
+    const closes = ltv > 0 ? revenue / ltv : 0;
+    const meetings = m2c > 0 ? closes / m2c : 0;
+    const replies = r2m > 0 ? meetings / r2m : 0;
+    const budget = costPerReply != null ? replies * costPerReply : null;
+    const cacPct = budget != null && revenue > 0 ? (budget / revenue) * 100 : null;
+    const cacAbs = budget != null && closes > 0 ? budget / closes : null;
+    return { revenue, closes, meetings, replies, costPerReply, budget, cacPct, cacAbs };
+  }, [revenueGoal, econLtv, econReplyToMeeting, econMeetingToClose, salesAutoPick]);
+
   // Workflow IDs for key status check
   const featureWorkflowIds = useMemo(() => rows.map((r) => r.id), [rows]);
 
@@ -320,7 +391,9 @@ export default function FeatureCreateCampaignPage() {
     ? sorted[0]?.id ?? null
     : selectedWorkflowId;
 
-  const selectedRow = sorted.find((r) => r.id === effectiveSelectionId) ?? null;
+  const selectedRow = isSalesFunnel
+    ? salesAutoPick
+    : sorted.find((r) => r.id === effectiveSelectionId) ?? null;
 
   const { topRows, restRows } = useMemo(() => {
     if (mode === "autopilot" || !selectedWorkflowId) {
@@ -373,6 +446,29 @@ export default function FeatureCreateCampaignPage() {
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [additionalBrandIds]);
+
+  // Sales: drive the campaign budget from the computed plan (revenue goal → budget).
+  useEffect(() => {
+    if (!isSalesFunnel) return;
+    setBudgetAmount(salesPlan.budget != null ? String(Math.round(salesPlan.budget)) : "");
+  }, [isSalesFunnel, salesPlan.budget]);
+
+  // Sales: prefill campaign inputs eagerly once the brand resolves (no "Go" step).
+  useEffect(() => {
+    if (!isSalesFunnel || !resolvedBrandUrl || salesPrefilledRef.current) return;
+    salesPrefilledRef.current = true;
+    setIsLoadingProfile(true);
+    prefillFeatureInputs(featureSlug, [brandId, ...additionalBrandIds])
+      .then(({ prefilled }) =>
+        setFormData(prefillToFormData(prefillToStringMap(prefilled), featureInputs, resolvedBrandUrl)),
+      )
+      .catch(() => setFormData(buildEmptyForm(featureInputs, resolvedBrandUrl)))
+      .finally(() => {
+        setIsLoadingProfile(false);
+        setShowForm(true);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSalesFunnel, resolvedBrandUrl]);
 
   const doCreateCampaign = useCallback(async () => {
     if (!selectedRow || !budgetAmount) return;
@@ -627,7 +723,11 @@ export default function FeatureCreateCampaignPage() {
       {/* Header */}
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-gray-800">Create Campaign</h1>
-        <p className="text-gray-600">Select a workflow and configure your campaign.</p>
+        <p className="text-gray-600">
+          {isSalesFunnel
+            ? "Set a revenue goal — we pick the best workflow and size your budget."
+            : "Select a workflow and configure your campaign."}
+        </p>
       </div>
 
       {/* Brand info (locked) + additional brands */}
@@ -747,6 +847,220 @@ export default function FeatureCreateCampaignPage() {
         </div>
       )}
 
+      {/* ░░ Sales funnel (sales-cold-email) ░░ */}
+      {isSalesFunnel && (
+        <div className="space-y-4 mb-4">
+          {/* Objective */}
+          <div className="inline-flex rounded-lg border border-gray-200 bg-white overflow-hidden">
+            {SALES_OBJECTIVES.map((o, i) => {
+              const disabled = o.key === "self-serve";
+              const active = salesObjective === o.key;
+              return (
+                <button
+                  key={o.key}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => setSalesObjective(o.key)}
+                  className={`px-4 py-2 text-sm font-medium transition ${i > 0 ? "border-l border-gray-200" : ""} ${
+                    active
+                      ? "bg-brand-50 text-brand-700"
+                      : disabled
+                        ? "text-gray-300 bg-gray-50 cursor-not-allowed"
+                        : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  {o.label}
+                  {disabled && (
+                    <span className="ml-1.5 text-[10px] uppercase tracking-wide text-amber-600">soon</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 1 · Revenue goal */}
+          <div className="bg-white rounded-xl border border-gray-200">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+              <span className="w-5 h-5 inline-flex items-center justify-center text-[11px] font-bold text-white bg-brand-500 rounded-full">1</span>
+              <h2 className="font-display font-semibold text-gray-800">Revenue goal</h2>
+            </div>
+            <div className="p-5">
+              <p className="text-sm text-gray-500 mb-3">How much revenue do you want to generate with us?</p>
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-1">
+                  <span className="text-2xl text-gray-400">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="500"
+                    value={revenueGoal}
+                    onChange={(e) => setRevenueGoal(e.target.value)}
+                    className="w-40 text-2xl font-bold text-gray-800 bg-transparent border-0 border-b-2 border-gray-200 focus:border-brand-500 focus:outline-none px-1 py-1"
+                  />
+                </div>
+                <span className="text-gray-500">per</span>
+                <select
+                  value={budgetFrequency}
+                  onChange={(e) => setBudgetFrequency(e.target.value as BudgetFrequency)}
+                  className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-300"
+                >
+                  <option value="one-off">one-off</option>
+                  <option value="daily">day</option>
+                  <option value="weekly">week</option>
+                  <option value="monthly">month</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* 2 · Conversion metrics (feature-level) */}
+          <div className="bg-white rounded-xl border border-gray-200">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-5 h-5 inline-flex items-center justify-center text-[11px] font-bold text-white bg-brand-500 rounded-full">2</span>
+                <h2 className="font-display font-semibold text-gray-800">Your conversion metrics</h2>
+              </div>
+              <span className="text-[11px] font-semibold text-brand-700 bg-brand-50 rounded-full px-2.5 py-1">feature-level · reused</span>
+            </div>
+            <div className="p-5">
+              <p className="text-sm text-gray-500 mb-4">Reused across every sales campaign for this brand. Edit anytime. Industry defaults coming soon.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Customer LTV</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                    <input type="number" min="0" step="100" value={econLtv} onChange={(e) => setEconLtv(e.target.value)}
+                      className="w-full pl-7 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Positive reply → meeting</label>
+                  <div className="relative">
+                    <input type="number" min="0" max="100" step="1" value={econReplyToMeeting} onChange={(e) => setEconReplyToMeeting(e.target.value)}
+                      className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Meeting → close</label>
+                  <div className="relative">
+                    <input type="number" min="0" max="100" step="1" value={econMeetingToClose} onChange={(e) => setEconMeetingToClose(e.target.value)}
+                      className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 flex items-center gap-2 text-gray-400">
+                <label className="text-xs">Click → meeting / close</label>
+                <span className="text-[10px] uppercase tracking-wide text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">coming soon</span>
+              </div>
+              <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-end gap-3">
+                {econSaved && <span className="text-sm text-green-600 font-medium">✓ saved</span>}
+                <button type="button" onClick={() => { setEconSaved(true); setTimeout(() => setEconSaved(false), 1600); }}
+                  className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50">Save metrics</button>
+              </div>
+            </div>
+          </div>
+
+          {/* 3 · Budget needed */}
+          <div className="bg-white rounded-xl border border-gray-200">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+              <span className="w-5 h-5 inline-flex items-center justify-center text-[11px] font-bold text-white bg-brand-500 rounded-full">3</span>
+              <h2 className="font-display font-semibold text-gray-800">Budget needed</h2>
+            </div>
+            <div className="p-5">
+              {salesPlan.budget == null ? (
+                <div className="rounded-xl border border-gray-200 bg-gray-50 p-5 text-center text-sm text-gray-500">
+                  Not enough performance data yet to size a budget for this objective.
+                </div>
+              ) : (
+                <>
+                  <div className="rounded-xl border border-green-200 bg-green-50 p-5 text-center">
+                    <p className="text-sm text-green-700 font-medium mb-1">
+                      To hit {fmtUsd0(salesPlan.revenue)} / {REVENUE_INTERVAL_LABEL[budgetFrequency]}, invest about
+                    </p>
+                    <p className="text-3xl font-bold text-green-600">
+                      {fmtUsd0(salesPlan.budget)}{" "}
+                      <span className="text-base font-medium text-green-700">/ {REVENUE_INTERVAL_LABEL[budgetFrequency]}</span>
+                    </p>
+                    <div className="flex items-center justify-center gap-8 mt-3 pt-3 border-t border-green-200">
+                      <div>
+                        <p className="text-lg font-bold text-green-800">{salesPlan.cacPct != null ? `${fmtNum(salesPlan.cacPct, 1)}%` : "—"}</p>
+                        <p className="text-[11px] text-green-700">CAC (of revenue)</p>
+                      </div>
+                      <div>
+                        <p className="text-lg font-bold text-green-800">{salesPlan.cacAbs != null ? fmtUsd0(salesPlan.cacAbs) : "—"}</p>
+                        <p className="text-[11px] text-green-700">cost per customer</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-center gap-2 flex-wrap mt-4">
+                    {[
+                      { v: fmtNum(salesPlan.closes, salesPlan.closes < 10 ? 1 : 0), k: "closes" },
+                      { v: fmtNum(salesPlan.meetings, salesPlan.meetings < 10 ? 1 : 0), k: "meetings" },
+                      { v: fmtNum(salesPlan.replies), k: "pos. replies" },
+                      { v: fmtUsd0(salesPlan.budget), k: "budget" },
+                    ].map((s, i) => (
+                      <Fragment key={s.k}>
+                        {i > 0 && <span className="text-gray-300">&larr;</span>}
+                        <div className="flex flex-col items-center px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 min-w-[78px]">
+                          <span className="text-base font-semibold text-gray-800">{s.v}</span>
+                          <span className="text-[11px] text-gray-500">{s.k}</span>
+                        </div>
+                      </Fragment>
+                    ))}
+                  </div>
+
+                  {salesAutoPick && (
+                    <div className="flex items-center justify-center gap-2 mt-3 text-xs text-gray-500">
+                      <SparklesIcon className="w-3.5 h-3.5 text-brand-500" />
+                      <span>auto-selected workflow</span>
+                      <span className="font-medium text-gray-800">{salesAutoPick.workflowDynastyName}</span>
+                      <span>&mdash; {fmtUsd0(Number(salesAutoPick.stats[SALES_COST_METRIC]) / 100)} / positive reply</span>
+                    </div>
+                  )}
+                </>
+              )}
+
+              <details className="mt-4 border-t border-gray-100 pt-3">
+                <summary className="cursor-pointer text-sm text-gray-500 font-medium select-none">Campaign details</summary>
+                {isLoadingProfile ? (
+                  <p className="mt-3 text-sm text-gray-400">Analyzing brand profile&hellip;</p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Brand URL</label>
+                      <input type="text" value={formData.brandUrl ?? ""} onChange={(e) => setFormData((p) => ({ ...p, brandUrl: e.target.value }))}
+                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
+                    </div>
+                    {featureInputs.map((input) => (
+                      <div key={input.key}>
+                        <label className="block text-xs text-gray-500 mb-1">{input.label}</label>
+                        <input type="text" value={formData[input.key] ?? ""} onChange={(e) => setFormData((p) => ({ ...p, [input.key]: e.target.value }))}
+                          placeholder={input.placeholder ?? input.description}
+                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </details>
+
+              {createError && <p className="mt-3 text-sm text-red-600">{createError}</p>}
+
+              <button
+                onClick={handleCreateCampaign}
+                disabled={isCreating || isLoadingProfile || !salesPlan.budget}
+                className="mt-4 w-full px-5 py-3 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {isCreating ? "Launching…" : "Launch campaign"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!isSalesFunnel && (<>
       {/* Controls */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
         <div className="flex flex-wrap items-center gap-4">
@@ -1031,6 +1345,7 @@ export default function FeatureCreateCampaignPage() {
           onClose={() => setDetailWorkflowId(null)}
         />
       )}
+      </>)}
     </div>
   );
 }
