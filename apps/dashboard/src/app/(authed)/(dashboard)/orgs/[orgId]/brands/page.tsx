@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useSession } from "@clerk/nextjs";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import posthog from "posthog-js";
@@ -15,6 +16,7 @@ export default function BrandsPage() {
   const orgId = params.orgId as string;
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { session } = useSession();
 
   const [showCreate, setShowCreate] = useState(false);
   const [brandUrl, setBrandUrl] = useState("");
@@ -50,6 +52,10 @@ export default function BrandsPage() {
       await fetch("/api/onboarding/complete", { method: "POST" }).catch((e) =>
         console.error("[dashboard] failed to mark onboarding complete:", e)
       );
+      // Re-mint the session token so the fresh `orgMeta.onboardingComplete` claim
+      // is in the cookie the edge gate reads — otherwise the stale JWT loops the
+      // next navigation back to /onboarding (DIS-111).
+      await session?.getToken({ skipCache: true }).catch(() => {});
       extractBrandFields([newBrandId], SALES_PROFILE_FIELDS).catch(() => {});
       await refetch();
       posthog.capture("brand_create_completed", {

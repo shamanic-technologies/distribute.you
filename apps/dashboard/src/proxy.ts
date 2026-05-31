@@ -16,9 +16,15 @@ const isAuthRoute = createRouteMatcher([
   "/claim(.*)",
 ]);
 
+// Routes the first-run gate must NOT redirect: the onboarding flow itself and
+// every API route (the onboarding / brand-create flow calls /api/* — redirecting
+// those to an HTML page would break the fetch).
+const isOnboardingRoute = createRouteMatcher(["/onboarding(.*)"]);
+const isApiRoute = createRouteMatcher(["/api(.*)"]);
+
 export default clerkMiddleware(
   async (auth, req) => {
-    const { userId } = await auth();
+    const { userId, sessionClaims } = await auth();
 
     // Redirect authenticated users away from auth pages
     if (isAuthRoute(req) && userId) {
@@ -28,6 +34,25 @@ export default clerkMiddleware(
     // Protect non-public routes
     if (!isPublicRoute(req) && !userId) {
       return NextResponse.redirect(new URL("/sign-in", req.url));
+    }
+
+    // First-run gate (DIS-111). Decided at the edge from a session-token claim
+    // (`org.public_metadata.onboardingComplete`, surfaced as `orgMeta`), so the
+    // onboarding redirect happens pre-paint with zero data fetch — no dashboard
+    // flash, no coupling to the (slow) brands API. A brand-less / org-less user
+    // has no `onboardingComplete: true` claim → routed to onboarding.
+    // Exempt: public/auth routes, the onboarding flow itself, all API routes,
+    // and the `?autoCreate` brand-creation hop (the org is transiently
+    // brand-less while it creates its first brand + sets the flag).
+    if (
+      userId &&
+      !isPublicRoute(req) &&
+      !isOnboardingRoute(req) &&
+      !isApiRoute(req) &&
+      !req.nextUrl.searchParams.has("autoCreate") &&
+      sessionClaims?.orgMeta?.onboardingComplete !== true
+    ) {
+      return NextResponse.redirect(new URL("/onboarding", req.url));
     }
 
     return NextResponse.next();

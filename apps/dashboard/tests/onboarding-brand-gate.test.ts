@@ -3,81 +3,71 @@ import * as fs from "fs";
 import * as path from "path";
 
 /**
- * DIS-91: the onboarding flow was unreachable because the redirect gate keyed on
- * `!hasOrg`, but a Clerk org is auto-created at signup → the gate never fired.
- *
- * New gate keys on the real first-run signal: an active org with ZERO brands.
- * Both entry parcours converge on it:
- *   - fresh signup    → Clerk auto-creates an org → 0 brands → /onboarding
- *   - "New organization" dropdown → /onboarding?new=1 → onboarding creates a new org → 0 brands
- *
- * Onboarding reuses the active org when present (skip createOrganization), unless
- * `?new=1` forces a brand-new org (so a populated org can spawn a sibling).
+ * DIS-111: the onboarding gate is decided at the EDGE (proxy.ts) from a Clerk
+ * session-token claim (`orgMeta.onboardingComplete`), not by a client-side
+ * brands fetch + redirect (the flash-prone #1229 approach this replaces).
  */
 
-const dashboardLayout = fs.readFileSync(
+const proxy = fs.readFileSync(
+  path.join(__dirname, "../src/proxy.ts"),
+  "utf-8"
+);
+const layout = fs.readFileSync(
   path.join(__dirname, "../src/app/(authed)/(dashboard)/layout.tsx"),
   "utf-8"
 );
-const onboardingPage = fs.readFileSync(
-  path.join(__dirname, "../src/app/(authed)/onboarding/page.tsx"),
+const apiProxyRoute = fs.readFileSync(
+  path.join(__dirname, "../src/app/(authed)/api/v1/[...path]/route.ts"),
   "utf-8"
 );
-const breadcrumbNav = fs.readFileSync(
-  path.join(__dirname, "../src/components/breadcrumb-nav.tsx"),
+const brandsPage = fs.readFileSync(
+  path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/page.tsx"),
   "utf-8"
 );
 
-describe("DIS-91 gate keys on brand count, not org existence", () => {
-  it("dashboard layout queries brands for the active org", () => {
-    expect(dashboardLayout).toContain("listBrands");
-    expect(dashboardLayout).toMatch(/\[\s*"brands"\s*\]/);
+describe("DIS-111 edge gate lives in proxy.ts", () => {
+  it("reads the onboardingComplete session claim", () => {
+    expect(proxy).toContain("sessionClaims");
+    expect(proxy).toContain("orgMeta");
+    expect(proxy).toContain("onboardingComplete");
   });
 
-  it("redirects to /onboarding when the active org has zero brands", () => {
-    expect(dashboardLayout).toContain('router.push("/onboarding")');
-    // the decision references a brand count of zero
-    expect(dashboardLayout).toMatch(/brands.*length.*===\s*0|length\s*===\s*0/);
+  it("redirects to /onboarding when the claim is not true", () => {
+    expect(proxy).toMatch(/onboardingComplete\s*!==\s*true/);
+    expect(proxy).toContain('new URL("/onboarding", req.url)');
   });
 
-  it("does not redirect while a brand auto-create is in flight", () => {
-    // the brands page receives ?autoCreate=<url>; the gate must not bounce mid-create
-    expect(dashboardLayout).toContain("autoCreate");
-  });
-
-  it("still guards against redirect loops on API error (isError retry UI kept)", () => {
-    expect(dashboardLayout).toContain("isError");
-    expect(dashboardLayout).toContain("window.location.reload()");
-  });
-
-  it("only queries brands once an org is active (enabled gate)", () => {
-    expect(dashboardLayout).toMatch(/enabled:\s*hasOrg/);
+  it("exempts the onboarding flow, API routes, and the autoCreate hop (no loop)", () => {
+    expect(proxy).toContain("isOnboardingRoute");
+    expect(proxy).toContain("isApiRoute");
+    expect(proxy).toContain('searchParams.has("autoCreate")');
   });
 });
 
-describe("DIS-91 onboarding reuses the active org", () => {
-  it("reads the active org via useOrganization", () => {
-    expect(onboardingPage).toContain("useOrganization");
+describe("DIS-111 removes the client-side brand-count gate", () => {
+  it("dashboard layout no longer fetches brands or pushes to /onboarding", () => {
+    expect(layout).not.toContain("listBrands");
+    expect(layout).not.toContain('router.push("/onboarding")');
   });
 
-  it("reads the ?new force-new signal", () => {
-    expect(onboardingPage).toContain("useSearchParams");
-    expect(onboardingPage).toContain('searchParams.get("new")');
-  });
-
-  it("still creates an org via Clerk when forced or no active org", () => {
-    expect(onboardingPage).toContain("createOrganization");
-    expect(onboardingPage).toContain("setActive");
-  });
-
-  it("redirects to the brands page with autoCreate after setup", () => {
-    expect(onboardingPage).toContain("/brands?autoCreate=");
-    expect(onboardingPage).toContain("encodeURIComponent");
+  it("dashboard layout keeps the connection-error retry UI", () => {
+    expect(layout).toContain("if (isError)");
+    expect(layout).toContain("window.location.reload()");
   });
 });
 
-describe("DIS-91 dropdown 'New organization' forces a brand-new org", () => {
-  it("navigates to /onboarding?new=1 so a populated org spawns a sibling", () => {
-    expect(breadcrumbNav).toContain("/onboarding?new=1");
+describe("DIS-111 drops per-request currentUser() in the API proxy", () => {
+  it("reads identity headers from session claims, not currentUser()", () => {
+    expect(apiProxyRoute).not.toContain("await currentUser");
+    expect(apiProxyRoute).not.toMatch(/import\s*\{[^}]*currentUser/);
+    expect(apiProxyRoute).toContain("sessionClaims?.email");
+    expect(apiProxyRoute).toContain('headers["x-email"]');
+  });
+});
+
+describe("DIS-111 brands page refreshes the token after marking onboarding complete", () => {
+  it("re-mints the session token so the edge gate sees the fresh claim", () => {
+    expect(brandsPage).toContain('"/api/onboarding/complete"');
+    expect(brandsPage).toMatch(/getToken\(\s*\{\s*skipCache:\s*true\s*\}\s*\)/);
   });
 });
