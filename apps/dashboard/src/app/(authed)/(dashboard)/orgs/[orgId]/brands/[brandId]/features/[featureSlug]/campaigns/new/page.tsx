@@ -616,9 +616,13 @@ export default function FeatureCreateCampaignPage() {
   }, [additionalBrandIds]);
 
   // Sales: feed the chosen budget into the existing create flow.
+  // Money convention: budgets are USD dollars at cents precision. Round to whole CENTS,
+  // never whole dollars — a $1.95 custom budget must stay $1.95 (rounding to $2 would
+  // mis-display it, over-charge the campaign, and false-trip the credit guard against
+  // a $1.99 balance). budgetAmount (USD string) → maxBudget*Usd + the guard's budgetCents.
   useEffect(() => {
     if (!isSalesFunnel) return;
-    setBudgetAmount(effectiveBudget > 0 ? String(Math.round(effectiveBudget)) : "");
+    setBudgetAmount(effectiveBudget > 0 ? String(Math.round(effectiveBudget * 100) / 100) : "");
   }, [isSalesFunnel, effectiveBudget]);
 
   // Sales: prefill campaign inputs eagerly once the brand resolves (no "Go" step).
