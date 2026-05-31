@@ -1,4 +1,4 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 300;
@@ -12,7 +12,7 @@ async function proxyRequest(
   segmentData: { params: Promise<{ path: string[] }> }
 ) {
   try {
-    const { userId: clerkUserId, orgId: clerkOrgId } = await auth();
+    const { userId: clerkUserId, orgId: clerkOrgId, sessionClaims } = await auth();
     if (!clerkUserId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -54,18 +54,12 @@ async function proxyRequest(
       if (value) headers[key] = value;
     }
 
-    // currentUser() calls Clerk's API — don't let it break the proxy if Clerk is down
-    try {
-      const user = await currentUser();
-      if (user) {
-        const email = user.emailAddresses?.[0]?.emailAddress;
-        if (email) headers["x-email"] = email;
-        if (user.firstName) headers["x-first-name"] = user.firstName;
-        if (user.lastName) headers["x-last-name"] = user.lastName;
-      }
-    } catch (err) {
-      console.warn("[api-proxy] currentUser() failed, continuing without user details:", err);
-    }
+    // Identity-enrichment headers read from the session-token claims (DIS-111)
+    // instead of a per-request currentUser() round-trip to Clerk. The claims are
+    // `{{user.primary_email_address}}` / `{{user.first_name}}` / `{{user.last_name}}`.
+    if (sessionClaims?.email) headers["x-email"] = sessionClaims.email;
+    if (sessionClaims?.firstName) headers["x-first-name"] = sessionClaims.firstName;
+    if (sessionClaims?.lastName) headers["x-last-name"] = sessionClaims.lastName;
 
     const body =
       req.method !== "GET" && req.method !== "HEAD"
