@@ -162,7 +162,10 @@ function QueueList({
 }
 
 function ScoreBadge({ score }: { score: number }) {
-  const pct = Math.round(score * 100);
+  // Relevance judge (DIS-79) emits a 0–100 score; render it directly as a
+  // percent. Do NOT multiply by 100 — `score` is already 0–100 (e.g. 95);
+  // multiplying rendered "9500" instead of "95%".
+  const pct = Math.round(score);
   const color =
     pct >= 80
       ? "bg-green-100 text-green-700 border-green-200"
@@ -173,7 +176,7 @@ function ScoreBadge({ score }: { score: number }) {
     <span
       className={`text-xs px-2 py-0.5 rounded-full border flex-shrink-0 ${color}`}
     >
-      {pct}
+      {pct}%
     </span>
   );
 }

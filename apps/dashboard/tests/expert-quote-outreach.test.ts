@@ -314,3 +314,14 @@ describe("Authed HITL quote-requests page — handleGenerate passes opportunity 
     expect(handleGenerateBlock).not.toMatch(/campaignId\s*[:,]/);
   });
 });
+
+describe("Authed HITL quote-requests page — relevance ScoreBadge (0–100 judge score)", () => {
+  it("renders the score directly as a percent — never `score * 100` (was '9500')", () => {
+    // Relevance judge (DIS-79) emits a 0–100 score (e.g. 95). The badge must
+    // render `Math.round(score)` + '%' → "95%". `Math.round(score * 100)`
+    // produced "9500". Regression guard for the screenshot bug.
+    expect(quoteRequestsContent).not.toMatch(/score\s*\*\s*100/);
+    expect(quoteRequestsContent).toContain("Math.round(score)");
+    expect(quoteRequestsContent).toMatch(/\{pct\}%/);
+  });
+});

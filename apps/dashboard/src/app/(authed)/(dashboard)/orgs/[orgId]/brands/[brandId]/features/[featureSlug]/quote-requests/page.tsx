@@ -110,7 +110,8 @@ function Row({ opportunity }: { opportunity: RankedOpportunity }) {
       </td>
       <td className="px-4 py-3 text-gray-600">{opportunity.mediaOutlet ?? "—"}</td>
       <td className="px-4 py-3 text-gray-600">
-        {Math.round(opportunity.score * 100)}
+        {/* Relevance judge (DIS-79) emits 0–100; render directly. NOT *100. */}
+        {Math.round(opportunity.score)}%
       </td>
       <td className="px-4 py-3 text-gray-600">
         {opportunity.deadline

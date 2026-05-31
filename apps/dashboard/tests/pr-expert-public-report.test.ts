@@ -175,6 +175,15 @@ describe("PublicHitlQueue client component — uses dashboard route handlers", (
     expect(content).not.toContain('from "@/lib/api"');
     expect(content).not.toContain("useAuthQuery");
   });
+
+  it("ScoreBadge renders the score directly as a percent — never `score * 100` (was '9500')", () => {
+    // Relevance judge (DIS-79) emits a 0–100 score (e.g. 95). The public report
+    // badge must render `Math.round(score)` + '%' → "95%". `score * 100` → "9500".
+    const content = fs.readFileSync(publicHitlPath, "utf-8");
+    expect(content).not.toMatch(/score\s*\*\s*100/);
+    expect(content).toContain("Math.round(score)");
+    expect(content).toMatch(/\{pct\}%/);
+  });
 });
 
 describe("Draft route handler — admin-key composite (extract-fields + content-gen)", () => {
