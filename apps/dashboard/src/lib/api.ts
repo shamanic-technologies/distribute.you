@@ -505,6 +505,87 @@ export async function getBrand(brandId: string, token?: string): Promise<{ brand
   }
 }
 
+// ── Brand sales conversion economics (sales-cold-email funnel) ──
+// Persisted per brand in brand-service via api-service /v1/brands/:id/sales-economics.
+// READ returns the saved set or null (unset → the page uses its hard-coded defaults).
+// WRITE is an idempotent full-set upsert that returns the saved row (never null).
+// Conversion rates are integer percents (0–100); lifetimeRevenueUsd is whole US dollars.
+export interface BrandSalesEconomics {
+  lifetimeRevenueUsd: number;
+  replyToMeetingPct: number;
+  visitToMeetingPct: number;
+  meetingToClosePct: number;
+  visitToClosePct: number;
+  updatedAt: string;
+}
+
+export type BrandSalesEconomicsInput = Omit<BrandSalesEconomics, "updatedAt">;
+
+const BrandSalesEconomicsSchema = z.object({
+  lifetimeRevenueUsd: z.number(),
+  replyToMeetingPct: z.number(),
+  visitToMeetingPct: z.number(),
+  meetingToClosePct: z.number(),
+  visitToClosePct: z.number(),
+  updatedAt: z.string(),
+});
+
+// READ: salesEconomics is null when nothing is saved yet (unset is a 200, not a 404).
+const GetBrandSalesEconomicsResponseSchema = z.object({
+  salesEconomics: BrandSalesEconomicsSchema.nullable(),
+});
+
+// WRITE: the row was just persisted, so salesEconomics is always present. Per CLAUDE.md
+// #1221 the write response DTO is narrower than the read sibling — its own schema.
+const SaveBrandSalesEconomicsResponseSchema = z.object({
+  salesEconomics: BrandSalesEconomicsSchema,
+});
+
+/** GET /brands/:brandId/sales-economics — saved set or { salesEconomics: null } when unset. */
+export async function getBrandSalesEconomics(
+  brandId: string,
+  token?: string,
+): Promise<{ salesEconomics: BrandSalesEconomics | null }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/sales-economics`, { token });
+  const parsed = GetBrandSalesEconomicsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getBrandSalesEconomics: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getBrandSalesEconomics: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** PUT /brands/:brandId/sales-economics — idempotent upsert of the full 5-metric set. */
+export async function saveBrandSalesEconomics(
+  brandId: string,
+  input: BrandSalesEconomicsInput,
+  token?: string,
+): Promise<{ salesEconomics: BrandSalesEconomics }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/sales-economics`, {
+    token,
+    method: "PUT",
+    body: {
+      lifetimeRevenueUsd: input.lifetimeRevenueUsd,
+      replyToMeetingPct: input.replyToMeetingPct,
+      visitToMeetingPct: input.visitToMeetingPct,
+      meetingToClosePct: input.meetingToClosePct,
+      visitToClosePct: input.visitToClosePct,
+    },
+  });
+  const parsed = SaveBrandSalesEconomicsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] saveBrandSalesEconomics: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] saveBrandSalesEconomics: invalid response shape");
+  }
+  return parsed.data;
+}
+
 // Brand field extraction
 export interface ExtractFieldDef {
   key: string;
