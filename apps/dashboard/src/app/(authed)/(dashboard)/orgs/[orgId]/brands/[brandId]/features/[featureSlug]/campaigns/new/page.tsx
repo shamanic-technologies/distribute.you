@@ -31,7 +31,7 @@ import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-pane
 import { CampaignAIPanel } from "@/components/campaigns/campaign-ai-panel";
 import { BrandLogo } from "@/components/brand-logo";
 import { Skeleton } from "@/components/skeleton";
-import { SparklesIcon, XMarkIcon, EllipsisVerticalIcon, PlusIcon } from "@heroicons/react/20/solid";
+import { SparklesIcon, XMarkIcon, EllipsisVerticalIcon, PlusIcon, PencilSquareIcon } from "@heroicons/react/20/solid";
 
 type Mode = "autopilot" | "manual";
 type BudgetFrequency = "one-off" | "daily" | "weekly" | "monthly";
@@ -196,7 +196,8 @@ export default function FeatureCreateCampaignPage() {
   const [econReplyToMeeting, setEconReplyToMeeting] = useState(SALES_ECON_DEFAULTS.replyToMeeting);
   const [econMeetingToClose, setEconMeetingToClose] = useState(SALES_ECON_DEFAULTS.meetingToClose);
   const [econClickToClose, setEconClickToClose] = useState(SALES_ECON_DEFAULTS.clickToClose);
-  const [econSaved, setEconSaved] = useState(false);
+  const [showWorkflowPicker, setShowWorkflowPicker] = useState(false);
+  const [salesWorkflowOverrideId, setSalesWorkflowOverrideId] = useState<string | null>(null);
   const [budgetTier, setBudgetTier] = useState<BudgetTier>("recommended");
   const [budgetCustom, setBudgetCustom] = useState("");
   const salesPrefilledRef = useRef(false);
@@ -329,6 +330,16 @@ export default function FeatureCreateCampaignPage() {
     )[0];
   }, [isSalesFunnel, rows]);
 
+  // Workflow used for projection + launch: the picker override, else the auto-pick.
+  const salesPick = useMemo(() => {
+    if (!isSalesFunnel) return null;
+    if (salesWorkflowOverrideId) {
+      const o = rows.find((r) => r.id === salesWorkflowOverrideId);
+      if (o) return o;
+    }
+    return salesAutoPick;
+  }, [isSalesFunnel, salesWorkflowOverrideId, rows, salesAutoPick]);
+
   // Funnel math. meeting-booked: budget→replies→meetings→closes→revenue (basis = cost/positive reply).
   // self-serve: budget→clicks→closes→revenue (basis = cost/click — empty today → projection pending).
   const salesPlan = useMemo(() => {
@@ -336,7 +347,7 @@ export default function FeatureCreateCampaignPage() {
     const r2m = (parseFloat(econReplyToMeeting) || 0) / 100;
     const m2c = (parseFloat(econMeetingToClose) || 0) / 100;
     const c2c = (parseFloat(econClickToClose) || 0) / 100;
-    const basisRaw = salesAutoPick ? salesAutoPick.stats[SALES_BASIS_METRIC[salesObjective]] : null;
+    const basisRaw = salesPick ? salesPick.stats[SALES_BASIS_METRIC[salesObjective]] : null;
     const costPerPrimary = typeof basisRaw === "number" && basisRaw > 0 ? basisRaw / 100 : null;
 
     const project = (budget: number) => {
@@ -368,7 +379,7 @@ export default function FeatureCreateCampaignPage() {
       }
     }
     return { costPerPrimary, recommendedBudget, project };
-  }, [salesObjective, econLtv, econReplyToMeeting, econMeetingToClose, econClickToClose, salesAutoPick]);
+  }, [salesObjective, econLtv, econReplyToMeeting, econMeetingToClose, econClickToClose, salesPick]);
 
   // Google-Ads-style budget tiers seeded from the 10-closes/mo target, + the chosen amount.
   const budgetPresets = useMemo(() => {
@@ -446,7 +457,7 @@ export default function FeatureCreateCampaignPage() {
     : selectedWorkflowId;
 
   const selectedRow = isSalesFunnel
-    ? salesAutoPick
+    ? salesPick
     : sorted.find((r) => r.id === effectiveSelectionId) ?? null;
 
   const { topRows, restRows } = useMemo(() => {
@@ -939,7 +950,6 @@ export default function FeatureCreateCampaignPage() {
                 <span className="w-5 h-5 inline-flex items-center justify-center text-[11px] font-bold text-white bg-brand-500 rounded-full">2</span>
                 <h2 className="font-display font-semibold text-gray-800">Your conversion metrics</h2>
               </div>
-              <span className="text-[11px] font-semibold text-brand-700 bg-brand-50 rounded-full px-2.5 py-1">feature-level · reused</span>
             </div>
             <div className="p-5">
               <p className="text-sm text-gray-500 mb-4">Reused across every sales campaign for this brand. Edit anytime. Industry defaults coming soon.</p>
@@ -981,11 +991,6 @@ export default function FeatureCreateCampaignPage() {
                     </div>
                   </div>
                 )}
-              </div>
-              <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-end gap-3">
-                {econSaved && <span className="text-sm text-green-600 font-medium">✓ saved</span>}
-                <button type="button" onClick={() => { setEconSaved(true); setTimeout(() => setEconSaved(false), 1600); }}
-                  className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50">Save metrics</button>
               </div>
             </div>
           </div>
@@ -1086,14 +1091,14 @@ export default function FeatureCreateCampaignPage() {
                   ? [
                       { v: fmtUsd0(effectiveBudget), k: `budget${budgetSuffix}`, green: false },
                       { v: fmtNum(proj.primary), k: `${proj.primaryLabel}${perMonth}`, green: false },
-                      { v: fmtNum(proj.closes, proj.closes < 10 ? 1 : 0), k: `closes${perMonth}`, green: false },
+                      { v: fmtNum(proj.closes, proj.closes < 2 ? 1 : 0), k: `closes${perMonth}`, green: false },
                       { v: fmtUsd0(proj.revenue), k: `revenue${perMonth}`, green: true },
                     ]
                   : [
                       { v: fmtUsd0(effectiveBudget), k: `budget${budgetSuffix}`, green: false },
                       { v: fmtNum(proj.primary), k: `${proj.primaryLabel}${perMonth}`, green: false },
-                      { v: fmtNum(proj.meetings ?? 0, (proj.meetings ?? 0) < 10 ? 1 : 0), k: `meetings${perMonth}`, green: false },
-                      { v: fmtNum(proj.closes, proj.closes < 10 ? 1 : 0), k: `closes${perMonth}`, green: false },
+                      { v: fmtNum(proj.meetings ?? 0, (proj.meetings ?? 0) < 2 ? 1 : 0), k: `meetings${perMonth}`, green: false },
+                      { v: fmtNum(proj.closes, proj.closes < 2 ? 1 : 0), k: `closes${perMonth}`, green: false },
                       { v: fmtUsd0(proj.revenue), k: `revenue${perMonth}`, green: true },
                     ];
                 return (
@@ -1114,12 +1119,16 @@ export default function FeatureCreateCampaignPage() {
                 );
               })()}
 
-              {salesAutoPick && (
+              {salesPick && (
                 <div className="flex items-center justify-center gap-2 mt-3 text-xs text-gray-500">
                   <SparklesIcon className="w-3.5 h-3.5 text-brand-500" />
-                  <span>auto-selected workflow</span>
-                  <span className="font-medium text-gray-800">{salesAutoPick.workflowDynastyName}</span>
-                  <span>&mdash; {fmtUsd0(Number(salesAutoPick.stats[SALES_PICK_METRIC]) / 100)} / positive reply</span>
+                  <span>{salesWorkflowOverrideId ? "selected workflow" : "auto-selected workflow"}</span>
+                  <span className="font-medium text-gray-800">{salesPick.workflowDynastyName}</span>
+                  <span>&mdash; {fmtUsd0(Number(salesPick.stats[SALES_PICK_METRIC]) / 100)} / positive reply</span>
+                  <button type="button" onClick={() => setShowWorkflowPicker(true)} title="Change workflow"
+                    className="ml-0.5 p-1 rounded text-gray-400 hover:text-brand-600 hover:bg-brand-50 transition">
+                    <PencilSquareIcon className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               )}
 
@@ -1157,13 +1166,70 @@ export default function FeatureCreateCampaignPage() {
 
               <button
                 onClick={handleCreateCampaign}
-                disabled={isCreating || isLoadingProfile || !effectiveBudget || !salesAutoPick}
+                disabled={isCreating || isLoadingProfile || !effectiveBudget || !salesPick}
                 className="mt-4 w-full px-5 py-3 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {isCreating ? "Launching…" : "Launch campaign"}
               </button>
             </div>
           </div>
+
+          {showWorkflowPicker && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowWorkflowPicker(false)}>
+              <div className="bg-white rounded-xl border border-gray-200 shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-display font-semibold text-gray-800">Choose a workflow</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">Ranked by cost per positive reply (public cross-org stats). We auto-pick the cheapest.</p>
+                  </div>
+                  <button type="button" onClick={() => setShowWorkflowPicker(false)} className="p-1 text-gray-400 hover:text-gray-600 rounded">
+                    <XMarkIcon className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="overflow-y-auto p-3 space-y-2">
+                  {[...rows].sort((a, b) => {
+                    const ca = a.stats[SALES_PICK_METRIC]; const cb = b.stats[SALES_PICK_METRIC];
+                    const va = typeof ca === "number" && ca > 0 ? ca : Infinity;
+                    const vb = typeof cb === "number" && cb > 0 ? cb : Infinity;
+                    return va - vb;
+                  }).map((w) => {
+                    const cost = w.stats[SALES_PICK_METRIC];
+                    const isPick = salesPick?.id === w.id;
+                    const isReco = salesAutoPick?.id === w.id;
+                    const openRate = w.stats.recipientOpenRate;
+                    return (
+                      <button key={w.id} type="button"
+                        onClick={() => { setSalesWorkflowOverrideId(isReco ? null : w.id); setShowWorkflowPicker(false); }}
+                        className={`w-full text-left p-3 rounded-lg border transition flex items-center gap-3 ${isPick ? "border-brand-500 bg-brand-50 ring-1 ring-brand-200" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"}`}>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-gray-800 truncate">{w.workflowDynastyName}</span>
+                            {isReco && <span className="text-[10px] font-semibold text-brand-700 bg-brand-100 rounded px-1.5 py-0.5">Recommended</span>}
+                          </div>
+                          <div className="flex gap-3 mt-1 text-[11px] text-gray-500">
+                            <span>Sent {fmtNum(Number(w.stats.recipientsSent) || 0)}</span>
+                            <span>Open {typeof openRate === "number" ? `${(openRate * 100).toFixed(0)}%` : "—"}</span>
+                            <span>Pos. replies {fmtNum(Number(w.stats.recipientsRepliesPositive) || 0)}</span>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="text-sm font-semibold text-gray-800">{typeof cost === "number" && cost > 0 ? fmtUsd0(cost / 100) : "—"}</div>
+                          <div className="text-[10px] text-gray-400">/ pos. reply</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                  {rows.length === 0 && <p className="text-sm text-gray-400 text-center py-6">No workflows available.</p>}
+                </div>
+                {salesWorkflowOverrideId && (
+                  <div className="px-5 py-3 border-t border-gray-100">
+                    <button type="button" onClick={() => { setSalesWorkflowOverrideId(null); setShowWorkflowPicker(false); }}
+                      className="text-xs font-medium text-brand-600 hover:text-brand-700">Reset to recommended</button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <CampaignAIPanel
             open={showChat}
