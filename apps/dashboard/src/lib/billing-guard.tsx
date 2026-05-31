@@ -239,7 +239,7 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
       ? "Campaign May Exceed Credits"
       : "Recurring Campaign Needs Auto-Topup";
   const proactiveDescription = isRunway
-    ? `Your ${formatBillingCents(info.balance_cents ?? 0)} balance covers about ${runwayLabel} at this budget — then the campaign stops. Set up auto-reload to keep it running, or launch now.`
+    ? `Your ${formatBillingCents(info.balance_cents ?? 0)} balance covers about ${runwayLabel} at this budget — then the campaign stops. Set up auto-topup to keep it running, or launch now.`
     : balanceBelowRequired
       ? "Your campaign budget may exceed your current credit balance. Set up auto-topup to ensure your campaign is never interrupted."
       : "Your recurring campaign needs auto-topup so it never stops mid-cycle when credits run out.";
@@ -396,7 +396,7 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
                   disabled={savingAutoTopup || hasValidationError || !topupAmount}
                   className="flex-[2] px-4 py-2.5 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 transition disabled:opacity-50"
                 >
-                  {savingAutoTopup ? "Saving..." : isRunway ? "Enable auto-reload & launch" : "Enable Auto-Topup & Continue"}
+                  {savingAutoTopup ? "Saving..." : isRunway ? "Enable auto-topup & launch" : "Enable Auto-Topup & Continue"}
                 </button>
               ) : (
                 <button

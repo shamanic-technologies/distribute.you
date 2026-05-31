@@ -58,7 +58,7 @@ describe("Multi-brand campaign support", () => {
   it("shows a brand picker dropdown from the three-dot menu", () => {
     expect(content).toContain("EllipsisVerticalIcon");
     expect(content).toContain("showBrandPicker");
-    expect(content).toContain("Add a brand");
+    expect(content).toContain("Add a co-brand");
   });
 
   it("createCampaign in api.ts uses brandUrls: string[] and no custom headers param", () => {

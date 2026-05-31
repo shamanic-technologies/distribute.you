@@ -436,7 +436,10 @@ describe("Proactive credit check in campaign creation (org-scoped)", () => {
   });
 
   it("should check if budget exceeds balance before creating campaign", () => {
-    expect(content).toContain("budgetCents > parseFloat(account.balance_cents)");
+    // Balance is ceil'd to match the ceil'd displayed balance, then compared per period
+    // (a $1.996 balance shown as "$2.00" must not false-trigger for a $2 one-off).
+    expect(content).toContain("Math.ceil(parseFloat(account.balance_cents))");
+    expect(content).toContain("coversFirstPeriod");
   });
 
   it("should check for recurring campaigns without auto-topup", () => {

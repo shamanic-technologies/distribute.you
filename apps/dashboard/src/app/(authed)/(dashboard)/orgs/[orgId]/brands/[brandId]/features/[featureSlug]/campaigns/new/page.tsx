@@ -792,7 +792,7 @@ export default function FeatureCreateCampaignPage() {
       }
 
       // Covers the first period but is recurring without auto-topup → warn how long the
-      // credits last, recommend auto-reload, but let the user launch anyway.
+      // credits last, recommend auto-topup, but let the user launch anyway.
       if (isRecurring && !account.has_auto_topup) {
         const periods = Math.max(1, Math.floor(balanceCents / budgetCents));
         saveCampaignIntent();
