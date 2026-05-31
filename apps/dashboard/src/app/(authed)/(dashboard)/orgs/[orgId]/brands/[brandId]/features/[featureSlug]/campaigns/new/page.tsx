@@ -1269,7 +1269,7 @@ export default function FeatureCreateCampaignPage() {
                     <XMarkIcon className="w-5 h-5" />
                   </button>
                 </div>
-                <div className="flex-1 min-h-0 flex divide-x divide-gray-100">
+                <div className="flex-1 min-h-0 flex divide-x divide-gray-200">
                   {/* LEFT: workflow list */}
                   <div className="w-1/2 overflow-y-auto p-3 space-y-2">
                     {[...rows].sort((a, b) => {
@@ -1317,18 +1317,21 @@ export default function FeatureCreateCampaignPage() {
                   </div>
 
                   {/* RIGHT: test emails */}
-                  <div className="w-1/2 overflow-y-auto p-4 bg-gray-50/50">
+                  <div className="w-1/2 overflow-y-auto p-4 bg-gray-100">
                     {(() => {
                       const wf = rows.find((r) => r.id === modalSelectedWorkflowId);
-                      if (!wf) return <p className="text-sm text-gray-400 text-center py-8">Select a workflow to test it.</p>;
+                      if (!wf) return <p className="text-sm text-gray-500 text-center py-8">Select a workflow to test it.</p>;
                       const t = tests[wf.id];
                       const active = t?.status === "active";
                       const starting = testStarting[wf.id];
                       const emails = t?.emails ?? [];
                       return (
                         <div>
-                          <div className="flex items-center justify-between gap-2 mb-1">
-                            <span className="text-sm font-medium text-gray-800 truncate">{wf.workflowDynastyName}</span>
+                          <div className="flex items-center justify-between gap-2 pb-3 mb-3 border-b border-gray-200">
+                            <div className="min-w-0">
+                              <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Test emails</p>
+                              <span className="text-sm font-semibold text-gray-900 truncate block">{wf.workflowDynastyName}</span>
+                            </div>
                             <button type="button" disabled={active || starting || !resolvedBrandUrl}
                               onClick={() => runWorkflowTest(wf)}
                               className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition disabled:opacity-50 disabled:cursor-not-allowed">
@@ -1340,10 +1343,10 @@ export default function FeatureCreateCampaignPage() {
                               ) : (t ? "Run test again" : "Run test · 3 leads")}
                             </button>
                           </div>
-                          <p className="text-[11px] text-amber-600 mb-3">⚠ Sends real emails to 3 leads.</p>
+                          <p className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1 mb-3">⚠ Sends real emails to 3 leads.</p>
                           {testError[wf.id] && <p className="text-xs text-red-600 mb-3">{testError[wf.id]}</p>}
-                          {!t && !starting && <p className="text-sm text-gray-400 py-6 text-center">No test yet. Run one to preview real emails for this workflow.</p>}
-                          {(active || starting) && emails.length === 0 && <p className="text-sm text-gray-400 py-6 text-center">Generating emails…</p>}
+                          {!t && !starting && <p className="text-sm text-gray-500 py-6 text-center">No test yet. Run one to preview real emails for this workflow.</p>}
+                          {(active || starting) && emails.length === 0 && <p className="text-sm text-gray-500 py-6 text-center">Generating emails…</p>}
                           <div className="space-y-2">
                             {emails.map((e) => (
                               <div key={e.id} className="bg-white rounded-lg border border-gray-200 p-3">
