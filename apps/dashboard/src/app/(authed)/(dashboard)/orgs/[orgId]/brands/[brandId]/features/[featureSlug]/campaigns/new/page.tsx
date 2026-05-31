@@ -762,27 +762,52 @@ export default function FeatureCreateCampaignPage() {
 
     try {
       const account = await getBillingAccount();
-      const willExceed = budgetCents > parseFloat(account.balance_cents);
+      // Match the displayed balance: formatBillingCents ceils to the whole cent, so a
+      // $1.996 balance shows "$2.00". Compare against that to avoid a false "exceeds".
+      const balanceCents = Math.ceil(parseFloat(account.balance_cents));
       const isRecurring = budgetFrequency !== "one-off";
+      const coversFirstPeriod = balanceCents >= budgetCents;
 
-      if ((willExceed || isRecurring) && !account.has_auto_topup) {
+      // Can't even afford the first period → must add credits / set up auto-topup.
+      if (!coversFirstPeriod) {
         if (account.has_payment_method) {
-          // Saved card exists — silently enable auto-topup and proceed.
-          // The backend will charge the card automatically during deduction.
           const topupCents = Math.max(1000, budgetCents);
           await configureAutoTopup(topupCents, 500).catch(() => {});
           doCreateCampaign();
           return;
         }
-        // No payment method — show modal so user can add a card
         saveCampaignIntent();
-        // Reset loader — modal will handle the flow
         isCreatingRef.current = false;
         setIsCreating(false);
         showPaymentRequired({
           balance_cents: account.balance_cents,
           required_cents: budgetCents,
           proactive: true,
+          onAutoTopupConfigured: () => {
+            sessionStorage.removeItem("pendingCampaign");
+            doCreateCampaign();
+          },
+        });
+        return;
+      }
+
+      // Covers the first period but is recurring without auto-topup → warn how long the
+      // credits last, recommend auto-reload, but let the user launch anyway.
+      if (isRecurring && !account.has_auto_topup) {
+        const periods = Math.max(1, Math.floor(balanceCents / budgetCents));
+        saveCampaignIntent();
+        isCreatingRef.current = false;
+        setIsCreating(false);
+        showPaymentRequired({
+          balance_cents: account.balance_cents,
+          required_cents: budgetCents,
+          proactive: true,
+          runwayPeriods: periods,
+          runwayUnit: REVENUE_INTERVAL_LABEL[budgetFrequency],
+          onProceed: () => {
+            sessionStorage.removeItem("pendingCampaign");
+            doCreateCampaign();
+          },
           onAutoTopupConfigured: () => {
             sessionStorage.removeItem("pendingCampaign");
             doCreateCampaign();
@@ -1058,7 +1083,7 @@ export default function FeatureCreateCampaignPage() {
               <p className="text-sm text-gray-500 mb-4">Reused across every sales campaign for this brand</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Customer LTV" tip="Average total revenue one customer brings over their lifetime." /></label>
+                  <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Customer Lifetime Revenue" tip="Average total revenue (not gross margin) one customer brings over their lifetime." /></label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
                     <input type="number" min="0" step="100" value={econLtv} onChange={(e) => setEconLtv(e.target.value)}
@@ -1094,7 +1119,7 @@ export default function FeatureCreateCampaignPage() {
                   </>
                 ) : (
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Click → close" tip="Of leads who click through to your website, the share that buy without a meeting (self-serve)." /></label>
+                    <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Website visit → close" tip="Of leads who visit your website, the share that buy without a meeting (self-serve)." /></label>
                     <div className="relative">
                       <input type="number" min="0" max="100" step="1" value={econClickToClose} onChange={(e) => setEconClickToClose(e.target.value)}
                         className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
@@ -1138,7 +1163,7 @@ export default function FeatureCreateCampaignPage() {
                         {proj && (
                           <div className="mt-2 text-[11px] leading-relaxed">
                             <div className="text-green-700 font-semibold">~{fmtUsd0(proj.revenue)} revenue / month</div>
-                            <div className="text-gray-500">CAC {proj.cacPct != null ? `${fmtNum(proj.cacPct, 1)}%` : "—"} / month</div>
+                            <div className="text-gray-500"><InfoLabel label="CAC" tip="Customer acquisition cost as a share of the revenue it generates (spend ÷ revenue)." /> {proj.cacPct != null ? `${fmtNum(proj.cacPct, 1)}%` : "—"} / month</div>
                           </div>
                         )}
                       </button>
