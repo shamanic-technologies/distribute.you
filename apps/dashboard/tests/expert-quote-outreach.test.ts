@@ -292,26 +292,48 @@ describe("HITL helpers — journalists-quotes-service v0.8.1 contract (x-brand-i
   });
 });
 
-describe("Authed HITL quote-requests page — handleGenerate passes opportunity context", () => {
+describe("Authed HITL quote-requests page — handleGenerate sends the all-required contract", () => {
   const handleGenerateBlock =
     quoteRequestsContent.split("const handleGenerate")[1]?.split("};")[0] ?? "";
-  it("assembles the expert-quote-pitch template contract (brand/request/additionalContext)", () => {
-    // The deployed template (DIS-52) declares brand/request/additionalContext.
-    // handleGenerate builds those three via the shared helpers, which carry the
-    // opportunity context (question/source/outlet/deadline) into {{request}}.
-    expect(handleGenerateBlock).toContain("brand: buildBrandVariableFromInputs");
-    expect(handleGenerateBlock).toContain("request: buildQuoteRequestVariable");
-    expect(handleGenerateBlock).toContain(
-      "additionalContext: buildAdditionalContextVariable",
-    );
+  it("passes expert attribution from featureInputs + the opportunity (content-gen PR #124)", () => {
+    // Expert name/title/photo/LinkedIn come from the operator's campaign
+    // featureInputs (DIS-136); the orchestrator (generateExpertQuotePitch)
+    // fetches brand identity + extracts description/HQ/bio and assembles the
+    // brands[] + expert + journalistRequest + expertAnswerContext body.
+    expect(handleGenerateBlock).toContain("expert: {");
+    expect(handleGenerateBlock).toContain("expertName: featureInputs.expertName");
+    expect(handleGenerateBlock).toContain("expertTitle: featureInputs.expertTitle");
+    expect(handleGenerateBlock).toContain("expertPhotoUrl: featureInputs.expertPhotoUrl");
+    expect(handleGenerateBlock).toContain("expertLinkedIn: featureInputs.expertLinkedIn");
+    expect(handleGenerateBlock).toContain("opportunity,");
   });
-  it("no longer assembles legacy flat template variables", () => {
+  it("no longer assembles the legacy contract or flat template variables", () => {
+    expect(handleGenerateBlock).not.toContain("buildBrandVariableFromInputs");
+    expect(handleGenerateBlock).not.toContain("buildQuoteRequestVariable");
+    expect(handleGenerateBlock).not.toContain("buildAdditionalContextVariable");
+    expect(handleGenerateBlock).not.toContain("additionalContext:");
     expect(handleGenerateBlock).not.toContain("opportunityText:");
     expect(handleGenerateBlock).not.toContain("spokesperson:");
     expect(handleGenerateBlock).not.toContain("expertiseTopics:");
   });
   it("no longer passes campaignId into the generate mutation body", () => {
     expect(handleGenerateBlock).not.toMatch(/campaignId\s*[:,]/);
+  });
+});
+
+describe("Authed HITL quote-requests page — campaign inputs are the DIS-136 attribution keys", () => {
+  it("HITL_INPUT_KEYS = expertName/expertTitle/expertPhotoUrl/expertLinkedIn (not the dropped blob keys)", () => {
+    const keysBlock =
+      quoteRequestsContent.split("const HITL_INPUT_KEYS")[1]?.split("]")[0] ?? "";
+    expect(keysBlock).toContain("expertName");
+    expect(keysBlock).toContain("expertTitle");
+    expect(keysBlock).toContain("expertPhotoUrl");
+    expect(keysBlock).toContain("expertLinkedIn");
+    // DIS-136 dropped these; they must not gate the page anymore.
+    expect(keysBlock).not.toContain("spokesperson");
+    expect(keysBlock).not.toContain("expertiseTopics");
+    expect(keysBlock).not.toContain("responseStyle");
+    expect(keysBlock).not.toContain("valueProposition");
   });
 });
 

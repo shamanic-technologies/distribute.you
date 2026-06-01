@@ -191,22 +191,46 @@ describe("Draft route handler — admin-key composite (extract-fields + content-
     expect(fs.existsSync(draftRoutePath)).toBe(true);
   });
 
-  it("delegates to adminPost + adminGet (admin key + org context held server-side)", () => {
+  it("delegates to adminPost + fetchBrand (admin key + org context held server-side)", () => {
     const content = fs.readFileSync(draftRoutePath, "utf-8");
     expect(content).toContain("adminPost");
-    expect(content).toContain("adminGet");
+    expect(content).toContain("fetchBrand");
     expect(content).toContain('from "@/lib/report-api"');
   });
 
-  it("orchestrates 3 calls: content/platform-prompts + brands/extract-fields + content/generate-expert-quote-pitch", () => {
+  it("orchestrates brand fetch + brands/extract-fields + content/generate-expert-quote-pitch (no platform-prompts discovery)", () => {
     const content = fs.readFileSync(draftRoutePath, "utf-8");
-    // 1. Fetch template variable spec
-    expect(content).toContain("/content/platform-prompts");
-    expect(content).toContain("expert-quote-pitch");
-    // 2. Extract brand-derivable fields
+    // content-gen PR #124 contract is a fixed all-required set — the template
+    // variable-discovery step (GET /content/platform-prompts) is gone.
+    expect(content).not.toContain("/content/platform-prompts");
+    // 1. Brand identity (name/url/logoUrl)
+    expect(content).toContain("fetchBrand");
+    // 2. Extract the brand + expert fields the public report has no inputs for
     expect(content).toContain("/brands/extract-fields");
-    // 3. Generate pitch via content-generation-service
+    // 3. Generate pitch via content-generation-service with the new contract
     expect(content).toContain("/content/generate-expert-quote-pitch");
+    expect(content).toContain("buildExpertQuotePitchVariables");
+  });
+
+  it("extracts the full brand + expert attribution set (incl. headshot URL) — public report has no campaign inputs", () => {
+    const content = fs.readFileSync(draftRoutePath, "utf-8");
+    for (const key of [
+      "brandDescription",
+      "brandHeadquartersLocation",
+      "expertBio",
+      "expertName",
+      "expertTitle",
+      "expertPhotoUrl",
+      "expertLinkedIn",
+    ]) {
+      expect(content).toContain(key);
+    }
+  });
+
+  it("fails loud (422) with the offending field when a required value can't be sourced", () => {
+    const content = fs.readFileSync(draftRoutePath, "utf-8");
+    expect(content).toContain("ExpertQuotePitchInputError");
+    expect(content).toContain("status: 422");
   });
 
   it("does NOT call the removed /orgs/quote-requests/:id/draft endpoint", () => {

@@ -15,22 +15,20 @@ import {
   useGenerateQuoteDraft,
   useSubmitQuotePitch,
 } from "@/lib/use-quote-opportunities";
-import {
-  buildBrandVariableFromInputs,
-  buildQuoteRequestVariable,
-  buildAdditionalContextVariable,
-} from "@/lib/quote-pitch-variables";
 
 const HITL_SLUG = "pr-expert-quote-opportunities";
 const PITCH_MIN = 100;
 const PITCH_MAX = 2500;
 
+// Expert attribution carried by the campaign `featureInputs` (DIS-136). These
+// drive the single-expert fields of the expert-quote-pitch contract; brand
+// identity + description/HQ + expertBio are fetched/extracted inside
+// `generateExpertQuotePitch`. Generate is gated on all four being present.
 const HITL_INPUT_KEYS = [
-  "spokesperson",
-  "expertiseTopics",
-  "responseStyle",
-  "companyContext",
-  "valueProposition",
+  "expertName",
+  "expertTitle",
+  "expertPhotoUrl",
+  "expertLinkedIn",
 ] as const;
 type HitlInputKey = (typeof HITL_INPUT_KEYS)[number];
 
@@ -218,23 +216,23 @@ function DetailPanel({
   const handleGenerate = () => {
     if (!featureInputs) return;
     setSubmitResult(null);
-    // The deployed `expert-quote-pitch` template (DIS-52) declares exactly
-    // three variables: {{brand}}, {{request}}, {{additionalContext}}. Assemble
-    // those three keys — operator `featureInputs` drive {{brand}}, the selected
-    // opportunity drives {{request}} + {{additionalContext}}. Sending flat keys
-    // (spokesperson, opportunityText, …) renders the template empty → the model
-    // gets no grounding → low-quality pitch.
+    // All-required expert-quote-pitch contract (content-gen PR #124 / v0.21.0):
+    // brands[] + single expert attribution + journalistRequest + expertAnswerContext.
+    // Expert name/title/photo/LinkedIn come from the operator's campaign
+    // `featureInputs` (DIS-136); brand identity + description/HQ + expertBio are
+    // fetched/extracted inside generateExpertQuotePitch, which fails loud if any
+    // required field is empty (never sends a partial body / legacy fallback).
     generateMutation.mutate(
       {
-        body: {
-          brandId,
-          featureSlug: HITL_SLUG,
-          variables: {
-            brand: buildBrandVariableFromInputs(featureInputs),
-            request: buildQuoteRequestVariable(opportunity),
-            additionalContext: buildAdditionalContextVariable(opportunity),
-          },
+        brandId,
+        expert: {
+          expertName: featureInputs.expertName,
+          expertTitle: featureInputs.expertTitle,
+          expertPhotoUrl: featureInputs.expertPhotoUrl,
+          expertLinkedIn: featureInputs.expertLinkedIn,
         },
+        opportunity,
+        featureSlug: HITL_SLUG,
       },
       {
         onSuccess: (res) => {

@@ -1,4 +1,9 @@
 import { z } from "zod";
+import {
+  buildExpertQuotePitchVariables,
+  coerceExtractedToString,
+  type QuoteOpportunityContext,
+} from "./quote-pitch-variables";
 
 const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 
@@ -2642,6 +2647,83 @@ export async function generateQuoteDraft(
       headers: { "x-brand-id": brandId },
     },
   );
+}
+
+/** Brand + expert fields the expert-quote-pitch contract requires but campaign
+ *  inputs don't carry. Sourced via brand-service `extract-fields`; descriptions
+ *  seed the extraction prompt (quality matters — these ground the pitch). */
+const EXPERT_QUOTE_EXTRACT_FIELDS: ExtractFieldDef[] = [
+  {
+    key: "brandDescription",
+    description: "One-line description of what the company does and who it serves.",
+  },
+  {
+    key: "brandHeadquartersLocation",
+    description: "City and country/region of the company's headquarters.",
+  },
+  {
+    key: "expertBio",
+    description:
+      "Short professional bio of the company's spokesperson/expert — role, experience, and credentials that make them a credible source.",
+  },
+];
+
+/** Expert attribution carried by the campaign `featureInputs` (DIS-136). */
+export interface ExpertQuotePitchExpertInputs {
+  expertName: string;
+  expertTitle: string;
+  expertPhotoUrl: string;
+  expertLinkedIn: string;
+}
+
+export interface GenerateExpertQuotePitchArgs {
+  brandId: string;
+  expert: ExpertQuotePitchExpertInputs;
+  opportunity: QuoteOpportunityContext;
+  featureSlug?: string;
+}
+
+/** Authed-side orchestration for the all-required expert-quote-pitch contract
+ *  (content-generation-service PR #124 / v0.21.0). Fetches brand identity +
+ *  extracts the brand/expert fields campaign inputs don't carry, assembles the
+ *  byte-equal `variables` body, and generates. `buildExpertQuotePitchVariables`
+ *  throws (fail-loud) before any generate call if a required field is empty —
+ *  the dashboard never sends a partial body (the upstream validator 400s on
+ *  empties) and never falls back to the legacy contract. */
+export async function generateExpertQuotePitch(
+  args: GenerateExpertQuotePitchArgs,
+  token?: string,
+): Promise<GenerateQuoteDraftResponse> {
+  const { brandId, expert, opportunity, featureSlug } = args;
+  const [brandResult, extractRes] = await Promise.all([
+    getBrand(brandId, token),
+    extractBrandFields([brandId], EXPERT_QUOTE_EXTRACT_FIELDS, { token }),
+  ]);
+  const brand = brandResult?.brand ?? null;
+
+  const variables = buildExpertQuotePitchVariables({
+    identity: {
+      brandName: brand?.name ?? null,
+      brandUrl: brand?.url ?? null,
+      brandLogoUrl: brand?.logoUrl ?? null,
+    },
+    extracted: {
+      brandDescription: coerceExtractedToString(extractRes.fields.brandDescription?.value),
+      brandHeadquartersLocation: coerceExtractedToString(
+        extractRes.fields.brandHeadquartersLocation?.value,
+      ),
+      expertBio: coerceExtractedToString(extractRes.fields.expertBio?.value),
+    },
+    expert: {
+      expertName: expert.expertName,
+      expertTitle: expert.expertTitle,
+      expertPhotoUrl: expert.expertPhotoUrl,
+      expertLinkedIn: expert.expertLinkedIn,
+    },
+    opportunity,
+  });
+
+  return generateQuoteDraft({ brandId, variables, featureSlug }, token);
 }
 
 // ───────── Prompt assignment (per-feature generation prompt) ────────────────
