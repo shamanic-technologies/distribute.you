@@ -21,6 +21,7 @@ import { Skeleton } from "@/components/skeleton";
 import { formatCount } from "@/lib/format-number";
 import { useFeatures } from "@/lib/features-context";
 import { pollOptions } from "@/lib/query-options";
+import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { FEATURE_GATES, GA_BRAND_FEATURES } from "@/lib/feature-gates";
@@ -180,15 +181,17 @@ export default function BrandOverviewPage() {
   }), [outletsData, journalistsData, articlesData, leadsData, emailsData]);
 
   // Outcomes count cards reveal together once all 5 outcome queries resolve
-  // (avoids a count-by-count staggered wave). Scoped to the outcome queries
-  // ONLY — the Features grid is NOT gated on this; it paints immediately from
-  // the warm ["features"] cache, same as the sidebar.
-  const outcomesReady =
-    !outletsLoading
-    && !journalistsLoading
-    && !leadsLoading
-    && !emailsLoading
-    && !articlesLoading;
+  // (avoids a count-by-count staggered wave), then stay revealed (latch) so a
+  // poll / token-rotation hiccup never reverts them to skeletons. Scoped to the
+  // outcome queries ONLY — the Features grid is NOT gated on this; it paints
+  // immediately from the warm ["features"] cache, same as the sidebar.
+  const outcomesReady = useCoordinatedReveal([
+    !outletsLoading,
+    !journalistsLoading,
+    !leadsLoading,
+    !emailsLoading,
+    !articlesLoading,
+  ]);
 
   // Per-card campaign stats depend on the campaigns query alone — show a small
   // skeleton on the stats line while it resolves, never blocking the card itself.

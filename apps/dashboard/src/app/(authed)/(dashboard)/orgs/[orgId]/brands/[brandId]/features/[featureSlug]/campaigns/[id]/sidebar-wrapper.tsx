@@ -7,6 +7,7 @@ import { CampaignSidebar } from "@/components/campaign-sidebar";
 import { useCampaign } from "@/lib/campaign-context";
 import { useFeatures } from "@/lib/features-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
+import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 import { listWorkflows, listCampaignOutlets, listJournalistsEnriched, listMediaKitsByCampaign, fetchFeatureStats, listRankedOpportunities } from "@/lib/api";
 
 interface Props {
@@ -19,7 +20,7 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
   const params = useParams();
   const { campaign, leads, emails: campaignEmails, loading: campaignLoading } = useCampaign();
   const campaignId = params.id as string;
-  const { getFeature } = useFeatures();
+  const { getFeature, isLoading: featuresLoading } = useFeatures();
   const featureDef = getFeature(featureSlug);
   const entities = featureDef?.entities ?? [];
   const entityNames = useMemo(() => entities.map((e) => e.name), [entities]);
@@ -75,6 +76,16 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
     "quote-requests": rankedOppsLoading,
   };
 
+  // All Outcome badges reveal their numbers TOGETHER (one paint), then latch.
+  // Gate on the feature defs first (`!featuresLoading`) — `entityNames` is empty
+  // until the feature loads, which would otherwise pass the barrier with every
+  // count query disabled. Then wait for each present entity's source to settle.
+  // See CLAUDE.md → "Coordinated reveal".
+  const badgesRevealed = useCoordinatedReveal([
+    !featuresLoading,
+    ...entities.map((e) => !(entityLoading[e.name] ?? false)),
+  ]);
+
   const workflowId = useMemo(() => {
     if (!campaign?.workflowSlug || !workflowsData?.workflows) return undefined;
     const match = workflowsData.workflows.find((w) => w.workflowSlug === campaign.workflowSlug);
@@ -101,26 +112,22 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
     "quote-requests": rankedOppsData?.total,
   };
 
-  // Build entity counts: prefer listing total (shows ALL items), fall back to feature stats
-  // Use "loading" sentinel when data is still being fetched
+  // Build entity counts: prefer listing total (shows ALL items), fall back to feature stats.
+  // Until the badge group is revealed, EVERY badge shows the "loading" skeleton so the
+  // numbers all appear together (not count-by-count); after, all show their resolved value.
   const entityCounts = useMemo(() => {
     const result: Record<string, number | "loading" | undefined> = {};
     for (const entity of entities) {
-      const hasListingData = listingFallback[entity.name] != null;
-      const hasStatsData = entity.countKey && fStats[entity.countKey] != null;
-      const isEntityLoading = entityLoading[entity.name] ?? false;
-      const isStatsLoading = featureStatsLoading;
-      // Only show loading skeleton on initial fetch (no data yet)
-      if ((isEntityLoading || isStatsLoading) && !hasListingData && !hasStatsData) {
+      if (!badgesRevealed) {
         result[entity.name] = "loading";
-      } else if (hasListingData) {
+      } else if (listingFallback[entity.name] != null) {
         result[entity.name] = listingFallback[entity.name];
-      } else if (hasStatsData) {
-        result[entity.name] = fStats[entity.countKey!];
+      } else if (entity.countKey && fStats[entity.countKey] != null) {
+        result[entity.name] = fStats[entity.countKey];
       }
     }
     return result;
-  }, [entities, fStats, listingFallback, entityLoading, featureStatsLoading]);
+  }, [entities, fStats, listingFallback, badgesRevealed]);
 
   return (
     <CampaignSidebar
