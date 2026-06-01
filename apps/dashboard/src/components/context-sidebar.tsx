@@ -7,6 +7,8 @@ import { keepPreviousData } from "@tanstack/react-query";
 import { useFeatures } from "@/lib/features-context";
 import { useEntityRegistry } from "@/lib/entity-registry-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
+import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
+import { Skeleton } from "@/components/skeleton";
 import {
   fetchFeatureStats,
   listBrandOutlets,
@@ -31,7 +33,17 @@ interface SidebarItem {
   maturity?: Maturity;
 }
 
-function SidebarLink({ item, isActive }: { item: SidebarItem; isActive: boolean }) {
+function SidebarLink({
+  item,
+  isActive,
+  badgePending = false,
+}: {
+  item: SidebarItem;
+  isActive: boolean;
+  // When true, render a skeleton pill instead of the count so a whole group of
+  // entity badges reveals its numbers together (see FeatureLevelSidebar).
+  badgePending?: boolean;
+}) {
   return (
     <Link
       href={item.href}
@@ -50,11 +62,13 @@ function SidebarLink({ item, isActive }: { item: SidebarItem; isActive: boolean 
       </span>
       <span className="flex-1">{item.label}</span>
       {item.maturity && <MaturityBadge level={item.maturity} />}
-      {item.badge !== undefined && (
+      {badgePending ? (
+        <Skeleton className="h-4 w-6 rounded-full" />
+      ) : item.badge !== undefined ? (
         <span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? "bg-brand-100 text-brand-700" : "bg-gray-100 text-gray-500"}`}>
           {formatCount(item.badge)}
         </span>
-      )}
+      ) : null}
       {item.comingSoon && (
         <span className="text-[10px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full whitespace-nowrap">
           Coming soon
@@ -563,46 +577,66 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
 
   // Feature stats scoped to this brand — same pattern as campaign sidebar
   const resolvedFeatureSlug = feature?.slug;
-  const { data: featureStatsData } = useAuthQuery(
+  const statsEnabled = !!resolvedFeatureSlug;
+  const { data: featureStatsData, isPending: statsPending } = useAuthQuery(
     ["featureStats", resolvedFeatureSlug, "brand", brandId],
     () => fetchFeatureStats(resolvedFeatureSlug!, { brandId }),
-    { enabled: !!resolvedFeatureSlug, refetchInterval: 5_000, placeholderData: keepPreviousData },
+    { enabled: statsEnabled, refetchInterval: 5_000, placeholderData: keepPreviousData },
   );
   const fStats = featureStatsData?.stats ?? {};
 
   // Listing fallbacks for entities without a countKey — filtered by featureSlug
-  const { data: outletsData } = useAuthQuery(
+  const outletsEnabled = entityNames.includes("outlets");
+  const { data: outletsData, isPending: outletsPending } = useAuthQuery(
     ["brandOutlets", brandId, featureSlug],
     () => listBrandOutlets(brandId, featureSlug),
-    { enabled: entityNames.includes("outlets"), refetchInterval: 5_000 },
+    { enabled: outletsEnabled, refetchInterval: 5_000 },
   );
-  const { data: journalistsData } = useAuthQuery(
+  const journalistsEnabled = entityNames.includes("journalists");
+  const { data: journalistsData, isPending: journalistsPending } = useAuthQuery(
     ["enrichedJournalists", brandId, featureSlug],
     () => listJournalistsEnriched(brandId, { featureSlug }),
-    { enabled: entityNames.includes("journalists"), refetchInterval: 5_000 },
+    { enabled: journalistsEnabled, refetchInterval: 5_000 },
   );
-  const { data: leadsData } = useAuthQuery(
+  const leadsEnabled = entityNames.includes("leads");
+  const { data: leadsData, isPending: leadsPending } = useAuthQuery(
     ["brandLeads", brandId],
     () => listBrandLeads(brandId),
-    { enabled: entityNames.includes("leads"), refetchInterval: 5_000 },
+    { enabled: leadsEnabled, refetchInterval: 5_000 },
   );
-  const { data: emailsData } = useAuthQuery(
+  const emailsEnabled = entityNames.includes("emails");
+  const { data: emailsData, isPending: emailsPending } = useAuthQuery(
     ["brandEmails", brandId],
     () => listBrandEmails(brandId),
-    { enabled: entityNames.includes("emails"), refetchInterval: 5_000 },
+    { enabled: emailsEnabled, refetchInterval: 5_000 },
   );
-  const { data: articlesData } = useAuthQuery(
+  const articlesEnabled = entityNames.includes("articles");
+  const { data: articlesData, isPending: articlesPending } = useAuthQuery(
     ["brandArticles", brandId, featureSlug],
     () => listBrandArticles(brandId, featureSlug),
-    { enabled: entityNames.includes("articles"), refetchInterval: 5_000 },
+    { enabled: articlesEnabled, refetchInterval: 5_000 },
   );
   // Gold catalog (GET /orgs/opportunities) — same source the feature
   // quote-requests page renders, so the badge equals the page count.
-  const { data: rankedOppsData } = useAuthQuery(
+  const rankedOppsEnabled = entityNames.includes("quote-requests");
+  const { data: rankedOppsData, isPending: rankedOppsPending } = useAuthQuery(
     ["rankedOpportunities", { brandId }],
     () => listRankedOpportunities({ brandId, limit: 50 }),
-    { enabled: entityNames.includes("quote-requests"), refetchInterval: 5_000 },
+    { enabled: rankedOppsEnabled, refetchInterval: 5_000 },
   );
+
+  // Reveal EVERY entity badge together (one paint), then keep the numbers
+  // latched on screen. A disabled query stays `isPending: true` forever, so each
+  // flag is gated behind its own `enabled` condition. See CLAUDE.md → "Coordinated reveal".
+  const badgesRevealed = useCoordinatedReveal([
+    !statsEnabled || !statsPending,
+    !outletsEnabled || !outletsPending,
+    !journalistsEnabled || !journalistsPending,
+    !leadsEnabled || !leadsPending,
+    !emailsEnabled || !emailsPending,
+    !articlesEnabled || !articlesPending,
+    !rankedOppsEnabled || !rankedOppsPending,
+  ]);
 
   const listingFallback: Record<string, number | undefined> = {
     leads: leadsData?.leads?.length,
@@ -667,6 +701,7 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
             <SidebarLink
               key={item.id}
               item={item}
+              badgePending={!badgesRevealed}
               isActive={pathname.startsWith(item.href)}
             />
           ))}
