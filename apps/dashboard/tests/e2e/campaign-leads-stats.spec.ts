@@ -330,29 +330,10 @@ test.describe("Campaign leads tab — lead-scoped stats panel", () => {
     await mockDashboardApi(page);
   });
 
-  test("renders aggregate lead stats panel with all sections", async ({ page }) => {
-    const emailAddress = requiredEnv("E2E_CLERK_USER_EMAIL");
-    const orgId = requiredEnv("E2E_DASHBOARD_ORG_ID");
-
-    await page.goto("/sign-in");
-    await clerk.signIn({ page, emailAddress });
-
-    await page.goto(
-      `/orgs/${orgId}/brands/${BRAND_ID}/features/${FEATURE_SLUG}/campaigns/${CAMPAIGN_ID}/leads`,
-    );
-
-    const panel = page.getByTestId("leads-stats-panel");
-    await expect(panel).toBeVisible();
-
-    await expect(panel.getByText("Pipeline", { exact: false })).toBeVisible();
-    await expect(panel.getByText("Outreach", { exact: false })).toBeVisible();
-    await expect(panel.getByText("Replies", { exact: false })).toBeVisible();
-    await expect(panel.getByText("Cost", { exact: false })).toBeVisible();
-
-    await expect(panel.getByText("Leads Claimed")).toBeVisible();
-    await expect(panel.getByText("Leads Opened")).toBeVisible();
-    await expect(panel.getByText("Positive Replies")).toBeVisible();
-  });
+  // The aggregate lead-scoped stats panel was removed from the leads tab per
+  // request (sections: Pipeline / Outreach / Rates / Reply Breakdown / Cost).
+  // The leads tab now shows only the leads table. The panel component lives on
+  // in the public report pages, covered elsewhere.
 
   test("campaign overview funnel renders the new lead-scoped keys", async ({ page }) => {
     const emailAddress = requiredEnv("E2E_CLERK_USER_EMAIL");
