@@ -18,7 +18,7 @@ interface Props {
 
 export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: Props) {
   const params = useParams();
-  const { campaign, leads, emails: campaignEmails, loading: campaignLoading } = useCampaign();
+  const { campaign, leads, emails: campaignEmails, emailsLoading, leadsLoading } = useCampaign();
   const campaignId = params.id as string;
   const { getFeature, isLoading: featuresLoading } = useFeatures();
   const featureDef = getFeature(featureSlug);
@@ -66,11 +66,11 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
   );
 
   const entityLoading: Record<string, boolean> = {
-    leads: campaignLoading,
-    companies: campaignLoading,
+    leads: leadsLoading,
+    companies: leadsLoading,
     outlets: outletsLoading,
     journalists: journalistsLoading,
-    emails: campaignLoading,
+    emails: emailsLoading,
     articles: featureStatsLoading,
     "press-kits": pressKitsLoading,
     "quote-requests": rankedOppsLoading,

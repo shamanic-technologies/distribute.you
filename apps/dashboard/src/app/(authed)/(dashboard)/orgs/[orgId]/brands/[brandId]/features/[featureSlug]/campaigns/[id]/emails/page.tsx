@@ -88,7 +88,7 @@ function PersonInitials({ firstName, lastName }: { firstName: string; lastName: 
 export default function CampaignEmailsPage() {
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const [search, setSearch] = useState("");
-  const { emails, loading: isLoading } = useCampaign();
+  const { emails, emailsLoading: isLoading } = useCampaign();
 
   const totalCost = useMemo(() => formatTotalCost(emails), [emails]);
 
