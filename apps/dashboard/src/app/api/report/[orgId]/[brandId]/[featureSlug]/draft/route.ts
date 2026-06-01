@@ -1,21 +1,27 @@
 import { NextResponse } from "next/server";
-import { adminGet, adminPost } from "@/lib/report-api";
+import { adminPost, fetchBrand } from "@/lib/report-api";
 import {
-  buildQuoteRequestVariable,
-  buildAdditionalContextVariable,
+  buildExpertQuotePitchVariables,
+  coerceExtractedToString,
+  ExpertQuotePitchInputError,
 } from "@/lib/quote-pitch-variables";
 
 // Public-report draft generation. The upstream `/orgs/quote-requests/:id/draft`
-// endpoint on journalists-quotes-service was removed in v0.8.1 (PR #41,
-// commit 4982ea4) — the service is now a pure opportunity catalog + submit.
-// Pitch generation is composed client-side from three calls through
+// endpoint on journalists-quotes-service was removed in v0.8.1 — the service is
+// now a pure opportunity catalog + submit. The pitch is composed here through
 // api-service:
-//   1. GET  /v1/content/platform-prompts?type=expert-quote-pitch
-//        → discover which variables the prompt template expects
-//   2. POST /v1/brands/extract-fields
-//        → extract brand-derivable variables via brand-service
-//   3. POST /v1/content/generate-expert-quote-pitch
-//        → render template + run content-generation-service
+//   1. GET  /brands/:id            → brand identity (name / url / logoUrl)
+//   2. POST /brands/extract-fields → brand + expert fields the public report
+//                                    has no campaign inputs for (description,
+//                                    HQ, bio, name, title, headshot, LinkedIn)
+//   3. POST /v1/content/generate-expert-quote-pitch → render + run content-gen
+//
+// content-gen PR #124 / v0.21.0 made the template's `variables` body EXPLICIT
+// + ALL-REQUIRED — every declared field must be non-empty or it 400s. The
+// public report is brand-scoped (no campaign → no operator featureInputs), so
+// EVERY brand + expert field is sourced from extract-fields. We never send an
+// empty/placeholder value: `buildExpertQuotePitchVariables` throws (→ 422) when
+// extraction yields nothing for a required field.
 //
 // The public page never holds an admin key client-side; this Route Handler
 // proxies through api-service with the server-side ADMIN_DISTRIBUTE_API_KEY.
@@ -28,15 +34,40 @@ interface RouteContext {
 }
 
 const HITL_SLUG = "pr-expert-quote-opportunities";
-const PROMPT_TYPE = "expert-quote-pitch";
 
-// Template variables built from the SELECTED OPPORTUNITY row, not brand-service.
-// The deployed `expert-quote-pitch` template (DIS-52) declares three variables:
-// {{brand}} (brand-derivable), {{request}} + {{additionalContext}} (opportunity
-// context the client already holds). Only {{brand}} is brand-extracted; the
-// other two are composed from the opportunity. If the template adds a new
-// opportunity-context variable, list its name here so it is not brand-extracted.
-const CLIENT_SUPPLIED_VARS = new Set(["request", "additionalContext"]);
+// Fields extracted via brand-service extract-fields. Descriptions seed the
+// extraction prompt; the expert-* keys mirror DIS-136 extractKeys for quality.
+const EXTRACT_FIELDS = [
+  {
+    key: "brandDescription",
+    description: "One-line description of what the company does and who it serves.",
+  },
+  {
+    key: "brandHeadquartersLocation",
+    description: "City and country/region of the company's headquarters.",
+  },
+  {
+    key: "expertBio",
+    description:
+      "Short professional bio of the company's spokesperson/expert — role, experience, and credentials.",
+  },
+  {
+    key: "expertName",
+    description: "Full name of the company's spokesperson/expert (from the about/team page).",
+  },
+  {
+    key: "expertTitle",
+    description: "Title or role of the spokesperson/expert (e.g. 'CEO & Co-founder').",
+  },
+  {
+    key: "expertPhotoUrl",
+    description: "URL of the spokesperson/expert's headshot image.",
+  },
+  {
+    key: "expertLinkedIn",
+    description: "URL of the spokesperson/expert's LinkedIn profile.",
+  },
+];
 
 interface DraftRequestBody {
   opportunityId?: string;
@@ -46,13 +77,6 @@ interface DraftRequestBody {
   deadline?: string | null;
   whyRelevant?: string | null;
   category?: string | null;
-}
-
-interface PromptTemplate {
-  id: string;
-  type: string;
-  prompt: string;
-  variables: Array<{ name: string; description: string }>;
 }
 
 interface ExtractFieldsResponse {
@@ -117,56 +141,50 @@ export async function POST(req: Request, ctx: RouteContext) {
   const brandHeader = { "x-brand-id": brandId };
 
   try {
-    // 1. Discover prompt template variable shape (names + descriptions). The
-    //    template is platform-wide; this call has no identity coupling but we
-    //    still go via api-service for consistent auth.
-    const template = await adminGet<PromptTemplate>(
-      "getExpertQuotePitchTemplate",
-      `/content/platform-prompts?type=${encodeURIComponent(PROMPT_TYPE)}`,
-      orgId,
-    );
+    // 1 + 2. Brand identity (name/url/logoUrl) and the extracted brand/expert
+    //        fields, in parallel.
+    const [brand, extracted] = await Promise.all([
+      fetchBrand(orgId, brandId),
+      adminPost<ExtractFieldsResponse>(
+        "extractBrandFields",
+        `/brands/extract-fields`,
+        orgId,
+        { brandIds: [brandId], fields: EXTRACT_FIELDS },
+        brandHeader,
+      ),
+    ]);
 
-    // 2. Split template variables into brand-derivable (extract via
-    //    brand-service) vs opportunity-context (supplied by client).
-    const brandFields = template.variables.filter(
-      (v) => !CLIENT_SUPPLIED_VARS.has(v.name),
-    );
-
-    const extracted = await adminPost<ExtractFieldsResponse>(
-      "extractBrandFields",
-      `/brands/extract-fields`,
-      orgId,
-      {
-        brandIds: [brandId],
-        fields: brandFields.map((v) => ({
-          key: v.name,
-          description: v.description,
-        })),
+    // 3. Assemble the all-required contract. Throws ExpertQuotePitchInputError
+    //    (→ 422) if any required field is empty — no empty/placeholder is sent.
+    const f = extracted.fields;
+    const variables = buildExpertQuotePitchVariables({
+      identity: {
+        brandName: brand?.name ?? null,
+        brandUrl: brand?.url ?? null,
+        brandLogoUrl: brand?.logoUrl ?? null,
       },
-      brandHeader,
-    );
-
-    const brandValues: Record<string, unknown> = {};
-    for (const v of brandFields) {
-      brandValues[v.name] = extracted.fields?.[v.name]?.value ?? null;
-    }
-
-    // 3. Assemble the three template variables ({{brand}} from brand-extract,
-    //    {{request}} + {{additionalContext}} from opportunity context) and
-    //    render via content-generation-service /generate-expert-quote-pitch.
-    const opportunityContext = {
-      opportunityText,
-      mediaOutlet,
-      journalistName,
-      deadline,
-      whyRelevant,
-      category,
-    };
-    const variables: Record<string, unknown> = {
-      ...brandValues,
-      request: buildQuoteRequestVariable(opportunityContext),
-      additionalContext: buildAdditionalContextVariable(opportunityContext),
-    };
+      extracted: {
+        brandDescription: coerceExtractedToString(f.brandDescription?.value),
+        brandHeadquartersLocation: coerceExtractedToString(
+          f.brandHeadquartersLocation?.value,
+        ),
+        expertBio: coerceExtractedToString(f.expertBio?.value),
+      },
+      expert: {
+        expertName: coerceExtractedToString(f.expertName?.value),
+        expertTitle: coerceExtractedToString(f.expertTitle?.value),
+        expertPhotoUrl: coerceExtractedToString(f.expertPhotoUrl?.value),
+        expertLinkedIn: coerceExtractedToString(f.expertLinkedIn?.value),
+      },
+      opportunity: {
+        opportunityText,
+        mediaOutlet,
+        journalistName,
+        deadline,
+        whyRelevant,
+        category,
+      },
+    });
 
     const result = await adminPost<GenerateResponse>(
       "generateExpertQuotePitch",
@@ -182,6 +200,10 @@ export async function POST(req: Request, ctx: RouteContext) {
 
     return NextResponse.json(result);
   } catch (err) {
+    if (err instanceof ExpertQuotePitchInputError) {
+      // Required data couldn't be sourced — fail loud with the specific field.
+      return NextResponse.json({ error: err.message }, { status: 422 });
+    }
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: message }, { status: 502 });
   }

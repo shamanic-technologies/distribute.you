@@ -1,8 +1,8 @@
 import { useMutation } from "@tanstack/react-query";
 import {
-  generateQuoteDraft,
+  generateExpertQuotePitch,
   submitQuoteOpportunityReply,
-  type GenerateQuoteDraftBody,
+  type GenerateExpertQuotePitchArgs,
   type GenerateQuoteDraftResponse,
   type SubmitQuotePitchBody,
   type SubmitQuotePitchResponse,
@@ -13,10 +13,10 @@ export function useGenerateQuoteDraft() {
   return useMutation<
     GenerateQuoteDraftResponse,
     Error,
-    { body: GenerateQuoteDraftBody }
+    GenerateExpertQuotePitchArgs
   >({
     mutationKey: ["generateQuoteDraft"],
-    mutationFn: ({ body }) => generateQuoteDraft(body),
+    mutationFn: (args) => generateExpertQuotePitch(args),
   });
 }
 
