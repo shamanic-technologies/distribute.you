@@ -52,9 +52,12 @@ interface McpSidebarProps {
   backHref?: string;
   backLabel?: string;
   extraButtons?: React.ReactNode;
+  // When true, render skeleton nav rows instead of the items so the whole nav
+  // (static + data-dependent entity items) reveals together once defs load.
+  navPending?: boolean;
 }
 
-export function McpSidebar({ items, outcomesItems, settingsItems, settingsExtra, title, backHref, backLabel, extraButtons }: McpSidebarProps) {
+export function McpSidebar({ items, outcomesItems, settingsItems, settingsExtra, title, backHref, backLabel, extraButtons, navPending = false }: McpSidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -80,6 +83,15 @@ export function McpSidebar({ items, outcomesItems, settingsItems, settingsExtra,
           </div>
         )}
         <nav className="flex-1 p-2 space-y-1">
+          {navPending ? (
+            [0, 1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex items-center gap-3 px-3 py-2.5">
+                <Skeleton className="w-5 h-5 rounded" />
+                <Skeleton className="h-4 flex-1 max-w-[7rem] rounded" />
+              </div>
+            ))
+          ) : (
+          <>
           {items.map((item) => {
             const isActive = pathname === item.href;
             return (
@@ -168,6 +180,8 @@ export function McpSidebar({ items, outcomesItems, settingsItems, settingsExtra,
               {extraButtons}
             </div>
           )}
+          </>
+          )}
         </nav>
       </aside>
 
@@ -186,6 +200,12 @@ export function McpSidebar({ items, outcomesItems, settingsItems, settingsExtra,
           <div className="w-8" />
         </div>
         <nav className="flex gap-1 overflow-x-auto pb-1 -mx-4 px-4">
+          {navPending ? (
+            [0, 1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-7 w-20 rounded-full flex-shrink-0" />
+            ))
+          ) : (
+          <>
           {items.map((item) => {
             const isActive = pathname === item.href;
             return (
@@ -254,6 +274,8 @@ export function McpSidebar({ items, outcomesItems, settingsItems, settingsExtra,
           })}
           {settingsExtra}
           {extraButtons}
+          </>
+          )}
         </nav>
       </div>
     </>

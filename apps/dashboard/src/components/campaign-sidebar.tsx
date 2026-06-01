@@ -139,8 +139,11 @@ interface CampaignSidebarProps {
 export function CampaignSidebar({ campaignId, orgId, brandId, featureSlug, entityCounts, workflowId, featureInputs }: CampaignSidebarProps) {
   const [inputsPanelOpen, setInputsPanelOpen] = useState(false);
   const [promptPanelOpen, setPromptPanelOpen] = useState(false);
-  const { getFeature } = useFeatures();
-  const { registry } = useEntityRegistry();
+  const { getFeature, isLoading: featuresLoading } = useFeatures();
+  const { registry, isLoading: registryLoading } = useEntityRegistry();
+  // Reveal the whole nav together once the feature + entity registry defs load
+  // (entity items depend on them); skeleton rows until then. See CLAUDE.md → "Coordinated reveal".
+  const defsReady = !featuresLoading && !registryLoading;
   const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/${campaignId}`;
   const backHref = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`;
 
@@ -200,6 +203,7 @@ export function CampaignSidebar({ campaignId, orgId, brandId, featureSlug, entit
   return (
     <>
       <McpSidebar
+        navPending={!defsReady}
         items={items}
         outcomesItems={entityItems}
         settingsItems={settingsItems}
