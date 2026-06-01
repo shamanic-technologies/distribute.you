@@ -567,8 +567,8 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   featureSlug: string;
   pathname: string;
 }) {
-  const { getFeature } = useFeatures();
-  const { registry } = useEntityRegistry();
+  const { getFeature, isLoading: featuresLoading } = useFeatures();
+  const { registry, isLoading: registryLoading } = useEntityRegistry();
   const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`;
   const feature = getFeature(featureSlug);
   const title = feature?.name ?? featureSlug;
@@ -628,7 +628,16 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   // Reveal EVERY entity badge together (one paint), then keep the numbers
   // latched on screen. A disabled query stays `isPending: true` forever, so each
   // flag is gated behind its own `enabled` condition. See CLAUDE.md → "Coordinated reveal".
+  //
+  // `defsReady` MUST gate the barrier FIRST: until the feature (its entity list)
+  // and the entity registry load, `entityNames` is empty, so every count query is
+  // disabled and every `!enabled || !isPending` flag is true — the barrier would
+  // otherwise pass instantly and latch an EMPTY group (no skeleton, counts then
+  // trickle in one-by-one). With the gate, we wait for the defs, THEN for each
+  // now-enabled count query to settle, THEN reveal all numbers at once.
+  const defsReady = !featuresLoading && !registryLoading;
   const badgesRevealed = useCoordinatedReveal([
+    defsReady,
     !statsEnabled || !statsPending,
     !outletsEnabled || !outletsPending,
     !journalistsEnabled || !journalistsPending,
