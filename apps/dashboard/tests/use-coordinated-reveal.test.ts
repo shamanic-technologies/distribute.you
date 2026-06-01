@@ -75,5 +75,9 @@ describe("consumers adopt the coordinated reveal", () => {
     expect(sidebar).toContain("badgePending");
     // Badge value still flows from the page's own data source (brand-tools guard).
     expect(sidebar).toContain("badge: entityCounts[e.name]");
+    // The barrier MUST gate on entity defs first, else every count query is
+    // disabled at first paint and the group reveals empty + un-skeletoned.
+    expect(sidebar).toContain("defsReady");
+    expect(sidebar).toMatch(/useCoordinatedReveal\(\[\s*defsReady/);
   });
 });
