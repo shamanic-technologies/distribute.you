@@ -169,6 +169,15 @@ function SortHeader({
   );
 }
 
+/**
+ * Campaign-service reports a running campaign as "ongoing" and a finished/terminated one as "stopped".
+ * A workflow test run is "still running" while its campaign has not yet reached the terminal "stopped"
+ * state \u2014 keep polling until then (the 3-lead cap auto-stops the campaign on completion).
+ */
+function isTestRunning(status: string | undefined): boolean {
+  return status != null && status !== "stopped";
+}
+
 export default function FeatureCreateCampaignPage() {
   const params = useParams();
   const orgId = params.orgId as string;
@@ -490,7 +499,7 @@ export default function FeatureCreateCampaignPage() {
 
   // ── Workflow test runs (real campaigns capped at 3 leads) ──
   const runningTestIds = useMemo(
-    () => Object.values(tests).filter((t) => t.status === "active").map((t) => t.campaignId),
+    () => Object.values(tests).filter((t) => isTestRunning(t.status)).map((t) => t.campaignId),
     [tests],
   );
 
@@ -500,8 +509,13 @@ export default function FeatureCreateCampaignPage() {
       const out: Record<string, { status: string; emails: Email[] }> = {};
       await Promise.all(
         runningTestIds.map(async (cid) => {
-          const [{ campaign }, { emails }] = await Promise.all([getCampaign(cid), listCampaignEmails(cid)]);
-          out[cid] = { status: campaign.status, emails };
+          try {
+            const [{ campaign }, { emails }] = await Promise.all([getCampaign(cid), listCampaignEmails(cid)]);
+            out[cid] = { status: campaign.status, emails };
+          } catch (err) {
+            // One test campaign failing to poll (e.g. a cross-org 404) must not freeze the others.
+            console.error(`[dashboard] workflow-test poll failed for campaign ${cid}:`, err);
+          }
         }),
       );
       return out;
@@ -550,7 +564,7 @@ export default function FeatureCreateCampaignPage() {
         featureInputs: inputValues,
         maxLeads: 3,
       } as unknown as Parameters<typeof createCampaign>[0]);
-      setTests((t) => ({ ...t, [wf.id]: { campaignId: campaign.id, status: campaign.status || "active", emails: [] } }));
+      setTests((t) => ({ ...t, [wf.id]: { campaignId: campaign.id, status: campaign.status, emails: [] } }));
     } catch (err) {
       setTestError((s) => ({
         ...s,
@@ -1407,7 +1421,7 @@ export default function FeatureCreateCampaignPage() {
                       const isReco = salesAutoPick?.id === w.id;
                       const isOverride = salesWorkflowOverrideId === w.id;
                       const openRate = w.stats.recipientOpenRate;
-                      const testing = tests[w.id]?.status === "active" || testStarting[w.id];
+                      const testing = isTestRunning(tests[w.id]?.status) || testStarting[w.id];
                       return (
                         <button key={w.id} type="button"
                           onClick={() => setModalSelectedWorkflowId(w.id)}
@@ -1446,7 +1460,7 @@ export default function FeatureCreateCampaignPage() {
                       const wf = rows.find((r) => r.id === modalSelectedWorkflowId);
                       if (!wf) return <p className="text-sm text-gray-500 text-center py-8">Select a workflow to test it.</p>;
                       const t = tests[wf.id];
-                      const active = t?.status === "active";
+                      const active = isTestRunning(t?.status);
                       const starting = testStarting[wf.id];
                       const emails = t?.emails ?? [];
                       return (
