@@ -7,7 +7,6 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   getBrand,
   listCampaignsByBrand,
-  getCampaignBatchStats,
   listBrandOutlets,
   listJournalistsEnriched,
   listBrandLeads,
@@ -15,7 +14,6 @@ import {
   listBrandArticles,
   type Brand,
   type Campaign,
-  type CampaignStats,
 } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
 import { BrandUsageSection } from "@/components/brand-usage";
@@ -146,17 +144,6 @@ export default function BrandOverviewPage() {
   );
   const campaigns = campaignsData?.campaigns ?? [];
 
-  const campaignIds = useMemo(() => campaigns.map(c => c.id), [campaigns]);
-
-  // Fires immediately on mount — backend scopes by brandId so empty campaigns array
-  // simply returns an empty object. Drops the cascade waiting on campaigns to resolve.
-  const { data: batchStats } = useAuthQuery(
-    ["campaignBatchStats", { brandId }, campaignIds],
-    () => getCampaignBatchStats(campaignIds, undefined, brandId),
-    pollOptions,
-  );
-  const campaignStats = batchStats ?? {};
-
   // Brand-level outcome counts
   const { data: outletsData, isLoading: outletsLoading } = useAuthQuery(
     ["brandOutlets", brandId],
@@ -192,16 +179,20 @@ export default function BrandOverviewPage() {
     emails: emailsData?.emails?.length ?? 0,
   }), [outletsData, journalistsData, articlesData, leadsData, emailsData]);
 
-  // Unified ready gate so outcomes + features sections reveal together (no staggered wave).
-  const allReady =
-    !brandLoading
-    && campaignsData !== undefined
-    && batchStats !== undefined
-    && !outletsLoading
+  // Outcomes count cards reveal together once all 5 outcome queries resolve
+  // (avoids a count-by-count staggered wave). Scoped to the outcome queries
+  // ONLY — the Features grid is NOT gated on this; it paints immediately from
+  // the warm ["features"] cache, same as the sidebar.
+  const outcomesReady =
+    !outletsLoading
     && !journalistsLoading
     && !leadsLoading
     && !emailsLoading
     && !articlesLoading;
+
+  // Per-card campaign stats depend on the campaigns query alone — show a small
+  // skeleton on the stats line while it resolves, never blocking the card itself.
+  const campaignsPending = campaignsData === undefined;
 
   // Build workflow sections from actual campaigns, grouped by feature slug
   const workflowSections = useMemo(() => {
@@ -311,7 +302,7 @@ export default function BrandOverviewPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={icon} />
               </svg>
               <p className="text-sm font-medium text-gray-700 group-hover:text-brand-600 transition">{label}</p>
-              {!allReady ? (
+              {!outcomesReady ? (
                 <Skeleton className="h-6 w-8 mx-auto mt-1" />
               ) : (
                 <p className="text-lg font-semibold text-gray-900 mt-1">{formatCount(outcomeCounts[key])}</p>
@@ -326,22 +317,6 @@ export default function BrandOverviewPage() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-medium text-gray-900">Features</h2>
         </div>
-        {!allReady ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="bg-white rounded-lg border border-gray-200 p-5 min-h-[116px]">
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 bg-gray-100 rounded animate-pulse" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-5 w-32 bg-gray-200 rounded animate-pulse" />
-                    <div className="h-3 w-52 bg-gray-100 rounded animate-pulse" />
-                    <div className="h-3 w-40 bg-gray-100 rounded animate-pulse" />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {visibleFeatures.map((f) => {
             const section = workflowSections.find(s => s.featureSlug === f.slug);
@@ -363,7 +338,12 @@ export default function BrandOverviewPage() {
                         {isAlpha && <MaturityBadge level={FEATURE_GATES["brand-features"].maturity} />}
                       </div>
                       <p className="text-sm text-gray-500 mt-1">{f.description}</p>
-                      {section && (
+                      {campaignsPending ? (
+                        <div className="flex items-center gap-4 mt-3">
+                          <div className="h-3 w-16 bg-gray-100 rounded animate-pulse" />
+                          <div className="h-3 w-12 bg-gray-100 rounded animate-pulse" />
+                        </div>
+                      ) : section ? (
                         <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
                           <span className="flex items-center gap-1.5">
                             <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
@@ -371,7 +351,7 @@ export default function BrandOverviewPage() {
                           </span>
                           <span>{section.campaigns.length.toLocaleString("en-US")} total</span>
                         </div>
-                      )}
+                      ) : null}
                     </div>
                     <svg className="w-5 h-5 text-gray-300 group-hover:text-brand-600 transition flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -403,7 +383,6 @@ export default function BrandOverviewPage() {
             );
           })}
         </div>
-        )}
       </div>
 
       {/* Usage Section */}
