@@ -19,6 +19,7 @@ import {
   type KeySourcePreference,
 } from "@/lib/api";
 import { SkeletonApiKey } from "@/components/skeleton";
+import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 import { pollOptions } from "@/lib/query-options";
 
 /** Providers that should always appear in the BYOK section, even if no workflow requires them yet. */
@@ -215,10 +216,17 @@ export default function OrgApiKeysPage() {
     }
   }
 
-  const isLoading = apiKeysLoading || byokLoading || workflowsLoading || keySourcesLoading;
-  const hasAnyData = !!(apiKeysData || byokData || workflowsData || keySourcesData);
+  // Reveal all key sections together once every query settles (barrier + latch),
+  // instead of painting the page as soon as the FIRST of the four resolved
+  // (which left the other sections empty/loading — a staggered reveal).
+  const ready = useCoordinatedReveal([
+    !apiKeysLoading,
+    !byokLoading,
+    !workflowsLoading,
+    !keySourcesLoading,
+  ]);
 
-  if (isLoading && !hasAnyData) {
+  if (!ready) {
     return (
       <div className="p-4 md:p-8">
         <div className="mb-6">

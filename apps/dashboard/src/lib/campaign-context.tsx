@@ -12,6 +12,12 @@ interface CampaignContextType {
   emails: Email[];
   leads: Lead[];
   loading: boolean;
+  // Per-entity loading. `loading` gates ONLY the campaign query; emails/leads are
+  // independent queries, so entity pages must gate their own skeleton on these —
+  // gating on `loading` hides the skeleton the moment the campaign resolves while
+  // the entity list is still fetching, flashing an empty state.
+  emailsLoading: boolean;
+  leadsLoading: boolean;
   setCampaign: (campaign: Campaign | null) => void;
   refreshStats: () => Promise<void>;
 }
@@ -74,8 +80,8 @@ export function CampaignProvider({ children, campaignId }: CampaignProviderProps
   }, [queryClient, campaignId]);
 
   const value = useMemo<CampaignContextType>(
-    () => ({ campaign, stats, emails, leads, loading, setCampaign: noop, refreshStats }),
-    [campaign, stats, emails, leads, loading, refreshStats],
+    () => ({ campaign, stats, emails, leads, loading, emailsLoading, leadsLoading, setCampaign: noop, refreshStats }),
+    [campaign, stats, emails, leads, loading, emailsLoading, leadsLoading, refreshStats],
   );
 
   return (

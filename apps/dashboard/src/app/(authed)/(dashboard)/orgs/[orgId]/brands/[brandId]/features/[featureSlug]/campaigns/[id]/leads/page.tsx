@@ -207,7 +207,7 @@ export default function CampaignLeadsPage() {
   const [activeTab, setActiveTab] = useState<Tab>("contacted");
   const [search, setSearch] = useState("");
   const hasAutoSelectedTab = useRef(false);
-  const { leads, loading: isLoading } = useCampaign();
+  const { leads, leadsLoading: isLoading } = useCampaign();
 
   const sortedLeads = useMemo(
     () => [...leads].sort((a, b) => {

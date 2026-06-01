@@ -40,7 +40,7 @@ function deriveCompanies(leads: Lead[]): DerivedCompany[] {
 }
 
 export default function CampaignCompaniesPage() {
-  const { leads, loading: isLoading } = useCampaign();
+  const { leads, leadsLoading: isLoading } = useCampaign();
   const companies = useMemo(() => deriveCompanies(leads), [leads]);
   const [selectedCompany, setSelectedCompany] = useState<DerivedCompany | null>(null);
   const [search, setSearch] = useState("");
