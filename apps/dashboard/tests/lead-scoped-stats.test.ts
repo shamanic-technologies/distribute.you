@@ -154,16 +154,14 @@ describe("LeadsStatsPanel — exists and is registry-driven", () => {
   });
 });
 
-describe("Campaign leads page mounts LeadsStatsPanel", () => {
+describe("Campaign leads page does NOT mount LeadsStatsPanel (sections removed per request)", () => {
   const leadsPage = read(leadsPageRel);
 
-  it("imports LeadsStatsPanel", () => {
-    expect(leadsPage).toMatch(
-      /import\s*\{\s*LeadsStatsPanel\s*\}\s*from\s*["']@\/components\/campaign\/leads-stats-panel["']/,
-    );
+  it("does not import LeadsStatsPanel", () => {
+    expect(leadsPage).not.toMatch(/LeadsStatsPanel/);
   });
 
-  it("renders <LeadsStatsPanel /> in JSX", () => {
-    expect(leadsPage).toMatch(/<LeadsStatsPanel\b/);
+  it("does not render <LeadsStatsPanel /> in JSX", () => {
+    expect(leadsPage).not.toMatch(/<LeadsStatsPanel\b/);
   });
 });

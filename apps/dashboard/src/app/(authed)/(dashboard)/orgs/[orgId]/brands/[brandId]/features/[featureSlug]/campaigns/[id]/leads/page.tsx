@@ -5,7 +5,6 @@ import { useParams } from "next/navigation";
 import { getLeadConsolidatedStatus, type Lead, type LeadConsolidatedStatus } from "@/lib/api";
 import { useCampaign } from "@/lib/campaign-context";
 import { EntitySearchBar } from "@/components/entity-search-bar";
-import { LeadsStatsPanel } from "@/components/campaign/leads-stats-panel";
 
 const LEAD_STATUS_ORDER: LeadConsolidatedStatus[] = [
   "replied",
@@ -287,11 +286,6 @@ export default function CampaignLeadsPage() {
             Leads
             <span className="ml-2 text-sm font-normal text-gray-500">({leads.length.toLocaleString("en-US")})</span>
           </h1>
-        </div>
-
-        {/* Aggregate lead-scoped stats */}
-        <div className="mb-6">
-          <LeadsStatsPanel featureSlug={featureSlug} campaignId={campaignId} />
         </div>
 
         {/* Tabs */}
