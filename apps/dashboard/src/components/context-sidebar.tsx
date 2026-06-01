@@ -78,6 +78,17 @@ function SidebarLink({
   );
 }
 
+// A single nav-row skeleton matching SidebarLink's layout (icon + label), used to
+// reveal a whole sidebar nav group at once instead of static rows first / data rows later.
+function SidebarNavRowSkeleton() {
+  return (
+    <div className="flex items-center gap-3 px-3 py-2.5">
+      <Skeleton className="w-5 h-5 rounded" />
+      <Skeleton className="h-4 flex-1 max-w-[7rem] rounded" />
+    </div>
+  );
+}
+
 function BackLink({ href, label }: { href: string; label: string }) {
   return (
     <Link
@@ -696,6 +707,26 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
       backHref={`/orgs/${orgId}/brands/${brandId}`}
       backLabel="Brand"
     >
+      {/* Reveal the WHOLE nav as one group: the top items are static and the
+          Outcomes items need feature + registry defs, so painting them as they
+          resolve makes the static rows appear first and the Outcomes block pop in
+          a beat later. Hold everything behind `defsReady` with skeleton rows, then
+          render every item together. (Warm nav → defsReady is true immediately →
+          no skeleton.) Badge numbers are a finer sub-group revealed via badgePending. */}
+      {!defsReady ? (
+        <>
+          {[0, 1, 2].map((i) => (
+            <SidebarNavRowSkeleton key={`top-${i}`} />
+          ))}
+          <div className="pt-2 mt-2 border-t border-gray-100">
+            <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Outcomes</h4>
+            {[0, 1, 2, 3].map((i) => (
+              <SidebarNavRowSkeleton key={`out-${i}`} />
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
       {topItems.map((item) => (
         <SidebarLink
           key={item.id}
@@ -730,6 +761,8 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
             <span className="text-gray-300"><ExternalLinkIcon /></span>
           </a>
         </div>
+      )}
+        </>
       )}
     </SidebarSection>
   );

@@ -80,4 +80,11 @@ describe("consumers adopt the coordinated reveal", () => {
     expect(sidebar).toContain("defsReady");
     expect(sidebar).toMatch(/useCoordinatedReveal\(\[\s*defsReady/);
   });
+
+  it("sidebar reveals the whole nav group at once (no static-first / data-later wave)", () => {
+    // Whole nav body held behind defsReady with skeleton rows so top items and
+    // the Outcomes block appear together, not in two waves.
+    expect(sidebar).toContain("SidebarNavRowSkeleton");
+    expect(sidebar).toMatch(/!defsReady \? \(/);
+  });
 });
