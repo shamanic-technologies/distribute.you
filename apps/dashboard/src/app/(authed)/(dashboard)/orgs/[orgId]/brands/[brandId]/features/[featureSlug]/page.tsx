@@ -11,6 +11,7 @@ import {
   type Campaign,
 } from "@/lib/api";
 import { useFeatures } from "@/lib/features-context";
+import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 import { useStopCampaign, useIsStoppingCampaign } from "@/lib/use-stop-campaign";
 import { FunnelMetrics, FunnelMetricsSkeleton } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown, ReplyBreakdownSkeleton } from "@/components/campaign/reply-breakdown";
@@ -149,14 +150,18 @@ function GenericFeaturePage({
   );
   const brandCostBreakdown = brandCostData?.costs ?? [];
 
-  // One unified "all sections ready" gate so the body reveals together, not in a staggered cascade.
-  // With global `placeholderData: keepPreviousData`, refetches keep data on screen — this gate
-  // only governs the first-mount paint when the page has no cached data yet.
-  const campaignsReady = campaignsData !== undefined;
-  const featureStatsReady = featureStatsData !== undefined;
-  const costsReady = brandCostData !== undefined;
-  const featureDefReady = !featuresLoading;
-  const allReady = campaignsReady && featureStatsReady && costsReady && featureDefReady;
+  // One unified "all sections ready" gate so the WHOLE body reveals together (one paint,
+  // never a card-by-card cascade), then STAYS revealed. `useCoordinatedReveal` is a barrier
+  // (reveal only when every section has data) plus a monotonic latch (once shown, a poll /
+  // Clerk token rotation / transient query error never sends the body back to a skeleton).
+  // It pairs with the global `placeholderData: keepPreviousData`, which keeps each query's
+  // data on screen during refetch. See CLAUDE.md → "Coordinated reveal".
+  const revealed = useCoordinatedReveal([
+    campaignsData !== undefined,
+    featureStatsData !== undefined,
+    brandCostData !== undefined,
+    !featuresLoading,
+  ]);
 
   const totalCostCents = featureStatsData?.systemStats?.totalCostInUsdCents ?? 0;
   const featureStats = featureStatsData?.stats ?? {};
@@ -172,7 +177,7 @@ function GenericFeaturePage({
           <p className="text-gray-600">Performance overview and campaigns for this feature.</p>
         </div>
         <div className="flex items-center gap-3">
-          {!allReady ? (
+          {!revealed ? (
             <div className="h-5 w-20 bg-gray-200 rounded animate-pulse" />
           ) : formatTotalCost(totalCostCents) ? (
             <span className="text-sm font-semibold text-gray-700">
@@ -188,7 +193,7 @@ function GenericFeaturePage({
         </div>
       </div>
 
-      {!allReady ? (
+      {!revealed ? (
         <>
           {/* Stats + cost + campaigns skeletons render together so the body reveals as a single block */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
