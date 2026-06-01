@@ -301,7 +301,10 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
 
 // App Level Sidebar
 function AppLevelSidebar({ pathname }: { pathname: string }) {
-  const { features } = useFeatures();
+  const { features, isLoading: featuresLoading } = useFeatures();
+  // The Features section needs the feature list; reveal the whole nav together
+  // once it loads (skeleton rows until then). See CLAUDE.md → "Coordinated reveal".
+  const defsReady = !featuresLoading;
   const topItems: SidebarItem[] = [
     { id: "home", label: "Home", href: "/", icon: <HomeIcon /> },
   ];
@@ -316,6 +319,16 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
 
   return (
     <SidebarSection title="Dashboard">
+      {!defsReady ? (
+        <>
+          <SidebarNavRowSkeleton />
+          <div className="pt-2 mt-2 border-t border-gray-100">
+            <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Features</h4>
+            {[0, 1, 2, 3, 4].map((i) => <SidebarNavRowSkeleton key={`feat-${i}`} />)}
+          </div>
+        </>
+      ) : (
+        <>
       {topItems.map((item) => (
         <SidebarLink
           key={item.id}
@@ -333,6 +346,8 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
           />
         ))}
       </div>
+        </>
+      )}
     </SidebarSection>
   );
 }
@@ -422,7 +437,7 @@ const SettingsIcon = () => (
 
 // Brand Level Sidebar
 function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandId: string; pathname: string }) {
-  const { features } = useFeatures();
+  const { features, isLoading: featuresLoading } = useFeatures();
   // Brand Info + immature features are alpha (staff-only). Default-hidden until
   // PostHog resolves the flag, so they never flash for a non-staff viewer.
   const brandInfoOk = useFeatureFlag(FEATURE_GATES["brand-info"].flag);
@@ -455,31 +470,43 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
     }));
 
   // Brand-level outcome counts
-  const { data: outletsData } = useAuthQuery(
+  const { data: outletsData, isPending: outletsPending } = useAuthQuery(
     ["brandOutlets", brandId],
     () => listBrandOutlets(brandId),
     { refetchInterval: 5_000 },
   );
-  const { data: journalistsData } = useAuthQuery(
+  const { data: journalistsData, isPending: journalistsPending } = useAuthQuery(
     ["enrichedJournalists", brandId],
     () => listJournalistsEnriched(brandId),
     { refetchInterval: 5_000 },
   );
-  const { data: leadsData } = useAuthQuery(
+  const { data: leadsData, isPending: leadsPending } = useAuthQuery(
     ["brandLeads", brandId],
     () => listBrandLeads(brandId),
     { refetchInterval: 5_000 },
   );
-  const { data: emailsData } = useAuthQuery(
+  const { data: emailsData, isPending: emailsPending } = useAuthQuery(
     ["brandEmails", brandId],
     () => listBrandEmails(brandId),
     { refetchInterval: 5_000 },
   );
-  const { data: articlesData } = useAuthQuery(
+  const { data: articlesData, isPending: articlesPending } = useAuthQuery(
     ["brandArticles", brandId],
     () => listBrandArticles(brandId),
     { refetchInterval: 5_000 },
   );
+
+  // Nav items reveal as one group once the feature list (which the Features
+  // section needs) loads; the 5 outcome badges are a finer sub-group revealed
+  // when their counts settle. See CLAUDE.md → "Coordinated reveal".
+  const defsReady = !featuresLoading;
+  const badgesRevealed = useCoordinatedReveal([
+    !outletsPending,
+    !journalistsPending,
+    !leadsPending,
+    !emailsPending,
+    !articlesPending,
+  ]);
 
   const outcomeItems: SidebarItem[] = [
     { id: "outlets", label: "Outlets", href: `${basePath}/outlets`, icon: <OutcomeOutletIcon />, badge: outletsData?.total },
@@ -491,6 +518,24 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
 
   return (
     <SidebarSection title="Brand" backHref={`/orgs/${orgId}/brands`} backLabel="Brands">
+      {/* Whole nav reveals as one group once the feature list loads (Features +
+          Outcomes both need it); skeleton rows until then so static and
+          data-dependent items don't paint in two waves. Outcome badge numbers
+          are a finer sub-group via badgePending. */}
+      {!defsReady ? (
+        <>
+          {[0, 1].map((i) => <SidebarNavRowSkeleton key={`top-${i}`} />)}
+          <div className="pt-2 mt-2 border-t border-gray-100">
+            <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Outcomes</h4>
+            {[0, 1, 2, 3, 4].map((i) => <SidebarNavRowSkeleton key={`out-${i}`} />)}
+          </div>
+          <div className="pt-2 mt-2 border-t border-gray-100">
+            <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Features</h4>
+            {[0, 1, 2, 3].map((i) => <SidebarNavRowSkeleton key={`feat-${i}`} />)}
+          </div>
+        </>
+      ) : (
+        <>
       {topItems.map((item) => (
         <SidebarLink
           key={item.id}
@@ -505,6 +550,7 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
             <SidebarLink
               key={item.id}
               item={item}
+              badgePending={!badgesRevealed}
               isActive={pathname.startsWith(item.href)}
             />
           ))}
@@ -526,6 +572,8 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
           isActive={pathname.startsWith(`${basePath}/settings`)}
         />
       </div>
+        </>
+      )}
     </SidebarSection>
   );
 }
