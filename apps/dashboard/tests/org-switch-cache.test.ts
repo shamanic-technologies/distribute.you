@@ -41,6 +41,15 @@ describe("Org switch cross-org isolation framework", () => {
     expect(content).toContain("key={orgKey}");
   });
 
+  it("persister no-ops while orgId is null (never persists under a shared anon bucket)", () => {
+    // While orgId is null the disk cache must NOT be written: a shared `cache:anon`
+    // bucket would restore org A's data under org B (DIS-143 / OWASP shared-key).
+    const content = read(queryProviderPath);
+    expect(content).toContain(
+      'typeof window !== "undefined" && orgId ? window.localStorage : undefined',
+    );
+  });
+
   it("OrgCacheInvalidator no longer clears the React Query cache (remount supersedes)", () => {
     const content = read(invalidatorPath);
     expect(content).not.toContain("queryClient.clear()");
@@ -101,6 +110,14 @@ describe("Org switch cross-org isolation framework", () => {
     expect(content).toContain("usePathname");
     expect(content).toContain("orgConsistent");
     expect(content).toContain("enabled:");
+  });
+
+  it("useAuthQuery does NOT fire org reads while the active org is unresolved (null-tenant window)", () => {
+    // The gate must be the strict `urlOrg === activeOrg`. The earlier permissive
+    // form fired requests when the active org was still null (Clerk loading),
+    // running them under an unknown org → cross-org bleed (DIS-143 / TanStack #3743).
+    const content = read(useAuthQueryPath);
+    expect(content).toContain("const orgConsistent = !urlOrgId || urlOrgId === activeOrgId;");
   });
 
   // --- Source: close the race ----------------------------------------------

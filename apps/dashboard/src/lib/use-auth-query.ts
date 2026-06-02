@@ -30,7 +30,15 @@ export function useAuthQuery<T>(
 
   const urlOrgId = pathname?.match(/\/orgs\/([^/]+)/)?.[1] ?? null;
   const activeOrgId = organization?.id ?? null;
-  const orgConsistent = !urlOrgId || !activeOrgId || urlOrgId === activeOrgId;
+  // Gate org-owned reads on URL-org === active-org. Critically we must NOT fire
+  // while the active org is still unresolved (Clerk session loading / rotating):
+  // a request fired then runs under an UNKNOWN org and its response lands under a
+  // null-org-keyed cache/persister bucket shared across orgs — the "null tenant
+  // window" cross-org bleed (TanStack discussion #3743, DIS-143). So on an
+  // org-scoped page we require a resolved active org that matches the URL; the
+  // earlier escape that let reads fire under no active org has been removed.
+  // Non-org pages (no /orgs/<id> in the path) have nothing to gate.
+  const orgConsistent = !urlOrgId || urlOrgId === activeOrgId;
 
   return useQuery<T, Error>({
     queryKey,
