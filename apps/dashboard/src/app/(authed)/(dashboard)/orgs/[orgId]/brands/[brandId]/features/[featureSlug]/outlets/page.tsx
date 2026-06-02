@@ -14,6 +14,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import { Skeleton } from "@/components/skeleton";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 import { STATUS_PRIORITY, statusBadgeColor, statusLabel, deriveDisplayStatusFromCounts } from "@/lib/outlet-status";
+import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
 import { pollOptions } from "@/lib/query-options";
 
 type Tab = string | "all";
@@ -44,9 +45,8 @@ function timeAgo(dateStr: string): string {
 
 /* ─── Outlet Row ─────────────────────────────────────────────────────── */
 
-function OutletRow({ outlet, costCents, isSelected, onClick }: { outlet: DeduplicatedOutlet; costCents: string | null; isSelected: boolean; onClick: () => void }) {
+function OutletRow({ outlet, displayStatus, costCents, isSelected, onClick }: { outlet: DeduplicatedOutlet; displayStatus: string; costCents: string | null; isSelected: boolean; onClick: () => void }) {
   const cost = formatCost(costCents);
-  const displayStatus = deriveDisplayStatusFromCounts(outlet.status?.brand);
   return (
     <button
       type="button"
@@ -162,9 +162,8 @@ function CampaignDetailCard({ campaign, counts }: { campaign: OutletCampaign; co
 
 /* ─── Detail Panel ───────────────────────────────────────────────────── */
 
-function OutletDetailPanel({ outlet, costCents, onClose }: { outlet: DeduplicatedOutlet; costCents: string | null; onClose: () => void }) {
+function OutletDetailPanel({ outlet, displayStatus, costCents, onClose }: { outlet: DeduplicatedOutlet; displayStatus: string; costCents: string | null; onClose: () => void }) {
   const cost = formatCost(costCents);
-  const displayStatus = deriveDisplayStatusFromCounts(outlet.status?.brand);
   return (
     <div className="absolute inset-0 md:relative md:w-1/2 bg-gray-50 md:border-l border-gray-200 overflow-y-auto z-10">
       <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
@@ -291,6 +290,17 @@ export default function FeatureOutletsPage() {
 
   const avgCostPerOutlet = outlets.length > 0 ? totalCost / outlets.length : 0;
 
+  // Monotonic status latch — see use-monotonic-status.ts. The outlet status counts
+  // are re-fetched on every poll, so a transient dropout would otherwise demote an
+  // outlet out of the viewed tab. Keep the most-advanced status seen this mount;
+  // `latchedStatuses` is the single source the tabs, row badge, and panel badge all
+  // bucket on.
+  const outletStatusEntries = useMemo(
+    () => outlets.map((o) => ({ id: o.id, status: deriveDisplayStatusFromCounts(o.status?.brand) })),
+    [outlets],
+  );
+  const latchedStatuses = useMonotonicStatuses(outletStatusEntries, STATUS_PRIORITY, "outlets");
+
   // Group outlets by display status derived from structured counts
   const groupedByStatus = useMemo(() => {
     const groups = new Map<string, DeduplicatedOutlet[]>();
@@ -298,11 +308,11 @@ export default function FeatureOutletsPage() {
       groups.set(status, []);
     }
     for (const o of outlets) {
-      const ds = deriveDisplayStatusFromCounts(o.status?.brand);
+      const ds = latchedStatuses.get(o.id) ?? deriveDisplayStatusFromCounts(o.status?.brand);
       groups.get(ds)?.push(o);
     }
     return groups;
-  }, [outlets]);
+  }, [outlets, latchedStatuses]);
 
   // Auto-select the first non-empty tab on initial data load
   useEffect(() => {
@@ -408,6 +418,7 @@ export default function FeatureOutletsPage() {
               <OutletRow
                 key={outlet.id}
                 outlet={outlet}
+                displayStatus={latchedStatuses.get(outlet.id) ?? deriveDisplayStatusFromCounts(outlet.status?.brand)}
                 costCents={costMap.get(outlet.id) ?? null}
                 isSelected={selected?.id === outlet.id}
                 onClick={() => setSelected(outlet)}
@@ -422,6 +433,7 @@ export default function FeatureOutletsPage() {
       {selected && (
         <OutletDetailPanel
           outlet={selected}
+          displayStatus={latchedStatuses.get(selected.id) ?? deriveDisplayStatusFromCounts(selected.status?.brand)}
           costCents={costMap.get(selected.id) ?? null}
           onClose={() => setSelected(null)}
         />

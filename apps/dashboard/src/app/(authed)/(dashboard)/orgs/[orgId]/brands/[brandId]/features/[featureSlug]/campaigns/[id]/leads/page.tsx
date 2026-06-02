@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { getLeadConsolidatedStatus, type Lead, type LeadConsolidatedStatus } from "@/lib/api";
 import { useCampaign } from "@/lib/campaign-context";
+import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 
 const LEAD_STATUS_ORDER: LeadConsolidatedStatus[] = [
@@ -104,10 +105,12 @@ function LeadsTable({
   leads,
   selectedLead,
   onSelectLead,
+  statusOf,
 }: {
   leads: Lead[];
   selectedLead: Lead | null;
   onSelectLead: (lead: Lead) => void;
+  statusOf: (lead: Lead) => LeadConsolidatedStatus;
 }) {
   if (leads.length === 0) {
     return (
@@ -173,7 +176,7 @@ function LeadsTable({
 
                 {/* Status */}
                 <td className="px-4 py-3 hidden sm:table-cell">
-                  <StatusBadge status={getLeadConsolidatedStatus(lead)} />
+                  <StatusBadge status={statusOf(lead)} />
                 </td>
 
                 {/* Found date */}
@@ -217,15 +220,27 @@ export default function CampaignLeadsPage() {
     [leads]
   );
 
+  // Monotonic status latch — see the feature-level leads page / use-monotonic-status.ts.
+  // The campaign leads share the same email-gateway delivery overlay, so a transient
+  // poll dropout would otherwise empty the viewed tab. Keep the most-advanced status
+  // seen this mount; `statusOf` is the single source the table, tabs, and panel bucket on.
+  const statusEntries = useMemo(
+    () => sortedLeads.map((l) => ({ id: l.id, status: getLeadConsolidatedStatus(l) })),
+    [sortedLeads],
+  );
+  const latchedStatus = useMonotonicStatuses(statusEntries, LEAD_STATUS_ORDER, "campaign-leads");
+  const statusOf = (lead: Lead): LeadConsolidatedStatus =>
+    (latchedStatus.get(lead.id) as LeadConsolidatedStatus | undefined) ?? getLeadConsolidatedStatus(lead);
+
   const groupedByStatus = useMemo(() => {
     const groups = new Map<LeadConsolidatedStatus, Lead[]>();
     for (const status of LEAD_STATUS_ORDER) groups.set(status, []);
     for (const lead of sortedLeads) {
-      const s = getLeadConsolidatedStatus(lead);
+      const s = statusOf(lead);
       groups.get(s)?.push(lead);
     }
     return groups;
-  }, [sortedLeads]);
+  }, [sortedLeads, latchedStatus]);
 
   useEffect(() => {
     if (hasAutoSelectedTab.current || sortedLeads.length === 0) return;
@@ -319,6 +334,7 @@ export default function CampaignLeadsPage() {
             leads={filteredLeads}
             selectedLead={selectedLead}
             onSelectLead={setSelectedLead}
+            statusOf={statusOf}
           />
         )}
       </div>
@@ -375,7 +391,7 @@ export default function CampaignLeadsPage() {
                 <div>
                   <span className="text-gray-500">Status:</span>
                   <p className="font-medium flex items-center gap-1.5 flex-wrap">
-                    <StatusBadge status={getLeadConsolidatedStatus(selectedLead)} />
+                    <StatusBadge status={statusOf(selectedLead)} />
                     {selectedLead.global?.bounced && (
                       <span className="text-xs px-2 py-0.5 rounded-full border bg-red-50 text-red-600 border-red-200">Global Bounced</span>
                     )}

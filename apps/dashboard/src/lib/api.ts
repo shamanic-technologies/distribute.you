@@ -1227,12 +1227,50 @@ export function getLeadConsolidatedStatus(lead: Lead): LeadConsolidatedStatus {
   return lead.status;
 }
 
+// Validate the leads envelope + the fields the consolidated-status logic
+// dereferences (id/email/status + the 8 delivery booleans — always present from
+// lead-service). `.passthrough()` keeps every other field (the nested FullLead,
+// `global`, `servedAt`, `campaignId`, …) untouched so we never strip data.
+// Per #1213/#1221: a 200 with a non-leads body (proxy redirect, shape rot, a
+// missing-booleans partial) now throws → React Query keeps the last-good data
+// (keepPreviousData) instead of overwriting the table with a bad success.
+const LeadDeliverySchema = z
+  .object({
+    id: z.string(),
+    email: z.string(),
+    status: z.string(),
+    contacted: z.boolean(),
+    sent: z.boolean(),
+    delivered: z.boolean(),
+    opened: z.boolean(),
+    clicked: z.boolean(),
+    bounced: z.boolean(),
+    unsubscribed: z.boolean(),
+    replied: z.boolean(),
+  })
+  .passthrough();
+
+const ListLeadsResponseSchema = z.object({ leads: z.array(LeadDeliverySchema) });
+
+function parseLeadsResponse(raw: unknown, fn: string): { leads: Lead[] } {
+  const parsed = ListLeadsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error(`[dashboard] ${fn}: response shape mismatch`, { issues: parsed.error.issues, raw });
+    throw new Error(`[dashboard] ${fn}: invalid response shape`);
+  }
+  // `.passthrough()` preserves every field at runtime; the validated subset
+  // doesn't structurally overlap the full Lead type, so cast through unknown.
+  return parsed.data as unknown as { leads: Lead[] };
+}
+
 export async function listCampaignLeads(campaignId: string, token?: string): Promise<{ leads: Lead[] }> {
-  return apiCall<{ leads: Lead[] }>(`/leads?campaignId=${campaignId}`, { token });
+  const raw = await apiCall<unknown>(`/leads?campaignId=${campaignId}`, { token });
+  return parseLeadsResponse(raw, "listCampaignLeads");
 }
 
 export async function listBrandLeads(brandId: string, token?: string): Promise<{ leads: Lead[] }> {
-  return apiCall<{ leads: Lead[] }>(`/leads?brandId=${brandId}`, { token });
+  const raw = await apiCall<unknown>(`/leads?brandId=${brandId}`, { token });
+  return parseLeadsResponse(raw, "listBrandLeads");
 }
 
 export interface EmailSequenceStep {

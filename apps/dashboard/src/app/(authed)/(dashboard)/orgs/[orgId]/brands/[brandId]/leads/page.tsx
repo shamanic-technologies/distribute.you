@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { listBrandLeads, getLeadConsolidatedStatus, type Lead, type LeadConsolidatedStatus } from "@/lib/api";
+import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 
 const LEAD_STATUS_ORDER: LeadConsolidatedStatus[] = [
@@ -100,10 +101,11 @@ function StatusBadge({ status }: { status: LeadConsolidatedStatus }) {
 }
 
 
-function LeadsTable({ leads, selectedLead, onSelectLead }: {
+function LeadsTable({ leads, selectedLead, onSelectLead, statusOf }: {
   leads: Lead[];
   selectedLead: Lead | null;
   onSelectLead: (lead: Lead) => void;
+  statusOf: (lead: Lead) => LeadConsolidatedStatus;
 }) {
   if (leads.length === 0) {
     return (
@@ -154,7 +156,7 @@ function LeadsTable({ leads, selectedLead, onSelectLead }: {
                     )}
                   </div>
                 </td>
-                <td className="px-4 py-3 hidden sm:table-cell"><StatusBadge status={getLeadConsolidatedStatus(lead)} /></td>
+                <td className="px-4 py-3 hidden sm:table-cell"><StatusBadge status={statusOf(lead)} /></td>
                 <td className="px-4 py-3 hidden md:table-cell">
                   {lead.servedAt ? (
                     <span className="text-xs text-gray-500" title={new Date(lead.servedAt).toLocaleString()}>{timeAgo(lead.servedAt)}</span>
@@ -196,16 +198,28 @@ export default function BrandLeadsPage() {
     [leads],
   );
 
+  // Monotonic status latch — see use-monotonic-status.ts. The brand-wide leads
+  // list shares the email-gateway delivery overlay, so a transient poll dropout
+  // would otherwise empty the viewed tab. Keep the most-advanced status seen this
+  // mount; `statusOf` is the single source the table, tabs, and panel bucket on.
+  const statusEntries = useMemo(
+    () => sortedLeads.map((l) => ({ id: l.id, status: getLeadConsolidatedStatus(l) })),
+    [sortedLeads],
+  );
+  const latchedStatus = useMonotonicStatuses(statusEntries, LEAD_STATUS_ORDER, "brand-leads");
+  const statusOf = (lead: Lead): LeadConsolidatedStatus =>
+    (latchedStatus.get(lead.id) as LeadConsolidatedStatus | undefined) ?? getLeadConsolidatedStatus(lead);
+
   // Group leads by consolidated status
   const groupedByStatus = useMemo(() => {
     const groups = new Map<LeadConsolidatedStatus, Lead[]>();
     for (const status of LEAD_STATUS_ORDER) groups.set(status, []);
     for (const lead of sortedLeads) {
-      const s = getLeadConsolidatedStatus(lead);
+      const s = statusOf(lead);
       groups.get(s)?.push(lead);
     }
     return groups;
-  }, [sortedLeads]);
+  }, [sortedLeads, latchedStatus]);
 
   // Auto-select first non-empty tab
   useEffect(() => {
@@ -288,7 +302,7 @@ export default function BrandLeadsPage() {
             <p className="text-gray-600 text-sm">Leads will appear here once campaigns run.</p>
           </div>
         ) : (
-          <LeadsTable leads={filteredLeads} selectedLead={selectedLead} onSelectLead={setSelectedLead} />
+          <LeadsTable leads={filteredLeads} selectedLead={selectedLead} onSelectLead={setSelectedLead} statusOf={statusOf} />
         )}
       </div>
 
@@ -312,7 +326,7 @@ export default function BrandLeadsPage() {
                   {selectedLead.emailStatus && <span className={`text-xs px-1.5 py-0.5 rounded ${selectedLead.emailStatus === "verified" ? "bg-green-100 text-green-700" : selectedLead.emailStatus === "guessed" ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-600"}`}>{selectedLead.emailStatus}</span>}
                 </div>
                 <div><span className="text-gray-500">Title:</span><p className="font-medium">{selectedFull?.headline || "-"}</p></div>
-                <div><span className="text-gray-500">Status:</span><p className="font-medium flex items-center gap-1.5 flex-wrap"><StatusBadge status={getLeadConsolidatedStatus(selectedLead)} />{selectedLead.global?.bounced && <span className="text-xs px-2 py-0.5 rounded-full border bg-red-50 text-red-600 border-red-200">Global Bounced</span>}{selectedLead.global?.unsubscribed && <span className="text-xs px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">Global Unsubscribed</span>}</p></div>
+                <div><span className="text-gray-500">Status:</span><p className="font-medium flex items-center gap-1.5 flex-wrap"><StatusBadge status={statusOf(selectedLead)} />{selectedLead.global?.bounced && <span className="text-xs px-2 py-0.5 rounded-full border bg-red-50 text-red-600 border-red-200">Global Bounced</span>}{selectedLead.global?.unsubscribed && <span className="text-xs px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">Global Unsubscribed</span>}</p></div>
                 {selectedFull?.linkedinUrl && <div className="sm:col-span-2"><span className="text-gray-500">LinkedIn:</span><p><a href={selectedFull.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-sm">{selectedFull.linkedinUrl}</a></p></div>}
               </div>
             </div>
