@@ -8,6 +8,7 @@ import { getVisibilityRun, listVisibilityRuns } from "@/lib/api";
 import { DetailTabs } from "@/components/visibility/detail-tabs";
 import { ProviderModelBadge } from "@/components/visibility/provider-label";
 import { PromptDetailPane } from "@/components/visibility/prompt-detail-pane";
+import { METRIC_INFO, MetricLabel } from "@/components/visibility/metric-info";
 import {
   getDetailTabs,
   type PromptWithProvider,
@@ -68,10 +69,18 @@ export default function PromptsPage() {
                     <th className="px-4 py-2 text-left w-12">#</th>
                     <th className="px-4 py-2 text-left">Model</th>
                     <th className="px-4 py-2 text-left">Prompt</th>
-                    <th className="px-4 py-2 text-left">Brand mention</th>
-                    <th className="px-4 py-2 text-left">URL mention</th>
-                    <th className="px-4 py-2 text-left">Position</th>
-                    <th className="px-4 py-2 text-left">Sentiment</th>
+                    <th className="px-4 py-2 text-left">
+                      <MetricLabel text="Brand mention" tip={METRIC_INFO.promptBrandMention} />
+                    </th>
+                    <th className="px-4 py-2 text-left">
+                      <MetricLabel text="URL mention" tip={METRIC_INFO.promptUrlMention} />
+                    </th>
+                    <th className="px-4 py-2 text-left">
+                      <MetricLabel text="Position" tip={METRIC_INFO.promptPosition} />
+                    </th>
+                    <th className="px-4 py-2 text-left">
+                      <MetricLabel text="Sentiment" tip={METRIC_INFO.promptSentiment} />
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
