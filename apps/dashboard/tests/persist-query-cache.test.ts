@@ -37,6 +37,32 @@ describe("shouldPersistQuery — only successful, non-sensitive queries persist"
     expect(SENSITIVE_QUERY_ROOTS.has("byokKeys")).toBe(true);
     expect(SENSITIVE_QUERY_ROOTS.has("keySources")).toBe(true);
   });
+
+  it("persists only allowlisted small / slow-changing roots", () => {
+    for (const root of [
+      "features", "feature", "brand", "brands", "campaign", "campaigns",
+      "featureStats", "campaignStats", "billingAccount", "platformPrices",
+      "workflow", "workflows",
+    ]) {
+      expect(shouldPersistQuery(q("success", [root, "x"])), root).toBe(true);
+    }
+  });
+
+  it("NEVER persists big / 5s-polled list roots (memory + dehydrate main-thread cost, #9775)", () => {
+    for (const root of [
+      "brandLeads", "campaignLeads", "brandEmails", "campaignEmails",
+      "enrichedJournalists", "brandOutlets", "campaignOutlets", "brandArticles",
+      "rankedOpportunities", "quotePitches", "featureQuotePitches", "quoteRequests",
+      "campaignMediaKits", "mediaKit", "visibilityRuns", "campaignRuns",
+      "campaignEvents", "orgCostBreakdown", "salesWorkflowTests",
+    ]) {
+      expect(shouldPersistQuery(q("success", [root, "x"])), root).toBe(false);
+    }
+  });
+
+  it("default-off: an unlisted root never persists (a future big query can't melt perf)", () => {
+    expect(shouldPersistQuery(q("success", ["someBrandNewQuery", "x"]))).toBe(false);
+  });
 });
 
 describe("persisterStorageKey — org-scoped bucket (DIS-143 cross-org isolation)", () => {
@@ -111,7 +137,7 @@ describe("query-provider wiring — persisted cache", () => {
 });
 
 describe("PERSIST_MAX_AGE_MS", () => {
-  it("is 24 hours", () => {
-    expect(PERSIST_MAX_AGE_MS).toBe(24 * 60 * 60 * 1000);
+  it("is 30 minutes — bounds in-memory retention (was 24h, the #1273 overflow)", () => {
+    expect(PERSIST_MAX_AGE_MS).toBe(30 * 60 * 1000);
   });
 });

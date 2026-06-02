@@ -20,9 +20,12 @@ function makeQueryClient() {
     defaultOptions: {
       queries: {
         staleTime: 60_000,
-        // 24h, == the persister `maxAge`. gcTime MUST be >= maxAge or in-memory
-        // GC evicts a query before its persisted copy can be restored (TanStack
-        // rule). This also keeps any within-session return warm for the whole day.
+        // == the persister `maxAge` (30 min). gcTime MUST be >= maxAge or in-memory
+        // GC evicts a query before its persisted copy can restore (TanStack rule).
+        // 30 min (not 24h) BOUNDS MEMORY: gcTime governs how long an inactive query
+        // — including big leads/emails lists — stays in the JS heap. 24h kept them
+        // all day → the #1273 memory overflow. 30 min covers "leave + return" while
+        // letting heavy inactive lists leave the heap.
         gcTime: PERSIST_MAX_AGE_MS,
         placeholderData: keepPreviousData,
         refetchOnWindowFocus: true,
