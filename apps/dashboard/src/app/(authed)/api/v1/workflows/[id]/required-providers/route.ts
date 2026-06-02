@@ -1,6 +1,7 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { PROVIDER_DOMAINS } from "@/lib/api-registry";
+import { checkProxyOrg } from "@/lib/proxy-org";
 
 export const maxDuration = 15;
 
@@ -9,7 +10,7 @@ const API_URL =
 const API_KEY = process.env.ADMIN_DISTRIBUTE_API_KEY;
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   segmentData: { params: Promise<{ id: string }> }
 ) {
   const { userId: clerkUserId, orgId: clerkOrgId } = await auth();
@@ -25,6 +26,10 @@ export async function GET(
       { status: 403 }
     );
   }
+
+  // Fail closed on org desync — never resolve providers under the wrong org.
+  const orgErr = checkProxyOrg(clerkOrgId, req.headers.get("x-active-org-id"));
+  if (orgErr) return NextResponse.json(orgErr.body, { status: orgErr.status });
 
   const { id } = await segmentData.params;
 
