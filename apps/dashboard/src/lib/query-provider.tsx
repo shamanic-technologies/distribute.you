@@ -63,7 +63,14 @@ function OrgScopedQueryClientProvider({
   const persistOptions = useMemo(() => {
     const persister = createSyncStoragePersister({
       // SSR has no localStorage → undefined storage makes the persister a no-op.
-      storage: typeof window !== "undefined" ? window.localStorage : undefined,
+      // ALSO no-op while orgId is null (Clerk session not yet resolved): otherwise
+      // EVERY org reads/writes the SAME shared `cache:anon` bucket during its load
+      // window, so org A's persisted cache restores under org B — a cross-org bleed
+      // (DIS-143) and an OWASP "shared cache key without tenant prefix" violation.
+      // Persist ONLY under a resolved, org-scoped key; the brief null window stays
+      // unpersisted (it refetches anyway).
+      storage:
+        typeof window !== "undefined" && orgId ? window.localStorage : undefined,
       key: persisterStorageKey(orgId),
       // On QuotaExceededError (localStorage's ~5MB cap, e.g. a multi-MB leads
       // list) drop the oldest cached query and retry until it fits. The page the
