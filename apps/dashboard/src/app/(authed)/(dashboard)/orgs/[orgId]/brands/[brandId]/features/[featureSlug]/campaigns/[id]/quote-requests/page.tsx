@@ -192,6 +192,7 @@ function DetailPanel({
 }) {
   const [draft, setDraft] = useState("");
   const [submitResult, setSubmitResult] = useState<string | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
 
   const generateMutation = useGenerateQuoteDraft();
   const submitMutation = useSubmitQuotePitch(brandId);
@@ -200,6 +201,7 @@ function DetailPanel({
   useEffect(() => {
     setDraft("");
     setSubmitResult(null);
+    setEditModalOpen(false);
   }, [currentId]);
 
   if (!opportunity) {
@@ -213,7 +215,10 @@ function DetailPanel({
   const canGenerate =
     missingInputs.length === 0 && !generateMutation.isPending;
 
-  const handleGenerate = () => {
+  // `revisionInstructions` is the free-text from the "Edit with AI" modal (null
+  // on a first/plain generation). It rides into `expertAnswerContext` so the
+  // model applies the operator's edits on the next generation.
+  const handleGenerate = (revisionInstructions: string | null) => {
     if (!featureInputs) return;
     setSubmitResult(null);
     // All-required expert-quote-pitch contract (content-gen PR #124 / v0.21.0):
@@ -232,11 +237,13 @@ function DetailPanel({
           expertLinkedIn: featureInputs.expertLinkedIn,
         },
         opportunity,
+        revisionInstructions,
         featureSlug: HITL_SLUG,
       },
       {
         onSuccess: (res) => {
           setDraft(res.pitch);
+          setEditModalOpen(false);
         },
       },
     );
@@ -314,7 +321,9 @@ function DetailPanel({
           <h3 className="text-sm font-semibold text-gray-800">Draft</h3>
           <button
             type="button"
-            onClick={handleGenerate}
+            onClick={() =>
+              draft ? setEditModalOpen(true) : handleGenerate(null)
+            }
             disabled={!canGenerate}
             className="px-3 py-1.5 text-xs font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
             data-testid="generate-quote-btn"
@@ -322,7 +331,7 @@ function DetailPanel({
             {generateMutation.isPending
               ? "Generating…"
               : draft
-                ? "Regenerate"
+                ? "Edit with AI"
                 : "Generate Quote"}
           </button>
         </div>
@@ -389,6 +398,112 @@ function DetailPanel({
             {submitResult}
           </p>
         )}
+      </div>
+
+      <QuoteRevisionModal
+        open={editModalOpen}
+        isPending={generateMutation.isPending}
+        onClose={() => setEditModalOpen(false)}
+        onSubmit={(instructions) => handleGenerate(instructions || null)}
+      />
+    </div>
+  );
+}
+
+// ───────── Edit-with-AI modal (revision instructions for the next generation) ─
+
+function QuoteRevisionModal({
+  open,
+  isPending,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean;
+  isPending: boolean;
+  onClose: () => void;
+  onSubmit: (instructions: string) => void;
+}) {
+  const [text, setText] = useState("");
+
+  useEffect(() => {
+    if (open) setText("");
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !isPending) onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, isPending, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+      onClick={() => {
+        if (!isPending) onClose();
+      }}
+    >
+      <div
+        className="bg-white rounded-xl border border-gray-200 shadow-xl w-full max-w-lg"
+        onClick={(e) => e.stopPropagation()}
+        data-testid="quote-revision-modal"
+      >
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="font-display text-lg font-bold text-gray-800">
+            Edit with AI
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isPending}
+            className="text-gray-400 hover:text-gray-600 transition disabled:opacity-50"
+            aria-label="Close"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-3">
+          <p className="text-sm text-gray-600">
+            Tell the AI how to revise the draft. Your instructions are applied
+            on the next regeneration — leave blank to simply regenerate.
+          </p>
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={5}
+            placeholder="e.g. Make it punchier, lead with our Series B, drop the corporate tone, and mention the 40% retention lift."
+            disabled={isPending}
+            className="w-full text-sm border border-gray-200 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-brand-300 disabled:opacity-50"
+            data-testid="quote-revision-textarea"
+          />
+        </div>
+
+        <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isPending}
+            className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => onSubmit(text.trim())}
+            disabled={isPending}
+            className="px-5 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            data-testid="quote-revision-submit"
+          >
+            {isPending ? "Regenerating…" : "Regenerate"}
+          </button>
+        </div>
       </div>
     </div>
   );

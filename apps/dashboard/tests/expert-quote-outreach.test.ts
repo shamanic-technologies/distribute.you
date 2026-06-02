@@ -319,6 +319,24 @@ describe("Authed HITL quote-requests page — handleGenerate sends the all-requi
   it("no longer passes campaignId into the generate mutation body", () => {
     expect(handleGenerateBlock).not.toMatch(/campaignId\s*[:,]/);
   });
+  it("threads revisionInstructions (Edit-with-AI modal) into the generate body", () => {
+    expect(handleGenerateBlock).toContain("revisionInstructions");
+  });
+});
+
+describe("Authed HITL quote-requests page — Edit with AI revision modal", () => {
+  it("renames the regenerate action to 'Edit with AI'", () => {
+    expect(quoteRequestsContent).toContain('"Edit with AI"');
+  });
+  it("renders the revision modal: textarea + regenerate submit", () => {
+    expect(quoteRequestsContent).toContain('data-testid="quote-revision-modal"');
+    expect(quoteRequestsContent).toContain('data-testid="quote-revision-textarea"');
+    expect(quoteRequestsContent).toContain('data-testid="quote-revision-submit"');
+  });
+  it("opens the modal when a draft exists, generates directly on first run", () => {
+    expect(quoteRequestsContent).toContain("setEditModalOpen(true)");
+    expect(quoteRequestsContent).toContain("handleGenerate(null)");
+  });
 });
 
 describe("Authed HITL quote-requests page — campaign inputs are the DIS-136 attribution keys", () => {

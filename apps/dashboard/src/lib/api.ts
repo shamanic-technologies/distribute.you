@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   buildExpertQuotePitchVariables,
   coerceExtractedToString,
+  selectPriorSubmittedPitches,
   type QuoteOpportunityContext,
 } from "./quote-pitch-variables";
 import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "./org-desync";
@@ -2748,6 +2749,9 @@ export interface GenerateExpertQuotePitchArgs {
   brandId: string;
   expert: ExpertQuotePitchExpertInputs;
   opportunity: QuoteOpportunityContext;
+  /** Free-text revision instructions from the "Edit with AI" modal. Null on a
+   *  first/plain (re)generation. Threaded into `expertAnswerContext`. */
+  revisionInstructions?: string | null;
   featureSlug?: string;
 }
 
@@ -2762,12 +2766,23 @@ export async function generateExpertQuotePitch(
   args: GenerateExpertQuotePitchArgs,
   token?: string,
 ): Promise<GenerateQuoteDraftResponse> {
-  const { brandId, expert, opportunity, featureSlug } = args;
-  const [brandResult, extractRes] = await Promise.all([
+  const { brandId, expert, opportunity, revisionInstructions, featureSlug } = args;
+  // Question-driven brand evidence: seed an extract-fields entry with the
+  // journalist's question so brand-service mines the brand for facts that
+  // answer THIS question. brand-service keys its cache on a hash of the
+  // description, so each distinct question gets its own slot (no collision
+  // across opportunities) and re-generating the same opportunity reuses it.
+  const extractFields: ExtractFieldDef[] = [
+    ...EXPERT_QUOTE_EXTRACT_FIELDS,
+    { key: "expertAnswerContext", description: opportunity.opportunityText.trim() },
+  ];
+  const [brandResult, extractRes, priorPitchesRes] = await Promise.all([
     getBrand(brandId, token),
-    extractBrandFields([brandId], EXPERT_QUOTE_EXTRACT_FIELDS, { token }),
+    extractBrandFields([brandId], extractFields, { token }),
+    listQuotePitches({}, token),
   ]);
   const brand = brandResult?.brand ?? null;
+  const evidence = extractRes.fields.expertAnswerContext;
 
   const variables = buildExpertQuotePitchVariables({
     identity: {
@@ -2789,6 +2804,15 @@ export async function generateExpertQuotePitch(
       expertLinkedIn: expert.expertLinkedIn,
     },
     opportunity,
+    answerContext: {
+      brandEvidence: coerceExtractedToString(evidence?.value),
+      evidenceSourceUrls: evidence?.sourceUrls ?? [],
+      revisionInstructions: revisionInstructions ?? null,
+      priorSubmittedPitches: selectPriorSubmittedPitches(
+        priorPitchesRes.quotePitches,
+        brandId,
+      ),
+    },
   });
 
   return generateQuoteDraft({ brandId, variables, featureSlug }, token);
