@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
+import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
 import { listBrandLeads, listWorkflows, getLeadConsolidatedStatus, type Lead, type LeadConsolidatedStatus, type ManualQualificationStatus } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 import { WorkflowTag } from "@/components/report/workflow-tag";
@@ -109,10 +110,11 @@ function StatusBadge({ status }: { status: LeadConsolidatedStatus }) {
 }
 
 
-function LeadsTable({ leads, selectedLead, onSelectLead }: {
+function LeadsTable({ leads, selectedLead, onSelectLead, statusOf }: {
   leads: Lead[];
   selectedLead: Lead | null;
   onSelectLead: (lead: Lead) => void;
+  statusOf: (lead: Lead) => LeadConsolidatedStatus;
 }) {
   if (leads.length === 0) {
     return (
@@ -163,7 +165,7 @@ function LeadsTable({ leads, selectedLead, onSelectLead }: {
                     )}
                   </div>
                 </td>
-                <td className="px-4 py-3 hidden sm:table-cell"><StatusBadge status={getLeadConsolidatedStatus(lead)} /></td>
+                <td className="px-4 py-3 hidden sm:table-cell"><StatusBadge status={statusOf(lead)} /></td>
                 <td className="px-4 py-3 hidden md:table-cell">
                   {lead.servedAt ? (
                     <span className="text-xs text-gray-500" title={new Date(lead.servedAt).toLocaleString()}>{timeAgo(lead.servedAt)}</span>
@@ -229,15 +231,30 @@ export default function FeatureLeadsPage() {
     [leads],
   );
 
+  // Monotonic status latch: each lead's tab is derived from the email-gateway
+  // delivery overlay, which can transiently drop on a poll and bounce a lead
+  // back to "Processing" — emptying the tab being viewed, then repopulating.
+  // Engagement is append-only, so a less-advanced status on a later poll is a
+  // stale read: keep the most-advanced status seen this mount (see #1257 latch
+  // philosophy). `statusOf` is the single source the table, tabs, and side
+  // panel all bucket on.
+  const statusEntries = useMemo(
+    () => sortedLeads.map((l) => ({ id: l.id, status: getLeadConsolidatedStatus(l) })),
+    [sortedLeads],
+  );
+  const latchedStatus = useMonotonicStatuses(statusEntries, LEAD_STATUS_ORDER, "leads");
+  const statusOf = (lead: Lead): LeadConsolidatedStatus =>
+    (latchedStatus.get(lead.id) as LeadConsolidatedStatus | undefined) ?? getLeadConsolidatedStatus(lead);
+
   const groupedByStatus = useMemo(() => {
     const groups = new Map<LeadConsolidatedStatus, Lead[]>();
     for (const status of LEAD_STATUS_ORDER) groups.set(status, []);
     for (const lead of sortedLeads) {
-      const s = getLeadConsolidatedStatus(lead);
+      const s = statusOf(lead);
       groups.get(s)?.push(lead);
     }
     return groups;
-  }, [sortedLeads]);
+  }, [sortedLeads, latchedStatus]);
 
   useEffect(() => {
     if (hasAutoSelectedTab.current || sortedLeads.length === 0) return;
@@ -328,7 +345,7 @@ export default function FeatureLeadsPage() {
             <p className="text-gray-600 text-sm">Leads will appear here once campaigns run.</p>
           </div>
         ) : (
-          <LeadsTable leads={filteredLeads} selectedLead={selectedLead} onSelectLead={setSelectedLead} />
+          <LeadsTable leads={filteredLeads} selectedLead={selectedLead} onSelectLead={setSelectedLead} statusOf={statusOf} />
         )}
       </div>
 
@@ -352,7 +369,7 @@ export default function FeatureLeadsPage() {
                   {selectedLead.emailStatus && <span className={`text-xs px-1.5 py-0.5 rounded ${selectedLead.emailStatus === "verified" ? "bg-green-100 text-green-700" : selectedLead.emailStatus === "guessed" ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-600"}`}>{selectedLead.emailStatus}</span>}
                 </div>
                 <div><span className="text-gray-500">Title:</span><p className="font-medium">{selectedFull?.headline || "-"}</p></div>
-                <div><span className="text-gray-500">Status:</span><p className="font-medium flex items-center gap-1.5 flex-wrap"><StatusBadge status={getLeadConsolidatedStatus(selectedLead)} />{selectedLead.global?.bounced && <span className="text-xs px-2 py-0.5 rounded-full border bg-red-50 text-red-600 border-red-200">Global Bounced</span>}{selectedLead.global?.unsubscribed && <span className="text-xs px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">Global Unsubscribed</span>}</p></div>
+                <div><span className="text-gray-500">Status:</span><p className="font-medium flex items-center gap-1.5 flex-wrap"><StatusBadge status={statusOf(selectedLead)} />{selectedLead.global?.bounced && <span className="text-xs px-2 py-0.5 rounded-full border bg-red-50 text-red-600 border-red-200">Global Bounced</span>}{selectedLead.global?.unsubscribed && <span className="text-xs px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">Global Unsubscribed</span>}</p></div>
                 <div className="sm:col-span-2">
                   <span className="text-gray-500">Manual qualif:</span>
                   <p className="mt-1 flex items-center gap-2 flex-wrap">

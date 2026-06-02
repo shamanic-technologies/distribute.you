@@ -18,6 +18,7 @@ import {
   statusLabel,
   deriveDisplayStatusFromBooleans,
 } from "@/lib/outlet-status";
+import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
 
 const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
 
@@ -81,6 +82,17 @@ export default function CampaignJournalistsPage() {
     return map;
   }, [journalists]);
 
+  // Monotonic status latch — see use-monotonic-status.ts. The journalist delivery
+  // overlay is re-fetched on every poll, so a transient dropout would otherwise
+  // demote a journalist out of the viewed tab. Keep the most-advanced status seen
+  // this mount; `latchedStatuses` is the single source the tabs, row badge, and
+  // panel best-status all bucket on.
+  const latchedStatuses = useMonotonicStatuses(
+    Array.from(journalistStatuses, ([id, status]) => ({ id, status })),
+    STATUS_PRIORITY,
+    "campaign-journalists",
+  );
+
   // Group by best display status
   const groupedByStatus = useMemo(() => {
     const groups = new Map<string, EnrichedJournalist[]>();
@@ -88,11 +100,11 @@ export default function CampaignJournalistsPage() {
       groups.set(status, []);
     }
     for (const j of journalists) {
-      const s = journalistStatuses.get(j.journalistId) ?? "skipped";
+      const s = latchedStatuses.get(j.journalistId) ?? journalistStatuses.get(j.journalistId) ?? "skipped";
       groups.get(s)?.push(j);
     }
     return groups;
-  }, [journalists, journalistStatuses]);
+  }, [journalists, journalistStatuses, latchedStatuses]);
 
   // Auto-select the first non-empty tab on initial data load
   useEffect(() => {
@@ -183,7 +195,7 @@ export default function CampaignJournalistsPage() {
           <div className="space-y-2">
             {filteredList.map((j) => {
               const cost = j.cost?.totalCostInUsdCents ?? 0;
-              const status = journalistStatuses.get(j.journalistId) ?? "skipped";
+              const status = latchedStatuses.get(j.journalistId) ?? journalistStatuses.get(j.journalistId) ?? "skipped";
               return (
                 <button
                   key={j.journalistId}
@@ -240,6 +252,7 @@ export default function CampaignJournalistsPage() {
       {selected && (
         <DetailPanel
           journalist={selected}
+          bestStatus={latchedStatuses.get(selected.journalistId) ?? journalistDisplayStatus(selected)}
           onClose={() => setSelected(null)}
         />
       )}
@@ -249,9 +262,11 @@ export default function CampaignJournalistsPage() {
 
 function DetailPanel({
   journalist: j,
+  bestStatus,
   onClose,
 }: {
   journalist: EnrichedJournalist;
+  bestStatus: string;
   onClose: () => void;
 }) {
   const cost = j.cost?.totalCostInUsdCents ?? 0;
@@ -319,8 +334,8 @@ function DetailPanel({
           <div className="flex items-center gap-4">
             <div>
               <span className="text-xs text-gray-500 block mb-1">Best Status</span>
-              <span className={`text-xs px-2 py-1 rounded-full border ${statusStyle(journalistDisplayStatus(j))}`}>
-                {statusLabel(journalistDisplayStatus(j))}
+              <span className={`text-xs px-2 py-1 rounded-full border ${statusStyle(bestStatus)}`}>
+                {statusLabel(bestStatus)}
               </span>
             </div>
             {cost > 0 && (
