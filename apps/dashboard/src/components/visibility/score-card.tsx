@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { InfoTooltip } from "./metric-info";
 
 export type DeltaFormat = "percent" | "absolute";
 
@@ -8,6 +9,7 @@ type ScoreCardCommon = {
   label: string;
   value: string;
   subtitle?: ReactNode;
+  tooltip?: string;
 };
 
 type ScoreCardProps =
@@ -33,14 +35,17 @@ export function formatDelta(
 }
 
 export function ScoreCard(props: ScoreCardProps) {
-  const { label, value, subtitle } = props;
+  const { label, value, subtitle, tooltip } = props;
   const fmt =
     "deltaFormat" in props && props.deltaFormat
       ? formatDelta(props.delta, props.deltaFormat, props.deltaInverted ?? false)
       : null;
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4">
-      <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">{label}</p>
+      <p className="text-xs text-gray-500 uppercase tracking-wider mb-1 inline-flex items-center gap-1">
+        {label}
+        {tooltip && <InfoTooltip tip={tooltip} placement="top" />}
+      </p>
       <div className="flex items-baseline gap-2">
         <p className="text-2xl font-semibold text-gray-800">{value}</p>
         {fmt && (

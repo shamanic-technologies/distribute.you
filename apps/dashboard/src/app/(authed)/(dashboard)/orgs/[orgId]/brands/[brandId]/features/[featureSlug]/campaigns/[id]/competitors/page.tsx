@@ -11,6 +11,7 @@ import {
   formatSentiment,
 } from "@/components/visibility/score-card";
 import { DetailTabs } from "@/components/visibility/detail-tabs";
+import { METRIC_INFO, MetricLabel } from "@/components/visibility/metric-info";
 import {
   getDetailTabs,
   mergeBrandIntoCompetitors,
@@ -77,10 +78,18 @@ export default function CompetitorsPage() {
                 <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
                   <tr>
                     <th className="px-4 py-2 text-left">Name</th>
-                    <th className="px-4 py-2 text-left">Mentions</th>
-                    <th className="px-4 py-2 text-left">Share of voice</th>
-                    <th className="px-4 py-2 text-left">Avg position</th>
-                    <th className="px-4 py-2 text-left">Net sentiment</th>
+                    <th className="px-4 py-2 text-left">
+                      <MetricLabel text="Mentions" tip={METRIC_INFO.competitorMentions} />
+                    </th>
+                    <th className="px-4 py-2 text-left">
+                      <MetricLabel text="Share of voice" tip={METRIC_INFO.competitorShareOfVoice} />
+                    </th>
+                    <th className="px-4 py-2 text-left">
+                      <MetricLabel text="Avg position" tip={METRIC_INFO.competitorAvgPosition} />
+                    </th>
+                    <th className="px-4 py-2 text-left">
+                      <MetricLabel text="Net sentiment" tip={METRIC_INFO.competitorNetSentiment} />
+                    </th>
                   </tr>
                 </thead>
                 <tbody>

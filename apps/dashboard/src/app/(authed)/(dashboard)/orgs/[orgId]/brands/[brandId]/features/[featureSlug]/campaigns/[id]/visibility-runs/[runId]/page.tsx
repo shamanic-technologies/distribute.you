@@ -13,6 +13,7 @@ import {
   parseDecimal,
 } from "@/components/visibility/score-card";
 import { DetailTabs } from "@/components/visibility/detail-tabs";
+import { METRIC_INFO, MetricLabel } from "@/components/visibility/metric-info";
 import { getDetailTabs, getRunDebugFields } from "@/lib/visibility-detail";
 import { DebugSection } from "@/components/visibility/prompt-detail-pane";
 
@@ -86,12 +87,12 @@ export default function VisibilityRunDetailPage() {
       </section>
 
       <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-        <ScoreCard label="Visibility" value={formatScore(parseDecimal(run.visibilityScore))} />
-        <ScoreCard label="Share of voice" value={formatScore(parseDecimal(run.shareOfVoice))} />
-        <ScoreCard label="Brand mention rate" value={formatScore(parseDecimal(run.brandMentionRate))} />
-        <ScoreCard label="Citation rate" value={formatScore(parseDecimal(run.citationRate))} />
-        <ScoreCard label="Net sentiment" value={formatSentiment(parseDecimal(run.netSentiment))} />
-        <ScoreCard label="Avg position" value={formatPosition(parseDecimal(run.avgPosition))} />
+        <ScoreCard label="Visibility" tooltip={METRIC_INFO.visibility} value={formatScore(parseDecimal(run.visibilityScore))} />
+        <ScoreCard label="Share of voice" tooltip={METRIC_INFO.shareOfVoice} value={formatScore(parseDecimal(run.shareOfVoice))} />
+        <ScoreCard label="Brand mention rate" tooltip={METRIC_INFO.brandMentionRate} value={formatScore(parseDecimal(run.brandMentionRate))} />
+        <ScoreCard label="Citation rate" tooltip={METRIC_INFO.citationRate} value={formatScore(parseDecimal(run.citationRate))} />
+        <ScoreCard label="Net sentiment" tooltip={METRIC_INFO.netSentiment} value={formatSentiment(parseDecimal(run.netSentiment))} />
+        <ScoreCard label="Avg position" tooltip={METRIC_INFO.avgPosition} value={formatPosition(parseDecimal(run.avgPosition))} />
       </section>
 
       <DetailTabs tabs={tabs} activeKey={activeTab.key} onChange={setActiveKey} />
@@ -108,10 +109,18 @@ export default function VisibilityRunDetailPage() {
               <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
                 <tr>
                   <th className="px-4 py-2 text-left">Name</th>
-                  <th className="px-4 py-2 text-left">Mentions</th>
-                  <th className="px-4 py-2 text-left">Share of voice</th>
-                  <th className="px-4 py-2 text-left">Avg position</th>
-                  <th className="px-4 py-2 text-left">Net sentiment</th>
+                  <th className="px-4 py-2 text-left">
+                    <MetricLabel text="Mentions" tip={METRIC_INFO.competitorMentions} />
+                  </th>
+                  <th className="px-4 py-2 text-left">
+                    <MetricLabel text="Share of voice" tip={METRIC_INFO.competitorShareOfVoice} />
+                  </th>
+                  <th className="px-4 py-2 text-left">
+                    <MetricLabel text="Avg position" tip={METRIC_INFO.competitorAvgPosition} />
+                  </th>
+                  <th className="px-4 py-2 text-left">
+                    <MetricLabel text="Net sentiment" tip={METRIC_INFO.competitorNetSentiment} />
+                  </th>
                 </tr>
               </thead>
               <tbody>

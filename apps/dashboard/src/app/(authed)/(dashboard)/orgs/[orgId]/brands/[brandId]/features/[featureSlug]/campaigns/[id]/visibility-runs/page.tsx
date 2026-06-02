@@ -23,6 +23,7 @@ import {
   formatSentiment,
   parseDecimal,
 } from "@/components/visibility/score-card";
+import { METRIC_INFO, MetricLabel } from "@/components/visibility/metric-info";
 
 interface ChartPoint {
   ts: number;
@@ -100,32 +101,38 @@ export default function VisibilityRunsPage() {
             >
               <ScoreCard
                 label="Visibility"
+                tooltip={METRIC_INFO.visibility}
                 value={formatScore(parseDecimal(latest.visibilityScore))}
                 delta={parseDecimal(latest.visibility_score_delta)}
                 deltaFormat="percent"
               />
               <ScoreCard
                 label="Share of voice"
+                tooltip={METRIC_INFO.shareOfVoice}
                 value={formatScore(parseDecimal(latest.shareOfVoice))}
                 delta={parseDecimal(latest.share_of_voice_delta)}
                 deltaFormat="percent"
               />
               <ScoreCard
                 label="Brand mention rate"
+                tooltip={METRIC_INFO.brandMentionRate}
                 value={formatScore(parseDecimal(latest.brandMentionRate))}
               />
               <ScoreCard
                 label="Citation rate"
+                tooltip={METRIC_INFO.citationRate}
                 value={formatScore(parseDecimal(latest.citationRate))}
               />
               <ScoreCard
                 label="Net sentiment"
+                tooltip={METRIC_INFO.netSentiment}
                 value={formatSentiment(parseDecimal(latest.netSentiment))}
                 delta={parseDecimal(latest.net_sentiment_delta)}
                 deltaFormat="absolute"
               />
               <ScoreCard
                 label="Avg position"
+                tooltip={METRIC_INFO.avgPosition}
                 value={formatPosition(parseDecimal(latest.avgPosition))}
                 delta={parseDecimal(latest.position_delta)}
                 deltaFormat="absolute"
@@ -208,11 +215,21 @@ export default function VisibilityRunsPage() {
               <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
                 <tr>
                   <th className="px-4 py-2 text-left">Completed</th>
-                  <th className="px-4 py-2 text-left">Visibility</th>
-                  <th className="px-4 py-2 text-left">Share of voice</th>
-                  <th className="px-4 py-2 text-left">Brand mention</th>
-                  <th className="px-4 py-2 text-left">Citation rate</th>
-                  <th className="px-4 py-2 text-left">Sentiment</th>
+                  <th className="px-4 py-2 text-left">
+                    <MetricLabel text="Visibility" tip={METRIC_INFO.visibility} />
+                  </th>
+                  <th className="px-4 py-2 text-left">
+                    <MetricLabel text="Share of voice" tip={METRIC_INFO.shareOfVoice} />
+                  </th>
+                  <th className="px-4 py-2 text-left">
+                    <MetricLabel text="Brand mention" tip={METRIC_INFO.brandMentionRate} />
+                  </th>
+                  <th className="px-4 py-2 text-left">
+                    <MetricLabel text="Citation rate" tip={METRIC_INFO.citationRate} />
+                  </th>
+                  <th className="px-4 py-2 text-left">
+                    <MetricLabel text="Sentiment" tip={METRIC_INFO.netSentiment} />
+                  </th>
                   <th className="px-4 py-2 text-left">Status</th>
                 </tr>
               </thead>
