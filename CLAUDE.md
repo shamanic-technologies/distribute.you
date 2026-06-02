@@ -199,6 +199,31 @@ The third member of the "don't revert resolved state on a transient" family, aft
 
 First landed 2026-06-02 (distribute.you#1270, DIS-149): the sales-cold-email-outreach leads table flashed empty every ~5s. Wired into all 9 client-polled status-tab surfaces (feature/campaign/brand × leads/journalists/outlets) + added the missing `safeParse` on `listBrandLeads`/`listCampaignLeads`. Backend root (lead-service `flattenBrandStatus` + email-gateway overlay consistency) tracked as the DIS-149 cross-repo follow-up; the latch makes the UI robust regardless of which poll the overlay drops on.
 
+### Persisted query cache — leave a page and return shows content INSTANTLY, never a skeleton (`PersistQueryClientProvider`)
+
+The **4th and outermost** member of the "don't revert resolved state on a transient" family — and the only one that survives leaving the page entirely. The first three all operate on a **warm in-memory cache** and protect against *refetch* flicker:
+
+1. `placeholderData: keepPreviousData` — keeps a query's **data** across refetch.
+2. `useCoordinatedReveal` — keeps a group's **reveal decision** across refetch.
+3. `useMonotonicStatuses` — keeps a row's **bucket** across refetch.
+
+**None survive cache EVICTION.** `gcTime` (was 5 min) drops a query's data once it's been inactive that long, and a full reload / new tab starts a brand-new `QueryClient` with an empty cache. So after navigating away for >gcTime, or reloading, the in-memory cache is **gone** — `data === undefined`, the coordinated-reveal barrier has nothing to reveal, and the page cold-loads a full-screen skeleton for the duration of the refetch. That is the "I left the page and came back, everything disappeared for a few seconds" bug. The first three layers cannot fix it because there is no data left in memory to keep.
+
+**The failure class it fixes.** Leaving any dashboard page and returning (long internal nav crossing gcTime, OR browser reload / new tab) repainted every section as a skeleton, then refilled after the refetch landed. The cache was correct; it had simply been evicted, and nothing restored it.
+
+**The fix (industry consensus — TanStack + SWR/Vercel both ship cache persistence as THE answer; Linear goes further with a local-first sync engine).** Persist the React Query cache to client storage and restore it on mount, so any return serves the last-known content instantly while revalidating silently in the background. Single global change in `apps/dashboard/src/lib/query-provider.tsx`: wrap the app in `PersistQueryClientProvider` + `createSyncStoragePersister` (localStorage, SWR-style synchronous restore = zero-frame). Because it's the global provider, it fixes **every** dashboard page at once — there is no per-page work for this symptom. Pure helpers live in `apps/dashboard/src/lib/persist-cache.ts` (`shouldPersistQuery` / `persisterStorageKey` / `cacheBuildId`), unit-tested like `nextRevealState`.
+
+**The five load-bearing rules (each one bites if skipped):**
+- **`gcTime` MUST be ≥ the persister `maxAge`** (both 24h via `PERSIST_MAX_AGE_MS`). If `gcTime < maxAge`, in-memory GC evicts a query *before* its persisted copy can restore, silently defeating persistence (TanStack hard rule, discussion #5169).
+- **Org-scope the storage KEY** (`distribute-dashboard-cache:{orgId}`, `anon` before Clerk resolves). React Query keys are not yet org-scoped (DIS-143), so a single shared bucket would restore org A's data under org B after a reload. Per-org buckets close that vector. `useOrganization()` works inside `QueryProvider` because ClerkProvider is in `(authed)/layout.tsx`, an ancestor.
+- **`buster` = build id** (`NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? "dev"`). A new deploy busts the persisted cache, so a changed data shape never restores stale into new components.
+- **`retry: removeOldestQuery`.** localStorage caps at ~5MB; a multi-MB cached list (e.g. our 12MB leads payload incident) would throw `QuotaExceededError`. `removeOldestQuery` evicts the oldest entry and retries until it fits — the page you're on is most-recently-used, so it persists last and survives. This is what makes localStorage (vs IndexedDB) safe at our scale: it degrades, never crashes. (IndexedDB via `createAsyncStoragePersister` is TanStack's pick for >5MB caches, but its async restore reintroduces a micro-flash window — localStorage's synchronous restore is strictly better for the no-skeleton goal, and `removeOldestQuery` neutralizes the cap.)
+- **`shouldDehydrateQuery` = success + non-sensitive only.** Replaces TanStack's default (so the `status === "success"` check is explicit) AND excludes secret query roots (`apiKeys`/`byokKeys`/`keySources`) — key material must never touch disk.
+
+**The rule.** Cache persistence is GLOBAL and already in place — do NOT add a second `QueryClientProvider` or a per-page persister. When adding a query whose data is secret, add its key root to `SENSITIVE_QUERY_ROOTS`. When changing `gcTime`, keep it ≥ `maxAge`. The SSR guard (`typeof window !== "undefined"` → undefined storage = no-op persister) keeps it safe in the server render.
+
+First landed 2026-06-02 (distribute.you, `query-provider.tsx` + `persist-cache.ts`): the `ai-visibility-scoring` feature page (and every dashboard page) blanked all sections for a few seconds on return because `gcTime: 5min` evicted the cache. Bumped `gcTime` to 24h + persisted the cache to org-scoped localStorage. The reported page already had `useCoordinatedReveal`; the bug was one layer below it — nothing left in memory to reveal.
+
 ### Public marketing pages — SEO + AI-scraper rendering
 
 For any public landing/marketing/docs page (anything under `apps/landing/`, `apps/sales-cold-emails-landing/`, `apps/docs/`), the default rendering strategy is **ISR + `unstable_cache` + edge cache**, NEVER Suspense streaming on indexable content.
