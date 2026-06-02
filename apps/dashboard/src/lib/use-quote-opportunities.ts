@@ -31,16 +31,17 @@ export function useSubmitQuotePitch(brandId: string) {
     mutationFn: ({ opportunityId, body }) =>
       submitQuoteOpportunityReply(opportunityId, body, brandId),
     onSuccess: () => {
+      // Prefix-only keys: the pitch pages key on ["quotePitches", {campaignId,
+      // status}] and ["featureQuotePitches", featureSlug, {status}], and the
+      // opportunity queues on ["rankedOpportunities", {brandId}]. A second key
+      // element that doesn't deep-contain {brandId} won't match — so invalidate
+      // by prefix to refresh every variant (queue drops the now-pitched row,
+      // pitches page shows the new submission).
       return Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: ["rankedOpportunities", { brandId }],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["quotePitches", { brandId }],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["featureStats"],
-        }),
+        queryClient.invalidateQueries({ queryKey: ["rankedOpportunities"] }),
+        queryClient.invalidateQueries({ queryKey: ["quotePitches"] }),
+        queryClient.invalidateQueries({ queryKey: ["featureQuotePitches"] }),
+        queryClient.invalidateQueries({ queryKey: ["featureStats"] }),
       ]);
     },
   });

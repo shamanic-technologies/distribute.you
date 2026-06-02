@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptionsSlow } from "@/lib/query-options";
 import { listRankedOpportunities, type RankedOpportunity } from "@/lib/api";
+import { isOpportunityOpen } from "@/lib/quote-pitch-status";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 
 // Reads the SAME gold catalog (GET /orgs/opportunities, scored above
@@ -22,8 +23,13 @@ export default function FeatureQuoteRequestsPage() {
     pollOptionsSlow,
   );
 
-  const opportunities = data?.opportunities ?? [];
-  const total = data?.total ?? opportunities.length;
+  // Hide opportunities already pitched for the brand-set (pitchStatus in the
+  // block set) — they live on the Pitches page now. The header count + the
+  // sidebar badge both read this same open set so badge == page (DIS-107).
+  const opportunities = (data?.opportunities ?? []).filter((o) =>
+    isOpportunityOpen(o.pitchStatus),
+  );
+  const total = opportunities.length;
 
   const filtered = useMemo(() => {
     if (!search) return opportunities;
