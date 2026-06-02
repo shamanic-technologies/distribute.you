@@ -9,6 +9,7 @@ import { useFeatures } from "@/lib/features-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 import { listWorkflows, listCampaignOutlets, listJournalistsEnriched, listMediaKitsByCampaign, fetchFeatureStats, listRankedOpportunities } from "@/lib/api";
+import { isOpportunityOpen } from "@/lib/quote-pitch-status";
 
 interface Props {
   orgId: string;
@@ -109,7 +110,11 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
     journalists: journalistsData?.journalists?.length,
     articles: undefined,
     "press-kits": pressKitsData?.length,
-    "quote-requests": rankedOppsData?.total,
+    // Open (non-pitched) count so the badge == the queue the page renders — the
+    // page hides already-pitched opportunities (DIS-107 badge↔page coherence).
+    "quote-requests": rankedOppsData?.opportunities.filter((o) =>
+      isOpportunityOpen(o.pitchStatus),
+    ).length,
   };
 
   // Build entity counts: prefer listing total (shows ALL items), fall back to feature stats.

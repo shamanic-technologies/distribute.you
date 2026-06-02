@@ -32,8 +32,11 @@ describe("quote-requests badge ↔ page coherence (gold catalog single source)",
       expect(sidebarWrapper).toContain("listRankedOpportunities");
     });
 
-    it("sources the quote-requests badge from the gold catalog total", () => {
-      expect(sidebarWrapper).toMatch(/"quote-requests":\s*\w+\?\.total/);
+    it("sources the quote-requests badge from the OPEN (non-pitched) gold opportunities (badge == page)", () => {
+      // The page hides already-pitched opportunities; the badge must count the
+      // same open set, not the raw catalog total, or badge ≠ page recurs.
+      expect(sidebarWrapper).toContain("isOpportunityOpen");
+      expect(sidebarWrapper).toMatch(/"quote-requests":[\s\S]*?isOpportunityOpen/);
     });
   });
 
@@ -42,8 +45,9 @@ describe("quote-requests badge ↔ page coherence (gold catalog single source)",
       expect(contextSidebar).toContain("listRankedOpportunities");
     });
 
-    it("sources the quote-requests badge from the gold catalog total", () => {
-      expect(contextSidebar).toMatch(/"quote-requests":\s*\w+\?\.total/);
+    it("sources the quote-requests badge from the OPEN (non-pitched) gold opportunities (badge == page)", () => {
+      expect(contextSidebar).toContain("isOpportunityOpen");
+      expect(contextSidebar).toMatch(/"quote-requests":[\s\S]*?isOpportunityOpen/);
     });
   });
 });

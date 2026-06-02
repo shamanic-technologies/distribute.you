@@ -5,9 +5,11 @@ import type {
   Campaign,
   Email,
   Lead,
+  QuotePitchStatus,
   StatsRegistry,
   Workflow,
 } from "@/lib/api";
+import { isOpportunityOpen } from "@/lib/quote-pitch-status";
 
 const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 const ADMIN_KEY = process.env.ADMIN_DISTRIBUTE_API_KEY;
@@ -393,6 +395,10 @@ export interface RankedOpportunityRow {
   category: string | null;
   score: number;
   whyRelevant: string | null;
+  // GET /orgs/opportunities annotates each row with the brand-set pitch status
+  // (null = no pitch yet). Used to hide already-pitched opportunities from the
+  // public report queue — mirrors the authed surfaces.
+  pitchStatus: QuotePitchStatus | null;
 }
 
 export interface RankedOpportunitiesResponse {
@@ -423,7 +429,11 @@ export async function fetchRankedOpportunitiesByBrand(
           orgId,
           { "x-brand-id": brandId },
         );
-        return result.opportunities ?? [];
+        // Hide opportunities already pitched for the brand-set — same complement
+        // as the authed surfaces (they move to the pitches view).
+        return (result.opportunities ?? []).filter((o) =>
+          isOpportunityOpen(o.pitchStatus),
+        );
       } catch (err) {
         console.error(
           `[dashboard-report] fetchRankedOpportunitiesByBrand(${brandId}) failed:`,

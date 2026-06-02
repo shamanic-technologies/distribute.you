@@ -10,6 +10,7 @@ import {
   type QuoteRequest,
   type RankedOpportunity,
 } from "@/lib/api";
+import { isOpportunityOpen } from "@/lib/quote-pitch-status";
 import { useCampaign } from "@/lib/campaign-context";
 import {
   useGenerateQuoteDraft,
@@ -44,6 +45,7 @@ export default function QuoteRequestsPage() {
 function HitlQueuePage() {
   const params = useParams();
   const brandId = params.brandId as string;
+  const campaignId = params.id as string;
   const { campaign } = useCampaign();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -54,7 +56,12 @@ function HitlQueuePage() {
     pollOptionsSlow,
   );
 
-  const opportunities = data?.opportunities ?? [];
+  // Hide opportunities already pitched for the brand-set (pitchStatus in the
+  // block set) — they live on the Pitches page now. null + failure statuses
+  // stay (re-reply still allowed). See lib/quote-pitch-status.ts.
+  const opportunities = (data?.opportunities ?? []).filter((o) =>
+    isOpportunityOpen(o.pitchStatus),
+  );
   const selected = useMemo(
     () => opportunities.find((o) => o.opportunityId === selectedId) ?? null,
     [opportunities, selectedId],
@@ -98,6 +105,7 @@ function HitlQueuePage() {
           <DetailPanel
             opportunity={selected}
             brandId={brandId}
+            campaignId={campaignId}
             featureInputs={featureInputs}
             missingInputs={missingInputs}
           />
@@ -182,11 +190,13 @@ function ScoreBadge({ score }: { score: number }) {
 function DetailPanel({
   opportunity,
   brandId,
+  campaignId,
   featureInputs,
   missingInputs,
 }: {
   opportunity: RankedOpportunity | null;
   brandId: string;
+  campaignId: string;
   featureInputs: Record<string, string> | null;
   missingInputs: HitlInputKey[];
 }) {
@@ -259,6 +269,9 @@ function DetailPanel({
         opportunityId: opportunity.opportunityId,
         body: {
           pitchContent: draft,
+          // Associate the pitch with this campaign so it shows on the
+          // campaign-scoped Pitches page (filters by campaign_id).
+          campaignId,
         },
       },
       {

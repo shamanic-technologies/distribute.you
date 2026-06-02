@@ -2579,21 +2579,93 @@ export async function getQuoteRequestStats(
   );
 }
 
+// journalists-quotes-service GET /orgs/quote-pitches openapi (verified via
+// mcp__api-registry 2026-06-02). safeParse on every list/get wrapper per the
+// DIS-74 rule — a wire-shape drift surfaces as a caught fetch error, not a
+// blank page.
+const QuotePitchStatusSchema = z.enum([
+  "drafted",
+  "submitted",
+  "selected",
+  "published",
+  "not_selected",
+  "error",
+  "length_violation",
+  "template_missing",
+  "brand_missing_fields",
+  "insufficient_credits",
+]);
+
+const QuotePitchSchema = z.object({
+  id: z.string(),
+  quoteRequestId: z.string(),
+  quoteOpportunityId: z.string().nullable(),
+  featuredQuestionId: z.number().nullable(),
+  featuredProfileId: z.number().nullable(),
+  campaignId: z.string().nullable(),
+  brandIds: z.array(z.string()),
+  draft: z.string().nullable(),
+  pitchCharCount: z.number().nullable(),
+  pitchAttempts: z.number().nullable(),
+  contentGenRunId: z.string().nullable(),
+  submittedAt: z.string().nullable(),
+  status: QuotePitchStatusSchema,
+  deliveryMethod: z.enum(["featured_api", "email_reply"]),
+  deliveryTarget: z.string().nullable(),
+  outboundMessageId: z.string().nullable(),
+  replyInThreadMessageId: z.string().nullable(),
+  bounceStatus: z.string().nullable(),
+  featuredArticleUrl: z.string().nullable(),
+  error: z.string().nullable(),
+  errorDetails: z.unknown(),
+  parentRunId: z.string().nullable(),
+  runId: z.string().nullable(),
+  orgId: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+const ListQuotePitchesResponseSchema = z.object({
+  quotePitches: z.array(QuotePitchSchema),
+});
+
+const GetQuotePitchResponseSchema = z.object({
+  quotePitch: QuotePitchSchema,
+});
+
 export async function listQuotePitches(
   params?: ListQuotePitchesParams,
   token?: string,
 ): Promise<{ quotePitches: QuotePitch[] }> {
-  return apiCall<{ quotePitches: QuotePitch[] }>(
+  const raw = await apiCall<unknown>(
     `/orgs/quote-pitches${buildQuery(params ?? {})}`,
     { token },
   );
+  const parsed = ListQuotePitchesResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] listQuotePitches: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] listQuotePitches: invalid response shape");
+  }
+  return parsed.data as { quotePitches: QuotePitch[] };
 }
 
 export async function getQuotePitch(
   id: string,
   token?: string,
 ): Promise<{ quotePitch: QuotePitch }> {
-  return apiCall<{ quotePitch: QuotePitch }>(`/orgs/quote-pitches/${id}`, { token });
+  const raw = await apiCall<unknown>(`/orgs/quote-pitches/${id}`, { token });
+  const parsed = GetQuotePitchResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getQuotePitch: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getQuotePitch: invalid response shape");
+  }
+  return parsed.data as { quotePitch: QuotePitch };
 }
 
 // ─── Ranked HITL opportunities (pr-expert-quote-opportunities) ──────────────
@@ -2612,6 +2684,10 @@ export interface RankedOpportunity {
   category: string | null;
   score: number;
   whyRelevant: string | null;
+  // Pitch status annotated by GET /orgs/opportunities for the brand-set (or the
+  // campaign when campaignId is passed). null = no pitch yet. Drives hiding
+  // already-pitched opportunities from the queue (lib/quote-pitch-status.ts).
+  pitchStatus: QuotePitchStatus | null;
 }
 
 const RankedOpportunitySchema = z.object({
@@ -2628,6 +2704,9 @@ const RankedOpportunitySchema = z.object({
   category: z.string().nullable(),
   score: z.number(),
   whyRelevant: z.string().nullable(),
+  // Declared so Zod's .object() keeps it — undeclared keys are stripped from
+  // the parsed result even when present on the wire.
+  pitchStatus: QuotePitchStatusSchema.nullable(),
 });
 
 const ListRankedOpportunitiesResponseSchema = z.object({
@@ -2930,6 +3009,10 @@ export type SubmitQuotePitchStatus =
 export interface SubmitQuotePitchBody {
   pitchContent: string;
   subject?: string;
+  // Associates the created quote_pitch with the campaign so it surfaces on the
+  // campaign-scoped pitches page (which filters by campaign_id). Omitted on
+  // brand-scoped surfaces (feature page, public report) → campaign-less pitch.
+  campaignId?: string;
 }
 
 export interface SubmitQuotePitchResponse {

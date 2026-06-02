@@ -18,6 +18,7 @@ import {
   listBrandArticles,
   listRankedOpportunities,
 } from "@/lib/api";
+import { isOpportunityOpen } from "@/lib/quote-pitch-status";
 import { formatCount } from "@/lib/format-number";
 import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { MaturityBadge } from "@/components/maturity-badge";
@@ -712,7 +713,11 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
     outlets: outletsData?.total,
     journalists: journalistsData?.total ?? journalistsData?.journalists?.length,
     articles: articlesData?.discoveries?.length,
-    "quote-requests": rankedOppsData?.total,
+    // Open (non-pitched) count so the badge == the queue the page renders — the
+    // page hides already-pitched opportunities (DIS-107 badge↔page coherence).
+    "quote-requests": rankedOppsData?.opportunities.filter((o) =>
+      isOpportunityOpen(o.pitchStatus),
+    ).length,
   };
 
   const entityCounts = useMemo(() => {
