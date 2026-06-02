@@ -6,6 +6,7 @@ import {
   buildExpertAnswerContextVariable,
   buildExpertQuotePitchVariables,
   coerceExtractedToString,
+  selectPriorSubmittedPitches,
   ExpertQuotePitchInputError,
 } from "../src/lib/quote-pitch-variables";
 
@@ -33,6 +34,22 @@ const FULL_OPP = {
   whyRelevant: "Brand scaled exactly this",
   category: "Engineering",
 };
+const FULL_ANSWER_CTX = {
+  brandEvidence:
+    "Scaled from 5 to 25 engineers in 18 months; cut onboarding from 6 weeks to 9 days.",
+  evidenceSourceUrls: [
+    "https://acme.example/about",
+    "https://acme.example/blog/scaling",
+  ],
+  revisionInstructions: "Lead with the onboarding metric; drop buzzwords.",
+  priorSubmittedPitches: [
+    {
+      draft: "Past pitch about hiring velocity.",
+      status: "published",
+      submittedAt: "2026-05-01T10:00:00.000Z",
+    },
+  ],
+};
 
 describe("expert-quote-pitch variable assembly (content-gen PR #124 all-required contract)", () => {
   it("buildJournalistRequestVariable maps opportunity → { question, mediaOutlet, source, deadline }", () => {
@@ -53,11 +70,28 @@ describe("expert-quote-pitch variable assembly (content-gen PR #124 all-required
     });
   });
 
-  it("buildExpertAnswerContextVariable maps whyRelevant + category", () => {
-    expect(buildExpertAnswerContextVariable(FULL_OPP)).toEqual({
-      whyRelevant: "Brand scaled exactly this",
-      category: "Engineering",
+  it("buildExpertAnswerContextVariable maps brandEvidence + sources + revision + prior pitches (no whyRelevant/category)", () => {
+    const out = buildExpertAnswerContextVariable(FULL_ANSWER_CTX);
+    expect(out).toEqual({
+      brandEvidence: FULL_ANSWER_CTX.brandEvidence,
+      evidenceSourceUrls: FULL_ANSWER_CTX.evidenceSourceUrls,
+      revisionInstructions: FULL_ANSWER_CTX.revisionInstructions,
+      priorSubmittedPitches: FULL_ANSWER_CTX.priorSubmittedPitches,
     });
+    expect(out).not.toHaveProperty("whyRelevant");
+    expect(out).not.toHaveProperty("category");
+  });
+
+  it("buildExpertAnswerContextVariable empties blank brandEvidence to null, keeps null revision + [] pitches", () => {
+    const out = buildExpertAnswerContextVariable({
+      brandEvidence: "   ",
+      evidenceSourceUrls: [],
+      revisionInstructions: null,
+      priorSubmittedPitches: [],
+    });
+    expect(out.brandEvidence).toBeNull();
+    expect(out.revisionInstructions).toBeNull();
+    expect(out.priorSubmittedPitches).toEqual([]);
   });
 
   it("coerceExtractedToString flattens string / object / array / null", () => {
@@ -76,6 +110,7 @@ describe("expert-quote-pitch variable assembly (content-gen PR #124 all-required
       extracted: FULL_EXTRACTED,
       expert: FULL_EXPERT,
       opportunity: FULL_OPP,
+      answerContext: FULL_ANSWER_CTX,
     });
     expect(Object.keys(out).sort()).toEqual(
       [
@@ -101,6 +136,12 @@ describe("expert-quote-pitch variable assembly (content-gen PR #124 all-required
     expect(out.expertName).toBe("Jordan Avery");
     expect(out.expertBio).toBe("Ex-Stripe; scaled three eng orgs.");
     expect(out.expertPhotoUrl).toBe(FULL_EXPERT.expertPhotoUrl);
+    expect(out.expertAnswerContext).toEqual({
+      brandEvidence: FULL_ANSWER_CTX.brandEvidence,
+      evidenceSourceUrls: FULL_ANSWER_CTX.evidenceSourceUrls,
+      revisionInstructions: FULL_ANSWER_CTX.revisionInstructions,
+      priorSubmittedPitches: FULL_ANSWER_CTX.priorSubmittedPitches,
+    });
   });
 
   it("brands is ALWAYS an array even for a single brand", () => {
@@ -109,6 +150,7 @@ describe("expert-quote-pitch variable assembly (content-gen PR #124 all-required
       extracted: FULL_EXTRACTED,
       expert: FULL_EXPERT,
       opportunity: FULL_OPP,
+      answerContext: FULL_ANSWER_CTX,
     });
     expect(Array.isArray(out.brands)).toBe(true);
     expect((out.brands as unknown[]).length).toBe(1);
@@ -137,6 +179,7 @@ describe("expert-quote-pitch variable assembly (content-gen PR #124 all-required
           extracted: extracted as never,
           expert: expert as never,
           opportunity: FULL_OPP,
+          answerContext: FULL_ANSWER_CTX,
         }),
       ).toThrow(ExpertQuotePitchInputError);
       try {
@@ -145,6 +188,7 @@ describe("expert-quote-pitch variable assembly (content-gen PR #124 all-required
           extracted: extracted as never,
           expert: expert as never,
           opportunity: FULL_OPP,
+          answerContext: FULL_ANSWER_CTX,
         });
       } catch (e) {
         expect((e as Error).message).toContain(field as string);
@@ -158,10 +202,57 @@ describe("expert-quote-pitch variable assembly (content-gen PR #124 all-required
       extracted: FULL_EXTRACTED,
       expert: FULL_EXPERT,
       opportunity: FULL_OPP,
+      answerContext: FULL_ANSWER_CTX,
     });
     expect(out).not.toHaveProperty("brand");
     expect(out).not.toHaveProperty("request");
     expect(out).not.toHaveProperty("additionalContext");
+  });
+});
+
+describe("selectPriorSubmittedPitches — brand voice anchor (3 most recent submitted)", () => {
+  const base = {
+    draft: "A pitch.",
+    status: "submitted",
+    submittedAt: "2026-05-10T10:00:00.000Z",
+    createdAt: "2026-05-10T09:00:00.000Z",
+    brandIds: ["brand-A"],
+  };
+
+  it("keeps only this brand's submitted/selected/published rows with a non-empty draft", () => {
+    const rows = [
+      { ...base, status: "drafted" }, // not submitted → excluded
+      { ...base, brandIds: ["brand-B"] }, // other brand → excluded
+      { ...base, draft: "   " }, // empty draft → excluded
+      { ...base, draft: null }, // null draft → excluded
+      { ...base, status: "selected", draft: "selected pitch" }, // kept
+      { ...base, status: "published", draft: "published pitch" }, // kept
+    ];
+    const out = selectPriorSubmittedPitches(rows, "brand-A");
+    expect(out.map((p) => p.draft)).toEqual(["selected pitch", "published pitch"]);
+  });
+
+  it("sorts by submittedAt desc (createdAt fallback) and caps at the limit", () => {
+    const rows = [
+      { ...base, draft: "old", submittedAt: "2026-01-01T00:00:00.000Z" },
+      { ...base, draft: "new", submittedAt: "2026-06-01T00:00:00.000Z" },
+      { ...base, draft: "mid", submittedAt: "2026-03-01T00:00:00.000Z" },
+    ];
+    expect(selectPriorSubmittedPitches(rows, "brand-A", 2).map((p) => p.draft)).toEqual([
+      "new",
+      "mid",
+    ]);
+  });
+
+  it("returns [] (never throws) when the brand has no submitted pitches", () => {
+    expect(selectPriorSubmittedPitches([], "brand-A")).toEqual([]);
+  });
+
+  it("projects to { draft, status, submittedAt } only", () => {
+    const out = selectPriorSubmittedPitches([base], "brand-A");
+    expect(out).toEqual([
+      { draft: "A pitch.", status: "submitted", submittedAt: base.submittedAt },
+    ]);
   });
 });
 

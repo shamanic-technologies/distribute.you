@@ -16,7 +16,12 @@
 //   expertPhotoUrl
 //   expertLinkedIn
 //   journalistRequest      — { question, mediaOutlet, source, deadline }
-//   expertAnswerContext    — extra answer context (whyRelevant, category)
+//   expertAnswerContext    — brand evidence grounded on the journalist's
+//                            question (replaces the old whyRelevant/category
+//                            pair), plus the operator's revision instructions
+//                            and the brand's recent submitted pitches (voice
+//                            anchor / anti-repetition). Inner shape is the
+//                            caller's choice per the upstream contract.
 //
 // Field names are byte-equal to the upstream contract + mirror the DIS-136
 // campaign-input names (`expertName`/`expertTitle`/`expertPhotoUrl`/
@@ -122,14 +127,80 @@ export function buildJournalistRequestVariable(opp: QuoteOpportunityContext) {
   };
 }
 
+/** A past pitch the brand already submitted, fed back as a voice anchor. */
+export interface PriorPitch {
+  draft: string;
+  status: string;
+  submittedAt: string | null;
+}
+
+/** Minimal shape of a `quote_pitches` row needed to pick prior pitches.
+ *  `QuotePitch` (api.ts) is structurally assignable to this. */
+export interface PriorPitchInput {
+  draft: string | null;
+  status: string;
+  submittedAt: string | null;
+  createdAt: string;
+  brandIds: string[];
+}
+
+/** Statuses that mean "this pitch was actually sent to Featured" — only these
+ *  are useful as a voice anchor (a `drafted` row was never submitted). */
+export const PRIOR_PITCH_STATUSES = ["submitted", "selected", "published"] as const;
+
 /**
- * `expertAnswerContext` — extra context the model should weave into the answer:
- * why this opportunity was matched to the brand, and its category.
+ * Pick the brand's most-recent SUBMITTED pitches as a voice anchor for the next
+ * generation. Filters to the atomic brand (brandId ∈ brandIds), to submitted/
+ * selected/published rows with a non-empty draft, sorts by submittedAt desc
+ * (createdAt fallback), and caps at `limit`. Returns [] when none — never throws.
  */
-export function buildExpertAnswerContextVariable(opp: QuoteOpportunityContext) {
+export function selectPriorSubmittedPitches(
+  pitches: PriorPitchInput[],
+  brandId: string,
+  limit = 3,
+): PriorPitch[] {
+  return pitches
+    .filter((p) => p.brandIds.includes(brandId))
+    .filter((p) =>
+      (PRIOR_PITCH_STATUSES as readonly string[]).includes(p.status),
+    )
+    .filter((p) => p.draft != null && p.draft.trim().length > 0)
+    .sort((a, b) =>
+      (b.submittedAt ?? b.createdAt).localeCompare(a.submittedAt ?? a.createdAt),
+    )
+    .slice(0, limit)
+    .map((p) => ({
+      draft: p.draft as string,
+      status: p.status,
+      submittedAt: p.submittedAt,
+    }));
+}
+
+/** Inputs assembled by the caller for the `expertAnswerContext` variable. */
+export interface ExpertAnswerContextInputs {
+  /** Brand facts extracted live, grounded on the journalist's question
+   *  (brand-service extract-fields seeded with the question text). May be "". */
+  brandEvidence: string;
+  /** Page URLs the evidence was extracted from (provenance). */
+  evidenceSourceUrls: string[];
+  /** Free-text operator revision instructions from the "Edit with AI" modal,
+   *  or null on a first/plain generation. */
+  revisionInstructions: string | null;
+  /** The brand's recent submitted pitches (voice anchor / anti-repetition). */
+  priorSubmittedPitches: PriorPitch[];
+}
+
+/**
+ * `expertAnswerContext` — grounded brand evidence for the journalist's question,
+ * plus the operator's revision instructions and the brand's prior submitted
+ * pitches. Replaces the old `{ whyRelevant, category }` pair.
+ */
+export function buildExpertAnswerContextVariable(input: ExpertAnswerContextInputs) {
   return {
-    whyRelevant: opp.whyRelevant ?? null,
-    category: opp.category ?? null,
+    brandEvidence: input.brandEvidence.trim() || null,
+    evidenceSourceUrls: input.evidenceSourceUrls,
+    revisionInstructions: input.revisionInstructions,
+    priorSubmittedPitches: input.priorSubmittedPitches,
   };
 }
 
@@ -144,8 +215,9 @@ export function buildExpertQuotePitchVariables(args: {
   extracted: ExtractedQuoteFields;
   expert: ExpertAttribution;
   opportunity: QuoteOpportunityContext;
+  answerContext: ExpertAnswerContextInputs;
 }): Record<string, unknown> {
-  const { identity, extracted, expert, opportunity } = args;
+  const { identity, extracted, expert, opportunity, answerContext } = args;
 
   const brand = {
     brandName: requireNonEmpty(identity.brandName, "brandName"),
@@ -166,6 +238,6 @@ export function buildExpertQuotePitchVariables(args: {
     expertPhotoUrl: requireNonEmpty(expert.expertPhotoUrl, "expertPhotoUrl"),
     expertLinkedIn: requireNonEmpty(expert.expertLinkedIn, "expertLinkedIn"),
     journalistRequest: buildJournalistRequestVariable(opportunity),
-    expertAnswerContext: buildExpertAnswerContextVariable(opportunity),
+    expertAnswerContext: buildExpertAnswerContextVariable(answerContext),
   };
 }

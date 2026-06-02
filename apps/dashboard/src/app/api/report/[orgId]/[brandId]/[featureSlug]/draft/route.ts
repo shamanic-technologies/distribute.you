@@ -140,6 +140,15 @@ export async function POST(req: Request, ctx: RouteContext) {
 
   const brandHeader = { "x-brand-id": brandId };
 
+  // Question-driven brand evidence: append an extract-fields entry seeded with
+  // the journalist's question so brand-service mines the brand for facts that
+  // answer THIS question (description-hash keyed → its own cache slot). Feeds
+  // `expertAnswerContext.brandEvidence`, replacing the old whyRelevant/category.
+  const extractFields = [
+    ...EXTRACT_FIELDS,
+    { key: "expertAnswerContext", description: opportunityText.trim() },
+  ];
+
   try {
     // 1 + 2. Brand identity (name/url/logoUrl) and the extracted brand/expert
     //        fields, in parallel.
@@ -149,7 +158,7 @@ export async function POST(req: Request, ctx: RouteContext) {
         "extractBrandFields",
         `/brands/extract-fields`,
         orgId,
-        { brandIds: [brandId], fields: EXTRACT_FIELDS },
+        { brandIds: [brandId], fields: extractFields },
         brandHeader,
       ),
     ]);
@@ -183,6 +192,15 @@ export async function POST(req: Request, ctx: RouteContext) {
         deadline,
         whyRelevant,
         category,
+      },
+      // Public report has no "Edit with AI" modal and no brand-scoped pitch
+      // list helper, so revision instructions + prior pitches are absent here.
+      // brandEvidence (question-driven) is the grounding win and rides along.
+      answerContext: {
+        brandEvidence: coerceExtractedToString(f.expertAnswerContext?.value),
+        evidenceSourceUrls: [],
+        revisionInstructions: null,
+        priorSubmittedPitches: [],
       },
     });
 
