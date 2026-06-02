@@ -181,7 +181,8 @@ function MetricsGrid({ prompt }: { prompt: PromptWithProvider }) {
       <Metric
         label="Sentiment"
         value={
-          prompt.sentiment
+          // No brand mention → no brand sentiment to show (backend defaults to "neutral"); render a dash.
+          prompt.brandFound && prompt.sentiment
             ? prompt.sentimentScore !== null
               ? `${prompt.sentiment} (${prompt.sentimentScore})`
               : prompt.sentiment

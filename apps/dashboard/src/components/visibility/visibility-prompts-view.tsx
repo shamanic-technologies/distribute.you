@@ -132,14 +132,21 @@ function PromptRow({
         {prompt.brandPosition ?? "—"}
       </td>
       <td className="px-4 py-3 text-lg" aria-label="sentiment">
-        <SentimentEmoji sentiment={prompt.sentiment} />
+        <SentimentEmoji sentiment={prompt.sentiment} brandFound={prompt.brandFound} />
       </td>
     </tr>
   );
 }
 
-function SentimentEmoji({ sentiment }: { sentiment: string | null }) {
-  if (!sentiment) return <span className="text-gray-300 text-sm">—</span>;
+function SentimentEmoji({
+  sentiment,
+  brandFound,
+}: {
+  sentiment: string | null;
+  brandFound: boolean | null;
+}) {
+  // No brand mention → no brand sentiment to show (backend defaults to "neutral"); render a dash, not a misleading neutral face.
+  if (!brandFound || !sentiment) return <span className="text-gray-300 text-sm">—</span>;
   const lower = sentiment.toLowerCase();
   if (lower === "positive") return <span title="positive">👍</span>;
   if (lower === "negative") return <span title="negative">👎</span>;
