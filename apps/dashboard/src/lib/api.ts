@@ -4,6 +4,7 @@ import {
   coerceExtractedToString,
   type QuoteOpportunityContext,
 } from "./quote-pitch-variables";
+import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "./org-desync";
 
 const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 
@@ -30,24 +31,53 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * The org the UI is currently rendering, parsed from the `/orgs/<id>/...` URL.
+ * Client-side only. Sent to the proxy as `x-active-org-id` so the proxy can fail
+ * closed (409 `org_desync`) when it disagrees with the Clerk session JWT — never
+ * a silent cross-org read/write. The JWT remains the org authority server-side.
+ */
+function activeOrgIdFromPath(): string | null {
+  if (typeof window === "undefined") return null;
+  const match = window.location.pathname.match(/\/orgs\/([^/?#]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
   const { token, method = "GET", body, headers: extraHeaders } = options ?? {};
 
-  const headers: Record<string, string> = { "Content-Type": "application/json", ...extraHeaders };
-  let url: string;
+  const send = (): Promise<Response> => {
+    const headers: Record<string, string> = { "Content-Type": "application/json", ...extraHeaders };
+    let url: string;
 
-  if (token) {
-    url = `${API_URL}/v1${endpoint}`;
-    headers["X-API-Key"] = token;
-  } else {
-    url = `/api/v1${endpoint}`;
+    if (token) {
+      url = `${API_URL}/v1${endpoint}`;
+      headers["X-API-Key"] = token;
+    } else {
+      url = `/api/v1${endpoint}`;
+      const activeOrgId = activeOrgIdFromPath();
+      if (activeOrgId) headers["x-active-org-id"] = activeOrgId;
+    }
+
+    return fetch(url, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  };
+
+  let response = await send();
+
+  // Org-switch rotation lag: the proxy refused because the session JWT hadn't
+  // caught up with the UI's org yet. Wait a beat for Clerk to settle, retry once
+  // (the path-derived org is re-read on the retry). Proxy-routed calls only.
+  if (response.status === ORG_DESYNC_STATUS && !token) {
+    const peek = await response.clone().json().catch(() => null);
+    if (peek?.error === ORG_DESYNC_ERROR) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      response = await send();
+    }
   }
-
-  const response = await fetch(url, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => ({ error: "Request failed" }));

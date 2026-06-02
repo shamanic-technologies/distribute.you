@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
+import { checkProxyOrg } from "@/lib/proxy-org";
 
 export const maxDuration = 300;
 
@@ -29,6 +30,11 @@ async function proxyRequest(
         { status: 403 }
       );
     }
+
+    // Fail closed if the org the UI is rendering (x-active-org-id) disagrees with
+    // the session JWT org. Never forward under the wrong org (DIS-143).
+    const orgErr = checkProxyOrg(clerkOrgId, req.headers.get("x-active-org-id"));
+    if (orgErr) return NextResponse.json(orgErr.body, { status: orgErr.status });
 
     const { path } = await segmentData.params;
     const url = new URL(`/v1/${path.join("/")}`, API_URL);

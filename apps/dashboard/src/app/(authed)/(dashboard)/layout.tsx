@@ -58,7 +58,6 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   return (
     <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
       <OrgActivator />
-      <OrgCacheInvalidator />
       <AuthEventTracker />
       <UserActivityTracker />
       <UserResolver />
@@ -99,18 +98,25 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <QueryProvider>
-      <MobileSidebarProvider>
-        <OrgContextProvider>
-          <FeaturesProvider>
-            <EntityRegistryProvider>
-              <BillingGuardProvider>
-                <DashboardContent>{children}</DashboardContent>
-              </BillingGuardProvider>
-            </EntityRegistryProvider>
-          </FeaturesProvider>
-        </OrgContextProvider>
-      </MobileSidebarProvider>
-    </QueryProvider>
+    <>
+      {/* Mounted ABOVE QueryProvider on purpose: the QueryProvider remounts the
+          whole authed subtree under `key={org.id}` to reset the cache on org
+          switch, so the org-change navigator must live outside it to survive that
+          remount and fire its router.push. */}
+      <OrgCacheInvalidator />
+      <QueryProvider>
+        <MobileSidebarProvider>
+          <OrgContextProvider>
+            <FeaturesProvider>
+              <EntityRegistryProvider>
+                <BillingGuardProvider>
+                  <DashboardContent>{children}</DashboardContent>
+                </BillingGuardProvider>
+              </EntityRegistryProvider>
+            </FeaturesProvider>
+          </OrgContextProvider>
+        </MobileSidebarProvider>
+      </QueryProvider>
+    </>
   );
 }

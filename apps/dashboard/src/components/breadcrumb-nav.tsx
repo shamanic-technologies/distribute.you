@@ -141,17 +141,23 @@ export function BreadcrumbNav() {
     }
   };
 
-  const handleOrgSwitch = (clerkOrgId: string) => {
+  const handleOrgSwitch = async (clerkOrgId: string) => {
     setOpenDropdown(null);
     clearBreadcrumbCaches();
     // Update Clerk's client-side active org so useOrganization() reflects the switch
-    // immediately (breadcrumb name, OrgCacheInvalidator firing to clear React Query).
+    // immediately (breadcrumb name, OrgCacheInvalidator firing, QueryProvider remount).
     // Then push the URL so middleware's organizationSyncOptions confirms server-side
     // and /api/v1/* calls run under the new org. Both directions are required:
     // setActive alone left the URL stale (PR #1058 prod incident, polls 404'd);
     // router.push alone left the client UI stale until the session cookie refreshed.
+    //
+    // AWAIT setActive before navigating: it resolves once the Clerk session (and its
+    // org claim) has rotated to the new org. Navigating / firing an API call before
+    // that resolves carries the OLD org in the lag window → write commits under the
+    // wrong org, later read 404s (DIS-143 stale write). The proxy's fail-closed guard
+    // is the backstop; awaiting closes the race at the source.
     if (setActive) {
-      setActive({ organization: clerkOrgId });
+      await setActive({ organization: clerkOrgId });
     }
     router.push(`/orgs/${clerkOrgId}`);
   };

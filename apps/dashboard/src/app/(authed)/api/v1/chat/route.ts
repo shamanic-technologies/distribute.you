@@ -5,6 +5,7 @@ import {
   createUIMessageStreamResponse,
   type UIMessageStreamWriter,
 } from "ai";
+import { checkProxyOrg } from "@/lib/proxy-org";
 
 export const maxDuration = 300;
 
@@ -41,6 +42,10 @@ export async function POST(req: NextRequest) {
       { status: 403 },
     );
   }
+
+  // Fail closed on org desync — never stream a chat under the wrong org (DIS-143).
+  const orgErr = checkProxyOrg(clerkOrgId, req.headers.get("x-active-org-id"));
+  if (orgErr) return NextResponse.json(orgErr.body, { status: orgErr.status });
 
   const body = await req.json();
   const { message, sessionId, context, configKey } = body as {
