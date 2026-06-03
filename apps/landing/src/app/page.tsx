@@ -393,7 +393,9 @@ export default function Home() {
             in your Gmail — full thread, ready to reply directly.
           </p>
         </div>
-        <GmailInbox />
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          <GmailInbox />
+        </div>
       </section>
 
       {/* Pricing — single cloud plan */}
