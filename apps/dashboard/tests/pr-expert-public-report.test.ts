@@ -17,9 +17,17 @@ const reportOverviewPath = path.resolve(
   __dirname,
   "../src/app/report/[orgId]/[brandId]/[featureSlug]/page.tsx",
 );
-const opportunitiesPagePath = path.resolve(
+const quoteRequestsPagePath = path.resolve(
   __dirname,
-  "../src/app/report/[orgId]/[brandId]/[featureSlug]/opportunities/page.tsx",
+  "../src/app/report/[orgId]/[brandId]/[featureSlug]/quote-requests/page.tsx",
+);
+const quotePitchesPagePath = path.resolve(
+  __dirname,
+  "../src/app/report/[orgId]/[brandId]/[featureSlug]/quote-pitches/page.tsx",
+);
+const promptPagePath = path.resolve(
+  __dirname,
+  "../src/app/report/[orgId]/[brandId]/[featureSlug]/prompt/page.tsx",
 );
 const publicHitlPath = path.resolve(
   __dirname,
@@ -106,27 +114,44 @@ describe("report-api.ts — brand-scoped HITL fetchers", () => {
   });
 });
 
-describe("Public report overview — redirects for PR feature slug", () => {
+describe("Public report base route — redirects to first entity for PR feature slug", () => {
   it("imports redirect from next/navigation", () => {
     expect(reportOverviewContent).toContain('from "next/navigation"');
     expect(reportOverviewContent).toContain("redirect");
   });
 
-  it("branches on the PR feature slug and redirects to /opportunities", () => {
+  it("branches on the PR feature slug and redirects to /quote-requests (no dead Overview)", () => {
     expect(reportOverviewContent).toContain(HITL_SLUG);
-    expect(reportOverviewContent).toMatch(/redirect\([^)]*opportunities/);
+    expect(reportOverviewContent).toMatch(/redirect\([^)]*quote-requests/);
   });
 });
 
-describe("Public report sidebar — adapts to feature", () => {
+describe("Public report sidebar — mirrors the campaign entities (Quote requests · Pitches · Prompt)", () => {
   it("accepts featureSlug prop", () => {
     expect(reportSidebarContent).toContain("featureSlug");
   });
 
-  it("renders an Opportunities link for the PR feature", () => {
+  it("renders exactly the 3 campaign-mirrored links for the PR feature", () => {
     expect(reportSidebarContent).toContain(HITL_SLUG);
-    expect(reportSidebarContent).toContain("Opportunities");
-    expect(reportSidebarContent).toContain("opportunities");
+    expect(reportSidebarContent).toContain("Quote requests");
+    expect(reportSidebarContent).toContain("Pitches");
+    expect(reportSidebarContent).toContain("Prompt");
+    expect(reportSidebarContent).toContain("/quote-requests");
+    expect(reportSidebarContent).toContain("/quote-pitches");
+    expect(reportSidebarContent).toContain("/prompt");
+  });
+
+  it("drops the dead Overview link from the PR feature branch", () => {
+    // The HITL branch must not emit an Overview entry — the base route
+    // redirects to the first entity instead. (Overview stays only on the
+    // sales/default branch.) Strip comments first (a code comment mentioning
+    // Overview would false-positive), then isolate the HITL `return [...]`
+    // array — the first one after the slug check, up to its closing `];`.
+    const stripped = stripComments(reportSidebarContent);
+    const hitlReturn =
+      stripped.split("if (featureSlug === HITL_SLUG)")[1]?.split("];")[0] ?? "";
+    expect(hitlReturn).toContain("Quote requests");
+    expect(hitlReturn).not.toContain("Overview");
   });
 });
 
@@ -139,21 +164,92 @@ describe("Public report header — feature label", () => {
   });
 });
 
-describe("Opportunities page — server-renders brand-scoped queue", () => {
-  it("exists at /report/.../[featureSlug]/opportunities/page.tsx", () => {
-    expect(fs.existsSync(opportunitiesPagePath)).toBe(true);
+describe("Quote-requests page — server-renders brand-scoped HITL queue", () => {
+  it("exists at /report/.../[featureSlug]/quote-requests/page.tsx (renamed from opportunities)", () => {
+    expect(fs.existsSync(quoteRequestsPagePath)).toBe(true);
   });
 
   it("server-fetches via fetchRankedOpportunitiesByBrand (no campaignId in URL)", () => {
-    const content = fs.readFileSync(opportunitiesPagePath, "utf-8");
+    const content = fs.readFileSync(quoteRequestsPagePath, "utf-8");
     expect(content).toContain("fetchRankedOpportunitiesByBrand");
     // Page params do NOT include campaignId
     expect(content).not.toMatch(/campaignId\s*:\s*string/);
   });
 
   it("renders the PublicHitlQueue client component", () => {
-    const content = fs.readFileSync(opportunitiesPagePath, "utf-8");
+    const content = fs.readFileSync(quoteRequestsPagePath, "utf-8");
     expect(content).toContain("PublicHitlQueue");
+  });
+
+  it("has its own loading skeleton (queue-shaped, NOT the sales stats/CPA funnel)", () => {
+    const loadingPath = path.resolve(
+      __dirname,
+      "../src/app/report/[orgId]/[brandId]/[featureSlug]/quote-requests/loading.tsx",
+    );
+    expect(fs.existsSync(loadingPath)).toBe(true);
+    const content = stripComments(fs.readFileSync(loadingPath, "utf-8"));
+    // Must not reuse the sales overview funnel copy.
+    expect(content).not.toContain("Cost per acquisition");
+  });
+});
+
+describe("Pitches page — read-only brand-scoped pitch list", () => {
+  it("exists at /report/.../[featureSlug]/quote-pitches/page.tsx", () => {
+    expect(fs.existsSync(quotePitchesPagePath)).toBe(true);
+  });
+
+  it("server-fetches via fetchQuotePitchesByBrand (read-only, no mutations)", () => {
+    const content = fs.readFileSync(quotePitchesPagePath, "utf-8");
+    expect(content).toContain("fetchQuotePitchesByBrand");
+    // Read-only: no draft/reply route handler calls, no Clerk apiCall.
+    expect(content).not.toContain("useAuthQuery");
+    expect(content).not.toMatch(/\/api\/report\//);
+  });
+
+  it("has its own loading skeleton", () => {
+    const loadingPath = path.resolve(
+      __dirname,
+      "../src/app/report/[orgId]/[brandId]/[featureSlug]/quote-pitches/loading.tsx",
+    );
+    expect(fs.existsSync(loadingPath)).toBe(true);
+  });
+});
+
+describe("Prompt page — read-only generation template", () => {
+  it("exists at /report/.../[featureSlug]/prompt/page.tsx", () => {
+    expect(fs.existsSync(promptPagePath)).toBe(true);
+  });
+
+  it("server-fetches via fetchPromptAssignment, renders template + variables read-only", () => {
+    const content = fs.readFileSync(promptPagePath, "utf-8");
+    expect(content).toContain("fetchPromptAssignment");
+    expect(content).toContain("promptType");
+    // Read-only: no save/fork, no editable textarea, no Clerk apiCall.
+    expect(content).not.toContain("savePromptAssignment");
+    expect(content).not.toContain("useAuthQuery");
+    expect(content).not.toContain("<textarea");
+  });
+});
+
+describe("report-api.ts — brand-scoped read-only fetchers for Pitches + Prompt", () => {
+  it("declares fetchQuotePitchesByBrand filtering org pitches by brandIds", () => {
+    expect(reportApiContent).toContain("fetchQuotePitchesByBrand");
+    const block =
+      reportApiContent
+        .split("export async function fetchQuotePitchesByBrand")[1]
+        ?.split("export ")[0] ?? "";
+    expect(block).toContain("/orgs/quote-pitches");
+    expect(block).toContain("brandIds.includes(brandId)");
+  });
+
+  it("declares fetchPromptAssignment hitting /content/prompt-assignments", () => {
+    expect(reportApiContent).toContain("fetchPromptAssignment");
+    const block =
+      reportApiContent
+        .split("export async function fetchPromptAssignment")[1]
+        ?.split("export ")[0] ?? "";
+    expect(block).toContain("/content/prompt-assignments");
+    expect(block).toContain("featureSlug");
   });
 });
 

@@ -17,9 +17,9 @@ export const revalidate = 14400;
 export const maxDuration = 300;
 
 // Features whose public report has no "Overview" surface — their primary
-// surface is an interactive HITL queue, not a stats funnel. The overview
-// route redirects straight to that surface.
-const REDIRECT_TO_OPPORTUNITIES = new Set(["pr-expert-quote-opportunities"]);
+// surface is an interactive HITL queue, not a stats funnel. The base route
+// redirects straight to the first entity (quote-requests).
+const REDIRECT_TO_FIRST_ENTITY = new Set(["pr-expert-quote-opportunities"]);
 
 interface PageProps {
   params: Promise<{ orgId: string; brandId: string; featureSlug: string }>;
@@ -28,8 +28,8 @@ interface PageProps {
 export default async function OverviewPage({ params }: PageProps) {
   const { orgId, brandId, featureSlug } = await params;
 
-  if (REDIRECT_TO_OPPORTUNITIES.has(featureSlug)) {
-    redirect(`/report/${orgId}/${brandId}/${featureSlug}/opportunities`);
+  if (REDIRECT_TO_FIRST_ENTITY.has(featureSlug)) {
+    redirect(`/report/${orgId}/${brandId}/${featureSlug}/quote-requests`);
   }
 
   return (
