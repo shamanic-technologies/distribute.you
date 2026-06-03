@@ -16,7 +16,7 @@ import {
   listBrandLeads,
   listBrandEmails,
   listBrandArticles,
-  listRankedOpportunities,
+  listAllRankedOpportunities,
 } from "@/lib/api";
 import { isOpportunityOpen } from "@/lib/quote-pitch-status";
 import { formatCount } from "@/lib/format-number";
@@ -681,7 +681,7 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   const rankedOppsEnabled = entityNames.includes("quote-requests");
   const { data: rankedOppsData, isPending: rankedOppsPending } = useAuthQuery(
     ["rankedOpportunities", { brandId }],
-    () => listRankedOpportunities({ brandId, limit: 50 }),
+    () => listAllRankedOpportunities({ brandId }),
     { enabled: rankedOppsEnabled, refetchInterval: 5_000 },
   );
 

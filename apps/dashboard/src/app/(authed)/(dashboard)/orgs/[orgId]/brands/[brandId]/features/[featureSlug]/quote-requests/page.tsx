@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptionsSlow } from "@/lib/query-options";
-import { listRankedOpportunities, type RankedOpportunity } from "@/lib/api";
+import { listAllRankedOpportunities, type RankedOpportunity } from "@/lib/api";
 import { isOpportunityOpen } from "@/lib/quote-pitch-status";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 
@@ -19,7 +19,7 @@ export default function FeatureQuoteRequestsPage() {
 
   const { data, isPending } = useAuthQuery(
     ["rankedOpportunities", { brandId }],
-    () => listRankedOpportunities({ brandId, limit: 50 }),
+    () => listAllRankedOpportunities({ brandId }),
     pollOptionsSlow,
   );
 

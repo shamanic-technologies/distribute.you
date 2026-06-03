@@ -14,8 +14,9 @@ import * as path from "path";
  * missing from it.
  *
  * Fix: every quote-requests surface (both sidebars + the feature page) reads the
- * SAME gold endpoint via `listRankedOpportunities`, and the sidebar badge is
- * sourced from that endpoint's `total` so badge == page count at all times.
+ * SAME gold endpoint via `listAllRankedOpportunities` (which pages through the
+ * whole catalog — no 50-row cap), and the sidebar badge is sourced from that same
+ * fetch so badge == page count at all times.
  */
 
 const read = (rel: string) =>
@@ -28,8 +29,8 @@ const contextSidebar = read("../src/components/context-sidebar.tsx");
 
 describe("quote-requests badge ↔ page coherence (gold catalog single source)", () => {
   describe("campaign sidebar (sidebar-wrapper.tsx)", () => {
-    it("imports listRankedOpportunities (the gold GET /orgs/opportunities reader)", () => {
-      expect(sidebarWrapper).toContain("listRankedOpportunities");
+    it("imports listAllRankedOpportunities (the gold GET /orgs/opportunities reader, full pagination)", () => {
+      expect(sidebarWrapper).toContain("listAllRankedOpportunities");
     });
 
     it("sources the quote-requests badge from the OPEN (non-pitched) gold opportunities (badge == page)", () => {
@@ -41,8 +42,8 @@ describe("quote-requests badge ↔ page coherence (gold catalog single source)",
   });
 
   describe("feature sidebar (context-sidebar.tsx FeatureLevelSidebar)", () => {
-    it("imports listRankedOpportunities", () => {
-      expect(contextSidebar).toContain("listRankedOpportunities");
+    it("imports listAllRankedOpportunities", () => {
+      expect(contextSidebar).toContain("listAllRankedOpportunities");
     });
 
     it("sources the quote-requests badge from the OPEN (non-pitched) gold opportunities (badge == page)", () => {

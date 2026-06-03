@@ -6,7 +6,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptionsSlow } from "@/lib/query-options";
 import {
   listQuoteRequests,
-  listRankedOpportunities,
+  listAllRankedOpportunities,
   type QuoteRequest,
   type RankedOpportunity,
 } from "@/lib/api";
@@ -52,7 +52,7 @@ function HitlQueuePage() {
 
   const { data, isPending } = useAuthQuery(
     ["rankedOpportunities", { brandId }],
-    () => listRankedOpportunities({ brandId, limit: 50 }),
+    () => listAllRankedOpportunities({ brandId }),
     pollOptionsSlow,
   );
 

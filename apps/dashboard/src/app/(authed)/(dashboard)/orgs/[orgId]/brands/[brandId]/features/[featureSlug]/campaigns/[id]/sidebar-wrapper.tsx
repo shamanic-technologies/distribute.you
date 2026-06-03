@@ -8,7 +8,7 @@ import { useCampaign } from "@/lib/campaign-context";
 import { useFeatures } from "@/lib/features-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
-import { listWorkflows, listCampaignOutlets, listJournalistsEnriched, listMediaKitsByCampaign, fetchFeatureStats, listRankedOpportunities } from "@/lib/api";
+import { listWorkflows, listCampaignOutlets, listJournalistsEnriched, listMediaKitsByCampaign, fetchFeatureStats, listAllRankedOpportunities } from "@/lib/api";
 import { isOpportunityOpen } from "@/lib/quote-pitch-status";
 
 interface Props {
@@ -62,7 +62,7 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
   // feature-stat). Shared queryKey dedups with the page's own fetch.
   const { data: rankedOppsData, isLoading: rankedOppsLoading } = useAuthQuery(
     ["rankedOpportunities", { brandId }],
-    () => listRankedOpportunities({ brandId, limit: 50 }),
+    () => listAllRankedOpportunities({ brandId }),
     { enabled: entityNames.includes("quote-requests"), refetchInterval: 5_000 },
   );
 
