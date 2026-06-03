@@ -28,6 +28,7 @@ describe("Platform config registration at startup", () => {
       { provider: "google-mcc-account-id", envVar: "GOOGLE_MCC_ACCOUNT_ID" },
       { provider: "featured-username", envVar: "FEATURED_COM_USERNAME" },
       { provider: "featured-password", envVar: "FEATURED_COM_PASSWORD" },
+      { provider: "apify", envVar: "APIFY_API_KEY" },
     ];
 
     it("should call POST /platform-keys via api-service", () => {
@@ -42,9 +43,9 @@ describe("Platform config registration at startup", () => {
       });
     }
 
-    it("should register exactly 27 platform keys", () => {
+    it("should register exactly 28 platform keys", () => {
       const matches = content.match(/provider: "[^"]+", envVar: "[^"]+"/g);
-      expect(matches).toHaveLength(27);
+      expect(matches).toHaveLength(28);
     });
 
     it("should skip missing env vars instead of blocking all registrations", () => {
