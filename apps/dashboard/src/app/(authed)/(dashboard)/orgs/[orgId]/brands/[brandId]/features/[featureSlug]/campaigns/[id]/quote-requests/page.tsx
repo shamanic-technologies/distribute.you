@@ -11,13 +11,13 @@ import {
   type RankedOpportunity,
 } from "@/lib/api";
 import { isOpportunityOpen } from "@/lib/quote-pitch-status";
+import { isExpertQuoteFeature } from "@/lib/expert-quote-feature";
 import { useCampaign } from "@/lib/campaign-context";
 import {
   useGenerateQuoteDraft,
   useSubmitQuotePitch,
 } from "@/lib/use-quote-opportunities";
 
-const HITL_SLUG = "pr-expert-quote-opportunities";
 const PITCH_MIN = 100;
 const PITCH_MAX = 2500;
 
@@ -36,16 +36,17 @@ type HitlInputKey = (typeof HITL_INPUT_KEYS)[number];
 export default function QuoteRequestsPage() {
   const params = useParams();
   const featureSlug = params.featureSlug as string;
-  if (featureSlug === HITL_SLUG) return <HitlQueuePage />;
+  if (isExpertQuoteFeature(featureSlug)) return <HitlQueuePage />;
   return <FlatQuoteRequestsPage />;
 }
 
-// ───────── HITL queue page (pr-expert-quote-opportunities) ──────────────────
+// ───────── HITL queue page (pr-expert-quote-* family) ───────────────────────
 
 function HitlQueuePage() {
   const params = useParams();
   const brandId = params.brandId as string;
   const campaignId = params.id as string;
+  const featureSlug = params.featureSlug as string;
   const { campaign } = useCampaign();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -106,6 +107,7 @@ function HitlQueuePage() {
             opportunity={selected}
             brandId={brandId}
             campaignId={campaignId}
+            featureSlug={featureSlug}
             featureInputs={featureInputs}
             missingInputs={missingInputs}
           />
@@ -191,12 +193,14 @@ function DetailPanel({
   opportunity,
   brandId,
   campaignId,
+  featureSlug,
   featureInputs,
   missingInputs,
 }: {
   opportunity: RankedOpportunity | null;
   brandId: string;
   campaignId: string;
+  featureSlug: string;
   featureInputs: Record<string, string> | null;
   missingInputs: HitlInputKey[];
 }) {
@@ -248,7 +252,7 @@ function DetailPanel({
         },
         opportunity,
         revisionInstructions,
-        featureSlug: HITL_SLUG,
+        featureSlug,
       },
       {
         onSuccess: (res) => {

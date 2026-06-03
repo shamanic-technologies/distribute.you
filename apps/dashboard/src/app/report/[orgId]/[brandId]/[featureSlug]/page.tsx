@@ -7,6 +7,7 @@ import {
   fetchStatsRegistry,
 } from "@/lib/report-api";
 import type { StatsRegistry } from "@/lib/api";
+import { isExpertQuoteFeature } from "@/lib/expert-quote-feature";
 
 // ISR with a 4h TTL — the recipient gets HTML served from edge cache on
 // every visit; fills happen at most once per (orgId, brandId, featureSlug)
@@ -18,8 +19,8 @@ export const maxDuration = 300;
 
 // Features whose public report has no "Overview" surface — their primary
 // surface is an interactive HITL queue, not a stats funnel. The base route
-// redirects straight to the first entity (quote-requests).
-const REDIRECT_TO_FIRST_ENTITY = new Set(["pr-expert-quote-opportunities"]);
+// redirects straight to the first entity (quote-requests). The whole
+// pr-expert-quote-* family qualifies (helper, not a hardcoded slug).
 
 interface PageProps {
   params: Promise<{ orgId: string; brandId: string; featureSlug: string }>;
@@ -28,7 +29,7 @@ interface PageProps {
 export default async function OverviewPage({ params }: PageProps) {
   const { orgId, brandId, featureSlug } = await params;
 
-  if (REDIRECT_TO_FIRST_ENTITY.has(featureSlug)) {
+  if (isExpertQuoteFeature(featureSlug)) {
     redirect(`/report/${orgId}/${brandId}/${featureSlug}/quote-requests`);
   }
 

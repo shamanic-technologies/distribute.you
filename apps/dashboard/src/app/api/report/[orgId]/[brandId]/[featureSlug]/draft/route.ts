@@ -5,6 +5,7 @@ import {
   coerceExtractedToString,
   ExpertQuotePitchInputError,
 } from "@/lib/quote-pitch-variables";
+import { isExpertQuoteFeature } from "@/lib/expert-quote-feature";
 
 // Public-report draft generation. The upstream `/orgs/quote-requests/:id/draft`
 // endpoint on journalists-quotes-service was removed in v0.8.1 — the service is
@@ -32,8 +33,6 @@ export const maxDuration = 60;
 interface RouteContext {
   params: Promise<{ orgId: string; brandId: string; featureSlug: string }>;
 }
-
-const HITL_SLUG = "pr-expert-quote-opportunities";
 
 // Fields extracted via brand-service extract-fields. Descriptions seed the
 // extraction prompt; the expert-* keys mirror DIS-136 extractKeys for quality.
@@ -106,7 +105,7 @@ interface GenerateResponse {
 export async function POST(req: Request, ctx: RouteContext) {
   const { orgId, brandId, featureSlug } = await ctx.params;
 
-  if (featureSlug !== HITL_SLUG) {
+  if (!isExpertQuoteFeature(featureSlug)) {
     return NextResponse.json(
       {
         error: `featureSlug ${featureSlug} is not enabled for HITL draft generation`,

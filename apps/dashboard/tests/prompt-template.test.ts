@@ -92,9 +92,11 @@ describe("prompt-assignment data layer + UI wiring (source contract)", () => {
     expect(panel).toContain("textarea");
   });
 
-  it("campaign sidebar adds a Prompt button gated to the quote-opportunities feature", () => {
+  it("campaign sidebar adds a Prompt button gated to the pr-expert-quote family", () => {
     const sidebar = read("../src/components/campaign-sidebar.tsx");
     expect(sidebar).toContain("CampaignPromptPanel");
-    expect(sidebar).toContain("pr-expert-quote-opportunities");
+    // Gated via the family helper, not a hardcoded slug, so a workflow
+    // re-version (-opportunities → -outreach) doesn't drop the Prompt button.
+    expect(sidebar).toContain("isExpertQuoteFeature(featureSlug)");
   });
 });

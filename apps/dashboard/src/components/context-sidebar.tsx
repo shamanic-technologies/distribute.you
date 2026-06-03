@@ -19,6 +19,7 @@ import {
   listAllRankedOpportunities,
 } from "@/lib/api";
 import { isOpportunityOpen } from "@/lib/quote-pitch-status";
+import { isExpertQuoteFeature } from "@/lib/expert-quote-feature";
 import { formatCount } from "@/lib/format-number";
 import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { MaturityBadge } from "@/components/maturity-badge";
@@ -229,10 +230,11 @@ const ExternalLinkIcon = () => (
 );
 
 // Features that expose the public client report. Generic across features
-// once a backend public-proxy lands; gated to one for v1.
+// once a backend public-proxy lands; gated for now. The pr-expert-quote-*
+// family is matched via isExpertQuoteFeature (not listed here) so a workflow
+// re-version doesn't drop the report link.
 const REPORT_ENABLED_FEATURES = new Set([
   "sales-cold-email-outreach",
-  "pr-expert-quote-opportunities",
 ]);
 
 const ICON_NAME_MAP: Record<string, () => React.ReactNode> = {
@@ -751,7 +753,8 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
     { id: "workflows", label: "Workflows", href: `${basePath}/workflows`, icon: <WorkflowIcon /> },
   ];
 
-  const reportEnabled = REPORT_ENABLED_FEATURES.has(featureSlug);
+  const reportEnabled =
+    REPORT_ENABLED_FEATURES.has(featureSlug) || isExpertQuoteFeature(featureSlug);
   const reportHref = `/report/${orgId}/${brandId}/${featureSlug}`;
 
   return (

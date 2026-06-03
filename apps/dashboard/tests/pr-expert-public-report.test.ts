@@ -60,10 +60,11 @@ function stripComments(src: string): string {
 }
 
 describe("Sidebar — Report link enabled for pr-expert-quote-opportunities", () => {
-  it("REPORT_ENABLED_FEATURES contains the PR slug", () => {
-    expect(sidebarContent).toContain(`"${HITL_SLUG}"`);
+  it("enables the report link for the pr-expert-quote family via isExpertQuoteFeature", () => {
+    // The family is matched by the helper (not listed in the Set), so a
+    // workflow re-version (-opportunities → -outreach) keeps the report link.
     expect(sidebarContent).toMatch(
-      /REPORT_ENABLED_FEATURES\s*=\s*new Set\(\[[^\]]*pr-expert-quote-opportunities[^\]]*\]\)/,
+      /reportEnabled\s*=[\s\S]*isExpertQuoteFeature\(featureSlug\)/,
     );
   });
 
@@ -120,8 +121,8 @@ describe("Public report base route — redirects to first entity for PR feature 
     expect(reportOverviewContent).toContain("redirect");
   });
 
-  it("branches on the PR feature slug and redirects to /quote-requests (no dead Overview)", () => {
-    expect(reportOverviewContent).toContain(HITL_SLUG);
+  it("branches on the PR feature family and redirects to /quote-requests (no dead Overview)", () => {
+    expect(reportOverviewContent).toContain("isExpertQuoteFeature(featureSlug)");
     expect(reportOverviewContent).toMatch(/redirect\([^)]*quote-requests/);
   });
 });
@@ -132,7 +133,7 @@ describe("Public report sidebar — mirrors the campaign entities (Quote request
   });
 
   it("renders exactly the 3 campaign-mirrored links for the PR feature", () => {
-    expect(reportSidebarContent).toContain(HITL_SLUG);
+    expect(reportSidebarContent).toContain("isExpertQuoteFeature(featureSlug)");
     expect(reportSidebarContent).toContain("Quote requests");
     expect(reportSidebarContent).toContain("Pitches");
     expect(reportSidebarContent).toContain("Prompt");
@@ -149,7 +150,7 @@ describe("Public report sidebar — mirrors the campaign entities (Quote request
     // array — the first one after the slug check, up to its closing `];`.
     const stripped = stripComments(reportSidebarContent);
     const hitlReturn =
-      stripped.split("if (featureSlug === HITL_SLUG)")[1]?.split("];")[0] ?? "";
+      stripped.split("if (isExpertQuoteFeature(featureSlug))")[1]?.split("];")[0] ?? "";
     expect(hitlReturn).toContain("Quote requests");
     expect(hitlReturn).not.toContain("Overview");
   });

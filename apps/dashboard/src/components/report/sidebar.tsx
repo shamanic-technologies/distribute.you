@@ -3,6 +3,7 @@
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { isExpertQuoteFeature } from "@/lib/expert-quote-feature";
 
 interface SidebarItem {
   id: string;
@@ -55,10 +56,8 @@ interface ReportSidebarProps {
   featureSlug: string;
 }
 
-const HITL_SLUG = "pr-expert-quote-opportunities";
-
 function buildItems(basePath: string, featureSlug: string): SidebarItem[] {
-  if (featureSlug === HITL_SLUG) {
+  if (isExpertQuoteFeature(featureSlug)) {
     // Mirror the campaign sidebar exactly: the two Outcome entities
     // (quote-requests, quote-pitches) + the Prompt surface. No Overview —
     // this feature has no stats funnel; the base path redirects to the first

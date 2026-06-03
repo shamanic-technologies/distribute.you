@@ -8,7 +8,7 @@ import { useCampaign } from "@/lib/campaign-context";
 import { useFeatures } from "@/lib/features-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
-import { listWorkflows, listCampaignOutlets, listJournalistsEnriched, listMediaKitsByCampaign, fetchFeatureStats, listAllRankedOpportunities } from "@/lib/api";
+import { listWorkflows, listCampaignOutlets, listJournalistsEnriched, listMediaKitsByCampaign, fetchFeatureStats, listAllRankedOpportunities, listQuotePitches } from "@/lib/api";
 import { isOpportunityOpen } from "@/lib/quote-pitch-status";
 
 interface Props {
@@ -66,6 +66,18 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
     { enabled: entityNames.includes("quote-requests"), refetchInterval: 5_000 },
   );
 
+  // Campaign pitches — SAME queryKey + fetch as the Pitches page
+  // (`quote-pitches/page.tsx`), so the badge dedups with the page and the count
+  // equals the page row count by construction (badge == page, DIS-107 class).
+  // Without this the badge falls through to the silver feature-stat
+  // `quotePitchesSubmitted`, which counts only `submitted` and diverges from the
+  // page (which lists ALL statuses for the campaign).
+  const { data: pitchesData, isLoading: pitchesLoading } = useAuthQuery(
+    ["quotePitches", { campaignId, status: "" }],
+    () => listQuotePitches({ campaign_id: campaignId, limit: 100 }),
+    { enabled: entityNames.includes("quote-pitches"), refetchInterval: 5_000 },
+  );
+
   const entityLoading: Record<string, boolean> = {
     leads: leadsLoading,
     companies: leadsLoading,
@@ -75,6 +87,7 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
     articles: featureStatsLoading,
     "press-kits": pressKitsLoading,
     "quote-requests": rankedOppsLoading,
+    "quote-pitches": pitchesLoading,
   };
 
   // All Outcome badges reveal their numbers TOGETHER (one paint), then latch.
@@ -115,6 +128,9 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
     "quote-requests": rankedOppsData?.opportunities.filter((o) =>
       isOpportunityOpen(o.pitchStatus),
     ).length,
+    // Mirror the Pitches page exactly (all statuses, campaign-scoped) so the
+    // badge equals the page count.
+    "quote-pitches": pitchesData?.quotePitches.length,
   };
 
   // Build entity counts: prefer listing total (shows ALL items), fall back to feature stats.
