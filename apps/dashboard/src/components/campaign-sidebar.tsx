@@ -6,11 +6,13 @@ import { useFeatures } from "@/lib/features-context";
 import { useEntityRegistry } from "@/lib/entity-registry-context";
 import { CampaignInputsPanel } from "./campaign/campaign-inputs-panel";
 import { CampaignPromptPanel } from "./campaign/campaign-prompt-panel";
+import { isExpertQuoteFeature } from "@/lib/expert-quote-feature";
 
-// Only this feature has an editable generation prompt today (the GENERATE
-// button on the quote-opportunities page renders the expert-quote-pitch
-// template). Gate the Prompt button to it until other features wire a template.
-const PROMPT_EDITABLE_SLUG = "pr-expert-quote-opportunities";
+// Only the PR-Expert quote family has an editable generation prompt today (the
+// GENERATE button on the quote-requests page renders the expert-quote-pitch
+// template). Gate the Prompt button to that family until other features wire a
+// template. Keyed on the family helper, not a single slug, so a workflow
+// re-version (e.g. -opportunities → -outreach) doesn't drop the button.
 
 // Icons as SVG components
 const OverviewIcon = () => (
@@ -151,7 +153,7 @@ export function CampaignSidebar({ campaignId, orgId, brandId, featureSlug, entit
   const entities = featureDef?.entities ?? [];
 
   const hasInputs = featureInputs && Object.values(featureInputs).some(Boolean);
-  const showPromptButton = featureSlug === PROMPT_EDITABLE_SLUG;
+  const showPromptButton = isExpertQuoteFeature(featureSlug);
 
   const entityItems = entities
     .filter((e) => registry[e.name])

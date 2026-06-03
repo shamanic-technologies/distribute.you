@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { fetchRankedOpportunitiesByBrand } from "@/lib/report-api";
 import { PublicHitlQueue } from "@/components/report/public-hitl-queue";
+import { isExpertQuoteFeature } from "@/lib/expert-quote-feature";
 
 // Interactive page (HITL queue + draft generation + pitch submit) — do NOT
 // cache the rendered HTML aggressively. ISR with a short window keeps the
@@ -9,10 +10,9 @@ import { PublicHitlQueue } from "@/components/report/public-hitl-queue";
 export const revalidate = 60;
 export const maxDuration = 300;
 
-// Only this feature uses the opportunities surface. Any other featureSlug
-// hitting this route is a 404 — the public report sidebar only renders
-// the link for the HITL feature.
-const HITL_SLUG = "pr-expert-quote-opportunities";
+// Only the PR-Expert quote family uses the opportunities surface. Any other
+// featureSlug hitting this route is a 404 — the public report sidebar only
+// renders the link for the HITL feature.
 
 interface PageProps {
   params: Promise<{ orgId: string; brandId: string; featureSlug: string }>;
@@ -21,7 +21,7 @@ interface PageProps {
 export default async function OpportunitiesPage({ params }: PageProps) {
   const { orgId, brandId, featureSlug } = await params;
 
-  if (featureSlug !== HITL_SLUG) {
+  if (!isExpertQuoteFeature(featureSlug)) {
     notFound();
   }
 

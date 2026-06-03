@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { adminPost } from "@/lib/report-api";
+import { isExpertQuoteFeature } from "@/lib/expert-quote-feature";
 
 // Public-report pitch submission proxy. Hits journalists-quotes-service
 // `/orgs/opportunities/:id/reply` via api-service with admin key + org
@@ -17,8 +18,6 @@ export const maxDuration = 60;
 interface RouteContext {
   params: Promise<{ orgId: string; brandId: string; featureSlug: string }>;
 }
-
-const HITL_SLUG = "pr-expert-quote-opportunities";
 
 interface ReplyRequestBody {
   opportunityId?: string;
@@ -39,7 +38,7 @@ interface ReplyUpstreamResponse {
 export async function POST(req: Request, ctx: RouteContext) {
   const { orgId, brandId, featureSlug } = await ctx.params;
 
-  if (featureSlug !== HITL_SLUG) {
+  if (!isExpertQuoteFeature(featureSlug)) {
     return NextResponse.json(
       { error: `featureSlug ${featureSlug} is not enabled for HITL reply` },
       { status: 404 },
