@@ -21,6 +21,16 @@ body {
   font-family: "Inter", system-ui, -apple-system, sans-serif;
 }
 
+/*
+ * Defense-in-depth: never let a stray child produce body-level horizontal scroll
+ * on mobile. `clip` (not `hidden`) keeps `position: sticky` descendants working
+ * (no scroll container created). Wide LEGIT content (code blocks, tables) must
+ * scroll INTERNALLY so clip never hides it — see `.prose pre` below.
+ */
+html {
+  overflow-x: clip;
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;
@@ -62,6 +72,8 @@ body {
 .prose pre {
   background-color: #1a1a2e;
   border-radius: 0.5rem;
+  /* Wide code scrolls inside the block — never clipped by html{overflow-x:clip}. */
+  overflow-x: auto;
 }
 
 .prose pre code {

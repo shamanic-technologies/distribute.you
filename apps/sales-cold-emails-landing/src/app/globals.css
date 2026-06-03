@@ -12,6 +12,17 @@ body {
   background: var(--background);
 }
 
+/*
+ * Defense-in-depth: never let a stray child (decorative -inset glow, fixed-width
+ * mockup, wide table) produce body-level horizontal scroll on mobile.
+ * `clip` (not `hidden`) because `hidden` makes html/body a scroll container and
+ * breaks `position: sticky` descendants. `clip` clips without creating a scroll
+ * container. Curative fixes still happen at the element level; this is the net.
+ */
+html {
+  overflow-x: clip;
+}
+
 .gradient-bg {
   background: linear-gradient(135deg, #ecfdf5 0%, #ecfeff 20%, #eff6ff 40%, #f5f3ff 60%, #fdf2f8 80%, #fffbeb 100%);
 }
