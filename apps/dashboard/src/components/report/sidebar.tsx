@@ -29,9 +29,24 @@ const WorkflowsIcon = () => (
   </svg>
 );
 
-const OpportunitiesIcon = () => (
+// Quote requests (the HITL queue) — mirrors the campaign entity icon `quote`.
+const QuotesIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2H7a2 2 0 00-2 2v2m4 6h.01M14 17h.01" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 7h3v6H7zM7 13c0 2 1 3 3 3M14 7h3v6h-3zM14 13c0 2 1 3 3 3" />
+  </svg>
+);
+
+// Pitches — mirrors the campaign entity icon `message-square`.
+const PitchIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+  </svg>
+);
+
+// Prompt — mirrors the campaign Settings `Prompt` button icon.
+const PromptIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 7h6m-6 4h6m-3 8l-4-4H5a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-4l-3 3z" />
   </svg>
 );
 
@@ -44,13 +59,28 @@ const HITL_SLUG = "pr-expert-quote-opportunities";
 
 function buildItems(basePath: string, featureSlug: string): SidebarItem[] {
   if (featureSlug === HITL_SLUG) {
+    // Mirror the campaign sidebar exactly: the two Outcome entities
+    // (quote-requests, quote-pitches) + the Prompt surface. No Overview —
+    // this feature has no stats funnel; the base path redirects to the first
+    // entity (see the report root page).
     return [
-      { id: "overview", label: "Overview", href: basePath, icon: <OverviewIcon /> },
       {
-        id: "opportunities",
-        label: "Opportunities",
-        href: `${basePath}/opportunities`,
-        icon: <OpportunitiesIcon />,
+        id: "quote-requests",
+        label: "Quote requests",
+        href: `${basePath}/quote-requests`,
+        icon: <QuotesIcon />,
+      },
+      {
+        id: "quote-pitches",
+        label: "Pitches",
+        href: `${basePath}/quote-pitches`,
+        icon: <PitchIcon />,
+      },
+      {
+        id: "prompt",
+        label: "Prompt",
+        href: `${basePath}/prompt`,
+        icon: <PromptIcon />,
       },
     ];
   }

@@ -5,6 +5,8 @@ import type {
   Campaign,
   Email,
   Lead,
+  PromptAssignment,
+  QuotePitch,
   QuotePitchStatus,
   StatsRegistry,
   Workflow,
@@ -467,6 +469,79 @@ export async function fetchWorkflows(orgId: string, featureSlug: string): Promis
     [`fetchWorkflows`, orgId, featureSlug],
     {
       tags: [`workflows:org:${orgId}`, `report:org:${orgId}`],
+      revalidate: REPORT_REVALIDATE_SECONDS,
+    },
+  )();
+}
+
+/** Quote pitches for a brand, BRAND-SCOPED. The public report URL has no
+ *  campaignId. `GET /orgs/quote-pitches` exposes no brand filter (campaign_id /
+ *  status only), so the org's pitches are fetched and filtered by `brandIds`
+ *  (co-branded pitches list several brands). Mirrors the authed feature page
+ *  (`features/[featureSlug]/quote-pitches`) but read-only. Cached for 4h. */
+export async function fetchQuotePitchesByBrand(
+  orgId: string,
+  brandId: string,
+  limit = 500,
+): Promise<QuotePitch[]> {
+  return unstable_cache(
+    async () => {
+      try {
+        const result = await adminGet<{ quotePitches: QuotePitch[] }>(
+          "listQuotePitchesByBrand",
+          `/orgs/quote-pitches?limit=${limit}`,
+          orgId,
+        );
+        return (result.quotePitches ?? []).filter((p) =>
+          p.brandIds.includes(brandId),
+        );
+      } catch (err) {
+        console.error(
+          `[dashboard-report] fetchQuotePitchesByBrand(${brandId}) failed:`,
+          err,
+        );
+        return [];
+      }
+    },
+    [`fetchQuotePitchesByBrand`, orgId, brandId, String(limit)],
+    {
+      tags: [
+        `quote-pitches:brand:${brandId}`,
+        `report:brand:${brandId}`,
+        `report:org:${orgId}`,
+      ],
+      revalidate: REPORT_REVALIDATE_SECONDS,
+    },
+  )();
+}
+
+/** The resolved generation prompt assigned to this feature (platform default
+ *  or the org's fork). Read-only mirror of the authed `CampaignPromptPanel`
+ *  (`usePromptAssignment`). Returns null on any failure so the Prompt page can
+ *  render an empty state instead of poisoning the 4h cache entry. */
+export async function fetchPromptAssignment(
+  orgId: string,
+  featureSlug: string,
+): Promise<PromptAssignment | null> {
+  return unstable_cache(
+    async () => {
+      try {
+        return await adminGet<PromptAssignment>(
+          "promptAssignment",
+          `/content/prompt-assignments?featureSlug=${encodeURIComponent(featureSlug)}`,
+          orgId,
+        );
+      } catch (err) {
+        console.error(
+          `[dashboard-report] fetchPromptAssignment(${featureSlug}) failed:`,
+          err,
+        );
+        return null;
+      }
+    },
+    [`fetchPromptAssignment`, orgId, featureSlug],
+    {
+      tags: [`prompt-assignment:${orgId}:${featureSlug}`, `report:org:${orgId}`],
       revalidate: REPORT_REVALIDATE_SECONDS,
     },
   )();

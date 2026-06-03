@@ -25,7 +25,9 @@ export default async function OpportunitiesPage({ params }: PageProps) {
     notFound();
   }
 
-  const opportunities = await fetchRankedOpportunitiesByBrand(orgId, brandId, 50);
+  // Show the whole open queue, not a capped first page (500 covers the
+  // realistic per-brand gold catalog; the authed surfaces page through fully).
+  const opportunities = await fetchRankedOpportunitiesByBrand(orgId, brandId, 500);
 
   return (
     <div className="p-4 md:p-8">
