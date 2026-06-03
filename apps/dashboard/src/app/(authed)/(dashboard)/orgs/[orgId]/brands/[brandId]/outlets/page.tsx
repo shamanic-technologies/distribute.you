@@ -16,6 +16,8 @@ import { EntitySearchBar } from "@/components/entity-search-bar";
 import { STATUS_PRIORITY, statusBadgeColor, statusLabel, deriveDisplayStatusFromCounts } from "@/lib/outlet-status";
 import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
 import { pollOptions } from "@/lib/query-options";
+import { CsvDownloadButton } from "@/components/report/csv-button";
+import { buildOutletCsv } from "@/lib/outlet-csv";
 
 type Tab = string | "all";
 
@@ -300,6 +302,17 @@ export default function BrandOutletsPage() {
   );
   const latchedStatuses = useMonotonicStatuses(outletStatusEntries, STATUS_PRIORITY, "brand-outlets");
 
+  // Full-list CSV (all outlets, ignores the active tab + search filter). Status &
+  // cost mirror the card badge/chip via the page's own latched-status + cost maps.
+  const csv = useMemo(
+    () => buildOutletCsv(
+      outlets,
+      (o) => latchedStatuses.get(o.id) ?? deriveDisplayStatusFromCounts(o.status?.brand),
+      (o) => costMap.get(o.id) ?? null,
+    ),
+    [outlets, latchedStatuses, costMap],
+  );
+
   // Group outlets by display status
   const groupedByStatus = useMemo(() => {
     const groups = new Map<string, DeduplicatedOutlet[]>();
@@ -352,24 +365,27 @@ export default function BrandOutletsPage() {
     <div className="flex flex-col md:flex-row h-full relative">
       <div className={`${selected ? "hidden md:block md:w-1/2" : "w-full"} p-4 md:p-8 overflow-y-auto transition-all`}>
         {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 bg-brand-50 rounded-lg flex items-center justify-center text-brand-600">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-            </svg>
+        <div className="flex items-start justify-between gap-3 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-brand-50 rounded-lg flex items-center justify-center text-brand-600">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-900">Outlets</h1>
+              {isLoading && !data ? (
+                <Skeleton className="h-4 w-48 mt-1" />
+              ) : (
+                <p className="text-sm text-gray-500">
+                  {outlets.length.toLocaleString("en-US")} outlet{outlets.length !== 1 ? "s" : ""} across all campaigns
+                  {totalCost > 0 && ` \u00b7 Total: $${(totalCost / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                  {avgCostPerOutlet > 0 && ` \u00b7 Avg: $${(avgCostPerOutlet / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/outlet`}
+                </p>
+              )}
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Outlets</h1>
-            {isLoading && !data ? (
-              <Skeleton className="h-4 w-48 mt-1" />
-            ) : (
-              <p className="text-sm text-gray-500">
-                {outlets.length.toLocaleString("en-US")} outlet{outlets.length !== 1 ? "s" : ""} across all campaigns
-                {totalCost > 0 && ` \u00b7 Total: $${(totalCost / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                {avgCostPerOutlet > 0 && ` \u00b7 Avg: $${(avgCostPerOutlet / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/outlet`}
-              </p>
-            )}
-          </div>
+          <CsvDownloadButton filename={`outlets-${brandId}.csv`} csv={csv} isEmpty={outlets.length === 0} />
         </div>
 
         {/* Status tabs */}
