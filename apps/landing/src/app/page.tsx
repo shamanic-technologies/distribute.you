@@ -4,6 +4,7 @@ import { LinkButton } from "@/components/link-button";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { PortfolioDashboard } from "@/components/portfolio-dashboard";
+import { PipelineResults } from "@/components/pipeline-results";
 import { GmailInbox } from "@/components/gmail-inbox";
 import { FreeVsCloud } from "@/components/free-vs-cloud";
 import { WorkflowRecipe } from "@/components/workflow-recipe";
@@ -114,13 +115,13 @@ export default function Home() {
           </div>
 
           <h1 className="font-display text-5xl md:text-7xl font-bold mb-6 text-gray-900 tracking-tight">
-            Your distribution,{" "}
+            Your sales,{" "}
             <span className="gradient-text-subtle">on autopilot.</span>
           </h1>
 
           <p className="text-lg md:text-xl text-gray-500 mb-10 max-w-2xl mx-auto leading-relaxed">
-            Sales, PR, VCs, hiring, accelerators. Drop a URL, set a budget —
-            we send, qualify, forward.
+            Drop a URL, set a budget — we generate pipeline for you. Sales cold
+            email, PR, VCs. We send, qualify, forward. You watch the dollars land.
           </p>
 
           <HeroForm signUpUrl={urls.signUp} />
@@ -131,9 +132,37 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Portfolio Dashboard — money shot */}
+      {/* Pipeline results — money shot: $ generated for clients */}
       <section className="py-12">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <p className="text-xs uppercase tracking-wider text-gray-400 font-medium mb-2">
+              Real results — not features
+            </p>
+            <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+              Dollars in pipeline, generated on autopilot
+            </h2>
+            <p className="text-gray-500 text-lg max-w-2xl mx-auto">
+              What we generated for products running sales cold email and journalist
+              outreach — every dollar traced to the replies and press we drove.
+            </p>
+          </div>
+          <PipelineResults />
+        </div>
+      </section>
+
+      {/* Portfolio Dashboard — how you steer it */}
+      <section className="py-12">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <h2 className="font-display text-2xl md:text-3xl font-bold text-gray-900 mb-3">
+              One dashboard. Every product, every dollar.
+            </h2>
+            <p className="text-gray-500 text-lg max-w-2xl mx-auto">
+              Track real cost per positive reply across your whole portfolio.
+              Scale what pays. Kill what doesn&apos;t.
+            </p>
+          </div>
           <PortfolioDashboard />
         </div>
       </section>

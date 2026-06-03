@@ -4,12 +4,12 @@ import { PROD_URLS } from "@/lib/env-urls";
 
 const SITE_URL = PROD_URLS.landing;
 const SITE_NAME = "distribute";
-const SITE_DESCRIPTION = "Your distribution, on autopilot. Sales, PR, VCs, hiring, accelerators — one dashboard. Drop a URL, set a budget, we send. AI qualifies replies and forwards positives to your Gmail. $2 welcome credits, no subscription.";
+const SITE_DESCRIPTION = "Your sales, on autopilot. Sales cold email, PR, VCs — one dashboard that generates pipeline. Drop a URL, set a budget, we send. AI qualifies replies and forwards positives to your Gmail. $2 welcome credits, no subscription.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "distribute — Your distribution, on autopilot",
+    default: "distribute — Your sales, on autopilot",
     template: "%s | distribute",
   },
   description: SITE_DESCRIPTION,
@@ -42,21 +42,21 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: "distribute — Your distribution, on autopilot",
-    description: "One dashboard for every distribution channel. Drop a URL, set a budget — we send, qualify, forward. $2 welcome credits, no subscription.",
+    title: "distribute — Your sales, on autopilot",
+    description: "One dashboard that generates sales pipeline. Drop a URL, set a budget — we send, qualify, forward. $2 welcome credits, no subscription.",
     images: [
       {
         url: "/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "distribute — Your distribution, on autopilot",
+        alt: "distribute — Your sales, on autopilot",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "distribute — Your distribution, on autopilot",
-    description: "One dashboard. Sales, PR, VCs, hiring, accelerators. Drop a URL, set a budget — we send, qualify, forward.",
+    title: "distribute — Your sales, on autopilot",
+    description: "One dashboard that generates sales pipeline. Sales, PR, VCs. Drop a URL, set a budget — we send, qualify, forward.",
     images: ["/og-image.jpg"],
     creator: "@distribute_you",
   },
@@ -137,8 +137,8 @@ const websiteJsonLd = {
 const howToJsonLd = {
   "@context": "https://schema.org",
   "@type": "HowTo",
-  name: "How to put your distribution on autopilot with distribute",
-  description: "Drop a URL, set a daily budget, and let distribute send cold email, PR, hiring, and VC outreach on your behalf — AI qualifies replies, you watch cost per reply in the dashboard.",
+  name: "How to put your sales on autopilot with distribute",
+  description: "Drop a URL, set a daily budget, and let distribute send cold email, PR, and VC outreach on your behalf — AI qualifies replies, you watch pipeline generated in the dashboard.",
   step: [
     {
       "@type": "HowToStep",
