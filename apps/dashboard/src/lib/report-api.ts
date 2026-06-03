@@ -482,7 +482,7 @@ export async function fetchWorkflows(orgId: string, featureSlug: string): Promis
 export async function fetchQuotePitchesByBrand(
   orgId: string,
   brandId: string,
-  limit = 50,
+  limit = 500,
 ): Promise<QuotePitch[]> {
   return unstable_cache(
     async () => {

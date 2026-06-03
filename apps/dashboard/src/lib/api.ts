@@ -2751,6 +2751,33 @@ export async function listRankedOpportunities(
   return parsed.data;
 }
 
+/** Fetches EVERY scored Gold opportunity for a brand by paging through
+ *  `GET /orgs/opportunities` until the catalog is exhausted (never a single
+ *  capped page). The HITL queue + sidebar badges show the complete set — the
+ *  operator reviews every opportunity, so a 50-row cap silently hid the tail.
+ *  Pages of 200; stops when a short page returns or `total` is reached. The
+ *  10k-offset guard is a runaway backstop, not a product cap. */
+export async function listAllRankedOpportunities(
+  params: { brandId: string },
+  token?: string,
+): Promise<{ status: string; opportunities: RankedOpportunity[]; total: number }> {
+  const PAGE = 200;
+  const all: RankedOpportunity[] = [];
+  let status = "ok";
+  let total = 0;
+  for (let offset = 0; offset <= 10_000; offset += PAGE) {
+    const res = await listRankedOpportunities(
+      { brandId: params.brandId, limit: PAGE, offset },
+      token,
+    );
+    status = res.status;
+    total = res.total;
+    all.push(...res.opportunities);
+    if (res.opportunities.length < PAGE || all.length >= res.total) break;
+  }
+  return { status, opportunities: all, total };
+}
+
 /** Body for `generateQuoteDraft`. v0.8.1 contract: variables are caller-
  *  decided shape (matching the `expert-quote-pitch` platform-prompt
  *  template); `brandId` is the brand the pitch is for and is sent both as
