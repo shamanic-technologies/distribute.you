@@ -197,6 +197,15 @@ Framework (every layer central, one file — never per-page):
 
 **Self-heal:** on 409 `org_desync`, `apiCall` waits 500ms + retries once. **Rule:** JWT authority server-side every request fail-closed; cache resets by remount not `clear()`; remount-surviving nav lives above `QueryProvider`. (DIS-143)
 
+### Dashboard content width — content-driven, never cap-without-centering
+
+No global width knob: the authed shell `<main>` is full-width; each page sets its OWN `max-w-*` wrapper. A cap WITHOUT `mx-auto` left-hugs with an asymmetric right gutter (the bug — brand overview was `max-w-4xl` = 896px, looked "stops short / weird"). Industry consensus (Atlassian fluid/fixed grid · Material body-region · Baymard/WCAG line-length) = width is **content-driven**:
+- **Dense pages** (dashboards, card grids, lists, tables) → `p-4 md:p-8 max-w-7xl mx-auto` (fluid up to ~1280px ceiling, then centered). Tailwind v4 here → `max-w-7xl` is the largest named (`max-w-screen-2xl` was REMOVED in v4; use `max-w-7xl` or arbitrary `max-w-[96rem]`).
+- **Reading / forms** → keep narrow (`max-w-2xl`/`max-w-3xl` ≈ 65–80ch) for line length — widening a form to 1280px hurts readability.
+- ALWAYS `mx-auto` when capped (Material fluid-margins) so there's no asymmetric gutter.
+
+Applied to the dense surfaces (brand overview, org overview, brands list, brand-info). Forms (`campaigns/new`, settings, billing, api-keys) stay narrow. (#1300-follow-up)
+
 ### Dashboard sidebars are SHARED per nav level — one edit covers every page at that level
 
 `src/components/context-sidebar.tsx` → `ContextSidebar` switches on the URL to ONE sidebar per level. No per-page sidebar. A sidebar change on "the X page" applies to EVERY page at that level + usually a campaign-level analog — map all levels + surface the blast radius before scoping. (#1223)
