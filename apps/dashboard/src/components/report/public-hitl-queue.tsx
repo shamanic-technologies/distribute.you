@@ -1,9 +1,34 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  selectEligibleOpportunities,
+  type BatchCallbacks,
+  type BatchRowState,
+} from "@/lib/batch-quote-reply";
+import { useBatchQuoteReply } from "@/lib/use-batch-quote-reply";
+import {
+  BatchReplyControl,
+  BatchRowPill,
+} from "@/components/quote/batch-reply-control";
 
 const PITCH_MIN = 100;
 const PITCH_MAX = 2500;
+
+// Local HTTP error carrying `.status` so the batch loop's `isOutOfCreditError`
+// (duck-typed on `.status === 402`) can STOP on insufficient credit. Defined
+// here, NOT imported from `@/lib/api` — the public report bundle must never
+// pull the Clerk-authenticated api client (enforced by a source guard test).
+class ReplyHttpError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "ReplyHttpError";
+  }
+}
 
 export interface PublicRankedOpportunity {
   opportunityId: string;
@@ -19,6 +44,13 @@ export interface PublicRankedOpportunity {
   category: string | null;
   score: number;
   whyRelevant: string | null;
+  // Annotated by GET /orgs/opportunities (the server passes RankedOpportunityRow
+  // through). Already-pitched rows are filtered server-side; this field lets the
+  // batch apply the strict `pitchStatus === null` eligibility (failure-status
+  // opps stay manually retriable but are never swept into the batch). Typed
+  // loosely (string) to avoid importing the QuotePitchStatus union from
+  // `@/lib/api` into the public bundle.
+  pitchStatus?: string | null;
 }
 
 interface PublicHitlQueueProps {
@@ -48,6 +80,7 @@ export function PublicHitlQueue({
 }: PublicHitlQueueProps) {
   const draftUrl = `/api/report/${orgId}/${brandId}/${featureSlug}/draft`;
   const replyUrl = `/api/report/${orgId}/${brandId}/${featureSlug}/reply`;
+  const router = useRouter();
 
   const [selectedId, setSelectedId] = useState<string | null>(
     initialOpportunities[0]?.opportunityId ?? null,
@@ -58,6 +91,69 @@ export function PublicHitlQueue({
     [initialOpportunities, selectedId],
   );
 
+  // ── "Reply to all with AI" — same per-opp path as the buttons (the /draft +
+  // /reply Route Handlers), looped in the browser. Each iteration is its own
+  // pair of fetches, so no single function spans the batch (no Vercel timeout).
+  const eligibleOpps = useMemo(
+    () => selectEligibleOpportunities(initialOpportunities),
+    [initialOpportunities],
+  );
+  const batchCb = useMemo<BatchCallbacks<PublicRankedOpportunity>>(
+    () => ({
+      idOf: (o) => o.opportunityId,
+      generate: async (o) => {
+        const res = await fetch(draftUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            opportunityId: o.opportunityId,
+            opportunityText: o.opportunityText,
+            mediaOutlet: o.mediaOutlet,
+            journalistName: o.journalistName,
+            deadline: o.deadline,
+            whyRelevant: o.whyRelevant,
+            category: o.category,
+          }),
+        });
+        if (!res.ok) {
+          const t = await res.text().catch(() => "");
+          throw new Error(`${res.status}: ${t.slice(0, 200)}`);
+        }
+        return ((await res.json()) as DraftResponse).pitch;
+      },
+      submit: async (o, pitch) => {
+        const res = await fetch(replyUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            opportunityId: o.opportunityId,
+            pitchContent: pitch,
+          }),
+        });
+        const data = (await res.json().catch(() => null)) as
+          | (ReplyResponse & { error?: string })
+          | null;
+        // Throw with `.status` so the loop's `isOutOfCreditError` (.status===402)
+        // can STOP the batch — the /reply route now propagates upstream 402/422.
+        if (!res.ok) {
+          throw new ReplyHttpError(
+            data?.error ?? `${res.status}: send failed`,
+            res.status,
+          );
+        }
+        if (!data) throw new ReplyHttpError("empty reply body", res.status);
+        return data.status;
+      },
+    }),
+    [draftUrl, replyUrl],
+  );
+  const batch = useBatchQuoteReply(batchCb);
+  const runBatch = async () => {
+    await batch.run(eligibleOpps);
+    // Re-pull the ISR server component so just-pitched opps drop from the queue.
+    router.refresh();
+  };
+
   if (initialOpportunities.length === 0) {
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-sm text-gray-500">
@@ -67,18 +163,29 @@ export function PublicHitlQueue({
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-4">
-      <QueueList
-        opportunities={initialOpportunities}
-        selectedId={selectedId}
-        onSelect={setSelectedId}
+    <>
+      <BatchReplyControl
+        eligibleCount={eligibleOpps.length}
+        isRunning={batch.isRunning}
+        index={batch.index}
+        total={batch.total}
+        summary={batch.summary}
+        onRun={runBatch}
       />
-      <DetailPanel
-        opportunity={selected}
-        draftUrl={draftUrl}
-        replyUrl={replyUrl}
-      />
-    </div>
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-4">
+        <QueueList
+          opportunities={initialOpportunities}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          rowStates={batch.rowStates}
+        />
+        <DetailPanel
+          opportunity={selected}
+          draftUrl={draftUrl}
+          replyUrl={replyUrl}
+        />
+      </div>
+    </>
   );
 }
 
@@ -86,10 +193,12 @@ function QueueList({
   opportunities,
   selectedId,
   onSelect,
+  rowStates,
 }: {
   opportunities: PublicRankedOpportunity[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  rowStates: Map<string, BatchRowState>;
 }) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -112,7 +221,12 @@ function QueueList({
                 <span className="text-xs font-medium text-gray-600 truncate">
                   {o.mediaOutlet ?? "Unknown outlet"}
                 </span>
-                <ScoreBadge score={o.score} />
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {rowStates.get(o.opportunityId) && (
+                    <BatchRowPill state={rowStates.get(o.opportunityId)!} />
+                  )}
+                  <ScoreBadge score={o.score} />
+                </div>
               </div>
               <p className="text-sm text-gray-800 line-clamp-3">
                 {o.opportunityText}

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
-import { adminPost } from "@/lib/report-api";
+import { adminPost, AdminApiError } from "@/lib/report-api";
 import { isExpertQuoteFeature } from "@/lib/expert-quote-feature";
 
 // Public-report pitch submission proxy. Hits journalists-quotes-service
@@ -85,6 +85,12 @@ export async function POST(req: Request, ctx: RouteContext) {
 
     return NextResponse.json(result);
   } catch (err) {
+    // Propagate the upstream status for the cases the batch "Reply to all"
+    // client must distinguish: 402 = insufficient credit (STOP the batch),
+    // 422 = not submittable (skip this opp). Everything else stays a 502.
+    if (err instanceof AdminApiError && (err.status === 402 || err.status === 422)) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: message }, { status: 502 });
   }
