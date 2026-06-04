@@ -351,7 +351,7 @@ The left-nav is rendered by `apps/dashboard/src/components/context-sidebar.tsx` 
 | Level | Component | File | Group structure |
 |-------|-----------|------|-----------------|
 | App / Org | `AppLevelSidebar` / `OrgLevelSidebar` | `context-sidebar.tsx` | — |
-| Brand | `BrandLevelSidebar` | `context-sidebar.tsx` | Overview · **Outcomes** · Features · Brand Settings |
+| Brand | `BrandLevelSidebar` | `context-sidebar.tsx` | Overview · **named feature groups** (Sales/Press/Investors/Hiring Outreach · Tools, via `BRAND_FEATURE_GROUPS`; unlisted slugs fall into a trailing "Other") · **Database** (entity rows Outlets/Journalists/Articles/Leads/Emails, kept FLAT) · Brand Settings |
 | Feature (all feature pages) | `FeatureLevelSidebar` | `context-sidebar.tsx` | Campaigns · **Outcomes** (entities) · **Settings** (Workflows/Settings) · **Report** |
 | Campaign (all campaign pages) | `CampaignSidebar` → `McpSidebar` | `campaign-sidebar.tsx` + `mcp-sidebar.tsx` | Overview · **Outcomes** (`outcomesItems`) · **Settings** (`settingsItems`, no Report) |
 
