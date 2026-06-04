@@ -223,6 +223,12 @@ const ReportIcon = () => (
   </svg>
 );
 
+const ConversionsIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 17l6-6 4 4 7-8m0 0h-4m4 0v4" />
+  </svg>
+);
+
 const ExternalLinkIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-3.5 h-3.5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -790,10 +796,23 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
       };
     });
 
+  // Revenue & Conversions — alpha (staff-only) until features-service ships /revenue.
+  const conversionsOk = useFeatureFlag(FEATURE_GATES["conversions"].flag);
   const topItems: SidebarItem[] = [
     { id: "campaigns", label: "Campaigns", href: basePath, icon: <EnvelopeIcon /> },
     { id: "create", label: "Create Campaign", href: `${basePath}/campaigns/new`, icon: <PlusIcon /> },
     { id: "workflows", label: "Workflows", href: `${basePath}/workflows`, icon: <WorkflowIcon /> },
+    ...(conversionsOk
+      ? [
+          {
+            id: "conversions",
+            label: "Conversions",
+            href: `${basePath}/conversions`,
+            icon: <ConversionsIcon />,
+            maturity: FEATURE_GATES["conversions"].maturity,
+          } satisfies SidebarItem,
+        ]
+      : []),
   ];
 
   const reportEnabled =
