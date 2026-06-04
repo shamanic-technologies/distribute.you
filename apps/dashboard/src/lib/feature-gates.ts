@@ -32,6 +32,7 @@ export const FEATURE_GATES = {
   keys: { flag: "alpha-keys", maturity: "alpha" },
   "brand-info": { flag: "alpha-brand-info", maturity: "alpha" },
   "brand-features": { flag: "alpha-brand-features", maturity: "alpha" },
+  conversions: { flag: "alpha-conversions", maturity: "alpha" },
 } as const satisfies Record<string, FeatureGate>;
 
 export type FeatureGateKey = keyof typeof FEATURE_GATES;
