@@ -50,7 +50,7 @@ function SidebarLink({
     <Link
       href={item.href}
       className={`
-        flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition
+        flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs transition
         ${item.comingSoon
           ? "text-gray-400 opacity-60 hover:opacity-80"
           : isActive
@@ -67,7 +67,7 @@ function SidebarLink({
       {badgePending ? (
         <Skeleton className="h-4 w-6 rounded-full" />
       ) : item.badge !== undefined ? (
-        <span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? "bg-brand-100 text-brand-700" : "bg-gray-100 text-gray-500"}`}>
+        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isActive ? "bg-brand-100 text-brand-700" : "bg-gray-100 text-gray-500"}`}>
           {formatCount(item.badge)}
         </span>
       ) : null}
@@ -95,7 +95,7 @@ function BackLink({ href, label }: { href: string; label: string }) {
   return (
     <Link
       href={href}
-      className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 mb-2 transition"
+      className="flex items-center gap-1.5 text-[10px] text-gray-400 hover:text-gray-600 mb-2 transition"
     >
       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -118,7 +118,7 @@ function SidebarSection({ title, backHref, backLabel, children, footer }: {
         <div className="px-4 py-3 border-b border-gray-100">
           {backHref && backLabel && <BackLink href={backHref} label={backLabel} />}
           {title && (
-            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            <h3 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
               {title}
             </h3>
           )}
@@ -326,7 +326,7 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
         <>
           <SidebarNavRowSkeleton />
           <div className="pt-2 mt-2 border-t border-gray-100">
-            <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Features</h4>
+            <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Features</h4>
             {[0, 1, 2, 3, 4].map((i) => <SidebarNavRowSkeleton key={`feat-${i}`} />)}
           </div>
         </>
@@ -340,7 +340,7 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
         />
       ))}
       <div className="pt-2 mt-2 border-t border-gray-100">
-        <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Features</h4>
+        <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Features</h4>
         {featureItems.map((item) => (
           <SidebarLink
             key={item.id}
@@ -377,7 +377,7 @@ function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string 
       ))}
       {crmEnabled && (
         <div className="pt-2 mt-2 border-t border-gray-100">
-          <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Services</h4>
+          <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Services</h4>
           <SidebarLink
             item={{
               id: "crm",
@@ -551,7 +551,7 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
             {[0, 1, 2, 3, 4, 5].map((i) => <SidebarNavRowSkeleton key={`feat-${i}`} />)}
           </div>
           <div className="pt-2 mt-2 border-t border-gray-100">
-            <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Database</h4>
+            <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Database</h4>
             {[0, 1, 2, 3, 4].map((i) => <SidebarNavRowSkeleton key={`db-${i}`} />)}
           </div>
         </>
@@ -566,7 +566,7 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
       ))}
       {featureSections.map((section) => (
         <div key={section.title} className="pt-2 mt-2 border-t border-gray-100">
-          <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">{section.title}</h4>
+          <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{section.title}</h4>
           {section.items.map((item) => (
             <SidebarLink
               key={item.id}
@@ -578,7 +578,7 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
       ))}
       {outcomeItems.length > 0 && (
         <div className="pt-2 mt-2 border-t border-gray-100">
-          <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Database</h4>
+          <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Database</h4>
           {outcomeItems.map((item) => (
             <SidebarLink
               key={item.id}
@@ -807,7 +807,7 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
             <SidebarNavRowSkeleton key={`top-${i}`} />
           ))}
           <div className="pt-2 mt-2 border-t border-gray-100">
-            <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Outcomes</h4>
+            <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Outcomes</h4>
             {[0, 1, 2, 3].map((i) => (
               <SidebarNavRowSkeleton key={`out-${i}`} />
             ))}
@@ -824,7 +824,7 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
       ))}
       {entityItems.length > 0 && (
         <div className="pt-2 mt-2 border-t border-gray-100">
-          <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Outcomes</h4>
+          <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Outcomes</h4>
           {entityItems.map((item) => (
             <SidebarLink
               key={item.id}
@@ -837,12 +837,12 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
       )}
       {reportEnabled && (
         <div className="pt-2 mt-2 border-t border-gray-100">
-          <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Report</h4>
+          <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Report</h4>
           <a
             href={reportHref}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition text-gray-600 hover:bg-gray-50 hover:text-gray-800"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs transition text-gray-600 hover:bg-gray-50 hover:text-gray-800"
           >
             <span className="w-5 h-5 text-gray-400"><ReportIcon /></span>
             <span className="flex-1">Report</span>
