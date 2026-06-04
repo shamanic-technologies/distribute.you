@@ -3072,6 +3072,85 @@ export async function submitQuoteOpportunityReply(
   );
 }
 
+// ─── Ahref domain metrics (ahref-service via api-service proxy) ─────────────
+// Domain-keyed Ahrefs cache: organic-traffic monthly history, latest DR, and
+// latest estimated traffic value. Read-only GET pass-throughs (no paid scrape
+// on view — the POST compute/ai-visibility endpoints are intentionally not
+// proxied). safeParse per the DIS-74 wire-shape-rot rule: throw on mismatch so
+// React Query surfaces a fetch error instead of crashing at render.
+
+const MonthlyOrganicTrafficPointSchema = z.object({
+  month: z.string(), // First day of the month (YYYY-MM-DD).
+  organicTraffic: z.number().nullable(),
+});
+
+const DomainTrafficHistorySchema = z.object({
+  domain: z.string(),
+  hasData: z.boolean(),
+  latestDataCapturedAt: z.string().nullable(),
+  trafficMonthlyAvg: z.number().nullable(),
+  trafficValueMonthlyAvg: z.number().nullable(),
+  monthlyOrganicTraffic: z.array(MonthlyOrganicTrafficPointSchema),
+});
+
+export type DomainTrafficHistory = z.infer<typeof DomainTrafficHistorySchema>;
+
+const DomainDrStatusSchema = z.object({
+  domain: z.string(),
+  latestValidDr: z.number().nullable(),
+  latestValidDrDate: z.string().nullable(),
+});
+
+export type DomainDrStatus = z.infer<typeof DomainDrStatusSchema>;
+
+/**
+ * GET /v1/orgs/domains/traffic-history — Ahrefs traffic for a single domain:
+ * latest snapshot (avg traffic + estimated value) plus the monthly organic
+ * series. Returns null when the domain isn't in the cache yet (empty array).
+ */
+export async function getDomainTrafficHistory(
+  domain: string,
+  token?: string,
+): Promise<DomainTrafficHistory | null> {
+  const raw = await apiCall<unknown>(
+    `/orgs/domains/traffic-history?domains=${encodeURIComponent(domain)}`,
+    { token },
+  );
+  const parsed = z.array(DomainTrafficHistorySchema).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getDomainTrafficHistory: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getDomainTrafficHistory: invalid response shape");
+  }
+  return parsed.data[0] ?? null;
+}
+
+/**
+ * GET /v1/orgs/domains/dr-status — Ahrefs Domain Rating status for a single
+ * domain. Only the latest DR is exposed (no historical series), so the UI shows
+ * it as a single big number. Returns null when the domain isn't cached yet.
+ */
+export async function getDomainDrStatus(
+  domain: string,
+  token?: string,
+): Promise<DomainDrStatus | null> {
+  const raw = await apiCall<unknown>(
+    `/orgs/domains/dr-status?domains=${encodeURIComponent(domain)}`,
+    { token },
+  );
+  const parsed = z.array(DomainDrStatusSchema).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getDomainDrStatus: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getDomainDrStatus: invalid response shape");
+  }
+  return parsed.data[0] ?? null;
+}
+
 // ─── AI Visibility Score (ai-visibility-score-service) ──────────────────────
 
 export interface VisibilityRunWeights {

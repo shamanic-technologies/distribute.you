@@ -7,21 +7,13 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   getBrand,
   listCampaignsByBrand,
-  listBrandOutlets,
-  listJournalistsEnriched,
-  listBrandLeads,
-  listBrandEmails,
-  listBrandArticles,
-  type Brand,
   type Campaign,
 } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
 import { BrandUsageSection } from "@/components/brand-usage";
-import { Skeleton } from "@/components/skeleton";
-import { formatCount } from "@/lib/format-number";
+import { BrandMetricsHeader } from "@/components/brand-metrics-header";
 import { useFeatures } from "@/lib/features-context";
 import { pollOptions } from "@/lib/query-options";
-import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { FEATURE_GATES, GA_BRAND_FEATURES } from "@/lib/feature-gates";
@@ -145,54 +137,6 @@ export default function BrandOverviewPage() {
   );
   const campaigns = campaignsData?.campaigns ?? [];
 
-  // Brand-level outcome counts
-  const { data: outletsData, isLoading: outletsLoading } = useAuthQuery(
-    ["brandOutlets", brandId],
-    () => listBrandOutlets(brandId),
-    pollOptions,
-  );
-  const { data: journalistsData, isLoading: journalistsLoading } = useAuthQuery(
-    ["enrichedJournalists", brandId],
-    () => listJournalistsEnriched(brandId),
-    pollOptions,
-  );
-  const { data: leadsData, isLoading: leadsLoading } = useAuthQuery(
-    ["brandLeads", brandId],
-    () => listBrandLeads(brandId),
-    pollOptions,
-  );
-  const { data: emailsData, isLoading: emailsLoading } = useAuthQuery(
-    ["brandEmails", brandId],
-    () => listBrandEmails(brandId),
-    pollOptions,
-  );
-  const { data: articlesData, isLoading: articlesLoading } = useAuthQuery(
-    ["brandArticles", brandId],
-    () => listBrandArticles(brandId),
-    pollOptions,
-  );
-
-  const outcomeCounts = useMemo(() => ({
-    outlets: outletsData?.outlets?.length ?? 0,
-    journalists: journalistsData?.journalists?.length ?? 0,
-    articles: articlesData?.discoveries?.length ?? 0,
-    leads: leadsData?.leads?.length ?? 0,
-    emails: emailsData?.emails?.length ?? 0,
-  }), [outletsData, journalistsData, articlesData, leadsData, emailsData]);
-
-  // Outcomes count cards reveal together once all 5 outcome queries resolve
-  // (avoids a count-by-count staggered wave), then stay revealed (latch) so a
-  // poll / token-rotation hiccup never reverts them to skeletons. Scoped to the
-  // outcome queries ONLY — the Features grid is NOT gated on this; it paints
-  // immediately from the warm ["features"] cache, same as the sidebar.
-  const outcomesReady = useCoordinatedReveal([
-    !outletsLoading,
-    !journalistsLoading,
-    !leadsLoading,
-    !emailsLoading,
-    !articlesLoading,
-  ]);
-
   // Per-card campaign stats depend on the campaigns query alone — show a small
   // skeleton on the stats line while it resolves, never blocking the card itself.
   const campaignsPending = campaignsData === undefined;
@@ -267,36 +211,10 @@ export default function BrandOverviewPage() {
         )}
       </div>
 
-      {/* Outcomes Section — render every card with a skeleton until ALL data is ready,
-          then swap every card's count together. Avoids staggered wave on first load. */}
-      <div className="mb-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Outcomes</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 min-h-[96px]">
-          {([
-            { key: "outlets", label: "Outlets", icon: "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" },
-            { key: "journalists", label: "Journalists", icon: "M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" },
-            { key: "articles", label: "Articles", icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" },
-            { key: "leads", label: "Leads", icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" },
-            { key: "emails", label: "Emails", icon: "M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" },
-          ] as const).map(({ key, label, icon }) => (
-            <Link
-              key={key}
-              href={`/orgs/${orgId}/brands/${brandId}/${key}`}
-              className="bg-white rounded-lg border border-gray-200 p-4 hover:border-brand-300 hover:shadow-sm transition group text-center"
-            >
-              <svg className="w-6 h-6 text-gray-400 group-hover:text-brand-600 transition mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={icon} />
-              </svg>
-              <p className="text-sm font-medium text-gray-700 group-hover:text-brand-600 transition">{label}</p>
-              {!outcomesReady ? (
-                <Skeleton className="h-6 w-8 mx-auto mt-1" />
-              ) : (
-                <p className="text-lg font-semibold text-gray-900 mt-1">{formatCount(outcomeCounts[key])}</p>
-              )}
-            </Link>
-          ))}
-        </div>
-      </div>
+      {/* Brand metrics — visits trend, Domain Rating, est. revenue, AI mention rate.
+          Owns its own queries (Ahrefs traffic/DR + AI Visibility Score) and reveals
+          its four cards as one latched group. */}
+      <BrandMetricsHeader brandId={brandId} domain={brand?.domain} />
 
       {/* Features Section — skeleton cards until allReady, then real grid in one swap. */}
       <div className="mb-6">
