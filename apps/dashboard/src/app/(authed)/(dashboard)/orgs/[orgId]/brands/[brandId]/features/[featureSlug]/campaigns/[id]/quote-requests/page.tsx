@@ -2,16 +2,28 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { useAuthQuery } from "@/lib/use-auth-query";
+import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { pollOptionsSlow } from "@/lib/query-options";
 import {
   listQuoteRequests,
   listAllRankedOpportunities,
+  generateExpertQuotePitch,
+  submitQuoteOpportunityReply,
   type QuoteRequest,
   type RankedOpportunity,
 } from "@/lib/api";
 import { isOpportunityOpen } from "@/lib/quote-pitch-status";
 import { isExpertQuoteFeature } from "@/lib/expert-quote-feature";
+import {
+  selectEligibleOpportunities,
+  type BatchCallbacks,
+  type BatchRowState,
+} from "@/lib/batch-quote-reply";
+import { useBatchQuoteReply } from "@/lib/use-batch-quote-reply";
+import {
+  BatchReplyControl,
+  BatchRowPill,
+} from "@/components/quote/batch-reply-control";
 import { useCampaign } from "@/lib/campaign-context";
 import {
   useGenerateQuoteDraft,
@@ -73,6 +85,60 @@ function HitlQueuePage() {
     (k) => !featureInputs?.[k]?.trim(),
   );
 
+  // ── "Reply to all with AI" — batch over the eligible (score>30, un-pitched)
+  // opportunities, reusing the SAME per-opp generate→reply path the buttons run.
+  // The loop lives in the browser (each generate + each reply is its own fetch);
+  // see lib/batch-quote-reply.ts. Eligibility is computed off the raw catalog
+  // (data.opportunities), not the isOpportunityOpen-filtered queue — every
+  // eligible opp is a strict subset of the visible queue, so its row pill lands.
+  const queryClient = useQueryClient();
+  const eligibleOpps = useMemo(
+    () => selectEligibleOpportunities(data?.opportunities ?? []),
+    [data],
+  );
+  const batchCb = useMemo<BatchCallbacks<RankedOpportunity>>(
+    () => ({
+      idOf: (o) => o.opportunityId,
+      generate: async (o) => {
+        if (!featureInputs) throw new Error("missing campaign inputs");
+        const res = await generateExpertQuotePitch({
+          brandId,
+          expert: {
+            expertName: featureInputs.expertName,
+            expertTitle: featureInputs.expertTitle,
+            expertPhotoUrl: featureInputs.expertPhotoUrl,
+            expertLinkedIn: featureInputs.expertLinkedIn,
+          },
+          opportunity: o,
+          revisionInstructions: null,
+          featureSlug,
+        });
+        return res.pitch;
+      },
+      submit: async (o, pitch) => {
+        const res = await submitQuoteOpportunityReply(
+          o.opportunityId,
+          { pitchContent: pitch, campaignId },
+          brandId,
+        );
+        return res.status;
+      },
+    }),
+    [brandId, campaignId, featureSlug, featureInputs],
+  );
+  const batch = useBatchQuoteReply(batchCb);
+  const runBatch = async () => {
+    await batch.run(eligibleOpps);
+    // Single refresh after the whole batch (not per-opp) — drops every now-
+    // pitched row from the queue + refreshes the pitches page / sidebar badge.
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["rankedOpportunities"] }),
+      queryClient.invalidateQueries({ queryKey: ["quotePitches"] }),
+      queryClient.invalidateQueries({ queryKey: ["featureQuotePitches"] }),
+      queryClient.invalidateQueries({ queryKey: ["featureStats"] }),
+    ]);
+  };
+
   return (
     <div className="p-4 md:p-8" data-testid="quote-opportunities-hitl-page">
       <div className="mb-6">
@@ -97,21 +163,38 @@ function HitlQueuePage() {
       ) : opportunities.length === 0 ? (
         <EmptyState message="No ranked opportunities yet. They appear here after the next scoring run." />
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-4">
-          <QueueList
-            opportunities={opportunities}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
+        <>
+          <BatchReplyControl
+            eligibleCount={eligibleOpps.length}
+            isRunning={batch.isRunning}
+            index={batch.index}
+            total={batch.total}
+            summary={batch.summary}
+            disabled={missingInputs.length > 0}
+            disabledReason={
+              missingInputs.length > 0
+                ? "Set the missing campaign inputs above to enable batch sending."
+                : null
+            }
+            onRun={runBatch}
           />
-          <DetailPanel
-            opportunity={selected}
-            brandId={brandId}
-            campaignId={campaignId}
-            featureSlug={featureSlug}
-            featureInputs={featureInputs}
-            missingInputs={missingInputs}
-          />
-        </div>
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-4">
+            <QueueList
+              opportunities={opportunities}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              rowStates={batch.rowStates}
+            />
+            <DetailPanel
+              opportunity={selected}
+              brandId={brandId}
+              campaignId={campaignId}
+              featureSlug={featureSlug}
+              featureInputs={featureInputs}
+              missingInputs={missingInputs}
+            />
+          </div>
+        </>
       )}
     </div>
   );
@@ -121,10 +204,12 @@ function QueueList({
   opportunities,
   selectedId,
   onSelect,
+  rowStates,
 }: {
   opportunities: RankedOpportunity[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  rowStates: Map<string, BatchRowState>;
 }) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -148,7 +233,12 @@ function QueueList({
                 <span className="text-xs font-medium text-gray-600 truncate">
                   {o.mediaOutlet ?? "Unknown outlet"}
                 </span>
-                <ScoreBadge score={o.score} />
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {rowStates.get(o.opportunityId) && (
+                    <BatchRowPill state={rowStates.get(o.opportunityId)!} />
+                  )}
+                  <ScoreBadge score={o.score} />
+                </div>
               </div>
               <p className="text-sm text-gray-800 line-clamp-3">
                 {o.opportunityText}

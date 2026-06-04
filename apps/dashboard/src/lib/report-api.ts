@@ -16,6 +16,22 @@ import { isOpportunityOpen } from "@/lib/quote-pitch-status";
 const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 const ADMIN_KEY = process.env.ADMIN_DISTRIBUTE_API_KEY;
 
+/** Thrown by `adminGet` / `adminPost` on any non-2xx upstream response. Carries
+ *  the upstream HTTP `status` so a Route Handler can PROPAGATE it (e.g. surface
+ *  a 402 insufficient-credit / 422 not-submittable to the public client)
+ *  instead of masking every failure as a generic 502. Extends `Error`, so the
+ *  existing `try/catch → return []` cache-fill callers are unaffected. */
+export class AdminApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly bodyText: string,
+  ) {
+    super(message);
+    this.name = "AdminApiError";
+  }
+}
+
 // Per-fetch timeout so a single slow upstream call can't take the whole
 // cache-fill request past Vercel's function ceiling. The previous 25s value
 // was tuned for live page renders; under unstable_cache the fetch is now
@@ -70,7 +86,7 @@ export async function adminGet<T>(
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     console.error(`[dashboard-report] ${label} ${url} → ${res.status}: ${body.slice(0, 500)}`);
-    throw new Error(`${label} returned ${res.status}`);
+    throw new AdminApiError(`${label} returned ${res.status}`, res.status, body);
   }
   return (await res.json()) as T;
 }
@@ -117,7 +133,11 @@ export async function adminPost<T>(
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     console.error(`[dashboard-report] ${label} ${url} → ${res.status}: ${text.slice(0, 500)}`);
-    throw new Error(`${label} returned ${res.status}: ${text.slice(0, 200)}`);
+    throw new AdminApiError(
+      `${label} returned ${res.status}: ${text.slice(0, 200)}`,
+      res.status,
+      text,
+    );
   }
   return (await res.json()) as T;
 }
