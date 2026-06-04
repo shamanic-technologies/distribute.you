@@ -10,7 +10,6 @@ import {
   type Campaign,
 } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
-import { BrandUsageSection } from "@/components/brand-usage";
 import { BrandMetricsHeader } from "@/components/brand-metrics-header";
 import { useFeatures } from "@/lib/features-context";
 import { pollOptions } from "@/lib/query-options";
@@ -178,7 +177,7 @@ export default function BrandOverviewPage() {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-4xl">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto">
       {/* Brand Header — placeholder while brand loads; inner content renders immediately */}
       <div className="mb-8 min-h-[60px]">
         <div className="flex items-center gap-3 mb-1">
@@ -289,8 +288,6 @@ export default function BrandOverviewPage() {
         </div>
       </div>
 
-      {/* Usage Section */}
-      <BrandUsageSection brandId={brandId} />
     </div>
   );
 }

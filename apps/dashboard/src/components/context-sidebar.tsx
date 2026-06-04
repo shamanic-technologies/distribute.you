@@ -275,7 +275,7 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
     const orgId = segments[1];
     if (segments[2] === "brands" && segments[3]) {
       const brandId = segments[3];
-      if (segments[4] === "settings" || segments[4] === "brand-info") {
+      if (segments[4] === "settings" || segments[4] === "brand-info" || segments[4] === "usage") {
           return { type: "brandSettings", orgId, brandId };
         }
         if (segments[4] === "features" && segments[5]) {
@@ -614,6 +614,17 @@ function BrandSettingsLevelSidebar({ orgId, brandId, pathname }: {
 
   const items: SidebarItem[] = [
     { id: "settings", label: "Brand Settings", href: basePath, icon: <SettingsIcon /> },
+    {
+      id: "usage",
+      label: "Usage",
+      href: `${brandBase}/usage`,
+      icon: (
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+        </svg>
+      ),
+    },
   ];
   if (brandInfoOk) {
     items.push({

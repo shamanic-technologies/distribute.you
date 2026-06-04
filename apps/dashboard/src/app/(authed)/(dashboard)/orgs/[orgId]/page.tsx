@@ -47,7 +47,7 @@ export default function OrgOverviewPage() {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-5xl">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto">
       <h1 className="text-2xl font-semibold text-gray-900 mb-6">Overview</h1>
 
       {/* Brands Summary */}

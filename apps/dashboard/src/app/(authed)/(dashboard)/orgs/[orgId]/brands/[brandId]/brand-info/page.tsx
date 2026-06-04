@@ -199,7 +199,7 @@ export default function BrandInfoPage() {
   );
 
   return (
-    <div className="p-4 md:p-8 max-w-4xl">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-semibold text-gray-900">Brand Info</h1>
         <div className="flex items-center gap-4">
