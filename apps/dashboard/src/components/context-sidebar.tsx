@@ -275,7 +275,7 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
     const orgId = segments[1];
     if (segments[2] === "brands" && segments[3]) {
       const brandId = segments[3];
-      if (segments[4] === "settings") {
+      if (segments[4] === "settings" || segments[4] === "brand-info") {
           return { type: "brandSettings", orgId, brandId };
         }
         if (segments[4] === "features" && segments[5]) {
@@ -441,23 +441,14 @@ const SettingsIcon = () => (
 // Brand Level Sidebar
 function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandId: string; pathname: string }) {
   const { features, isLoading: featuresLoading } = useFeatures();
-  // Brand Info + immature features are alpha (staff-only). Default-hidden until
-  // PostHog resolves the flag, so they never flash for a non-staff viewer.
-  const brandInfoOk = useFeatureFlag(FEATURE_GATES["brand-info"].flag);
+  // Immature features are alpha (staff-only). Default-hidden until PostHog
+  // resolves the flag, so they never flash for a non-staff viewer. Brand Info
+  // moved under Brand Settings — see BrandSettingsLevelSidebar.
   const featuresAlphaOk = useFeatureFlag(FEATURE_GATES["brand-features"].flag);
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
   const topItems: SidebarItem[] = [
     { id: "overview", label: "Overview", href: basePath, icon: <HomeIcon /> },
   ];
-  if (brandInfoOk) {
-    topItems.push({
-      id: "brand-info",
-      label: "Brand Info",
-      href: `${basePath}/brand-info`,
-      icon: <InfoIcon />,
-      maturity: FEATURE_GATES["brand-info"].maturity,
-    });
-  }
 
   // Every feature except the GA exceptions renders under the brand-features
   // alpha gate; the exceptions stay GA (no flag, no badge).
@@ -587,11 +578,23 @@ function BrandSettingsLevelSidebar({ orgId, brandId, pathname }: {
   brandId: string;
   pathname: string;
 }) {
-  const basePath = `/orgs/${orgId}/brands/${brandId}/settings`;
+  const brandBase = `/orgs/${orgId}/brands/${brandId}`;
+  const basePath = `${brandBase}/settings`;
+  // Brand Info is alpha (staff-only); default-hidden until PostHog resolves.
+  const brandInfoOk = useFeatureFlag(FEATURE_GATES["brand-info"].flag);
 
   const items: SidebarItem[] = [
     { id: "settings", label: "Brand Settings", href: basePath, icon: <SettingsIcon /> },
   ];
+  if (brandInfoOk) {
+    items.push({
+      id: "brand-info",
+      label: "Brand Info",
+      href: `${brandBase}/brand-info`,
+      icon: <InfoIcon />,
+      maturity: FEATURE_GATES["brand-info"].maturity,
+    });
+  }
 
   return (
     <SidebarSection title="Settings" backHref={`/orgs/${orgId}/brands/${brandId}`} backLabel="Brand">
