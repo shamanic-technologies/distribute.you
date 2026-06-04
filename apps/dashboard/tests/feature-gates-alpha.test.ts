@@ -111,8 +111,8 @@ describe("context-sidebar — alpha gating + maturity badges", () => {
     expect(brand).toMatch(/GA_BRAND_FEATURES/);
   });
 
-  it("BrandLevelSidebar renders a GA Outcomes section header (for all users)", () => {
-    expect(brand).toMatch(/Outcomes<\/h4>/);
+  it("BrandLevelSidebar renders a GA Database section header (for all users)", () => {
+    expect(brand).toMatch(/Database<\/h4>/);
   });
 });
 

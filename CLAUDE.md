@@ -203,7 +203,7 @@ Framework (every layer central, one file — never per-page):
 | Level | Component | File | Groups |
 |---|---|---|---|
 | App / Org | `AppLevelSidebar` / `OrgLevelSidebar` | `context-sidebar.tsx` | — |
-| Brand | `BrandLevelSidebar` | `context-sidebar.tsx` | Overview · **Outcomes** · Features · Brand Settings |
+| Brand | `BrandLevelSidebar` | `context-sidebar.tsx` | Overview · **named feature groups** (Sales/Press/Investors/Hiring Outreach · Tools, via `BRAND_FEATURE_GROUPS`; unlisted slugs → trailing "Other") · **Database** (entity rows Outlets/Journalists/Articles/Leads/Emails, kept FLAT) · Brand Settings |
 | Feature | `FeatureLevelSidebar` | `context-sidebar.tsx` | Campaigns · **Outcomes** · **Settings** · **Report** |
 | Campaign | `CampaignSidebar` → `McpSidebar` | `campaign-sidebar.tsx` + `mcp-sidebar.tsx` | Overview · **Outcomes** (`outcomesItems`) · **Settings** (`settingsItems`) |
 

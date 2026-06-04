@@ -438,6 +438,18 @@ const SettingsIcon = () => (
   </svg>
 );
 
+// Ordered feature groups for the brand sidebar. Each feature slug belongs to one
+// group, rendered top-to-bottom in this order. Any feature the backend returns
+// that isn't listed here lands in a trailing "Other" group, so a newly-shipped
+// feature is never silently hidden from the nav (fail-visible).
+const BRAND_FEATURE_GROUPS: { title: string; slugs: string[] }[] = [
+  { title: "Sales Outreach", slugs: ["sales-cold-email-outreach"] },
+  { title: "Press Outreach", slugs: ["pr-cold-email-outreach", "pr-expert-quote-outreach"] },
+  { title: "Investors Outreach", slugs: ["vc-cold-email-outreach", "accelerators-cold-email-outreach"] },
+  { title: "Hiring Outreach", slugs: ["hiring-cold-email-outreach"] },
+  { title: "Tools", slugs: ["press-kit-page-generation", "outlet-database-discovery", "ai-visibility-scoring", "pr-expert-quote-opportunities"] },
+];
+
 // Brand Level Sidebar
 function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandId: string; pathname: string }) {
   const { features, isLoading: featuresLoading } = useFeatures();
@@ -462,6 +474,22 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
       comingSoon: !f.implemented,
       maturity: GA_BRAND_FEATURES.has(f.slug) ? undefined : FEATURE_GATES["brand-features"].maturity,
     }));
+
+  // Group the gated feature items by BRAND_FEATURE_GROUPS order. Empty groups are
+  // dropped; any feature not in a declared group falls into a trailing "Other"
+  // group so a newly-shipped feature never disappears from the nav.
+  const featureItemBySlug = new Map(featureItems.map((i) => [i.id, i]));
+  const groupedSlugs = new Set(BRAND_FEATURE_GROUPS.flatMap((g) => g.slugs));
+  const featureSections: { title: string; items: SidebarItem[] }[] = BRAND_FEATURE_GROUPS
+    .map((g) => ({
+      title: g.title,
+      items: g.slugs.map((s) => featureItemBySlug.get(s)).filter((i): i is SidebarItem => !!i),
+    }))
+    .filter((g) => g.items.length > 0);
+  const ungroupedItems = featureItems.filter((i) => !groupedSlugs.has(i.id));
+  if (ungroupedItems.length > 0) {
+    featureSections.push({ title: "Other", items: ungroupedItems });
+  }
 
   // Brand-level outcome counts
   const { data: outletsData, isPending: outletsPending } = useAuthQuery(
@@ -512,20 +540,19 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
 
   return (
     <SidebarSection title="Brand" backHref={`/orgs/${orgId}/brands`} backLabel="Brands">
-      {/* Whole nav reveals as one group once the feature list loads (Features +
-          Outcomes both need it); skeleton rows until then so static and
-          data-dependent items don't paint in two waves. Outcome badge numbers
-          are a finer sub-group via badgePending. */}
+      {/* Whole nav reveals as one group once the feature list loads (the grouped
+          feature sections + Database both need it); skeleton rows until then so
+          static and data-dependent items don't paint in two waves. Database badge
+          numbers are a finer sub-group via badgePending. */}
       {!defsReady ? (
         <>
-          {[0, 1].map((i) => <SidebarNavRowSkeleton key={`top-${i}`} />)}
+          {[0].map((i) => <SidebarNavRowSkeleton key={`top-${i}`} />)}
           <div className="pt-2 mt-2 border-t border-gray-100">
-            <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Outcomes</h4>
-            {[0, 1, 2, 3, 4].map((i) => <SidebarNavRowSkeleton key={`out-${i}`} />)}
+            {[0, 1, 2, 3, 4, 5].map((i) => <SidebarNavRowSkeleton key={`feat-${i}`} />)}
           </div>
           <div className="pt-2 mt-2 border-t border-gray-100">
-            <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Features</h4>
-            {[0, 1, 2, 3].map((i) => <SidebarNavRowSkeleton key={`feat-${i}`} />)}
+            <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Database</h4>
+            {[0, 1, 2, 3, 4].map((i) => <SidebarNavRowSkeleton key={`db-${i}`} />)}
           </div>
         </>
       ) : (
@@ -537,9 +564,21 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
           isActive={item.id === "overview" ? pathname === item.href : pathname.startsWith(item.href)}
         />
       ))}
+      {featureSections.map((section) => (
+        <div key={section.title} className="pt-2 mt-2 border-t border-gray-100">
+          <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">{section.title}</h4>
+          {section.items.map((item) => (
+            <SidebarLink
+              key={item.id}
+              item={item}
+              isActive={pathname.startsWith(item.href)}
+            />
+          ))}
+        </div>
+      ))}
       {outcomeItems.length > 0 && (
         <div className="pt-2 mt-2 border-t border-gray-100">
-          <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Outcomes</h4>
+          <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Database</h4>
           {outcomeItems.map((item) => (
             <SidebarLink
               key={item.id}
@@ -550,16 +589,6 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
           ))}
         </div>
       )}
-      <div className="pt-2 mt-2 border-t border-gray-100">
-        <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Features</h4>
-        {featureItems.map((item) => (
-          <SidebarLink
-            key={item.id}
-            item={item}
-            isActive={pathname.startsWith(item.href)}
-          />
-        ))}
-      </div>
       <div className="pt-2 mt-2 border-t border-gray-100">
         <SidebarLink
           item={{ id: "settings", label: "Brand Settings", href: `${basePath}/settings`, icon: <SettingsIcon /> }}
