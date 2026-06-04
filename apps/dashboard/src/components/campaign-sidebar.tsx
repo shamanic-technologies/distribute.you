@@ -214,7 +214,7 @@ export function CampaignSidebar({ campaignId, orgId, brandId, featureSlug, entit
             {showPromptButton && (
               <button
                 onClick={() => setPromptPanelOpen(true)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition text-gray-600 hover:bg-gray-50 hover:text-gray-800 w-full"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs transition text-gray-600 hover:bg-gray-50 hover:text-gray-800 w-full"
               >
                 <span className="w-5 h-5 text-gray-400"><PromptIcon /></span>
                 <span className="flex-1 text-left">Prompt</span>
@@ -223,7 +223,7 @@ export function CampaignSidebar({ campaignId, orgId, brandId, featureSlug, entit
             {hasInputs && (
               <button
                 onClick={() => setInputsPanelOpen(true)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition text-gray-600 hover:bg-gray-50 hover:text-gray-800 w-full"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs transition text-gray-600 hover:bg-gray-50 hover:text-gray-800 w-full"
               >
                 <span className="w-5 h-5 text-gray-400"><InputsIcon /></span>
                 <span className="flex-1 text-left">Inputs</span>
