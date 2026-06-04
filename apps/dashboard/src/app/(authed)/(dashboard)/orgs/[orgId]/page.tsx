@@ -1,9 +1,11 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { listBrands } from "@/lib/api";
+import { resolveLandingBrand } from "@/lib/last-brand";
 import { BrandLogo } from "@/components/brand-logo";
 import { OrgUsageSection } from "@/components/org-usage";
 import { pollOptions } from "@/lib/query-options";
@@ -11,6 +13,7 @@ import { pollOptions } from "@/lib/query-options";
 export default function OrgOverviewPage() {
   const params = useParams();
   const orgId = params.orgId as string;
+  const router = useRouter();
 
   const { data: brandsData } = useAuthQuery(
     ["brands"],
@@ -18,6 +21,30 @@ export default function OrgOverviewPage() {
     pollOptions,
   );
   const brands = brandsData?.brands ?? [];
+
+  // The org URL should drop the user straight into a brand. The common
+  // returning-user path is handled at the edge (proxy.ts redirects on the
+  // last-brand cookie before this page paints). This client redirect only runs
+  // when there's no cookie yet (first session / cleared cookie): single brand →
+  // that brand, multiple brands → the first one (decision B). No "last" exists
+  // in that window, so there's no prior content to flash. The Overview below
+  // renders only for an empty org (which the onboarding gate normally prevents).
+  const landingBrandId = brandsData
+    ? resolveLandingBrand(brandsData.brands, null)
+    : null;
+
+  useEffect(() => {
+    if (landingBrandId) {
+      router.replace(`/orgs/${orgId}/brands/${landingBrandId}`);
+    }
+  }, [landingBrandId, orgId, router]);
+
+  // Render nothing while brands load, or while the redirect to a resolved brand
+  // is in flight — no Overview flash. Overview shows only once brands have
+  // loaded AND there's genuinely no brand to land on.
+  if (!brandsData || landingBrandId) {
+    return null;
+  }
 
   return (
     <div className="p-4 md:p-8 max-w-5xl">

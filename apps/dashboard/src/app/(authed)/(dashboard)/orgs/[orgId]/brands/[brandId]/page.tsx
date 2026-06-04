@@ -217,9 +217,18 @@ export default function BrandOverviewPage() {
   }, [campaigns, getFeatureDef]);
 
   if (!brandLoading && !brand) {
+    // Reached e.g. via a stale last-brand cookie pointing at a deleted brand.
+    // Offer an escape back to the brand list (the next brand opened there
+    // rewrites the cookie), mirroring Clerk's invalid-active-org recovery.
     return (
       <div className="p-4 md:p-8">
-        <p className="text-gray-500">Brand not found</p>
+        <p className="text-gray-500 mb-3">Brand not found</p>
+        <Link
+          href={`/orgs/${orgId}/brands`}
+          className="text-sm text-brand-600 hover:underline"
+        >
+          ← Back to brands
+        </Link>
       </div>
     );
   }
