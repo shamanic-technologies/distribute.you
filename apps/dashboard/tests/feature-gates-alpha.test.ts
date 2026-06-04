@@ -91,10 +91,19 @@ describe("context-sidebar — alpha gating + maturity badges", () => {
     sidebar.indexOf("function BrandLevelSidebar"),
     sidebar.indexOf("function BrandSettingsLevelSidebar"),
   );
+  // Scope to the BrandSettingsLevelSidebar function body only.
+  const brandSettings = sidebar.slice(
+    sidebar.indexOf("function BrandSettingsLevelSidebar"),
+    sidebar.indexOf("const ENTITY_ICON_MAP"),
+  );
 
-  it("BrandLevelSidebar gates Brand Info behind its alpha flag", () => {
+  it("Brand Info moved out of BrandLevelSidebar into BrandSettingsLevelSidebar (alpha-gated)", () => {
     expect(brand.length).toBeGreaterThan(0);
-    expect(brand).toMatch(/FEATURE_GATES\["brand-info"\]/);
+    expect(brandSettings.length).toBeGreaterThan(0);
+    // No longer at brand level…
+    expect(brand).not.toMatch(/FEATURE_GATES\["brand-info"\]/);
+    // …now gated under Brand Settings.
+    expect(brandSettings).toMatch(/FEATURE_GATES\["brand-info"\]/);
   });
 
   it("BrandLevelSidebar gates features behind brand-features alpha flag + GA set", () => {
@@ -119,8 +128,11 @@ describe("brand overview page — alpha gating + Outcomes", () => {
     expect(page).toMatch(/GA_BRAND_FEATURES/);
   });
 
-  it("gates the Brand Info card + features behind their alpha flags", () => {
-    expect(page).toMatch(/FEATURE_GATES\["brand-info"\]/);
+  it("gates features behind the brand-features alpha flag", () => {
     expect(page).toMatch(/FEATURE_GATES\["brand-features"\]/);
+  });
+
+  it("no longer renders a Brand Info card (moved under Brand Settings)", () => {
+    expect(page).not.toMatch(/FEATURE_GATES\["brand-info"\]/);
   });
 });
