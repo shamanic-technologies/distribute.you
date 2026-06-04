@@ -144,36 +144,62 @@ export interface PriorPitchInput {
   brandIds: string[];
 }
 
-/** Statuses that mean "this pitch was actually sent to Featured" — only these
- *  are useful as a voice anchor (a `drafted` row was never submitted). */
-export const PRIOR_PITCH_STATUSES = ["submitted", "selected", "published"] as const;
+/**
+ * Voice-anchor priority, strongest proof of a winning pitch FIRST. A higher
+ * tier fully fills the limit before any lower tier contributes, so a brand with
+ * ≥3 published anchors never falls back to merely-submitted ones:
+ *   `published` (made it into a real article — the gold standard)
+ *   `selected`  (the journalist picked it, even if not yet published)
+ *   `submitted` (merely sent — the fallback floor)
+ * Only these statuses mean "this pitch was actually sent to Featured"; a
+ * `drafted` row was never submitted and is never an anchor.
+ */
+export const PRIOR_PITCH_STATUS_PRIORITY = [
+  "published",
+  "selected",
+  "submitted",
+] as const;
 
 /**
- * Pick the brand's most-recent SUBMITTED pitches as a voice anchor for the next
- * generation. Filters to the atomic brand (brandId ∈ brandIds), to submitted/
- * selected/published rows with a non-empty draft, sorts by submittedAt desc
- * (createdAt fallback), and caps at `limit`. Returns [] when none — never throws.
+ * Pick the brand's most-credible recent pitches as a voice anchor for the next
+ * generation. Selection is TIERED by `PRIOR_PITCH_STATUS_PRIORITY`: take the
+ * most-recent `published` first, and only drop to `selected` then `submitted`
+ * to fill the remaining slots up to `limit`. Filters to the atomic brand
+ * (brandId ∈ brandIds) and to a non-empty draft; within each tier sorts by
+ * submittedAt desc (createdAt fallback). Returns [] when none — never throws.
+ *
+ * NOTE: the wire row carries no `publishedAt`/`selectedAt` timestamp, so the
+ * within-tier recency sort uses `submittedAt` (the only date available). A real
+ * publication date would let us rank the published tier by when it ran — backend
+ * follow-up tracked in Linear (non-blocking).
  */
 export function selectPriorSubmittedPitches(
   pitches: PriorPitchInput[],
   brandId: string,
   limit = 3,
 ): PriorPitch[] {
-  return pitches
+  const eligible = pitches
     .filter((p) => p.brandIds.includes(brandId))
-    .filter((p) =>
-      (PRIOR_PITCH_STATUSES as readonly string[]).includes(p.status),
-    )
-    .filter((p) => p.draft != null && p.draft.trim().length > 0)
-    .sort((a, b) =>
-      (b.submittedAt ?? b.createdAt).localeCompare(a.submittedAt ?? a.createdAt),
-    )
-    .slice(0, limit)
-    .map((p) => ({
-      draft: p.draft as string,
-      status: p.status,
-      submittedAt: p.submittedAt,
-    }));
+    .filter((p) => p.draft != null && p.draft.trim().length > 0);
+
+  const byRecencyDesc = (a: PriorPitchInput, b: PriorPitchInput) =>
+    (b.submittedAt ?? b.createdAt).localeCompare(a.submittedAt ?? a.createdAt);
+
+  const picked: PriorPitch[] = [];
+  for (const status of PRIOR_PITCH_STATUS_PRIORITY) {
+    if (picked.length >= limit) break;
+    const tier = eligible
+      .filter((p) => p.status === status)
+      .sort(byRecencyDesc)
+      .slice(0, limit - picked.length)
+      .map((p) => ({
+        draft: p.draft as string,
+        status: p.status,
+        submittedAt: p.submittedAt,
+      }));
+    picked.push(...tier);
+  }
+  return picked;
 }
 
 /** Inputs assembled by the caller for the `expertAnswerContext` variable. */

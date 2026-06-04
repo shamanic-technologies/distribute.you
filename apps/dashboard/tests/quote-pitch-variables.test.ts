@@ -210,7 +210,7 @@ describe("expert-quote-pitch variable assembly (content-gen PR #124 all-required
   });
 });
 
-describe("selectPriorSubmittedPitches — brand voice anchor (3 most recent submitted)", () => {
+describe("selectPriorSubmittedPitches — brand voice anchor (published-first, tiered)", () => {
   const base = {
     draft: "A pitch.",
     status: "submitted",
@@ -221,18 +221,65 @@ describe("selectPriorSubmittedPitches — brand voice anchor (3 most recent subm
 
   it("keeps only this brand's submitted/selected/published rows with a non-empty draft", () => {
     const rows = [
-      { ...base, status: "drafted" }, // not submitted → excluded
+      { ...base, status: "drafted" }, // not sent → excluded
       { ...base, brandIds: ["brand-B"] }, // other brand → excluded
       { ...base, draft: "   " }, // empty draft → excluded
       { ...base, draft: null }, // null draft → excluded
-      { ...base, status: "selected", draft: "selected pitch" }, // kept
-      { ...base, status: "published", draft: "published pitch" }, // kept
+      { ...base, status: "selected", draft: "selected pitch" }, // kept (tier 2)
+      { ...base, status: "published", draft: "published pitch" }, // kept (tier 1)
     ];
     const out = selectPriorSubmittedPitches(rows, "brand-A");
-    expect(out.map((p) => p.draft)).toEqual(["selected pitch", "published pitch"]);
+    // Tiered: published before selected. The only plain-submitted row belongs
+    // to brand-B, so tier 3 contributes nothing here.
+    expect(out.map((p) => p.draft)).toEqual(["published pitch", "selected pitch"]);
   });
 
-  it("sorts by submittedAt desc (createdAt fallback) and caps at the limit", () => {
+  it("takes the 3 most-recent PUBLISHED first, never dropping to submitted when ≥3 exist", () => {
+    const rows = [
+      { ...base, status: "published", draft: "pub-old", submittedAt: "2026-01-01T00:00:00.000Z" },
+      { ...base, status: "published", draft: "pub-new", submittedAt: "2026-06-01T00:00:00.000Z" },
+      { ...base, status: "published", draft: "pub-mid", submittedAt: "2026-03-01T00:00:00.000Z" },
+      { ...base, status: "published", draft: "pub-older", submittedAt: "2025-12-01T00:00:00.000Z" },
+      { ...base, status: "submitted", draft: "sub-newest", submittedAt: "2026-07-01T00:00:00.000Z" },
+    ];
+    // 3 most-recent published, no submitted — even though sub-newest is the
+    // single most-recent row overall.
+    expect(selectPriorSubmittedPitches(rows, "brand-A").map((p) => p.draft)).toEqual([
+      "pub-new",
+      "pub-mid",
+      "pub-old",
+    ]);
+  });
+
+  it("fills the remaining slots with submitted when fewer than `limit` published exist", () => {
+    const rows = [
+      { ...base, status: "published", draft: "pub-1", submittedAt: "2026-06-01T00:00:00.000Z" },
+      { ...base, status: "submitted", draft: "sub-old", submittedAt: "2026-01-01T00:00:00.000Z" },
+      { ...base, status: "submitted", draft: "sub-new", submittedAt: "2026-05-01T00:00:00.000Z" },
+      { ...base, status: "submitted", draft: "sub-mid", submittedAt: "2026-03-01T00:00:00.000Z" },
+    ];
+    // 1 published + 2 most-recent submitted = 3.
+    expect(selectPriorSubmittedPitches(rows, "brand-A").map((p) => p.draft)).toEqual([
+      "pub-1",
+      "sub-new",
+      "sub-mid",
+    ]);
+  });
+
+  it("orders tiers published → selected → submitted to fill the limit", () => {
+    const rows = [
+      { ...base, status: "submitted", draft: "sub" },
+      { ...base, status: "selected", draft: "sel" },
+      { ...base, status: "published", draft: "pub" },
+    ];
+    expect(selectPriorSubmittedPitches(rows, "brand-A").map((p) => p.draft)).toEqual([
+      "pub",
+      "sel",
+      "sub",
+    ]);
+  });
+
+  it("falls back to the most-recent submitted when no published/selected exist", () => {
     const rows = [
       { ...base, draft: "old", submittedAt: "2026-01-01T00:00:00.000Z" },
       { ...base, draft: "new", submittedAt: "2026-06-01T00:00:00.000Z" },
@@ -244,7 +291,7 @@ describe("selectPriorSubmittedPitches — brand voice anchor (3 most recent subm
     ]);
   });
 
-  it("returns [] (never throws) when the brand has no submitted pitches", () => {
+  it("returns [] (never throws) when the brand has no sent pitches", () => {
     expect(selectPriorSubmittedPitches([], "brand-A")).toEqual([]);
   });
 
