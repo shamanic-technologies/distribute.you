@@ -25,6 +25,8 @@ export interface ConversionOrg {
   orgId: string | null;
   orgName: string | null;
   orgLogoUrl: string | null;
+  /** Company domain for logo.dev when `orgLogoUrl` is absent. */
+  orgDomain?: string | null;
   /** The most-likely person (argmax person_EV). */
   topPerson: ConversionTopPerson | null;
   /** Conversion channels across the org (multi-tag). */
@@ -42,6 +44,8 @@ export interface ConversionLead {
   photoUrl: string | null;
   orgName: string | null;
   orgLogoUrl: string | null;
+  /** Company domain for logo.dev when `orgLogoUrl` is absent. */
+  orgDomain?: string | null;
   tags: string[];
   expectedRevenueUsd: number;
   /** Most-advanced event date; null until per-event timestamps exist. */

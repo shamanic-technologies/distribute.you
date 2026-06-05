@@ -74,13 +74,30 @@ function Avatar({ photoUrl, name }: { photoUrl: string | null; name: string }) {
   );
 }
 
-function OrgLogo({ logoUrl, name }: { logoUrl: string | null; name: string }) {
+// Publishable logo.dev key (same one the public-report CompanyLogo uses).
+const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
+function orgLogoSrc(logoUrl: string | null, domain?: string | null): string | null {
+  if (logoUrl) return logoUrl; // backend-provided logo wins
+  if (domain) return `https://img.logo.dev/${encodeURIComponent(domain)}?token=${LOGO_DEV_TOKEN}&size=64`;
+  return null;
+}
+
+function OrgLogo({
+  logoUrl,
+  domain,
+  name,
+}: {
+  logoUrl: string | null;
+  domain?: string | null;
+  name: string;
+}) {
   const [broken, setBroken] = useState(false);
-  if (logoUrl && !broken) {
+  const src = broken ? null : orgLogoSrc(logoUrl, domain);
+  if (src) {
     // eslint-disable-next-line @next/next/no-img-element
     return (
       <img
-        src={logoUrl}
+        src={src}
         alt={name}
         onError={() => setBroken(true)}
         className="w-8 h-8 rounded-md object-contain bg-white border border-gray-200 shrink-0"
@@ -169,7 +186,7 @@ export function OrgConversionsTable({ orgs }: { orgs: ConversionOrg[] }) {
           <tr key={o.orgId ?? `${orgName}-${i}`} className="border-t border-gray-100 hover:bg-gray-50/60">
             <td className="px-4 py-3">
               <div className="flex items-center gap-3">
-                <OrgLogo logoUrl={o.orgLogoUrl} name={orgName} />
+                <OrgLogo logoUrl={o.orgLogoUrl} domain={o.orgDomain} name={orgName} />
                 <div className="min-w-0">
                   <p className="font-medium text-gray-800 truncate">{orgName}</p>
                   {o.topPerson && (
@@ -218,7 +235,7 @@ export function LeadConversionsTable({ leads }: { leads: ConversionLead[] }) {
                 <div className="min-w-0">
                   <p className="font-medium text-gray-800 truncate">{name}</p>
                   <p className="text-xs text-gray-400 truncate flex items-center gap-1">
-                    <OrgLogo logoUrl={l.orgLogoUrl} name={l.orgName ?? "—"} />
+                    <OrgLogo logoUrl={l.orgLogoUrl} domain={l.orgDomain} name={l.orgName ?? "—"} />
                     <span className="truncate">{l.orgName ?? "—"}</span>
                   </p>
                 </div>
