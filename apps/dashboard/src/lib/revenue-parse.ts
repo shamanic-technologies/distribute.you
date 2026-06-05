@@ -1,0 +1,72 @@
+// Single parser for the features-service `/features/{slug}/revenue` contract,
+// shared by the authed client (`@/lib/api`) and the public-report server build
+// (`report-api.ts`). Dependency-free (zod + view types only) so report-api stays
+// off the Clerk-authed `@/lib/api` module.
+//
+// safeParse → a shape-rot success becomes a caught error (keepPreviousData on the
+// authed side; empty section on the report side), never a render crash.
+
+import { z } from "zod";
+import type { RevenueOverview } from "./revenue-view";
+
+const RevenueTopPersonSchema = z.object({
+  firstName: z.string().nullable(),
+  lastName: z.string().nullable(),
+  photoUrl: z.string().nullable(),
+});
+const RevenueOrgSchema = z.object({
+  orgId: z.string().nullable(),
+  orgName: z.string().nullable(),
+  orgLogoUrl: z.string().nullable(),
+  topPerson: RevenueTopPersonSchema.nullable(),
+  tags: z.array(z.string()),
+  expectedRevenueUsd: z.number(),
+  mostAdvancedDate: z.string().nullable(),
+});
+const RevenueLeadSchema = z.object({
+  leadId: z.string(),
+  firstName: z.string().nullable(),
+  lastName: z.string().nullable(),
+  photoUrl: z.string().nullable(),
+  orgName: z.string().nullable(),
+  orgLogoUrl: z.string().nullable(),
+  tags: z.array(z.string()),
+  expectedRevenueUsd: z.number(),
+  date: z.string().nullable(),
+});
+const RevenueEventSchema = z.object({
+  leadId: z.string(),
+  person: z.string().nullable(),
+  org: z.string().nullable(),
+  eventType: z.string(),
+  eventDate: z.string(),
+  contributionUsd: z.number(),
+});
+const FeatureRevenueResponseSchema = z.object({
+  featureSlug: z.string(),
+  headline: z.object({ totalPipelineUsd: z.number().nullable() }),
+  timeSeries: z.array(z.object({ date: z.string(), cumulativePipelineUsd: z.number() })),
+  organizations: z.array(RevenueOrgSchema),
+  leads: z.array(RevenueLeadSchema),
+  events: z.array(RevenueEventSchema),
+});
+
+/** Validate + flatten the backend response into the view-model. Throws on shape rot. */
+export function parseFeatureRevenue(raw: unknown, label: string): RevenueOverview {
+  const parsed = FeatureRevenueResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error(`[dashboard] ${label}: revenue response shape mismatch`, {
+      issues: parsed.error.issues,
+    });
+    throw new Error(`[dashboard] ${label}: invalid revenue response shape`);
+  }
+  const d = parsed.data;
+  return {
+    featureSlug: d.featureSlug,
+    totalPipelineUsd: d.headline.totalPipelineUsd,
+    timeSeries: d.timeSeries,
+    organizations: d.organizations,
+    leads: d.leads,
+    events: d.events,
+  };
+}

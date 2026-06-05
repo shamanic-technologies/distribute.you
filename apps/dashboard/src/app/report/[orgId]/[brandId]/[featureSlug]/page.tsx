@@ -5,9 +5,13 @@ import {
   fetchFeatureStats,
   fetchWorkflows,
   fetchStatsRegistry,
+  getReportRevenue,
 } from "@/lib/report-api";
 import type { StatsRegistry } from "@/lib/api";
+import type { RevenueOverview } from "@/lib/revenue-view";
 import { isExpertQuoteFeature } from "@/lib/expert-quote-feature";
+import { isRevenueFeature } from "@/lib/revenue-feature";
+import { ReportRevenueView } from "@/components/report/revenue-view";
 
 // ISR with a 4h TTL — the recipient gets HTML served from edge cache on
 // every visit; fills happen at most once per (orgId, brandId, featureSlug)
@@ -41,6 +45,12 @@ export default async function OverviewPage({ params }: PageProps) {
           Snapshot of all Sales Cold Email Outreach activity for this brand.
         </p>
       </div>
+
+      {isRevenueFeature(featureSlug) && (
+        <Suspense fallback={<RevenueSkeleton />}>
+          <RevenueSection orgId={orgId} brandId={brandId} featureSlug={featureSlug} />
+        </Suspense>
+      )}
 
       <Suspense fallback={<StatsGridSkeleton />}>
         <StatsGrid orgId={orgId} brandId={brandId} featureSlug={featureSlug} />
@@ -178,6 +188,42 @@ function CpaCard({ label, count, totalCostCents }: { label: string; count: numbe
       </div>
       <div className="text-[10px] text-gray-500 mt-0.5">
         {count.toLocaleString("en-US")} {count === 1 ? "lead" : "leads"}
+      </div>
+    </div>
+  );
+}
+
+async function RevenueSection({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
+  let data: RevenueOverview | null = null;
+  try {
+    data = await getReportRevenue(orgId, brandId, featureSlug);
+  } catch (err) {
+    // ISR-render safety: never abort the report on a revenue fetch failure.
+    console.error("[dashboard-report] revenue section failed; omitting", err);
+    return null;
+  }
+  // No saved economics / no funnel → omit the section (the public viewer can't set it up).
+  if (!data || data.totalPipelineUsd === null) return null;
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <h2 className="font-display text-xl font-bold text-gray-800 mb-1">Revenue &amp; Conversions</h2>
+        <p className="text-sm text-gray-500">
+          Expected pipeline revenue + conversions, computed from this brand&apos;s sales economics.
+        </p>
+      </div>
+      <ReportRevenueView data={data} />
+    </div>
+  );
+}
+
+function RevenueSkeleton() {
+  return (
+    <div className="space-y-3">
+      <div className="h-6 w-48 bg-gray-100 rounded animate-pulse" />
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="h-[260px] w-full bg-gray-50 rounded animate-pulse" />
       </div>
     </div>
   );
