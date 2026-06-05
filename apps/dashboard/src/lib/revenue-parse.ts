@@ -18,6 +18,9 @@ const RevenueOrgSchema = z.object({
   orgId: z.string().nullable(),
   orgName: z.string().nullable(),
   orgLogoUrl: z.string().nullable(),
+  // Company domain for logo.dev (features-service maps the lead's primaryDomain
+  // through). `.nullish()` so the parse survives until that backend field ships.
+  orgDomain: z.string().nullish(),
   topPerson: RevenueTopPersonSchema.nullable(),
   tags: z.array(z.string()),
   expectedRevenueUsd: z.number(),
@@ -30,6 +33,7 @@ const RevenueLeadSchema = z.object({
   photoUrl: z.string().nullable(),
   orgName: z.string().nullable(),
   orgLogoUrl: z.string().nullable(),
+  orgDomain: z.string().nullish(),
   tags: z.array(z.string()),
   expectedRevenueUsd: z.number(),
   date: z.string().nullable(),
