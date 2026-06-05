@@ -548,16 +548,27 @@ export async function getBrand(brandId: string, token?: string): Promise<{ brand
 // READ returns the saved set or null (unset → the page uses its hard-coded defaults).
 // WRITE is an idempotent full-set upsert that returns the saved row (never null).
 // Conversion rates are integer percents (0–100); lifetimeRevenueUsd is whole US dollars.
+// businessModel (b2c | b2b | null) is part of the saved set: it picks which funnel
+// the revenue-overview pipeline applies. Both GET and PUT responses always include it.
+export type BrandBusinessModel = "b2c" | "b2b";
+
 export interface BrandSalesEconomics {
   lifetimeRevenueUsd: number;
   replyToMeetingPct: number;
   visitToMeetingPct: number;
   meetingToClosePct: number;
   visitToClosePct: number;
+  businessModel: BrandBusinessModel | null;
   updatedAt: string;
 }
 
-export type BrandSalesEconomicsInput = Omit<BrandSalesEconomics, "updatedAt">;
+// businessModel is a partial-update field on PUT: omit = leave unchanged, null = clear
+// (brand-service contract). The campaign form omits it (edits only the 5 metrics); the
+// Brand Settings editor sends it explicitly. Hence optional in the input, not required.
+export type BrandSalesEconomicsInput = Omit<
+  BrandSalesEconomics,
+  "updatedAt" | "businessModel"
+> & { businessModel?: BrandBusinessModel | null };
 
 const BrandSalesEconomicsSchema = z.object({
   lifetimeRevenueUsd: z.number(),
@@ -565,6 +576,7 @@ const BrandSalesEconomicsSchema = z.object({
   visitToMeetingPct: z.number(),
   meetingToClosePct: z.number(),
   visitToClosePct: z.number(),
+  businessModel: z.union([z.literal("b2c"), z.literal("b2b")]).nullable(),
   updatedAt: z.string(),
 });
 
@@ -596,7 +608,7 @@ export async function getBrandSalesEconomics(
   return parsed.data;
 }
 
-/** PUT /brands/:brandId/sales-economics — idempotent upsert of the full 5-metric set. */
+/** PUT /brands/:brandId/sales-economics — idempotent upsert of the 5 metrics (+ optional businessModel). */
 export async function saveBrandSalesEconomics(
   brandId: string,
   input: BrandSalesEconomicsInput,
@@ -611,6 +623,11 @@ export async function saveBrandSalesEconomics(
       visitToMeetingPct: input.visitToMeetingPct,
       meetingToClosePct: input.meetingToClosePct,
       visitToClosePct: input.visitToClosePct,
+      // Partial-update: send businessModel only when the caller set it (settings
+      // editor). Omitting it leaves the stored value unchanged; null clears it.
+      ...(input.businessModel !== undefined
+        ? { businessModel: input.businessModel }
+        : {}),
     },
   });
   const parsed = SaveBrandSalesEconomicsResponseSchema.safeParse(raw);

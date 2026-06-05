@@ -10,6 +10,7 @@ import {
   type BrandTransfer,
 } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
+import { BrandSalesEconomicsCard } from "@/components/settings/brand-sales-economics-card";
 
 export default function BrandSettingsPage() {
   const params = useParams();
@@ -65,6 +66,12 @@ export default function BrandSettingsPage() {
   return (
     <div className="p-4 md:p-8 max-w-3xl">
       <h1 className="text-2xl font-semibold text-gray-900 mb-8">Brand Settings</h1>
+
+      {/* Sales Economics */}
+      <div className="mb-10">
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">Sales Economics</h2>
+        <BrandSalesEconomicsCard brandId={brandId} />
+      </div>
 
       {/* Danger Zone */}
       <div>
