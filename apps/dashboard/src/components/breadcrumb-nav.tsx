@@ -33,6 +33,38 @@ export function clearBreadcrumbCaches() {
   }
 }
 
+/** Organization avatar — Clerk's `organization.imageUrl` (the uploaded logo),
+ *  falling back to the org's initial when it's unset or the image fails to
+ *  load. Plain `<img>` (Clerk CDN is `img.clerk.com`) — no Next/Image domain
+ *  config needed, mirrors how lead photos render. */
+function OrgAvatar({
+  name,
+  imageUrl,
+  sizeClass,
+}: {
+  name: string;
+  imageUrl?: string | null;
+  sizeClass: string;
+}) {
+  const [broken, setBroken] = useState(false);
+  if (imageUrl && !broken) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return (
+      <img
+        src={imageUrl}
+        alt={name}
+        onError={() => setBroken(true)}
+        className={`${sizeClass} rounded object-cover bg-brand-100 flex-shrink-0`}
+      />
+    );
+  }
+  return (
+    <div className={`${sizeClass} bg-brand-100 rounded flex items-center justify-center flex-shrink-0`}>
+      <span className="text-brand-600 font-semibold text-xs">{name?.[0]?.toUpperCase() || "O"}</span>
+    </div>
+  );
+}
+
 export function BreadcrumbNav() {
   const pathname = usePathname();
   const router = useRouter();
@@ -242,9 +274,7 @@ export function BreadcrumbNav() {
       {/* ORG — always shown as root */}
       <div className="relative flex items-center">
         <Link href={organization ? `/orgs/${organization.id}` : "/"} className="px-2 py-1 rounded-md hover:bg-gray-100 transition flex items-center gap-1.5">
-          <div className="w-5 h-5 bg-brand-100 rounded flex items-center justify-center">
-            <span className="text-brand-600 font-semibold text-xs">{organization?.name?.[0] || "O"}</span>
-          </div>
+          <OrgAvatar name={organization?.name || "Dashboard"} imageUrl={organization?.imageUrl} sizeClass="w-5 h-5" />
           <span className="font-medium text-gray-800 max-w-[140px] truncate">{organization?.name || "Dashboard"}</span>
         </Link>
         <button onClick={() => toggleDropdown("org")} className="p-1 hover:bg-gray-100 rounded transition">
@@ -263,9 +293,7 @@ export function BreadcrumbNav() {
                   organization?.id === m.organization.id ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
                 }`}
               >
-                <div className="w-6 h-6 bg-brand-100 rounded flex items-center justify-center flex-shrink-0">
-                  <span className="text-brand-600 font-semibold text-xs">{m.organization.name[0]}</span>
-                </div>
+                <OrgAvatar name={m.organization.name} imageUrl={m.organization.imageUrl} sizeClass="w-6 h-6" />
                 <span className="truncate">{m.organization.name}</span>
                 {organization?.id === m.organization.id && (
                   <svg className="w-4 h-4 text-brand-600 ml-auto" fill="currentColor" viewBox="0 0 20 20">

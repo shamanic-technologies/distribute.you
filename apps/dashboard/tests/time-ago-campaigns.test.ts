@@ -5,7 +5,7 @@ import * as path from "path";
 describe("Campaigns list uses time-ago format for dates", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/page.tsx"
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/page.tsx"
   );
   const content = fs.readFileSync(pagePath, "utf-8");
 

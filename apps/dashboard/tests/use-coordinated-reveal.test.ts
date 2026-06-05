@@ -55,7 +55,7 @@ describe("consumers adopt the coordinated reveal", () => {
   const featurePage = fs.readFileSync(
     path.join(
       __dirname,
-      "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/page.tsx",
+      "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/page.tsx",
     ),
     "utf-8",
   );
