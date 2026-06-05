@@ -10,8 +10,8 @@ describe("Cost & efficiency card on feature Overview (item 6, interim client-cal
   const overview =
     read("app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/overview/page.tsx");
 
-  it("renders total cost, Cost of acquisition (left) and ROI (right) with info hints", () => {
-    expect(card).toContain("total spent");
+  it("renders Total spent, Cost of acquisition and ROI cards with info hints", () => {
+    expect(card).toContain("Total spent");
     expect(card).toContain("Cost of acquisition");
     expect(card).toContain("ROI");
     expect(card).toContain("InfoHint");
@@ -25,10 +25,16 @@ describe("Cost & efficiency card on feature Overview (item 6, interim client-cal
     expect(card).not.toContain("formatUsd(s.cents");
   });
 
-  it("Overview page feeds the card the cost breakdown + revenue", () => {
+  it("Overview wires the cost breakdown through the revenue section into the 3 cards", () => {
     expect(overview).toContain("getBrandCostBreakdown");
-    expect(overview).toContain("RevenueCostSummary");
-    expect(overview).toContain("totalPipelineUsd={data.totalPipelineUsd}");
+    expect(overview).toContain("costBreakdown={costData?.costs ?? []}");
+    const section = read("components/revenue/revenue-overview-section.tsx");
+    // The cost cards now live in the right-of-chart column, replacing the old
+    // org/lead/event counters.
+    expect(section).toContain("RevenueCostSummary");
+    expect(section).toContain("totalPipelineUsd={data.totalPipelineUsd}");
+    expect(section).not.toContain("Converting organizations");
+    expect(section).not.toContain("Lead conversions");
   });
 
   it("CAC % and ROI × logic with null guards", () => {

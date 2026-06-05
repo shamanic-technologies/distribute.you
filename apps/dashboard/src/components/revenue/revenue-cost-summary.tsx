@@ -91,22 +91,19 @@ export function RevenueCostSummary({
   const roiMultiple =
     totalCostUsd > 0 && totalPipelineUsd != null ? totalPipelineUsd / totalCostUsd : null;
 
-  if (totalCents === 0) return null; // no spend yet → nothing to summarise
-
+  // Right-of-chart column on the Overview: three stat cards (Total spent / Cost
+  // of acquisition / ROI) replacing the old org/lead/event counters, plus a
+  // compact top-3 cost-source list. Card markup matches the existing overview
+  // stat cards so the column stays visually consistent.
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6 space-y-5">
-      <div className="flex items-baseline justify-between">
-        <h3 className="font-medium text-gray-800">Cost &amp; efficiency</h3>
-        <div className="text-right">
-          <p className="text-2xl font-bold text-gray-900 leading-none">{formatUsd(totalCostUsd)}</p>
-          <p className="text-[11px] text-gray-400 mt-1">total spent</p>
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-4">
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="text-xs text-gray-400">Total spent</p>
+          <p className="mt-1 text-xl font-bold text-gray-900">{formatUsd(totalCostUsd)}</p>
         </div>
-      </div>
-
-      {/* Cost of acquisition (left) + ROI (right) */}
-      <div className="grid grid-cols-2 divide-x divide-gray-100 rounded-lg border border-gray-100 bg-gray-50/40">
-        <div className="px-4 py-3">
-          <p className="flex items-center gap-1 text-xs text-gray-500">
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="flex items-center gap-1 text-xs text-gray-400">
             Cost of acquisition
             <InfoHint text="Share of expected pipeline revenue spent to generate it: total cost ÷ expected revenue. Lower is better." />
           </p>
@@ -114,8 +111,8 @@ export function RevenueCostSummary({
             {cacPct == null ? "—" : `${Math.round(cacPct)}%`}
           </p>
         </div>
-        <div className="px-4 py-3">
-          <p className="flex items-center gap-1 text-xs text-gray-500">
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="flex items-center gap-1 text-xs text-gray-400">
             ROI
             <InfoHint text="Return multiple on spend: expected revenue ÷ total cost. 3× means each $1 spent is expected to return $3." />
           </p>
@@ -127,7 +124,7 @@ export function RevenueCostSummary({
 
       {/* Top-3 cost sources — provider logo + share, no $ amounts */}
       {top3.length > 0 && (
-        <div className="space-y-2">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
           <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Top cost sources</p>
           {top3.map((s) => (
             <div key={s.name} className="flex items-center gap-2">
