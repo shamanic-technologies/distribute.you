@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type {
   ConversionOrg,
   ConversionLead,
@@ -28,7 +29,14 @@ function initials(name: string): string {
   return (parts[0].charAt(0) + (parts[1]?.charAt(0) ?? "")).toUpperCase();
 }
 
+// Funnel-graded chips. Delivery stages (contacted → sent → delivered) read as a
+// progression leading up to the engagement stages (visit, reply). The single
+// furthest delivery stage shows per org/lead row until engagement replaces it;
+// the Events tab itemises every stage. Backend is authoritative — do not derive.
 const CHANNEL_META: Record<string, { label: string; className: string }> = {
+  contacted: { label: "Contacted", className: "bg-gray-50 text-gray-600 border-gray-200" },
+  sent: { label: "Sent", className: "bg-slate-100 text-slate-700 border-slate-300" },
+  delivered: { label: "Delivered", className: "bg-amber-50 text-amber-700 border-amber-200" },
   visit: { label: "Website visit", className: "bg-blue-50 text-blue-700 border-blue-200" },
   reply: { label: "Positive reply", className: "bg-green-50 text-green-700 border-green-200" },
 };
@@ -213,15 +221,22 @@ export function LeadConversionsTable({ leads }: { leads: ConversionLead[] }) {
   );
 }
 
-/** Raw event log — Events tab (single tag per row). */
+/** Raw event log — Events tab (single tag per row). Itemises every funnel stage
+ *  per lead, so the row count is high — render a bounded slice + "Show more". */
+const EVENTS_PAGE_SIZE = 50;
+
 export function EventConversionsTable({ events }: { events: ConversionEvent[] }) {
+  const [visibleCount, setVisibleCount] = useState(EVENTS_PAGE_SIZE);
+  const visible = events.slice(0, visibleCount);
+  const remaining = events.length - visible.length;
   return (
+    <div className="space-y-3">
     <TableShell
       headers={["Lead", "Event", "Pipeline added", "Date"]}
       empty="No conversion events yet."
       rows={events.length}
     >
-      {events.map((e, i) => {
+      {visible.map((e, i) => {
         const meta = channelMeta(e.eventType);
         const person = e.person ?? "Unknown";
         return (
@@ -253,5 +268,17 @@ export function EventConversionsTable({ events }: { events: ConversionEvent[] })
         );
       })}
     </TableShell>
+      {remaining > 0 && (
+        <div className="text-center">
+          <button
+            type="button"
+            onClick={() => setVisibleCount((n) => n + EVENTS_PAGE_SIZE)}
+            className="text-xs font-medium text-brand-600 hover:text-brand-700 px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+          >
+            Show {Math.min(remaining, EVENTS_PAGE_SIZE)} more ({remaining} remaining)
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
