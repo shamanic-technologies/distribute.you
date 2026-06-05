@@ -846,8 +846,8 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
       backLabel="Brand"
     >
       {/* Reveal the WHOLE nav as one group: the top items are static and the
-          Outcomes items need feature + registry defs, so painting them as they
-          resolve makes the static rows appear first and the Outcomes block pop in
+          Database items need feature + registry defs, so painting them as they
+          resolve makes the static rows appear first and the Database block pop in
           a beat later. Hold everything behind `defsReady` with skeleton rows, then
           render every item together. (Warm nav → defsReady is true immediately →
           no skeleton.) Badge numbers are a finer sub-group revealed via badgePending. */}
@@ -857,7 +857,7 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
             <SidebarNavRowSkeleton key={`top-${i}`} />
           ))}
           <div className="pt-2 mt-2 border-t border-gray-100">
-            <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Outcomes</h4>
+            <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Database</h4>
             {[0, 1, 2, 3].map((i) => (
               <SidebarNavRowSkeleton key={`out-${i}`} />
             ))}
@@ -874,7 +874,7 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
       ))}
       {entityItems.length > 0 && (
         <div className="pt-2 mt-2 border-t border-gray-100">
-          <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Outcomes</h4>
+          <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Database</h4>
           {entityItems.map((item) => (
             <SidebarLink
               key={item.id}

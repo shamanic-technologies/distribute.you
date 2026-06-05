@@ -118,7 +118,7 @@ export function McpSidebar({ items, outcomesItems, settingsItems, settingsExtra,
           })}
           {outcomesItems && outcomesItems.length > 0 ? (
             <div className="pt-2 mt-2 border-t border-gray-100">
-              <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Outcomes</h4>
+              <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Database</h4>
               {outcomesItems.map((item) => {
                 const isActive = pathname === item.href;
                 return (
