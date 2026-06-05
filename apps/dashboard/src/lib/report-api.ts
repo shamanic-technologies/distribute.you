@@ -1,5 +1,7 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
+import type { RevenueOverview } from "./revenue-view";
+import { parseFeatureRevenue } from "./revenue-parse";
 import type {
   Brand,
   Campaign,
@@ -350,6 +352,33 @@ export async function fetchFeatureStatsByWorkflow(orgId: string, brandId: string
       );
     },
     [`fetchFeatureStatsByWorkflow`, orgId, brandId, featureSlug],
+    {
+      tags: reportTags(orgId, brandId, featureSlug),
+      revalidate: REPORT_REVALIDATE_SECONDS,
+    },
+  )();
+}
+
+/** Expected pipeline revenue for the PUBLIC report — sourced through the report's
+ *  authed server-side build (admin key + org context), cached. There is NO public
+ *  brandId-keyed revenue endpoint: revenue $ + lead PII must never be reachable
+ *  unauthenticated (brandIds are enumerable). Same parse as the authed client. */
+export async function getReportRevenue(
+  orgId: string,
+  brandId: string,
+  featureSlug: string,
+): Promise<RevenueOverview> {
+  return unstable_cache(
+    async () => {
+      const raw = await adminGet<unknown>(
+        "featureRevenue",
+        `/features/${encodeURIComponent(featureSlug)}/revenue?brandId=${brandId}`,
+        orgId,
+        { "x-brand-id": brandId },
+      );
+      return parseFeatureRevenue(raw, "getReportRevenue");
+    },
+    [`getReportRevenue`, orgId, brandId, featureSlug],
     {
       tags: reportTags(orgId, brandId, featureSlug),
       revalidate: REPORT_REVALIDATE_SECONDS,

@@ -27,6 +27,15 @@ const gates = fs.readFileSync(gatesPath, "utf-8");
 const revenueFeature = fs.readFileSync(revenueFeaturePath, "utf-8");
 const featurePage = fs.readFileSync(featurePagePath, "utf-8");
 const overviewPage = fs.readFileSync(overviewPagePath, "utf-8");
+const reportApi = fs.readFileSync(path.resolve(__dirname, "../src/lib/report-api.ts"), "utf-8");
+const reportFeaturePage = fs.readFileSync(
+  path.resolve(__dirname, "../src/app/report/[orgId]/[brandId]/[featureSlug]/page.tsx"),
+  "utf-8",
+);
+const reportRevenueView = fs.readFileSync(
+  path.resolve(__dirname, "../src/components/report/revenue-view.tsx"),
+  "utf-8",
+);
 
 describe("conversions surface is alpha-gated (staff-only)", () => {
   it("registers the `conversions` gate", () => {
@@ -110,5 +119,24 @@ describe("revenue surface renders from features-service (single source)", () => 
     expect(overviewPage).toContain("totalPipelineUsd === null");
     expect(page).toContain("RevenueEmptyState");
     expect(page).toContain("totalPipelineUsd === null");
+  });
+});
+
+describe("public report revenue — authed server-side path, never a public PII endpoint", () => {
+  it("getReportRevenue sources /revenue via adminGet (admin key + org context)", () => {
+    expect(reportApi).toMatch(
+      /export async function getReportRevenue[\s\S]*?adminGet<unknown>\([\s\S]*?\/revenue\?brandId=/,
+    );
+    expect(reportApi).toContain('"x-brand-id"');
+  });
+
+  it("report page renders the revenue view, gated on isRevenueFeature, from getReportRevenue", () => {
+    expect(reportFeaturePage).toContain("ReportRevenueView");
+    expect(reportFeaturePage).toContain("isRevenueFeature(featureSlug)");
+    expect(reportFeaturePage).toContain("getReportRevenue");
+  });
+
+  it("the report revenue view is api-free (no Clerk-authed @/lib/api in the public bundle)", () => {
+    expect(reportRevenueView).not.toContain("@/lib/api");
   });
 });
