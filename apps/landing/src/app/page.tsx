@@ -48,7 +48,7 @@ const faqJsonLd = {
       name: "How much does distribute cost?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "$2 in welcome credits. No subscription. Every unit cost is published live at distribute.you/pricing — you pay the raw provider price plus a transparent margin. No hidden fees.",
+        text: "$25 in welcome credits. No subscription. Every unit cost is published live at distribute.you/pricing — you pay the raw provider price plus a transparent margin. No hidden fees.",
       },
     },
     {
@@ -483,13 +483,13 @@ export default function Home() {
             Start your portfolio
           </h2>
           <p className="text-gray-400 mb-8">
-            $2 free credits to start. No subscription. No credit card to try.
+            $25 free credits to start. No subscription. No credit card to try.
           </p>
           <LinkButton
             href={urls.signUp}
             className="inline-block bg-white text-gray-900 px-8 py-3 rounded-lg font-medium hover:bg-gray-100 transition text-sm"
           >
-            Start free — $2 credits
+            Start free — $25 credits
           </LinkButton>
         </div>
       </section>

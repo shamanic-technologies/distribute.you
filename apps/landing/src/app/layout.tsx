@@ -4,7 +4,7 @@ import { PROD_URLS } from "@/lib/env-urls";
 
 const SITE_URL = PROD_URLS.landing;
 const SITE_NAME = "distribute";
-const SITE_DESCRIPTION = "Lead Generation, on Autopilot. Sales, PR, VCs, hiring, accelerators — one dashboard. Drop a URL, set a budget, we send. AI qualifies replies and forwards positives to your Gmail. $2 welcome credits, no subscription.";
+const SITE_DESCRIPTION = "Lead Generation, on Autopilot. Sales, PR, VCs, hiring, accelerators — one dashboard. Drop a URL, set a budget, we send. AI qualifies replies and forwards positives to your Gmail. $25 welcome credits, no subscription.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     url: SITE_URL,
     siteName: SITE_NAME,
     title: "distribute — Lead Generation, on Autopilot",
-    description: "One dashboard for every distribution channel. Drop a URL, set a budget — we send, qualify, forward. $2 welcome credits, no subscription.",
+    description: "One dashboard for every distribution channel. Drop a URL, set a budget — we send, qualify, forward. $25 welcome credits, no subscription.",
     images: [
       {
         url: "/og-image.jpg",

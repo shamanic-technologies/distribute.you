@@ -121,7 +121,7 @@ export function Footer({ disclaimer }: FooterProps) {
             </div>
             <p className="text-sm text-gray-500 leading-relaxed mb-4">
               The Stripe of Distribution. Sales, PR, VCs, hiring, accelerators — one
-              dashboard. Drop a URL, set a budget, we send. $2 welcome credits, no
+              dashboard. Drop a URL, set a budget, we send. $25 welcome credits, no
               subscription.
             </p>
             <StatusIndicator />

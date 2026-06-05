@@ -71,8 +71,8 @@ describe("Landing page: ICP-only alignment", () => {
     expect(page).toMatch(/What you don'?t have to do/i);
   });
 
-  it("mentions $2 welcome credits in hero or CTA", () => {
-    expect(page).toMatch(/\$2.*credit|credit.*\$2/i);
+  it("mentions $25 welcome credits in hero or CTA", () => {
+    expect(page).toMatch(/\$25.*credit|credit.*\$25/i);
   });
 
   it("computes liveCount from features and renders 'channels live' line + Stripe analogy", () => {
@@ -137,7 +137,7 @@ describe("FreeVsCloud component", () => {
   });
 
   it("renders the single Pay-as-you-go cloud tier (self-host removed per ICP simplification)", () => {
-    expect(content).toMatch(/Pay-as-you-go|pay.as.you.go|\$2.*credit/i);
+    expect(content).toMatch(/Pay-as-you-go|pay.as.you.go|\$25.*credit/i);
     expect(content).not.toMatch(/Self-host|self.host/i);
   });
 });
