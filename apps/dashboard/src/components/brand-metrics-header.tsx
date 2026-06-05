@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   CartesianGrid,
   Line,
@@ -10,22 +10,20 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useAuthQuery } from "@/lib/use-auth-query";
+import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { pollOptionsSlower } from "@/lib/query-options";
 import {
   getDomainTrafficHistory,
   getDomainDrStatus,
-  listVisibilityRuns,
+  computeDomainTraffic,
+  computeDomainDr,
+  computeDomainAiVisibility,
 } from "@/lib/api";
-import { parseDecimal } from "@/components/visibility/score-card";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 import { Skeleton } from "@/components/skeleton";
 
-// A line chart needs ≥2 points to show a trend. The AI-mention card only graphs
-// once there are ≥3 runs (user spec: "s'il y a au moins 3 data points, sinon tu
-// mets la valeur en gros"); fewer → single big number.
+// A line chart needs ≥2 points to show a trend.
 const VISITS_MIN_POINTS = 2;
-const AI_MIN_POINTS = 3;
 
 interface ChartPoint {
   label: string;
@@ -40,10 +38,6 @@ function formatUsd(n: number): string {
   return `$${Math.round(n).toLocaleString("en-US")}`;
 }
 
-function formatPct(rate0to1: number): string {
-  return `${Math.round(rate0to1 * 100)}%`;
-}
-
 function formatMonth(isoDate: string): string {
   const d = new Date(isoDate);
   if (isNaN(d.getTime())) return isoDate;
@@ -54,6 +48,71 @@ function formatDay(isoDate: string): string {
   const d = new Date(isoDate);
   if (isNaN(d.getTime())) return isoDate;
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+// Per-(domain, metric) "we already tried an on-demand Ahrefs fetch" marker, so a
+// domain with genuinely no Ahrefs data is scraped at most ONCE (paid scrape) and
+// never re-fired across reloads. The in-memory firingRef dedupes within a mount;
+// this localStorage marker dedupes across reloads. This is browser-capability
+// handling (private mode / SSR), not a data fallback.
+function computeTried(key: string): boolean {
+  if (typeof window === "undefined") return true; // SSR: never fire
+  try {
+    return window.localStorage.getItem(key) === "1";
+  } catch {
+    return false; // storage disabled (private mode): allow a single attempt
+  }
+}
+function markComputeTried(key: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, "1");
+  } catch {
+    // storage unavailable — firingRef still dedupes within the mount
+  }
+}
+
+/**
+ * getOrFetchIfNeverSeen — when the read-cache query for a brand domain has
+ * SETTLED with no usable Ahrefs data, fire the matching on-demand AhrefService
+ * compute ONCE (so AhrefService actually checks Ahrefs), then write the result
+ * straight into the read-cache so the card fills without waiting for the 30s
+ * poll. The localStorage marker bounds a genuinely-empty domain to a single paid
+ * scrape; firingRef dedupes within the mount.
+ */
+function useGetOrFetchIfNeverSeen(args: {
+  domain: string | null | undefined;
+  settled: boolean;
+  empty: boolean;
+  metric: string;
+  cacheKey: readonly unknown[];
+  compute: (domain: string) => Promise<unknown>;
+}) {
+  const { domain, settled, empty, metric, cacheKey, compute } = args;
+  const qc = useQueryClient();
+  const firingRef = useRef(false);
+  useEffect(() => {
+    if (!domain || !settled || !empty || firingRef.current) return;
+    const marker = `ahref-compute-tried:${domain}:${metric}`;
+    if (computeTried(marker)) return;
+    firingRef.current = true;
+    compute(domain)
+      .then((res) => {
+        // Mark ONLY after AhrefService was actually consulted (200). A 404 — e.g.
+        // the api-service compute proxy not yet deployed — must NOT mark, so we
+        // retry once it goes live instead of permanently skipping the domain.
+        markComputeTried(marker);
+        if (res != null) qc.setQueryData([...cacheKey], res);
+      })
+      .catch((err) =>
+        console.error(`[dashboard] ahref ${metric} get-or-fetch failed`, err),
+      )
+      .finally(() => {
+        firingRef.current = false;
+      });
+    // cacheKey/compute are stable per metric; gate on the primitive signals only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [domain, settled, empty, metric]);
 }
 
 function MetricCard({
@@ -148,18 +207,22 @@ function MetricCardSkeleton() {
 }
 
 /**
- * Four brand health metrics at the top of the brand overview page:
+ * Four brand health metrics at the top of the brand overview page, all sourced
+ * from AhrefService:
  *  1. Monthly organic visits  — line over time (Ahrefs traffic history)
  *  2. Domain Rating           — current value, big number (no series exposed)
  *  3. Est. monthly revenue    — current value, big number (Ahrefs traffic value)
- *  4. AI mention rate         — line over time when ≥3 visibility runs, else big number
+ *  4. AI mentions             — Ahrefs Brand-Radar global AI-mention count
  *
- * Each source owns its own query; the four cards reveal together as one latched
- * group (useCoordinatedReveal), gated first on the brand domain being known so
- * the barrier never latches an empty group during the first paint.
+ * Cards 1–3 read ahref-service's CACHE (GET); when the cache is empty for a
+ * never-seen domain we fire the matching on-demand compute ONCE so AhrefService
+ * actually checks Ahrefs ("getOrFetchIfNeverSeen"). Card 4 has no cache-read GET,
+ * so its get-or-refresh POST doubles as reader + trigger. Each source owns its
+ * query; the four cards reveal together as one latched group, gated first on the
+ * brand domain being known so the barrier never latches an empty first paint.
  */
 export function BrandMetricsHeader({
-  brandId,
+  brandId: _brandId,
   domain,
 }: {
   brandId: string;
@@ -167,23 +230,63 @@ export function BrandMetricsHeader({
 }) {
   const domainReady = !!domain;
 
-  const { data: traffic, isPending: trafficPending } = useAuthQuery(
+  const {
+    data: traffic,
+    isPending: trafficPending,
+    isFetched: trafficFetched,
+  } = useAuthQuery(
     ["domainTrafficHistory", domain],
     () => getDomainTrafficHistory(domain as string),
     { ...pollOptionsSlower, enabled: domainReady },
   );
 
-  const { data: dr, isPending: drPending } = useAuthQuery(
+  const {
+    data: dr,
+    isPending: drPending,
+    isFetched: drFetched,
+  } = useAuthQuery(
     ["domainDrStatus", domain],
     () => getDomainDrStatus(domain as string),
     { ...pollOptionsSlower, enabled: domainReady },
   );
 
-  const { data: visibility, isPending: visibilityPending } = useAuthQuery(
-    ["visibilityRuns", { brandId }],
-    () => listVisibilityRuns({ brandId, limit: 50 }),
-    pollOptionsSlower,
+  // Ahrefs Brand-Radar AI-visibility. get-or-refresh, so the POST itself is the
+  // read; ahref-service decides cache-vs-scrape (keeping paid scrapes rare). No
+  // poll / focus / reconnect refetch — but a 5-min staleTime (not Infinity) lets
+  // an errored first call (e.g. proxy not yet deployed → 404) recover on the next
+  // mount once the proxy is live, instead of pinning the error for the gcTime.
+  const { data: aiVis, isPending: aiVisPending } = useAuthQuery(
+    ["domainAiVisibility", domain],
+    () => computeDomainAiVisibility(domain as string),
+    {
+      enabled: domainReady,
+      staleTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      retry: 1,
+    },
   );
+
+  // getOrFetchIfNeverSeen triggers for the two cache-backed metrics. A domain
+  // with no cached row → one on-demand scrape, result written back to the read
+  // cache. "empty" = no usable value shown; the localStorage marker caps it at a
+  // single attempt per domain even when Ahrefs genuinely has nothing.
+  useGetOrFetchIfNeverSeen({
+    domain,
+    settled: trafficFetched,
+    empty: !traffic?.hasData,
+    metric: "traffic",
+    cacheKey: ["domainTrafficHistory", domain],
+    compute: computeDomainTraffic,
+  });
+  useGetOrFetchIfNeverSeen({
+    domain,
+    settled: drFetched,
+    empty: dr?.latestValidDr == null,
+    metric: "dr",
+    cacheKey: ["domainDrStatus", domain],
+    compute: computeDomainDr,
+  });
 
   // Visits series — chronological, dropping months with no captured value.
   const visitsSeries = useMemo<ChartPoint[]>(() => {
@@ -194,29 +297,11 @@ export function BrandMetricsHeader({
       .map((p) => ({ label: formatMonth(p.month), value: p.organicTraffic as number }));
   }, [traffic]);
 
-  // AI mention-rate series — completed runs only, chronological, as a percentage.
-  const aiSeries = useMemo<ChartPoint[]>(() => {
-    const runs = visibility?.runs ?? [];
-    return runs
-      .filter((r) => r.completedAt && parseDecimal(r.brandMentionRate) != null)
-      .sort(
-        (a, b) =>
-          new Date(a.completedAt as string).getTime() -
-          new Date(b.completedAt as string).getTime(),
-      )
-      .map((r) => ({
-        label: formatDay(r.completedAt as string),
-        value: (parseDecimal(r.brandMentionRate) as number) * 100,
-      }));
-  }, [visibility]);
-
-  const latestAiRate = parseDecimal(visibility?.runs?.[0]?.brandMentionRate ?? null);
-
   // Reveal the four cards together once every source has SETTLED (success or
   // error). Gating on `!isPending` rather than `data !== undefined` means a query
   // that errors — e.g. the api-service proxy not yet deployed → a 404 — still
   // reveals the group (each card shows its own "No data yet" state) instead of
-  // pinning everything in a perpetual skeleton; the 30s poll then auto-fills the
+  // pinning everything in a perpetual skeleton; the poll/one-shot then fills the
   // cards once the proxy is live. A disabled query stays isPending forever, so its
   // flag is gated behind its own enabled condition; the domain-loaded flag goes
   // first so we never latch an empty group during the first paint.
@@ -224,7 +309,7 @@ export function BrandMetricsHeader({
     domainReady,
     !domainReady || !trafficPending,
     !domainReady || !drPending,
-    !visibilityPending,
+    !domainReady || !aiVisPending,
   ]);
 
   if (!revealed) {
@@ -275,14 +360,15 @@ export function BrandMetricsHeader({
         )}
       </MetricCard>
 
-      {/* 4 — AI mention rate (visibility-score series, else latest) */}
-      <MetricCard title="AI mention rate" subtitle="AI Visibility Score">
-        {aiSeries.length >= AI_MIN_POINTS ? (
-          <MiniChart data={aiSeries} color="#f59e0b" fmt={(v) => `${v.toFixed(1)}%`} />
-        ) : latestAiRate != null ? (
-          <BigStat value={formatPct(latestAiRate)} caption="brand mention rate" />
+      {/* 4 — AI mentions (Ahrefs Brand-Radar global mention count) */}
+      <MetricCard
+        title="AI mentions"
+        subtitle={aiVis?.snapshotDate ? formatDay(aiVis.snapshotDate) : "Ahrefs Brand-Radar"}
+      >
+        {aiVis?.snapshotDate ? (
+          <BigStat value={formatInt(aiVis.mentionsTotal)} caption="across AI engines" />
         ) : (
-          <NoData label="No AI visibility runs yet" />
+          <NoData label="No AI mentions yet" />
         )}
       </MetricCard>
     </div>
