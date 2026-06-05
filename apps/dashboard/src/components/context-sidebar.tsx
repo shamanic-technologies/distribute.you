@@ -230,6 +230,12 @@ const ConversionsIcon = () => (
   </svg>
 );
 
+const OverviewIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 5a1 1 0 011-1h5v7H4V5zm0 8h6v6H5a1 1 0 01-1-1v-5zm10-9h5a1 1 0 011 1v5h-6V4zm0 8h6v6a1 1 0 01-1 1h-5v-7z" />
+  </svg>
+);
+
 const ExternalLinkIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-3.5 h-3.5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -797,14 +803,26 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
       };
     });
 
-  // Revenue & Conversions — only on revenue features (sales-cold-email today),
-  // alpha (staff-only) until features-service ships /revenue.
+  // Revenue surface (Overview + Conversions) — only on revenue features
+  // (sales-cold-email today), alpha (staff-only) until features-service ships /revenue.
   const conversionsOk = useFeatureFlag(FEATURE_GATES["conversions"].flag);
+  const revenueOk = conversionsOk && isRevenueFeature(featureSlug);
   const topItems: SidebarItem[] = [
+    ...(revenueOk
+      ? [
+          {
+            id: "overview",
+            label: "Overview",
+            href: `${basePath}/overview`,
+            icon: <OverviewIcon />,
+            maturity: FEATURE_GATES["conversions"].maturity,
+          } satisfies SidebarItem,
+        ]
+      : []),
     { id: "campaigns", label: "Campaigns", href: basePath, icon: <EnvelopeIcon /> },
     { id: "create", label: "Create Campaign", href: `${basePath}/campaigns/new`, icon: <PlusIcon /> },
     { id: "workflows", label: "Workflows", href: `${basePath}/workflows`, icon: <WorkflowIcon /> },
-    ...(conversionsOk && isRevenueFeature(featureSlug)
+    ...(revenueOk
       ? [
           {
             id: "conversions",
