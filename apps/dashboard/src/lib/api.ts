@@ -6,6 +6,7 @@ import {
   type QuoteOpportunityContext,
 } from "./quote-pitch-variables";
 import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "./org-desync";
+import type { RevenueOverview } from "./revenue-view";
 
 const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 
@@ -951,6 +952,82 @@ export async function fetchGlobalStats(
   if (params?.brandId) query.set("brandId", params.brandId);
   const qs = query.toString();
   return apiCall<GlobalStatsResponse>(`/features/stats${qs ? `?${qs}` : ""}`, { token });
+}
+
+// ─── Feature revenue (expected pipeline) ─────────────────────────────────────
+// features-service computes everything (MAX inside an entity, SUM across orgs);
+// the dashboard only renders. `timeSeries`/`events`/dates stay empty/null until
+// email-gateway exposes per-event timestamps. safeParse → a shape-rot success
+// becomes a caught fetch error (keepPreviousData), not a render crash.
+const RevenueTopPersonSchema = z.object({
+  firstName: z.string().nullable(),
+  lastName: z.string().nullable(),
+  photoUrl: z.string().nullable(),
+});
+const RevenueOrgSchema = z.object({
+  orgId: z.string().nullable(),
+  orgName: z.string().nullable(),
+  orgLogoUrl: z.string().nullable(),
+  topPerson: RevenueTopPersonSchema.nullable(),
+  tags: z.array(z.string()),
+  expectedRevenueUsd: z.number(),
+  mostAdvancedDate: z.string().nullable(),
+});
+const RevenueLeadSchema = z.object({
+  leadId: z.string(),
+  firstName: z.string().nullable(),
+  lastName: z.string().nullable(),
+  photoUrl: z.string().nullable(),
+  orgName: z.string().nullable(),
+  orgLogoUrl: z.string().nullable(),
+  tags: z.array(z.string()),
+  expectedRevenueUsd: z.number(),
+  date: z.string().nullable(),
+});
+const RevenueEventSchema = z.object({
+  leadId: z.string(),
+  person: z.string().nullable(),
+  org: z.string().nullable(),
+  eventType: z.string(),
+  eventDate: z.string(),
+  contributionUsd: z.number(),
+});
+const FeatureRevenueResponseSchema = z.object({
+  featureSlug: z.string(),
+  headline: z.object({ totalPipelineUsd: z.number().nullable() }),
+  timeSeries: z.array(z.object({ date: z.string(), cumulativePipelineUsd: z.number() })),
+  organizations: z.array(RevenueOrgSchema),
+  leads: z.array(RevenueLeadSchema),
+  events: z.array(RevenueEventSchema),
+});
+
+/** GET /features/:slug/revenue — expected pipeline revenue for a brand (optionally one campaign). */
+export async function getFeatureRevenue(
+  featureSlug: string,
+  brandId: string,
+  campaignId?: string,
+  token?: string,
+): Promise<RevenueOverview> {
+  const query = new URLSearchParams({ brandId });
+  if (campaignId) query.set("campaignId", campaignId);
+  const raw = await apiCall<unknown>(`/features/${featureSlug}/revenue?${query.toString()}`, { token });
+  const parsed = FeatureRevenueResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getFeatureRevenue: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getFeatureRevenue: invalid response shape");
+  }
+  const d = parsed.data;
+  return {
+    featureSlug: d.featureSlug,
+    totalPipelineUsd: d.headline.totalPipelineUsd,
+    timeSeries: d.timeSeries,
+    organizations: d.organizations,
+    leads: d.leads,
+    events: d.events,
+  };
 }
 
 /** POST /brands — upsert brand by URL, returns brandId */

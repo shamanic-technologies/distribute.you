@@ -18,8 +18,14 @@ function formatDate(iso: string | null): string {
     year: "numeric",
   });
 }
-function initials(first: string, last: string): string {
-  return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase();
+function fullName(first: string | null, last: string | null): string {
+  const n = `${first ?? ""} ${last ?? ""}`.trim();
+  return n || "Unknown";
+}
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  return (parts[0].charAt(0) + (parts[1]?.charAt(0) ?? "")).toUpperCase();
 }
 
 const CHANNEL_META: Record<string, { label: string; className: string }> = {
@@ -36,28 +42,20 @@ function channelMeta(channel: string) {
 }
 
 // ── primitives ──────────────────────────────────────────────────────────────
-function Avatar({
-  photoUrl,
-  first,
-  last,
-}: {
-  photoUrl: string | null;
-  first: string;
-  last: string;
-}) {
+function Avatar({ photoUrl, name }: { photoUrl: string | null; name: string }) {
   if (photoUrl) {
     // eslint-disable-next-line @next/next/no-img-element
     return (
       <img
         src={photoUrl}
-        alt={`${first} ${last}`}
+        alt={name}
         className="w-8 h-8 rounded-full object-cover bg-gray-100 shrink-0"
       />
     );
   }
   return (
     <span className="w-8 h-8 rounded-full bg-brand-50 text-brand-700 text-xs font-medium flex items-center justify-center shrink-0">
-      {initials(first, last)}
+      {initials(name)}
     </span>
   );
 }
@@ -80,17 +78,14 @@ function OrgLogo({ logoUrl, name }: { logoUrl: string | null; name: string }) {
   );
 }
 
-function ChannelTags({ channels }: { channels: string[] }) {
-  if (channels.length === 0) return <span className="text-gray-300">—</span>;
+function ChannelTags({ tags }: { tags: string[] }) {
+  if (tags.length === 0) return <span className="text-gray-300">—</span>;
   return (
     <div className="flex flex-wrap gap-1">
-      {channels.map((c) => {
+      {tags.map((c) => {
         const meta = channelMeta(c);
         return (
-          <span
-            key={c}
-            className={`text-[10px] px-2 py-0.5 rounded-full border ${meta.className}`}
-          >
+          <span key={c} className={`text-[10px] px-2 py-0.5 rounded-full border ${meta.className}`}>
             {meta.label}
           </span>
         );
@@ -123,10 +118,7 @@ function TableShell({
         <thead>
           <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
             {headers.map((h, i) => (
-              <th
-                key={h}
-                className={`px-4 py-3 font-medium ${i >= 2 ? "text-right" : ""}`}
-              >
+              <th key={h} className={`px-4 py-3 font-medium ${i >= 2 ? "text-right" : ""}`}>
                 {h}
               </th>
             ))}
@@ -148,32 +140,35 @@ export function OrgConversionsTable({ orgs }: { orgs: ConversionOrg[] }) {
       empty="No conversions yet."
       rows={orgs.length}
     >
-      {orgs.map((o) => (
-        <tr key={o.orgId} className="border-t border-gray-100 hover:bg-gray-50/60">
-          <td className="px-4 py-3">
-            <div className="flex items-center gap-3">
-              <OrgLogo logoUrl={o.orgLogoUrl} name={o.orgName} />
-              <div className="min-w-0">
-                <p className="font-medium text-gray-800 truncate">{o.orgName}</p>
-                {o.topLead && (
-                  <p className="text-xs text-gray-400 truncate">
-                    {o.topLead.firstName} {o.topLead.lastName}
-                  </p>
-                )}
+      {orgs.map((o, i) => {
+        const orgName = o.orgName ?? "Unknown";
+        return (
+          <tr key={o.orgId ?? `${orgName}-${i}`} className="border-t border-gray-100 hover:bg-gray-50/60">
+            <td className="px-4 py-3">
+              <div className="flex items-center gap-3">
+                <OrgLogo logoUrl={o.orgLogoUrl} name={orgName} />
+                <div className="min-w-0">
+                  <p className="font-medium text-gray-800 truncate">{orgName}</p>
+                  {o.topPerson && (
+                    <p className="text-xs text-gray-400 truncate">
+                      {fullName(o.topPerson.firstName, o.topPerson.lastName)}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
-          </td>
-          <td className="px-4 py-3">
-            <ChannelTags channels={o.channels} />
-          </td>
-          <td className="px-4 py-3 text-right font-semibold text-gray-800 whitespace-nowrap">
-            {formatUsd(o.expectedRevenueUsd)}
-          </td>
-          <td className="px-4 py-3 text-right text-gray-500 whitespace-nowrap">
-            {formatDate(o.mostAdvancedDate)}
-          </td>
-        </tr>
-      ))}
+            </td>
+            <td className="px-4 py-3">
+              <ChannelTags tags={o.tags} />
+            </td>
+            <td className="px-4 py-3 text-right font-semibold text-gray-800 whitespace-nowrap">
+              {formatUsd(o.expectedRevenueUsd)}
+            </td>
+            <td className="px-4 py-3 text-right text-gray-500 whitespace-nowrap">
+              {formatDate(o.mostAdvancedDate)}
+            </td>
+          </tr>
+        );
+      })}
     </TableShell>
   );
 }
@@ -186,33 +181,34 @@ export function LeadConversionsTable({ leads }: { leads: ConversionLead[] }) {
       empty="No lead conversions yet."
       rows={leads.length}
     >
-      {leads.map((l) => (
-        <tr key={l.personId} className="border-t border-gray-100 hover:bg-gray-50/60">
-          <td className="px-4 py-3">
-            <div className="flex items-center gap-3">
-              <Avatar photoUrl={l.photoUrl} first={l.firstName} last={l.lastName} />
-              <div className="min-w-0">
-                <p className="font-medium text-gray-800 truncate">
-                  {l.firstName} {l.lastName}
-                </p>
-                <p className="text-xs text-gray-400 truncate flex items-center gap-1">
-                  <OrgLogo logoUrl={l.orgLogoUrl} name={l.orgName} />
-                  <span className="truncate">{l.orgName}</span>
-                </p>
+      {leads.map((l) => {
+        const name = fullName(l.firstName, l.lastName);
+        return (
+          <tr key={l.leadId} className="border-t border-gray-100 hover:bg-gray-50/60">
+            <td className="px-4 py-3">
+              <div className="flex items-center gap-3">
+                <Avatar photoUrl={l.photoUrl} name={name} />
+                <div className="min-w-0">
+                  <p className="font-medium text-gray-800 truncate">{name}</p>
+                  <p className="text-xs text-gray-400 truncate flex items-center gap-1">
+                    <OrgLogo logoUrl={l.orgLogoUrl} name={l.orgName ?? "—"} />
+                    <span className="truncate">{l.orgName ?? "—"}</span>
+                  </p>
+                </div>
               </div>
-            </div>
-          </td>
-          <td className="px-4 py-3">
-            <ChannelTags channels={l.channels} />
-          </td>
-          <td className="px-4 py-3 text-right font-semibold text-gray-800 whitespace-nowrap">
-            {formatUsd(l.expectedRevenueUsd)}
-          </td>
-          <td className="px-4 py-3 text-right text-gray-500 whitespace-nowrap">
-            {formatDate(l.eventDate)}
-          </td>
-        </tr>
-      ))}
+            </td>
+            <td className="px-4 py-3">
+              <ChannelTags tags={l.tags} />
+            </td>
+            <td className="px-4 py-3 text-right font-semibold text-gray-800 whitespace-nowrap">
+              {formatUsd(l.expectedRevenueUsd)}
+            </td>
+            <td className="px-4 py-3 text-right text-gray-500 whitespace-nowrap">
+              {formatDate(l.date)}
+            </td>
+          </tr>
+        );
+      })}
     </TableShell>
   );
 }
@@ -225,18 +221,20 @@ export function EventConversionsTable({ events }: { events: ConversionEvent[] })
       empty="No conversion events yet."
       rows={events.length}
     >
-      {events.map((e) => {
-        const meta = channelMeta(e.channel);
+      {events.map((e, i) => {
+        const meta = channelMeta(e.eventType);
+        const person = e.person ?? "Unknown";
         return (
-          <tr key={e.eventId} className="border-t border-gray-100 hover:bg-gray-50/60">
+          <tr
+            key={`${e.leadId}-${e.eventType}-${e.eventDate}-${i}`}
+            className="border-t border-gray-100 hover:bg-gray-50/60"
+          >
             <td className="px-4 py-3">
               <div className="flex items-center gap-3">
-                <Avatar photoUrl={e.photoUrl} first={e.firstName} last={e.lastName} />
+                <Avatar photoUrl={null} name={person} />
                 <div className="min-w-0">
-                  <p className="font-medium text-gray-800 truncate">
-                    {e.firstName} {e.lastName}
-                  </p>
-                  <p className="text-xs text-gray-400 truncate">{e.orgName}</p>
+                  <p className="font-medium text-gray-800 truncate">{person}</p>
+                  {e.org && <p className="text-xs text-gray-400 truncate">{e.org}</p>}
                 </div>
               </div>
             </td>

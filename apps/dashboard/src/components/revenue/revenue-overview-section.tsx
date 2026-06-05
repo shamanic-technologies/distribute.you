@@ -1,45 +1,32 @@
 "use client";
 
-import { useMemo } from "react";
 import Link from "next/link";
-import { useFeatureFlag } from "@/lib/use-feature-flag";
-import { FEATURE_GATES } from "@/lib/feature-gates";
 import { MaturityBadge } from "@/components/maturity-badge";
+import { FEATURE_GATES } from "@/lib/feature-gates";
 import { RevenueChart } from "@/components/revenue/revenue-chart";
 import { OrgConversionsTable } from "@/components/revenue/conversions-table";
-import { sampleRevenueOverview } from "@/lib/revenue-sample";
+import type { RevenueOverview } from "@/lib/revenue-view";
 
-function formatUsd(n: number): string {
+function formatUsd(n: number | null): string {
+  if (n === null) return "—";
   return `$${Math.round(n).toLocaleString("en-US")}`;
 }
 
 /**
- * Revenue-centric overview block for a feature page — expected pipeline headline,
- * revenue-over-time chart, and the org-level conversion table (the deduped
- * "lead organisation" rows only; the Events tab lives on the dedicated page).
- *
- * Alpha-gated (staff-only); the caller also restricts it to `isRevenueFeature`.
- * TEMP sample data — swap `sampleRevenueOverview` for the real adapter once
- * features-service `/revenue` deploys.
+ * Revenue-centric overview block — expected pipeline headline, revenue-over-time
+ * chart, and the org-level conversion table (deduped "lead organisation" rows;
+ * the Events tab lives on the dedicated Conversions page). Pure render — the page
+ * owns the gate + query.
  */
 export function RevenueOverviewSection({
-  orgId,
-  brandId,
-  featureSlug,
+  data,
+  conversionsHref,
 }: {
-  orgId: string;
-  brandId: string;
-  featureSlug: string;
+  data: RevenueOverview;
+  conversionsHref: string;
 }) {
-  const ok = useFeatureFlag(FEATURE_GATES["conversions"].flag);
-  const data = useMemo(() => sampleRevenueOverview(), []);
-
-  if (!ok) return null;
-
-  const conversionsHref = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/conversions`;
-
   return (
-    <div className="mb-6 space-y-4">
+    <div className="space-y-4">
       <div className="flex items-end justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -65,14 +52,14 @@ export function RevenueOverviewSection({
               <p className="text-[11px] text-gray-400 mt-1">expected pipeline</p>
             </div>
           </div>
-          <RevenueChart series={data.series} />
+          <RevenueChart series={data.timeSeries} />
         </div>
 
         {/* Quick stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-4">
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <p className="text-xs text-gray-400">Converting organizations</p>
-            <p className="mt-1 text-xl font-bold text-gray-900">{data.orgs.length}</p>
+            <p className="mt-1 text-xl font-bold text-gray-900">{data.organizations.length}</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <p className="text-xs text-gray-400">Lead conversions</p>
@@ -86,7 +73,7 @@ export function RevenueOverviewSection({
       </div>
 
       {/* Org-level conversions (overview shows organisations only). */}
-      <OrgConversionsTable orgs={data.orgs} />
+      <OrgConversionsTable orgs={data.organizations} />
     </div>
   );
 }
