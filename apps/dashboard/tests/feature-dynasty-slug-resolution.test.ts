@@ -22,7 +22,7 @@ describe("Feature slug resolution in features-context", () => {
 describe("Feature pages use featureSlug for API calls", () => {
   const featurePagePath = path.join(
     __dirname,
-    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/page.tsx",
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/page.tsx",
   );
   const campaignNewPath = path.join(
     __dirname,

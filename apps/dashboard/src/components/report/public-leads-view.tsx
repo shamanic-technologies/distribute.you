@@ -8,6 +8,7 @@ import {
   bucketRowsByStatus,
   type PublicReportStatus,
 } from "@/lib/public-report-bucketing";
+import { usePaginated, TablePager } from "@/components/table-pagination";
 
 /**
  * Public-report leads view — bespoke client component that mirrors the
@@ -231,6 +232,13 @@ export function PublicLeadsView({ rows, emailsApiUrl }: PublicLeadsViewProps) {
     { key: "all", label: "All", count: sortedRows.length },
   ];
 
+  // Paginate the filtered list (20/page). Reset to page 1 whenever the tab or
+  // search changes so the viewer never lands mid-list of a different bucket.
+  const { pageItems, page, setPage, pageCount, total, from, to } = usePaginated(filteredLeads);
+  useEffect(() => {
+    setPage(0);
+  }, [deferredTab, deferredSearch, setPage]);
+
   return (
     <div className="flex flex-col md:flex-row min-h-[60vh] relative">
       {/* Left column — tabs + search + table. Collapses on desktop when a
@@ -270,7 +278,21 @@ export function PublicLeadsView({ rows, emailsApiUrl }: PublicLeadsViewProps) {
         ) : isStale ? (
           <LeadsTableSkeleton />
         ) : (
-          <PublicLeadsTable leads={filteredLeads} selectedLead={selected} onSelectLead={setSelected} />
+          <>
+            <PublicLeadsTable leads={pageItems} selectedLead={selected} onSelectLead={setSelected} />
+            {pageCount > 1 && (
+              <div className="mt-3 bg-white rounded-xl border border-gray-200">
+                <TablePager
+                  page={page}
+                  pageCount={pageCount}
+                  from={from}
+                  to={to}
+                  total={total}
+                  onPage={setPage}
+                />
+              </div>
+            )}
+          </>
         )}
       </div>
 

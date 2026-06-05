@@ -6,9 +6,13 @@ import type {
   ConversionLead,
   ConversionEvent,
 } from "@/lib/revenue-view";
+import { usePaginated, TablePager } from "@/components/table-pagination";
 
 // ── formatting ──────────────────────────────────────────────────────────────
 function formatUsd(n: number): string {
+  // A positive amount that rounds down to $0 reads as "free" — show "<$1"
+  // instead so a sub-dollar expected revenue isn't mistaken for nothing.
+  if (n > 0 && Math.round(n) === 0) return "<$1";
   return `$${Math.round(n).toLocaleString("en-US")}`;
 }
 function formatDate(iso: string | null): string {
@@ -51,12 +55,14 @@ function channelMeta(channel: string) {
 
 // ── primitives ──────────────────────────────────────────────────────────────
 function Avatar({ photoUrl, name }: { photoUrl: string | null; name: string }) {
-  if (photoUrl) {
+  const [broken, setBroken] = useState(false);
+  if (photoUrl && !broken) {
     // eslint-disable-next-line @next/next/no-img-element
     return (
       <img
         src={photoUrl}
         alt={name}
+        onError={() => setBroken(true)}
         className="w-8 h-8 rounded-full object-cover bg-gray-100 shrink-0"
       />
     );
@@ -69,12 +75,14 @@ function Avatar({ photoUrl, name }: { photoUrl: string | null; name: string }) {
 }
 
 function OrgLogo({ logoUrl, name }: { logoUrl: string | null; name: string }) {
-  if (logoUrl) {
+  const [broken, setBroken] = useState(false);
+  if (logoUrl && !broken) {
     // eslint-disable-next-line @next/next/no-img-element
     return (
       <img
         src={logoUrl}
         alt={name}
+        onError={() => setBroken(true)}
         className="w-8 h-8 rounded-md object-contain bg-white border border-gray-200 shrink-0"
       />
     );
@@ -107,11 +115,13 @@ function TableShell({
   children,
   empty,
   rows,
+  footer,
 }: {
   headers: string[];
   children: React.ReactNode;
   empty: string;
   rows: number;
+  footer?: React.ReactNode;
 }) {
   if (rows === 0) {
     return (
@@ -134,6 +144,7 @@ function TableShell({
         </thead>
         <tbody>{children}</tbody>
       </table>
+      {footer}
     </div>
   );
 }
@@ -142,13 +153,17 @@ function TableShell({
 
 /** Org-level conversions — overview table + Organizations tab (deduped, org-first). */
 export function OrgConversionsTable({ orgs }: { orgs: ConversionOrg[] }) {
+  const { pageItems, page, setPage, pageCount, total, from, to } = usePaginated(orgs);
   return (
     <TableShell
       headers={["Organization", "Conversions", "Expected revenue", "Latest activity"]}
       empty="No conversions yet."
       rows={orgs.length}
+      footer={
+        <TablePager page={page} pageCount={pageCount} from={from} to={to} total={total} onPage={setPage} />
+      }
     >
-      {orgs.map((o, i) => {
+      {pageItems.map((o, i) => {
         const orgName = o.orgName ?? "Unknown";
         return (
           <tr key={o.orgId ?? `${orgName}-${i}`} className="border-t border-gray-100 hover:bg-gray-50/60">
@@ -183,13 +198,17 @@ export function OrgConversionsTable({ orgs }: { orgs: ConversionOrg[] }) {
 
 /** Person-level conversions — Leads tab. */
 export function LeadConversionsTable({ leads }: { leads: ConversionLead[] }) {
+  const { pageItems, page, setPage, pageCount, total, from, to } = usePaginated(leads);
   return (
     <TableShell
       headers={["Lead", "Conversions", "Expected revenue", "Latest activity"]}
       empty="No lead conversions yet."
       rows={leads.length}
+      footer={
+        <TablePager page={page} pageCount={pageCount} from={from} to={to} total={total} onPage={setPage} />
+      }
     >
-      {leads.map((l) => {
+      {pageItems.map((l) => {
         const name = fullName(l.firstName, l.lastName);
         return (
           <tr key={l.leadId} className="border-t border-gray-100 hover:bg-gray-50/60">
@@ -222,21 +241,29 @@ export function LeadConversionsTable({ leads }: { leads: ConversionLead[] }) {
 }
 
 /** Raw event log — Events tab (single tag per row). Itemises every funnel stage
- *  per lead, so the row count is high — render a bounded slice + "Show more". */
-const EVENTS_PAGE_SIZE = 50;
-
-export function EventConversionsTable({ events }: { events: ConversionEvent[] }) {
-  const [visibleCount, setVisibleCount] = useState(EVENTS_PAGE_SIZE);
-  const visible = events.slice(0, visibleCount);
-  const remaining = events.length - visible.length;
+ *  per lead, so the row count is high — paginate 20/page.
+ *
+ *  `photoByLeadId` carries each lead's profile photo (joined from the same
+ *  `/revenue` payload's `leads[]` by the caller) so events show the person's
+ *  picture, falling back to initials when absent/broken. */
+export function EventConversionsTable({
+  events,
+  photoByLeadId,
+}: {
+  events: ConversionEvent[];
+  photoByLeadId?: Map<string, string | null>;
+}) {
+  const { pageItems, page, setPage, pageCount, total, from, to } = usePaginated(events);
   return (
-    <div className="space-y-3">
     <TableShell
       headers={["Lead", "Event", "Pipeline added", "Date"]}
       empty="No conversion events yet."
       rows={events.length}
+      footer={
+        <TablePager page={page} pageCount={pageCount} from={from} to={to} total={total} onPage={setPage} />
+      }
     >
-      {visible.map((e, i) => {
+      {pageItems.map((e, i) => {
         const meta = channelMeta(e.eventType);
         const person = e.person ?? "Unknown";
         return (
@@ -246,7 +273,7 @@ export function EventConversionsTable({ events }: { events: ConversionEvent[] })
           >
             <td className="px-4 py-3">
               <div className="flex items-center gap-3">
-                <Avatar photoUrl={null} name={person} />
+                <Avatar photoUrl={photoByLeadId?.get(e.leadId) ?? null} name={person} />
                 <div className="min-w-0">
                   <p className="font-medium text-gray-800 truncate">{person}</p>
                   {e.org && <p className="text-xs text-gray-400 truncate">{e.org}</p>}
@@ -268,17 +295,5 @@ export function EventConversionsTable({ events }: { events: ConversionEvent[] })
         );
       })}
     </TableShell>
-      {remaining > 0 && (
-        <div className="text-center">
-          <button
-            type="button"
-            onClick={() => setVisibleCount((n) => n + EVENTS_PAGE_SIZE)}
-            className="text-xs font-medium text-brand-600 hover:text-brand-700 px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-          >
-            Show {Math.min(remaining, EVENTS_PAGE_SIZE)} more ({remaining} remaining)
-          </button>
-        </div>
-      )}
-    </div>
   );
 }

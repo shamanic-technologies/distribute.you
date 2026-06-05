@@ -819,7 +819,7 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
           } satisfies SidebarItem,
         ]
       : []),
-    { id: "campaigns", label: "Campaigns", href: basePath, icon: <EnvelopeIcon /> },
+    { id: "campaigns", label: "Campaigns", href: `${basePath}/campaigns`, icon: <EnvelopeIcon /> },
     { id: "create", label: "Create Campaign", href: `${basePath}/campaigns/new`, icon: <PlusIcon /> },
     { id: "workflows", label: "Workflows", href: `${basePath}/workflows`, icon: <WorkflowIcon /> },
     ...(revenueOk
