@@ -11,10 +11,17 @@ const sidebarPath = path.resolve(
   "../src/components/context-sidebar.tsx",
 );
 const gatesPath = path.resolve(__dirname, "../src/lib/feature-gates.ts");
+const revenueFeaturePath = path.resolve(__dirname, "../src/lib/revenue-feature.ts");
+const featurePagePath = path.resolve(
+  __dirname,
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/page.tsx",
+);
 
 const page = fs.readFileSync(pagePath, "utf-8");
 const sidebar = fs.readFileSync(sidebarPath, "utf-8");
 const gates = fs.readFileSync(gatesPath, "utf-8");
+const revenueFeature = fs.readFileSync(revenueFeaturePath, "utf-8");
+const featurePage = fs.readFileSync(featurePagePath, "utf-8");
 
 describe("conversions surface is alpha-gated (staff-only)", () => {
   it("registers the `conversions` gate", () => {
@@ -29,6 +36,28 @@ describe("conversions surface is alpha-gated (staff-only)", () => {
   it("sidebar only adds the Conversions link when the flag is on", () => {
     expect(sidebar).toContain('FEATURE_GATES["conversions"]');
     expect(sidebar).toContain("conversionsOk");
+  });
+});
+
+describe("revenue surface is restricted to revenue features (not all features)", () => {
+  it("revenue-feature registry only enables sales-cold-email-outreach today", () => {
+    expect(revenueFeature).toContain('"sales-cold-email-outreach"');
+    expect(revenueFeature).toContain("isRevenueFeature");
+  });
+
+  it("sidebar gates the Conversions link on isRevenueFeature(featureSlug)", () => {
+    expect(sidebar).toContain("isRevenueFeature(featureSlug)");
+  });
+
+  it("conversions page is unavailable on non-revenue features", () => {
+    expect(page).toContain("isRevenueFeature(featureSlug)");
+  });
+});
+
+describe("feature overview renders the revenue section (revenue features only)", () => {
+  it("feature page gates RevenueOverviewSection on isRevenueFeature", () => {
+    expect(featurePage).toContain("isRevenueFeature(featureSlug)");
+    expect(featurePage).toContain("RevenueOverviewSection");
   });
 });
 

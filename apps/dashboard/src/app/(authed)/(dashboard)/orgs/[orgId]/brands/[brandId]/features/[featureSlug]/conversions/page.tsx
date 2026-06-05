@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { FEATURE_GATES } from "@/lib/feature-gates";
+import { isRevenueFeature } from "@/lib/revenue-feature";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { RevenueChart } from "@/components/revenue/revenue-chart";
 import {
@@ -35,7 +36,7 @@ export default function ConversionsPage() {
   // features-service GET /v1/features/{slug}/revenue once that endpoint deploys.
   const data = useMemo(() => sampleRevenueOverview(), []);
 
-  if (!ok) {
+  if (!ok || !isRevenueFeature(featureSlug)) {
     return (
       <div className="p-4 md:p-8 max-w-7xl mx-auto">
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-sm text-gray-400">
