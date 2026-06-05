@@ -68,7 +68,7 @@ export default async function OG() {
               maxWidth: 1000,
             }}
           >
-            We execute, measure outcome, optimize, repeat. You win.
+            We execute, measure, optimize, and scale your lead generation. You win clients while you sleep.
           </div>
         </div>
         <div

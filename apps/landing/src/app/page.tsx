@@ -119,7 +119,7 @@ export default function Home() {
           </h1>
 
           <p className="text-lg md:text-xl text-gray-500 mb-10 max-w-2xl mx-auto leading-relaxed">
-            We execute, measure outcome, optimize, repeat. You win.
+            We execute, measure, optimize, and scale your lead generation.<br />You win clients while you sleep.
           </p>
 
           <HeroForm signUpUrl={urls.signUp} />
