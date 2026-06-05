@@ -46,9 +46,15 @@ const RevenueEventSchema = z.object({
   eventDate: z.string(),
   contributionUsd: z.number(),
 });
+const CostEconomicsSchema = z.object({
+  totalCostUsd: z.number(),
+  costOfAcquisitionPct: z.number().nullable(),
+  roiMultiple: z.number().nullable(),
+});
 const FeatureRevenueResponseSchema = z.object({
   featureSlug: z.string(),
   headline: z.object({ totalPipelineUsd: z.number().nullable() }),
+  costEconomics: CostEconomicsSchema,
   timeSeries: z.array(z.object({ date: z.string(), cumulativePipelineUsd: z.number() })),
   organizations: z.array(RevenueOrgSchema),
   leads: z.array(RevenueLeadSchema),
@@ -68,6 +74,7 @@ export function parseFeatureRevenue(raw: unknown, label: string): RevenueOvervie
   return {
     featureSlug: d.featureSlug,
     totalPipelineUsd: d.headline.totalPipelineUsd,
+    costEconomics: d.costEconomics,
     timeSeries: d.timeSeries,
     organizations: d.organizations,
     leads: d.leads,

@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { getPlatformPrices, type CostByName } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { ProviderLogo } from "@/components/provider-logo";
+import type { CostEconomics } from "@/lib/revenue-view";
 
 /**
  * Cost & efficiency summary for the feature Overview — total spend, the top-3
@@ -12,12 +13,10 @@ import { ProviderLogo } from "@/components/provider-logo";
  *   - Cost of acquisition = total cost ÷ expected revenue (a %; lower is better)
  *   - ROI                 = expected revenue ÷ total cost (a × multiple)
  *
- * INTERIM: these two ratios are computed client-side here so the card can ship
- * to prod now. features-service is becoming the single source (it already holds
- * both inputs) — once it returns `costEconomics` on /revenue, swap the two
- * `useMemo` computations below for the served values. Total + top-3 providers
- * stay client-side (the provider-domain decomposition lives in the cost
- * breakdown, not in features-service).
+ * The two ratios come straight from features-service (`costEconomics` on
+ * /revenue) — the single source per DIS-232. Total spend + the top-3 provider
+ * breakdown stay client-side (the provider-domain decomposition lives in the
+ * cost breakdown, not in features-service).
  */
 
 function formatCostName(name: string): string {
@@ -51,10 +50,10 @@ function InfoHint({ text }: { text: string }) {
 
 export function RevenueCostSummary({
   costBreakdown,
-  totalPipelineUsd,
+  costEconomics,
 }: {
   costBreakdown: CostByName[];
-  totalPipelineUsd: number | null;
+  costEconomics: CostEconomics;
 }) {
   const { entries, totalCents } = useMemo(() => {
     const e = costBreakdown
@@ -76,6 +75,8 @@ export function RevenueCostSummary({
     return m;
   }, [platformPrices]);
 
+  // Total spent + top-3 provider sources stay client-side (provider-domain
+  // decomposition lives in the cost breakdown, not features-service).
   const totalCostUsd = totalCents / 100;
   const top3 = entries.slice(0, 3).map((e) => ({
     ...e,
@@ -83,13 +84,10 @@ export function RevenueCostSummary({
     domain: domainByCost.get(e.name) ?? null,
   }));
 
-  // Interim derived metrics (swap for features-service `costEconomics` later).
-  const cacPct =
-    totalPipelineUsd != null && totalPipelineUsd > 0
-      ? (totalCostUsd / totalPipelineUsd) * 100
-      : null;
-  const roiMultiple =
-    totalCostUsd > 0 && totalPipelineUsd != null ? totalPipelineUsd / totalCostUsd : null;
+  // CAC % + ROI × come from features-service (single source) — null per its
+  // documented semantics (pipeline null/0, or cost 0).
+  const cacPct = costEconomics.costOfAcquisitionPct;
+  const roiMultiple = costEconomics.roiMultiple;
 
   // Right-of-chart column on the Overview: three stat cards (Total spent / Cost
   // of acquisition / ROI) replacing the old org/lead/event counters, plus a

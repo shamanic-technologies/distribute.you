@@ -62,11 +62,27 @@ export interface ConversionEvent {
   contributionUsd: number;
 }
 
+/**
+ * Derived cost economics for the feature+brand — computed by features-service
+ * (single source). Always present on a 200; the two ratios are null per the
+ * documented null semantics. `totalCostUsd` is real (>= 0) even when pipeline is null.
+ */
+export interface CostEconomics {
+  /** Total run cost in $, brand (+ optional campaign), feature-scoped. */
+  totalCostUsd: number;
+  /** (totalCostUsd / totalPipelineUsd) * 100. Null when pipeline is null or 0. */
+  costOfAcquisitionPct: number | null;
+  /** totalPipelineUsd / totalCostUsd. Null when cost is 0 or pipeline is null. */
+  roiMultiple: number | null;
+}
+
 /** Everything the overview + conversions pages render for a feature+brand. */
 export interface RevenueOverview {
   featureSlug: string;
   /** Org-deduped expected pipeline. Null when no funnel is wired / no saved economics. */
   totalPipelineUsd: number | null;
+  /** Cost economics from features-service (total spend + derived CAC % + ROI ×). */
+  costEconomics: CostEconomics;
   timeSeries: RevenuePoint[];
   organizations: ConversionOrg[];
   leads: ConversionLead[];
