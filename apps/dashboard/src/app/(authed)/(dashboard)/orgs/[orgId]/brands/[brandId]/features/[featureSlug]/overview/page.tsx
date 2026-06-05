@@ -5,8 +5,9 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { FEATURE_GATES } from "@/lib/feature-gates";
 import { isRevenueFeature } from "@/lib/revenue-feature";
-import { getFeatureRevenue } from "@/lib/api";
+import { getFeatureRevenue, getBrandCostBreakdown } from "@/lib/api";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
+import { RevenueCostSummary } from "@/components/revenue/revenue-cost-summary";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { Skeleton } from "@/components/skeleton";
 
@@ -49,6 +50,14 @@ export default function FeatureOverviewPage() {
     { enabled },
   );
 
+  // Cost breakdown (runs-service) → total spend + top-3 provider sources for the
+  // Cost & efficiency card. Same query key as the Campaigns page so it's shared.
+  const { data: costData } = useAuthQuery(
+    ["brandCostBreakdown", { brandId, featureSlug }],
+    () => getBrandCostBreakdown(brandId, { featureSlug }),
+    { enabled },
+  );
+
   if (!ok || !isRevenueFeature(featureSlug)) {
     return (
       <div className="p-4 md:p-8 max-w-7xl mx-auto">
@@ -67,7 +76,13 @@ export default function FeatureOverviewPage() {
       ) : data.totalPipelineUsd === null ? (
         <RevenueEmptyState setupHref={`${basePath}/campaigns/new`} />
       ) : (
-        <RevenueOverviewSection data={data} conversionsHref={`${basePath}/conversions`} />
+        <div className="space-y-4">
+          <RevenueCostSummary
+            costBreakdown={costData?.costs ?? []}
+            totalPipelineUsd={data.totalPipelineUsd}
+          />
+          <RevenueOverviewSection data={data} conversionsHref={`${basePath}/conversions`} />
+        </div>
       )}
     </div>
   );
