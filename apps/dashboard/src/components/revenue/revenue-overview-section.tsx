@@ -10,6 +10,8 @@ import {
   LeadConversionsTable,
   EventConversionsTable,
 } from "@/components/revenue/conversions-table";
+import { RevenueCostSummary } from "@/components/revenue/revenue-cost-summary";
+import type { CostByName } from "@/lib/api";
 import type { RevenueOverview } from "@/lib/revenue-view";
 
 type ConversionTab = "organizations" | "leads" | "events";
@@ -33,9 +35,11 @@ function formatUsd(n: number | null): string {
 export function RevenueOverviewSection({
   data,
   conversionsHref,
+  costBreakdown,
 }: {
   data: RevenueOverview;
   conversionsHref: string;
+  costBreakdown: CostByName[];
 }) {
   const [tab, setTab] = useState<ConversionTab>("organizations");
   // Join each event's leadId → the lead's photo (same payload) for the Events tab.
@@ -73,21 +77,9 @@ export function RevenueOverviewSection({
           <RevenueChart series={data.timeSeries} />
         </div>
 
-        {/* Quick stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-4">
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs text-gray-400">Converting organizations</p>
-            <p className="mt-1 text-xl font-bold text-gray-900">{data.organizations.length}</p>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs text-gray-400">Lead conversions</p>
-            <p className="mt-1 text-xl font-bold text-gray-900">{data.leads.length}</p>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs text-gray-400">Conversion events</p>
-            <p className="mt-1 text-xl font-bold text-gray-900">{data.events.length}</p>
-          </div>
-        </div>
+        {/* Cost & efficiency — replaces the old org/lead/event counters with the
+            spend metrics (total / cost-of-acquisition / ROI) + top-3 sources. */}
+        <RevenueCostSummary costBreakdown={costBreakdown} totalPipelineUsd={data.totalPipelineUsd} />
       </div>
 
       {/* Conversions — Organizations / Leads / Events tabs (same set as the

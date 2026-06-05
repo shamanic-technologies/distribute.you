@@ -7,7 +7,6 @@ import { FEATURE_GATES } from "@/lib/feature-gates";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { getFeatureRevenue, getBrandCostBreakdown } from "@/lib/api";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
-import { RevenueCostSummary } from "@/components/revenue/revenue-cost-summary";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { Skeleton } from "@/components/skeleton";
 
@@ -76,13 +75,11 @@ export default function FeatureOverviewPage() {
       ) : data.totalPipelineUsd === null ? (
         <RevenueEmptyState setupHref={`${basePath}/campaigns/new`} />
       ) : (
-        <div className="space-y-4">
-          <RevenueCostSummary
-            costBreakdown={costData?.costs ?? []}
-            totalPipelineUsd={data.totalPipelineUsd}
-          />
-          <RevenueOverviewSection data={data} conversionsHref={`${basePath}/conversions`} />
-        </div>
+        <RevenueOverviewSection
+          data={data}
+          conversionsHref={`${basePath}/conversions`}
+          costBreakdown={costData?.costs ?? []}
+        />
       )}
     </div>
   );
