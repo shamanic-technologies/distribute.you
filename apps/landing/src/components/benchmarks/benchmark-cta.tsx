@@ -36,7 +36,7 @@ export function BenchmarkCTA({ copy, signUpUrl, variant = "primary" }: Benchmark
           {copy.cta}
         </LinkButton>
         <p className={`text-xs mt-4 ${dark ? "text-gray-500" : "text-gray-400"}`}>
-          $2 welcome credits. No subscription. No credit card to try.
+          $25 welcome credits. No subscription. No credit card to try.
         </p>
       </div>
     </section>

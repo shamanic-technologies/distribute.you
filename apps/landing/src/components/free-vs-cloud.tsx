@@ -12,7 +12,7 @@ export function FreeVsCloud({ signUpUrl }: CloudPlanCardProps) {
           Pay as you go
         </div>
         <p className="text-sm text-gray-400 mb-6 leading-relaxed mt-2">
-          $2 welcome credits. No subscription.
+          $25 welcome credits. No subscription.
         </p>
         <ul className="space-y-2.5 text-sm text-gray-300 mb-8">
           <li className="flex items-start gap-2">
@@ -38,7 +38,7 @@ export function FreeVsCloud({ signUpUrl }: CloudPlanCardProps) {
           href={signUpUrl}
           className="inline-block w-full text-center px-5 py-2.5 rounded-lg bg-white text-gray-900 text-sm font-medium hover:bg-gray-100 transition"
         >
-          Start free — $2 credits
+          Start free — $25 credits
         </LinkButton>
         <p className="text-xs text-gray-500 mt-3 text-center">
           No credit card. Pay only what you use.

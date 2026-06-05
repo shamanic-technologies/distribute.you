@@ -93,7 +93,7 @@ export default function OnboardingPage() {
           The done-for-you distribution automation platform.
         </p>
         <p className="text-gray-500 mb-8 max-w-md mx-auto">
-          Full control over your distribution strategy. Crowdsourced best practices from the industry — always the best available strategy. $2 free to start, no subscription.
+          Full control over your distribution strategy. Crowdsourced best practices from the industry — always the best available strategy. $25 free to start, no subscription.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 text-left">
           <div className="bg-gray-50 rounded-xl p-4">
