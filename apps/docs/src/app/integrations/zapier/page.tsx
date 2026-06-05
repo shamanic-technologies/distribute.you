@@ -2,7 +2,7 @@ import { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Zapier Integration",
-  description: "Connect distribute to 5,000+ apps with Zapier using the REST API and webhooks.",
+  description: "Connect distribute to 5,000+ apps with Zapier — trigger campaigns and react to outreach events using the REST API and webhooks.",
 };
 
 export default function ZapierIntegrationPage() {

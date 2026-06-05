@@ -4,7 +4,7 @@ import { URLS } from "@distribute/content";
 
 export const metadata: Metadata = {
   title: "Authentication",
-  description: "Set up your distribute API key and authenticate requests via MCP or REST API.",
+  description: "Set up your distribute API key and authenticate every request across both the MCP server and the REST API in just a few steps.",
   openGraph: {
     title: "Authentication | distribute Docs",
     description: "Configure API keys and credentials.",

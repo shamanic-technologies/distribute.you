@@ -12,16 +12,16 @@ export const revalidate = 60;
 const BLOG_URL = `${PROD_URLS.landing}/blog`;
 
 export const metadata: Metadata = {
-  title: "Blog — distribute",
+  title: "Blog — Stories from the Solo Path",
   description:
-    "Stories, playbooks, and benchmarks for solo builders running their own distribution.",
+    "Stories, playbooks, and benchmarks for solo builders and small teams running their own distribution — outbound, PR, and growth.",
   alternates: { canonical: BLOG_URL },
   openGraph: {
     type: "website",
     url: BLOG_URL,
-    title: "Blog — distribute",
+    title: "Blog — Stories from the Solo Path",
     description:
-      "Stories, playbooks, and benchmarks for solo builders running their own distribution.",
+      "Stories, playbooks, and benchmarks for solo builders and small teams running their own distribution — outbound, PR, and growth.",
   },
 };
 

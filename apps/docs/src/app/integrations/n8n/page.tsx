@@ -2,7 +2,7 @@ import { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "n8n Integration",
-  description: "Build automated workflows with distribute and n8n using the REST API.",
+  description: "Build automated, self-hosted workflows with distribute and n8n — wire campaigns and outreach together using the REST API.",
 };
 
 export default function N8nIntegrationPage() {

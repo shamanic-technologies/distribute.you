@@ -11,7 +11,7 @@ const PAGE_DESCRIPTION =
   "Open benchmarks & statistics for AI-driven outreach. Real per-feature performance from every brand running campaigns through distribute — sales, PR, hiring, VC, accelerators, AI visibility, and more.";
 
 export const metadata: Metadata = {
-  title: "Benchmarks & Statistics (2026) — distribute",
+  title: "Benchmarks & Statistics (2026)",
   description: PAGE_DESCRIPTION,
   keywords: [
     "cold email benchmarks",

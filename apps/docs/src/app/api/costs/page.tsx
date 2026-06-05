@@ -3,7 +3,7 @@ import { CopyForLLM } from "@/components/copy-for-llm";
 
 export const metadata: Metadata = {
   title: "Costs API",
-  description: "Cost breakdown and email delivery statistics via the distribute API.",
+  description: "Retrieve per-campaign cost breakdowns and email delivery statistics to track spend and performance through the distribute REST API.",
 };
 
 const LLM_INSTRUCTIONS = `# Costs API

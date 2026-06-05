@@ -3,7 +3,7 @@ import { CopyForLLM } from "@/components/copy-for-llm";
 
 export const metadata: Metadata = {
   title: "Brands API",
-  description: "Create brands from URLs, get brand details, and extract structured data with AI via the distribute API.",
+  description: "Create brands from a URL, fetch full brand details, and extract structured company data with AI — all through the distribute REST API.",
 };
 
 const LLM_INSTRUCTIONS = `# Brands API

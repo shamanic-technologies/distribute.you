@@ -3,7 +3,7 @@ import { CopyForLLM } from "@/components/copy-for-llm";
 
 export const metadata: Metadata = {
   title: "Workflows API",
-  description: "List workflows, inspect DAGs, get summaries, and check API key status via the distribute API.",
+  description: "List workflows, inspect their DAGs, fetch run summaries, and check API-key status — all through the distribute REST API.",
 };
 
 const LLM_INSTRUCTIONS = `# Workflows API

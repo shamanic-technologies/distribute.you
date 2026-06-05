@@ -3,7 +3,7 @@ import { CopyForLLM } from "@/components/copy-for-llm";
 
 export const metadata: Metadata = {
   title: "Billing API",
-  description: "Check balance and account settings via the distribute API.",
+  description: "Check your account balance, credit usage, and billing settings programmatically through the distribute REST API and MCP server.",
 };
 
 const LLM_INSTRUCTIONS = `# Billing API
