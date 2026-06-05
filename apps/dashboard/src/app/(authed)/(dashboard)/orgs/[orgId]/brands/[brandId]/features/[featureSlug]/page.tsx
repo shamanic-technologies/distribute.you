@@ -18,8 +18,6 @@ import { ReplyBreakdown, ReplyBreakdownSkeleton } from "@/components/campaign/re
 import { CostBreakdown, CostBreakdownSkeleton } from "@/components/campaign/cost-breakdown";
 import { formatStatValue } from "@/lib/format-stat";
 import { pollOptions } from "@/lib/query-options";
-import { isRevenueFeature } from "@/lib/revenue-feature";
-import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
 
 const STATUS_STYLES: Record<string, string> = {
   ongoing: "bg-blue-100 text-blue-700 border-blue-200",
@@ -194,12 +192,6 @@ function GenericFeaturePage({
           </Link>
         </div>
       </div>
-
-      {/* Revenue-centric overview (sales-cold-email today) — alpha, staff-only.
-          Renders above the campaigns overview; self-gated on the conversions flag. */}
-      {isRevenueFeature(featureSlug) && (
-        <RevenueOverviewSection orgId={orgId} brandId={brandId} featureSlug={featureSlug} />
-      )}
 
       {!revealed ? (
         <>
