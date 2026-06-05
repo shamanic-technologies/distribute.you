@@ -79,7 +79,7 @@ export function RevenueOverviewSection({
 
         {/* Cost & efficiency — replaces the old org/lead/event counters with the
             spend metrics (total / cost-of-acquisition / ROI) + top-3 sources. */}
-        <RevenueCostSummary costBreakdown={costBreakdown} totalPipelineUsd={data.totalPipelineUsd} />
+        <RevenueCostSummary costBreakdown={costBreakdown} costEconomics={data.costEconomics} />
       </div>
 
       {/* Conversions — Organizations / Leads / Events tabs (same set as the
