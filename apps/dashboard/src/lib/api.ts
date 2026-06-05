@@ -3187,6 +3187,103 @@ export async function getDomainDrStatus(
   return parsed.data[0] ?? null;
 }
 
+// ─── On-demand Ahrefs fetch (get-or-fetch-if-never-seen) ────────────────────
+// The GET readers above hit ahref-service's CACHE only; for a domain that was
+// never scraped the cache is empty forever. These POST endpoints make
+// AhrefService actually go check Ahrefs (declares cost + authorizes the scrape
+// server-side). The dashboard fires them once per never-seen domain so we at
+// least try the source. Compute responses are supersets of the read shapes;
+// the read schemas strip the extra fields, so callers get the same type.
+
+/**
+ * POST /v1/orgs/domains/traffic-compute — on-demand Ahrefs traffic scrape for a
+ * single domain. Returns the post-scrape traffic history (same shape as
+ * getDomainTrafficHistory). null when Ahrefs has nothing for the domain.
+ */
+export async function computeDomainTraffic(
+  domain: string,
+  token?: string,
+): Promise<DomainTrafficHistory | null> {
+  const raw = await apiCall<unknown>("/orgs/domains/traffic-compute", {
+    token,
+    method: "POST",
+    body: { domains: [domain] },
+  });
+  const parsed = z.array(DomainTrafficHistorySchema).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] computeDomainTraffic: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] computeDomainTraffic: invalid response shape");
+  }
+  return parsed.data[0] ?? null;
+}
+
+/**
+ * POST /v1/orgs/domains/dr-compute — on-demand Ahrefs Domain Rating scrape for a
+ * single domain. Returns the post-scrape DR status (same shape as
+ * getDomainDrStatus). null when Ahrefs has nothing for the domain.
+ */
+export async function computeDomainDr(
+  domain: string,
+  token?: string,
+): Promise<DomainDrStatus | null> {
+  const raw = await apiCall<unknown>("/orgs/domains/dr-compute", {
+    token,
+    method: "POST",
+    body: { domains: [domain] },
+  });
+  const parsed = z.array(DomainDrStatusSchema).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] computeDomainDr: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] computeDomainDr: invalid response shape");
+  }
+  return parsed.data[0] ?? null;
+}
+
+// Ahrefs Brand-Radar AI-visibility (get-or-refresh): serves cache when fresh,
+// scrapes (cost-declared + authorized) when stale. The only exposed surface is
+// this POST — there is no separate cache-read GET — so it doubles as reader +
+// trigger. We surface the global AI-mention count; the per-engine + competitor
+// breakdown is on the wire but unused here (stripped by the schema).
+const AhrefAiVisibilitySchema = z.object({
+  domain: z.string(),
+  snapshotDate: z.string().nullable(),
+  fetchedFromCache: z.boolean(),
+  mentionsTotal: z.number(),
+});
+
+export type AhrefAiVisibility = z.infer<typeof AhrefAiVisibilitySchema>;
+
+/**
+ * POST /v1/orgs/domains/ai-visibility — Ahrefs Brand-Radar AI-visibility
+ * (get-or-refresh) for a single domain. Returns the global AI-mention count
+ * across engines. ahref-service owns the cache/scrape decision.
+ */
+export async function computeDomainAiVisibility(
+  domain: string,
+  token?: string,
+): Promise<AhrefAiVisibility> {
+  const raw = await apiCall<unknown>("/orgs/domains/ai-visibility", {
+    token,
+    method: "POST",
+    body: { domain },
+  });
+  const parsed = AhrefAiVisibilitySchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] computeDomainAiVisibility: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] computeDomainAiVisibility: invalid response shape");
+  }
+  return parsed.data;
+}
+
 // ─── AI Visibility Score (ai-visibility-score-service) ──────────────────────
 
 export interface VisibilityRunWeights {
