@@ -1,75 +1,70 @@
-// View-model types for the feature revenue overview + conversions page.
+// View-model for the feature revenue overview + conversions surfaces.
 //
-// These are what the UI renders. They are produced today by `revenue-sample.ts`
-// (sample data driven through the `revenue.ts` calc lib) and will be produced for
-// real by an adapter over features-service `GET /v1/features/{slug}/revenue` once
-// that endpoint deploys (verify the wire shape via api-registry, then `safeParse`).
+// Mirrors the features-service `GET /v1/features/{slug}/revenue` contract 1:1 —
+// features-service is the single source that computes expected pipeline revenue
+// (MAX inside each entity, SUM across distinct orgs) from the brand's saved sales
+// economics. The dashboard only renders. `timeSeries`, `events`, and the date
+// fields stay empty/null until email-gateway exposes per-event timestamps.
 //
-// Identity/display fields (names, photos, org logo) come from lead-service; EV
-// numbers come from the calc lib; per-event dates come from email-gateway (pending).
+// Plain TS interfaces (no `@/lib/api` import) so these types stay safe to import
+// from components reused in the public-report bundle.
 
-import type { RevenuePoint } from "./revenue";
-
-/** One person row (lead table) with the org they belong to. */
-export interface ConversionLead {
-  personId: string;
-  firstName: string;
-  lastName: string;
-  photoUrl: string | null;
-  orgId: string;
-  orgName: string;
-  orgLogoUrl: string | null;
-  /** Channels this person triggered (multi-tag). */
-  channels: string[];
-  /** person_EV — max across their channels. */
-  expectedRevenueUsd: number;
-  /** Most-advanced event date for the person. */
-  eventDate: string | null;
+export interface RevenuePoint {
+  date: string;
+  cumulativePipelineUsd: number;
 }
 
-/** One organisation row (org table = overview + Organizations tab), deduped. */
+export interface ConversionTopPerson {
+  firstName: string | null;
+  lastName: string | null;
+  photoUrl: string | null;
+}
+
+/** One organisation row (overview table + Organizations tab), deduped. */
 export interface ConversionOrg {
-  orgId: string;
-  orgName: string;
+  orgId: string | null;
+  orgName: string | null;
   orgLogoUrl: string | null;
-  /** The most-likely person — argmax person_EV. */
-  topLead: ConversionLead | null;
-  /** Union of channels across the org (multi-tag). */
-  channels: string[];
-  /** org_EV — max across the org's people (1 org = 1 client). */
+  /** The most-likely person (argmax person_EV). */
+  topPerson: ConversionTopPerson | null;
+  /** Conversion channels across the org (multi-tag). */
+  tags: string[];
   expectedRevenueUsd: number;
-  /** Most-advanced event date across the org. */
+  /** Most-advanced event date; null until per-event timestamps exist. */
   mostAdvancedDate: string | null;
 }
 
-/** One raw conversion event (Events tab), single channel tag. */
-export interface ConversionEvent {
-  eventId: string;
-  personId: string;
-  firstName: string;
-  lastName: string;
+/** One person row (Leads tab). */
+export interface ConversionLead {
+  leadId: string;
+  firstName: string | null;
+  lastName: string | null;
   photoUrl: string | null;
-  orgName: string;
+  orgName: string | null;
   orgLogoUrl: string | null;
-  /** Single channel for this event. */
-  channel: string;
+  tags: string[];
+  expectedRevenueUsd: number;
+  /** Most-advanced event date; null until per-event timestamps exist. */
+  date: string | null;
+}
+
+/** One raw event row (Events tab), single channel. */
+export interface ConversionEvent {
+  leadId: string;
+  person: string | null;
+  org: string | null;
+  eventType: string;
   eventDate: string;
-  /** This event's EV contribution = LTR × P(paid | channel). */
   contributionUsd: number;
 }
 
-/** Everything the revenue overview + conversions page renders for a feature+brand. */
+/** Everything the overview + conversions pages render for a feature+brand. */
 export interface RevenueOverview {
-  /** SUM of org EVs across distinct orgs. */
-  totalPipelineUsd: number;
-  /** Cumulative revenue-over-time points (sorted by date). */
-  series: RevenuePoint[];
-  /** Pipeline that has no date yet (can't be placed on the time axis) — surfaced, not dropped. */
-  undatedPipelineUsd: number;
-  /** Org-level rows (deduped) — the overview table + Organizations tab. */
-  orgs: ConversionOrg[];
-  /** Person-level rows — the Leads tab. */
+  featureSlug: string;
+  /** Org-deduped expected pipeline. Null when no funnel is wired / no saved economics. */
+  totalPipelineUsd: number | null;
+  timeSeries: RevenuePoint[];
+  organizations: ConversionOrg[];
   leads: ConversionLead[];
-  /** Raw event rows — the Events tab. */
   events: ConversionEvent[];
 }

@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useParams } from "next/navigation";
+import { useAuthQuery } from "@/lib/use-auth-query";
 import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { FEATURE_GATES } from "@/lib/feature-gates";
 import { isRevenueFeature } from "@/lib/revenue-feature";
+import { getFeatureRevenue } from "@/lib/api";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { RevenueChart } from "@/components/revenue/revenue-chart";
 import {
@@ -12,7 +14,7 @@ import {
   LeadConversionsTable,
   EventConversionsTable,
 } from "@/components/revenue/conversions-table";
-import { sampleRevenueOverview } from "@/lib/revenue-sample";
+import { Skeleton } from "@/components/skeleton";
 
 type Tab = "organizations" | "leads" | "events";
 
@@ -22,19 +24,24 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "events", label: "Events" },
 ];
 
-function formatUsd(n: number): string {
+function formatUsd(n: number | null): string {
+  if (n === null) return "—";
   return `$${Math.round(n).toLocaleString("en-US")}`;
 }
 
 export default function ConversionsPage() {
   const params = useParams();
+  const brandId = params.brandId as string;
   const featureSlug = params.featureSlug as string;
   const ok = useFeatureFlag(FEATURE_GATES["conversions"].flag);
+  const enabled = ok && isRevenueFeature(featureSlug);
 
   const [tab, setTab] = useState<Tab>("organizations");
-  // TEMP: sample data driven through the revenue calc lib. Swap for an adapter over
-  // features-service GET /v1/features/{slug}/revenue once that endpoint deploys.
-  const data = useMemo(() => sampleRevenueOverview(), []);
+  const { data, isPending } = useAuthQuery(
+    ["featureRevenue", brandId, featureSlug],
+    () => getFeatureRevenue(featureSlug, brandId),
+    { enabled },
+  );
 
   if (!ok || !isRevenueFeature(featureSlug)) {
     return (
@@ -60,58 +67,65 @@ export default function ConversionsPage() {
         </p>
       </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
-          <p className="text-xs text-gray-400">Expected pipeline revenue</p>
-          <p className="mt-1 text-2xl font-bold text-gray-900">
-            {formatUsd(data.totalPipelineUsd)}
-          </p>
-          {data.undatedPipelineUsd > 0 && (
-            <p className="mt-1 text-[11px] text-gray-400">
-              incl. {formatUsd(data.undatedPipelineUsd)} not yet dated
-            </p>
-          )}
+      {isPending || !data ? (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} className="h-24 w-full rounded-xl" />
+            ))}
+          </div>
+          <Skeleton className="h-[320px] w-full rounded-xl" />
+          <Skeleton className="h-64 w-full rounded-xl" />
         </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
-          <p className="text-xs text-gray-400">Converting organizations</p>
-          <p className="mt-1 text-2xl font-bold text-gray-900">{data.orgs.length}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
-          <p className="text-xs text-gray-400">Conversion events</p>
-          <p className="mt-1 text-2xl font-bold text-gray-900">{data.events.length}</p>
-        </div>
-      </div>
+      ) : (
+        <>
+          {/* Stat cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
+              <p className="text-xs text-gray-400">Expected pipeline revenue</p>
+              <p className="mt-1 text-2xl font-bold text-gray-900">{formatUsd(data.totalPipelineUsd)}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
+              <p className="text-xs text-gray-400">Converting organizations</p>
+              <p className="mt-1 text-2xl font-bold text-gray-900">{data.organizations.length}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
+              <p className="text-xs text-gray-400">Conversion events</p>
+              <p className="mt-1 text-2xl font-bold text-gray-900">{data.events.length}</p>
+            </div>
+          </div>
 
-      {/* Revenue over time */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
-        <h3 className="font-medium text-gray-800 mb-4">Pipeline revenue over time</h3>
-        <RevenueChart series={data.series} />
-      </div>
+          {/* Revenue over time */}
+          <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
+            <h3 className="font-medium text-gray-800 mb-4">Pipeline revenue over time</h3>
+            <RevenueChart series={data.timeSeries} />
+          </div>
 
-      {/* Conversions tables with tabs */}
-      <div className="space-y-4">
-        <div className="inline-flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg p-1">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setTab(t.id)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition ${
-                tab === t.id
-                  ? "bg-brand-50 text-brand-700 border border-brand-200"
-                  : "text-gray-500 hover:text-gray-800"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+          {/* Conversions tables with tabs */}
+          <div className="space-y-4">
+            <div className="inline-flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg p-1">
+              {TABS.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTab(t.id)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition ${
+                    tab === t.id
+                      ? "bg-brand-50 text-brand-700 border border-brand-200"
+                      : "text-gray-500 hover:text-gray-800"
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
 
-        {tab === "organizations" && <OrgConversionsTable orgs={data.orgs} />}
-        {tab === "leads" && <LeadConversionsTable leads={data.leads} />}
-        {tab === "events" && <EventConversionsTable events={data.events} />}
-      </div>
+            {tab === "organizations" && <OrgConversionsTable orgs={data.organizations} />}
+            {tab === "leads" && <LeadConversionsTable leads={data.leads} />}
+            {tab === "events" && <EventConversionsTable events={data.events} />}
+          </div>
+        </>
+      )}
     </div>
   );
 }

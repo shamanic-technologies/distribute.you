@@ -93,3 +93,15 @@ describe("conversions page keeps all three tabs", () => {
     expect(page).toContain("EventConversionsTable");
   });
 });
+
+describe("revenue surface renders from features-service (single source)", () => {
+  it("overview + conversions pages fetch getFeatureRevenue", () => {
+    expect(overviewPage).toContain("getFeatureRevenue");
+    expect(page).toContain("getFeatureRevenue");
+  });
+
+  it("client-side calc lib + sample data are retired (no client aggregation)", () => {
+    expect(fs.existsSync(path.resolve(__dirname, "../src/lib/revenue.ts"))).toBe(false);
+    expect(fs.existsSync(path.resolve(__dirname, "../src/lib/revenue-sample.ts"))).toBe(false);
+  });
+});
