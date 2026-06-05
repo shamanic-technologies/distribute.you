@@ -20,6 +20,7 @@ import {
 } from "@/lib/api";
 import { isOpportunityOpen } from "@/lib/quote-pitch-status";
 import { isExpertQuoteFeature } from "@/lib/expert-quote-feature";
+import { isRevenueFeature } from "@/lib/revenue-feature";
 import { formatCount } from "@/lib/format-number";
 import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { MaturityBadge } from "@/components/maturity-badge";
@@ -796,13 +797,14 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
       };
     });
 
-  // Revenue & Conversions — alpha (staff-only) until features-service ships /revenue.
+  // Revenue & Conversions — only on revenue features (sales-cold-email today),
+  // alpha (staff-only) until features-service ships /revenue.
   const conversionsOk = useFeatureFlag(FEATURE_GATES["conversions"].flag);
   const topItems: SidebarItem[] = [
     { id: "campaigns", label: "Campaigns", href: basePath, icon: <EnvelopeIcon /> },
     { id: "create", label: "Create Campaign", href: `${basePath}/campaigns/new`, icon: <PlusIcon /> },
     { id: "workflows", label: "Workflows", href: `${basePath}/workflows`, icon: <WorkflowIcon /> },
-    ...(conversionsOk
+    ...(conversionsOk && isRevenueFeature(featureSlug)
       ? [
           {
             id: "conversions",
