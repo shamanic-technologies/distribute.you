@@ -69,4 +69,17 @@ describe("brand-metrics-header.tsx — getOrFetchIfNeverSeen wiring", () => {
     expect(headerSrc).not.toContain("listVisibilityRuns");
     expect(headerSrc).not.toContain("brandMentionRate");
   });
+
+  it("does NOT gate the reveal barrier on the slow ai-visibility scrape (regression)", () => {
+    // The ai-visibility POST scrapes Apify inline for a never-seen domain. If it
+    // sits in the useCoordinatedReveal() barrier it holds ALL four cards in a
+    // skeleton until the scrape returns ("shows nothing"). The barrier must gate
+    // only the fast cache-read GETs; card 4 reveals with its own inner skeleton.
+    const barrier = headerSrc.match(/useCoordinatedReveal\(\[[^\]]*\]/s)?.[0] ?? "";
+    expect(barrier).toContain("trafficPending");
+    expect(barrier).toContain("drPending");
+    expect(barrier).not.toContain("aiVisPending");
+    // Card 4 owns a pending state instead.
+    expect(headerSrc).toContain("aiVisPending ?");
+  });
 });

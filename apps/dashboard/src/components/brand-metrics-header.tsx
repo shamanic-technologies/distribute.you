@@ -263,7 +263,7 @@ export function BrandMetricsHeader({
       staleTime: 5 * 60_000,
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
-      retry: 1,
+      retry: 0,
     },
   );
 
@@ -297,19 +297,21 @@ export function BrandMetricsHeader({
       .map((p) => ({ label: formatMonth(p.month), value: p.organicTraffic as number }));
   }, [traffic]);
 
-  // Reveal the four cards together once every source has SETTLED (success or
-  // error). Gating on `!isPending` rather than `data !== undefined` means a query
-  // that errors — e.g. the api-service proxy not yet deployed → a 404 — still
-  // reveals the group (each card shows its own "No data yet" state) instead of
-  // pinning everything in a perpetual skeleton; the poll/one-shot then fills the
-  // cards once the proxy is live. A disabled query stays isPending forever, so its
-  // flag is gated behind its own enabled condition; the domain-loaded flag goes
-  // first so we never latch an empty group during the first paint.
+  // Reveal the cards once the two FAST cache-read sources (traffic + DR GET) have
+  // SETTLED. Card 4's ai-visibility is deliberately EXCLUDED from this barrier: it
+  // is a get-or-refresh POST that scrapes Apify inline for a never-seen domain and
+  // can take tens of seconds — gating the group on it held all four cards in a
+  // skeleton until the scrape returned ("shows nothing"). Card 4 reveals with the
+  // group and renders its OWN inner skeleton while its POST is pending. Gating on
+  // `!isPending` (settle) rather than `data !== undefined` means an errored query
+  // (e.g. proxy 404) still reveals its "No data yet" state instead of a perpetual
+  // skeleton. A disabled query stays isPending forever, so each flag is gated on
+  // its own enabled condition; the domain-loaded flag goes first so we never latch
+  // an empty group during the first paint.
   const revealed = useCoordinatedReveal([
     domainReady,
     !domainReady || !trafficPending,
     !domainReady || !drPending,
-    !domainReady || !aiVisPending,
   ]);
 
   if (!revealed) {
@@ -365,7 +367,13 @@ export function BrandMetricsHeader({
         title="AI mentions"
         subtitle={aiVis?.snapshotDate ? formatDay(aiVis.snapshotDate) : "Ahrefs Brand-Radar"}
       >
-        {aiVis?.snapshotDate ? (
+        {aiVisPending ? (
+          // get-or-refresh scrape in flight — card-local skeleton, never blocks the
+          // other three cards (see the reveal-barrier note above).
+          <div className="flex-1 flex items-center justify-center">
+            <Skeleton className="h-8 w-20" />
+          </div>
+        ) : aiVis?.snapshotDate ? (
           <BigStat value={formatInt(aiVis.mentionsTotal)} caption="across AI engines" />
         ) : (
           <NoData label="No AI mentions yet" />
