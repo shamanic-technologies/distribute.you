@@ -14,6 +14,7 @@ import {
   LeadConversionsTable,
   EventConversionsTable,
 } from "@/components/revenue/conversions-table";
+import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { Skeleton } from "@/components/skeleton";
 
 type Tab = "organizations" | "leads" | "events";
@@ -31,6 +32,7 @@ function formatUsd(n: number | null): string {
 
 export default function ConversionsPage() {
   const params = useParams();
+  const orgId = params.orgId as string;
   const brandId = params.brandId as string;
   const featureSlug = params.featureSlug as string;
   const ok = useFeatureFlag(FEATURE_GATES["conversions"].flag);
@@ -77,6 +79,10 @@ export default function ConversionsPage() {
           <Skeleton className="h-[320px] w-full rounded-xl" />
           <Skeleton className="h-64 w-full rounded-xl" />
         </div>
+      ) : data.totalPipelineUsd === null ? (
+        <RevenueEmptyState
+          setupHref={`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/new`}
+        />
       ) : (
         <>
           {/* Stat cards */}

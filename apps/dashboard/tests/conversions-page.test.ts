@@ -104,4 +104,11 @@ describe("revenue surface renders from features-service (single source)", () => 
     expect(fs.existsSync(path.resolve(__dirname, "../src/lib/revenue.ts"))).toBe(false);
     expect(fs.existsSync(path.resolve(__dirname, "../src/lib/revenue-sample.ts"))).toBe(false);
   });
+
+  it("null totalPipelineUsd renders the sales-economics empty state on both pages", () => {
+    expect(overviewPage).toContain("RevenueEmptyState");
+    expect(overviewPage).toContain("totalPipelineUsd === null");
+    expect(page).toContain("RevenueEmptyState");
+    expect(page).toContain("totalPipelineUsd === null");
+  });
 });
