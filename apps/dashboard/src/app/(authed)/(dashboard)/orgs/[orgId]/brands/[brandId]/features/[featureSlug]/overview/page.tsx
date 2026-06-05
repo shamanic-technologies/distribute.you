@@ -7,6 +7,7 @@ import { FEATURE_GATES } from "@/lib/feature-gates";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { getFeatureRevenue } from "@/lib/api";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
+import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { Skeleton } from "@/components/skeleton";
 
 function OverviewSkeleton() {
@@ -58,15 +59,15 @@ export default function FeatureOverviewPage() {
     );
   }
 
+  const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`;
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
       {isPending || !data ? (
         <OverviewSkeleton />
+      ) : data.totalPipelineUsd === null ? (
+        <RevenueEmptyState setupHref={`${basePath}/campaigns/new`} />
       ) : (
-        <RevenueOverviewSection
-          data={data}
-          conversionsHref={`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/conversions`}
-        />
+        <RevenueOverviewSection data={data} conversionsHref={`${basePath}/conversions`} />
       )}
     </div>
   );
