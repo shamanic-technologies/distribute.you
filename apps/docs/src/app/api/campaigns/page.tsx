@@ -3,7 +3,7 @@ import { CopyForLLM } from "@/components/copy-for-llm";
 
 export const metadata: Metadata = {
   title: "Campaigns API",
-  description: "Create, stop, and monitor campaigns via the distribute REST API.",
+  description: "Create, launch, stop, and monitor outreach campaigns — and track their status and results in real time — via the distribute REST API.",
 };
 
 const LLM_INSTRUCTIONS = `# Campaigns API

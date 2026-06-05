@@ -3,7 +3,7 @@ import { CopyForLLM } from "@/components/copy-for-llm";
 
 export const metadata: Metadata = {
   title: "Features API",
-  description: "List automation features, get performance stats, and prefill inputs via the distribute API.",
+  description: "List automation features, pull live performance stats, and prefill campaign inputs — all through the distribute REST API.",
 };
 
 const LLM_INSTRUCTIONS = `# Features API

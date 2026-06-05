@@ -3,7 +3,7 @@ import { CopyForLLM } from "@/components/copy-for-llm";
 
 export const metadata: Metadata = {
   title: "Emails API",
-  description: "View generated emails and sequences for campaigns via the distribute API.",
+  description: "View AI-generated emails and full outreach sequences for any campaign, with content and send status, via the distribute REST API.",
 };
 
 const LLM_INSTRUCTIONS = `# Emails API

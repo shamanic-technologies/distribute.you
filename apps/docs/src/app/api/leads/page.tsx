@@ -3,7 +3,7 @@ import { CopyForLLM } from "@/components/copy-for-llm";
 
 export const metadata: Metadata = {
   title: "Leads API",
-  description: "List leads discovered for campaigns and brands via the distribute API.",
+  description: "List qualified leads discovered for your campaigns and brands, with enrichment and source context, via the distribute REST API.",
 };
 
 const LLM_INSTRUCTIONS = `# Leads API

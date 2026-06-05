@@ -4,7 +4,7 @@ import { CopyForLLM } from "@/components/copy-for-llm";
 
 export const metadata: Metadata = {
   title: "Integrations",
-  description: "Connect distribute to Claude Code, Claude Desktop, Cursor, ChatGPT, n8n, Zapier, Make.com, and more.",
+  description: "Connect distribute to Claude Code, Claude Desktop, Cursor, ChatGPT, n8n, Zapier, Make.com, and any other MCP-compatible client.",
 };
 
 const LLM_INSTRUCTIONS = `# distribute Integrations
