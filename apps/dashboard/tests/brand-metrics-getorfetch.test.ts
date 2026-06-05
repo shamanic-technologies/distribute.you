@@ -40,10 +40,19 @@ describe("api.ts — on-demand Ahrefs compute helpers", () => {
   });
 
   it("validates ai-visibility response shape (fail-loud, no fallback)", () => {
-    expect(apiSrc).toContain("const AhrefAiVisibilitySchema");
+    expect(apiSrc).toContain("const DomainAiVisibilitySchema");
     expect(apiSrc).toContain("mentionsTotal: z.number()");
     expect(apiSrc).toContain(
       "[dashboard] computeDomainAiVisibility: invalid response shape",
+    );
+  });
+
+  it("exposes a read-only GET cache reader for ai-visibility (fast, no scrape)", () => {
+    expect(apiSrc).toContain("export async function getDomainAiVisibility");
+    // GET reads the cache via ?domains= (array) and takes the first element.
+    expect(apiSrc).toContain("`/orgs/domains/ai-visibility?domains=");
+    expect(apiSrc).toContain(
+      "[dashboard] getDomainAiVisibility: invalid response shape",
     );
   });
 });
@@ -70,16 +79,19 @@ describe("brand-metrics-header.tsx — getOrFetchIfNeverSeen wiring", () => {
     expect(headerSrc).not.toContain("brandMentionRate");
   });
 
-  it("does NOT gate the reveal barrier on the slow ai-visibility scrape (regression)", () => {
-    // The ai-visibility POST scrapes Apify inline for a never-seen domain. If it
-    // sits in the useCoordinatedReveal() barrier it holds ALL four cards in a
-    // skeleton until the scrape returns ("shows nothing"). The barrier must gate
-    // only the fast cache-read GETs; card 4 reveals with its own inner skeleton.
+  it("card 4 DISPLAY query is the fast GET; the scrape POST stays off the render path (regression)", () => {
+    // The ai-visibility POST scrapes Apify inline. It must NOT be the card's render
+    // query — a slow POST in the reveal barrier once froze all four cards ("shows
+    // nothing"). Card 4 now displays the fast GET cache read; the POST is fired only
+    // as a background getOrFetchIfNeverSeen trigger, so every barrier flag is a fast
+    // cache GET and ai-visibility is barrier-safe.
+    expect(headerSrc).toContain("getDomainAiVisibility(domain as string)");
     const barrier = headerSrc.match(/useCoordinatedReveal\(\[[^\]]*\]/s)?.[0] ?? "";
     expect(barrier).toContain("trafficPending");
     expect(barrier).toContain("drPending");
-    expect(barrier).not.toContain("aiVisPending");
-    // Card 4 owns a pending state instead.
-    expect(headerSrc).toContain("aiVisPending ?");
+    expect(barrier).toContain("aiVisPending");
+    // The POST is only a getOrFetch compute (metric "aivis"), never a render query.
+    expect(headerSrc).toContain('metric: "aivis"');
+    expect(headerSrc).not.toContain("() => computeDomainAiVisibility(");
   });
 });

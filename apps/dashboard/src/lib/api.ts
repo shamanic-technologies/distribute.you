@@ -3245,35 +3245,61 @@ export async function computeDomainDr(
   return parsed.data[0] ?? null;
 }
 
-// Ahrefs Brand-Radar AI-visibility (get-or-refresh): serves cache when fresh,
-// scrapes (cost-declared + authorized) when stale. The only exposed surface is
-// this POST — there is no separate cache-read GET — so it doubles as reader +
-// trigger. We surface the global AI-mention count; the per-engine + competitor
-// breakdown is on the wire but unused here (stripped by the schema).
-const AhrefAiVisibilitySchema = z.object({
+// Ahrefs Brand-Radar AI-visibility. Two surfaces, one lean shape (the wire also
+// carries per-engine + competitor breakdowns + scrape metadata; the schema strips
+// them — the card only surfaces the global mention count):
+//   • GET  …/ai-visibility?domains=<csv>  — read-only CACHE (array, one element per
+//     domain; fast, no scrape, no cost). The card's display reader.
+//   • POST …/ai-visibility {domain}        — get-or-refresh (scrapes on cache-miss,
+//     cost-declared + authorized). The getOrFetchIfNeverSeen trigger only.
+const DomainAiVisibilitySchema = z.object({
   domain: z.string(),
   snapshotDate: z.string().nullable(),
-  fetchedFromCache: z.boolean(),
   mentionsTotal: z.number(),
 });
 
-export type AhrefAiVisibility = z.infer<typeof AhrefAiVisibilitySchema>;
+export type DomainAiVisibility = z.infer<typeof DomainAiVisibilitySchema>;
 
 /**
- * POST /v1/orgs/domains/ai-visibility — Ahrefs Brand-Radar AI-visibility
- * (get-or-refresh) for a single domain. Returns the global AI-mention count
- * across engines. ahref-service owns the cache/scrape decision.
+ * GET /v1/orgs/domains/ai-visibility — read-only Ahrefs Brand-Radar cache for a
+ * single domain (array response, one element per requested domain). No scrape, no
+ * cost. null when the domain has no cached snapshot.
+ */
+export async function getDomainAiVisibility(
+  domain: string,
+  token?: string,
+): Promise<DomainAiVisibility | null> {
+  const raw = await apiCall<unknown>(
+    `/orgs/domains/ai-visibility?domains=${encodeURIComponent(domain)}`,
+    { token },
+  );
+  const parsed = z.array(DomainAiVisibilitySchema).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getDomainAiVisibility: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getDomainAiVisibility: invalid response shape");
+  }
+  return parsed.data[0] ?? null;
+}
+
+/**
+ * POST /v1/orgs/domains/ai-visibility — get-or-refresh Ahrefs Brand-Radar
+ * AI-visibility for a single domain (scrapes on cache-miss; ahref-service declares
+ * cost + authorizes). Used ONLY as the on-demand getOrFetchIfNeverSeen trigger; the
+ * card displays the GET cache read above, never this POST on the render path.
  */
 export async function computeDomainAiVisibility(
   domain: string,
   token?: string,
-): Promise<AhrefAiVisibility> {
+): Promise<DomainAiVisibility> {
   const raw = await apiCall<unknown>("/orgs/domains/ai-visibility", {
     token,
     method: "POST",
     body: { domain },
   });
-  const parsed = AhrefAiVisibilitySchema.safeParse(raw);
+  const parsed = DomainAiVisibilitySchema.safeParse(raw);
   if (!parsed.success) {
     console.error("[dashboard] computeDomainAiVisibility: response shape mismatch", {
       issues: parsed.error.issues,

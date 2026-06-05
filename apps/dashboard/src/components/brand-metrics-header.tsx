@@ -15,6 +15,7 @@ import { pollOptionsSlower } from "@/lib/query-options";
 import {
   getDomainTrafficHistory,
   getDomainDrStatus,
+  getDomainAiVisibility,
   computeDomainTraffic,
   computeDomainDr,
   computeDomainAiVisibility,
@@ -214,12 +215,13 @@ function MetricCardSkeleton() {
  *  3. Est. monthly revenue    — current value, big number (Ahrefs traffic value)
  *  4. AI mentions             — Ahrefs Brand-Radar global AI-mention count
  *
- * Cards 1–3 read ahref-service's CACHE (GET); when the cache is empty for a
- * never-seen domain we fire the matching on-demand compute ONCE so AhrefService
- * actually checks Ahrefs ("getOrFetchIfNeverSeen"). Card 4 has no cache-read GET,
- * so its get-or-refresh POST doubles as reader + trigger. Each source owns its
- * query; the four cards reveal together as one latched group, gated first on the
- * brand domain being known so the barrier never latches an empty first paint.
+ * All four read ahref-service's CACHE (fast GET) for display; when the cache is
+ * empty for a never-seen domain we fire the matching on-demand compute POST ONCE
+ * so AhrefService actually checks Ahrefs ("getOrFetchIfNeverSeen"), writing the
+ * result back into the read cache. The scrape never gates render — only the GETs
+ * do. Each source owns its query; the four cards reveal together as one latched
+ * group, gated first on the brand domain being known so the barrier never latches
+ * an empty first paint.
  */
 export function BrandMetricsHeader({
   brandId: _brandId,
@@ -250,24 +252,21 @@ export function BrandMetricsHeader({
     { ...pollOptionsSlower, enabled: domainReady },
   );
 
-  // Ahrefs Brand-Radar AI-visibility. get-or-refresh, so the POST itself is the
-  // read; ahref-service decides cache-vs-scrape (keeping paid scrapes rare). No
-  // poll / focus / reconnect refetch — but a 5-min staleTime (not Infinity) lets
-  // an errored first call (e.g. proxy not yet deployed → 404) recover on the next
-  // mount once the proxy is live, instead of pinning the error for the gcTime.
-  const { data: aiVis, isPending: aiVisPending } = useAuthQuery(
+  // Ahrefs Brand-Radar AI-visibility — read the fast CACHE GET (array, [0]),
+  // polled like the other two reads. The paid get-or-refresh POST is fired off the
+  // render path by useGetOrFetchIfNeverSeen below, never as the display query, so a
+  // slow scrape can't block the reveal.
+  const {
+    data: aiVis,
+    isPending: aiVisPending,
+    isFetched: aiVisFetched,
+  } = useAuthQuery(
     ["domainAiVisibility", domain],
-    () => computeDomainAiVisibility(domain as string),
-    {
-      enabled: domainReady,
-      staleTime: 5 * 60_000,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-      retry: 0,
-    },
+    () => getDomainAiVisibility(domain as string),
+    { ...pollOptionsSlower, enabled: domainReady },
   );
 
-  // getOrFetchIfNeverSeen triggers for the two cache-backed metrics. A domain
+  // getOrFetchIfNeverSeen triggers for all three cache-backed metrics. A domain
   // with no cached row → one on-demand scrape, result written back to the read
   // cache. "empty" = no usable value shown; the localStorage marker caps it at a
   // single attempt per domain even when Ahrefs genuinely has nothing.
@@ -287,6 +286,14 @@ export function BrandMetricsHeader({
     cacheKey: ["domainDrStatus", domain],
     compute: computeDomainDr,
   });
+  useGetOrFetchIfNeverSeen({
+    domain,
+    settled: aiVisFetched,
+    empty: !aiVis?.snapshotDate,
+    metric: "aivis",
+    cacheKey: ["domainAiVisibility", domain],
+    compute: computeDomainAiVisibility,
+  });
 
   // Visits series — chronological, dropping months with no captured value.
   const visitsSeries = useMemo<ChartPoint[]>(() => {
@@ -297,21 +304,22 @@ export function BrandMetricsHeader({
       .map((p) => ({ label: formatMonth(p.month), value: p.organicTraffic as number }));
   }, [traffic]);
 
-  // Reveal the cards once the two FAST cache-read sources (traffic + DR GET) have
-  // SETTLED. Card 4's ai-visibility is deliberately EXCLUDED from this barrier: it
-  // is a get-or-refresh POST that scrapes Apify inline for a never-seen domain and
-  // can take tens of seconds — gating the group on it held all four cards in a
-  // skeleton until the scrape returned ("shows nothing"). Card 4 reveals with the
-  // group and renders its OWN inner skeleton while its POST is pending. Gating on
+  // Reveal the four cards together once every FAST cache-read source has SETTLED
+  // (traffic + DR + ai-visibility GET). All four display queries are read-only
+  // cache GETs, so none can block the group — the paid Apify scrapes run off the
+  // render path via useGetOrFetchIfNeverSeen, never as a reveal-gating query (a
+  // slow/inline scrape POST in this barrier once froze all four cards — CLAUDE.md
+  // "never gate a reveal barrier on a slow/inline-compute query"). Gating on
   // `!isPending` (settle) rather than `data !== undefined` means an errored query
-  // (e.g. proxy 404) still reveals its "No data yet" state instead of a perpetual
-  // skeleton. A disabled query stays isPending forever, so each flag is gated on
-  // its own enabled condition; the domain-loaded flag goes first so we never latch
-  // an empty group during the first paint.
+  // still reveals its "No data yet" state instead of a perpetual skeleton. A
+  // disabled query stays isPending forever, so each flag is gated on its own
+  // enabled condition; the domain-loaded flag goes first so we never latch an empty
+  // group during the first paint.
   const revealed = useCoordinatedReveal([
     domainReady,
     !domainReady || !trafficPending,
     !domainReady || !drPending,
+    !domainReady || !aiVisPending,
   ]);
 
   if (!revealed) {
@@ -367,13 +375,7 @@ export function BrandMetricsHeader({
         title="AI mentions"
         subtitle={aiVis?.snapshotDate ? formatDay(aiVis.snapshotDate) : "Ahrefs Brand-Radar"}
       >
-        {aiVisPending ? (
-          // get-or-refresh scrape in flight — card-local skeleton, never blocks the
-          // other three cards (see the reveal-barrier note above).
-          <div className="flex-1 flex items-center justify-center">
-            <Skeleton className="h-8 w-20" />
-          </div>
-        ) : aiVis?.snapshotDate ? (
+        {aiVis?.snapshotDate ? (
           <BigStat value={formatInt(aiVis.mentionsTotal)} caption="across AI engines" />
         ) : (
           <NoData label="No AI mentions yet" />
