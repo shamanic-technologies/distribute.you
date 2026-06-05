@@ -110,23 +110,22 @@ export default function Home() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="inline-flex items-center gap-2 bg-gray-50 border border-gray-200 text-gray-600 px-4 py-1.5 rounded-full text-sm mb-8">
             <span className="w-1.5 h-1.5 rounded-full bg-brand-400" />
-            The Stripe of Distribution
+            The Stripe of Lead Generation
           </div>
 
           <h1 className="font-display text-5xl md:text-7xl font-bold mb-6 text-gray-900 tracking-tight">
-            Your distribution,{" "}
-            <span className="gradient-text-subtle">on autopilot.</span>
+            Lead Generation,{" "}
+            <span className="gradient-text-subtle">on Autopilot.</span>
           </h1>
 
           <p className="text-lg md:text-xl text-gray-500 mb-10 max-w-2xl mx-auto leading-relaxed">
-            Sales, PR, VCs, hiring, accelerators. Drop a URL, set a budget —
-            we send, qualify, forward.
+            We execute, measure outcome, optimize, repeat. You win.
           </p>
 
           <HeroForm signUpUrl={urls.signUp} />
 
           <p className="text-sm text-gray-400 mt-6">
-            $2 welcome credits. No subscription. No setup. We send on your behalf.
+            $25 welcome credits. No subscription. No setup. We execute on your behalf.
           </p>
         </div>
       </section>
