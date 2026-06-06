@@ -792,6 +792,10 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
 
   const entityItems: SidebarItem[] = entities
     .filter((e) => registry[e.name])
+    // No feature-level companies page yet (blocked on a brand-scoped companies
+    // API) — the backend declares the entity, so the link would 404. Hide it
+    // until the page exists. Campaign-level companies page is unaffected. (DIS)
+    .filter((e) => e.name !== "companies")
     .map((e) => {
       const config = registry[e.name];
       return {
