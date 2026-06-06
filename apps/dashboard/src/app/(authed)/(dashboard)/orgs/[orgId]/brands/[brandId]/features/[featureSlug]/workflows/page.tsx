@@ -8,6 +8,9 @@ import {
   listWorkflows,
 } from "@/lib/api";
 import { useFeatures } from "@/lib/features-context";
+import { useFeatureFlag } from "@/lib/use-feature-flag";
+import { FEATURE_GATES } from "@/lib/feature-gates";
+import { MaturityBadge } from "@/components/maturity-badge";
 import { formatStatValue, sortDirectionForType } from "@/lib/format-stat";
 import { pollOptions } from "@/lib/query-options";
 import { PlusIcon } from "@heroicons/react/20/solid";
@@ -43,6 +46,10 @@ export default function FeatureWorkflowsPage() {
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
   const featureSlug = params.featureSlug as string;
+
+  // Workflows is alpha (staff-only). Default-hidden until PostHog resolves, so
+  // it never flashes for a non-staff viewer who lands on the URL directly.
+  const ok = useFeatureFlag(FEATURE_GATES["feature-settings"].flag);
 
   const { getFeature, isLoading: featuresLoading, registry } = useFeatures();
   const wfDef = getFeature(featureSlug);
@@ -140,11 +147,24 @@ export default function FeatureWorkflowsPage() {
     [outputs]
   );
 
+  if (!ok) {
+    return (
+      <div className="p-4 md:p-8">
+        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-sm text-gray-400">
+          This view isn&apos;t available yet.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 md:p-8">
       <div className="mb-6 flex items-start justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold text-gray-800">Workflows</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="font-display text-2xl font-bold text-gray-800">Workflows</h1>
+            <MaturityBadge level={FEATURE_GATES["feature-settings"].maturity} />
+          </div>
           <p className="text-gray-600">
             Workflows for {wfDef?.name ?? featureSlug}.
           </p>

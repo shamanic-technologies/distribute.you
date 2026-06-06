@@ -3,6 +3,9 @@
 import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useFeatures } from "@/lib/features-context";
+import { useFeatureFlag } from "@/lib/use-feature-flag";
+import { FEATURE_GATES } from "@/lib/feature-gates";
+import { MaturityBadge } from "@/components/maturity-badge";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { fetchFeatureStats } from "@/lib/api";
 import { formatStatValue, sortDirectionForType } from "@/lib/format-stat";
@@ -18,6 +21,8 @@ function formatDisplayName(name: string): string {
 export default function FeatureWorkflowsPage() {
   const params = useParams();
   const featureId = params.featureId as string;
+  // Workflows is alpha (staff-only). Default-hidden until PostHog resolves.
+  const ok = useFeatureFlag(FEATURE_GATES["feature-settings"].flag);
   const { getFeature, registry } = useFeatures();
   const featureDef = getFeature(featureId);
   const outputs = featureDef?.outputs ?? [];
@@ -46,6 +51,16 @@ export default function FeatureWorkflowsPage() {
     }));
   }, [statsData]);
 
+  if (!ok) {
+    return (
+      <div className="p-4 md:p-8">
+        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-sm text-gray-400">
+          This view isn&apos;t available yet.
+        </div>
+      </div>
+    );
+  }
+
   if (!featureDef) {
     return (
       <div className="p-4 md:p-8">
@@ -60,7 +75,10 @@ export default function FeatureWorkflowsPage() {
   return (
     <div className="p-4 md:p-8">
       <div className="mb-6">
-        <h1 className="font-display text-2xl font-bold text-gray-800">Workflows</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="font-display text-2xl font-bold text-gray-800">Workflows</h1>
+          <MaturityBadge level={FEATURE_GATES["feature-settings"].maturity} />
+        </div>
         <p className="text-gray-600">All available workflows for {featureDef.name}.</p>
       </div>
 
