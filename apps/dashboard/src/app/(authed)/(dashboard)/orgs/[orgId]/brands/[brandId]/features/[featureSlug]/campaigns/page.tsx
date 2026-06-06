@@ -262,9 +262,11 @@ function GenericFeaturePage({
         </div>
       )}
 
-      {/* Static-shell-first: the chart/cost card frames + titles render on the
-          first paint (the chart set is known from the warm feature defs); only
-          the bars, donut and numbers skeleton until the stats reveal together. */}
+      {/* Charts row — funnel + a distribution card. Revenue features show the
+          cost-distribution donut here (very useful) in place of the reply
+          breakdown; non-revenue features keep the reply breakdown (+ a standalone
+          cost donut below). Static-shell-first: frames + titles paint first, the
+          bars/donut/numbers skeleton until the stats reveal together. */}
       {(!revealed || (campaigns.length > 0 && (funnelChart || breakdownChart))) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
           {(funnelChart || !featureDef) && (
@@ -275,19 +277,23 @@ function GenericFeaturePage({
               pending={!revealed}
             />
           )}
-          {(breakdownChart || !featureDef) && (
-            <ReplyBreakdown
-              segments={breakdownChart && breakdownChart.type === "breakdown-bar" ? breakdownChart.segments : []}
-              stats={featureStats}
-              registry={registry}
-              pending={!revealed}
-            />
+          {revenueEnabled ? (
+            <CostBreakdown costBreakdown={brandCostBreakdown} pending={!revealed} />
+          ) : (
+            (breakdownChart || !featureDef) && (
+              <ReplyBreakdown
+                segments={breakdownChart && breakdownChart.type === "breakdown-bar" ? breakdownChart.segments : []}
+                stats={featureStats}
+                registry={registry}
+                pending={!revealed}
+              />
+            )
           )}
         </div>
       )}
 
-      {/* Cost Breakdown — non-revenue features only (revenue features surface
-          spend compactly inside the hero's Cost & efficiency column instead).
+      {/* Cost Breakdown standalone — non-revenue features only (revenue features
+          show it in the charts row above, in place of reply breakdown).
           Frame + title instant, donut/values skeleton until ready. */}
       {!revenueEnabled && (!revealed || brandCostBreakdown.length > 0) && (
         <div className="mb-6">
