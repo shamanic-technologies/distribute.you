@@ -7,10 +7,14 @@ import { useCampaign } from "@/lib/campaign-context";
 import { useStopCampaign, useIsStoppingCampaign } from "@/lib/use-stop-campaign";
 import { useFeatures } from "@/lib/features-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { fetchFeatureStats, createCampaign, sendCampaignEmail, ApiError } from "@/lib/api";
+import { fetchFeatureStats, getFeatureRevenue, createCampaign, sendCampaignEmail, ApiError } from "@/lib/api";
+import { isRevenueFeature } from "@/lib/revenue-feature";
+import { pollOptionsSlow } from "@/lib/query-options";
+import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
+import { CampaignRevenueSection } from "@/components/campaign/campaign-revenue-section";
 import { PressKitResults } from "@/components/campaign/press-kit-results";
 import {
   RelaunchCampaignModal,
@@ -93,6 +97,20 @@ export default function CampaignOverviewPage() {
     () => fetchFeatureStats(featureSlug, { campaignId }),
     { enabled: true, refetchInterval: 5_000, placeholderData: keepPreviousData },
   );
+
+  // Campaign-scoped expected-pipeline revenue (+ conversions + cost economics) —
+  // revenue features only (sales-cold-email today). features-service is the
+  // single source; the /revenue endpoint honours the campaignId scope.
+  const revenueEnabled = isRevenueFeature(featureSlug);
+  const { data: revenueData } = useAuthQuery(
+    ["featureRevenue", brandId, featureSlug, "campaign", campaignId],
+    () => getFeatureRevenue(featureSlug, brandId, campaignId),
+    { enabled: revenueEnabled, ...pollOptionsSlow },
+  );
+  // Reveal the revenue-sourced regions (line chart, CAC/ROI, conversions)
+  // together once the fast GET resolves, then latch. A disabled query never
+  // resolves → gate its flag so a non-revenue feature doesn't block on it.
+  const revenueRevealed = useCoordinatedReveal([!revenueEnabled || revenueData !== undefined]);
 
   const handleStop = () => {
     if (!campaign) return;
@@ -251,37 +269,58 @@ export default function CampaignOverviewPage() {
         </div>
       )}
 
-      {/* Charts (funnel + breakdown) — only when charts are defined and data has been loaded at least once */}
-      {(funnelChart || breakdownChart) && Object.keys(statsRecord).length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-          {funnelChart && funnelChart.type === "funnel-bar" && (
-            <FunnelMetrics
-              steps={funnelChart.steps}
-              stats={statsRecord}
-              registry={registry}
-            />
-          )}
-          {breakdownChart && breakdownChart.type === "breakdown-bar" && (
-            <ReplyBreakdown
-              segments={breakdownChart.segments}
-              stats={statsRecord}
-              registry={registry}
-            />
-          )}
-        </div>
-      )}
-
-      {/* Cost breakdown */}
-      {stats?.costBreakdown && stats.costBreakdown.length > 0 && (
+      {revenueEnabled ? (
+        /* Revenue-feature layout (sales-cold-email) — mirrors the feature
+           Overview: pipeline line chart + cost/budget stats on top, funnel bar +
+           cost-distribution donut on a 50/50 row, conversions tabs below. */
         <div className="mb-6">
-          <CostBreakdown
-            costBreakdown={stats.costBreakdown}
+          <CampaignRevenueSection
+            data={revenueData}
+            pending={!revenueRevealed}
+            statsPending={Object.keys(statsRecord).length === 0}
+            funnelSteps={funnelChart?.type === "funnel-bar" ? funnelChart.steps : undefined}
+            statsRecord={statsRecord}
+            registry={registry}
+            costBreakdown={stats?.costBreakdown ?? []}
+            campaign={campaign}
           />
         </div>
+      ) : (
+        <>
+          {/* Charts (funnel + breakdown) — only when charts are defined and data has been loaded at least once */}
+          {(funnelChart || breakdownChart) && Object.keys(statsRecord).length > 0 && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+              {funnelChart && funnelChart.type === "funnel-bar" && (
+                <FunnelMetrics
+                  steps={funnelChart.steps}
+                  stats={statsRecord}
+                  registry={registry}
+                />
+              )}
+              {breakdownChart && breakdownChart.type === "breakdown-bar" && (
+                <ReplyBreakdown
+                  segments={breakdownChart.segments}
+                  stats={statsRecord}
+                  registry={registry}
+                />
+              )}
+            </div>
+          )}
+
+          {/* Cost breakdown */}
+          {stats?.costBreakdown && stats.costBreakdown.length > 0 && (
+            <div className="mb-6">
+              <CostBreakdown
+                costBreakdown={stats.costBreakdown}
+              />
+            </div>
+          )}
+        </>
       )}
 
-      {/* Budget info */}
-      {(campaign.maxBudgetDailyUsd || campaign.maxBudgetWeeklyUsd || campaign.maxBudgetMonthlyUsd || campaign.maxBudgetTotalUsd) && (
+      {/* Budget info — revenue features surface budget inside the stats column
+          (CampaignRevenueSection) instead, so the standalone card is hidden. */}
+      {!revenueEnabled && (campaign.maxBudgetDailyUsd || campaign.maxBudgetWeeklyUsd || campaign.maxBudgetMonthlyUsd || campaign.maxBudgetTotalUsd) && (
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <h3 className="font-medium text-gray-800 mb-2">Budget</h3>
           <div className="flex gap-4 text-sm text-gray-600">
