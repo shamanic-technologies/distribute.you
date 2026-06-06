@@ -16,6 +16,12 @@ describe("feature-gates registry", () => {
     expect(FEATURE_GATES["brand-features"]).toEqual({ flag: "alpha-brand-features", maturity: "alpha" });
   });
 
+  it("gates workflows (page + sidebar entries) as alpha; Feature Settings landing is GA", () => {
+    expect(FEATURE_GATES["workflows"]).toEqual({ flag: "alpha-workflows", maturity: "alpha" });
+    // Feature Settings itself is GA → no gate entry for it.
+    expect(FEATURE_GATES).not.toHaveProperty("feature-settings");
+  });
+
   it("every flag follows the <maturity>-<surface> naming convention", () => {
     for (const gate of Object.values(FEATURE_GATES)) {
       expect(gate.flag.startsWith(`${gate.maturity}-`)).toBe(true);
@@ -24,10 +30,10 @@ describe("feature-gates registry", () => {
 });
 
 describe("GA_BRAND_FEATURES — brand-page GA exceptions", () => {
-  it("contains exactly the two launched cold-email features", () => {
-    expect(GA_BRAND_FEATURES.has("pr-cold-email-outreach")).toBe(true);
+  it("contains only sales cold-email (pr cold-email is alpha-gated)", () => {
     expect(GA_BRAND_FEATURES.has("sales-cold-email-outreach")).toBe(true);
-    expect(GA_BRAND_FEATURES.size).toBe(2);
+    expect(GA_BRAND_FEATURES.has("pr-cold-email-outreach")).toBe(false);
+    expect(GA_BRAND_FEATURES.size).toBe(1);
   });
 });
 

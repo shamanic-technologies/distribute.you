@@ -113,18 +113,30 @@ describe("Context sidebar", () => {
     expect(content).toContain('`${basePath}/workflows`');
   });
 
-  it("should NOT have orphaned featureSettings nav level (settings page route was removed)", () => {
+  it("wires the featureSettings nav level to the EXISTING /settings + /workflows routes (not an orphan)", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    expect(content).not.toContain("featureSettings");
-    expect(content).not.toContain("FeatureSettingsLevelSidebar");
+    // Feature Settings sub-level: GA landing (/settings, Sales Economics) +
+    // staff-only Workflows. Both are real routes (no removed/404 route, unlike
+    // the prior dead `/settings` link this guard originally protected against).
+    expect(content).toContain("featureSettings");
+    expect(content).toContain("FeatureSettingsLevelSidebar");
+    expect(content).toContain('case "featureSettings"');
+    expect(content).toContain('`${basePath}/settings`');
+    expect(content).toContain('`${basePath}/workflows`');
   });
 
-  it("should NOT link feature-level Settings to a non-existent settings route", () => {
+  it("the Feature Settings entry is GA (no flag); only Workflows under it is alpha", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
+    // Not the old dead `id:"settings" label:"Settings"` pattern…
     expect(content).not.toContain('id: "settings", label: "Settings"');
+    // …it's the GA Feature Settings entry pointing at the real /settings landing.
+    expect(content).toContain('label: "Feature Settings"');
+    // Workflows (not Feature Settings) is what stays alpha-gated.
+    expect(content).toContain('FEATURE_GATES["workflows"]');
+    expect(content).not.toContain('FEATURE_GATES["feature-settings"]');
   });
 
-  it("should keep the feature-level Workflows link after removing dead Settings link", () => {
+  it("keeps the feature-level Workflows route (under Feature Settings, staff-only)", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
     expect(content).toContain('`${basePath}/workflows`');
   });

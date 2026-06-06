@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     "Make.com",
     "distribution automation",
     "cold email",
-    "lead generation",
+    "client acquisition",
     "AI distribution",
   ],
   authors: [{ name: "distribute" }],

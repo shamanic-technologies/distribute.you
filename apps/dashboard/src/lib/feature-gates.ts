@@ -33,6 +33,10 @@ export const FEATURE_GATES = {
   "brand-info": { flag: "alpha-brand-info", maturity: "alpha" },
   "brand-features": { flag: "alpha-brand-features", maturity: "alpha" },
   conversions: { flag: "alpha-conversions", maturity: "alpha" },
+  // Workflows page (brand-scoped + app-level) and its sidebar entries. The
+  // Feature Settings sub-level that hosts Workflows is GA; only Workflows itself
+  // stays staff-only, so the flag is named for the surface it actually gates.
+  workflows: { flag: "alpha-workflows", maturity: "alpha" },
 } as const satisfies Record<string, FeatureGate>;
 
 export type FeatureGateKey = keyof typeof FEATURE_GATES;
@@ -47,7 +51,6 @@ export type FeatureGateKey = keyof typeof FEATURE_GATES;
  * `brand-features` flag goes GA).
  */
 export const GA_BRAND_FEATURES: ReadonlySet<string> = new Set([
-  "pr-cold-email-outreach",
   "sales-cold-email-outreach",
 ]);
 
