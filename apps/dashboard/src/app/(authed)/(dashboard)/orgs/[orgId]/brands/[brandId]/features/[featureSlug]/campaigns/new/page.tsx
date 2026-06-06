@@ -34,6 +34,13 @@ import {
 import { useBillingGuard } from "@/lib/billing-guard";
 import { formatStatValue, sortDirectionForType } from "@/lib/format-stat";
 import { pollOptions } from "@/lib/query-options";
+import {
+  costPerCloseUsd,
+  projectSales,
+  salesUnitCostsUsd,
+  type SalesObjective,
+  type SalesEcon,
+} from "@/lib/sales-funnel-economics";
 import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-panel";
 import { CampaignAIPanel } from "@/components/campaigns/campaign-ai-panel";
 import { BrandLogo } from "@/components/brand-logo";
@@ -52,21 +59,13 @@ const BUDGET_FREQUENCIES: { value: BudgetFrequency; label: string }[] = [
 
 // ── Sales-cold-email funnel redesign (objective → revenue → metrics → budget) ──
 // Gated to this one feature; every other feature keeps the workflow-table UI.
-type SalesObjective = "meeting-booked" | "self-serve";
+// Workflow auto-pick + revenue projection live in @/lib/sales-funnel-economics: the
+// ROI comparator is cost-per-close. meeting-booked SUMS the positive-reply route and
+// the website-visit route (the same budget funds both); self-serve is visits-only.
+// SalesObjective is imported from that module.
 type BudgetTier = "starter" | "recommended" | "growth" | "other";
 
 const SALES_FUNNEL_FEATURE_SLUG = "sales-cold-email-outreach";
-
-/** Auto-pick always ranks on the populated recipients* positive-reply family
- *  (the only quality signal these cold-email workflows have today; sidesteps the
- *  empty leads* family / DIS-114). */
-const SALES_PICK_METRIC = "costPerRecipientPositiveReplyCents";
-/** Per-objective cost basis used to project budget ↔ revenue. Self-serve ranks on
- *  clicks, but click cost is empty today (recipientsClicked=0) → projection pending. */
-const SALES_BASIS_METRIC: Record<SalesObjective, string> = {
-  "meeting-booked": "costPerRecipientPositiveReplyCents",
-  "self-serve": "costPerRecipientClickCents",
-};
 
 const SALES_OBJECTIVES: { key: SalesObjective; label: string; desc: string }[] = [
   { key: "meeting-booked", label: "Meeting-booked sales", desc: "You close deals from booked meetings — optimize on positive replies." },
@@ -418,18 +417,26 @@ export default function FeatureCreateCampaignPage() {
     });
   }, [workflowsData, rankedData, brandStatsData]);
 
-  // Sales auto-pick: best cold-email workflow by positive-reply cost (only populated signal).
+  // Brand conversion economics as fractions, shared by auto-pick + projection.
+  const salesEcon: SalesEcon = useMemo(() => ({
+    ltv: parseFloat(econLtv) || 0,
+    r2m: (parseFloat(econReplyToMeeting) || 0) / 100,
+    v2m: (parseFloat(econVisitToMeeting) || 0) / 100,
+    m2c: (parseFloat(econMeetingToClose) || 0) / 100,
+    v2c: (parseFloat(econClickToClose) || 0) / 100,
+  }), [econLtv, econReplyToMeeting, econVisitToMeeting, econMeetingToClose, econClickToClose]);
+
+  // Auto-pick: best ROI = lowest cost-per-close for this objective. meeting-booked sums
+  // the positive-reply route + the website-visit route; self-serve is visits-only. A
+  // workflow with no usable cost data for the objective is excluded (cost/close → null).
   const salesAutoPick = useMemo(() => {
     if (!isSalesFunnel) return null;
-    const candidates = rows.filter((r) => {
-      const c = r.stats[SALES_PICK_METRIC];
-      return typeof c === "number" && c > 0;
-    });
-    if (candidates.length === 0) return null;
-    return [...candidates].sort(
-      (a, b) => Number(a.stats[SALES_PICK_METRIC]) - Number(b.stats[SALES_PICK_METRIC]),
-    )[0];
-  }, [isSalesFunnel, rows]);
+    const scored = rows
+      .map((r) => ({ r, cpc: costPerCloseUsd(r.stats, salesObjective, salesEcon) }))
+      .filter((x): x is { r: WorkflowTableRow; cpc: number } => x.cpc != null && isFinite(x.cpc));
+    if (scored.length === 0) return null;
+    return scored.sort((a, b) => a.cpc - b.cpc)[0].r;
+  }, [isSalesFunnel, rows, salesObjective, salesEcon]);
 
   // Workflow used for projection + launch: the picker override, else the auto-pick.
   const salesPick = useMemo(() => {
@@ -441,46 +448,16 @@ export default function FeatureCreateCampaignPage() {
     return salesAutoPick;
   }, [isSalesFunnel, salesWorkflowOverrideId, rows, salesAutoPick]);
 
-  // Funnel math. meeting-booked: budget→replies→meetings→closes→revenue (basis = cost/positive reply).
-  // self-serve: budget→clicks→closes→revenue (basis = cost/click — empty today → projection pending).
+  // Funnel projection for the picked workflow. recommendedBudget = targetCloses ×
+  // cost-per-close (= budget per close). project() runs the full funnel for a budget;
+  // see projectSales in @/lib/sales-funnel-economics (meeting-booked sums both routes).
   const salesPlan = useMemo(() => {
-    const ltv = parseFloat(econLtv) || 0;
-    const r2m = (parseFloat(econReplyToMeeting) || 0) / 100;
-    const m2c = (parseFloat(econMeetingToClose) || 0) / 100;
-    const c2c = (parseFloat(econClickToClose) || 0) / 100;
-    const basisRaw = salesPick ? salesPick.stats[SALES_BASIS_METRIC[salesObjective]] : null;
-    const costPerPrimary = typeof basisRaw === "number" && basisRaw > 0 ? basisRaw / 100 : null;
-
-    const project = (budget: number) => {
-      if (costPerPrimary == null || budget <= 0) return null;
-      if (salesObjective === "self-serve") {
-        const clicks = budget / costPerPrimary;
-        const closes = clicks * c2c;
-        const revenue = closes * ltv;
-        return { primary: clicks, primaryLabel: "clicks", meetings: null as number | null, closes, revenue,
-          cacPct: revenue > 0 ? (budget / revenue) * 100 : null, cacAbs: closes > 0 ? budget / closes : null };
-      }
-      const replies = budget / costPerPrimary;
-      const meetings = replies * r2m;
-      const closes = meetings * m2c;
-      const revenue = closes * ltv;
-      return { primary: replies, primaryLabel: "pos. replies", meetings: meetings as number | null, closes, revenue,
-        cacPct: revenue > 0 ? (budget / revenue) * 100 : null, cacAbs: closes > 0 ? budget / closes : null };
-    };
-
-    // Recommended budget sized for a fixed target of 10 closes / month.
-    // Starter/Growth scale this ×0.5 / ×2 via BUDGET_TIERS.
-    const closes = TARGET_CLOSES_PER_MONTH;
-    let recommendedBudget: number | null = null;
-    if (costPerPrimary != null) {
-      if (salesObjective === "self-serve") {
-        if (c2c > 0) recommendedBudget = (closes / c2c) * costPerPrimary;
-      } else if (m2c > 0 && r2m > 0) {
-        recommendedBudget = ((closes / m2c) / r2m) * costPerPrimary;
-      }
-    }
-    return { costPerPrimary, recommendedBudget, project };
-  }, [salesObjective, econLtv, econReplyToMeeting, econMeetingToClose, econClickToClose, salesPick]);
+    const cpc = salesPick ? costPerCloseUsd(salesPick.stats, salesObjective, salesEcon) : null;
+    const recommendedBudget = cpc != null ? TARGET_CLOSES_PER_MONTH * cpc : null;
+    const project = (budget: number) =>
+      salesPick ? projectSales(salesPick.stats, salesObjective, salesEcon, budget) : null;
+    return { costPerCloseUsd: cpc, recommendedBudget, project };
+  }, [salesObjective, salesEcon, salesPick]);
 
   // Google-Ads-style budget tiers seeded from the 10-closes/mo target, + the chosen amount.
   const budgetPresets = useMemo(() => {
@@ -1226,7 +1203,7 @@ export default function FeatureCreateCampaignPage() {
               {budgetPresets == null && (
                 <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 mb-4 text-sm text-amber-800">
                   {salesObjective === "self-serve"
-                    ? "Revenue estimate for self-serve is pending click tracking — set a budget below and launch; we optimize on clicks once we collect that data."
+                    ? "No workflow has website-visit cost data yet — set a budget below and launch; we optimize on visits as data comes in."
                     : "Fill in your conversion metrics above to see budget recommendations — or set a budget below to launch."}
                 </div>
               )}
@@ -1308,30 +1285,45 @@ export default function FeatureCreateCampaignPage() {
                 if (!proj) return null;
                 const perMonth = oneOff ? "" : " per month";
                 const budgetSuffix = oneOff ? "" : ` per ${REVENUE_INTERVAL_LABEL[budgetFrequency]}`;
-                const steps = salesObjective === "self-serve"
-                  ? [
-                      { v: fmtUsd0(effectiveBudget), k: `budget${budgetSuffix}`, green: false },
-                      { v: fmtNum(proj.primary), k: `${proj.primaryLabel}${perMonth}`, green: false },
-                      { v: fmtNum(proj.closes, proj.closes < 2 ? 1 : 0), k: `closes${perMonth}`, green: false },
-                      { v: fmtUsd0(proj.revenue), k: `revenue${perMonth}`, green: true },
-                    ]
-                  : [
-                      { v: fmtUsd0(effectiveBudget), k: `budget${budgetSuffix}`, green: false },
-                      { v: fmtNum(proj.primary), k: `${proj.primaryLabel}${perMonth}`, green: false },
-                      { v: fmtNum(proj.meetings ?? 0, (proj.meetings ?? 0) < 2 ? 1 : 0), k: `meetings${perMonth}`, green: false },
-                      { v: fmtNum(proj.closes, proj.closes < 2 ? 1 : 0), k: `closes${perMonth}`, green: false },
-                      { v: fmtUsd0(proj.revenue), k: `revenue${perMonth}`, green: true },
-                    ];
+                const fmtClose = (n: number) => fmtNum(n, n < 2 ? 1 : 0);
+                // Each step is a column of one-or-more chips. meeting-booked converges the
+                // positive-reply + website-visit routes onto a single combined `meetings` step
+                // (the two feeders stack with a "+" and both arrow into meetings).
+                const feeders: { v: string; k: string }[] = [];
+                if (proj.replies != null) feeders.push({ v: fmtNum(proj.replies), k: `pos. replies${perMonth}` });
+                if (proj.visits != null) feeders.push({ v: fmtNum(proj.visits), k: `website visits${perMonth}` });
+                const steps: { chips: { v: string; k: string }[]; green?: boolean }[] =
+                  salesObjective === "self-serve"
+                    ? [
+                        { chips: [{ v: fmtUsd0(effectiveBudget), k: `budget${budgetSuffix}` }] },
+                        { chips: [{ v: fmtNum(proj.visits ?? 0), k: `website visits${perMonth}` }] },
+                        { chips: [{ v: fmtClose(proj.closes), k: `closes${perMonth}` }] },
+                        { chips: [{ v: fmtUsd0(proj.revenue), k: `revenue${perMonth}` }], green: true },
+                      ]
+                    : [
+                        { chips: [{ v: fmtUsd0(effectiveBudget), k: `budget${budgetSuffix}` }] },
+                        { chips: feeders },
+                        { chips: [{ v: fmtClose(proj.meetings ?? 0), k: `meetings${perMonth}` }] },
+                        { chips: [{ v: fmtClose(proj.closes), k: `closes${perMonth}` }] },
+                        { chips: [{ v: fmtUsd0(proj.revenue), k: `revenue${perMonth}` }], green: true },
+                      ];
                 return (
                   <div className="mt-4">
                     <p className="text-center text-[11px] uppercase tracking-wide text-gray-400 mb-2">{oneOff ? "Projected outcome" : "Projected per month"}</p>
                     <div className="flex items-center justify-center gap-2 flex-wrap">
                       {steps.map((s, i) => (
-                        <Fragment key={s.k}>
+                        <Fragment key={s.chips.map((c) => c.k).join("|") || i}>
                           {i > 0 && <span className="text-gray-300">&rarr;</span>}
-                          <div className={`flex flex-col items-center px-3 py-2 rounded-lg border min-w-[84px] ${s.green ? "border-green-200 bg-green-50" : "border-gray-200 bg-gray-50"}`}>
-                            <span className={`text-base font-semibold ${s.green ? "text-green-700" : "text-gray-800"}`}>{s.v}</span>
-                            <span className="text-[11px] text-gray-500 text-center">{s.k}</span>
+                          <div className="flex flex-col items-stretch gap-1">
+                            {s.chips.map((c, ci) => (
+                              <Fragment key={c.k}>
+                                {ci > 0 && <span className="text-center text-[10px] text-gray-300 leading-none">+</span>}
+                                <div className={`flex flex-col items-center px-3 py-2 rounded-lg border min-w-[84px] ${s.green ? "border-green-200 bg-green-50" : "border-gray-200 bg-gray-50"}`}>
+                                  <span className={`text-base font-semibold ${s.green ? "text-green-700" : "text-gray-800"}`}>{c.v}</span>
+                                  <span className="text-[11px] text-gray-500 text-center">{c.k}</span>
+                                </div>
+                              </Fragment>
+                            ))}
                           </div>
                         </Fragment>
                       ))}
@@ -1340,18 +1332,26 @@ export default function FeatureCreateCampaignPage() {
                 );
               })()}
 
-              {salesPick && (
-                <div className="flex items-center justify-center gap-2 mt-3 text-xs text-gray-500">
-                  <SparklesIcon className="w-3.5 h-3.5 text-brand-500" />
-                  <span>{salesWorkflowOverrideId ? "selected workflow" : "auto-selected workflow"}</span>
-                  <span className="font-medium text-gray-800">{salesPick.workflowDynastyName}</span>
-                  <span>&mdash; {fmtUsd0(Number(salesPick.stats[SALES_PICK_METRIC]) / 100)} / positive reply</span>
-                  <button type="button" onClick={() => { setModalSelectedWorkflowId(salesPick?.id ?? null); setShowWorkflowPicker(true); }} title="Change workflow"
-                    className="ml-0.5 p-1 rounded text-gray-400 hover:text-brand-600 hover:bg-brand-50 transition">
-                    <PencilSquareIcon className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
+              {salesPick && (() => {
+                // Show every populated unit cost (positive reply + website visit), not just
+                // the winning route — the workflow's full economics at a glance.
+                const { replyUsd, clickUsd } = salesUnitCostsUsd(salesPick.stats);
+                const parts: string[] = [];
+                if (replyUsd != null) parts.push(`${fmtUsd0(replyUsd)} / positive reply`);
+                if (clickUsd != null) parts.push(`${fmtUsd0(clickUsd)} / website visit`);
+                return (
+                  <div className="flex items-center justify-center gap-2 mt-3 text-xs text-gray-500">
+                    <SparklesIcon className="w-3.5 h-3.5 text-brand-500" />
+                    <span>{salesWorkflowOverrideId ? "selected workflow" : "auto-selected workflow"}</span>
+                    <span className="font-medium text-gray-800">{salesPick.workflowDynastyName}</span>
+                    {parts.length > 0 && <span>&mdash; {parts.join(", ")}</span>}
+                    <button type="button" onClick={() => { setModalSelectedWorkflowId(salesPick?.id ?? null); setShowWorkflowPicker(true); }} title="Change workflow"
+                      className="ml-0.5 p-1 rounded text-gray-400 hover:text-brand-600 hover:bg-brand-50 transition">
+                      <PencilSquareIcon className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                );
+              })()}
 
               <details className="mt-4 border-t border-gray-100 pt-3">
                 <summary className="cursor-pointer text-sm text-gray-500 font-medium select-none">Campaign details</summary>
@@ -1401,7 +1401,7 @@ export default function FeatureCreateCampaignPage() {
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                   <div>
                     <h3 className="font-display font-semibold text-gray-800">Choose a workflow</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">Ranked by cost per positive reply (public cross-org stats). We auto-pick the cheapest.</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Ranked by cost per close — best ROI for this objective (public cross-org stats). We auto-pick the cheapest.</p>
                   </div>
                   <button type="button" onClick={() => setShowWorkflowPicker(false)} className="p-1 text-gray-400 hover:text-gray-600 rounded">
                     <XMarkIcon className="w-5 h-5" />
@@ -1411,12 +1411,12 @@ export default function FeatureCreateCampaignPage() {
                   {/* LEFT: workflow list */}
                   <div className="w-1/2 overflow-y-auto p-3 space-y-2">
                     {[...rows].sort((a, b) => {
-                      const ca = a.stats[SALES_PICK_METRIC]; const cb = b.stats[SALES_PICK_METRIC];
-                      const va = typeof ca === "number" && ca > 0 ? ca : Infinity;
-                      const vb = typeof cb === "number" && cb > 0 ? cb : Infinity;
-                      return va - vb;
+                      // Rank by the ROI comparator: lowest cost-per-close for this objective.
+                      const ca = costPerCloseUsd(a.stats, salesObjective, salesEcon);
+                      const cb = costPerCloseUsd(b.stats, salesObjective, salesEcon);
+                      return (ca ?? Infinity) - (cb ?? Infinity);
                     }).map((w) => {
-                      const cost = w.stats[SALES_PICK_METRIC];
+                      const cpc = costPerCloseUsd(w.stats, salesObjective, salesEcon);
                       const isSel = modalSelectedWorkflowId === w.id;
                       const isReco = salesAutoPick?.id === w.id;
                       const isOverride = salesWorkflowOverrideId === w.id;
@@ -1441,12 +1441,13 @@ export default function FeatureCreateCampaignPage() {
                             <div className="flex gap-3 mt-1 text-[11px] text-gray-500">
                               <span>Sent {fmtNum(Number(w.stats.recipientsSent) || 0)}</span>
                               <span>Open {typeof openRate === "number" ? `${(openRate * 100).toFixed(0)}%` : "—"}</span>
+                              <span>Clicks {fmtNum(Number(w.stats.recipientsClicked) || 0)}</span>
                               <span>Pos. {fmtNum(Number(w.stats.recipientsRepliesPositive) || 0)}</span>
                             </div>
                           </div>
                           <div className="text-right shrink-0">
-                            <div className="text-sm font-semibold text-gray-800">{typeof cost === "number" && cost > 0 ? fmtUsd0(cost / 100) : "—"}</div>
-                            <div className="text-[10px] text-gray-400">/ pos. reply</div>
+                            <div className="text-sm font-semibold text-gray-800">{cpc != null ? fmtUsd0(cpc) : "—"}</div>
+                            <div className="text-[10px] text-gray-400">/ close</div>
                           </div>
                         </button>
                       );
