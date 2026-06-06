@@ -32,15 +32,16 @@ describe("Cost & efficiency card on feature Overview (served costEconomics)", ()
     // The cost cards now live in the right-of-chart column, replacing the old
     // org/lead/event counters.
     expect(section).toContain("RevenueCostSummary");
-    expect(section).toContain("costEconomics={data.costEconomics}");
+    expect(section).toContain("costEconomics={data?.costEconomics}");
     expect(section).not.toContain("Converting organizations");
     expect(section).not.toContain("Lead conversions");
   });
 
   it("CAC % and ROI × read the served costEconomics, not client arithmetic", () => {
-    // Single source: the two ratios come straight off the features-service prop.
-    expect(card).toContain("costEconomics.costOfAcquisitionPct");
-    expect(card).toContain("costEconomics.roiMultiple");
+    // Single source: the two ratios come straight off the features-service prop
+    // (optional-chained — the card now renders its shell before data arrives).
+    expect(card).toContain("costEconomics?.costOfAcquisitionPct");
+    expect(card).toContain("costEconomics?.roiMultiple");
     // Served nulls still render as an em dash.
     expect(card).toContain('cacPct == null ? "—"');
     expect(card).toContain('roiMultiple == null ? "—"');

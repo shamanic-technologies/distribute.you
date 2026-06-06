@@ -1,11 +1,13 @@
 "use client";
 
+import { Skeleton } from "@/components/skeleton";
 import type { BreakdownSegment, StatsRegistry } from "@/lib/api";
 
 interface ReplyBreakdownProps {
   segments: BreakdownSegment[];
   stats: Record<string, number>;
   registry: StatsRegistry;
+  pending?: boolean;
 }
 
 const COLOR_MAP: Record<string, { bar: string; bg: string; icon: string }> = {
@@ -41,19 +43,29 @@ export function ReplyBreakdownSkeleton() {
   );
 }
 
-export function ReplyBreakdown({ segments, stats, registry }: ReplyBreakdownProps) {
-  const resolved = segments
+const PLACEHOLDER_SEGMENTS: Pick<BreakdownSegment, "key" | "color">[] = [
+  { key: "positive",  color: "green"  },
+  { key: "neutral",   color: "blue"   },
+  { key: "negative",  color: "red"    },
+  { key: "ooo",       color: "gray"   },
+  { key: "unsubscribe", color: "orange" },
+];
+
+export function ReplyBreakdown({ segments, stats, registry, pending = false }: ReplyBreakdownProps) {
+  const source: Pick<BreakdownSegment, "key" | "color">[] =
+    pending && (!segments || segments.length === 0) ? PLACEHOLDER_SEGMENTS : (segments ?? []);
+  const resolved = source
     .map((seg) => ({
       key: seg.key,
-      label: registry[seg.key]?.label ?? seg.key,
-      value: stats[seg.key] ?? 0,
+      label: registry?.[seg.key]?.label ?? seg.key,
+      value: stats?.[seg.key] ?? 0,
       colors: COLOR_MAP[seg.color] ?? COLOR_MAP.gray,
     }))
-    .filter((c) => c.value > 0);
+    .filter((c) => pending || c.value > 0);
 
   const total = resolved.reduce((sum, c) => sum + c.value, 0);
 
-  if (total === 0) {
+  if (!pending && total === 0) {
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-6 min-h-[200px] flex flex-col">
         <h3 className="font-medium text-gray-800 mb-4">Reply Breakdown</h3>
@@ -68,25 +80,37 @@ export function ReplyBreakdown({ segments, stats, registry }: ReplyBreakdownProp
 
       <div className="space-y-3">
         {resolved.map((cat) => {
-          const percentage = (cat.value / total) * 100;
+          const percentage = total > 0 ? (cat.value / total) * 100 : 0;
           return (
             <div key={cat.key} className="flex items-center gap-3">
               <span className="text-sm">{cat.colors.icon}</span>
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-sm text-gray-700">{cat.label}</span>
-                  <span className="text-sm font-medium text-gray-800">{cat.value}</span>
+                  {pending ? (
+                    <Skeleton className="h-4 w-6" />
+                  ) : (
+                    <span className="text-sm font-medium text-gray-800">{cat.value}</span>
+                  )}
                 </div>
                 <div className={`h-2 ${cat.colors.bg} rounded-full overflow-hidden`}>
-                  <div
-                    className={`h-full ${cat.colors.bar} rounded-full transition-all duration-500 ease-out`}
-                    style={{ width: `${percentage}%` }}
-                  />
+                  {pending ? (
+                    <Skeleton className="h-full w-1/2 rounded-full" />
+                  ) : (
+                    <div
+                      className={`h-full ${cat.colors.bar} rounded-full transition-all duration-500 ease-out`}
+                      style={{ width: `${percentage}%` }}
+                    />
+                  )}
                 </div>
               </div>
-              <span className="text-xs text-gray-500 w-12 text-right">
-                {percentage.toFixed(0)}%
-              </span>
+              {pending ? (
+                <Skeleton className="h-3 w-12" />
+              ) : (
+                <span className="text-xs text-gray-500 w-12 text-right">
+                  {percentage.toFixed(0)}%
+                </span>
+              )}
             </div>
           );
         })}

@@ -322,17 +322,6 @@ export function BrandMetricsHeader({
     !domainReady || !aiVisPending,
   ]);
 
-  if (!revealed) {
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
-        <MetricCardSkeleton />
-        <MetricCardSkeleton />
-        <MetricCardSkeleton />
-        <MetricCardSkeleton />
-      </div>
-    );
-  }
-
   const drValue = dr?.latestValidDr;
   const revenue = traffic?.trafficValueMonthlyAvg;
 
@@ -340,7 +329,9 @@ export function BrandMetricsHeader({
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
       {/* 1 — Monthly organic visits */}
       <MetricCard title="Monthly visits" subtitle="organic, Ahrefs">
-        {visitsSeries.length >= VISITS_MIN_POINTS ? (
+        {!revealed ? (
+          <Skeleton className="flex-1 w-full" />
+        ) : visitsSeries.length >= VISITS_MIN_POINTS ? (
           <MiniChart data={visitsSeries} color="#6366f1" fmt={formatInt} />
         ) : visitsSeries.length === 1 ? (
           <BigStat value={formatInt(visitsSeries[0].value)} caption={visitsSeries[0].label} />
@@ -354,7 +345,9 @@ export function BrandMetricsHeader({
         title="Domain Rating"
         subtitle={dr?.latestValidDrDate ? formatDay(dr.latestValidDrDate) : null}
       >
-        {drValue != null ? (
+        {!revealed ? (
+          <Skeleton className="flex-1 w-full" />
+        ) : drValue != null ? (
           <BigStat value={String(drValue)} caption="Ahrefs DR" />
         ) : (
           <NoData label="No DR yet" />
@@ -363,7 +356,9 @@ export function BrandMetricsHeader({
 
       {/* 3 — Estimated monthly revenue (Ahrefs traffic value, latest only) */}
       <MetricCard title="Est. monthly revenue" subtitle="traffic value, Ahrefs">
-        {revenue != null ? (
+        {!revealed ? (
+          <Skeleton className="flex-1 w-full" />
+        ) : revenue != null ? (
           <BigStat value={formatUsd(revenue)} caption="/ month" />
         ) : (
           <NoData label="No revenue estimate yet" />
@@ -375,7 +370,9 @@ export function BrandMetricsHeader({
         title="AI mentions"
         subtitle={aiVis?.snapshotDate ? formatDay(aiVis.snapshotDate) : "Ahrefs Brand-Radar"}
       >
-        {aiVis?.snapshotDate ? (
+        {!revealed ? (
+          <Skeleton className="flex-1 w-full" />
+        ) : aiVis?.snapshotDate ? (
           <BigStat value={formatInt(aiVis.mentionsTotal)} caption="across AI engines" />
         ) : (
           <NoData label="No AI mentions yet" />

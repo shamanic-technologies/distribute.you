@@ -13,9 +13,9 @@ import {
 import { useFeatures } from "@/lib/features-context";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 import { useStopCampaign, useIsStoppingCampaign } from "@/lib/use-stop-campaign";
-import { FunnelMetrics, FunnelMetricsSkeleton } from "@/components/campaign/funnel-metrics";
-import { ReplyBreakdown, ReplyBreakdownSkeleton } from "@/components/campaign/reply-breakdown";
-import { CostBreakdown, CostBreakdownSkeleton } from "@/components/campaign/cost-breakdown";
+import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
+import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
+import { CostBreakdown } from "@/components/campaign/cost-breakdown";
 import { formatStatValue } from "@/lib/format-stat";
 import { pollOptions } from "@/lib/query-options";
 
@@ -193,58 +193,47 @@ function GenericFeaturePage({
         </div>
       </div>
 
-      {!revealed ? (
-        <>
-          {/* Stats + cost + campaigns skeletons render together so the body reveals as a single block */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-            {(funnelChart || !featureDef) && <FunnelMetricsSkeleton />}
-            {(breakdownChart || !featureDef) && <ReplyBreakdownSkeleton />}
-          </div>
-          <div className="mb-6">
-            <CostBreakdownSkeleton />
-          </div>
-          <div className="space-y-3">
-            <h2 className="text-sm font-semibold text-gray-700">Campaigns</h2>
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <CampaignRowSkeleton key={i} />
-              ))}
-            </div>
-          </div>
-        </>
-      ) : (
-        <>
-          {/* Stats Overview — dynamic from charts. Hidden when nothing to show. */}
-          {campaigns.length > 0 && (funnelChart || breakdownChart) ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-              {funnelChart && funnelChart.type === "funnel-bar" && (
-                <FunnelMetrics
-                  steps={funnelChart.steps}
-                  stats={featureStats}
-                  registry={registry}
-                />
-              )}
-              {breakdownChart && breakdownChart.type === "breakdown-bar" && (
-                <ReplyBreakdown
-                  segments={breakdownChart.segments}
-                  stats={featureStats}
-                  registry={registry}
-                />
-              )}
-            </div>
-          ) : null}
+      {/* Static-shell-first: the chart/cost card frames + titles render on the
+          first paint (the chart set is known from the warm feature defs); only
+          the bars, donut and numbers skeleton until the stats reveal together. */}
+      {(!revealed || (campaigns.length > 0 && (funnelChart || breakdownChart))) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+          {(funnelChart || !featureDef) && (
+            <FunnelMetrics
+              steps={funnelChart && funnelChart.type === "funnel-bar" ? funnelChart.steps : []}
+              stats={featureStats}
+              registry={registry}
+              pending={!revealed}
+            />
+          )}
+          {(breakdownChart || !featureDef) && (
+            <ReplyBreakdown
+              segments={breakdownChart && breakdownChart.type === "breakdown-bar" ? breakdownChart.segments : []}
+              stats={featureStats}
+              registry={registry}
+              pending={!revealed}
+            />
+          )}
+        </div>
+      )}
 
-          {/* Cost Breakdown */}
-          {brandCostBreakdown.length > 0 ? (
-            <div className="mb-6">
-              <CostBreakdown costBreakdown={brandCostBreakdown} />
-            </div>
-          ) : null}
+      {/* Cost Breakdown — frame + title instant, donut/values skeleton until ready */}
+      {(!revealed || brandCostBreakdown.length > 0) && (
+        <div className="mb-6">
+          <CostBreakdown costBreakdown={brandCostBreakdown} pending={!revealed} />
+        </div>
+      )}
 
-          {/* Campaigns List */}
+      {/* Campaigns List */}
+      <div className="space-y-3">
+        <h2 className="text-sm font-semibold text-gray-700">Campaigns</h2>
+        {!revealed ? (
           <div className="space-y-3">
-            <h2 className="text-sm font-semibold text-gray-700">Campaigns</h2>
-            {campaigns.length === 0 ? (
+            {[1, 2, 3].map((i) => (
+              <CampaignRowSkeleton key={i} />
+            ))}
+          </div>
+        ) : campaigns.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
             <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No campaigns yet</h3>
             <p className="text-gray-600 text-sm max-w-md mx-auto mb-4">
@@ -326,9 +315,7 @@ function GenericFeaturePage({
             );
           })
         )}
-          </div>
-        </>
-      )}
+      </div>
 
     </div>
   );

@@ -9,31 +9,7 @@ import { getFeatureRevenue, getBrandCostBreakdown } from "@/lib/api";
 import { pollOptions, pollOptionsSlow } from "@/lib/query-options";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
-import { Skeleton } from "@/components/skeleton";
-import { CoordinatedReveal } from "@/components/coordinated-reveal";
-
-function OverviewSkeleton() {
-  return (
-    <div className="space-y-4">
-      <Skeleton className="h-6 w-56 rounded" />
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-4 md:p-6">
-          <Skeleton className="h-5 w-48 rounded mb-4" />
-          <Skeleton className="h-[260px] w-full rounded" />
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-4">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="bg-white rounded-xl border border-gray-200 p-4">
-              <Skeleton className="h-3 w-24 rounded" />
-              <Skeleton className="h-6 w-12 rounded mt-2" />
-            </div>
-          ))}
-        </div>
-      </div>
-      <Skeleton className="h-48 w-full rounded-xl" />
-    </div>
-  );
-}
+import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 
 /** Revenue-centric overview for a feature — its own page + sidebar entry (above
  *  Campaigns), revenue features only (sales-cold-email today), alpha / staff-only. */
@@ -64,6 +40,11 @@ export default function FeatureOverviewPage() {
     { enabled, ...pollOptions },
   );
 
+  // Coordinate the two cold queries: the section's static shell (header, card
+  // frames, titles, tab bar) renders immediately; the data regions (headline,
+  // chart, cost values, tables) reveal together once both resolve, then latch.
+  const valuesRevealed = useCoordinatedReveal([data !== undefined, costData !== undefined]);
+
   if (!ok || !isRevenueFeature(featureSlug)) {
     return (
       <div className="p-4 md:p-8 max-w-7xl mx-auto">
@@ -75,27 +56,24 @@ export default function FeatureOverviewPage() {
   }
 
   const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`;
+
+  // Only once resolved do we know the feature has no pipeline yet → full CTA.
+  if (valuesRevealed && data && data.totalPipelineUsd === null) {
+    return (
+      <div className="p-4 md:p-8 max-w-7xl mx-auto">
+        <RevenueEmptyState setupHref={`${basePath}/campaigns/new`} />
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
-      {/* Reveal the revenue chart + the cost-breakdown card together (one paint),
-          then keep them latched across the poll — never a card-by-card pop-in. */}
-      <CoordinatedReveal
-        flags={[data !== undefined, costData !== undefined]}
-        skeleton={<OverviewSkeleton />}
-      >
-        {() => {
-          if (!data) return null; // unreachable once revealed; narrows the type
-          return data.totalPipelineUsd === null ? (
-            <RevenueEmptyState setupHref={`${basePath}/campaigns/new`} />
-          ) : (
-            <RevenueOverviewSection
-              data={data}
-              conversionsHref={`${basePath}/conversions`}
-              costBreakdown={costData?.costs ?? []}
-            />
-          );
-        }}
-      </CoordinatedReveal>
+      <RevenueOverviewSection
+        data={valuesRevealed ? data : undefined}
+        pending={!valuesRevealed}
+        conversionsHref={`${basePath}/conversions`}
+        costBreakdown={costData?.costs ?? []}
+      />
     </div>
   );
 }

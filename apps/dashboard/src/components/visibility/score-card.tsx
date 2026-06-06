@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { Skeleton } from "../skeleton";
 import { InfoTooltip } from "./metric-info";
 
 export type DeltaFormat = "percent" | "absolute";
@@ -10,6 +11,7 @@ type ScoreCardCommon = {
   value: string;
   subtitle?: ReactNode;
   tooltip?: string;
+  pending?: boolean;
 };
 
 type ScoreCardProps =
@@ -35,7 +37,7 @@ export function formatDelta(
 }
 
 export function ScoreCard(props: ScoreCardProps) {
-  const { label, value, subtitle, tooltip } = props;
+  const { label, value, subtitle, tooltip, pending = false } = props;
   const fmt =
     "deltaFormat" in props && props.deltaFormat
       ? formatDelta(props.delta, props.deltaFormat, props.deltaInverted ?? false)
@@ -47,11 +49,19 @@ export function ScoreCard(props: ScoreCardProps) {
         {tooltip && <InfoTooltip tip={tooltip} placement="top" />}
       </p>
       <div className="flex items-baseline gap-2">
-        <p className="text-2xl font-semibold text-gray-800">{value}</p>
-        {fmt && (
-          <span className={`text-xs font-medium ${fmt.className}`} title={`Delta vs previous run: ${fmt.text}`}>
-            {fmt.text}
-          </span>
+        {pending ? (
+          <Skeleton className="h-6 w-16" />
+        ) : (
+          <p className="text-2xl font-semibold text-gray-800">{value}</p>
+        )}
+        {pending ? (
+          <Skeleton className="h-3 w-10 mt-1" />
+        ) : (
+          fmt && (
+            <span className={`text-xs font-medium ${fmt.className}`} title={`Delta vs previous run: ${fmt.text}`}>
+              {fmt.text}
+            </span>
+          )
         )}
       </div>
       {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}

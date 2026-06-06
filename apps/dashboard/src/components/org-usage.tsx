@@ -5,6 +5,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { getOrgCostsByBrand, getOrgCostBreakdown, getPlatformPrices, type Brand } from "@/lib/api";
 import { ProviderLogo } from "@/components/provider-logo";
+import { Skeleton } from "@/components/skeleton";
 
 const COLORS = [
   "#6366f1", // indigo
@@ -38,7 +39,7 @@ interface Segment {
   color: string;
 }
 
-export function OrgUsageSection({ brands }: { brands: Brand[] }) {
+export function OrgUsageSection({ brands, pending = false }: { brands: Brand[]; pending?: boolean }) {
   const { data: brandGroupsData, isLoading: brandGroupsLoading } = useAuthQuery(
     ["orgCostsByBrand"],
     () => getOrgCostsByBrand(),
@@ -65,8 +66,8 @@ export function OrgUsageSection({ brands }: { brands: Brand[] }) {
     return map;
   }, [platformPrices]);
 
-  const isLoading = brandGroupsLoading || totalCostLoading;
   const hasData = !!(brandGroupsData || totalCostData);
+  const isPending = pending || ((brandGroupsLoading || totalCostLoading) && !hasData);
 
   const brandMap = useMemo(() => {
     const map = new Map<string, Brand>();
@@ -114,29 +115,7 @@ export function OrgUsageSection({ brands }: { brands: Brand[] }) {
 
   const totalCents = segments.reduce((sum, s) => sum + s.cents, 0);
 
-  if (isLoading && !hasData) {
-    return (
-      <div className="bg-white rounded-xl border border-gray-200 p-6 animate-pulse">
-        <div className="h-5 w-24 bg-gray-200 rounded mb-4" />
-        <div className="flex flex-col sm:flex-row items-center gap-6">
-          <div className="w-40 h-40 rounded-full bg-gray-100 flex-shrink-0 relative">
-            <div className="absolute inset-5 bg-white rounded-full" />
-          </div>
-          <div className="flex-1 space-y-3 w-full min-w-0">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-gray-200 flex-shrink-0" />
-                <div className="h-4 bg-gray-100 rounded flex-1" />
-                <div className="h-4 w-12 bg-gray-200 rounded flex-shrink-0" />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (totalCents === 0) return null;
+  if (!isPending && totalCents === 0) return null;
 
   let cumulative = 0;
   const stops = segments.map((seg) => {
@@ -144,6 +123,14 @@ export function OrgUsageSection({ brands }: { brands: Brand[] }) {
     cumulative += seg.percentage;
     return `${seg.color} ${start}% ${cumulative}%`;
   });
+
+  // Always render the legend structure; show placeholder rows while pending with no data.
+  const legendRows = isPending && segments.length === 0
+    ? Array.from({ length: 4 }, (_, i) => ({ name: `placeholder-${i}`, cents: 0, percentage: 0, color: "#e5e7eb" }))
+    : segments;
+  const costRows = isPending && totalCostBreakdown.length === 0
+    ? Array.from({ length: 6 }, (_, i) => ({ name: `placeholder-${i}`, cents: 0 }))
+    : totalCostBreakdown;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -155,50 +142,72 @@ export function OrgUsageSection({ brands }: { brands: Brand[] }) {
           style={{
             width: 160,
             height: 160,
-            background: `conic-gradient(${stops.join(", ")})`,
+            background: isPending ? "#e5e7eb" : `conic-gradient(${stops.join(", ")})`,
           }}
         >
           <div className="absolute inset-5 bg-white rounded-full flex items-center justify-center">
-            <span className="text-sm font-semibold text-gray-800">
-              {formatUsdCents(totalCents)}
-            </span>
+            {isPending ? (
+              <Skeleton className="h-5 w-12" />
+            ) : (
+              <span className="text-sm font-semibold text-gray-800">
+                {formatUsdCents(totalCents)}
+              </span>
+            )}
           </div>
         </div>
 
         {/* Legend — by brand */}
         <div className="flex-1 space-y-2 w-full min-w-0">
-          {segments.map((seg) => (
+          {legendRows.map((seg) => (
             <div key={seg.name} className="flex items-center gap-2">
               <span
                 className="w-3 h-3 rounded-full flex-shrink-0"
                 style={{ backgroundColor: seg.color }}
               />
               <span className="text-sm text-gray-700 flex-1 truncate">
-                {seg.name}
+                {isPending ? <Skeleton className="h-4 w-24" /> : seg.name}
               </span>
-              <span className="text-sm font-medium text-gray-800 flex-shrink-0">
-                {formatUsdCents(seg.cents)}
-              </span>
-              <span className="text-xs text-gray-500 w-10 text-right flex-shrink-0">
-                {seg.percentage.toFixed(0)}%
-              </span>
+              {isPending ? (
+                <Skeleton className="h-4 w-12 flex-shrink-0" />
+              ) : (
+                <span className="text-sm font-medium text-gray-800 flex-shrink-0">
+                  {formatUsdCents(seg.cents)}
+                </span>
+              )}
+              {isPending ? (
+                <Skeleton className="h-3 w-10 flex-shrink-0" />
+              ) : (
+                <span className="text-xs text-gray-500 w-10 text-right flex-shrink-0">
+                  {seg.percentage.toFixed(0)}%
+                </span>
+              )}
             </div>
           ))}
         </div>
       </div>
 
       {/* Detailed cost breakdown */}
-      {totalCostBreakdown.length > 0 && (
+      {(costRows.length > 0) && (
         <div className="mt-6 pt-4 border-t border-gray-100">
           <h4 className="text-sm font-medium text-gray-600 mb-3">Cost Details</h4>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1.5">
-            {totalCostBreakdown.map((c) => (
+            {costRows.map((c) => (
               <div key={c.name} className="flex items-center justify-between text-sm">
                 <span className="flex items-center gap-1.5 min-w-0 mr-2">
-                  <ProviderLogo domain={domainByCost.get(c.name) ?? null} size={16} />
-                  <span className="text-gray-500 truncate">{formatCostName(c.name)}</span>
+                  {isPending ? (
+                    <Skeleton className="h-4 w-28" />
+                  ) : (
+                    <>
+                      <ProviderLogo domain={domainByCost.get(c.name) ?? null} size={16} />
+                      <span className="text-gray-500 truncate">{formatCostName(c.name)}</span>
+                    </>
+                  )}
                 </span>
-                <span className="text-gray-800 font-medium flex-shrink-0">{formatUsdCents(c.cents)}</span>
+                {isPending ? (
+                  <Skeleton className="h-4 w-12 flex-shrink-0" />
+                ) : (
+                  <span className="text-gray-800 font-medium flex-shrink-0">{formatUsdCents(c.cents)}</span>
+                )}
               </div>
             ))}
           </div>
