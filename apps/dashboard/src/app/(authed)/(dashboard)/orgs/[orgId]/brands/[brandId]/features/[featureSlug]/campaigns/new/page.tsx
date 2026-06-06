@@ -46,7 +46,7 @@ import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-pane
 import { CampaignAIPanel } from "@/components/campaigns/campaign-ai-panel";
 import { BrandLogo } from "@/components/brand-logo";
 import { Skeleton } from "@/components/skeleton";
-import { SparklesIcon, XMarkIcon, EllipsisVerticalIcon, PlusIcon, PencilSquareIcon, InformationCircleIcon } from "@heroicons/react/20/solid";
+import { SparklesIcon, XMarkIcon, EllipsisVerticalIcon, PlusIcon, PencilSquareIcon, InformationCircleIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
 
 type Mode = "autopilot" | "manual";
 type BudgetFrequency = "one-off" | "daily" | "weekly" | "monthly";
@@ -255,6 +255,8 @@ export default function FeatureCreateCampaignPage() {
   const [tests, setTests] = useState<Record<string, { campaignId: string; status: string; emails: Email[]; error?: string }>>({});
   const [testStarting, setTestStarting] = useState<Record<string, boolean>>({});
   const [testError, setTestError] = useState<Record<string, string>>({});
+  // Which test-email card is expanded to its full multi-step sequence (null = all collapsed).
+  const [expandedTestEmailId, setExpandedTestEmailId] = useState<string | null>(null);
   const [budgetTier, setBudgetTier] = useState<BudgetTier>("recommended");
   const [budgetCustom, setBudgetCustom] = useState("");
   const salesPrefilledRef = useRef(false);
@@ -1580,16 +1582,41 @@ export default function FeatureCreateCampaignPage() {
                               // Cold-email sequences store the body per step in `sequence`; the top-level
                               // bodyText/bodyHtml are null for them. Mirror the emails pages' fallback so
                               // the preview shows the real first-step body, not a blank card.
-                              const bodyText = e.sequence?.[0]?.bodyText ?? e.bodyText;
+                              const firstBody = e.sequence?.[0]?.bodyText ?? e.bodyText;
+                              // Full email = the whole sequence (initial + follow-ups). Fall back to a
+                              // single synthetic step when there is no sequence array.
+                              const steps = e.sequence && e.sequence.length > 0
+                                ? e.sequence
+                                : (firstBody ? [{ step: 1, bodyText: firstBody, bodyHtml: "", daysSinceLastStep: 0 }] : []);
+                              const expanded = expandedTestEmailId === e.id;
                               return (
-                              <div key={e.id} className="bg-white rounded-lg border border-gray-200 p-3">
+                              <button key={e.id} type="button"
+                                onClick={() => setExpandedTestEmailId((cur) => (cur === e.id ? null : e.id))}
+                                className="w-full text-left bg-white rounded-lg border border-gray-200 p-3 hover:border-gray-300 transition cursor-pointer">
                                 <div className="flex items-center justify-between gap-2">
                                   <span className="text-xs font-medium text-gray-800 truncate">{[e.leadFirstName, e.leadLastName].filter(Boolean).join(" ") || "Lead"}{e.leadCompany ? ` · ${e.leadCompany}` : ""}</span>
-                                  {e.generationRun?.status && <span className="text-[10px] text-gray-400 shrink-0">{e.generationRun.status}</span>}
+                                  <span className="flex items-center gap-1.5 shrink-0">
+                                    {e.generationRun?.status && <span className="text-[10px] text-gray-400">{e.generationRun.status}</span>}
+                                    {steps.length > 0 && <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`} />}
+                                  </span>
                                 </div>
                                 {e.subject && <div className="text-xs font-semibold text-gray-700 mt-1 truncate">{e.subject}</div>}
-                                {bodyText && <div className="text-[11px] text-gray-500 mt-1 line-clamp-3 whitespace-pre-wrap">{bodyText}</div>}
-                              </div>
+                                {!expanded && firstBody && <div className="text-[11px] text-gray-500 mt-1 line-clamp-3 whitespace-pre-wrap">{firstBody}</div>}
+                                {expanded && (
+                                  <div className="mt-2 space-y-2">
+                                    {steps.map((s) => (
+                                      <div key={s.step} className="border-t border-gray-100 pt-2">
+                                        {steps.length > 1 && (
+                                          <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
+                                            Step {s.step}{s.step > 1 && s.daysSinceLastStep ? ` · +${s.daysSinceLastStep}d` : ""}
+                                          </div>
+                                        )}
+                                        <div className="text-[11px] text-gray-600 mt-0.5 whitespace-pre-wrap">{s.bodyText}</div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </button>
                               );
                             })}
                           </div>

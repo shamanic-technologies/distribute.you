@@ -63,4 +63,10 @@ describe("Workflow test-run status detection", () => {
     // A poll error surfaces in the panel rather than freezing on the loading text.
     expect(content).toContain("t?.error");
   });
+
+  it("lets a test email expand to its full multi-step sequence on click", () => {
+    // The card was a static line-clamp-3 preview with no way to read the full email.
+    expect(content).toContain("expandedTestEmailId");
+    expect(content).toContain("steps.map");
+  });
 });
