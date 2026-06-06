@@ -88,3 +88,65 @@ describe("consumers adopt the coordinated reveal", () => {
     expect(sidebar).toMatch(/!defsReady \? \(/);
   });
 });
+
+describe("CoordinatedReveal — reusable component wrapper", () => {
+  const component = fs.readFileSync(
+    path.join(__dirname, "../src/components/coordinated-reveal.tsx"),
+    "utf-8",
+  );
+
+  it("wraps the latch hook and defers content via a render function", () => {
+    expect(component).toContain("useCoordinatedReveal");
+    // children is a render function so the content closure only runs once
+    // revealed — it dereferences resolved query data that is undefined while
+    // the skeleton is showing.
+    expect(component).toContain("children: () => ReactNode");
+    expect(component).toContain("revealed ? children() : skeleton");
+  });
+});
+
+describe("route-transition loading.tsx boundaries (instant nav skeletons)", () => {
+  const authed =
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]";
+  const boundaries = [
+    `${authed}/loading.tsx`,
+    `${authed}/brands/[brandId]/loading.tsx`,
+    `${authed}/brands/[brandId]/features/[featureSlug]/loading.tsx`,
+    `${authed}/brands/[brandId]/features/[featureSlug]/campaigns/[id]/loading.tsx`,
+  ];
+
+  it("ships a loading.tsx at every dashboard segment level (org/brand/feature/campaign)", () => {
+    for (const rel of boundaries) {
+      const p = path.join(__dirname, rel);
+      expect(fs.existsSync(p), `${rel} must exist`).toBe(true);
+      expect(fs.readFileSync(p, "utf-8")).toContain("DashboardPageSkeleton");
+    }
+  });
+
+  it("the skeleton matches the dense-page container so the transition is shift-free", () => {
+    const skel = fs.readFileSync(
+      path.join(__dirname, "../src/components/dashboard-page-skeleton.tsx"),
+      "utf-8",
+    );
+    expect(skel).toContain("p-4 md:p-8 max-w-7xl mx-auto");
+  });
+});
+
+describe("feature pages adopt the coordinated body reveal", () => {
+  const read = (rel: string) =>
+    fs.readFileSync(path.join(__dirname, rel), "utf-8");
+
+  it("feature overview reveals revenue + cost cards together", () => {
+    const src = read(
+      "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/overview/page.tsx",
+    );
+    expect(src).toContain("CoordinatedReveal");
+    // both cold queries gate the one paint — no intra-card pop-in
+    expect(src).toMatch(/data !== undefined,\s*costData !== undefined/);
+  });
+
+  it("legacy feature page reveals stats grid + campaigns list together", () => {
+    const src = read("../src/app/(authed)/(dashboard)/features/[featureId]/page.tsx");
+    expect(src).toContain("CoordinatedReveal");
+  });
+});
