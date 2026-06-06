@@ -1,7 +1,7 @@
 export const BRAND = {
   name: "distribute",
-  tagline: "The Stripe of Lead Generation",
-  hero: "Lead Generation, on Autopilot.",
+  tagline: "The Stripe of Client Acquisition",
+  hero: "Client Acquisition, on Autopilot.",
   license: "MIT",
   isOpenSource: true,
   social: {

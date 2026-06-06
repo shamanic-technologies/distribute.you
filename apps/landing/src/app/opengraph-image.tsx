@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "distribute — Lead Generation, on Autopilot.";
+export const alt = "distribute — Client Acquisition, on Autopilot.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -58,7 +58,7 @@ export default async function OG() {
               maxWidth: 1000,
             }}
           >
-            Lead Generation, on Autopilot.
+            Client Acquisition, on Autopilot.
           </div>
           <div
             style={{
@@ -68,7 +68,7 @@ export default async function OG() {
               maxWidth: 1000,
             }}
           >
-            We execute, measure, optimize, and scale your lead generation. You win clients while you sleep.
+            We execute, measure, optimize, and scale your client acquisition while you sleep.
           </div>
         </div>
         <div
@@ -81,7 +81,7 @@ export default async function OG() {
           }}
         >
           <div>distribute.you</div>
-          <div>The Stripe of Lead Generation</div>
+          <div>The Stripe of Client Acquisition</div>
         </div>
       </div>
     ),

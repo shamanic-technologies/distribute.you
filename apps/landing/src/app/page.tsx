@@ -110,16 +110,16 @@ export default function Home() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="inline-flex items-center gap-2 bg-gray-50 border border-gray-200 text-gray-600 px-4 py-1.5 rounded-full text-sm mb-8">
             <span className="w-1.5 h-1.5 rounded-full bg-brand-400" />
-            The Stripe of Lead Generation
+            The Stripe of Client Acquisition
           </div>
 
           <h1 className="font-display text-5xl md:text-7xl font-bold mb-6 text-gray-900 tracking-tight">
-            Lead Generation,{" "}
+            Client Acquisition,{" "}
             <span className="gradient-text-subtle">on Autopilot.</span>
           </h1>
 
           <p className="text-lg md:text-xl text-gray-500 mb-10 max-w-2xl mx-auto leading-relaxed">
-            We execute, measure, optimize, and scale your lead generation.<br />You win clients while you sleep.
+            We execute, measure, optimize, and scale your client acquisition while you sleep.
           </p>
 
           <HeroForm signUpUrl={urls.signUp} />
