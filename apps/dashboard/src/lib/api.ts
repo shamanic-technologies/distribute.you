@@ -3117,15 +3117,19 @@ export async function submitQuoteOpportunityReply(
 
 const MonthlyOrganicTrafficPointSchema = z.object({
   month: z.string(), // First day of the month (YYYY-MM-DD).
-  organicTraffic: z.number().nullable(),
+  // ahref-service declares this `integer` but serializes Postgres numeric as a
+  // string ("0") on the wire; coerce so a string OR number parses. nullable()
+  // short-circuits null before coerce (null -> null, not 0).
+  organicTraffic: z.coerce.number().nullable(),
 });
 
 const DomainTrafficHistorySchema = z.object({
   domain: z.string(),
   hasData: z.boolean(),
   latestDataCapturedAt: z.string().nullable(),
-  trafficMonthlyAvg: z.number().nullable(),
-  trafficValueMonthlyAvg: z.number().nullable(),
+  // Same numeric-string wire shape as organicTraffic above.
+  trafficMonthlyAvg: z.coerce.number().nullable(),
+  trafficValueMonthlyAvg: z.coerce.number().nullable(),
   monthlyOrganicTraffic: z.array(MonthlyOrganicTrafficPointSchema),
 });
 
