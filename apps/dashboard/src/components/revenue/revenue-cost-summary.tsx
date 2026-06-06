@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { getPlatformPrices, type CostByName } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { ProviderLogo } from "@/components/provider-logo";
@@ -53,10 +53,14 @@ export function RevenueCostSummary({
   costBreakdown = [],
   costEconomics,
   pending = false,
+  bottomCard,
 }: {
   costBreakdown?: CostByName[];
   costEconomics?: CostEconomics;
   pending?: boolean;
+  /** Replaces the default "Top cost sources" card (e.g. a campaign budget card
+   *  on the campaign page, where a brand-wide cost-source split doesn't apply). */
+  bottomCard?: ReactNode;
 }) {
   const { entries, totalCents } = useMemo(() => {
     const e = costBreakdown
@@ -136,10 +140,9 @@ export function RevenueCostSummary({
         </div>
       </div>
 
-      {/* Top-3 cost sources — provider logo + share, no $ amounts. While pending,
-          show the framed label + three placeholder rows so the column structure
-          is present from the first paint. */}
-      {pending ? (
+      {/* Bottom card — the campaign page swaps in its own (budget) card via
+          `bottomCard`; the Overview keeps the default Top-3 cost-source list. */}
+      {bottomCard !== undefined ? bottomCard : pending ? (
         <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
           <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Top cost sources</p>
           {[0, 1, 2].map((i) => (
