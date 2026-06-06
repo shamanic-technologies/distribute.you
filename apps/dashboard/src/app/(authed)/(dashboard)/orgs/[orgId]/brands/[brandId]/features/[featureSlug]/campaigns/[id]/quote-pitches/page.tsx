@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptionsSlow } from "@/lib/query-options";
 import {
-  listQuotePitches,
+  listAllQuotePitches,
   type QuotePitch,
   type QuotePitchStatus,
 } from "@/lib/api";
@@ -55,10 +55,9 @@ export default function QuotePitchesPage() {
   const { data, isLoading } = useAuthQuery(
     ["quotePitches", { campaignId, status: statusFilter }],
     () =>
-      listQuotePitches({
+      listAllQuotePitches({
         campaign_id: campaignId,
         status: statusFilter || undefined,
-        limit: 100,
       }),
     pollOptionsSlow,
   );

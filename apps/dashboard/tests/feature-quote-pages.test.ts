@@ -86,10 +86,10 @@ describe("Feature-level quote pages", () => {
       expect(content).toContain("export default function FeatureQuotePitchesPage");
     });
 
-    it("calls listQuotePitches via useAuthQuery (no campaign filter)", () => {
-      expect(content).toContain("listQuotePitches");
+    it("calls listAllQuotePitches via useAuthQuery (no campaign filter)", () => {
+      expect(content).toContain("listAllQuotePitches");
       expect(content).toContain("useAuthQuery");
-      expect(content).not.toMatch(/listQuotePitches\(\s*\{[^}]*campaignId/);
+      expect(content).not.toMatch(/listAllQuotePitches\(\s*\{[^}]*campaignId/);
     });
 
     it("uses the shared pollOptionsSlow cadence", () => {
