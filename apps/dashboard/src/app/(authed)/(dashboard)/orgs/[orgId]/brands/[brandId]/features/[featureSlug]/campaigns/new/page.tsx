@@ -87,6 +87,10 @@ const SALES_ECON_DEFAULTS = { ltv: "4000", replyToMeeting: "40", meetingToClose:
 
 const DAYS_PER_MONTH = 30.4;
 
+/** Multiply a budget at a given cadence up to a monthly run-rate (one-off/monthly are
+ *  already a single period). Outcomes are always normalized to a month. */
+const BUDGET_TO_MONTHLY: Record<BudgetFrequency, number> = { "one-off": 1, daily: DAYS_PER_MONTH, weekly: 4.345, monthly: 1 };
+
 const REVENUE_INTERVAL_LABEL: Record<BudgetFrequency, string> = {
   "one-off": "one-off",
   daily: "day",
@@ -1249,9 +1253,13 @@ export default function FeatureCreateCampaignPage() {
                       <option value="monthly">per month</option>
                     </select>
                     {(() => {
-                      const cp = salesPlan.project(parseFloat(budgetCustom) || 0);
+                      // Always show expected revenue per MONTH (normalize the custom budget up
+                      // to a monthly run-rate), regardless of the chosen cadence — matches the
+                      // preset tiles. One-off is shown as-is (single outcome, no "per month").
+                      const oneOff = budgetFrequency === "one-off";
+                      const cp = salesPlan.project((parseFloat(budgetCustom) || 0) * BUDGET_TO_MONTHLY[budgetFrequency]);
                       return budgetTier === "other" && cp ? (
-                        <div className="mt-2 text-[11px] text-green-700 font-semibold">~{fmtUsd0(cp.revenue)} revenue{budgetFrequency === "one-off" ? "" : ` / ${REVENUE_INTERVAL_LABEL[budgetFrequency]}`}</div>
+                        <div className="mt-2 text-[11px] text-green-700 font-semibold">~{fmtUsd0(cp.revenue)} revenue{oneOff ? "" : " / month"}</div>
                       ) : null;
                     })()}
                   </button>
@@ -1279,9 +1287,8 @@ export default function FeatureCreateCampaignPage() {
                 // Outcomes are always normalized to a monthly run-rate (multiply the chosen
                 // cadence up to a month); the budget chip stays at the chosen cadence. One-off
                 // is shown as-is (no normalization, no "per month").
-                const MONTH_MULT: Record<BudgetFrequency, number> = { "one-off": 1, daily: 30.4, weekly: 4.345, monthly: 1 };
                 const oneOff = budgetFrequency === "one-off";
-                const proj = salesPlan.project(effectiveBudget * MONTH_MULT[budgetFrequency]);
+                const proj = salesPlan.project(effectiveBudget * BUDGET_TO_MONTHLY[budgetFrequency]);
                 if (!proj) return null;
                 const perMonth = oneOff ? "" : " per month";
                 const budgetSuffix = oneOff ? "" : ` per ${REVENUE_INTERVAL_LABEL[budgetFrequency]}`;
