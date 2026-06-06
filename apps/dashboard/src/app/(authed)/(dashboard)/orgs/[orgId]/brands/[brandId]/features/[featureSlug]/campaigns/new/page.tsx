@@ -36,6 +36,7 @@ import { formatStatValue, sortDirectionForType } from "@/lib/format-stat";
 import { pollOptions } from "@/lib/query-options";
 import {
   costPerCloseUsd,
+  cacPctOfLtv,
   projectSales,
   salesUnitCostsUsd,
   type SalesObjective,
@@ -132,6 +133,13 @@ function prefillToFormData(
     form[input.key] = prefilled[input.key] ?? "";
   }
   return form;
+}
+
+/** Format a percentage value: one decimal under 10% (so small cold-email rates like 0.5%
+ *  don't round to 0%), whole numbers above. Em dash when there's no value. */
+function fmtPct(pct: number | null | undefined): string {
+  if (pct == null) return "—";
+  return `${pct > 0 && pct < 10 ? pct.toFixed(1) : pct.toFixed(0)}%`;
 }
 
 function InfoLabel({ label, tip }: { label: string; tip: string }) {
@@ -1473,7 +1481,7 @@ export default function FeatureCreateCampaignPage() {
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                   <div>
                     <h3 className="font-display font-semibold text-gray-800">Choose a workflow</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">Ranked by cost per close — best ROI for this objective (public cross-org stats). We auto-pick the cheapest.</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Ranked by CAC — best ROI for this objective (public cross-org stats). We auto-pick the lowest.</p>
                   </div>
                   <button type="button" onClick={() => setShowWorkflowPicker(false)} className="p-1 text-gray-400 hover:text-gray-600 rounded">
                     <XMarkIcon className="w-5 h-5" />
@@ -1488,11 +1496,16 @@ export default function FeatureCreateCampaignPage() {
                       const cb = costPerCloseUsd(b.stats, salesObjective, salesEcon);
                       return (ca ?? Infinity) - (cb ?? Infinity);
                     }).map((w) => {
-                      const cpc = costPerCloseUsd(w.stats, salesObjective, salesEcon);
                       const isSel = modalSelectedWorkflowId === w.id;
                       const isReco = salesAutoPick?.id === w.id;
                       const isOverride = salesWorkflowOverrideId === w.id;
-                      const openRate = w.stats.recipientOpenRate;
+                      // CAC as % of LTV (lower = better) instead of a scary "$ / close" figure.
+                      const cacPct = cacPctOfLtv(w.stats, salesObjective, salesEcon);
+                      // Engagement rates as % of volume — drop opens (noise), keep link clicks +
+                      // positive replies as conversion rates, not raw counts.
+                      const sent = Number(w.stats.recipientsSent) || 0;
+                      const clickPct = sent > 0 ? ((Number(w.stats.recipientsClicked) || 0) / sent) * 100 : null;
+                      const posReplyPct = sent > 0 ? ((Number(w.stats.recipientsRepliesPositive) || 0) / sent) * 100 : null;
                       const testing = isTestRunning(tests[w.id]?.status) || testStarting[w.id];
                       return (
                         <button key={w.id} type="button"
@@ -1511,15 +1524,16 @@ export default function FeatureCreateCampaignPage() {
                               )}
                             </div>
                             <div className="flex gap-3 mt-1 text-[11px] text-gray-500">
-                              <span>Sent {fmtNum(Number(w.stats.recipientsSent) || 0)}</span>
-                              <span>Open {typeof openRate === "number" ? `${(openRate * 100).toFixed(0)}%` : "—"}</span>
-                              <span>Clicks {fmtNum(Number(w.stats.recipientsClicked) || 0)}</span>
-                              <span>Pos. {fmtNum(Number(w.stats.recipientsRepliesPositive) || 0)}</span>
+                              <span>Sent {fmtNum(sent)}</span>
+                              <span>Link clicks {fmtPct(clickPct)}</span>
+                              <span>Positive replies {fmtPct(posReplyPct)}</span>
                             </div>
                           </div>
                           <div className="text-right shrink-0">
-                            <div className="text-sm font-semibold text-gray-800">{cpc != null ? fmtUsd0(cpc) : "—"}</div>
-                            <div className="text-[10px] text-gray-400">/ close</div>
+                            <div className="text-sm font-semibold text-gray-800">{fmtPct(cacPct)}</div>
+                            <div className="text-[10px] text-gray-400">
+                              <InfoLabel label="CAC" tip="Customer Acquisition Cost — what you spend to win one customer, as a share of their lifetime value (LTV). Lower is better." />
+                            </div>
                           </div>
                         </button>
                       );
