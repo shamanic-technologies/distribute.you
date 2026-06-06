@@ -6,6 +6,7 @@ import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { FEATURE_GATES } from "@/lib/feature-gates";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { getFeatureRevenue, getBrandCostBreakdown } from "@/lib/api";
+import { pollOptions, pollOptionsSlow } from "@/lib/query-options";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { Skeleton } from "@/components/skeleton";
@@ -46,15 +47,20 @@ export default function FeatureOverviewPage() {
   const { data, isPending } = useAuthQuery(
     ["featureRevenue", brandId, featureSlug],
     () => getFeatureRevenue(featureSlug, brandId),
-    { enabled },
+    { enabled, ...pollOptionsSlow },
   );
 
   // Cost breakdown (runs-service) → total spend + top-3 provider sources for the
-  // Cost & efficiency card. Same query key as the Campaigns page so it's shared.
+  // Cost & efficiency card. Shares the Campaigns page's query key AND its 5s poll
+  // cadence (`pollOptions`) — without the poll this query fetched once on mount and
+  // froze, so an actively-spending campaign drifted the source mix here while the
+  // Campaigns donut (which polls) stayed live → the two showed different %s. Both
+  // polling means both observers refetch the shared cache entry together → always
+  // identical. (`total` = actual + provisioned, so provisioned holds churn live.)
   const { data: costData } = useAuthQuery(
     ["brandCostBreakdown", { brandId, featureSlug }],
     () => getBrandCostBreakdown(brandId, { featureSlug }),
-    { enabled },
+    { enabled, ...pollOptions },
   );
 
   if (!ok || !isRevenueFeature(featureSlug)) {
