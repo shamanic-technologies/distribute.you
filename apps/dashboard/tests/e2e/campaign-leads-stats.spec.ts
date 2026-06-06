@@ -16,7 +16,7 @@ const FEATURE_SLUG = "sales-cold-email-outreach@v1";
 const SALES_FEATURE = {
   slug: FEATURE_SLUG,
   name: "Sales Cold Email Outreach",
-  description: "Lead generation + cold email outreach",
+  description: "Client acquisition + cold email outreach",
   status: "active",
   implemented: true,
   inputs: [],
