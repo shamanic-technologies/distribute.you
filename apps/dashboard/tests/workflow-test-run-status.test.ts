@@ -30,10 +30,10 @@ describe("Workflow test-run status detection", () => {
   });
 
   it("isolates the poll per campaign so one cross-org 404 cannot freeze the others", () => {
-    // The poll fans out getCampaign per running test id; a single failure must be caught
-    // and logged (fail-loud) instead of rejecting the whole Promise.all batch.
-    expect(content).toContain("[dashboard] workflow-test poll failed");
-    expect(content).toMatch(/try\s*{[\s\S]*getCampaign\(cid\)[\s\S]*}\s*catch/);
+    // The poll fans out per running test id; each read's failure is logged (fail-loud)
+    // and isolated via Promise.allSettled so it neither rejects the batch nor drops siblings.
+    expect(content).toContain("[dashboard] workflow-test getCampaign failed");
+    expect(content).toContain("[dashboard] workflow-test listCampaignEmails failed");
   });
 
   it("gives the test-run campaign a budget so the gate-check does not fail-closed", () => {
@@ -44,5 +44,23 @@ describe("Workflow test-run status detection", () => {
     // passed in the same createCampaign call that sets maxLeads: 3.
     expect(content).toContain("maxBudgetTotalUsd");
     expect(content).toMatch(/maxLeads:\s*3,[\s\S]{0,160}maxBudgetTotalUsd/);
+  });
+
+  it("decouples the status + emails poll reads so one failure does not drop the other", () => {
+    // A single Promise.all([getCampaign, listCampaignEmails]) meant a getCampaign throw
+    // (brand-url enrichment) also dropped the emails — the poll returned {} every cycle
+    // and the modal hung on "Generating emails…" forever though the emails were ready.
+    expect(content).toContain("Promise.allSettled");
+  });
+
+  it("renders the cold-email body from the sequence, not only the null top-level bodyText", () => {
+    // Sequenced cold-emails store the body in sequence[].bodyText; top-level bodyText is null.
+    expect(content).toContain("sequence?.[0]?.bodyText");
+  });
+
+  it("shows a terminal state instead of an endless spinner when a test ends with no emails / errors", () => {
+    expect(content).toContain("No emails were generated");
+    // A poll error surfaces in the panel rather than freezing on the loading text.
+    expect(content).toContain("t?.error");
   });
 });

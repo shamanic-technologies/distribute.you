@@ -244,7 +244,7 @@ export default function FeatureCreateCampaignPage() {
   const [salesWorkflowOverrideId, setSalesWorkflowOverrideId] = useState<string | null>(null);
   const [modalSelectedWorkflowId, setModalSelectedWorkflowId] = useState<string | null>(null);
   // Test runs keyed by workflow id — real campaigns capped at 3 leads. Persist across modal open/close.
-  const [tests, setTests] = useState<Record<string, { campaignId: string; status: string; emails: Email[] }>>({});
+  const [tests, setTests] = useState<Record<string, { campaignId: string; status: string; emails: Email[]; error?: string }>>({});
   const [testStarting, setTestStarting] = useState<Record<string, boolean>>({});
   const [testError, setTestError] = useState<Record<string, string>>({});
   const [budgetTier, setBudgetTier] = useState<BudgetTier>("recommended");
@@ -503,16 +503,25 @@ export default function FeatureCreateCampaignPage() {
   const { data: testPoll } = useAuthQuery(
     ["salesWorkflowTests", runningTestIds],
     async () => {
-      const out: Record<string, { status: string; emails: Email[] }> = {};
+      const out: Record<string, { status?: string; emails?: Email[]; error?: string }> = {};
       await Promise.all(
         runningTestIds.map(async (cid) => {
-          try {
-            const [{ campaign }, { emails }] = await Promise.all([getCampaign(cid), listCampaignEmails(cid)]);
-            out[cid] = { status: campaign.status, emails };
-          } catch (err) {
-            // One test campaign failing to poll (e.g. a cross-org 404) must not freeze the others.
-            console.error(`[dashboard] workflow-test poll failed for campaign ${cid}:`, err);
+          // Decouple the two reads: getCampaign (status, with brand-url enrichment) and
+          // listCampaignEmails are independent. With a single Promise.all, a getCampaign
+          // throw dropped the emails too — the poll returned {} every cycle and the modal
+          // hung on "Generating emails…" forever though the emails were ready. allSettled
+          // lets each succeed on its own; the effect keeps the last-good value for the other.
+          const [campaignRes, emailsRes] = await Promise.allSettled([getCampaign(cid), listCampaignEmails(cid)]);
+          const entry: { status?: string; emails?: Email[]; error?: string } = {};
+          if (campaignRes.status === "fulfilled") entry.status = campaignRes.value.campaign.status;
+          else console.error(`[dashboard] workflow-test getCampaign failed for campaign ${cid}:`, campaignRes.reason);
+          if (emailsRes.status === "fulfilled") entry.emails = emailsRes.value.emails;
+          else console.error(`[dashboard] workflow-test listCampaignEmails failed for campaign ${cid}:`, emailsRes.reason);
+          // Surface an error only when BOTH reads fail — a partial success still makes progress.
+          if (campaignRes.status === "rejected" && emailsRes.status === "rejected") {
+            entry.error = emailsRes.reason instanceof Error ? emailsRes.reason.message : "Failed to load test results.";
           }
+          out[cid] = entry;
         }),
       );
       return out;
@@ -527,8 +536,13 @@ export default function FeatureCreateCampaignPage() {
       const next = { ...prev };
       for (const [wfId, t] of Object.entries(prev)) {
         const d = testPoll[t.campaignId];
-        if (d && (d.status !== t.status || d.emails.length !== t.emails.length)) {
-          next[wfId] = { ...t, status: d.status, emails: d.emails };
+        if (!d) continue;
+        // Merge partials: keep the last-good value for whichever read failed this cycle.
+        const newStatus = d.status ?? t.status;
+        const newEmails = d.emails ?? t.emails;
+        const newError = d.error;
+        if (newStatus !== t.status || newEmails.length !== t.emails.length || newError !== t.error) {
+          next[wfId] = { ...t, status: newStatus, emails: newEmails, error: newError };
           changed = true;
         }
       }
@@ -1542,19 +1556,28 @@ export default function FeatureCreateCampaignPage() {
                           </div>
                           <p className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1 mb-3">⚠ Sends real emails to 3 leads.</p>
                           {testError[wf.id] && <p className="text-xs text-red-600 mb-3">{testError[wf.id]}</p>}
+                          {t?.error && <p className="text-xs text-red-600 mb-3">{t.error}</p>}
                           {!t && !starting && <p className="text-sm text-gray-500 py-6 text-center">No test yet. Run one to preview real emails for this workflow.</p>}
-                          {(active || starting) && emails.length === 0 && <p className="text-sm text-gray-500 py-6 text-center">Generating emails…</p>}
+                          {(active || starting) && emails.length === 0 && !t?.error && <p className="text-sm text-gray-500 py-6 text-center">Generating emails…</p>}
+                          {/* Terminal: the run finished (stopped) but produced no emails — say so instead of an empty panel. */}
+                          {t && !active && !starting && emails.length === 0 && !t.error && <p className="text-sm text-gray-500 py-6 text-center">No emails were generated for this test.</p>}
                           <div className="space-y-2">
-                            {emails.map((e) => (
+                            {emails.map((e) => {
+                              // Cold-email sequences store the body per step in `sequence`; the top-level
+                              // bodyText/bodyHtml are null for them. Mirror the emails pages' fallback so
+                              // the preview shows the real first-step body, not a blank card.
+                              const bodyText = e.sequence?.[0]?.bodyText ?? e.bodyText;
+                              return (
                               <div key={e.id} className="bg-white rounded-lg border border-gray-200 p-3">
                                 <div className="flex items-center justify-between gap-2">
                                   <span className="text-xs font-medium text-gray-800 truncate">{[e.leadFirstName, e.leadLastName].filter(Boolean).join(" ") || "Lead"}{e.leadCompany ? ` · ${e.leadCompany}` : ""}</span>
                                   {e.generationRun?.status && <span className="text-[10px] text-gray-400 shrink-0">{e.generationRun.status}</span>}
                                 </div>
                                 {e.subject && <div className="text-xs font-semibold text-gray-700 mt-1 truncate">{e.subject}</div>}
-                                {e.bodyText && <div className="text-[11px] text-gray-500 mt-1 line-clamp-3 whitespace-pre-wrap">{e.bodyText}</div>}
+                                {bodyText && <div className="text-[11px] text-gray-500 mt-1 line-clamp-3 whitespace-pre-wrap">{bodyText}</div>}
                               </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       );
