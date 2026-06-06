@@ -163,7 +163,7 @@ distribute = "Stripe of Distribution" (thin wrapper over Apollo, Anthropic, Rese
 ### Feature maturity gating (alpha / beta / ga) — dashboard
 
 Immature features stay in prod but are hidden from non-staff via **PostHog feature flags**, NOT `NODE_ENV`. `alpha` → staff only (flag on person-property `email = kevin.lourd@gmail.com`) · `beta` → opt-in cohort · `ga` → everyone, NO flag.
-- Single source: `src/lib/feature-gates.ts` `FEATURE_GATES` (surface key → `{ flag, maturity }`). Flag name `<maturity>-<surface>`.
+- Single source: `src/lib/feature-gates.ts` `FEATURE_GATES` (surface key → `{ flag, maturity }`). Flag name `<maturity>-<surface>`. **Each distinct gated surface gets its OWN flag — do NOT reuse an adjacent surface's flag for convenience** (couples graduation; the `<maturity>-<surface>` convention is one-flag-per-surface). When gating a new surface, create a dedicated PostHog flag mirroring an existing alpha flag's targeting (e.g. `alpha-brand-database` = Outlets/Journalists/Articles Database rows, staff-only, ≠ `alpha-brand-features`). (#1343: recommended reusing `alpha-brand-features`; Kevin picked "go dedicated".)
 - `useFeatureFlag(flag): boolean` (`src/lib/use-feature-flag.ts`) — **default-hidden** (false until PostHog loads → no flash); subscribes `posthog.onFeatureFlags` to re-resolve after `identify`.
 - `<MaturityBadge level>` (`src/components/maturity-badge.tsx`) — amber alpha / violet beta.
 - Pattern: call `useFeatureFlag` at component top (hooks rule), gate the render, attach the badge:
@@ -172,7 +172,7 @@ const ok = useFeatureFlag(FEATURE_GATES["services-crm"].flag);
 {ok && <SidebarLink item={{ ..., maturity: FEATURE_GATES["services-crm"].maturity }} />}
 ```
 - Graduation = widen flag targeting in the PostHog UI (no redeploy). Flags created/edited via PostHog MCP (`mcp__posthog__exec` → `create/update-feature-flag`). "Disappear for everyone" = hard JSX removal, NOT a flag defaulted-off.
-- Live flags: `alpha-services-crm` (195453), `alpha-keys` (195454), `alpha-brand-info` (195479, Brand Info), `alpha-brand-features` (195480, every feature except GA exceptions). GA-exception slugs in `feature-gates.ts` → `GA_BRAND_FEATURES` (`pr-cold-email-outreach`, `sales-cold-email-outreach`), consumed by both `BrandLevelSidebar` + `brands/[brandId]/page.tsx`.
+- Live flags: `alpha-services-crm` (195453), `alpha-keys` (195454), `alpha-brand-info` (195479, Brand Info), `alpha-brand-features` (195480, every feature except GA exceptions), `alpha-brand-database` (200359, brand Database rows Outlets/Journalists/Articles; Leads+Emails stay GA). GA-exception slugs in `feature-gates.ts` → `GA_BRAND_FEATURES` (now only `sales-cold-email-outreach`; `pr-cold-email-outreach` moved to alpha #1339), consumed by both `BrandLevelSidebar` + `brands/[brandId]/page.tsx`.
 
 ### Auth / first-run gating — key on the real product signal, NOT org existence
 
