@@ -820,9 +820,8 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
     });
 
   // Revenue surface (Overview + Conversions) — only on revenue features
-  // (sales-cold-email today), alpha (staff-only) until features-service ships /revenue.
-  const conversionsOk = useFeatureFlag(FEATURE_GATES["conversions"].flag);
-  const revenueOk = conversionsOk && isRevenueFeature(featureSlug);
+  // (sales-cold-email today). GA.
+  const revenueOk = isRevenueFeature(featureSlug);
   const topItems: SidebarItem[] = [
     ...(revenueOk
       ? [
