@@ -825,7 +825,6 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
             label: "Overview",
             href: `${basePath}/overview`,
             icon: <OverviewIcon />,
-            maturity: FEATURE_GATES["conversions"].maturity,
           } satisfies SidebarItem,
         ]
       : []),
@@ -838,7 +837,6 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
             label: "Conversions",
             href: `${basePath}/conversions`,
             icon: <ConversionsIcon />,
-            maturity: FEATURE_GATES["conversions"].maturity,
           } satisfies SidebarItem,
         ]
       : []),
