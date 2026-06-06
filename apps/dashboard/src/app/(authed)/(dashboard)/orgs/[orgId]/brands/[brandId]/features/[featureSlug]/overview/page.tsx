@@ -71,7 +71,7 @@ export default function FeatureOverviewPage() {
       <RevenueOverviewSection
         data={valuesRevealed ? data : undefined}
         pending={!valuesRevealed}
-        conversionsHref={`${basePath}/conversions`}
+        newCampaignHref={`${basePath}/campaigns/new`}
         costBreakdown={costData?.costs ?? []}
       />
     </div>
