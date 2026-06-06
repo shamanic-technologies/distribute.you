@@ -10,6 +10,7 @@ import { pollOptions, pollOptionsSlow } from "@/lib/query-options";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { Skeleton } from "@/components/skeleton";
+import { CoordinatedReveal } from "@/components/coordinated-reveal";
 
 function OverviewSkeleton() {
   return (
@@ -44,7 +45,7 @@ export default function FeatureOverviewPage() {
   const ok = useFeatureFlag(FEATURE_GATES["conversions"].flag);
   const enabled = ok && isRevenueFeature(featureSlug);
 
-  const { data, isPending } = useAuthQuery(
+  const { data } = useAuthQuery(
     ["featureRevenue", brandId, featureSlug],
     () => getFeatureRevenue(featureSlug, brandId),
     { enabled, ...pollOptionsSlow },
@@ -76,17 +77,25 @@ export default function FeatureOverviewPage() {
   const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`;
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
-      {isPending || !data ? (
-        <OverviewSkeleton />
-      ) : data.totalPipelineUsd === null ? (
-        <RevenueEmptyState setupHref={`${basePath}/campaigns/new`} />
-      ) : (
-        <RevenueOverviewSection
-          data={data}
-          conversionsHref={`${basePath}/conversions`}
-          costBreakdown={costData?.costs ?? []}
-        />
-      )}
+      {/* Reveal the revenue chart + the cost-breakdown card together (one paint),
+          then keep them latched across the poll — never a card-by-card pop-in. */}
+      <CoordinatedReveal
+        flags={[data !== undefined, costData !== undefined]}
+        skeleton={<OverviewSkeleton />}
+      >
+        {() => {
+          if (!data) return null; // unreachable once revealed; narrows the type
+          return data.totalPipelineUsd === null ? (
+            <RevenueEmptyState setupHref={`${basePath}/campaigns/new`} />
+          ) : (
+            <RevenueOverviewSection
+              data={data}
+              conversionsHref={`${basePath}/conversions`}
+              costBreakdown={costData?.costs ?? []}
+            />
+          );
+        }}
+      </CoordinatedReveal>
     </div>
   );
 }

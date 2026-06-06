@@ -12,6 +12,8 @@ import {
 } from "@/lib/api";
 import { formatStatValue } from "@/lib/format-stat";
 import { pollOptions } from "@/lib/query-options";
+import { CoordinatedReveal } from "@/components/coordinated-reveal";
+import { Skeleton } from "@/components/skeleton";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -164,66 +166,91 @@ export default function FeatureCampaignsPage() {
         </Link>
       </div>
 
-      {/* Stats overview — dynamic from feature outputs */}
-      {featureCampaigns.length > 0 && systemStats && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6" data-testid="campaigns-stats">
-          <StatCard label="Campaigns" value={systemStats.activeCampaigns} />
-          <StatCard label="Runs" value={systemStats.completedRuns} />
-          {[...outputs].sort((a, b) => a.displayOrder - b.displayOrder).slice(0, 3).map((o) => (
-            <StatCard key={o.key} label={registry[o.key]?.label ?? o.key} value={formatStatValue(featureStats[o.key], registry[o.key])} />
-          ))}
-          <StatCard label="Total Cost" value={formatCost(systemStats.totalCostInUsdCents)} />
-        </div>
-      )}
-
-      {/* Campaigns list */}
-      {isLoading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 animate-pulse">
-              <div className="h-5 bg-gray-100 rounded w-1/3 mb-3" />
-              <div className="h-4 bg-gray-100 rounded w-1/2" />
+      {/* Stats grid + campaigns list reveal together (one paint), then latch.
+          The aggregate stats query only fires once the campaign list is non-empty,
+          so the second flag short-circuits to ready when there are no campaigns. */}
+      <CoordinatedReveal
+        flags={[
+          campaignsData !== undefined,
+          featureCampaigns.length === 0 || featureStatsData !== undefined,
+        ]}
+        skeleton={
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="bg-white rounded-xl border border-gray-200 p-3">
+                  <Skeleton className="h-3 w-16 mb-2" />
+                  <Skeleton className="h-5 w-12" />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      ) : featureCampaigns.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-          <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
-          </div>
-          <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No campaigns yet</h3>
-          <p className="text-gray-600 text-sm max-w-md mx-auto mb-4">
-            Create your first campaign to start reaching out with {featureDef.name}.
-          </p>
-          <Link
-            href={`/features/${featureId}/new`}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Create Campaign
-          </Link>
-        </div>
-      ) : (
-        <div className="space-y-3" data-testid="campaigns-list">
-          {featureCampaigns.map((campaign) => {
-            const cData = campaignStatsMap[campaign.id];
-            return (
-              <CampaignCard
-                key={campaign.id}
-                campaign={campaign}
-                stats={cData?.stats}
-                costCents={cData?.costCents ?? 0}
-                outputs={outputs}
-                registry={registry}
-              />
-            );
-          })}
-        </div>
-      )}
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-white rounded-xl border border-gray-200 p-4">
+                  <Skeleton className="h-5 w-1/3 mb-3" />
+                  <Skeleton className="h-4 w-1/2" />
+                </div>
+              ))}
+            </div>
+          </>
+        }
+      >
+        {() => (
+          <>
+            {/* Stats overview — dynamic from feature outputs */}
+            {featureCampaigns.length > 0 && systemStats && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6" data-testid="campaigns-stats">
+                <StatCard label="Campaigns" value={systemStats.activeCampaigns} />
+                <StatCard label="Runs" value={systemStats.completedRuns} />
+                {[...outputs].sort((a, b) => a.displayOrder - b.displayOrder).slice(0, 3).map((o) => (
+                  <StatCard key={o.key} label={registry[o.key]?.label ?? o.key} value={formatStatValue(featureStats[o.key], registry[o.key])} />
+                ))}
+                <StatCard label="Total Cost" value={formatCost(systemStats.totalCostInUsdCents)} />
+              </div>
+            )}
+
+            {/* Campaigns list */}
+            {featureCampaigns.length === 0 ? (
+              <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+                <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
+                </div>
+                <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No campaigns yet</h3>
+                <p className="text-gray-600 text-sm max-w-md mx-auto mb-4">
+                  Create your first campaign to start reaching out with {featureDef.name}.
+                </p>
+                <Link
+                  href={`/features/${featureId}/new`}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Create Campaign
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3" data-testid="campaigns-list">
+                {featureCampaigns.map((campaign) => {
+                  const cData = campaignStatsMap[campaign.id];
+                  return (
+                    <CampaignCard
+                      key={campaign.id}
+                      campaign={campaign}
+                      stats={cData?.stats}
+                      costCents={cData?.costCents ?? 0}
+                      outputs={outputs}
+                      registry={registry}
+                    />
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+      </CoordinatedReveal>
     </div>
   );
 }
