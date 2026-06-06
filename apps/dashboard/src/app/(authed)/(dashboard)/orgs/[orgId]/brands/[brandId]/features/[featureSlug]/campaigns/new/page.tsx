@@ -41,7 +41,7 @@ import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-pane
 import { CampaignAIPanel } from "@/components/campaigns/campaign-ai-panel";
 import { BrandLogo } from "@/components/brand-logo";
 import { Skeleton } from "@/components/skeleton";
-import { SparklesIcon, XMarkIcon, EllipsisVerticalIcon, PlusIcon, PencilSquareIcon, InformationCircleIcon } from "@heroicons/react/20/solid";
+import { SparklesIcon, XMarkIcon, EllipsisVerticalIcon, PlusIcon, PencilSquareIcon, InformationCircleIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
 
 type Mode = "autopilot" | "manual";
 type BudgetFrequency = "one-off" | "daily" | "weekly" | "monthly";
@@ -59,7 +59,7 @@ const BUDGET_FREQUENCIES: { value: BudgetFrequency; label: string }[] = [
 // source for the funnel SUM math) and read via getWorkflowProjection: the ROI comparator
 // is cost-per-close. meeting-booked SUMS the positive-reply route and the website-visit
 // route (the same budget funds both); self-serve is visits-only. The page only scales the
-// served per-$ coefficients by budget for display. SalesObjective is imported from @/lib/api.
+// served per-$ projection by budget for display. SalesObjective is imported from @/lib/api.
 type BudgetTier = "starter" | "recommended" | "growth" | "other";
 
 const SALES_FUNNEL_FEATURE_SLUG = "sales-cold-email-outreach";
@@ -113,7 +113,7 @@ interface WorkflowTableRow {
 }
 
 /** Funnel projection at a concrete budget — the render shape, scaled client-side from the
- *  server's per-$ coefficients (pure ×; the route-combining SUM lives in features-service). */
+ *  server's per-$ projection (pure ×; the route-combining SUM lives in features-service). */
 interface SalesProjectionView {
   replies: number | null;
   visits: number | null;
@@ -142,6 +142,13 @@ function prefillToFormData(
     form[input.key] = prefilled[input.key] ?? "";
   }
   return form;
+}
+
+/** Format a percentage value: one decimal under 10% (so small cold-email rates like 0.5%
+ *  don't round to 0%), whole numbers above. Em dash when there's no value. */
+function fmtPct(pct: number | null | undefined): string {
+  if (pct == null) return "—";
+  return `${pct > 0 && pct < 10 ? pct.toFixed(1) : pct.toFixed(0)}%`;
 }
 
 function InfoLabel({ label, tip }: { label: string; tip: string }) {
@@ -254,9 +261,11 @@ export default function FeatureCreateCampaignPage() {
   const [salesWorkflowOverrideId, setSalesWorkflowOverrideId] = useState<string | null>(null);
   const [modalSelectedWorkflowId, setModalSelectedWorkflowId] = useState<string | null>(null);
   // Test runs keyed by workflow id — real campaigns capped at 3 leads. Persist across modal open/close.
-  const [tests, setTests] = useState<Record<string, { campaignId: string; status: string; emails: Email[] }>>({});
+  const [tests, setTests] = useState<Record<string, { campaignId: string; status: string; emails: Email[]; error?: string }>>({});
   const [testStarting, setTestStarting] = useState<Record<string, boolean>>({});
   const [testError, setTestError] = useState<Record<string, string>>({});
+  // Which test-email card is expanded to its full multi-step sequence (null = all collapsed).
+  const [expandedTestEmailId, setExpandedTestEmailId] = useState<string | null>(null);
   const [budgetTier, setBudgetTier] = useState<BudgetTier>("recommended");
   const [budgetCustom, setBudgetCustom] = useState("");
   const salesPrefilledRef = useRef(false);
@@ -469,6 +478,13 @@ export default function FeatureCreateCampaignPage() {
     [projByDynasty],
   );
 
+  // CAC as a % of the customer's LTV — budget-invariant, served as projection.cacPct
+  // ((budget/revenue)×100 == cost-per-close/LTV×100). Used by the workflow picker.
+  const cacPctFor = useCallback(
+    (dynastySlug: string): number | null => projByDynasty.get(dynastySlug)?.projection?.cacPct ?? null,
+    [projByDynasty],
+  );
+
   // Render the funnel at any budget by scaling the served per-$ projection (computed at
   // budgetUsd=1). Counts scale linearly with budget; cacPct/cacAbs are budget-invariant ratios.
   const projectFor = useCallback(
@@ -516,7 +532,7 @@ export default function FeatureCreateCampaignPage() {
   }, [isSalesFunnel, salesWorkflowOverrideId, rows, salesAutoPick]);
 
   // Funnel projection for the picked workflow. recommendedBudget = targetCloses ×
-  // cost-per-close (budget per close); project() scales the served per-$ coefficients.
+  // cost-per-close (budget per close); project() scales the served per-$ projection.
   const salesPlan = useMemo(() => {
     const cpc = salesPick ? cpcFor(salesPick.workflowDynastySlug) : null;
     const recommendedBudget = cpc != null ? TARGET_CLOSES_PER_MONTH * cpc : null;
@@ -560,16 +576,25 @@ export default function FeatureCreateCampaignPage() {
   const { data: testPoll } = useAuthQuery(
     ["salesWorkflowTests", runningTestIds],
     async () => {
-      const out: Record<string, { status: string; emails: Email[] }> = {};
+      const out: Record<string, { status?: string; emails?: Email[]; error?: string }> = {};
       await Promise.all(
         runningTestIds.map(async (cid) => {
-          try {
-            const [{ campaign }, { emails }] = await Promise.all([getCampaign(cid), listCampaignEmails(cid)]);
-            out[cid] = { status: campaign.status, emails };
-          } catch (err) {
-            // One test campaign failing to poll (e.g. a cross-org 404) must not freeze the others.
-            console.error(`[dashboard] workflow-test poll failed for campaign ${cid}:`, err);
+          // Decouple the two reads: getCampaign (status, with brand-url enrichment) and
+          // listCampaignEmails are independent. With a single Promise.all, a getCampaign
+          // throw dropped the emails too — the poll returned {} every cycle and the modal
+          // hung on "Generating emails…" forever though the emails were ready. allSettled
+          // lets each succeed on its own; the effect keeps the last-good value for the other.
+          const [campaignRes, emailsRes] = await Promise.allSettled([getCampaign(cid), listCampaignEmails(cid)]);
+          const entry: { status?: string; emails?: Email[]; error?: string } = {};
+          if (campaignRes.status === "fulfilled") entry.status = campaignRes.value.campaign.status;
+          else console.error(`[dashboard] workflow-test getCampaign failed for campaign ${cid}:`, campaignRes.reason);
+          if (emailsRes.status === "fulfilled") entry.emails = emailsRes.value.emails;
+          else console.error(`[dashboard] workflow-test listCampaignEmails failed for campaign ${cid}:`, emailsRes.reason);
+          // Surface an error only when BOTH reads fail — a partial success still makes progress.
+          if (campaignRes.status === "rejected" && emailsRes.status === "rejected") {
+            entry.error = emailsRes.reason instanceof Error ? emailsRes.reason.message : "Failed to load test results.";
           }
+          out[cid] = entry;
         }),
       );
       return out;
@@ -584,8 +609,13 @@ export default function FeatureCreateCampaignPage() {
       const next = { ...prev };
       for (const [wfId, t] of Object.entries(prev)) {
         const d = testPoll[t.campaignId];
-        if (d && (d.status !== t.status || d.emails.length !== t.emails.length)) {
-          next[wfId] = { ...t, status: d.status, emails: d.emails };
+        if (!d) continue;
+        // Merge partials: keep the last-good value for whichever read failed this cycle.
+        const newStatus = d.status ?? t.status;
+        const newEmails = d.emails ?? t.emails;
+        const newError = d.error;
+        if (newStatus !== t.status || newEmails.length !== t.emails.length || newError !== t.error) {
+          next[wfId] = { ...t, status: newStatus, emails: newEmails, error: newError };
           changed = true;
         }
       }
@@ -1449,7 +1479,7 @@ export default function FeatureCreateCampaignPage() {
 
               {salesPick && (() => {
                 // Show every populated unit cost (positive reply + website visit), not just
-                // the winning route — the workflow's full economics at a glance.
+                // the winning route — the workflow's full economics at a glance (served).
                 const pickItem = projByDynasty.get(salesPick.workflowDynastySlug);
                 const replyUsd = pickItem?.replyUsd ?? null;
                 const clickUsd = pickItem?.clickUsd ?? null;
@@ -1518,7 +1548,7 @@ export default function FeatureCreateCampaignPage() {
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                   <div>
                     <h3 className="font-display font-semibold text-gray-800">Choose a workflow</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">Ranked by cost per close — best ROI for this objective (public cross-org stats). We auto-pick the cheapest.</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Ranked by CAC — best ROI for this objective (public cross-org stats). We auto-pick the lowest.</p>
                   </div>
                   <button type="button" onClick={() => setShowWorkflowPicker(false)} className="p-1 text-gray-400 hover:text-gray-600 rounded">
                     <XMarkIcon className="w-5 h-5" />
@@ -1533,11 +1563,16 @@ export default function FeatureCreateCampaignPage() {
                       const cb = cpcFor(b.workflowDynastySlug);
                       return (ca ?? Infinity) - (cb ?? Infinity);
                     }).map((w) => {
-                      const cpc = cpcFor(w.workflowDynastySlug);
                       const isSel = modalSelectedWorkflowId === w.id;
                       const isReco = salesAutoPick?.id === w.id;
                       const isOverride = salesWorkflowOverrideId === w.id;
-                      const openRate = w.stats.recipientOpenRate;
+                      // CAC as % of LTV (lower = better) instead of a scary "$ / close" figure (served).
+                      const cacPct = cacPctFor(w.workflowDynastySlug);
+                      // Engagement rates as % of volume — drop opens (noise), keep link clicks +
+                      // positive replies as conversion rates, not raw counts.
+                      const sent = Number(w.stats.recipientsSent) || 0;
+                      const clickPct = sent > 0 ? ((Number(w.stats.recipientsClicked) || 0) / sent) * 100 : null;
+                      const posReplyPct = sent > 0 ? ((Number(w.stats.recipientsRepliesPositive) || 0) / sent) * 100 : null;
                       const testing = isTestRunning(tests[w.id]?.status) || testStarting[w.id];
                       return (
                         <button key={w.id} type="button"
@@ -1556,15 +1591,16 @@ export default function FeatureCreateCampaignPage() {
                               )}
                             </div>
                             <div className="flex gap-3 mt-1 text-[11px] text-gray-500">
-                              <span>Sent {fmtNum(Number(w.stats.recipientsSent) || 0)}</span>
-                              <span>Open {typeof openRate === "number" ? `${(openRate * 100).toFixed(0)}%` : "—"}</span>
-                              <span>Clicks {fmtNum(Number(w.stats.recipientsClicked) || 0)}</span>
-                              <span>Pos. {fmtNum(Number(w.stats.recipientsRepliesPositive) || 0)}</span>
+                              <span>Sent {fmtNum(sent)}</span>
+                              <span>Link clicks {fmtPct(clickPct)}</span>
+                              <span>Positive replies {fmtPct(posReplyPct)}</span>
                             </div>
                           </div>
                           <div className="text-right shrink-0">
-                            <div className="text-sm font-semibold text-gray-800">{cpc != null ? fmtUsd0(cpc) : "—"}</div>
-                            <div className="text-[10px] text-gray-400">/ close</div>
+                            <div className="text-sm font-semibold text-gray-800">{fmtPct(cacPct)}</div>
+                            <div className="text-[10px] text-gray-400">
+                              <InfoLabel label="CAC" tip="Customer Acquisition Cost — what you spend to win one customer, as a share of their lifetime value (LTV). Lower is better." />
+                            </div>
                           </div>
                         </button>
                       );
@@ -1601,19 +1637,53 @@ export default function FeatureCreateCampaignPage() {
                           </div>
                           <p className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1 mb-3">⚠ Sends real emails to 3 leads.</p>
                           {testError[wf.id] && <p className="text-xs text-red-600 mb-3">{testError[wf.id]}</p>}
+                          {t?.error && <p className="text-xs text-red-600 mb-3">{t.error}</p>}
                           {!t && !starting && <p className="text-sm text-gray-500 py-6 text-center">No test yet. Run one to preview real emails for this workflow.</p>}
-                          {(active || starting) && emails.length === 0 && <p className="text-sm text-gray-500 py-6 text-center">Generating emails…</p>}
+                          {(active || starting) && emails.length === 0 && !t?.error && <p className="text-sm text-gray-500 py-6 text-center">Generating emails…</p>}
+                          {/* Terminal: the run finished (stopped) but produced no emails — say so instead of an empty panel. */}
+                          {t && !active && !starting && emails.length === 0 && !t.error && <p className="text-sm text-gray-500 py-6 text-center">No emails were generated for this test.</p>}
                           <div className="space-y-2">
-                            {emails.map((e) => (
-                              <div key={e.id} className="bg-white rounded-lg border border-gray-200 p-3">
+                            {emails.map((e) => {
+                              // Cold-email sequences store the body per step in `sequence`; the top-level
+                              // bodyText/bodyHtml are null for them. Mirror the emails pages' fallback so
+                              // the preview shows the real first-step body, not a blank card.
+                              const firstBody = e.sequence?.[0]?.bodyText ?? e.bodyText;
+                              // Full email = the whole sequence (initial + follow-ups). Fall back to a
+                              // single synthetic step when there is no sequence array.
+                              const steps = e.sequence && e.sequence.length > 0
+                                ? e.sequence
+                                : (firstBody ? [{ step: 1, bodyText: firstBody, bodyHtml: "", daysSinceLastStep: 0 }] : []);
+                              const expanded = expandedTestEmailId === e.id;
+                              return (
+                              <button key={e.id} type="button"
+                                onClick={() => setExpandedTestEmailId((cur) => (cur === e.id ? null : e.id))}
+                                className="w-full text-left bg-white rounded-lg border border-gray-200 p-3 hover:border-gray-300 transition cursor-pointer">
                                 <div className="flex items-center justify-between gap-2">
                                   <span className="text-xs font-medium text-gray-800 truncate">{[e.leadFirstName, e.leadLastName].filter(Boolean).join(" ") || "Lead"}{e.leadCompany ? ` · ${e.leadCompany}` : ""}</span>
-                                  {e.generationRun?.status && <span className="text-[10px] text-gray-400 shrink-0">{e.generationRun.status}</span>}
+                                  <span className="flex items-center gap-1.5 shrink-0">
+                                    {e.generationRun?.status && <span className="text-[10px] text-gray-400">{e.generationRun.status}</span>}
+                                    {steps.length > 0 && <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`} />}
+                                  </span>
                                 </div>
                                 {e.subject && <div className="text-xs font-semibold text-gray-700 mt-1 truncate">{e.subject}</div>}
-                                {e.bodyText && <div className="text-[11px] text-gray-500 mt-1 line-clamp-3 whitespace-pre-wrap">{e.bodyText}</div>}
-                              </div>
-                            ))}
+                                {!expanded && firstBody && <div className="text-[11px] text-gray-500 mt-1 line-clamp-3 whitespace-pre-wrap">{firstBody}</div>}
+                                {expanded && (
+                                  <div className="mt-2 space-y-2">
+                                    {steps.map((s) => (
+                                      <div key={s.step} className="border-t border-gray-100 pt-2">
+                                        {steps.length > 1 && (
+                                          <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
+                                            Step {s.step}{s.step > 1 && s.daysSinceLastStep ? ` · +${s.daysSinceLastStep}d` : ""}
+                                          </div>
+                                        )}
+                                        <div className="text-[11px] text-gray-600 mt-0.5 whitespace-pre-wrap">{s.bodyText}</div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </button>
+                              );
+                            })}
                           </div>
                         </div>
                       );
