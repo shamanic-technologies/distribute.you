@@ -49,7 +49,7 @@ export default function FeatureWorkflowsPage() {
 
   // Workflows is alpha (staff-only). Default-hidden until PostHog resolves, so
   // it never flashes for a non-staff viewer who lands on the URL directly.
-  const ok = useFeatureFlag(FEATURE_GATES["feature-settings"].flag);
+  const ok = useFeatureFlag(FEATURE_GATES["workflows"].flag);
 
   const { getFeature, isLoading: featuresLoading, registry } = useFeatures();
   const wfDef = getFeature(featureSlug);
@@ -163,7 +163,7 @@ export default function FeatureWorkflowsPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="font-display text-2xl font-bold text-gray-800">Workflows</h1>
-            <MaturityBadge level={FEATURE_GATES["feature-settings"].maturity} />
+            <MaturityBadge level={FEATURE_GATES["workflows"].maturity} />
           </div>
           <p className="text-gray-600">
             Workflows for {wfDef?.name ?? featureSlug}.
