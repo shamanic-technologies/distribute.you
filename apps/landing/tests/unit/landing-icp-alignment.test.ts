@@ -78,7 +78,7 @@ describe("Landing page: ICP-only alignment", () => {
   it("computes liveCount from features and renders 'channels live' line + Stripe analogy", () => {
     expect(page).toMatch(/liveCount/);
     expect(page).toMatch(/channels live/);
-    expect(page).toMatch(/Stripe of Lead Generation/);
+    expect(page).toMatch(/Stripe of Client Acquisition/);
   });
 });
 

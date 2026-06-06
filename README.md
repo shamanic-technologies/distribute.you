@@ -1,14 +1,14 @@
 # distribute
 
-**The Stripe of Lead Generation**
+**The Stripe of Client Acquisition**
 
-> Lead Generation, on Autopilot.
+> Client Acquisition, on Autopilot.
 
 [distribute.you](https://distribute.you) | [Dashboard](https://dashboard.distribute.you)
 
 ## What is distribute?
 
-distribute is the Stripe of Lead Generation. Create an account, give us your URL — we automate your entire distribution layer with AI workflows ranked by real performance data.
+distribute is the Stripe of Client Acquisition. Create an account, give us your URL — we automate your entire distribution layer with AI workflows ranked by real performance data.
 
 ## Distribution Features
 

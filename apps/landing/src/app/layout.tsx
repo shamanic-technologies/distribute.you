@@ -4,17 +4,17 @@ import { PROD_URLS } from "@/lib/env-urls";
 
 const SITE_URL = PROD_URLS.landing;
 const SITE_NAME = "distribute";
-const SITE_DESCRIPTION = "Lead Generation, on Autopilot. Sales, PR, VCs, hiring, accelerators — one dashboard. Drop a URL, set a budget, we send. AI qualifies replies and forwards positives to your Gmail. $25 welcome credits, no subscription.";
+const SITE_DESCRIPTION = "Client Acquisition, on Autopilot. Sales, PR, VCs, hiring, accelerators — one dashboard. Drop a URL, set a budget, we send. AI qualifies replies and forwards positives to your Gmail. $25 welcome credits, no subscription.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "distribute — Lead Generation, on Autopilot",
+    default: "distribute — Client Acquisition, on Autopilot",
     template: "%s | distribute",
   },
   description: SITE_DESCRIPTION,
   keywords: [
-    "lead generation on autopilot",
+    "client acquisition on autopilot",
     "multi-product distribution",
     "solo founder distribution",
     "indie hacker outreach",
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     "AI reply qualification",
     "pay-as-you-go cold email",
     "no subscription cold email",
-    "Stripe of Lead Generation",
+    "Stripe of Client Acquisition",
     "distribute.you",
     "portfolio distribution dashboard",
   ],
@@ -42,20 +42,20 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: "distribute — Lead Generation, on Autopilot",
+    title: "distribute — Client Acquisition, on Autopilot",
     description: "One dashboard for every distribution channel. Drop a URL, set a budget — we send, qualify, forward. $25 welcome credits, no subscription.",
     images: [
       {
         url: "/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "distribute — Lead Generation, on Autopilot",
+        alt: "distribute — Client Acquisition, on Autopilot",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "distribute — Lead Generation, on Autopilot",
+    title: "distribute — Client Acquisition, on Autopilot",
     description: "One dashboard. Sales, PR, VCs, hiring, accelerators. Drop a URL, set a budget — we send, qualify, forward.",
     images: ["/og-image.jpg"],
     creator: "@distribute_you",
@@ -114,7 +114,7 @@ const organizationJsonLd = {
   "@type": "Organization",
   name: "distribute",
   url: SITE_URL,
-  description: "The Stripe of Lead Generation",
+  description: "The Stripe of Client Acquisition",
   sameAs: [
     PROD_URLS.github,
     PROD_URLS.twitter,
@@ -137,7 +137,7 @@ const websiteJsonLd = {
 const howToJsonLd = {
   "@context": "https://schema.org",
   "@type": "HowTo",
-  name: "How to put your lead generation on autopilot with distribute",
+  name: "How to put your client acquisition on autopilot with distribute",
   description: "Drop a URL, set a daily budget, and let distribute send cold email, PR, hiring, and VC outreach on your behalf — AI qualifies replies, you watch cost per reply in the dashboard.",
   step: [
     {
