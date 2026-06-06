@@ -33,6 +33,9 @@ export const FEATURE_GATES = {
   "brand-info": { flag: "alpha-brand-info", maturity: "alpha" },
   "brand-features": { flag: "alpha-brand-features", maturity: "alpha" },
   conversions: { flag: "alpha-conversions", maturity: "alpha" },
+  // Feature Settings sub-level (bottom of the feature sidebar) + its single
+  // sub-page (Workflows). One flag gates the entry, the sub-level, and the page.
+  "feature-settings": { flag: "alpha-feature-settings", maturity: "alpha" },
 } as const satisfies Record<string, FeatureGate>;
 
 export type FeatureGateKey = keyof typeof FEATURE_GATES;

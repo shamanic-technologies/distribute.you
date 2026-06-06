@@ -273,7 +273,7 @@ function getFeatureIcon(featureSlug: string, icon?: string): React.ReactNode {
 }
 
 interface NavigationLevel {
-  type: "app" | "appFeature" | "org" | "brand" | "brandSettings" | "feature" | "workflow" | "campaign";
+  type: "app" | "appFeature" | "org" | "brand" | "brandSettings" | "feature" | "featureSettings" | "workflow" | "campaign";
   orgId?: string;
   brandId?: string;
   featureSlug?: string;
@@ -301,6 +301,11 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
         }
         if (segments[6] === "workflows" && segments[7]) {
           return { type: "workflow", orgId, brandId, featureSlug, workflowId: segments[7] };
+        }
+        // Workflows LIST page lives under the Feature Settings sub-level (its
+        // single sub-page) — mirrors how /settings routes to brandSettings.
+        if (segments[6] === "workflows") {
+          return { type: "featureSettings", orgId, brandId, featureSlug };
         }
         return { type: "feature", orgId, brandId, featureSlug };
       }
@@ -811,6 +816,10 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   // (sales-cold-email today), alpha (staff-only) until features-service ships /revenue.
   const conversionsOk = useFeatureFlag(FEATURE_GATES["conversions"].flag);
   const revenueOk = conversionsOk && isRevenueFeature(featureSlug);
+  // Feature Settings sub-level (single sub-page: Workflows) — alpha (staff-only).
+  // Default-hidden until PostHog resolves the flag. Workflows moved OUT of the
+  // top nav and now lives under this entry at the bottom (mirrors Brand Settings).
+  const featureSettingsOk = useFeatureFlag(FEATURE_GATES["feature-settings"].flag);
   const topItems: SidebarItem[] = [
     ...(revenueOk
       ? [
@@ -825,7 +834,6 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
       : []),
     { id: "campaigns", label: "Campaigns", href: `${basePath}/campaigns`, icon: <EnvelopeIcon /> },
     { id: "create", label: "Create Campaign", href: `${basePath}/campaigns/new`, icon: <PlusIcon /> },
-    { id: "workflows", label: "Workflows", href: `${basePath}/workflows`, icon: <WorkflowIcon /> },
     ...(revenueOk
       ? [
           {
@@ -904,8 +912,64 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
           </a>
         </div>
       )}
+      {featureSettingsOk && (
+        <div className="pt-2 mt-2 border-t border-gray-100">
+          <SidebarLink
+            item={{
+              id: "feature-settings",
+              label: "Feature Settings",
+              href: `${basePath}/workflows`,
+              icon: <SettingsIcon />,
+              maturity: FEATURE_GATES["feature-settings"].maturity,
+            }}
+            isActive={pathname.startsWith(`${basePath}/workflows`)}
+          />
+        </div>
+      )}
         </>
       )}
+    </SidebarSection>
+  );
+}
+
+// Feature Settings Level Sidebar — mirrors Brand Settings. Reached from the
+// "Feature Settings" entry at the bottom of FeatureLevelSidebar; its single
+// sub-page is Workflows. Whole surface is alpha (staff-only).
+function FeatureSettingsLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
+  orgId: string;
+  brandId: string;
+  featureSlug: string;
+  pathname: string;
+}) {
+  const { getFeature } = useFeatures();
+  const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`;
+  const feature = getFeature(featureSlug);
+  const title = feature?.name ?? featureSlug;
+  // Default-hidden until PostHog resolves the flag, so the single sub-page never
+  // flashes for a non-staff viewer who lands on the URL directly.
+  const ok = useFeatureFlag(FEATURE_GATES["feature-settings"].flag);
+
+  const items: SidebarItem[] = ok
+    ? [
+        {
+          id: "workflows",
+          label: "Workflows",
+          href: `${basePath}/workflows`,
+          icon: <WorkflowIcon />,
+          maturity: FEATURE_GATES["feature-settings"].maturity,
+        },
+      ]
+    : [];
+
+  return (
+    <SidebarSection title="Feature Settings" backHref={basePath} backLabel={title}>
+      {items.map((item) => (
+        <SidebarLink
+          key={item.id}
+          item={item}
+          isActive={pathname === item.href || pathname.startsWith(item.href + "/")}
+        />
+      ))}
     </SidebarSection>
   );
 }
@@ -919,11 +983,24 @@ function AppFeatureLevelSidebar({ featureId, pathname }: {
   const basePath = `/features/${featureId}`;
   const feature = getFeature(featureId);
   const title = feature?.name ?? featureId;
+  // Workflows is alpha (staff-only) everywhere — same flag as the brand-scoped
+  // Feature Settings. Default-hidden until PostHog resolves.
+  const workflowsOk = useFeatureFlag(FEATURE_GATES["feature-settings"].flag);
 
   const items: SidebarItem[] = [
     { id: "campaigns", label: "Campaigns", href: basePath, icon: <EnvelopeIcon /> },
     { id: "create", label: "Create Campaign", href: `${basePath}/new`, icon: <PlusIcon /> },
-    { id: "workflows", label: "Workflows", href: `${basePath}/workflows`, icon: <WorkflowIcon /> },
+    ...(workflowsOk
+      ? [
+          {
+            id: "workflows",
+            label: "Workflows",
+            href: `${basePath}/workflows`,
+            icon: <WorkflowIcon />,
+            maturity: FEATURE_GATES["feature-settings"].maturity,
+          } satisfies SidebarItem,
+        ]
+      : []),
   ];
 
   return (
@@ -987,6 +1064,8 @@ export function ContextSidebar() {
       return <BrandSettingsLevelSidebar orgId={level.orgId!} brandId={level.brandId!} pathname={pathname} />;
     case "feature":
       return <FeatureLevelSidebar orgId={level.orgId!} brandId={level.brandId!} featureSlug={level.featureSlug!} pathname={pathname} />;
+    case "featureSettings":
+      return <FeatureSettingsLevelSidebar orgId={level.orgId!} brandId={level.brandId!} featureSlug={level.featureSlug!} pathname={pathname} />;
     case "workflow":
       return <WorkflowLevelSidebar orgId={level.orgId!} brandId={level.brandId!} featureSlug={level.featureSlug!} workflowId={level.workflowId!} pathname={pathname} />;
     case "campaign":

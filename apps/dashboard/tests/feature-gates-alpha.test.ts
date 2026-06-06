@@ -16,6 +16,10 @@ describe("feature-gates registry", () => {
     expect(FEATURE_GATES["brand-features"]).toEqual({ flag: "alpha-brand-features", maturity: "alpha" });
   });
 
+  it("gates feature-settings (Feature Settings sub-level + Workflows page) as alpha", () => {
+    expect(FEATURE_GATES["feature-settings"]).toEqual({ flag: "alpha-feature-settings", maturity: "alpha" });
+  });
+
   it("every flag follows the <maturity>-<surface> naming convention", () => {
     for (const gate of Object.values(FEATURE_GATES)) {
       expect(gate.flag.startsWith(`${gate.maturity}-`)).toBe(true);
