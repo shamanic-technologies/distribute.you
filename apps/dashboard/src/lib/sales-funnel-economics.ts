@@ -71,6 +71,14 @@ export function costPerCloseUsd(stats: Stats, objective: SalesObjective, econ: S
   return cpb > 0 ? 1 / cpb : null;
 }
 
+/** CAC as a percentage of the customer's lifetime value (cost-per-close ÷ LTV × 100).
+ *  Budget-invariant (budget cancels), so it's a pure per-workflow ROI ratio — lower is
+ *  better. null when there's no usable cost data or LTV is non-positive. */
+export function cacPctOfLtv(stats: Stats, objective: SalesObjective, econ: SalesEcon): number | null {
+  const cpc = costPerCloseUsd(stats, objective, econ);
+  return cpc != null && econ.ltv > 0 ? (cpc / econ.ltv) * 100 : null;
+}
+
 export interface SalesProjection {
   /** meeting-booked reply route; null when the workflow has no reply cost. */
   replies: number | null;

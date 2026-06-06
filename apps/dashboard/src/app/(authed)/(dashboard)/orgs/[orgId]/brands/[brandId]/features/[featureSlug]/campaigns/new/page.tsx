@@ -36,6 +36,7 @@ import { formatStatValue, sortDirectionForType } from "@/lib/format-stat";
 import { pollOptions } from "@/lib/query-options";
 import {
   costPerCloseUsd,
+  cacPctOfLtv,
   projectSales,
   salesUnitCostsUsd,
   type SalesObjective,
@@ -45,7 +46,7 @@ import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-pane
 import { CampaignAIPanel } from "@/components/campaigns/campaign-ai-panel";
 import { BrandLogo } from "@/components/brand-logo";
 import { Skeleton } from "@/components/skeleton";
-import { SparklesIcon, XMarkIcon, EllipsisVerticalIcon, PlusIcon, PencilSquareIcon, InformationCircleIcon } from "@heroicons/react/20/solid";
+import { SparklesIcon, XMarkIcon, EllipsisVerticalIcon, PlusIcon, PencilSquareIcon, InformationCircleIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
 
 type Mode = "autopilot" | "manual";
 type BudgetFrequency = "one-off" | "daily" | "weekly" | "monthly";
@@ -132,6 +133,13 @@ function prefillToFormData(
     form[input.key] = prefilled[input.key] ?? "";
   }
   return form;
+}
+
+/** Format a percentage value: one decimal under 10% (so small cold-email rates like 0.5%
+ *  don't round to 0%), whole numbers above. Em dash when there's no value. */
+function fmtPct(pct: number | null | undefined): string {
+  if (pct == null) return "—";
+  return `${pct > 0 && pct < 10 ? pct.toFixed(1) : pct.toFixed(0)}%`;
 }
 
 function InfoLabel({ label, tip }: { label: string; tip: string }) {
@@ -247,6 +255,8 @@ export default function FeatureCreateCampaignPage() {
   const [tests, setTests] = useState<Record<string, { campaignId: string; status: string; emails: Email[]; error?: string }>>({});
   const [testStarting, setTestStarting] = useState<Record<string, boolean>>({});
   const [testError, setTestError] = useState<Record<string, string>>({});
+  // Which test-email card is expanded to its full multi-step sequence (null = all collapsed).
+  const [expandedTestEmailId, setExpandedTestEmailId] = useState<string | null>(null);
   const [budgetTier, setBudgetTier] = useState<BudgetTier>("recommended");
   const [budgetCustom, setBudgetCustom] = useState("");
   const salesPrefilledRef = useRef(false);
@@ -1473,7 +1483,7 @@ export default function FeatureCreateCampaignPage() {
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                   <div>
                     <h3 className="font-display font-semibold text-gray-800">Choose a workflow</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">Ranked by cost per close — best ROI for this objective (public cross-org stats). We auto-pick the cheapest.</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Ranked by CAC — best ROI for this objective (public cross-org stats). We auto-pick the lowest.</p>
                   </div>
                   <button type="button" onClick={() => setShowWorkflowPicker(false)} className="p-1 text-gray-400 hover:text-gray-600 rounded">
                     <XMarkIcon className="w-5 h-5" />
@@ -1488,11 +1498,16 @@ export default function FeatureCreateCampaignPage() {
                       const cb = costPerCloseUsd(b.stats, salesObjective, salesEcon);
                       return (ca ?? Infinity) - (cb ?? Infinity);
                     }).map((w) => {
-                      const cpc = costPerCloseUsd(w.stats, salesObjective, salesEcon);
                       const isSel = modalSelectedWorkflowId === w.id;
                       const isReco = salesAutoPick?.id === w.id;
                       const isOverride = salesWorkflowOverrideId === w.id;
-                      const openRate = w.stats.recipientOpenRate;
+                      // CAC as % of LTV (lower = better) instead of a scary "$ / close" figure.
+                      const cacPct = cacPctOfLtv(w.stats, salesObjective, salesEcon);
+                      // Engagement rates as % of volume — drop opens (noise), keep link clicks +
+                      // positive replies as conversion rates, not raw counts.
+                      const sent = Number(w.stats.recipientsSent) || 0;
+                      const clickPct = sent > 0 ? ((Number(w.stats.recipientsClicked) || 0) / sent) * 100 : null;
+                      const posReplyPct = sent > 0 ? ((Number(w.stats.recipientsRepliesPositive) || 0) / sent) * 100 : null;
                       const testing = isTestRunning(tests[w.id]?.status) || testStarting[w.id];
                       return (
                         <button key={w.id} type="button"
@@ -1511,15 +1526,16 @@ export default function FeatureCreateCampaignPage() {
                               )}
                             </div>
                             <div className="flex gap-3 mt-1 text-[11px] text-gray-500">
-                              <span>Sent {fmtNum(Number(w.stats.recipientsSent) || 0)}</span>
-                              <span>Open {typeof openRate === "number" ? `${(openRate * 100).toFixed(0)}%` : "—"}</span>
-                              <span>Clicks {fmtNum(Number(w.stats.recipientsClicked) || 0)}</span>
-                              <span>Pos. {fmtNum(Number(w.stats.recipientsRepliesPositive) || 0)}</span>
+                              <span>Sent {fmtNum(sent)}</span>
+                              <span>Link clicks {fmtPct(clickPct)}</span>
+                              <span>Positive replies {fmtPct(posReplyPct)}</span>
                             </div>
                           </div>
                           <div className="text-right shrink-0">
-                            <div className="text-sm font-semibold text-gray-800">{cpc != null ? fmtUsd0(cpc) : "—"}</div>
-                            <div className="text-[10px] text-gray-400">/ close</div>
+                            <div className="text-sm font-semibold text-gray-800">{fmtPct(cacPct)}</div>
+                            <div className="text-[10px] text-gray-400">
+                              <InfoLabel label="CAC" tip="Customer Acquisition Cost — what you spend to win one customer, as a share of their lifetime value (LTV). Lower is better." />
+                            </div>
                           </div>
                         </button>
                       );
@@ -1566,16 +1582,41 @@ export default function FeatureCreateCampaignPage() {
                               // Cold-email sequences store the body per step in `sequence`; the top-level
                               // bodyText/bodyHtml are null for them. Mirror the emails pages' fallback so
                               // the preview shows the real first-step body, not a blank card.
-                              const bodyText = e.sequence?.[0]?.bodyText ?? e.bodyText;
+                              const firstBody = e.sequence?.[0]?.bodyText ?? e.bodyText;
+                              // Full email = the whole sequence (initial + follow-ups). Fall back to a
+                              // single synthetic step when there is no sequence array.
+                              const steps = e.sequence && e.sequence.length > 0
+                                ? e.sequence
+                                : (firstBody ? [{ step: 1, bodyText: firstBody, bodyHtml: "", daysSinceLastStep: 0 }] : []);
+                              const expanded = expandedTestEmailId === e.id;
                               return (
-                              <div key={e.id} className="bg-white rounded-lg border border-gray-200 p-3">
+                              <button key={e.id} type="button"
+                                onClick={() => setExpandedTestEmailId((cur) => (cur === e.id ? null : e.id))}
+                                className="w-full text-left bg-white rounded-lg border border-gray-200 p-3 hover:border-gray-300 transition cursor-pointer">
                                 <div className="flex items-center justify-between gap-2">
                                   <span className="text-xs font-medium text-gray-800 truncate">{[e.leadFirstName, e.leadLastName].filter(Boolean).join(" ") || "Lead"}{e.leadCompany ? ` · ${e.leadCompany}` : ""}</span>
-                                  {e.generationRun?.status && <span className="text-[10px] text-gray-400 shrink-0">{e.generationRun.status}</span>}
+                                  <span className="flex items-center gap-1.5 shrink-0">
+                                    {e.generationRun?.status && <span className="text-[10px] text-gray-400">{e.generationRun.status}</span>}
+                                    {steps.length > 0 && <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`} />}
+                                  </span>
                                 </div>
                                 {e.subject && <div className="text-xs font-semibold text-gray-700 mt-1 truncate">{e.subject}</div>}
-                                {bodyText && <div className="text-[11px] text-gray-500 mt-1 line-clamp-3 whitespace-pre-wrap">{bodyText}</div>}
-                              </div>
+                                {!expanded && firstBody && <div className="text-[11px] text-gray-500 mt-1 line-clamp-3 whitespace-pre-wrap">{firstBody}</div>}
+                                {expanded && (
+                                  <div className="mt-2 space-y-2">
+                                    {steps.map((s) => (
+                                      <div key={s.step} className="border-t border-gray-100 pt-2">
+                                        {steps.length > 1 && (
+                                          <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
+                                            Step {s.step}{s.step > 1 && s.daysSinceLastStep ? ` · +${s.daysSinceLastStep}d` : ""}
+                                          </div>
+                                        )}
+                                        <div className="text-[11px] text-gray-600 mt-0.5 whitespace-pre-wrap">{s.bodyText}</div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </button>
                               );
                             })}
                           </div>

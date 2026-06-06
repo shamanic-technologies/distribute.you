@@ -4,6 +4,7 @@ import * as path from "path";
 import {
   closesPerBudgetUsd,
   costPerCloseUsd,
+  cacPctOfLtv,
   projectSales,
   salesUnitCostsUsd,
   METRIC_COST_PER_POSITIVE_REPLY,
@@ -28,6 +29,23 @@ const both = { [METRIC_COST_PER_CLICK]: 1500, [METRIC_COST_PER_POSITIVE_REPLY]: 
 const clickOnly = { [METRIC_COST_PER_CLICK]: 1500, [METRIC_COST_PER_POSITIVE_REPLY]: null };
 const replyOnly = { [METRIC_COST_PER_CLICK]: null, [METRIC_COST_PER_POSITIVE_REPLY]: 3000 };
 const neither = { [METRIC_COST_PER_CLICK]: null, [METRIC_COST_PER_POSITIVE_REPLY]: null };
+
+describe("cacPctOfLtv — CAC as % of LTV (budget-invariant)", () => {
+  it("meeting-booked: costPerClose ÷ LTV × 100", () => {
+    // meeting-booked `both`: closes/$ = (0.4/30 + 0.2/15)·0.25 = 0.0066667 → cpc $150 → 150/4000 = 3.75%
+    expect(cacPctOfLtv(both, "meeting-booked", econ)).toBeCloseTo(3.75, 5);
+  });
+  it("self-serve: clicks-only route", () => {
+    // self-serve `both`: closes/$ = 0.05/15 = 0.0033333 → cpc $300 → 300/4000 = 7.5%
+    expect(cacPctOfLtv(both, "self-serve", econ)).toBeCloseTo(7.5, 5);
+  });
+  it("is null when there is no usable cost data", () => {
+    expect(cacPctOfLtv(neither, "meeting-booked", econ)).toBeNull();
+  });
+  it("is null when LTV is non-positive", () => {
+    expect(cacPctOfLtv(both, "meeting-booked", { ...econ, ltv: 0 })).toBeNull();
+  });
+});
 
 describe("salesUnitCostsUsd", () => {
   it("converts populated cents to USD, nulls the absent/zero ones", () => {
