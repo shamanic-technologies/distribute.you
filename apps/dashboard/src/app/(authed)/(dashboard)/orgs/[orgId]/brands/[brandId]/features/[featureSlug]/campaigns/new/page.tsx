@@ -1450,7 +1450,7 @@ export default function FeatureCreateCampaignPage() {
                         {proj && (
                           <div className="mt-2 text-[11px] leading-relaxed">
                             <div className="text-green-700 font-semibold">~{fmtUsd0(proj.revenue)} revenue / month</div>
-                            <div className="text-gray-500"><InfoLabel label="CAC" tip="Customer acquisition cost as a share of the revenue it generates (spend ÷ revenue)." /> {proj.cacPct != null ? `${fmtNum(proj.cacPct, 1)}%` : "—"} / month</div>
+                            <div className="text-gray-500"><InfoLabel label="CAC" tip="Customer acquisition cost as a share of the revenue it generates (spend ÷ revenue)." /> {proj.cacPct != null ? `${fmtNum(proj.cacPct)}%` : "—"} / month</div>
                           </div>
                         )}
                       </button>
@@ -1763,38 +1763,6 @@ export default function FeatureCreateCampaignPage() {
               </div>
             </div>
           )}
-
-          <CampaignAIPanel
-            open={showChat}
-            onClose={() => setShowChat(false)}
-            chatId={`${brandId}-${featureSlug}`}
-            campaignContext={{
-              brandId,
-              brandUrl: resolvedBrandUrl,
-              brandName: brand?.name ?? brand?.domain ?? undefined,
-              featureSlug: featureSlug,
-              featureName: featureDef?.name ?? featureSlug,
-              currentFields: formData,
-              fieldDefinitions: featureInputs.map((f) => ({ key: f.key, label: f.label, description: f.description })),
-              instruction: [
-                "You are helping the user refine campaign input fields before launching a campaign.",
-                "The current field values are in `currentFields`. The field definitions are in `fieldDefinitions`.",
-                "When the user asks to change fields, use the `update_campaign_fields` tool with the updated key-value pairs.",
-                "You can also use brand extraction tools to pull information from the brand's website.",
-              ].join("\n"),
-            }}
-            formData={formData}
-            featureInputs={featureInputs}
-            onFieldsUpdate={(fields) => {
-              setFormData((prev) => {
-                const next = { ...prev };
-                for (const [key, value] of Object.entries(fields)) {
-                  if (key in next) next[key] = value;
-                }
-                return next;
-              });
-            }}
-          />
         </div>
       )}
 

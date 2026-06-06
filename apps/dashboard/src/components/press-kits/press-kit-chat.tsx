@@ -146,10 +146,21 @@ function ThinkingBlockUI({ text, isStreaming }: { text: string; isStreaming?: bo
   );
 }
 
+/* ─── Tool name resolution ───────────────────────────────────────── */
+
+// AI SDK v6: static tool parts carry the name in `type` as "tool-<name>";
+// only DynamicToolUIPart exposes a `toolName` field. Reading `toolName`
+// alone yields "unknown".
+function resolveToolName(part: { type: string; toolName?: string }): string {
+  if (part.toolName) return part.toolName;
+  if (part.type.startsWith("tool-")) return part.type.slice(5);
+  return "unknown";
+}
+
 /* ─── Tool invocation block ──────────────────────────────────────── */
 
 function ToolInvocationUI({ part }: { part: { type: string; toolCallId: string; toolName?: string; state: string; input?: unknown; output?: unknown } }) {
-  const name = (part.toolName ?? "unknown")
+  const name = resolveToolName(part)
     .replace(/_/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
   const isWaiting = part.state === "input-streaming" || part.state === "input-available";
