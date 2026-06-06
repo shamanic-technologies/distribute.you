@@ -1383,6 +1383,40 @@ export async function listBrandEmails(brandId: string, token?: string): Promise<
   return apiCall<{ emails: Email[] }>(`/emails?brandId=${brandId}`, { token });
 }
 
+/** A past generated email surfaced as an EXAMPLE for a workflow (campaigns/new picker).
+ *  `scope` is the cascade tier it was pulled from relative to the caller:
+ *  "brand" (own brand) · "org" (same org, other brand) · "global" (any org — public examples).
+ *  `brandName` labels the source brand for the cross-source tag (null for own brand). */
+export interface WorkflowExampleEmail {
+  id: string;
+  subject: string | null;
+  bodyHtml: string | null;
+  bodyText: string | null;
+  sequence: EmailSequenceStep[] | null;
+  leadFirstName: string | null;
+  leadLastName: string | null;
+  leadCompany: string | null;
+  leadTitle: string | null;
+  leadIndustry: string | null;
+  clientCompanyName: string | null;
+  createdAt: string;
+  scope: "brand" | "org" | "global";
+  brandName: string | null;
+}
+
+/** Recent example emails for a workflow, cascade brand→org→global (api-service →
+ *  content-generation /generations/examples). Used to pre-fill the picker's preview so a
+ *  user sees real output without running a test. */
+export async function listWorkflowExamples(
+  workflowSlug: string,
+  brandId: string,
+  limit = 3,
+  token?: string,
+): Promise<{ examples: WorkflowExampleEmail[] }> {
+  const params = new URLSearchParams({ workflowSlug, brandId, limit: String(limit) });
+  return apiCall<{ examples: WorkflowExampleEmail[] }>(`/workflow-examples?${params.toString()}`, { token });
+}
+
 // Manual reply qualifications (api-service proxy → email-gateway → instantly-service).
 // Wire shape is snake_case (request) + camelCase (response) per the upstream contract;
 // helpers below translate camelCase request inputs to snake_case query / body.

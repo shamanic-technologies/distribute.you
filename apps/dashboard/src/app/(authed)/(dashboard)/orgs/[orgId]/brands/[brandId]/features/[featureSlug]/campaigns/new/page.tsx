@@ -30,6 +30,9 @@ import {
   getCampaign,
   listCampaignEmails,
   type Email,
+  type EmailSequenceStep,
+  listWorkflowExamples,
+  type WorkflowExampleEmail,
   getWorkflowProjection,
   type WorkflowProjectionItem,
   type SalesObjective,
@@ -149,6 +152,66 @@ function prefillToFormData(
 function fmtPct(pct: number | null | undefined): string {
   if (pct == null) return "—";
   return `${pct > 0 && pct < 10 ? pct.toFixed(1) : pct.toFixed(0)}%`;
+}
+
+// One email card in the picker's preview panel — used for both this-session test runs and
+// pre-filled past examples. Click toggles the full multi-step sequence. A `scope` other than
+// "brand" renders a small source tag (the example came from another brand / org).
+interface TestEmailCardData {
+  id: string;
+  subject: string | null;
+  bodyText: string | null;
+  sequence: EmailSequenceStep[] | null;
+  leadFirstName: string | null;
+  leadLastName: string | null;
+  leadCompany: string | null;
+  generationRun?: { status: string } | null;
+  scope?: "brand" | "org" | "global";
+  brandName?: string | null;
+}
+
+function TestEmailCard({ email, expanded, onToggle }: { email: TestEmailCardData; expanded: boolean; onToggle: () => void }) {
+  const firstBody = email.sequence?.[0]?.bodyText ?? email.bodyText;
+  // Full email = the whole sequence (initial + follow-ups); fall back to a single synthetic step.
+  const steps = email.sequence && email.sequence.length > 0
+    ? email.sequence
+    : (firstBody ? [{ step: 1, bodyText: firstBody, bodyHtml: "", daysSinceLastStep: 0 }] : []);
+  const otherSource = email.scope === "org" || email.scope === "global";
+  const sourceLabel = email.brandName || (email.scope === "org" ? "another brand" : "another workspace");
+  return (
+    <button type="button" onClick={onToggle}
+      className="w-full text-left bg-white rounded-lg border border-gray-200 p-3 hover:border-gray-300 transition cursor-pointer">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-medium text-gray-800 truncate">{[email.leadFirstName, email.leadLastName].filter(Boolean).join(" ") || "Lead"}{email.leadCompany ? ` · ${email.leadCompany}` : ""}</span>
+        <span className="flex items-center gap-1.5 shrink-0">
+          {otherSource && (
+            <span title="Example from another brand / organization, shown so you can preview this workflow"
+              className="text-[9px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+              Example · {sourceLabel}
+            </span>
+          )}
+          {email.generationRun?.status && <span className="text-[10px] text-gray-400">{email.generationRun.status}</span>}
+          {steps.length > 0 && <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`} />}
+        </span>
+      </div>
+      {email.subject && <div className="text-xs font-semibold text-gray-700 mt-1 truncate">{email.subject}</div>}
+      {!expanded && firstBody && <div className="text-[11px] text-gray-500 mt-1 line-clamp-3 whitespace-pre-wrap">{firstBody}</div>}
+      {expanded && (
+        <div className="mt-2 space-y-2">
+          {steps.map((s) => (
+            <div key={s.step} className="border-t border-gray-100 pt-2">
+              {steps.length > 1 && (
+                <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
+                  Step {s.step}{s.step > 1 && s.daysSinceLastStep ? ` · +${s.daysSinceLastStep}d` : ""}
+                </div>
+              )}
+              <div className="text-[11px] text-gray-600 mt-0.5 whitespace-pre-wrap">{s.bodyText}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </button>
+  );
 }
 
 function InfoLabel({ label, tip }: { label: string; tip: string }) {
@@ -622,6 +685,28 @@ export default function FeatureCreateCampaignPage() {
       return changed ? next : prev;
     });
   }, [testPoll]);
+
+  // ── Default preview: pre-filled example emails for the SELECTED workflow ──
+  // Cascade brand→org→global (api-service /workflow-examples), so a user sees real output
+  // without having to run a test. Degrades silently to the Run-test flow if the endpoint
+  // isn't reachable yet or there are no examples.
+  const modalSelectedWf = useMemo(
+    () => rows.find((r) => r.id === modalSelectedWorkflowId),
+    [rows, modalSelectedWorkflowId],
+  );
+  const exampleWfSlug = modalSelectedWf?.workflowSlug ?? null;
+  const { data: examplesData, isPending: examplesPending } = useAuthQuery(
+    ["workflowExamples", exampleWfSlug, brandId],
+    async () => {
+      try {
+        return await listWorkflowExamples(exampleWfSlug as string, brandId, 3);
+      } catch (err) {
+        console.error("[dashboard] workflow examples fetch failed:", err);
+        return { examples: [] as WorkflowExampleEmail[] };
+      }
+    },
+    { enabled: showWorkflowPicker && !!exampleWfSlug && !!brandId, staleTime: 60_000 },
+  );
 
   const runWorkflowTest = useCallback(async (wf: WorkflowTableRow) => {
     const baseUrl = brand?.url ?? "";
@@ -1611,17 +1696,22 @@ export default function FeatureCreateCampaignPage() {
                   {/* RIGHT: test emails */}
                   <div className="w-1/2 overflow-y-auto p-4 bg-gray-100">
                     {(() => {
-                      const wf = rows.find((r) => r.id === modalSelectedWorkflowId);
-                      if (!wf) return <p className="text-sm text-gray-500 text-center py-8">Select a workflow to test it.</p>;
+                      const wf = modalSelectedWf;
+                      if (!wf) return <p className="text-sm text-gray-500 text-center py-8">Select a workflow to see example emails.</p>;
                       const t = tests[wf.id];
                       const active = isTestRunning(t?.status);
                       const starting = testStarting[wf.id];
-                      const emails = t?.emails ?? [];
+                      const testEmails = t?.emails ?? [];
+                      const examples = examplesData?.examples ?? [];
+                      // A this-session test run takes precedence; otherwise show pre-filled examples.
+                      const liveTest = !!t || starting;
+                      const showExamples = !liveTest;
+                      const cards: TestEmailCardData[] = showExamples ? examples : testEmails;
                       return (
                         <div>
                           <div className="flex items-center justify-between gap-2 pb-3 mb-3 border-b border-gray-200">
                             <div className="min-w-0">
-                              <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Test emails</p>
+                              <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">{showExamples && examples.length > 0 ? "Example emails" : "Test emails"}</p>
                               <span className="text-sm font-semibold text-gray-900 truncate block">{wf.workflowDynastyName}</span>
                             </div>
                             <button type="button" disabled={active || starting || !resolvedBrandUrl}
@@ -1632,58 +1722,27 @@ export default function FeatureCreateCampaignPage() {
                                   <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
                                   Testing…
                                 </>
-                              ) : (t ? "Run test again" : "Run test · 3 leads")}
+                              ) : (liveTest || examples.length > 0 ? "Regenerate · 3 leads" : "Run test · 3 leads")}
                             </button>
                           </div>
-                          <p className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1 mb-3">⚠ Sends real emails to 3 leads.</p>
+                          {showExamples && examples.length > 0 ? (
+                            <p className="text-[11px] text-gray-500 mb-3">Sample emails this workflow has generated. <span className="text-gray-400">Regenerate to create fresh ones for your brand (sends real emails to 3 leads).</span></p>
+                          ) : (
+                            <p className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1 mb-3">⚠ Sends real emails to 3 leads.</p>
+                          )}
                           {testError[wf.id] && <p className="text-xs text-red-600 mb-3">{testError[wf.id]}</p>}
                           {t?.error && <p className="text-xs text-red-600 mb-3">{t.error}</p>}
-                          {!t && !starting && <p className="text-sm text-gray-500 py-6 text-center">No test yet. Run one to preview real emails for this workflow.</p>}
-                          {(active || starting) && emails.length === 0 && !t?.error && <p className="text-sm text-gray-500 py-6 text-center">Generating emails…</p>}
+                          {(active || starting) && testEmails.length === 0 && !t?.error && <p className="text-sm text-gray-500 py-6 text-center">Generating emails…</p>}
                           {/* Terminal: the run finished (stopped) but produced no emails — say so instead of an empty panel. */}
-                          {t && !active && !starting && emails.length === 0 && !t.error && <p className="text-sm text-gray-500 py-6 text-center">No emails were generated for this test.</p>}
+                          {!!t && !active && !starting && testEmails.length === 0 && !t.error && <p className="text-sm text-gray-500 py-6 text-center">No emails were generated for this test.</p>}
+                          {showExamples && examplesPending && <p className="text-sm text-gray-500 py-6 text-center">Loading examples…</p>}
+                          {showExamples && !examplesPending && examples.length === 0 && <p className="text-sm text-gray-500 py-6 text-center">No examples yet. Run a test to preview real emails for this workflow.</p>}
                           <div className="space-y-2">
-                            {emails.map((e) => {
-                              // Cold-email sequences store the body per step in `sequence`; the top-level
-                              // bodyText/bodyHtml are null for them. Mirror the emails pages' fallback so
-                              // the preview shows the real first-step body, not a blank card.
-                              const firstBody = e.sequence?.[0]?.bodyText ?? e.bodyText;
-                              // Full email = the whole sequence (initial + follow-ups). Fall back to a
-                              // single synthetic step when there is no sequence array.
-                              const steps = e.sequence && e.sequence.length > 0
-                                ? e.sequence
-                                : (firstBody ? [{ step: 1, bodyText: firstBody, bodyHtml: "", daysSinceLastStep: 0 }] : []);
-                              const expanded = expandedTestEmailId === e.id;
-                              return (
-                              <button key={e.id} type="button"
-                                onClick={() => setExpandedTestEmailId((cur) => (cur === e.id ? null : e.id))}
-                                className="w-full text-left bg-white rounded-lg border border-gray-200 p-3 hover:border-gray-300 transition cursor-pointer">
-                                <div className="flex items-center justify-between gap-2">
-                                  <span className="text-xs font-medium text-gray-800 truncate">{[e.leadFirstName, e.leadLastName].filter(Boolean).join(" ") || "Lead"}{e.leadCompany ? ` · ${e.leadCompany}` : ""}</span>
-                                  <span className="flex items-center gap-1.5 shrink-0">
-                                    {e.generationRun?.status && <span className="text-[10px] text-gray-400">{e.generationRun.status}</span>}
-                                    {steps.length > 0 && <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`} />}
-                                  </span>
-                                </div>
-                                {e.subject && <div className="text-xs font-semibold text-gray-700 mt-1 truncate">{e.subject}</div>}
-                                {!expanded && firstBody && <div className="text-[11px] text-gray-500 mt-1 line-clamp-3 whitespace-pre-wrap">{firstBody}</div>}
-                                {expanded && (
-                                  <div className="mt-2 space-y-2">
-                                    {steps.map((s) => (
-                                      <div key={s.step} className="border-t border-gray-100 pt-2">
-                                        {steps.length > 1 && (
-                                          <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
-                                            Step {s.step}{s.step > 1 && s.daysSinceLastStep ? ` · +${s.daysSinceLastStep}d` : ""}
-                                          </div>
-                                        )}
-                                        <div className="text-[11px] text-gray-600 mt-0.5 whitespace-pre-wrap">{s.bodyText}</div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </button>
-                              );
-                            })}
+                            {cards.map((e) => (
+                              <TestEmailCard key={e.id} email={e}
+                                expanded={expandedTestEmailId === e.id}
+                                onToggle={() => setExpandedTestEmailId((cur) => (cur === e.id ? null : e.id))} />
+                            ))}
                           </div>
                         </div>
                       );

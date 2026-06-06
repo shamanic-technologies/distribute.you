@@ -69,4 +69,16 @@ describe("Workflow test-run status detection", () => {
     expect(content).toContain("expandedTestEmailId");
     expect(content).toContain("steps.map");
   });
+
+  it("pre-fills the picker with example emails by default (no test needed)", () => {
+    // Cascade brand→org→global via /workflow-examples so a workflow shows 3 examples up front.
+    expect(content).toContain("listWorkflowExamples");
+    expect(content).toContain("examplesData");
+  });
+
+  it("keeps a Regenerate option and tags examples from another brand / org", () => {
+    expect(content).toContain("Regenerate · 3 leads");
+    // Non-brand examples carry a transparency tag.
+    expect(content).toContain("Example ·");
+  });
 });
