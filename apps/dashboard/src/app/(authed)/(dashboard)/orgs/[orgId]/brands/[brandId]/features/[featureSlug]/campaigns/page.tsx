@@ -8,16 +8,22 @@ import {
   listCampaignsByBrand,
   fetchFeatureStats,
   getBrandCostBreakdown,
+  getFeatureRevenue,
   type Campaign,
+  type StatsRegistry,
 } from "@/lib/api";
+import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useFeatures } from "@/lib/features-context";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 import { useStopCampaign, useIsStoppingCampaign } from "@/lib/use-stop-campaign";
 import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
+import { RevenueChart } from "@/components/revenue/revenue-chart";
+import { RevenueCostSummary } from "@/components/revenue/revenue-cost-summary";
+import { Skeleton } from "@/components/skeleton";
 import { formatStatValue } from "@/lib/format-stat";
-import { pollOptions } from "@/lib/query-options";
+import { pollOptions, pollOptionsSlow } from "@/lib/query-options";
 
 const STATUS_STYLES: Record<string, string> = {
   ongoing: "bg-blue-100 text-blue-700 border-blue-200",
@@ -78,6 +84,11 @@ function formatTotalCost(cents: number): string | null {
   return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+function formatUsd(n: number | null): string {
+  if (n === null) return "—";
+  return `$${Math.round(n).toLocaleString("en-US")}`;
+}
+
 export default function FeaturePage() {
   const params = useParams();
   const brandId = params.brandId as string;
@@ -98,6 +109,11 @@ function GenericFeaturePage({
 }) {
   const { getFeature, registry, isLoading: featuresLoading } = useFeatures();
   const featureDef = getFeature(featureSlug);
+
+  // Revenue features (sales-cold-email today) reorient this page toward gains:
+  // a revenue-over-time hero + CAC/ROI on top, and per-campaign rows show the
+  // revenue generated instead of spend. Non-revenue features keep the cost view.
+  const revenueEnabled = isRevenueFeature(featureSlug);
 
   const funnelChart = featureDef?.charts?.find((c) => c.type === "funnel-bar");
   const breakdownChart = featureDef?.charts?.find((c) => c.type === "breakdown-bar");
@@ -150,16 +166,28 @@ function GenericFeaturePage({
   );
   const brandCostBreakdown = brandCostData?.costs ?? [];
 
+  // Feature-level expected-pipeline revenue (+ cost economics) for the hero —
+  // revenue features only. features-service is the single source; this is a fast
+  // GET cache-read, so it's safe in the reveal barrier (CLAUDE.md: never gate the
+  // barrier on a scrape POST / slow cold source — this is neither).
+  const { data: featureRevenueData } = useAuthQuery(
+    ["featureRevenue", brandId, featureSlug],
+    () => getFeatureRevenue(featureSlug, brandId),
+    { enabled: revenueEnabled, ...pollOptionsSlow },
+  );
+
   // One unified "all sections ready" gate so the WHOLE body reveals together (one paint,
   // never a card-by-card cascade), then STAYS revealed. `useCoordinatedReveal` is a barrier
   // (reveal only when every section has data) plus a monotonic latch (once shown, a poll /
   // Clerk token rotation / transient query error never sends the body back to a skeleton).
   // It pairs with the global `placeholderData: keepPreviousData`, which keeps each query's
-  // data on screen during refetch. See CLAUDE.md → "Coordinated reveal".
+  // data on screen during refetch. See CLAUDE.md → "Coordinated reveal". A disabled query
+  // stays `isPending` forever, so the revenue flag short-circuits when not a revenue feature.
   const revealed = useCoordinatedReveal([
     campaignsData !== undefined,
     featureStatsData !== undefined,
     brandCostData !== undefined,
+    !revenueEnabled || featureRevenueData !== undefined,
     !featuresLoading,
   ]);
 
@@ -174,16 +202,23 @@ function GenericFeaturePage({
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold text-gray-800">Campaigns</h1>
-          <p className="text-gray-600">Performance overview and campaigns for this feature.</p>
+          <p className="text-gray-600">
+            {revenueEnabled
+              ? "Revenue generated and campaigns for this feature."
+              : "Performance overview and campaigns for this feature."}
+          </p>
         </div>
         <div className="flex items-center gap-3">
-          {!revealed ? (
-            <div className="h-5 w-20 bg-gray-200 rounded animate-pulse" />
-          ) : formatTotalCost(totalCostCents) ? (
-            <span className="text-sm font-semibold text-gray-700">
-              Total: {formatTotalCost(totalCostCents)}
-            </span>
-          ) : null}
+          {/* Revenue features lead with the revenue hero below, so the header
+              drops the cost total. Non-revenue features keep it. */}
+          {!revenueEnabled &&
+            (!revealed ? (
+              <div className="h-5 w-20 bg-gray-200 rounded animate-pulse" />
+            ) : formatTotalCost(totalCostCents) ? (
+              <span className="text-sm font-semibold text-gray-700">
+                Total: {formatTotalCost(totalCostCents)}
+              </span>
+            ) : null)}
           <Link
             href={`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/new`}
             className="px-4 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition"
@@ -192,6 +227,40 @@ function GenericFeaturePage({
           </Link>
         </div>
       </div>
+
+      {/* Revenue hero (revenue features) — leads with $ generated over time + the
+          cost/efficiency column (Total spent / CAC / ROI). Static-shell-first:
+          the card frames + titles paint immediately; only the values skeleton
+          until the stats reveal together. Mirrors the feature Overview hero. */}
+      {revenueEnabled && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+          <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-4 md:p-6">
+            <div className="flex items-baseline justify-between mb-4">
+              <h3 className="font-medium text-gray-800">Revenue generated over time</h3>
+              <div className="text-right">
+                {!revealed ? (
+                  <Skeleton className="h-8 w-28" />
+                ) : (
+                  <p className="text-2xl font-bold text-gray-900 leading-none">
+                    {formatUsd(featureRevenueData?.totalPipelineUsd ?? null)}
+                  </p>
+                )}
+                <p className="text-[11px] text-gray-400 mt-1">expected pipeline</p>
+              </div>
+            </div>
+            {!revealed || !featureRevenueData ? (
+              <Skeleton className="h-[260px] w-full rounded" />
+            ) : (
+              <RevenueChart series={featureRevenueData.timeSeries} />
+            )}
+          </div>
+          <RevenueCostSummary
+            costBreakdown={brandCostBreakdown}
+            costEconomics={featureRevenueData?.costEconomics}
+            pending={!revealed}
+          />
+        </div>
+      )}
 
       {/* Static-shell-first: the chart/cost card frames + titles render on the
           first paint (the chart set is known from the warm feature defs); only
@@ -217,8 +286,10 @@ function GenericFeaturePage({
         </div>
       )}
 
-      {/* Cost Breakdown — frame + title instant, donut/values skeleton until ready */}
-      {(!revealed || brandCostBreakdown.length > 0) && (
+      {/* Cost Breakdown — non-revenue features only (revenue features surface
+          spend compactly inside the hero's Cost & efficiency column instead).
+          Frame + title instant, donut/values skeleton until ready. */}
+      {!revenueEnabled && (!revealed || brandCostBreakdown.length > 0) && (
         <div className="mb-6">
           <CostBreakdown costBreakdown={brandCostBreakdown} pending={!revealed} />
         </div>
@@ -251,73 +322,137 @@ function GenericFeaturePage({
             const cStats = campaignStatsMap[campaign.id];
             const cSystemStats = campaignStatsData?.groups?.find((g) => g.campaignId === campaign.id)?.systemStats;
             const statsReady = !campaignStatsLoading || cStats !== undefined;
-            const budget = formatBudget(campaign);
-            const status = campaign.status;
-            const statusStyle = STATUS_STYLES[status] || "bg-gray-100 text-gray-500 border-gray-200";
             const costCents = cSystemStats?.totalCostInUsdCents ?? 0;
 
             return (
-              <Link
+              <CampaignRow
                 key={campaign.id}
-                href={`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/${campaign.id}`}
-                className="block bg-white rounded-xl border border-gray-200 p-4 hover:border-brand-300 hover:shadow-md transition-all cursor-pointer"
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-medium text-gray-800 group-hover:text-brand-600 transition">
-                      {campaign.name}
-                    </h3>
-                    <span className={`text-xs px-2 py-0.5 rounded-full border ${statusStyle}`}>
-                      {status === "ongoing" && (
-                        <span className="inline-block w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse mr-1 align-middle" />
-                      )}
-                      {status}
-                    </span>
-                    {status === "stopped" && campaign.toResumeAt && (
-                      <span className="text-xs text-gray-500">
-                        Resumes {timeUntil(campaign.toResumeAt)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {!statsReady ? (
-                      <div className="h-4 w-16 bg-gray-200 rounded animate-pulse" />
-                    ) : costCents > 0 ? (
-                      <span className="text-xs text-gray-400">
-                        ${(costCents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} spent
-                      </span>
-                    ) : null}
-                    {budget && (
-                      <span className="text-xs font-medium text-brand-600 bg-brand-50 px-2 py-1 rounded-lg">
-                        {budget}
-                      </span>
-                    )}
-                    {status === "ongoing" && (
-                      <StopCampaignButton campaignId={campaign.id} onStop={() => stopMutation.mutate({ id: campaign.id })} />
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-4 text-xs text-gray-500">
-                  <span>{timeAgo(campaign.createdAt)}</span>
-                  {!statsReady ? (
-                    campaignRowOutputs.map((o) => (
-                      <div key={o.key} className="h-3 w-14 bg-gray-200 rounded animate-pulse" />
-                    ))
-                  ) : (
-                    campaignRowOutputs.map((o) => (
-                      <span key={o.key}>
-                        {formatStatValue(cStats?.[o.key] ?? 0, registry[o.key])} {registry[o.key]?.label ?? o.key}
-                      </span>
-                    ))
-                  )}
-                </div>
-              </Link>
+                campaign={campaign}
+                orgId={orgId}
+                brandId={brandId}
+                featureSlug={featureSlug}
+                revenueEnabled={revenueEnabled}
+                cStats={cStats}
+                costCents={costCents}
+                statsReady={statsReady}
+                campaignRowOutputs={campaignRowOutputs}
+                registry={registry}
+                onStop={() => stopMutation.mutate({ id: campaign.id })}
+              />
             );
           })
         )}
       </div>
 
     </div>
+  );
+}
+
+function CampaignRow({
+  campaign,
+  orgId,
+  brandId,
+  featureSlug,
+  revenueEnabled,
+  cStats,
+  costCents,
+  statsReady,
+  campaignRowOutputs,
+  registry,
+  onStop,
+}: {
+  campaign: Campaign;
+  orgId: string;
+  brandId: string;
+  featureSlug: string;
+  revenueEnabled: boolean;
+  cStats: Record<string, number> | undefined;
+  costCents: number;
+  statsReady: boolean;
+  campaignRowOutputs: { key: string }[];
+  registry: StatsRegistry;
+  onStop: () => void;
+}) {
+  // Per-campaign expected-pipeline revenue + ROI. Shares the campaign detail
+  // page's query key (`["featureRevenue", brandId, featureSlug, "campaign", id]`)
+  // so React Query serves one cache entry across both surfaces. Revenue features
+  // only — disabled queries never resolve, so the badge stays hidden otherwise.
+  const { data: revenue } = useAuthQuery(
+    ["featureRevenue", brandId, featureSlug, "campaign", campaign.id],
+    () => getFeatureRevenue(featureSlug, brandId, campaign.id),
+    { enabled: revenueEnabled, ...pollOptionsSlow },
+  );
+
+  const budget = formatBudget(campaign);
+  const status = campaign.status;
+  const statusStyle = STATUS_STYLES[status] || "bg-gray-100 text-gray-500 border-gray-200";
+  const revenueUsd = revenue?.totalPipelineUsd ?? null;
+  const roi = revenue?.costEconomics?.roiMultiple ?? null;
+
+  return (
+    <Link
+      href={`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/${campaign.id}`}
+      className="block bg-white rounded-xl border border-gray-200 p-4 hover:border-brand-300 hover:shadow-md transition-all cursor-pointer"
+    >
+      <div className="flex items-start justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <h3 className="font-medium text-gray-800 group-hover:text-brand-600 transition">
+            {campaign.name}
+          </h3>
+          <span className={`text-xs px-2 py-0.5 rounded-full border ${statusStyle}`}>
+            {status === "ongoing" && (
+              <span className="inline-block w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse mr-1 align-middle" />
+            )}
+            {status}
+          </span>
+          {status === "stopped" && campaign.toResumeAt && (
+            <span className="text-xs text-gray-500">
+              Resumes {timeUntil(campaign.toResumeAt)}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          {revenueEnabled ? (
+            // Gains framing: revenue generated (+ ROI) instead of spend.
+            revenue === undefined ? (
+              <div className="h-5 w-28 bg-gray-200 rounded animate-pulse" />
+            ) : revenueUsd !== null ? (
+              <span className="text-xs font-medium text-green-700 bg-green-50 px-2 py-1 rounded-lg">
+                {formatUsd(revenueUsd)} revenue{roi !== null ? ` · ${roi.toFixed(1)}× ROI` : ""}
+              </span>
+            ) : null
+          ) : !statsReady ? (
+            <div className="h-4 w-16 bg-gray-200 rounded animate-pulse" />
+          ) : costCents > 0 ? (
+            <span className="text-xs text-gray-400">
+              ${(costCents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} spent
+            </span>
+          ) : null}
+          {budget && (
+            <span className="text-xs font-medium text-brand-600 bg-brand-50 px-2 py-1 rounded-lg">
+              {budget}
+            </span>
+          )}
+          {status === "ongoing" && (
+            <StopCampaignButton campaignId={campaign.id} onStop={onStop} />
+          )}
+        </div>
+      </div>
+      <div className="flex items-center gap-4 text-xs text-gray-500">
+        <span>{timeAgo(campaign.createdAt)}</span>
+        {!statsReady ? (
+          campaignRowOutputs.map((o) => (
+            <div key={o.key} className="h-3 w-14 bg-gray-200 rounded animate-pulse" />
+          ))
+        ) : (
+          campaignRowOutputs.map((o) => (
+            <span key={o.key}>
+              {formatStatValue(cStats?.[o.key] ?? 0, registry[o.key])} {registry[o.key]?.label ?? o.key}
+            </span>
+          ))
+        )}
+      </div>
+    </Link>
   );
 }
 
