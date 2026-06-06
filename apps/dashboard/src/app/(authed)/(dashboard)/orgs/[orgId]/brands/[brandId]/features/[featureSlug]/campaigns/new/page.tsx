@@ -478,6 +478,14 @@ export default function FeatureCreateCampaignPage() {
     return budgetPresets?.find((p) => p.key === budgetTier)?.daily ?? 0;
   }, [budgetTier, budgetCustom, budgetPresets]);
 
+  // Static-shell-first: hold the §2 conversion-metric inputs and the §3 budget
+  // cards as skeletons until their data resolves, so neither flashes a default
+  // before the real value — econ inputs would briefly show SALES_ECON_DEFAULTS,
+  // and the budget cards would briefly show the "no cost data" warning before the
+  // projection (workflow stats + econ) is computable.
+  const econReady = !isSalesFunnel || salesEconData !== undefined;
+  const budgetReady = econReady && !workflowsLoading && !isLoading;
+
   // ── Workflow test runs (real campaigns capped at 3 leads) ──
   const runningTestIds = useMemo(
     () => Object.values(tests).filter((t) => isTestRunning(t.status)).map((t) => t.campaignId),
@@ -1154,47 +1162,67 @@ export default function FeatureCreateCampaignPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Customer Lifetime Revenue" tip="Average total revenue (not gross margin) one customer brings over their lifetime." /></label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
-                    <input type="number" min="0" step="100" value={econLtv} onChange={(e) => updateEcon("ltv", e.target.value)}
-                      className="w-full pl-7 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
-                  </div>
+                  {econReady ? (
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                      <input type="number" min="0" step="100" value={econLtv} onChange={(e) => updateEcon("ltv", e.target.value)}
+                        className="w-full pl-7 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
+                    </div>
+                  ) : (
+                    <Skeleton className="h-9 w-full rounded-lg" />
+                  )}
                 </div>
                 {salesObjective === "meeting-booked" ? (
                   <>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Positive reply → meeting" tip="Of leads who reply positively, the share you turn into a booked meeting." /></label>
-                      <div className="relative">
-                        <input type="number" min="0" max="100" step="1" value={econReplyToMeeting} onChange={(e) => updateEcon("replyToMeeting", e.target.value)}
-                          className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
-                      </div>
+                      {econReady ? (
+                        <div className="relative">
+                          <input type="number" min="0" max="100" step="1" value={econReplyToMeeting} onChange={(e) => updateEcon("replyToMeeting", e.target.value)}
+                            className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                        </div>
+                      ) : (
+                        <Skeleton className="h-9 w-full rounded-lg" />
+                      )}
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Website visit → meeting" tip="Of leads who click through to your website, the share that book a meeting." /></label>
-                      <div className="relative">
-                        <input type="number" min="0" max="100" step="1" value={econVisitToMeeting} onChange={(e) => updateEcon("visitToMeeting", e.target.value)}
-                          className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
-                      </div>
+                      {econReady ? (
+                        <div className="relative">
+                          <input type="number" min="0" max="100" step="1" value={econVisitToMeeting} onChange={(e) => updateEcon("visitToMeeting", e.target.value)}
+                            className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                        </div>
+                      ) : (
+                        <Skeleton className="h-9 w-full rounded-lg" />
+                      )}
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Meeting → close" tip="Of booked meetings, the share that become paying customers." /></label>
-                      <div className="relative">
-                        <input type="number" min="0" max="100" step="1" value={econMeetingToClose} onChange={(e) => updateEcon("meetingToClose", e.target.value)}
-                          className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
-                      </div>
+                      {econReady ? (
+                        <div className="relative">
+                          <input type="number" min="0" max="100" step="1" value={econMeetingToClose} onChange={(e) => updateEcon("meetingToClose", e.target.value)}
+                            className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                        </div>
+                      ) : (
+                        <Skeleton className="h-9 w-full rounded-lg" />
+                      )}
                     </div>
                   </>
                 ) : (
                   <div>
                     <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Website visit → close" tip="Of leads who visit your website, the share that buy without a meeting (self-serve)." /></label>
-                    <div className="relative">
-                      <input type="number" min="0" max="100" step="1" value={econClickToClose} onChange={(e) => updateEcon("clickToClose", e.target.value)}
-                        className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
-                    </div>
+                    {econReady ? (
+                      <div className="relative">
+                        <input type="number" min="0" max="100" step="1" value={econClickToClose} onChange={(e) => updateEcon("clickToClose", e.target.value)}
+                          className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                      </div>
+                    ) : (
+                      <Skeleton className="h-9 w-full rounded-lg" />
+                    )}
                   </div>
                 )}
               </div>
@@ -1208,6 +1236,14 @@ export default function FeatureCreateCampaignPage() {
               <h2 className="font-display font-semibold text-gray-800">Budget</h2>
             </div>
             <div className="p-5">
+              {!budgetReady ? (
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <Skeleton key={i} className="h-28 rounded-xl" />
+                  ))}
+                </div>
+              ) : (
+                <>
               {budgetPresets == null && (
                 <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 mb-4 text-sm text-amber-800">
                   {salesObjective === "self-serve"
@@ -1285,6 +1321,8 @@ export default function FeatureCreateCampaignPage() {
                     <option value="monthly">month</option>
                   </select>
                 </div>
+              )}
+                </>
               )}
 
               {(() => {
