@@ -38,6 +38,13 @@ describe("campaign-prefill-chat", () => {
       expect(chatSrc).toContain('"update_campaign_fields"');
     });
 
+    it("resolves tool name from part.type (AI SDK v6 static tool parts), not part.toolName alone", () => {
+      // Regression: AI SDK v6 puts the name in `type` as "tool-<name>"; reading
+      // `toolName` alone yields "unknown" and the field-apply gate never fires.
+      expect(chatSrc).toContain("resolveToolName");
+      expect(chatSrc).toContain('.type.slice(5)');
+    });
+
     it("applies field updates in real-time during streaming (not just onFinish)", () => {
       expect(chatSrc).toContain("appliedToolCallsRef");
       expect(chatSrc).toContain("useEffect");
