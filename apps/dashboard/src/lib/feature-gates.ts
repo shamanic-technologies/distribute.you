@@ -51,7 +51,6 @@ export type FeatureGateKey = keyof typeof FEATURE_GATES;
  * `brand-features` flag goes GA).
  */
 export const GA_BRAND_FEATURES: ReadonlySet<string> = new Set([
-  "pr-cold-email-outreach",
   "sales-cold-email-outreach",
 ]);
 

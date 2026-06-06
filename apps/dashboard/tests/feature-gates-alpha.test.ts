@@ -30,10 +30,10 @@ describe("feature-gates registry", () => {
 });
 
 describe("GA_BRAND_FEATURES — brand-page GA exceptions", () => {
-  it("contains exactly the two launched cold-email features", () => {
-    expect(GA_BRAND_FEATURES.has("pr-cold-email-outreach")).toBe(true);
+  it("contains only sales cold-email (pr cold-email is alpha-gated)", () => {
     expect(GA_BRAND_FEATURES.has("sales-cold-email-outreach")).toBe(true);
-    expect(GA_BRAND_FEATURES.size).toBe(2);
+    expect(GA_BRAND_FEATURES.has("pr-cold-email-outreach")).toBe(false);
+    expect(GA_BRAND_FEATURES.size).toBe(1);
   });
 });
 
