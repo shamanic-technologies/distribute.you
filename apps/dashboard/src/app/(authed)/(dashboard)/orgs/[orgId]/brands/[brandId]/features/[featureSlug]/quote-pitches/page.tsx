@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptionsSlow } from "@/lib/query-options";
 import {
-  listQuotePitches,
+  listAllQuotePitches,
   type QuotePitch,
   type QuotePitchStatus,
 } from "@/lib/api";
@@ -58,9 +58,8 @@ export default function FeatureQuotePitchesPage() {
   const { data, isPending } = useAuthQuery(
     ["featureQuotePitches", featureSlug, { status: statusFilter }],
     () =>
-      listQuotePitches({
+      listAllQuotePitches({
         status: statusFilter || undefined,
-        limit: 200,
       }),
     pollOptionsSlow,
   );

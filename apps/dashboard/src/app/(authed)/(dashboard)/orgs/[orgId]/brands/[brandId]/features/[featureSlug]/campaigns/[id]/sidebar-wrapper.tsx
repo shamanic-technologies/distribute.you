@@ -8,7 +8,7 @@ import { useCampaign } from "@/lib/campaign-context";
 import { useFeatures } from "@/lib/features-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
-import { listWorkflows, listCampaignOutlets, listJournalistsEnriched, listMediaKitsByCampaign, fetchFeatureStats, listAllRankedOpportunities, listQuotePitches } from "@/lib/api";
+import { listWorkflows, listCampaignOutlets, listJournalistsEnriched, listMediaKitsByCampaign, fetchFeatureStats, listAllRankedOpportunities, listAllQuotePitches } from "@/lib/api";
 import { isOpportunityOpen } from "@/lib/quote-pitch-status";
 
 interface Props {
@@ -74,7 +74,7 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
   // page (which lists ALL statuses for the campaign).
   const { data: pitchesData, isLoading: pitchesLoading } = useAuthQuery(
     ["quotePitches", { campaignId, status: "" }],
-    () => listQuotePitches({ campaign_id: campaignId, limit: 100 }),
+    () => listAllQuotePitches({ campaign_id: campaignId }),
     { enabled: entityNames.includes("quote-pitches"), refetchInterval: 5_000 },
   );
 

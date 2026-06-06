@@ -2768,6 +2768,30 @@ export async function listQuotePitches(
   return parsed.data as { quotePitches: QuotePitch[] };
 }
 
+/** Fetches EVERY quote-pitch matching the filter by paging through
+ *  `GET /orgs/quote-pitches` until exhausted (never a single capped page) —
+ *  the pitches analog of `listAllRankedOpportunities`. The sidebar badge + the
+ *  Pitches page show the complete set, so a hardcoded `limit` silently hid the
+ *  tail (badge stuck at 100). Pages of 200; the response carries NO `total`, so
+ *  a short page (`< PAGE`) is the only exhaustion signal. The 10k-offset guard
+ *  is a runaway backstop, not a product cap. */
+export async function listAllQuotePitches(
+  params?: { campaign_id?: string; status?: QuotePitchStatus },
+  token?: string,
+): Promise<{ quotePitches: QuotePitch[] }> {
+  const PAGE = 200;
+  const all: QuotePitch[] = [];
+  for (let offset = 0; offset <= 10_000; offset += PAGE) {
+    const res = await listQuotePitches(
+      { ...params, limit: PAGE, offset },
+      token,
+    );
+    all.push(...res.quotePitches);
+    if (res.quotePitches.length < PAGE) break;
+  }
+  return { quotePitches: all };
+}
+
 export async function getQuotePitch(
   id: string,
   token?: string,

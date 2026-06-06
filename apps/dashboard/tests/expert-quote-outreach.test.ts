@@ -62,8 +62,8 @@ describe("Quote requests + pitches — generic entity routes", () => {
     expect(quoteRequestsContent).toContain('data-testid="quote-requests-page"');
   });
 
-  it("quote-pitches page calls listQuotePitches", () => {
-    expect(quotePitchesContent).toContain("listQuotePitches(");
+  it("quote-pitches page calls listAllQuotePitches", () => {
+    expect(quotePitchesContent).toContain("listAllQuotePitches(");
     expect(quotePitchesContent).toContain('data-testid="quote-pitches-page"');
   });
 });
