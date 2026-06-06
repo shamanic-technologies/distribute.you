@@ -30,17 +30,13 @@ import {
   getCampaign,
   listCampaignEmails,
   type Email,
+  getWorkflowProjection,
+  type WorkflowProjectionItem,
+  type SalesObjective,
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
 import { formatStatValue, sortDirectionForType } from "@/lib/format-stat";
 import { pollOptions } from "@/lib/query-options";
-import {
-  costPerCloseUsd,
-  projectSales,
-  salesUnitCostsUsd,
-  type SalesObjective,
-  type SalesEcon,
-} from "@/lib/sales-funnel-economics";
 import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-panel";
 import { CampaignAIPanel } from "@/components/campaigns/campaign-ai-panel";
 import { BrandLogo } from "@/components/brand-logo";
@@ -59,10 +55,11 @@ const BUDGET_FREQUENCIES: { value: BudgetFrequency; label: string }[] = [
 
 // ── Sales-cold-email funnel redesign (objective → revenue → metrics → budget) ──
 // Gated to this one feature; every other feature keeps the workflow-table UI.
-// Workflow auto-pick + revenue projection live in @/lib/sales-funnel-economics: the
-// ROI comparator is cost-per-close. meeting-booked SUMS the positive-reply route and
-// the website-visit route (the same budget funds both); self-serve is visits-only.
-// SalesObjective is imported from that module.
+// Workflow auto-pick + revenue projection are computed by features-service (the single
+// source for the funnel SUM math) and read via getWorkflowProjection: the ROI comparator
+// is cost-per-close. meeting-booked SUMS the positive-reply route and the website-visit
+// route (the same budget funds both); self-serve is visits-only. The page only scales the
+// served per-$ coefficients by budget for display. SalesObjective is imported from @/lib/api.
 type BudgetTier = "starter" | "recommended" | "growth" | "other";
 
 const SALES_FUNNEL_FEATURE_SLUG = "sales-cold-email-outreach";
@@ -107,11 +104,24 @@ interface WorkflowTableRow {
   id: string;
   workflowName: string;
   workflowSlug: string;
+  workflowDynastySlug: string;
   workflowDynastyName: string;
   featureSlug: string | null;
   stats: Record<string, number>;
   brandLastRunAt: string | null;
   updatedAt: string;
+}
+
+/** Funnel projection at a concrete budget — the render shape, scaled client-side from the
+ *  server's per-$ coefficients (pure ×; the route-combining SUM lives in features-service). */
+interface SalesProjectionView {
+  replies: number | null;
+  visits: number | null;
+  meetings: number | null;
+  closes: number;
+  revenue: number;
+  cacPct: number | null;
+  cacAbs: number | null;
 }
 
 /** Build an empty form data map from feature inputs */
@@ -276,7 +286,12 @@ export default function FeatureCreateCampaignPage() {
 
   const { mutate: mutateSalesEcon } = useMutation({
     mutationFn: (input: BrandSalesEconomicsInput) => saveBrandSalesEconomics(brandId, input),
-    onSuccess: (data) => queryClient.setQueryData(["brandSalesEconomics", brandId], data),
+    onSuccess: (data) => {
+      queryClient.setQueryData(["brandSalesEconomics", brandId], data);
+      // The workflow projection reads saved econ server-side — refresh it now that the edit
+      // persisted, so the budget cards reflect the new metrics without waiting for the poll.
+      queryClient.invalidateQueries({ queryKey: ["workflowProjection", featureSlug, brandId] });
+    },
     onError: (err) => console.error("[dashboard] saveBrandSalesEconomics failed", err),
   });
 
@@ -420,6 +435,7 @@ export default function FeatureCreateCampaignPage() {
         id: wf.id,
         workflowName: wf.workflowName,
         workflowSlug: wf.workflowSlug,
+        workflowDynastySlug: wf.workflowDynastySlug,
         workflowDynastyName: wf.workflowDynastyName,
         featureSlug: wf.featureSlug ?? null,
         stats: (s ?? {}) as Record<string, number>,
@@ -429,26 +445,65 @@ export default function FeatureCreateCampaignPage() {
     });
   }, [workflowsData, rankedData, brandStatsData]);
 
-  // Brand conversion economics as fractions, shared by auto-pick + projection.
-  const salesEcon: SalesEcon = useMemo(() => ({
-    ltv: parseFloat(econLtv) || 0,
-    r2m: (parseFloat(econReplyToMeeting) || 0) / 100,
-    v2m: (parseFloat(econVisitToMeeting) || 0) / 100,
-    m2c: (parseFloat(econMeetingToClose) || 0) / 100,
-    v2c: (parseFloat(econClickToClose) || 0) / 100,
-  }), [econLtv, econReplyToMeeting, econVisitToMeeting, econMeetingToClose, econClickToClose]);
+  // features-service is the SINGLE source for the funnel SUM math: per-workflow cost-per-close
+  // + funnel projection + the recommended workflow/budget. Conversion economics are read
+  // server-side from the brand's SAVED sales-economics. The funnel is LINEAR in budget, so we
+  // request the projection at $1 (per-dollar) and scale by budget client-side (pure ×; the
+  // route-combining SUM stays server-side). Invalidated when the econ upsert lands (see
+  // mutateSalesEcon.onSuccess) so edits reflect once persisted.
+  const { data: projData } = useAuthQuery(
+    ["workflowProjection", featureSlug, brandId, salesObjective],
+    () => getWorkflowProjection({ featureSlug, brandId, objective: salesObjective, budgetUsd: 1 }),
+    { enabled: isSalesFunnel && featureDef?.implemented === true, ...pollOptions },
+  );
 
-  // Auto-pick: best ROI = lowest cost-per-close for this objective. meeting-booked sums
-  // the positive-reply route + the website-visit route; self-serve is visits-only. A
-  // workflow with no usable cost data for the objective is excluded (cost/close → null).
+  const projByDynasty = useMemo(() => {
+    const m = new Map<string, WorkflowProjectionItem>();
+    for (const w of projData?.workflows ?? []) m.set(w.workflowDynastySlug, w);
+    return m;
+  }, [projData]);
+
+  // Served cost-per-close for a workflow (the ROI comparator; lower = better).
+  const cpcFor = useCallback(
+    (dynastySlug: string): number | null => projByDynasty.get(dynastySlug)?.costPerCloseUsd ?? null,
+    [projByDynasty],
+  );
+
+  // Render the funnel at any budget by scaling the served per-$ projection (computed at
+  // budgetUsd=1). Counts scale linearly with budget; cacPct/cacAbs are budget-invariant ratios.
+  const projectFor = useCallback(
+    (dynastySlug: string, budget: number): SalesProjectionView | null => {
+      const base = projByDynasty.get(dynastySlug)?.projection;
+      if (!base || budget <= 0) return null;
+      const scale = (v: number | null) => (v != null ? v * budget : null);
+      return {
+        replies: scale(base.replies),
+        visits: scale(base.visits),
+        meetings: scale(base.meetings),
+        closes: base.closes != null ? base.closes * budget : 0,
+        revenue: base.revenue != null ? base.revenue * budget : 0,
+        cacPct: base.cacPct,
+        cacAbs: base.cacAbs,
+      };
+    },
+    [projByDynasty],
+  );
+
+  // Auto-pick: the workflow features-service recommends (lowest cost-per-close for this
+  // objective); fall back to the lowest served cost-per-close among the listed workflows.
   const salesAutoPick = useMemo(() => {
     if (!isSalesFunnel) return null;
+    const recoSlug = projData?.recommendedWorkflowDynastySlug;
+    if (recoSlug) {
+      const r = rows.find((x) => x.workflowDynastySlug === recoSlug);
+      if (r) return r;
+    }
     const scored = rows
-      .map((r) => ({ r, cpc: costPerCloseUsd(r.stats, salesObjective, salesEcon) }))
+      .map((r) => ({ r, cpc: cpcFor(r.workflowDynastySlug) }))
       .filter((x): x is { r: WorkflowTableRow; cpc: number } => x.cpc != null && isFinite(x.cpc));
     if (scored.length === 0) return null;
     return scored.sort((a, b) => a.cpc - b.cpc)[0].r;
-  }, [isSalesFunnel, rows, salesObjective, salesEcon]);
+  }, [isSalesFunnel, rows, projData, cpcFor]);
 
   // Workflow used for projection + launch: the picker override, else the auto-pick.
   const salesPick = useMemo(() => {
@@ -461,15 +516,14 @@ export default function FeatureCreateCampaignPage() {
   }, [isSalesFunnel, salesWorkflowOverrideId, rows, salesAutoPick]);
 
   // Funnel projection for the picked workflow. recommendedBudget = targetCloses ×
-  // cost-per-close (= budget per close). project() runs the full funnel for a budget;
-  // see projectSales in @/lib/sales-funnel-economics (meeting-booked sums both routes).
+  // cost-per-close (budget per close); project() scales the served per-$ coefficients.
   const salesPlan = useMemo(() => {
-    const cpc = salesPick ? costPerCloseUsd(salesPick.stats, salesObjective, salesEcon) : null;
+    const cpc = salesPick ? cpcFor(salesPick.workflowDynastySlug) : null;
     const recommendedBudget = cpc != null ? TARGET_CLOSES_PER_MONTH * cpc : null;
     const project = (budget: number) =>
-      salesPick ? projectSales(salesPick.stats, salesObjective, salesEcon, budget) : null;
+      salesPick ? projectFor(salesPick.workflowDynastySlug, budget) : null;
     return { costPerCloseUsd: cpc, recommendedBudget, project };
-  }, [salesObjective, salesEcon, salesPick]);
+  }, [salesPick, cpcFor, projectFor]);
 
   // Google-Ads-style budget tiers seeded from the 10-closes/mo target, + the chosen amount.
   const budgetPresets = useMemo(() => {
@@ -492,7 +546,10 @@ export default function FeatureCreateCampaignPage() {
   // and the budget cards would briefly show the "no cost data" warning before the
   // projection (workflow stats + econ) is computable.
   const econReady = !isSalesFunnel || salesEconData !== undefined;
-  const budgetReady = econReady && !workflowsLoading && !isLoading;
+  // The budget cards derive from the served projection (cost-per-close → recommendedBudget);
+  // hold them until it resolves so they don't flash the "no cost data" warning.
+  const projReady = !isSalesFunnel || projData !== undefined;
+  const budgetReady = econReady && projReady && !workflowsLoading;
 
   // ── Workflow test runs (real campaigns capped at 3 leads) ──
   const runningTestIds = useMemo(
@@ -1393,7 +1450,9 @@ export default function FeatureCreateCampaignPage() {
               {salesPick && (() => {
                 // Show every populated unit cost (positive reply + website visit), not just
                 // the winning route — the workflow's full economics at a glance.
-                const { replyUsd, clickUsd } = salesUnitCostsUsd(salesPick.stats);
+                const pickItem = projByDynasty.get(salesPick.workflowDynastySlug);
+                const replyUsd = pickItem?.replyUsd ?? null;
+                const clickUsd = pickItem?.clickUsd ?? null;
                 const parts: string[] = [];
                 if (replyUsd != null) parts.push(`${fmtUsd0(replyUsd)} / positive reply`);
                 if (clickUsd != null) parts.push(`${fmtUsd0(clickUsd)} / website visit`);
@@ -1470,11 +1529,11 @@ export default function FeatureCreateCampaignPage() {
                   <div className="w-1/2 overflow-y-auto p-3 space-y-2">
                     {[...rows].sort((a, b) => {
                       // Rank by the ROI comparator: lowest cost-per-close for this objective.
-                      const ca = costPerCloseUsd(a.stats, salesObjective, salesEcon);
-                      const cb = costPerCloseUsd(b.stats, salesObjective, salesEcon);
+                      const ca = cpcFor(a.workflowDynastySlug);
+                      const cb = cpcFor(b.workflowDynastySlug);
                       return (ca ?? Infinity) - (cb ?? Infinity);
                     }).map((w) => {
-                      const cpc = costPerCloseUsd(w.stats, salesObjective, salesEcon);
+                      const cpc = cpcFor(w.workflowDynastySlug);
                       const isSel = modalSelectedWorkflowId === w.id;
                       const isReco = salesAutoPick?.id === w.id;
                       const isOverride = salesWorkflowOverrideId === w.id;

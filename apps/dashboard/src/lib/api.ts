@@ -1692,6 +1692,86 @@ export async function fetchGlobalRankedWorkflows(params: {
   return data.results;
 }
 
+// ── Sales-funnel workflow projection ────────────────────────────────────────
+// features-service is the SINGLE source for the sales-funnel SUM math: per-workflow
+// cost-per-close (meeting-booked sums the positive-reply route + the website-visit route,
+// funded by one budget; self-serve is clicks-only) + the funnel projection at a budget +
+// the recommended workflow/budget. Conversion rates + LTR come from the brand's SAVED
+// sales-economics (no client overrides). The dashboard only renders. Because the funnel
+// is LINEAR in budget, the page requests the projection at $1 and scales by budget for the
+// preset tiles (pure ×; the route-combining SUM stays server-side). Wire shape verified
+// against the deployed contract via api-registry. safeParse per CLAUDE.md (#1213/#1282).
+export type SalesObjective = "meeting-booked" | "self-serve";
+
+/** Per-workflow funnel projection at the requested budget. All fields null where the route
+ *  doesn't apply (replies/meetings for self-serve, visits with no click cost) or no data. */
+const WorkflowFunnelProjectionSchema = z.object({
+  replies: z.number().nullable(),
+  visits: z.number().nullable(),
+  meetings: z.number().nullable(),
+  closes: z.number().nullable(),
+  revenue: z.number().nullable(),
+  /** (budget / revenue) × 100 — budget-invariant. */
+  cacPct: z.number().nullable(),
+  /** budget / closes (absolute cost per close) — budget-invariant. */
+  cacAbs: z.number().nullable(),
+});
+
+const WorkflowProjectionItemSchema = z.object({
+  workflowDynastySlug: z.string(),
+  workflowDynastyName: z.string().nullable(),
+  replyUsd: z.number().nullable(),
+  clickUsd: z.number().nullable(),
+  costPerCloseUsd: z.number().nullable(),
+  // null when budgetUsd is absent/≤0 or the workflow has no usable data.
+  projection: WorkflowFunnelProjectionSchema.nullable(),
+});
+
+const WorkflowProjectionResponseSchema = z.object({
+  featureSlug: z.string(),
+  objective: z.union([z.literal("meeting-booked"), z.literal("self-serve")]),
+  workflows: z.array(WorkflowProjectionItemSchema),
+  recommendedWorkflowDynastySlug: z.string().nullable(),
+  recommendedBudgetUsd: z.number().nullable(),
+});
+
+export type WorkflowFunnelProjection = z.infer<typeof WorkflowFunnelProjectionSchema>;
+export type WorkflowProjectionItem = z.infer<typeof WorkflowProjectionItemSchema>;
+export type WorkflowProjectionResponse = z.infer<typeof WorkflowProjectionResponseSchema>;
+
+/**
+ * GET /features/:slug/workflow-projection — per-workflow cost-per-close + funnel projection
+ * (at `budgetUsd`) + the recommended workflow/budget, for a brand under one objective.
+ * Conversion economics are read server-side from the brand's saved sales-economics.
+ */
+export async function getWorkflowProjection(
+  params: {
+    featureSlug: string;
+    brandId: string;
+    objective: SalesObjective;
+    budgetUsd?: number;
+  },
+  token?: string,
+): Promise<WorkflowProjectionResponse> {
+  const query = new URLSearchParams();
+  query.set("brandId", params.brandId);
+  query.set("objective", params.objective);
+  if (params.budgetUsd != null) query.set("budgetUsd", String(params.budgetUsd));
+  const raw = await apiCall<unknown>(
+    `/features/${encodeURIComponent(params.featureSlug)}/workflow-projection?${query.toString()}`,
+    { token },
+  );
+  const parsed = WorkflowProjectionResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getWorkflowProjection: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getWorkflowProjection: invalid response shape");
+  }
+  return parsed.data;
+}
+
 // Create / Upgrade / Fork workflow via AI
 export interface CreateWorkflowRequest {
   description: string;
