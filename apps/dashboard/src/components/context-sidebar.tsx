@@ -549,13 +549,19 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
     !articlesPending,
   ]);
 
+  // Outlets/Journalists/Articles belong to the not-yet-launched PR/press
+  // features → alpha (staff-only) behind the dedicated brand-database flag.
+  // Leads/Emails belong to sales-cold-email (GA) → always shown. Default-hidden
+  // until PostHog resolves the flag (no flash). See CLAUDE.md → feature gating.
+  const dbAlphaOk = useFeatureFlag(FEATURE_GATES["brand-database"].flag);
+  const dbMaturity = FEATURE_GATES["brand-database"].maturity;
   const outcomeItems: SidebarItem[] = [
-    { id: "outlets", label: "Outlets", href: `${basePath}/outlets`, icon: <OutcomeOutletIcon />, badge: outletsData?.total },
-    { id: "journalists", label: "Journalists", href: `${basePath}/journalists`, icon: <NewspaperIcon />, badge: journalistsData?.total ?? journalistsData?.journalists?.length },
-    { id: "articles", label: "Articles", href: `${basePath}/articles`, icon: <OutcomeArticleIcon />, badge: articlesData?.discoveries?.length },
+    { id: "outlets", label: "Outlets", href: `${basePath}/outlets`, icon: <OutcomeOutletIcon />, badge: outletsData?.total, maturity: dbMaturity },
+    { id: "journalists", label: "Journalists", href: `${basePath}/journalists`, icon: <NewspaperIcon />, badge: journalistsData?.total ?? journalistsData?.journalists?.length, maturity: dbMaturity },
+    { id: "articles", label: "Articles", href: `${basePath}/articles`, icon: <OutcomeArticleIcon />, badge: articlesData?.discoveries?.length, maturity: dbMaturity },
     { id: "leads", label: "Leads", href: `${basePath}/leads`, icon: <OutcomeLeadIcon />, badge: leadsData?.leads?.length },
     { id: "emails", label: "Emails", href: `${basePath}/emails`, icon: <EnvelopeIcon />, badge: emailsData?.emails?.length },
-  ];
+  ].filter((item) => dbAlphaOk || item.id === "leads" || item.id === "emails");
 
   return (
     <SidebarSection title="Brand" backHref={`/orgs/${orgId}/brands`} backLabel="Brands">

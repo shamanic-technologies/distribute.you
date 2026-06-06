@@ -37,6 +37,10 @@ export const FEATURE_GATES = {
   // Feature Settings sub-level that hosts Workflows is GA; only Workflows itself
   // stays staff-only, so the flag is named for the surface it actually gates.
   workflows: { flag: "alpha-workflows", maturity: "alpha" },
+  // Brand Database section rows tied to the not-yet-launched PR/press features
+  // (Outlets/Journalists/Articles). Leads + Emails stay GA (sales-cold-email is
+  // launched). Independent of brand-features so it can graduate on its own.
+  "brand-database": { flag: "alpha-brand-database", maturity: "alpha" },
 } as const satisfies Record<string, FeatureGate>;
 
 export type FeatureGateKey = keyof typeof FEATURE_GATES;

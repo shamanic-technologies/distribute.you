@@ -22,6 +22,10 @@ describe("feature-gates registry", () => {
     expect(FEATURE_GATES).not.toHaveProperty("feature-settings");
   });
 
+  it("gates brand-database as alpha (Outlets/Journalists/Articles; Leads+Emails stay GA)", () => {
+    expect(FEATURE_GATES["brand-database"]).toEqual({ flag: "alpha-brand-database", maturity: "alpha" });
+  });
+
   it("every flag follows the <maturity>-<surface> naming convention", () => {
     for (const gate of Object.values(FEATURE_GATES)) {
       expect(gate.flag.startsWith(`${gate.maturity}-`)).toBe(true);
@@ -119,6 +123,12 @@ describe("context-sidebar — alpha gating + maturity badges", () => {
 
   it("BrandLevelSidebar renders a GA Database section header (for all users)", () => {
     expect(brand).toMatch(/Database<\/h4>/);
+  });
+
+  it("BrandLevelSidebar gates Outlets/Journalists/Articles behind brand-database alpha; Leads+Emails stay GA", () => {
+    expect(brand).toMatch(/FEATURE_GATES\["brand-database"\]/);
+    // Leads + Emails are the GA exceptions kept regardless of the flag.
+    expect(brand).toMatch(/item\.id === "leads" \|\| item\.id === "emails"/);
   });
 });
 
