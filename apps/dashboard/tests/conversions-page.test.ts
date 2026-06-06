@@ -37,19 +37,20 @@ const reportRevenueView = fs.readFileSync(
   "utf-8",
 );
 
-describe("conversions surface is alpha-gated (staff-only)", () => {
-  it("registers the `conversions` gate", () => {
-    expect(gates).toMatch(/conversions:\s*\{\s*flag:\s*"alpha-conversions"/);
+describe("revenue & conversions surface is GA (no alpha gate)", () => {
+  it("does not register a conversions gate (GA = absent from registry)", () => {
+    expect(gates).not.toContain("alpha-conversions");
+    expect(gates).not.toMatch(/conversions:\s*\{/);
   });
 
-  it("page gates its body on the conversions flag", () => {
-    expect(page).toContain('FEATURE_GATES["conversions"]');
-    expect(page).toContain("useFeatureFlag");
+  it("page no longer gates its body on a feature flag", () => {
+    expect(page).not.toContain('FEATURE_GATES["conversions"]');
+    expect(page).not.toContain("useFeatureFlag");
   });
 
-  it("sidebar only adds the Conversions link when the flag is on", () => {
-    expect(sidebar).toContain('FEATURE_GATES["conversions"]');
-    expect(sidebar).toContain("conversionsOk");
+  it("sidebar adds the Conversions link without a flag gate", () => {
+    expect(sidebar).not.toContain('FEATURE_GATES["conversions"]');
+    expect(sidebar).not.toContain("conversionsOk");
   });
 });
 

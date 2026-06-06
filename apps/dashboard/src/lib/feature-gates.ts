@@ -32,7 +32,6 @@ export const FEATURE_GATES = {
   keys: { flag: "alpha-keys", maturity: "alpha" },
   "brand-info": { flag: "alpha-brand-info", maturity: "alpha" },
   "brand-features": { flag: "alpha-brand-features", maturity: "alpha" },
-  conversions: { flag: "alpha-conversions", maturity: "alpha" },
   // Workflows page (brand-scoped + app-level) and its sidebar entries. The
   // Feature Settings sub-level that hosts Workflows is GA; only Workflows itself
   // stays staff-only, so the flag is named for the surface it actually gates.

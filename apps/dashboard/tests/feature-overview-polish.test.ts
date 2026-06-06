@@ -17,9 +17,8 @@ describe("Feature landing defaults to Overview (item 1)", () => {
     expect(indexPage).toContain("router.replace");
     expect(indexPage).toContain("/overview");
     expect(indexPage).toContain("/campaigns");
-    // Gate Overview on the revenue-feature + conversions flag (staff).
+    // Overview shown for revenue features (GA — no flag gate).
     expect(indexPage).toContain("isRevenueFeature");
-    expect(indexPage).toContain('FEATURE_GATES["conversions"].flag');
     // The campaigns list must NOT live in the bare page anymore.
     expect(indexPage).not.toContain("listCampaignsByBrand");
   });
