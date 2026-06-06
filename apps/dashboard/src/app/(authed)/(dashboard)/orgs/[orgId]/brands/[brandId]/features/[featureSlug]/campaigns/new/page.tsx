@@ -687,9 +687,13 @@ export default function FeatureCreateCampaignPage() {
     setBudgetAmount(effectiveBudget > 0 ? String(Math.round(effectiveBudget * 100) / 100) : "");
   }, [isSalesFunnel, effectiveBudget]);
 
-  // Sales: prefill campaign inputs eagerly once the brand resolves (no "Go" step).
+  // Sales: prefill campaign inputs eagerly once the brand AND feature inputs resolve (no "Go" step).
+  // featuresLoading must gate this: the brand query and the ["features"] context load
+  // independently, and this effect fires on resolvedBrandUrl. If brand wins the race while
+  // featureInputs is still [], prefillToFormData maps only brandUrl, salesPrefilledRef latches,
+  // and every other field stays empty forever. Wait for features so featureInputs is populated.
   useEffect(() => {
-    if (!isSalesFunnel || !resolvedBrandUrl || salesPrefilledRef.current) return;
+    if (!isSalesFunnel || featuresLoading || !resolvedBrandUrl || salesPrefilledRef.current) return;
     salesPrefilledRef.current = true;
     setIsLoadingProfile(true);
     prefillFeatureInputs(featureSlug, [brandId, ...additionalBrandIds])
@@ -702,7 +706,7 @@ export default function FeatureCreateCampaignPage() {
         setShowForm(true);
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSalesFunnel, resolvedBrandUrl]);
+  }, [isSalesFunnel, featuresLoading, resolvedBrandUrl]);
 
   const doCreateCampaign = useCallback(async () => {
     if (!selectedRow || !budgetAmount) return;
