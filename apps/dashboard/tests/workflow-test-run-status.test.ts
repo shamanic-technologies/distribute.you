@@ -35,4 +35,14 @@ describe("Workflow test-run status detection", () => {
     expect(content).toContain("[dashboard] workflow-test poll failed");
     expect(content).toMatch(/try\s*{[\s\S]*getCampaign\(cid\)[\s\S]*}\s*catch/);
   });
+
+  it("gives the test-run campaign a budget so the gate-check does not fail-closed", () => {
+    // campaign-service fail-closes the gate-check when no budget is defined
+    // ("No budget defined (fail-closed)"). Without a budget the 3-lead test never
+    // generates emails: the campaign hangs "ongoing" and the scheduler re-fires the
+    // Windmill flow every tick forever. The test-run create call must carry a budget,
+    // passed in the same createCampaign call that sets maxLeads: 3.
+    expect(content).toContain("maxBudgetTotalUsd");
+    expect(content).toMatch(/maxLeads:\s*3,[\s\S]{0,160}maxBudgetTotalUsd/);
+  });
 });

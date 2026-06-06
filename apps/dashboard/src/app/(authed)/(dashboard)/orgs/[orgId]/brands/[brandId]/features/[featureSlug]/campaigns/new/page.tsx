@@ -181,6 +181,14 @@ function isTestRunning(status: string | undefined): boolean {
   return status != null && status !== "stopped";
 }
 
+// A workflow "Run test" creates a REAL campaign capped at 3 leads. campaign-service
+// fail-closes its gate-check when no budget is defined ("No budget defined (fail-closed)"),
+// which silently blocks the workflow from ever generating emails — the campaign hangs
+// "ongoing" and the scheduler re-fires the Windmill flow every tick. maxLeads:3 is the real
+// bound (auto-stops after 3 leads); this small total cap satisfies the gate and acts as a
+// safety ceiling that a 3-lead run never reaches.
+const TEST_RUN_BUDGET_USD = "5";
+
 export default function FeatureCreateCampaignPage() {
   const params = useParams();
   const orgId = params.orgId as string;
@@ -552,6 +560,7 @@ export default function FeatureCreateCampaignPage() {
         featureSlug,
         featureInputs: inputValues,
         maxLeads: 3,
+        maxBudgetTotalUsd: TEST_RUN_BUDGET_USD,
       } as unknown as Parameters<typeof createCampaign>[0]);
       setTests((t) => ({ ...t, [wf.id]: { campaignId: campaign.id, status: campaign.status, emails: [] } }));
     } catch (err) {
