@@ -48,6 +48,10 @@ describe("Campaigns list page — revenue/gains reorientation", () => {
     expect(src).toContain("!revenueEnabled");
   });
 
+  it("revenue features show the cost-distribution donut in place of reply breakdown", () => {
+    expect(src).toMatch(/revenueEnabled \?\s*\(\s*<CostBreakdown/);
+  });
+
   it("preserves the existing static-shell + time-ago guards", () => {
     expect(src).toContain("pending={!revealed}");
     expect(src).toContain("timeAgo(campaign.createdAt)");
