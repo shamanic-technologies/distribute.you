@@ -1,6 +1,10 @@
 "use client";
 
-import type { BatchRowState, BatchSummary } from "@/lib/batch-quote-reply";
+import {
+  BATCH_SCORE_THRESHOLD,
+  type BatchRowState,
+  type BatchSummary,
+} from "@/lib/batch-quote-reply";
 
 interface BatchReplyControlProps {
   /** Number of opportunities that pass the eligibility filter right now. */
@@ -63,7 +67,8 @@ export function BatchReplyControl({
           </h3>
           <p className="text-xs text-gray-500 mt-0.5">
             Generates and sends a pitch for every eligible opportunity
-            (relevance &gt; 30, not yet pitched) — one at a time.
+            (relevance &gt; {BATCH_SCORE_THRESHOLD}, not yet pitched) — one at a
+            time.
           </p>
         </div>
         <button
