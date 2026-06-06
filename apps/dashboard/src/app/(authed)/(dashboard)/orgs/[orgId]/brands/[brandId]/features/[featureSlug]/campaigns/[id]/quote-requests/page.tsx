@@ -85,7 +85,7 @@ function HitlQueuePage() {
     (k) => !featureInputs?.[k]?.trim(),
   );
 
-  // ── "Reply to all with AI" — batch over the eligible (score>30, un-pitched)
+  // ── "Reply to all with AI" — batch over the eligible (score>10, un-pitched)
   // opportunities, reusing the SAME per-opp generate→reply path the buttons run.
   // The loop lives in the browser (each generate + each reply is its own fetch);
   // see lib/batch-quote-reply.ts. Eligibility is computed off the raw catalog

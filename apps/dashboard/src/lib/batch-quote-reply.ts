@@ -9,10 +9,12 @@
 // unit-testable; the React hook (`use-batch-quote-reply.ts`) only wraps it
 // with state.
 
-/** Relevance floor for auto-firing a pitch. Mirrors journalists-quotes-service
- *  `/next` auto-submit gate (DIS-178: "/next auto-submit stays gated at 30").
- *  Strictly greater-than — a score of exactly 30 is NOT eligible. */
-export const BATCH_SCORE_THRESHOLD = 30;
+/** Relevance floor for the manual "Reply to all with AI" sweep. Lower than the
+ *  autonomous journalists-quotes-service `/next` auto-submit gate (still 30,
+ *  DIS-178) on purpose — a human clicking the batch button opts into a wider
+ *  net than the unattended run. Strictly greater-than — a score of exactly 10
+ *  is NOT eligible. */
+export const BATCH_SCORE_THRESHOLD = 10;
 
 export interface BatchEligibleInput {
   score: number;
