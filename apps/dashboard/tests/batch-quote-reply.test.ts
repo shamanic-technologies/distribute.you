@@ -19,12 +19,15 @@ class FakeApiError extends Error {
   }
 }
 
-describe("isEligibleForBatch — score>30 && pitchStatus===null", () => {
+describe("isEligibleForBatch — score>10 && pitchStatus===null", () => {
   it("eligible: high score, no pitch yet", () => {
     expect(isEligibleForBatch({ score: 95, pitchStatus: null })).toBe(true);
   });
-  it("excludes a score of exactly 30 (strict greater-than)", () => {
-    expect(isEligibleForBatch({ score: 30, pitchStatus: null })).toBe(false);
+  it("excludes a score of exactly 10 (strict greater-than)", () => {
+    expect(isEligibleForBatch({ score: 10, pitchStatus: null })).toBe(false);
+  });
+  it("includes a score of 11 (above the floor)", () => {
+    expect(isEligibleForBatch({ score: 11, pitchStatus: null })).toBe(true);
   });
   it("excludes an already-pitched opp", () => {
     expect(isEligibleForBatch({ score: 95, pitchStatus: "submitted" })).toBe(
@@ -43,10 +46,10 @@ describe("isEligibleForBatch — score>30 && pitchStatus===null", () => {
 });
 
 describe("selectEligibleOpportunities", () => {
-  it("keeps only score>30 && null rows, preserving order", () => {
+  it("keeps only score>10 && null rows, preserving order", () => {
     const opps = [
       { id: "a", score: 90, pitchStatus: null },
-      { id: "b", score: 10, pitchStatus: null }, // low score
+      { id: "b", score: 10, pitchStatus: null }, // exactly the floor — excluded
       { id: "c", score: 80, pitchStatus: "submitted" as const }, // pitched
       { id: "d", score: 31, pitchStatus: null },
     ];
