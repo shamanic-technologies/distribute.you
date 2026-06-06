@@ -11,6 +11,7 @@ import {
   EventConversionsTable,
 } from "@/components/revenue/conversions-table";
 import { RevenueCostSummary } from "@/components/revenue/revenue-cost-summary";
+import { Skeleton } from "@/components/skeleton";
 import type { CostByName } from "@/lib/api";
 import type { RevenueOverview } from "@/lib/revenue-view";
 
@@ -36,17 +37,24 @@ export function RevenueOverviewSection({
   data,
   conversionsHref,
   costBreakdown,
+  pending = false,
 }: {
-  data: RevenueOverview;
+  data?: RevenueOverview;
   conversionsHref: string;
   costBreakdown: CostByName[];
+  pending?: boolean;
 }) {
   const [tab, setTab] = useState<ConversionTab>("organizations");
   // Join each event's leadId → the lead's photo (same payload) for the Events tab.
   const photoByLeadId = useMemo(
-    () => new Map(data.leads.map((l) => [l.leadId, l.photoUrl] as const)),
-    [data.leads],
+    () => new Map((data?.leads ?? []).map((l) => [l.leadId, l.photoUrl] as const)),
+    [data?.leads],
   );
+  // Static-shell-first: the section header, card frames, titles and the tab bar
+  // render on the first paint; only the data regions (headline value, chart,
+  // tables) skeleton while loading. `loading` folds `pending` (the page's
+  // coordinated reveal) with a defensive `!data` guard.
+  const loading = pending || !data;
   return (
     <div className="space-y-4">
       <div className="flex items-end justify-between">
@@ -68,18 +76,30 @@ export function RevenueOverviewSection({
           <div className="flex items-baseline justify-between mb-4">
             <h3 className="font-medium text-gray-800">Pipeline revenue over time</h3>
             <div className="text-right">
-              <p className="text-2xl font-bold text-gray-900 leading-none">
-                {formatUsd(data.totalPipelineUsd)}
-              </p>
+              {loading ? (
+                <Skeleton className="h-8 w-28" />
+              ) : (
+                <p className="text-2xl font-bold text-gray-900 leading-none">
+                  {formatUsd(data.totalPipelineUsd)}
+                </p>
+              )}
               <p className="text-[11px] text-gray-400 mt-1">expected pipeline</p>
             </div>
           </div>
-          <RevenueChart series={data.timeSeries} />
+          {loading ? (
+            <Skeleton className="h-[260px] w-full rounded" />
+          ) : (
+            <RevenueChart series={data.timeSeries} />
+          )}
         </div>
 
         {/* Cost & efficiency — replaces the old org/lead/event counters with the
             spend metrics (total / cost-of-acquisition / ROI) + top-3 sources. */}
-        <RevenueCostSummary costBreakdown={costBreakdown} costEconomics={data.costEconomics} />
+        <RevenueCostSummary
+          costBreakdown={costBreakdown}
+          costEconomics={data?.costEconomics}
+          pending={loading}
+        />
       </div>
 
       {/* Conversions — Organizations / Leads / Events tabs (same set as the
@@ -102,10 +122,20 @@ export function RevenueOverviewSection({
           ))}
         </div>
 
-        {tab === "organizations" && <OrgConversionsTable orgs={data.organizations} />}
-        {tab === "leads" && <LeadConversionsTable leads={data.leads} />}
-        {tab === "events" && (
-          <EventConversionsTable events={data.events} photoByLeadId={photoByLeadId} />
+        {loading ? (
+          <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-9 w-full" />
+            ))}
+          </div>
+        ) : (
+          <>
+            {tab === "organizations" && <OrgConversionsTable orgs={data.organizations} />}
+            {tab === "leads" && <LeadConversionsTable leads={data.leads} />}
+            {tab === "events" && (
+              <EventConversionsTable events={data.events} photoByLeadId={photoByLeadId} />
+            )}
+          </>
         )}
       </div>
     </div>

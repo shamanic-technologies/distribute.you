@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { getPlatformPrices, type CostByName } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { ProviderLogo } from "@/components/provider-logo";
+import { Skeleton } from "@/components/skeleton";
 import type { CostEconomics } from "@/lib/revenue-view";
 
 /**
@@ -49,11 +50,13 @@ function InfoHint({ text }: { text: string }) {
 }
 
 export function RevenueCostSummary({
-  costBreakdown,
+  costBreakdown = [],
   costEconomics,
+  pending = false,
 }: {
-  costBreakdown: CostByName[];
-  costEconomics: CostEconomics;
+  costBreakdown?: CostByName[];
+  costEconomics?: CostEconomics;
+  pending?: boolean;
 }) {
   const { entries, totalCents } = useMemo(() => {
     const e = costBreakdown
@@ -86,8 +89,8 @@ export function RevenueCostSummary({
 
   // CAC % + ROI × come from features-service (single source) — null per its
   // documented semantics (pipeline null/0, or cost 0).
-  const cacPct = costEconomics.costOfAcquisitionPct;
-  const roiMultiple = costEconomics.roiMultiple;
+  const cacPct = costEconomics?.costOfAcquisitionPct;
+  const roiMultiple = costEconomics?.roiMultiple;
 
   // Right-of-chart column on the Overview: three stat cards (Total spent / Cost
   // of acquisition / ROI) replacing the old org/lead/event counters, plus a
@@ -96,32 +99,58 @@ export function RevenueCostSummary({
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-4">
+        {/* Card frames + labels render instantly; only the value waits. */}
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <p className="text-xs text-gray-400">Total spent</p>
-          <p className="mt-1 text-xl font-bold text-gray-900">{formatUsd(totalCostUsd)}</p>
+          {pending ? (
+            <Skeleton className="mt-1 h-7 w-24" />
+          ) : (
+            <p className="mt-1 text-xl font-bold text-gray-900">{formatUsd(totalCostUsd)}</p>
+          )}
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <p className="flex items-center gap-1 text-xs text-gray-400">
             Cost of acquisition
             <InfoHint text="Share of expected pipeline revenue spent to generate it: total cost ÷ expected revenue. Lower is better." />
           </p>
-          <p className="mt-1 text-xl font-bold text-gray-900">
-            {cacPct == null ? "—" : `${Math.round(cacPct)}%`}
-          </p>
+          {pending ? (
+            <Skeleton className="mt-1 h-7 w-16" />
+          ) : (
+            <p className="mt-1 text-xl font-bold text-gray-900">
+              {cacPct == null ? "—" : `${Math.round(cacPct)}%`}
+            </p>
+          )}
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <p className="flex items-center gap-1 text-xs text-gray-400">
             ROI
             <InfoHint text="Return multiple on spend: expected revenue ÷ total cost. 3× means each $1 spent is expected to return $3." />
           </p>
-          <p className="mt-1 text-xl font-bold text-gray-900">
-            {roiMultiple == null ? "—" : `${roiMultiple.toFixed(1)}×`}
-          </p>
+          {pending ? (
+            <Skeleton className="mt-1 h-7 w-16" />
+          ) : (
+            <p className="mt-1 text-xl font-bold text-gray-900">
+              {roiMultiple == null ? "—" : `${roiMultiple.toFixed(1)}×`}
+            </p>
+          )}
         </div>
       </div>
 
-      {/* Top-3 cost sources — provider logo + share, no $ amounts */}
-      {top3.length > 0 && (
+      {/* Top-3 cost sources — provider logo + share, no $ amounts. While pending,
+          show the framed label + three placeholder rows so the column structure
+          is present from the first paint. */}
+      {pending ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
+          <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Top cost sources</p>
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Skeleton className="h-4 w-4 rounded-full" />
+              <Skeleton className="h-4 flex-1" />
+              <Skeleton className="h-4 w-8" />
+            </div>
+          ))}
+        </div>
+      ) : top3.length > 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
           <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Top cost sources</p>
           {top3.map((s) => (
@@ -132,7 +161,7 @@ export function RevenueCostSummary({
             </div>
           ))}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

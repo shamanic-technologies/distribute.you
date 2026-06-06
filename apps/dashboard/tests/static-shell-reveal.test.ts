@@ -1,0 +1,78 @@
+import { describe, it, expect } from "vitest";
+import * as fs from "fs";
+import * as path from "path";
+
+const SRC = path.join(__dirname, "../src");
+const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
+
+/**
+ * Static-shell-first reveal: a data card renders its frame + title + labels on
+ * the first paint and skeletons ONLY the value/chart/number regions (gated by a
+ * `pending` flag). This is the intermediate tier between "all skeleton" and "all
+ * content". See CLAUDE.md → "Static-shell-first reveal".
+ */
+describe("static-shell-first: cards accept `pending` and skeleton only values", () => {
+  const cards = [
+    "components/revenue/revenue-cost-summary.tsx",
+    "components/revenue/revenue-overview-section.tsx",
+    "components/campaign/funnel-metrics.tsx",
+    "components/campaign/reply-breakdown.tsx",
+    "components/campaign/cost-breakdown.tsx",
+    "components/campaign/campaign-cost-distribution.tsx",
+    "components/campaign/leads-stats-panel.tsx",
+    "components/brand-metrics-header.tsx",
+    "components/visibility/score-card.tsx",
+    "components/visibility/visibility-runs-view.tsx",
+    "components/visibility/visibility-competitors-view.tsx",
+    "components/visibility/visibility-prompts-view.tsx",
+    "components/brand-usage.tsx",
+    "components/org-usage.tsx",
+  ];
+
+  it("every refactored card threads a pending/reveal flag and renders a Skeleton for values", () => {
+    for (const rel of cards) {
+      const src = read(rel);
+      // Either a `pending` prop (page-driven) or an internal `revealed` latch
+      // (self-managed, e.g. BrandMetricsHeader) sources the value-region gate.
+      expect(src, `${rel} must thread a pending/reveal flag`).toMatch(/pending|revealed/i);
+      expect(src, `${rel} must skeleton the value region`).toContain("Skeleton");
+    }
+  });
+
+  it("BrandMetricsHeader renders the 4 metric titles always (no whole-card skeleton gate)", () => {
+    const src = read("components/brand-metrics-header.tsx");
+    expect(src).toContain('title="Monthly visits"');
+    expect(src).toContain('title="Domain Rating"');
+    expect(src).toContain('title="Est. monthly revenue"');
+    expect(src).toContain('title="AI mentions"');
+    // The skeleton now lives INSIDE the card (value region), not as a whole-card
+    // early return — the title/frame paint before the value resolves.
+    expect(src).toMatch(/!revealed \?/);
+  });
+
+  it("RevenueCostSummary renders its labels outside the pending gate", () => {
+    const src = read("components/revenue/revenue-cost-summary.tsx");
+    // Labels are static text; values swap to Skeleton when pending.
+    expect(src).toContain("Total spent");
+    expect(src).toContain("Cost of acquisition");
+    expect(src).toMatch(/pending \? \(\s*<Skeleton/);
+  });
+});
+
+describe("static-shell-first: pages pass `pending`, not a whole-body skeleton swap", () => {
+  const APP = "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]";
+
+  it("feature overview renders the section always with pending (no CoordinatedReveal whole-body wrap)", () => {
+    const overview = read(`${APP}/overview/page.tsx`);
+    expect(overview).toContain("RevenueOverviewSection");
+    expect(overview).toContain("pending={!valuesRevealed}");
+  });
+
+  it("campaigns page renders charts with pending and drops the whole-body skeleton swap", () => {
+    const campaigns = read(`${APP}/campaigns/page.tsx`);
+    expect(campaigns).toContain("pending={!revealed}");
+    // The old separate whole-card skeleton components are no longer imported/used.
+    expect(campaigns).not.toContain("FunnelMetricsSkeleton");
+    expect(campaigns).not.toContain("CostBreakdownSkeleton");
+  });
+});
