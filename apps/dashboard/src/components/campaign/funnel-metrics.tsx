@@ -14,7 +14,7 @@ export function FunnelMetricsSkeleton() {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6 min-h-[200px]">
       <div className="h-5 w-32 bg-gray-200 rounded animate-pulse mb-6" />
-      <div className="flex items-end justify-between gap-3">
+      <div className="flex items-start justify-between gap-3">
         {[100, 85, 65, 50, 25, 10].map((h, i) => (
           <div key={i} className="flex-1 flex flex-col items-center">
             <div className="w-full flex justify-center" style={{ height: 128 }}>
@@ -51,7 +51,9 @@ export function FunnelMetrics({ steps, stats, registry, pending = false }: Funne
     <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6 min-h-[200px]">
       <h3 className="font-medium text-gray-800 mb-4 md:mb-6">Campaign Funnel</h3>
 
-      <div className="flex items-end justify-between gap-3">
+      {/* items-start + fixed-height bar containers → every bar bottom lands on
+          one baseline regardless of how many lines a label wraps to. */}
+      <div className="flex items-start justify-between gap-3">
         {resolved.map((step) => {
           const barHeight = Math.max((step.value / maxValue) * 100, 4);
           return (
@@ -72,7 +74,9 @@ export function FunnelMetrics({ steps, stats, registry, pending = false }: Funne
               <p className="mt-2 text-lg font-bold text-gray-800 leading-tight">
                 {pending ? <Skeleton className="h-5 w-8" /> : step.value.toLocaleString()}
               </p>
-              <p className="text-xs text-gray-500 leading-tight mt-0.5">{step.label}</p>
+              {/* Fixed two-line height so the value + %-rate rows stay aligned
+                  across columns whether a label wraps to one line or two. */}
+              <p className="text-xs text-gray-500 leading-tight mt-0.5 h-8">{step.label}</p>
               <p className="text-xs font-medium leading-tight mt-0.5 h-4">
                 {pending ? (
                   <Skeleton className="h-3 w-10" />
