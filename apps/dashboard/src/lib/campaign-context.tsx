@@ -36,7 +36,16 @@ const noop = () => {};
 export function CampaignProvider({ children, campaignId }: CampaignProviderProps) {
   const queryClient = useQueryClient();
 
-  const { data: campaignData, isLoading: campaignLoading } = useAuthQuery(
+  // Gate on isPending, NOT isLoading. The org-consistency gate in useAuthQuery
+  // disables the query (enabled:false) until Clerk's active org resolves and
+  // matches the URL org. A disabled v5 query reports isPending:true but
+  // isLoading:false (isLoading = isPending && isFetching, and isFetching is
+  // false while idle). Driving `loading` off isLoading would flip it false
+  // during that settle window with campaign still null → the page renders its
+  // "Campaign not found" red-cross flash before the fetch ever runs. isPending
+  // stays true until the query RESOLVES (success or error), so not-found shows
+  // only when the campaign genuinely doesn't exist.
+  const { data: campaignData, isPending: campaignLoading } = useAuthQuery(
     ["campaign", campaignId],
     () => getCampaign(campaignId),
     { refetchInterval: POLL_INTERVAL, placeholderData: keepPreviousData },

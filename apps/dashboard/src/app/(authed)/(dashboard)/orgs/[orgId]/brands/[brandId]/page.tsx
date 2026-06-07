@@ -122,7 +122,11 @@ export default function BrandOverviewPage() {
     [features, featuresAlphaOk],
   );
 
-  const { data: brandData, isLoading: brandLoading } = useAuthQuery(
+  // isPending (not isLoading): a query suspended by the org-consistency gate
+  // reports isLoading:false while still unresolved, which would flash "Brand
+  // not found" during the org-settle window. isPending stays true until the
+  // query actually resolves, so not-found shows only on a real empty result.
+  const { data: brandData, isPending: brandLoading } = useAuthQuery(
     ["brand", brandId],
     () => getBrand(brandId),
     pollOptions,

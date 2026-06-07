@@ -104,7 +104,12 @@ export default function BrandInfoPage() {
   const [selectedRun, setSelectedRun] = useState<BrandRun | null>(null);
   const queryClient = useQueryClient();
 
-  const { data: brandData, isLoading: brandLoading } = useAuthQuery(
+  // isPending (not isLoading): the org-consistency gate suspends these queries
+  // until Clerk's active org resolves; isLoading reads false during that window
+  // though brand/fields are still unresolved, so the skeleton guard below would
+  // fall through to "Brand not found". isPending stays true until each query
+  // resolves, keeping the page on its skeleton through the org-settle window.
+  const { data: brandData, isPending: brandLoading } = useAuthQuery(
     ["brand", brandId],
     () => getBrand(brandId),
     pollOptions,
@@ -112,7 +117,7 @@ export default function BrandInfoPage() {
   const brand = brandData?.brand ?? null;
   const brandName = brand?.name ?? null;
 
-  const { data: fieldsData, error: fieldsError, isLoading: fieldsLoading } = useAuthQuery(
+  const { data: fieldsData, error: fieldsError, isPending: fieldsLoading } = useAuthQuery(
     ["brandExtractedFields", brandId],
     () => listExtractedFields(brandId),
     pollOptions,
