@@ -7,7 +7,7 @@ import {
 } from "@/lib/performance/fetch-leaderboard";
 import { BrandLeaderboard } from "@/components/performance/leaderboard-table";
 
-const BENCHMARK_URL = "/benchmarks/sales-cold-email-outreach";
+const BENCHMARK_URL = "/performance";
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (

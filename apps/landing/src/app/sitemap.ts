@@ -1,7 +1,6 @@
 import { MetadataRoute } from "next";
 import { PROD_URLS } from "@/lib/env-urls";
 import { listArticles } from "@/lib/blog/db";
-import { fetchBenchmarkFeatures } from "@/lib/benchmarks/fetch-benchmark";
 
 // Sitemap is generated at build time. When DATABASE_URL is not configured
 // (e.g. CI build runners without a Neon binding) we skip article rows
@@ -18,16 +17,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     articles = rows.map((a) => ({ slug: a.slug, updatedAt: a.updatedAt }));
   }
 
-  // Benchmark pages are sourced from the api-service /public/features endpoint.
-  // If the API is unreachable at build time, log and ship the sitemap without
-  // per-feature rows — crawlers pick them up after the next deploy.
-  let benchmarkFeatures: { slug: string }[] = [];
-  try {
-    benchmarkFeatures = await fetchBenchmarkFeatures();
-  } catch (err) {
-    console.error("[landing] sitemap: benchmarks features fetch failed", err);
-  }
-
   const staticEntries: MetadataRoute.Sitemap = [
     {
       url: baseUrl,
@@ -39,6 +28,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${baseUrl}/pricing`,
       lastModified: new Date(),
       changeFrequency: "weekly",
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/performance`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
       priority: 0.9,
     },
     {
@@ -68,12 +63,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  const benchmarkEntries: MetadataRoute.Sitemap = benchmarkFeatures.map((f) => ({
-    url: `${baseUrl}/benchmarks/${f.slug}`,
-    lastModified: new Date(),
-    changeFrequency: "daily",
-    priority: 0.8,
-  }));
-
-  return [...staticEntries, ...articleEntries, ...benchmarkEntries];
+  return [...staticEntries, ...articleEntries];
 }
