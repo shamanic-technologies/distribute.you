@@ -87,9 +87,9 @@ describe("Conversion events show lead photos (item 5)", () => {
     expect(conversions).toContain("onError={() => setBroken(true)}");
   });
 
-  it("both event-table callers pass the photo map", () => {
-    expect(conversionsPage).toContain("photoByLeadId={photoByLeadId}");
-    expect(reportRevenue).toContain("photoByLeadId={photoByLeadId}");
+  it("the Events tab/section is removed from the conversions page + public report", () => {
+    expect(conversionsPage).not.toContain("EventConversionsTable");
+    expect(reportRevenue).not.toContain("EventConversionsTable");
   });
 });
 

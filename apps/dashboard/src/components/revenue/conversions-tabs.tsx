@@ -1,26 +1,24 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   OrgConversionsTable,
   LeadConversionsTable,
-  EventConversionsTable,
 } from "@/components/revenue/conversions-table";
 import { Skeleton } from "@/components/skeleton";
 import type { RevenueOverview } from "@/lib/revenue-view";
 
-type ConversionTab = "organizations" | "leads" | "events";
+type ConversionTab = "organizations" | "leads";
 const CONVERSION_TABS: { id: ConversionTab; label: string }[] = [
   { id: "organizations", label: "Organizations" },
   { id: "leads", label: "Leads" },
-  { id: "events", label: "Events" },
 ];
 
 /**
- * The Organizations / Leads / Events conversion tabs — shared by the feature
- * Overview and the campaign page so both render the identical table set (each
- * table paginates 20/page). The tab bar is static shell (renders on the first
- * paint); only the table body skeletons while `pending` or data is absent.
+ * The Organizations / Leads conversion tabs — shared by the feature Overview
+ * and the campaign page so both render the identical table set (each table
+ * paginates 20/page). The tab bar is static shell (renders on the first paint);
+ * only the table body skeletons while `pending` or data is absent.
  */
 export function ConversionsTabs({
   data,
@@ -30,11 +28,6 @@ export function ConversionsTabs({
   pending?: boolean;
 }) {
   const [tab, setTab] = useState<ConversionTab>("organizations");
-  // Join each event's leadId → the lead's photo (same payload) for the Events tab.
-  const photoByLeadId = useMemo(
-    () => new Map((data?.leads ?? []).map((l) => [l.leadId, l.photoUrl] as const)),
-    [data?.leads],
-  );
   const loading = pending || !data;
   return (
     <div className="space-y-3">
@@ -65,9 +58,6 @@ export function ConversionsTabs({
         <>
           {tab === "organizations" && <OrgConversionsTable orgs={data.organizations} />}
           {tab === "leads" && <LeadConversionsTable leads={data.leads} />}
-          {tab === "events" && (
-            <EventConversionsTable events={data.events} photoByLeadId={photoByLeadId} />
-          )}
         </>
       )}
     </div>
