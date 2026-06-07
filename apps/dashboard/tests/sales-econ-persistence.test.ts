@@ -50,14 +50,27 @@ describe("Brand sales-economics persistence", () => {
     }
   });
 
-  it("page imports both wrappers", () => {
-    expect(pageContent).toContain("getBrandSalesEconomics");
+  it("prefills from the effective endpoint in ONE call (source-aware)", () => {
+    expect(apiContent).toContain("export async function getSalesEconomicsEffective");
+    expect(apiContent).toContain("/sales-economics-effective");
+    expect(pageContent).toContain("getSalesEconomicsEffective");
     expect(pageContent).toContain("saveBrandSalesEconomics");
   });
 
-  it("page registers the brandSalesEconomics query gated to the sales funnel", () => {
-    expect(pageContent).toContain('["brandSalesEconomics", brandId]');
+  it("page registers the effective query gated to the sales funnel", () => {
+    expect(pageContent).toContain('["salesEconomicsEffective", brandId]');
     expect(pageContent).toContain("enabled: isSalesFunnel");
+  });
+
+  it("distinguishes estimate vs saved via the source field", () => {
+    expect(pageContent).toContain('"cross-brand-average"');
+    expect(pageContent).toContain("econSource");
+  });
+
+  it("no client-side cross-brand-average fallback remains (server owns it now)", () => {
+    expect(apiContent).not.toContain("getSalesEconomicsAverage");
+    expect(apiContent).not.toContain("/sales-economics-average");
+    expect(pageContent).not.toContain("getSalesEconomicsAverage");
   });
 
   it("mutation writes the fresh entity into the single-entity cache (rule #1090)", () => {

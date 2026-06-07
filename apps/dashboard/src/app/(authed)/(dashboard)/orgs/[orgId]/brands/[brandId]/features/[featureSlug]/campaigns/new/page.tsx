@@ -15,9 +15,9 @@ import {
   sendCampaignEmail,
   getBrand,
   listBrands,
-  getBrandSalesEconomics,
-  getSalesEconomicsAverage,
+  getSalesEconomicsEffective,
   saveBrandSalesEconomics,
+  type SalesEconomicsSource,
   type BrandSalesEconomicsInput,
   getWorkflowKeyStatus,
   prefillFeatureInputs,
@@ -352,53 +352,39 @@ export default function FeatureCreateCampaignPage() {
   const [budgetTier, setBudgetTier] = useState<BudgetTier>("recommended");
   const [budgetCustom, setBudgetCustom] = useState("");
   const salesPrefilledRef = useRef(false);
+  // Provenance of the prefilled metrics, for the section-2 badge: "user" = brand's own
+  // saved set, "cross-brand-average" = estimate borrowed from other brands, null =
+  // hard-coded defaults (empty table). Flips to "user" on first manual edit.
+  const [econSource, setEconSource] = useState<SalesEconomicsSource | null>(null);
 
-  // ── Persist the brand's sales economics (auto-upsert per brand, no Save button) ──
-  // Load on mount (sales path only): seed the 5 inputs from the saved set. When the
-  // brand has saved nothing, seed from the cross-brand average instead of the
-  // hard-coded SALES_ECON_DEFAULTS (a better first guess). A debounced PUT mirrors
+  // ── Prefill the brand's sales economics (auto-upsert per brand, no Save button) ──
+  // ONE call: brand-service returns the effective set — the brand's saved values
+  // (source "user"), the cross-brand average when nothing is saved
+  // (source "cross-brand-average"), or { economics: null } for an empty table
+  // (source null → keep the hard-coded SALES_ECON_DEFAULTS). A debounced PUT mirrors
   // every edit back to brand-service.
   const { data: salesEconData } = useAuthQuery(
-    ["brandSalesEconomics", brandId],
-    () => getBrandSalesEconomics(brandId),
-    { enabled: isSalesFunnel },
-  );
-  // Cross-brand average — only needed as the fallback when this brand has no saved
-  // set. Global (not brand-scoped), so a single shared query key.
-  const { data: salesEconAvgData } = useAuthQuery(
-    ["salesEconomicsAverage"],
-    () => getSalesEconomicsAverage(),
+    ["salesEconomicsEffective", brandId],
+    () => getSalesEconomicsEffective(brandId),
     { enabled: isSalesFunnel },
   );
   const econHydrated = useRef(false);
   useEffect(() => {
     if (!isSalesFunnel || econHydrated.current || salesEconData === undefined) return;
-    const e = salesEconData.salesEconomics;
+    const e = salesEconData.economics;
     if (e) {
       setEconLtv(String(e.lifetimeRevenueUsd));
       setEconReplyToMeeting(String(e.replyToMeetingPct));
       setEconVisitToMeeting(String(e.visitToMeetingPct));
       setEconMeetingToClose(String(e.meetingToClosePct));
       setEconClickToClose(String(e.visitToClosePct));
-      // Saved set present — hydrate now; the average is irrelevant.
-      econHydrated.current = true;
-      return;
+      setEconSource(salesEconData.source);
     }
-    // No saved set: wait for the cross-brand average before seeding, so we don't
-    // latch the hard-coded defaults and then ignore the average when it arrives.
-    if (salesEconAvgData === undefined) return;
-    const a = salesEconAvgData.averages;
-    if (a) {
-      setEconLtv(String(a.lifetimeRevenueUsd));
-      setEconReplyToMeeting(String(a.replyToMeetingPct));
-      setEconVisitToMeeting(String(a.visitToMeetingPct));
-      setEconMeetingToClose(String(a.meetingToClosePct));
-      setEconClickToClose(String(a.visitToClosePct));
-    }
-    // Mark hydrated even when the average is null (empty table → keep
-    // SALES_ECON_DEFAULTS) so later background refetches never clobber edits.
+    // Mark hydrated even when economics is null (empty table → keep
+    // SALES_ECON_DEFAULTS, econSource stays null) so later background refetches
+    // never clobber edits.
     econHydrated.current = true;
-  }, [isSalesFunnel, salesEconData, salesEconAvgData]);
+  }, [isSalesFunnel, salesEconData]);
 
   const { mutate: mutateSalesEcon } = useMutation({
     mutationFn: (input: BrandSalesEconomicsInput) => saveBrandSalesEconomics(brandId, input),
@@ -431,6 +417,8 @@ export default function FeatureCreateCampaignPage() {
     else if (field === "visitToMeeting") setEconVisitToMeeting(value);
     else if (field === "meetingToClose") setEconMeetingToClose(value);
     else setEconClickToClose(value);
+    // User edited a value → these are now the brand's own numbers, not an estimate.
+    if (econSource !== "user") setEconSource("user");
 
     if (!isSalesFunnel) return;
     if (econSaveTimer.current) clearTimeout(econSaveTimer.current);
@@ -1427,6 +1415,17 @@ export default function FeatureCreateCampaignPage() {
                 <span className="w-5 h-5 inline-flex items-center justify-center text-[11px] font-bold text-white bg-brand-500 rounded-full">2</span>
                 <h2 className="font-display font-semibold text-gray-800">Your conversion metrics</h2>
               </div>
+              {isSalesFunnel && econReady && econSource === "cross-brand-average" && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-1 text-[11px] font-medium text-amber-700">
+                  <SparklesIcon className="w-3 h-3" />
+                  Estimated · average of your other brands
+                </span>
+              )}
+              {isSalesFunnel && econReady && econSource === "user" && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-gray-50 border border-gray-200 px-2.5 py-1 text-[11px] font-medium text-gray-500">
+                  Your saved values
+                </span>
+              )}
             </div>
             <div className="p-5">
               <p className="text-sm text-gray-500 mb-4">Reused across every sales campaign for this brand</p>
