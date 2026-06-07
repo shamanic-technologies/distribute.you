@@ -4,17 +4,17 @@ import { PROD_URLS } from "@/lib/env-urls";
 
 const SITE_URL = PROD_URLS.landing;
 const SITE_NAME = "distribute";
-const SITE_DESCRIPTION = "Client Acquisition, on Autopilot. Sales, PR, VCs, hiring, accelerators — one dashboard. Drop a URL, set a budget, we send. AI qualifies replies and forwards positives to your Gmail. $25 welcome credits, no subscription.";
+const SITE_DESCRIPTION = "Cold email outreach, on autopilot. Drop a URL, set a budget — we find your buyers, write personalized cold emails, and send from warmed inboxes. AI qualifies replies and forwards positives to your Gmail. $25 welcome credits, no subscription.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "distribute — Client Acquisition, on Autopilot",
+    default: "distribute — Cold Email Outreach, on Autopilot",
     template: "%s | distribute",
   },
   description: SITE_DESCRIPTION,
   keywords: [
-    "client acquisition on autopilot",
+    "cold email outreach on autopilot",
     "multi-product distribution",
     "solo founder distribution",
     "indie hacker outreach",
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     "AI reply qualification",
     "pay-as-you-go cold email",
     "no subscription cold email",
-    "Stripe of Client Acquisition",
+    "Sales Automation",
     "distribute.you",
     "portfolio distribution dashboard",
   ],
@@ -42,21 +42,21 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: "distribute — Client Acquisition, on Autopilot",
-    description: "One dashboard for every distribution channel. Drop a URL, set a budget — we send, qualify, forward. $25 welcome credits, no subscription.",
+    title: "distribute — Cold Email Outreach, on Autopilot",
+    description: "Cold email outreach, on autopilot. Drop a URL, set a budget — we find your buyers, send, qualify, and forward the replies worth reading. $25 welcome credits, no subscription.",
     images: [
       {
         url: "/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "distribute — Client Acquisition, on Autopilot",
+        alt: "distribute — Cold Email Outreach, on Autopilot",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "distribute — Client Acquisition, on Autopilot",
-    description: "One dashboard. Sales, PR, VCs, hiring, accelerators. Drop a URL, set a budget — we send, qualify, forward.",
+    title: "distribute — Cold Email Outreach, on Autopilot",
+    description: "Cold email outreach, on autopilot. Drop a URL, set a budget — we find your buyers, send, qualify, and forward the replies worth reading.",
     images: ["/og-image.jpg"],
     creator: "@distribute_you",
   },
@@ -114,7 +114,7 @@ const organizationJsonLd = {
   "@type": "Organization",
   name: "distribute",
   url: SITE_URL,
-  description: "The Stripe of Client Acquisition",
+  description: "Sales Automation",
   sameAs: [
     PROD_URLS.github,
     PROD_URLS.twitter,

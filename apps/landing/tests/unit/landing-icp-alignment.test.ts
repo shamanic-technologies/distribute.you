@@ -4,7 +4,6 @@ import * as path from "path";
 
 const landingPagePath = path.resolve(__dirname, "../../src/app/page.tsx");
 const pricingPagePath = path.resolve(__dirname, "../../src/app/pricing/page.tsx");
-const performancePagePath = path.resolve(__dirname, "../../src/app/performance/page.tsx");
 const investorsPagePath = path.resolve(__dirname, "../../src/app/investors/page.tsx");
 const featuresPath = path.resolve(__dirname, "../../../../shared/content/src/features.ts");
 const portfolioDashboardPath = path.resolve(
@@ -36,11 +35,6 @@ describe("Landing page: ICP-only alignment", () => {
     expect(page).not.toMatch(/rounded-3xl[^"]*p-2[^"]*shadow-2xl/);
   });
 
-  it("renders the new PortfolioDashboard component", () => {
-    expect(page).toMatch(/<PortfolioDashboard/);
-    expect(page).toMatch(/from\s+["']@\/components\/portfolio-dashboard["']/);
-  });
-
   it("renders the GmailInbox component instead of phone push", () => {
     expect(page).toMatch(/<GmailInbox/);
     expect(page).toMatch(/from\s+["']@\/components\/gmail-inbox["']/);
@@ -49,17 +43,6 @@ describe("Landing page: ICP-only alignment", () => {
   it("renders the FreeVsCloud 2-tier component", () => {
     expect(page).toMatch(/<FreeVsCloud/);
     expect(page).toMatch(/from\s+["']@\/components\/free-vs-cloud["']/);
-  });
-
-  it("renders the WorkflowRecipe component", () => {
-    expect(page).toMatch(/<WorkflowRecipe/);
-    expect(page).toMatch(/from\s+["']@\/components\/workflow-recipe["']/);
-  });
-
-  it("includes the 'Ship more. Scale what works.' aspiration section (no solo-celebration)", () => {
-    expect(page).toMatch(/Ship more\.\s*<span[^>]*>Scale what works\./i);
-    expect(page).not.toMatch(/Stay solo\.\s*<span/);
-    expect(page).not.toMatch(/not businesses/i);
   });
 
   it("does NOT celebrate staying solo in the aspiration paragraph", () => {
@@ -75,10 +58,11 @@ describe("Landing page: ICP-only alignment", () => {
     expect(page).toMatch(/\$25.*credit|credit.*\$25/i);
   });
 
-  it("computes liveCount from features and renders 'channels live' line + hero tagline", () => {
-    expect(page).toMatch(/liveCount/);
-    expect(page).toMatch(/channels live/);
-    expect(page).toMatch(/sales automation/);
+  it("renders the cold-email hero + Sales Automation tag (no multi-channel grid)", () => {
+    expect(page).toMatch(/Cold Email Outreach,/);
+    expect(page).toMatch(/Sales Automation/);
+    expect(page).not.toMatch(/channels live/);
+    expect(page).not.toMatch(/DISTRIBUTION_FEATURES/);
   });
 });
 
@@ -224,8 +208,8 @@ describe("Pricing page: ICP framing", () => {
 describe("Landing page: industry stats section", () => {
   const page = fs.readFileSync(landingPagePath, "utf-8");
 
-  it("uses the broadened 'Why distribution kills most products' h2 (no 'solo' qualifier)", () => {
-    expect(page).toMatch(/Why distribution kills most products/);
+  it("uses the cold-email-focused 'Why most cold email never gets read' h2", () => {
+    expect(page).toMatch(/Why most cold email never gets read/);
     expect(page).not.toMatch(/Why distribution kills most solo products/);
   });
 
@@ -352,15 +336,6 @@ describe("benchmarks-content: SALES ctaClosing rewritten", () => {
   it("replaces 'Stay solo. Go big.' with 'Ship more. Scale what works.' for sales-cold-email", () => {
     expect(content).not.toMatch(/headline:\s*"Stay solo\. Go big\.",/);
     expect(content).toMatch(/headline:\s*"Ship more\. Scale what works\.",/);
-  });
-});
-
-describe("Performance page: cost-per-positive-reply framing", () => {
-  const content = fs.readFileSync(performancePagePath, "utf-8");
-
-  it("hero frames the leaderboard by cost per positive reply (no bare 'CAC')", () => {
-    expect(content).toMatch(/cost per positive reply/i);
-    expect(content).not.toMatch(/\bCAC\b/);
   });
 });
 

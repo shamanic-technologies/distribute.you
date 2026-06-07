@@ -58,6 +58,10 @@ interface FeatureListResponse {
   features: RawFeature[];
 }
 
+// Public landing sells one product: sales cold email outreach. Other channels
+// stay alpha (dashboard-only), so /benchmarks surfaces sales only.
+const PUBLIC_BENCHMARK_SLUGS = ["sales-cold-email-outreach"];
+
 export const fetchBenchmarkFeatures = unstable_cache(
   async (hostname = ""): Promise<BenchmarkFeature[]> => {
     const apiUrl = resolveApiUrl(hostname);
@@ -73,7 +77,10 @@ export const fetchBenchmarkFeatures = unstable_cache(
     }
     const data: FeatureListResponse = await res.json();
     const live = data.features.filter(
-      (f) => f.implemented === true && f.status === "active",
+      (f) =>
+        f.implemented === true &&
+        f.status === "active" &&
+        PUBLIC_BENCHMARK_SLUGS.includes(f.slug),
     );
     return live
       .map((f) => {

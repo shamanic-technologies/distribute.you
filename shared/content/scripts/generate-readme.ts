@@ -34,7 +34,7 @@ function generateRootReadme(): string {
 
 ## What is ${BRAND.name}?
 
-${BRAND.name} is the Stripe of Client Acquisition. Create an account, give us your URL — we automate your entire distribution layer with AI workflows ranked by real performance data.
+${BRAND.name} is sales automation, done for you. Create an account, give us your URL — we run your cold email outreach with AI workflows ranked by real performance data.
 
 ## Distribution Features
 

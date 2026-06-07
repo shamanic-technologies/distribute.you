@@ -261,7 +261,7 @@ const SECTIONS: SectionDef[] = [
         <p>
           <strong>Public leaderboards.</strong> {SERVICE} publishes campaign
           performance data on public-facing surfaces, including our marketing
-          pages, public leaderboards (e.g. /performance, /benchmarks), blog
+          pages, public leaderboards (e.g. /performance), blog
           posts, social media, investor decks, partner materials, and machine
           -readable feeds (sitemap, JSON-LD, API endpoints such as
           /v1/public/features/ranked). Published data may include, without

@@ -250,6 +250,24 @@ Applied to the dense surfaces (brand overview, org overview, brands list, brand-
 
 Clerk's `organization.imageUrl` / `user.imageUrl` is **never null** — when nothing is uploaded Clerk returns a generated gradient-initials avatar hosted on `img.clerk.com`. So `imageUrl ? <img> : <initial>` ALWAYS renders Clerk's default, and an `onError → initial` fallback never fires for it (the default image loads fine). To show a real uploaded logo only, gate on the **`hasImage: boolean`** discriminator (true only for a deliberate upload). For orgs without an upload, prefer a logo.dev logo keyed on the org's domain (onboarding sets org `name` = brand domain → `OrgAvatar.orgDomainFromName` in `breadcrumb-nav.tsx`), else the initial badge — never Clerk's default gradient. (#1321 shipped the default by mistake; #1327 fixed it.)
 
+### Public marketing pages — SEO + AI-scraper rendering
+
+For any public landing/marketing/docs page (anything under `apps/landing/`, `apps/sales-cold-emails-landing/`, `apps/docs/`), the default rendering strategy is **ISR + `unstable_cache` + edge cache**, NEVER Suspense streaming on indexable content.
+
+Why: Next.js streaming SSR injects content into `<template>` blocks resolved by client-side JS. Googlebot (Chromium-headless) executes JS and sees the resolved content, but **AI scrapers (GPTBot, ClaudeBot, PerplexityBot, Bingbot AI, curl-like crawlers) parse raw HTML only** — they receive the skeleton fallback, not the data. Putting leaderboards, benchmarks, blog lists, stats behind `<Suspense>` kills AI Search indexing for the very content that earns AI Search traffic.
+
+Concrete rules:
+
+1. **No `<Suspense>` on indexable content.** Hero copy, h1/h2, body text, JSON-LD blocks, leaderboards, benchmark tables, blog cards, stats — all SSR-sync in the byte stream. Suspense reserved for user-specific, non-indexable widgets (logged-in dashboards, real-time counters, chat).
+2. **Never combine `force-dynamic` with `revalidate`.** `force-dynamic` wins and ISR is silently disabled. Prefer ISR (`export const revalidate = N`) alone; let `unstable_cache` + graceful build-time empty-result handle the missing-config case.
+3. **Calling `headers()` or `cookies()` in a page forces dynamic rendering** even with `revalidate` set. Drop them if the page can be ISR-prerendered (resolve hostname-dependent URLs from `NEXT_PUBLIC_*` env vars instead).
+4. **Wrap every fetch / DB call used by a public page in `unstable_cache`** with explicit tags. Edge cache (`s-maxage / stale-while-revalidate`) provides instant HTML; `unstable_cache` provides instant data on the rebuild after invalidation. Both stack.
+5. **Invalidate via `revalidateTag(tag, profile)`** in the publish/update flow (webhooks, admin forms). Next 16.2+ requires the 2nd arg `profile: 'default' | 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'max' | CacheLifeConfig`. Pass `"default"` for ordinary invalidations.
+6. **`unstable_cache` at module top level breaks vitest** because the wrapping runs at import time before `vi.doMock` can intercept. Mock `next/cache` globally via `apps/landing/tests/setup.ts` (`unstable_cache` → pass-through identity, `revalidatePath` / `revalidateTag` → `vi.fn()`); declare `setupFiles: ["tests/setup.ts"]` in `vitest.config.ts`.
+7. **Validate scraper output after any caching change** with `apps/landing/scripts/seo-snapshot.sh [BASE_URL]` (counts `<h1>`, `<h2>`, `<article>`, JSON-LD blocks under a `GPTBot` user-agent) and `apps/landing/scripts/measure-ttfb.sh [BASE_URL]` (warm/cold TTFB per route). Both pre- and post-change snapshots in the PR description.
+
+Incident 2026-05-24 (distribute.you#1153): pre-refactor, `/blog` TTFB was 1.5–2.3s because `force-dynamic` overrode `revalidate = 60` and every visit hit Neon directly. `/benchmarks` was dynamic because `headers()` was called for hostname resolution. `/investors` took 6–8s end-to-end because metrics were `cache: "no-store"`. Three loading.tsx files existed but were never reachable (page components weren't async-suspended). Single PR flipped 8+ routes from `ƒ Dynamic` to `○ Static` ISR with `unstable_cache` + tag invalidation; no Suspense or skeleton was added on any indexable content.
+
 ### Dynasty-First Display Rule (Workflows Only)
 
 Always display `dynastyName` for workflows, never the versioned name — exception: settings/debug panels (show the version + versioned name alongside). Applies to titles, rows, cards, breadcrumbs. Features have no dynasty — they use `slug` + `name` directly.
