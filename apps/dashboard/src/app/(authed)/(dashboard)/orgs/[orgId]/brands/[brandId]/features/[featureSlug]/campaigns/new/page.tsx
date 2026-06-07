@@ -216,6 +216,23 @@ function TestEmailCard({ email, expanded, onToggle }: { email: TestEmailCardData
   );
 }
 
+// Placeholder card shown while the selected workflow's examples fetch — mirrors the
+// collapsed TestEmailCard layout (lead row + subject + 3 body lines) for zero shift.
+function ExampleEmailSkeleton() {
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <Skeleton className="h-3.5 w-40" />
+        <Skeleton className="h-3.5 w-3.5 shrink-0" />
+      </div>
+      <Skeleton className="h-3 w-32 mt-1.5" />
+      <Skeleton className="h-2.5 w-full mt-1.5" />
+      <Skeleton className="h-2.5 w-5/6 mt-1" />
+      <Skeleton className="h-2.5 w-2/3 mt-1" />
+    </div>
+  );
+}
+
 function InfoLabel({ label, tip }: { label: string; tip: string }) {
   return (
     <span className="inline-flex items-center gap-1">
@@ -697,7 +714,16 @@ export default function FeatureCreateCampaignPage() {
     [rows, modalSelectedWorkflowId],
   );
   const exampleWfSlug = modalSelectedWf?.workflowSlug ?? null;
-  const { data: examplesData, isPending: examplesPending } = useAuthQuery(
+  const {
+    data: examplesData,
+    isPending: examplesPending,
+    // keepPreviousData (global) keeps the PREVIOUS workflow's emails in `examplesData`
+    // while the newly-selected workflow's examples fetch. `isPlaceholderData` is true
+    // exactly in that window — the shown data belongs to a different workflow, so we
+    // paint skeletons instead of stale emails. (`isPending` only fires on the first
+    // cold load when no previous data exists.)
+    isPlaceholderData: examplesIsPlaceholder,
+  } = useAuthQuery(
     ["workflowExamples", exampleWfSlug, brandId],
     async () => {
       try {
@@ -709,6 +735,29 @@ export default function FeatureCreateCampaignPage() {
     },
     { enabled: showWorkflowPicker && !!exampleWfSlug && !!brandId, staleTime: 60_000 },
   );
+
+  // Prefetch examples for every visible workflow the moment the picker opens, so
+  // switching from one workflow to another is INSTANT (cache hit, staleTime 60s)
+  // instead of a ~2s cold fetch. Mirrors the on-demand query's key + fail-soft shape.
+  useEffect(() => {
+    if (!showWorkflowPicker || !brandId) return;
+    for (const r of rows) {
+      if (!r.workflowSlug) continue;
+      const slug = r.workflowSlug;
+      queryClient.prefetchQuery({
+        queryKey: ["workflowExamples", slug, brandId],
+        queryFn: async () => {
+          try {
+            return await listWorkflowExamples(slug, brandId, 3);
+          } catch (err) {
+            console.error("[dashboard] workflow examples prefetch failed:", err);
+            return { examples: [] as WorkflowExampleEmail[] };
+          }
+        },
+        staleTime: 60_000,
+      });
+    }
+  }, [showWorkflowPicker, brandId, rows, queryClient]);
 
   const runWorkflowTest = useCallback(async (wf: WorkflowTableRow) => {
     const baseUrl = brand?.url ?? "";
@@ -1723,6 +1772,10 @@ export default function FeatureCreateCampaignPage() {
                       const liveTest = !!t || starting;
                       const showExamples = !liveTest;
                       const cards: TestEmailCardData[] = showExamples ? examples : testEmails;
+                      // Loading window = first cold load OR switching workflows (placeholder = the
+                      // previous workflow's emails kept by keepPreviousData). Paint skeletons, never
+                      // the stale cards. A warm re-click (cache hit < 60s) skips this → instant.
+                      const examplesLoading = showExamples && (examplesPending || examplesIsPlaceholder);
                       return (
                         <div>
                           <div className="flex items-center justify-between gap-2 pb-3 mb-3 border-b border-gray-200">
@@ -1751,15 +1804,23 @@ export default function FeatureCreateCampaignPage() {
                           {(active || starting) && testEmails.length === 0 && !t?.error && <p className="text-sm text-gray-500 py-6 text-center">Generating emails…</p>}
                           {/* Terminal: the run finished (stopped) but produced no emails — say so instead of an empty panel. */}
                           {!!t && !active && !starting && testEmails.length === 0 && !t.error && <p className="text-sm text-gray-500 py-6 text-center">No emails were generated for this test.</p>}
-                          {showExamples && examplesPending && <p className="text-sm text-gray-500 py-6 text-center">Loading examples…</p>}
-                          {showExamples && !examplesPending && examples.length === 0 && <p className="text-sm text-gray-500 py-6 text-center">No examples yet. Run a test to preview real emails for this workflow.</p>}
-                          <div className="space-y-2">
-                            {cards.map((e) => (
-                              <TestEmailCard key={e.id} email={e}
-                                expanded={expandedTestEmailId === e.id}
-                                onToggle={() => setExpandedTestEmailId((cur) => (cur === e.id ? null : e.id))} />
-                            ))}
-                          </div>
+                          {examplesLoading && (
+                            <div className="space-y-2">
+                              <ExampleEmailSkeleton />
+                              <ExampleEmailSkeleton />
+                              <ExampleEmailSkeleton />
+                            </div>
+                          )}
+                          {showExamples && !examplesLoading && examples.length === 0 && <p className="text-sm text-gray-500 py-6 text-center">No examples yet. Run a test to preview real emails for this workflow.</p>}
+                          {!examplesLoading && (
+                            <div className="space-y-2">
+                              {cards.map((e) => (
+                                <TestEmailCard key={e.id} email={e}
+                                  expanded={expandedTestEmailId === e.id}
+                                  onToggle={() => setExpandedTestEmailId((cur) => (cur === e.id ? null : e.id))} />
+                              ))}
+                            </div>
+                          )}
                         </div>
                       );
                     })()}
