@@ -75,10 +75,10 @@ describe("Landing page: ICP-only alignment", () => {
     expect(page).toMatch(/\$25.*credit|credit.*\$25/i);
   });
 
-  it("computes liveCount from features and renders 'channels live' line + Stripe analogy", () => {
+  it("computes liveCount from features and renders 'channels live' line + hero tagline", () => {
     expect(page).toMatch(/liveCount/);
     expect(page).toMatch(/channels live/);
-    expect(page).toMatch(/Stripe of Client Acquisition/);
+    expect(page).toMatch(/sales automation/);
   });
 });
 
