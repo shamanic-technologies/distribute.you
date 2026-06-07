@@ -15,6 +15,18 @@ body {
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
+/*
+ * Defense-in-depth: never let a stray child (decorative -inset glow, fixed-width
+ * mockup, wide table) produce body-level horizontal scroll on mobile.
+ * `clip` (not `hidden`) because `hidden` makes html/body a scroll container and
+ * breaks `position: sticky` descendants (the navbar). `clip` clips without
+ * creating a scroll container. Curative fixes still happen at the element level
+ * (verified by scripts/overflow-audit.mjs); this is the safety net.
+ */
+html {
+  overflow-x: clip;
+}
+
 h1, h2, h3, .font-display {
   font-family: "Fredoka", system-ui, -apple-system, sans-serif;
 }

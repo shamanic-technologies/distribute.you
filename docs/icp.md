@@ -68,11 +68,11 @@ He buys **time** and **leverage**, not a tool.
 
 | Dimension | Value |
 |---|---|
-| Margin tolerance | 2x+ accepted if: public unit prices + no subscription + open source + $2 welcome credits |
+| Margin tolerance | 2x+ accepted if: public unit prices + no subscription + open source + $25 welcome credits |
 | Preferred model | Pay-as-you-go prepaid credits (AWS / OpenAI style) |
 | Trust triangle | (1) Public unit prices on 50+ primitives (2) Open source on GitHub, 20+ repos (3) Public CAC at `/performance` |
 | Self-host | Knows it exists. Never activates in practice (too complex, 20+ repos). Reassurance is enough. |
-| $2 welcome credits | Perfect tasting amount. Covers 1-2 micro preview campaigns. |
+| $25 welcome credits | Perfect tasting amount. Covers 1-2 micro preview campaigns. |
 
 ### Relationship with the founder
 
@@ -136,7 +136,7 @@ Layer 3 — OUTCOMES (derived, measured a posteriori)
 Claims that can be made on landing without "coming soon" caveats:
 
 - 9 channels live (Sales · PR · VC · Hiring · Accelerators · PR Expert Quote · Outlet Discovery · Press Kit · AI Visibility)
-- $2 welcome credits
+- $25 welcome credits
 - AI reply qualification + Gmail forwarding (manual on the founder's side today, transparent to users)
 - Managed sender infrastructure (warmed agency address)
 - Multi-brand UI in the dashboard
@@ -154,5 +154,5 @@ Caveat: positive-reply stats on `/performance` currently understate reality beca
 - **Writing landing copy:** target Théo. Every section must answer "is this useful for Théo?". If not, cut.
 - **Writing ads:** Théo's vocab pro/anti list above. Channels list = where to run.
 - **Prioritizing features:** does this reduce time poverty, increase CAC clarity, expand the catalog, or strengthen founder proximity? If none, deprioritize.
-- **Pricing decisions:** keep unit prices public, keep $2 credits, keep no-subscription. Margin can stay 2x+ but never advertised — the price is the price.
+- **Pricing decisions:** keep unit prices public, keep $25 credits, keep no-subscription. Margin can stay 2x+ but never advertised — the price is the price.
 - **Roadmap signal:** at least one new channel per month is non-negotiable for retention of this ICP.

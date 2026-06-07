@@ -6,11 +6,11 @@ import type { OutletStatusCounts } from "../src/lib/api";
 
 const brandOutletPagePath = path.resolve(
   __dirname,
-  "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/outlets/page.tsx",
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/outlets/page.tsx",
 );
 const featureOutletPagePath = path.resolve(
   __dirname,
-  "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/outlets/page.tsx",
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/outlets/page.tsx",
 );
 
 describe("outlet pages use client-side grouping for tab counts (not cumulative byOutreachStatus)", () => {

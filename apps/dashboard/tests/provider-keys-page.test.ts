@@ -5,7 +5,7 @@ import * as path from "path";
 describe("Provider Keys page (redirect to unified keys)", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/provider-keys/page.tsx"
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/provider-keys/page.tsx"
   );
 
   it("should exist", () => {
@@ -27,7 +27,7 @@ describe("Provider Keys page (redirect to unified keys)", () => {
 describe("API Keys page capitalize handles non-string input", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/api-keys/page.tsx"
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/api-keys/page.tsx"
   );
   const content = fs.readFileSync(pagePath, "utf-8");
 
@@ -43,7 +43,7 @@ describe("API Keys page capitalize handles non-string input", () => {
 describe("Unified API Keys page has provider keys section", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/api-keys/page.tsx"
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/api-keys/page.tsx"
   );
   const content = fs.readFileSync(pagePath, "utf-8");
 
@@ -127,7 +127,7 @@ describe("Unified API Keys page has provider keys section", () => {
 describe("Serper.dev provider key support", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/api-keys/page.tsx"
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/api-keys/page.tsx"
   );
   const content = fs.readFileSync(pagePath, "utf-8");
 

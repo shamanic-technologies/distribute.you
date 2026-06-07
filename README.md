@@ -1,14 +1,14 @@
 # distribute
 
-**The Stripe of Distribution**
+**Sales Automation**
 
-> Your distribution, on autopilot.
+> Cold Email Outreach, on Autopilot.
 
 [distribute.you](https://distribute.you) | [Dashboard](https://dashboard.distribute.you)
 
 ## What is distribute?
 
-distribute is the Stripe of Distribution. Create an account, give us your URL — we automate your entire distribution layer with AI workflows ranked by real performance data.
+distribute is sales automation, done for you. Create an account, give us your URL — we run your cold email outreach with AI workflows ranked by real performance data.
 
 ## Distribution Features
 

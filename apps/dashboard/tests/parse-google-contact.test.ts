@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseGoogleContact } from "../src/app/(dashboard)/orgs/[orgId]/services/crm/_components/parse-google-contact";
+import { parseGoogleContact } from "../src/app/(authed)/(dashboard)/orgs/[orgId]/services/crm/_components/parse-google-contact";
 
 describe("parseGoogleContact", () => {
   it("returns all-null when payload is missing", () => {

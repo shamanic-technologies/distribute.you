@@ -3,7 +3,7 @@ import {
   pollSyncJob,
   type JobStatusResponse,
   type SyncSummary,
-} from "../src/app/(dashboard)/orgs/[orgId]/services/crm/_components/poll-sync-job";
+} from "../src/app/(authed)/(dashboard)/orgs/[orgId]/services/crm/_components/poll-sync-job";
 
 const summary: SyncSummary = {
   accounts: 1,

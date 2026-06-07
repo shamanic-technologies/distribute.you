@@ -1,10 +1,14 @@
-import { fetchLeaderboard } from "@/lib/performance/fetch-leaderboard";
+import { fetchFeatureBenchmark } from "@/lib/benchmarks/fetch-benchmark";
 import { PerformancePreview } from "@/components/performance-preview";
 
+// The public landing sells one product: sales cold email. The home performance
+// section previews that feature's open dataset (platform averages + the top
+// brand leaderboard), mirroring the full /performance page.
+// fetchFeatureBenchmark is wrapped in `unstable_cache` (revalidate 300s).
+const HOME_BENCHMARK_SLUG = "sales-cold-email-outreach";
+
 export async function LeaderboardSectionAsync() {
-  const leaderboard = await fetchLeaderboard();
-  if (!leaderboard || leaderboard.featureGroups.length === 0) {
-    return null;
-  }
-  return <PerformancePreview featureGroups={leaderboard.featureGroups} />;
+  const data = await fetchFeatureBenchmark(HOME_BENCHMARK_SLUG);
+  if (!data) return null;
+  return <PerformancePreview data={data} />;
 }

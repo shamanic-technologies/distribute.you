@@ -10,6 +10,7 @@ import {
 } from "@/lib/api";
 import { formatStatValue } from "@/lib/format-stat";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
+import { Skeleton } from "@/components/skeleton";
 
 const PIPELINE_KEYS = ["leadsClaimed", "leadsBuffered", "leadsSkipped"] as const;
 
@@ -52,9 +53,14 @@ const REPLY_DETAIL_KEYS = [
 interface LeadsStatsPanelProps {
   featureSlug: string;
   campaignId: string;
+  pending?: boolean;
 }
 
-export function LeadsStatsPanel({ featureSlug, campaignId }: LeadsStatsPanelProps) {
+export function LeadsStatsPanel({
+  featureSlug,
+  campaignId,
+  pending = false,
+}: LeadsStatsPanelProps) {
   const { registry } = useFeatures();
 
   const { data, isLoading } = useAuthQuery(
@@ -62,32 +68,24 @@ export function LeadsStatsPanel({ featureSlug, campaignId }: LeadsStatsPanelProp
     () => fetchFeatureStats(featureSlug, { campaignId }),
     {
       refetchInterval: 5_000,
-      refetchIntervalInBackground: false,
       placeholderData: keepPreviousData,
     },
   );
 
   const stats: Record<string, number> = data?.stats ?? {};
-
-  if (isLoading && !data) {
-    return (
-      <div
-        data-testid="leads-stats-panel"
-        className="bg-white rounded-xl border border-gray-200 p-6 animate-pulse h-48"
-      />
-    );
-  }
+  const loading = pending || (isLoading && !data);
 
   return (
     <div data-testid="leads-stats-panel" className="space-y-4">
-      <Section title="Pipeline" keys={PIPELINE_KEYS} stats={stats} registry={registry} />
-      <Section title="Outreach" keys={OUTREACH_KEYS} stats={stats} registry={registry} />
-      <Section title="Rates" keys={RATE_KEYS} stats={stats} registry={registry} />
+      <Section title="Pipeline" keys={PIPELINE_KEYS} stats={stats} registry={registry} pending={loading} />
+      <Section title="Outreach" keys={OUTREACH_KEYS} stats={stats} registry={registry} pending={loading} />
+      <Section title="Rates" keys={RATE_KEYS} stats={stats} registry={registry} pending={loading} />
 
       <ReplyBreakdown
         segments={REPLY_AGGREGATE_SEGMENTS}
         stats={stats}
         registry={registry}
+        pending={loading}
       />
 
       <details className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
@@ -96,7 +94,7 @@ export function LeadsStatsPanel({ featureSlug, campaignId }: LeadsStatsPanelProp
         </summary>
         <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
           {REPLY_DETAIL_KEYS.map((k) => (
-            <Tile key={k} statKey={k} stats={stats} registry={registry} />
+            <Tile key={k} statKey={k} stats={stats} registry={registry} pending={loading} />
           ))}
         </div>
       </details>
@@ -106,6 +104,7 @@ export function LeadsStatsPanel({ featureSlug, campaignId }: LeadsStatsPanelProp
         keys={COST_KEYS}
         stats={stats}
         registry={registry}
+        pending={loading}
       />
     </div>
   );
@@ -116,18 +115,20 @@ function Section({
   keys,
   stats,
   registry,
+  pending,
 }: {
   title: string;
   keys: readonly string[];
   stats: Record<string, number>;
   registry: StatsRegistry;
+  pending: boolean;
 }) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
       <h3 className="font-medium text-gray-800 mb-4">{title}</h3>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {keys.map((k) => (
-          <Tile key={k} statKey={k} stats={stats} registry={registry} />
+          <Tile key={k} statKey={k} stats={stats} registry={registry} pending={pending} />
         ))}
       </div>
     </div>
@@ -138,16 +139,18 @@ function Tile({
   statKey,
   stats,
   registry,
+  pending,
 }: {
   statKey: string;
   stats: Record<string, number>;
   registry: StatsRegistry;
+  pending?: boolean;
 }) {
   const entry = registry[statKey];
   const label = entry?.label ?? statKey;
   const value = stats[statKey];
 
-  if (!entry) {
+  if (!entry && !pending) {
     console.error(
       `[dashboard] LeadsStatsPanel: stats key "${statKey}" missing from features-service registry; rendering raw key. Add it to STATS_REGISTRY.`,
     );
@@ -161,7 +164,11 @@ function Tile({
       data-testid={`stat-${statKey}`}
     >
       <p className="text-xs text-gray-500">{label}</p>
-      <p className="text-lg font-semibold text-gray-800">{display}</p>
+      {pending ? (
+        <Skeleton className="h-6 w-12" />
+      ) : (
+        <p className="text-lg font-semibold text-gray-800">{display}</p>
+      )}
     </div>
   );
 }

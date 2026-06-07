@@ -5,6 +5,14 @@ import { McpSidebar } from "./mcp-sidebar";
 import { useFeatures } from "@/lib/features-context";
 import { useEntityRegistry } from "@/lib/entity-registry-context";
 import { CampaignInputsPanel } from "./campaign/campaign-inputs-panel";
+import { CampaignPromptPanel } from "./campaign/campaign-prompt-panel";
+import { isExpertQuoteFeature } from "@/lib/expert-quote-feature";
+
+// Only the PR-Expert quote family has an editable generation prompt today (the
+// GENERATE button on the quote-requests page renders the expert-quote-pitch
+// template). Gate the Prompt button to that family until other features wire a
+// template. Keyed on the family helper, not a single slug, so a workflow
+// re-version (e.g. -opportunities → -outreach) doesn't drop the button.
 
 // Icons as SVG components
 const OverviewIcon = () => (
@@ -35,6 +43,12 @@ const LogsIcon = () => (
 const InputsIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+  </svg>
+);
+
+const PromptIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 7h6m-6 4h6m-3 8l-4-4H5a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-4l-3 3z" />
   </svg>
 );
 
@@ -126,8 +140,12 @@ interface CampaignSidebarProps {
 
 export function CampaignSidebar({ campaignId, orgId, brandId, featureSlug, entityCounts, workflowId, featureInputs }: CampaignSidebarProps) {
   const [inputsPanelOpen, setInputsPanelOpen] = useState(false);
-  const { getFeature } = useFeatures();
-  const { registry } = useEntityRegistry();
+  const [promptPanelOpen, setPromptPanelOpen] = useState(false);
+  const { getFeature, isLoading: featuresLoading } = useFeatures();
+  const { registry, isLoading: registryLoading } = useEntityRegistry();
+  // Reveal the whole nav together once the feature + entity registry defs load
+  // (entity items depend on them); skeleton rows until then. See CLAUDE.md → "Coordinated reveal".
+  const defsReady = !featuresLoading && !registryLoading;
   const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/${campaignId}`;
   const backHref = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`;
 
@@ -135,6 +153,7 @@ export function CampaignSidebar({ campaignId, orgId, brandId, featureSlug, entit
   const entities = featureDef?.entities ?? [];
 
   const hasInputs = featureInputs && Object.values(featureInputs).some(Boolean);
+  const showPromptButton = isExpertQuoteFeature(featureSlug);
 
   const entityItems = entities
     .filter((e) => registry[e.name])
@@ -186,17 +205,31 @@ export function CampaignSidebar({ campaignId, orgId, brandId, featureSlug, entit
   return (
     <>
       <McpSidebar
+        navPending={!defsReady}
         items={items}
         outcomesItems={entityItems}
         settingsItems={settingsItems}
-        settingsExtra={hasInputs ? (
-          <button
-            onClick={() => setInputsPanelOpen(true)}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition text-gray-600 hover:bg-gray-50 hover:text-gray-800 w-full"
-          >
-            <span className="w-5 h-5 text-gray-400"><InputsIcon /></span>
-            <span className="flex-1 text-left">Inputs</span>
-          </button>
+        settingsExtra={(showPromptButton || hasInputs) ? (
+          <>
+            {showPromptButton && (
+              <button
+                onClick={() => setPromptPanelOpen(true)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs transition text-gray-600 hover:bg-gray-50 hover:text-gray-800 w-full"
+              >
+                <span className="w-5 h-5 text-gray-400"><PromptIcon /></span>
+                <span className="flex-1 text-left">Prompt</span>
+              </button>
+            )}
+            {hasInputs && (
+              <button
+                onClick={() => setInputsPanelOpen(true)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs transition text-gray-600 hover:bg-gray-50 hover:text-gray-800 w-full"
+              >
+                <span className="w-5 h-5 text-gray-400"><InputsIcon /></span>
+                <span className="flex-1 text-left">Inputs</span>
+              </button>
+            )}
+          </>
         ) : undefined}
         title="Campaign"
         backHref={backHref}
@@ -207,6 +240,13 @@ export function CampaignSidebar({ campaignId, orgId, brandId, featureSlug, entit
         onClose={() => setInputsPanelOpen(false)}
         featureInputs={featureInputs ?? null}
       />
+      {showPromptButton && (
+        <CampaignPromptPanel
+          open={promptPanelOpen}
+          onClose={() => setPromptPanelOpen(false)}
+          featureSlug={featureSlug}
+        />
+      )}
     </>
   );
 }

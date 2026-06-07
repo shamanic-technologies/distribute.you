@@ -7,6 +7,8 @@ import { keepPreviousData } from "@tanstack/react-query";
 import { useFeatures } from "@/lib/features-context";
 import { useEntityRegistry } from "@/lib/entity-registry-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
+import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
+import { Skeleton } from "@/components/skeleton";
 import {
   fetchFeatureStats,
   listBrandOutlets,
@@ -14,8 +16,15 @@ import {
   listBrandLeads,
   listBrandEmails,
   listBrandArticles,
+  listAllRankedOpportunities,
 } from "@/lib/api";
+import { isOpportunityOpen } from "@/lib/quote-pitch-status";
+import { isExpertQuoteFeature } from "@/lib/expert-quote-feature";
+import { isRevenueFeature } from "@/lib/revenue-feature";
 import { formatCount } from "@/lib/format-number";
+import { useFeatureFlag } from "@/lib/use-feature-flag";
+import { MaturityBadge } from "@/components/maturity-badge";
+import { FEATURE_GATES, GA_BRAND_FEATURES, type Maturity } from "@/lib/feature-gates";
 
 interface SidebarItem {
   id: string;
@@ -24,14 +33,25 @@ interface SidebarItem {
   icon: React.ReactNode;
   comingSoon?: boolean;
   badge?: number;
+  maturity?: Maturity;
 }
 
-function SidebarLink({ item, isActive }: { item: SidebarItem; isActive: boolean }) {
+function SidebarLink({
+  item,
+  isActive,
+  badgePending = false,
+}: {
+  item: SidebarItem;
+  isActive: boolean;
+  // When true, render a skeleton pill instead of the count so a whole group of
+  // entity badges reveals its numbers together (see FeatureLevelSidebar).
+  badgePending?: boolean;
+}) {
   return (
     <Link
       href={item.href}
       className={`
-        flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition
+        flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs transition
         ${item.comingSoon
           ? "text-gray-400 opacity-60 hover:opacity-80"
           : isActive
@@ -44,11 +64,14 @@ function SidebarLink({ item, isActive }: { item: SidebarItem; isActive: boolean 
         {item.icon}
       </span>
       <span className="flex-1">{item.label}</span>
-      {item.badge !== undefined && (
-        <span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? "bg-brand-100 text-brand-700" : "bg-gray-100 text-gray-500"}`}>
+      {item.maturity && <MaturityBadge level={item.maturity} />}
+      {badgePending ? (
+        <Skeleton className="h-4 w-6 rounded-full" />
+      ) : item.badge !== undefined ? (
+        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isActive ? "bg-brand-100 text-brand-700" : "bg-gray-100 text-gray-500"}`}>
           {formatCount(item.badge)}
         </span>
-      )}
+      ) : null}
       {item.comingSoon && (
         <span className="text-[10px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full whitespace-nowrap">
           Coming soon
@@ -58,11 +81,22 @@ function SidebarLink({ item, isActive }: { item: SidebarItem; isActive: boolean 
   );
 }
 
+// A single nav-row skeleton matching SidebarLink's layout (icon + label), used to
+// reveal a whole sidebar nav group at once instead of static rows first / data rows later.
+function SidebarNavRowSkeleton() {
+  return (
+    <div className="flex items-center gap-3 px-3 py-2.5">
+      <Skeleton className="w-5 h-5 rounded" />
+      <Skeleton className="h-4 flex-1 max-w-[7rem] rounded" />
+    </div>
+  );
+}
+
 function BackLink({ href, label }: { href: string; label: string }) {
   return (
     <Link
       href={href}
-      className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 mb-2 transition"
+      className="flex items-center gap-1.5 text-[10px] text-gray-400 hover:text-gray-600 mb-2 transition"
     >
       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -85,7 +119,7 @@ function SidebarSection({ title, backHref, backLabel, children, footer }: {
         <div className="px-4 py-3 border-b border-gray-100">
           {backHref && backLabel && <BackLink href={backHref} label={backLabel} />}
           {title && (
-            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            <h3 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
               {title}
             </h3>
           )}
@@ -190,6 +224,18 @@ const ReportIcon = () => (
   </svg>
 );
 
+const ConversionsIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 17l6-6 4 4 7-8m0 0h-4m4 0v4" />
+  </svg>
+);
+
+const OverviewIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 5a1 1 0 011-1h5v7H4V5zm0 8h6v6H5a1 1 0 01-1-1v-5zm10-9h5a1 1 0 011 1v5h-6V4zm0 8h6v6a1 1 0 01-1 1h-5v-7z" />
+  </svg>
+);
+
 const ExternalLinkIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-3.5 h-3.5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -197,8 +243,12 @@ const ExternalLinkIcon = () => (
 );
 
 // Features that expose the public client report. Generic across features
-// once a backend public-proxy lands; gated to one for v1.
-const REPORT_ENABLED_FEATURES = new Set(["sales-cold-email-outreach"]);
+// once a backend public-proxy lands; gated for now. The pr-expert-quote-*
+// family is matched via isExpertQuoteFeature (not listed here) so a workflow
+// re-version doesn't drop the report link.
+const REPORT_ENABLED_FEATURES = new Set([
+  "sales-cold-email-outreach",
+]);
 
 const ICON_NAME_MAP: Record<string, () => React.ReactNode> = {
   globe: () => <BrandIcon />,
@@ -238,7 +288,7 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
     const orgId = segments[1];
     if (segments[2] === "brands" && segments[3]) {
       const brandId = segments[3];
-      if (segments[4] === "settings") {
+      if (segments[4] === "settings" || segments[4] === "brand-info" || segments[4] === "usage") {
           return { type: "brandSettings", orgId, brandId };
         }
         if (segments[4] === "features" && segments[5]) {
@@ -252,7 +302,10 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
         if (segments[6] === "workflows" && segments[7]) {
           return { type: "workflow", orgId, brandId, featureSlug, workflowId: segments[7] };
         }
-        if (segments[6] === "settings") {
+        // Feature Settings sub-level — its landing (/settings, the Sales
+        // Economics page, GA) and the Workflows list (staff-only) both render the
+        // FeatureSettingsLevelSidebar. Mirrors how /settings routes to brandSettings.
+        if (segments[6] === "settings" || segments[6] === "workflows") {
           return { type: "featureSettings", orgId, brandId, featureSlug };
         }
         return { type: "feature", orgId, brandId, featureSlug };
@@ -270,7 +323,10 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
 
 // App Level Sidebar
 function AppLevelSidebar({ pathname }: { pathname: string }) {
-  const { features } = useFeatures();
+  const { features, isLoading: featuresLoading } = useFeatures();
+  // The Features section needs the feature list; reveal the whole nav together
+  // once it loads (skeleton rows until then). See CLAUDE.md → "Coordinated reveal".
+  const defsReady = !featuresLoading;
   const topItems: SidebarItem[] = [
     { id: "home", label: "Home", href: "/", icon: <HomeIcon /> },
   ];
@@ -285,6 +341,16 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
 
   return (
     <SidebarSection title="Dashboard">
+      {!defsReady ? (
+        <>
+          <SidebarNavRowSkeleton />
+          <div className="pt-2 mt-2 border-t border-gray-100">
+            <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Features</h4>
+            {[0, 1, 2, 3, 4].map((i) => <SidebarNavRowSkeleton key={`feat-${i}`} />)}
+          </div>
+        </>
+      ) : (
+        <>
       {topItems.map((item) => (
         <SidebarLink
           key={item.id}
@@ -293,7 +359,7 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
         />
       ))}
       <div className="pt-2 mt-2 border-t border-gray-100">
-        <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Features</h4>
+        <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Features</h4>
         {featureItems.map((item) => (
           <SidebarLink
             key={item.id}
@@ -302,25 +368,22 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
           />
         ))}
       </div>
+        </>
+      )}
     </SidebarSection>
   );
 }
 
 // Org Level Sidebar
 function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string }) {
-  const { features } = useFeatures();
+  // Features are no longer surfaced at the org granularity — they live under
+  // brands and the app-level nav. CRM + Keys are alpha (staff-only); Billing is GA.
+  const crmEnabled = useFeatureFlag(FEATURE_GATES["services-crm"].flag);
+  const keysEnabled = useFeatureFlag(FEATURE_GATES["keys"].flag);
   const topItems: SidebarItem[] = [
     { id: "overview", label: "Overview", href: `/orgs/${orgId}`, icon: <HomeIcon /> },
     { id: "brands", label: "Brands", href: `/orgs/${orgId}/brands`, icon: <BrandIcon /> },
   ];
-
-  const featureItems: SidebarItem[] = features.map((f) => ({
-    id: f.slug,
-    label: f.name,
-    href: `/features/${f.slug}`,
-    icon: getFeatureIcon(f.slug, f.icon),
-    comingSoon: !f.implemented,
-  }));
 
   return (
     <SidebarSection title="Organization">
@@ -331,28 +394,34 @@ function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string 
           isActive={item.id === "overview" ? pathname === item.href : pathname.startsWith(item.href)}
         />
       ))}
-      <div className="pt-2 mt-2 border-t border-gray-100">
-        <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Features</h4>
-        {featureItems.map((item) => (
+      {crmEnabled && (
+        <div className="pt-2 mt-2 border-t border-gray-100">
+          <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Services</h4>
           <SidebarLink
-            key={item.id}
-            item={item}
-            isActive={pathname.startsWith(item.href)}
+            item={{
+              id: "crm",
+              label: "CRM (Google)",
+              href: `/orgs/${orgId}/services/crm`,
+              icon: <CrmIcon />,
+              maturity: FEATURE_GATES["services-crm"].maturity,
+            }}
+            isActive={pathname.startsWith(`/orgs/${orgId}/services/crm`)}
           />
-        ))}
-      </div>
+        </div>
+      )}
       <div className="pt-2 mt-2 border-t border-gray-100">
-        <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Services</h4>
-        <SidebarLink
-          item={{ id: "crm", label: "CRM (Google)", href: `/orgs/${orgId}/services/crm`, icon: <CrmIcon /> }}
-          isActive={pathname.startsWith(`/orgs/${orgId}/services/crm`)}
-        />
-      </div>
-      <div className="pt-2 mt-2 border-t border-gray-100">
-        <SidebarLink
-          item={{ id: "api-keys", label: "Keys", href: `/orgs/${orgId}/api-keys`, icon: <KeyIcon /> }}
-          isActive={pathname.startsWith(`/orgs/${orgId}/api-keys`) || pathname.startsWith(`/orgs/${orgId}/provider-keys`)}
-        />
+        {keysEnabled && (
+          <SidebarLink
+            item={{
+              id: "api-keys",
+              label: "Keys",
+              href: `/orgs/${orgId}/api-keys`,
+              icon: <KeyIcon />,
+              maturity: FEATURE_GATES["keys"].maturity,
+            }}
+            isActive={pathname.startsWith(`/orgs/${orgId}/api-keys`) || pathname.startsWith(`/orgs/${orgId}/provider-keys`)}
+          />
+        )}
         <SidebarLink
           item={{ id: "billing", label: "Billing", href: `/orgs/${orgId}/billing`, icon: <BillingIcon /> }}
           isActive={pathname.startsWith(`/orgs/${orgId}/billing`)}
@@ -388,60 +457,131 @@ const SettingsIcon = () => (
   </svg>
 );
 
+// Ordered feature groups for the brand sidebar. Each feature slug belongs to one
+// group, rendered top-to-bottom in this order. Any feature the backend returns
+// that isn't listed here lands in a trailing "Other" group, so a newly-shipped
+// feature is never silently hidden from the nav (fail-visible).
+const BRAND_FEATURE_GROUPS: { title: string; slugs: string[] }[] = [
+  { title: "Sales Outreach", slugs: ["sales-cold-email-outreach"] },
+  { title: "Press Outreach", slugs: ["pr-cold-email-outreach", "pr-expert-quote-outreach"] },
+  { title: "Investors Outreach", slugs: ["vc-cold-email-outreach", "accelerators-cold-email-outreach"] },
+  { title: "Hiring Outreach", slugs: ["hiring-cold-email-outreach"] },
+  { title: "Tools", slugs: ["press-kit-page-generation", "outlet-database-discovery", "ai-visibility-scoring", "pr-expert-quote-opportunities"] },
+];
+
 // Brand Level Sidebar
 function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandId: string; pathname: string }) {
-  const { features } = useFeatures();
+  const { features, isLoading: featuresLoading } = useFeatures();
+  // Immature features are alpha (staff-only). Default-hidden until PostHog
+  // resolves the flag, so they never flash for a non-staff viewer. Brand Info
+  // moved under Brand Settings — see BrandSettingsLevelSidebar.
+  const featuresAlphaOk = useFeatureFlag(FEATURE_GATES["brand-features"].flag);
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
   const topItems: SidebarItem[] = [
     { id: "overview", label: "Overview", href: basePath, icon: <HomeIcon /> },
-    { id: "brand-info", label: "Brand Info", href: `${basePath}/brand-info`, icon: <InfoIcon /> },
   ];
 
-  const featureItems: SidebarItem[] = features.map((f) => ({
-    id: f.slug,
-    label: f.name,
-    href: `${basePath}/features/${f.slug}`,
-    icon: getFeatureIcon(f.slug, f.icon),
-    comingSoon: !f.implemented,
-  }));
+  // Every feature except the GA exceptions renders under the brand-features
+  // alpha gate; the exceptions stay GA (no flag, no badge).
+  const featureItems: SidebarItem[] = features
+    .filter((f) => GA_BRAND_FEATURES.has(f.slug) || featuresAlphaOk)
+    .map((f) => ({
+      id: f.slug,
+      label: f.name,
+      href: `${basePath}/features/${f.slug}`,
+      icon: getFeatureIcon(f.slug, f.icon),
+      comingSoon: !f.implemented,
+      maturity: GA_BRAND_FEATURES.has(f.slug) ? undefined : FEATURE_GATES["brand-features"].maturity,
+    }));
+
+  // Group the gated feature items by BRAND_FEATURE_GROUPS order. Empty groups are
+  // dropped; any feature not in a declared group falls into a trailing "Other"
+  // group so a newly-shipped feature never disappears from the nav.
+  const featureItemBySlug = new Map(featureItems.map((i) => [i.id, i]));
+  const groupedSlugs = new Set(BRAND_FEATURE_GROUPS.flatMap((g) => g.slugs));
+  const featureSections: { title: string; items: SidebarItem[] }[] = BRAND_FEATURE_GROUPS
+    .map((g) => ({
+      title: g.title,
+      items: g.slugs.map((s) => featureItemBySlug.get(s)).filter((i): i is SidebarItem => !!i),
+    }))
+    .filter((g) => g.items.length > 0);
+  const ungroupedItems = featureItems.filter((i) => !groupedSlugs.has(i.id));
+  if (ungroupedItems.length > 0) {
+    featureSections.push({ title: "Other", items: ungroupedItems });
+  }
 
   // Brand-level outcome counts
-  const { data: outletsData } = useAuthQuery(
+  const { data: outletsData, isPending: outletsPending } = useAuthQuery(
     ["brandOutlets", brandId],
     () => listBrandOutlets(brandId),
-    { refetchInterval: 5_000, refetchIntervalInBackground: false },
+    { refetchInterval: 5_000 },
   );
-  const { data: journalistsData } = useAuthQuery(
+  const { data: journalistsData, isPending: journalistsPending } = useAuthQuery(
     ["enrichedJournalists", brandId],
     () => listJournalistsEnriched(brandId),
-    { refetchInterval: 5_000, refetchIntervalInBackground: false },
+    { refetchInterval: 5_000 },
   );
-  const { data: leadsData } = useAuthQuery(
+  const { data: leadsData, isPending: leadsPending } = useAuthQuery(
     ["brandLeads", brandId],
     () => listBrandLeads(brandId),
-    { refetchInterval: 5_000, refetchIntervalInBackground: false },
+    { refetchInterval: 5_000 },
   );
-  const { data: emailsData } = useAuthQuery(
+  const { data: emailsData, isPending: emailsPending } = useAuthQuery(
     ["brandEmails", brandId],
     () => listBrandEmails(brandId),
-    { refetchInterval: 5_000, refetchIntervalInBackground: false },
+    { refetchInterval: 5_000 },
   );
-  const { data: articlesData } = useAuthQuery(
+  const { data: articlesData, isPending: articlesPending } = useAuthQuery(
     ["brandArticles", brandId],
     () => listBrandArticles(brandId),
-    { refetchInterval: 5_000, refetchIntervalInBackground: false },
+    { refetchInterval: 5_000 },
   );
 
+  // Nav items reveal as one group once the feature list (which the Features
+  // section needs) loads; the 5 outcome badges are a finer sub-group revealed
+  // when their counts settle. See CLAUDE.md → "Coordinated reveal".
+  const defsReady = !featuresLoading;
+  const badgesRevealed = useCoordinatedReveal([
+    !outletsPending,
+    !journalistsPending,
+    !leadsPending,
+    !emailsPending,
+    !articlesPending,
+  ]);
+
+  // Outlets/Journalists/Articles belong to the not-yet-launched PR/press
+  // features → alpha (staff-only) behind the dedicated brand-database flag.
+  // Leads/Emails belong to sales-cold-email (GA) → always shown. Default-hidden
+  // until PostHog resolves the flag (no flash). See CLAUDE.md → feature gating.
+  const dbAlphaOk = useFeatureFlag(FEATURE_GATES["brand-database"].flag);
+  const dbMaturity = FEATURE_GATES["brand-database"].maturity;
   const outcomeItems: SidebarItem[] = [
-    { id: "outlets", label: "Outlets", href: `${basePath}/outlets`, icon: <OutcomeOutletIcon />, badge: outletsData?.total },
-    { id: "journalists", label: "Journalists", href: `${basePath}/journalists`, icon: <NewspaperIcon />, badge: journalistsData?.total ?? journalistsData?.journalists?.length },
-    { id: "articles", label: "Articles", href: `${basePath}/articles`, icon: <OutcomeArticleIcon />, badge: articlesData?.discoveries?.length },
+    { id: "outlets", label: "Outlets", href: `${basePath}/outlets`, icon: <OutcomeOutletIcon />, badge: outletsData?.total, maturity: dbMaturity },
+    { id: "journalists", label: "Journalists", href: `${basePath}/journalists`, icon: <NewspaperIcon />, badge: journalistsData?.total ?? journalistsData?.journalists?.length, maturity: dbMaturity },
+    { id: "articles", label: "Articles", href: `${basePath}/articles`, icon: <OutcomeArticleIcon />, badge: articlesData?.discoveries?.length, maturity: dbMaturity },
     { id: "leads", label: "Leads", href: `${basePath}/leads`, icon: <OutcomeLeadIcon />, badge: leadsData?.leads?.length },
     { id: "emails", label: "Emails", href: `${basePath}/emails`, icon: <EnvelopeIcon />, badge: emailsData?.emails?.length },
-  ];
+  ].filter((item) => dbAlphaOk || item.id === "leads" || item.id === "emails");
 
   return (
     <SidebarSection title="Brand" backHref={`/orgs/${orgId}/brands`} backLabel="Brands">
+      {/* Whole nav reveals as one group once the feature list loads (the grouped
+          feature sections + Database both need it); skeleton rows until then so
+          static and data-dependent items don't paint in two waves. Database badge
+          numbers are a finer sub-group via badgePending. */}
+      {!defsReady ? (
+        <>
+          {[0].map((i) => <SidebarNavRowSkeleton key={`top-${i}`} />)}
+          <div className="pt-2 mt-2 border-t border-gray-100">
+            {[0, 1, 2, 3, 4, 5].map((i) => <SidebarNavRowSkeleton key={`feat-${i}`} />)}
+          </div>
+          <div className="pt-2 mt-2 border-t border-gray-100">
+            <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Database</h4>
+            {[0, 1, 2, 3, 4].map((i) => <SidebarNavRowSkeleton key={`db-${i}`} />)}
+          </div>
+        </>
+      ) : (
+        <>
       {topItems.map((item) => (
         <SidebarLink
           key={item.id}
@@ -449,9 +589,10 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
           isActive={item.id === "overview" ? pathname === item.href : pathname.startsWith(item.href)}
         />
       ))}
-      {outcomeItems.length > 0 && (
-        <div className="pt-2 mt-2 border-t border-gray-100">
-          {outcomeItems.map((item) => (
+      {featureSections.map((section) => (
+        <div key={section.title} className="pt-2 mt-2 border-t border-gray-100">
+          <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{section.title}</h4>
+          {section.items.map((item) => (
             <SidebarLink
               key={item.id}
               item={item}
@@ -459,23 +600,28 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
             />
           ))}
         </div>
+      ))}
+      {outcomeItems.length > 0 && (
+        <div className="pt-2 mt-2 border-t border-gray-100">
+          <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Database</h4>
+          {outcomeItems.map((item) => (
+            <SidebarLink
+              key={item.id}
+              item={item}
+              badgePending={!badgesRevealed}
+              isActive={pathname.startsWith(item.href)}
+            />
+          ))}
+        </div>
       )}
-      <div className="pt-2 mt-2 border-t border-gray-100">
-        <h4 className="px-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Features</h4>
-        {featureItems.map((item) => (
-          <SidebarLink
-            key={item.id}
-            item={item}
-            isActive={pathname.startsWith(item.href)}
-          />
-        ))}
-      </div>
       <div className="pt-2 mt-2 border-t border-gray-100">
         <SidebarLink
           item={{ id: "settings", label: "Brand Settings", href: `${basePath}/settings`, icon: <SettingsIcon /> }}
           isActive={pathname.startsWith(`${basePath}/settings`)}
         />
       </div>
+        </>
+      )}
     </SidebarSection>
   );
 }
@@ -486,11 +632,34 @@ function BrandSettingsLevelSidebar({ orgId, brandId, pathname }: {
   brandId: string;
   pathname: string;
 }) {
-  const basePath = `/orgs/${orgId}/brands/${brandId}/settings`;
+  const brandBase = `/orgs/${orgId}/brands/${brandId}`;
+  const basePath = `${brandBase}/settings`;
+  // Brand Info is alpha (staff-only); default-hidden until PostHog resolves.
+  const brandInfoOk = useFeatureFlag(FEATURE_GATES["brand-info"].flag);
 
   const items: SidebarItem[] = [
     { id: "settings", label: "Brand Settings", href: basePath, icon: <SettingsIcon /> },
+    {
+      id: "usage",
+      label: "Usage",
+      href: `${brandBase}/usage`,
+      icon: (
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+        </svg>
+      ),
+    },
   ];
+  if (brandInfoOk) {
+    items.push({
+      id: "brand-info",
+      label: "Brand Info",
+      href: `${brandBase}/brand-info`,
+      icon: <InfoIcon />,
+      maturity: FEATURE_GATES["brand-info"].maturity,
+    });
+  }
 
   return (
     <SidebarSection title="Settings" backHref={`/orgs/${orgId}/brands/${brandId}`} backLabel="Brand">
@@ -528,8 +697,8 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   featureSlug: string;
   pathname: string;
 }) {
-  const { getFeature } = useFeatures();
-  const { registry } = useEntityRegistry();
+  const { getFeature, isLoading: featuresLoading } = useFeatures();
+  const { registry, isLoading: registryLoading } = useEntityRegistry();
   const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`;
   const feature = getFeature(featureSlug);
   const title = feature?.name ?? featureSlug;
@@ -538,39 +707,75 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
 
   // Feature stats scoped to this brand — same pattern as campaign sidebar
   const resolvedFeatureSlug = feature?.slug;
-  const { data: featureStatsData } = useAuthQuery(
+  const statsEnabled = !!resolvedFeatureSlug;
+  const { data: featureStatsData, isPending: statsPending } = useAuthQuery(
     ["featureStats", resolvedFeatureSlug, "brand", brandId],
     () => fetchFeatureStats(resolvedFeatureSlug!, { brandId }),
-    { enabled: !!resolvedFeatureSlug, refetchInterval: 5_000, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
+    { enabled: statsEnabled, refetchInterval: 5_000, placeholderData: keepPreviousData },
   );
   const fStats = featureStatsData?.stats ?? {};
 
   // Listing fallbacks for entities without a countKey — filtered by featureSlug
-  const { data: outletsData } = useAuthQuery(
+  const outletsEnabled = entityNames.includes("outlets");
+  const { data: outletsData, isPending: outletsPending } = useAuthQuery(
     ["brandOutlets", brandId, featureSlug],
     () => listBrandOutlets(brandId, featureSlug),
-    { enabled: entityNames.includes("outlets"), refetchInterval: 5_000, refetchIntervalInBackground: false },
+    { enabled: outletsEnabled, refetchInterval: 5_000 },
   );
-  const { data: journalistsData } = useAuthQuery(
+  const journalistsEnabled = entityNames.includes("journalists");
+  const { data: journalistsData, isPending: journalistsPending } = useAuthQuery(
     ["enrichedJournalists", brandId, featureSlug],
     () => listJournalistsEnriched(brandId, { featureSlug }),
-    { enabled: entityNames.includes("journalists"), refetchInterval: 5_000, refetchIntervalInBackground: false },
+    { enabled: journalistsEnabled, refetchInterval: 5_000 },
   );
-  const { data: leadsData } = useAuthQuery(
+  const leadsEnabled = entityNames.includes("leads");
+  const { data: leadsData, isPending: leadsPending } = useAuthQuery(
     ["brandLeads", brandId],
     () => listBrandLeads(brandId),
-    { enabled: entityNames.includes("leads"), refetchInterval: 5_000, refetchIntervalInBackground: false },
+    { enabled: leadsEnabled, refetchInterval: 5_000 },
   );
-  const { data: emailsData } = useAuthQuery(
+  const emailsEnabled = entityNames.includes("emails");
+  const { data: emailsData, isPending: emailsPending } = useAuthQuery(
     ["brandEmails", brandId],
     () => listBrandEmails(brandId),
-    { enabled: entityNames.includes("emails"), refetchInterval: 5_000, refetchIntervalInBackground: false },
+    { enabled: emailsEnabled, refetchInterval: 5_000 },
   );
-  const { data: articlesData } = useAuthQuery(
+  const articlesEnabled = entityNames.includes("articles");
+  const { data: articlesData, isPending: articlesPending } = useAuthQuery(
     ["brandArticles", brandId, featureSlug],
     () => listBrandArticles(brandId, featureSlug),
-    { enabled: entityNames.includes("articles"), refetchInterval: 5_000, refetchIntervalInBackground: false },
+    { enabled: articlesEnabled, refetchInterval: 5_000 },
   );
+  // Gold catalog (GET /orgs/opportunities) — same source the feature
+  // quote-requests page renders, so the badge equals the page count.
+  const rankedOppsEnabled = entityNames.includes("quote-requests");
+  const { data: rankedOppsData, isPending: rankedOppsPending } = useAuthQuery(
+    ["rankedOpportunities", { brandId }],
+    () => listAllRankedOpportunities({ brandId }),
+    { enabled: rankedOppsEnabled, refetchInterval: 5_000 },
+  );
+
+  // Reveal EVERY entity badge together (one paint), then keep the numbers
+  // latched on screen. A disabled query stays `isPending: true` forever, so each
+  // flag is gated behind its own `enabled` condition. See CLAUDE.md → "Coordinated reveal".
+  //
+  // `defsReady` MUST gate the barrier FIRST: until the feature (its entity list)
+  // and the entity registry load, `entityNames` is empty, so every count query is
+  // disabled and every `!enabled || !isPending` flag is true — the barrier would
+  // otherwise pass instantly and latch an EMPTY group (no skeleton, counts then
+  // trickle in one-by-one). With the gate, we wait for the defs, THEN for each
+  // now-enabled count query to settle, THEN reveal all numbers at once.
+  const defsReady = !featuresLoading && !registryLoading;
+  const badgesRevealed = useCoordinatedReveal([
+    defsReady,
+    !statsEnabled || !statsPending,
+    !outletsEnabled || !outletsPending,
+    !journalistsEnabled || !journalistsPending,
+    !leadsEnabled || !leadsPending,
+    !emailsEnabled || !emailsPending,
+    !articlesEnabled || !articlesPending,
+    !rankedOppsEnabled || !rankedOppsPending,
+  ]);
 
   const listingFallback: Record<string, number | undefined> = {
     leads: leadsData?.leads?.length,
@@ -578,6 +783,11 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
     outlets: outletsData?.total,
     journalists: journalistsData?.total ?? journalistsData?.journalists?.length,
     articles: articlesData?.discoveries?.length,
+    // Open (non-pitched) count so the badge == the queue the page renders — the
+    // page hides already-pitched opportunities (DIS-107 badge↔page coherence).
+    "quote-requests": rankedOppsData?.opportunities.filter((o) =>
+      isOpportunityOpen(o.pitchStatus),
+    ).length,
   };
 
   const entityCounts = useMemo(() => {
@@ -594,6 +804,10 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
 
   const entityItems: SidebarItem[] = entities
     .filter((e) => registry[e.name])
+    // No feature-level companies page yet (blocked on a brand-scoped companies
+    // API) — the backend declares the entity, so the link would 404. Hide it
+    // until the page exists. Campaign-level companies page is unaffected. (DIS)
+    .filter((e) => e.name !== "companies")
     .map((e) => {
       const config = registry[e.name];
       return {
@@ -605,17 +819,36 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
       };
     });
 
+  // Revenue surface (Overview + Conversions) — only on revenue features
+  // (sales-cold-email today). GA.
+  const revenueOk = isRevenueFeature(featureSlug);
   const topItems: SidebarItem[] = [
-    { id: "campaigns", label: "Campaigns", href: basePath, icon: <EnvelopeIcon /> },
+    ...(revenueOk
+      ? [
+          {
+            id: "overview",
+            label: "Overview",
+            href: `${basePath}/overview`,
+            icon: <OverviewIcon />,
+          } satisfies SidebarItem,
+        ]
+      : []),
+    { id: "campaigns", label: "Campaigns", href: `${basePath}/campaigns`, icon: <EnvelopeIcon /> },
     { id: "create", label: "Create Campaign", href: `${basePath}/campaigns/new`, icon: <PlusIcon /> },
+    ...(revenueOk
+      ? [
+          {
+            id: "conversions",
+            label: "Conversions",
+            href: `${basePath}/conversions`,
+            icon: <ConversionsIcon />,
+          } satisfies SidebarItem,
+        ]
+      : []),
   ];
 
-  const bottomItems: SidebarItem[] = [
-    { id: "workflows", label: "Workflows", href: `${basePath}/workflows`, icon: <WorkflowIcon /> },
-    { id: "settings", label: "Settings", href: `${basePath}/settings`, icon: <SettingsIcon /> },
-  ];
-
-  const reportEnabled = REPORT_ENABLED_FEATURES.has(featureSlug);
+  const reportEnabled =
+    REPORT_ENABLED_FEATURES.has(featureSlug) || isExpertQuoteFeature(featureSlug);
   const reportHref = `/report/${orgId}/${brandId}/${featureSlug}`;
 
   return (
@@ -624,6 +857,26 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
       backHref={`/orgs/${orgId}/brands/${brandId}`}
       backLabel="Brand"
     >
+      {/* Reveal the WHOLE nav as one group: the top items are static and the
+          Database items need feature + registry defs, so painting them as they
+          resolve makes the static rows appear first and the Database block pop in
+          a beat later. Hold everything behind `defsReady` with skeleton rows, then
+          render every item together. (Warm nav → defsReady is true immediately →
+          no skeleton.) Badge numbers are a finer sub-group revealed via badgePending. */}
+      {!defsReady ? (
+        <>
+          {[0, 1, 2].map((i) => (
+            <SidebarNavRowSkeleton key={`top-${i}`} />
+          ))}
+          <div className="pt-2 mt-2 border-t border-gray-100">
+            <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Database</h4>
+            {[0, 1, 2, 3].map((i) => (
+              <SidebarNavRowSkeleton key={`out-${i}`} />
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
       {topItems.map((item) => (
         <SidebarLink
           key={item.id}
@@ -633,29 +886,25 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
       ))}
       {entityItems.length > 0 && (
         <div className="pt-2 mt-2 border-t border-gray-100">
+          <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Database</h4>
           {entityItems.map((item) => (
             <SidebarLink
               key={item.id}
               item={item}
+              badgePending={!badgesRevealed}
               isActive={pathname.startsWith(item.href)}
             />
           ))}
         </div>
       )}
-      {bottomItems.map((item) => (
-        <SidebarLink
-          key={item.id}
-          item={item}
-          isActive={pathname.startsWith(item.href)}
-        />
-      ))}
       {reportEnabled && (
         <div className="pt-2 mt-2 border-t border-gray-100">
+          <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Report</h4>
           <a
             href={reportHref}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition text-gray-600 hover:bg-gray-50 hover:text-gray-800"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs transition text-gray-600 hover:bg-gray-50 hover:text-gray-800"
           >
             <span className="w-5 h-5 text-gray-400"><ReportIcon /></span>
             <span className="flex-1">Report</span>
@@ -663,6 +912,69 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
           </a>
         </div>
       )}
+      <div className="pt-2 mt-2 border-t border-gray-100">
+        <SidebarLink
+          item={{
+            id: "feature-settings",
+            label: "Feature Settings",
+            href: `${basePath}/settings`,
+            icon: <SettingsIcon />,
+          }}
+          isActive={pathname.startsWith(`${basePath}/settings`)}
+        />
+      </div>
+        </>
+      )}
+    </SidebarSection>
+  );
+}
+
+// Feature Settings Level Sidebar — mirrors Brand Settings. Reached from the
+// "Feature Settings" entry at the bottom of FeatureLevelSidebar. The landing
+// (/settings, Sales Economics) is GA; Workflows is a staff-only (alpha) sub-page.
+function FeatureSettingsLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
+  orgId: string;
+  brandId: string;
+  featureSlug: string;
+  pathname: string;
+}) {
+  const { getFeature } = useFeatures();
+  const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`;
+  const feature = getFeature(featureSlug);
+  const title = feature?.name ?? featureSlug;
+  // Workflows is alpha (staff-only); default-hidden until PostHog resolves so it
+  // never flashes for a non-staff viewer. The Feature Settings landing is GA.
+  const workflowsOk = useFeatureFlag(FEATURE_GATES["workflows"].flag);
+
+  const items: SidebarItem[] = [
+    {
+      id: "feature-settings",
+      label: "Feature Settings",
+      href: `${basePath}/settings`,
+      icon: <SettingsIcon />,
+    },
+    ...(workflowsOk
+      ? [
+          {
+            id: "workflows",
+            label: "Workflows",
+            href: `${basePath}/workflows`,
+            icon: <WorkflowIcon />,
+            maturity: FEATURE_GATES["workflows"].maturity,
+          } satisfies SidebarItem,
+        ]
+      : []),
+  ];
+
+  return (
+    <SidebarSection title="Feature Settings" backHref={basePath} backLabel={title}>
+      {items.map((item) => (
+        <SidebarLink
+          key={item.id}
+          item={item}
+          isActive={pathname === item.href || pathname.startsWith(item.href + "/")}
+        />
+      ))}
     </SidebarSection>
   );
 }
@@ -676,11 +988,23 @@ function AppFeatureLevelSidebar({ featureId, pathname }: {
   const basePath = `/features/${featureId}`;
   const feature = getFeature(featureId);
   const title = feature?.name ?? featureId;
+  // Workflows is alpha (staff-only) everywhere. Default-hidden until PostHog resolves.
+  const workflowsOk = useFeatureFlag(FEATURE_GATES["workflows"].flag);
 
   const items: SidebarItem[] = [
     { id: "campaigns", label: "Campaigns", href: basePath, icon: <EnvelopeIcon /> },
     { id: "create", label: "Create Campaign", href: `${basePath}/new`, icon: <PlusIcon /> },
-    { id: "workflows", label: "Workflows", href: `${basePath}/workflows`, icon: <WorkflowIcon /> },
+    ...(workflowsOk
+      ? [
+          {
+            id: "workflows",
+            label: "Workflows",
+            href: `${basePath}/workflows`,
+            icon: <WorkflowIcon />,
+            maturity: FEATURE_GATES["workflows"].maturity,
+          } satisfies SidebarItem,
+        ]
+      : []),
   ];
 
   return (
@@ -690,35 +1014,6 @@ function AppFeatureLevelSidebar({ featureId, pathname }: {
           key={item.id}
           item={item}
           isActive={item.id === "campaigns" ? pathname === item.href : pathname.startsWith(item.href)}
-        />
-      ))}
-    </SidebarSection>
-  );
-}
-
-// Feature Settings Level Sidebar
-function FeatureSettingsLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
-  orgId: string;
-  brandId: string;
-  featureSlug: string;
-  pathname: string;
-}) {
-  const { getFeature } = useFeatures();
-  const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/settings`;
-  const feature = getFeature(featureSlug);
-  const title = feature?.name ?? featureSlug;
-
-  const items: SidebarItem[] = [
-    { id: "settings", label: "Feature Settings", href: basePath, icon: <SettingsIcon /> },
-  ];
-
-  return (
-    <SidebarSection title={title} backHref={`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`} backLabel="Feature">
-      {items.map((item) => (
-        <SidebarLink
-          key={item.id}
-          item={item}
-          isActive={pathname === item.href || pathname.startsWith(item.href + "/")}
         />
       ))}
     </SidebarSection>

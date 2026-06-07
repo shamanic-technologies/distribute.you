@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "distribute — Your distribution, on autopilot.";
+export const alt = "distribute — Cold Email Outreach, on Autopilot.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -58,7 +58,7 @@ export default async function OG() {
               maxWidth: 1000,
             }}
           >
-            Your distribution, on autopilot.
+            Cold Email Outreach, on Autopilot.
           </div>
           <div
             style={{
@@ -68,8 +68,7 @@ export default async function OG() {
               maxWidth: 1000,
             }}
           >
-            Sales, PR, VCs, hiring, accelerators. Drop a URL, set a budget —
-            we send, qualify, forward.
+            We find your buyers, write personalized cold emails, and forward the replies worth reading.
           </div>
         </div>
         <div
@@ -82,7 +81,7 @@ export default async function OG() {
           }}
         >
           <div>distribute.you</div>
-          <div>The Stripe of Distribution</div>
+          <div>Sales Automation</div>
         </div>
       </div>
     ),

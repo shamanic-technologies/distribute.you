@@ -33,6 +33,59 @@ export function clearBreadcrumbCaches() {
   }
 }
 
+const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
+
+/** The org's domain when its name is domain-shaped. Onboarding creates the org
+ *  with `name: <brand domain>`, so self-serve orgs carry a usable domain here;
+ *  a renamed / non-domain org name returns null and falls back to the initial. */
+function orgDomainFromName(name?: string | null): string | null {
+  if (!name) return null;
+  const candidate = name.trim().replace(/^https?:\/\//i, "").replace(/\/.*$/, "").toLowerCase();
+  return /^[^\s]+\.[^\s]+$/.test(candidate) ? candidate : null;
+}
+
+/** Organization avatar. Resolution order:
+ *  1. A real *uploaded* Clerk logo (`hasImage` — Clerk's `imageUrl` is ALWAYS
+ *     populated, defaulting to a generated gradient-initials avatar we don't want).
+ *  2. logo.dev keyed on the org's domain-shaped name.
+ *  3. The org's initial.
+ *  Plain `<img>` — no Next/Image domain config needed, mirrors lead photos. */
+function OrgAvatar({
+  name,
+  imageUrl,
+  hasImage,
+  sizeClass,
+}: {
+  name: string;
+  imageUrl?: string | null;
+  hasImage?: boolean;
+  sizeClass: string;
+}) {
+  const [broken, setBroken] = useState(false);
+  const domain = orgDomainFromName(name);
+  const src = hasImage && imageUrl
+    ? imageUrl
+    : domain
+      ? `https://img.logo.dev/${domain}?token=${LOGO_DEV_TOKEN}`
+      : null;
+  if (src && !broken) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return (
+      <img
+        src={src}
+        alt={name}
+        onError={() => setBroken(true)}
+        className={`${sizeClass} rounded object-cover bg-brand-100 flex-shrink-0`}
+      />
+    );
+  }
+  return (
+    <div className={`${sizeClass} bg-brand-100 rounded flex items-center justify-center flex-shrink-0`}>
+      <span className="text-brand-600 font-semibold text-xs">{name?.[0]?.toUpperCase() || "O"}</span>
+    </div>
+  );
+}
+
 export function BreadcrumbNav() {
   const pathname = usePathname();
   const router = useRouter();
@@ -141,17 +194,23 @@ export function BreadcrumbNav() {
     }
   };
 
-  const handleOrgSwitch = (clerkOrgId: string) => {
+  const handleOrgSwitch = async (clerkOrgId: string) => {
     setOpenDropdown(null);
     clearBreadcrumbCaches();
     // Update Clerk's client-side active org so useOrganization() reflects the switch
-    // immediately (breadcrumb name, OrgCacheInvalidator firing to clear React Query).
+    // immediately (breadcrumb name, OrgCacheInvalidator firing, QueryProvider remount).
     // Then push the URL so middleware's organizationSyncOptions confirms server-side
     // and /api/v1/* calls run under the new org. Both directions are required:
     // setActive alone left the URL stale (PR #1058 prod incident, polls 404'd);
     // router.push alone left the client UI stale until the session cookie refreshed.
+    //
+    // AWAIT setActive before navigating: it resolves once the Clerk session (and its
+    // org claim) has rotated to the new org. Navigating / firing an API call before
+    // that resolves carries the OLD org in the lag window → write commits under the
+    // wrong org, later read 404s (DIS-143 stale write). The proxy's fail-closed guard
+    // is the backstop; awaiting closes the race at the source.
     if (setActive) {
-      setActive({ organization: clerkOrgId });
+      await setActive({ organization: clerkOrgId });
     }
     router.push(`/orgs/${clerkOrgId}`);
   };
@@ -236,9 +295,7 @@ export function BreadcrumbNav() {
       {/* ORG — always shown as root */}
       <div className="relative flex items-center">
         <Link href={organization ? `/orgs/${organization.id}` : "/"} className="px-2 py-1 rounded-md hover:bg-gray-100 transition flex items-center gap-1.5">
-          <div className="w-5 h-5 bg-brand-100 rounded flex items-center justify-center">
-            <span className="text-brand-600 font-semibold text-xs">{organization?.name?.[0] || "O"}</span>
-          </div>
+          <OrgAvatar name={organization?.name || "Dashboard"} imageUrl={organization?.imageUrl} hasImage={organization?.hasImage} sizeClass="w-5 h-5" />
           <span className="font-medium text-gray-800 max-w-[140px] truncate">{organization?.name || "Dashboard"}</span>
         </Link>
         <button onClick={() => toggleDropdown("org")} className="p-1 hover:bg-gray-100 rounded transition">
@@ -257,9 +314,7 @@ export function BreadcrumbNav() {
                   organization?.id === m.organization.id ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
                 }`}
               >
-                <div className="w-6 h-6 bg-brand-100 rounded flex items-center justify-center flex-shrink-0">
-                  <span className="text-brand-600 font-semibold text-xs">{m.organization.name[0]}</span>
-                </div>
+                <OrgAvatar name={m.organization.name} imageUrl={m.organization.imageUrl} hasImage={m.organization.hasImage} sizeClass="w-6 h-6" />
                 <span className="truncate">{m.organization.name}</span>
                 {organization?.id === m.organization.id && (
                   <svg className="w-4 h-4 text-brand-600 ml-auto" fill="currentColor" viewBox="0 0 20 20">
@@ -270,7 +325,7 @@ export function BreadcrumbNav() {
             ))}
             <div className="border-t border-gray-100 mt-1 pt-1">
               <button
-                onClick={() => { setOpenDropdown(null); router.push("/onboarding"); }}
+                onClick={() => { setOpenDropdown(null); router.push("/onboarding?new=1"); }}
                 className="w-full text-left px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 flex items-center gap-2 transition"
               >
                 <div className="w-6 h-6 border-2 border-dashed border-gray-300 rounded flex items-center justify-center flex-shrink-0">

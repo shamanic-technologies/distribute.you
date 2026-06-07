@@ -8,11 +8,11 @@ const trackerPath = path.resolve(
 );
 const signUpPath = path.resolve(
   __dirname,
-  "../src/app/sign-up/[[...sign-up]]/page.tsx"
+  "../src/app/(authed)/sign-up/[[...sign-up]]/page.tsx"
 );
 const layoutPath = path.resolve(
   __dirname,
-  "../src/app/(dashboard)/layout.tsx"
+  "../src/app/(authed)/(dashboard)/layout.tsx"
 );
 const apiPath = path.resolve(__dirname, "../src/lib/api.ts");
 

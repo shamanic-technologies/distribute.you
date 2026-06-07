@@ -61,18 +61,20 @@ describe("sidebar components use formatCount for badges", () => {
     expect(content).toContain("formatCount(item.badge)");
   });
 
-  it("brand overview page uses formatCount for outcome counts", () => {
+  it("brand metrics header thousand-separates its stat numbers", () => {
     const content = fs.readFileSync(
-      path.join(__dirname, "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx"),
+      path.join(__dirname, "../src/components/brand-metrics-header.tsx"),
       "utf-8"
     );
-    expect(content).toContain('import { formatCount } from "@/lib/format-number"');
-    expect(content).toContain("formatCount(outcomeCounts[key])");
+    // Visits / DR / revenue big numbers + chart values format with thousand
+    // separators via toLocaleString (the Outcomes count cards this replaced
+    // used formatCount for the same purpose).
+    expect(content).toContain('toLocaleString("en-US")');
   });
 
   it("press-kit page uses formatCount for view stats", () => {
     const content = fs.readFileSync(
-      path.join(__dirname, "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/[kitId]/page.tsx"),
+      path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/[kitId]/page.tsx"),
       "utf-8"
     );
     expect(content).toContain('import { formatCount } from "@/lib/format-number"');

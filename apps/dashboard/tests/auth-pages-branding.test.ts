@@ -5,11 +5,11 @@ import * as path from "path";
 describe("Auth pages branding", () => {
   const signInPath = path.join(
     __dirname,
-    "../src/app/sign-in/[[...sign-in]]/page.tsx"
+    "../src/app/(authed)/sign-in/[[...sign-in]]/page.tsx"
   );
   const signUpPath = path.join(
     __dirname,
-    "../src/app/sign-up/[[...sign-up]]/page.tsx"
+    "../src/app/(authed)/sign-up/[[...sign-up]]/page.tsx"
   );
   const signInContent = fs.readFileSync(signInPath, "utf-8");
   const signUpContent = fs.readFileSync(signUpPath, "utf-8");
@@ -56,7 +56,7 @@ describe("Auth pages branding", () => {
 describe("Onboarding page should not reference mcpfactory", () => {
   const onboardingPath = path.join(
     __dirname,
-    "../src/app/onboarding/page.tsx"
+    "../src/app/(authed)/onboarding/page.tsx"
   );
   const content = fs.readFileSync(onboardingPath, "utf-8");
 

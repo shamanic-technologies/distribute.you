@@ -14,7 +14,7 @@ import * as path from "path";
 describe("Feature page stats use centralized feature stats endpoint", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/page.tsx"
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/page.tsx"
   );
   const content = fs.readFileSync(pagePath, "utf-8");
 

@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     "automated cold email",
     "personalized cold email",
     "cold email at scale",
-    "lead generation",
+    "client acquisition",
     "sales prospecting",
     "outbound sales",
     "MCP",

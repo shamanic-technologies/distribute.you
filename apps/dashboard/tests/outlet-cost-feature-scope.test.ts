@@ -5,11 +5,11 @@ import * as path from "path";
 const apiPath = path.resolve(__dirname, "../src/lib/api.ts");
 const featureOutletPagePath = path.resolve(
   __dirname,
-  "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/outlets/page.tsx",
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/outlets/page.tsx",
 );
 const brandOutletPagePath = path.resolve(
   __dirname,
-  "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/outlets/page.tsx",
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/outlets/page.tsx",
 );
 
 describe("getOutletStatsCosts supports featureSlug parameter", () => {

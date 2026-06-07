@@ -3,7 +3,7 @@ import { CopyForLLM } from "@/components/copy-for-llm";
 
 export const metadata: Metadata = {
   title: "Articles API",
-  description: "List articles mentioning your brand discovered via distribute campaigns.",
+  description: "List and retrieve articles that mention your brand — discovered automatically across your distribute PR and outreach campaigns — via the API.",
 };
 
 const LLM_INSTRUCTIONS = `# Articles API

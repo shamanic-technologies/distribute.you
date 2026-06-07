@@ -3,6 +3,7 @@
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { isExpertQuoteFeature } from "@/lib/expert-quote-feature";
 
 interface SidebarItem {
   id: string;
@@ -23,30 +24,77 @@ const LeadsIcon = () => (
   </svg>
 );
 
-const EmailsIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-  </svg>
-);
-
 const WorkflowsIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
   </svg>
 );
 
+// Quote requests (the HITL queue) — mirrors the campaign entity icon `quote`.
+const QuotesIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 7h3v6H7zM7 13c0 2 1 3 3 3M14 7h3v6h-3zM14 13c0 2 1 3 3 3" />
+  </svg>
+);
+
+// Pitches — mirrors the campaign entity icon `message-square`.
+const PitchIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+  </svg>
+);
+
+// Prompt — mirrors the campaign Settings `Prompt` button icon.
+const PromptIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 7h6m-6 4h6m-3 8l-4-4H5a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-4l-3 3z" />
+  </svg>
+);
+
 interface ReportSidebarProps {
   basePath: string;
+  featureSlug: string;
 }
 
-export function ReportSidebar({ basePath }: ReportSidebarProps) {
-  const pathname = usePathname();
-  const items: SidebarItem[] = [
+function buildItems(basePath: string, featureSlug: string): SidebarItem[] {
+  if (isExpertQuoteFeature(featureSlug)) {
+    // Mirror the campaign sidebar exactly: the two Outcome entities
+    // (quote-requests, quote-pitches) + the Prompt surface. No Overview —
+    // this feature has no stats funnel; the base path redirects to the first
+    // entity (see the report root page).
+    return [
+      {
+        id: "quote-requests",
+        label: "Quote requests",
+        href: `${basePath}/quote-requests`,
+        icon: <QuotesIcon />,
+      },
+      {
+        id: "quote-pitches",
+        label: "Pitches",
+        href: `${basePath}/quote-pitches`,
+        icon: <PitchIcon />,
+      },
+      {
+        id: "prompt",
+        label: "Prompt",
+        href: `${basePath}/prompt`,
+        icon: <PromptIcon />,
+      },
+    ];
+  }
+  // Default — Sales Cold Email Outreach layout (and any future slug that
+  // matches the leads-+-workflows shape).
+  return [
     { id: "overview", label: "Overview", href: basePath, icon: <OverviewIcon /> },
     { id: "leads", label: "Leads", href: `${basePath}/leads`, icon: <LeadsIcon /> },
-    { id: "emails", label: "Emails", href: `${basePath}/emails`, icon: <EmailsIcon /> },
     { id: "workflows", label: "Workflows", href: `${basePath}/workflows`, icon: <WorkflowsIcon /> },
   ];
+}
+
+export function ReportSidebar({ basePath, featureSlug }: ReportSidebarProps) {
+  const pathname = usePathname();
+  const items = buildItems(basePath, featureSlug);
 
   return (
     <aside className="w-44 bg-white border-r border-gray-200 flex flex-col flex-shrink-0 h-full">
@@ -72,8 +120,18 @@ export function ReportSidebar({ basePath }: ReportSidebarProps) {
           );
         })}
       </nav>
-      <div className="px-4 py-3 border-t border-gray-100 text-[10px] text-gray-400 leading-relaxed">
-        Confidential client report. Public URL, do not share publicly.
+      <div className="border-t border-gray-200 px-4 py-3 text-[11px] text-gray-600 leading-snug">
+        Distributed with{" "}
+        <span aria-label="love" role="img">❤️</span>{" "}
+        by{" "}
+        <a
+          href="https://distribute.you"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-semibold text-gray-900 underline decoration-gray-300 underline-offset-2 hover:decoration-gray-700"
+        >
+          distribute.you
+        </a>
       </div>
     </aside>
   );

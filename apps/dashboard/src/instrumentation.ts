@@ -17,7 +17,7 @@ function emailLayout(content: string): string {
 </html>`;
 }
 
-const EMAIL_TEMPLATES = [
+export const EMAIL_TEMPLATES = [
   // ── Campaign templates (branded) ──
   {
     name: "campaign_created",
@@ -104,6 +104,60 @@ const EMAIL_TEMPLATES = [
     htmlBody: "<p>User is back: <strong>{{email}}</strong> at {{timestamp}}</p>",
     textBody: "User is back: {{email}} at {{timestamp}}",
   },
+
+  // ── DIS-64 Wave 0.5: invite-only gate + $25 referral lifecycle ──
+  // Variables sent by api-service in `metadata` (deployed transactional-email-service
+  // schema: { eventType, recipientEmail, metadata }). Unused metadata keys are
+  // silently dropped by the renderer.
+  //   waitlist-confirmed         → { email, position, brandUrl }
+  //   invite-claimed-welcome     → { email, inviterOrgName, balanceCents }
+  //   invite-success-notification → { email, inviteeOrgName, balanceCents, invitesUsed, invitesTotal }
+  {
+    name: "waitlist-confirmed",
+    subject: "You're on the distribute waitlist",
+    htmlBody: emailLayout(`
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">Hey,</p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
+        You're #{{position}} on the distribute waitlist. I took a quick look at {{brandUrl}} — looks like a good fit for what we're building. I'll start opening slots over the next few days; your turn isn't far.
+      </p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
+        Want to skip the line? Ask someone already using distribute for their invite link. Each invite drops $25 in credits into both sides.
+      </p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">See you inside soon.</p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute</p>`),
+    textBody: `Hey,\n\nYou're #{{position}} on the distribute waitlist. I took a quick look at {{brandUrl}} — looks like a good fit for what we're building. I'll start opening slots over the next few days; your turn isn't far.\n\nWant to skip the line? Ask someone already using distribute for their invite link. Each invite drops $25 in credits into both sides.\n\nSee you inside soon.\n\n— Kevin, founder of distribute`,
+  },
+  {
+    name: "invite-claimed-welcome",
+    subject: "Welcome to distribute — you have $25 in credits",
+    htmlBody: emailLayout(`
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">Hey,</p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
+        Thanks to {{inviterOrgName}}, you start with $25 in product credits — enough for a real first campaign, not a demo.
+      </p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
+        Open your dashboard and run your first AI-driven outreach today: <a href="${DASHBOARD_URL}" style="color:#6366f1;">${DASHBOARD_URL}</a>
+      </p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
+        You also have 3 invites to share. Each one drops $25 into both sides.
+      </p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute</p>`),
+    textBody: `Hey,\n\nThanks to {{inviterOrgName}}, you start with $25 in product credits — enough for a real first campaign, not a demo.\n\nOpen your dashboard and run your first AI-driven outreach today: ${DASHBOARD_URL}\n\nYou also have 3 invites to share. Each one drops $25 into both sides.\n\n— Kevin, founder of distribute`,
+  },
+  {
+    name: "invite-success-notification",
+    subject: "{{inviteeOrgName}} joined distribute — you earned $25",
+    htmlBody: emailLayout(`
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">Hey,</p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
+        {{inviteeOrgName}} just joined distribute with your invite. $25 is now in your account.
+      </p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
+        You've used {{invitesUsed}}/{{invitesTotal}} invites. Keep sending them — the link is in your dashboard sidebar: <a href="${DASHBOARD_URL}" style="color:#6366f1;">${DASHBOARD_URL}</a>
+      </p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin</p>`),
+    textBody: `Hey,\n\n{{inviteeOrgName}} just joined distribute with your invite. $25 is now in your account.\n\nYou've used {{invitesUsed}}/{{invitesTotal}} invites. Keep sending them — the link is in your dashboard sidebar: ${DASHBOARD_URL}\n\n— Kevin`,
+  },
 ];
 
 const PLATFORM_KEYS: { provider: string; envVar: string }[] = [
@@ -132,6 +186,7 @@ const PLATFORM_KEYS: { provider: string; envVar: string }[] = [
   { provider: "cloudflare-r2-public-domain", envVar: "CLOUDFLARE_R2_PUBLIC_DOMAIN" },
   { provider: "logo-dev", envVar: "LOGO_DEV_TOKEN" },
   { provider: "scrape-do", envVar: "SCRAPE_DO_API_KEY" },
+  { provider: "apify", envVar: "APIFY_API_KEY" },
   { provider: "featured-username", envVar: "FEATURED_COM_USERNAME" },
   { provider: "featured-password", envVar: "FEATURED_COM_PASSWORD" },
 ];
@@ -217,12 +272,16 @@ Now write the sequence for:
 - Company: {{clientCompanyName}}`;
 
 const COLD_EMAIL_VARIABLES = [
-  "leadFirstName",
-  "leadLastName",
-  "leadTitle",
-  "leadCompanyName",
-  "leadCompanyIndustry",
-  "clientCompanyName",
+  { name: "leadFirstName", description: "Lead first name (string)." },
+  { name: "leadLastName", description: "Lead last name (string)." },
+  { name: "leadTitle", description: "Lead job title (string)." },
+  { name: "leadCompanyName", description: "Lead's employer name (string)." },
+  { name: "leadCompanyIndustry", description: "Lead's industry (string)." },
+  {
+    name: "clientCompanyName",
+    description:
+      "Client brand identity. Scalar string for single-brand campaigns; object or array of objects in multibrand. Reference naturally — never invent a primary if multiple are given.",
+  },
 ];
 
 const PRESS_KIT_CHAT_SYSTEM_PROMPT = `You are an expert press kit editor embedded in a media kit management dashboard.
@@ -311,7 +370,7 @@ You have the following tools (these are the exact function names — use them as
 The chat-service exposes **three** distinct workflow-mutation tools. They are NOT interchangeable — picking the wrong one is a critical error.
 
 - **create_workflow** — Generate a brand-new workflow from a natural-language description. **Use this ONLY when the current feature has no workflow yet.** If the request context already contains a \\\`workflowId\\\`, the feature already has a workflow and you MUST use \\\`upgrade_workflow\\\` or \\\`fork_workflow\\\` instead — never \\\`create_workflow\\\`. Parameters: \\\`description\\\` (string, required, NL spec, min 10 chars); \\\`featureSlug\\\` (string, required); \\\`hints\\\` (object, optional: \\\`{ services?, nodeTypes?, expectedInputs? }\\\`); \\\`style\\\` (object, optional: \\\`{ type, humanId|brandId, name }\\\`).
-- **upgrade_workflow** — Regenerate the DAG of an existing workflow **while keeping the same dynasty/lineage**. **HARD RULE (enforced by chat-service):** \\\`upgrade_workflow\\\` is for (a) bug fixes in the existing DAG, or (b) clarifying erroneous / imprecise metadata only. **Any substantive change (new behavior, new scope, new steps) MUST use \\\`fork_workflow\\\` instead.** A bug fix here explicitly includes fixing broken wiring: missing or misnamed \\\`\\$ref\\\` entries in a node's \\\`inputMapping\\\` against an EXISTING template/contract (e.g. template declares \\\`{{leadTitle}}\\\` but the node never wires \\\`body.variables.leadTitle\\\`). Parameters: \\\`workflowSlug\\\` (string, required); \\\`description\\\` (string, required, NL spec of the fix); \\\`hints\\\` (string[], optional).
+- **upgrade_workflow** — Regenerate the DAG of an existing workflow **while keeping the same dynasty/lineage**. **HARD RULE (enforced by chat-service):** \\\`upgrade_workflow\\\` is for (a) bug fixes in the existing DAG, or (b) clarifying erroneous / imprecise metadata only. **Any substantive change (new behavior, new scope, new steps) MUST use \\\`fork_workflow\\\` instead.** A bug fix here explicitly includes fixing broken wiring: missing or misnamed \\\`\\$ref\\\` entries in a node's \\\`inputMapping\\\` against an EXISTING template/contract (e.g. template declares \\\`{{leadTitle}}\\\` but the node never wires \\\`body.variables.leadTitle\\\`). **For \\\`\\$ref\\\` path corrections, wiring fixes, or metadata-only changes, ALWAYS pass the \\\`dag\\\` parameter with the corrected DAG verbatim** (fetch via \\\`get_workflow_details\\\`, patch locally, send complete DAG) — workflow-service applies the patch as-is and skips LLM regeneration. **Never use description-only for these cases:** description-only triggers a full LLM DAG regen which drifts (template version downgrades, nodes deleted, fields lost). Description-only is correct ONLY when rewriting the workflow from natural language. Parameters: \\\`workflowDynastySlug\\\` (string, required) — the stable lineage slug, constant across all versions of the dynasty (use the \\\`workflowDynastySlug\\\` field from \\\`get_workflow_details\\\`, NOT the versioned \\\`workflowSlug\\\`, NOT the UUID); \\\`description\\\` (string, optional — required only when \\\`dag\\\` is not provided); \\\`hints\\\` (object, optional: \\\`{ services?, nodeTypes?, expectedInputs? }\\\`, ignored when \\\`dag\\\` is provided); \\\`dag\\\` (object, optional) — the complete corrected DAG, skips LLM regen, used for surgical fixes.
 - **fork_workflow** — Save a substantively-modified DAG against an existing workflow's ID. Creates a new dynasty when the DAG signature differs from the source. Use for any non-trivial change: adding/removing nodes or edges, changing node configs, **changing inputs/outputs at the contract level** (new template variable required, new node feeding the mapping, new output field consumed downstream), changing tool calls. "Changed inputs/outputs" here means a **template contract** change — NOT a wiring fix that simply repairs broken \\\`\\$ref\\\` entries against the existing contract (that is an upgrade). Workflow: call \\\`get_workflow_details\\\` to fetch the current DAG, mutate it locally, then send the **complete** DAG back. **Never build a DAG from scratch or send a partial DAG** — omitting nodes will break edges and fail validation. Parameters: \\\`workflowId\\\` (string, required); \\\`dag\\\` (object, required) — the complete updated DAG. If the resulting DAG signature matches the source, the response contains \\\`_action: "updated"\\\` (no-op, expected).
 - **get_workflow_details** — Fetch the full details of a workflow including its DAG, metadata, and status. Use this before every \\\`fork_workflow\\\` to read the current DAG, and to re-read the DAG after mutations. Parameter: \\\`workflowId\\\` (string, required) — use the UUID from the \\\`workflowId\\\` field in the request context.
 - **list_workflows** — Search and list existing workflows. Use this to browse workflows in the current feature or across features — especially useful for finding similar workflows to reuse patterns from. Parameters: \\\`featureSlug\\\` (string, optional); \\\`tags\\\` (string[], optional); \\\`search\\\` (string, optional) — free text search.
@@ -365,7 +424,7 @@ Other guidance:
 2. If a node references a content-generation template (e.g. a node calling the content-generation service with a template type), call **get_prompt_template** with that type to see the prompt text and variables.
 3. When the user asks for a change, pick the mutation tool using the decision tree above:
    - **No existing workflow** (no \\\`workflowId\\\` in context): call **create_workflow** with a natural-language description and the \\\`featureSlug\\\`. Optionally pass \\\`hints\\\` (services, nodeTypes, expectedInputs) and \\\`style\\\` to bias generation.
-   - **Bug fix or metadata-only correction on an existing workflow**: call **upgrade_workflow** with the \\\`workflowSlug\\\` and a natural-language description of the fix. Same dynasty preserved.
+   - **Bug fix or metadata-only correction on an existing workflow**: call **upgrade_workflow** with the \\\`workflowDynastySlug\\\` (the stable lineage slug). For \\\`\\$ref\\\` / wiring fixes or surgical metadata-only changes, pass the corrected \\\`dag\\\` verbatim (fetch via \\\`get_workflow_details\\\`, patch locally) — description-only triggers a full LLM regen which drifts. Pass \\\`description\\\` only when rewriting the workflow from natural language. Same dynasty preserved.
    - **Any substantive change to an existing workflow** (structural DAG change, new behavior, changed node configs that alter semantics, prompt-template swap for a node, etc.): call **get_workflow_details** to fetch the fresh DAG, mutate it, then call **fork_workflow** with \\\`{ workflowId, dag: <modified DAG> }\\\`. **CRITICAL: the DAG you send MUST include ALL existing nodes and edges, not just the ones you changed.** Omitting nodes will break edges referencing them. **fork_workflow creates a new dynasty when the signature differs** — tell the user: "Your customized workflow is ready: {new workflow name}. Use this name for future campaigns."
    - **Prompt-template changes**: call **update_prompt_template** to create a new version. **Then immediately fork the workflow** (via **fork_workflow** with the full DAG, updating the relevant node's \\\`body.type\\\` to the new versioned type, e.g. "cold-email" → "cold-email-v2"). Never leave a node pointing to a stale template name.
 4. **CRITICAL RULE: After every create_workflow, upgrade_workflow, fork_workflow, or update_prompt_template call, you MUST immediately call validate_workflow** to verify the changes are structurally correct. Report any validation errors or warnings to the user.

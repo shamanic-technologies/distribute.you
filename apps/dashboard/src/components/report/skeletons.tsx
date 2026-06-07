@@ -1,33 +1,43 @@
+import type { ReactNode } from "react";
 import { SectionCard } from "./section-card";
 
-export function HeaderSkeleton() {
+export function HeaderSkeleton({ leftSlot }: { leftSlot?: ReactNode } = {}) {
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-5">
-      <div className="flex items-start justify-between gap-6 flex-wrap">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-lg bg-gray-100 animate-pulse" />
+    <header className="bg-white border-b border-gray-200 px-4 py-3 sm:px-6 sm:py-5">
+      <div className="flex items-start justify-between gap-3 sm:gap-6 flex-wrap">
+        <div className="flex items-center gap-3 sm:gap-4">
+          {leftSlot}
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg bg-gray-100 animate-pulse" />
           <div className="space-y-2">
-            <div className="h-6 w-48 bg-gray-100 rounded animate-pulse" />
-            <div className="h-4 w-32 bg-gray-100 rounded animate-pulse" />
+            <div className="h-5 sm:h-6 w-36 sm:w-48 bg-gray-100 rounded animate-pulse" />
+            <div className="h-3 sm:h-4 w-24 sm:w-32 bg-gray-100 rounded animate-pulse" />
           </div>
         </div>
-        <div className="space-y-1 text-right">
-          <div className="h-3 w-40 bg-gray-100 rounded animate-pulse ml-auto" />
-          <div className="h-3 w-24 bg-gray-100 rounded animate-pulse ml-auto" />
+        <div className="space-y-1 text-left sm:text-right w-full sm:w-auto">
+          <div className="h-3 w-40 bg-gray-100 rounded animate-pulse sm:ml-auto" />
+          <div className="h-3 w-24 bg-gray-100 rounded animate-pulse sm:ml-auto" />
         </div>
       </div>
     </header>
   );
 }
 
-function TableRowSkeleton({ cols }: { cols: number }) {
+// Width pattern per column index — gives the row a varied "real data"
+// silhouette instead of a uniform grid of thin bars. Cycles for >7 cols.
+const ROW_CELL_WIDTHS = ["w-32", "w-40", "w-24", "w-28", "w-20", "w-16", "w-24"];
+
+function TableRowSkeleton({ cols, isFirst, rowIndex }: { cols: number; isFirst: boolean; rowIndex: number }) {
   return (
-    <tr>
-      {Array.from({ length: cols }).map((_, i) => (
-        <td key={i} className="px-4 py-3">
-          <div className="h-3 bg-gray-100 rounded animate-pulse" />
-        </td>
-      ))}
+    <tr className={isFirst ? "" : "border-t border-gray-100"}>
+      {Array.from({ length: cols }).map((_, i) => {
+        // Slight per-row variation so the skeleton doesn't look like a grid.
+        const widthClass = ROW_CELL_WIDTHS[(i + rowIndex) % ROW_CELL_WIDTHS.length];
+        return (
+          <td key={i} className="px-4 py-3.5">
+            <div className={`h-3 max-w-full ${widthClass} bg-gray-200 rounded animate-pulse`} />
+          </td>
+        );
+      })}
     </tr>
   );
 }
@@ -39,11 +49,18 @@ interface TableSectionSkeletonProps {
   rowCount?: number;
 }
 
-export function TableSectionSkeleton({ title, description, columnLabels, rowCount = 5 }: TableSectionSkeletonProps) {
+export function TableSectionSkeleton({ title, description, columnLabels, rowCount = 8 }: TableSectionSkeletonProps) {
   return (
     <SectionCard title={title} description={description}>
-      <table className="w-full text-sm">
-        <thead className="bg-gray-50 border-b border-gray-100">
+      {/* Mirror ReportTable's filter bar so the swap to real data
+          doesn't cause layout shift. */}
+      <div className="px-5 py-3 border-b border-gray-200 flex flex-wrap gap-3 items-center bg-gray-50/40">
+        <div className="flex-1 min-w-0 sm:min-w-[200px] h-7 bg-gray-200 rounded-lg animate-pulse" />
+        <div className="h-7 w-28 bg-gray-200 rounded-lg animate-pulse" />
+        <div className="h-3 w-20 bg-gray-200 rounded animate-pulse" />
+      </div>
+      <table className="w-full text-sm border-collapse">
+        <thead className="bg-gray-50">
           <tr>
             {columnLabels.map((label) => (
               <th key={label} className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
@@ -52,9 +69,9 @@ export function TableSectionSkeleton({ title, description, columnLabels, rowCoun
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100">
+        <tbody>
           {Array.from({ length: rowCount }).map((_, i) => (
-            <TableRowSkeleton key={i} cols={columnLabels.length} />
+            <TableRowSkeleton key={i} cols={columnLabels.length} isFirst={i === 0} rowIndex={i} />
           ))}
         </tbody>
       </table>
@@ -79,7 +96,7 @@ export function ListSectionSkeleton({ title, description, rowCount = 4 }: { titl
 
 export function OverviewSkeleton() {
   return (
-    <div className="p-6 md:p-8 space-y-6 max-w-6xl">
+    <div className="p-4 sm:p-6 md:p-8 space-y-6 max-w-6xl">
       <div>
         <div className="h-6 w-32 bg-gray-100 rounded animate-pulse mb-2" />
         <div className="h-4 w-96 bg-gray-100 rounded animate-pulse" />

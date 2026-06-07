@@ -1,7 +1,7 @@
 export const BRAND = {
   name: "distribute",
-  tagline: "The Stripe of Distribution",
-  hero: "Your distribution, on autopilot.",
+  tagline: "Sales Automation",
+  hero: "Cold Email Outreach, on Autopilot.",
   license: "MIT",
   isOpenSource: true,
   social: {

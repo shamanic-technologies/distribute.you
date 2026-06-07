@@ -4,7 +4,7 @@ import * as path from "path";
 
 const proxyPath = path.resolve(
   __dirname,
-  "../src/app/api/v1/[...path]/route.ts"
+  "../src/app/(authed)/api/v1/[...path]/route.ts"
 );
 
 const apiPath = path.resolve(__dirname, "../src/lib/api.ts");
@@ -94,10 +94,13 @@ describe("api.ts client routing", () => {
 });
 
 describe("useAuthQuery no longer uses Clerk getToken", () => {
-  it("should not import useAuth from Clerk", () => {
+  it("should not pass Clerk JWTs (no getToken / useAuth token passing)", () => {
     const content = fs.readFileSync(useAuthQueryPath, "utf-8");
-    expect(content).not.toContain("from \"@clerk");
+    // Auth stays via the /api/v1 proxy (Clerk session cookies) — never token-passing.
     expect(content).not.toContain("getToken");
+    expect(content).not.toContain("useAuth(");
+    // NOTE: `useOrganization` from @clerk/nextjs IS allowed here — it powers the
+    // org-consistency read-gate (suspend cross-org reads during a switch), not auth.
   });
 
   it("should accept queryFn without token parameter", () => {

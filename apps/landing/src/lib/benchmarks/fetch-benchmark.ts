@@ -58,6 +58,10 @@ interface FeatureListResponse {
   features: RawFeature[];
 }
 
+// Public landing sells one product: sales cold email outreach. Other channels
+// stay alpha (dashboard-only), so /benchmarks surfaces sales only.
+const PUBLIC_BENCHMARK_SLUGS = ["sales-cold-email-outreach"];
+
 export const fetchBenchmarkFeatures = unstable_cache(
   async (hostname = ""): Promise<BenchmarkFeature[]> => {
     const apiUrl = resolveApiUrl(hostname);
@@ -73,7 +77,10 @@ export const fetchBenchmarkFeatures = unstable_cache(
     }
     const data: FeatureListResponse = await res.json();
     const live = data.features.filter(
-      (f) => f.implemented === true && f.status === "active",
+      (f) =>
+        f.implemented === true &&
+        f.status === "active" &&
+        PUBLIC_BENCHMARK_SLUGS.includes(f.slug),
     );
     return live
       .map((f) => {
@@ -137,10 +144,7 @@ function mapBrandEntry(item: BrandRankedItem): BrandLeaderboardEntry {
   const sent = num(item.stats, "recipientsSent");
   const opened = num(item.stats, "recipientsOpened");
   const clicked = num(item.stats, "recipientsClicked");
-  const replied =
-    num(item.stats, "recipientsRepliesPositive") +
-    num(item.stats, "recipientsRepliesNegative") +
-    num(item.stats, "recipientsRepliesNeutral");
+  const replied = num(item.stats, "recipientsRepliesPositive");
   const cost = num(item.stats, "totalCostInUsdCents");
   return {
     brandId: item.brand.id,
@@ -165,10 +169,7 @@ function mapWorkflowEntry(item: WorkflowRankedItem): WorkflowLeaderboardEntry {
   const sent = num(item.stats, "recipientsSent");
   const opened = num(item.stats, "recipientsOpened");
   const clicked = num(item.stats, "recipientsClicked");
-  const replied =
-    num(item.stats, "recipientsRepliesPositive") +
-    num(item.stats, "recipientsRepliesNegative") +
-    num(item.stats, "recipientsRepliesNeutral");
+  const replied = num(item.stats, "recipientsRepliesPositive");
   const cost = num(item.stats, "totalCostInUsdCents");
   return {
     workflowName: item.workflow.workflowName,

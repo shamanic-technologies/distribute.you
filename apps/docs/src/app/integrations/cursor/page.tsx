@@ -2,7 +2,7 @@ import { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Cursor Integration",
-  description: "Connect distribute to Cursor IDE. Configure the MCP server and automate distribution from your editor.",
+  description: "Connect distribute to the Cursor IDE — configure the MCP server and automate brand distribution without leaving your editor.",
 };
 
 export default function CursorIntegrationPage() {

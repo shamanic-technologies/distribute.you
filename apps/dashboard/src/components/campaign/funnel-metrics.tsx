@@ -1,11 +1,13 @@
 "use client";
 
 import type { FunnelStep, StatsRegistry } from "@/lib/api";
+import { Skeleton } from "@/components/skeleton";
 
 interface FunnelMetricsProps {
   steps: FunnelStep[];
   stats: Record<string, number>;
   registry: StatsRegistry;
+  pending?: boolean;
 }
 
 export function FunnelMetricsSkeleton() {
@@ -31,10 +33,13 @@ export function FunnelMetricsSkeleton() {
   );
 }
 
-export function FunnelMetrics({ steps, stats, registry }: FunnelMetricsProps) {
-  const resolved = steps.map((step, i) => {
+export function FunnelMetrics({ steps, stats, registry, pending = false }: FunnelMetricsProps) {
+  const resolved = (pending && steps.length === 0
+    ? [0, 1, 2, 3].map((i) => ({ key: `placeholder-${i}` }))
+    : steps
+  ).map((step, i) => {
     const value = stats[step.key] ?? 0;
-    const prevValue = i > 0 ? (stats[steps[i - 1].key] ?? 0) : 0;
+    const prevValue = i > 0 && steps[i - 1] ? (stats[steps[i - 1].key] ?? 0) : 0;
     const rate = i > 0 && prevValue > 0 ? (value / prevValue * 100) : null;
     const label = registry[step.key]?.label ?? step.key;
     return { key: step.key, label, value, rate };
@@ -53,19 +58,25 @@ export function FunnelMetrics({ steps, stats, registry }: FunnelMetricsProps) {
             <div key={step.key} className="flex-1 flex flex-col items-center">
               {/* Bar — fixed-height container, bar grows from bottom */}
               <div className="w-full flex justify-center" style={{ height: 128 }}>
-                <div
-                  className="w-full max-w-14 bg-brand-500 rounded-t self-end transition-all duration-500 ease-out"
-                  style={{ height: `${barHeight}%` }}
-                />
+                {pending ? (
+                  <Skeleton className="w-full max-w-14 h-1/2 rounded-t self-end" />
+                ) : (
+                  <div
+                    className="w-full max-w-14 bg-brand-500 rounded-t self-end transition-all duration-500 ease-out"
+                    style={{ height: `${barHeight}%` }}
+                  />
+                )}
               </div>
 
               {/* Labels — fixed layout so all columns align */}
               <p className="mt-2 text-lg font-bold text-gray-800 leading-tight">
-                {step.value.toLocaleString()}
+                {pending ? <Skeleton className="h-5 w-8" /> : step.value.toLocaleString()}
               </p>
               <p className="text-xs text-gray-500 leading-tight mt-0.5">{step.label}</p>
               <p className="text-xs font-medium leading-tight mt-0.5 h-4">
-                {step.rate !== null ? (
+                {pending ? (
+                  <Skeleton className="h-3 w-10" />
+                ) : step.rate !== null ? (
                   <span className="text-brand-600">{step.rate.toFixed(1)}%</span>
                 ) : (
                   <span>&nbsp;</span>

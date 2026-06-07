@@ -4,20 +4,13 @@ export interface SourcedStat {
   label: string;
   sourceLabel: string;
   sourceUrl: string;
+  provider: string;
+  providerDomain: string;
 }
 
 // Industry-cited stats. All values + sources are externally verifiable.
 // No internal product claims here — those belong on /pricing.
 export const COLD_EMAIL_PAIN_STATS: SourcedStat[] = [
-  {
-    id: "average-reply-rate",
-    value: "3.43%",
-    label:
-      "average cold email reply rate across B2B campaigns in 2025",
-    sourceLabel: "TheDigitalBloom Cold Outbound Benchmarks, 2025",
-    sourceUrl:
-      "https://thedigitalbloom.com/learn/cold-outbound-reply-rate-benchmarks/",
-  },
   {
     id: "warmup-weeks",
     value: "3–5 weeks",
@@ -25,23 +18,39 @@ export const COLD_EMAIL_PAIN_STATS: SourcedStat[] = [
       "to warm up a cold mailbox to 40 emails per day before real outreach can start",
     sourceLabel: "Lemlist Warmup Guide, 2025",
     sourceUrl: "https://www.lemlist.com/blog/warm-up-email-account",
+    provider: "Lemlist",
+    providerDomain: "lemlist.com",
   },
   {
-    id: "personalization-lift",
-    value: "2–3×",
+    id: "follow-up-lift",
+    value: "8.3% vs 4.1%",
     label:
-      "more replies when emails are individually personalized — yet only 5% of senders do it",
-    sourceLabel: "TheDigitalBloom Cold Outbound Benchmarks, 2025",
-    sourceUrl:
-      "https://thedigitalbloom.com/learn/cold-outbound-reply-rate-benchmarks/",
+      "reply rate with 3–5 follow-ups vs none — sequencing doubles your hit rate",
+    sourceLabel: "Saleshandy Cold Email Statistics (100M+ emails)",
+    sourceUrl: "https://www.saleshandy.com/blog/cold-email-statistics/",
+    provider: "Saleshandy",
+    providerDomain: "saleshandy.com",
   },
   {
-    id: "top-quartile-rate",
-    value: "15–25%",
+    id: "genai-referral",
+    value: "+1,200%",
     label:
-      "reply rate achieved by top-quartile campaigns through tight ICP targeting and follow-up sequencing",
-    sourceLabel: "TheDigitalBloom Cold Outbound Benchmarks, 2025",
+      "GenAI referral traffic to US retail YoY — buyers ask ChatGPT before Google",
+    sourceLabel: "Adobe Analytics, March 2025",
     sourceUrl:
-      "https://thedigitalbloom.com/learn/cold-outbound-reply-rate-benchmarks/",
+      "https://blog.adobe.com/en/publish/2025/03/17/adobe-analytics-traffic-to-us-retail-websites-from-generative-ai-sources-jumps-1200-percent",
+    provider: "Adobe",
+    providerDomain: "adobe.com",
+  },
+  {
+    id: "google-decline",
+    value: "−25%",
+    label:
+      "projected drop in traditional search volume by 2026 as users shift to AI answer engines",
+    sourceLabel: "Gartner Research, Feb 2024",
+    sourceUrl:
+      "https://www.gartner.com/en/newsroom/press-releases/2024-02-19-gartner-predicts-search-engine-volume-will-drop-25-percent-by-2026-due-to-ai-chatbots-and-other-virtual-agents",
+    provider: "Gartner",
+    providerDomain: "gartner.com",
   },
 ];

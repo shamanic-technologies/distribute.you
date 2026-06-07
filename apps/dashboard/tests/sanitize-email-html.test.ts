@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sanitizeEmailHtml } from "../src/app/(dashboard)/orgs/[orgId]/services/crm/_components/sanitize-email-html";
+import { sanitizeEmailHtml } from "../src/app/(authed)/(dashboard)/orgs/[orgId]/services/crm/_components/sanitize-email-html";
 
 describe("sanitizeEmailHtml", () => {
   it("strips <script> tags entirely", () => {

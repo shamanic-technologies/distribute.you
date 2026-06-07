@@ -2,7 +2,7 @@ import { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "ChatGPT Integration",
-  description: "Use distribute with ChatGPT. Connect via MCP connector or use the REST API.",
+  description: "Use distribute inside ChatGPT — connect through the MCP connector or call the REST API directly to automate your distribution.",
 };
 
 export default function ChatGPTIntegrationPage() {

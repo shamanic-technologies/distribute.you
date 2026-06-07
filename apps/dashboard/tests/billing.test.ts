@@ -3,13 +3,13 @@ import * as fs from "fs";
 import * as path from "path";
 
 const apiPath = path.resolve(__dirname, "../src/lib/api.ts");
-const proxyPath = path.resolve(__dirname, "../src/app/api/v1/[...path]/route.ts");
-const billingPagePath = path.resolve(__dirname, "../src/app/(dashboard)/orgs/[orgId]/billing/page.tsx");
+const proxyPath = path.resolve(__dirname, "../src/app/(authed)/api/v1/[...path]/route.ts");
+const billingPagePath = path.resolve(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/billing/page.tsx");
 const billingGuardPath = path.resolve(__dirname, "../src/lib/billing-guard.tsx");
-const layoutPath = path.resolve(__dirname, "../src/app/(dashboard)/layout.tsx");
+const layoutPath = path.resolve(__dirname, "../src/app/(authed)/(dashboard)/layout.tsx");
 const sidebarPath = path.resolve(__dirname, "../src/components/context-sidebar.tsx");
-const campaignNewOrgPath = path.resolve(__dirname, "../src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx");
-const campaignNewFeaturePath = path.resolve(__dirname, "../src/app/(dashboard)/features/[featureId]/new/page.tsx");
+const campaignNewOrgPath = path.resolve(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx");
+const campaignNewFeaturePath = path.resolve(__dirname, "../src/app/(authed)/(dashboard)/features/[featureId]/new/page.tsx");
 
 describe("Billing API wrappers", () => {
   const content = fs.readFileSync(apiPath, "utf-8");
@@ -436,7 +436,10 @@ describe("Proactive credit check in campaign creation (org-scoped)", () => {
   });
 
   it("should check if budget exceeds balance before creating campaign", () => {
-    expect(content).toContain("budgetCents > parseFloat(account.balance_cents)");
+    // Balance is ceil'd to match the ceil'd displayed balance, then compared per period
+    // (a $1.996 balance shown as "$2.00" must not false-trigger for a $2 one-off).
+    expect(content).toContain("Math.ceil(parseFloat(account.balance_cents))");
+    expect(content).toContain("coversFirstPeriod");
   });
 
   it("should check for recurring campaigns without auto-topup", () => {

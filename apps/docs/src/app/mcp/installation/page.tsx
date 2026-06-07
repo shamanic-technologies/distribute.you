@@ -3,7 +3,7 @@ import { CopyForLLM } from "@/components/copy-for-llm";
 
 export const metadata: Metadata = {
   title: "MCP Installation",
-  description: "Install the distribute MCP server for Claude Code, Claude Desktop, Cursor, and other MCP-compatible clients.",
+  description: "Install the distribute MCP server for Claude Code, Claude Desktop, Cursor, and any other MCP-compatible client in just a few steps.",
   openGraph: {
     title: "MCP Installation | distribute Docs",
     description: "Install distribute MCP for Claude, Cursor, and more.",

@@ -9,8 +9,8 @@ export function FeatureGroup({
   maxEntries?: number;
 }) {
   return (
-    <section className="py-10 px-4 border-b border-gray-100 last:border-b-0">
-      <div className="max-w-6xl mx-auto">
+    <section className="py-10 border-b border-gray-100 last:border-b-0">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <h2 className="font-display text-xl font-bold mb-4 text-gray-800">
           {section.label}
         </h2>

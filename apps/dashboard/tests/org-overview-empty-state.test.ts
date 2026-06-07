@@ -5,7 +5,7 @@ import * as path from "path";
 describe("Org overview page empty state", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(dashboard)/orgs/[orgId]/page.tsx"
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/page.tsx"
   );
   const content = fs.readFileSync(pagePath, "utf-8");
 

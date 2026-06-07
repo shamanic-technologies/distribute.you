@@ -2,7 +2,7 @@ import { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Make.com Integration",
-  description: "Create visual automation scenarios with distribute and Make.com using the REST API.",
+  description: "Build visual automation scenarios with distribute and Make.com — orchestrate campaigns, leads, and outreach using the REST API.",
 };
 
 export default function MakeIntegrationPage() {

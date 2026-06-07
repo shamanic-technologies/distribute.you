@@ -3,9 +3,8 @@
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from "react";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
+import { POLL_INTERVAL } from "@/lib/query-options";
 import { getCampaign, getCampaignStats, listCampaignEmails, listCampaignLeads, type Campaign, type CampaignStats, type Email, type Lead } from "./api";
-
-const POLL_INTERVAL = 5_000;
 
 interface CampaignContextType {
   campaign: Campaign | null;
@@ -13,6 +12,12 @@ interface CampaignContextType {
   emails: Email[];
   leads: Lead[];
   loading: boolean;
+  // Per-entity loading. `loading` gates ONLY the campaign query; emails/leads are
+  // independent queries, so entity pages must gate their own skeleton on these —
+  // gating on `loading` hides the skeleton the moment the campaign resolves while
+  // the entity list is still fetching, flashing an empty state.
+  emailsLoading: boolean;
+  leadsLoading: boolean;
   setCampaign: (campaign: Campaign | null) => void;
   refreshStats: () => Promise<void>;
 }
@@ -34,14 +39,13 @@ export function CampaignProvider({ children, campaignId }: CampaignProviderProps
   const { data: campaignData, isLoading: campaignLoading } = useAuthQuery(
     ["campaign", campaignId],
     () => getCampaign(campaignId),
-    { refetchInterval: POLL_INTERVAL, refetchIntervalInBackground: false, placeholderData: keepPreviousData },
+    { refetchInterval: POLL_INTERVAL, placeholderData: keepPreviousData },
   );
 
   // Only poll secondary data while the campaign is active
   const isActive = campaignData?.campaign?.status === "ongoing";
   const pollOptions = {
     refetchInterval: isActive ? POLL_INTERVAL : false as const,
-    refetchIntervalInBackground: false,
     placeholderData: keepPreviousData,
   };
 
@@ -76,8 +80,8 @@ export function CampaignProvider({ children, campaignId }: CampaignProviderProps
   }, [queryClient, campaignId]);
 
   const value = useMemo<CampaignContextType>(
-    () => ({ campaign, stats, emails, leads, loading, setCampaign: noop, refreshStats }),
-    [campaign, stats, emails, leads, loading, refreshStats],
+    () => ({ campaign, stats, emails, leads, loading, emailsLoading, leadsLoading, setCampaign: noop, refreshStats }),
+    [campaign, stats, emails, leads, loading, emailsLoading, leadsLoading, refreshStats],
   );
 
   return (

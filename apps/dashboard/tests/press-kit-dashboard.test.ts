@@ -47,7 +47,7 @@ describe("press-kit-dashboard", () => {
     it("tools press-kits list page does not exist", () => {
       const pagePath = path.join(
         SRC,
-        "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/tools/press-kits/page.tsx",
+        "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/tools/press-kits/page.tsx",
       );
       expect(fs.existsSync(pagePath)).toBe(false);
     });
@@ -55,7 +55,7 @@ describe("press-kit-dashboard", () => {
     it("tools press-kit detail page does not exist", () => {
       const detailPath = path.join(
         SRC,
-        "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/tools/press-kits/[kitId]/page.tsx",
+        "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/tools/press-kits/[kitId]/page.tsx",
       );
       expect(fs.existsSync(detailPath)).toBe(false);
     });
@@ -64,7 +64,7 @@ describe("press-kit-dashboard", () => {
   describe("campaign press-kits list page", () => {
     const pagePath = path.join(
       SRC,
-      "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/page.tsx",
+      "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/page.tsx",
     );
     const pageSrc = fs.readFileSync(pagePath, "utf-8");
 
@@ -103,8 +103,7 @@ describe("press-kit-dashboard", () => {
     });
 
     it("polls for updates", () => {
-      expect(pageSrc).toContain("POLL_INTERVAL");
-      expect(pageSrc).toContain("refetchInterval");
+      expect(pageSrc).toMatch(/pollOptions(Slow|Slower)?/);
     });
 
     it("handles failed status with retry action", () => {
@@ -121,7 +120,7 @@ describe("press-kit-dashboard", () => {
   describe("campaign press-kit detail page", () => {
     const detailPath = path.join(
       SRC,
-      "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/[kitId]/page.tsx",
+      "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/[kitId]/page.tsx",
     );
     const detailSrc = fs.readFileSync(detailPath, "utf-8");
 
@@ -191,7 +190,7 @@ describe("press-kit-dashboard", () => {
 
     const pagePath = path.join(
       SRC,
-      "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/page.tsx",
+      "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/page.tsx",
     );
     const pageSrc = fs.readFileSync(pagePath, "utf-8");
 
@@ -207,7 +206,7 @@ describe("press-kit-dashboard", () => {
 
     const detailPath = path.join(
       SRC,
-      "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/[kitId]/page.tsx",
+      "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/[kitId]/page.tsx",
     );
     const detailSrc = fs.readFileSync(detailPath, "utf-8");
 
@@ -254,8 +253,8 @@ describe("press-kit-dashboard", () => {
 
   describe("public URL uses backend publicUrl field", () => {
     const pressKitFiles = [
-      path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/page.tsx"),
-      path.join(SRC, "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/[kitId]/page.tsx"),
+      path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/page.tsx"),
+      path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/[kitId]/page.tsx"),
       path.join(SRC, "src/components/campaign/press-kit-results.tsx"),
     ];
 

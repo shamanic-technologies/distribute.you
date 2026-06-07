@@ -32,9 +32,12 @@ describe("Campaign polling does not cause full page reload", () => {
     expect(content).toMatch(/useMemo/);
   });
 
-  it("CampaignProvider should disable polling when tab is in background", () => {
+  it("CampaignProvider must not enable background-tab polling", () => {
+    // React Query v5 defaults refetchIntervalInBackground to false, so the
+    // desired behavior is enforced by the default. The only regression is an
+    // explicit override to `true`, which would resume polling in background tabs.
     const content = fs.readFileSync(campaignContextPath, "utf-8");
-    expect(content).toMatch(/refetchIntervalInBackground:\s*false/);
+    expect(content).not.toMatch(/refetchIntervalInBackground:\s*true/);
   });
 
   it("CampaignProvider should only poll secondary data for active campaigns", () => {

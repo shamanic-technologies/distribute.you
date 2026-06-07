@@ -11,7 +11,7 @@ describe("campaign-prefill-chat", () => {
   );
   const campaignNewPagePath = path.join(
     SRC,
-    "src/app/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx",
+    "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx",
   );
   const instrumentationPath = path.join(SRC, "src/instrumentation.ts");
 
@@ -36,6 +36,13 @@ describe("campaign-prefill-chat", () => {
 
     it("detects update_campaign_fields tool calls", () => {
       expect(chatSrc).toContain('"update_campaign_fields"');
+    });
+
+    it("resolves tool name from part.type (AI SDK v6 static tool parts), not part.toolName alone", () => {
+      // Regression: AI SDK v6 puts the name in `type` as "tool-<name>"; reading
+      // `toolName` alone yields "unknown" and the field-apply gate never fires.
+      expect(chatSrc).toContain("resolveToolName");
+      expect(chatSrc).toContain('.type.slice(5)');
     });
 
     it("applies field updates in real-time during streaming (not just onFinish)", () => {

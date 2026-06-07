@@ -2,7 +2,7 @@ import { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Claude Desktop Integration",
-  description: "Add distribute tools to Claude Desktop. Configure the MCP server and start automating distribution.",
+  description: "Add distribute's 35 tools to Claude Desktop — configure the MCP server once and start automating brand distribution from chat.",
 };
 
 export default function ClaudeDesktopIntegrationPage() {

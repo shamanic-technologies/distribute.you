@@ -3,7 +3,7 @@ import { CopyForLLM } from "@/components/copy-for-llm";
 
 export const metadata: Metadata = {
   title: "Claude Code Integration",
-  description: "Use distribute from Claude Code. One command to install, 35 tools for brands, campaigns, leads, and more.",
+  description: "Use distribute from Claude Code — one command installs the MCP server and 35 tools for brands, campaigns, leads, and more.",
 };
 
 const LLM_INSTRUCTIONS = `# distribute + Claude Code

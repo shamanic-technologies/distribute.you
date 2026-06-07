@@ -111,8 +111,8 @@ export default function InvestorsPage() {
       <Navbar />
       <main className="min-h-screen bg-gray-950 text-white">
         {/* Header */}
-        <section className="pt-24 pb-12 px-4">
-          <div className="max-w-4xl mx-auto text-center">
+        <section className="pt-24 pb-12">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <div className="flex items-center justify-center gap-3 mb-6">
               <Image
                 src="/logo-head.jpg"
@@ -131,8 +131,8 @@ export default function InvestorsPage() {
         </section>
 
         {/* Company Overview */}
-        <section className="pb-12 px-4">
-          <div className="max-w-4xl mx-auto">
+        <section className="pb-12">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
               Company Overview
             </h2>
@@ -143,8 +143,8 @@ export default function InvestorsPage() {
         </section>
 
         {/* Product — Channels Catalog */}
-        <section className="pb-12 px-4">
-          <div className="max-w-4xl mx-auto">
+        <section className="pb-12">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="font-display text-2xl font-bold mb-2 text-gray-200">
               Product — {liveFeatureCount} Channels Live, {comingSoonFeatureCount} Coming
             </h2>
@@ -196,8 +196,8 @@ export default function InvestorsPage() {
         </section>
 
         {/* Who We Serve — ICP #1 */}
-        <section className="pb-12 px-4">
-          <div className="max-w-4xl mx-auto">
+        <section className="pb-12">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="font-display text-2xl font-bold mb-2 text-gray-200">
               Who We Serve — ICP #1
             </h2>
@@ -218,10 +218,10 @@ export default function InvestorsPage() {
                   The dream
                 </p>
                 <p className="text-gray-200 italic">
-                  &quot;One of my products is going to take off. I want it to take off because of my
-                  marketing — not because I hired a team or raised a Series A. I want to ride
-                  one product from $0 to $1M MRR while staying solo. distribute.you is the
-                  lever that makes that math work.&quot;
+                  &quot;One of my products is going to take off. I need to monitor closely the
+                  CAC because I am looking for my marketing channel to scale. distribute.you is
+                  the lever that makes that math actionable — whether I stay 1 person or grow
+                  to 10.&quot;
                 </p>
               </div>
 
@@ -279,7 +279,7 @@ export default function InvestorsPage() {
                     <li>Agency-style sender on his behalf</li>
                     <li>AI-qualified replies forwarded to Gmail</li>
                     <li>Public unit prices + 2x margin baked in</li>
-                    <li>Pay-as-you-go credits, $2 free to start</li>
+                    <li>Pay-as-you-go credits, $25 free to start</li>
                     <li>Multi-brand portfolio in one dashboard</li>
                     <li>Open source as a safety valve</li>
                   </ul>
@@ -318,8 +318,8 @@ export default function InvestorsPage() {
         </section>
 
         {/* Platform Metrics */}
-        <section className="pb-12 px-4">
-          <div className="max-w-4xl mx-auto">
+        <section className="pb-12">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
               Platform Metrics
             </h2>
@@ -330,8 +330,8 @@ export default function InvestorsPage() {
         </section>
 
         {/* Revenue & Credits */}
-        <section className="pb-12 px-4">
-          <div className="max-w-4xl mx-auto">
+        <section className="pb-12">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
               Revenue & Credits
             </h2>
@@ -342,8 +342,8 @@ export default function InvestorsPage() {
         </section>
 
         {/* Monthly Growth */}
-        <section className="pb-12 px-4">
-          <div className="max-w-6xl mx-auto">
+        <section className="pb-12">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
               Monthly Growth
             </h2>
@@ -354,8 +354,8 @@ export default function InvestorsPage() {
         </section>
 
         {/* Weekly Growth */}
-        <section className="pb-12 px-4">
-          <div className="max-w-6xl mx-auto">
+        <section className="pb-12">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
               Weekly Growth
             </h2>
@@ -366,8 +366,8 @@ export default function InvestorsPage() {
         </section>
 
         {/* What We Need */}
-        <section className="pb-12 px-4">
-          <div className="max-w-4xl mx-auto">
+        <section className="pb-12">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
               What We Need From Investors in May 2026
             </h2>
@@ -415,8 +415,8 @@ export default function InvestorsPage() {
         </section>
 
         {/* Infrastructure */}
-        <section className="pb-12 px-4">
-          <div className="max-w-4xl mx-auto">
+        <section className="pb-12">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
               Infrastructure
             </h2>
@@ -452,8 +452,8 @@ export default function InvestorsPage() {
         </section>
 
         {/* Contact */}
-        <section className="pb-24 px-4">
-          <div className="max-w-4xl mx-auto text-center">
+        <section className="pb-24">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h2 className="font-display text-2xl font-bold mb-4 text-gray-200">
               Contact
             </h2>

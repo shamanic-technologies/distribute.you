@@ -143,7 +143,7 @@ export const EXPERT_QUOTES: ExpertQuote[] = [
     quote: "Real artists ship.",
     sourceLabel: "Mac team retreat, Jan 1983",
     sourceUrl: "https://quoteinvestigator.com/2018/10/13/ship/",
-    avatarUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Steve_Jobs_Headshot_2010-CROP.jpg/256px-Steve_Jobs_Headshot_2010-CROP.jpg",
+    avatarUrl: "https://unavatar.io/duckduckgo/steve+jobs",
   },
   {
     id: "hassabis-foothills",

@@ -1,109 +1,80 @@
-import Image from "next/image";
-import type { FeatureGroupData, BrandLeaderboardEntry } from "@/lib/performance/fetch-leaderboard";
-import { formatPercent, formatCostCents } from "@/lib/performance/fetch-leaderboard";
-import { computeBestStats } from "@/lib/performance/best-stats";
+import type { FeatureBenchmarkData } from "@/lib/benchmarks/fetch-benchmark";
+import {
+  formatPercent,
+  formatCostCents,
+  formatCostCentsWhole,
+  formatCostDollars,
+} from "@/lib/performance/fetch-leaderboard";
+import { BrandLeaderboard } from "@/components/performance/leaderboard-table";
 
-const LOGO_DEV_TOKEN = process.env.NEXT_PUBLIC_LOGO_DEV_TOKEN;
+const BENCHMARK_URL = "/performance";
 
-interface PerformancePreviewProps {
-  featureGroups: FeatureGroupData[];
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl p-4 text-left">
+      <div className="text-[11px] uppercase tracking-wider text-gray-500">{label}</div>
+      <div className="text-xl md:text-2xl font-display font-bold text-gray-900 mt-1 font-mono">
+        {value}
+      </div>
+    </div>
+  );
 }
 
-function getTopBrandsForGroup(group: FeatureGroupData): BrandLeaderboardEntry[] {
-  return group.brands
-    .filter((b) => b.costPerReplyCents !== null && b.costPerReplyCents > 0)
-    .sort((a, b) => (a.costPerReplyCents ?? Infinity) - (b.costPerReplyCents ?? Infinity))
-    .slice(0, 3);
-}
+export function PerformancePreview({ data }: { data: FeatureBenchmarkData }) {
+  const { aggregate, brands } = data;
+  const hasData = aggregate.emailsSent > 0;
 
-export function PerformancePreview({ featureGroups }: PerformancePreviewProps) {
+  if (!hasData) {
+    return (
+      <p className="text-sm text-gray-400 text-center py-10">
+        Performance data will appear here as cold email campaigns run. Check back soon.
+      </p>
+    );
+  }
+
   return (
     <div>
-      <div className="grid md:grid-cols-3 gap-4">
-        {featureGroups.map((group) => {
-          const best = computeBestStats(group.workflows, group.brands, "brand");
-          const hasData = best.replyRate > 0 || best.costPerReplyCents !== null;
-          const topBrands = getTopBrandsForGroup(group);
-
-          return (
-            <div
-              key={group.featureSlug}
-              className="rounded-xl p-5 border border-gray-200 bg-white"
-            >
-              <h3 className="font-semibold text-gray-900 text-sm mb-4">
-                {group.label}
-              </h3>
-
-              {hasData ? (
-                <>
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">
-                        % Positive Replies
-                      </p>
-                      <p className="text-2xl font-bold text-gray-900 font-mono">
-                        {formatPercent(best.replyRate)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">
-                        $ per Positive Reply
-                      </p>
-                      <p className="text-2xl font-bold text-gray-900 font-mono">
-                        {formatCostCents(best.costPerReplyCents)}
-                      </p>
-                    </div>
-                  </div>
-
-                  {topBrands.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-gray-100">
-                      <p className="text-[10px] text-gray-500 uppercase tracking-wider font-medium mb-3">
-                        Top performing brands
-                      </p>
-                      <div className="space-y-2.5">
-                        {topBrands.map((brand, i) => {
-                          const label = brand.brandName || brand.brandDomain || "Unknown";
-                          return (
-                            <div key={brand.brandId} className="flex items-center gap-2">
-                              <span className="text-[10px] text-gray-400 font-mono w-3">{i + 1}</span>
-                              {brand.brandDomain && LOGO_DEV_TOKEN ? (
-                                <Image
-                                  src={`https://img.logo.dev/${brand.brandDomain}?token=${LOGO_DEV_TOKEN}&size=64`}
-                                  alt={label}
-                                  width={18}
-                                  height={18}
-                                  className="rounded"
-                                  unoptimized
-                                />
-                              ) : (
-                                <div className="w-[18px] h-[18px] rounded bg-gray-100 flex items-center justify-center text-[8px] font-bold text-gray-500 uppercase">
-                                  {label.charAt(0)}
-                                </div>
-                              )}
-                              <span className="text-xs text-gray-700 flex-1 truncate">{label}</span>
-                              <span className="text-xs font-mono text-gray-600">
-                                {formatCostCents(brand.costPerReplyCents)}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <p className="text-sm text-gray-400">Data coming soon</p>
-              )}
-            </div>
-          );
-        })}
+      {/* Platform averages — the open dataset */}
+      <p className="text-xs uppercase tracking-wider text-gray-400 font-medium mb-3 text-center">
+        Platform averages — every brand, every workflow
+      </p>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
+        <Stat label="Open rate" value={formatPercent(aggregate.openRate)} />
+        <Stat label="Click rate" value={formatPercent(aggregate.clickRate)} />
+        <Stat label="Positive reply rate" value={formatPercent(aggregate.replyRate)} />
+        <Stat label="$ / open" value={formatCostCents(aggregate.costPerOpenCents)} />
+        <Stat label="$ / click" value={formatCostCents(aggregate.costPerClickCents)} />
+        <Stat label="$ / positive reply" value={formatCostCentsWhole(aggregate.costPerReplyCents)} />
       </div>
-      <div className="text-center mt-4">
+
+      <p className="text-xs text-gray-400 mb-6 text-center">
+        {aggregate.participatingBrands.toLocaleString()} brands ·{" "}
+        {aggregate.participatingWorkflows.toLocaleString()} workflows ·{" "}
+        {aggregate.emailsSent.toLocaleString()} emails sent ·{" "}
+        {formatCostDollars(aggregate.totalCostUsdCents)} spent — all-time, updated hourly.
+      </p>
+
+      {/* Top brand leaderboard — same table as the full benchmark page */}
+      {brands.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+          <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+            <p className="text-[11px] uppercase tracking-wider text-gray-500 font-medium">
+              Top brands by $ / positive reply
+            </p>
+            <span className="text-[11px] text-gray-400">
+              {brands.length.toLocaleString()} ranked
+            </span>
+          </div>
+          <BrandLeaderboard brands={brands} maxEntries={5} />
+        </div>
+      )}
+
+      <div className="text-center mt-6">
         <a
-          href="/performance"
+          href={BENCHMARK_URL}
           className="text-sm text-brand-600 hover:text-brand-700 font-medium transition inline-flex items-center gap-1"
         >
-          See all performance data
+          See the full benchmark — every brand &amp; workflow
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
