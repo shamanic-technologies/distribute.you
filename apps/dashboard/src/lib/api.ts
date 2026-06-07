@@ -641,6 +641,52 @@ export async function saveBrandSalesEconomics(
   return parsed.data;
 }
 
+// ── Cross-brand sales-economics average (first-prefill defaults) ──
+// Flat average of the 5 metrics across EVERY brand's saved set, computed by
+// brand-service (ROUND(AVG(col)) over the whole table, no org/brand filter).
+// Used to seed the new-campaign sales inputs for a brand that has saved nothing
+// yet — a better first guess than the hard-coded SALES_ECON_DEFAULTS. Returns
+// { averages: null } when no brand has saved economics (empty table).
+export interface SalesEconomicsAverage {
+  lifetimeRevenueUsd: number;
+  replyToMeetingPct: number;
+  visitToMeetingPct: number;
+  meetingToClosePct: number;
+  visitToClosePct: number;
+}
+
+// z.coerce.number per CLAUDE.md #1357: ROUND(AVG(...)) is Postgres `numeric`,
+// which the driver serializes as a STRING ("40") on the wire — z.number() would
+// reject it. coerce parses string OR number, forward-compatible if the backend
+// later casts to int.
+const SalesEconomicsAverageSchema = z.object({
+  lifetimeRevenueUsd: z.coerce.number(),
+  replyToMeetingPct: z.coerce.number(),
+  visitToMeetingPct: z.coerce.number(),
+  meetingToClosePct: z.coerce.number(),
+  visitToClosePct: z.coerce.number(),
+});
+
+const GetSalesEconomicsAverageResponseSchema = z.object({
+  averages: SalesEconomicsAverageSchema.nullable(),
+});
+
+/** GET /sales-economics-average — cross-brand average of the 5 metrics, or { averages: null } when no brand has saved economics yet. */
+export async function getSalesEconomicsAverage(
+  token?: string,
+): Promise<{ averages: SalesEconomicsAverage | null }> {
+  const raw = await apiCall<unknown>(`/sales-economics-average`, { token });
+  const parsed = GetSalesEconomicsAverageResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getSalesEconomicsAverage: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getSalesEconomicsAverage: invalid response shape");
+  }
+  return parsed.data;
+}
+
 // Brand field extraction
 export interface ExtractFieldDef {
   key: string;
