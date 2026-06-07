@@ -8,23 +8,22 @@ export const revalidate = 300;
 
 const PAGE_URL = `${PROD_URLS.landing}/benchmarks`;
 const PAGE_DESCRIPTION =
-  "Open benchmarks & statistics for AI-driven outreach. Real per-feature performance from every brand running campaigns through distribute — sales, PR, hiring, VC, accelerators, AI visibility, and more.";
+  "Open cold email benchmarks & statistics. Real performance from every brand running cold email campaigns through distribute — open rate, reply rate, and cost per positive reply.";
 
 export const metadata: Metadata = {
-  title: "Benchmarks & Statistics (2026)",
+  title: "Cold Email Benchmarks (2026)",
   description: PAGE_DESCRIPTION,
   keywords: [
     "cold email benchmarks",
-    "sales outreach benchmarks 2026",
-    "PR outreach benchmarks",
-    "hiring outreach benchmarks",
-    "AI visibility benchmarks",
+    "cold email benchmarks 2026",
+    "sales cold email benchmarks",
+    "cold email reply rate benchmark",
+    "cold email open rate benchmark",
     "cost per reply benchmarks",
-    "industry benchmarks 2026",
     "open dataset cold email",
   ],
   openGraph: {
-    title: "Benchmarks & Statistics — distribute",
+    title: "Cold Email Benchmarks — distribute",
     description: PAGE_DESCRIPTION,
     url: PAGE_URL,
     images: [
@@ -32,13 +31,13 @@ export const metadata: Metadata = {
         url: "/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "distribute Benchmarks & Statistics",
+        alt: "distribute Cold Email Benchmarks",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Benchmarks & Statistics — distribute",
+    title: "Cold Email Benchmarks — distribute",
     description: PAGE_DESCRIPTION,
     images: ["/og-image.jpg"],
     creator: "@distribute_you",
@@ -102,17 +101,15 @@ export default async function BenchmarksIndexPage() {
 
       <Section variant="content" outerClassName="py-16 md:py-20 gradient-bg" className="text-center">
         <div className="inline-block bg-emerald-100 text-emerald-700 px-4 py-1.5 rounded-full text-sm font-medium mb-6 border border-emerald-200">
-          Open data · Updated hourly · {features.length} features
+          Open data · Updated hourly
         </div>
         <h1 className="font-display text-4xl md:text-5xl font-bold mb-4 text-gray-800">
-          Benchmarks &{" "}
-          <span className="gradient-text">Statistics</span> for AI-driven
-          outreach
+          Cold Email{" "}
+          <span className="gradient-text">Benchmarks &amp; Statistics</span>
         </h1>
         <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-          Every campaign run through distribute contributes to these public
-          leaderboards. Pick a feature to see the full ranking — brand by
-          brand, workflow by workflow.
+          Every cold email campaign run through distribute contributes to this
+          public leaderboard — brand by brand, workflow by workflow.
         </p>
       </Section>
 

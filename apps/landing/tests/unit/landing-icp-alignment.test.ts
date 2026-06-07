@@ -36,11 +36,6 @@ describe("Landing page: ICP-only alignment", () => {
     expect(page).not.toMatch(/rounded-3xl[^"]*p-2[^"]*shadow-2xl/);
   });
 
-  it("renders the new PortfolioDashboard component", () => {
-    expect(page).toMatch(/<PortfolioDashboard/);
-    expect(page).toMatch(/from\s+["']@\/components\/portfolio-dashboard["']/);
-  });
-
   it("renders the GmailInbox component instead of phone push", () => {
     expect(page).toMatch(/<GmailInbox/);
     expect(page).toMatch(/from\s+["']@\/components\/gmail-inbox["']/);
@@ -49,17 +44,6 @@ describe("Landing page: ICP-only alignment", () => {
   it("renders the FreeVsCloud 2-tier component", () => {
     expect(page).toMatch(/<FreeVsCloud/);
     expect(page).toMatch(/from\s+["']@\/components\/free-vs-cloud["']/);
-  });
-
-  it("renders the WorkflowRecipe component", () => {
-    expect(page).toMatch(/<WorkflowRecipe/);
-    expect(page).toMatch(/from\s+["']@\/components\/workflow-recipe["']/);
-  });
-
-  it("includes the 'Ship more. Scale what works.' aspiration section (no solo-celebration)", () => {
-    expect(page).toMatch(/Ship more\.\s*<span[^>]*>Scale what works\./i);
-    expect(page).not.toMatch(/Stay solo\.\s*<span/);
-    expect(page).not.toMatch(/not businesses/i);
   });
 
   it("does NOT celebrate staying solo in the aspiration paragraph", () => {
@@ -75,10 +59,11 @@ describe("Landing page: ICP-only alignment", () => {
     expect(page).toMatch(/\$25.*credit|credit.*\$25/i);
   });
 
-  it("computes liveCount from features and renders 'channels live' line + Stripe analogy", () => {
-    expect(page).toMatch(/liveCount/);
-    expect(page).toMatch(/channels live/);
-    expect(page).toMatch(/Stripe of Client Acquisition/);
+  it("renders the cold-email hero + Stripe-of-Cold-Email analogy (no multi-channel grid)", () => {
+    expect(page).toMatch(/Cold Email Outreach,/);
+    expect(page).toMatch(/Stripe of Cold Email/);
+    expect(page).not.toMatch(/channels live/);
+    expect(page).not.toMatch(/DISTRIBUTION_FEATURES/);
   });
 });
 
@@ -224,8 +209,8 @@ describe("Pricing page: ICP framing", () => {
 describe("Landing page: industry stats section", () => {
   const page = fs.readFileSync(landingPagePath, "utf-8");
 
-  it("uses the broadened 'Why distribution kills most products' h2 (no 'solo' qualifier)", () => {
-    expect(page).toMatch(/Why distribution kills most products/);
+  it("uses the cold-email-focused 'Why most cold email never gets read' h2", () => {
+    expect(page).toMatch(/Why most cold email never gets read/);
     expect(page).not.toMatch(/Why distribution kills most solo products/);
   });
 

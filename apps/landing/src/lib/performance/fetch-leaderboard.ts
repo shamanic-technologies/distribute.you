@@ -20,10 +20,10 @@ interface BaseGroup {
   slugs: string[];
 }
 
+// Public landing sells one product: sales cold email outreach. Other channels
+// stay alpha (dashboard-only), so the public leaderboard surfaces sales only.
 const BASE_GROUPS: BaseGroup[] = [
-  { label: "Hiring Cold Email Outreach", slugs: ["hiring-cold-email-outreach"] },
   { label: "Sales Cold Email Outreach", slugs: ["sales-cold-email-outreach"] },
-  { label: "PR Cold Email Outreach", slugs: ["pr-cold-email-outreach", "pr-cold-email-outreach-sophia", "pr-cold-email-outreach-berlin"] },
 ];
 
 function resolveBaseGroup(featureSlug: string): BaseGroup | null {
