@@ -21,70 +21,87 @@ const providerAvatarPath = path.resolve(__dirname, "../../src/components/provide
 const featureProvidersPath = path.resolve(__dirname, "../../src/data/feature-providers.ts");
 const benchmarksContentPath = path.resolve(__dirname, "../../src/data/benchmarks-content.ts");
 
-describe("Landing page: ICP-only alignment", () => {
+describe("Landing page: design-system port", () => {
   const page = fs.readFileSync(landingPagePath, "utf-8");
 
-  it("does NOT contain large 'Without distribute.you / With distribute.you' Claude Code section", () => {
-    const withoutCount = (page.match(/Without distribute\.you/g) || []).length;
-    const withCount = (page.match(/With distribute\.you/g) || []).length;
-    expect(withoutCount).toBeLessThan(2);
-    expect(withCount).toBeLessThan(2);
+  it("wraps the page in the DS root scope", () => {
+    expect(page).toMatch(/className="dy-root"/);
   });
 
-  it("does NOT contain phone notification iPhone mockup", () => {
-    expect(page).not.toMatch(/phone notification/i);
-    expect(page).not.toMatch(/rounded-3xl[^"]*p-2[^"]*shadow-2xl/);
+  it("uses the DS hero copy and type scale", () => {
+    expect(page).toMatch(/You build\./);
+    expect(page).toMatch(/We distribute\./);
+    expect(page).toMatch(/className="t-hero/);
   });
 
-  it("focuses the homepage on sales cold email outreach", () => {
-    expect(page).toMatch(/sales cold email outreach/i);
-    expect(page).toMatch(/Turn one URL into 100 qualified sales conversations/);
-    expect(page).toMatch(/10x your sales motion/i);
-  });
-
-  it("renders the GmailInbox component instead of phone push", () => {
-    expect(page).toMatch(/<GmailInbox/);
-    expect(page).toMatch(/from\s+["']@\/components\/gmail-inbox["']/);
-  });
-
-  it("does not market beta channels on the homepage", () => {
-    expect(page).not.toMatch(/PR, VCs, hiring, accelerators/);
-    expect(page).not.toMatch(/channels live/i);
-    expect(page).not.toMatch(/vc outreach|hiring cold email|journalist pitch/i);
-  });
-
-  it("keeps the dashboard proof surface as a local cold-email mockup", () => {
-    expect(page).toMatch(/function ColdEmailDashboardMockup/);
-    expect(page).toMatch(/239 qualified replies queued/);
+  it("renders the inline dashboard mockup with KPIs and chart", () => {
+    expect(page).toMatch(/dy-hero-ui/);
+    expect(page).toMatch(/Qualified replies over time/);
     expect(page).toMatch(/\$1\.42/);
   });
 
-  it("uses aggressive cold-email marketing copy without the old generic tagline", () => {
-    expect(page).toMatch(/Start buying replies/);
-    expect(page).toMatch(/Buy pipeline, not software seats/);
-    expect(page).not.toMatch(/You build\.\s*<br>\s*We distribute\./);
-    expect(page).not.toMatch(/Client Acquisition,\s*\{["']?\s*\}/);
+  it("renders the stats band with the four DS counters", () => {
+    expect(page).toMatch(/dy-stats-card/);
+    expect(page).toMatch(/avg per qualified reply/);
+    expect(page).toMatch(/channels live/);
+    expect(page).toMatch(/free to start/);
+    expect(page).toMatch(/open source/);
   });
 
-  it("does NOT celebrate staying solo in the aspiration paragraph", () => {
-    expect(page).not.toMatch(/\$1M MRR\s*[—-]\s*solo/);
-    expect(page).not.toMatch(/staying solo/i);
+  it("renders the 9-channel bento", () => {
+    expect(page).toMatch(/dy-channels-bento/);
+    expect(page).toMatch(/Sales outreach/);
+    expect(page).toMatch(/Journalist outreach/);
+    expect(page).toMatch(/VC outreach/);
+    expect(page).toMatch(/Hiring outreach/);
+    expect(page).toMatch(/Accelerator outreach/);
+    expect(page).toMatch(/PR expert quotes/);
+    expect(page).toMatch(/Outlet discovery/);
+    expect(page).toMatch(/Press kit generation/);
+    expect(page).toMatch(/AI visibility scoring/);
   });
 
-  it("includes the handled-for-you email-infra section", () => {
-    expect(page).toMatch(/Prospect sourcing and enrichment/);
-    expect(page).toMatch(/Agency-warmed sending infrastructure/);
-    expect(page).toMatch(/AI reply qualification and Gmail forwarding/);
+  it("renders the compare grid (without/with distribute)", () => {
+    expect(page).toMatch(/dy-compare/);
+    expect(page).toMatch(/Without distribute/);
+    expect(page).toMatch(/With distribute/);
   });
 
-  it("mentions $25 welcome credits in hero or CTA", () => {
+  it("renders the pricing card with the published unit rates", () => {
+    expect(page).toMatch(/dy-price-card/);
+    expect(page).toMatch(/Apollo lead enrichment/);
+    expect(page).toMatch(/\$0\.036/);
+  });
+
+  it("renders the 3-tile integrations grid", () => {
+    expect(page).toMatch(/dy-int-grid/);
+    expect(page).toMatch(/Dashboard/);
+    expect(page).toMatch(/REST API/);
+    expect(page).toMatch(/MCP Server/);
+  });
+
+  it("mentions $25 free credits in the hero CTA", () => {
     expect(page).toMatch(/\$25.*credit|credit.*\$25/i);
   });
 
-  it("uses provider logos only for cold-email cost breakdown", () => {
-    expect(page).toMatch(/<ProviderAvatar/);
-    expect(page).toMatch(/Apollo Credit/);
-    expect(page).toMatch(/Instantly Sends/);
+  it("uses the new DS navbar and footer components", () => {
+    expect(page).toMatch(/<DyNav/);
+    expect(page).toMatch(/<DyFooter/);
+    expect(page).toMatch(/from\s+["']@\/components\/dy-nav["']/);
+    expect(page).toMatch(/from\s+["']@\/components\/dy-footer["']/);
+  });
+
+  it("renders nothing with the deprecated GmailInbox or ToolsMarquee on the homepage", () => {
+    expect(page).not.toMatch(/<GmailInbox/);
+    expect(page).not.toMatch(/<ToolsMarquee/);
+  });
+
+  it("contains no em-dash in user-facing copy (AI tell)", () => {
+    const stripJsxComments = page
+      .replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/.*$/gm, "");
+    expect(stripJsxComments).not.toMatch(/—/);
   });
 });
 
@@ -229,12 +246,6 @@ describe("Pricing page: ICP framing", () => {
 
 describe("Landing page: industry stats section", () => {
   const page = fs.readFileSync(landingPagePath, "utf-8");
-
-  it("replaces the old broad distribution stats section with cold-email proof", () => {
-    expect(page).toMatch(/buyer conversations in the first push/);
-    expect(page).toMatch(/more outbound without hiring SDRs/);
-    expect(page).not.toMatch(/Why distribution kills most products/);
-  });
 
   it("does not cite non-cold-email source organizations on the homepage", () => {
     expect(page).not.toMatch(/Adobe, and Gartner/);
