@@ -1,6 +1,6 @@
 # distribute
 
-**The Stripe of Cold Email**
+**Sales Automation**
 
 > Cold Email Outreach, on Autopilot.
 
@@ -8,7 +8,7 @@
 
 ## What is distribute?
 
-distribute is the Stripe of Cold Email. Create an account, give us your URL — we run your cold email outreach with AI workflows ranked by real performance data.
+distribute is sales automation, done for you. Create an account, give us your URL — we run your cold email outreach with AI workflows ranked by real performance data.
 
 ## Distribution Features
 

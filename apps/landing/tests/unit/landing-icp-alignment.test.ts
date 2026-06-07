@@ -59,9 +59,9 @@ describe("Landing page: ICP-only alignment", () => {
     expect(page).toMatch(/\$25.*credit|credit.*\$25/i);
   });
 
-  it("renders the cold-email hero + Stripe-of-Cold-Email analogy (no multi-channel grid)", () => {
+  it("renders the cold-email hero + Sales Automation tag (no multi-channel grid)", () => {
     expect(page).toMatch(/Cold Email Outreach,/);
-    expect(page).toMatch(/Stripe of Cold Email/);
+    expect(page).toMatch(/Sales Automation/);
     expect(page).not.toMatch(/channels live/);
     expect(page).not.toMatch(/DISTRIBUTION_FEATURES/);
   });

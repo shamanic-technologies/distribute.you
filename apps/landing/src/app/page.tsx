@@ -102,7 +102,7 @@ export default function Home() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="inline-flex items-center gap-2 bg-gray-50 border border-gray-200 text-gray-600 px-4 py-1.5 rounded-full text-sm mb-8">
             <span className="w-1.5 h-1.5 rounded-full bg-brand-400" />
-            The Stripe of Cold Email
+            Sales Automation
           </div>
 
           <h1 className="font-display text-5xl md:text-7xl font-bold mb-6 text-gray-900 tracking-tight">
