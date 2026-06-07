@@ -5,6 +5,9 @@ import { keepPreviousData } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { Skeleton } from "@/components/skeleton";
+import { useFeatureFlag } from "@/lib/use-feature-flag";
+import { FEATURE_GATES } from "@/lib/feature-gates";
+import { MaturityBadge } from "@/components/maturity-badge";
 import { listCampaignEvents } from "@/lib/api";
 import {
   toActivityFeed,
@@ -62,13 +65,19 @@ function ActivityLine({ item, live }: { item: ActivityItem; live: boolean }) {
 }
 
 export function CampaignActivity({ campaignId }: { campaignId: string }) {
+  // Alpha: staff-only while the funnel-slug allowlist matures. Default-hidden,
+  // so non-staff never see it (and the query below stays disabled for them).
+  const ok = useFeatureFlag(FEATURE_GATES["campaign-activity"].flag);
+
   const { data, isPending } = useAuthQuery(
     ["campaignActivity", campaignId],
     () => listCampaignEvents(campaignId, { limit: EVENTS_WINDOW }),
-    { ...pollOptions, placeholderData: keepPreviousData },
+    { ...pollOptions, placeholderData: keepPreviousData, enabled: ok },
   );
 
   const feed = useMemo(() => toActivityFeed(data?.events ?? []), [data]);
+
+  if (!ok) return null;
 
   return (
     <section className="mb-6">
@@ -81,6 +90,7 @@ export function CampaignActivity({ campaignId }: { campaignId: string }) {
         <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
           Live activity
         </h3>
+        <MaturityBadge level={FEATURE_GATES["campaign-activity"].maturity} />
       </div>
 
       <div className="space-y-2">
