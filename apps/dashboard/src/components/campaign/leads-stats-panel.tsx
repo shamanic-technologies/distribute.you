@@ -63,7 +63,7 @@ export function LeadsStatsPanel({
 }: LeadsStatsPanelProps) {
   const { registry } = useFeatures();
 
-  const { data, isLoading } = useAuthQuery(
+  const { data, isPending } = useAuthQuery(
     ["featureStats", featureSlug, "campaign", campaignId, "leads-panel"],
     () => fetchFeatureStats(featureSlug, { campaignId }),
     {
@@ -73,7 +73,7 @@ export function LeadsStatsPanel({
   );
 
   const stats: Record<string, number> = data?.stats ?? {};
-  const loading = pending || (isLoading && !data);
+  const loading = pending || (isPending && !data);
 
   return (
     <div data-testid="leads-stats-panel" className="space-y-4">

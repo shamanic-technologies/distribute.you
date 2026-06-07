@@ -94,7 +94,7 @@ export default function FeatureEmailsPage() {
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const [search, setSearch] = useState("");
 
-  const { data, isLoading } = useAuthQuery(
+  const { data, isPending } = useAuthQuery(
     ["brandEmails", brandId],
     () => listBrandEmails(brandId),
     { refetchInterval: POLL_INTERVAL },
@@ -112,7 +112,7 @@ export default function FeatureEmailsPage() {
     });
   }, [emails, search]);
 
-  if (isLoading && !data) {
+  if (isPending && !data) {
     return (
       <div className="p-4 md:p-8">
         <div className="animate-pulse space-y-4">

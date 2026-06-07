@@ -23,7 +23,7 @@ export default function FeatureWorkflowsPage() {
   const featureId = params.featureId as string;
   // Workflows is alpha (staff-only). Default-hidden until PostHog resolves.
   const ok = useFeatureFlag(FEATURE_GATES["workflows"].flag);
-  const { getFeature, registry } = useFeatures();
+  const { getFeature, registry, isLoading: featuresLoading } = useFeatures();
   const featureDef = getFeature(featureId);
   const outputs = featureDef?.outputs ?? [];
   const sortedOutputs = useMemo(
@@ -56,6 +56,19 @@ export default function FeatureWorkflowsPage() {
       <div className="p-4 md:p-8">
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-sm text-gray-400">
           This view isn&apos;t available yet.
+        </div>
+      </div>
+    );
+  }
+
+  // Features still loading (org-settle / first fetch) → skeleton, never a
+  // premature "Feature not found" flash. featuresLoading is isPending-backed.
+  if (featuresLoading) {
+    return (
+      <div className="p-4 md:p-8">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 w-48 bg-gray-200 rounded" />
+          <div className="h-32 bg-gray-100 rounded-xl" />
         </div>
       </div>
     );

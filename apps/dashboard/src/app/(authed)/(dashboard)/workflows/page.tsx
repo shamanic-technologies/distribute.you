@@ -29,7 +29,7 @@ function SkeletonWorkflowCard() {
 export default function WorkflowsPage() {
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
 
-  const { data, isLoading } = useAuthQuery(
+  const { data, isPending } = useAuthQuery(
     ["workflows"],
     () => listWorkflows()
   );
@@ -44,7 +44,7 @@ export default function WorkflowsPage() {
       </div>
 
       {/* Grid */}
-      {isLoading ? (
+      {isPending ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <SkeletonWorkflowCard key={i} />

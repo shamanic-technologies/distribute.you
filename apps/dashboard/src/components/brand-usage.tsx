@@ -43,19 +43,19 @@ interface Segment {
 export function BrandUsageSection({ brandId, pending: pendingProp = false }: { brandId: string; pending?: boolean }) {
   const { getFeature } = useFeatures();
 
-  const { data: featureGroupsData, isLoading: featureGroupsLoading } = useAuthQuery(
+  const { data: featureGroupsData, isPending: featureGroupsLoading } = useAuthQuery(
     ["brandCostsByFeature", brandId],
     () => getBrandCostsByFeature(brandId),
     { refetchInterval: POLL_INTERVAL },
   );
 
-  const { data: totalCostData, isLoading: totalCostLoading } = useAuthQuery(
+  const { data: totalCostData, isPending: totalCostLoading } = useAuthQuery(
     ["brandCostBreakdown", { brandId }],
     () => getBrandCostBreakdown(brandId),
     { refetchInterval: POLL_INTERVAL },
   );
 
-  const isLoading = featureGroupsLoading || totalCostLoading;
+  const isPending = featureGroupsLoading || totalCostLoading;
   const hasData = !!(featureGroupsData || totalCostData);
 
   const segments: Segment[] = useMemo(() => {
@@ -99,7 +99,7 @@ export function BrandUsageSection({ brandId, pending: pendingProp = false }: { b
 
   const totalCents = segments.reduce((sum, s) => sum + s.cents, 0);
 
-  const pending = pendingProp || (isLoading && !hasData);
+  const pending = pendingProp || (isPending && !hasData);
 
   if (!pending && totalCents === 0) return null;
 

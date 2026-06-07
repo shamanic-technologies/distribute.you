@@ -94,7 +94,7 @@ export default function BrandEmailsPage() {
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const [search, setSearch] = useState("");
 
-  const { data, isLoading } = useAuthQuery(
+  const { data, isPending } = useAuthQuery(
     ["brandEmails", brandId],
     () => listBrandEmails(brandId),
     { refetchInterval: POLL_INTERVAL },
@@ -112,7 +112,7 @@ export default function BrandEmailsPage() {
     });
   }, [emails, search]);
 
-  const showSkeleton = isLoading && !data;
+  const showSkeleton = isPending && !data;
 
   return (
     <div className="flex flex-col md:flex-row h-full relative">

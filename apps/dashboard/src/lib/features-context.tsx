@@ -21,13 +21,19 @@ const FeaturesContext = createContext<FeaturesContextValue>({
 });
 
 export function FeaturesProvider({ children }: { children: ReactNode }) {
-  const { data, isLoading } = useAuthQuery(
+  // Expose loading via isPending, NOT isLoading. The org-consistency gate in
+  // useAuthQuery disables these queries (enabled:false) until Clerk's active org
+  // resolves and matches the URL org. A disabled v5 query reports isLoading:false
+  // but isPending:true. Consumers gate "Feature not found" cards and skeletons on
+  // these flags; sourcing them from isLoading would flash the not-found state
+  // during the org-settle window. isPending stays true until each query resolves.
+  const { data, isPending: isLoading } = useAuthQuery(
     ["features"],
     () => listFeatures(),
     { staleTime: 5 * 60 * 1000 },
   );
 
-  const { data: registryData, isLoading: registryLoading } = useAuthQuery(
+  const { data: registryData, isPending: registryLoading } = useAuthQuery(
     ["statsRegistry"],
     () => fetchStatsRegistry(),
     { staleTime: 10 * 60 * 1000 },
