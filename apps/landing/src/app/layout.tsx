@@ -4,30 +4,29 @@ import { PROD_URLS } from "@/lib/env-urls";
 
 const SITE_URL = PROD_URLS.landing;
 const SITE_NAME = "distribute";
-const SITE_DESCRIPTION = "Client Acquisition, on Autopilot. Sales, PR, VCs, hiring, accelerators — one dashboard. Drop a URL, set a budget, we send. AI qualifies replies and forwards positives to your Gmail. $25 welcome credits, no subscription.";
+const SITE_DESCRIPTION = "Sales cold email outreach done for you. Drop a URL, set a budget, and distribute finds prospects, writes emails, sends sequences, qualifies replies with AI, and forwards buyers to Gmail. $25 welcome credits, no subscription.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "distribute — Client Acquisition, on Autopilot",
+    default: "distribute - Sales cold email outreach done for you",
     template: "%s | distribute",
   },
   description: SITE_DESCRIPTION,
   keywords: [
     "client acquisition on autopilot",
-    "multi-product distribution",
-    "solo founder distribution",
+    "sales cold email outreach",
+    "cold email automation",
+    "done for you cold email",
+    "AI sales outreach",
+    "qualified reply automation",
     "indie hacker outreach",
     "cold email dashboard",
-    "PR outreach automation",
-    "VC outreach automation",
-    "hiring cold email",
     "AI reply qualification",
     "pay-as-you-go cold email",
     "no subscription cold email",
-    "Stripe of Client Acquisition",
     "distribute.you",
-    "portfolio distribution dashboard",
+    "sales automation",
   ],
   authors: [{ name: "distribute" }],
   creator: "distribute",
@@ -42,21 +41,21 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: "distribute — Client Acquisition, on Autopilot",
-    description: "One dashboard for every distribution channel. Drop a URL, set a budget — we send, qualify, forward. $25 welcome credits, no subscription.",
+    title: "distribute - Sales cold email outreach done for you",
+    description: "Drop a URL, set a budget. We find prospects, write emails, send sequences, qualify replies, and forward buyers to Gmail.",
     images: [
       {
         url: "/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "distribute — Client Acquisition, on Autopilot",
+        alt: "distribute - Sales cold email outreach done for you",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "distribute — Client Acquisition, on Autopilot",
-    description: "One dashboard. Sales, PR, VCs, hiring, accelerators. Drop a URL, set a budget — we send, qualify, forward.",
+    title: "distribute - Sales cold email outreach done for you",
+    description: "Drop a URL, set a budget. We find prospects, write emails, send sequences, qualify replies, and forward buyers to Gmail.",
     images: ["/og-image.jpg"],
     creator: "@distribute_you",
   },
@@ -92,10 +91,10 @@ const jsonLd = {
   offers: [
     {
       "@type": "Offer",
-      name: "Free",
+      name: "Free credits",
       price: "0",
       priceCurrency: "USD",
-      description: "Free to start — you only pay AI costs",
+      description: "$25 welcome credits for sales cold email outreach",
     },
   ],
   provider: {
@@ -114,7 +113,7 @@ const organizationJsonLd = {
   "@type": "Organization",
   name: "distribute",
   url: SITE_URL,
-  description: "The Stripe of Client Acquisition",
+  description: "Sales cold email outreach done for you",
   sameAs: [
     PROD_URLS.github,
     PROD_URLS.twitter,
@@ -137,26 +136,26 @@ const websiteJsonLd = {
 const howToJsonLd = {
   "@context": "https://schema.org",
   "@type": "HowTo",
-  name: "How to put your client acquisition on autopilot with distribute",
-  description: "Drop a URL, set a daily budget, and let distribute send cold email, PR, hiring, and VC outreach on your behalf — AI qualifies replies, you watch cost per reply in the dashboard.",
+  name: "How to launch sales cold email outreach with distribute",
+  description: "Drop a URL, set a daily budget, and let distribute find prospects, write cold emails, send sequences, qualify replies, and forward buyers to Gmail.",
   step: [
     {
       "@type": "HowToStep",
       position: 1,
       name: "Drop a URL",
-      text: "Create an account and add your product URL. We analyze your brand, tone, and ICP.",
+      text: "Create an account and add your product URL. We analyze your offer, tone, proof, and ideal customer profile.",
     },
     {
       "@type": "HowToStep",
       position: 2,
-      name: "Set a daily budget per channel",
-      text: "Pick channels — sales cold email, PR, VC outreach, hiring, accelerators, journalist pitch, and more. Set a daily spend cap per product × per channel.",
+      name: "Set a daily budget",
+      text: "Set a sales outreach budget before launch. distribute builds the list, writes the sequence, and sends from managed infrastructure.",
     },
     {
       "@type": "HowToStep",
       position: 3,
       name: "We send, qualify, forward",
-      text: "We send from agency-warmed inboxes, AI qualifies every reply, and only positives land in your Gmail. Cost per reply tracked live per product × per channel.",
+      text: "AI qualifies every reply, and only buyer conversations land in your Gmail. Cost per qualified reply is tracked live.",
     },
   ],
   totalTime: "PT2M",

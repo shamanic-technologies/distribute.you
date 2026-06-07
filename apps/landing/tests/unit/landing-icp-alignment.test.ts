@@ -36,9 +36,10 @@ describe("Landing page: ICP-only alignment", () => {
     expect(page).not.toMatch(/rounded-3xl[^"]*p-2[^"]*shadow-2xl/);
   });
 
-  it("renders the new PortfolioDashboard component", () => {
-    expect(page).toMatch(/<PortfolioDashboard/);
-    expect(page).toMatch(/from\s+["']@\/components\/portfolio-dashboard["']/);
+  it("focuses the homepage on sales cold email outreach", () => {
+    expect(page).toMatch(/sales cold email outreach/i);
+    expect(page).toMatch(/Turn one URL into 100 qualified sales conversations/);
+    expect(page).toMatch(/10x your sales motion/i);
   });
 
   it("renders the GmailInbox component instead of phone push", () => {
@@ -46,20 +47,23 @@ describe("Landing page: ICP-only alignment", () => {
     expect(page).toMatch(/from\s+["']@\/components\/gmail-inbox["']/);
   });
 
-  it("renders the FreeVsCloud 2-tier component", () => {
-    expect(page).toMatch(/<FreeVsCloud/);
-    expect(page).toMatch(/from\s+["']@\/components\/free-vs-cloud["']/);
+  it("does not market beta channels on the homepage", () => {
+    expect(page).not.toMatch(/PR, VCs, hiring, accelerators/);
+    expect(page).not.toMatch(/channels live/i);
+    expect(page).not.toMatch(/vc outreach|hiring cold email|journalist pitch/i);
   });
 
-  it("renders the WorkflowRecipe component", () => {
-    expect(page).toMatch(/<WorkflowRecipe/);
-    expect(page).toMatch(/from\s+["']@\/components\/workflow-recipe["']/);
+  it("keeps the dashboard proof surface as a local cold-email mockup", () => {
+    expect(page).toMatch(/function ColdEmailDashboardMockup/);
+    expect(page).toMatch(/239 qualified replies queued/);
+    expect(page).toMatch(/\$1\.42/);
   });
 
-  it("includes the 'Ship more. Scale what works.' aspiration section (no solo-celebration)", () => {
-    expect(page).toMatch(/Ship more\.\s*<span[^>]*>Scale what works\./i);
-    expect(page).not.toMatch(/Stay solo\.\s*<span/);
-    expect(page).not.toMatch(/not businesses/i);
+  it("uses aggressive cold-email marketing copy without the old generic tagline", () => {
+    expect(page).toMatch(/Start buying replies/);
+    expect(page).toMatch(/Buy pipeline, not software seats/);
+    expect(page).not.toMatch(/You build\.\s*<br>\s*We distribute\./);
+    expect(page).not.toMatch(/Client Acquisition,\s*\{["']?\s*\}/);
   });
 
   it("does NOT celebrate staying solo in the aspiration paragraph", () => {
@@ -67,18 +71,20 @@ describe("Landing page: ICP-only alignment", () => {
     expect(page).not.toMatch(/staying solo/i);
   });
 
-  it("includes 'What you don't have to do' email-infra section", () => {
-    expect(page).toMatch(/What you don'?t have to do/i);
+  it("includes the handled-for-you email-infra section", () => {
+    expect(page).toMatch(/Prospect sourcing and enrichment/);
+    expect(page).toMatch(/Agency-warmed sending infrastructure/);
+    expect(page).toMatch(/AI reply qualification and Gmail forwarding/);
   });
 
   it("mentions $25 welcome credits in hero or CTA", () => {
     expect(page).toMatch(/\$25.*credit|credit.*\$25/i);
   });
 
-  it("computes liveCount from features and renders 'channels live' line + hero tagline", () => {
-    expect(page).toMatch(/liveCount/);
-    expect(page).toMatch(/channels live/);
-    expect(page).toMatch(/sales automation/);
+  it("uses provider logos only for cold-email cost breakdown", () => {
+    expect(page).toMatch(/<ProviderAvatar/);
+    expect(page).toMatch(/Apollo Credit/);
+    expect(page).toMatch(/Instantly Sends/);
   });
 });
 
@@ -175,9 +181,9 @@ describe("ToolsMarquee component", () => {
 describe("Landing page: tools marquee section", () => {
   const page = fs.readFileSync(landingPagePath, "utf-8");
 
-  it("renders the ToolsMarquee component", () => {
-    expect(page).toMatch(/<ToolsMarquee/);
-    expect(page).toMatch(/from\s+["']@\/components\/tools-marquee["']/);
+  it("does not render the old multi-tool marquee on the focused cold-email homepage", () => {
+    expect(page).not.toMatch(/<ToolsMarquee/);
+    expect(page).not.toMatch(/from\s+["']@\/components\/tools-marquee["']/);
   });
 });
 
@@ -224,13 +230,14 @@ describe("Pricing page: ICP framing", () => {
 describe("Landing page: industry stats section", () => {
   const page = fs.readFileSync(landingPagePath, "utf-8");
 
-  it("uses the broadened 'Why distribution kills most products' h2 (no 'solo' qualifier)", () => {
-    expect(page).toMatch(/Why distribution kills most products/);
-    expect(page).not.toMatch(/Why distribution kills most solo products/);
+  it("replaces the old broad distribution stats section with cold-email proof", () => {
+    expect(page).toMatch(/buyer conversations in the first push/);
+    expect(page).toMatch(/more outbound without hiring SDRs/);
+    expect(page).not.toMatch(/Why distribution kills most products/);
   });
 
-  it("cites the new source organizations in the section sub", () => {
-    expect(page).toMatch(/Lemlist, Saleshandy, Adobe, and Gartner/);
+  it("does not cite non-cold-email source organizations on the homepage", () => {
+    expect(page).not.toMatch(/Adobe, and Gartner/);
   });
 });
 

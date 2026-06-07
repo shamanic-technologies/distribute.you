@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "distribute — Client Acquisition, on Autopilot.";
+export const alt = "distribute - Sales cold email outreach done for you.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -58,7 +58,7 @@ export default async function OG() {
               maxWidth: 1000,
             }}
           >
-            Client Acquisition, on Autopilot.
+            Sales cold email outreach done for you.
           </div>
           <div
             style={{
@@ -68,7 +68,7 @@ export default async function OG() {
               maxWidth: 1000,
             }}
           >
-            We execute, measure, optimize, and scale your client acquisition while you sleep.
+            Drop a URL. We find prospects, send sequences, qualify replies, and forward buyers to Gmail.
           </div>
         </div>
         <div
@@ -81,7 +81,7 @@ export default async function OG() {
           }}
         >
           <div>distribute.you</div>
-          <div>The Stripe of Client Acquisition</div>
+          <div>Sales automation</div>
         </div>
       </div>
     ),

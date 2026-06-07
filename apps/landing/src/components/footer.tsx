@@ -60,15 +60,15 @@ const COLUMNS: FooterColumn[] = [
 
 const SUB_BRANDS = [
   {
-    label: "PressBeat.io — Organic press on demand",
+    label: "PressBeat.io - Organic press on demand",
     href: "https://pressbeat.io",
   },
   {
-    label: "GrowthAgency.dev — Growth agency for humans",
+    label: "GrowthAgency.dev - Growth agency for humans",
     href: "https://growthagency.dev",
   },
   {
-    label: "GrowthService.org — Increase AI search ranking",
+    label: "GrowthService.org - Increase AI search ranking",
     href: "https://growthservice.org",
   },
 ];
@@ -120,9 +120,9 @@ export function Footer({ disclaimer }: FooterProps) {
               </span>
             </div>
             <p className="text-sm text-gray-500 leading-relaxed mb-4">
-              The Stripe of Distribution. Sales, PR, VCs, hiring, accelerators — one
-              dashboard. Drop a URL, set a budget, we send. $25 welcome credits, no
-              subscription.
+              Sales cold email outreach done for you. Drop a URL, set a budget,
+              we find prospects, send sequences, qualify replies, and forward buyers
+              to Gmail. $25 welcome credits, no subscription.
             </p>
             <StatusIndicator />
           </div>
