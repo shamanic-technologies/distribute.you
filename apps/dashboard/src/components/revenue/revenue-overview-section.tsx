@@ -4,6 +4,7 @@ import Link from "next/link";
 import { RevenueChart } from "@/components/revenue/revenue-chart";
 import { ConversionsTabs } from "@/components/revenue/conversions-tabs";
 import { RevenueCostSummary } from "@/components/revenue/revenue-cost-summary";
+import { TopCampaignsCard } from "@/components/revenue/top-campaigns-card";
 import { Skeleton } from "@/components/skeleton";
 import type { CostByName } from "@/lib/api";
 import type { RevenueOverview } from "@/lib/revenue-view";
@@ -23,11 +24,18 @@ export function RevenueOverviewSection({
   data,
   newCampaignHref,
   costBreakdown,
+  brandId,
+  featureSlug,
+  basePath,
   pending = false,
 }: {
   data?: RevenueOverview;
   newCampaignHref: string;
   costBreakdown: CostByName[];
+  brandId: string;
+  featureSlug: string;
+  /** /orgs/:orgId/brands/:brandId/features/:slug — for the Top-campaigns links. */
+  basePath: string;
   pending?: boolean;
 }) {
   // Static-shell-first: the section header, card frames, titles and the tab bar
@@ -73,12 +81,16 @@ export function RevenueOverviewSection({
           )}
         </div>
 
-        {/* Cost & efficiency — replaces the old org/lead/event counters with the
-            spend metrics (total / cost-of-acquisition / ROI) + top-3 sources. */}
+        {/* Cost & efficiency — spend metrics (total / cost-of-acquisition / ROI)
+            with the Top-3 campaigns-by-ROI list as the bottom card (the brand-wide
+            top-cost-sources list stays on the Campaigns page). */}
         <RevenueCostSummary
           costBreakdown={costBreakdown}
           costEconomics={data?.costEconomics}
           pending={loading}
+          bottomCard={
+            <TopCampaignsCard brandId={brandId} featureSlug={featureSlug} basePath={basePath} />
+          }
         />
       </div>
 
