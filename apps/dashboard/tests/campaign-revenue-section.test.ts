@@ -12,7 +12,7 @@ const DETAIL_PAGE =
  * Sales-cold-email campaign page mirrors the feature Overview: a "Pipeline
  * revenue over time" line chart + cost/budget stats column on top, the funnel
  * bar chart + cost-distribution donut on a 50/50 row below it, and the same
- * Organizations / Leads / Events conversions tabs at the bottom. Gated on
+ * Organizations / Leads conversions tabs at the bottom. Gated on
  * isRevenueFeature so non-revenue features keep their funnel + reply-breakdown
  * layout untouched.
  */
@@ -20,15 +20,18 @@ describe("ConversionsTabs — extracted + reused (DRY across overview + campaign
   const tabs = read("components/revenue/conversions-tabs.tsx");
   const section = read("components/revenue/revenue-overview-section.tsx");
 
-  it("named-exports ConversionsTabs and wires the three tab ids + tables", () => {
+  it("named-exports ConversionsTabs and wires the two tab ids + tables", () => {
     expect(tabs).toMatch(/export function ConversionsTabs\b/);
-    for (const id of ["organizations", "leads", "events"]) {
+    for (const id of ["organizations", "leads"]) {
       expect(tabs).toContain(`"${id}"`);
     }
     expect(tabs).toContain("OrgConversionsTable");
     expect(tabs).toContain("LeadConversionsTable");
-    expect(tabs).toContain("EventConversionsTable");
-    expect(tabs).toContain("photoByLeadId");
+  });
+
+  it("no longer wires the Events tab", () => {
+    expect(tabs).not.toContain('"events"');
+    expect(tabs).not.toContain("EventConversionsTable");
   });
 
   it("the feature Overview renders ConversionsTabs (single source for the tabs)", () => {

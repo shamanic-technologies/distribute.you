@@ -90,17 +90,21 @@ describe("Overview is its own page + sidebar button (NOT embedded in Campaigns)"
   });
 });
 
-describe("conversions page keeps all three tabs", () => {
-  it("renders Organizations / Leads / Events", () => {
-    for (const id of ["organizations", "leads", "events"]) {
+describe("conversions page keeps Organizations + Leads tabs (Events removed)", () => {
+  it("renders Organizations / Leads", () => {
+    for (const id of ["organizations", "leads"]) {
       expect(page).toContain(`"${id}"`);
     }
   });
 
-  it("wires each tab to its table component", () => {
+  it("no longer wires the Events tab", () => {
+    expect(page).not.toContain('"events"');
+    expect(page).not.toContain("EventConversionsTable");
+  });
+
+  it("wires each remaining tab to its table component", () => {
     expect(page).toContain("OrgConversionsTable");
     expect(page).toContain("LeadConversionsTable");
-    expect(page).toContain("EventConversionsTable");
   });
 });
 

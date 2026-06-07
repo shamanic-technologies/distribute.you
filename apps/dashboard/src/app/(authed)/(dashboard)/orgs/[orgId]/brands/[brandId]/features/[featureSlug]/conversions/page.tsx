@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { isRevenueFeature } from "@/lib/revenue-feature";
@@ -9,17 +9,15 @@ import { RevenueChart } from "@/components/revenue/revenue-chart";
 import {
   OrgConversionsTable,
   LeadConversionsTable,
-  EventConversionsTable,
 } from "@/components/revenue/conversions-table";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { Skeleton } from "@/components/skeleton";
 
-type Tab = "organizations" | "leads" | "events";
+type Tab = "organizations" | "leads";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "organizations", label: "Organizations" },
   { id: "leads", label: "Leads" },
-  { id: "events", label: "Events" },
 ];
 
 function formatUsd(n: number | null): string {
@@ -39,13 +37,6 @@ export default function ConversionsPage() {
     ["featureRevenue", brandId, featureSlug],
     () => getFeatureRevenue(featureSlug, brandId),
     { enabled },
-  );
-
-  // Join each event's leadId → the lead's profile photo (both on this same
-  // /revenue payload) so the Events table shows pictures, not just initials.
-  const photoByLeadId = useMemo(
-    () => new Map((data?.leads ?? []).map((l) => [l.leadId, l.photoUrl] as const)),
-    [data?.leads],
   );
 
   if (!isRevenueFeature(featureSlug)) {
@@ -128,9 +119,6 @@ export default function ConversionsPage() {
 
             {tab === "organizations" && <OrgConversionsTable orgs={data.organizations} />}
             {tab === "leads" && <LeadConversionsTable leads={data.leads} />}
-            {tab === "events" && (
-              <EventConversionsTable events={data.events} photoByLeadId={photoByLeadId} />
-            )}
           </div>
         </>
       )}
