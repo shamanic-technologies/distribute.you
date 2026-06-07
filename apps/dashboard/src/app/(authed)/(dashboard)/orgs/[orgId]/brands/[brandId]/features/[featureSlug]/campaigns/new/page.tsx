@@ -46,7 +46,7 @@ import { CampaignAIPanel } from "@/components/campaigns/campaign-ai-panel";
 import { BrandLogo } from "@/components/brand-logo";
 import { Skeleton } from "@/components/skeleton";
 import { EmailSignature } from "@/components/email-signature";
-import { SparklesIcon, XMarkIcon, EllipsisVerticalIcon, PlusIcon, PencilSquareIcon, InformationCircleIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
+import { SparklesIcon, XMarkIcon, EllipsisVerticalIcon, PlusIcon, EnvelopeIcon, InformationCircleIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
 
 type Mode = "autopilot" | "manual";
 type BudgetFrequency = "one-off" | "daily" | "weekly" | "monthly";
@@ -1651,28 +1651,18 @@ export default function FeatureCreateCampaignPage() {
                 );
               })()}
 
-              {salesPick && (() => {
-                // Show every populated unit cost (positive reply + website visit), not just
-                // the winning route — the workflow's full economics at a glance (served).
-                const pickItem = projByDynasty.get(salesPick.workflowDynastySlug);
-                const replyUsd = pickItem?.replyUsd ?? null;
-                const clickUsd = pickItem?.clickUsd ?? null;
-                const parts: string[] = [];
-                if (replyUsd != null) parts.push(`${fmtUsd0(replyUsd)} / positive reply`);
-                if (clickUsd != null) parts.push(`${fmtUsd0(clickUsd)} / website visit`);
-                return (
-                  <div className="flex items-center justify-center gap-2 mt-3 text-xs text-gray-500">
-                    <SparklesIcon className="w-3.5 h-3.5 text-brand-500" />
-                    <span>{salesWorkflowOverrideId ? "selected workflow" : "auto-selected workflow"}</span>
-                    <span className="font-medium text-gray-800">{salesPick.workflowDynastyName}</span>
-                    {parts.length > 0 && <span>&mdash; {parts.join(", ")}</span>}
-                    <button type="button" onClick={() => { setModalSelectedWorkflowId(salesPick?.id ?? null); setShowWorkflowPicker(true); }} title="Change workflow"
-                      className="ml-0.5 p-1 rounded text-gray-400 hover:text-brand-600 hover:bg-brand-50 transition">
-                      <PencilSquareIcon className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                );
-              })()}
+              {salesPick && (
+                <div className="flex items-center justify-center gap-2 mt-3 text-xs text-gray-500">
+                  <SparklesIcon className="w-3.5 h-3.5 text-brand-500" />
+                  <span>{salesWorkflowOverrideId ? "selected workflow" : "auto-selected workflow"}</span>
+                  <span className="font-medium text-gray-800">{salesPick.workflowDynastyName}</span>
+                  <button type="button" onClick={() => { setModalSelectedWorkflowId(salesPick?.id ?? null); setShowWorkflowPicker(true); }}
+                    className="ml-1 flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg transition text-gray-500 hover:text-brand-600 hover:bg-brand-50 border border-gray-200">
+                    <EnvelopeIcon className="w-3.5 h-3.5" />
+                    See emails
+                  </button>
+                </div>
+              )}
 
               <details className="mt-4 border-t border-gray-100 pt-3">
                 <summary className="cursor-pointer text-sm text-gray-500 font-medium select-none">Campaign details</summary>
