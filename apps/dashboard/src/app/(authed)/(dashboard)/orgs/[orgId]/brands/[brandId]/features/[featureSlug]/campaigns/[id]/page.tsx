@@ -11,6 +11,7 @@ import { fetchFeatureStats, getFeatureRevenue, createCampaign, sendCampaignEmail
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { pollOptionsSlow } from "@/lib/query-options";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
+import { CampaignActivity } from "@/components/campaign/campaign-activity";
 import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
@@ -258,6 +259,9 @@ export default function CampaignOverviewPage() {
           <p className="mt-2 text-sm text-red-600">{relaunchError}</p>
         )}
       </div>
+
+      {/* Live activity — reassures right after launch that work is in flight */}
+      <CampaignActivity campaignId={campaign.id} />
 
       {/* Entity-specific results */}
       {entityNames.includes("press-kits") && campaign && (

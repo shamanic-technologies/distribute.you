@@ -1230,6 +1230,21 @@ export interface RunEvent {
   createdAt: string;
 }
 
+// Per-field schema verified against runs-service GET /v1/events (api-registry).
+// `.passthrough()` keeps every field; the feed only reads id/service/event/level/
+// createdAt. safeParse turns wire-rot into a caught fetch-error per CLAUDE.md.
+const RunEventSchema = z
+  .object({
+    id: z.string(),
+    service: z.string(),
+    event: z.string(),
+    level: z.enum(["info", "warn", "error"]),
+    createdAt: z.string(),
+  })
+  .passthrough();
+
+const ListEventsResponseSchema = z.object({ events: z.array(RunEventSchema) });
+
 /** GET /events?campaignId={id} — returns run events for a campaign via runs-service proxy */
 export async function listCampaignEvents(
   campaignId: string,
@@ -1240,7 +1255,16 @@ export async function listCampaignEvents(
   if (options?.level) params.set("level", options.level);
   if (options?.limit != null) params.set("limit", String(options.limit));
   if (options?.offset != null) params.set("offset", String(options.offset));
-  return apiCall<{ events: RunEvent[] }>(`/events?${params.toString()}`, { token: options?.token });
+  const raw = await apiCall<unknown>(`/events?${params.toString()}`, { token: options?.token });
+  const parsed = ListEventsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] listCampaignEvents: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] listCampaignEvents: invalid response shape");
+  }
+  return parsed.data as unknown as { events: RunEvent[] };
 }
 
 /** GET /brands/:brandId/runs — returns runs or empty list if brand not found (404/500) */
