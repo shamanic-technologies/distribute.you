@@ -248,7 +248,7 @@ export default function BrandEmailsPage() {
               <div className="bg-gray-50 border-b border-gray-200 px-4 py-3">
                 <p className="font-semibold text-gray-800">{selectedEmail.subject}</p>
                 <p className="text-xs text-gray-500 mt-1">
-                  From: {selectedEmail.clientCompanyName || 'Your Company'}
+                  From: distribute.you
                 </p>
               </div>
               <div className="p-4">
