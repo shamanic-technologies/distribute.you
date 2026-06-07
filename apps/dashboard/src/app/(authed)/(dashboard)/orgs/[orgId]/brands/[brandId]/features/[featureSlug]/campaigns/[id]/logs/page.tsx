@@ -160,7 +160,7 @@ export default function CampaignLogsPage() {
   const [keyword, setKeyword] = useState<string>("");
   const [offset, setOffset] = useState<number>(0);
 
-  const { data, isLoading, error } = useAuthQuery(
+  const { data, isPending, error } = useAuthQuery(
     ["campaignEvents", campaignId, levelFilter, offset],
     () =>
       listCampaignEvents(campaignId, {
@@ -203,7 +203,7 @@ export default function CampaignLogsPage() {
     setOffset(0);
   }
 
-  if (isLoading && !data) {
+  if (isPending && !data) {
     return (
       <div className="p-4 md:p-8">
         <div className="animate-pulse space-y-3">

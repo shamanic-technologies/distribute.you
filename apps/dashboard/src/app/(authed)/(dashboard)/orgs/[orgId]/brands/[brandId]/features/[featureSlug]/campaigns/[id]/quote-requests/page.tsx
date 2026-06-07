@@ -638,7 +638,7 @@ function FlatQuoteRequestsPage() {
   const params = useParams();
   const campaignId = params.id as string;
 
-  const { data, isLoading } = useAuthQuery(
+  const { data, isPending } = useAuthQuery(
     ["quoteRequests", { campaign_id: campaignId }],
     () =>
       listQuoteRequests({
@@ -659,7 +659,7 @@ function FlatQuoteRequestsPage() {
         </p>
       </div>
 
-      {isLoading && !data ? (
+      {isPending && !data ? (
         <ListSkeleton />
       ) : requests.length === 0 ? (
         <EmptyState message="No quote requests yet. They'll appear here after the next run." />

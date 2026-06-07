@@ -380,7 +380,7 @@ export default function CampaignPressKitsPage() {
     "x-feature-slug": featureSlug,
   };
 
-  const { data: kits, isLoading } = useAuthQuery(
+  const { data: kits, isPending } = useAuthQuery(
     ["campaignMediaKits", campaignId],
     () => listMediaKitsByCampaign(campaignId, { headers: contextHeaders }),
     pollOptionsSlow,
@@ -490,7 +490,7 @@ export default function CampaignPressKitsPage() {
           <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by title or content..." resultCount={filteredActive.length} totalCount={active.length} />
 
           {/* Loading */}
-          {isLoading ? (
+          {isPending ? (
             <div className="space-y-3">
               {[1, 2, 3].map(i => (
                 <div key={i} className="h-20 bg-gray-100 rounded-lg animate-pulse" />

@@ -181,7 +181,7 @@ export default function BrandLeadsPage() {
   const [search, setSearch] = useState("");
   const hasAutoSelectedTab = useRef(false);
 
-  const { data, isLoading } = useAuthQuery(
+  const { data, isPending } = useAuthQuery(
     ["brandLeads", brandId],
     () => listBrandLeads(brandId),
     { refetchInterval: POLL_INTERVAL },
@@ -255,7 +255,7 @@ export default function BrandLeadsPage() {
     { key: "all", label: "All", count: sortedLeads.length },
   ];
 
-  const showSkeleton = isLoading && !data;
+  const showSkeleton = isPending && !data;
 
   const selectedFull = selectedLead?.lead ?? null;
   const selectedOrg = selectedFull?.organization ?? null;

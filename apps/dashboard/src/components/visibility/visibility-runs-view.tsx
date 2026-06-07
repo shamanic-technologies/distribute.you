@@ -75,13 +75,13 @@ export function VisibilityRunsView({
   scope: ListVisibilityRunsParams;
   basePath: string;
 }) {
-  const { data, isLoading } = useAuthQuery(
+  const { data, isPending } = useAuthQuery(
     ["visibilityRuns", scope],
     () => listVisibilityRuns({ ...scope, limit: 50 }),
     pollOptionsSlower,
   );
 
-  const pending = isLoading && !data;
+  const pending = isPending && !data;
   const runs = data?.runs ?? [];
   const chartData = useMemo(() => buildChartData(runs), [runs]);
   const latest = runs[0];

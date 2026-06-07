@@ -188,7 +188,7 @@ export default function CreateCampaignPage() {
 
   const { org } = useOrg();
   const { showPaymentRequired } = useBillingGuard();
-  const { getFeature } = useFeatures();
+  const { getFeature, isLoading: featuresLoading } = useFeatures();
   const featureDef = getFeature(featureId);
 
   // State
@@ -549,6 +549,19 @@ export default function CreateCampaignPage() {
 
 
   // ─── Not found / Coming soon ────────────────────────────────────────────
+
+  // Features still loading (org-settle / first fetch) → skeleton, never a
+  // premature "Feature not found" flash. featuresLoading is isPending-backed.
+  if (featuresLoading) {
+    return (
+      <div className="p-4 md:p-8">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 w-48 bg-gray-200 rounded" />
+          <div className="h-32 bg-gray-100 rounded-xl" />
+        </div>
+      </div>
+    );
+  }
 
   if (!featureDef) {
     return (

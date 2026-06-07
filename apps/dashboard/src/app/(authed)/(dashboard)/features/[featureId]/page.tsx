@@ -56,7 +56,7 @@ export default function FeatureCampaignsPage() {
   const router = useRouter();
   const featureId = params.featureId as string;
 
-  const { getFeature, registry } = useFeatures();
+  const { getFeature, registry, isLoading: featuresLoading } = useFeatures();
   const featureDef = getFeature(featureId);
   const outputs = featureDef?.outputs ?? [];
 
@@ -110,6 +110,19 @@ export default function FeatureCampaignsPage() {
   const systemStats = featureStatsData?.systemStats;
 
   // ─── Not found / Coming soon ────────────────────────────────────────────
+
+  // Features still loading (org-settle / first fetch) → skeleton, never a
+  // premature "Feature not found" flash. featuresLoading is isPending-backed.
+  if (featuresLoading) {
+    return (
+      <div className="p-4 md:p-8">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 w-48 bg-gray-200 rounded" />
+          <div className="h-32 bg-gray-100 rounded-xl" />
+        </div>
+      </div>
+    );
+  }
 
   if (!featureDef) {
     return (
