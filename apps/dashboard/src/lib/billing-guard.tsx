@@ -194,11 +194,23 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
         successUrl.searchParams.set("pending_threshold", thresholdCents.toString());
       }
 
-      const session = await createCheckoutSession({
-        topup_amount_cents: effectiveAmountCents,
-        success_url: successUrl.toString(),
-        cancel_url: window.location.href,
-      });
+      // Proactive flow with no card on file: capture a reusable card via a no-charge
+      // setup-mode Checkout ($0). The pending_topup params (set above) enable auto-topup
+      // on return. Non-proactive (hard 402) keeps the charge-mode top-up.
+      const useSetupMode = info.proactive === true && !account?.has_payment_method;
+      const session = await createCheckoutSession(
+        useSetupMode
+          ? {
+              mode: "setup",
+              success_url: successUrl.toString(),
+              cancel_url: window.location.href,
+            }
+          : {
+              topup_amount_cents: effectiveAmountCents,
+              success_url: successUrl.toString(),
+              cancel_url: window.location.href,
+            }
+      );
       window.location.href = session.url;
     } catch (err) {
       setCheckoutError(err instanceof Error ? err.message : "Failed to start checkout");
@@ -284,57 +296,73 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
               </div>
             )}
 
-            {/* Top-up amount selection */}
-            <h3 className="text-sm font-medium text-gray-800 mb-2">Add Credits</h3>
-            <div className="flex flex-wrap gap-2 mb-2">
-              {TOPUP_AMOUNTS.map((amount) => (
-                <button
-                  key={amount}
-                  onClick={() => handleSelectTopup(amount)}
-                  className={`flex-1 min-w-[70px] px-3 py-2 text-sm rounded-lg border transition ${
-                    selectedAmount === amount && !customAmount
-                      ? "border-brand-300 bg-brand-50 text-brand-700 font-medium"
-                      : "border-gray-200 text-gray-700 hover:border-gray-300"
-                  }`}
-                >
-                  {formatBillingCents(amount)}
-                </button>
-              ))}
-            </div>
-            <input
-              type="number"
-              placeholder="Custom amount ($)"
-              value={customAmount}
-              onChange={(e) => { setCustomAmount(e.target.value); setCustomAmountError(null); }}
-              onBlur={handleCustomAmountBlur}
-              className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 mb-1 ${customAmountError ? "border-red-300" : "border-gray-200"}`}
-              min="10"
-              step="1"
-            />
-            {customAmountError && (
-              <p className="text-xs text-red-600 mb-2">{customAmountError}</p>
+            {/* Top-up amount selection — hard-block (insufficient credits) only.
+                Proactive modals are centered on auto-topup; no one-time "Add Credits". */}
+            {!isProactive && (
+              <>
+                <h3 className="text-sm font-medium text-gray-800 mb-2">Add Credits</h3>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {TOPUP_AMOUNTS.map((amount) => (
+                    <button
+                      key={amount}
+                      onClick={() => handleSelectTopup(amount)}
+                      className={`flex-1 min-w-[70px] px-3 py-2 text-sm rounded-lg border transition ${
+                        selectedAmount === amount && !customAmount
+                          ? "border-brand-300 bg-brand-50 text-brand-700 font-medium"
+                          : "border-gray-200 text-gray-700 hover:border-gray-300"
+                      }`}
+                    >
+                      {formatBillingCents(amount)}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="number"
+                  placeholder="Custom amount ($)"
+                  value={customAmount}
+                  onChange={(e) => { setCustomAmount(e.target.value); setCustomAmountError(null); }}
+                  onBlur={handleCustomAmountBlur}
+                  className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 mb-1 ${customAmountError ? "border-red-300" : "border-gray-200"}`}
+                  min="10"
+                  step="1"
+                />
+                {customAmountError && (
+                  <p className="text-xs text-red-600 mb-2">{customAmountError}</p>
+                )}
+              </>
             )}
 
             {/* Auto-topup option */}
-            <div className="border-t border-gray-100 pt-4 mt-3 mb-4">
-              <div className="flex items-start gap-3">
-                <input
-                  type="checkbox"
-                  checked={enableAutoTopup}
-                  onChange={(e) => setEnableAutoTopup(e.target.checked)}
-                  className="mt-0.5 w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
-                  id="modal-auto-topup"
-                />
-                <label htmlFor="modal-auto-topup" className="flex-1 cursor-pointer">
-                  <p className="text-sm font-medium text-gray-800">Enable auto-topup</p>
+            <div className={`border-gray-100 mb-4 ${isProactive ? "" : "border-t pt-4 mt-3"}`}>
+              {isProactive ? (
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Auto-top-up</p>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Automatically add credits when your balance gets low, so your campaigns never stop.
+                    {account?.has_payment_method
+                      ? "Automatically add credits when your balance gets low, so your campaigns never stop."
+                      : "We’ll securely save your card (no charge now) and automatically add credits when your balance gets low, so your campaigns never stop."}
                   </p>
-                </label>
-              </div>
+                </div>
+              ) : (
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={enableAutoTopup}
+                    onChange={(e) => setEnableAutoTopup(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
+                    id="modal-auto-topup"
+                  />
+                  <label htmlFor="modal-auto-topup" className="flex-1 cursor-pointer">
+                    <p className="text-sm font-medium text-gray-800">Enable auto-topup</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Automatically add credits when your balance gets low, so your campaigns never stop.
+                    </p>
+                  </label>
+                </div>
+              )}
 
-              {enableAutoTopup && (
-                <div className="grid grid-cols-2 gap-3 mt-3 ml-7">
+              {(isProactive || enableAutoTopup) && (
+                <div className={`grid grid-cols-2 gap-3 mt-3 ${isProactive ? "" : "ml-7"}`}>
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">Top-up amount ($)</label>
                     <input
@@ -390,14 +418,24 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
                 </button>
               )}
 
-              {isProactive && enableAutoTopup && account?.has_payment_method ? (
-                <button
-                  onClick={handleSetupAutoTopupOnly}
-                  disabled={savingAutoTopup || hasValidationError || !topupAmount}
-                  className="flex-[2] px-4 py-2.5 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 transition disabled:opacity-50"
-                >
-                  {savingAutoTopup ? "Saving..." : isRunway ? "Enable auto-topup & launch" : "Enable Auto-Topup & Continue"}
-                </button>
+              {isProactive ? (
+                account?.has_payment_method ? (
+                  <button
+                    onClick={handleSetupAutoTopupOnly}
+                    disabled={savingAutoTopup || hasValidationError || !topupAmount}
+                    className="flex-[2] px-4 py-2.5 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 transition disabled:opacity-50"
+                  >
+                    {savingAutoTopup ? "Saving..." : "Enable auto-top-up"}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleCheckout}
+                    disabled={checkoutLoading || hasValidationError || !topupAmount}
+                    className="flex-[2] px-4 py-2.5 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 transition disabled:opacity-50"
+                  >
+                    {checkoutLoading ? "Redirecting..." : "Enable auto-top-up"}
+                  </button>
+                )
               ) : (
                 <button
                   onClick={handleCheckout}
