@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { type Email } from "@/lib/api";
 import { useCampaign } from "@/lib/campaign-context";
 import { EntitySearchBar } from "@/components/entity-search-bar";
+import { EmailSignature } from "@/components/email-signature";
 
 function getEmailBody(email: Email): { html: string | null; text: string | null } {
   if (email.bodyHtml || email.bodyText) {
@@ -260,23 +261,23 @@ export default function CampaignEmailsPage() {
               <div className="p-4">
                 {(() => {
                   const body = getEmailBody(selectedEmail);
-                  if (body.html) {
-                    return (
-                      <div
-                        className="prose prose-sm max-w-none"
-                        dangerouslySetInnerHTML={{ __html: body.html }}
-                      />
-                    );
-                  }
-                  if (body.text) {
-                    return (
-                      <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans">
-                        {body.text}
-                      </pre>
-                    );
-                  }
+                  const hasBody = !!(body.html || body.text);
                   return (
-                    <p className="text-sm text-gray-400 italic">No email body available</p>
+                    <>
+                      {body.html ? (
+                        <div
+                          className="prose prose-sm max-w-none"
+                          dangerouslySetInnerHTML={{ __html: body.html }}
+                        />
+                      ) : body.text ? (
+                        <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans">
+                          {body.text}
+                        </pre>
+                      ) : (
+                        <p className="text-sm text-gray-400 italic">No email body available</p>
+                      )}
+                      {hasBody && <EmailSignature className="text-sm text-gray-700" />}
+                    </>
                   );
                 })()}
               </div>

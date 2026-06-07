@@ -3,6 +3,7 @@
 import { ReportTable, type ReportTableColumn } from "./report-table";
 import type { DrawerEntry } from "./data-drawer";
 import { WorkflowTag } from "./workflow-tag";
+import { EmailSignature } from "../email-signature";
 
 export interface EmailRow {
   id: string;
@@ -39,7 +40,7 @@ function drawerEntries(r: EmailRow): DrawerEntry[] {
     {
       label: "Body",
       value: r.bodyText
-        ? <pre className="text-xs text-gray-700 bg-gray-50 border border-gray-100 rounded p-3 whitespace-pre-wrap font-sans">{r.bodyText}</pre>
+        ? <pre className="text-xs text-gray-700 bg-gray-50 border border-gray-100 rounded p-3 whitespace-pre-wrap font-sans">{r.bodyText}<EmailSignature className="text-xs text-gray-500" /></pre>
         : <em className="text-gray-400">No body text available.</em>,
       block: true,
     },

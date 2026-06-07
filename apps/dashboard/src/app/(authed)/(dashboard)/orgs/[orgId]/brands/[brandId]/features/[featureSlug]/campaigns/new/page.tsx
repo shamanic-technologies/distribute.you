@@ -44,6 +44,7 @@ import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-pane
 import { CampaignAIPanel } from "@/components/campaigns/campaign-ai-panel";
 import { BrandLogo } from "@/components/brand-logo";
 import { Skeleton } from "@/components/skeleton";
+import { EmailSignature } from "@/components/email-signature";
 import { SparklesIcon, XMarkIcon, EllipsisVerticalIcon, PlusIcon, PencilSquareIcon, InformationCircleIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
 
 type Mode = "autopilot" | "manual";
@@ -206,6 +207,7 @@ function TestEmailCard({ email, expanded, onToggle }: { email: TestEmailCardData
                 </div>
               )}
               <div className="text-[11px] text-gray-600 mt-0.5 whitespace-pre-wrap">{s.bodyText}</div>
+              {s.bodyText && <EmailSignature className="text-[11px] text-gray-500" />}
             </div>
           ))}
         </div>

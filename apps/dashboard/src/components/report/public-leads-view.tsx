@@ -2,6 +2,7 @@
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { EntitySearchBar } from "@/components/entity-search-bar";
+import { EmailSignature } from "@/components/email-signature";
 import { WorkflowTag } from "./workflow-tag";
 import type { LeadRow, LeadEmailSummary } from "./leads-table";
 import {
@@ -694,6 +695,7 @@ function EmailsList({ emails }: { emails: LeadEmailSummary[] }) {
           {e.bodyText && (
             <pre className="text-xs text-gray-700 bg-gray-50 border border-gray-100 rounded p-3 whitespace-pre-wrap font-sans">
               {e.bodyText}
+              <EmailSignature className="text-xs text-gray-500" />
             </pre>
           )}
         </div>
