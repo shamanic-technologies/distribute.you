@@ -16,6 +16,7 @@ import {
   getBrand,
   listBrands,
   getBrandSalesEconomics,
+  getSalesEconomicsAverage,
   saveBrandSalesEconomics,
   type BrandSalesEconomicsInput,
   getWorkflowKeyStatus,
@@ -353,11 +354,20 @@ export default function FeatureCreateCampaignPage() {
   const salesPrefilledRef = useRef(false);
 
   // ── Persist the brand's sales economics (auto-upsert per brand, no Save button) ──
-  // Load on mount (sales path only): seed the 5 inputs from the saved set, else keep
-  // SALES_ECON_DEFAULTS. A debounced PUT mirrors every edit back to brand-service.
+  // Load on mount (sales path only): seed the 5 inputs from the saved set. When the
+  // brand has saved nothing, seed from the cross-brand average instead of the
+  // hard-coded SALES_ECON_DEFAULTS (a better first guess). A debounced PUT mirrors
+  // every edit back to brand-service.
   const { data: salesEconData } = useAuthQuery(
     ["brandSalesEconomics", brandId],
     () => getBrandSalesEconomics(brandId),
+    { enabled: isSalesFunnel },
+  );
+  // Cross-brand average — only needed as the fallback when this brand has no saved
+  // set. Global (not brand-scoped), so a single shared query key.
+  const { data: salesEconAvgData } = useAuthQuery(
+    ["salesEconomicsAverage"],
+    () => getSalesEconomicsAverage(),
     { enabled: isSalesFunnel },
   );
   const econHydrated = useRef(false);
@@ -370,10 +380,25 @@ export default function FeatureCreateCampaignPage() {
       setEconVisitToMeeting(String(e.visitToMeetingPct));
       setEconMeetingToClose(String(e.meetingToClosePct));
       setEconClickToClose(String(e.visitToClosePct));
+      // Saved set present — hydrate now; the average is irrelevant.
+      econHydrated.current = true;
+      return;
     }
-    // Mark hydrated even when unset so later background refetches never clobber edits.
+    // No saved set: wait for the cross-brand average before seeding, so we don't
+    // latch the hard-coded defaults and then ignore the average when it arrives.
+    if (salesEconAvgData === undefined) return;
+    const a = salesEconAvgData.averages;
+    if (a) {
+      setEconLtv(String(a.lifetimeRevenueUsd));
+      setEconReplyToMeeting(String(a.replyToMeetingPct));
+      setEconVisitToMeeting(String(a.visitToMeetingPct));
+      setEconMeetingToClose(String(a.meetingToClosePct));
+      setEconClickToClose(String(a.visitToClosePct));
+    }
+    // Mark hydrated even when the average is null (empty table → keep
+    // SALES_ECON_DEFAULTS) so later background refetches never clobber edits.
     econHydrated.current = true;
-  }, [isSalesFunnel, salesEconData]);
+  }, [isSalesFunnel, salesEconData, salesEconAvgData]);
 
   const { mutate: mutateSalesEcon } = useMutation({
     mutationFn: (input: BrandSalesEconomicsInput) => saveBrandSalesEconomics(brandId, input),
