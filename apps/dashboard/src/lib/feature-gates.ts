@@ -40,6 +40,9 @@ export const FEATURE_GATES = {
   // (Outlets/Journalists/Articles). Leads + Emails stay GA (sales-cold-email is
   // launched). Independent of brand-features so it can graduate on its own.
   "brand-database": { flag: "alpha-brand-database", maturity: "alpha" },
+  // Live activity feed on the campaign overview (reassurance ticker derived from
+  // run_events). Staff-only while the funnel-slug allowlist matures.
+  "campaign-activity": { flag: "alpha-campaign-activity", maturity: "alpha" },
 } as const satisfies Record<string, FeatureGate>;
 
 export type FeatureGateKey = keyof typeof FEATURE_GATES;
