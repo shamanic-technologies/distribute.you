@@ -48,11 +48,13 @@ describe("listBrandRuns handles 404/500 gracefully", () => {
 
 describe("Brand overview page handles missing brand", () => {
   it("should track loading state from the brand query", () => {
-    // The page reads the React Query loading flag (brandLoading) and uses it
+    // The page reads the React Query pending flag (brandLoading) and uses it
     // alongside `brand` to drive both the inline header skeleton and the
-    // not-found empty state. The exact gate shape changed when the full-page
-    // skeleton block was inlined; verify the underlying state is still wired.
-    expect(brandOverviewContent).toMatch(/isLoading:\s*brandLoading/);
+    // not-found empty state. It MUST read isPending, not isLoading: a query
+    // suspended by the org-consistency gate reports isLoading false while still
+    // unresolved, which would flash the not-found state during the org-settle
+    // window. isPending stays true until the query actually resolves.
+    expect(brandOverviewContent).toMatch(/isPending:\s*brandLoading/);
     expect(brandOverviewContent).toMatch(/!brandLoading\s*&&\s*!brand/);
     expect(brandOverviewContent).not.toMatch(/if\s*\(\s*!brandData\s*\)/);
   });
@@ -67,7 +69,11 @@ describe("Brand overview page handles missing brand", () => {
 
 describe("Brand info page handles missing brand", () => {
   it("should use brandLoading in skeleton guard", () => {
-    expect(brandInfoContent).toMatch(/isLoading:\s*brandLoading/);
+    // Must read isPending, not isLoading — an org-gated (disabled) query reports
+    // isLoading false while unresolved, dropping through the skeleton guard to
+    // "Brand not found" during the org-settle window. isPending holds the
+    // skeleton until the query resolves.
+    expect(brandInfoContent).toMatch(/isPending:\s*brandLoading/);
     expect(brandInfoContent).toContain("brandLoading || fieldsLoading");
   });
 

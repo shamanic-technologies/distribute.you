@@ -63,7 +63,7 @@ export default function WorkflowViewerPage() {
     setActiveWorkflowId(newWorkflowId);
   }, [orgId, brandId, featureSlug]);
 
-  const { data: workflow, isLoading } = useAuthQuery(
+  const { data: workflow, isPending } = useAuthQuery(
     ["workflow", activeWorkflowId],
     () => getWorkflow(activeWorkflowId),
     { refetchInterval: 3000 },
@@ -186,8 +186,10 @@ export default function WorkflowViewerPage() {
     };
   }, [workflow, summary, featureData]);
 
-  // Show "not found" only after loading finishes with no data
-  if (!isLoading && !workflow) {
+  // Show "not found" only after the query RESOLVES with no data. isPending (not
+  // isLoading) stays true while the org-consistency gate suspends the query, so
+  // the org-settle window renders the layout's skeletons, not a not-found flash.
+  if (!isPending && !workflow) {
     return (
       <div className="flex items-center justify-center h-full bg-white dark:bg-gray-900">
         <div className="text-center">

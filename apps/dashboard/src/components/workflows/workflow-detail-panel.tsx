@@ -17,7 +17,11 @@ export function WorkflowDetailPanel({
 }) {
   const { org } = useOrg();
 
-  const { data: workflow, isLoading } = useAuthQuery(
+  // isPending (not isLoading): the org-consistency gate suspends the query
+  // until Clerk's active org resolves; isLoading reads false during that window
+  // though workflow is still unresolved, flashing "Workflow not found".
+  // isPending stays true until the query resolves.
+  const { data: workflow, isPending } = useAuthQuery(
     ["workflow", workflowId],
     () => getWorkflow(workflowId)
   );
@@ -57,7 +61,7 @@ export function WorkflowDetailPanel({
         <div className="border-b border-gray-100 p-5 flex-shrink-0">
           <div className="flex items-start justify-between mb-3">
             <div className="flex-1 min-w-0 mr-3">
-              {isLoading ? (
+              {isPending ? (
                 <div className="animate-pulse">
                   <div className="h-6 bg-gray-200 rounded w-48 mb-2" />
                   <div className="h-4 bg-gray-200 rounded w-64" />
@@ -96,7 +100,7 @@ export function WorkflowDetailPanel({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5">
-          {isLoading ? (
+          {isPending ? (
             <div className="flex items-center justify-center h-48">
               <div className="w-8 h-8 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" />
             </div>
