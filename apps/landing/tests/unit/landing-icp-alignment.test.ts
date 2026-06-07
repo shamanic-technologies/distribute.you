@@ -21,44 +21,57 @@ const providerAvatarPath = path.resolve(__dirname, "../../src/components/provide
 const featureProvidersPath = path.resolve(__dirname, "../../src/data/feature-providers.ts");
 const benchmarksContentPath = path.resolve(__dirname, "../../src/data/benchmarks-content.ts");
 
-describe("Landing page: design-system port", () => {
+describe("Landing page: cold-email-only focus", () => {
   const page = fs.readFileSync(landingPagePath, "utf-8");
 
   it("wraps the page in the DS root scope", () => {
     expect(page).toMatch(/className="dy-root"/);
   });
 
-  it("uses the DS hero copy and type scale", () => {
-    expect(page).toMatch(/You build\./);
-    expect(page).toMatch(/We distribute\./);
+  it("ships an aggressive cold-email promise in the hero", () => {
+    expect(page).toMatch(/100 sales calls/i);
+    expect(page).toMatch(/30 days/i);
     expect(page).toMatch(/className="t-hero/);
+  });
+
+  it("does NOT advertise alpha/beta channels (PR, VC, hiring, accelerators, AI visibility, etc.)", () => {
+    expect(page).not.toMatch(/Journalist outreach/i);
+    expect(page).not.toMatch(/VC outreach/i);
+    expect(page).not.toMatch(/Hiring outreach/i);
+    expect(page).not.toMatch(/Accelerator outreach/i);
+    expect(page).not.toMatch(/PR expert quotes/i);
+    expect(page).not.toMatch(/Outlet discovery/i);
+    expect(page).not.toMatch(/Press kit generation/i);
+    expect(page).not.toMatch(/AI visibility scoring/i);
+    expect(page).not.toMatch(/dy-channels-bento/);
+    expect(page).not.toMatch(/dy-platform-bento/);
+  });
+
+  it("uses non-tech language (no Apollo/Anthropic/Resend/Claude Sonnet/MCP)", () => {
+    expect(page).not.toMatch(/Apollo/i);
+    expect(page).not.toMatch(/Anthropic/i);
+    expect(page).not.toMatch(/Resend/i);
+    expect(page).not.toMatch(/Claude Sonnet/i);
+    expect(page).not.toMatch(/Claude Haiku/i);
+    expect(page).not.toMatch(/MCP/i);
+    expect(page).not.toMatch(/REST API/i);
   });
 
   it("renders the inline dashboard mockup with KPIs and chart", () => {
     expect(page).toMatch(/dy-hero-ui/);
-    expect(page).toMatch(/Qualified replies over time/);
+    expect(page).toMatch(/Qualified buyers over time/);
     expect(page).toMatch(/\$1\.42/);
   });
 
-  it("renders the stats band with the four DS counters", () => {
-    expect(page).toMatch(/dy-stats-card/);
-    expect(page).toMatch(/avg per qualified reply/);
-    expect(page).toMatch(/channels live/);
-    expect(page).toMatch(/free to start/);
-    expect(page).toMatch(/open source/);
+  it("uses the distribute logo SVG in the dashboard sidebar", () => {
+    expect(page).toMatch(/src="\/logo-distribute\.svg"/);
   });
 
-  it("renders the 9-channel bento", () => {
-    expect(page).toMatch(/dy-channels-bento/);
-    expect(page).toMatch(/Sales outreach/);
-    expect(page).toMatch(/Journalist outreach/);
-    expect(page).toMatch(/VC outreach/);
-    expect(page).toMatch(/Hiring outreach/);
-    expect(page).toMatch(/Accelerator outreach/);
-    expect(page).toMatch(/PR expert quotes/);
-    expect(page).toMatch(/Outlet discovery/);
-    expect(page).toMatch(/Press kit generation/);
-    expect(page).toMatch(/AI visibility scoring/);
+  it("renders the stats band with aggressive cold-email proof numbers", () => {
+    expect(page).toMatch(/dy-stats-card/);
+    expect(page).toMatch(/per buyer reply/);
+    expect(page).toMatch(/10x/);
+    expect(page).toMatch(/5 min/);
   });
 
   it("renders the compare grid (without/with distribute)", () => {
@@ -69,15 +82,8 @@ describe("Landing page: design-system port", () => {
 
   it("renders the pricing card with the published unit rates", () => {
     expect(page).toMatch(/dy-price-card/);
-    expect(page).toMatch(/Apollo lead enrichment/);
     expect(page).toMatch(/\$0\.036/);
-  });
-
-  it("renders the 3-tile integrations grid", () => {
-    expect(page).toMatch(/dy-int-grid/);
-    expect(page).toMatch(/Dashboard/);
-    expect(page).toMatch(/REST API/);
-    expect(page).toMatch(/MCP Server/);
+    expect(page).toMatch(/\$1\.42/);
   });
 
   it("mentions $25 free credits in the hero CTA", () => {

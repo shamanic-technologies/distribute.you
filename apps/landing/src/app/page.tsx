@@ -7,8 +7,8 @@ import { PROD_URLS } from "@/lib/env-urls";
 export const revalidate = 300;
 
 export const metadata: Metadata = {
-  title: "distribute: AI outreach automation for solo founders | $1.42/reply",
-  description: "Add your product URL, set a budget. We find prospects, write cold emails, qualify replies, and forward only the ones worth your time. $25 free.",
+  title: "distribute: 100 sales calls in 30 days. AI cold email, done for you.",
+  description: "Drop your URL. We send cold emails to your ideal customers, qualify replies with AI, and forward only the buyers to your Gmail. 10x your pipeline without hiring an SDR. $25 free credits.",
 };
 
 const faqJsonLd = {
@@ -20,7 +20,7 @@ const faqJsonLd = {
       name: "What does distribute do?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "distribute runs sales cold email outreach for you. Add your URL and budget; we find prospects, write emails, send sequences, qualify replies with AI, and forward qualified buyers to Gmail.",
+        text: "distribute runs cold email outreach for you. Drop your product URL, set a budget, and we find buyers, write the emails, send them, qualify every reply with AI, and forward only buyer conversations to your Gmail.",
       },
     },
     {
@@ -28,7 +28,7 @@ const faqJsonLd = {
       name: "Do I need a sending domain or warmed mailbox?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "No. distribute handles sending infrastructure, prospect sourcing, copy generation, deliverability monitoring, reply triage, and campaign reporting.",
+        text: "No. We send from our own pre-warmed agency infrastructure. You skip the 3-week setup. Launch in 5 minutes.",
       },
     },
     {
@@ -36,7 +36,7 @@ const faqJsonLd = {
       name: "How much does it cost to start?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "$25 welcome credits. No subscription. You set the campaign budget before launch and see the exact unit cost breakdown in the dashboard.",
+        text: "$25 welcome credits. No subscription. No credit card. Pay only when emails go out. Average $1.42 per qualified buyer reply.",
       },
     },
   ],
@@ -64,22 +64,22 @@ export default function HomePage() {
           <div className="dy-hero-content">
             <div className="dy-hero-eyebrow t-lbl dy-a1">
               <span className="dy-hero-dot" aria-hidden />
-              Built for solo founders and micro-SaaS builders
+              AI cold email, done for you
             </div>
 
             <h1 className="t-hero dy-a2">
-              You build.<br />We distribute.
+              100 sales calls<br />in 30 days.
             </h1>
 
             <p className="dy-hero-sub dy-a3">
-              Add your product URL, set a budget. We find the prospects, write the cold emails, send the campaigns, qualify every reply, and forward only the ones worth your time.
+              Drop your website URL. We email your ideal customers, AI reads every reply, and only buyers land in your Gmail. You read 5 emails, not 200. No SDR. No setup. No subscription.
             </p>
 
             <div className="dy-hero-actions dy-a4">
               <a href={PROD_URLS.signUp} className="dy-btn dy-btn-p dy-btn-lg">Start free, $25 credits</a>
-              <a href={PROD_URLS.docs} className="dy-btn dy-btn-g dy-btn-lg">Read the docs</a>
+              <a href="#pricing" className="dy-btn dy-btn-g dy-btn-lg">See pricing</a>
             </div>
-            <p className="dy-hero-note dy-a4">No subscription. No credit card.</p>
+            <p className="dy-hero-note dy-a4">No subscription. No credit card. Launch in 5 minutes.</p>
           </div>
         </div>
 
@@ -88,11 +88,12 @@ export default function HomePage() {
           <div className="dy-hero-ui-outer dy-a5">
             <div className="dy-hero-ui-glow" aria-hidden />
 
-            <div className="dy-hero-ui" role="img" aria-label="distribute dashboard showing campaign performance across multiple products">
+            <div className="dy-hero-ui" role="img" aria-label="distribute dashboard showing cold email campaign performance">
               {/* Sidebar */}
               <nav className="dy-uid-sidebar" aria-hidden>
                 <div className="dy-uid-logo">
-                  <span style={{ width: "1.25rem", height: "1.25rem", borderRadius: "0.25rem", background: "var(--dy-accent)", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 800, fontSize: "0.8rem", letterSpacing: "-0.03em" }}>D</span>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/logo-distribute.svg" alt="" className="dy-uid-logo-img" />
                   <span className="dy-uid-logo-name">distribute</span>
                 </div>
                 <ul className="dy-uid-nav">
@@ -103,15 +104,15 @@ export default function HomePage() {
                   <li>
                     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 8h12M8 2v12" /><circle cx="8" cy="8" r="6" /></svg>
                     Campaigns
-                    <span className="dy-uid-badge-count">8</span>
+                    <span className="dy-uid-badge-count">3</span>
                   </li>
                   <li>
                     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="3" width="12" height="10" rx="1.5" /><path d="M5 7h6M5 10h4" /></svg>
-                    Products
+                    Buyers
                   </li>
                   <li>
-                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="5" cy="8" r="2" /><circle cx="11" cy="4" r="2" /><circle cx="11" cy="12" r="2" /><path d="M7 7.5l2.5-2.5M7 8.5l2.5 2.5" /></svg>
-                    Channels
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 4l6 5 6-5" /><rect x="2" y="4" width="12" height="9" rx="1.5" /></svg>
+                    Emails
                   </li>
                   <li>
                     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 12l3-5 3 3 2-4 4 6" /></svg>
@@ -134,19 +135,19 @@ export default function HomePage() {
                 </ul>
                 <div className="dy-uid-upgrade">
                   <div className="dy-uid-upgrade-title">Scale your outreach</div>
-                  <div className="dy-uid-upgrade-sub">Get unlimited channels and priority processing.</div>
-                  <button type="button" className="dy-uid-upgrade-btn">Upgrade plan</button>
+                  <div className="dy-uid-upgrade-sub">Top up your credits and book more calls.</div>
+                  <button type="button" className="dy-uid-upgrade-btn">Add credits</button>
                 </div>
               </nav>
 
               {/* Main */}
               <div className="dy-uid-main" aria-hidden>
                 <div className="dy-uid-topbar">
-                  <span className="dy-uid-topbar-title">Campaigns</span>
+                  <span className="dy-uid-topbar-title">Cold email outreach</span>
                   <div className="dy-uid-topbar-right">
                     <div className="dy-uid-date-pill">
                       <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="3" width="12" height="12" rx="1.5" /><path d="M5 2v2M11 2v2M2 7h12" /></svg>
-                      Jan 1 to Jun 6, 2025
+                      Last 30 days
                     </div>
                     <div className="dy-uid-live">
                       <span className="dy-uid-live-dot" />
@@ -172,7 +173,7 @@ export default function HomePage() {
                     </div>
                   </div>
                   <div className="dy-uid-kpi">
-                    <div className="dy-uid-kpi-lbl">Qualified replies</div>
+                    <div className="dy-uid-kpi-lbl">Qualified buyers</div>
                     <div className="dy-uid-kpi-row">
                       <span className="dy-uid-kpi-n">239</span>
                       <div className="dy-uid-kpi-icon">
@@ -185,20 +186,20 @@ export default function HomePage() {
                     </div>
                   </div>
                   <div className="dy-uid-kpi">
-                    <div className="dy-uid-kpi-lbl">Active products</div>
+                    <div className="dy-uid-kpi-lbl">Meetings booked</div>
                     <div className="dy-uid-kpi-row">
-                      <span className="dy-uid-kpi-n">8</span>
+                      <span className="dy-uid-kpi-n">47</span>
                       <div className="dy-uid-kpi-icon">
-                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="2" width="5" height="5" rx="1" /><rect x="9" y="2" width="5" height="5" rx="1" /><rect x="2" y="9" width="5" height="5" rx="1" /><rect x="9" y="9" width="5" height="5" rx="1" /></svg>
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="3" width="12" height="11" rx="1.5" /><path d="M5 2v3M11 2v3M2 7h12" /></svg>
                       </div>
                     </div>
                     <div>
-                      <span className="dy-uid-kpi-delta dy-up">+3</span>
-                      <span className="dy-uid-kpi-vs">this month</span>
+                      <span className="dy-uid-kpi-delta dy-up">+9</span>
+                      <span className="dy-uid-kpi-vs">this week</span>
                     </div>
                   </div>
                   <div className="dy-uid-kpi">
-                    <div className="dy-uid-kpi-lbl">Avg cost / reply</div>
+                    <div className="dy-uid-kpi-lbl">Cost per buyer</div>
                     <div className="dy-uid-kpi-row">
                       <span className="dy-uid-kpi-n">$1.42</span>
                       <div className="dy-uid-kpi-icon" style={{ background: "var(--dy-green-dim)" }}>
@@ -215,11 +216,11 @@ export default function HomePage() {
                 <div className="dy-uid-body">
                   <div className="dy-uid-chart-area">
                     <div className="dy-uid-chart-head">
-                      <span className="dy-uid-chart-title">Qualified replies over time</span>
+                      <span className="dy-uid-chart-title">Qualified buyers over time</span>
                       <span className="dy-uid-chart-total">239 total · Jun 2025</span>
                     </div>
                     <div className="dy-uid-chart-tooltip">
-                      Jun 1, 2025 &nbsp;·&nbsp; <strong>48 replies</strong> this month &nbsp;·&nbsp; 31 last month
+                      Jun 1 &nbsp;·&nbsp; <strong>48 buyers</strong> this month &nbsp;·&nbsp; 31 last month
                     </div>
                     <svg className="dy-uid-chart-svg" viewBox="0 0 560 100" preserveAspectRatio="none">
                       <defs>
@@ -243,24 +244,24 @@ export default function HomePage() {
 
                   <div className="dy-uid-right">
                     <div className="dy-uid-widget">
-                      <div className="dy-uid-widget-title">Top channels <span>last 30d</span></div>
+                      <div className="dy-uid-widget-title">Reply types <span>last 30d</span></div>
                       <div className="dy-uid-bars">
                         <div className="dy-uid-bar-row">
-                          <span className="dy-uid-bar-label">Sales</span>
+                          <span className="dy-uid-bar-label">Buyers</span>
                           <div className="dy-uid-bar-track">
                             <div className="dy-uid-bar-fill" style={{ width: "68%" }} />
                           </div>
                           <span className="dy-uid-bar-val">68%</span>
                         </div>
                         <div className="dy-uid-bar-row">
-                          <span className="dy-uid-bar-label">Press</span>
+                          <span className="dy-uid-bar-label">Curious</span>
                           <div className="dy-uid-bar-track">
                             <div className="dy-uid-bar-fill dy-green" style={{ width: "44%" }} />
                           </div>
                           <span className="dy-uid-bar-val">44%</span>
                         </div>
                         <div className="dy-uid-bar-row">
-                          <span className="dy-uid-bar-label">VC</span>
+                          <span className="dy-uid-bar-label">Pass</span>
                           <div className="dy-uid-bar-track">
                             <div className="dy-uid-bar-fill dy-purple" style={{ width: "22%" }} />
                           </div>
@@ -288,19 +289,19 @@ export default function HomePage() {
                   <table className="dy-uid-table">
                     <thead>
                       <tr>
-                        <th>Product</th>
+                        <th>Campaign</th>
                         <th>Sent</th>
-                        <th>Replies</th>
-                        <th>$ / reply</th>
-                        <th>Rating</th>
+                        <th>Buyers</th>
+                        <th>$ / buyer</th>
+                        <th>Meetings</th>
                         <th>Status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr><td><span className="dy-uid-product">prompthub.ai</span></td><td><span className="dy-uid-meta">3,200</span></td><td><span className="dy-uid-val">88</span></td><td><span className="dy-uid-meta">$1.04</span></td><td><span className="dy-uid-meta">★ 4.9</span></td><td><span className="dy-uid-status dy-green">Scale</span></td></tr>
-                      <tr><td><span className="dy-uid-product">mailmesh.com</span></td><td><span className="dy-uid-meta">2,800</span></td><td><span className="dy-uid-val">62</span></td><td><span className="dy-uid-meta">$1.29</span></td><td><span className="dy-uid-meta">★ 4.7</span></td><td><span className="dy-uid-status dy-green">Scale</span></td></tr>
-                      <tr><td><span className="dy-uid-product">voiceform.io</span></td><td><span className="dy-uid-meta">1,900</span></td><td><span className="dy-uid-val">28</span></td><td><span className="dy-uid-meta">$2.04</span></td><td><span className="dy-uid-meta">★ 4.3</span></td><td><span className="dy-uid-status dy-amber">Watch</span></td></tr>
-                      <tr><td><span className="dy-uid-product">linearclone.dev</span></td><td><span className="dy-uid-meta">800</span></td><td><span className="dy-uid-val">4</span></td><td><span className="dy-uid-meta">$8.75</span></td><td><span className="dy-uid-meta">★ 3.1</span></td><td><span className="dy-uid-status dy-red">Kill</span></td></tr>
+                      <tr><td><span className="dy-uid-product">SaaS founders, US</span></td><td><span className="dy-uid-meta">3,200</span></td><td><span className="dy-uid-val">88</span></td><td><span className="dy-uid-meta">$1.04</span></td><td><span className="dy-uid-meta">22</span></td><td><span className="dy-uid-status dy-green">Scale</span></td></tr>
+                      <tr><td><span className="dy-uid-product">Agency owners, EU</span></td><td><span className="dy-uid-meta">2,800</span></td><td><span className="dy-uid-val">62</span></td><td><span className="dy-uid-meta">$1.29</span></td><td><span className="dy-uid-meta">15</span></td><td><span className="dy-uid-status dy-green">Scale</span></td></tr>
+                      <tr><td><span className="dy-uid-product">Real estate, US</span></td><td><span className="dy-uid-meta">1,900</span></td><td><span className="dy-uid-val">28</span></td><td><span className="dy-uid-meta">$2.04</span></td><td><span className="dy-uid-meta">7</span></td><td><span className="dy-uid-status dy-amber">Watch</span></td></tr>
+                      <tr><td><span className="dy-uid-product">Ecom DTC, UK</span></td><td><span className="dy-uid-meta">800</span></td><td><span className="dy-uid-val">4</span></td><td><span className="dy-uid-meta">$8.75</span></td><td><span className="dy-uid-meta">1</span></td><td><span className="dy-uid-status dy-red">Kill</span></td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -319,19 +320,19 @@ export default function HomePage() {
             <div className="dy-stats-inner">
               <div className="dy-stat">
                 <span className="dy-stat-val dy-accent">$1.42</span>
-                <span className="dy-stat-lbl">avg per qualified reply</span>
+                <span className="dy-stat-lbl">per buyer reply on average</span>
               </div>
               <div className="dy-stat">
-                <span className="dy-stat-val">9</span>
-                <span className="dy-stat-lbl">channels live</span>
+                <span className="dy-stat-val">10x</span>
+                <span className="dy-stat-lbl">more outbound than 1 SDR</span>
+              </div>
+              <div className="dy-stat">
+                <span className="dy-stat-val">5 min</span>
+                <span className="dy-stat-lbl">to launch your first campaign</span>
               </div>
               <div className="dy-stat">
                 <span className="dy-stat-val">$25</span>
-                <span className="dy-stat-lbl">free to start</span>
-              </div>
-              <div className="dy-stat">
-                <span className="dy-stat-val">MIT</span>
-                <span className="dy-stat-lbl">open source</span>
+                <span className="dy-stat-lbl">free to start, no card</span>
               </div>
             </div>
           </div>
@@ -343,169 +344,25 @@ export default function HomePage() {
         <div className="dy-wrap">
           <div className="dy-sec-intro dy-r">
             <span className="t-lbl">How it works</span>
-            <h2 className="t-h2">What happens after you paste the URL</h2>
-            <p className="t-body">Three steps. No domain warmup. No configuration. No brief to write.</p>
+            <h2 className="t-h2">From your URL to 100 buyer conversations</h2>
+            <p className="t-body">Three steps. No setup. No software to learn. No SDR to hire.</p>
           </div>
           <div className="dy-steps-grid">
             <div className="dy-step dy-r dy-d1">
-              <span className="dy-step-num">01 / read</span>
-              <h3 className="t-h3">We read your product</h3>
-              <p>distribute analyzes your site, reads your positioning, and picks the right workflow for each channel. You write nothing.</p>
+              <span className="dy-step-num">01 / drop</span>
+              <h3 className="t-h3">Paste your website URL</h3>
+              <p>We read your product, figure out who your buyers are, and write your campaign. You write nothing. You log in, paste a link, set a budget. Done.</p>
             </div>
             <div className="dy-step dy-r dy-d2">
-              <span className="dy-step-num">02 / configure</span>
-              <h3 className="t-h3">Pick channels, set a budget</h3>
-              <p>Toggle sales, press, VCs, hiring, or accelerators. Each channel runs on its own budget. Start with one, add more when you see what responds.</p>
+              <span className="dy-step-num">02 / send</span>
+              <h3 className="t-h3">We email your buyers</h3>
+              <p>Pre-warmed inboxes start sending the same day. Every email is personalized to the person and the company. No spam folder. No domain setup. Just buyers in their inbox.</p>
             </div>
             <div className="dy-step dy-r dy-d3">
-              <span className="dy-step-num">03 / deliver</span>
-              <h3 className="t-h3">Qualified replies land in Gmail</h3>
-              <p>AI qualifies every reply. The ones that matter come through with the full thread and the cost logged. Everything else disappears.</p>
+              <span className="dy-step-num">03 / read</span>
+              <h3 className="t-h3">Buyer replies land in Gmail</h3>
+              <p>AI reads every reply. Only real buyers reach your inbox, ready to answer. You read 5 emails a day instead of 200. The other 195 never bother you.</p>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* PLATFORM BENTO */}
-      <section className="dy-s-platform">
-        <div className="dy-wrap">
-          <div className="dy-sec-intro dy-r">
-            <span className="t-lbl">Platform</span>
-            <h2 className="t-h2">The full distribution stack, automated</h2>
-            <p className="t-body">From URL to qualified reply, every step runs automatically. No domain warmup, no brief to write, no inbox to monitor.</p>
-          </div>
-
-          <div className="dy-platform-bento">
-            <div className="dy-pb-tile dy-pb-url dy-r dy-d1">
-              <span className="dy-pb-label">Step 1</span>
-              <h3 className="t-h3">Drop a URL. We read the product.</h3>
-              <p>distribute scrapes your site, extracts your positioning, identifies your ICP, and selects the highest-probability channel for your category. No brief. No onboarding call.</p>
-              <div className="dy-pb-illus">
-                <div className="dy-illus-url">
-                  <div className="dy-illus-url-input">
-                    <span className="dy-illus-url-prefix">https://</span>
-                    <span className="dy-illus-url-text">prompthub.ai</span>
-                  </div>
-                  <div className="dy-illus-url-arrow">
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M8 3v10M3 8l5 5 5-5" /></svg>
-                    AI reads and extracts context
-                  </div>
-                  <div className="dy-illus-url-tags">
-                    <span className="dy-illus-tag">ICP: solo founders</span>
-                    <span className="dy-illus-tag dy-green">channel: sales-outreach</span>
-                    <span className="dy-illus-tag dy-purple">tone: technical</span>
-                    <span className="dy-illus-tag">budget: $50</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="dy-pb-tile dy-pb-prospt dy-r dy-d2">
-              <div className="dy-pb-prospt-row">
-                <div className="dy-pb-prospt-text">
-                  <span className="dy-pb-label">Step 2</span>
-                  <h3 className="t-h3">AI finds the right people</h3>
-                  <p>Apollo, Crunchbase, Muck Rack, LinkedIn: distribute queries the right data source for the channel, filters by fit, and builds the list automatically.</p>
-                </div>
-                <div className="dy-pb-illus dy-pb-prospt-illus">
-                  <div className="dy-illus-nodes">
-                    <svg viewBox="0 0 180 155" fill="none">
-                      <line x1="90" y1="77" x2="28" y2="28" style={{ stroke: "var(--dy-accent)", strokeOpacity: 0.25, strokeWidth: 1 }} />
-                      <line x1="90" y1="77" x2="152" y2="22" style={{ stroke: "var(--dy-accent)", strokeOpacity: 0.2, strokeWidth: 1 }} />
-                      <line x1="90" y1="77" x2="162" y2="88" style={{ stroke: "var(--dy-accent)", strokeOpacity: 0.15, strokeWidth: 1 }} />
-                      <line x1="90" y1="77" x2="138" y2="140" style={{ stroke: "var(--dy-accent)", strokeOpacity: 0.2, strokeWidth: 1 }} />
-                      <line x1="90" y1="77" x2="42" y2="130" style={{ stroke: "var(--dy-accent)", strokeOpacity: 0.18, strokeWidth: 1 }} />
-                      <line x1="90" y1="77" x2="18" y2="90" style={{ stroke: "var(--dy-accent)", strokeOpacity: 0.15, strokeWidth: 1 }} />
-                      <circle cx="28" cy="28" r="7" style={{ fill: "var(--dy-accent-dim)", stroke: "var(--dy-accent-brd)", strokeWidth: 1.5 }} />
-                      <circle cx="152" cy="22" r="9" style={{ fill: "var(--dy-accent-dim)", stroke: "var(--dy-accent-brd)", strokeWidth: 1.5 }} />
-                      <circle cx="162" cy="88" r="6" style={{ fill: "var(--dy-surface-hi)", stroke: "var(--dy-border-hi)", strokeWidth: 1 }} />
-                      <circle cx="138" cy="140" r="8" style={{ fill: "var(--dy-accent-dim)", stroke: "var(--dy-accent-brd)", strokeWidth: 1.5 }} />
-                      <circle cx="42" cy="130" r="6" style={{ fill: "var(--dy-surface-hi)", stroke: "var(--dy-border-hi)", strokeWidth: 1 }} />
-                      <circle cx="18" cy="90" r="5" style={{ fill: "var(--dy-accent-dim)", stroke: "var(--dy-accent-brd)", strokeWidth: 1.5 }} />
-                      <circle cx="85" cy="10" r="4" style={{ fill: "var(--dy-surface-hi)", stroke: "var(--dy-border-hi)", strokeWidth: 1 }} />
-                      <circle cx="90" cy="77" r="14" style={{ fill: "var(--dy-accent)", fillOpacity: 0.2, stroke: "var(--dy-accent)", strokeWidth: 2 }} />
-                      <circle cx="90" cy="77" r="6" style={{ fill: "var(--dy-accent)" }} />
-                      <text x="28" y="44" style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 8, fill: "var(--dy-accent)", fillOpacity: 0.8 }}>qualified</text>
-                      <text x="145" y="38" style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 8, fill: "var(--dy-accent)", fillOpacity: 0.8 }}>qualified</text>
-                      <text x="125" y="148" style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 8, fill: "var(--dy-accent)", fillOpacity: 0.8 }}>qualified</text>
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="dy-pb-tile dy-pb-email dy-r dy-d3">
-              <span className="dy-pb-label">Step 3</span>
-              <h3 className="t-h3">Personalized emails, written by AI</h3>
-              <p>Claude writes each email from the prospect&apos;s profile, your product context, and the channel&apos;s patterns.</p>
-              <ul className="dy-pb-feat-list">
-                <li>Subject line tied to the prospect&apos;s pain point</li>
-                <li>Opener referencing their company or role</li>
-                <li>Body built around your strongest proof point</li>
-                <li>CTA matched to the channel&apos;s conversion pattern</li>
-              </ul>
-              <div className="dy-pb-illus">
-                <div className="dy-illus-email">
-                  <div className="dy-illus-email-line dy-accent" />
-                  <div className="dy-illus-email-line dy-hl" />
-                  <div style={{ height: "0.25rem" }} />
-                  <div className="dy-illus-email-line dy-long" />
-                  <div className="dy-illus-email-line dy-med" />
-                  <div className="dy-illus-email-line dy-short" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ICP */}
-      <section className="dy-s-icp">
-        <div className="dy-wrap">
-          <div className="dy-sec-intro dy-r">
-            <span className="t-lbl" style={{ color: "oklch(72% 0.200 264)" }}>Who ships with distribute</span>
-            <h2 className="t-h2" style={{ color: "oklch(96% 0.005 264)" }}>Designed for one kind of person</h2>
-            <p className="t-body" style={{ color: "oklch(65% 0.016 264)" }}>You ship fast and run multiple products. You know distribution matters but you do not have time for it, and you do not want to hire for it.</p>
-          </div>
-          <div className="dy-icp-bento">
-            <div className="dy-icp-tile dy-r dy-d1">
-              <span className="dy-icp-glyph">01/</span>
-              <h3 className="t-h3">Solo founders with AI tools</h3>
-              <p>You build fast with Claude, Cursor, or Lovable. You ship in weeks. You need your first 50 customers before you decide whether to scale or kill the product.</p>
-            </div>
-            <div className="dy-icp-tile dy-r dy-d2">
-              <span className="dy-icp-glyph">×N</span>
-              <h3 className="t-h3">Bootstrapped micro-SaaS operators</h3>
-              <p>You run 3 to 5 products at once. You want to know which one to double down on this quarter, without doing manual outreach for all of them.</p>
-            </div>
-            <div className="dy-icp-tile dy-r dy-d3">
-              <span className="dy-icp-glyph">?→</span>
-              <h3 className="t-h3">Builders testing market fit</h3>
-              <p>You have a product and a hypothesis. You want real replies from real prospects before you commit to a direction. Not survey data. Actual conversations.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* CHANNELS */}
-      <section className="dy-s-channels">
-        <div className="dy-wrap">
-          <div className="dy-sec-intro dy-r">
-            <span className="t-lbl">Channels</span>
-            <h2 className="t-h2">9 live channels. One dashboard.</h2>
-            <p className="t-body">Each channel runs on competing workflows. The one with the lowest cost per qualified reply runs by default. You can swap at any time.</p>
-          </div>
-
-          <div className="dy-channels-bento dy-r">
-            <ChannelTile cat="dy-cat-blue" catLabel="Sales" title="Sales outreach" body="Finds prospects, writes personalized cold emails, and tracks every reply across all your products." stack="Apollo · Anthropic · Resend" color="var(--dy-accent)" icon="mail" />
-            <ChannelTile cat="dy-cat-amber" catLabel="Press" title="Journalist outreach" body="Pitches journalists who cover your space. Press coverage without a PR agency." stack="Muck Rack · Anthropic · Resend" color="var(--dy-amber)" icon="news" />
-            <ChannelTile cat="dy-cat-green" catLabel="Funding" title="VC outreach" body="Reaches investors who back your stage and sector. Cold VC outreach without a warm intro." stack="Crunchbase · Anthropic · Resend" color="var(--dy-green)" icon="growth" />
-            <ChannelTile cat="dy-cat-purple" catLabel="Hiring" title="Hiring outreach" body="Contacts candidates who match your stack. Cold recruiting without a recruiter." stack="LinkedIn · Anthropic · Resend" color="var(--dy-purple)" icon="people" />
-            <ChannelTile cat="dy-cat-blue" catLabel="Growth" title="Accelerator outreach" body="Applies to YC, Techstars, and 200+ programs. Tracks deadlines automatically." stack="Y Combinator · Anthropic · Resend" color="var(--dy-accent)" icon="rocket" />
-            <ChannelTile cat="dy-cat-amber" catLabel="PR" title="PR expert quotes" body="Responds to HARO-style journalist requests with on-brand quotes, automatically." stack="Featured · Anthropic · Resend" color="var(--dy-amber)" icon="quote" />
-            <ChannelTile cat="dy-cat-teal" catLabel="Discovery" title="Outlet discovery" body="Finds media outlets worth pitching for your space. Continuously updated as new publications emerge." stack="Firecrawl · Anthropic" color="var(--dy-teal)" icon="globe" />
-            <ChannelTile cat="dy-cat-muted" catLabel="Assets" title="Press kit generation" body="Generates a press kit page with bio, screenshots, and contact info for journalists." stack="Anthropic · Vercel" color="var(--dy-sub)" icon="kit" />
-            <ChannelTile cat="dy-cat-purple" catLabel="AI visibility" title="AI visibility scoring" body="Tracks your brand across ChatGPT, Claude, Perplexity, and Gemini. Measures your share of AI recommendations." stack="OpenAI · Anthropic · Perplexity" color="var(--dy-purple)" icon="eye" />
           </div>
         </div>
       </section>
@@ -516,8 +373,8 @@ export default function HomePage() {
           <div className="dy-email-split">
             <div className="dy-email-split-left dy-r">
               <span className="t-lbl">What lands in your inbox</span>
-              <h2 className="t-h2">The only emails you read</h2>
-              <p className="t-body">AI qualifies every reply before it reaches you. The ones worth your time arrive with the full thread and the cost logged, ready to answer.</p>
+              <h2 className="t-h2">The only emails worth your time</h2>
+              <p className="t-body">AI qualifies every reply before it reaches you. The buyers come through with their full message, ready to answer. The noise stays out.</p>
 
               <div className="dy-email-features">
                 <div className="dy-email-feat">
@@ -525,8 +382,8 @@ export default function HomePage() {
                     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 8l3 3 7-7" /></svg>
                   </div>
                   <div className="dy-email-feat-text">
-                    <h4>Qualified before you see it</h4>
-                    <p>Claude Haiku reads every reply and classifies it. Only positive, actionable replies come through. The rest never interrupt you.</p>
+                    <h4>Only buyers, never noise</h4>
+                    <p>AI reads every reply and keeps only the ones from real buyers. Out-of-office, unsubscribes, vague brush-offs never reach you.</p>
                   </div>
                 </div>
                 <div className="dy-email-feat">
@@ -534,8 +391,8 @@ export default function HomePage() {
                     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 4l6 5 6-5" /><rect x="2" y="4" width="12" height="9" rx="1.5" /></svg>
                   </div>
                   <div className="dy-email-feat-text">
-                    <h4>Cost logged per reply</h4>
-                    <p>Every qualified reply shows what it cost to generate. You know your exact ROI before you hit reply.</p>
+                    <h4>Sent straight to Gmail</h4>
+                    <p>Buyer replies forward to your existing Gmail. Same threading, same Send button. You reply from your normal inbox.</p>
                   </div>
                 </div>
                 <div className="dy-email-feat">
@@ -543,8 +400,8 @@ export default function HomePage() {
                     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M8 3v10M3 8l5 5 5-5" /></svg>
                   </div>
                   <div className="dy-email-feat-text">
-                    <h4>Daily digest included</h4>
-                    <p>Every morning: how many emails went out, how many qualified, your cost per reply across every product and channel.</p>
+                    <h4>Daily wins, no surprises</h4>
+                    <p>Every morning: how many emails went out, how many buyers replied, and what each buyer cost. You see results, not dashboards.</p>
                   </div>
                 </div>
               </div>
@@ -557,37 +414,37 @@ export default function HomePage() {
                   <span className="dy-ec-dot" style={{ background: "#FFBD2E" }} />
                   <span className="dy-ec-dot" style={{ background: "#28CA41" }} />
                 </div>
-                <span className="dy-email-compose-title">Gmail: distribute qualified replies</span>
+                <span className="dy-email-compose-title">Gmail: buyer reply</span>
                 <span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: "0.65rem", color: "var(--dy-muted)" }}>3 new today</span>
               </div>
 
               <div className="dy-email-compose-field">
                 <span className="dy-email-compose-field-label">From</span>
-                <span className="dy-email-compose-field-val">Marcus Chen, Loopify.io &nbsp;<span style={{ background: "var(--dy-accent-dim)", color: "var(--dy-accent)", fontFamily: "JetBrains Mono, monospace", fontSize: "0.65rem", padding: "0.1rem 0.4rem", borderRadius: 100, border: "1px solid var(--dy-accent-brd)" }}>qualified</span></span>
+                <span className="dy-email-compose-field-val">Marcus Chen, Loopify.io &nbsp;<span style={{ background: "var(--dy-accent-dim)", color: "var(--dy-accent)", fontFamily: "JetBrains Mono, monospace", fontSize: "0.65rem", padding: "0.1rem 0.4rem", borderRadius: 100, border: "1px solid var(--dy-accent-brd)" }}>buyer</span></span>
               </div>
               <div className="dy-email-compose-field">
                 <span className="dy-email-compose-field-label">Subj</span>
-                <span className="dy-email-compose-field-val" style={{ color: "var(--dy-text)", fontWeight: 500 }}>Re: prompthub.ai, interested in a demo</span>
+                <span className="dy-email-compose-field-val" style={{ color: "var(--dy-text)", fontWeight: 500 }}>Re: interested in a demo this week</span>
               </div>
               <div className="dy-email-compose-field" style={{ borderBottom: "none" }}>
                 <span className="dy-email-compose-field-label" style={{ color: "var(--dy-muted)", fontSize: "0.65rem" }}>Cost</span>
-                <span className="dy-email-compose-field-val" style={{ fontFamily: "JetBrains Mono, monospace", fontSize: "0.78rem", color: "var(--dy-green)" }}>$0.94 · sales-outreach · apex-v4</span>
+                <span className="dy-email-compose-field-val" style={{ fontFamily: "JetBrains Mono, monospace", fontSize: "0.78rem", color: "var(--dy-green)" }}>$0.94 to land this buyer</span>
               </div>
 
               <div className="dy-email-compose-body">
-                {`Hi Marcus,
+                {`Hi,
 
-I noticed Loopify is focused on helping agencies manage client workflows. Wanted to share how prompthub.ai helps teams like yours cut prompt iteration time by 60%.
+Saw your message about cutting our onboarding time. We are 14 people and onboarding still takes 3 weeks. Where can I book 15 minutes this week?
 
-Would love to show you a quick demo. 15 minutes this week?`}
+Marcus`}
               </div>
 
               <div className="dy-email-compose-footer">
                 <div className="dy-email-ai-badge">
                   <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M8 3l1.5 3.5L13 8l-3.5 1.5L8 13l-1.5-3.5L3 8l3.5-1.5z" /></svg>
-                  AI-qualified reply
+                  Verified buyer
                 </div>
-                <span className="dy-email-stats">47 sent today · 3 qualified · $1.26 avg</span>
+                <span className="dy-email-stats">47 sent today · 3 buyers · $1.26 avg</span>
               </div>
             </div>
           </div>
@@ -598,9 +455,9 @@ Would love to show you a quick demo. 15 minutes this week?`}
       <section className="dy-s-compare">
         <div className="dy-wrap">
           <div className="dy-sec-intro dy-r">
-            <span className="t-lbl">What we handle</span>
-            <h2 className="t-h2">The week you skip</h2>
-            <p className="t-body">Cold outreach has a setup tax. Most founders pay it once, hate it, and stop. We run the whole stack.</p>
+            <span className="t-lbl">What we replace</span>
+            <h2 className="t-h2">The 3 months you skip</h2>
+            <p className="t-body">Cold email used to mean buying tools, hiring an SDR, warming inboxes for 3 weeks, and reading hundreds of replies a week. Not anymore.</p>
           </div>
           <div className="dy-compare dy-r">
             <div className="dy-cmp-bad">
@@ -609,14 +466,12 @@ Would love to show you a quick demo. 15 minutes this week?`}
                 Without distribute
               </div>
               <ul className="dy-cmp-list">
-                <li><span className="dy-cmp-icon">✕</span><span>Set up a dedicated sending domain, configure SPF, DKIM, and DMARC</span></li>
-                <li><span className="dy-cmp-icon">✕</span><span>Warm mailboxes for 3 to 5 weeks before sending at volume</span></li>
-                <li><span className="dy-cmp-icon">✕</span><span>Monitor bounces, blacklists, and sender reputation ongoing</span></li>
-                <li><span className="dy-cmp-icon">✕</span><span>Research and build a prospect list for each channel manually</span></li>
-                <li><span className="dy-cmp-icon">✕</span><span>Write and A/B test cold email sequences per product</span></li>
-                <li><span className="dy-cmp-icon">✕</span><span>Read 200 raw replies to find the 3 that actually matter</span></li>
-                <li><span className="dy-cmp-icon">✕</span><span>Wire Apollo, Resend, and Claude into separate services yourself</span></li>
-                <li><span className="dy-cmp-icon">✕</span><span>Track cost per reply per product, per channel, by hand</span></li>
+                <li><span className="dy-cmp-icon">✕</span><span>Hire an SDR for $5,000 a month plus commission</span></li>
+                <li><span className="dy-cmp-icon">✕</span><span>Buy a list tool, an email tool, a warmup tool, a CRM</span></li>
+                <li><span className="dy-cmp-icon">✕</span><span>Set up a new sending domain and warm it for 3 weeks</span></li>
+                <li><span className="dy-cmp-icon">✕</span><span>Write the cold emails yourself, hope they convert</span></li>
+                <li><span className="dy-cmp-icon">✕</span><span>Read 200 replies a week to find the 5 real buyers</span></li>
+                <li><span className="dy-cmp-icon">✕</span><span>Lose 3 months before your first booked meeting</span></li>
               </ul>
             </div>
             <div className="dy-cmp-good">
@@ -625,12 +480,12 @@ Would love to show you a quick demo. 15 minutes this week?`}
                 With distribute
               </div>
               <ul className="dy-cmp-list">
-                <li><span className="dy-cmp-icon">✓</span><span>Paste your product URL</span></li>
-                <li><span className="dy-cmp-icon">✓</span><span>Pick your channels and set a budget</span></li>
-                <li><span className="dy-cmp-icon">✓</span><span>Read the replies that matter, already qualified and forwarded to Gmail</span></li>
+                <li><span className="dy-cmp-icon">✓</span><span>Paste your website URL</span></li>
+                <li><span className="dy-cmp-icon">✓</span><span>Set a budget you control</span></li>
+                <li><span className="dy-cmp-icon">✓</span><span>Reply to buyers from your Gmail</span></li>
               </ul>
               <div className="dy-cmp-foot">
-                <p className="dy-cmp-note">Everything else runs automatically.</p>
+                <p className="dy-cmp-note">Everything else, we run for you.</p>
                 <a href={PROD_URLS.signUp} className="dy-btn dy-btn-p">Start free, $25 credits</a>
               </div>
             </div>
@@ -639,32 +494,32 @@ Would love to show you a quick demo. 15 minutes this week?`}
       </section>
 
       {/* PRICING */}
-      <section className="dy-s-pricing">
+      <section className="dy-s-pricing" id="pricing">
         <div className="dy-wrap">
           <div className="dy-price-layout dy-r">
             <div>
               <span className="t-lbl" style={{ color: "var(--dy-accent)", display: "block", marginBottom: "0.875rem" }}>Pricing</span>
-              <h2 className="t-h2" style={{ marginBottom: "1rem" }}>No subscription. Pay per send.</h2>
-              <p className="t-body" style={{ color: "var(--dy-sub)", marginBottom: "0.875rem" }}>No monthly fee, no seat cost. Every campaign prices itself before launch, built from public API rates. What you see in the card is exactly what you pay.</p>
+              <h2 className="t-h2" style={{ marginBottom: "1rem" }}>Pay per email. Stop anytime.</h2>
+              <p className="t-body" style={{ color: "var(--dy-sub)", marginBottom: "0.875rem" }}>No subscription. No seats. You pay $0.036 per email sent and $1.42 on average for every buyer reply. Cheaper than 1 hour of an SDR.</p>
               <div className="dy-price-checks">
-                <div className="dy-price-check"><span className="dy-price-check-icon">✓</span><span className="dy-price-check-text">Pre-warmed infrastructure. No domain setup, no 3-week warmup window.</span></div>
-                <div className="dy-price-check"><span className="dy-price-check-icon">✓</span><span className="dy-price-check-text">AI reads every response. Only positive replies land in Gmail.</span></div>
-                <div className="dy-price-check"><span className="dy-price-check-icon">✓</span><span className="dy-price-check-text">Cost tracked per reply, per channel, per product.</span></div>
-                <div className="dy-price-check"><span className="dy-price-check-icon">✓</span><span className="dy-price-check-text">Start with $25 free credits. No subscription.</span></div>
+                <div className="dy-price-check"><span className="dy-price-check-icon">✓</span><span className="dy-price-check-text">Pre-warmed inboxes. Skip the 3-week setup.</span></div>
+                <div className="dy-price-check"><span className="dy-price-check-icon">✓</span><span className="dy-price-check-text">AI reads every reply. Only buyers reach your Gmail.</span></div>
+                <div className="dy-price-check"><span className="dy-price-check-icon">✓</span><span className="dy-price-check-text">$25 free credits. Enough to test the first 700 emails.</span></div>
+                <div className="dy-price-check"><span className="dy-price-check-icon">✓</span><span className="dy-price-check-text">Stop or pause anytime. Your money sits unused, not spent.</span></div>
               </div>
-              <a href="/pricing" className="dy-btn dy-btn-g" style={{ marginTop: "2rem", display: "inline-flex" }}>View all pricing</a>
+              <a href={PROD_URLS.signUp} className="dy-btn dy-btn-p" style={{ marginTop: "2rem", display: "inline-flex" }}>Start free, $25 credits</a>
             </div>
             <div>
               <div className="dy-price-card">
-                <div className="dy-price-card-head"><em>sales-outreach</em> · apex-v4</div>
-                <div className="dy-price-row"><span className="dy-price-label">Apollo lead enrichment</span><span className="dy-price-value">$0.012</span></div>
-                <div className="dy-price-row"><span className="dy-price-label">Email generation (Claude Sonnet 4.6)</span><span className="dy-price-value">$0.018</span></div>
-                <div className="dy-price-row"><span className="dy-price-label">Send via agency address (Resend)</span><span className="dy-price-value">$0.004</span></div>
-                <div className="dy-price-row"><span className="dy-price-label">Reply classifier (Claude Haiku 4.5)</span><span className="dy-price-value">$0.002</span></div>
+                <div className="dy-price-card-head">Cold email outreach</div>
+                <div className="dy-price-row"><span className="dy-price-label">Find a buyer in our database</span><span className="dy-price-value">$0.012</span></div>
+                <div className="dy-price-row"><span className="dy-price-label">Write a personalized email with AI</span><span className="dy-price-value">$0.018</span></div>
+                <div className="dy-price-row"><span className="dy-price-label">Send the email from a warmed inbox</span><span className="dy-price-value">$0.004</span></div>
+                <div className="dy-price-row"><span className="dy-price-label">AI reads the reply and qualifies it</span><span className="dy-price-value">$0.002</span></div>
                 <div className="dy-price-card-foot">
                   <div>
                     <div className="dy-price-foot-l">Per email sent</div>
-                    <div className="dy-price-foot-sub">avg $1.42 per qualified reply</div>
+                    <div className="dy-price-foot-sub">avg $1.42 per qualified buyer</div>
                   </div>
                   <span className="dy-price-foot-v">$0.036</span>
                 </div>
@@ -674,48 +529,12 @@ Would love to show you a quick demo. 15 minutes this week?`}
         </div>
       </section>
 
-      {/* INTEGRATIONS */}
-      <section className="dy-s-integrations">
-        <div className="dy-wrap">
-          <div className="dy-sec-intro dy-r">
-            <span className="t-lbl">Integrations</span>
-            <h2 className="t-h2">Start from wherever you work</h2>
-            <p className="t-body">Dashboard, REST API, or MCP server. Whatever fits your stack.</p>
-          </div>
-          <div className="dy-int-grid dy-r">
-            <div className="dy-int-tile">
-              <span className="dy-int-type">Dashboard</span>
-              <h3 className="t-h3">app.distribute.you</h3>
-              <p>Add a product, pick channels, set a budget. Everything tracked in one place.</p>
-              <div className="dy-code-block"><span className="dy-cm">→</span> app.distribute.you/dashboard</div>
-            </div>
-            <div className="dy-int-tile">
-              <span className="dy-int-type">REST API</span>
-              <h3 className="t-h3">POST /v1/campaigns</h3>
-              <p>Everything you can do in the dashboard, you can do via API. Trigger campaigns from your own code.</p>
-              <div className="dy-code-block">{`POST /v1/campaigns
-Authorization: Bearer {key}
-{"url": "prompthub.ai", "budget": 50}`}</div>
-            </div>
-            <div className="dy-int-tile">
-              <span className="dy-int-type">MCP Server</span>
-              <h3 className="t-h3">Claude Code / Cursor</h3>
-              <p>Use distribute from Claude Code or any MCP client. One sentence launches a campaign.</p>
-              <div className="dy-code-block">{`$ distribute launch sales
-  --url prompthub.ai --budget 50
-
-✓ Campaign started (id: c_9fh2)`}</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* FINAL CTA */}
       <section className="dy-s-cta">
         <div className="dy-wrap">
           <div className="dy-r">
-            <h2 className="t-hero">Your next launch<br />comes with distribution.</h2>
-            <p>$25 free credits to start. No subscription. No credit card.</p>
+            <h2 className="t-hero">100 sales calls.<br />30 days. Go.</h2>
+            <p>$25 free credits. No subscription. No credit card. Launch in 5 minutes.</p>
             <a href={PROD_URLS.signUp} className="dy-btn dy-btn-p dy-btn-lg">Start free, $25 credits</a>
           </div>
         </div>
@@ -724,107 +543,4 @@ Authorization: Bearer {key}
       <DyFooter />
     </div>
   );
-}
-
-type ChannelTileProps = {
-  cat: string;
-  catLabel: string;
-  title: string;
-  body: string;
-  stack: string;
-  color: string;
-  icon: string;
-};
-
-function ChannelTile({ cat, catLabel, title, body, stack, color, icon }: ChannelTileProps) {
-  return (
-    <div className="dy-ch-tile">
-      <span className={`dy-ch-cat ${cat}`}>{catLabel}</span>
-      <h3 className="t-h3">{title}</h3>
-      <p>{body}</p>
-      <div className="dy-ch-illus" aria-hidden>
-        <ChannelIcon name={icon} color={color} />
-      </div>
-      <div className="dy-ch-stack">{stack}</div>
-    </div>
-  );
-}
-
-function ChannelIcon({ name, color }: { name: string; color: string }) {
-  const common = { fill: "none", strokeWidth: 1.5, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, stroke: "currentColor" };
-  switch (name) {
-    case "mail":
-      return (
-        <svg viewBox="0 0 24 24" style={{ color }}>
-          <path d="M2 6L8.91302 9.91697C11.4616 11.361 12.5384 11.361 15.087 9.91697L22 6" {...common} />
-          <path d="M2.01577 13.4756C2.08114 16.5412 2.11383 18.0739 3.24496 19.2094C4.37608 20.3448 5.95033 20.3843 9.09883 20.4634C11.0393 20.5122 12.9607 20.5122 14.9012 20.4634C18.0497 20.3843 19.6239 20.3448 20.7551 19.2094C21.8862 18.0739 21.9189 16.5412 21.9842 13.4756C22.0053 12.4899 22.0053 11.5101 21.9842 10.5244C21.9189 7.45886 21.8862 5.92609 20.7551 4.79066C19.6239 3.65523 18.0497 3.61568 14.9012 3.53657C12.9607 3.48781 11.0393 3.48781 9.09882 3.53656C5.95033 3.61566 4.37608 3.65521 3.24495 4.79065C2.11382 5.92608 2.08114 7.45885 2.01576 10.5244C1.99474 11.5101 1.99475 12.4899 2.01577 13.4756Z" {...common} />
-        </svg>
-      );
-    case "news":
-      return (
-        <svg viewBox="0 0 24 24" style={{ color }}>
-          <path d="M10.5 8H18.5M10.5 12H13M18.5 12H16M10.5 16H13M18.5 16H16" {...common} />
-          <path d="M7 7.5H6C4.11438 7.5 3.17157 7.5 2.58579 8.08579C2 8.67157 2 9.61438 2 11.5V18C2 19.3807 3.11929 20.5 4.5 20.5C5.88071 20.5 7 19.3807 7 18V7.5Z" {...common} />
-          <path d="M16 3.5H11C10.07 3.5 9.60504 3.5 9.22354 3.60222C8.18827 3.87962 7.37962 4.68827 7.10222 5.72354C7 6.10504 7 6.57003 7 7.5V18C7 19.3807 5.88071 20.5 4.5 20.5H16C18.8284 20.5 20.2426 20.5 21.1213 19.6213C22 18.7426 22 17.3284 22 14.5V9.5C22 6.67157 22 5.25736 21.1213 4.37868C20.2426 3.5 18.8284 3.5 16 3.5Z" {...common} />
-        </svg>
-      );
-    case "growth":
-      return (
-        <svg viewBox="0 0 24 24" style={{ color }}>
-          <path d="M7 18V16M12 18V15M17 18V13M2.5 12C2.5 7.52166 2.5 5.28249 3.89124 3.89124C5.28249 2.5 7.52166 2.5 12 2.5C16.4783 2.5 18.7175 2.5 20.1088 3.89124C21.5 5.28249 21.5 7.52166 21.5 12C21.5 16.4783 21.5 18.7175 20.1088 20.1088C18.7175 21.5 16.4783 21.5 12 21.5C7.52166 21.5 5.28249 21.5 3.89124 20.1088C2.5 18.7175 2.5 16.4783 2.5 12Z" {...common} />
-          <path d="M5.99219 11.4863C8.14729 11.5581 13.0341 11.2328 15.8137 6.82132M13.9923 6.28835L15.8678 5.98649C16.0964 5.95738 16.432 6.13785 16.5145 6.35298L17.0104 7.99142" {...common} />
-        </svg>
-      );
-    case "people":
-      return (
-        <svg viewBox="0 0 24 24" style={{ color }}>
-          <path d="M15 8C15 5.23858 12.7614 3 10 3C7.23858 3 5 5.23858 5 8C5 10.7614 7.23858 13 10 13C12.7614 13 15 10.7614 15 8Z" {...common} />
-          <path d="M3 20C3 16.134 6.13401 13 10 13C11.9587 13 13.7295 13.8045 15 15.101" {...common} />
-          <path d="M13 18.5C13 18.5 14.3485 19.0067 15 21C15 21 18.1765 16 21 15" {...common} />
-        </svg>
-      );
-    case "rocket":
-      return (
-        <svg viewBox="0 0 24 24" style={{ color }}>
-          <path d="M7.29469 17C3.53045 7.25 8.86313 2.9375 12 2C15.1369 2.9375 20.4696 7.25 16.7053 17C16.1369 16.6875 14.4 16.0625 12 16.0625C9.6 16.0625 7.86313 16.6875 7.29469 17Z" {...common} />
-          <path d="M14 9C14 7.89543 13.1046 7 12 7C10.8954 7 10 7.89543 10 9C10 10.1046 10.8954 11 12 11C13.1046 11 14 10.1046 14 9Z" stroke="currentColor" strokeWidth="1.5" fill="none" />
-          <path d="M17.5 15.5576C18.9421 15.6908 20.7078 16.0822 21.9814 17C21.9814 17 22.5044 12.0642 18 11" {...common} />
-          <path d="M6.5 15.5576C5.05794 15.6908 3.29216 16.0822 2.01858 17C2.01858 17 1.49555 12.0642 6 11" {...common} />
-          <path d="M9.5 19C9.5 19 9.91667 21.5 12 22C14.0833 21.5 14.5 19 14.5 19" {...common} />
-        </svg>
-      );
-    case "quote":
-      return (
-        <svg viewBox="0 0 24 24" style={{ color }}>
-          <path d="M21.5 12C21.5 17.2467 17.2467 21.5 12 21.5C10.3719 21.5 8.8394 21.0904 7.5 20.3687C5.63177 19.362 4.37462 20.2979 3.26592 20.4658C3.09774 20.4913 2.93024 20.4302 2.80997 20.31C2.62741 20.1274 2.59266 19.8451 2.6935 19.6074C3.12865 18.5818 3.5282 16.6382 2.98341 15C2.6698 14.057 2.5 13.0483 2.5 12C2.5 6.75329 6.75329 2.5 12 2.5C17.2467 2.5 21.5 6.75329 21.5 12Z" {...common} />
-          <path d="M12.1257 12H12.0007M8.125 12H8M16.125 12H16M12.2507 12C12.2507 12.1381 12.1388 12.25 12.0007 12.25C11.8627 12.25 11.7507 12.1381 11.7507 12C11.7507 11.8619 11.8627 11.75 12.0007 11.75C12.1388 11.75 12.2507 11.8619 12.2507 12ZM8.25 12C8.25 12.1381 8.13807 12.25 8 12.25C7.86193 12.25 7.75 12.1381 7.75 12C7.75 11.8619 7.86193 11.75 8 11.75C8.13807 11.75 8.25 11.8619 8.25 12ZM16.25 12C16.25 12.1381 16.1381 12.25 16 12.25C15.8619 12.25 15.75 12.1381 15.75 12C15.75 11.8619 15.8619 11.75 16 11.75C16.1381 11.75 16.25 11.8619 16.25 12Z" {...common} />
-        </svg>
-      );
-    case "globe":
-      return (
-        <svg viewBox="0 0 24 24" style={{ color }}>
-          <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="1.5" />
-          <path d="M8 12C8 18 12 22 12 22C12 22 16 18 16 12C16 6 12 2 12 2C12 2 8 6 8 12Z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-          <path d="M21 15H3" {...common} />
-          <path d="M21 9H3" {...common} />
-        </svg>
-      );
-    case "kit":
-      return (
-        <svg viewBox="0 0 24 24" style={{ color }}>
-          <path d="M12 21C7.28595 21 4.92893 21 3.46447 19.5355C2 18.0711 2 15.714 2 11V7.94427C2 6.1278 2 5.21956 2.38032 4.53806C2.65142 4.05227 3.05227 3.65142 3.53806 3.38032C4.21956 3 5.1278 3 6.94427 3C8.10802 3 8.6899 3 9.19926 3.19101C10.3622 3.62712 10.8418 4.68358 11.3666 5.73313L12 7M8 7H16.75C18.8567 7 19.91 7 20.6667 7.50559C20.9943 7.72447 21.2755 8.00572 21.4944 8.33329C22 9.08996 22 10.1433 22 12.25" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          <path d="M22 15H15M22 18H15M17.5 21H15" {...common} />
-        </svg>
-      );
-    case "eye":
-      return (
-        <svg viewBox="0 0 24 24" style={{ color }}>
-          <path d="M2 8C2 8 6.47715 3 12 3C17.5228 3 22 8 22 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          <path d="M21.544 13.045C21.848 13.4713 22 13.6845 22 14C22 14.3155 21.848 14.5287 21.544 14.955C20.1779 16.8706 16.6892 21 12 21C7.31078 21 3.8221 16.8706 2.45604 14.955C2.15201 14.5287 2 14.3155 2 14C2 13.6845 2.15201 13.4713 2.45604 13.045C3.8221 11.1294 7.31078 7 12 7C16.6892 7 20.1779 11.1294 21.544 13.045Z" fill="none" stroke="currentColor" strokeWidth="1.5" />
-          <path d="M15 14C15 12.3431 13.6569 11 12 11C10.3431 11 9 12.3431 9 14C9 15.6569 10.3431 17 12 17C13.6569 17 15 15.6569 15 14Z" fill="none" stroke="currentColor" strokeWidth="1.5" />
-        </svg>
-      );
-    default:
-      return null;
-  }
 }

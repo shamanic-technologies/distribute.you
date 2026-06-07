@@ -8,19 +8,8 @@ export function DyFooter() {
         <div className="dy-ft-grid">
           <div className="dy-ft-brand">
             <Link href="/" className="dy-nav-logo">
-              <span style={{
-                width: "1.5rem",
-                height: "1.5rem",
-                borderRadius: "0.3rem",
-                background: "var(--dy-accent)",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "white",
-                fontWeight: 800,
-                fontSize: "0.95rem",
-                letterSpacing: "-0.04em",
-              }}>D</span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo-distribute.svg" alt="distribute" className="dy-nav-logo-img" />
               distribute <span className="dy-nav-chip">beta</span>
             </Link>
             <p>Sales cold email outreach for solo founders and micro-SaaS operators. Drop a URL, set a budget, get qualified replies in Gmail.</p>

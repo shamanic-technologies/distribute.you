@@ -209,8 +209,9 @@ h1, h2, h3, .font-display {
   text-decoration: none; display: inline-flex; align-items: center;
   transition: all var(--dy-dur); border: none; letter-spacing: -0.01em; cursor: pointer;
 }
-.dy-btn-p { background: var(--dy-accent); color: oklch(100% 0 0); }
-.dy-btn-p:hover { filter: brightness(1.12); transform: translateY(-1px); box-shadow: 0 4px 16px var(--dy-accent-brd); }
+.dy-btn-p { background: var(--dy-accent); color: #fff !important; }
+.dy-btn-p:hover { filter: brightness(1.12); transform: translateY(-1px); box-shadow: 0 4px 16px var(--dy-accent-brd); color: #fff !important; }
+[data-theme="light"] .dy-btn-p { color: #fff !important; }
 .dy-btn-g { background: transparent; color: var(--dy-sub); border: 1px solid var(--dy-border-hi); }
 .dy-btn-g:hover { color: var(--dy-text); border-color: var(--dy-border-hi); background: var(--dy-surface); }
 .dy-btn-lg { padding: 0.8rem 1.75rem; font-size: var(--dy-fs-md); }
