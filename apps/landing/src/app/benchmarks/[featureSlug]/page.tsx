@@ -363,24 +363,6 @@ export default async function FeatureBenchmarkPage({ params }: PageProps) {
         <BenchmarkCTA copy={content.ctaClosing} signUpUrl={signUpUrl} variant="closing" />
       )}
 
-      {/* See another feature */}
-      <section className="py-16 bg-white border-t border-gray-100">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="font-display text-2xl font-bold mb-4 text-gray-800">
-            See another feature
-          </h2>
-          <p className="text-gray-600 mb-6">
-            distribute publishes the same depth of benchmarks for every feature
-            we ship.
-          </p>
-          <Link
-            href="/benchmarks"
-            className="inline-block px-6 py-3 bg-brand-500 text-white rounded-full hover:bg-brand-600 transition font-medium"
-          >
-            All benchmarks →
-          </Link>
-        </div>
-      </section>
     </main>
   );
 }

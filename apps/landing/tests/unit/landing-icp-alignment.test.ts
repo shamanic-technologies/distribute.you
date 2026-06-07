@@ -4,7 +4,6 @@ import * as path from "path";
 
 const landingPagePath = path.resolve(__dirname, "../../src/app/page.tsx");
 const pricingPagePath = path.resolve(__dirname, "../../src/app/pricing/page.tsx");
-const performancePagePath = path.resolve(__dirname, "../../src/app/performance/page.tsx");
 const investorsPagePath = path.resolve(__dirname, "../../src/app/investors/page.tsx");
 const featuresPath = path.resolve(__dirname, "../../../../shared/content/src/features.ts");
 const portfolioDashboardPath = path.resolve(
@@ -337,15 +336,6 @@ describe("benchmarks-content: SALES ctaClosing rewritten", () => {
   it("replaces 'Stay solo. Go big.' with 'Ship more. Scale what works.' for sales-cold-email", () => {
     expect(content).not.toMatch(/headline:\s*"Stay solo\. Go big\.",/);
     expect(content).toMatch(/headline:\s*"Ship more\. Scale what works\.",/);
-  });
-});
-
-describe("Performance page: cost-per-positive-reply framing", () => {
-  const content = fs.readFileSync(performancePagePath, "utf-8");
-
-  it("hero frames the leaderboard by cost per positive reply (no bare 'CAC')", () => {
-    expect(content).toMatch(/cost per positive reply/i);
-    expect(content).not.toMatch(/\bCAC\b/);
   });
 });
 

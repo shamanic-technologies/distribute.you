@@ -34,12 +34,6 @@ export function Navbar() {
             Performance
           </a>
           <a
-            href="/benchmarks"
-            className="text-gray-500 hover:text-gray-900 text-sm transition"
-          >
-            Benchmarks
-          </a>
-          <a
             href={urls.docs}
             className="text-gray-500 hover:text-gray-900 text-sm transition"
           >
@@ -111,12 +105,6 @@ export function Navbar() {
               className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm"
             >
               Performance
-            </a>
-            <a
-              href="/benchmarks"
-              className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm"
-            >
-              Benchmarks
             </a>
             <a
               href={urls.docs}
