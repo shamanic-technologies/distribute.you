@@ -41,8 +41,9 @@ export const FEATURE_GATES = {
   // launched). Independent of brand-features so it can graduate on its own.
   "brand-database": { flag: "alpha-brand-database", maturity: "alpha" },
   // Live activity feed on the campaign overview (reassurance ticker derived from
-  // run_events). Staff-only while the funnel-slug allowlist matures.
-  "campaign-activity": { flag: "alpha-campaign-activity", maturity: "alpha" },
+  // run_events). Beta cohort (Kevin + Adam) while the funnel-slug allowlist
+  // matures — Adam is an external tester, so beta (opt-in), not alpha (staff).
+  "campaign-activity": { flag: "beta-campaign-activity", maturity: "beta" },
 } as const satisfies Record<string, FeatureGate>;
 
 export type FeatureGateKey = keyof typeof FEATURE_GATES;
