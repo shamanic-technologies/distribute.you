@@ -408,8 +408,20 @@ describe("Billing guard auto-topup in modal", () => {
 
   it("should allow configuring auto-topup without checkout in proactive mode", () => {
     expect(content).toContain("handleSetupAutoTopupOnly");
-    expect(content).toContain("Enable Auto-Topup & Continue");
+    expect(content).toContain("Enable auto-top-up");
     expect(content).toContain("onAutoTopupConfigured");
+  });
+
+  it("should center the proactive modal on auto-topup (no one-time Add Credits)", () => {
+    // Add Credits presets are hard-block (non-proactive) only.
+    expect(content).toContain("!isProactive");
+    // Proactive CTA is the auto-topup enable, never the dollar top-up button.
+    expect(content).toContain("Enable auto-top-up");
+  });
+
+  it("should capture a card with a no-charge setup-mode checkout when no payment method", () => {
+    expect(content).toContain('mode: "setup"');
+    expect(content).toContain("!account?.has_payment_method");
   });
 
   it("should fetch billing account when modal opens to pre-fill auto-topup config", () => {

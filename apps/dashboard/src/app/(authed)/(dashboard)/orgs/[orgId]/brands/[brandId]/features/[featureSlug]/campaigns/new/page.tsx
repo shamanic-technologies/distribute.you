@@ -1093,6 +1093,12 @@ export default function FeatureCreateCampaignPage() {
     if (!raw) return;
     pendingCampaignHandled.current = true;
 
+    // Auto-topup config carried across the Stripe redirect (setup-mode card capture
+    // or no-card top-up). Capture before cleaning the URL; the card is now on file so
+    // enabling auto-topup below will succeed.
+    const pendingTopupRaw = searchParams.get("pending_topup");
+    const pendingThresholdRaw = searchParams.get("pending_threshold");
+
     // Clean URL params
     const url = new URL(window.location.href);
     url.searchParams.delete("success");
@@ -1117,6 +1123,14 @@ export default function FeatureCreateCampaignPage() {
       setIsCreating(true);
       (async () => {
         try {
+          // Enable auto-topup now that the card is captured (no-op if no pending config).
+          if (pendingTopupRaw) {
+            const topupCents = parseInt(pendingTopupRaw, 10);
+            const thresholdCents = pendingThresholdRaw ? parseInt(pendingThresholdRaw, 10) : 500;
+            if (Number.isFinite(topupCents)) {
+              await configureAutoTopup(topupCents, thresholdCents);
+            }
+          }
           let result: { campaign: Campaign };
           const payload = { name: generateName(), workflowSlug, featureSlug: featureSlug, ...rest } as unknown as Parameters<typeof createCampaign>[0];
           try {
