@@ -989,6 +989,59 @@ export async function getFeatureRevenue(
   return parseFeatureRevenue(raw, "getFeatureRevenue");
 }
 
+// ─── Per-campaign revenue ROI (grouped) ──────────────────────────────────────
+// GET /features/:slug/revenue?groupBy=campaignId → one lean group per campaign
+// that has runs for the brand+feature: { campaignId, totalPipelineUsd, roiMultiple }.
+// A single call returns every campaign's ROI (no per-campaign fan-out). ROI =
+// expected pipeline ÷ run cost (features-service is the single source). safeParse
+// → shape rot becomes a caught fetch-error, never a render crash (CLAUDE.md #1213).
+const FeatureRevenueByCampaignSchema = z.object({
+  featureSlug: z.string(),
+  groupBy: z.literal("campaignId"),
+  groups: z.array(
+    z.object({
+      campaignId: z.string(),
+      headline: z.object({ totalPipelineUsd: z.number().nullable() }),
+      costEconomics: z.object({
+        totalCostUsd: z.number(),
+        costOfAcquisitionPct: z.number().nullable(),
+        roiMultiple: z.number().nullable(),
+      }),
+    }),
+  ),
+});
+
+export interface CampaignRevenueGroup {
+  campaignId: string;
+  totalPipelineUsd: number | null;
+  totalCostUsd: number;
+  /** totalPipelineUsd / totalCostUsd. Null when cost is 0 or pipeline is null. */
+  roiMultiple: number | null;
+}
+
+/** GET /features/:slug/revenue?groupBy=campaignId — per-campaign ROI for a brand+feature. */
+export async function getFeatureRevenueByCampaign(
+  featureSlug: string,
+  brandId: string,
+  token?: string,
+): Promise<CampaignRevenueGroup[]> {
+  const query = new URLSearchParams({ brandId, groupBy: "campaignId" });
+  const raw = await apiCall<unknown>(`/features/${featureSlug}/revenue?${query.toString()}`, { token });
+  const parsed = FeatureRevenueByCampaignSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getFeatureRevenueByCampaign: response shape mismatch", {
+      issues: parsed.error.issues,
+    });
+    throw new Error("[dashboard] getFeatureRevenueByCampaign: invalid response shape");
+  }
+  return parsed.data.groups.map((g) => ({
+    campaignId: g.campaignId,
+    totalPipelineUsd: g.headline.totalPipelineUsd,
+    totalCostUsd: g.costEconomics.totalCostUsd,
+    roiMultiple: g.costEconomics.roiMultiple,
+  }));
+}
+
 /** POST /brands — upsert brand by URL, returns brandId */
 export async function upsertBrand(
   url: string,
