@@ -641,13 +641,12 @@ export async function saveBrandSalesEconomics(
   return parsed.data;
 }
 
-// ── Cross-brand sales-economics average (first-prefill defaults) ──
-// Flat average of the 5 metrics across EVERY brand's saved set, computed by
-// brand-service (ROUND(AVG(col)) over the whole table, no org/brand filter).
-// Used to seed the new-campaign sales inputs for a brand that has saved nothing
-// yet — a better first guess than the hard-coded SALES_ECON_DEFAULTS. Returns
-// { averages: null } when no brand has saved economics (empty table).
-export interface SalesEconomicsAverage {
+// ── Effective sales economics (new-campaign prefill) ──
+// brand-service decides the default server-side: the brand's saved set when present
+// (source "user"), else the cross-brand average (source "cross-brand-average"), else
+// economics null (source null → empty table; caller keeps its hard-coded defaults).
+// Replaces the old client-side null→average fallback (two calls) with ONE call.
+export interface EffectiveSalesEconomics {
   lifetimeRevenueUsd: number;
   replyToMeetingPct: number;
   visitToMeetingPct: number;
@@ -655,11 +654,12 @@ export interface SalesEconomicsAverage {
   visitToClosePct: number;
 }
 
-// z.coerce.number per CLAUDE.md #1357: ROUND(AVG(...)) is Postgres `numeric`,
-// which the driver serializes as a STRING ("40") on the wire — z.number() would
-// reject it. coerce parses string OR number, forward-compatible if the backend
-// later casts to int.
-const SalesEconomicsAverageSchema = z.object({
+export type SalesEconomicsSource = "user" | "cross-brand-average";
+
+// z.coerce.number per CLAUDE.md #1357: the cross-brand average is Postgres
+// ROUND(AVG(...)) `numeric`, serialized as a STRING ("40") on the wire — z.number()
+// would reject it. coerce parses string OR number, forward-compatible if cast later.
+const EffectiveSalesEconomicsSchema = z.object({
   lifetimeRevenueUsd: z.coerce.number(),
   replyToMeetingPct: z.coerce.number(),
   visitToMeetingPct: z.coerce.number(),
@@ -667,22 +667,25 @@ const SalesEconomicsAverageSchema = z.object({
   visitToClosePct: z.coerce.number(),
 });
 
-const GetSalesEconomicsAverageResponseSchema = z.object({
-  averages: SalesEconomicsAverageSchema.nullable(),
+const GetSalesEconomicsEffectiveResponseSchema = z.object({
+  economics: EffectiveSalesEconomicsSchema.nullable(),
+  source: z.enum(["user", "cross-brand-average"]).nullable(),
 });
 
-/** GET /sales-economics-average — cross-brand average of the 5 metrics, or { averages: null } when no brand has saved economics yet. */
-export async function getSalesEconomicsAverage(
+/** GET /brands/:brandId/sales-economics-effective — the brand's saved set (source "user"),
+ * else the cross-brand average (source "cross-brand-average"), else { economics: null, source: null }. */
+export async function getSalesEconomicsEffective(
+  brandId: string,
   token?: string,
-): Promise<{ averages: SalesEconomicsAverage | null }> {
-  const raw = await apiCall<unknown>(`/sales-economics-average`, { token });
-  const parsed = GetSalesEconomicsAverageResponseSchema.safeParse(raw);
+): Promise<{ economics: EffectiveSalesEconomics | null; source: SalesEconomicsSource | null }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/sales-economics-effective`, { token });
+  const parsed = GetSalesEconomicsEffectiveResponseSchema.safeParse(raw);
   if (!parsed.success) {
-    console.error("[dashboard] getSalesEconomicsAverage: response shape mismatch", {
+    console.error("[dashboard] getSalesEconomicsEffective: response shape mismatch", {
       issues: parsed.error.issues,
       raw,
     });
-    throw new Error("[dashboard] getSalesEconomicsAverage: invalid response shape");
+    throw new Error("[dashboard] getSalesEconomicsEffective: invalid response shape");
   }
   return parsed.data;
 }
