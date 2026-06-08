@@ -234,6 +234,17 @@ function ExampleEmailSkeleton() {
   );
 }
 
+// Inline loading spinner (mirrors link-button.tsx) — used on the Launch/Start button
+// and the full-screen "Launching…" overlay while the create-campaign POST is in flight.
+function Spinner({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg className={`animate-spin ${className}`} viewBox="0 0 24 24" aria-hidden="true">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+    </svg>
+  );
+}
+
 function InfoLabel({ label, tip }: { label: string; tip: string }) {
   return (
     <span className="inline-flex items-center gap-1">
@@ -1022,6 +1033,11 @@ export default function FeatureCreateCampaignPage() {
         }
       }
       sendCampaignEmail("campaign_created", result.campaign).catch(() => {});
+      // Seed the campaign-detail cache with the just-created entity so the destination
+      // page's ["campaign", id] query is warm — its header/shell paint instantly instead
+      // of a cold getCampaign round-trip. The page's poll then refines (brand-url enrichment).
+      // (Framework: write the mutation response to the cache, don't just invalidate.)
+      queryClient.setQueryData(["campaign", result.campaign.id], { campaign: result.campaign });
       await queryClient.invalidateQueries({ queryKey: ["campaigns", { brandId }] });
       router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/${result.campaign.id}`);
       // Don't reset isCreating on success — the page is navigating away.
@@ -1250,6 +1266,18 @@ export default function FeatureCreateCampaignPage() {
 
   return (
     <div className="p-4 md:p-8">
+      {/* Full-screen reassurance while the create-campaign POST is in flight (~3s).
+          The new campaign's id doesn't exist until the POST returns, so we can't route
+          to its page yet — this overlay tells the user we're working instead of leaving
+          the button looking idle. On success, doCreateCampaign navigates (cache pre-seeded
+          → the destination paints instantly); isCreating resets only on error. */}
+      {isCreating && (
+        <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
+          <Spinner className="h-8 w-8 text-brand-500" />
+          <p className="mt-4 text-sm font-medium text-gray-700">Launching your campaign…</p>
+          <p className="mt-1 text-xs text-gray-400">Setting up your workflow and budget. This takes a few seconds.</p>
+        </div>
+      )}
       {/* Header */}
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-gray-800">Create Campaign</h1>
@@ -1699,8 +1727,9 @@ export default function FeatureCreateCampaignPage() {
               <button
                 onClick={handleCreateCampaign}
                 disabled={isCreating || isLoadingProfile || !effectiveBudget || !salesPick}
-                className="mt-4 w-full px-5 py-3 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                className={`mt-4 w-full px-5 py-3 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition flex items-center justify-center gap-2 ${isCreating ? "cursor-wait" : "disabled:opacity-40 disabled:cursor-not-allowed"}`}
               >
+                {isCreating && <Spinner />}
                 {isCreating ? "Launching…" : "Launch campaign"}
               </button>
             </div>
@@ -1996,9 +2025,10 @@ export default function FeatureCreateCampaignPage() {
               <button
                 onClick={handleCreateCampaign}
                 disabled={isCreating}
-                className="px-5 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition disabled:opacity-50"
+                className={`px-5 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition flex items-center gap-2 ${isCreating ? "cursor-wait" : "disabled:opacity-50"}`}
               >
-                {isCreating ? "Creating..." : "Start Campaign"}
+                {isCreating && <Spinner />}
+                {isCreating ? "Creating…" : "Start Campaign"}
               </button>
               <button
                 onClick={() => setShowForm(false)}
