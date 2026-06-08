@@ -158,6 +158,65 @@ export const EMAIL_TEMPLATES = [
       <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin</p>`),
     textBody: `Hey,\n\n{{inviteeOrgName}} just joined distribute with your invite. $25 is now in your account.\n\nYou've used {{invitesUsed}}/{{invitesTotal}} invites. Keep sending them — the link is in your dashboard sidebar: ${DASHBOARD_URL}\n\n— Kevin`,
   },
+
+  // ── Out-of-credit dunning (triggered by billing-service on depletion) ──
+  // billing-service sends { eventType, recipientEmail, metadata: {} } — NO template
+  // variables (generic founder-voice copy). Sequence: instant (T0) → +3d → +10d,
+  // stopped on recharge by billing-service. Sibling: billing-service#147.
+  //   credit-depleted             → instant, when the balance hits zero
+  //   credit-depleted-followup-3d → ~3 days later, if still depleted
+  //   credit-depleted-followup-10d → ~10 days later, if still depleted
+  {
+    name: "credit-depleted",
+    subject: "Your campaigns just stopped — you're out of credit",
+    htmlBody: emailLayout(`
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">Hey,</p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
+        Your credit ran out, so your campaigns have stopped sending. Nothing is lost — add credit and they pick right back up.
+      </p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
+        Want them to never stop again? Turn on auto-topup while you're there — it adds credit automatically when you run low.
+      </p>
+      <p style="margin-bottom:20px;">
+        <a href="${DASHBOARD_URL}" style="display:inline-block;background:#6366f1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">Add credit & resume</a>
+      </p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute</p>`),
+    textBody: `Hey,\n\nYour credit ran out, so your campaigns have stopped sending. Nothing is lost — add credit and they pick right back up.\n\nWant them to never stop again? Turn on auto-topup while you're there — it adds credit automatically when you run low.\n\nAdd credit & resume: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute`,
+  },
+  {
+    name: "credit-depleted-followup-3d",
+    subject: "Your campaigns are still paused",
+    htmlBody: emailLayout(`
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">Hey,</p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
+        Quick nudge — your campaigns are still paused because your account is out of credit. Every day they're off is outreach you're not sending.
+      </p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
+        Add credit to get them running again, and flip on auto-topup so this doesn't happen next time.
+      </p>
+      <p style="margin-bottom:20px;">
+        <a href="${DASHBOARD_URL}" style="display:inline-block;background:#6366f1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">Add credit & resume</a>
+      </p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute</p>`),
+    textBody: `Hey,\n\nQuick nudge — your campaigns are still paused because your account is out of credit. Every day they're off is outreach you're not sending.\n\nAdd credit to get them running again, and flip on auto-topup so this doesn't happen next time.\n\nAdd credit & resume: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute`,
+  },
+  {
+    name: "credit-depleted-followup-10d",
+    subject: "Still want to keep your outreach running?",
+    htmlBody: emailLayout(`
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">Hey,</p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
+        Your campaigns have been paused for a while now — out of credit. They're still set up exactly as you left them and will resume the moment you add credit.
+      </p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
+        If now's the time, add credit and turn on auto-topup so your outreach just keeps running.
+      </p>
+      <p style="margin-bottom:20px;">
+        <a href="${DASHBOARD_URL}" style="display:inline-block;background:#6366f1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">Add credit & resume</a>
+      </p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute</p>`),
+    textBody: `Hey,\n\nYour campaigns have been paused for a while now — out of credit. They're still set up exactly as you left them and will resume the moment you add credit.\n\nIf now's the time, add credit and turn on auto-topup so your outreach just keeps running.\n\nAdd credit & resume: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute`,
+  },
 ];
 
 const PLATFORM_KEYS: { provider: string; envVar: string }[] = [
