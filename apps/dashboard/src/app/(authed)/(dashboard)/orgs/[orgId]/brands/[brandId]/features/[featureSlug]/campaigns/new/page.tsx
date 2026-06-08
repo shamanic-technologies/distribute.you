@@ -46,7 +46,7 @@ import { CampaignAIPanel } from "@/components/campaigns/campaign-ai-panel";
 import { BrandLogo } from "@/components/brand-logo";
 import { Skeleton } from "@/components/skeleton";
 import { EmailSignature } from "@/components/email-signature";
-import { SparklesIcon, XMarkIcon, EllipsisVerticalIcon, PlusIcon, EnvelopeIcon, InformationCircleIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
+import { SparklesIcon, XMarkIcon, EllipsisVerticalIcon, PlusIcon, InformationCircleIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
 
 type Mode = "autopilot" | "manual";
 type BudgetFrequency = "one-off" | "daily" | "weekly" | "monthly";
@@ -1685,9 +1685,8 @@ export default function FeatureCreateCampaignPage() {
                   <span>{salesWorkflowOverrideId ? "selected workflow" : "auto-selected workflow"}</span>
                   <span className="font-medium text-gray-800">{salesPick.workflowDynastyName}</span>
                   <button type="button" onClick={() => { setModalSelectedWorkflowId(salesPick?.id ?? null); setShowWorkflowPicker(true); }}
-                    className="ml-1 flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg transition text-gray-500 hover:text-brand-600 hover:bg-brand-50 border border-gray-200">
-                    <EnvelopeIcon className="w-3.5 h-3.5" />
-                    See emails
+                    className="ml-1 text-xs font-medium text-brand-600 hover:text-brand-700 underline underline-offset-2 transition">
+                    See example emails
                   </button>
                 </div>
               )}
