@@ -28,6 +28,10 @@ interface PaymentRequiredInfo {
   runwayUnit?: string;
   /** Proceed without topping up (runway variant — "Launch anyway"). */
   onProceed?: () => void;
+  /** Depletion variant (non-proactive): balance is exhausted and campaigns have
+   *  stopped. Tailors the modal copy from "needed for this action" to the
+   *  arrival-time "all campaigns stopped" message. */
+  depleted?: boolean;
 }
 
 function toCentsNumber(v: string | number): number {
@@ -238,6 +242,7 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
   }
 
   const isProactive = info.proactive === true;
+  const isDepleted = info.depleted === true;
   const isRunway = isProactive && info.runwayPeriods !== undefined;
   const runwayN = info.runwayPeriods ?? 0;
   const runwayLabel = `${runwayN} ${info.runwayUnit ?? "period"}${runwayN > 1 ? "s" : ""}`;
@@ -269,14 +274,20 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
                 </svg>
               </div>
               <h2 className="text-lg font-semibold text-gray-900">
-                {isProactive ? proactiveTitle : "Insufficient Credits"}
+                {isProactive
+                  ? proactiveTitle
+                  : isDepleted
+                    ? "All campaigns stopped"
+                    : "Insufficient Credits"}
               </h2>
             </div>
 
             <p className="text-gray-600 text-sm mb-4">
               {isProactive
                 ? proactiveDescription
-                : "Your account doesn\u2019t have enough credits to complete this action. Add credits to continue."}
+                : isDepleted
+                  ? "You\u2019re out of credit, so your campaigns have stopped. Add credits to get them running again \u2014 or turn on auto-topup so they never stop."
+                  : "Your account doesn\u2019t have enough credits to complete this action. Add credits to continue."}
             </p>
 
             {(info.balance_cents !== undefined || info.required_cents !== undefined) && (
