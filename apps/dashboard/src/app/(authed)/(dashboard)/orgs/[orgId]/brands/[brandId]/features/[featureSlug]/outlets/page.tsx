@@ -6,6 +6,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   listBrandOutlets,
   getOutletStatsCosts,
+  getDomainDrStatuses,
   type DeduplicatedOutlet,
   type OutletCampaign,
   type OutletStatusCounts,
@@ -29,6 +30,26 @@ function formatCost(cents: string | number | null | undefined): string | null {
   return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+function formatPurchasePrice(outlet: DeduplicatedOutlet): string | null {
+  const priceCents = outlet.pricing?.sellPriceCents;
+  if (priceCents == null) return null;
+  const currency = outlet.pricing?.currency;
+  if (!currency) {
+    console.error("[dashboard] outlet pricing missing currency", { outletId: outlet.id, pricing: outlet.pricing });
+    throw new Error("[dashboard] outlet pricing missing currency");
+  }
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(priceCents / 100);
+}
+
+function normalizeDomain(domain: string): string {
+  return domain.trim().toLowerCase().replace(/^www\./, "");
+}
+
 function relevanceColor(score: number): string {
   if (score >= 70) return "bg-green-100 text-green-700 border-green-200";
   if (score >= 40) return "bg-yellow-100 text-yellow-700 border-yellow-200";
@@ -47,8 +68,9 @@ function timeAgo(dateStr: string): string {
 
 /* ─── Outlet Row ─────────────────────────────────────────────────────── */
 
-function OutletRow({ outlet, displayStatus, costCents, isSelected, onClick }: { outlet: DeduplicatedOutlet; displayStatus: string; costCents: string | null; isSelected: boolean; onClick: () => void }) {
+function OutletRow({ outlet, displayStatus, costCents, domainRating, isSelected, onClick }: { outlet: DeduplicatedOutlet; displayStatus: string; costCents: string | null; domainRating: number | null; isSelected: boolean; onClick: () => void }) {
   const cost = formatCost(costCents);
+  const purchasePrice = formatPurchasePrice(outlet);
   return (
     <button
       type="button"
@@ -79,6 +101,16 @@ function OutletRow({ outlet, displayStatus, costCents, isSelected, onClick }: { 
         </div>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
+        {domainRating != null && (
+          <span className="text-xs text-gray-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+            DR {domainRating}
+          </span>
+        )}
+        {purchasePrice && (
+          <span className="text-xs text-gray-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
+            {purchasePrice}
+          </span>
+        )}
         {cost && (
           <span className="text-xs text-gray-500 bg-gray-50 px-2 py-0.5 rounded border border-gray-200">
             {cost}
@@ -164,8 +196,9 @@ function CampaignDetailCard({ campaign, counts }: { campaign: OutletCampaign; co
 
 /* ─── Detail Panel ───────────────────────────────────────────────────── */
 
-function OutletDetailPanel({ outlet, displayStatus, costCents, onClose }: { outlet: DeduplicatedOutlet; displayStatus: string; costCents: string | null; onClose: () => void }) {
+function OutletDetailPanel({ outlet, displayStatus, costCents, domainRating, onClose }: { outlet: DeduplicatedOutlet; displayStatus: string; costCents: string | null; domainRating: number | null; onClose: () => void }) {
   const cost = formatCost(costCents);
+  const purchasePrice = formatPurchasePrice(outlet);
   return (
     <div className="absolute inset-0 md:relative md:w-1/2 bg-gray-50 md:border-l border-gray-200 overflow-y-auto z-10">
       <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
@@ -228,6 +261,18 @@ function OutletDetailPanel({ outlet, displayStatus, costCents, onClose }: { outl
                 <p className="font-medium text-gray-700">{cost}</p>
               </div>
             )}
+            {domainRating != null && (
+              <div>
+                <span className="text-gray-500">DR</span>
+                <p className="font-medium text-gray-700">{domainRating}</p>
+              </div>
+            )}
+            {purchasePrice && (
+              <div>
+                <span className="text-gray-500">Purchase Price</span>
+                <p className="font-medium text-gray-700">{purchasePrice}</p>
+              </div>
+            )}
             <div>
               <span className="text-gray-500">Campaigns</span>
               <p className="font-medium text-gray-700">{outlet.campaigns.length}</p>
@@ -273,6 +318,25 @@ export default function FeatureOutletsPage() {
 
   const outlets = data?.outlets ?? [];
 
+  const outletDomains = useMemo(
+    () => [...new Set(outlets.map((o) => normalizeDomain(o.outletDomain)))].sort(),
+    [outlets],
+  );
+
+  const { data: domainDrStatuses } = useAuthQuery(
+    ["outletDomainDrStatuses", outletDomains.join(",")],
+    () => getDomainDrStatuses(outletDomains),
+    { enabled: outletDomains.length > 0 },
+  );
+
+  const drMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const status of domainDrStatuses ?? []) {
+      if (status.latestValidDr != null) map.set(normalizeDomain(status.domain), status.latestValidDr);
+    }
+    return map;
+  }, [domainDrStatuses]);
+
   const costMap = useMemo(() => {
     const map = new Map<string, string>();
     for (const g of costsByOutlet?.groups ?? []) {
@@ -310,8 +374,10 @@ export default function FeatureOutletsPage() {
       outlets,
       (o) => latchedStatuses.get(o.id) ?? deriveDisplayStatusFromCounts(o.status?.brand),
       (o) => costMap.get(o.id) ?? null,
+      (o) => drMap.get(normalizeDomain(o.outletDomain)),
+      (o) => formatPurchasePrice(o),
     ),
-    [outlets, latchedStatuses, costMap],
+    [outlets, latchedStatuses, costMap, drMap],
   );
 
   // Group outlets by display status derived from structured counts
@@ -436,6 +502,7 @@ export default function FeatureOutletsPage() {
                 outlet={outlet}
                 displayStatus={latchedStatuses.get(outlet.id) ?? deriveDisplayStatusFromCounts(outlet.status?.brand)}
                 costCents={costMap.get(outlet.id) ?? null}
+                domainRating={drMap.get(normalizeDomain(outlet.outletDomain)) ?? null}
                 isSelected={selected?.id === outlet.id}
                 onClick={() => setSelected(outlet)}
               />
@@ -451,6 +518,7 @@ export default function FeatureOutletsPage() {
           outlet={selected}
           displayStatus={latchedStatuses.get(selected.id) ?? deriveDisplayStatusFromCounts(selected.status?.brand)}
           costCents={costMap.get(selected.id) ?? null}
+          domainRating={drMap.get(normalizeDomain(selected.outletDomain)) ?? null}
           onClose={() => setSelected(null)}
         />
       )}

@@ -28,12 +28,14 @@ describe("buildOutletCsv helper", () => {
     expect(src).toContain("return toCsv(rows, columns);");
   });
 
-  it("ships exactly the 8 card-mirroring columns", () => {
+  it("ships the card-mirroring columns, including DR and purchase price", () => {
     for (const label of [
       '"Outlet"',
       '"Domain"',
       '"URL"',
       '"Status"',
+      '"DR"',
+      '"Purchase Price"',
       '"Relevance %"',
       '"Campaigns"',
       '"Discovered"',
@@ -45,6 +47,11 @@ describe("buildOutletCsv helper", () => {
 
   it("renders Status via statusLabel(displayStatusFor) so the CSV matches the card badge", () => {
     expect(src).toContain("statusLabel(displayStatusFor(o))");
+  });
+
+  it("renders DR and purchase price through page-scoped resolvers", () => {
+    expect(src).toContain("drFor(o)");
+    expect(src).toContain("purchasePriceFor(o)");
   });
 
   it("sorts by relevance desc (most relevant first)", () => {
@@ -65,6 +72,14 @@ describe("outlet pages wire the Download CSV button", () => {
     it(`${level} page exports the FULL list (outlets), not the tab/search-filtered subset`, () => {
       expect(content).toMatch(/buildOutletCsv\(\s*outlets/);
       expect(content).not.toMatch(/buildOutletCsv\(\s*(filteredOutlets|displayedOutlets)/);
+    });
+
+    it(`${level} page wires cached DR and purchase price into cards and CSV`, () => {
+      expect(content).toContain("getDomainDrStatuses");
+      expect(content).toContain('"outletDomainDrStatuses"');
+      expect(content).toContain("domainRating=");
+      expect(content).toContain("formatPurchasePrice(o)");
+      expect(content).toContain("Purchase Price");
     });
   }
 });
