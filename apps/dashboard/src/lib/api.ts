@@ -2316,6 +2316,10 @@ export interface DeduplicatedOutlet {
   outletDomain: string;
   createdAt: string;
   status: OutletStatus;
+  pricing?: {
+    sellPriceCents: number | null;
+    currency: string | null;
+  } | null;
   relevanceScore: number;
   campaigns: OutletCampaign[];
 }
@@ -3444,19 +3448,32 @@ export async function getDomainDrStatus(
   domain: string,
   token?: string,
 ): Promise<DomainDrStatus | null> {
+  const data = await getDomainDrStatuses([domain], token);
+  return data[0] ?? null;
+}
+
+/**
+ * GET /v1/orgs/domains/dr-status — Ahrefs Domain Rating status for many
+ * domains. Cache read only: this does not trigger a paid Ahrefs scrape.
+ */
+export async function getDomainDrStatuses(
+  domains: string[],
+  token?: string,
+): Promise<DomainDrStatus[]> {
+  const params = new URLSearchParams({ domains: domains.join(",") });
   const raw = await apiCall<unknown>(
-    `/orgs/domains/dr-status?domains=${encodeURIComponent(domain)}`,
+    `/orgs/domains/dr-status?${params}`,
     { token },
   );
   const parsed = z.array(DomainDrStatusSchema).safeParse(raw);
   if (!parsed.success) {
-    console.error("[dashboard] getDomainDrStatus: response shape mismatch", {
+    console.error("[dashboard] getDomainDrStatuses: response shape mismatch", {
       issues: parsed.error.issues,
       raw,
     });
-    throw new Error("[dashboard] getDomainDrStatus: invalid response shape");
+    throw new Error("[dashboard] getDomainDrStatuses: invalid response shape");
   }
-  return parsed.data[0] ?? null;
+  return parsed.data;
 }
 
 // ─── On-demand Ahrefs fetch (get-or-fetch-if-never-seen) ────────────────────
@@ -3758,4 +3775,3 @@ export async function triggerFeatureRun(
     body: { inputs: { brandId: params.brandId, campaignId: params.campaignId } },
   });
 }
-

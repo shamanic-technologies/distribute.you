@@ -21,12 +21,16 @@ export function buildOutletCsv(
   outlets: DeduplicatedOutlet[],
   displayStatusFor: (outlet: DeduplicatedOutlet) => string,
   costCentsFor: (outlet: DeduplicatedOutlet) => string | null,
+  drFor: (outlet: DeduplicatedOutlet) => number | null | undefined,
+  purchasePriceFor: (outlet: DeduplicatedOutlet) => string | null,
 ): string {
   const columns: CsvColumn<DeduplicatedOutlet>[] = [
     { label: "Outlet", value: (o) => o.outletName },
     { label: "Domain", value: (o) => o.outletDomain },
     { label: "URL", value: (o) => o.outletUrl },
     { label: "Status", value: (o) => statusLabel(displayStatusFor(o)) },
+    { label: "DR", value: (o) => drFor(o) ?? "" },
+    { label: "Purchase Price", value: (o) => purchasePriceFor(o) ?? "" },
     { label: "Relevance %", value: (o) => o.relevanceScore },
     { label: "Campaigns", value: (o) => o.campaigns.length },
     { label: "Discovered", value: (o) => o.createdAt.slice(0, 10) },
