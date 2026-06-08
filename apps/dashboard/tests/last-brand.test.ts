@@ -6,6 +6,7 @@ import {
   matchOrgLanding,
   matchBrandPath,
   resolveLandingBrand,
+  resolveFeatureLanding,
 } from "../src/lib/last-brand";
 
 describe("lastBrandCookieName — org-scoped", () => {
@@ -115,5 +116,60 @@ describe("org landing page — client fallback redirect", () => {
 
   it("does not flash Overview while resolving (returns null until decided)", () => {
     expect(page).toMatch(/if \(!brandsData \|\| landingBrandId\)/);
+  });
+});
+
+describe("resolveFeatureLanding — auto-skip into the single GA feature", () => {
+  const sales = { slug: "sales-cold-email-outreach" };
+  const journalists = { slug: "journalists-quotes" };
+
+  it("routes to the feature when its campaign(s) exist", () => {
+    expect(
+      resolveFeatureLanding([sales], [{ featureSlug: "sales-cold-email-outreach" }]),
+    ).toEqual({ featureSlug: "sales-cold-email-outreach", needsCampaign: false });
+  });
+
+  it("routes to new-campaign when the brand has no campaign for it", () => {
+    expect(resolveFeatureLanding([sales], [])).toEqual({
+      featureSlug: "sales-cold-email-outreach",
+      needsCampaign: true,
+    });
+  });
+
+  it("ignores campaigns belonging to other features when deciding needsCampaign", () => {
+    expect(
+      resolveFeatureLanding([sales], [{ featureSlug: "journalists-quotes" }]),
+    ).toEqual({ featureSlug: "sales-cold-email-outreach", needsCampaign: true });
+  });
+
+  it("returns null with 2+ GA features (overview renders the choice)", () => {
+    expect(resolveFeatureLanding([sales, journalists], [])).toBeNull();
+  });
+
+  it("returns null with no GA features", () => {
+    expect(resolveFeatureLanding([], [])).toBeNull();
+  });
+});
+
+describe("brand overview page — auto-skip into the feature", () => {
+  const page = fs.readFileSync(
+    path.join(
+      __dirname,
+      "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
+    ),
+    "utf-8",
+  );
+
+  it("computes the landing via the shared pure helper", () => {
+    expect(page).toContain("resolveFeatureLanding");
+    expect(page).toContain("router.replace");
+  });
+
+  it("only considers GA + implemented features (posthog-independent, no flash)", () => {
+    expect(page).toContain("GA_BRAND_FEATURES.has(f.slug)");
+  });
+
+  it("renders nothing while the redirect is certain (no overview flash)", () => {
+    expect(page).toMatch(/if \(willRedirect\)/);
   });
 });
