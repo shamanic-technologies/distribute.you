@@ -9,6 +9,7 @@ import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { FEATURE_GATES, GA_BRAND_FEATURES } from "@/lib/feature-gates";
 import { workflowDisplayName } from "@/lib/workflow-display-name";
 import { BrandLogo } from "./brand-logo";
+import { explicitHierarchyHref } from "@/lib/last-brand";
 
 interface Brand {
   id: string;
@@ -303,7 +304,7 @@ export function BreadcrumbNav() {
     <nav className="flex items-center text-sm min-w-0" ref={dropdownRef}>
       {/* ORG — always shown as root */}
       <div className="relative flex items-center">
-        <Link href={organization ? `/orgs/${organization.id}` : "/"} className="px-2 py-1 rounded-md hover:bg-gray-100 transition flex items-center gap-1.5">
+        <Link href={organization ? explicitHierarchyHref(`/orgs/${organization.id}`) : explicitHierarchyHref("/")} className="px-2 py-1 rounded-md hover:bg-gray-100 transition flex items-center gap-1.5">
           <OrgAvatar name={organization?.name || "Dashboard"} imageUrl={organization?.imageUrl} hasImage={organization?.hasImage} sizeClass="w-5 h-5" />
           <span className="font-medium text-gray-800 max-w-[140px] truncate">{organization?.name || "Dashboard"}</span>
         </Link>
@@ -399,7 +400,7 @@ export function BreadcrumbNav() {
         <>
           <Sep />
           <div className="relative flex items-center">
-            <Link href={`/orgs/${orgId}/brands/${brandId}`} className="px-2 py-1 rounded-md hover:bg-gray-100 transition font-medium text-gray-800 flex items-center gap-1.5">
+            <Link href={explicitHierarchyHref(`/orgs/${orgId}/brands/${brandId}`)} className="px-2 py-1 rounded-md hover:bg-gray-100 transition font-medium text-gray-800 flex items-center gap-1.5">
               {currentBrand?.domain && <BrandLogo domain={currentBrand.domain} size={16} className="rounded-sm flex-shrink-0" fallbackClassName="w-4 h-4 text-gray-400 flex-shrink-0" />}
               {currentBrand?.name || currentBrand?.domain || "Brand"}
             </Link>

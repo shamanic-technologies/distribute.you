@@ -4,6 +4,7 @@ import {
   lastBrandCookieName,
   matchOrgLanding,
   matchBrandPath,
+  hasExplicitHierarchyIntent,
 } from "@/lib/last-brand";
 
 const isPublicRoute = createRouteMatcher([
@@ -71,7 +72,11 @@ export default clerkMiddleware(
     // no-cookie / single-brand cases are resolved client-side on the org page
     // (the edge can't count brands without a fetch). Skip during the
     // `?autoCreate` brand-creation hop.
-    if (userId && !req.nextUrl.searchParams.has("autoCreate")) {
+    if (
+      userId &&
+      !req.nextUrl.searchParams.has("autoCreate") &&
+      !hasExplicitHierarchyIntent(req.nextUrl.searchParams)
+    ) {
       const landing = matchOrgLanding(pathname);
       if (landing) {
         const lastBrand = req.cookies.get(

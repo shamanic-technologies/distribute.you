@@ -25,6 +25,7 @@ import { formatCount } from "@/lib/format-number";
 import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { FEATURE_GATES, GA_BRAND_FEATURES, type Maturity } from "@/lib/feature-gates";
+import { explicitHierarchyHref } from "@/lib/last-brand";
 
 interface SidebarItem {
   id: string;
@@ -95,7 +96,7 @@ function SidebarNavRowSkeleton() {
 function BackLink({ href, label }: { href: string; label: string }) {
   return (
     <Link
-      href={href}
+      href={explicitHierarchyHref(href)}
       className="flex items-center gap-1.5 text-[10px] text-gray-400 hover:text-gray-600 mb-2 transition"
     >
       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -381,7 +382,7 @@ function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string 
   const crmEnabled = useFeatureFlag(FEATURE_GATES["services-crm"].flag);
   const keysEnabled = useFeatureFlag(FEATURE_GATES["keys"].flag);
   const topItems: SidebarItem[] = [
-    { id: "overview", label: "Overview", href: `/orgs/${orgId}`, icon: <HomeIcon /> },
+    { id: "overview", label: "Overview", href: explicitHierarchyHref(`/orgs/${orgId}`), icon: <HomeIcon /> },
     { id: "brands", label: "Brands", href: `/orgs/${orgId}/brands`, icon: <BrandIcon /> },
   ];
 
@@ -478,7 +479,7 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
   const featuresAlphaOk = useFeatureFlag(FEATURE_GATES["brand-features"].flag);
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
   const topItems: SidebarItem[] = [
-    { id: "overview", label: "Overview", href: basePath, icon: <HomeIcon /> },
+    { id: "overview", label: "Overview", href: explicitHierarchyHref(basePath), icon: <HomeIcon /> },
   ];
 
   // Every feature except the GA exceptions renders under the brand-features
