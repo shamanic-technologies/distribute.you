@@ -204,7 +204,9 @@ function TestEmailCard({ email, expanded, onToggle }: { email: TestEmailCardData
             <div key={s.step} className="border-t border-gray-100 pt-2">
               {steps.length > 1 && (
                 <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
-                  Step {s.step}{s.step > 1 && s.daysSinceLastStep ? ` · +${s.daysSinceLastStep}d` : ""}
+                  {s.step === 1
+                    ? "Initial email"
+                    : `Follow-up ${s.step - 1}${s.daysSinceLastStep ? ` · ${s.daysSinceLastStep} day${s.daysSinceLastStep === 1 ? "" : "s"} later` : ""}`}
                 </div>
               )}
               <div className="text-[11px] text-gray-600 mt-0.5 whitespace-pre-wrap">{s.bodyText}</div>
