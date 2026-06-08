@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useOrganization, useOrganizationList } from "@clerk/nextjs";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useFeatures } from "@/lib/features-context";
+import { useFeatureFlag } from "@/lib/use-feature-flag";
+import { FEATURE_GATES, GA_BRAND_FEATURES } from "@/lib/feature-gates";
 import { workflowDisplayName } from "@/lib/workflow-display-name";
 import { BrandLogo } from "./brand-logo";
 
@@ -94,6 +96,13 @@ export function BreadcrumbNav() {
     userMemberships: { infinite: true },
   });
   const { features, getFeature } = useFeatures();
+  // Gate the feature switcher exactly like the sidebar + brand overview: a
+  // non-staff viewer sees only GA features, staff (flag on) sees all. Without
+  // this the breadcrumb dropdown leaked every alpha feature to non-staff.
+  const featuresAlphaOk = useFeatureFlag(FEATURE_GATES["brand-features"].flag);
+  const visibleFeatures = features.filter(
+    (f) => GA_BRAND_FEATURES.has(f.slug) || featuresAlphaOk,
+  );
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -354,7 +363,7 @@ export function BreadcrumbNav() {
                 <div className="px-3 py-2 border-b border-gray-100">
                   <p className="text-xs text-gray-500 font-medium">Switch feature</p>
                 </div>
-                {features.map((f) => {
+                {visibleFeatures.map((f) => {
                   return (
                   <button
                     key={f.slug}
@@ -448,7 +457,7 @@ export function BreadcrumbNav() {
                 <div className="px-3 py-2 border-b border-gray-100">
                   <p className="text-xs text-gray-500 font-medium">Switch feature</p>
                 </div>
-                {features.map((f) => {
+                {visibleFeatures.map((f) => {
                   return (
                   <button
                     key={f.slug}
