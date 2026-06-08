@@ -664,16 +664,17 @@ export default function FeatureCreateCampaignPage() {
     return budgetPresets?.find((p) => p.key === budgetTier)?.daily ?? 0;
   }, [budgetTier, budgetCustom, budgetPresets]);
 
-  // Static-shell-first: hold the §2 conversion-metric inputs and the §3 budget
-  // cards as skeletons until their data resolves, so neither flashes a default
-  // before the real value — econ inputs would briefly show SALES_ECON_DEFAULTS,
-  // and the budget cards would briefly show the "no cost data" warning before the
-  // projection (workflow stats + econ) is computable.
+  // Static-shell-first: hold the §2 conversion-metric inputs until their effective
+  // values resolve, so they don't flash SALES_ECON_DEFAULTS before saved/cross-brand
+  // values hydrate.
   const econReady = !isSalesFunnel || salesEconData !== undefined;
   // The budget cards derive from the served projection (cost-per-close → recommendedBudget);
-  // hold them until it resolves so they don't flash the "no cost data" warning.
+  // hold them only until the projection/workflows resolve so they don't flash the
+  // "no cost data" warning. Do not wait for the separate economics badge/input query:
+  // the server projection already uses the effective economics, and delaying on the
+  // badge makes the budget cards appear seconds late.
   const projReady = !isSalesFunnel || projData !== undefined;
-  const budgetReady = econReady && projReady && !workflowsLoading;
+  const budgetReady = projReady && !workflowsLoading;
 
   // ── Workflow test runs (real campaigns capped at 3 leads) ──
   const runningTestIds = useMemo(
