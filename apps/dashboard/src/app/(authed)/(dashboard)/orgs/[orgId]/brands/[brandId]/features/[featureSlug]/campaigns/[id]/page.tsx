@@ -12,7 +12,8 @@ import { isRevenueFeature } from "@/lib/revenue-feature";
 import { pollOptionsSlow } from "@/lib/query-options";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 import { CampaignActivity } from "@/components/campaign/campaign-activity";
-import { CampaignLaunchModal } from "@/components/campaign/campaign-launch-modal";
+// Temporarily disabled: the post-launch four-step modal blocks the campaign page.
+// import { CampaignLaunchModal } from "@/components/campaign/campaign-launch-modal";
 import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
@@ -213,16 +214,18 @@ export default function CampaignOverviewPage() {
 
   return (
     <div className="p-4 md:p-8">
-      {/* Non-closable launch modal — blocks the dashboard right after launch until
-          the first email is sent. Only mounts for lead-based features (its close
-          condition is a contacted lead); self-gates to ongoing + not-yet-contacted. */}
-      {entityNames.includes("leads") && (
-        <CampaignLaunchModal
-          campaignId={campaign.id}
-          brandUrls={campaign.brandUrls}
-          campaignStatus={campaign.status}
-        />
-      )}
+      {/*
+        Temporarily disabled: the post-launch four-step modal blocks the campaign page.
+        Re-enable this block with the CampaignLaunchModal import above when the flow is needed again.
+
+        {entityNames.includes("leads") && (
+          <CampaignLaunchModal
+            campaignId={campaign.id}
+            brandUrls={campaign.brandUrls}
+            campaignStatus={campaign.status}
+          />
+        )}
+      */}
 
       {/* Header */}
       <div className="mb-6">
