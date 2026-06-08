@@ -14,7 +14,7 @@ describe("BreadcrumbNav truncation", () => {
     // Find the brand Link element (contains /brands/${brandId})
     // Regex captures the className of the Link whose href includes /brands/
     const brandLinkRegex =
-      /Link\s+href=\{`\/orgs\/\$\{orgId\}\/brands\/\$\{brandId\}`\}\s+className="([^"]*)"/;
+      /Link\s+href=\{(?:explicitHierarchyHref\()?`\/orgs\/\$\{orgId\}\/brands\/\$\{brandId\}`\)?\}\s+className="([^"]*)"/;
     const match = content.match(brandLinkRegex);
     expect(match, "brand Link element should exist in breadcrumb").toBeTruthy();
     const className = match![1];

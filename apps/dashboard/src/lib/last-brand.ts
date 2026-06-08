@@ -18,6 +18,20 @@ export function lastBrandCookieName(orgId: string): string {
   return `last-brand-${orgId}`;
 }
 
+export const HIERARCHY_VIEW_PARAM = "view";
+export const HIERARCHY_VIEW_OVERVIEW = "overview";
+
+export function explicitHierarchyHref(pathname: string): string {
+  const sep = pathname.includes("?") ? "&" : "?";
+  return `${pathname}${sep}${HIERARCHY_VIEW_PARAM}=${HIERARCHY_VIEW_OVERVIEW}`;
+}
+
+export function hasExplicitHierarchyIntent(
+  searchParams: Pick<URLSearchParams, "get">,
+): boolean {
+  return searchParams.get(HIERARCHY_VIEW_PARAM) === HIERARCHY_VIEW_OVERVIEW;
+}
+
 const ORG_LANDING_RE = /^\/orgs\/([^/]+)\/?$/;
 const BRAND_PATH_RE = /^\/orgs\/([^/]+)\/brands\/([^/]+)(?:\/.*)?$/;
 

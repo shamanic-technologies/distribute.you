@@ -3,6 +3,8 @@ import fs from "fs";
 import path from "path";
 import {
   lastBrandCookieName,
+  explicitHierarchyHref,
+  hasExplicitHierarchyIntent,
   matchOrgLanding,
   matchBrandPath,
   resolveLandingBrand,
@@ -14,6 +16,28 @@ describe("lastBrandCookieName — org-scoped", () => {
     expect(lastBrandCookieName("org_abc")).toBe("last-brand-org_abc");
     expect(lastBrandCookieName("org_abc")).not.toBe(
       lastBrandCookieName("org_def"),
+    );
+  });
+});
+
+describe("explicit hierarchy intent — user-requested back navigation", () => {
+  it("marks hierarchy links with a query param that survives through root redirects", () => {
+    expect(explicitHierarchyHref("/")).toBe("/?view=overview");
+    expect(explicitHierarchyHref("/orgs/org_123")).toBe(
+      "/orgs/org_123?view=overview",
+    );
+    expect(explicitHierarchyHref("/orgs/org_123?tab=usage")).toBe(
+      "/orgs/org_123?tab=usage&view=overview",
+    );
+  });
+
+  it("detects only the explicit overview marker", () => {
+    expect(
+      hasExplicitHierarchyIntent(new URLSearchParams("view=overview")),
+    ).toBe(true);
+    expect(hasExplicitHierarchyIntent(new URLSearchParams(""))).toBe(false);
+    expect(hasExplicitHierarchyIntent(new URLSearchParams("view=brand"))).toBe(
+      false,
     );
   });
 });
@@ -98,6 +122,11 @@ describe("proxy.ts wiring — edge read + write", () => {
   it("does not redirect during the autoCreate brand-creation hop", () => {
     expect(proxy).toContain('searchParams.has("autoCreate")');
   });
+
+  it("does not redirect a bare org URL when the user explicitly asked for hierarchy overview", () => {
+    expect(proxy).toContain("hasExplicitHierarchyIntent");
+    expect(proxy).toContain("!hasExplicitHierarchyIntent(req.nextUrl.searchParams)");
+  });
 });
 
 describe("org landing page — client fallback redirect", () => {
@@ -112,6 +141,11 @@ describe("org landing page — client fallback redirect", () => {
   it("redirects to the resolved brand when one exists", () => {
     expect(page).toContain("resolveLandingBrand");
     expect(page).toContain("router.replace");
+  });
+
+  it("keeps the org overview reachable on explicit hierarchy navigation", () => {
+    expect(page).toContain("hasExplicitHierarchyIntent");
+    expect(page).toContain("!explicitHierarchy && brandsData");
   });
 
   it("does not flash Overview while resolving (returns null until decided)", () => {
@@ -171,5 +205,42 @@ describe("brand overview page — auto-skip into the feature", () => {
 
   it("renders nothing while the redirect is certain (no overview flash)", () => {
     expect(page).toMatch(/if \(willRedirect\)/);
+  });
+
+  it("keeps the brand overview reachable on explicit hierarchy navigation", () => {
+    expect(page).toContain("hasExplicitHierarchyIntent");
+    expect(page).toContain("!explicitHierarchy");
+  });
+});
+
+describe("hierarchy links — breadcrumb, header, sidebar", () => {
+  const breadcrumb = fs.readFileSync(
+    path.join(__dirname, "../src/components/breadcrumb-nav.tsx"),
+    "utf-8",
+  );
+  const header = fs.readFileSync(
+    path.join(__dirname, "../src/components/header.tsx"),
+    "utf-8",
+  );
+  const contextSidebar = fs.readFileSync(
+    path.join(__dirname, "../src/components/context-sidebar.tsx"),
+    "utf-8",
+  );
+  const campaignSidebar = fs.readFileSync(
+    path.join(__dirname, "../src/components/campaign-sidebar.tsx"),
+    "utf-8",
+  );
+
+  it("marks logo and breadcrumb parent links as explicit hierarchy navigation", () => {
+    expect(header).toContain('explicitHierarchyHref("/")');
+    expect(breadcrumb).toContain("explicitHierarchyHref(`/orgs/${organization.id}`)");
+    expect(breadcrumb).toContain("explicitHierarchyHref(`/orgs/${orgId}/brands/${brandId}`)");
+  });
+
+  it("marks sidebar back links and overview rows as explicit hierarchy navigation", () => {
+    expect(contextSidebar).toContain("href={explicitHierarchyHref(href)}");
+    expect(contextSidebar).toContain("explicitHierarchyHref(`/orgs/${orgId}`)");
+    expect(contextSidebar).toContain("explicitHierarchyHref(basePath)");
+    expect(campaignSidebar).toContain("explicitHierarchyHref(");
   });
 });

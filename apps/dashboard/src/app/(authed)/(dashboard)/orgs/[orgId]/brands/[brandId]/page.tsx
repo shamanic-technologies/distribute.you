@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
@@ -9,7 +9,7 @@ import {
   listCampaignsByBrand,
   type Campaign,
 } from "@/lib/api";
-import { resolveFeatureLanding } from "@/lib/last-brand";
+import { hasExplicitHierarchyIntent, resolveFeatureLanding } from "@/lib/last-brand";
 import { BrandLogo } from "@/components/brand-logo";
 import { BrandMetricsHeader } from "@/components/brand-metrics-header";
 import { useFeatures } from "@/lib/features-context";
@@ -112,8 +112,10 @@ interface WorkflowSection {
 export default function BrandOverviewPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const brandId = params.brandId as string;
   const orgId = params.orgId as string;
+  const explicitHierarchy = hasExplicitHierarchyIntent(searchParams);
   const { features, getFeature: getFeatureDef, isLoading: featuresLoading } =
     useFeatures();
   // Immature features are alpha (staff-only). Default-hidden until PostHog
@@ -164,7 +166,11 @@ export default function BrandOverviewPage() {
   // soon as that's known (a valid brand + one GA feature), even before campaigns
   // load, so the overview never flashes. A bad brand falls through to the "Brand
   // not found" branch instead of redirecting.
-  const willRedirect = Boolean(brand) && !featuresLoading && gaImplemented.length === 1;
+  const willRedirect =
+    !explicitHierarchy &&
+    Boolean(brand) &&
+    !featuresLoading &&
+    gaImplemented.length === 1;
   // The destination needs campaigns resolved to pick feature vs new-campaign.
   const featureLanding =
     willRedirect && campaignsData !== undefined

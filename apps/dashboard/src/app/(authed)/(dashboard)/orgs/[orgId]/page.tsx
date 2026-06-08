@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { listBrands } from "@/lib/api";
-import { resolveLandingBrand } from "@/lib/last-brand";
+import { hasExplicitHierarchyIntent, resolveLandingBrand } from "@/lib/last-brand";
 import { BrandLogo } from "@/components/brand-logo";
 import { OrgUsageSection } from "@/components/org-usage";
 import { pollOptions } from "@/lib/query-options";
@@ -14,6 +14,8 @@ export default function OrgOverviewPage() {
   const params = useParams();
   const orgId = params.orgId as string;
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const explicitHierarchy = hasExplicitHierarchyIntent(searchParams);
 
   const { data: brandsData } = useAuthQuery(
     ["brands"],
@@ -29,7 +31,7 @@ export default function OrgOverviewPage() {
   // that brand, multiple brands → the first one (decision B). No "last" exists
   // in that window, so there's no prior content to flash. The Overview below
   // renders only for an empty org (which the onboarding gate normally prevents).
-  const landingBrandId = brandsData
+  const landingBrandId = !explicitHierarchy && brandsData
     ? resolveLandingBrand(brandsData.brands, null)
     : null;
 
