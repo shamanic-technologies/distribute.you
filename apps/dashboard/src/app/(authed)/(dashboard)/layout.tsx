@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { ContextSidebar } from "@/components/context-sidebar";
 import { Header } from "@/components/header";
 import { OrgActivator } from "@/components/org-activator";
@@ -18,6 +19,14 @@ import { EntityRegistryProvider } from "@/lib/entity-registry-context";
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { isOpen, close } = useMobileSidebar();
   const { hasOrg, isLoading, isError } = useOrg();
+  const searchParams = useSearchParams();
+
+  // Onboarding auto-create window: the brands page shows a full-screen "Setting up your
+  // brand..." loader while it creates the brand and redirects. Hide the navigable chrome
+  // (sidebar + header breadcrumb/logo/hamburger) for that window — clicking it races the
+  // async create + redirect and bugs out. The signal is the autoCreate query param, which
+  // is present only during this flow and disappears on redirect to the brand page.
+  const isOnboardingSetup = !!searchParams.get("autoCreate");
 
   // First-run routing is decided at the edge (proxy.ts / DIS-111) from a session
   // claim — a user who reaches the dashboard already has an onboarded org. This
@@ -61,28 +70,32 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       <AuthEventTracker />
       <UserActivityTracker />
       <UserResolver />
-      <Header />
+      <Header minimal={isOnboardingSetup} />
       <div className="flex flex-1 overflow-hidden relative">
         {/* Mobile sidebar overlay */}
-        {isOpen && (
+        {!isOnboardingSetup && isOpen && (
           <div
             className="fixed inset-0 bg-black/50 z-40 md:hidden"
             onClick={close}
           />
         )}
 
-        {/* Mobile sidebar drawer */}
-        <div className={`
-          fixed inset-y-0 left-0 z-50 transform transition-transform duration-200 ease-in-out md:hidden
-          ${isOpen ? "translate-x-0" : "-translate-x-full"}
-        `}>
-          <ContextSidebar />
-        </div>
+        {/* Mobile sidebar drawer — hidden during onboarding setup */}
+        {!isOnboardingSetup && (
+          <div className={`
+            fixed inset-y-0 left-0 z-50 transform transition-transform duration-200 ease-in-out md:hidden
+            ${isOpen ? "translate-x-0" : "-translate-x-full"}
+          `}>
+            <ContextSidebar />
+          </div>
+        )}
 
-        {/* Desktop sidebar — always shown, content adapts via ContextSidebar */}
-        <div className="hidden md:flex h-full">
-          <ContextSidebar />
-        </div>
+        {/* Desktop sidebar — shown except during onboarding setup; content adapts via ContextSidebar */}
+        {!isOnboardingSetup && (
+          <div className="hidden md:flex h-full">
+            <ContextSidebar />
+          </div>
+        )}
 
         <main className="flex-1 overflow-y-auto">
           {showContent ? children : <div className="h-full bg-gray-50" />}
