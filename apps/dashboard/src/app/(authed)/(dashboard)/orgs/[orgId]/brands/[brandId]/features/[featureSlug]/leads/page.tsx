@@ -192,7 +192,7 @@ export default function FeatureLeadsPage() {
   const [editStatusOpen, setEditStatusOpen] = useState(false);
   const hasAutoSelectedTab = useRef(false);
 
-  const { data, isLoading } = useAuthQuery(
+  const { data, isPending } = useAuthQuery(
     ["brandLeads", brandId],
     () => listBrandLeads(brandId),
     { refetchInterval: POLL_INTERVAL },
@@ -293,7 +293,7 @@ export default function FeatureLeadsPage() {
     { key: "all", label: "All", count: sortedLeads.length },
   ];
 
-  if (isLoading && !data) {
+  if (isPending && !data) {
     return (
       <div className="p-4 md:p-8">
         <div className="animate-pulse space-y-4">

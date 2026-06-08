@@ -7,7 +7,7 @@ import { SkeletonApiKey } from "@/components/skeleton";
 
 export default function ApiKeysPage() {
   const queryClient = useQueryClient();
-  const { data, isLoading } = useAuthQuery(["apiKeys"], () => listApiKeys());
+  const { data, isPending } = useAuthQuery(["apiKeys"], () => listApiKeys());
   const keys: ApiKey[] = data?.keys ?? [];
 
   const [newKey, setNewKey] = useState<NewApiKey | null>(null);
@@ -83,7 +83,7 @@ export default function ApiKeysPage() {
         </div>
       )}
 
-      {isLoading ? (
+      {isPending ? (
         <SkeletonApiKey />
       ) : (
         <div className="space-y-6 max-w-2xl">

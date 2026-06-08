@@ -39,7 +39,7 @@ export default function BrandArticlesPage() {
   const [selected, setSelected] = useState<ArticleDiscoveryItem | null>(null);
   const [search, setSearch] = useState("");
 
-  const { data, isLoading } = useAuthQuery(
+  const { data, isPending } = useAuthQuery(
     ["brandArticles", brandId],
     () => listBrandArticles(brandId),
     { refetchInterval: POLL_INTERVAL },
@@ -95,7 +95,7 @@ export default function BrandArticlesPage() {
     });
   }, [sorted, search, outletMap, journalistMap]);
 
-  if (isLoading && !data) {
+  if (isPending && !data) {
     return (
       <div className="p-4 md:p-8">
         <div className="animate-pulse space-y-4">

@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useMemo } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
@@ -9,6 +9,7 @@ import {
   listCampaignsByBrand,
   type Campaign,
 } from "@/lib/api";
+import { resolveFeatureLanding } from "@/lib/last-brand";
 import { BrandLogo } from "@/components/brand-logo";
 import { BrandMetricsHeader } from "@/components/brand-metrics-header";
 import { useFeatures } from "@/lib/features-context";
@@ -110,9 +111,11 @@ interface WorkflowSection {
 
 export default function BrandOverviewPage() {
   const params = useParams();
+  const router = useRouter();
   const brandId = params.brandId as string;
   const orgId = params.orgId as string;
-  const { features, getFeature: getFeatureDef } = useFeatures();
+  const { features, getFeature: getFeatureDef, isLoading: featuresLoading } =
+    useFeatures();
   // Immature features are alpha (staff-only). Default-hidden until PostHog
   // resolves the flag, so they never flash for a non-staff viewer. Brand Info
   // lives under Brand Settings now — no card on the overview.
@@ -122,7 +125,11 @@ export default function BrandOverviewPage() {
     [features, featuresAlphaOk],
   );
 
-  const { data: brandData, isLoading: brandLoading } = useAuthQuery(
+  // isPending (not isLoading): a query suspended by the org-consistency gate
+  // reports isLoading:false while still unresolved, which would flash "Brand
+  // not found" during the org-settle window. isPending stays true until the
+  // query actually resolves, so not-found shows only on a real empty result.
+  const { data: brandData, isPending: brandLoading } = useAuthQuery(
     ["brand", brandId],
     () => getBrand(brandId),
     pollOptions,
@@ -139,6 +146,37 @@ export default function BrandOverviewPage() {
   // Per-card campaign stats depend on the campaigns query alone — show a small
   // skeleton on the stats line while it resolves, never blocking the card itself.
   const campaignsPending = campaignsData === undefined;
+
+  // Auto-skip the overview straight into the feature when the brand has exactly
+  // ONE GA + implemented feature (public release ships a single feature, so the
+  // overview is a pass-through). Gate on the GA set — NOT `visibleFeatures` —
+  // because the alpha flag may not have resolved yet, which would mis-skip a
+  // staff viewer mid-resolution. The feature list + campaign count aren't JWT
+  // claims and campaigns are mutable, so this can't live at the edge; it mirrors
+  // the feature-index page's own client redirect. When a 2nd feature ships GA
+  // this is length 2 → no redirect → the overview renders again.
+  const gaImplemented = useMemo(
+    () => features.filter((f) => f.implemented && GA_BRAND_FEATURES.has(f.slug)),
+    [features],
+  );
+  // A single GA feature guarantees a redirect the moment features resolve — the
+  // only question campaigns answer is feature vs new-campaign. Hold the render as
+  // soon as that's known (a valid brand + one GA feature), even before campaigns
+  // load, so the overview never flashes. A bad brand falls through to the "Brand
+  // not found" branch instead of redirecting.
+  const willRedirect = Boolean(brand) && !featuresLoading && gaImplemented.length === 1;
+  // The destination needs campaigns resolved to pick feature vs new-campaign.
+  const featureLanding =
+    willRedirect && campaignsData !== undefined
+      ? resolveFeatureLanding(gaImplemented, campaigns)
+      : null;
+  useEffect(() => {
+    if (!featureLanding) return;
+    const base = `/orgs/${orgId}/brands/${brandId}/features/${featureLanding.featureSlug}`;
+    router.replace(
+      featureLanding.needsCampaign ? `${base}/campaigns/new` : base,
+    );
+  }, [featureLanding, orgId, brandId, router]);
 
   // Build workflow sections from actual campaigns, grouped by feature slug
   const workflowSections = useMemo(() => {
@@ -174,6 +212,12 @@ export default function BrandOverviewPage() {
         </Link>
       </div>
     );
+  }
+
+  // Single GA feature → a redirect is certain; render nothing (no overview flash)
+  // while campaigns resolve and the replace fires.
+  if (willRedirect) {
+    return null;
   }
 
   return (

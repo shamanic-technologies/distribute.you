@@ -641,6 +641,55 @@ export async function saveBrandSalesEconomics(
   return parsed.data;
 }
 
+// ── Effective sales economics (new-campaign prefill) ──
+// brand-service decides the default server-side: the brand's saved set when present
+// (source "user"), else the cross-brand average (source "cross-brand-average"), else
+// economics null (source null → empty table; caller keeps its hard-coded defaults).
+// Replaces the old client-side null→average fallback (two calls) with ONE call.
+export interface EffectiveSalesEconomics {
+  lifetimeRevenueUsd: number;
+  replyToMeetingPct: number;
+  visitToMeetingPct: number;
+  meetingToClosePct: number;
+  visitToClosePct: number;
+}
+
+export type SalesEconomicsSource = "user" | "cross-brand-average";
+
+// z.coerce.number per CLAUDE.md #1357: the cross-brand average is Postgres
+// ROUND(AVG(...)) `numeric`, serialized as a STRING ("40") on the wire — z.number()
+// would reject it. coerce parses string OR number, forward-compatible if cast later.
+const EffectiveSalesEconomicsSchema = z.object({
+  lifetimeRevenueUsd: z.coerce.number(),
+  replyToMeetingPct: z.coerce.number(),
+  visitToMeetingPct: z.coerce.number(),
+  meetingToClosePct: z.coerce.number(),
+  visitToClosePct: z.coerce.number(),
+});
+
+const GetSalesEconomicsEffectiveResponseSchema = z.object({
+  economics: EffectiveSalesEconomicsSchema.nullable(),
+  source: z.enum(["user", "cross-brand-average"]).nullable(),
+});
+
+/** GET /brands/:brandId/sales-economics-effective — the brand's saved set (source "user"),
+ * else the cross-brand average (source "cross-brand-average"), else { economics: null, source: null }. */
+export async function getSalesEconomicsEffective(
+  brandId: string,
+  token?: string,
+): Promise<{ economics: EffectiveSalesEconomics | null; source: SalesEconomicsSource | null }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/sales-economics-effective`, { token });
+  const parsed = GetSalesEconomicsEffectiveResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getSalesEconomicsEffective: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getSalesEconomicsEffective: invalid response shape");
+  }
+  return parsed.data;
+}
+
 // Brand field extraction
 export interface ExtractFieldDef {
   key: string;
@@ -989,6 +1038,59 @@ export async function getFeatureRevenue(
   return parseFeatureRevenue(raw, "getFeatureRevenue");
 }
 
+// ─── Per-campaign revenue ROI (grouped) ──────────────────────────────────────
+// GET /features/:slug/revenue?groupBy=campaignId → one lean group per campaign
+// that has runs for the brand+feature: { campaignId, totalPipelineUsd, roiMultiple }.
+// A single call returns every campaign's ROI (no per-campaign fan-out). ROI =
+// expected pipeline ÷ run cost (features-service is the single source). safeParse
+// → shape rot becomes a caught fetch-error, never a render crash (CLAUDE.md #1213).
+const FeatureRevenueByCampaignSchema = z.object({
+  featureSlug: z.string(),
+  groupBy: z.literal("campaignId"),
+  groups: z.array(
+    z.object({
+      campaignId: z.string(),
+      headline: z.object({ totalPipelineUsd: z.number().nullable() }),
+      costEconomics: z.object({
+        totalCostUsd: z.number(),
+        costOfAcquisitionPct: z.number().nullable(),
+        roiMultiple: z.number().nullable(),
+      }),
+    }),
+  ),
+});
+
+export interface CampaignRevenueGroup {
+  campaignId: string;
+  totalPipelineUsd: number | null;
+  totalCostUsd: number;
+  /** totalPipelineUsd / totalCostUsd. Null when cost is 0 or pipeline is null. */
+  roiMultiple: number | null;
+}
+
+/** GET /features/:slug/revenue?groupBy=campaignId — per-campaign ROI for a brand+feature. */
+export async function getFeatureRevenueByCampaign(
+  featureSlug: string,
+  brandId: string,
+  token?: string,
+): Promise<CampaignRevenueGroup[]> {
+  const query = new URLSearchParams({ brandId, groupBy: "campaignId" });
+  const raw = await apiCall<unknown>(`/features/${featureSlug}/revenue?${query.toString()}`, { token });
+  const parsed = FeatureRevenueByCampaignSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getFeatureRevenueByCampaign: response shape mismatch", {
+      issues: parsed.error.issues,
+    });
+    throw new Error("[dashboard] getFeatureRevenueByCampaign: invalid response shape");
+  }
+  return parsed.data.groups.map((g) => ({
+    campaignId: g.campaignId,
+    totalPipelineUsd: g.headline.totalPipelineUsd,
+    totalCostUsd: g.costEconomics.totalCostUsd,
+    roiMultiple: g.costEconomics.roiMultiple,
+  }));
+}
+
 /** POST /brands — upsert brand by URL, returns brandId */
 export async function upsertBrand(
   url: string,
@@ -1131,6 +1233,21 @@ export interface RunEvent {
   createdAt: string;
 }
 
+// Per-field schema verified against runs-service GET /v1/events (api-registry).
+// `.passthrough()` keeps every field; the feed only reads id/service/event/level/
+// createdAt. safeParse turns wire-rot into a caught fetch-error per CLAUDE.md.
+const RunEventSchema = z
+  .object({
+    id: z.string(),
+    service: z.string(),
+    event: z.string(),
+    level: z.enum(["info", "warn", "error"]),
+    createdAt: z.string(),
+  })
+  .passthrough();
+
+const ListEventsResponseSchema = z.object({ events: z.array(RunEventSchema) });
+
 /** GET /events?campaignId={id} — returns run events for a campaign via runs-service proxy */
 export async function listCampaignEvents(
   campaignId: string,
@@ -1141,7 +1258,16 @@ export async function listCampaignEvents(
   if (options?.level) params.set("level", options.level);
   if (options?.limit != null) params.set("limit", String(options.limit));
   if (options?.offset != null) params.set("offset", String(options.offset));
-  return apiCall<{ events: RunEvent[] }>(`/events?${params.toString()}`, { token: options?.token });
+  const raw = await apiCall<unknown>(`/events?${params.toString()}`, { token: options?.token });
+  const parsed = ListEventsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] listCampaignEvents: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] listCampaignEvents: invalid response shape");
+  }
+  return parsed.data as unknown as { events: RunEvent[] };
 }
 
 /** GET /brands/:brandId/runs — returns runs or empty list if brand not found (404/500) */

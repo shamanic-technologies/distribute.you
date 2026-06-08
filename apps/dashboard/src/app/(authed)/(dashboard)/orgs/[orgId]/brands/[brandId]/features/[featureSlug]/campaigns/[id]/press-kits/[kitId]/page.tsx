@@ -272,7 +272,11 @@ export default function CampaignPressKitDetailPage() {
   );
   const brand = brandData?.brand ?? null;
 
-  const { data: kit, isLoading } = useAuthQuery(
+  // isPending (not isLoading): while the org-consistency gate suspends the
+  // query, isLoading reads false though the kit is still unresolved — gating on
+  // it flashes "Press kit not found". isPending stays true until the query
+  // resolves, so not-found shows only on a real empty result.
+  const { data: kit, isPending } = useAuthQuery(
     ["mediaKit", kitId],
     () => getMediaKit(kitId, { headers: contextHeaders }),
     { refetchInterval: 5_000 },
@@ -346,7 +350,7 @@ export default function CampaignPressKitDetailPage() {
         <span className="text-gray-900 font-medium truncate">{kit?.title || "Press Kit"}</span>
       </nav>
 
-      {isLoading ? (
+      {isPending ? (
         <div className="space-y-4">
           <div className="h-10 w-60 bg-gray-100 rounded animate-pulse" />
           <div className="h-96 bg-gray-100 rounded-lg animate-pulse" />

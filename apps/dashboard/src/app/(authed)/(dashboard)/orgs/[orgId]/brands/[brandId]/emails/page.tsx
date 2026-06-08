@@ -6,6 +6,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { listBrandEmails, type Email } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
+import { EmailSignature } from "@/components/email-signature";
 
 function getEmailBody(email: Email): { html: string | null; text: string | null } {
   if (email.bodyHtml || email.bodyText) {
@@ -93,7 +94,7 @@ export default function BrandEmailsPage() {
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const [search, setSearch] = useState("");
 
-  const { data, isLoading } = useAuthQuery(
+  const { data, isPending } = useAuthQuery(
     ["brandEmails", brandId],
     () => listBrandEmails(brandId),
     { refetchInterval: POLL_INTERVAL },
@@ -111,7 +112,7 @@ export default function BrandEmailsPage() {
     });
   }, [emails, search]);
 
-  const showSkeleton = isLoading && !data;
+  const showSkeleton = isPending && !data;
 
   return (
     <div className="flex flex-col md:flex-row h-full relative">
@@ -247,29 +248,29 @@ export default function BrandEmailsPage() {
               <div className="bg-gray-50 border-b border-gray-200 px-4 py-3">
                 <p className="font-semibold text-gray-800">{selectedEmail.subject}</p>
                 <p className="text-xs text-gray-500 mt-1">
-                  From: {selectedEmail.clientCompanyName || 'Your Company'}
+                  From: distribute.you
                 </p>
               </div>
               <div className="p-4">
                 {(() => {
                   const body = getEmailBody(selectedEmail);
-                  if (body.html) {
-                    return (
-                      <div
-                        className="prose prose-sm max-w-none"
-                        dangerouslySetInnerHTML={{ __html: body.html }}
-                      />
-                    );
-                  }
-                  if (body.text) {
-                    return (
-                      <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans">
-                        {body.text}
-                      </pre>
-                    );
-                  }
+                  const hasBody = !!(body.html || body.text);
                   return (
-                    <p className="text-sm text-gray-400 italic">No email body available</p>
+                    <>
+                      {body.html ? (
+                        <div
+                          className="prose prose-sm max-w-none"
+                          dangerouslySetInnerHTML={{ __html: body.html }}
+                        />
+                      ) : body.text ? (
+                        <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans">
+                          {body.text}
+                        </pre>
+                      ) : (
+                        <p className="text-sm text-gray-400 italic">No email body available</p>
+                      )}
+                      {hasBody && <EmailSignature className="text-sm text-gray-700" />}
+                    </>
                   );
                 })()}
               </div>

@@ -11,6 +11,9 @@ import { fetchFeatureStats, getFeatureRevenue, createCampaign, sendCampaignEmail
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { pollOptionsSlow } from "@/lib/query-options";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
+import { CampaignActivity } from "@/components/campaign/campaign-activity";
+// Temporarily disabled: the post-launch four-step modal blocks the campaign page.
+// import { CampaignLaunchModal } from "@/components/campaign/campaign-launch-modal";
 import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
@@ -211,6 +214,19 @@ export default function CampaignOverviewPage() {
 
   return (
     <div className="p-4 md:p-8">
+      {/*
+        Temporarily disabled: the post-launch four-step modal blocks the campaign page.
+        Re-enable this block with the CampaignLaunchModal import above when the flow is needed again.
+
+        {entityNames.includes("leads") && (
+          <CampaignLaunchModal
+            campaignId={campaign.id}
+            brandUrls={campaign.brandUrls}
+            campaignStatus={campaign.status}
+          />
+        )}
+      */}
+
       {/* Header */}
       <div className="mb-6">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
@@ -258,6 +274,9 @@ export default function CampaignOverviewPage() {
           <p className="mt-2 text-sm text-red-600">{relaunchError}</p>
         )}
       </div>
+
+      {/* Live activity — reassures right after launch that work is in flight */}
+      <CampaignActivity campaignId={campaign.id} />
 
       {/* Entity-specific results */}
       {entityNames.includes("press-kits") && campaign && (

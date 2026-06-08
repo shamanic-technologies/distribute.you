@@ -24,7 +24,7 @@ export default function BrandsPage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const autoCreateTriggered = useRef(false);
 
-  const { data, isLoading, refetch } = useAuthQuery(
+  const { data, isPending, refetch } = useAuthQuery(
     ["brands"],
     () => listBrands(),
     pollOptions,
@@ -96,7 +96,7 @@ export default function BrandsPage() {
     );
   }
 
-  const showSkeleton = isLoading && !data;
+  const showSkeleton = isPending && !data;
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">

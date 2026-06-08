@@ -49,6 +49,9 @@ describe("Email template deployment at startup", () => {
     "waitlist-confirmed",
     "invite-claimed-welcome",
     "invite-success-notification",
+    "credit-depleted",
+    "credit-depleted-followup-3d",
+    "credit-depleted-followup-10d",
   ];
 
   for (const name of templateNames) {
@@ -57,12 +60,12 @@ describe("Email template deployment at startup", () => {
     });
   }
 
-  it("should deploy exactly 10 templates", () => {
+  it("should deploy exactly 13 templates", () => {
     const arrMatch = content.match(/EMAIL_TEMPLATES\s*=\s*\[([\s\S]*?)\n\];/);
     expect(arrMatch).toBeTruthy();
     const arr = arrMatch![1];
     const matches = arr.match(/name: "/g);
-    expect(matches).toHaveLength(10);
+    expect(matches).toHaveLength(13);
   });
 
   it("should be best-effort (not crash on failure)", () => {

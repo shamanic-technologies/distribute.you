@@ -21,6 +21,7 @@ import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
 import { RevenueChart } from "@/components/revenue/revenue-chart";
 import { RevenueCostSummary } from "@/components/revenue/revenue-cost-summary";
+import { TopWorkflowsCard } from "@/components/revenue/top-workflows-card";
 import { Skeleton } from "@/components/skeleton";
 import { formatStatValue } from "@/lib/format-stat";
 import { pollOptions, pollOptionsSlow } from "@/lib/query-options";
@@ -258,6 +259,7 @@ function GenericFeaturePage({
             costBreakdown={brandCostBreakdown}
             costEconomics={featureRevenueData?.costEconomics}
             pending={!revealed}
+            bottomCard={<TopWorkflowsCard brandId={brandId} featureSlug={featureSlug} />}
           />
         </div>
       )}

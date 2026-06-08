@@ -15,8 +15,9 @@ import {
   sendCampaignEmail,
   getBrand,
   listBrands,
-  getBrandSalesEconomics,
+  getSalesEconomicsEffective,
   saveBrandSalesEconomics,
+  type SalesEconomicsSource,
   type BrandSalesEconomicsInput,
   getWorkflowKeyStatus,
   prefillFeatureInputs,
@@ -44,7 +45,8 @@ import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-pane
 import { CampaignAIPanel } from "@/components/campaigns/campaign-ai-panel";
 import { BrandLogo } from "@/components/brand-logo";
 import { Skeleton } from "@/components/skeleton";
-import { SparklesIcon, XMarkIcon, EllipsisVerticalIcon, PlusIcon, PencilSquareIcon, InformationCircleIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
+import { EmailSignature } from "@/components/email-signature";
+import { SparklesIcon, XMarkIcon, EllipsisVerticalIcon, PlusIcon, InformationCircleIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
 
 type Mode = "autopilot" | "manual";
 type BudgetFrequency = "one-off" | "daily" | "weekly" | "monthly";
@@ -202,15 +204,46 @@ function TestEmailCard({ email, expanded, onToggle }: { email: TestEmailCardData
             <div key={s.step} className="border-t border-gray-100 pt-2">
               {steps.length > 1 && (
                 <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
-                  Step {s.step}{s.step > 1 && s.daysSinceLastStep ? ` · +${s.daysSinceLastStep}d` : ""}
+                  {s.step === 1
+                    ? "Initial email"
+                    : `Follow-up ${s.step - 1}${s.daysSinceLastStep ? ` · ${s.daysSinceLastStep} day${s.daysSinceLastStep === 1 ? "" : "s"} later` : ""}`}
                 </div>
               )}
               <div className="text-[11px] text-gray-600 mt-0.5 whitespace-pre-wrap">{s.bodyText}</div>
+              {s.bodyText && <EmailSignature className="text-[11px] text-gray-500" />}
             </div>
           ))}
         </div>
       )}
     </button>
+  );
+}
+
+// Placeholder card shown while the selected workflow's examples fetch — mirrors the
+// collapsed TestEmailCard layout (lead row + subject + 3 body lines) for zero shift.
+function ExampleEmailSkeleton() {
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <Skeleton className="h-3.5 w-40" />
+        <Skeleton className="h-3.5 w-3.5 shrink-0" />
+      </div>
+      <Skeleton className="h-3 w-32 mt-1.5" />
+      <Skeleton className="h-2.5 w-full mt-1.5" />
+      <Skeleton className="h-2.5 w-5/6 mt-1" />
+      <Skeleton className="h-2.5 w-2/3 mt-1" />
+    </div>
+  );
+}
+
+// Inline loading spinner (mirrors link-button.tsx) — used on the Launch/Start button
+// and the full-screen "Launching…" overlay while the create-campaign POST is in flight.
+function Spinner({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg className={`animate-spin ${className}`} viewBox="0 0 24 24" aria-hidden="true">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+    </svg>
   );
 }
 
@@ -332,27 +365,37 @@ export default function FeatureCreateCampaignPage() {
   const [budgetTier, setBudgetTier] = useState<BudgetTier>("recommended");
   const [budgetCustom, setBudgetCustom] = useState("");
   const salesPrefilledRef = useRef(false);
+  // Provenance of the prefilled metrics, for the section-2 badge: "user" = brand's own
+  // saved set, "cross-brand-average" = estimate borrowed from other brands, null =
+  // hard-coded defaults (empty table). Flips to "user" on first manual edit.
+  const [econSource, setEconSource] = useState<SalesEconomicsSource | null>(null);
 
-  // ── Persist the brand's sales economics (auto-upsert per brand, no Save button) ──
-  // Load on mount (sales path only): seed the 5 inputs from the saved set, else keep
-  // SALES_ECON_DEFAULTS. A debounced PUT mirrors every edit back to brand-service.
+  // ── Prefill the brand's sales economics (auto-upsert per brand, no Save button) ──
+  // ONE call: brand-service returns the effective set — the brand's saved values
+  // (source "user"), the cross-brand average when nothing is saved
+  // (source "cross-brand-average"), or { economics: null } for an empty table
+  // (source null → keep the hard-coded SALES_ECON_DEFAULTS). A debounced PUT mirrors
+  // every edit back to brand-service.
   const { data: salesEconData } = useAuthQuery(
-    ["brandSalesEconomics", brandId],
-    () => getBrandSalesEconomics(brandId),
+    ["salesEconomicsEffective", brandId],
+    () => getSalesEconomicsEffective(brandId),
     { enabled: isSalesFunnel },
   );
   const econHydrated = useRef(false);
   useEffect(() => {
     if (!isSalesFunnel || econHydrated.current || salesEconData === undefined) return;
-    const e = salesEconData.salesEconomics;
+    const e = salesEconData.economics;
     if (e) {
       setEconLtv(String(e.lifetimeRevenueUsd));
       setEconReplyToMeeting(String(e.replyToMeetingPct));
       setEconVisitToMeeting(String(e.visitToMeetingPct));
       setEconMeetingToClose(String(e.meetingToClosePct));
       setEconClickToClose(String(e.visitToClosePct));
+      setEconSource(salesEconData.source);
     }
-    // Mark hydrated even when unset so later background refetches never clobber edits.
+    // Mark hydrated even when economics is null (empty table → keep
+    // SALES_ECON_DEFAULTS, econSource stays null) so later background refetches
+    // never clobber edits.
     econHydrated.current = true;
   }, [isSalesFunnel, salesEconData]);
 
@@ -387,6 +430,8 @@ export default function FeatureCreateCampaignPage() {
     else if (field === "visitToMeeting") setEconVisitToMeeting(value);
     else if (field === "meetingToClose") setEconMeetingToClose(value);
     else setEconClickToClose(value);
+    // User edited a value → these are now the brand's own numbers, not an estimate.
+    if (econSource !== "user") setEconSource("user");
 
     if (!isSalesFunnel) return;
     if (econSaveTimer.current) clearTimeout(econSaveTimer.current);
@@ -695,7 +740,16 @@ export default function FeatureCreateCampaignPage() {
     [rows, modalSelectedWorkflowId],
   );
   const exampleWfSlug = modalSelectedWf?.workflowSlug ?? null;
-  const { data: examplesData, isPending: examplesPending } = useAuthQuery(
+  const {
+    data: examplesData,
+    isPending: examplesPending,
+    // keepPreviousData (global) keeps the PREVIOUS workflow's emails in `examplesData`
+    // while the newly-selected workflow's examples fetch. `isPlaceholderData` is true
+    // exactly in that window — the shown data belongs to a different workflow, so we
+    // paint skeletons instead of stale emails. (`isPending` only fires on the first
+    // cold load when no previous data exists.)
+    isPlaceholderData: examplesIsPlaceholder,
+  } = useAuthQuery(
     ["workflowExamples", exampleWfSlug, brandId],
     async () => {
       try {
@@ -707,6 +761,29 @@ export default function FeatureCreateCampaignPage() {
     },
     { enabled: showWorkflowPicker && !!exampleWfSlug && !!brandId, staleTime: 60_000 },
   );
+
+  // Prefetch examples for every visible workflow the moment the picker opens, so
+  // switching from one workflow to another is INSTANT (cache hit, staleTime 60s)
+  // instead of a ~2s cold fetch. Mirrors the on-demand query's key + fail-soft shape.
+  useEffect(() => {
+    if (!showWorkflowPicker || !brandId) return;
+    for (const r of rows) {
+      if (!r.workflowSlug) continue;
+      const slug = r.workflowSlug;
+      queryClient.prefetchQuery({
+        queryKey: ["workflowExamples", slug, brandId],
+        queryFn: async () => {
+          try {
+            return await listWorkflowExamples(slug, brandId, 3);
+          } catch (err) {
+            console.error("[dashboard] workflow examples prefetch failed:", err);
+            return { examples: [] as WorkflowExampleEmail[] };
+          }
+        },
+        staleTime: 60_000,
+      });
+    }
+  }, [showWorkflowPicker, brandId, rows, queryClient]);
 
   const runWorkflowTest = useCallback(async (wf: WorkflowTableRow) => {
     const baseUrl = brand?.url ?? "";
@@ -958,6 +1035,11 @@ export default function FeatureCreateCampaignPage() {
         }
       }
       sendCampaignEmail("campaign_created", result.campaign).catch(() => {});
+      // Seed the campaign-detail cache with the just-created entity so the destination
+      // page's ["campaign", id] query is warm — its header/shell paint instantly instead
+      // of a cold getCampaign round-trip. The page's poll then refines (brand-url enrichment).
+      // (Framework: write the mutation response to the cache, don't just invalidate.)
+      queryClient.setQueryData(["campaign", result.campaign.id], { campaign: result.campaign });
       await queryClient.invalidateQueries({ queryKey: ["campaigns", { brandId }] });
       router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/${result.campaign.id}`);
       // Don't reset isCreating on success — the page is navigating away.
@@ -1186,6 +1268,18 @@ export default function FeatureCreateCampaignPage() {
 
   return (
     <div className="p-4 md:p-8">
+      {/* Full-screen reassurance while the create-campaign POST is in flight (~3s).
+          The new campaign's id doesn't exist until the POST returns, so we can't route
+          to its page yet — this overlay tells the user we're working instead of leaving
+          the button looking idle. On success, doCreateCampaign navigates (cache pre-seeded
+          → the destination paints instantly); isCreating resets only on error. */}
+      {isCreating && (
+        <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
+          <Spinner className="h-8 w-8 text-brand-500" />
+          <p className="mt-4 text-sm font-medium text-gray-700">Launching your campaign…</p>
+          <p className="mt-1 text-xs text-gray-400">Setting up your workflow and budget. This takes a few seconds.</p>
+        </div>
+      )}
       {/* Header */}
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-gray-800">Create Campaign</h1>
@@ -1351,6 +1445,17 @@ export default function FeatureCreateCampaignPage() {
                 <span className="w-5 h-5 inline-flex items-center justify-center text-[11px] font-bold text-white bg-brand-500 rounded-full">2</span>
                 <h2 className="font-display font-semibold text-gray-800">Your conversion metrics</h2>
               </div>
+              {isSalesFunnel && econReady && econSource === "cross-brand-average" && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-1 text-[11px] font-medium text-amber-700">
+                  <SparklesIcon className="w-3 h-3" />
+                  Estimated · average of your other brands
+                </span>
+              )}
+              {isSalesFunnel && econReady && econSource === "user" && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-gray-50 border border-gray-200 px-2.5 py-1 text-[11px] font-medium text-gray-500">
+                  Your saved values
+                </span>
+              )}
             </div>
             <div className="p-5">
               <p className="text-sm text-gray-500 mb-4">Reused across every sales campaign for this brand</p>
@@ -1464,7 +1569,7 @@ export default function FeatureCreateCampaignPage() {
                         {proj && (
                           <div className="mt-2 text-[11px] leading-relaxed">
                             <div className="text-green-700 font-semibold">~{fmtUsd0(proj.revenue)} revenue / month</div>
-                            <div className="text-gray-500"><InfoLabel label="CAC" tip="Customer acquisition cost as a share of the revenue it generates (spend ÷ revenue)." /> {proj.cacPct != null ? `${fmtNum(proj.cacPct)}%` : "—"} / month</div>
+                            <div className="text-gray-500"><InfoLabel label="CAC" tip="Customer acquisition cost as a share of the revenue it generates (spend ÷ revenue)." /> {proj.cacPct != null ? `${fmtNum(proj.cacPct)}%` : "—"}</div>
                           </div>
                         )}
                       </button>
@@ -1576,28 +1681,17 @@ export default function FeatureCreateCampaignPage() {
                 );
               })()}
 
-              {salesPick && (() => {
-                // Show every populated unit cost (positive reply + website visit), not just
-                // the winning route — the workflow's full economics at a glance (served).
-                const pickItem = projByDynasty.get(salesPick.workflowDynastySlug);
-                const replyUsd = pickItem?.replyUsd ?? null;
-                const clickUsd = pickItem?.clickUsd ?? null;
-                const parts: string[] = [];
-                if (replyUsd != null) parts.push(`${fmtUsd0(replyUsd)} / positive reply`);
-                if (clickUsd != null) parts.push(`${fmtUsd0(clickUsd)} / website visit`);
-                return (
-                  <div className="flex items-center justify-center gap-2 mt-3 text-xs text-gray-500">
-                    <SparklesIcon className="w-3.5 h-3.5 text-brand-500" />
-                    <span>{salesWorkflowOverrideId ? "selected workflow" : "auto-selected workflow"}</span>
-                    <span className="font-medium text-gray-800">{salesPick.workflowDynastyName}</span>
-                    {parts.length > 0 && <span>&mdash; {parts.join(", ")}</span>}
-                    <button type="button" onClick={() => { setModalSelectedWorkflowId(salesPick?.id ?? null); setShowWorkflowPicker(true); }} title="Change workflow"
-                      className="ml-0.5 p-1 rounded text-gray-400 hover:text-brand-600 hover:bg-brand-50 transition">
-                      <PencilSquareIcon className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                );
-              })()}
+              {salesPick && (
+                <div className="flex items-center justify-center gap-2 mt-3 text-xs text-gray-500">
+                  <SparklesIcon className="w-3.5 h-3.5 text-brand-500" />
+                  <span>{salesWorkflowOverrideId ? "selected workflow" : "auto-selected workflow"}</span>
+                  <span className="font-medium text-gray-800">{salesPick.workflowDynastyName}</span>
+                  <button type="button" onClick={() => { setModalSelectedWorkflowId(salesPick?.id ?? null); setShowWorkflowPicker(true); }}
+                    className="ml-1 text-xs font-medium text-brand-600 hover:text-brand-700 underline underline-offset-2 transition">
+                    See example emails
+                  </button>
+                </div>
+              )}
 
               <details className="mt-4 border-t border-gray-100 pt-3">
                 <summary className="cursor-pointer text-sm text-gray-500 font-medium select-none">Campaign details</summary>
@@ -1634,8 +1728,9 @@ export default function FeatureCreateCampaignPage() {
               <button
                 onClick={handleCreateCampaign}
                 disabled={isCreating || isLoadingProfile || !effectiveBudget || !salesPick}
-                className="mt-4 w-full px-5 py-3 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                className={`mt-4 w-full px-5 py-3 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition flex items-center justify-center gap-2 ${isCreating ? "cursor-wait" : "disabled:opacity-40 disabled:cursor-not-allowed"}`}
               >
+                {isCreating && <Spinner />}
                 {isCreating ? "Launching…" : "Launch campaign"}
               </button>
             </div>
@@ -1721,6 +1816,10 @@ export default function FeatureCreateCampaignPage() {
                       const liveTest = !!t || starting;
                       const showExamples = !liveTest;
                       const cards: TestEmailCardData[] = showExamples ? examples : testEmails;
+                      // Loading window = first cold load OR switching workflows (placeholder = the
+                      // previous workflow's emails kept by keepPreviousData). Paint skeletons, never
+                      // the stale cards. A warm re-click (cache hit < 60s) skips this → instant.
+                      const examplesLoading = showExamples && (examplesPending || examplesIsPlaceholder);
                       return (
                         <div>
                           <div className="flex items-center justify-between gap-2 pb-3 mb-3 border-b border-gray-200">
@@ -1749,15 +1848,23 @@ export default function FeatureCreateCampaignPage() {
                           {(active || starting) && testEmails.length === 0 && !t?.error && <p className="text-sm text-gray-500 py-6 text-center">Generating emails…</p>}
                           {/* Terminal: the run finished (stopped) but produced no emails — say so instead of an empty panel. */}
                           {!!t && !active && !starting && testEmails.length === 0 && !t.error && <p className="text-sm text-gray-500 py-6 text-center">No emails were generated for this test.</p>}
-                          {showExamples && examplesPending && <p className="text-sm text-gray-500 py-6 text-center">Loading examples…</p>}
-                          {showExamples && !examplesPending && examples.length === 0 && <p className="text-sm text-gray-500 py-6 text-center">No examples yet. Run a test to preview real emails for this workflow.</p>}
-                          <div className="space-y-2">
-                            {cards.map((e) => (
-                              <TestEmailCard key={e.id} email={e}
-                                expanded={expandedTestEmailId === e.id}
-                                onToggle={() => setExpandedTestEmailId((cur) => (cur === e.id ? null : e.id))} />
-                            ))}
-                          </div>
+                          {examplesLoading && (
+                            <div className="space-y-2">
+                              <ExampleEmailSkeleton />
+                              <ExampleEmailSkeleton />
+                              <ExampleEmailSkeleton />
+                            </div>
+                          )}
+                          {showExamples && !examplesLoading && examples.length === 0 && <p className="text-sm text-gray-500 py-6 text-center">No examples yet. Run a test to preview real emails for this workflow.</p>}
+                          {!examplesLoading && (
+                            <div className="space-y-2">
+                              {cards.map((e) => (
+                                <TestEmailCard key={e.id} email={e}
+                                  expanded={expandedTestEmailId === e.id}
+                                  onToggle={() => setExpandedTestEmailId((cur) => (cur === e.id ? null : e.id))} />
+                              ))}
+                            </div>
+                          )}
                         </div>
                       );
                     })()}
@@ -1919,9 +2026,10 @@ export default function FeatureCreateCampaignPage() {
               <button
                 onClick={handleCreateCampaign}
                 disabled={isCreating}
-                className="px-5 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition disabled:opacity-50"
+                className={`px-5 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition flex items-center gap-2 ${isCreating ? "cursor-wait" : "disabled:opacity-50"}`}
               >
-                {isCreating ? "Creating..." : "Start Campaign"}
+                {isCreating && <Spinner />}
+                {isCreating ? "Creating…" : "Start Campaign"}
               </button>
               <button
                 onClick={() => setShowForm(false)}

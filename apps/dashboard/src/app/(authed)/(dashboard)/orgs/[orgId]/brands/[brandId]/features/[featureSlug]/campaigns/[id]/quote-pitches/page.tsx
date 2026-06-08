@@ -52,7 +52,7 @@ export default function QuotePitchesPage() {
 
   const [statusFilter, setStatusFilter] = useState<QuotePitchStatus | "">("");
 
-  const { data, isLoading } = useAuthQuery(
+  const { data, isPending } = useAuthQuery(
     ["quotePitches", { campaignId, status: statusFilter }],
     () =>
       listAllQuotePitches({
@@ -88,7 +88,7 @@ export default function QuotePitchesPage() {
         </select>
       </div>
 
-      {isLoading && !data ? (
+      {isPending && !data ? (
         <ListSkeleton />
       ) : pitches.length === 0 ? (
         <EmptyState message="No pitches yet." />

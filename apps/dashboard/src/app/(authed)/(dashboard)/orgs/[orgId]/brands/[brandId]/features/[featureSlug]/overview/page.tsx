@@ -70,6 +70,9 @@ export default function FeatureOverviewPage() {
         pending={!valuesRevealed}
         newCampaignHref={`${basePath}/campaigns/new`}
         costBreakdown={costData?.costs ?? []}
+        brandId={brandId}
+        featureSlug={featureSlug}
+        basePath={basePath}
       />
     </div>
   );

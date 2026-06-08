@@ -169,7 +169,7 @@ export default function CampaignRunsPage() {
   const params = useParams();
   const campaignId = params.id as string;
 
-  const { data, isLoading } = useAuthQuery(
+  const { data, isPending } = useAuthQuery(
     ["campaignRuns", campaignId],
     () => listCampaignRuns(campaignId),
     { refetchInterval: 5_000, placeholderData: keepPreviousData },
@@ -178,7 +178,7 @@ export default function CampaignRunsPage() {
   const runs = data?.runs ?? [];
   const tree = useMemo(() => buildRunTree(runs), [runs]);
 
-  if (isLoading && !data) {
+  if (isPending && !data) {
     return (
       <div className="p-4 md:p-8">
         <div className="animate-pulse space-y-3">

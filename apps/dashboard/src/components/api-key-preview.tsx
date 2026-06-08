@@ -11,7 +11,7 @@ export function ApiKeyPreview() {
   const [creating, setCreating] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const { data, isLoading } = useAuthQuery(["apiKeys"], () =>
+  const { data, isPending } = useAuthQuery(["apiKeys"], () =>
     listApiKeys()
   );
   const keys = data?.keys ?? [];
@@ -35,7 +35,7 @@ export function ApiKeyPreview() {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  if (isLoading && !data) {
+  if (isPending && !data) {
     return (
       <div className="bg-white rounded-2xl border border-gray-200 p-6 animate-pulse">
         <div className="h-5 bg-gray-200 rounded w-24 mb-3"></div>
