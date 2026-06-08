@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useOrganization } from "@clerk/nextjs";
+import { explicitHierarchyHref, hasExplicitHierarchyIntent } from "@/lib/last-brand";
 
 /**
  * / → redirects to /orgs/{activeOrgId}
@@ -10,13 +11,19 @@ import { useOrganization } from "@clerk/nextjs";
  */
 export default function DashboardHome() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { organization, isLoaded } = useOrganization();
+  const explicitHierarchy = hasExplicitHierarchyIntent(searchParams);
 
   useEffect(() => {
     if (isLoaded && organization) {
-      router.replace(`/orgs/${organization.id}`);
+      router.replace(
+        explicitHierarchy
+          ? explicitHierarchyHref(`/orgs/${organization.id}`)
+          : `/orgs/${organization.id}`,
+      );
     }
-  }, [isLoaded, organization, router]);
+  }, [explicitHierarchy, isLoaded, organization, router]);
 
   return <div className="h-screen bg-gray-50" />;
 }

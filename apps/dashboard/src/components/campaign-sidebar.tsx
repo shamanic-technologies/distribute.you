@@ -7,6 +7,7 @@ import { useEntityRegistry } from "@/lib/entity-registry-context";
 import { CampaignInputsPanel } from "./campaign/campaign-inputs-panel";
 import { CampaignPromptPanel } from "./campaign/campaign-prompt-panel";
 import { isExpertQuoteFeature } from "@/lib/expert-quote-feature";
+import { explicitHierarchyHref } from "@/lib/last-brand";
 
 // Only the PR-Expert quote family has an editable generation prompt today (the
 // GENERATE button on the quote-requests page renders the expert-quote-pitch
@@ -147,7 +148,9 @@ export function CampaignSidebar({ campaignId, orgId, brandId, featureSlug, entit
   // (entity items depend on them); skeleton rows until then. See CLAUDE.md → "Coordinated reveal".
   const defsReady = !featuresLoading && !registryLoading;
   const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/${campaignId}`;
-  const backHref = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`;
+  const backHref = explicitHierarchyHref(
+    `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`,
+  );
 
   const featureDef = getFeature(featureSlug);
   const entities = featureDef?.entities ?? [];
