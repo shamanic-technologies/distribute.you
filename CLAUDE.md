@@ -28,9 +28,15 @@ pnpm --filter @distribute/<package> test tests/unit/specific.test.ts  # single f
 
 **Run `pnpm --filter @distribute/dashboard test` before pushing a dashboard change — `tsc` alone misses source-substring guards** (many tests assert a page contains a literal expression/copy string). `tsc` stays green while the guard goes red in CI and silently blocks auto-merge. Run it (~3s, source-only) and update the matching guard in the same commit. (#1252)
 
+**Moving / renaming a page route ⇒ repoint every source-substring test that `readFileSync`s its old path, SAME PR.** A `git mv` of e.g. `features/[featureSlug]/page.tsx` → `…/campaigns/page.tsx` leaves path-based tests reading the wrong (or now-redirect) file → red, invisible to `tsc`. After any route move: `grep -rl '<old-path>' tests/` and swap the path (the campaigns logic is unchanged, just relocated). (#1321: campaigns list moved to `/campaigns`, 7 tests repointed.)
+
+**"I don't see X" right after a dashboard merge → rule out DEPLOY + DATA before assuming a render bug.** Vercel prod-deploys on `main` merge but lags a few minutes; the reporter often saw the pre-deploy bundle. (1) Confirm the latest prod deployment's commit = the merge (`list_deployments` on the dashboard project). (2) Confirm the brand actually has the data (Neon: sales economics in `brand-service.brand_sales_economics`, cost in `runs-service.runs_costs`). Both were the answer in #1322 — the cost card was deploy-timing, the brand had $570 actual cost + $2,350 LTV — not code. Only dig into the component after deploy + data are ruled out. (#1322, DIS-246)
+
 ## Dashboard UI iteration — real page + Vercel preview, not a standalone mockup
 
 Default: edit the real page with the existing component vocabulary (`bg-white rounded-xl border border-gray-200` cards, `focus:ring-brand-300` inputs, brand-500, `SparklesIcon`, `SectionCard`/`ScoreCard`, the `bg-brand-50`+`border-brand-200` segmented toggle) and push for a Vercel preview. A standalone HTML mockup reads as "page vierge" and gets bounced — acceptable only as a fast layout sketch when explicitly asked, graduate to the real page ASAP. Dashboard project `distribute-dashboard` (`prj_nJn9Xr5D1fD5h7ug3eRPejEGsg2z`, team `team_lYmJIUH6q2rTY6dUfDiYtpAt`), preview alias `distribute-dashboard-git-<branch-hash>-blooming-generation.vercel.app`; find it via Vercel MCP `list_deployments` (query the dashboard project directly). When rewriting a section, inventory existing interactive affordances (AI panels, billing guard, "Edit with AI" → `CampaignAIPanel`) and preserve them — silently dropping one is a regression. (#1239, #1242)
+
+**Adding metrics/info to an existing page → REWORK an existing low-value widget, don't STACK a new section above it.** When the user asks for new numbers on a page that already has stat cards / panels, replace the least-useful existing ones rather than adding a section — a new top section reads as clutter and gets bounced. Default mental model: "rethink the N cards already there to hold the info." (#1322→#1325: shipped a separate Cost & efficiency section above the chart; Kevin wanted it IN the three right-of-chart cards — moved the total/CAC/ROI there, dropped the org/lead/event counters.)
 
 ## Dashboard "size" requests = type scale (text-only), not zoom/spacing
 
@@ -67,6 +73,8 @@ No `release.sh hotfix` here (that targets Railway semver services). Vercel deplo
 ### Missing Backend Fields
 
 If the dashboard needs a field/endpoint/capability the backend doesn't provide, NEVER work around it client-side (regex, slugify, name-derivation, aggregation heuristics). Draft a message for Kevin to forward to the backend team and block on the change.
+
+**Carve-out — a DERIVABLE metric (inputs already on the wire) MAY ship as a flagged interim client-calc while the backend single-source is built in parallel.** The block-on-backend rule is for data NOT on the wire (derived from slugs / name-similarity / fabricated aggregates → block). It does NOT apply when the dashboard ALREADY receives the inputs and the new value is a trivial combination of them (e.g. cost-of-acquisition = `cost ÷ revenue`, both already fetched). For those, when the metric SHOULD live in a backend single-source (per DIS-232), the accepted move is: (a) ship an interim client-side computation, commented as interim + swap-ready, AND (b) spawn the owning backend service in parallel to expose the value, THEN swap the dashboard to the served field. Kevin's call (2026-06-05, DIS-246: "implémente ton propre calcul… mettre en prod tout de suite en attendant que Featureservice fasse son travail"). Unblocks prod without violating single-source — the client-calc is temporary and the backend request is in flight. Still NEVER client-compute from MISSING data; that stays block-on-backend. (#1322)
 
 ### Verify backend shape before writing client types (wire-shape rot)
 
