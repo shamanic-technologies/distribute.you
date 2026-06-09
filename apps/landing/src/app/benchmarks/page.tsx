@@ -16,7 +16,6 @@ import { ExternalStudiesSection } from "@/components/benchmarks/external-studies
 import { BenchmarkCTA } from "@/components/benchmarks/benchmark-cta";
 import { WhyMattersSection } from "@/components/benchmarks/why-matters-section";
 import { ValueRecap } from "@/components/benchmarks/value-recap";
-import { ClientTrajectoriesSection } from "@/components/benchmarks/client-trajectories-section";
 import {
   buildBenchmarkTitle,
   buildBenchmarkDescription,
@@ -268,8 +267,6 @@ export default async function BenchmarksPage() {
       {content && (
         <BenchmarkCTA copy={content.ctaPrimary} signUpUrl={signUpUrl} variant="primary" />
       )}
-
-      <ClientTrajectoriesSection brands={brands} />
 
       {/* Brand leaderboard */}
       <section className="v2-section-tight">
