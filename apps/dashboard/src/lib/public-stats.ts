@@ -191,7 +191,7 @@ async function fetchLandingDaily(): Promise<Map<string, number>> {
   const rows = await posthogQuery(`
     SELECT
       formatDateTime(\`$start_timestamp\`, '%Y-%m-%d') AS day,
-      count() AS visitors
+      uniq(distinct_id) AS visitors
     FROM sessions
     WHERE \`$entry_hostname\` = 'distribute.you'
     GROUP BY day
@@ -199,6 +199,18 @@ async function fetchLandingDaily(): Promise<Map<string, number>> {
     LIMIT 500
   `);
   return new Map(rows.map((row) => [asString(row[0], "landing day"), asNumber(row[1], "landing visitors")]));
+}
+
+async function fetchLandingUniqueVisitors(): Promise<number> {
+  const rows = await posthogQuery(`
+    SELECT
+      uniq(distinct_id) AS visitors
+    FROM sessions
+    WHERE \`$entry_hostname\` = 'distribute.you'
+  `);
+  const row = rows[0];
+  if (!row) throw new Error("[public-stats] landing unique visitors query returned no rows");
+  return asNumber(row[0], "landing unique visitors");
 }
 
 async function fetchSignupDaily(): Promise<Map<string, number>> {
@@ -223,7 +235,7 @@ async function fetchTrafficSources(totalVisitors: number): Promise<TrafficSource
         \`$entry_utm_source\`,
         if(notEmpty(\`$entry_referring_domain\`), \`$entry_referring_domain\`, if(notEmpty(\`$channel_type\`), \`$channel_type\`, 'direct'))
       ) AS source,
-      count() AS visitors
+      uniq(distinct_id) AS visitors
     FROM sessions
     WHERE \`$entry_hostname\` = 'distribute.you'
     GROUP BY source
@@ -316,16 +328,16 @@ function buildTimeline(
 
 export async function fetchPublicStatsSummary(view: PublicAnalyticsView = "landing"): Promise<PublicStats> {
   const includeCardTimeline = view === "cards";
-  const [users, clerkUserCount, billing, runs, landingDaily, signupDaily, cardDaily] = await Promise.all([
+  const [users, clerkUserCount, billing, runs, landingDaily, landingVisitors, signupDaily, cardDaily] = await Promise.all([
     fetchPublicStats("/public/stats/users", usersStatsSchema),
     fetchClerkUserCount(),
     fetchPublicStats("/public/stats/billing", billingStatsSchema),
     fetchPublicStats("/public/stats/runs", runsStatsSchema),
     fetchLandingDaily(),
+    fetchLandingUniqueVisitors(),
     fetchSignupDaily(),
     includeCardTimeline ? fetchStripeCardsDaily() : Promise.resolve(new Map<string, number>()),
   ]);
-  const landingVisitors = [...landingDaily.values()].reduce((sum, value) => sum + value, 0);
   const signupEvents = [...signupDaily.values()].reduce((sum, value) => sum + value, 0);
   const trafficSources = await fetchTrafficSources(landingVisitors);
   const clerkUsers = { ...users, totalUsers: clerkUserCount };
