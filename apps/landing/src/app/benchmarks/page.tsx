@@ -97,6 +97,17 @@ function HeroStat({
   );
 }
 
+function formatRevenueUsd(value: number | null | undefined): string {
+  if (value == null) return "—";
+  if (value === 0) return "$0";
+  if (value < 100) return `$${value.toFixed(2)}`;
+  return `$${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+}
+
+function formatRoi(value: number | null | undefined): string {
+  return value == null ? "—" : `${value.toFixed(1)}×`;
+}
+
 export default async function BenchmarksPage() {
   // Resolved at build time (PROD_URLS = resolveUrls("")); preview/staging
   // deployments link to prod dashboard sign-up. Trade-off for ISR static
@@ -179,7 +190,7 @@ export default async function BenchmarksPage() {
             {feature.description}
           </p>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 md:gap-4">
             <HeroStat
               label="Brands tracked"
               value={aggregate.participatingBrands.toLocaleString()}
@@ -197,6 +208,16 @@ export default async function BenchmarksPage() {
               label="$ spent"
               value={formatCostDollars(aggregate.totalCostUsdCents)}
               hint="all-time"
+            />
+            <HeroStat
+              label="Expected revenue"
+              value={formatRevenueUsd(aggregate.expectedRevenueUsd)}
+              hint="from brands with revenue"
+            />
+            <HeroStat
+              label="ROI"
+              value={formatRoi(aggregate.roiMultiple)}
+              hint="expected revenue / spend"
             />
           </div>
         </div>

@@ -20,6 +20,8 @@ describe("benchmark client trajectories", () => {
     expect(fetchContent).toContain("timeline: mapBrandTimeline(item.timeline)");
     expect(fetchContent).toContain("expectedRevenueUsd: item.headline?.totalPipelineUsd");
     expect(fetchContent).toContain("roiMultiple: item.costEconomics?.roiMultiple");
+    expect(fetchContent).toContain("function mapRevenueTimeline");
+    expect(fetchContent).toContain("cumulativePipelineUsd: expectedRevenueUsd");
     expect(fetchContent).toContain("const trajectoryBrandIds = new Set");
     expect(fetchContent).toContain("(item.costEconomics?.roiMultiple ?? 0) > 1");
     expect(fetchContent).toContain(".slice(0, 6)");
@@ -27,12 +29,22 @@ describe("benchmark client trajectories", () => {
 
   it("fetches public revenue timelines from features-service", () => {
     expect(fetchContent).toContain("/public/stats/revenue");
+    expect(fetchContent).toContain("groupBy=brand");
+    expect(fetchContent).toContain("groupBy=workflow");
     expect(fetchContent).not.toContain("/v1/public/features/revenue");
+  });
+
+  it("uses the public revenue set as the brand table source of truth", () => {
+    expect(fetchContent).toContain(".filter((item) => (item.headline?.totalPipelineUsd ?? 0) > 0)");
+    expect(fetchContent).toContain("if (!revenue) return []");
+    expect(fetchContent).toContain("const expectedRevenueUsd = brands.reduce");
+    expect(fetchContent).toContain("const brandCost = brands.reduce");
   });
 
   it("renders only dated revenue timeline mini charts, never funnel bars", () => {
     expect(componentContent).toContain("Pipeline revenue over time");
     expect(componentContent).toContain("public revenue timelines");
+    expect(componentContent).toContain("expectedRevenueUsd={brand.expectedRevenueUsd}");
     expect(componentContent).toContain(".filter(hasProfitableTimeline)");
     expect(componentContent).toContain("(brand.roiMultiple ?? 0) > 1");
     expect(componentContent).toContain("(b.expectedRevenueUsd ?? 0) - (a.expectedRevenueUsd ?? 0)");

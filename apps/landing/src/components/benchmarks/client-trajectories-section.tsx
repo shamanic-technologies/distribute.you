@@ -49,9 +49,11 @@ function svgSafeId(value: string): string {
 
 function MiniRevenueChart({
   timeline,
+  expectedRevenueUsd,
   chartId,
 }: {
   timeline: BrandTimelinePoint[];
+  expectedRevenueUsd: number | null;
   chartId: string;
 }) {
   const values = timeline.map(timelineValue);
@@ -74,7 +76,7 @@ function MiniRevenueChart({
     })
     .join(" ");
   const fillPoints = `${plotLeft},${plotTop + plotHeight} ${points} ${plotLeft + plotWidth},${plotTop + plotHeight}`;
-  const finalValue = values[values.length - 1] ?? 0;
+  const finalValue = expectedRevenueUsd ?? values[values.length - 1] ?? 0;
   const firstDate = timeline[0]?.date;
   const lastDate = timeline[timeline.length - 1]?.date;
   const gradientId = svgSafeId(`benchmarkRevenueFill-${chartId}`);
@@ -169,7 +171,11 @@ function BrandTrajectoryCard({ brand }: { brand: BrandLeaderboardEntry }) {
       </div>
 
       <div className="mt-4">
-        <MiniRevenueChart timeline={timeline} chartId={chartId} />
+        <MiniRevenueChart
+          timeline={timeline}
+          expectedRevenueUsd={brand.expectedRevenueUsd}
+          chartId={chartId}
+        />
       </div>
     </article>
   );
