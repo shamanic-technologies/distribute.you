@@ -3,7 +3,18 @@ import * as fs from "fs";
 import * as path from "path";
 
 const landingPagePath = path.resolve(__dirname, "../../public/landing-v2/index.html");
+const performancePagePath = path.resolve(
+  __dirname,
+  "../../public/landing-v2/performance.html"
+);
+const designSystemPagePath = path.resolve(
+  __dirname,
+  "../../public/landing-v2/design-system.html"
+);
 const landingRoutePath = path.resolve(__dirname, "../../src/app/route.ts");
+const performanceRoutePath = path.resolve(__dirname, "../../src/app/performance/route.ts");
+const designSystemRoutePath = path.resolve(__dirname, "../../src/app/design-system/route.ts");
+const nextConfigPath = path.resolve(__dirname, "../../next.config.ts");
 const pricingPagePath = path.resolve(__dirname, "../../src/app/pricing/page.tsx");
 const investorsPagePath = path.resolve(__dirname, "../../src/app/investors/page.tsx");
 const featuresPath = path.resolve(__dirname, "../../../../shared/content/src/features.ts");
@@ -38,9 +49,7 @@ describe("Landing page: ICP-only alignment", () => {
 
   it("serves the exact v2 static HTML through the root route", () => {
     const route = fs.readFileSync(landingRoutePath, "utf-8");
-    expect(route).toMatch(/public\/landing-v2\/index\.html/);
-    expect(route).toMatch(/content-type/);
-    expect(route).toMatch(/text\/html/);
+    expect(route).toMatch(/staticV2Response\("index\.html"\)/);
   });
 
   it("includes the exact v2 CSS, JS, and logo asset references", () => {
@@ -76,6 +85,33 @@ describe("Landing page: ICP-only alignment", () => {
     expect(page).not.toMatch(/<ToolsMarquee/);
     expect(page).not.toMatch(/Why most cold email never gets read/);
     expect(page).not.toMatch(/Built to slot into your stack/);
+  });
+});
+
+describe("Landing v2 static pages", () => {
+  const performance = fs.readFileSync(performancePagePath, "utf-8");
+  const designSystem = fs.readFileSync(designSystemPagePath, "utf-8");
+
+  it("serves the exact designer performance page at /performance", () => {
+    const route = fs.readFileSync(performanceRoutePath, "utf-8");
+    expect(route).toMatch(/staticV2Response\("performance\.html"\)/);
+    expect(performance).toMatch(/Most founders get their<br>first reply within 48 hours\./);
+    expect(performance).toMatch(/id="proofTrack"/);
+    expect(performance).toMatch(/funnel-bar-fill/);
+    expect(performance).toMatch(/<script src="js\/main\.js" defer><\/script>/);
+  });
+
+  it("keeps /benchmarks redirected to the designer performance page route", () => {
+    const config = fs.readFileSync(nextConfigPath, "utf-8");
+    expect(config).toMatch(/source:\s*"\/benchmarks"/);
+    expect(config).toMatch(/destination:\s*"\/performance"/);
+  });
+
+  it("serves the designer design-system page as the v2 visual reference", () => {
+    const route = fs.readFileSync(designSystemRoutePath, "utf-8");
+    expect(route).toMatch(/staticV2Response\("design-system\.html"\)/);
+    expect(designSystem).toMatch(/Distribute — Design System/);
+    expect(designSystem).toMatch(/Tokens, typography, components, and patterns/);
   });
 });
 
