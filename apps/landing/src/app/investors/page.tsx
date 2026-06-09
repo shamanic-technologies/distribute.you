@@ -109,17 +109,17 @@ export default function InvestorsPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(investorsBreadcrumbJsonLd) }}
       />
       <Navbar />
-      <main className="min-h-screen bg-gray-950 text-white">
+      <main className="v2-page">
         {/* Header */}
         <section className="pt-24 pb-12">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <div className="flex items-center justify-center gap-3 mb-6">
               <Image
-                src="/logo-head.jpg"
+                src="/landing-v2/logo/logo-distribute.svg"
                 alt="distribute"
                 width={40}
                 height={40}
-                className="rounded-xl"
+                className="rounded-lg"
               />
               <h1 className="font-display text-4xl font-bold">distribute</h1>
             </div>

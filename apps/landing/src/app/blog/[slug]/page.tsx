@@ -47,45 +47,45 @@ export default async function BlogArticlePage({ params }: Props) {
   const body = article.contentHtml ?? null;
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="v2-page">
       <Navbar />
 
-      <Section variant="prose" outerClassName="pt-16 pb-8" as="div">
+      <Section variant="prose" outerClassName="v2-section-tight" as="div">
         <Link
           href="/blog"
-          className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-brand-600 transition mb-8"
+          className="mb-8 inline-flex items-center gap-1 text-sm text-[var(--v2-sub)] transition hover:text-[var(--v2-accent-hi)]"
         >
           ← All articles
         </Link>
 
         <header className="mb-10">
-          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 mb-4">
+          <div className="v2-mono mb-4 flex flex-wrap items-center gap-3 text-xs text-[var(--v2-muted)]">
             <time dateTime={article.publishedAt} className="font-medium">
               {formatDate(article.publishedAt)}
             </time>
             {article.tags.slice(0, 4).map((t) => (
               <span
                 key={t}
-                className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600"
+                className="rounded-full bg-[var(--v2-surface-hi)] px-2 py-0.5 text-[var(--v2-sub)]"
               >
                 {t}
               </span>
             ))}
           </div>
 
-          <h1 className="font-display text-3xl md:text-5xl font-bold text-gray-900 tracking-tight leading-tight mb-5">
+          <h1 className="v2-title mb-5 text-3xl md:text-5xl">
             {article.title}
           </h1>
 
           {article.excerpt && (
-            <p className="text-lg md:text-xl text-gray-500 leading-relaxed">
+            <p className="v2-body text-lg md:text-xl">
               {article.excerpt}
             </p>
           )}
         </header>
 
         {article.coverImageUrl && (
-          <div className="relative w-full aspect-[16/9] mb-12 overflow-hidden rounded-2xl border border-gray-200 bg-gray-100">
+          <div className="relative mb-12 aspect-[16/9] w-full overflow-hidden rounded-2xl border border-[var(--v2-border-hi)] bg-[var(--v2-surface-hi)]">
             <Image
               src={article.coverImageUrl}
               alt={article.title}
@@ -103,36 +103,36 @@ export default async function BlogArticlePage({ params }: Props) {
         {body ? (
           <div
             className="
-              prose prose-lg prose-gray max-w-none
-              prose-headings:font-display prose-headings:text-gray-900 prose-headings:tracking-tight
+              prose prose-lg max-w-none
+              prose-headings:text-[var(--v2-text)] prose-headings:tracking-tight
               prose-h1:text-3xl prose-h2:text-2xl prose-h2:mt-12 prose-h3:text-xl
-              prose-p:text-gray-700 prose-p:leading-relaxed
-              prose-a:text-brand-600 prose-a:no-underline hover:prose-a:underline
-              prose-strong:text-gray-900
-              prose-blockquote:border-l-brand-400 prose-blockquote:bg-gray-50 prose-blockquote:py-1 prose-blockquote:not-italic
-              prose-code:text-brand-700 prose-code:bg-brand-50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none
-              prose-pre:bg-gray-900 prose-pre:text-gray-100
-              prose-img:rounded-xl prose-img:border prose-img:border-gray-200
-              prose-li:text-gray-700
+              prose-p:text-[var(--v2-sub)] prose-p:leading-relaxed
+              prose-a:text-[var(--v2-accent-hi)] prose-a:no-underline hover:prose-a:underline
+              prose-strong:text-[var(--v2-text)]
+              prose-blockquote:border-l-[var(--v2-accent)] prose-blockquote:bg-[var(--v2-surface)] prose-blockquote:py-1 prose-blockquote:not-italic
+              prose-code:text-[var(--v2-accent-hi)] prose-code:bg-[var(--v2-accent-dim)] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none
+              prose-pre:bg-[var(--v2-surface)] prose-pre:text-[var(--v2-text)]
+              prose-img:rounded-xl prose-img:border prose-img:border-[var(--v2-border-hi)]
+              prose-li:text-[var(--v2-sub)]
             "
             dangerouslySetInnerHTML={{ __html: body }}
           />
         ) : article.contentMarkdown ? (
-          <pre className="whitespace-pre-wrap text-gray-800 leading-relaxed font-sans">
+          <pre className="whitespace-pre-wrap font-sans leading-relaxed text-[var(--v2-sub)]">
             {article.contentMarkdown}
           </pre>
         ) : (
-          <p className="text-gray-400">No content available for this article.</p>
+          <p className="text-[var(--v2-muted)]">No content available for this article.</p>
         )}
 
-        <div className="mt-16 pt-8 border-t border-gray-100 flex items-center justify-between text-sm">
+        <div className="mt-16 flex items-center justify-between border-t border-[var(--v2-border)] pt-8 text-sm">
           <Link
             href="/blog"
-            className="inline-flex items-center gap-1 text-gray-500 hover:text-brand-600 transition"
+            className="inline-flex items-center gap-1 text-[var(--v2-sub)] transition hover:text-[var(--v2-accent-hi)]"
           >
             ← All articles
           </Link>
-          <span className="text-gray-400">
+          <span className="v2-mono text-xs text-[var(--v2-muted)]">
             Updated {formatDate(article.updatedAt)}
           </span>
         </div>

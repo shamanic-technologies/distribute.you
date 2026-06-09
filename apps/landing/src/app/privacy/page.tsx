@@ -83,30 +83,30 @@ export default function PrivacyPage() {
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-white">
-        <Section variant="prose" outerClassName="py-16 md:py-24 gradient-bg">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">
+      <main className="v2-page">
+        <Section variant="prose" outerClassName="v2-section">
+          <p className="v2-mono text-xs font-semibold uppercase tracking-[0.18em] text-[var(--v2-accent-hi)]">
             Legal
           </p>
-          <h1 className="mt-4 font-display text-4xl font-bold text-gray-950">
+          <h1 className="v2-title mt-4 text-4xl">
             Privacy Policy
           </h1>
-          <p className="mt-4 text-sm text-gray-500">Last updated {LAST_UPDATED}</p>
-          <p className="mt-6 text-lg leading-8 text-gray-700">
+          <p className="v2-mono mt-4 text-sm text-[var(--v2-muted)]">Last updated {LAST_UPDATED}</p>
+          <p className="v2-body mt-6 text-lg">
             This Privacy Policy explains how distribute collects, uses, and
             protects information when you use our websites, dashboard, APIs,
             and related services.
           </p>
         </Section>
 
-        <Section variant="prose" outerClassName="py-12 md:py-16 bg-white">
+        <Section variant="prose" outerClassName="v2-section-tight">
           <div className="space-y-10">
             {SECTIONS.map((section) => (
               <section key={section.title}>
-                <h2 className="font-display text-2xl font-bold text-gray-950">
+                <h2 className="v2-h2 text-2xl">
                   {section.title}
                 </h2>
-                <div className="mt-4 space-y-4 text-base leading-7 text-gray-600">
+                <div className="v2-body mt-4 space-y-4 text-base">
                   {section.body.map((paragraph) => (
                     <p key={paragraph}>{paragraph}</p>
                   ))}
@@ -115,12 +115,12 @@ export default function PrivacyPage() {
             ))}
 
             <section>
-              <h2 className="font-display text-2xl font-bold text-gray-950">
+              <h2 className="v2-h2 text-2xl">
                 Contact
               </h2>
-              <p className="mt-4 text-base leading-7 text-gray-600">
+              <p className="v2-body mt-4 text-base">
                 For privacy questions or requests, contact{" "}
-                <a href={`mailto:${SUPPORT_EMAIL}`} className="text-brand-600 underline">
+                <a href={`mailto:${SUPPORT_EMAIL}`} className="text-[var(--v2-accent-hi)] underline">
                   {SUPPORT_EMAIL}
                 </a>
                 .

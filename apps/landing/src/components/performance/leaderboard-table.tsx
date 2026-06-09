@@ -33,7 +33,7 @@ function SortHeader({
   const active = currentSort === sortKey;
   return (
     <th
-      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-brand-600 select-none"
+      className="v2-mono cursor-pointer select-none px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--v2-muted)] hover:text-[var(--v2-accent-hi)]"
       onClick={() => onSort(sortKey)}
     >
       {label} {active ? (currentDir === "desc" ? "↓" : "↑") : ""}
@@ -63,10 +63,10 @@ export function BrandLeaderboard({ brands, maxEntries }: { brands: BrandLeaderbo
 
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
+      <table className="min-w-full divide-y divide-[var(--v2-border)]">
+        <thead>
           <tr>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="v2-mono px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--v2-muted)]">
               Brand
             </th>
             <SortHeader label="% Opens" sortKey="openRate" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
@@ -77,9 +77,9 @@ export function BrandLeaderboard({ brands, maxEntries }: { brands: BrandLeaderbo
             <SortHeader label="$/Positive Reply" sortKey="costPerReplyCents" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
           </tr>
         </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
+        <tbody className="divide-y divide-[var(--v2-border)]">
           {visible.map((brand, i) => (
-            <tr key={brand.brandId || brand.brandDomain || i} className="hover:bg-gray-50">
+            <tr key={brand.brandId || brand.brandDomain || i} className="hover:bg-[var(--v2-surface-hi)]">
               <td className="px-4 py-4 whitespace-nowrap">
                 <div className="flex items-center gap-3">
                   {brand.brandDomain && LOGO_DEV_TOKEN ? (
@@ -92,21 +92,21 @@ export function BrandLeaderboard({ brands, maxEntries }: { brands: BrandLeaderbo
                       unoptimized
                     />
                   ) : (
-                    <div className="w-7 h-7 bg-brand-100 rounded flex items-center justify-center text-brand-600 text-sm font-bold">
+                    <div className="flex h-7 w-7 items-center justify-center rounded bg-[var(--v2-accent-dim)] text-sm font-bold text-[var(--v2-accent-hi)]">
                       {(brand.brandName || brand.brandDomain || "?")[0].toUpperCase()}
                     </div>
                   )}
-                  <span className="text-sm font-medium text-gray-900">
+                  <span className="text-sm font-medium text-[var(--v2-text)]">
                     {brand.brandName || brand.brandDomain || "Unknown"}
                   </span>
                 </div>
               </td>
-              <td className="px-4 py-4 text-sm text-gray-600">{brand.emailsSent > 0 ? formatPercent(brand.openRate) : "—"}</td>
-              <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(brand.costPerOpenCents)}</td>
-              <td className="px-4 py-4 text-sm text-gray-600">{brand.emailsSent > 0 ? formatPercent(brand.clickRate) : "—"}</td>
-              <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(brand.costPerClickCents)}</td>
-              <td className="px-4 py-4 text-sm text-gray-600">{brand.emailsSent > 0 ? formatPercent(brand.replyRate) : "—"}</td>
-              <td className="px-4 py-4 text-sm text-gray-600">{formatCostCentsWhole(brand.costPerReplyCents)}</td>
+              <td className="px-4 py-4 text-sm text-[var(--v2-sub)]">{brand.emailsSent > 0 ? formatPercent(brand.openRate) : "—"}</td>
+              <td className="px-4 py-4 text-sm text-[var(--v2-sub)]">{formatCostCents(brand.costPerOpenCents)}</td>
+              <td className="px-4 py-4 text-sm text-[var(--v2-sub)]">{brand.emailsSent > 0 ? formatPercent(brand.clickRate) : "—"}</td>
+              <td className="px-4 py-4 text-sm text-[var(--v2-sub)]">{formatCostCents(brand.costPerClickCents)}</td>
+              <td className="px-4 py-4 text-sm text-[var(--v2-sub)]">{brand.emailsSent > 0 ? formatPercent(brand.replyRate) : "—"}</td>
+              <td className="px-4 py-4 text-sm text-[var(--v2-text)]">{formatCostCentsWhole(brand.costPerReplyCents)}</td>
             </tr>
           ))}
         </tbody>
@@ -138,10 +138,10 @@ export function WorkflowLeaderboard({ workflows, inSection = false, maxEntries }
   return (
     <>
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+        <table className="min-w-full divide-y divide-[var(--v2-border)]">
+          <thead>
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="v2-mono px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--v2-muted)]">
                 Workflow
               </th>
               <SortHeader label="% Opens" sortKey="openRate" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
@@ -152,33 +152,33 @@ export function WorkflowLeaderboard({ workflows, inSection = false, maxEntries }
               <SortHeader label="$/Positive Reply" sortKey="costPerReplyCents" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="divide-y divide-[var(--v2-border)]">
             {visible.map((wf) => (
               <tr
                 key={wf.workflowName}
-                className={`hover:bg-gray-50 cursor-pointer ${selected?.workflowName === wf.workflowName ? "bg-brand-50" : ""}`}
+                className={`cursor-pointer hover:bg-[var(--v2-surface-hi)] ${selected?.workflowName === wf.workflowName ? "bg-[var(--v2-accent-dim)]" : ""}`}
                 onClick={() => setSelected(selected?.workflowName === wf.workflowName ? null : wf)}
               >
                 <td className="px-4 py-4 whitespace-nowrap">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-900">
+                    <span className="text-sm font-medium text-[var(--v2-text)]">
                       {inSection && wf.workflowDynastySignatureName
                         ? wf.workflowDynastySignatureName.charAt(0).toUpperCase() + wf.workflowDynastySignatureName.slice(1)
                         : wf.workflowDynastyName || formatWorkflowName(wf.workflowName)}
                     </span>
                     {!inSection && wf.featureSlug && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                      <span className="rounded-full bg-[var(--v2-surface-hi)] px-2 py-0.5 text-xs text-[var(--v2-sub)]">
                         {FEATURE_LABELS[wf.featureSlug] ?? wf.featureSlug}
                       </span>
                     )}
                   </div>
                 </td>
-                <td className="px-4 py-4 text-sm text-gray-600">{wf.emailsSent > 0 ? formatPercent(wf.openRate) : "—"}</td>
-                <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(wf.costPerOpenCents)}</td>
-                <td className="px-4 py-4 text-sm text-gray-600">{wf.emailsSent > 0 ? formatPercent(wf.clickRate) : "—"}</td>
-                <td className="px-4 py-4 text-sm text-gray-600">{formatCostCents(wf.costPerClickCents)}</td>
-                <td className="px-4 py-4 text-sm text-gray-600">{wf.emailsSent > 0 ? formatPercent(wf.replyRate) : "—"}</td>
-                <td className="px-4 py-4 text-sm text-gray-600">{formatCostCentsWhole(wf.costPerReplyCents)}</td>
+                <td className="px-4 py-4 text-sm text-[var(--v2-sub)]">{wf.emailsSent > 0 ? formatPercent(wf.openRate) : "—"}</td>
+                <td className="px-4 py-4 text-sm text-[var(--v2-sub)]">{formatCostCents(wf.costPerOpenCents)}</td>
+                <td className="px-4 py-4 text-sm text-[var(--v2-sub)]">{wf.emailsSent > 0 ? formatPercent(wf.clickRate) : "—"}</td>
+                <td className="px-4 py-4 text-sm text-[var(--v2-sub)]">{formatCostCents(wf.costPerClickCents)}</td>
+                <td className="px-4 py-4 text-sm text-[var(--v2-sub)]">{wf.emailsSent > 0 ? formatPercent(wf.replyRate) : "—"}</td>
+                <td className="px-4 py-4 text-sm text-[var(--v2-text)]">{formatCostCentsWhole(wf.costPerReplyCents)}</td>
               </tr>
             ))}
           </tbody>
@@ -200,10 +200,10 @@ function WorkflowDetailPanel({ workflow: wf, onClose }: { workflow: WorkflowLead
   return (
     <>
       <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
-      <div className="fixed top-0 right-0 h-full w-full max-w-sm bg-white shadow-xl z-50 overflow-y-auto animate-slide-in">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">{name}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+      <div className="animate-slide-in fixed right-0 top-0 z-50 h-full w-full max-w-sm overflow-y-auto border-l border-[var(--v2-border-hi)] bg-[var(--v2-surface)] shadow-xl">
+        <div className="flex items-center justify-between border-b border-[var(--v2-border-hi)] px-6 py-4">
+          <h3 className="text-lg font-semibold text-[var(--v2-text)]">{name}</h3>
+          <button onClick={onClose} className="text-xl leading-none text-[var(--v2-muted)] hover:text-[var(--v2-text)]">&times;</button>
         </div>
         <div className="px-6 py-5 space-y-6">
           <div className="grid grid-cols-2 gap-4">
@@ -213,7 +213,7 @@ function WorkflowDetailPanel({ workflow: wf, onClose }: { workflow: WorkflowLead
           </div>
 
           <div>
-            <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Rates</h4>
+            <h4 className="v2-mono mb-3 text-xs font-medium uppercase tracking-wider text-[var(--v2-muted)]">Rates</h4>
             <div className="space-y-2">
               <DetailRow label="Open Rate" value={wf.emailsSent > 0 ? formatPercent(wf.openRate) : "—"} sub={`${wf.emailsOpened.toLocaleString()} opens`} />
               <DetailRow label="Click Rate" value={wf.emailsSent > 0 ? formatPercent(wf.clickRate) : "—"} sub={`${wf.emailsClicked.toLocaleString()} clicks`} />
@@ -222,7 +222,7 @@ function WorkflowDetailPanel({ workflow: wf, onClose }: { workflow: WorkflowLead
           </div>
 
           <div>
-            <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Cost per Action</h4>
+            <h4 className="v2-mono mb-3 text-xs font-medium uppercase tracking-wider text-[var(--v2-muted)]">Cost per Action</h4>
             <div className="space-y-2">
               <DetailRow label="$/Open" value={formatCostCents(wf.costPerOpenCents)} />
               <DetailRow label="$/Click" value={formatCostCents(wf.costPerClickCents)} />
@@ -237,9 +237,9 @@ function WorkflowDetailPanel({ workflow: wf, onClose }: { workflow: WorkflowLead
 
 function DetailStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-gray-50 rounded-lg p-3">
-      <div className="text-xs text-gray-500">{label}</div>
-      <div className="text-lg font-semibold text-gray-900 mt-0.5">{value}</div>
+    <div className="rounded-lg bg-[var(--v2-surface-hi)] p-3">
+      <div className="text-xs text-[var(--v2-muted)]">{label}</div>
+      <div className="mt-0.5 text-lg font-semibold text-[var(--v2-text)]">{value}</div>
     </div>
   );
 }
@@ -248,10 +248,10 @@ function DetailRow({ label, value, sub }: { label: string; value: string; sub?: 
   return (
     <div className="flex items-center justify-between py-1.5">
       <div>
-        <span className="text-sm text-gray-600">{label}</span>
-        {sub && <span className="text-xs text-gray-400 ml-2">{sub}</span>}
+        <span className="text-sm text-[var(--v2-sub)]">{label}</span>
+        {sub && <span className="ml-2 text-xs text-[var(--v2-muted)]">{sub}</span>}
       </div>
-      <span className="text-sm font-medium text-gray-900">{value}</span>
+      <span className="text-sm font-medium text-[var(--v2-text)]">{value}</span>
     </div>
   );
 }

@@ -24,6 +24,7 @@ const benchmarksSlugRoutePath = path.resolve(
 );
 const pricingPagePath = path.resolve(__dirname, "../../src/app/pricing/page.tsx");
 const privacyPagePath = path.resolve(__dirname, "../../src/app/privacy/page.tsx");
+const globalsPath = path.resolve(__dirname, "../../src/app/globals.css");
 const investorsPagePath = path.resolve(__dirname, "../../src/app/investors/page.tsx");
 const featuresPath = path.resolve(__dirname, "../../../../shared/content/src/features.ts");
 const portfolioDashboardPath = path.resolve(
@@ -160,10 +161,29 @@ describe("Landing v2 static pages", () => {
   it("maps React chrome links to the same landing routes", () => {
     const navbar = fs.readFileSync(navbarPath, "utf-8");
     const footer = fs.readFileSync(footerPath, "utf-8");
-    expect(navbar).toMatch(/href=\{urls\.performance\}[\s\S]*?>\s*Performance\s*<\/a>/);
-    expect(navbar).toMatch(/href=\{urls\.benchmarks\}[\s\S]*?>\s*Benchmarks\s*<\/a>/);
+    expect(navbar).toMatch(/\{ label: "Performance", href: urls\.performance \}/);
+    expect(navbar).toMatch(/\{ label: "Benchmarks", href: urls\.benchmarks \}/);
+    expect(navbar).toMatch(/landing-v2\/logo\/logo-distribute\.svg/);
+    expect(navbar).not.toMatch(/logo-head\.jpg/);
     expect(footer).toMatch(/\{ label: "Performance", href: "\/performance" \}/);
     expect(footer).toMatch(/\{ label: "Benchmarks", href: "\/benchmarks" \}/);
+    expect(footer).toMatch(/landing-v2\/logo\/logo-distribute\.svg/);
+    expect(footer).not.toMatch(/logo-head\.jpg/);
+  });
+
+  it("uses the v2 visual system on React landing pages", () => {
+    const globals = fs.readFileSync(globalsPath, "utf-8");
+    const pricing = fs.readFileSync(pricingPagePath, "utf-8");
+    const benchmarks = fs.readFileSync(benchmarksPagePath, "utf-8");
+    const privacy = fs.readFileSync(privacyPagePath, "utf-8");
+    expect(globals).toMatch(/--v2-bg:/);
+    expect(globals).toMatch(/JetBrains\+Mono/);
+    expect(globals).not.toMatch(/Fredoka/);
+    expect(pricing).toMatch(/<main className="v2-page">/);
+    expect(pricing).toMatch(/v2-title/);
+    expect(benchmarks).toMatch(/<main className="v2-page">/);
+    expect(benchmarks).toMatch(/v2-title/);
+    expect(privacy).toMatch(/<main className="v2-page">/);
   });
 });
 
