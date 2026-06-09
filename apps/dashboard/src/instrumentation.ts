@@ -217,6 +217,32 @@ export const EMAIL_TEMPLATES = [
       <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute</p>`),
     textBody: `Hey,\n\nYour campaigns have been paused for a while now — out of credit. They're still set up exactly as you left them and will resume the moment you add credit.\n\nIf now's the time, add credit and turn on auto-topup so your outreach just keeps running.\n\nAdd credit & resume: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute`,
   },
+
+  // ── Daily outcome digest (beta-gated by dashboard cron via PostHog) ──
+  // dashboard cron sends this only to users where the PostHog beta flag resolves
+  // true, and only when their org has at least one sales-cold-email outcome
+  // organization across its brands.
+  // Variables:
+  //   orgName, totalBrandsWithOutcomes, totalOutcomeOrganizations,
+  //   totalExpectedRevenueUsd, digestHtml, digestText
+  {
+    name: "daily-outcome-digest",
+    subject: "Daily outcome digest: {{totalOutcomeOrganizations}} sales outcomes",
+    htmlBody: emailLayout(`
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">Hey,</p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
+        Here's the latest sales-cold-email outcome digest for {{orgName}}.
+      </p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
+        {{totalOutcomeOrganizations}} outcome organizations across {{totalBrandsWithOutcomes}} brands, worth {{totalExpectedRevenueUsd}} in expected pipeline revenue.
+      </p>
+      {{digestHtml}}
+      <p style="margin-bottom:20px;">
+        <a href="${DASHBOARD_URL}" style="display:inline-block;background:#6366f1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">Open dashboard</a>
+      </p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute</p>`),
+    textBody: `Hey,\n\nHere's the latest sales-cold-email outcome digest for {{orgName}}.\n\n{{totalOutcomeOrganizations}} outcome organizations across {{totalBrandsWithOutcomes}} brands, worth {{totalExpectedRevenueUsd}} in expected pipeline revenue.\n\n{{digestText}}\n\nOpen dashboard: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute`,
+  },
 ];
 
 const PLATFORM_KEYS: { provider: string; envVar: string }[] = [
