@@ -4,30 +4,26 @@ import { PROD_URLS } from "@/lib/env-urls";
 
 const SITE_URL = PROD_URLS.landing;
 const SITE_NAME = "distribute";
-const SITE_DESCRIPTION = "Cold email outreach, on autopilot. Drop a URL, set a budget — we find your buyers, write personalized cold emails, and send from warmed inboxes. AI qualifies replies and forwards positives to your Gmail. $25 welcome credits, no subscription.";
+const SITE_TITLE = "distribute — AI cold email, done for you";
+const SITE_DESCRIPTION = "Drop your website URL. We email your ideal customers. AI reads every reply. Only real buyers land in your Gmail. You read 5 emails, not 200. No SDR. No setup. No subscription.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "distribute — Cold Email Outreach, on Autopilot",
+    default: SITE_TITLE,
     template: "%s | distribute",
   },
   description: SITE_DESCRIPTION,
   keywords: [
-    "cold email outreach on autopilot",
-    "multi-product distribution",
-    "solo founder distribution",
-    "indie hacker outreach",
+    "AI cold email done for you",
+    "cold email outreach",
+    "solo founder outreach",
+    "micro-SaaS outreach",
     "cold email dashboard",
-    "PR outreach automation",
-    "VC outreach automation",
-    "hiring cold email",
     "AI reply qualification",
     "pay-as-you-go cold email",
     "no subscription cold email",
-    "Sales Automation",
     "distribute.you",
-    "portfolio distribution dashboard",
   ],
   authors: [{ name: "distribute" }],
   creator: "distribute",
@@ -42,21 +38,21 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: "distribute — Cold Email Outreach, on Autopilot",
-    description: "Cold email outreach, on autopilot. Drop a URL, set a budget — we find your buyers, send, qualify, and forward the replies worth reading. $25 welcome credits, no subscription.",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
     images: [
       {
         url: "/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "distribute — Cold Email Outreach, on Autopilot",
+        alt: "distribute — AI cold email, done for you",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "distribute — Cold Email Outreach, on Autopilot",
-    description: "Cold email outreach, on autopilot. Drop a URL, set a budget — we find your buyers, send, qualify, and forward the replies worth reading.",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
     images: ["/og-image.jpg"],
     creator: "@distribute_you",
   },
@@ -92,10 +88,10 @@ const jsonLd = {
   offers: [
     {
       "@type": "Offer",
-      name: "Free",
+      name: "$25 free credits",
       price: "0",
       priceCurrency: "USD",
-      description: "Free to start — you only pay AI costs",
+      description: "$25 free credits. No subscription. No credit card. Launch in 5 minutes.",
     },
   ],
   provider: {
@@ -114,7 +110,7 @@ const organizationJsonLd = {
   "@type": "Organization",
   name: "distribute",
   url: SITE_URL,
-  description: "Sales Automation",
+  description: "AI outreach automation for solo founders and micro-SaaS builders. Drop a URL, set a budget, get qualified replies.",
   sameAs: [
     PROD_URLS.github,
     PROD_URLS.twitter,
@@ -137,29 +133,29 @@ const websiteJsonLd = {
 const howToJsonLd = {
   "@context": "https://schema.org",
   "@type": "HowTo",
-  name: "How to put your client acquisition on autopilot with distribute",
-  description: "Drop a URL, set a daily budget, and let distribute send cold email, PR, hiring, and VC outreach on your behalf — AI qualifies replies, you watch cost per reply in the dashboard.",
+  name: "From your URL to 100 buyer conversations",
+  description: "Three steps. No setup. No software to learn. No SDR to hire.",
   step: [
     {
       "@type": "HowToStep",
       position: 1,
-      name: "Drop a URL",
-      text: "Create an account and add your product URL. We analyze your brand, tone, and ICP.",
+      name: "Paste your website URL",
+      text: "We read your product. Figure out who your buyers are, and write your campaign. You write nothing. You log in, paste a link, set a budget. Done.",
     },
     {
       "@type": "HowToStep",
       position: 2,
-      name: "Set a daily budget per channel",
-      text: "Pick channels — sales cold email, PR, VC outreach, hiring, accelerators, journalist pitch, and more. Set a daily spend cap per product × per channel.",
+      name: "We email your buyers",
+      text: "Pre-warmed inboxes start sending the same day. Every email is personalized to the person and the company. No spam folder. No domain setup. Just buyers in their inbox.",
     },
     {
       "@type": "HowToStep",
       position: 3,
-      name: "We send, qualify, forward",
-      text: "We send from agency-warmed inboxes, AI qualifies every reply, and only positives land in your Gmail. Cost per reply tracked live per product × per channel.",
+      name: "Buyer replies land in Gmail",
+      text: "AI reads every reply. Only real buyers reach your inbox, ready to answer. You read 5 emails a day instead of 200. The other 195 never bother you.",
     },
   ],
-  totalTime: "PT2M",
+  totalTime: "PT5M",
 };
 
 export default function RootLayout({
