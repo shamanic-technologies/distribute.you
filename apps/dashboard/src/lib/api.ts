@@ -1132,6 +1132,64 @@ export async function getFeatureRevenueByCampaign(
   }));
 }
 
+const WorkflowRevenueGroupBySchema = z.union([
+  z.literal("workflowSlug"),
+  z.literal("workflowDynastySlug"),
+]);
+
+const FeatureRevenueByWorkflowSchema = z.object({
+  featureSlug: z.string(),
+  groupBy: WorkflowRevenueGroupBySchema,
+  groups: z.array(
+    z.object({
+      workflowSlug: z.string().nullable().optional(),
+      workflowDynastySlug: z.string().nullable().optional(),
+      headline: z.object({ totalPipelineUsd: z.number().nullable() }),
+      costEconomics: z.object({
+        totalCostUsd: z.number(),
+        costOfAcquisitionPct: z.number().nullable(),
+        roiMultiple: z.number().nullable(),
+      }),
+    }),
+  ),
+});
+
+export type WorkflowRevenueGroupBy = z.infer<typeof WorkflowRevenueGroupBySchema>;
+
+export interface WorkflowRevenueGroup {
+  workflowSlug: string | null;
+  workflowDynastySlug: string | null;
+  totalPipelineUsd: number | null;
+  totalCostUsd: number;
+  /** totalPipelineUsd / totalCostUsd. Null when cost is 0 or pipeline is null. */
+  roiMultiple: number | null;
+}
+
+/** GET /features/:slug/revenue?groupBy=workflowSlug|workflowDynastySlug — per-workflow expected revenue + ROI. */
+export async function getFeatureRevenueByWorkflow(
+  featureSlug: string,
+  brandId: string,
+  groupBy: WorkflowRevenueGroupBy,
+  token?: string,
+): Promise<WorkflowRevenueGroup[]> {
+  const query = new URLSearchParams({ brandId, groupBy });
+  const raw = await apiCall<unknown>(`/features/${featureSlug}/revenue?${query.toString()}`, { token });
+  const parsed = FeatureRevenueByWorkflowSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getFeatureRevenueByWorkflow: response shape mismatch", {
+      issues: parsed.error.issues,
+    });
+    throw new Error("[dashboard] getFeatureRevenueByWorkflow: invalid response shape");
+  }
+  return parsed.data.groups.map((g) => ({
+    workflowSlug: g.workflowSlug ?? null,
+    workflowDynastySlug: g.workflowDynastySlug ?? null,
+    totalPipelineUsd: g.headline.totalPipelineUsd,
+    totalCostUsd: g.costEconomics.totalCostUsd,
+    roiMultiple: g.costEconomics.roiMultiple,
+  }));
+}
+
 /** POST /brands — upsert brand by URL, returns brandId */
 export async function upsertBrand(
   url: string,
@@ -3496,19 +3554,28 @@ export async function getDomainTrafficHistory(
   domain: string,
   token?: string,
 ): Promise<DomainTrafficHistory | null> {
+  const data = await getDomainTrafficHistories([domain], token);
+  return data[0] ?? null;
+}
+
+export async function getDomainTrafficHistories(
+  domains: string[],
+  token?: string,
+): Promise<DomainTrafficHistory[]> {
+  const params = new URLSearchParams({ domains: domains.join(",") });
   const raw = await apiCall<unknown>(
-    `/orgs/domains/traffic-history?domains=${encodeURIComponent(domain)}`,
+    `/orgs/domains/traffic-history?${params}`,
     { token },
   );
   const parsed = z.array(DomainTrafficHistorySchema).safeParse(raw);
   if (!parsed.success) {
-    console.error("[dashboard] getDomainTrafficHistory: response shape mismatch", {
+    console.error("[dashboard] getDomainTrafficHistories: response shape mismatch", {
       issues: parsed.error.issues,
       raw,
     });
-    throw new Error("[dashboard] getDomainTrafficHistory: invalid response shape");
+    throw new Error("[dashboard] getDomainTrafficHistories: invalid response shape");
   }
-  return parsed.data[0] ?? null;
+  return parsed.data;
 }
 
 /**
@@ -3565,20 +3632,28 @@ export async function computeDomainTraffic(
   domain: string,
   token?: string,
 ): Promise<DomainTrafficHistory | null> {
+  const data = await computeDomainTrafficHistories([domain], token);
+  return data[0] ?? null;
+}
+
+export async function computeDomainTrafficHistories(
+  domains: string[],
+  token?: string,
+): Promise<DomainTrafficHistory[]> {
   const raw = await apiCall<unknown>("/orgs/domains/traffic-compute", {
     token,
     method: "POST",
-    body: { domains: [domain] },
+    body: { domains },
   });
   const parsed = z.array(DomainTrafficHistorySchema).safeParse(raw);
   if (!parsed.success) {
-    console.error("[dashboard] computeDomainTraffic: response shape mismatch", {
+    console.error("[dashboard] computeDomainTrafficHistories: response shape mismatch", {
       issues: parsed.error.issues,
       raw,
     });
-    throw new Error("[dashboard] computeDomainTraffic: invalid response shape");
+    throw new Error("[dashboard] computeDomainTrafficHistories: invalid response shape");
   }
-  return parsed.data[0] ?? null;
+  return parsed.data;
 }
 
 export async function computeDomainDrStatuses(

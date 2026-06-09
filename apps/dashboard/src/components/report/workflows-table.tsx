@@ -13,6 +13,10 @@ export interface WorkflowRow {
   positiveReplies: number;
   /** USD cents of total run cost attributed to this workflow */
   totalCostCents: number;
+  /** Expected pipeline revenue in whole USD, computed by features-service. */
+  expectedRevenueUsd: number | null;
+  /** Expected revenue / total cost, computed by features-service. */
+  roiMultiple: number | null;
   /** ISO timestamp from the Workflow row; used by the page's default composite sort. */
   createdAt: string;
 }
@@ -37,6 +41,23 @@ function formatUsd(cents: number): string {
 function cpa(totalCostCents: number, count: number): string {
   if (count <= 0) return "—";
   return formatUsd(totalCostCents / count);
+}
+
+function formatUsdValue(usd: number | null): string {
+  if (usd == null) return "—";
+  if (usd === 0) return "$0";
+  if (usd < 0.01) return "<$0.01";
+  if (usd < 100) return `$${usd.toFixed(2)}`;
+  return `$${usd.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+}
+
+function formatRoi(roi: number | null): string {
+  return roi == null ? "—" : `${roi.toFixed(1)}×`;
+}
+
+function sortNumber(value: number | null, width = 12): string {
+  if (value == null) return "0".repeat(width);
+  return String(Math.round(value * 100)).padStart(width, "0");
 }
 
 function buildColumns(labels: WorkflowsTableLabels): ReportTableColumn<WorkflowRow>[] {
@@ -72,6 +93,18 @@ function buildColumns(labels: WorkflowsTableLabels): ReportTableColumn<WorkflowR
       render: (r) => r.positiveReplies.toLocaleString("en-US"),
     },
     {
+      key: "expectedRevenue",
+      label: "Expected revenue",
+      sortValue: (r) => sortNumber(r.expectedRevenueUsd),
+      render: (r) => <span className="font-medium text-gray-900">{formatUsdValue(r.expectedRevenueUsd)}</span>,
+    },
+    {
+      key: "roi",
+      label: "ROI",
+      sortValue: (r) => sortNumber(r.roiMultiple),
+      render: (r) => <span className="font-medium text-gray-900">{formatRoi(r.roiMultiple)}</span>,
+    },
+    {
       key: "cacReply",
       label: "CAC / positive reply",
       sortValue: (r) => String(r.positiveReplies > 0 ? r.totalCostCents / r.positiveReplies : Number.MAX_SAFE_INTEGER).padStart(12, "0"),
@@ -85,6 +118,8 @@ function buildDrawerEntries(labels: WorkflowsTableLabels) {
     { label: "Version", value: `v${r.version}` },
     { label: labels.leadsSent, value: r.emailsSent.toLocaleString("en-US") },
     { label: labels.leadsRepliesPositive, value: r.positiveReplies.toLocaleString("en-US") },
+    { label: "Expected revenue", value: formatUsdValue(r.expectedRevenueUsd) },
+    { label: "ROI", value: formatRoi(r.roiMultiple) },
     { label: "Total cost", value: formatUsd(r.totalCostCents) },
     { label: "CAC / positive reply", value: cpa(r.totalCostCents, r.positiveReplies) },
     { label: "Description", value: r.description, block: true },
