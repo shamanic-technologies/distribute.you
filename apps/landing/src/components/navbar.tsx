@@ -34,7 +34,7 @@ export function Navbar() {
             Performance
           </a>
           <a
-            href={urls.performance}
+            href={urls.benchmarks}
             className="text-gray-500 hover:text-gray-900 text-sm transition"
           >
             Benchmarks
@@ -106,18 +106,18 @@ export function Navbar() {
             >
               Pricing
             </a>
-          <a
-            href={urls.performance}
-            className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm"
-          >
-            Performance
-          </a>
-          <a
-            href={urls.performance}
-            className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm"
-          >
-            Benchmarks
-          </a>
+            <a
+              href={urls.performance}
+              className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm"
+            >
+              Performance
+            </a>
+            <a
+              href={urls.benchmarks}
+              className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm"
+            >
+              Benchmarks
+            </a>
             <a
               href={urls.docs}
               className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm"

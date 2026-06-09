@@ -24,7 +24,7 @@ const COLUMNS: FooterColumn[] = [
     links: [
       { label: "Pricing", href: "/pricing" },
       { label: "Performance", href: "/performance" },
-      { label: "Benchmarks", href: `${URLS.mcp}/benchmarks`, external: true },
+      { label: "Benchmarks", href: "/benchmarks" },
       { label: "Blog", href: "/blog" },
     ],
   },
