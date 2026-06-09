@@ -20,14 +20,17 @@ describe("benchmark client trajectories", () => {
     expect(fetchContent).toContain("timeline: mapBrandTimeline(item.timeline)");
   });
 
-  it("does not fetch a non-gateway feature-service revenue endpoint from landing", () => {
-    expect(fetchContent).not.toContain("/public/stats/revenue");
+  it("fetches public revenue timelines from features-service", () => {
+    expect(fetchContent).toContain("/public/stats/revenue");
     expect(fetchContent).not.toContain("/v1/public/features/revenue");
   });
 
-  it("renders current public funnel snapshots when dated timelines are absent", () => {
-    expect(componentContent).toContain("current public funnel snapshots");
-    expect(componentContent).toContain("Current funnel");
-    expect(componentContent).toContain("Pipeline over time");
+  it("renders only dated revenue timeline mini charts, never funnel bars", () => {
+    expect(componentContent).toContain("Pipeline revenue over time");
+    expect(componentContent).toContain("public revenue timelines");
+    expect(componentContent).toContain(".filter(hasTimeline)");
+    expect(componentContent).not.toContain("Current funnel");
+    expect(componentContent).not.toContain("funnel snapshots");
+    expect(componentContent).not.toContain("rounded-full bg-gray-100 overflow-hidden");
   });
 });

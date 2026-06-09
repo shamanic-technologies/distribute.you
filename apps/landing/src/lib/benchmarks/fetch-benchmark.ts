@@ -18,6 +18,17 @@ function resolveApiUrl(hostname: string): string {
   return URLS.api;
 }
 
+function resolveFeaturesUrl(hostname: string): string {
+  if (process.env.NEXT_PUBLIC_FEATURES_SERVICE_URL) {
+    return process.env.NEXT_PUBLIC_FEATURES_SERVICE_URL;
+  }
+  const apiUrl = resolveApiUrl(hostname);
+  if (apiUrl.includes("://api-staging.")) {
+    return apiUrl.replace("://api-staging.", "://features-staging.");
+  }
+  return apiUrl.replace("://api.", "://features.");
+}
+
 function buildHeaders(): Record<string, string> {
   const headers: Record<string, string> = { Accept: "application/json" };
   if (API_KEY) headers["X-API-Key"] = API_KEY;
@@ -136,6 +147,19 @@ interface WorkflowRankedResponse {
 
 interface BrandRankedResponse {
   results: BrandRankedItem[];
+}
+
+interface PublicRevenueItem {
+  brand: {
+    id: string;
+    name: string | null;
+    domain: string | null;
+  };
+  timeline?: RawBrandTimelinePoint[];
+}
+
+interface PublicRevenueResponse {
+  results: PublicRevenueItem[];
 }
 
 function num(stats: Record<string, number | null>, key: string): number {
@@ -262,6 +286,7 @@ async function _fetchFeatureBenchmarkUncached(
   hostname = "",
 ): Promise<FeatureBenchmarkData | null> {
   const apiUrl = resolveApiUrl(hostname);
+  const featuresUrl = resolveFeaturesUrl(hostname);
   const headers = buildHeaders();
 
   const features = await fetchBenchmarkFeatures(hostname);
@@ -273,7 +298,7 @@ async function _fetchFeatureBenchmarkUncached(
     return null;
   }
 
-  const [brandsRes, workflowsRes] = await Promise.all([
+  const [brandsRes, workflowsRes, revenueRes] = await Promise.all([
     fetch(
       `${apiUrl}/v1/public/features/ranked?featureSlug=${encodeURIComponent(featureSlug)}&objective=emailsSent&groupBy=brand&limit=100`,
       { headers, next: { revalidate: 300 } },
@@ -281,6 +306,10 @@ async function _fetchFeatureBenchmarkUncached(
     fetch(
       `${apiUrl}/v1/public/features/ranked?featureSlug=${encodeURIComponent(featureSlug)}&objective=emailsSent&groupBy=workflow&limit=100`,
       { headers, next: { revalidate: 300 } },
+    ),
+    fetch(
+      `${featuresUrl}/public/stats/revenue?featureSlug=${encodeURIComponent(featureSlug)}&groupBy=brand`,
+      { headers: { Accept: "application/json" }, next: { revalidate: 300 } },
     ),
   ]);
 
@@ -294,6 +323,11 @@ async function _fetchFeatureBenchmarkUncached(
       `[landing] Benchmarks: workflows fetch failed for ${featureSlug}: ${workflowsRes.status}`,
     );
   }
+  if (!revenueRes.ok) {
+    console.error(
+      `[landing] Benchmarks: revenue timelines fetch failed for ${featureSlug}: ${revenueRes.status}`,
+    );
+  }
 
   const brandsData: BrandRankedResponse = brandsRes.ok
     ? await brandsRes.json()
@@ -301,8 +335,17 @@ async function _fetchFeatureBenchmarkUncached(
   const workflowsData: WorkflowRankedResponse = workflowsRes.ok
     ? await workflowsRes.json()
     : { results: [] };
+  const revenueData: PublicRevenueResponse = revenueRes.ok
+    ? await revenueRes.json()
+    : { results: [] };
+  const revenueTimelineByBrand = new Map(
+    revenueData.results.map((item) => [item.brand.id, mapBrandTimeline(item.timeline)]),
+  );
 
-  const brands = brandsData.results.map(mapBrandEntry);
+  const brands = brandsData.results.map((item) => ({
+    ...mapBrandEntry(item),
+    timeline: revenueTimelineByBrand.get(item.brand.id) ?? mapBrandTimeline(item.timeline),
+  }));
   const workflows = workflowsData.results.map(mapWorkflowEntry);
 
   const sent = workflows.reduce((s, w) => s + w.emailsSent, 0);
