@@ -182,6 +182,15 @@ describe("Quote-requests page — server-renders brand-scoped HITL queue", () =>
     expect(content).toContain("PublicHitlQueue");
   });
 
+  it("wires the public queue CSV download to the fetched opportunities", () => {
+    const content = fs.readFileSync(quoteRequestsPagePath, "utf-8");
+    expect(content).toContain('from "@/components/report/csv-button"');
+    expect(content).toContain('from "@/components/report/csv"');
+    expect(content).toContain("<CsvDownloadButton");
+    expect(content).toContain("toCsv(opportunities, csvColumns)");
+    expect(content).toContain("quote-requests-${featureSlug}.csv");
+  });
+
   it("has its own loading skeleton (queue-shaped, NOT the sales stats/CPA funnel)", () => {
     const loadingPath = path.resolve(
       __dirname,
