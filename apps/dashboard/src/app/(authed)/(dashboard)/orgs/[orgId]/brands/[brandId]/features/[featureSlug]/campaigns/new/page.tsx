@@ -125,6 +125,7 @@ interface WorkflowTableRow {
 /** Funnel projection at a concrete budget — the render shape, scaled client-side from the
  *  server's per-$ projection (pure ×; the route-combining SUM lives in features-service). */
 interface SalesProjectionView {
+  contactedLeads: number | null;
   replies: number | null;
   visits: number | null;
   meetings: number | null;
@@ -159,6 +160,11 @@ function prefillToFormData(
 function fmtPct(pct: number | null | undefined): string {
   if (pct == null) return "—";
   return `${pct > 0 && pct < 10 ? pct.toFixed(1) : pct.toFixed(0)}%`;
+}
+
+function countWithPctLabel(value: number, pct: number | null): string {
+  const count = fmtNum(value);
+  return pct == null ? count : `${count} (${fmtPct(pct)})`;
 }
 
 // One email card in the picker's preview panel — used for both this-session test runs and
@@ -606,6 +612,7 @@ export default function FeatureCreateCampaignPage() {
       if (!base || budget <= 0) return null;
       const scale = (v: number | null) => (v != null ? v * budget : null);
       return {
+        contactedLeads: scale(base.contactedLeads),
         replies: scale(base.replies),
         visits: scale(base.visits),
         meetings: scale(base.meetings),
@@ -1641,22 +1648,53 @@ export default function FeatureCreateCampaignPage() {
                 const perMonth = oneOff ? "" : " per month";
                 const budgetSuffix = oneOff ? "" : ` per ${REVENUE_INTERVAL_LABEL[budgetFrequency]}`;
                 const fmtClose = (n: number) => fmtNum(n, n < 2 ? 1 : 0);
+                const outreachVolume = proj.contactedLeads;
+                const pctOfOutreach = (value: number | null): number | null => {
+                  if (value == null || outreachVolume == null || outreachVolume <= 0) return null;
+                  return (value / outreachVolume) * 100;
+                };
+                const outreachStep = outreachVolume == null
+                  ? []
+                  : [{
+                      chips: [{
+                        v: fmtNum(outreachVolume),
+                        k: `leads contacted${perMonth}`,
+                        note: "initial email + follow-ups",
+                      }],
+                    }];
                 // Each step is a column of one-or-more chips. meeting-booked converges the
                 // positive-reply + website-visit routes onto a single combined `meetings` step
                 // (the two feeders stack with a "+" and both arrow into meetings).
-                const feeders: { v: string; k: string }[] = [];
-                if (proj.replies != null) feeders.push({ v: fmtNum(proj.replies), k: `pos. replies${perMonth}` });
-                if (proj.visits != null) feeders.push({ v: fmtNum(proj.visits), k: `website visits${perMonth}` });
-                const steps: { chips: { v: string; k: string }[]; green?: boolean }[] =
+                const feeders: { v: string; k: string; note?: string }[] = [];
+                if (proj.replies != null) {
+                  feeders.push({
+                    v: countWithPctLabel(proj.replies, pctOfOutreach(proj.replies)),
+                    k: `pos. replies${perMonth}`,
+                  });
+                }
+                if (proj.visits != null) {
+                  feeders.push({
+                    v: countWithPctLabel(proj.visits, pctOfOutreach(proj.visits)),
+                    k: `website visits${perMonth}`,
+                  });
+                }
+                const steps: { chips: { v: string; k: string; note?: string }[]; green?: boolean }[] =
                   salesObjective === "self-serve"
                     ? [
                         { chips: [{ v: fmtUsd0(effectiveBudget), k: `budget${budgetSuffix}` }] },
-                        { chips: [{ v: fmtNum(proj.visits ?? 0), k: `website visits${perMonth}` }] },
+                        ...outreachStep,
+                        {
+                          chips: [{
+                            v: countWithPctLabel(proj.visits ?? 0, pctOfOutreach(proj.visits)),
+                            k: `website visits${perMonth}`,
+                          }],
+                        },
                         { chips: [{ v: fmtClose(proj.closes), k: `closes${perMonth}` }] },
                         { chips: [{ v: fmtUsd0(proj.revenue), k: `revenue${perMonth}` }], green: true },
                       ]
                     : [
                         { chips: [{ v: fmtUsd0(effectiveBudget), k: `budget${budgetSuffix}` }] },
+                        ...outreachStep,
                         { chips: feeders },
                         { chips: [{ v: fmtClose(proj.meetings ?? 0), k: `meetings${perMonth}` }] },
                         { chips: [{ v: fmtClose(proj.closes), k: `closes${perMonth}` }] },
@@ -1676,6 +1714,7 @@ export default function FeatureCreateCampaignPage() {
                                 <div className={`flex flex-col items-center px-3 py-2 rounded-lg border min-w-[84px] ${s.green ? "border-green-200 bg-green-50" : "border-gray-200 bg-gray-50"}`}>
                                   <span className={`text-base font-semibold ${s.green ? "text-green-700" : "text-gray-800"}`}>{c.v}</span>
                                   <span className="text-[11px] text-gray-500 text-center">{c.k}</span>
+                                  {c.note && <span className="mt-0.5 text-[10px] text-gray-400 text-center leading-tight">{c.note}</span>}
                                 </div>
                               </Fragment>
                             ))}

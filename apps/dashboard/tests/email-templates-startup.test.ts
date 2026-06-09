@@ -52,6 +52,7 @@ describe("Email template deployment at startup", () => {
     "credit-depleted",
     "credit-depleted-followup-3d",
     "credit-depleted-followup-10d",
+    "daily-outcome-digest",
   ];
 
   for (const name of templateNames) {
@@ -60,12 +61,12 @@ describe("Email template deployment at startup", () => {
     });
   }
 
-  it("should deploy exactly 13 templates", () => {
+  it("should deploy exactly 14 templates", () => {
     const arrMatch = content.match(/EMAIL_TEMPLATES\s*=\s*\[([\s\S]*?)\n\];/);
     expect(arrMatch).toBeTruthy();
     const arr = arrMatch![1];
     const matches = arr.match(/name: "/g);
-    expect(matches).toHaveLength(13);
+    expect(matches).toHaveLength(14);
   });
 
   it("should be best-effort (not crash on failure)", () => {
@@ -75,6 +76,27 @@ describe("Email template deployment at startup", () => {
 
   it("should skip deployment when API key is missing", () => {
     expect(content).toContain("if (!apiKey)");
+  });
+});
+
+describe("Daily outcome digest template", () => {
+  const render = (s: string, vars: Record<string, unknown>): string =>
+    s.replace(/\{\{(\w+)\}\}/g, (_, k) => (k in vars ? String(vars[k]) : `{{${k}}}`));
+
+  it("renders with digest metadata leaving zero {{...}} placeholders", () => {
+    const tpl = EMAIL_TEMPLATES.find((t) => t.name === "daily-outcome-digest");
+    expect(tpl, "template missing from EMAIL_TEMPLATES").toBeDefined();
+    const rendered = [tpl!.subject, tpl!.htmlBody, tpl!.textBody]
+      .map((s) => render(s, {
+        orgName: "Beta Org",
+        totalBrandsWithOutcomes: 2,
+        totalOutcomeOrganizations: 4,
+        totalExpectedRevenueUsd: "$20,000",
+        digestHtml: "<section>Digest</section>",
+        digestText: "Digest",
+      }))
+      .join("\n");
+    expect(rendered).not.toMatch(/\{\{\w+\}\}/);
   });
 });
 
