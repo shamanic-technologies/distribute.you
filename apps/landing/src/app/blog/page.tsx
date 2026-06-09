@@ -166,18 +166,18 @@ export default async function BlogIndexPage() {
   const articles = await fetchArticles();
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="v2-page">
       <Navbar />
 
-      <Section variant="prose" outerClassName="pt-20 pb-12" className="text-center">
-        <div className="inline-flex items-center gap-2 bg-gray-50 border border-gray-200 text-gray-600 px-4 py-1.5 rounded-full text-sm mb-6">
-          <span className="w-1.5 h-1.5 rounded-full bg-brand-400" />
+      <Section variant="prose" outerClassName="v2-section" className="text-center">
+        <div className="v2-eyebrow mb-6">
+          <span className="v2-dot" />
           distribute blog
         </div>
-        <h1 className="font-display text-4xl md:text-5xl font-bold mb-4 text-gray-900 tracking-tight">
+        <h1 className="v2-title mb-4 text-4xl md:text-5xl">
           Stories from the solo path
         </h1>
-        <p className="text-base md:text-lg text-gray-500 max-w-xl mx-auto">
+        <p className="v2-body mx-auto max-w-xl text-base md:text-lg">
           Playbooks, benchmarks, and field notes on running distribution for a
           portfolio of products — without a marketing team.
         </p>

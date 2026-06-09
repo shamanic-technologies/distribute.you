@@ -80,14 +80,14 @@ function HeroStat({
   hint?: string;
 }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-5">
-      <div className="text-xs uppercase tracking-wider text-gray-500">
+    <div className="v2-card p-5">
+      <div className="v2-mono text-xs uppercase tracking-wider text-[var(--v2-muted)]">
         {label}
       </div>
-      <div className="text-2xl md:text-3xl font-display font-bold text-gray-900 mt-1">
+      <div className="mt-1 text-2xl font-bold text-[var(--v2-text)] md:text-3xl">
         {value}
       </div>
-      {hint && <div className="text-xs text-gray-400 mt-1">{hint}</div>}
+      {hint && <div className="mt-1 text-xs text-[var(--v2-muted)]">{hint}</div>}
     </div>
   );
 }
@@ -103,13 +103,13 @@ export default async function BenchmarksPage() {
 
   if (!data) {
     return (
-      <main className="min-h-screen bg-white">
-        <section className="py-24">
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h1 className="font-display text-3xl font-bold text-gray-800 mb-3">
+      <main className="v2-page">
+        <section className="v2-section">
+          <div className="v2-shell text-center">
+            <h1 className="v2-title mb-3 text-3xl">
               Cold Email Benchmarks
             </h1>
-            <p className="text-gray-500">
+            <p className="v2-body">
               Performance data is loading. Check back soon.
             </p>
           </div>
@@ -145,21 +145,25 @@ export default async function BenchmarksPage() {
   };
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="v2-page">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(datasetJsonLd) }}
       />
 
       {/* Hero */}
-      <section className="py-12 md:py-16 gradient-bg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h1 className="font-display text-3xl md:text-4xl font-bold mb-3 text-gray-800">
+      <section className="v2-section">
+        <div className="v2-shell-wide">
+          <div className="v2-eyebrow mb-6">
+            <span className="v2-dot" />
+            Open dataset
+          </div>
+          <h1 className="v2-title mb-4 max-w-4xl text-4xl md:text-6xl">
             {feature.name}{" "}
-            <span className="gradient-text">Benchmarks &amp; Statistics</span>{" "}
-            <span className="text-gray-500 font-normal">(2026)</span>
+            <span className="text-[var(--v2-accent-hi)]">Benchmarks &amp; Statistics</span>{" "}
+            <span className="font-normal text-[var(--v2-muted)]">(2026)</span>
           </h1>
-          <p className="text-base md:text-lg text-gray-600 max-w-3xl mb-8">
+          <p className="v2-body mb-8 max-w-3xl text-base md:text-lg">
             {feature.description}
           </p>
 
@@ -195,15 +199,15 @@ export default async function BenchmarksPage() {
       )}
 
       {/* Platform averages — our open dataset */}
-      <section className="py-10 md:py-12 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-xs uppercase tracking-wider text-gray-400 font-medium mb-2">
+      <section className="v2-section-tight border-y border-[var(--v2-border)] bg-[var(--v2-bg-alt)]">
+        <div className="v2-shell-wide">
+          <p className="v2-mono mb-2 text-xs uppercase tracking-wider text-[var(--v2-muted)]">
             From the distribute open dataset
           </p>
-          <h2 className="font-display text-xl md:text-2xl font-bold text-gray-900 mb-2">
+          <h2 className="v2-h2 mb-2 text-xl md:text-2xl">
             Platform averages
           </h2>
-          <p className="text-sm text-gray-500 mb-6">
+          <p className="v2-body mb-6 text-sm">
             Aggregated across every campaign run through {feature.name} — every
             brand, every workflow. Updated hourly.
           </p>
@@ -235,29 +239,29 @@ export default async function BenchmarksPage() {
       <ClientTrajectoriesSection brands={brands} />
 
       {/* Brand leaderboard */}
-      <section className="py-10 md:py-12 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="v2-section-tight">
+        <div className="v2-shell-wide">
           <div className="flex items-end justify-between mb-4">
             <div>
-              <h2 className="font-display text-xl md:text-2xl font-bold text-gray-900">
+              <h2 className="v2-h2 text-xl md:text-2xl">
                 Brand leaderboard
               </h2>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="v2-body mt-1 text-sm">
                 Every brand that has run {feature.name} through distribute.
                 Click column headers to sort.
               </p>
             </div>
-            <span className="text-xs text-gray-400 hidden md:block">
+            <span className="v2-mono hidden text-xs text-[var(--v2-muted)] md:block">
               {brands.length.toLocaleString()} brands
             </span>
           </div>
           {brands.length > 0 ? (
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+            <div className="v2-card overflow-hidden">
               <BrandLeaderboard brands={brands} />
             </div>
           ) : (
-            <div className="text-center py-12 bg-gray-50 rounded-xl border border-gray-200">
-              <p className="text-gray-500">
+            <div className="v2-card py-12 text-center">
+              <p className="v2-body">
                 No campaign data for {feature.name} yet. Check back soon.
               </p>
             </div>
@@ -271,32 +275,32 @@ export default async function BenchmarksPage() {
       )}
 
       {/* Workflow leaderboard */}
-      <section className="py-10 md:py-12 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="v2-section-tight border-y border-[var(--v2-border)] bg-[var(--v2-bg-alt)]">
+        <div className="v2-shell-wide">
           <div className="flex items-end justify-between mb-4">
             <div>
-              <h2 className="font-display text-xl md:text-2xl font-bold text-gray-900">
+              <h2 className="v2-h2 text-xl md:text-2xl">
                 Workflow leaderboard
               </h2>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="v2-body mt-1 text-sm">
                 Every workflow that runs {feature.name} — ranked by cost per
                 positive reply.
               </p>
             </div>
-            <span className="text-xs text-gray-400 hidden md:block">
+            <span className="v2-mono hidden text-xs text-[var(--v2-muted)] md:block">
               {workflows.length.toLocaleString()} workflows
             </span>
           </div>
           {workflows.length > 0 ? (
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+            <div className="v2-card overflow-hidden">
               <WorkflowLeaderboard workflows={workflows} inSection />
             </div>
           ) : (
-            <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
-              <p className="text-gray-500">No workflow data yet.</p>
+            <div className="v2-card py-12 text-center">
+              <p className="v2-body">No workflow data yet.</p>
             </div>
           )}
-          <p className="text-xs text-gray-400 mt-4">
+          <p className="v2-mono mt-4 text-xs text-[var(--v2-muted)]">
             Updated {new Date(updatedAt).toLocaleString()}. Methodology is open
             source.
           </p>
