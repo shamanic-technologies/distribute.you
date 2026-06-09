@@ -1132,64 +1132,6 @@ export async function getFeatureRevenueByCampaign(
   }));
 }
 
-const WorkflowRevenueGroupBySchema = z.union([
-  z.literal("workflowSlug"),
-  z.literal("workflowDynastySlug"),
-]);
-
-const FeatureRevenueByWorkflowSchema = z.object({
-  featureSlug: z.string(),
-  groupBy: WorkflowRevenueGroupBySchema,
-  groups: z.array(
-    z.object({
-      workflowSlug: z.string().nullable().optional(),
-      workflowDynastySlug: z.string().nullable().optional(),
-      headline: z.object({ totalPipelineUsd: z.number().nullable() }),
-      costEconomics: z.object({
-        totalCostUsd: z.number(),
-        costOfAcquisitionPct: z.number().nullable(),
-        roiMultiple: z.number().nullable(),
-      }),
-    }),
-  ),
-});
-
-export type WorkflowRevenueGroupBy = z.infer<typeof WorkflowRevenueGroupBySchema>;
-
-export interface WorkflowRevenueGroup {
-  workflowSlug: string | null;
-  workflowDynastySlug: string | null;
-  totalPipelineUsd: number | null;
-  totalCostUsd: number;
-  /** totalPipelineUsd / totalCostUsd. Null when cost is 0 or pipeline is null. */
-  roiMultiple: number | null;
-}
-
-/** GET /features/:slug/revenue?groupBy=workflowSlug|workflowDynastySlug — per-workflow expected revenue + ROI. */
-export async function getFeatureRevenueByWorkflow(
-  featureSlug: string,
-  brandId: string,
-  groupBy: WorkflowRevenueGroupBy,
-  token?: string,
-): Promise<WorkflowRevenueGroup[]> {
-  const query = new URLSearchParams({ brandId, groupBy });
-  const raw = await apiCall<unknown>(`/features/${featureSlug}/revenue?${query.toString()}`, { token });
-  const parsed = FeatureRevenueByWorkflowSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getFeatureRevenueByWorkflow: response shape mismatch", {
-      issues: parsed.error.issues,
-    });
-    throw new Error("[dashboard] getFeatureRevenueByWorkflow: invalid response shape");
-  }
-  return parsed.data.groups.map((g) => ({
-    workflowSlug: g.workflowSlug ?? null,
-    workflowDynastySlug: g.workflowDynastySlug ?? null,
-    totalPipelineUsd: g.headline.totalPipelineUsd,
-    totalCostUsd: g.costEconomics.totalCostUsd,
-    roiMultiple: g.costEconomics.roiMultiple,
-  }));
-}
-
 /** POST /brands — upsert brand by URL, returns brandId */
 export async function upsertBrand(
   url: string,
