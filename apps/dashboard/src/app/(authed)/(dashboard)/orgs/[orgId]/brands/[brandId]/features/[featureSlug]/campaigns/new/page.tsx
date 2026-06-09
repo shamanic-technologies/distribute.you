@@ -101,6 +101,11 @@ const REVENUE_INTERVAL_LABEL: Record<BudgetFrequency, string> = {
 };
 
 const fmtUsd0 = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
+const fmtUsdPerOutcome = (n: number | null | undefined) => {
+  if (n == null || !Number.isFinite(n)) return "—";
+  if (n < 1) return `$${n.toFixed(1)}`;
+  return fmtUsd0(n);
+};
 const fmtNum = (n: number, decimals = 0) =>
   decimals ? n.toFixed(decimals) : Math.round(n).toLocaleString("en-US");
 
@@ -1763,11 +1768,8 @@ export default function FeatureCreateCampaignPage() {
                       const isOverride = salesWorkflowOverrideId === w.id;
                       // CAC as % of LTV (lower = better) instead of a scary "$ / close" figure (served).
                       const cacPct = cacPctFor(w.workflowDynastySlug);
-                      // Engagement rates as % of volume — drop opens (noise), keep link clicks +
-                      // positive replies as conversion rates, not raw counts.
                       const sent = Number(w.stats.recipientsSent) || 0;
-                      const clickPct = sent > 0 ? ((Number(w.stats.recipientsClicked) || 0) / sent) * 100 : null;
-                      const posReplyPct = sent > 0 ? ((Number(w.stats.recipientsRepliesPositive) || 0) / sent) * 100 : null;
+                      const workflowProjection = projByDynasty.get(w.workflowDynastySlug);
                       const testing = isTestRunning(tests[w.id]?.status) || testStarting[w.id];
                       return (
                         <button key={w.id} type="button"
@@ -1785,10 +1787,10 @@ export default function FeatureCreateCampaignPage() {
                                 </span>
                               )}
                             </div>
-                            <div className="flex gap-3 mt-1 text-[11px] text-gray-500">
+                            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-[11px] text-gray-500">
                               <span>Sent {fmtNum(sent)}</span>
-                              <span>Link clicks {fmtPct(clickPct)}</span>
-                              <span>Positive replies {fmtPct(posReplyPct)}</span>
+                              <span>{fmtUsdPerOutcome(workflowProjection?.clickUsd)} / link click</span>
+                              <span>{fmtUsdPerOutcome(workflowProjection?.replyUsd)} / positive reply</span>
                             </div>
                           </div>
                           <div className="text-right shrink-0">
