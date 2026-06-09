@@ -2,6 +2,7 @@ import "server-only";
 import { unstable_cache } from "next/cache";
 import type { RevenueOverview } from "./revenue-view";
 import { parseFeatureRevenue } from "./revenue-parse";
+import { parseFeatureRevenueByWorkflow } from "./api";
 import type {
   Brand,
   Campaign,
@@ -12,6 +13,7 @@ import type {
   QuotePitchStatus,
   StatsRegistry,
   Workflow,
+  WorkflowRevenueGroup,
 } from "@/lib/api";
 import { isOpportunityOpen } from "@/lib/quote-pitch-status";
 
@@ -379,6 +381,31 @@ export async function getReportRevenue(
       return parseFeatureRevenue(raw, "getReportRevenue");
     },
     [`getReportRevenue`, orgId, brandId, featureSlug],
+    {
+      tags: reportTags(orgId, brandId, featureSlug),
+      revalidate: REPORT_REVALIDATE_SECONDS,
+    },
+  )();
+}
+
+/** Expected pipeline revenue grouped by workflowSlug for the public report's
+ *  brand-scoped workflow table. The math stays in features-service. */
+export async function getReportRevenueByWorkflow(
+  orgId: string,
+  brandId: string,
+  featureSlug: string,
+): Promise<WorkflowRevenueGroup[]> {
+  return unstable_cache(
+    async () => {
+      const raw = await adminGet<unknown>(
+        "featureRevenueByWorkflow",
+        `/features/${encodeURIComponent(featureSlug)}/revenue?brandId=${brandId}&groupBy=workflowSlug`,
+        orgId,
+        { "x-brand-id": brandId },
+      );
+      return parseFeatureRevenueByWorkflow(raw, "getReportRevenueByWorkflow");
+    },
+    [`getReportRevenueByWorkflow`, orgId, brandId, featureSlug],
     {
       tags: reportTags(orgId, brandId, featureSlug),
       revalidate: REPORT_REVALIDATE_SECONDS,

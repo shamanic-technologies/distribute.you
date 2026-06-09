@@ -5,9 +5,11 @@ import { useParams, useRouter } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   fetchGlobalRankedWorkflows,
+  getFeatureRevenueByWorkflow,
   listWorkflows,
 } from "@/lib/api";
 import { useFeatures } from "@/lib/features-context";
+import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { FEATURE_GATES } from "@/lib/feature-gates";
 import { MaturityBadge } from "@/components/maturity-badge";
@@ -40,6 +42,18 @@ function SortHeader({
   );
 }
 
+function formatUsdValue(usd: number | null | undefined): string {
+  if (usd == null) return "—";
+  if (usd === 0) return "$0";
+  if (usd < 0.01) return "<$0.01";
+  if (usd < 100) return `$${usd.toFixed(2)}`;
+  return `$${usd.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+}
+
+function formatRoi(roi: number | null | undefined): string {
+  return roi == null ? "—" : `${roi.toFixed(1)}×`;
+}
+
 export default function FeatureWorkflowsPage() {
   const params = useParams();
   const router = useRouter();
@@ -61,6 +75,7 @@ export default function FeatureWorkflowsPage() {
   const defaultSortDir = defaultSortOutput?.sortDirection
     ?? sortDirectionForType(registry[defaultSortKey]?.type)
     ?? "desc";
+  const revenueEnabled = isRevenueFeature(featureSlug);
 
   const [metric, setMetric] = useState(defaultSortKey);
   const [sortDir, setSortDir] = useState<"asc" | "desc">(defaultSortDir);
@@ -88,6 +103,12 @@ export default function FeatureWorkflowsPage() {
     pollOptions,
   );
 
+  const { data: workflowRevenue, isLoading: workflowRevenueLoading } = useAuthQuery(
+    ["featureRevenue", brandId, featureSlug, "workflow"],
+    () => getFeatureRevenueByWorkflow(featureSlug, brandId),
+    { enabled: revenueEnabled && wfDef?.implemented === true, ...pollOptions },
+  );
+
   // Active workflows grouped by workflowDynastySlug: keep only the latest per dynasty
   const dynastyWorkflows = useMemo(() => {
     if (!workflowsData?.workflows) return [];
@@ -107,14 +128,17 @@ export default function FeatureWorkflowsPage() {
     for (const r of rankedData ?? []) {
       if (r.workflow.workflowDynastySlug) statsMap.set(r.workflow.workflowDynastySlug, r.stats);
     }
+    const revenueMap = new Map((workflowRevenue ?? []).map((r) => [r.workflowSlug, r]));
 
     return dynastyWorkflows.map((wf) => ({
       id: wf.id,
       workflowSlug: wf.workflowSlug,
       workflowDynastyName: wf.workflowDynastyName,
       stats: statsMap.get(wf.workflowDynastySlug) ?? {},
+      expectedRevenueUsd: revenueMap.get(wf.workflowSlug)?.totalPipelineUsd ?? null,
+      roiMultiple: revenueMap.get(wf.workflowSlug)?.roiMultiple ?? null,
     }));
-  }, [rankedData, dynastyWorkflows]);
+  }, [rankedData, workflowRevenue, dynastyWorkflows]);
 
   const handleSort = useCallback((key: string) => {
     setMetric((prev) => {
@@ -131,8 +155,16 @@ export default function FeatureWorkflowsPage() {
   const sorted = useMemo(() => {
     if (rows.length === 0) return [];
     return [...rows].sort((a, b) => {
-      const aRaw = a.stats[metric] ?? null;
-      const bRaw = b.stats[metric] ?? null;
+      const aRaw = metric === "expectedRevenue"
+        ? a.expectedRevenueUsd
+        : metric === "roi"
+          ? a.roiMultiple
+          : a.stats[metric] ?? null;
+      const bRaw = metric === "expectedRevenue"
+        ? b.expectedRevenueUsd
+        : metric === "roi"
+          ? b.roiMultiple
+          : b.stats[metric] ?? null;
       const aNull = aRaw === null || aRaw === 0;
       const bNull = bRaw === null || bRaw === 0;
       if (aNull && bNull) return 0;
@@ -178,7 +210,7 @@ export default function FeatureWorkflowsPage() {
           New Workflow
         </button>
       </div>
-      {isLoading || featuresLoading || workflowsLoading ? (
+      {isLoading || featuresLoading || workflowsLoading || (revenueEnabled && workflowRevenueLoading) ? (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -189,12 +221,18 @@ export default function FeatureWorkflowsPage() {
                     {registry[o.key]?.label ?? o.key}
                   </th>
                 ))}
+                {revenueEnabled && (
+                  <>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expected revenue</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ROI</th>
+                  </>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {[1, 2, 3].map((i) => (
                 <tr key={i}>
-                  {Array.from({ length: sortedOutputs.length + 1 }).map((_, j) => (
+                  {Array.from({ length: sortedOutputs.length + 1 + (revenueEnabled ? 2 : 0) }).map((_, j) => (
                     <td key={j} className="px-4 py-4">
                       <Skeleton className={`h-4 ${j === 0 ? "w-32" : "w-16"}`} />
                     </td>
@@ -235,6 +273,24 @@ export default function FeatureWorkflowsPage() {
                       onSort={handleSort}
                     />
                   ))}
+                  {revenueEnabled && (
+                    <>
+                      <SortHeader
+                        label="Expected revenue"
+                        sortKey="expectedRevenue"
+                        currentSort={metric}
+                        currentDir={sortDir}
+                        onSort={handleSort}
+                      />
+                      <SortHeader
+                        label="ROI"
+                        sortKey="roi"
+                        currentSort={metric}
+                        currentDir={sortDir}
+                        onSort={handleSort}
+                      />
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -256,6 +312,16 @@ export default function FeatureWorkflowsPage() {
                         {formatStatValue(wf.stats[o.key], registry[o.key])}
                       </td>
                     ))}
+                    {revenueEnabled && (
+                      <>
+                        <td className="px-4 py-4 text-sm font-medium text-green-700">
+                          {formatUsdValue(wf.expectedRevenueUsd)}
+                        </td>
+                        <td className="px-4 py-4 text-sm font-medium text-green-700">
+                          {formatRoi(wf.roiMultiple)}
+                        </td>
+                      </>
+                    )}
                   </tr>
                 ))}
               </tbody>
