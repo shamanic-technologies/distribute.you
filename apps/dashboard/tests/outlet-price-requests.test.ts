@@ -157,6 +157,45 @@ describe("outlet pages wire the Get Domain Ratings control", () => {
   }
 });
 
+describe("outlet pages wire the Get Monthly Visits control", () => {
+  const api = fs.readFileSync(apiPath, "utf-8");
+
+  it("posts a batch of domains to the gateway traffic compute endpoint", () => {
+    expect(api).toContain("export async function computeDomainTrafficHistories");
+    expect(api).toContain('"/orgs/domains/traffic-compute"');
+    expect(api).toContain("body: { domains }");
+  });
+
+  it("reads cached traffic histories for many domains", () => {
+    expect(api).toContain("export async function getDomainTrafficHistories");
+    expect(api).toContain("`/orgs/domains/traffic-history?");
+  });
+
+  for (const [level, pagePath] of Object.entries(outletPages)) {
+    const content = fs.readFileSync(pagePath, "utf-8");
+
+    it(`${level} page renders the button beside search and uses missing current-page traffic domains`, () => {
+      expect(content).toContain("computeDomainTrafficHistories");
+      expect(content).toContain("currentPageDomainsMissingTraffic");
+      expect(content).toContain("paginatedOutlets.pageItems");
+      expect(content).toContain(".filter((domain) => !trafficMap.has(domain))");
+      expect(content).toContain("Get Monthly Visits");
+    });
+
+    it(`${level} page shows or fetches monthly visits in the detail panel`, () => {
+      expect(content).toContain("Monthly Visits");
+      expect(content).toContain("formatMonthlyVisits(monthlyVisits)");
+      expect(content).toContain("onFetchMonthlyVisits");
+      expect(content).toContain("fetchMonthlyVisitsMutation.mutate(normalizeDomain(selectedOutlet.outletDomain))");
+    });
+
+    it(`${level} page writes fetched traffic results into the traffic cache`, () => {
+      expect(content).toContain("queryClient.setQueryData<DomainTrafficHistory[]>(domainTrafficQueryKey");
+      expect(content).toContain("invalidateQueries({ queryKey: domainTrafficQueryKey })");
+    });
+  }
+});
+
 describe("EntitySearchBar spacing", () => {
   it("keeps the existing bottom margin by default but lets toolbar rows override it", () => {
     const content = fs.readFileSync(searchBarPath, "utf-8");

@@ -35,7 +35,7 @@ describe("api.ts — on-demand Ahrefs compute helpers", () => {
 
   it("sends the documented request bodies", () => {
     // traffic + DR take a domains array; ai-visibility takes a single domain.
-    expect(apiSrc).toContain("body: { domains: [domain] }");
+    expect(apiSrc).toContain("body: { domains }");
     expect(apiSrc).toContain("body: { domain }");
   });
 

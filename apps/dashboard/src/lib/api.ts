@@ -3496,19 +3496,28 @@ export async function getDomainTrafficHistory(
   domain: string,
   token?: string,
 ): Promise<DomainTrafficHistory | null> {
+  const data = await getDomainTrafficHistories([domain], token);
+  return data[0] ?? null;
+}
+
+export async function getDomainTrafficHistories(
+  domains: string[],
+  token?: string,
+): Promise<DomainTrafficHistory[]> {
+  const params = new URLSearchParams({ domains: domains.join(",") });
   const raw = await apiCall<unknown>(
-    `/orgs/domains/traffic-history?domains=${encodeURIComponent(domain)}`,
+    `/orgs/domains/traffic-history?${params}`,
     { token },
   );
   const parsed = z.array(DomainTrafficHistorySchema).safeParse(raw);
   if (!parsed.success) {
-    console.error("[dashboard] getDomainTrafficHistory: response shape mismatch", {
+    console.error("[dashboard] getDomainTrafficHistories: response shape mismatch", {
       issues: parsed.error.issues,
       raw,
     });
-    throw new Error("[dashboard] getDomainTrafficHistory: invalid response shape");
+    throw new Error("[dashboard] getDomainTrafficHistories: invalid response shape");
   }
-  return parsed.data[0] ?? null;
+  return parsed.data;
 }
 
 /**
@@ -3565,20 +3574,28 @@ export async function computeDomainTraffic(
   domain: string,
   token?: string,
 ): Promise<DomainTrafficHistory | null> {
+  const data = await computeDomainTrafficHistories([domain], token);
+  return data[0] ?? null;
+}
+
+export async function computeDomainTrafficHistories(
+  domains: string[],
+  token?: string,
+): Promise<DomainTrafficHistory[]> {
   const raw = await apiCall<unknown>("/orgs/domains/traffic-compute", {
     token,
     method: "POST",
-    body: { domains: [domain] },
+    body: { domains },
   });
   const parsed = z.array(DomainTrafficHistorySchema).safeParse(raw);
   if (!parsed.success) {
-    console.error("[dashboard] computeDomainTraffic: response shape mismatch", {
+    console.error("[dashboard] computeDomainTrafficHistories: response shape mismatch", {
       issues: parsed.error.issues,
       raw,
     });
-    throw new Error("[dashboard] computeDomainTraffic: invalid response shape");
+    throw new Error("[dashboard] computeDomainTrafficHistories: invalid response shape");
   }
-  return parsed.data[0] ?? null;
+  return parsed.data;
 }
 
 export async function computeDomainDrStatuses(
