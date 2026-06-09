@@ -5,6 +5,7 @@ import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { Section } from "@/components/section";
 import { PROD_URLS } from "@/lib/env-urls";
+import { DEFAULT_OG_IMAGE_PATH, TWITTER_HANDLE } from "@/lib/seo";
 import { listArticles, type BlogArticle } from "@/lib/blog/db";
 
 export const revalidate = 60;
@@ -22,6 +23,15 @@ export const metadata: Metadata = {
     title: "Blog — Stories from the Solo Path",
     description:
       "Stories, playbooks, and benchmarks for solo builders and small teams running their own distribution — outbound, PR, and growth.",
+    images: [{ url: DEFAULT_OG_IMAGE_PATH, width: 1200, height: 630, alt: "distribute Blog" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Blog — Stories from the Solo Path",
+    description:
+      "Stories, playbooks, and benchmarks for solo builders and small teams running their own distribution — outbound, PR, and growth.",
+    images: [DEFAULT_OG_IMAGE_PATH],
+    creator: TWITTER_HANDLE,
   },
 };
 

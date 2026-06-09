@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PROD_URLS } from "@/lib/env-urls";
+import { PRICING_OG_IMAGE_PATH, TWITTER_HANDLE } from "@/lib/seo";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 
@@ -35,7 +36,7 @@ export const metadata: Metadata = {
     description: SITE_DESCRIPTION,
     images: [
       {
-        url: "/og-image.jpg",
+        url: PRICING_OG_IMAGE_PATH,
         width: 1200,
         height: 630,
         alt: "distribute Pricing — Transparent Variable Costs",
@@ -46,7 +47,8 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "distribute Pricing — Transparent Variable Costs",
     description: SITE_DESCRIPTION,
-    images: ["/og-image.jpg"],
+    images: [PRICING_OG_IMAGE_PATH],
+    creator: TWITTER_HANDLE,
   },
   alternates: {
     canonical: PRICING_URL,

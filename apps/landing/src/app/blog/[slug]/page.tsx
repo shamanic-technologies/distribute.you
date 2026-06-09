@@ -6,6 +6,11 @@ import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { Section } from "@/components/section";
 import { PROD_URLS } from "@/lib/env-urls";
+import {
+  BRAND_LOGO_URL,
+  DEFAULT_OG_IMAGE_PATH,
+  TWITTER_HANDLE,
+} from "@/lib/seo";
 import { getArticleBySlug } from "@/lib/blog/db";
 
 export const revalidate = 60;
@@ -17,6 +22,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const article = await getArticleBySlug(slug);
   if (!article) return { title: "Article not found — distribute" };
   const articleUrl = `${PROD_URLS.landing}/blog/${article.slug}`;
+  const image = article.coverImageUrl
+    ? [{ url: article.coverImageUrl }]
+    : [{ url: DEFAULT_OG_IMAGE_PATH, width: 1200, height: 630, alt: article.title }];
   return {
     title: `${article.title} — distribute`,
     description: article.excerpt ?? undefined,
@@ -26,7 +34,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url: articleUrl,
       title: article.title,
       description: article.excerpt ?? undefined,
-      images: article.coverImageUrl ? [{ url: article.coverImageUrl }] : undefined,
+      images: image,
+      siteName: "distribute",
+      publishedTime: article.publishedAt,
+      modifiedTime: article.updatedAt,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: article.title,
+      description: article.excerpt ?? undefined,
+      images: article.coverImageUrl ? [article.coverImageUrl] : [DEFAULT_OG_IMAGE_PATH],
+      creator: TWITTER_HANDLE,
     },
   };
 }
@@ -45,9 +63,30 @@ export default async function BlogArticlePage({ params }: Props) {
   if (!article) notFound();
 
   const body = article.contentHtml ?? null;
+  const articleUrl = `${PROD_URLS.landing}/blog/${article.slug}`;
+  const articleJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: article.title,
+    description: article.excerpt,
+    url: articleUrl,
+    datePublished: article.publishedAt,
+    dateModified: article.updatedAt,
+    image: article.coverImageUrl ?? `${PROD_URLS.landing}${DEFAULT_OG_IMAGE_PATH}`,
+    publisher: {
+      "@type": "Organization",
+      name: "distribute",
+      url: PROD_URLS.landing,
+      logo: BRAND_LOGO_URL,
+    },
+  };
 
   return (
     <main className="v2-page">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+      />
       <Navbar />
 
       <Section variant="prose" outerClassName="v2-section-tight" as="div">
