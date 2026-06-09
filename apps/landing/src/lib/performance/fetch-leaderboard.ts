@@ -94,6 +94,8 @@ export interface BrandLeaderboardEntry {
   brandDomain: string | null;
   brandName: string | null;
   timeline?: BrandTimelinePoint[];
+  expectedRevenueUsd: number | null;
+  roiMultiple: number | null;
   emailsSent: number;
   emailsOpened: number;
   emailsClicked: number;
@@ -249,6 +251,8 @@ async function fetchBrandRanked(
       brandName: r.brand.name ?? null,
       brandDomain: r.brand.domain ?? null,
       brandUrl: null,
+      expectedRevenueUsd: null,
+      roiMultiple: null,
       emailsSent: sent,
       emailsOpened: opened,
       emailsClicked: clicked,
@@ -300,6 +304,8 @@ function aggregateBrands(brandsByFeature: BrandLeaderboardEntry[][]): BrandLeade
     brandName: b.name,
     brandDomain: b.domain,
     brandUrl: null,
+    expectedRevenueUsd: null,
+    roiMultiple: null,
     emailsSent: b.sent,
     emailsOpened: b.opened,
     emailsClicked: b.clicked,
