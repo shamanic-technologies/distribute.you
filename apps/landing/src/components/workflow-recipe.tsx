@@ -7,7 +7,13 @@ interface Primitive {
   cost: string;
 }
 
-export function WorkflowRecipe() {
+interface WorkflowRecipeProps {
+  costPerQualifiedReply?: string;
+}
+
+export function WorkflowRecipe({
+  costPerQualifiedReply = "Live",
+}: WorkflowRecipeProps) {
   const primitives: Primitive[] = [
     { name: "Apollo lead enrichment", provider: "Apollo", providerDomain: "apollo.io", cost: "$0.012" },
     { name: "Claude Sonnet 4.6 — email generation", provider: "Anthropic", providerDomain: "anthropic.com", cost: "$0.018" },
@@ -52,7 +58,9 @@ export function WorkflowRecipe() {
           <p className="text-xs text-cyan-700 uppercase tracking-wider font-medium">
             Avg $/qualified reply
           </p>
-          <p className="text-lg font-semibold text-gray-900 font-mono">$1.42</p>
+          <p className="text-lg font-semibold text-gray-900 font-mono">
+            {costPerQualifiedReply}
+          </p>
         </div>
       </div>
     </div>

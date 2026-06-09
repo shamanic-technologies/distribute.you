@@ -1,0 +1,116 @@
+import { afterEach, describe, it, expect, vi } from "vitest";
+import * as fs from "fs";
+import * as path from "path";
+import { staticV2Response } from "../../src/lib/static-v2-html";
+
+const staticHtmlPath = path.resolve(
+  __dirname,
+  "../../src/lib/static-v2-html.ts",
+);
+const salesLandingPagePath = path.resolve(
+  __dirname,
+  "../../../sales-cold-emails-landing/src/app/page.tsx",
+);
+const landingV2Dir = path.resolve(__dirname, "../../public/landing-v2");
+
+const staticHtml = fs.readFileSync(staticHtmlPath, "utf-8");
+const salesLandingPage = fs.readFileSync(salesLandingPagePath, "utf-8");
+const staticPageSource = ["index.html", "performance.html", "design-system.html"]
+  .map((fileName) => fs.readFileSync(path.join(landingV2Dir, fileName), "utf-8"))
+  .join("\n");
+
+describe("Static landing live performance values", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("injects the public best positive-reply cost into v2 static pages", () => {
+    expect(staticHtml).toContain("/v1/public/features/best");
+    expect(staticHtml).toContain("sales-cold-email-outreach");
+    expect(staticHtml).toContain("recipientsRepliesPositive");
+    expect(staticHtml).toContain("replaceAll(\"$1.42\"");
+  });
+
+  it("does not keep the old positive-reply cost hardcoded in static page source", () => {
+    expect(staticPageSource).toContain("__BEST_POSITIVE_REPLY_COST__");
+    expect(staticPageSource).toContain("__BEST_POSITIVE_REPLY_COST_NUMERIC__");
+    expect(staticPageSource).toContain("__OPEN_RATE__");
+    expect(staticPageSource).toContain("__POSITIVE_REPLY_RATE__");
+    expect(staticPageSource).toContain("__EMAILS_SENT__");
+    expect(staticPageSource).not.toContain("$1.42");
+    expect(staticPageSource).not.toContain('data-n="1.42"');
+    expect(staticPageSource).not.toContain("48 hrs");
+    expect(staticPageSource).not.toContain("first reply within 48 hours");
+  });
+
+  it("renders the exact public best positive-reply cost into served HTML", async () => {
+    const fetchMock = vi.fn(async (url: string | URL | Request) => {
+      const href = String(url);
+      if (href.includes("/v1/public/features/best")) {
+        return new Response(
+          JSON.stringify({
+            best: {
+              recipientsRepliesPositive: {
+                workflowSlug: "sales-cold-email-outreach-permafrost-v5",
+                workflowName: "Sales Cold Email Outreach Permafrost v5",
+                createdForBrandId: "01800fc5-3934-4901-858a-60c8e59e2e9c",
+                value: 3200,
+              },
+            },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          results: [
+            {
+              stats: {
+                recipientsSent: 100,
+                recipientsOpened: 38,
+                recipientsRepliesPositive: 2,
+              },
+            },
+          ],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const indexResponse = await staticV2Response("index.html");
+    const performanceResponse = await staticV2Response("performance.html");
+    const indexHtml = await indexResponse.text();
+    const performanceHtml = await performanceResponse.text();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "/v1/public/features/best?featureSlug=sales-cold-email-outreach&groupBy=workflow",
+      ),
+      expect.any(Object),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "/v1/public/features/ranked?featureSlug=sales-cold-email-outreach&objective=emailsSent&groupBy=workflow&limit=100",
+      ),
+      expect.any(Object),
+    );
+    expect(indexHtml).toContain("$32.00/reply");
+    expect(indexHtml).toContain('data-n="32.00"');
+    expect(indexHtml).not.toContain("$1.42");
+
+    expect(performanceHtml).toContain("$32.00");
+    expect(performanceHtml).toContain("38.0%");
+    expect(performanceHtml).toContain("2.0%");
+    expect(performanceHtml).toContain("100");
+    expect(performanceHtml).toContain("emails sent tracked");
+    expect(performanceHtml).not.toContain("$1.42");
+  });
+
+  it("keeps the standalone sales landing on recipient-based public best keys", () => {
+    expect(salesLandingPage).toContain('"recipientsOpened"');
+    expect(salesLandingPage).toContain('"recipientsRepliesPositive"');
+    expect(salesLandingPage).not.toContain('best["opened"]');
+    expect(salesLandingPage).not.toContain('best["replied"]');
+  });
+});
