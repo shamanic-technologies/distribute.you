@@ -35,6 +35,46 @@ export class ApiError extends Error {
   }
 }
 
+function asErrorBody(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : { error: "Request failed", body: value };
+}
+
+function stringOrNumber(value: unknown): string | number | undefined {
+  return typeof value === "string" || typeof value === "number" ? value : undefined;
+}
+
+function stringOrUndefined(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+async function readJsonResponse(response: Response, endpoint: string): Promise<unknown> {
+  const contentType = response.headers.get("Content-Type") ?? "";
+  if (!contentType.toLowerCase().includes("application/json")) {
+    const text = await response.text().catch(() => "");
+    throw new ApiError("API returned a non-JSON response", response.status, {
+      error: "Non-JSON API response",
+      endpoint,
+      status: response.status,
+      contentType: contentType || null,
+      preview: text.trim().slice(0, 200),
+    });
+  }
+
+  try {
+    return await response.json();
+  } catch (err) {
+    throw new ApiError("API returned invalid JSON", response.status, {
+      error: "Invalid JSON API response",
+      endpoint,
+      status: response.status,
+      contentType,
+      detail: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
 /**
  * The org the UI is currently rendering, parsed from the `/orgs/<id>/...` URL.
  * Client-side only. Sent to the proxy as `x-active-org-id` so the proxy can fail
@@ -84,23 +124,23 @@ async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
   }
 
   if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({ error: "Request failed" }));
+    const errorBody = asErrorBody(await readJsonResponse(response, endpoint));
     if (response.status === 402 && typeof window !== "undefined") {
       const { dispatchPaymentRequired } = await import("@/lib/billing-guard");
       dispatchPaymentRequired({
-        balance_cents: errorBody.balance_cents,
-        required_cents: errorBody.required_cents,
-        error: errorBody.error,
+        balance_cents: stringOrNumber(errorBody.balance_cents),
+        required_cents: stringOrNumber(errorBody.required_cents),
+        error: stringOrUndefined(errorBody.error),
       });
     }
     throw new ApiError(
-      errorBody.error || errorBody.message || "Request failed",
+      stringOrUndefined(errorBody.error) ?? stringOrUndefined(errorBody.message) ?? "Request failed",
       response.status,
       errorBody
     );
   }
 
-  return response.json();
+  return await readJsonResponse(response, endpoint) as T;
 }
 
 // Types
