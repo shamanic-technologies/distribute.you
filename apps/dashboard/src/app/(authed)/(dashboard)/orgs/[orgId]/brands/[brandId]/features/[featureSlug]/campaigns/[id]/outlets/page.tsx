@@ -10,6 +10,7 @@ import {
   getOutletStatsCosts,
   getDomainDrStatuses,
   computeDomainDr,
+  computeDomainDrStatuses,
   type DomainDrStatus,
   type DeduplicatedOutlet,
   type OutletListResponse,
@@ -400,7 +401,7 @@ export default function CampaignOutletsPage() {
     [outletDomains],
   );
 
-  const { data: domainDrStatuses } = useAuthQuery(
+  const { data: domainDrStatuses, isPending: isDomainDrStatusesPending } = useAuthQuery(
     domainDrQueryKey,
     () => getDomainDrStatuses(outletDomains),
     { enabled: outletDomains.length > 0 },
@@ -415,6 +416,18 @@ export default function CampaignOutletsPage() {
         const next = (prev ?? []).filter((status) => normalizeDomain(status.domain) !== resultDomain);
         return [...next, result];
       });
+    },
+  });
+
+  const fetchPageDomainRatingsMutation = useMutation({
+    mutationFn: (domains: string[]) => computeDomainDrStatuses(domains),
+    onSuccess: (results) => {
+      queryClient.setQueryData<DomainDrStatus[]>(domainDrQueryKey, (prev) => {
+        const resultDomains = new Set(results.map((result) => normalizeDomain(result.domain)));
+        const next = (prev ?? []).filter((status) => !resultDomains.has(normalizeDomain(status.domain)));
+        return [...next, ...results];
+      });
+      void queryClient.invalidateQueries({ queryKey: domainDrQueryKey });
     },
   });
 
@@ -528,6 +541,19 @@ export default function CampaignOutletsPage() {
   useEffect(() => {
     paginatedOutlets.setPage(0);
   }, [activeTab, search, paginatedOutlets.setPage]);
+  const currentPageDomainsMissingDr = useMemo(
+    () => {
+      if (isDomainDrStatusesPending) return [];
+      return [
+        ...new Set(
+          paginatedOutlets.pageItems
+            .map((outlet) => normalizeDomain(outlet.outletDomain))
+            .filter((domain) => !drMap.has(domain)),
+        ),
+      ];
+    },
+    [isDomainDrStatusesPending, paginatedOutlets.pageItems, drMap],
+  );
 
   return (
     <div className="flex flex-col md:flex-row h-full relative">
@@ -599,18 +625,31 @@ export default function CampaignOutletsPage() {
             <div className="min-w-0 flex-1">
               <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by outlet name or domain..." resultCount={filteredOutlets.length} totalCount={displayedOutlets.length} className="" />
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setPurchasePriceRequestScope("page");
-                requestPurchasePricesMutation.mutate(paginatedOutlets.pageItems.map((outlet) => outlet.id));
-              }}
-              disabled={requestPurchasePricesMutation.isPending || paginatedOutlets.pageItems.length === 0}
-              className="h-10 shrink-0 rounded-lg border border-brand-200 bg-brand-50 px-3 text-sm font-medium text-brand-700 transition hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-brand-50"
-            >
-              {requestPurchasePricesMutation.isPending ? "Requesting..." : `Ask Purchase Price (${paginatedOutlets.pageItems.length})`}
-            </button>
+            <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => fetchPageDomainRatingsMutation.mutate(currentPageDomainsMissingDr)}
+                disabled={isDomainDrStatusesPending || fetchPageDomainRatingsMutation.isPending || currentPageDomainsMissingDr.length === 0}
+                className="h-10 shrink-0 rounded-lg border border-brand-200 bg-brand-50 px-3 text-sm font-medium text-brand-700 transition hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-brand-50"
+              >
+                {fetchPageDomainRatingsMutation.isPending ? "Fetching..." : `Get Domain Ratings (${currentPageDomainsMissingDr.length})`}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPurchasePriceRequestScope("page");
+                  requestPurchasePricesMutation.mutate(paginatedOutlets.pageItems.map((outlet) => outlet.id));
+                }}
+                disabled={requestPurchasePricesMutation.isPending || paginatedOutlets.pageItems.length === 0}
+                className="h-10 shrink-0 rounded-lg border border-brand-200 bg-brand-50 px-3 text-sm font-medium text-brand-700 transition hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-brand-50"
+              >
+                {requestPurchasePricesMutation.isPending ? "Requesting..." : `Ask Purchase Price (${paginatedOutlets.pageItems.length})`}
+              </button>
+            </div>
           </div>
+          {fetchPageDomainRatingsMutation.isError && (
+            <p className="mb-3 text-xs text-red-600">{fetchPageDomainRatingsMutation.error.message}</p>
+          )}
           {requestPurchasePricesMutation.isError && purchasePriceRequestScope === "page" && (
             <p className="mb-3 text-xs text-red-600">{requestPurchasePricesMutation.error.message}</p>
           )}

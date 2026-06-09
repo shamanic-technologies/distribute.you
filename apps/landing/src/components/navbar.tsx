@@ -74,7 +74,7 @@ export function Navbar() {
         <div className="flex md:hidden items-center gap-2">
           <LinkButton
             href={urls.signUp}
-            className="bg-gray-900 text-white px-3 py-1.5 rounded-lg text-sm font-medium"
+            className="hidden sm:inline-flex bg-gray-900 text-white px-3 py-1.5 rounded-lg text-sm font-medium"
           >
             Start
           </LinkButton>
