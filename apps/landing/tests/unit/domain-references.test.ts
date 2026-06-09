@@ -75,8 +75,10 @@ describe("domain references in landing app", () => {
     expect(robots).toContain("https://distribute.you");
   });
 
-  it("should use @distribute_you twitter handle in layout", () => {
+  it("should use @distribute_you twitter handle in SEO metadata", () => {
     const layout = readFileSync(join(ROOT, "src/app/layout.tsx"), "utf-8");
-    expect(layout).toContain("@distribute_you");
+    const seo = readFileSync(join(ROOT, "src/lib/seo.ts"), "utf-8");
+    expect(layout).toContain("TWITTER_HANDLE");
+    expect(seo).toContain('@distribute_you');
   });
 });

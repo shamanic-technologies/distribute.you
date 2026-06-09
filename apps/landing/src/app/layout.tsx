@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { PROD_URLS } from "@/lib/env-urls";
-
-const SITE_URL = PROD_URLS.landing;
-const SITE_NAME = "distribute";
-const SITE_TITLE = "distribute — AI cold email, done for you";
-const SITE_DESCRIPTION = "Drop your website URL. We email your ideal customers. AI reads every reply. Only real buyers land in your Gmail. You read 5 emails, not 200. No SDR. No setup. No subscription.";
+import {
+  BRAND_LOGO_URL,
+  DEFAULT_OG_IMAGE_PATH,
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SITE_TITLE,
+  SITE_URL,
+  TWITTER_HANDLE,
+  organizationJsonLd,
+} from "@/lib/seo";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -42,10 +47,10 @@ export const metadata: Metadata = {
     description: SITE_DESCRIPTION,
     images: [
       {
-        url: "/og-image.jpg",
+        url: DEFAULT_OG_IMAGE_PATH,
         width: 1200,
         height: 630,
-        alt: "distribute — AI cold email, done for you",
+        alt: SITE_TITLE,
       },
     ],
   },
@@ -53,8 +58,8 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
-    images: ["/og-image.jpg"],
-    creator: "@distribute_you",
+    images: [DEFAULT_OG_IMAGE_PATH],
+    creator: TWITTER_HANDLE,
   },
   robots: {
     index: true,
@@ -85,6 +90,8 @@ const jsonLd = {
   operatingSystem: "Web",
   description: SITE_DESCRIPTION,
   url: SITE_URL,
+  logo: BRAND_LOGO_URL,
+  image: BRAND_LOGO_URL,
   offers: [
     {
       "@type": "Offer",
@@ -98,6 +105,8 @@ const jsonLd = {
     "@type": "Organization",
     name: "distribute",
     url: SITE_URL,
+    logo: BRAND_LOGO_URL,
+    image: BRAND_LOGO_URL,
     sameAs: [
       PROD_URLS.github,
       PROD_URLS.twitter,
@@ -105,22 +114,9 @@ const jsonLd = {
   },
 };
 
-const organizationJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  name: "distribute",
-  url: SITE_URL,
-  description: "AI outreach automation for solo founders and micro-SaaS builders. Drop a URL, set a budget, get qualified replies.",
-  sameAs: [
-    PROD_URLS.github,
-    PROD_URLS.twitter,
-  ],
-  contactPoint: {
-    "@type": "ContactPoint",
-    email: "support@distribute.you",
-    contactType: "customer service",
-  },
-};
+const orgJsonLd = organizationJsonLd(
+  "AI outreach automation for solo founders and micro-SaaS builders. Drop a URL, set a budget, get qualified replies.",
+);
 
 const websiteJsonLd = {
   "@context": "https://schema.org",
@@ -128,6 +124,11 @@ const websiteJsonLd = {
   name: "distribute",
   url: SITE_URL,
   description: SITE_DESCRIPTION,
+  publisher: {
+    "@type": "Organization",
+    name: "distribute",
+    logo: BRAND_LOGO_URL,
+  },
 };
 
 const howToJsonLd = {
@@ -183,7 +184,7 @@ export default function RootLayout({
         />
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
         />
         <script
           type="application/ld+json"

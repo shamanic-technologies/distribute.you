@@ -4,6 +4,11 @@ import { Suspense } from "react";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { PROD_URLS } from "@/lib/env-urls";
+import {
+  BRAND_LOGO_URL,
+  INVESTORS_OG_IMAGE_PATH,
+  TWITTER_HANDLE,
+} from "@/lib/seo";
 import { DISTRIBUTION_FEATURES } from "@distribute/content";
 import type { FeatureColor } from "@distribute/content";
 import {
@@ -60,14 +65,14 @@ export const metadata: Metadata = {
     siteName: "distribute Investors",
     title: "distribute — Investor Information",
     description: PAGE_DESCRIPTION,
-    images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "distribute Investor Information" }],
+    images: [{ url: INVESTORS_OG_IMAGE_PATH, width: 1200, height: 630, alt: "distribute Investor Information" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "distribute — Investor Information",
     description: PAGE_DESCRIPTION,
-    images: ["/og-image.jpg"],
-    creator: "@distribute_you",
+    images: [INVESTORS_OG_IMAGE_PATH],
+    creator: TWITTER_HANDLE,
   },
   alternates: { canonical: INVESTORS_URL },
   robots: { index: true, follow: true },
@@ -78,6 +83,8 @@ const investorsOrganizationJsonLd = {
   "@type": "Organization",
   name: "distribute",
   url: PROD_URLS.landing,
+  logo: BRAND_LOGO_URL,
+  image: BRAND_LOGO_URL,
   description: "The Stripe of Distribution — pay-as-you-go cloud platform for cold outbound channels.",
   foundingDate: "2024",
   sameAs: [PROD_URLS.github, PROD_URLS.twitter],

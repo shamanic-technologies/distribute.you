@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 import { BRAND_LOGO_URL } from "@/lib/seo";
 
 export const runtime = "edge";
-export const alt = "distribute — Investor Information";
+export const alt = "distribute Benchmarks - real campaign performance data";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -16,41 +16,38 @@ export default async function OG() {
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          padding: "80px",
+          padding: "78px",
           background:
-            "linear-gradient(135deg, #050510 0%, #0e0a1f 50%, #1a1030 100%)",
-          color: "white",
+            "radial-gradient(circle at 20% 18%, rgba(78, 240, 200, 0.22), transparent 34%), linear-gradient(135deg, #050607 0%, #101515 48%, #1d2a25 100%)",
+          color: "#f4fff9",
           fontFamily: "system-ui, -apple-system, sans-serif",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <img src={BRAND_LOGO_URL} width={36} height={36} alt="" />
-          <div style={{ fontSize: 28, fontWeight: 700 }}>
-            distribute · Investors
-          </div>
+          <div style={{ fontSize: 29, fontWeight: 760 }}>distribute Benchmarks</div>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
           <div
             style={{
               fontSize: 80,
-              fontWeight: 800,
-              lineHeight: 1.05,
-              letterSpacing: -2,
-              maxWidth: 1000,
+              fontWeight: 820,
+              lineHeight: 1.04,
+              maxWidth: 1010,
             }}
           >
-            Live platform metrics. Open SAFE round.
+            Real cold email performance, public by default.
           </div>
           <div
             style={{
               fontSize: 30,
-              color: "rgba(255,255,255,0.65)",
-              lineHeight: 1.3,
-              maxWidth: 1000,
+              color: "rgba(244,255,249,0.68)",
+              lineHeight: 1.32,
+              maxWidth: 980,
             }}
           >
-            Growth, revenue, infrastructure, and what we need from investors —
-            all public, updated on every load.
+            Reply rates, cost per positive reply, brand leaderboards, and workflow
+            benchmarks from live campaigns.
           </div>
         </div>
         <div
@@ -58,12 +55,12 @@ export default async function OG() {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            color: "rgba(255,255,255,0.5)",
+            color: "rgba(244,255,249,0.55)",
             fontSize: 22,
           }}
         >
-          <div>distribute.you/investors</div>
-          <div>investors@distribute.you</div>
+          <div>distribute.you/benchmarks</div>
+          <div>Updated from production data</div>
         </div>
       </div>
     ),

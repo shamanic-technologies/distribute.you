@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { BRAND_LOGO_URL } from "@/lib/seo";
 
 export const runtime = "edge";
 export const alt = "distribute — AI cold email, done for you.";
@@ -22,16 +23,8 @@ export default async function OG() {
           fontFamily: "system-ui, -apple-system, sans-serif",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div
-            style={{
-              width: 14,
-              height: 14,
-              borderRadius: 999,
-              background: "#22d3ee",
-              boxShadow: "0 0 24px #22d3ee",
-            }}
-          />
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <img src={BRAND_LOGO_URL} width={36} height={36} alt="" />
           <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: -0.5 }}>
             distribute
           </div>
