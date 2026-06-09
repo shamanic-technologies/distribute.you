@@ -50,19 +50,28 @@ describe("Landing page: ICP-only alignment", () => {
     expect(page).not.toMatch(/staying solo/i);
   });
 
-  it("includes 'What you don't have to do' email-infra section", () => {
-    expect(page).toMatch(/What you don'?t have to do/i);
+  it("includes the v2 'The 3 months you skip' email-infra section", () => {
+    expect(page).toMatch(/The 3 months you skip/i);
   });
 
-  it("mentions $25 welcome credits in hero or CTA", () => {
-    expect(page).toMatch(/\$25.*credit|credit.*\$25/i);
+  it("mentions $25 free credits in hero or CTA", () => {
+    expect(page).toMatch(/\$25.*free credits|free credits.*\$25/i);
   });
 
-  it("renders the cold-email hero + Sales Automation tag (no multi-channel grid)", () => {
-    expect(page).toMatch(/Cold Email Outreach,/);
-    expect(page).toMatch(/Sales Automation/);
+  it("renders the v2 cold-email hero copy (no multi-channel grid)", () => {
+    expect(page).toMatch(/AI cold email, done for you/);
+    expect(page).toMatch(/100 sales calls/);
+    expect(page).toMatch(/in 30 days\./);
     expect(page).not.toMatch(/channels live/);
     expect(page).not.toMatch(/DISTRIBUTION_FEATURES/);
+  });
+
+  it("does not render legacy sourced stats, leaderboard, or tools marquee sections on the home", () => {
+    expect(page).not.toMatch(/<ColdEmailPainStats/);
+    expect(page).not.toMatch(/<LeaderboardSectionAsync/);
+    expect(page).not.toMatch(/<ToolsMarquee/);
+    expect(page).not.toMatch(/Why most cold email never gets read/);
+    expect(page).not.toMatch(/Built to slot into your stack/);
   });
 });
 
@@ -102,8 +111,11 @@ describe("GmailInbox component", () => {
     expect(content).toMatch(/export function GmailInbox/);
   });
 
-  it("simulates qualified-reply email subject lines", () => {
-    expect(content).toMatch(/Qualified lead|qualified.*reply/i);
+  it("simulates the v2 buyer reply email", () => {
+    expect(content).toMatch(/Marcus Chen/);
+    expect(content).toMatch(/Loopify\.io/);
+    expect(content).toMatch(/3 new today/);
+    expect(content).toMatch(/Next up: replies/);
   });
 });
 
@@ -120,9 +132,12 @@ describe("FreeVsCloud component", () => {
     expect(content).toMatch(/export function FreeVsCloud/);
   });
 
-  it("renders the single Pay-as-you-go cloud tier (self-host removed per ICP simplification)", () => {
-    expect(content).toMatch(/Pay-as-you-go|pay.as.you.go|\$25.*credit/i);
+  it("renders the single Pay-as-you-go cloud tier with v2 bullets", () => {
+    expect(content).toMatch(/Pay as you go|pay.as.you.go|\$25.*credit/i);
+    expect(content).toMatch(/Pre-warmed inboxes\. Skip the 3-week setup\./);
+    expect(content).toMatch(/AI reads every reply\. Only buyers reach your Gmail\./);
     expect(content).not.toMatch(/Self-host|self.host/i);
+    expect(content).not.toMatch(/9 channels live/i);
   });
 });
 
@@ -159,21 +174,18 @@ describe("ToolsMarquee component", () => {
 describe("Landing page: tools marquee section", () => {
   const page = fs.readFileSync(landingPagePath, "utf-8");
 
-  it("renders the ToolsMarquee component", () => {
-    expect(page).toMatch(/<ToolsMarquee/);
-    expect(page).toMatch(/from\s+["']@\/components\/tools-marquee["']/);
+  it("does not render the ToolsMarquee component in the v2 home", () => {
+    expect(page).not.toMatch(/<ToolsMarquee/);
+    expect(page).not.toMatch(/from\s+["']@\/components\/tools-marquee["']/);
   });
 });
 
-describe("GmailInbox component: real logos", () => {
+describe("GmailInbox component: v2 static buyer reply", () => {
   const content = fs.readFileSync(gmailInboxPath, "utf-8");
 
-  it("loads the Gmail brand icon from logo.dev (not a hand-drawn SVG)", () => {
-    expect(content).toMatch(/img\.logo\.dev\/gmail\.com/);
-  });
-
-  it("uses logo.dev for sender avatars", () => {
-    expect(content).toMatch(/img\.logo\.dev\/\$\{entry\.senderDomain\}/);
+  it("uses the target static buyer reply instead of logo.dev avatars", () => {
+    expect(content).toMatch(/Re: interested in a demo this week/);
+    expect(content).not.toMatch(/img\.logo\.dev/);
   });
 });
 
@@ -208,13 +220,15 @@ describe("Pricing page: ICP framing", () => {
 describe("Landing page: industry stats section", () => {
   const page = fs.readFileSync(landingPagePath, "utf-8");
 
-  it("uses the cold-email-focused 'Why most cold email never gets read' h2", () => {
-    expect(page).toMatch(/Why most cold email never gets read/);
+  it("does not render the legacy industry stats section in the v2 home", () => {
+    expect(page).not.toMatch(/Why most cold email never gets read/);
     expect(page).not.toMatch(/Why distribution kills most solo products/);
   });
 
-  it("cites the new source organizations in the section sub", () => {
-    expect(page).toMatch(/Lemlist, Saleshandy, Adobe, and Gartner/);
+  it("keeps the v2 pricing section immediately after the skipped-work section", () => {
+    expect(page).toMatch(/The 3 months you skip/);
+    expect(page).toMatch(/Pay per email\. Stop anytime\./);
+    expect(page).not.toMatch(/Lemlist, Saleshandy, Adobe, and Gartner/);
   });
 });
 
