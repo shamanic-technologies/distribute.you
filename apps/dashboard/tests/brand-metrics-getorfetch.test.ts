@@ -86,12 +86,19 @@ describe("brand-metrics-header.tsx — getOrFetchIfNeverSeen wiring", () => {
     // as a background getOrFetchIfNeverSeen trigger, so every barrier flag is a fast
     // cache GET and ai-visibility is barrier-safe.
     expect(headerSrc).toContain("getDomainAiVisibility(domain as string)");
-    const barrier = headerSrc.match(/useCoordinatedReveal\(\[[^\]]*\]/s)?.[0] ?? "";
+    const barrier = headerSrc.match(/useCoordinatedReveal\(\[[\s\S]*?\]/)?.[0] ?? "";
     expect(barrier).toContain("trafficPending");
     expect(barrier).toContain("drPending");
     expect(barrier).toContain("aiVisPending");
     // The POST is only a getOrFetch compute (metric "aivis"), never a render query.
     expect(headerSrc).toContain('metric: "aivis"');
     expect(headerSrc).not.toContain("() => computeDomainAiVisibility(");
+  });
+
+  it("charts only render from 3+ historical points on unique dates", () => {
+    expect(headerSrc).toContain("MIN_HISTORICAL_UNIQUE_DAYS = 3");
+    expect(headerSrc).toContain("uniqueDatedSeries");
+    expect(headerSrc).toContain("toIsoDay");
+    expect(headerSrc).toContain("visitsSeries.length >= MIN_HISTORICAL_UNIQUE_DAYS");
   });
 });
