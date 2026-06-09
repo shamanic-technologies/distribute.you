@@ -8,6 +8,7 @@ import {
 import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "./org-desync";
 import type { RevenueOverview } from "./revenue-view";
 import { parseFeatureRevenue } from "./revenue-parse";
+import { withAverageCampaignRelevanceScores } from "./outlet-relevance";
 
 const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 
@@ -2357,10 +2358,14 @@ export async function listBrandOutlets(
   const params = new URLSearchParams({ brandId });
   if (featureSlug) params.set("featureSlug", featureSlug);
   if (campaignId) params.set("campaignId", campaignId);
-  return apiCall<{ outlets: DeduplicatedOutlet[]; total: number; byOutreachStatus?: Record<string, number> }>(
+  const data = await apiCall<{ outlets: DeduplicatedOutlet[]; total: number; byOutreachStatus?: Record<string, number> }>(
     `/outlets?${params}`,
     { token },
   );
+  return {
+    ...data,
+    outlets: withAverageCampaignRelevanceScores(data.outlets),
+  };
 }
 
 export async function listCampaignOutlets(
