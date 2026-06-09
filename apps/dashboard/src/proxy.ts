@@ -8,6 +8,7 @@ import {
 } from "@/lib/last-brand";
 
 const isPublicRoute = createRouteMatcher([
+  "/",
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/sso-callback(.*)",

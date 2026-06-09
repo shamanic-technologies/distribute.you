@@ -14,6 +14,10 @@ const sidebar = fs.readFileSync(
   path.join(__dirname, "../src/components/context-sidebar.tsx"),
   "utf-8",
 );
+const proxy = fs.readFileSync(
+  path.join(__dirname, "../src/proxy.ts"),
+  "utf-8",
+);
 
 describe("dashboard global build-in-public page", () => {
   it("does not auto-redirect the logo landing page into the active org", () => {
@@ -21,6 +25,11 @@ describe("dashboard global build-in-public page", () => {
     expect(page).not.toContain("useOrganization");
     expect(page).toContain("distribute public metrics");
     expect(page).toContain('href="/orgs"');
+  });
+
+  it("keeps the global metrics root public for signed-out visitors", () => {
+    expect(proxy).toContain('"/"');
+    expect(proxy).toContain("isPublicRoute");
   });
 
   it("uses real producer sources instead of client-side placeholders", () => {
