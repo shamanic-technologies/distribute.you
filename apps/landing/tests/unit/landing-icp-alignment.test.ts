@@ -14,8 +14,16 @@ const designSystemPagePath = path.resolve(
 const landingRoutePath = path.resolve(__dirname, "../../src/app/route.ts");
 const performanceRoutePath = path.resolve(__dirname, "../../src/app/performance/route.ts");
 const designSystemRoutePath = path.resolve(__dirname, "../../src/app/design-system/route.ts");
+const staticV2HtmlPath = path.resolve(__dirname, "../../src/lib/static-v2-html.ts");
 const nextConfigPath = path.resolve(__dirname, "../../next.config.ts");
+const benchmarksPagePath = path.resolve(__dirname, "../../src/app/benchmarks/page.tsx");
+const benchmarksLayoutPath = path.resolve(__dirname, "../../src/app/benchmarks/layout.tsx");
+const benchmarksSlugRoutePath = path.resolve(
+  __dirname,
+  "../../src/app/benchmarks/[...slug]/route.ts",
+);
 const pricingPagePath = path.resolve(__dirname, "../../src/app/pricing/page.tsx");
+const privacyPagePath = path.resolve(__dirname, "../../src/app/privacy/page.tsx");
 const investorsPagePath = path.resolve(__dirname, "../../src/app/investors/page.tsx");
 const featuresPath = path.resolve(__dirname, "../../../../shared/content/src/features.ts");
 const portfolioDashboardPath = path.resolve(
@@ -31,6 +39,8 @@ const sourcedStatsCmpPath = path.resolve(__dirname, "../../src/components/source
 const providerAvatarPath = path.resolve(__dirname, "../../src/components/provider-avatar.tsx");
 const featureProvidersPath = path.resolve(__dirname, "../../src/data/feature-providers.ts");
 const benchmarksContentPath = path.resolve(__dirname, "../../src/data/benchmarks-content.ts");
+const navbarPath = path.resolve(__dirname, "../../src/components/navbar.tsx");
+const footerPath = path.resolve(__dirname, "../../src/components/footer.tsx");
 
 describe("Landing page: ICP-only alignment", () => {
   const page = fs.readFileSync(landingPagePath, "utf-8");
@@ -101,10 +111,20 @@ describe("Landing v2 static pages", () => {
     expect(performance).toMatch(/<script src="js\/main\.js" defer><\/script>/);
   });
 
-  it("keeps /benchmarks redirected to the designer performance page route", () => {
+  it("keeps /benchmarks as the existing benchmark page, not a performance redirect", () => {
     const config = fs.readFileSync(nextConfigPath, "utf-8");
-    expect(config).toMatch(/source:\s*"\/benchmarks"/);
-    expect(config).toMatch(/destination:\s*"\/performance"/);
+    const benchmarksRedirectBlock = config.match(
+      /source:\s*"\/benchmarks",[\s\S]*?destination:\s*"([^"]+)"/,
+    );
+    expect(benchmarksRedirectBlock).toBeNull();
+    expect(config).not.toMatch(/source:\s*"\/benchmarks\/:slug\*"/);
+    expect(fs.existsSync(benchmarksPagePath)).toBe(true);
+    expect(fs.existsSync(benchmarksLayoutPath)).toBe(true);
+    expect(fs.existsSync(benchmarksSlugRoutePath)).toBe(true);
+    const page = fs.readFileSync(benchmarksPagePath, "utf-8");
+    expect(page).toMatch(/const PAGE_URL = `\$\{PROD_URLS\.landing\}\/benchmarks`/);
+    const slugRoute = fs.readFileSync(benchmarksSlugRoutePath, "utf-8");
+    expect(slugRoute).toMatch(/NextResponse\.redirect\(new URL\("\/benchmarks"/);
   });
 
   it("serves the designer design-system page as the v2 visual reference", () => {
@@ -112,6 +132,38 @@ describe("Landing v2 static pages", () => {
     expect(route).toMatch(/staticV2Response\("design-system\.html"\)/);
     expect(designSystem).toMatch(/Distribute — Design System/);
     expect(designSystem).toMatch(/Tokens, typography, components, and patterns/);
+  });
+
+  it("rewrites static designer links that would otherwise 404 on landing", () => {
+    const helper = fs.readFileSync(staticV2HtmlPath, "utf-8");
+    expect(helper).toMatch(/href="\/docs\/api"/);
+    expect(helper).toMatch(/URLS\.apiDocs/);
+    expect(helper).toMatch(/href="\/docs\/mcp"/);
+    expect(helper).toMatch(/URLS\.mcp/);
+    expect(helper).toMatch(/href="\/sign-in"/);
+    expect(helper).toMatch(/URLS\.signIn/);
+    expect(helper).toMatch(/href="\/sign-up"/);
+    expect(helper).toMatch(/URLS\.signUp/);
+    expect(helper).toMatch(/github\.com\/distribute-you/);
+    expect(helper).toMatch(/URLS\.github/);
+    expect(helper).toMatch(/logo-distribute-2\.svg/);
+    expect(helper).toMatch(/logo-distribute\.svg/);
+  });
+
+  it("keeps the local landing legal links routable", () => {
+    expect(fs.existsSync(privacyPagePath)).toBe(true);
+    const page = fs.readFileSync(privacyPagePath, "utf-8");
+    expect(page).toMatch(/Privacy Policy/);
+    expect(page).toMatch(/support@distribute\.you/);
+  });
+
+  it("maps React chrome links to the same landing routes", () => {
+    const navbar = fs.readFileSync(navbarPath, "utf-8");
+    const footer = fs.readFileSync(footerPath, "utf-8");
+    expect(navbar).toMatch(/href=\{urls\.performance\}[\s\S]*?>\s*Performance\s*<\/a>/);
+    expect(navbar).toMatch(/href=\{urls\.benchmarks\}[\s\S]*?>\s*Benchmarks\s*<\/a>/);
+    expect(footer).toMatch(/\{ label: "Performance", href: "\/performance" \}/);
+    expect(footer).toMatch(/\{ label: "Benchmarks", href: "\/benchmarks" \}/);
   });
 });
 

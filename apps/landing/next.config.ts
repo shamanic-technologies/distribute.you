@@ -18,16 +18,17 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // /benchmarks was consolidated into the single /performance page (sales cold
-  // email is the only GA product). 301 the old URLs to preserve SEO + links.
   async redirects() {
     return [
-      { source: "/benchmarks", destination: "/performance", permanent: true },
-      { source: "/benchmarks/:slug*", destination: "/performance", permanent: true },
       // Old multi-feature performance sub-views collapsed into one page.
       { source: "/performance/brands", destination: "/performance", permanent: true },
       { source: "/performance/models", destination: "/performance", permanent: true },
       { source: "/performance/prompts", destination: "/performance", permanent: true },
+      { source: "/docs/api", destination: "https://api.distribute.you/docs", permanent: false },
+      { source: "/docs/mcp", destination: "https://docs.distribute.you/mcp", permanent: false },
+      { source: "/docs", destination: "https://docs.distribute.you", permanent: false },
+      { source: "/sign-in", destination: "https://dashboard.distribute.you/sign-in", permanent: false },
+      { source: "/sign-up", destination: "https://dashboard.distribute.you/sign-up", permanent: false },
     ];
   },
 };
