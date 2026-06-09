@@ -35,12 +35,13 @@ describe("Context sidebar", () => {
     expect(content).toContain("return null");
   });
 
-  it("should have app-level items (Home) and feature links", () => {
+  it("should have focused app-level public analytics links instead of feature links", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    expect(content).toContain('"Home"');
-    // Features section with links to /features/
-    expect(content).toContain("Features");
-    expect(content).toContain("/features/");
+    expect(content).toContain("Landing arrivals");
+    expect(content).toContain("Signup conversions");
+    expect(content).toContain("Cards added");
+    expect(content).toContain("/?view=landing");
+    expect(content).not.toContain('href: `/features/${f.slug}`');
   });
 
   it("should NOT have API Keys at app level", () => {

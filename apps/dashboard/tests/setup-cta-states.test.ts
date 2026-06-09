@@ -11,6 +11,9 @@ describe("Dashboard home page shows public global metrics", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
     expect(content).toContain("distribute public metrics");
     expect(content).toContain("fetchPublicStatsSummary");
+    expect(content).toContain("Landing arrivals over time");
+    expect(content).toContain("Signup conversion over time");
+    expect(content).toContain("Cards added over time");
     expect(content).toContain('href="/orgs"');
     expect(content).not.toContain("useOrganization");
     expect(content).not.toContain("router.replace");
