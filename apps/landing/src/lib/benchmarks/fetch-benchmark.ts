@@ -155,6 +155,14 @@ interface PublicRevenueItem {
     name: string | null;
     domain: string | null;
   };
+  headline: {
+    totalPipelineUsd: number | null;
+  };
+  costEconomics: {
+    totalCostUsd: number;
+    costOfAcquisitionPct: number | null;
+    roiMultiple: number | null;
+  };
   timeline?: RawBrandTimelinePoint[];
 }
 
@@ -200,6 +208,8 @@ function mapBrandEntry(item: BrandRankedItem): BrandLeaderboardEntry {
     brandName: item.brand.name ?? null,
     brandDomain: item.brand.domain ?? null,
     brandUrl: null,
+    expectedRevenueUsd: null,
+    roiMultiple: null,
     timeline: mapBrandTimeline(item.timeline),
     emailsSent: sent,
     emailsOpened: opened,
@@ -341,9 +351,12 @@ async function _fetchFeatureBenchmarkUncached(
   const revenueTimelineByBrand = new Map(
     revenueData.results.map((item) => [item.brand.id, mapBrandTimeline(item.timeline)]),
   );
+  const revenueByBrand = new Map(revenueData.results.map((item) => [item.brand.id, item]));
 
   const brands = brandsData.results.map((item) => ({
     ...mapBrandEntry(item),
+    expectedRevenueUsd: revenueByBrand.get(item.brand.id)?.headline.totalPipelineUsd ?? null,
+    roiMultiple: revenueByBrand.get(item.brand.id)?.costEconomics.roiMultiple ?? null,
     timeline: revenueTimelineByBrand.get(item.brand.id) ?? mapBrandTimeline(item.timeline),
   }));
   const workflows = workflowsData.results.map(mapWorkflowEntry);

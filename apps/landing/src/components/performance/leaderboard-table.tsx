@@ -75,6 +75,8 @@ export function BrandLeaderboard({ brands, maxEntries }: { brands: BrandLeaderbo
             <SortHeader label="$/Click" sortKey="costPerClickCents" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
             <SortHeader label="% Positive Replies" sortKey="replyRate" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
             <SortHeader label="$/Positive Reply" sortKey="costPerReplyCents" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+            <SortHeader label="Expected revenue" sortKey="expectedRevenueUsd" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+            <SortHeader label="ROI" sortKey="roiMultiple" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
           </tr>
         </thead>
         <tbody className="divide-y divide-[var(--v2-border)]">
@@ -107,12 +109,25 @@ export function BrandLeaderboard({ brands, maxEntries }: { brands: BrandLeaderbo
               <td className="px-4 py-4 text-sm text-[var(--v2-sub)]">{formatCostCents(brand.costPerClickCents)}</td>
               <td className="px-4 py-4 text-sm text-[var(--v2-sub)]">{brand.emailsSent > 0 ? formatPercent(brand.replyRate) : "—"}</td>
               <td className="px-4 py-4 text-sm text-[var(--v2-text)]">{formatCostCentsWhole(brand.costPerReplyCents)}</td>
+              <td className="px-4 py-4 text-sm font-medium text-[var(--v2-text)]">{formatRevenueUsd(brand.expectedRevenueUsd)}</td>
+              <td className="px-4 py-4 text-sm font-medium text-[var(--v2-text)]">{formatRoi(brand.roiMultiple)}</td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
   );
+}
+
+function formatRevenueUsd(value: number | null | undefined): string {
+  if (value == null) return "—";
+  if (value === 0) return "$0";
+  if (value < 100) return `$${value.toFixed(2)}`;
+  return `$${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+}
+
+function formatRoi(value: number | null | undefined): string {
+  return value == null ? "—" : `${value.toFixed(1)}×`;
 }
 
 export function WorkflowLeaderboard({ workflows, inSection = false, maxEntries }: { workflows: WorkflowLeaderboardEntry[]; inSection?: boolean; maxEntries?: number }) {
