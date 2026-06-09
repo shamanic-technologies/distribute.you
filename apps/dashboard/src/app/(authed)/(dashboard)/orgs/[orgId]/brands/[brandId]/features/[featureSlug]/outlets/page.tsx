@@ -6,11 +6,13 @@ import { useMutation } from "@tanstack/react-query";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import {
   listBrandOutlets,
+  requestOutletPurchasePrices,
   getOutletStatsCosts,
   getDomainDrStatuses,
   computeDomainDr,
   type DomainDrStatus,
   type DeduplicatedOutlet,
+  type OutletListResponse,
   type OutletCampaign,
   type OutletStatusCounts,
 } from "@/lib/api";
@@ -23,6 +25,7 @@ import { pollOptions } from "@/lib/query-options";
 import { CsvDownloadButton } from "@/components/report/csv-button";
 import { buildOutletCsv } from "@/lib/outlet-csv";
 import { TablePager, usePaginated } from "@/components/table-pagination";
+import { markOutletPriceRequestsOngoing } from "@/lib/outlet-price-requests";
 
 type Tab = string | "all";
 
@@ -318,6 +321,12 @@ function OutletDetailPanel({
                 <p className="font-medium text-gray-700">{purchasePrice}</p>
               </div>
             )}
+            {!purchasePrice && outlet.priceRequestStatus === "ongoing" && (
+              <div>
+                <span className="text-gray-500">Purchase Price</span>
+                <p className="font-medium text-amber-700">Purchase price request in progress</p>
+              </div>
+            )}
             <div>
               <span className="text-gray-500">Campaigns</span>
               <p className="font-medium text-gray-700">{outlet.campaigns.length}</p>
@@ -350,9 +359,10 @@ export default function FeatureOutletsPage() {
   const [activeTab, setActiveTab] = useState<Tab>("all");
   const [search, setSearch] = useState("");
   const hasAutoSelectedTab = useRef(false);
+  const outletsQueryKey = ["brandOutlets", brandId, featureSlug] as const;
 
   const { data, isPending } = useAuthQuery(
-    ["brandOutlets", brandId, featureSlug],
+    outletsQueryKey,
     () => listBrandOutlets(brandId, featureSlug),
     pollOptions,
   );
@@ -363,6 +373,10 @@ export default function FeatureOutletsPage() {
   );
 
   const outlets = data?.outlets ?? [];
+  const selectedOutlet = useMemo(
+    () => selected ? outlets.find((outlet) => outlet.id === selected.id) ?? selected : null,
+    [outlets, selected],
+  );
 
   const outletDomains = useMemo(
     () => [...new Set(outlets.map((o) => normalizeDomain(o.outletDomain)))].sort(),
@@ -388,6 +402,16 @@ export default function FeatureOutletsPage() {
         const next = (prev ?? []).filter((status) => normalizeDomain(status.domain) !== resultDomain);
         return [...next, result];
       });
+    },
+  });
+
+  const requestPurchasePricesMutation = useMutation({
+    mutationFn: (outletIds: string[]) => requestOutletPurchasePrices(outletIds),
+    onSuccess: (result) => {
+      queryClient.setQueryData<OutletListResponse>(outletsQueryKey, (prev) =>
+        markOutletPriceRequestsOngoing(prev, result.results),
+      );
+      void queryClient.invalidateQueries({ queryKey: outletsQueryKey });
     },
   });
 
@@ -560,7 +584,22 @@ export default function FeatureOutletsPage() {
           </div>
         ) : (
           <>
-          <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by outlet name or domain..." resultCount={filteredOutlets.length} totalCount={displayedOutlets.length} />
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start">
+            <div className="min-w-0 flex-1">
+              <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by outlet name or domain..." resultCount={filteredOutlets.length} totalCount={displayedOutlets.length} className="" />
+            </div>
+            <button
+              type="button"
+              onClick={() => requestPurchasePricesMutation.mutate(paginatedOutlets.pageItems.map((outlet) => outlet.id))}
+              disabled={requestPurchasePricesMutation.isPending || paginatedOutlets.pageItems.length === 0}
+              className="h-10 shrink-0 rounded-lg border border-brand-200 bg-brand-50 px-3 text-sm font-medium text-brand-700 transition hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-brand-50"
+            >
+              {requestPurchasePricesMutation.isPending ? "Requesting..." : `Ask Purchase Price (${paginatedOutlets.pageItems.length})`}
+            </button>
+          </div>
+          {requestPurchasePricesMutation.isError && (
+            <p className="mb-3 text-xs text-red-600">{requestPurchasePricesMutation.error.message}</p>
+          )}
           <div className="space-y-2">
             {paginatedOutlets.pageItems.map((outlet) => (
               <OutletRow
@@ -587,24 +626,24 @@ export default function FeatureOutletsPage() {
       </div>
 
       {/* Detail Panel */}
-      {selected && (
+      {selectedOutlet && (
         <OutletDetailPanel
-          outlet={selected}
-          displayStatus={latchedStatuses.get(selected.id) ?? deriveDisplayStatusFromCounts(selected.status?.brand)}
-          costCents={costMap.get(selected.id) ?? null}
-          domainRating={drMap.get(normalizeDomain(selected.outletDomain)) ?? null}
-          isFetchingDomainRating={fetchDomainRatingMutation.isPending && fetchDomainRatingMutation.variables === normalizeDomain(selected.outletDomain)}
+          outlet={selectedOutlet}
+          displayStatus={latchedStatuses.get(selectedOutlet.id) ?? deriveDisplayStatusFromCounts(selectedOutlet.status?.brand)}
+          costCents={costMap.get(selectedOutlet.id) ?? null}
+          domainRating={drMap.get(normalizeDomain(selectedOutlet.outletDomain)) ?? null}
+          isFetchingDomainRating={fetchDomainRatingMutation.isPending && fetchDomainRatingMutation.variables === normalizeDomain(selectedOutlet.outletDomain)}
           domainRatingFetchError={
-            fetchDomainRatingMutation.isError && fetchDomainRatingMutation.variables === normalizeDomain(selected.outletDomain)
+            fetchDomainRatingMutation.isError && fetchDomainRatingMutation.variables === normalizeDomain(selectedOutlet.outletDomain)
               ? fetchDomainRatingMutation.error.message
               : null
           }
           domainRatingFetchEmpty={
             fetchDomainRatingMutation.isSuccess &&
-            fetchDomainRatingMutation.variables === normalizeDomain(selected.outletDomain) &&
+            fetchDomainRatingMutation.variables === normalizeDomain(selectedOutlet.outletDomain) &&
             fetchDomainRatingMutation.data == null
           }
-          onFetchDomainRating={() => fetchDomainRatingMutation.mutate(normalizeDomain(selected.outletDomain))}
+          onFetchDomainRating={() => fetchDomainRatingMutation.mutate(normalizeDomain(selectedOutlet.outletDomain))}
           onClose={() => setSelected(null)}
         />
       )}
