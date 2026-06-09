@@ -35,6 +35,46 @@ export class ApiError extends Error {
   }
 }
 
+function asErrorBody(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : { error: "Request failed", body: value };
+}
+
+function stringOrNumber(value: unknown): string | number | undefined {
+  return typeof value === "string" || typeof value === "number" ? value : undefined;
+}
+
+function stringOrUndefined(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+async function readJsonResponse(response: Response, endpoint: string): Promise<unknown> {
+  const contentType = response.headers?.get?.("Content-Type") ?? "application/json";
+  if (!contentType.toLowerCase().includes("application/json")) {
+    const text = await response.text().catch(() => "");
+    throw new ApiError("API returned a non-JSON response", response.status, {
+      error: "Non-JSON API response",
+      endpoint,
+      status: response.status,
+      contentType: contentType || null,
+      preview: text.trim().slice(0, 200),
+    });
+  }
+
+  try {
+    return await response.json();
+  } catch (err) {
+    throw new ApiError("API returned invalid JSON", response.status, {
+      error: "Invalid JSON API response",
+      endpoint,
+      status: response.status,
+      contentType,
+      detail: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
 /**
  * The org the UI is currently rendering, parsed from the `/orgs/<id>/...` URL.
  * Client-side only. Sent to the proxy as `x-active-org-id` so the proxy can fail
@@ -84,23 +124,23 @@ async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
   }
 
   if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({ error: "Request failed" }));
+    const errorBody = asErrorBody(await readJsonResponse(response, endpoint));
     if (response.status === 402 && typeof window !== "undefined") {
       const { dispatchPaymentRequired } = await import("@/lib/billing-guard");
       dispatchPaymentRequired({
-        balance_cents: errorBody.balance_cents,
-        required_cents: errorBody.required_cents,
-        error: errorBody.error,
+        balance_cents: stringOrNumber(errorBody.balance_cents),
+        required_cents: stringOrNumber(errorBody.required_cents),
+        error: stringOrUndefined(errorBody.error),
       });
     }
     throw new ApiError(
-      errorBody.error || errorBody.message || "Request failed",
+      stringOrUndefined(errorBody.error) ?? stringOrUndefined(errorBody.message) ?? "Request failed",
       response.status,
       errorBody
     );
   }
 
-  return response.json();
+  return await readJsonResponse(response, endpoint) as T;
 }
 
 // Types
@@ -534,12 +574,12 @@ export async function listBrands(token?: string): Promise<{ brands: Brand[] }> {
   return { brands: brands.map(normalizeBrandFromOrgs) };
 }
 
-/** GET /brands/:brandId — returns brand detail or null if not found (404/500 from missing brand) */
+/** GET /brands/:brandId — returns brand detail or null if not found (404) */
 export async function getBrand(brandId: string, token?: string): Promise<{ brand: BrandDetail } | null> {
   try {
     return await apiCall<{ brand: BrandDetail }>(`/brands/${brandId}`, { token });
   } catch (err) {
-    if (err instanceof ApiError && (err.status === 404 || err.status === 500)) return null;
+    if (err instanceof ApiError && err.status === 404) return null;
     throw err;
   }
 }
@@ -1271,12 +1311,12 @@ export async function listCampaignEvents(
   return parsed.data as unknown as { events: RunEvent[] };
 }
 
-/** GET /brands/:brandId/runs — returns runs or empty list if brand not found (404/500) */
+/** GET /brands/:brandId/runs — returns runs or empty list if brand not found (404) */
 export async function listBrandRuns(brandId: string, token?: string): Promise<{ runs: BrandRun[] }> {
   try {
     return await apiCall<{ runs: BrandRun[] }>(`/brands/${brandId}/runs`, { token });
   } catch (err) {
-    if (err instanceof ApiError && (err.status === 404 || err.status === 500)) return { runs: [] };
+    if (err instanceof ApiError && err.status === 404) return { runs: [] };
     throw err;
   }
 }
@@ -1867,6 +1907,7 @@ export type SalesObjective = "meeting-booked" | "self-serve";
 /** Per-workflow funnel projection at the requested budget. All fields null where the route
  *  doesn't apply (replies/meetings for self-serve, visits with no click cost) or no data. */
 const WorkflowFunnelProjectionSchema = z.object({
+  contactedLeads: z.number().nullable(),
   replies: z.number().nullable(),
   visits: z.number().nullable(),
   meetings: z.number().nullable(),
@@ -1881,6 +1922,7 @@ const WorkflowFunnelProjectionSchema = z.object({
 const WorkflowProjectionItemSchema = z.object({
   workflowDynastySlug: z.string(),
   workflowDynastyName: z.string().nullable(),
+  contactedUsd: z.number().nullable(),
   replyUsd: z.number().nullable(),
   clickUsd: z.number().nullable(),
   costPerCloseUsd: z.number().nullable(),
@@ -3539,6 +3581,26 @@ export async function computeDomainTraffic(
   return parsed.data[0] ?? null;
 }
 
+export async function computeDomainDrStatuses(
+  domains: string[],
+  token?: string,
+): Promise<DomainDrStatus[]> {
+  const raw = await apiCall<unknown>("/orgs/domains/dr-compute", {
+    token,
+    method: "POST",
+    body: { domains },
+  });
+  const parsed = z.array(DomainDrStatusSchema).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] computeDomainDrStatuses: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] computeDomainDrStatuses: invalid response shape");
+  }
+  return parsed.data;
+}
+
 /**
  * POST /v1/orgs/domains/dr-compute — on-demand Ahrefs Domain Rating scrape for a
  * single domain. Returns the post-scrape DR status (same shape as
@@ -3548,20 +3610,8 @@ export async function computeDomainDr(
   domain: string,
   token?: string,
 ): Promise<DomainDrStatus | null> {
-  const raw = await apiCall<unknown>("/orgs/domains/dr-compute", {
-    token,
-    method: "POST",
-    body: { domains: [domain] },
-  });
-  const parsed = z.array(DomainDrStatusSchema).safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] computeDomainDr: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] computeDomainDr: invalid response shape");
-  }
-  return parsed.data[0] ?? null;
+  const data = await computeDomainDrStatuses([domain], token);
+  return data[0] ?? null;
 }
 
 // Ahrefs Brand-Radar AI-visibility. Two surfaces, one lean shape (the wire also
