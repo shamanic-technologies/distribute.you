@@ -1677,11 +1677,15 @@ export default function FeatureCreateCampaignPage() {
                   if (value == null || outreachVolume == null || outreachVolume <= 0) return null;
                   return (value / outreachVolume) * 100;
                 };
-                const outreachChip = {
-                  v: outreachVolume == null ? "—" : fmtNum(outreachVolume),
-                  k: `leads contacted${perMonth}`,
-                  note: "initial email + follow-ups",
-                };
+                const outreachStep = outreachVolume == null
+                  ? []
+                  : [{
+                      chips: [{
+                        v: fmtNum(outreachVolume),
+                        k: `leads contacted${perMonth}`,
+                        note: "initial email + follow-ups",
+                      }],
+                    }];
                 // Each step is a column of one-or-more chips. meeting-booked converges the
                 // positive-reply + website-visit routes onto a single combined `meetings` step
                 // (the two feeders stack with a "+" and both arrow into meetings).
@@ -1702,7 +1706,7 @@ export default function FeatureCreateCampaignPage() {
                   salesObjective === "self-serve"
                     ? [
                         { chips: [{ v: fmtUsd0(effectiveBudget), k: `budget${budgetSuffix}` }] },
-                        { chips: [outreachChip] },
+                        ...outreachStep,
                         {
                           chips: [{
                             v: countWithPctLabel(proj.visits ?? 0, pctOfOutreach(proj.visits)),
@@ -1714,7 +1718,7 @@ export default function FeatureCreateCampaignPage() {
                       ]
                     : [
                         { chips: [{ v: fmtUsd0(effectiveBudget), k: `budget${budgetSuffix}` }] },
-                        { chips: [outreachChip] },
+                        ...outreachStep,
                         { chips: feeders },
                         { chips: [{ v: fmtClose(proj.meetings ?? 0), k: `meetings${perMonth}` }] },
                         { chips: [{ v: fmtClose(proj.closes), k: `closes${perMonth}` }] },
