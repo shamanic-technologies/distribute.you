@@ -112,8 +112,9 @@ describe("outlet pages wire the Ask Purchase Price control", () => {
       expect(content).toContain('isRequestingPurchasePrice ? "Requesting..." : "Ask Purchase Price"');
     });
 
-    it(`${level} page scopes purchase-price errors to page batch or selected outlet`, () => {
-      expect(content).toContain('purchasePriceRequestScope === "page"');
+    it(`${level} page keeps toolbar purchase-price requests fire-and-forget but scopes detail errors to the selected outlet`, () => {
+      expect(content).toContain('setPurchasePriceRequestScope("page")');
+      expect(content).not.toContain('purchasePriceRequestScope === "page"');
       expect(content).toContain("purchasePriceRequestScope === selectedOutlet.id");
     });
 
@@ -154,6 +155,10 @@ describe("outlet pages wire the Get Domain Ratings control", () => {
       expect(content).toContain("queryClient.setQueryData<DomainDrStatus[]>(domainDrQueryKey");
       expect(content).toContain("invalidateQueries({ queryKey: domainDrQueryKey })");
     });
+
+    it(`${level} page does not render page-level DR batch errors`, () => {
+      expect(content).not.toContain("fetchPageDomainRatingsMutation.isError");
+    });
   }
 });
 
@@ -192,6 +197,10 @@ describe("outlet pages wire the Get Monthly Visits control", () => {
     it(`${level} page writes fetched traffic results into the traffic cache`, () => {
       expect(content).toContain("queryClient.setQueryData<DomainTrafficHistory[]>(domainTrafficQueryKey");
       expect(content).toContain("invalidateQueries({ queryKey: domainTrafficQueryKey })");
+    });
+
+    it(`${level} page does not render page-level monthly-visits batch errors`, () => {
+      expect(content).not.toContain("fetchPageMonthlyVisitsMutation.isError");
     });
   }
 });
