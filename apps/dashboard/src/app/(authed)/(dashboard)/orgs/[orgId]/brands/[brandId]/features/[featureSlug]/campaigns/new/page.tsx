@@ -125,6 +125,7 @@ interface WorkflowTableRow {
 /** Funnel projection at a concrete budget — the render shape, scaled client-side from the
  *  server's per-$ projection (pure ×; the route-combining SUM lives in features-service). */
 interface SalesProjectionView {
+  contactedLeads: number | null;
   replies: number | null;
   visits: number | null;
   meetings: number | null;
@@ -161,35 +162,9 @@ function fmtPct(pct: number | null | undefined): string {
   return `${pct > 0 && pct < 10 ? pct.toFixed(1) : pct.toFixed(0)}%`;
 }
 
-function statValue(stats: Record<string, number>, keys: string[]): number | null {
-  for (const key of keys) {
-    const value = stats[key];
-    if (typeof value === "number" && Number.isFinite(value)) return value;
-  }
-  return null;
-}
-
 function countWithPctLabel(value: number, pct: number | null): string {
   const count = fmtNum(value);
   return pct == null ? count : `${count} (${fmtPct(pct)})`;
-}
-
-function estimateOutreachVolume(stats: Record<string, number>, projection: SalesProjectionView): number | null {
-  const leadsSent = statValue(stats, ["leadsSent", "recipientsSent"]);
-  if (leadsSent == null || leadsSent <= 0) return null;
-
-  const positiveReplies = statValue(stats, ["leadsRepliesPositive", "repliesPositive"]);
-  const clicks = statValue(stats, ["leadsClicked", "clicked"]);
-  const candidates: number[] = [];
-
-  if (projection.replies != null && positiveReplies != null && positiveReplies > 0) {
-    candidates.push(projection.replies / (positiveReplies / leadsSent));
-  }
-  if (projection.visits != null && clicks != null && clicks > 0) {
-    candidates.push(projection.visits / (clicks / leadsSent));
-  }
-
-  return candidates.length > 0 ? Math.max(...candidates) : null;
 }
 
 // One email card in the picker's preview panel — used for both this-session test runs and
@@ -637,6 +612,7 @@ export default function FeatureCreateCampaignPage() {
       if (!base || budget <= 0) return null;
       const scale = (v: number | null) => (v != null ? v * budget : null);
       return {
+        contactedLeads: scale(base.contactedLeads),
         replies: scale(base.replies),
         visits: scale(base.visits),
         meetings: scale(base.meetings),
@@ -1672,7 +1648,7 @@ export default function FeatureCreateCampaignPage() {
                 const perMonth = oneOff ? "" : " per month";
                 const budgetSuffix = oneOff ? "" : ` per ${REVENUE_INTERVAL_LABEL[budgetFrequency]}`;
                 const fmtClose = (n: number) => fmtNum(n, n < 2 ? 1 : 0);
-                const outreachVolume = salesPick ? estimateOutreachVolume(salesPick.stats, proj) : null;
+                const outreachVolume = proj.contactedLeads;
                 const pctOfOutreach = (value: number | null): number | null => {
                   if (value == null || outreachVolume == null || outreachVolume <= 0) return null;
                   return (value / outreachVolume) * 100;

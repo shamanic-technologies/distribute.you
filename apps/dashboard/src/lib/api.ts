@@ -1867,6 +1867,7 @@ export type SalesObjective = "meeting-booked" | "self-serve";
 /** Per-workflow funnel projection at the requested budget. All fields null where the route
  *  doesn't apply (replies/meetings for self-serve, visits with no click cost) or no data. */
 const WorkflowFunnelProjectionSchema = z.object({
+  contactedLeads: z.number().nullable(),
   replies: z.number().nullable(),
   visits: z.number().nullable(),
   meetings: z.number().nullable(),
@@ -1881,6 +1882,7 @@ const WorkflowFunnelProjectionSchema = z.object({
 const WorkflowProjectionItemSchema = z.object({
   workflowDynastySlug: z.string(),
   workflowDynastyName: z.string().nullable(),
+  contactedUsd: z.number().nullable(),
   replyUsd: z.number().nullable(),
   clickUsd: z.number().nullable(),
   costPerCloseUsd: z.number().nullable(),
