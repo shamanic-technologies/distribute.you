@@ -1,5 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 import { PublicAnalyticsChart } from "@/components/public-analytics-chart";
 import {
   fetchPublicStatsSummary,
@@ -8,6 +10,8 @@ import {
   type TrafficSource,
 } from "@/lib/public-stats";
 import { formatCount } from "@/lib/format-number";
+import { FEATURE_GATES } from "@/lib/feature-gates";
+import { isServerFeatureFlagEnabled } from "@/lib/server-feature-flag";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -215,6 +219,18 @@ function CardsView({
 }
 
 export default async function DashboardHome({ searchParams }: PageProps) {
+  const { userId, sessionClaims } = await auth();
+  if (!userId) redirect("/sign-in");
+
+  const publicMetricsOk = await isServerFeatureFlagEnabled({
+    flag: FEATURE_GATES["public-metrics"].flag,
+    distinctId: userId,
+    email: sessionClaims?.email,
+    firstName: sessionClaims?.firstName,
+    lastName: sessionClaims?.lastName,
+  });
+  if (!publicMetricsOk) redirect("/orgs");
+
   const sp = await searchParams;
   const view = parseView(sp.view);
   const stats = await fetchPublicStatsSummary(view);

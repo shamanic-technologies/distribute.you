@@ -8,7 +8,6 @@ import {
 } from "@/lib/last-brand";
 
 const isPublicRoute = createRouteMatcher([
-  "/",
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/sso-callback(.*)",
@@ -33,10 +32,25 @@ const isApiRoute = createRouteMatcher(["/api(.*)"]);
 export default clerkMiddleware(
   async (auth, req) => {
     const { userId, sessionClaims } = await auth();
+    const pathname = req.nextUrl.pathname;
+    const isExplicitDashboardRoot =
+      pathname === "/" && hasExplicitHierarchyIntent(req.nextUrl.searchParams);
 
     // Redirect authenticated users away from auth pages
     if (isAuthRoute(req) && userId) {
-      return NextResponse.redirect(new URL("/", req.url));
+      return NextResponse.redirect(new URL("/orgs", req.url));
+    }
+
+    // `/?view=overview` is the dashboard hierarchy intent emitted by the
+    // authed header logo. Treat it as dashboard navigation, not as the public
+    // build-in-public metrics page, so first-run users hit onboarding pre-paint.
+    if (userId && isExplicitDashboardRoot) {
+      if (sessionClaims?.orgMeta?.onboardingComplete !== true) {
+        return NextResponse.redirect(new URL("/onboarding", req.url));
+      }
+      const orgsUrl = new URL("/orgs", req.url);
+      orgsUrl.search = req.nextUrl.search;
+      return NextResponse.redirect(orgsUrl);
     }
 
     // Protect non-public routes
@@ -62,8 +76,6 @@ export default clerkMiddleware(
     ) {
       return NextResponse.redirect(new URL("/onboarding", req.url));
     }
-
-    const pathname = req.nextUrl.pathname;
 
     // "Land on last-visited brand" — READ side. On a bare `/orgs/:orgId`,
     // redirect pre-paint to the last brand opened in that org (remembered in
