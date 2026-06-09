@@ -1,7 +1,6 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
 import { URLS } from "@distribute/content";
-import { StatusIndicator } from "./status-indicator";
 
 interface FooterProps {
   /** Optional context-specific note rendered at the bottom of the footer. */
@@ -25,6 +24,7 @@ const COLUMNS: FooterColumn[] = [
     links: [
       { label: "Pricing", href: "/pricing" },
       { label: "Performance", href: "/performance" },
+      { label: "Benchmarks", href: "/benchmarks" },
       { label: "Blog", href: "/blog" },
     ],
   },
@@ -41,34 +41,10 @@ const COLUMNS: FooterColumn[] = [
     title: "Company",
     links: [
       { label: "Investors", href: "/investors" },
-      { label: "Twitter", href: URLS.twitter, external: true },
+      { label: "Twitter / X", href: URLS.twitter, external: true },
       { label: "Sign in", href: URLS.signIn, external: true },
       { label: "Sign up", href: URLS.signUp, external: true },
     ],
-  },
-  {
-    title: "Open source",
-    links: [
-      { label: "GitHub repo", href: URLS.github, external: true },
-      { label: "MIT license", href: `${URLS.github}/blob/main/LICENSE`, external: true },
-      { label: "Methodology", href: URLS.github, external: true },
-      { label: "Self-host", href: URLS.github, external: true },
-    ],
-  },
-];
-
-const SUB_BRANDS = [
-  {
-    label: "PressBeat.io — Organic press on demand",
-    href: "https://pressbeat.io",
-  },
-  {
-    label: "GrowthAgency.dev — Growth agency for humans",
-    href: "https://growthagency.dev",
-  },
-  {
-    label: "GrowthService.org — Increase AI search ranking",
-    href: "https://growthservice.org",
   },
 ];
 
@@ -119,15 +95,25 @@ export function Footer({ disclaimer }: FooterProps) {
               </span>
             </div>
             <p className="text-sm text-gray-500 leading-relaxed mb-4">
-              Sales automation, done for you. Drop a URL, set a budget — we find your
-              buyers, send personalized cold emails, and forward the replies worth
-              reading. $25 welcome credits, no subscription.
+              AI outreach automation for solo founders and micro-SaaS builders. Drop
+              a URL, set a budget, get qualified replies.
             </p>
-            <StatusIndicator />
+            <p className="text-sm text-gray-500 leading-relaxed">
+              Built by{" "}
+              <a
+                href="https://twitter.com/kevinlourd"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-gray-300"
+              >
+                @kevinlourd
+              </a>{" "}
+              and contributors.
+            </p>
           </div>
 
           {/* Link columns */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-8 flex-1 md:max-w-2xl">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-8 flex-1 md:max-w-2xl">
             {COLUMNS.map((col) => (
               <div key={col.title}>
                 <h4 className="text-[11px] uppercase tracking-wider font-semibold text-gray-500 mb-3">
@@ -145,43 +131,22 @@ export function Footer({ disclaimer }: FooterProps) {
           </div>
         </div>
 
-        {/* Sub-brands */}
-        <div className="border-t border-gray-900 pt-8 mb-8">
-          <p className="text-[11px] uppercase tracking-wider text-gray-600 font-semibold mb-3">
-            Also by our team
-          </p>
-          <div className="flex flex-wrap gap-x-6 gap-y-2">
-            {SUB_BRANDS.map((b) => (
-              <a
-                key={b.href}
-                href={b.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-gray-500 hover:text-gray-300 transition"
-              >
-                {b.label}
-              </a>
-            ))}
-          </div>
-        </div>
-
         {/* Bottom strip */}
         <div className="border-t border-gray-900 pt-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs text-gray-600">
           <span>
             © {year} distribute. MIT License. 100% open source.
           </span>
-          <span className="text-gray-700">
-            Built by{" "}
-            <a
-              href="https://twitter.com/kevinlourd"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-gray-400"
-            >
-              @kevinlourd
-            </a>{" "}
-            and contributors.
-          </span>
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
+            <a href="/privacy" className="hover:text-gray-400 transition">
+              Privacy
+            </a>
+            <a href="/terms" className="hover:text-gray-400 transition">
+              Terms
+            </a>
+            <a href="https://status.distribute.you" target="_blank" rel="noopener noreferrer" className="hover:text-gray-400 transition">
+              Status
+            </a>
+          </div>
         </div>
 
         {/* Optional context-specific disclaimer */}
