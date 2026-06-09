@@ -271,7 +271,17 @@ async function fetchBrandRanked(
 // ─── Aggregate brands across features (deduplicate by brandId) ───���──────────
 
 function aggregateBrands(brandsByFeature: BrandLeaderboardEntry[][]): BrandLeaderboardEntry[] {
-  const byId = new Map<string, { sent: number; opened: number; clicked: number; replied: number; cost: number; name: string | null; domain: string | null }>();
+  const byId = new Map<string, {
+    sent: number;
+    opened: number;
+    clicked: number;
+    replied: number;
+    cost: number;
+    expectedRevenueUsd: number | null;
+    roiMultiple: number | null;
+    name: string | null;
+    domain: string | null;
+  }>();
 
   for (const brands of brandsByFeature) {
     for (const b of brands) {
@@ -283,8 +293,14 @@ function aggregateBrands(brandsByFeature: BrandLeaderboardEntry[][]): BrandLeade
         existing.clicked += b.emailsClicked;
         existing.replied += b.emailsReplied;
         existing.cost += b.totalCostUsdCents;
+        if (b.expectedRevenueUsd != null) {
+          existing.expectedRevenueUsd = (existing.expectedRevenueUsd ?? 0) + b.expectedRevenueUsd;
+        }
         if (!existing.name && b.brandName) existing.name = b.brandName;
         if (!existing.domain && b.brandDomain) existing.domain = b.brandDomain;
+        existing.roiMultiple = existing.expectedRevenueUsd != null && existing.cost > 0
+          ? existing.expectedRevenueUsd / (existing.cost / 100)
+          : null;
       } else {
         byId.set(b.brandId, {
           sent: b.emailsSent,
@@ -292,6 +308,8 @@ function aggregateBrands(brandsByFeature: BrandLeaderboardEntry[][]): BrandLeade
           clicked: b.emailsClicked,
           replied: b.emailsReplied,
           cost: b.totalCostUsdCents,
+          expectedRevenueUsd: b.expectedRevenueUsd,
+          roiMultiple: b.roiMultiple,
           name: b.brandName,
           domain: b.brandDomain,
         });
@@ -304,8 +322,8 @@ function aggregateBrands(brandsByFeature: BrandLeaderboardEntry[][]): BrandLeade
     brandName: b.name,
     brandDomain: b.domain,
     brandUrl: null,
-    expectedRevenueUsd: null,
-    roiMultiple: null,
+    expectedRevenueUsd: b.expectedRevenueUsd,
+    roiMultiple: b.roiMultiple,
     emailsSent: b.sent,
     emailsOpened: b.opened,
     emailsClicked: b.clicked,
