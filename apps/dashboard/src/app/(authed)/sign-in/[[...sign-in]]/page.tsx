@@ -16,7 +16,7 @@ export default function SignInPage() {
 
   useEffect(() => {
     if (isSignedIn) {
-      router.replace("/");
+      router.replace("/orgs");
     }
   }, [isSignedIn, router]);
 
@@ -28,7 +28,7 @@ export default function SignInPage() {
       await signIn.authenticateWithRedirect({
         strategy: "oauth_google",
         redirectUrl: "/sso-callback",
-        redirectUrlComplete: "/",
+        redirectUrlComplete: "/orgs",
       });
     } catch (error) {
       posthog.capture("signin_google_oauth_failed", { provider: "google" });

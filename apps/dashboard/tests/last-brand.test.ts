@@ -127,6 +127,13 @@ describe("proxy.ts wiring — edge read + write", () => {
     expect(proxy).toContain("hasExplicitHierarchyIntent");
     expect(proxy).toContain("!hasExplicitHierarchyIntent(req.nextUrl.searchParams)");
   });
+
+  it("treats /?view=overview as authenticated dashboard navigation, not public metrics", () => {
+    expect(proxy).toContain("isExplicitDashboardRoot");
+    expect(proxy).toContain('pathname === "/"');
+    expect(proxy).toContain('const orgsUrl = new URL("/orgs", req.url)');
+    expect(proxy).toContain("orgsUrl.search = req.nextUrl.search");
+  });
 });
 
 describe("org landing page — client fallback redirect", () => {

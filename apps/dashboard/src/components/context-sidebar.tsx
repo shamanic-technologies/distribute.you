@@ -325,14 +325,17 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
 // App Level Sidebar
 function AppLevelSidebar({ pathname }: { pathname: string }) {
   const searchParams = useSearchParams();
+  const publicMetricsOk = useFeatureFlag(FEATURE_GATES["public-metrics"].flag);
   const analyticsItems: SidebarItem[] = [
-    { id: "landing", label: "Unique visitors", href: "/?view=landing", icon: <OverviewIcon /> },
-    { id: "signups", label: "Signup conversions", href: "/?view=signups", icon: <ConversionsIcon /> },
-    { id: "cards", label: "Cards added", href: "/?view=cards", icon: <BillingIcon /> },
+    { id: "landing", label: "Unique visitors", href: "/?view=landing", icon: <OverviewIcon />, maturity: FEATURE_GATES["public-metrics"].maturity },
+    { id: "signups", label: "Signup conversions", href: "/?view=signups", icon: <ConversionsIcon />, maturity: FEATURE_GATES["public-metrics"].maturity },
+    { id: "cards", label: "Cards added", href: "/?view=cards", icon: <BillingIcon />, maturity: FEATURE_GATES["public-metrics"].maturity },
   ];
 
   const activeView = searchParams.get("view");
   const normalizedView = activeView === "signups" || activeView === "cards" ? activeView : "landing";
+
+  if (!publicMetricsOk) return null;
 
   return (
     <SidebarSection title="Dashboard">
