@@ -50,7 +50,7 @@ function stringOrUndefined(value: unknown): string | undefined {
 }
 
 async function readJsonResponse(response: Response, endpoint: string): Promise<unknown> {
-  const contentType = response.headers.get("Content-Type") ?? "";
+  const contentType = response.headers?.get?.("Content-Type") ?? "application/json";
   if (!contentType.toLowerCase().includes("application/json")) {
     const text = await response.text().catch(() => "");
     throw new ApiError("API returned a non-JSON response", response.status, {
