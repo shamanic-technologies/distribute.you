@@ -24,6 +24,14 @@ const brandsPage = fs.readFileSync(
   path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/page.tsx"),
   "utf-8"
 );
+const signUpPage = fs.readFileSync(
+  path.join(__dirname, "../src/app/(authed)/sign-up/[[...sign-up]]/page.tsx"),
+  "utf-8"
+);
+const signInPage = fs.readFileSync(
+  path.join(__dirname, "../src/app/(authed)/sign-in/[[...sign-in]]/page.tsx"),
+  "utf-8"
+);
 
 describe("DIS-111 edge gate lives in proxy.ts", () => {
   it("reads the onboardingComplete session claim", () => {
@@ -41,6 +49,14 @@ describe("DIS-111 edge gate lives in proxy.ts", () => {
     expect(proxy).toContain("isOnboardingRoute");
     expect(proxy).toContain("isApiRoute");
     expect(proxy).toContain('searchParams.has("autoCreate")');
+  });
+
+  it("does not send completed auth flows to the public metrics root", () => {
+    expect(proxy).toContain('new URL("/orgs", req.url)');
+    expect(signUpPage).toContain('redirectUrlComplete: "/orgs"');
+    expect(signUpPage).toContain('router.replace("/orgs")');
+    expect(signInPage).toContain('redirectUrlComplete: "/orgs"');
+    expect(signInPage).toContain('router.replace("/orgs")');
   });
 });
 

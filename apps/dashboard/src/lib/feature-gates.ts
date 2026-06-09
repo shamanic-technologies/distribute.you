@@ -40,6 +40,9 @@ export const FEATURE_GATES = {
   // (Outlets/Journalists/Articles). Leads + Emails stay GA (sales-cold-email is
   // launched). Independent of brand-features so it can graduate on its own.
   "brand-database": { flag: "alpha-brand-database", maturity: "alpha" },
+  // Internal build-in-public metrics at the dashboard root. Staff-only: these
+  // pages expose global signup/card/visitor counts and should not be public.
+  "public-metrics": { flag: "alpha-public-metrics", maturity: "alpha" },
   // Live activity feed on the campaign overview (reassurance ticker derived from
   // run_events). Beta cohort (Kevin + Adam) while the funnel-slug allowlist
   // matures — Adam is an external tester, so beta (opt-in), not alpha (staff).

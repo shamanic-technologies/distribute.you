@@ -18,6 +18,10 @@ const proxy = fs.readFileSync(
   path.join(__dirname, "../src/proxy.ts"),
   "utf-8",
 );
+const serverFeatureFlag = fs.readFileSync(
+  path.join(__dirname, "../src/lib/server-feature-flag.ts"),
+  "utf-8",
+);
 
 describe("dashboard global build-in-public page", () => {
   it("does not auto-redirect the logo landing page into the active org", () => {
@@ -27,9 +31,22 @@ describe("dashboard global build-in-public page", () => {
     expect(page).toContain('href="/orgs"');
   });
 
-  it("keeps the global metrics root public for signed-out visitors", () => {
-    expect(proxy).toContain('"/"');
-    expect(proxy).toContain("isPublicRoute");
+  it("gates the global metrics root behind the public-metrics alpha flag", () => {
+    const publicRouteBlock = proxy.slice(
+      proxy.indexOf("const isPublicRoute"),
+      proxy.indexOf("const isAuthRoute"),
+    );
+    expect(publicRouteBlock).not.toContain('"/"');
+    expect(page).toContain("isServerFeatureFlagEnabled");
+    expect(page).toContain('FEATURE_GATES["public-metrics"].flag');
+    expect(page).toContain('redirect("/sign-in")');
+    expect(page).toContain('redirect("/orgs")');
+    const dashboardHome = page.slice(page.indexOf("export default async function DashboardHome"));
+    expect(dashboardHome.indexOf("isServerFeatureFlagEnabled")).toBeLessThan(
+      dashboardHome.indexOf("fetchPublicStatsSummary"),
+    );
+    expect(serverFeatureFlag).toContain("/decide/?v=3");
+    expect(serverFeatureFlag).toContain("cache: \"no-store\"");
   });
 
   it("uses real producer sources instead of client-side placeholders", () => {
@@ -59,6 +76,8 @@ describe("dashboard global build-in-public page", () => {
   });
 
   it("replaces the app-level feature list with focused analytics navigation", () => {
+    expect(sidebar).toContain('FEATURE_GATES["public-metrics"]');
+    expect(sidebar).toContain("publicMetricsOk");
     expect(sidebar).toContain("Unique visitors");
     expect(sidebar).toContain("Signup conversions");
     expect(sidebar).toContain("Cards added");
