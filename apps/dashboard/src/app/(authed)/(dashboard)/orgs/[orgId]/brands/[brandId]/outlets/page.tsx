@@ -212,6 +212,9 @@ function OutletDetailPanel({
   domainRatingFetchError,
   domainRatingFetchEmpty,
   onFetchDomainRating,
+  isRequestingPurchasePrice,
+  purchasePriceRequestError,
+  onRequestPurchasePrice,
   onClose,
 }: {
   outlet: DeduplicatedOutlet;
@@ -222,6 +225,9 @@ function OutletDetailPanel({
   domainRatingFetchError: string | null;
   domainRatingFetchEmpty: boolean;
   onFetchDomainRating: () => void;
+  isRequestingPurchasePrice: boolean;
+  purchasePriceRequestError: string | null;
+  onRequestPurchasePrice: () => void;
   onClose: () => void;
 }) {
   const cost = formatCost(costCents);
@@ -327,6 +333,24 @@ function OutletDetailPanel({
                 <p className="font-medium text-amber-700">Purchase price request in progress</p>
               </div>
             )}
+            {!purchasePrice && outlet.priceRequestStatus !== "ongoing" && (
+              <div>
+                <span className="text-gray-500">Purchase Price</span>
+                <div className="mt-1 flex flex-col items-start gap-1">
+                  <button
+                    type="button"
+                    onClick={onRequestPurchasePrice}
+                    disabled={isRequestingPurchasePrice}
+                    className="text-xs font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 disabled:opacity-60 disabled:hover:bg-brand-50 px-2 py-1 rounded border border-brand-100"
+                  >
+                    {isRequestingPurchasePrice ? "Requesting..." : "Ask Purchase Price"}
+                  </button>
+                  {purchasePriceRequestError && (
+                    <p className="text-xs text-red-600">{purchasePriceRequestError}</p>
+                  )}
+                </div>
+              </div>
+            )}
             <div>
               <span className="text-gray-500">Campaigns</span>
               <p className="font-medium text-gray-700">{outlet.campaigns.length}</p>
@@ -357,6 +381,7 @@ export default function BrandOutletsPage() {
   const [selected, setSelected] = useState<DeduplicatedOutlet | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("all");
   const [search, setSearch] = useState("");
+  const [purchasePriceRequestScope, setPurchasePriceRequestScope] = useState<"page" | string | null>(null);
   const hasAutoSelectedTab = useRef(false);
   const outletsQueryKey = ["brandOutlets", brandId] as const;
 
@@ -589,14 +614,17 @@ export default function BrandOutletsPage() {
             </div>
             <button
               type="button"
-              onClick={() => requestPurchasePricesMutation.mutate(paginatedOutlets.pageItems.map((outlet) => outlet.id))}
+              onClick={() => {
+                setPurchasePriceRequestScope("page");
+                requestPurchasePricesMutation.mutate(paginatedOutlets.pageItems.map((outlet) => outlet.id));
+              }}
               disabled={requestPurchasePricesMutation.isPending || paginatedOutlets.pageItems.length === 0}
               className="h-10 shrink-0 rounded-lg border border-brand-200 bg-brand-50 px-3 text-sm font-medium text-brand-700 transition hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-brand-50"
             >
               {requestPurchasePricesMutation.isPending ? "Requesting..." : `Ask Purchase Price (${paginatedOutlets.pageItems.length})`}
             </button>
           </div>
-          {requestPurchasePricesMutation.isError && (
+          {requestPurchasePricesMutation.isError && purchasePriceRequestScope === "page" && (
             <p className="mb-3 text-xs text-red-600">{requestPurchasePricesMutation.error.message}</p>
           )}
           <div className="space-y-2">
@@ -643,6 +671,16 @@ export default function BrandOutletsPage() {
             fetchDomainRatingMutation.data == null
           }
           onFetchDomainRating={() => fetchDomainRatingMutation.mutate(normalizeDomain(selectedOutlet.outletDomain))}
+          isRequestingPurchasePrice={requestPurchasePricesMutation.isPending && purchasePriceRequestScope === selectedOutlet.id}
+          purchasePriceRequestError={
+            requestPurchasePricesMutation.isError && purchasePriceRequestScope === selectedOutlet.id
+              ? requestPurchasePricesMutation.error.message
+              : null
+          }
+          onRequestPurchasePrice={() => {
+            setPurchasePriceRequestScope(selectedOutlet.id);
+            requestPurchasePricesMutation.mutate([selectedOutlet.id]);
+          }}
           onClose={() => setSelected(null)}
         />
       )}
