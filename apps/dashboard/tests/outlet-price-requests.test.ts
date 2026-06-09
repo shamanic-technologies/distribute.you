@@ -1,11 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 import { markOutletPriceRequestsOngoing } from "../src/lib/outlet-price-requests";
+import { requestOutletPurchasePrices } from "../src/lib/api";
 import type { OutletListResponse } from "../src/lib/api";
 
 const apiPath = path.resolve(__dirname, "../src/lib/api.ts");
 const searchBarPath = path.resolve(__dirname, "../src/components/entity-search-bar.tsx");
+const originalFetch = globalThis.fetch;
 
 const outletPages = {
   brand: path.resolve(
@@ -22,6 +24,11 @@ const outletPages = {
   ),
 };
 
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+  vi.restoreAllMocks();
+});
+
 describe("outlet purchase price request API", () => {
   const api = fs.readFileSync(apiPath, "utf-8");
 
@@ -33,6 +40,33 @@ describe("outlet purchase price request API", () => {
 
   it("types the backend-derived price request status on listed outlets", () => {
     expect(api).toContain('priceRequestStatus: "ongoing" | "received" | null');
+  });
+
+  it("surfaces HTML proxy responses as ApiError instead of a JSON parse crash", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response("<!DOCTYPE html><html><body>Dashboard shell</body></html>", {
+        status: 200,
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      }),
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await expect(requestOutletPurchasePrices(["outlet-1"])).rejects.toMatchObject({
+      name: "ApiError",
+      status: 200,
+      body: {
+        error: "Non-JSON API response",
+        endpoint: "/outlets/price-requests",
+        contentType: "text/html; charset=utf-8",
+      },
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/outlets/price-requests",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ outletIds: ["outlet-1"] }),
+      }),
+    );
   });
 });
 
