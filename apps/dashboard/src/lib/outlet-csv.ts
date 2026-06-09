@@ -2,6 +2,14 @@ import { toCsv, type CsvColumn } from "@/components/report/csv";
 import { statusLabel } from "@/lib/outlet-status";
 import type { DeduplicatedOutlet } from "@/lib/api";
 
+function whyRelevantFor(outlet: DeduplicatedOutlet): string {
+  const values = outlet.campaigns
+    .map((campaign) => campaign.whyRelevant?.trim())
+    .filter((value): value is string => Boolean(value));
+
+  return [...new Set(values)].join(" | ");
+}
+
 /**
  * Build a flat, one-row-per-outlet CSV of the FULL outlet list.
  *
@@ -13,6 +21,9 @@ import type { DeduplicatedOutlet } from "@/lib/api";
  *     brand-scoped). Run through `statusLabel` here for the human label.
  *   - `costCentsFor` — the per-outlet total cost in USD cents (string), or null
  *     when the cost query hasn't loaded / the outlet has no cost.
+ *
+ * Campaign-level relevance notes are joined onto the outlet row, deduplicated
+ * when several campaigns carry the same note.
  *
  * Exports the WHOLE list passed in — never the active-tab / search-filtered
  * subset. Sorted by relevance desc so the most relevant outlets sit at the top.
@@ -32,6 +43,7 @@ export function buildOutletCsv(
     { label: "DR", value: (o) => drFor(o) ?? "" },
     { label: "Purchase Price", value: (o) => purchasePriceFor(o) ?? "" },
     { label: "Relevance %", value: (o) => o.relevanceScore },
+    { label: "Why Relevant", value: (o) => whyRelevantFor(o) },
     { label: "Campaigns", value: (o) => o.campaigns.length },
     { label: "Discovered", value: (o) => o.createdAt.slice(0, 10) },
     {

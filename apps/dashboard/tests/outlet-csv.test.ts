@@ -37,6 +37,7 @@ describe("buildOutletCsv helper", () => {
       '"DR"',
       '"Purchase Price"',
       '"Relevance %"',
+      '"Why Relevant"',
       '"Campaigns"',
       '"Discovered"',
       '"Cost (USD)"',
@@ -52,6 +53,12 @@ describe("buildOutletCsv helper", () => {
   it("renders DR and purchase price through page-scoped resolvers", () => {
     expect(src).toContain("drFor(o)");
     expect(src).toContain("purchasePriceFor(o)");
+  });
+
+  it("renders campaign why relevant notes on the outlet row", () => {
+    expect(src).toContain("campaign.whyRelevant?.trim()");
+    expect(src).toContain('join(" | ")');
+    expect(src).toContain("whyRelevantFor(o)");
   });
 
   it("sorts by relevance desc (most relevant first)", () => {
