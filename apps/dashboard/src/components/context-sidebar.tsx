@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useFeatures } from "@/lib/features-context";
 import { useEntityRegistry } from "@/lib/entity-registry-context";
@@ -324,53 +324,25 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
 
 // App Level Sidebar
 function AppLevelSidebar({ pathname }: { pathname: string }) {
-  const { features, isLoading: featuresLoading } = useFeatures();
-  // The Features section needs the feature list; reveal the whole nav together
-  // once it loads (skeleton rows until then). See CLAUDE.md → "Coordinated reveal".
-  const defsReady = !featuresLoading;
-  const topItems: SidebarItem[] = [
-    { id: "home", label: "Home", href: "/", icon: <HomeIcon /> },
+  const searchParams = useSearchParams();
+  const analyticsItems: SidebarItem[] = [
+    { id: "landing", label: "Landing arrivals", href: "/?view=landing", icon: <OverviewIcon /> },
+    { id: "signups", label: "Signup conversions", href: "/?view=signups", icon: <ConversionsIcon /> },
+    { id: "cards", label: "Cards added", href: "/?view=cards", icon: <BillingIcon /> },
   ];
 
-  const featureItems: SidebarItem[] = features.map((f) => ({
-    id: f.slug,
-    label: f.name,
-    href: `/features/${f.slug}`,
-    icon: getFeatureIcon(f.slug, f.icon),
-    comingSoon: !f.implemented,
-  }));
+  const activeView = searchParams.get("view");
+  const normalizedView = activeView === "signups" || activeView === "cards" ? activeView : "landing";
 
   return (
     <SidebarSection title="Dashboard">
-      {!defsReady ? (
-        <>
-          <SidebarNavRowSkeleton />
-          <div className="pt-2 mt-2 border-t border-gray-100">
-            <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Features</h4>
-            {[0, 1, 2, 3, 4].map((i) => <SidebarNavRowSkeleton key={`feat-${i}`} />)}
-          </div>
-        </>
-      ) : (
-        <>
-      {topItems.map((item) => (
+      {analyticsItems.map((item) => (
         <SidebarLink
           key={item.id}
           item={item}
-          isActive={item.id === "home" ? pathname === "/" : pathname.startsWith(item.href)}
+          isActive={pathname === "/" && normalizedView === item.id}
         />
       ))}
-      <div className="pt-2 mt-2 border-t border-gray-100">
-        <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Features</h4>
-        {featureItems.map((item) => (
-          <SidebarLink
-            key={item.id}
-            item={item}
-            isActive={pathname.startsWith(item.href)}
-          />
-        ))}
-      </div>
-        </>
-      )}
     </SidebarSection>
   );
 }

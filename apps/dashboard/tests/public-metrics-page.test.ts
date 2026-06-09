@@ -10,6 +10,10 @@ const publicStats = fs.readFileSync(
   path.join(__dirname, "../src/lib/public-stats.ts"),
   "utf-8",
 );
+const sidebar = fs.readFileSync(
+  path.join(__dirname, "../src/components/context-sidebar.tsx"),
+  "utf-8",
+);
 
 describe("dashboard global build-in-public page", () => {
   it("does not auto-redirect the logo landing page into the active org", () => {
@@ -19,24 +23,32 @@ describe("dashboard global build-in-public page", () => {
     expect(page).toContain('href="/orgs"');
   });
 
-  it("uses the existing public stats endpoints instead of a client-side workaround", () => {
+  it("uses real producer sources instead of client-side placeholders", () => {
     expect(publicStats).toContain("/public/stats/users");
     expect(publicStats).toContain("/public/stats/billing");
     expect(publicStats).toContain("/public/stats/runs");
+    expect(publicStats).toContain("POSTHOG_PERSONAL_API_KEY");
+    expect(publicStats).toContain("STRIPE_SECRET_KEY");
+    expect(publicStats).toContain("FROM sessions");
+    expect(publicStats).toContain("signup_completed");
+    expect(publicStats).toContain("/payment_methods");
     expect(page).toContain("fetchPublicStatsSummary");
+    expect(page).not.toContain("Pending");
   });
 
-  it("documents PostHog and GA4 as separate bronze sources feeding one silver/gold funnel", () => {
-    expect(page).toContain("PostHog events raw");
-    expect(page).toContain("GA4 events or report snapshots raw");
-    expect(page).toContain("Canonical web sessions and funnel steps");
-    expect(page).toContain("public_funnel_daily / weekly / all_time");
+  it("renders the three requested public analytics sub-pages", () => {
+    expect(page).toContain("Landing arrivals over time");
+    expect(page).toContain("Signup conversion over time");
+    expect(page).toContain("Cards added over time");
+    expect(page).toContain("Arrival origins");
+    expect(page).toContain("Signup to card conversion over time");
   });
 
-  it("keeps unavailable producer metrics explicit", () => {
-    expect(page).toContain("visitor-to-signup rate");
-    expect(page).toContain("auto-top-up count");
-    expect(page).toContain("credit-purchaser count");
-    expect(page).not.toContain("accounts_with_auto_topup");
+  it("replaces the app-level feature list with focused analytics navigation", () => {
+    expect(sidebar).toContain("Landing arrivals");
+    expect(sidebar).toContain("Signup conversions");
+    expect(sidebar).toContain("Cards added");
+    expect(sidebar).toContain("/?view=landing");
+    expect(sidebar).not.toContain('href: `/features/${f.slug}`');
   });
 });

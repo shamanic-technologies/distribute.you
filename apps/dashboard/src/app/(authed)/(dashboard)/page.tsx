@@ -1,9 +1,26 @@
 import Image from "next/image";
 import Link from "next/link";
-import { fetchPublicStatsSummary } from "@/lib/public-stats";
-import { formatBillingCents, formatCount } from "@/lib/format-number";
+import { PublicAnalyticsChart } from "@/components/public-analytics-chart";
+import {
+  fetchPublicStatsSummary,
+  type DailyFunnelPoint,
+  type PublicAnalyticsView,
+  type TrafficSource,
+} from "@/lib/public-stats";
+import { formatCount } from "@/lib/format-number";
 
+export const dynamic = "force-dynamic";
 export const revalidate = 300;
+
+const VIEWS: Array<{ id: PublicAnalyticsView; label: string; href: string }> = [
+  { id: "landing", label: "Landing arrivals", href: "/?view=landing" },
+  { id: "signups", label: "Signup conversions", href: "/?view=signups" },
+  { id: "cards", label: "Cards added", href: "/?view=cards" },
+];
+
+interface PageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
 
 interface StatCardProps {
   label: string;
@@ -12,38 +29,32 @@ interface StatCardProps {
   accent: string;
 }
 
-interface FunnelStepProps {
-  index: string;
-  label: string;
-  value: string;
-  detail: string;
-  widthPct: number;
-  tone: string;
-}
-
 function pct(numerator: number, denominator: number): string {
   if (denominator === 0) return "0.0%";
   return `${((numerator / denominator) * 100).toFixed(1)}%`;
 }
 
-function numericCents(cents: string): number {
-  return Number.parseFloat(cents);
+function parseView(raw: string | string[] | undefined): PublicAnalyticsView {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (value === "signups" || value === "cards") return value;
+  return "landing";
 }
 
-function shortMoney(cents: string): string {
-  const dollars = numericCents(cents) / 100;
-  return `$${Math.round(dollars).toLocaleString("en-US")}`;
-}
-
-function barWidth(numerator: number, denominator: number): number {
-  if (denominator === 0) return 0;
-  return Math.min((numerator / denominator) * 100, 100);
+function latestDate(points: DailyFunnelPoint[]): string {
+  const last = points[points.length - 1];
+  if (!last) return "No dated activity";
+  return new Date(`${last.date}T00:00:00.000Z`).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 function StatCard({ label, value, detail, accent }: StatCardProps) {
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-5">
-      <div className={`h-1 w-10 rounded-full ${accent} mb-4`} />
+    <div className="rounded-lg border border-gray-200 bg-white p-5">
+      <div className={`mb-4 h-1 w-10 rounded-full ${accent}`} />
       <p className="text-xs font-medium uppercase tracking-wide text-gray-500">{label}</p>
       <p className="mt-2 text-2xl font-semibold text-gray-950">{value}</p>
       <p className="mt-1 text-sm text-gray-500">{detail}</p>
@@ -51,51 +62,161 @@ function StatCard({ label, value, detail, accent }: StatCardProps) {
   );
 }
 
-function FunnelStep({ index, label, value, detail, widthPct, tone }: FunnelStepProps) {
+function ViewTabs({ active }: { active: PublicAnalyticsView }) {
   return (
-    <div className="grid gap-3 border-b border-gray-100 py-4 last:border-b-0 md:grid-cols-[3rem_1fr_9rem] md:items-center">
-      <div className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-xs font-semibold text-gray-500">
-        {index}
-      </div>
-      <div>
-        <div className="flex items-center justify-between gap-4">
-          <p className="text-sm font-medium text-gray-900">{label}</p>
-          <p className="text-sm font-semibold text-gray-950 md:hidden">{value}</p>
-        </div>
-        <div className="mt-2 h-2 overflow-hidden rounded-full bg-gray-100">
-          <div className={`h-full rounded-full ${tone}`} style={{ width: `${widthPct}%` }} />
-        </div>
-        <p className="mt-1 text-xs text-gray-500">{detail}</p>
-      </div>
-      <p className="hidden text-right text-sm font-semibold text-gray-950 md:block">{value}</p>
+    <div className="flex flex-wrap gap-2">
+      {VIEWS.map((view) => (
+        <Link
+          key={view.id}
+          href={view.href}
+          className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+            active === view.id
+              ? "border-gray-950 bg-gray-950 text-white"
+              : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-950"
+          }`}
+        >
+          {view.label}
+        </Link>
+      ))}
     </div>
   );
 }
 
-function SourceRow({ layer, source, status }: { layer: string; source: string; status: string }) {
+function SourcesTable({ sources }: { sources: TrafficSource[] }) {
   return (
-    <div className="grid grid-cols-[5.5rem_1fr] gap-3 border-b border-gray-100 py-3 last:border-b-0 sm:grid-cols-[7rem_1fr_12rem]">
-      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{layer}</p>
-      <p className="text-sm text-gray-900">{source}</p>
-      <p className="col-span-2 text-xs text-gray-500 sm:col-span-1 sm:text-right">{status}</p>
+    <div className="rounded-lg border border-gray-200 bg-white p-6">
+      <h2 className="text-lg font-semibold text-gray-950">Arrival origins</h2>
+      <div className="mt-4 divide-y divide-gray-100">
+        {sources.map((source) => (
+          <div key={source.source} className="grid gap-3 py-3 sm:grid-cols-[1fr_7rem_7rem] sm:items-center">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-gray-900">{source.source}</p>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-gray-100">
+                <div className="h-full rounded-full bg-sky-500" style={{ width: `${source.sharePct}%` }} />
+              </div>
+            </div>
+            <p className="text-sm font-semibold text-gray-950 sm:text-right">{formatCount(source.visitors)}</p>
+            <p className="text-xs text-gray-500 sm:text-right">{source.sharePct.toFixed(1)}%</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
 
-export default async function DashboardHome() {
-  const stats = await fetchPublicStatsSummary();
-  const cardRate = pct(stats.billing.accounts_with_payment_method, stats.users.totalUsers);
-  const billingAccountRate = pct(stats.billing.total_accounts, stats.users.totalUsers);
-  const completedRuns = stats.runs.byStatus.completed;
-  const totalRuns = stats.runs.byStatus.completed + stats.runs.byStatus.failed + stats.runs.byStatus.running;
-  const runCompletionRate = pct(completedRuns, totalRuns);
-  const maxFunnelValue = Math.max(stats.users.totalUsers, stats.billing.total_accounts, stats.billing.accounts_with_payment_method, 1);
-  const currentMonth = stats.users.monthlyGrowth[stats.users.monthlyGrowth.length - 1];
+function LandingView({
+  totalVisitors,
+  timeline,
+  sources,
+}: {
+  totalVisitors: number;
+  timeline: DailyFunnelPoint[];
+  sources: TrafficSource[];
+}) {
+  return (
+    <>
+      <section className="grid gap-4 md:grid-cols-3">
+        <StatCard label="Total landing arrivals" value={formatCount(totalVisitors)} detail={`Through ${latestDate(timeline)}`} accent="bg-sky-500" />
+        <StatCard label="Tracked days" value={formatCount(timeline.length)} detail="PostHog landing sessions" accent="bg-gray-500" />
+        <StatCard label="Top origin" value={sources[0]?.source ?? "No source"} detail={sources[0] ? `${formatCount(sources[0].visitors)} arrivals` : "No arrivals yet"} accent="bg-emerald-500" />
+      </section>
+      <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <div className="rounded-lg border border-gray-200 bg-white p-6">
+          <h2 className="text-lg font-semibold text-gray-950">Landing arrivals over time</h2>
+          <p className="mt-1 text-sm text-gray-500">One arrival per PostHog landing session on distribute.you.</p>
+          <div className="mt-5">
+            <PublicAnalyticsChart data={timeline} metric="landingVisitors" color="#0ea5e9" />
+          </div>
+        </div>
+        <SourcesTable sources={sources} />
+      </section>
+    </>
+  );
+}
+
+function SignupView({
+  totalUsers,
+  totalVisitors,
+  signupEvents,
+  timeline,
+}: {
+  totalUsers: number;
+  totalVisitors: number;
+  signupEvents: number;
+  timeline: DailyFunnelPoint[];
+}) {
+  return (
+    <>
+      <section className="grid gap-4 md:grid-cols-3">
+        <StatCard label="Total signups" value={formatCount(totalUsers)} detail="Clerk public user total" accent="bg-brand-500" />
+        <StatCard label="Tracked signup events" value={formatCount(signupEvents)} detail="PostHog signup_completed events" accent="bg-sky-500" />
+        <StatCard label="Signup conversion" value={pct(totalUsers, totalVisitors)} detail="Total users divided by landing arrivals" accent="bg-emerald-500" />
+      </section>
+      <section className="grid gap-6 xl:grid-cols-2">
+        <div className="rounded-lg border border-gray-200 bg-white p-6">
+          <h2 className="text-lg font-semibold text-gray-950">Signups over time</h2>
+          <p className="mt-1 text-sm text-gray-500">Daily unique signup_completed events from PostHog.</p>
+          <div className="mt-5">
+            <PublicAnalyticsChart data={timeline} metric="signups" color="#6366f1" />
+          </div>
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white p-6">
+          <h2 className="text-lg font-semibold text-gray-950">Signup conversion over time</h2>
+          <p className="mt-1 text-sm text-gray-500">Daily signup events divided by daily landing arrivals.</p>
+          <div className="mt-5">
+            <PublicAnalyticsChart data={timeline} metric="signupConversionPct" color="#10b981" />
+          </div>
+        </div>
+      </section>
+    </>
+  );
+}
+
+function CardsView({
+  cardsAdded,
+  totalUsers,
+  timeline,
+}: {
+  cardsAdded: number;
+  totalUsers: number;
+  timeline: DailyFunnelPoint[];
+}) {
+  return (
+    <>
+      <section className="grid gap-4 md:grid-cols-3">
+        <StatCard label="Total cards added" value={formatCount(cardsAdded)} detail="Billing public accounts with payment method" accent="bg-emerald-500" />
+        <StatCard label="Signup to card conversion" value={pct(cardsAdded, totalUsers)} detail="Cards added divided by total signups" accent="bg-brand-500" />
+        <StatCard label="Tracked card days" value={formatCount(timeline.filter((point) => point.cardsAdded > 0).length)} detail="Stripe first saved-card dates" accent="bg-sky-500" />
+      </section>
+      <section className="grid gap-6 xl:grid-cols-2">
+        <div className="rounded-lg border border-gray-200 bg-white p-6">
+          <h2 className="text-lg font-semibold text-gray-950">Cards added over time</h2>
+          <p className="mt-1 text-sm text-gray-500">Daily first saved card per Stripe customer.</p>
+          <div className="mt-5">
+            <PublicAnalyticsChart data={timeline} metric="cardsAdded" color="#10b981" />
+          </div>
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white p-6">
+          <h2 className="text-lg font-semibold text-gray-950">Signup to card conversion over time</h2>
+          <p className="mt-1 text-sm text-gray-500">Daily cards added divided by daily signup events.</p>
+          <div className="mt-5">
+            <PublicAnalyticsChart data={timeline} metric="cardConversionPct" color="#f59e0b" />
+          </div>
+        </div>
+      </section>
+    </>
+  );
+}
+
+export default async function DashboardHome({ searchParams }: PageProps) {
+  const sp = await searchParams;
+  const view = parseView(sp.view);
+  const stats = await fetchPublicStatsSummary(view);
 
   return (
     <div className="min-h-full bg-gray-50">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 md:p-8">
-        <section className="bg-white border border-gray-200 rounded-lg p-6 md:p-8">
+        <section className="rounded-lg border border-gray-200 bg-white p-6 md:p-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-3xl">
               <div className="flex items-center gap-3">
@@ -108,7 +229,7 @@ export default async function DashboardHome() {
                 </div>
               </div>
               <p className="mt-5 max-w-2xl text-sm leading-6 text-gray-600">
-                The global dashboard starts before any org context: signups, payment activation, credits, and platform runs are visible from the same public stats endpoints used by the investor page.
+                Public analytics for the global product funnel: landing arrivals, signup conversion, and saved-card activation.
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
@@ -126,109 +247,45 @@ export default async function DashboardHome() {
               </Link>
             </div>
           </div>
+          <div className="mt-6">
+            <ViewTabs active={view} />
+          </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <StatCard
-            label="Users"
-            value={formatCount(stats.users.totalUsers)}
-            detail={`${formatCount(stats.users.totalOrgs)} orgs created`}
-            accent="bg-brand-500"
+        {view === "landing" && (
+          <LandingView totalVisitors={stats.landingVisitors} timeline={stats.timeline} sources={stats.trafficSources} />
+        )}
+        {view === "signups" && (
+          <SignupView
+            totalUsers={stats.users.totalUsers}
+            totalVisitors={stats.landingVisitors}
+            signupEvents={stats.signupEvents}
+            timeline={stats.timeline}
           />
-          <StatCard
-            label="Cards added"
-            value={formatCount(stats.billing.accounts_with_payment_method)}
-            detail={`${cardRate} of signed-up users`}
-            accent="bg-emerald-500"
-          />
-          <StatCard
-            label="Credits purchased"
-            value={shortMoney(stats.billing.total_revenue_cents)}
-            detail={`${formatBillingCents(stats.billing.total_credited_cents)} credited total`}
-            accent="bg-amber-500"
-          />
-          <StatCard
-            label="Runs completed"
-            value={formatCount(completedRuns)}
-            detail={`${runCompletionRate} completion rate`}
-            accent="bg-sky-500"
-          />
-        </section>
+        )}
+        {view === "cards" && (
+          <CardsView cardsAdded={stats.cardsAdded} totalUsers={stats.users.totalUsers} timeline={stats.timeline} />
+        )}
 
-        <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-          <div className="bg-white border border-gray-200 rounded-lg p-6">
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-950">Signup funnel</h2>
-                <p className="text-sm text-gray-500">Public-safe product steps from gateway stats.</p>
-              </div>
-              <p className="text-xs text-gray-400">
-                Updated {new Date(stats.updatedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-              </p>
+        <section className="rounded-lg border border-gray-200 bg-white p-6">
+          <h2 className="text-lg font-semibold text-gray-950">Data sources</h2>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Bronze</p>
+              <p className="mt-1 text-sm font-medium text-gray-900">PostHog sessions and signup events</p>
             </div>
-            <div className="mt-4">
-              <FunnelStep
-                index="01"
-                label="Landing visitors"
-                value="Pending"
-                detail="PostHog and GA4 raw sources will feed this step."
-                widthPct={100}
-                tone="bg-gray-300"
-              />
-              <FunnelStep
-                index="02"
-                label="Signed up"
-                value={formatCount(stats.users.totalUsers)}
-                detail={currentMonth ? `${formatCount(currentMonth.newUsers)} new users in ${currentMonth.month}` : "User stats endpoint is live."}
-                widthPct={barWidth(stats.users.totalUsers, maxFunnelValue)}
-                tone="bg-brand-500"
-              />
-              <FunnelStep
-                index="03"
-                label="Billing account created"
-                value={formatCount(stats.billing.total_accounts)}
-                detail={`${billingAccountRate} of signed-up users`}
-                widthPct={barWidth(stats.billing.total_accounts, maxFunnelValue)}
-                tone="bg-sky-500"
-              />
-              <FunnelStep
-                index="04"
-                label="Card added"
-                value={formatCount(stats.billing.accounts_with_payment_method)}
-                detail={`${cardRate} of signed-up users`}
-                widthPct={barWidth(stats.billing.accounts_with_payment_method, maxFunnelValue)}
-                tone="bg-emerald-500"
-              />
-              <FunnelStep
-                index="05"
-                label="Credits purchased"
-                value={shortMoney(stats.billing.total_revenue_cents)}
-                detail="Revenue amount is live; purchaser count needs billing gold."
-                widthPct={barWidth(numericCents(stats.billing.total_revenue_cents), numericCents(stats.billing.total_credited_cents))}
-                tone="bg-amber-500"
-              />
+            <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Bronze</p>
+              <p className="mt-1 text-sm font-medium text-gray-900">Stripe saved payment methods</p>
+            </div>
+            <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Gold</p>
+              <p className="mt-1 text-sm font-medium text-gray-900">Public signup and billing totals</p>
             </div>
           </div>
-
-          <div className="bg-white border border-gray-200 rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-950">Data layers</h2>
-            <p className="mt-1 text-sm text-gray-500">
-              Two analytics bronzes can converge into one public funnel without double-counting visitors.
-            </p>
-            <div className="mt-4">
-              <SourceRow layer="Bronze" source="PostHog events raw" status="Product and auth events" />
-              <SourceRow layer="Bronze" source="GA4 events or report snapshots raw" status="Acquisition and landing traffic" />
-              <SourceRow layer="Bronze" source="Clerk, billing, and runs public stats" status="Already live" />
-              <SourceRow layer="Silver" source="Canonical web sessions and funnel steps" status="Next data pass" />
-              <SourceRow layer="Gold" source="public_funnel_daily / weekly / all_time" status="Public page source" />
-            </div>
-            <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4">
-              <p className="text-sm font-medium text-amber-950">Not synthesized client-side</p>
-              <p className="mt-1 text-sm leading-5 text-amber-900">
-                Visitors, visitor-to-signup rate, auto-top-up count, and credit-purchaser count stay explicit until the producer layers expose them.
-              </p>
-            </div>
-          </div>
+          <p className="mt-4 text-xs text-gray-400">
+            Updated {new Date(stats.updatedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+          </p>
         </section>
       </div>
     </div>
