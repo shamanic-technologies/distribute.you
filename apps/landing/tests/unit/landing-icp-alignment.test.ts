@@ -25,7 +25,12 @@ const benchmarksSlugRoutePath = path.resolve(
 const pricingPagePath = path.resolve(__dirname, "../../src/app/pricing/page.tsx");
 const privacyPagePath = path.resolve(__dirname, "../../src/app/privacy/page.tsx");
 const globalsPath = path.resolve(__dirname, "../../src/app/globals.css");
+const rootLayoutPath = path.resolve(__dirname, "../../src/app/layout.tsx");
 const investorsPagePath = path.resolve(__dirname, "../../src/app/investors/page.tsx");
+const termsPagePath = path.resolve(__dirname, "../../src/app/terms/page.tsx");
+const blogPagePath = path.resolve(__dirname, "../../src/app/blog/page.tsx");
+const blogSlugPagePath = path.resolve(__dirname, "../../src/app/blog/[slug]/page.tsx");
+const seoPath = path.resolve(__dirname, "../../src/lib/seo.ts");
 const featuresPath = path.resolve(__dirname, "../../../../shared/content/src/features.ts");
 const portfolioDashboardPath = path.resolve(
   __dirname,
@@ -184,6 +189,42 @@ describe("Landing v2 static pages", () => {
     expect(benchmarks).toMatch(/<main className="v2-page">/);
     expect(benchmarks).toMatch(/v2-title/);
     expect(privacy).toMatch(/<main className="v2-page">/);
+  });
+
+  it("keeps OpenGraph, Twitter, and JSON-LD aligned to the v2 brand assets", () => {
+    const files = [
+      landingPagePath,
+      performancePagePath,
+      rootLayoutPath,
+      pricingPagePath,
+      benchmarksPagePath,
+      investorsPagePath,
+      privacyPagePath,
+      termsPagePath,
+      blogPagePath,
+      blogSlugPagePath,
+      seoPath,
+    ];
+    const combined = files.map((file) => fs.readFileSync(file, "utf-8")).join("\n");
+
+    expect(fs.existsSync(path.resolve(__dirname, "../../src/app/benchmarks/opengraph-image.tsx"))).toBe(true);
+    expect(combined).toMatch(/\/landing-v2\/logo\/logo-distribute\.svg/);
+    expect(combined).toMatch(/logo:\s*BRAND_LOGO_URL|\"logo\":\"https:\/\/distribute\.you\/landing-v2\/logo\/logo-distribute\.svg\"/);
+    expect(combined).toMatch(/\/opengraph-image/);
+    expect(combined).toMatch(/\/pricing\/opengraph-image/);
+    expect(combined).toMatch(/\/benchmarks\/opengraph-image/);
+    expect(combined).toMatch(/\/investors\/opengraph-image/);
+    expect(combined).not.toMatch(/\/og-image\.jpg/);
+
+    const landing = fs.readFileSync(landingPagePath, "utf-8");
+    const performance = fs.readFileSync(performancePagePath, "utf-8");
+    for (const page of [landing, performance]) {
+      expect(page).toMatch(/property="og:image" content="https:\/\/distribute\.you\/opengraph-image"/);
+      expect(page).toMatch(/name="twitter:image" content="https:\/\/distribute\.you\/opengraph-image"/);
+      expect(page).toMatch(/rel="icon" href="\/landing-v2\/logo\/logo-distribute\.svg"/);
+      expect(page).toMatch(/"@type":"Organization"/);
+      expect(page).toMatch(/"logo":"https:\/\/distribute\.you\/landing-v2\/logo\/logo-distribute\.svg"/);
+    }
   });
 });
 

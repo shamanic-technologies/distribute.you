@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { PROD_URLS } from "@/lib/env-urls";
+import { BRAND_LOGO_URL } from "@/lib/seo";
 import { ProviderTablesAsync } from "@/components/pricing/provider-tables-async";
 import { ProviderTablesSkeleton } from "@/components/pricing/provider-tables-skeleton";
 import { Section } from "@/components/section";
@@ -15,6 +16,12 @@ const pricingJsonLd = {
   description:
     "Cloud distribution platform with pay-as-you-go pricing. We send cold email, PR pitches, and other outbound channels on your behalf. Every unit cost is published live.",
   brand: { "@type": "Brand", name: "distribute" },
+  provider: {
+    "@type": "Organization",
+    name: "distribute",
+    url: PROD_URLS.landing,
+    logo: BRAND_LOGO_URL,
+  },
   offers: {
     "@type": "AggregateOffer",
     priceCurrency: "USD",
@@ -23,7 +30,12 @@ const pricingJsonLd = {
     offerCount: 50,
     description:
       "Variable pay-per-use pricing across 50+ priced API operations (AI tokens, leads, emails, etc.). $25 in welcome credits, no subscription.",
-    seller: { "@type": "Organization", name: "distribute" },
+    seller: {
+      "@type": "Organization",
+      name: "distribute",
+      url: PROD_URLS.landing,
+      logo: BRAND_LOGO_URL,
+    },
     url: PRICING_URL,
   },
 };

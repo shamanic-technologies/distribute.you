@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PROD_URLS } from "@/lib/env-urls";
+import { DEFAULT_OG_IMAGE_PATH, TWITTER_HANDLE } from "@/lib/seo";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { Section } from "@/components/section";
@@ -23,7 +24,7 @@ export const metadata: Metadata = {
     type: "article",
     images: [
       {
-        url: "/og-image.jpg",
+        url: DEFAULT_OG_IMAGE_PATH,
         width: 1200,
         height: 630,
         alt: "distribute - Privacy Policy",
@@ -35,8 +36,8 @@ export const metadata: Metadata = {
     title: "Privacy Policy - distribute",
     description:
       "How distribute handles account data, outreach data, campaign analytics, and third-party providers.",
-    images: ["/og-image.jpg"],
-    creator: "@distribute_you",
+    images: [DEFAULT_OG_IMAGE_PATH],
+    creator: TWITTER_HANDLE,
   },
   robots: { index: true, follow: true },
 };

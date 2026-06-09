@@ -21,6 +21,11 @@ import {
   buildBenchmarkTitle,
   buildBenchmarkDescription,
 } from "@/lib/benchmarks/seo";
+import {
+  BENCHMARKS_OG_IMAGE_PATH,
+  BRAND_LOGO_URL,
+  TWITTER_HANDLE,
+} from "@/lib/seo";
 
 export const revalidate = 300;
 
@@ -55,15 +60,15 @@ export async function generateMetadata(): Promise<Metadata> {
       description,
       url: PAGE_URL,
       images: [
-        { url: "/og-image.jpg", width: 1200, height: 630, alt: title },
+        { url: BENCHMARKS_OG_IMAGE_PATH, width: 1200, height: 630, alt: title },
       ],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: ["/og-image.jpg"],
-      creator: "@distribute_you",
+      images: [BENCHMARKS_OG_IMAGE_PATH],
+      creator: TWITTER_HANDLE,
     },
     alternates: { canonical: PAGE_URL },
     robots: { index: true, follow: true },
@@ -133,6 +138,13 @@ export default async function BenchmarksPage() {
       "@type": "Organization",
       name: "distribute",
       url: PROD_URLS.landing,
+      logo: BRAND_LOGO_URL,
+    },
+    publisher: {
+      "@type": "Organization",
+      name: "distribute",
+      url: PROD_URLS.landing,
+      logo: BRAND_LOGO_URL,
     },
     temporalCoverage: "all-time",
     dateModified: updatedAt,
