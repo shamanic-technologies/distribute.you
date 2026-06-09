@@ -14,7 +14,6 @@ import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { FEATURE_GATES } from "@/lib/feature-gates";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { formatStatValue, sortDirectionForType } from "@/lib/format-stat";
-import { pollOptions } from "@/lib/query-options";
 import { PlusIcon } from "@heroicons/react/20/solid";
 import { Skeleton } from "@/components/skeleton";
 
@@ -93,20 +92,19 @@ export default function FeatureWorkflowsPage() {
       groupBy: "workflow",
       limit: 100,
     }),
-    { enabled: wfDef?.implemented === true && defaultSortKey !== "", ...pollOptions },
+    { enabled: wfDef?.implemented === true && defaultSortKey !== "" },
   );
 
   // Fetch workflows filtered by feature slug
   const { data: workflowsData, isLoading: workflowsLoading } = useAuthQuery(
     ["workflows", featureSlug],
     () => listWorkflows({ featureSlug }),
-    pollOptions,
   );
 
   const { data: workflowRevenue, isLoading: workflowRevenueLoading } = useAuthQuery(
     ["featureRevenue", brandId, featureSlug, "workflow"],
     () => getFeatureRevenueByWorkflow(featureSlug, brandId),
-    { enabled: revenueEnabled && wfDef?.implemented === true, ...pollOptions },
+    { enabled: revenueEnabled && wfDef?.implemented === true },
   );
 
   // Active workflows grouped by workflowDynastySlug: keep only the latest per dynasty
