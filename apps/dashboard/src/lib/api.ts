@@ -3541,6 +3541,26 @@ export async function computeDomainTraffic(
   return parsed.data[0] ?? null;
 }
 
+export async function computeDomainDrStatuses(
+  domains: string[],
+  token?: string,
+): Promise<DomainDrStatus[]> {
+  const raw = await apiCall<unknown>("/orgs/domains/dr-compute", {
+    token,
+    method: "POST",
+    body: { domains },
+  });
+  const parsed = z.array(DomainDrStatusSchema).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] computeDomainDrStatuses: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] computeDomainDrStatuses: invalid response shape");
+  }
+  return parsed.data;
+}
+
 /**
  * POST /v1/orgs/domains/dr-compute — on-demand Ahrefs Domain Rating scrape for a
  * single domain. Returns the post-scrape DR status (same shape as
@@ -3550,20 +3570,8 @@ export async function computeDomainDr(
   domain: string,
   token?: string,
 ): Promise<DomainDrStatus | null> {
-  const raw = await apiCall<unknown>("/orgs/domains/dr-compute", {
-    token,
-    method: "POST",
-    body: { domains: [domain] },
-  });
-  const parsed = z.array(DomainDrStatusSchema).safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] computeDomainDr: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] computeDomainDr: invalid response shape");
-  }
-  return parsed.data[0] ?? null;
+  const data = await computeDomainDrStatuses([domain], token);
+  return data[0] ?? null;
 }
 
 // Ahrefs Brand-Radar AI-visibility. Two surfaces, one lean shape (the wire also

@@ -91,6 +91,38 @@ describe("outlet pages wire the Ask Purchase Price control", () => {
   }
 });
 
+describe("outlet pages wire the Get Domain Ratings control", () => {
+  const api = fs.readFileSync(apiPath, "utf-8");
+
+  it("posts a batch of domains to the gateway DR compute endpoint", () => {
+    expect(api).toContain("export async function computeDomainDrStatuses");
+    expect(api).toContain('"/orgs/domains/dr-compute"');
+    expect(api).toContain("body: { domains }");
+  });
+
+  for (const [level, pagePath] of Object.entries(outletPages)) {
+    const content = fs.readFileSync(pagePath, "utf-8");
+
+    it(`${level} page renders the button beside search and uses missing current-page domains`, () => {
+      expect(content).toContain("computeDomainDrStatuses");
+      expect(content).toContain("currentPageDomainsMissingDr");
+      expect(content).toContain("paginatedOutlets.pageItems");
+      expect(content).toContain(".filter((domain) => !drMap.has(domain))");
+      expect(content).toContain("Get Domain Ratings");
+    });
+
+    it(`${level} page keeps both toolbar buttons search-height aligned`, () => {
+      expect(content).toContain("fetchPageDomainRatingsMutation");
+      expect(content).toContain("h-10 shrink-0 rounded-lg border border-brand-200");
+    });
+
+    it(`${level} page writes fetched DR results into the DR cache`, () => {
+      expect(content).toContain("queryClient.setQueryData<DomainDrStatus[]>(domainDrQueryKey");
+      expect(content).toContain("invalidateQueries({ queryKey: domainDrQueryKey })");
+    });
+  }
+});
+
 describe("EntitySearchBar spacing", () => {
   it("keeps the existing bottom margin by default but lets toolbar rows override it", () => {
     const content = fs.readFileSync(searchBarPath, "utf-8");
