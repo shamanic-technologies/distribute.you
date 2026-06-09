@@ -40,5 +40,8 @@ describe("benchmark client trajectories", () => {
     expect(componentContent).not.toContain("Current funnel");
     expect(componentContent).not.toContain("funnel snapshots");
     expect(componentContent).not.toContain("rounded-full bg-gray-100 overflow-hidden");
+    expect(componentContent).not.toContain(">Sent<");
+    expect(componentContent).not.toContain(">Open rate<");
+    expect(componentContent).not.toContain("$/reply");
   });
 });

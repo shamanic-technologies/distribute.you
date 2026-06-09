@@ -1,23 +1,12 @@
 import Image from "next/image";
 import type { BrandLeaderboardEntry, BrandTimelinePoint } from "@/lib/performance/fetch-leaderboard";
-import {
-  formatCostCentsWhole,
-  formatCostDollars,
-  formatPercent,
-} from "@/lib/performance/fetch-leaderboard";
+import { formatCostDollars } from "@/lib/performance/fetch-leaderboard";
 
 const LOGO_DEV_TOKEN = process.env.NEXT_PUBLIC_LOGO_DEV_TOKEN;
 const CARD_LIMIT = 6;
 
 function labelForBrand(brand: BrandLeaderboardEntry): string {
   return brand.brandName || brand.brandDomain || "Unknown brand";
-}
-
-function compactCount(value: number): string {
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 10_000) return `${Math.round(value / 1_000).toLocaleString("en-US")}k`;
-  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}k`;
-  return value.toLocaleString("en-US");
 }
 
 function initials(label: string): string {
@@ -181,25 +170,6 @@ function BrandTrajectoryCard({ brand }: { brand: BrandLeaderboardEntry }) {
 
       <div className="mt-4">
         <MiniRevenueChart timeline={timeline} chartId={chartId} />
-      </div>
-
-      <div className="mt-4 grid grid-cols-3 gap-2 border-t border-gray-100 pt-3">
-        <div>
-          <p className="text-[11px] text-gray-400">Sent</p>
-          <p className="text-sm font-semibold text-gray-900">{compactCount(brand.emailsSent)}</p>
-        </div>
-        <div>
-          <p className="text-[11px] text-gray-400">Open rate</p>
-          <p className="text-sm font-semibold text-gray-900">
-            {brand.emailsSent > 0 ? formatPercent(brand.openRate) : "-"}
-          </p>
-        </div>
-        <div>
-          <p className="text-[11px] text-gray-400">$/reply</p>
-          <p className="text-sm font-semibold text-gray-900">
-            {formatCostCentsWhole(brand.costPerReplyCents)}
-          </p>
-        </div>
       </div>
     </article>
   );
