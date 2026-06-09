@@ -14,6 +14,10 @@ const sidebar = fs.readFileSync(
   path.join(__dirname, "../src/components/context-sidebar.tsx"),
   "utf-8",
 );
+const proxy = fs.readFileSync(
+  path.join(__dirname, "../src/proxy.ts"),
+  "utf-8",
+);
 
 describe("dashboard global build-in-public page", () => {
   it("does not auto-redirect the logo landing page into the active org", () => {
@@ -23,8 +27,15 @@ describe("dashboard global build-in-public page", () => {
     expect(page).toContain('href="/orgs"');
   });
 
+  it("keeps the global metrics root public for signed-out visitors", () => {
+    expect(proxy).toContain('"/"');
+    expect(proxy).toContain("isPublicRoute");
+  });
+
   it("uses real producer sources instead of client-side placeholders", () => {
     expect(publicStats).toContain("/public/stats/users");
+    expect(publicStats).toContain("/users/count");
+    expect(publicStats).toContain("CLERK_SECRET_KEY");
     expect(publicStats).toContain("/public/stats/billing");
     expect(publicStats).toContain("/public/stats/runs");
     expect(publicStats).toContain("POSTHOG_PERSONAL_API_KEY");
@@ -33,6 +44,7 @@ describe("dashboard global build-in-public page", () => {
     expect(publicStats).toContain("signup_completed");
     expect(publicStats).toContain("/payment_methods");
     expect(page).toContain("fetchPublicStatsSummary");
+    expect(page).toContain("Clerk /users/count total");
     expect(page).not.toContain("Pending");
   });
 
