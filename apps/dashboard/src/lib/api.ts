@@ -534,12 +534,12 @@ export async function listBrands(token?: string): Promise<{ brands: Brand[] }> {
   return { brands: brands.map(normalizeBrandFromOrgs) };
 }
 
-/** GET /brands/:brandId — returns brand detail or null if not found (404/500 from missing brand) */
+/** GET /brands/:brandId — returns brand detail or null if not found (404) */
 export async function getBrand(brandId: string, token?: string): Promise<{ brand: BrandDetail } | null> {
   try {
     return await apiCall<{ brand: BrandDetail }>(`/brands/${brandId}`, { token });
   } catch (err) {
-    if (err instanceof ApiError && (err.status === 404 || err.status === 500)) return null;
+    if (err instanceof ApiError && err.status === 404) return null;
     throw err;
   }
 }
@@ -1271,12 +1271,12 @@ export async function listCampaignEvents(
   return parsed.data as unknown as { events: RunEvent[] };
 }
 
-/** GET /brands/:brandId/runs — returns runs or empty list if brand not found (404/500) */
+/** GET /brands/:brandId/runs — returns runs or empty list if brand not found (404) */
 export async function listBrandRuns(brandId: string, token?: string): Promise<{ runs: BrandRun[] }> {
   try {
     return await apiCall<{ runs: BrandRun[] }>(`/brands/${brandId}/runs`, { token });
   } catch (err) {
-    if (err instanceof ApiError && (err.status === 404 || err.status === 500)) return { runs: [] };
+    if (err instanceof ApiError && err.status === 404) return { runs: [] };
     throw err;
   }
 }
