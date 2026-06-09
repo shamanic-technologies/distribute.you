@@ -23,8 +23,10 @@ import {
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 import { Skeleton } from "@/components/skeleton";
 
-// A line chart needs ≥2 points to show a trend.
-const VISITS_MIN_POINTS = 2;
+// Render a chart only when the backend gives at least 3 historical points on
+// distinct calendar days. With fewer points, a big number is clearer than a
+// misleading line.
+const MIN_HISTORICAL_UNIQUE_DAYS = 3;
 
 interface ChartPoint {
   label: string;
@@ -49,6 +51,31 @@ function formatDay(isoDate: string): string {
   const d = new Date(isoDate);
   if (isNaN(d.getTime())) return isoDate;
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function toIsoDay(isoDate: string): string {
+  const d = new Date(isoDate);
+  if (isNaN(d.getTime())) return isoDate;
+  return d.toISOString().slice(0, 10);
+}
+
+function uniqueDatedSeries<T>(
+  points: T[],
+  getDate: (point: T) => string,
+  getValue: (point: T) => number | null | undefined,
+  formatLabel: (date: string) => string,
+): ChartPoint[] {
+  const byDay = new Map<string, ChartPoint>();
+  for (const point of points) {
+    const value = getValue(point);
+    if (value == null) continue;
+    const rawDate = getDate(point);
+    const day = toIsoDay(rawDate);
+    byDay.set(day, { label: formatLabel(rawDate), value });
+  }
+  return [...byDay.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([, point]) => point);
 }
 
 // Per-(domain, metric) "we already tried an on-demand Ahrefs fetch" marker, so a
@@ -209,11 +236,10 @@ function MetricCardSkeleton() {
 
 /**
  * Four brand health metrics at the top of the brand overview page, all sourced
- * from AhrefService:
- *  1. Monthly organic visits  — line over time (Ahrefs traffic history)
- *  2. Domain Rating           — current value, big number (no series exposed)
- *  3. Est. monthly revenue    — current value, big number (Ahrefs traffic value)
- *  4. AI mentions             — Ahrefs Brand-Radar global AI-mention count
+ * from AhrefService. A metric renders as a chart only when its backend response
+ * exposes at least 3 historical points on unique calendar days; otherwise it
+ * stays a big current value. Today, traffic exposes a monthly historical series,
+ * while DR, estimated revenue, and AI mentions expose latest snapshots only.
  *
  * All four read ahref-service's CACHE (fast GET) for display; when the cache is
  * empty for a never-seen domain we fire the matching on-demand compute POST ONCE
@@ -295,13 +321,15 @@ export function BrandMetricsHeader({
     compute: computeDomainAiVisibility,
   });
 
-  // Visits series — chronological, dropping months with no captured value.
+  // Visits series — chronological, dropping months with no captured value and
+  // deduping by date so a chart requires real historical points.
   const visitsSeries = useMemo<ChartPoint[]>(() => {
-    const points = traffic?.monthlyOrganicTraffic ?? [];
-    return points
-      .filter((p) => p.organicTraffic != null)
-      .sort((a, b) => a.month.localeCompare(b.month))
-      .map((p) => ({ label: formatMonth(p.month), value: p.organicTraffic as number }));
+    return uniqueDatedSeries(
+      traffic?.monthlyOrganicTraffic ?? [],
+      (p) => p.month,
+      (p) => p.organicTraffic,
+      formatMonth,
+    );
   }, [traffic]);
 
   // Reveal the four cards together once every FAST cache-read source has SETTLED
@@ -331,7 +359,7 @@ export function BrandMetricsHeader({
       <MetricCard title="Monthly visits" subtitle="organic, Ahrefs">
         {!revealed ? (
           <Skeleton className="flex-1 w-full" />
-        ) : visitsSeries.length >= VISITS_MIN_POINTS ? (
+        ) : visitsSeries.length >= MIN_HISTORICAL_UNIQUE_DAYS ? (
           <MiniChart data={visitsSeries} color="#6366f1" fmt={formatInt} />
         ) : visitsSeries.length === 1 ? (
           <BigStat value={formatInt(visitsSeries[0].value)} caption={visitsSeries[0].label} />
