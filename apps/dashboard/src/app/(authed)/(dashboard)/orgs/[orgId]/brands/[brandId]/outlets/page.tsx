@@ -8,9 +8,13 @@ import {
   listBrandOutlets,
   requestOutletPurchasePrices,
   getOutletStatsCosts,
+  getDomainTrafficHistories,
+  computeDomainTraffic,
+  computeDomainTrafficHistories,
   getDomainDrStatuses,
   computeDomainDr,
   computeDomainDrStatuses,
+  type DomainTrafficHistory,
   type DomainDrStatus,
   type DeduplicatedOutlet,
   type OutletListResponse,
@@ -52,6 +56,10 @@ function formatPurchasePrice(outlet: DeduplicatedOutlet): string | null {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(priceCents / 100);
+}
+
+function formatMonthlyVisits(visits: number): string {
+  return Math.round(visits).toLocaleString("en-US");
 }
 
 function normalizeDomain(domain: string): string {
@@ -208,7 +216,12 @@ function OutletDetailPanel({
   outlet,
   displayStatus,
   costCents,
+  monthlyVisits,
   domainRating,
+  isFetchingMonthlyVisits,
+  monthlyVisitsFetchError,
+  monthlyVisitsFetchEmpty,
+  onFetchMonthlyVisits,
   isFetchingDomainRating,
   domainRatingFetchError,
   domainRatingFetchEmpty,
@@ -221,7 +234,12 @@ function OutletDetailPanel({
   outlet: DeduplicatedOutlet;
   displayStatus: string;
   costCents: string | null;
+  monthlyVisits: number | null;
   domainRating: number | null;
+  isFetchingMonthlyVisits: boolean;
+  monthlyVisitsFetchError: string | null;
+  monthlyVisitsFetchEmpty: boolean;
+  onFetchMonthlyVisits: () => void;
   isFetchingDomainRating: boolean;
   domainRatingFetchError: string | null;
   domainRatingFetchEmpty: boolean;
@@ -293,6 +311,33 @@ function OutletDetailPanel({
               <div>
                 <span className="text-gray-500">Total Cost</span>
                 <p className="font-medium text-gray-700">{cost}</p>
+              </div>
+            )}
+            {monthlyVisits != null && (
+              <div>
+                <span className="text-gray-500">Monthly Visits</span>
+                <p className="font-medium text-gray-700">{formatMonthlyVisits(monthlyVisits)}</p>
+              </div>
+            )}
+            {monthlyVisits == null && (
+              <div>
+                <span className="text-gray-500">Monthly Visits</span>
+                <div className="mt-1 flex flex-col items-start gap-1">
+                  <button
+                    type="button"
+                    onClick={onFetchMonthlyVisits}
+                    disabled={isFetchingMonthlyVisits}
+                    className="text-xs font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 disabled:opacity-60 disabled:hover:bg-brand-50 px-2 py-1 rounded border border-brand-100"
+                  >
+                    {isFetchingMonthlyVisits ? "Fetching..." : "Get Monthly Visits"}
+                  </button>
+                  {monthlyVisitsFetchEmpty && (
+                    <p className="text-xs text-gray-400">No visits found</p>
+                  )}
+                  {monthlyVisitsFetchError && (
+                    <p className="text-xs text-red-600">{monthlyVisitsFetchError}</p>
+                  )}
+                </div>
               </div>
             )}
             {domainRating != null && (
@@ -411,12 +456,46 @@ export default function BrandOutletsPage() {
     () => ["outletDomainDrStatuses", outletDomains.join(",")] as const,
     [outletDomains],
   );
+  const domainTrafficQueryKey = useMemo(
+    () => ["outletDomainTrafficHistories", outletDomains.join(",")] as const,
+    [outletDomains],
+  );
+
+  const { data: domainTrafficHistories, isPending: isDomainTrafficHistoriesPending } = useAuthQuery(
+    domainTrafficQueryKey,
+    () => getDomainTrafficHistories(outletDomains),
+    { enabled: outletDomains.length > 0 },
+  );
 
   const { data: domainDrStatuses, isPending: isDomainDrStatusesPending } = useAuthQuery(
     domainDrQueryKey,
     () => getDomainDrStatuses(outletDomains),
     { enabled: outletDomains.length > 0 },
   );
+
+  const fetchMonthlyVisitsMutation = useMutation({
+    mutationFn: (domain: string) => computeDomainTraffic(domain),
+    onSuccess: (result) => {
+      if (result == null) return;
+      queryClient.setQueryData<DomainTrafficHistory[]>(domainTrafficQueryKey, (prev) => {
+        const resultDomain = normalizeDomain(result.domain);
+        const next = (prev ?? []).filter((history) => normalizeDomain(history.domain) !== resultDomain);
+        return [...next, result];
+      });
+    },
+  });
+
+  const fetchPageMonthlyVisitsMutation = useMutation({
+    mutationFn: (domains: string[]) => computeDomainTrafficHistories(domains),
+    onSuccess: (results) => {
+      queryClient.setQueryData<DomainTrafficHistory[]>(domainTrafficQueryKey, (prev) => {
+        const resultDomains = new Set(results.map((result) => normalizeDomain(result.domain)));
+        const next = (prev ?? []).filter((history) => !resultDomains.has(normalizeDomain(history.domain)));
+        return [...next, ...results];
+      });
+      void queryClient.invalidateQueries({ queryKey: domainTrafficQueryKey });
+    },
+  });
 
   const fetchDomainRatingMutation = useMutation({
     mutationFn: (domain: string) => computeDomainDr(domain),
@@ -459,6 +538,14 @@ export default function BrandOutletsPage() {
     }
     return map;
   }, [domainDrStatuses]);
+
+  const trafficMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const history of domainTrafficHistories ?? []) {
+      if (history.trafficMonthlyAvg != null) map.set(normalizeDomain(history.domain), history.trafficMonthlyAvg);
+    }
+    return map;
+  }, [domainTrafficHistories]);
 
   const costMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -567,6 +654,19 @@ export default function BrandOutletsPage() {
     },
     [isDomainDrStatusesPending, paginatedOutlets.pageItems, drMap],
   );
+  const currentPageDomainsMissingTraffic = useMemo(
+    () => {
+      if (isDomainTrafficHistoriesPending) return [];
+      return [
+        ...new Set(
+          paginatedOutlets.pageItems
+            .map((outlet) => normalizeDomain(outlet.outletDomain))
+            .filter((domain) => !trafficMap.has(domain)),
+        ),
+      ];
+    },
+    [isDomainTrafficHistoriesPending, paginatedOutlets.pageItems, trafficMap],
+  );
 
   return (
     <div className="flex flex-col md:flex-row h-full relative">
@@ -641,6 +741,14 @@ export default function BrandOutletsPage() {
             <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
               <button
                 type="button"
+                onClick={() => fetchPageMonthlyVisitsMutation.mutate(currentPageDomainsMissingTraffic)}
+                disabled={isDomainTrafficHistoriesPending || fetchPageMonthlyVisitsMutation.isPending || currentPageDomainsMissingTraffic.length === 0}
+                className="h-10 shrink-0 rounded-lg border border-brand-200 bg-brand-50 px-3 text-sm font-medium text-brand-700 transition hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-brand-50"
+              >
+                {fetchPageMonthlyVisitsMutation.isPending ? "Fetching..." : `Get Monthly Visits (${currentPageDomainsMissingTraffic.length})`}
+              </button>
+              <button
+                type="button"
                 onClick={() => fetchPageDomainRatingsMutation.mutate(currentPageDomainsMissingDr)}
                 disabled={isDomainDrStatusesPending || fetchPageDomainRatingsMutation.isPending || currentPageDomainsMissingDr.length === 0}
                 className="h-10 shrink-0 rounded-lg border border-brand-200 bg-brand-50 px-3 text-sm font-medium text-brand-700 transition hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-brand-50"
@@ -660,6 +768,9 @@ export default function BrandOutletsPage() {
               </button>
             </div>
           </div>
+          {fetchPageMonthlyVisitsMutation.isError && (
+            <p className="mb-3 text-xs text-red-600">{fetchPageMonthlyVisitsMutation.error.message}</p>
+          )}
           {fetchPageDomainRatingsMutation.isError && (
             <p className="mb-3 text-xs text-red-600">{fetchPageDomainRatingsMutation.error.message}</p>
           )}
@@ -697,6 +808,19 @@ export default function BrandOutletsPage() {
           outlet={selectedOutlet}
           displayStatus={latchedStatuses.get(selectedOutlet.id) ?? deriveDisplayStatusFromCounts(selectedOutlet.status?.brand)}
           costCents={costMap.get(selectedOutlet.id) ?? null}
+          monthlyVisits={trafficMap.get(normalizeDomain(selectedOutlet.outletDomain)) ?? null}
+          isFetchingMonthlyVisits={fetchMonthlyVisitsMutation.isPending && fetchMonthlyVisitsMutation.variables === normalizeDomain(selectedOutlet.outletDomain)}
+          monthlyVisitsFetchError={
+            fetchMonthlyVisitsMutation.isError && fetchMonthlyVisitsMutation.variables === normalizeDomain(selectedOutlet.outletDomain)
+              ? fetchMonthlyVisitsMutation.error.message
+              : null
+          }
+          monthlyVisitsFetchEmpty={
+            fetchMonthlyVisitsMutation.isSuccess &&
+            fetchMonthlyVisitsMutation.variables === normalizeDomain(selectedOutlet.outletDomain) &&
+            fetchMonthlyVisitsMutation.data?.trafficMonthlyAvg == null
+          }
+          onFetchMonthlyVisits={() => fetchMonthlyVisitsMutation.mutate(normalizeDomain(selectedOutlet.outletDomain))}
           domainRating={drMap.get(normalizeDomain(selectedOutlet.outletDomain)) ?? null}
           isFetchingDomainRating={fetchDomainRatingMutation.isPending && fetchDomainRatingMutation.variables === normalizeDomain(selectedOutlet.outletDomain)}
           domainRatingFetchError={
