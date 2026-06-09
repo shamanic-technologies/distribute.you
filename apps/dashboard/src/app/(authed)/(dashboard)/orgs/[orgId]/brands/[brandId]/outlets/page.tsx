@@ -22,6 +22,7 @@ import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
 import { pollOptions } from "@/lib/query-options";
 import { CsvDownloadButton } from "@/components/report/csv-button";
 import { buildOutletCsv } from "@/lib/outlet-csv";
+import { TablePager, usePaginated } from "@/components/table-pagination";
 
 type Tab = string | "all";
 
@@ -487,6 +488,10 @@ export default function BrandOutletsPage() {
       o.outletName.toLowerCase().includes(q) || o.outletDomain.toLowerCase().includes(q)
     );
   }, [displayedOutlets, search]);
+  const paginatedOutlets = usePaginated(filteredOutlets);
+  useEffect(() => {
+    paginatedOutlets.setPage(0);
+  }, [activeTab, search, paginatedOutlets.setPage]);
 
   return (
     <div className="flex flex-col md:flex-row h-full relative">
@@ -556,7 +561,7 @@ export default function BrandOutletsPage() {
           <>
           <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by outlet name or domain..." resultCount={filteredOutlets.length} totalCount={displayedOutlets.length} />
           <div className="space-y-2">
-            {filteredOutlets.map((outlet) => (
+            {paginatedOutlets.pageItems.map((outlet) => (
               <OutletRow
                 key={outlet.id}
                 outlet={outlet}
@@ -568,6 +573,14 @@ export default function BrandOutletsPage() {
               />
             ))}
           </div>
+          <TablePager
+            page={paginatedOutlets.page}
+            pageCount={paginatedOutlets.pageCount}
+            from={paginatedOutlets.from}
+            to={paginatedOutlets.to}
+            total={paginatedOutlets.total}
+            onPage={paginatedOutlets.setPage}
+          />
           </>
         )}
       </div>
