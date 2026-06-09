@@ -6,6 +6,8 @@ const POSTHOG_API_HOST = normalizePostHogHost(
   process.env.POSTHOG_API_HOST || process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://eu.posthog.com",
 );
 const STRIPE_API_URL = "https://api.stripe.com/v1";
+const CLERK_API_URL = "https://api.clerk.com/v1";
+const CLERK_API_VERSION = "2025-11-10";
 
 const usersStatsSchema = z.object({
   totalOrgs: z.number(),
@@ -55,6 +57,11 @@ const runsStatsSchema = z.object({
     running: z.number(),
     totalCostInUsdCents: z.string(),
   })),
+});
+
+const clerkUserCountSchema = z.object({
+  object: z.literal("total_count"),
+  total_count: z.number(),
 });
 
 export type UsersStats = z.infer<typeof usersStatsSchema>;
@@ -114,6 +121,25 @@ async function fetchPublicStats<T>(path: string, schema: z.ZodSchema<T>): Promis
 
   const data: unknown = await res.json();
   return schema.parse(data);
+}
+
+async function fetchClerkUserCount(): Promise<number> {
+  const secretKey = requireEnv("CLERK_SECRET_KEY");
+  const res = await fetch(`${CLERK_API_URL}/users/count`, {
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${secretKey}`,
+      "Clerk-API-Version": CLERK_API_VERSION,
+    },
+    next: { revalidate: 300 },
+  });
+
+  if (!res.ok) {
+    throw new Error(`[public-stats] Clerk /users/count failed: ${res.status} ${res.statusText}`);
+  }
+
+  const data: unknown = await res.json();
+  return clerkUserCountSchema.parse(data).total_count;
 }
 
 function normalizePostHogHost(host: string): string {
@@ -290,8 +316,9 @@ function buildTimeline(
 
 export async function fetchPublicStatsSummary(view: PublicAnalyticsView = "landing"): Promise<PublicStats> {
   const includeCardTimeline = view === "cards";
-  const [users, billing, runs, landingDaily, signupDaily, cardDaily] = await Promise.all([
+  const [users, clerkUserCount, billing, runs, landingDaily, signupDaily, cardDaily] = await Promise.all([
     fetchPublicStats("/public/stats/users", usersStatsSchema),
+    fetchClerkUserCount(),
     fetchPublicStats("/public/stats/billing", billingStatsSchema),
     fetchPublicStats("/public/stats/runs", runsStatsSchema),
     fetchLandingDaily(),
@@ -301,9 +328,10 @@ export async function fetchPublicStatsSummary(view: PublicAnalyticsView = "landi
   const landingVisitors = [...landingDaily.values()].reduce((sum, value) => sum + value, 0);
   const signupEvents = [...signupDaily.values()].reduce((sum, value) => sum + value, 0);
   const trafficSources = await fetchTrafficSources(landingVisitors);
+  const clerkUsers = { ...users, totalUsers: clerkUserCount };
 
   return {
-    users,
+    users: clerkUsers,
     billing,
     runs,
     landingVisitors,
