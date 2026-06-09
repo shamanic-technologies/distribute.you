@@ -15,6 +15,7 @@ const isPublicRoute = createRouteMatcher([
   "/claim(.*)",
   "/report(.*)",
   "/api/public(.*)",
+  "/api/cron(.*)",
 ]);
 
 const isAuthRoute = createRouteMatcher([
