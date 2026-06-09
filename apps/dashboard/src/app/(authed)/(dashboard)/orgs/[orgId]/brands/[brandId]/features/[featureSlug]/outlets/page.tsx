@@ -769,15 +769,6 @@ export default function FeatureOutletsPage() {
               </button>
             </div>
           </div>
-          {fetchPageMonthlyVisitsMutation.isError && (
-            <p className="mb-3 text-xs text-red-600">{fetchPageMonthlyVisitsMutation.error.message}</p>
-          )}
-          {fetchPageDomainRatingsMutation.isError && (
-            <p className="mb-3 text-xs text-red-600">{fetchPageDomainRatingsMutation.error.message}</p>
-          )}
-          {requestPurchasePricesMutation.isError && purchasePriceRequestScope === "page" && (
-            <p className="mb-3 text-xs text-red-600">{requestPurchasePricesMutation.error.message}</p>
-          )}
           <div className="space-y-2">
             {paginatedOutlets.pageItems.map((outlet) => (
               <OutletRow
