@@ -148,7 +148,7 @@ function SignupView({
   return (
     <>
       <section className="grid gap-4 md:grid-cols-3">
-        <StatCard label="Total signups" value={formatCount(totalUsers)} detail="Clerk public user total" accent="bg-brand-500" />
+        <StatCard label="Total signups" value={formatCount(totalUsers)} detail="Clerk /users/count total" accent="bg-brand-500" />
         <StatCard label="Tracked signup events" value={formatCount(signupEvents)} detail="PostHog signup_completed events" accent="bg-sky-500" />
         <StatCard label="Signup conversion" value={pct(totalUsers, totalVisitors)} detail="Total users divided by landing arrivals" accent="bg-emerald-500" />
       </section>

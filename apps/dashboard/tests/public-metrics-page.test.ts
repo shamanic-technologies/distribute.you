@@ -25,6 +25,8 @@ describe("dashboard global build-in-public page", () => {
 
   it("uses real producer sources instead of client-side placeholders", () => {
     expect(publicStats).toContain("/public/stats/users");
+    expect(publicStats).toContain("/users/count");
+    expect(publicStats).toContain("CLERK_SECRET_KEY");
     expect(publicStats).toContain("/public/stats/billing");
     expect(publicStats).toContain("/public/stats/runs");
     expect(publicStats).toContain("POSTHOG_PERSONAL_API_KEY");
@@ -33,6 +35,7 @@ describe("dashboard global build-in-public page", () => {
     expect(publicStats).toContain("signup_completed");
     expect(publicStats).toContain("/payment_methods");
     expect(page).toContain("fetchPublicStatsSummary");
+    expect(page).toContain("Clerk /users/count total");
     expect(page).not.toContain("Pending");
   });
 
