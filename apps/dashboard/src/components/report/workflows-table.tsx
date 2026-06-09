@@ -13,6 +13,8 @@ export interface WorkflowRow {
   positiveReplies: number;
   /** USD cents of total run cost attributed to this workflow */
   totalCostCents: number;
+  expectedRevenueUsd: number | null;
+  roiMultiple: number | null;
   /** ISO timestamp from the Workflow row; used by the page's default composite sort. */
   createdAt: string;
 }
@@ -39,8 +41,20 @@ function cpa(totalCostCents: number, count: number): string {
   return formatUsd(totalCostCents / count);
 }
 
-function buildColumns(labels: WorkflowsTableLabels): ReportTableColumn<WorkflowRow>[] {
-  return [
+function formatUsdValue(usd: number | null): string {
+  if (usd == null) return "—";
+  if (usd === 0) return "$0";
+  if (usd < 0.01) return "<$0.01";
+  if (usd < 100) return `$${usd.toFixed(2)}`;
+  return `$${usd.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+}
+
+function formatRoi(roi: number | null): string {
+  return roi == null ? "—" : `${roi.toFixed(1)}×`;
+}
+
+function buildColumns(labels: WorkflowsTableLabels, showRevenueColumns: boolean): ReportTableColumn<WorkflowRow>[] {
+  const columns: ReportTableColumn<WorkflowRow>[] = [
     {
       key: "name",
       label: "Workflow",
@@ -78,22 +92,45 @@ function buildColumns(labels: WorkflowsTableLabels): ReportTableColumn<WorkflowR
       render: (r) => <span className="font-medium text-gray-900">{cpa(r.totalCostCents, r.positiveReplies)}</span>,
     },
   ];
+
+  if (showRevenueColumns) {
+    columns.push(
+      {
+        key: "expectedRevenue",
+        label: "Expected revenue",
+        sortValue: (r) => String(r.expectedRevenueUsd ?? -1).padStart(14, "0"),
+        render: (r) => <span className="font-medium text-green-700">{formatUsdValue(r.expectedRevenueUsd)}</span>,
+      },
+      {
+        key: "roi",
+        label: "ROI",
+        sortValue: (r) => String(r.roiMultiple ?? -1).padStart(14, "0"),
+        render: (r) => <span className="font-medium text-green-700">{formatRoi(r.roiMultiple)}</span>,
+      },
+    );
+  }
+
+  return columns;
 }
 
-function buildDrawerEntries(labels: WorkflowsTableLabels) {
+function buildDrawerEntries(labels: WorkflowsTableLabels, showRevenueColumns: boolean) {
   return (r: WorkflowRow): DrawerEntry[] => [
     { label: "Version", value: `v${r.version}` },
     { label: labels.leadsSent, value: r.emailsSent.toLocaleString("en-US") },
     { label: labels.leadsRepliesPositive, value: r.positiveReplies.toLocaleString("en-US") },
     { label: "Total cost", value: formatUsd(r.totalCostCents) },
     { label: "CAC / positive reply", value: cpa(r.totalCostCents, r.positiveReplies) },
+    ...(showRevenueColumns ? [
+      { label: "Expected revenue", value: formatUsdValue(r.expectedRevenueUsd) },
+      { label: "ROI", value: formatRoi(r.roiMultiple) },
+    ] : []),
     { label: "Description", value: r.description, block: true },
   ];
 }
 
-export function WorkflowsTable({ rows, labels }: { rows: WorkflowRow[]; labels: WorkflowsTableLabels }) {
-  const columns = buildColumns(labels);
-  const drawerEntries = buildDrawerEntries(labels);
+export function WorkflowsTable({ rows, labels, showRevenueColumns = false }: { rows: WorkflowRow[]; labels: WorkflowsTableLabels; showRevenueColumns?: boolean }) {
+  const columns = buildColumns(labels, showRevenueColumns);
+  const drawerEntries = buildDrawerEntries(labels, showRevenueColumns);
   return (
     <ReportTable
       rows={rows}

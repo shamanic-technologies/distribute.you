@@ -1109,6 +1109,46 @@ export interface CampaignRevenueGroup {
   roiMultiple: number | null;
 }
 
+const FeatureRevenueByWorkflowSchema = z.object({
+  featureSlug: z.string(),
+  groupBy: z.literal("workflowSlug"),
+  groups: z.array(
+    z.object({
+      workflowSlug: z.string(),
+      headline: z.object({ totalPipelineUsd: z.number().nullable() }),
+      costEconomics: z.object({
+        totalCostUsd: z.number(),
+        costOfAcquisitionPct: z.number().nullable(),
+        roiMultiple: z.number().nullable(),
+      }),
+    }),
+  ),
+});
+
+export interface WorkflowRevenueGroup {
+  workflowSlug: string;
+  totalPipelineUsd: number | null;
+  totalCostUsd: number;
+  /** totalPipelineUsd / totalCostUsd. Null when cost is 0 or pipeline is null. */
+  roiMultiple: number | null;
+}
+
+export function parseFeatureRevenueByWorkflow(raw: unknown, label: string): WorkflowRevenueGroup[] {
+  const parsed = FeatureRevenueByWorkflowSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error(`[dashboard] ${label}: response shape mismatch`, {
+      issues: parsed.error.issues,
+    });
+    throw new Error(`[dashboard] ${label}: invalid response shape`);
+  }
+  return parsed.data.groups.map((g) => ({
+    workflowSlug: g.workflowSlug,
+    totalPipelineUsd: g.headline.totalPipelineUsd,
+    totalCostUsd: g.costEconomics.totalCostUsd,
+    roiMultiple: g.costEconomics.roiMultiple,
+  }));
+}
+
 /** GET /features/:slug/revenue?groupBy=campaignId — per-campaign ROI for a brand+feature. */
 export async function getFeatureRevenueByCampaign(
   featureSlug: string,
@@ -1130,6 +1170,17 @@ export async function getFeatureRevenueByCampaign(
     totalCostUsd: g.costEconomics.totalCostUsd,
     roiMultiple: g.costEconomics.roiMultiple,
   }));
+}
+
+/** GET /features/:slug/revenue?groupBy=workflowSlug — per-workflow ROI for a brand+feature. */
+export async function getFeatureRevenueByWorkflow(
+  featureSlug: string,
+  brandId: string,
+  token?: string,
+): Promise<WorkflowRevenueGroup[]> {
+  const query = new URLSearchParams({ brandId, groupBy: "workflowSlug" });
+  const raw = await apiCall<unknown>(`/features/${featureSlug}/revenue?${query.toString()}`, { token });
+  return parseFeatureRevenueByWorkflow(raw, "getFeatureRevenueByWorkflow");
 }
 
 /** POST /brands — upsert brand by URL, returns brandId */
