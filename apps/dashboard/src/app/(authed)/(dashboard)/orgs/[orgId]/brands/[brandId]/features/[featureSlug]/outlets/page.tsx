@@ -2,10 +2,14 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
-import { useAuthQuery } from "@/lib/use-auth-query";
+import { useMutation } from "@tanstack/react-query";
+import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import {
   listBrandOutlets,
   getOutletStatsCosts,
+  getDomainDrStatuses,
+  computeDomainDr,
+  type DomainDrStatus,
   type DeduplicatedOutlet,
   type OutletCampaign,
   type OutletStatusCounts,
@@ -18,6 +22,7 @@ import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
 import { pollOptions } from "@/lib/query-options";
 import { CsvDownloadButton } from "@/components/report/csv-button";
 import { buildOutletCsv } from "@/lib/outlet-csv";
+import { TablePager, usePaginated } from "@/components/table-pagination";
 
 type Tab = string | "all";
 
@@ -27,6 +32,26 @@ function formatCost(cents: string | number | null | undefined): string | null {
   if (isNaN(n) || n === 0) return null;
   const usd = n / 100;
   return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatPurchasePrice(outlet: DeduplicatedOutlet): string | null {
+  const priceCents = outlet.pricing?.sellPriceCents;
+  if (priceCents == null) return null;
+  const currency = outlet.pricing?.currency;
+  if (!currency) {
+    console.error("[dashboard] outlet pricing missing currency", { outletId: outlet.id, pricing: outlet.pricing });
+    throw new Error("[dashboard] outlet pricing missing currency");
+  }
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(priceCents / 100);
+}
+
+function normalizeDomain(domain: string): string {
+  return domain.trim().toLowerCase().replace(/^www\./, "");
 }
 
 function relevanceColor(score: number): string {
@@ -47,8 +72,9 @@ function timeAgo(dateStr: string): string {
 
 /* ─── Outlet Row ─────────────────────────────────────────────────────── */
 
-function OutletRow({ outlet, displayStatus, costCents, isSelected, onClick }: { outlet: DeduplicatedOutlet; displayStatus: string; costCents: string | null; isSelected: boolean; onClick: () => void }) {
+function OutletRow({ outlet, displayStatus, costCents, domainRating, isSelected, onClick }: { outlet: DeduplicatedOutlet; displayStatus: string; costCents: string | null; domainRating: number | null; isSelected: boolean; onClick: () => void }) {
   const cost = formatCost(costCents);
+  const purchasePrice = formatPurchasePrice(outlet);
   return (
     <button
       type="button"
@@ -79,6 +105,16 @@ function OutletRow({ outlet, displayStatus, costCents, isSelected, onClick }: { 
         </div>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
+        {domainRating != null && (
+          <span className="text-xs text-gray-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+            DR {domainRating}
+          </span>
+        )}
+        {purchasePrice && (
+          <span className="text-xs text-gray-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
+            {purchasePrice}
+          </span>
+        )}
         {cost && (
           <span className="text-xs text-gray-500 bg-gray-50 px-2 py-0.5 rounded border border-gray-200">
             {cost}
@@ -164,8 +200,29 @@ function CampaignDetailCard({ campaign, counts }: { campaign: OutletCampaign; co
 
 /* ─── Detail Panel ───────────────────────────────────────────────────── */
 
-function OutletDetailPanel({ outlet, displayStatus, costCents, onClose }: { outlet: DeduplicatedOutlet; displayStatus: string; costCents: string | null; onClose: () => void }) {
+function OutletDetailPanel({
+  outlet,
+  displayStatus,
+  costCents,
+  domainRating,
+  isFetchingDomainRating,
+  domainRatingFetchError,
+  domainRatingFetchEmpty,
+  onFetchDomainRating,
+  onClose,
+}: {
+  outlet: DeduplicatedOutlet;
+  displayStatus: string;
+  costCents: string | null;
+  domainRating: number | null;
+  isFetchingDomainRating: boolean;
+  domainRatingFetchError: string | null;
+  domainRatingFetchEmpty: boolean;
+  onFetchDomainRating: () => void;
+  onClose: () => void;
+}) {
   const cost = formatCost(costCents);
+  const purchasePrice = formatPurchasePrice(outlet);
   return (
     <div className="absolute inset-0 md:relative md:w-1/2 bg-gray-50 md:border-l border-gray-200 overflow-y-auto z-10">
       <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
@@ -228,6 +285,39 @@ function OutletDetailPanel({ outlet, displayStatus, costCents, onClose }: { outl
                 <p className="font-medium text-gray-700">{cost}</p>
               </div>
             )}
+            {domainRating != null && (
+              <div>
+                <span className="text-gray-500">DR</span>
+                <p className="font-medium text-gray-700">{domainRating}</p>
+              </div>
+            )}
+            {domainRating == null && (
+              <div>
+                <span className="text-gray-500">DR</span>
+                <div className="mt-1 flex flex-col items-start gap-1">
+                  <button
+                    type="button"
+                    onClick={onFetchDomainRating}
+                    disabled={isFetchingDomainRating}
+                    className="text-xs font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 disabled:opacity-60 disabled:hover:bg-brand-50 px-2 py-1 rounded border border-brand-100"
+                  >
+                    {isFetchingDomainRating ? "Fetching..." : "Fetch DR"}
+                  </button>
+                  {domainRatingFetchEmpty && (
+                    <p className="text-xs text-gray-400">No DR found</p>
+                  )}
+                  {domainRatingFetchError && (
+                    <p className="text-xs text-red-600">{domainRatingFetchError}</p>
+                  )}
+                </div>
+              </div>
+            )}
+            {purchasePrice && (
+              <div>
+                <span className="text-gray-500">Purchase Price</span>
+                <p className="font-medium text-gray-700">{purchasePrice}</p>
+              </div>
+            )}
             <div>
               <span className="text-gray-500">Campaigns</span>
               <p className="font-medium text-gray-700">{outlet.campaigns.length}</p>
@@ -255,6 +345,7 @@ export default function FeatureOutletsPage() {
   const params = useParams();
   const brandId = params.brandId as string;
   const featureSlug = params.featureSlug as string;
+  const queryClient = useQueryClient();
   const [selected, setSelected] = useState<DeduplicatedOutlet | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("all");
   const [search, setSearch] = useState("");
@@ -272,6 +363,41 @@ export default function FeatureOutletsPage() {
   );
 
   const outlets = data?.outlets ?? [];
+
+  const outletDomains = useMemo(
+    () => [...new Set(outlets.map((o) => normalizeDomain(o.outletDomain)))].sort(),
+    [outlets],
+  );
+  const domainDrQueryKey = useMemo(
+    () => ["outletDomainDrStatuses", outletDomains.join(",")] as const,
+    [outletDomains],
+  );
+
+  const { data: domainDrStatuses } = useAuthQuery(
+    domainDrQueryKey,
+    () => getDomainDrStatuses(outletDomains),
+    { enabled: outletDomains.length > 0 },
+  );
+
+  const fetchDomainRatingMutation = useMutation({
+    mutationFn: (domain: string) => computeDomainDr(domain),
+    onSuccess: (result) => {
+      if (result == null) return;
+      queryClient.setQueryData<DomainDrStatus[]>(domainDrQueryKey, (prev) => {
+        const resultDomain = normalizeDomain(result.domain);
+        const next = (prev ?? []).filter((status) => normalizeDomain(status.domain) !== resultDomain);
+        return [...next, result];
+      });
+    },
+  });
+
+  const drMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const status of domainDrStatuses ?? []) {
+      if (status.latestValidDr != null) map.set(normalizeDomain(status.domain), status.latestValidDr);
+    }
+    return map;
+  }, [domainDrStatuses]);
 
   const costMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -310,8 +436,10 @@ export default function FeatureOutletsPage() {
       outlets,
       (o) => latchedStatuses.get(o.id) ?? deriveDisplayStatusFromCounts(o.status?.brand),
       (o) => costMap.get(o.id) ?? null,
+      (o) => drMap.get(normalizeDomain(o.outletDomain)),
+      (o) => formatPurchasePrice(o),
     ),
-    [outlets, latchedStatuses, costMap],
+    [outlets, latchedStatuses, costMap, drMap],
   );
 
   // Group outlets by display status derived from structured counts
@@ -361,6 +489,10 @@ export default function FeatureOutletsPage() {
       o.outletName.toLowerCase().includes(q) || o.outletDomain.toLowerCase().includes(q)
     );
   }, [displayedOutlets, search]);
+  const paginatedOutlets = usePaginated(filteredOutlets);
+  useEffect(() => {
+    paginatedOutlets.setPage(0);
+  }, [activeTab, search, paginatedOutlets.setPage]);
 
   return (
     <div className="flex flex-col md:flex-row h-full relative">
@@ -430,17 +562,26 @@ export default function FeatureOutletsPage() {
           <>
           <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by outlet name or domain..." resultCount={filteredOutlets.length} totalCount={displayedOutlets.length} />
           <div className="space-y-2">
-            {filteredOutlets.map((outlet) => (
+            {paginatedOutlets.pageItems.map((outlet) => (
               <OutletRow
                 key={outlet.id}
                 outlet={outlet}
                 displayStatus={latchedStatuses.get(outlet.id) ?? deriveDisplayStatusFromCounts(outlet.status?.brand)}
                 costCents={costMap.get(outlet.id) ?? null}
+                domainRating={drMap.get(normalizeDomain(outlet.outletDomain)) ?? null}
                 isSelected={selected?.id === outlet.id}
                 onClick={() => setSelected(outlet)}
               />
             ))}
           </div>
+          <TablePager
+            page={paginatedOutlets.page}
+            pageCount={paginatedOutlets.pageCount}
+            from={paginatedOutlets.from}
+            to={paginatedOutlets.to}
+            total={paginatedOutlets.total}
+            onPage={paginatedOutlets.setPage}
+          />
           </>
         )}
       </div>
@@ -451,6 +592,19 @@ export default function FeatureOutletsPage() {
           outlet={selected}
           displayStatus={latchedStatuses.get(selected.id) ?? deriveDisplayStatusFromCounts(selected.status?.brand)}
           costCents={costMap.get(selected.id) ?? null}
+          domainRating={drMap.get(normalizeDomain(selected.outletDomain)) ?? null}
+          isFetchingDomainRating={fetchDomainRatingMutation.isPending && fetchDomainRatingMutation.variables === normalizeDomain(selected.outletDomain)}
+          domainRatingFetchError={
+            fetchDomainRatingMutation.isError && fetchDomainRatingMutation.variables === normalizeDomain(selected.outletDomain)
+              ? fetchDomainRatingMutation.error.message
+              : null
+          }
+          domainRatingFetchEmpty={
+            fetchDomainRatingMutation.isSuccess &&
+            fetchDomainRatingMutation.variables === normalizeDomain(selected.outletDomain) &&
+            fetchDomainRatingMutation.data == null
+          }
+          onFetchDomainRating={() => fetchDomainRatingMutation.mutate(normalizeDomain(selected.outletDomain))}
           onClose={() => setSelected(null)}
         />
       )}

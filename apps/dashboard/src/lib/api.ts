@@ -8,6 +8,7 @@ import {
 import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "./org-desync";
 import type { RevenueOverview } from "./revenue-view";
 import { parseFeatureRevenue } from "./revenue-parse";
+import { withAverageCampaignRelevanceScores } from "./outlet-relevance";
 
 const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 
@@ -2316,6 +2317,10 @@ export interface DeduplicatedOutlet {
   outletDomain: string;
   createdAt: string;
   status: OutletStatus;
+  pricing?: {
+    sellPriceCents: number | null;
+    currency: string | null;
+  } | null;
   relevanceScore: number;
   campaigns: OutletCampaign[];
 }
@@ -2353,10 +2358,14 @@ export async function listBrandOutlets(
   const params = new URLSearchParams({ brandId });
   if (featureSlug) params.set("featureSlug", featureSlug);
   if (campaignId) params.set("campaignId", campaignId);
-  return apiCall<{ outlets: DeduplicatedOutlet[]; total: number; byOutreachStatus?: Record<string, number> }>(
+  const data = await apiCall<{ outlets: DeduplicatedOutlet[]; total: number; byOutreachStatus?: Record<string, number> }>(
     `/outlets?${params}`,
     { token },
   );
+  return {
+    ...data,
+    outlets: withAverageCampaignRelevanceScores(data.outlets),
+  };
 }
 
 export async function listCampaignOutlets(
@@ -3444,19 +3453,32 @@ export async function getDomainDrStatus(
   domain: string,
   token?: string,
 ): Promise<DomainDrStatus | null> {
+  const data = await getDomainDrStatuses([domain], token);
+  return data[0] ?? null;
+}
+
+/**
+ * GET /v1/orgs/domains/dr-status — Ahrefs Domain Rating status for many
+ * domains. Cache read only: this does not trigger a paid Ahrefs scrape.
+ */
+export async function getDomainDrStatuses(
+  domains: string[],
+  token?: string,
+): Promise<DomainDrStatus[]> {
+  const params = new URLSearchParams({ domains: domains.join(",") });
   const raw = await apiCall<unknown>(
-    `/orgs/domains/dr-status?domains=${encodeURIComponent(domain)}`,
+    `/orgs/domains/dr-status?${params}`,
     { token },
   );
   const parsed = z.array(DomainDrStatusSchema).safeParse(raw);
   if (!parsed.success) {
-    console.error("[dashboard] getDomainDrStatus: response shape mismatch", {
+    console.error("[dashboard] getDomainDrStatuses: response shape mismatch", {
       issues: parsed.error.issues,
       raw,
     });
-    throw new Error("[dashboard] getDomainDrStatus: invalid response shape");
+    throw new Error("[dashboard] getDomainDrStatuses: invalid response shape");
   }
-  return parsed.data[0] ?? null;
+  return parsed.data;
 }
 
 // ─── On-demand Ahrefs fetch (get-or-fetch-if-never-seen) ────────────────────
@@ -3758,4 +3780,3 @@ export async function triggerFeatureRun(
     body: { inputs: { brandId: params.brandId, campaignId: params.campaignId } },
   });
 }
-
