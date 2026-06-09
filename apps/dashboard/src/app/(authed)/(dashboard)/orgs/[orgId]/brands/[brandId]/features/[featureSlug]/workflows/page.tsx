@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   fetchGlobalRankedWorkflows,
-  getFeatureRevenueByWorkflow,
   listWorkflows,
 } from "@/lib/api";
 import { useFeatures } from "@/lib/features-context";
@@ -14,7 +13,6 @@ import { FEATURE_GATES } from "@/lib/feature-gates";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { formatStatValue, sortDirectionForType } from "@/lib/format-stat";
 import { pollOptions } from "@/lib/query-options";
-import { isRevenueFeature } from "@/lib/revenue-feature";
 import { PlusIcon } from "@heroicons/react/20/solid";
 import { Skeleton } from "@/components/skeleton";
 
@@ -40,18 +38,6 @@ function SortHeader({
       {label} {active ? (currentDir === "desc" ? "\u2193" : "\u2191") : ""}
     </th>
   );
-}
-
-function formatUsd(value: number | null | undefined): string {
-  if (value === null || value === undefined) return "\u2014";
-  if (value === 0) return "$0";
-  if (value < 0.01) return "<$0.01";
-  if (value < 100) return `$${value.toFixed(2)}`;
-  return `$${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
-}
-
-function formatRoi(value: number | null | undefined): string {
-  return value == null ? "\u2014" : `${value.toFixed(1)}×`;
 }
 
 export default function FeatureWorkflowsPage() {
@@ -102,12 +88,6 @@ export default function FeatureWorkflowsPage() {
     pollOptions,
   );
 
-  const { data: workflowRevenue, isLoading: revenueLoading } = useAuthQuery(
-    ["featureRevenueByWorkflow", featureSlug, brandId, "workflowDynastySlug"],
-    () => getFeatureRevenueByWorkflow(featureSlug, brandId, "workflowDynastySlug"),
-    { enabled: wfDef?.implemented === true && isRevenueFeature(featureSlug), ...pollOptions },
-  );
-
   // Active workflows grouped by workflowDynastySlug: keep only the latest per dynasty
   const dynastyWorkflows = useMemo(() => {
     if (!workflowsData?.workflows) return [];
@@ -127,21 +107,14 @@ export default function FeatureWorkflowsPage() {
     for (const r of rankedData ?? []) {
       if (r.workflow.workflowDynastySlug) statsMap.set(r.workflow.workflowDynastySlug, r.stats);
     }
-    const revenueMap = new Map(
-      (workflowRevenue ?? [])
-        .filter((g) => g.workflowDynastySlug)
-        .map((g) => [g.workflowDynastySlug as string, g]),
-    );
 
     return dynastyWorkflows.map((wf) => ({
       id: wf.id,
       workflowSlug: wf.workflowSlug,
       workflowDynastyName: wf.workflowDynastyName,
       stats: statsMap.get(wf.workflowDynastySlug) ?? {},
-      expectedRevenueUsd: revenueMap.get(wf.workflowDynastySlug)?.totalPipelineUsd ?? null,
-      roiMultiple: revenueMap.get(wf.workflowDynastySlug)?.roiMultiple ?? null,
     }));
-  }, [rankedData, workflowRevenue, dynastyWorkflows]);
+  }, [rankedData, dynastyWorkflows]);
 
   const handleSort = useCallback((key: string) => {
     setMetric((prev) => {
@@ -205,14 +178,12 @@ export default function FeatureWorkflowsPage() {
           New Workflow
         </button>
       </div>
-      {isLoading || featuresLoading || workflowsLoading || revenueLoading ? (
+      {isLoading || featuresLoading || workflowsLoading ? (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Workflow</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expected revenue</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ROI</th>
                 {sortedOutputs.map((o) => (
                   <th key={o.key} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     {registry[o.key]?.label ?? o.key}
@@ -223,7 +194,7 @@ export default function FeatureWorkflowsPage() {
             <tbody className="divide-y divide-gray-200">
               {[1, 2, 3].map((i) => (
                 <tr key={i}>
-                  {Array.from({ length: sortedOutputs.length + 3 }).map((_, j) => (
+                  {Array.from({ length: sortedOutputs.length + 1 }).map((_, j) => (
                     <td key={j} className="px-4 py-4">
                       <Skeleton className={`h-4 ${j === 0 ? "w-32" : "w-16"}`} />
                     </td>
@@ -254,12 +225,6 @@ export default function FeatureWorkflowsPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Workflow
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Expected revenue
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    ROI
-                  </th>
                   {sortedOutputs.map((o) => (
                     <SortHeader
                       key={o.key}
@@ -285,12 +250,6 @@ export default function FeatureWorkflowsPage() {
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-gray-900">{wf.workflowDynastyName}</span>
                       </div>
-                    </td>
-                    <td className="px-4 py-4 text-sm font-medium text-gray-900 tabular-nums">
-                      {formatUsd(wf.expectedRevenueUsd)}
-                    </td>
-                    <td className="px-4 py-4 text-sm font-medium text-gray-900 tabular-nums">
-                      {formatRoi(wf.roiMultiple)}
                     </td>
                     {sortedOutputs.map((o) => (
                       <td key={o.key} className="px-4 py-4 text-sm text-gray-600">
