@@ -155,12 +155,10 @@ interface PublicRevenueItem {
     name: string | null;
     domain: string | null;
   };
-  headline: {
+  headline?: {
     totalPipelineUsd: number | null;
   };
-  costEconomics: {
-    totalCostUsd: number;
-    costOfAcquisitionPct: number | null;
+  costEconomics?: {
     roiMultiple: number | null;
   };
   timeline?: RawBrandTimelinePoint[];
@@ -208,9 +206,9 @@ function mapBrandEntry(item: BrandRankedItem): BrandLeaderboardEntry {
     brandName: item.brand.name ?? null,
     brandDomain: item.brand.domain ?? null,
     brandUrl: null,
+    timeline: mapBrandTimeline(item.timeline),
     expectedRevenueUsd: null,
     roiMultiple: null,
-    timeline: mapBrandTimeline(item.timeline),
     emailsSent: sent,
     emailsOpened: opened,
     emailsClicked: clicked,
@@ -348,17 +346,41 @@ async function _fetchFeatureBenchmarkUncached(
   const revenueData: PublicRevenueResponse = revenueRes.ok
     ? await revenueRes.json()
     : { results: [] };
-  const revenueTimelineByBrand = new Map(
-    revenueData.results.map((item) => [item.brand.id, mapBrandTimeline(item.timeline)]),
+  const trajectoryBrandIds = new Set(
+    revenueData.results
+      .filter(
+        (item) =>
+          (item.headline?.totalPipelineUsd ?? 0) > 0 &&
+          (item.costEconomics?.roiMultiple ?? 0) > 1 &&
+          (item.timeline?.length ?? 0) >= 2,
+      )
+      .sort((a, b) => (b.headline?.totalPipelineUsd ?? 0) - (a.headline?.totalPipelineUsd ?? 0))
+      .slice(0, 6)
+      .map((item) => item.brand.id),
   );
-  const revenueByBrand = new Map(revenueData.results.map((item) => [item.brand.id, item]));
+  const revenueByBrand = new Map(
+    revenueData.results.map((item) => [
+      item.brand.id,
+      {
+        expectedRevenueUsd: item.headline?.totalPipelineUsd ?? null,
+        roiMultiple: item.costEconomics?.roiMultiple ?? null,
+        timeline: trajectoryBrandIds.has(item.brand.id)
+          ? mapBrandTimeline(item.timeline)
+          : undefined,
+      },
+    ]),
+  );
 
-  const brands = brandsData.results.map((item) => ({
-    ...mapBrandEntry(item),
-    expectedRevenueUsd: revenueByBrand.get(item.brand.id)?.headline.totalPipelineUsd ?? null,
-    roiMultiple: revenueByBrand.get(item.brand.id)?.costEconomics.roiMultiple ?? null,
-    timeline: revenueTimelineByBrand.get(item.brand.id) ?? mapBrandTimeline(item.timeline),
-  }));
+  const brands = brandsData.results.map((item) => {
+    const brand = mapBrandEntry(item);
+    const revenue = revenueByBrand.get(item.brand.id);
+    return {
+      ...brand,
+      expectedRevenueUsd: revenue?.expectedRevenueUsd ?? null,
+      roiMultiple: revenue?.roiMultiple ?? null,
+      timeline: revenue?.timeline,
+    };
+  });
   const workflows = workflowsData.results.map(mapWorkflowEntry);
 
   const sent = workflows.reduce((s, w) => s + w.emailsSent, 0);

@@ -38,6 +38,10 @@ function hasTimeline(brand: BrandLeaderboardEntry): boolean {
   return (brand.timeline?.length ?? 0) >= 2;
 }
 
+function hasProfitableTimeline(brand: BrandLeaderboardEntry): boolean {
+  return hasTimeline(brand) && (brand.roiMultiple ?? 0) > 1 && (brand.expectedRevenueUsd ?? 0) > 0;
+}
+
 function formatUsdShort(value: number): string {
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
   if (value >= 10_000) return `$${Math.round(value / 1_000).toLocaleString("en-US")}k`;
@@ -171,7 +175,7 @@ function BrandTrajectoryCard({ brand }: { brand: BrandLeaderboardEntry }) {
           </div>
         </div>
         <span className="text-[11px] rounded-full bg-blue-50 px-2 py-1 text-blue-600 whitespace-nowrap">
-          timeline
+          ROI {brand.roiMultiple!.toFixed(1)}x
         </span>
       </div>
 
@@ -203,9 +207,9 @@ function BrandTrajectoryCard({ brand }: { brand: BrandLeaderboardEntry }) {
 
 export function ClientTrajectoriesSection({ brands }: { brands: BrandLeaderboardEntry[] }) {
   const visibleBrands = [...brands]
-    .filter(hasTimeline)
+    .filter(hasProfitableTimeline)
     .sort((a, b) => {
-      return timelineValue(b.timeline![b.timeline!.length - 1]) - timelineValue(a.timeline![a.timeline!.length - 1]);
+      return (b.expectedRevenueUsd ?? 0) - (a.expectedRevenueUsd ?? 0);
     })
     .slice(0, CARD_LIMIT);
 
