@@ -31,65 +31,103 @@ function initials(label: string): string {
 }
 
 function timelineValue(point: BrandTimelinePoint): number {
-  return point.cumulativePipelineUsd ?? point.emailsSent ?? point.emailsReplied ?? 0;
+  return point.cumulativePipelineUsd ?? 0;
 }
 
 function hasTimeline(brand: BrandLeaderboardEntry): boolean {
   return (brand.timeline?.length ?? 0) >= 2;
 }
 
-function Sparkline({ timeline }: { timeline: BrandTimelinePoint[] }) {
+function formatUsdShort(value: number): string {
+  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 10_000) return `$${Math.round(value / 1_000).toLocaleString("en-US")}k`;
+  if (value >= 1_000) return `$${(value / 1_000).toFixed(1)}k`;
+  return `$${Math.round(value).toLocaleString("en-US")}`;
+}
+
+function formatDateShort(iso: string): string {
+  const date = new Date(iso);
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function svgSafeId(value: string): string {
+  return value.replace(/[^a-zA-Z0-9_-]/g, "-");
+}
+
+function MiniRevenueChart({
+  timeline,
+  chartId,
+}: {
+  timeline: BrandTimelinePoint[];
+  chartId: string;
+}) {
   const values = timeline.map(timelineValue);
   const min = Math.min(...values);
   const max = Math.max(...values);
   const span = Math.max(1, max - min);
-  const width = 280;
-  const height = 88;
+  const width = 320;
+  const height = 132;
+  const plotTop = 10;
+  const plotRight = 8;
+  const plotBottom = 24;
+  const plotLeft = 42;
+  const plotWidth = width - plotLeft - plotRight;
+  const plotHeight = height - plotTop - plotBottom;
   const points = values
     .map((value, index) => {
-      const x = values.length === 1 ? 0 : (index / (values.length - 1)) * width;
-      const y = height - ((value - min) / span) * (height - 12) - 6;
+      const x = plotLeft + (values.length === 1 ? 0 : (index / (values.length - 1)) * plotWidth);
+      const y = plotTop + plotHeight - ((value - min) / span) * plotHeight;
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     })
     .join(" ");
-  const fillPoints = `0,${height} ${points} ${width},${height}`;
+  const fillPoints = `${plotLeft},${plotTop + plotHeight} ${points} ${plotLeft + plotWidth},${plotTop + plotHeight}`;
+  const finalValue = values[values.length - 1] ?? 0;
+  const firstDate = timeline[0]?.date;
+  const lastDate = timeline[timeline.length - 1]?.date;
+  const gradientId = svgSafeId(`benchmarkRevenueFill-${chartId}`);
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="h-24 w-full" role="img" aria-label="Pipeline over time">
-      <polygon points={fillPoints} fill="rgb(59 130 246 / 0.10)" />
-      <polyline points={points} fill="none" stroke="#2563eb" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-      {points.split(" ").map((point, index) => {
-        if (index !== 0 && index !== values.length - 1) return null;
-        const [cx, cy] = point.split(",");
-        return <circle key={point} cx={cx} cy={cy} r="3.5" fill="#2563eb" />;
-      })}
-    </svg>
-  );
-}
-
-function FunnelPreview({ brand }: { brand: BrandLeaderboardEntry }) {
-  const stages = [
-    { label: "Sent", value: brand.emailsSent, color: "bg-blue-500" },
-    { label: "Opened", value: brand.emailsOpened, color: "bg-emerald-500" },
-    { label: "Clicked", value: brand.emailsClicked, color: "bg-amber-500" },
-    { label: "Replied", value: brand.emailsReplied, color: "bg-gray-900" },
-  ];
-  const max = Math.max(1, brand.emailsSent);
-
-  return (
-    <div className="h-24 flex flex-col justify-end gap-2" aria-label="Current funnel">
-      {stages.map((stage) => {
-        const width = stage.value > 0 ? Math.max(8, Math.round((stage.value / max) * 100)) : 0;
-        return (
-          <div key={stage.label} className="grid grid-cols-[56px_1fr_42px] items-center gap-2">
-            <span className="text-[11px] text-gray-400">{stage.label}</span>
-            <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
-              <div className={`h-full rounded-full ${stage.color}`} style={{ width: `${width}%` }} />
-            </div>
-            <span className="text-[11px] text-gray-500 text-right">{compactCount(stage.value)}</span>
-          </div>
-        );
-      })}
+    <div>
+      <svg viewBox={`0 0 ${width} ${height}`} className="h-36 w-full" role="img" aria-label="Pipeline revenue over time">
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#2563eb" stopOpacity="0.22" />
+            <stop offset="100%" stopColor="#2563eb" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {[0, 0.5, 1].map((ratio) => {
+          const y = plotTop + ratio * plotHeight;
+          return (
+            <line key={ratio} x1={plotLeft} x2={plotLeft + plotWidth} y1={y} y2={y} stroke="#f1f5f9" strokeDasharray="3 3" />
+          );
+        })}
+        <text x={0} y={plotTop + 4} className="fill-gray-400 text-[10px]">
+          {formatUsdShort(max)}
+        </text>
+        <text x={0} y={plotTop + plotHeight + 3} className="fill-gray-400 text-[10px]">
+          {formatUsdShort(min)}
+        </text>
+        <polygon points={fillPoints} fill={`url(#${gradientId})`} />
+        <polyline points={points} fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        {points.split(" ").map((point, index) => {
+          if (index !== values.length - 1) return null;
+          const [cx, cy] = point.split(",");
+          return <circle key={point} cx={cx} cy={cy} r="3.5" fill="#2563eb" />;
+        })}
+        {firstDate && (
+          <text x={plotLeft} y={height - 4} className="fill-gray-400 text-[10px]">
+            {formatDateShort(firstDate)}
+          </text>
+        )}
+        {lastDate && (
+          <text x={plotLeft + plotWidth} y={height - 4} textAnchor="end" className="fill-gray-400 text-[10px]">
+            {formatDateShort(lastDate)}
+          </text>
+        )}
+      </svg>
+      <p className="mt-1 text-right text-xs font-semibold text-gray-900">
+        {formatUsdShort(finalValue)} expected pipeline
+      </p>
     </div>
   );
 }
@@ -117,7 +155,8 @@ function BrandLogo({ brand }: { brand: BrandLeaderboardEntry }) {
 
 function BrandTrajectoryCard({ brand }: { brand: BrandLeaderboardEntry }) {
   const label = labelForBrand(brand);
-  const timeline = hasTimeline(brand) ? brand.timeline : null;
+  const timeline = brand.timeline!;
+  const chartId = brand.brandId || brand.brandDomain || label;
 
   return (
     <article className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
@@ -131,17 +170,13 @@ function BrandTrajectoryCard({ brand }: { brand: BrandLeaderboardEntry }) {
             )}
           </div>
         </div>
-        <span className="text-[11px] rounded-full bg-gray-100 px-2 py-1 text-gray-500 whitespace-nowrap">
-          {timeline ? "timeline" : "funnel"}
+        <span className="text-[11px] rounded-full bg-blue-50 px-2 py-1 text-blue-600 whitespace-nowrap">
+          timeline
         </span>
       </div>
 
       <div className="mt-4">
-        {timeline ? (
-          <Sparkline timeline={timeline} />
-        ) : (
-          <FunnelPreview brand={brand} />
-        )}
+        <MiniRevenueChart timeline={timeline} chartId={chartId} />
       </div>
 
       <div className="mt-4 grid grid-cols-3 gap-2 border-t border-gray-100 pt-3">
@@ -168,16 +203,13 @@ function BrandTrajectoryCard({ brand }: { brand: BrandLeaderboardEntry }) {
 
 export function ClientTrajectoriesSection({ brands }: { brands: BrandLeaderboardEntry[] }) {
   const visibleBrands = [...brands]
-    .filter((brand) => brand.emailsSent > 0)
+    .filter(hasTimeline)
     .sort((a, b) => {
-      if (hasTimeline(a) !== hasTimeline(b)) return hasTimeline(a) ? -1 : 1;
-      return b.emailsSent - a.emailsSent;
+      return timelineValue(b.timeline![b.timeline!.length - 1]) - timelineValue(a.timeline![a.timeline!.length - 1]);
     })
     .slice(0, CARD_LIMIT);
 
   if (visibleBrands.length === 0) return null;
-
-  const cardsWithTimeline = visibleBrands.filter(hasTimeline).length;
 
   return (
     <section className="py-10 md:py-12 bg-gray-50">
@@ -191,15 +223,12 @@ export function ClientTrajectoriesSection({ brands }: { brands: BrandLeaderboard
               Real campaign snapshots from active brands
             </h2>
             <p className="text-sm text-gray-500 mt-1 max-w-2xl">
-              A compact read on the brands already running sales outreach through distribute.
-              Cards use public benchmark data; dated timelines appear as soon as the public API
-              includes them.
+              Mini versions of the same expected-pipeline time-series used in the dashboard,
+              generated from public benchmark data.
             </p>
           </div>
           <div className="text-xs text-gray-400">
-            {cardsWithTimeline > 0
-              ? `${cardsWithTimeline} timelines live`
-              : "current public funnel snapshots"}
+            public revenue timelines
           </div>
         </div>
 
