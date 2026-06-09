@@ -30,7 +30,7 @@ export function PortfolioDashboard() {
     { product: "mailmesh.com", spend: "$34", sent: 82, positiveReplies: 12, costPerPositiveReply: "$2.83", status: "scale" },
     { product: "voiceform.io", spend: "$35", sent: 61, positiveReplies: 4, costPerPositiveReply: "$8.75", status: "watch" },
     { product: "linearclone.dev", spend: "$34", sent: 74, positiveReplies: 1, costPerPositiveReply: "$34.00", status: "kill" },
-    { product: "prompthub.ai", spend: "$34", sent: 88, positiveReplies: 22, costPerPositiveReply: "$1.55", status: "scale" },
+    { product: "syncboard.io", spend: "$34", sent: 88, positiveReplies: 22, costPerPositiveReply: "$1.55", status: "scale" },
   ];
 
   return (
