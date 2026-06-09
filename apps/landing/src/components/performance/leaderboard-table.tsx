@@ -165,6 +165,8 @@ export function WorkflowLeaderboard({ workflows, inSection = false, maxEntries }
               <SortHeader label="$/Click" sortKey="costPerClickCents" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
               <SortHeader label="% Positive Replies" sortKey="replyRate" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
               <SortHeader label="$/Positive Reply" sortKey="costPerReplyCents" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+              <SortHeader label="Expected revenue" sortKey="expectedRevenueUsd" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+              <SortHeader label="ROI" sortKey="roiMultiple" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--v2-border)]">
@@ -194,6 +196,8 @@ export function WorkflowLeaderboard({ workflows, inSection = false, maxEntries }
                 <td className="px-4 py-4 text-sm text-[var(--v2-sub)]">{formatCostCents(wf.costPerClickCents)}</td>
                 <td className="px-4 py-4 text-sm text-[var(--v2-sub)]">{wf.emailsSent > 0 ? formatPercent(wf.replyRate) : "—"}</td>
                 <td className="px-4 py-4 text-sm text-[var(--v2-text)]">{formatCostCentsWhole(wf.costPerReplyCents)}</td>
+                <td className="px-4 py-4 text-sm font-medium text-[var(--v2-text)]">{formatRevenueUsd(wf.expectedRevenueUsd)}</td>
+                <td className="px-4 py-4 text-sm font-medium text-[var(--v2-text)]">{formatRoi(wf.roiMultiple)}</td>
               </tr>
             ))}
           </tbody>
@@ -223,6 +227,8 @@ function WorkflowDetailPanel({ workflow: wf, onClose }: { workflow: WorkflowLead
         <div className="px-6 py-5 space-y-6">
           <div className="grid grid-cols-2 gap-4">
             <DetailStat label="Total Spent" value={formatCostDollars(wf.totalCostUsdCents)} />
+            <DetailStat label="Expected Revenue" value={formatRevenueUsd(wf.expectedRevenueUsd)} />
+            <DetailStat label="ROI" value={formatRoi(wf.roiMultiple)} />
             <DetailStat label="Emails Sent" value={wf.emailsSent > 0 ? wf.emailsSent.toLocaleString() : "—"} />
             <DetailStat label="Runs" value={wf.runCount > 0 ? wf.runCount.toLocaleString() : "—"} />
           </div>

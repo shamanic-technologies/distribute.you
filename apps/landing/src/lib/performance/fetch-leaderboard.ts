@@ -119,11 +119,14 @@ export interface BrandTimelinePoint {
 }
 
 export interface WorkflowLeaderboardEntry {
+  workflowSlug: string | null;
   workflowName: string;
   workflowDynastyName: string;
   workflowDynastySignatureName: string | null;
   category: string | null;
   featureSlug: string | null;
+  expectedRevenueUsd: number | null;
+  roiMultiple: number | null;
   runCount: number;
   emailsSent: number;
   emailsOpened: number;
@@ -201,11 +204,14 @@ async function fetchWorkflowRanked(
     const cost = num(r.stats, "totalCostInUsdCents");
 
     return {
+      workflowSlug: r.workflow.workflowSlug ?? null,
       workflowName: r.workflow.workflowName,
       workflowDynastyName: r.workflow.workflowDynastyName ?? r.workflow.workflowName,
       workflowDynastySignatureName: r.workflow.workflowDynastySignatureName ?? null,
       category: null,
       featureSlug: r.workflow.featureSlug ?? null,
+      expectedRevenueUsd: null,
+      roiMultiple: null,
       runCount: num(r.stats, "completedRuns"),
       emailsSent: sent,
       emailsOpened: opened,

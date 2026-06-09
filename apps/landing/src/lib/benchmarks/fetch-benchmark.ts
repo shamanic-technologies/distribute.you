@@ -149,7 +149,7 @@ interface BrandRankedResponse {
   results: BrandRankedItem[];
 }
 
-interface PublicRevenueItem {
+interface PublicBrandRevenueItem {
   brand: {
     id: string;
     name: string | null;
@@ -164,8 +164,26 @@ interface PublicRevenueItem {
   timeline?: RawBrandTimelinePoint[];
 }
 
-interface PublicRevenueResponse {
-  results: PublicRevenueItem[];
+interface PublicBrandRevenueResponse {
+  results: PublicBrandRevenueItem[];
+}
+
+interface PublicWorkflowRevenueItem {
+  workflowSlug?: string;
+  workflow?: {
+    workflowSlug?: string;
+  };
+  headline?: {
+    totalPipelineUsd: number | null;
+  };
+  costEconomics?: {
+    roiMultiple: number | null;
+  };
+}
+
+interface PublicWorkflowRevenueResponse {
+  results?: PublicWorkflowRevenueItem[];
+  groups?: PublicWorkflowRevenueItem[];
 }
 
 function num(stats: Record<string, number | null>, key: string): number {
@@ -193,6 +211,20 @@ function mapBrandTimeline(
     emailsClicked: point.emailsClicked ?? null,
     emailsReplied: point.emailsReplied ?? null,
   }));
+}
+
+function mapRevenueTimeline(
+  timeline: RawBrandTimelinePoint[] | undefined,
+  expectedRevenueUsd: number | null,
+): BrandTimelinePoint[] | undefined {
+  const mapped = mapBrandTimeline(timeline);
+  if (!mapped?.length || expectedRevenueUsd == null) return mapped;
+  const lastIndex = mapped.length - 1;
+  return mapped.map((point, index) =>
+    index === lastIndex
+      ? { ...point, cumulativePipelineUsd: expectedRevenueUsd }
+      : point,
+  );
 }
 
 function mapBrandEntry(item: BrandRankedItem): BrandLeaderboardEntry {
@@ -230,6 +262,7 @@ function mapWorkflowEntry(item: WorkflowRankedItem): WorkflowLeaderboardEntry {
   const replied = num(item.stats, "recipientsRepliesPositive");
   const cost = num(item.stats, "totalCostInUsdCents");
   return {
+    workflowSlug: item.workflow.workflowSlug ?? null,
     workflowName: item.workflow.workflowName,
     workflowDynastyName:
       item.workflow.workflowDynastyName ?? item.workflow.workflowName,
@@ -237,6 +270,8 @@ function mapWorkflowEntry(item: WorkflowRankedItem): WorkflowLeaderboardEntry {
       item.workflow.workflowDynastySignatureName ?? null,
     category: null,
     featureSlug: item.workflow.featureSlug ?? null,
+    expectedRevenueUsd: null,
+    roiMultiple: null,
     runCount: num(item.stats, "completedRuns"),
     emailsSent: sent,
     emailsOpened: opened,
@@ -267,6 +302,8 @@ export interface BenchmarkAggregateStats {
   costPerReplyCents: number | null;
   participatingBrands: number;
   participatingWorkflows: number;
+  expectedRevenueUsd: number;
+  roiMultiple: number | null;
 }
 
 export interface FeatureBenchmarkData {
@@ -306,7 +343,7 @@ async function _fetchFeatureBenchmarkUncached(
     return null;
   }
 
-  const [brandsRes, workflowsRes, revenueRes] = await Promise.all([
+  const [brandsRes, workflowsRes, brandRevenueRes, workflowRevenueRes] = await Promise.all([
     fetch(
       `${apiUrl}/v1/public/features/ranked?featureSlug=${encodeURIComponent(featureSlug)}&objective=emailsSent&groupBy=brand&limit=100`,
       { headers, next: { revalidate: 300 } },
@@ -317,6 +354,10 @@ async function _fetchFeatureBenchmarkUncached(
     ),
     fetch(
       `${featuresUrl}/public/stats/revenue?featureSlug=${encodeURIComponent(featureSlug)}&groupBy=brand`,
+      { headers: { Accept: "application/json" }, next: { revalidate: 300 } },
+    ),
+    fetch(
+      `${featuresUrl}/public/stats/revenue?featureSlug=${encodeURIComponent(featureSlug)}&groupBy=workflow`,
       { headers: { Accept: "application/json" }, next: { revalidate: 300 } },
     ),
   ]);
@@ -331,9 +372,14 @@ async function _fetchFeatureBenchmarkUncached(
       `[landing] Benchmarks: workflows fetch failed for ${featureSlug}: ${workflowsRes.status}`,
     );
   }
-  if (!revenueRes.ok) {
+  if (!brandRevenueRes.ok) {
     console.error(
-      `[landing] Benchmarks: revenue timelines fetch failed for ${featureSlug}: ${revenueRes.status}`,
+      `[landing] Benchmarks: brand revenue fetch failed for ${featureSlug}: ${brandRevenueRes.status}`,
+    );
+  }
+  if (!workflowRevenueRes.ok) {
+    console.error(
+      `[landing] Benchmarks: workflow revenue fetch failed for ${featureSlug}: ${workflowRevenueRes.status}`,
     );
   }
 
@@ -343,11 +389,14 @@ async function _fetchFeatureBenchmarkUncached(
   const workflowsData: WorkflowRankedResponse = workflowsRes.ok
     ? await workflowsRes.json()
     : { results: [] };
-  const revenueData: PublicRevenueResponse = revenueRes.ok
-    ? await revenueRes.json()
+  const brandRevenueData: PublicBrandRevenueResponse = brandRevenueRes.ok
+    ? await brandRevenueRes.json()
+    : { results: [] };
+  const workflowRevenueData: PublicWorkflowRevenueResponse = workflowRevenueRes.ok
+    ? await workflowRevenueRes.json()
     : { results: [] };
   const trajectoryBrandIds = new Set(
-    revenueData.results
+    brandRevenueData.results
       .filter(
         (item) =>
           (item.headline?.totalPipelineUsd ?? 0) > 0 &&
@@ -359,29 +408,61 @@ async function _fetchFeatureBenchmarkUncached(
       .map((item) => item.brand.id),
   );
   const revenueByBrand = new Map(
-    revenueData.results.map((item) => [
-      item.brand.id,
-      {
-        expectedRevenueUsd: item.headline?.totalPipelineUsd ?? null,
-        roiMultiple: item.costEconomics?.roiMultiple ?? null,
-        timeline: trajectoryBrandIds.has(item.brand.id)
-          ? mapBrandTimeline(item.timeline)
-          : undefined,
-      },
-    ]),
+    brandRevenueData.results
+      .filter((item) => (item.headline?.totalPipelineUsd ?? 0) > 0)
+      .map((item) => {
+        const expectedRevenueUsd = item.headline?.totalPipelineUsd ?? null;
+        return [
+          item.brand.id,
+          {
+            expectedRevenueUsd,
+            roiMultiple: item.costEconomics?.roiMultiple ?? null,
+            timeline: trajectoryBrandIds.has(item.brand.id)
+              ? mapRevenueTimeline(item.timeline, expectedRevenueUsd)
+              : undefined,
+          },
+        ] as const;
+      }),
   );
 
-  const brands = brandsData.results.map((item) => {
-    const brand = mapBrandEntry(item);
+  const brands = brandsData.results.flatMap((item) => {
     const revenue = revenueByBrand.get(item.brand.id);
-    return {
+    if (!revenue) return [];
+    const brand = mapBrandEntry(item);
+    return [{
       ...brand,
+      expectedRevenueUsd: revenue.expectedRevenueUsd,
+      roiMultiple: revenue.roiMultiple,
+      timeline: revenue.timeline,
+    }];
+  });
+
+  const workflowRevenueItems = workflowRevenueData.results ?? workflowRevenueData.groups ?? [];
+  const revenueByWorkflowSlug = new Map(
+    workflowRevenueItems.flatMap((item) => {
+      const workflowSlug = item.workflow?.workflowSlug ?? item.workflowSlug ?? null;
+      if (!workflowSlug) return [];
+      return [[
+        workflowSlug,
+        {
+          expectedRevenueUsd: item.headline?.totalPipelineUsd ?? null,
+          roiMultiple: item.costEconomics?.roiMultiple ?? null,
+        },
+      ] as const];
+    }),
+  );
+
+  const workflows = workflowsData.results.map((item) => {
+    const workflow = mapWorkflowEntry(item);
+    const revenue = item.workflow.workflowSlug
+      ? revenueByWorkflowSlug.get(item.workflow.workflowSlug)
+      : undefined;
+    return {
+      ...workflow,
       expectedRevenueUsd: revenue?.expectedRevenueUsd ?? null,
       roiMultiple: revenue?.roiMultiple ?? null,
-      timeline: revenue?.timeline,
     };
   });
-  const workflows = workflowsData.results.map(mapWorkflowEntry);
 
   const sent = workflows.reduce((s, w) => s + w.emailsSent, 0);
   const opened = workflows.reduce((s, w) => s + w.emailsOpened, 0);
@@ -389,6 +470,11 @@ async function _fetchFeatureBenchmarkUncached(
   const replied = workflows.reduce((s, w) => s + w.emailsReplied, 0);
   const cost = workflows.reduce((s, w) => s + w.totalCostUsdCents, 0);
   const runs = workflows.reduce((s, w) => s + w.runCount, 0);
+  const brandCost = brands.reduce((s, brand) => s + brand.totalCostUsdCents, 0);
+  const expectedRevenueUsd = brands.reduce(
+    (sum, brand) => sum + (brand.expectedRevenueUsd ?? 0),
+    0,
+  );
 
   const aggregate: BenchmarkAggregateStats = {
     totalRuns: runs,
@@ -405,6 +491,8 @@ async function _fetchFeatureBenchmarkUncached(
     costPerReplyCents: replied > 0 ? cost / replied : null,
     participatingBrands: brands.length,
     participatingWorkflows: workflows.length,
+    expectedRevenueUsd,
+    roiMultiple: expectedRevenueUsd > 0 && brandCost > 0 ? expectedRevenueUsd / (brandCost / 100) : null,
   };
 
   return {
