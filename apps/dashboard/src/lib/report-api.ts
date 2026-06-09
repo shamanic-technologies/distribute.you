@@ -386,6 +386,42 @@ export async function getReportRevenue(
   )();
 }
 
+export interface FeatureRevenueGroupedByWorkflow {
+  groups: Array<{
+    workflowSlug: string | null;
+    headline: { totalPipelineUsd: number | null };
+    costEconomics: {
+      totalCostUsd: number;
+      costOfAcquisitionPct: number | null;
+      roiMultiple: number | null;
+    };
+  }>;
+}
+
+/** Per-workflow expected revenue + ROI for a brand x feature. Features-service
+ *  owns the expected-revenue math; the report only renders the grouped totals. */
+export async function fetchFeatureRevenueByWorkflow(
+  orgId: string,
+  brandId: string,
+  featureSlug: string,
+): Promise<FeatureRevenueGroupedByWorkflow> {
+  return unstable_cache(
+    async () => {
+      return adminGet<FeatureRevenueGroupedByWorkflow>(
+        "featureRevenueByWorkflow",
+        `/features/${encodeURIComponent(featureSlug)}/revenue?brandId=${brandId}&groupBy=workflowSlug`,
+        orgId,
+        { "x-brand-id": brandId },
+      );
+    },
+    [`fetchFeatureRevenueByWorkflow`, orgId, brandId, featureSlug],
+    {
+      tags: reportTags(orgId, brandId, featureSlug),
+      revalidate: REPORT_REVALIDATE_SECONDS,
+    },
+  )();
+}
+
 export async function fetchCampaigns(orgId: string, brandId: string, featureSlug: string): Promise<Campaign[]> {
   return unstable_cache(
     async () => {
@@ -595,4 +631,3 @@ export async function fetchPromptAssignment(
     },
   )();
 }
-

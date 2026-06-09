@@ -4,12 +4,15 @@ import { CsvDownloadButton } from "@/components/report/csv-button";
 import { toCsv, type CsvColumn } from "@/components/report/csv";
 import { TableSectionSkeleton } from "@/components/report/skeletons";
 import { WorkflowsTable, type WorkflowRow } from "@/components/report/workflows-table";
+import { isRevenueFeature } from "@/lib/revenue-feature";
 import {
   fetchWorkflows,
   fetchCampaigns,
   fetchFeatureStats,
   fetchFeatureStatsByWorkflow,
+  fetchFeatureRevenueByWorkflow,
   fetchStatsRegistry,
+  getReportRevenue,
 } from "@/lib/report-api";
 import type { StatsRegistry } from "@/lib/api";
 
@@ -42,11 +45,23 @@ function formatUsd(cents: number): string {
   return `$${usd.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 }
 
+function formatUsdValue(usd: number | null): string {
+  if (usd == null) return "\u2014";
+  if (usd === 0) return "$0";
+  if (usd < 0.01) return "<$0.01";
+  if (usd < 100) return `$${usd.toFixed(2)}`;
+  return `$${usd.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+}
+
+function formatRoi(roi: number | null): string {
+  return roi == null ? "\u2014" : `${roi.toFixed(1)}×`;
+}
+
 export default async function WorkflowsPage({ params }: PageProps) {
   const { orgId, brandId, featureSlug } = await params;
   // Skeleton uses the keys that will populate the table so the fallback
   // column count matches the final render; labels are placeholders.
-  const skeletonColumns = ["Workflow", "Version", "Leads Sent", "Leads Positive", "CAC / positive reply"];
+  const skeletonColumns = ["Workflow", "Version", "Leads Sent", "Leads Positive", "Expected revenue", "ROI", "CAC / positive reply"];
   return (
     <div className="p-4 sm:p-6 md:p-8 space-y-6">
       <Suspense
@@ -65,12 +80,15 @@ export default async function WorkflowsPage({ params }: PageProps) {
 }
 
 async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
-  const [allWorkflows, campaigns, totalStats, groupedStats, registry] = await Promise.all([
+  const revenueEnabled = isRevenueFeature(featureSlug);
+  const [allWorkflows, campaigns, totalStats, groupedStats, groupedRevenue, registry, brandRevenue] = await Promise.all([
     fetchWorkflows(orgId, featureSlug),
     fetchCampaigns(orgId, brandId, featureSlug),
     fetchFeatureStats(orgId, brandId, featureSlug),
     fetchFeatureStatsByWorkflow(orgId, brandId, featureSlug),
+    revenueEnabled ? fetchFeatureRevenueByWorkflow(orgId, brandId, featureSlug) : Promise.resolve({ groups: [] }),
     fetchStatsRegistry(orgId),
+    revenueEnabled ? getReportRevenue(orgId, brandId, featureSlug) : Promise.resolve(null),
   ]);
 
   const leadsSentLabel = registryLabel(registry, "leadsSent");
@@ -82,9 +100,11 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
 
   // Per-workflow stats index
   const statsBySlug = new Map(groupedStats.groups.map((g) => [g.workflowSlug ?? "", g]));
+  const revenueBySlug = new Map(groupedRevenue.groups.map((g) => [g.workflowSlug ?? "", g]));
 
   const rows: WorkflowRow[] = workflows.map((w) => {
     const g = statsBySlug.get(w.workflowSlug);
+    const revenue = revenueBySlug.get(w.workflowSlug);
     const stats = g?.stats ?? {};
     const cost = Number(g?.systemStats?.totalCostInUsdCents ?? 0);
     return {
@@ -96,6 +116,8 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
       emailsSent: typeof stats.leadsSent === "number" ? stats.leadsSent : 0,
       positiveReplies: typeof stats.leadsRepliesPositive === "number" ? stats.leadsRepliesPositive : 0,
       totalCostCents: cost,
+      expectedRevenueUsd: revenue?.headline.totalPipelineUsd ?? null,
+      roiMultiple: revenue?.costEconomics.roiMultiple ?? null,
       createdAt: w.createdAt,
     };
   });
@@ -119,12 +141,16 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
   const brandPositiveReplies = typeof brandStats.leadsRepliesPositive === "number" ? brandStats.leadsRepliesPositive : 0;
   const brandCacPerReply = brandPositiveReplies > 0 ? formatUsd(brandTotalCost / brandPositiveReplies) : "—";
   const brandEmailsSent = typeof brandStats.leadsSent === "number" ? brandStats.leadsSent : 0;
+  const brandExpectedRevenue = brandRevenue?.totalPipelineUsd ?? null;
+  const brandRoi = brandRevenue?.costEconomics.roiMultiple ?? null;
 
   interface FlatRow {
     workflow: string;
     version: number;
     emailsSent: number;
     positiveReplies: number;
+    expectedRevenue: string;
+    roi: string;
     totalCostUsd: string;
     cacPerReply: string;
   }
@@ -134,6 +160,8 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
     version: r.version,
     emailsSent: r.emailsSent,
     positiveReplies: r.positiveReplies,
+    expectedRevenue: formatUsdValue(r.expectedRevenueUsd),
+    roi: formatRoi(r.roiMultiple),
     totalCostUsd: formatUsd(r.totalCostCents),
     cacPerReply: r.positiveReplies > 0 ? formatUsd(r.totalCostCents / r.positiveReplies) : "",
   }));
@@ -143,6 +171,8 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
     { label: "Version", value: (r) => r.version },
     { label: leadsSentLabel, value: (r) => r.emailsSent },
     { label: leadsPositiveLabel, value: (r) => r.positiveReplies },
+    { label: "Expected revenue", value: (r) => r.expectedRevenue },
+    { label: "ROI", value: (r) => r.roi },
     { label: "Total cost", value: (r) => r.totalCostUsd },
     { label: "CAC per positive reply", value: (r) => r.cacPerReply },
   ];
@@ -153,11 +183,13 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
         title="Brand totals"
         description="All workflows combined for this brand. Use the per-workflow table below to compare performance."
       >
-        <div className="px-5 py-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="px-5 py-4 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
           <SummaryTile label="Workflows used" value={workflows.length.toLocaleString("en-US")} />
           <SummaryTile label={leadsSentLabel} value={brandEmailsSent.toLocaleString("en-US")} />
           <SummaryTile label={leadsPositiveLabel} value={brandPositiveReplies.toLocaleString("en-US")} />
-          <SummaryTile label="CAC / positive reply" value={brandCacPerReply} highlight />
+          <SummaryTile label="Expected revenue" value={formatUsdValue(brandExpectedRevenue)} highlight />
+          <SummaryTile label="ROI" value={formatRoi(brandRoi)} highlight />
+          <SummaryTile label="CAC / positive reply" value={brandCacPerReply} />
         </div>
       </SectionCard>
 
