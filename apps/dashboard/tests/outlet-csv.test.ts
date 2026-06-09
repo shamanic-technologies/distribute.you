@@ -55,8 +55,8 @@ describe("buildOutletCsv helper", () => {
     expect(src).toContain("purchasePriceFor(o)");
   });
 
-  it("renders the median-score campaign why relevant note on the outlet row", () => {
-    expect(src).toContain("whyRelevantForMedianRelevanceCampaign(outlet.campaigns)");
+  it("renders the best-score campaign why relevant note on the outlet row", () => {
+    expect(src).toContain("whyRelevantForBestRelevanceCampaign(outlet.campaigns)");
     expect(src).not.toContain('join(" | ")');
     expect(src).toContain("whyRelevantFor(o)");
   });
