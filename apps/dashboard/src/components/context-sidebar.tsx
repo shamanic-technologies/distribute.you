@@ -326,7 +326,7 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
 function AppLevelSidebar({ pathname }: { pathname: string }) {
   const searchParams = useSearchParams();
   const analyticsItems: SidebarItem[] = [
-    { id: "landing", label: "Landing arrivals", href: "/?view=landing", icon: <OverviewIcon /> },
+    { id: "landing", label: "Unique visitors", href: "/?view=landing", icon: <OverviewIcon /> },
     { id: "signups", label: "Signup conversions", href: "/?view=signups", icon: <ConversionsIcon /> },
     { id: "cards", label: "Cards added", href: "/?view=cards", icon: <BillingIcon /> },
   ];

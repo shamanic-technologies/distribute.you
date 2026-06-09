@@ -41,6 +41,7 @@ describe("dashboard global build-in-public page", () => {
     expect(publicStats).toContain("POSTHOG_PERSONAL_API_KEY");
     expect(publicStats).toContain("STRIPE_SECRET_KEY");
     expect(publicStats).toContain("FROM sessions");
+    expect(publicStats).toContain("uniq(distinct_id) AS visitors");
     expect(publicStats).toContain("signup_completed");
     expect(publicStats).toContain("/payment_methods");
     expect(page).toContain("fetchPublicStatsSummary");
@@ -49,15 +50,16 @@ describe("dashboard global build-in-public page", () => {
   });
 
   it("renders the three requested public analytics sub-pages", () => {
-    expect(page).toContain("Landing arrivals over time");
+    expect(page).toContain("Unique visitors over time");
+    expect(page).toContain("Signups vs unique visitors");
     expect(page).toContain("Signup conversion over time");
     expect(page).toContain("Cards added over time");
-    expect(page).toContain("Arrival origins");
+    expect(page).toContain("Visitor origins");
     expect(page).toContain("Signup to card conversion over time");
   });
 
   it("replaces the app-level feature list with focused analytics navigation", () => {
-    expect(sidebar).toContain("Landing arrivals");
+    expect(sidebar).toContain("Unique visitors");
     expect(sidebar).toContain("Signup conversions");
     expect(sidebar).toContain("Cards added");
     expect(sidebar).toContain("/?view=landing");

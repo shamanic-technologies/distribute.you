@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 300;
 
 const VIEWS: Array<{ id: PublicAnalyticsView; label: string; href: string }> = [
-  { id: "landing", label: "Landing arrivals", href: "/?view=landing" },
+  { id: "landing", label: "Unique visitors", href: "/?view=landing" },
   { id: "signups", label: "Signup conversions", href: "/?view=signups" },
   { id: "cards", label: "Cards added", href: "/?view=cards" },
 ];
@@ -85,7 +85,7 @@ function ViewTabs({ active }: { active: PublicAnalyticsView }) {
 function SourcesTable({ sources }: { sources: TrafficSource[] }) {
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-6">
-      <h2 className="text-lg font-semibold text-gray-950">Arrival origins</h2>
+      <h2 className="text-lg font-semibold text-gray-950">Visitor origins</h2>
       <div className="mt-4 divide-y divide-gray-100">
         {sources.map((source) => (
           <div key={source.source} className="grid gap-3 py-3 sm:grid-cols-[1fr_7rem_7rem] sm:items-center">
@@ -116,14 +116,14 @@ function LandingView({
   return (
     <>
       <section className="grid gap-4 md:grid-cols-3">
-        <StatCard label="Total landing arrivals" value={formatCount(totalVisitors)} detail={`Through ${latestDate(timeline)}`} accent="bg-sky-500" />
-        <StatCard label="Tracked days" value={formatCount(timeline.length)} detail="PostHog landing sessions" accent="bg-gray-500" />
-        <StatCard label="Top origin" value={sources[0]?.source ?? "No source"} detail={sources[0] ? `${formatCount(sources[0].visitors)} arrivals` : "No arrivals yet"} accent="bg-emerald-500" />
+        <StatCard label="Unique visitors" value={formatCount(totalVisitors)} detail={`Through ${latestDate(timeline)}`} accent="bg-sky-500" />
+        <StatCard label="Tracked days" value={formatCount(timeline.length)} detail="PostHog daily visitor buckets" accent="bg-gray-500" />
+        <StatCard label="Top origin" value={sources[0]?.source ?? "No source"} detail={sources[0] ? `${formatCount(sources[0].visitors)} unique visitors` : "No visitors yet"} accent="bg-emerald-500" />
       </section>
       <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="text-lg font-semibold text-gray-950">Landing arrivals over time</h2>
-          <p className="mt-1 text-sm text-gray-500">One arrival per PostHog landing session on distribute.you.</p>
+          <h2 className="text-lg font-semibold text-gray-950">Unique visitors over time</h2>
+          <p className="mt-1 text-sm text-gray-500">Daily unique PostHog visitors on distribute.you.</p>
           <div className="mt-5">
             <PublicAnalyticsChart data={timeline} metric="landingVisitors" color="#0ea5e9" />
           </div>
@@ -150,19 +150,25 @@ function SignupView({
       <section className="grid gap-4 md:grid-cols-3">
         <StatCard label="Total signups" value={formatCount(totalUsers)} detail="Clerk /users/count total" accent="bg-brand-500" />
         <StatCard label="Tracked signup events" value={formatCount(signupEvents)} detail="PostHog signup_completed events" accent="bg-sky-500" />
-        <StatCard label="Signup conversion" value={pct(totalUsers, totalVisitors)} detail="Total users divided by landing arrivals" accent="bg-emerald-500" />
+        <StatCard label="Signup conversion" value={pct(totalUsers, totalVisitors)} detail="Total users divided by unique visitors" accent="bg-emerald-500" />
       </section>
       <section className="grid gap-6 xl:grid-cols-2">
         <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="text-lg font-semibold text-gray-950">Signups over time</h2>
-          <p className="mt-1 text-sm text-gray-500">Daily unique signup_completed events from PostHog.</p>
+          <h2 className="text-lg font-semibold text-gray-950">Signups vs unique visitors</h2>
+          <p className="mt-1 text-sm text-gray-500">Daily signups compared with daily unique visitors.</p>
           <div className="mt-5">
-            <PublicAnalyticsChart data={timeline} metric="signups" color="#6366f1" />
+            <PublicAnalyticsChart
+              data={timeline}
+              series={[
+                { metric: "landingVisitors", color: "#0ea5e9" },
+                { metric: "signups", color: "#6366f1" },
+              ]}
+            />
           </div>
         </div>
         <div className="rounded-lg border border-gray-200 bg-white p-6">
           <h2 className="text-lg font-semibold text-gray-950">Signup conversion over time</h2>
-          <p className="mt-1 text-sm text-gray-500">Daily signup events divided by daily landing arrivals.</p>
+          <p className="mt-1 text-sm text-gray-500">Daily signup events divided by daily unique visitors.</p>
           <div className="mt-5">
             <PublicAnalyticsChart data={timeline} metric="signupConversionPct" color="#10b981" />
           </div>
@@ -229,7 +235,7 @@ export default async function DashboardHome({ searchParams }: PageProps) {
                 </div>
               </div>
               <p className="mt-5 max-w-2xl text-sm leading-6 text-gray-600">
-                Public analytics for the global product funnel: landing arrivals, signup conversion, and saved-card activation.
+                Public analytics for the global product funnel: unique visitors, signup conversion, and saved-card activation.
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
@@ -272,7 +278,7 @@ export default async function DashboardHome({ searchParams }: PageProps) {
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Bronze</p>
-              <p className="mt-1 text-sm font-medium text-gray-900">PostHog sessions and signup events</p>
+              <p className="mt-1 text-sm font-medium text-gray-900">PostHog unique visitors and signup events</p>
             </div>
             <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Bronze</p>
