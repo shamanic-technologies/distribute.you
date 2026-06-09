@@ -34,6 +34,12 @@ export function Navbar() {
             Performance
           </a>
           <a
+            href={urls.benchmarks}
+            className="text-gray-500 hover:text-gray-900 text-sm transition"
+          >
+            Benchmarks
+          </a>
+          <a
             href={urls.docs}
             className="text-gray-500 hover:text-gray-900 text-sm transition"
           >
@@ -54,13 +60,13 @@ export function Navbar() {
             href={urls.signIn}
             className="text-gray-500 hover:text-gray-900 text-sm transition"
           >
-            Sign In
+            Sign in
           </a>
           <LinkButton
             href={urls.signUp}
             className="bg-gray-900 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition"
           >
-            Get Started
+            Start free
           </LinkButton>
         </div>
 
@@ -107,6 +113,12 @@ export function Navbar() {
               Performance
             </a>
             <a
+              href={urls.benchmarks}
+              className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm"
+            >
+              Benchmarks
+            </a>
+            <a
               href={urls.docs}
               className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm"
             >
@@ -133,14 +145,14 @@ export function Navbar() {
               href={urls.signIn}
               className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm"
             >
-              Sign In
+              Sign in
             </a>
             <div className="pt-2 border-t border-gray-100">
               <LinkButton
                 href={urls.signUp}
                 className="w-full bg-gray-900 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 text-center block"
               >
-                Get Started
+                Start free
               </LinkButton>
             </div>
           </div>

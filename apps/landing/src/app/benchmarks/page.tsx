@@ -23,11 +23,10 @@ import {
 
 export const revalidate = 300;
 
-// The only GA product. Performance is a single static page (no per-feature
-// dynamic route) — other channels stay alpha (dashboard-only). Old
-// /benchmarks/* URLs 301 here via next.config.
+// The only GA product. Benchmarks is a single static page (no per-feature
+// dynamic route) because other channels stay alpha (dashboard-only).
 const FEATURE_SLUG = "sales-cold-email-outreach";
-const PAGE_URL = `${PROD_URLS.landing}/performance`;
+const PAGE_URL = `${PROD_URLS.landing}/benchmarks`;
 
 export async function generateMetadata(): Promise<Metadata> {
   const data = await fetchFeatureBenchmark(FEATURE_SLUG);
@@ -92,7 +91,7 @@ function HeroStat({
   );
 }
 
-export default async function PerformancePage() {
+export default async function BenchmarksPage() {
   // Resolved at build time (PROD_URLS = resolveUrls("")); preview/staging
   // deployments link to prod dashboard sign-up. Trade-off for ISR static
   // prerender, which requires no per-request headers().
@@ -107,7 +106,7 @@ export default async function PerformancePage() {
         <section className="py-24">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h1 className="font-display text-3xl font-bold text-gray-800 mb-3">
-              Cold Email Performance
+              Cold Email Benchmarks
             </h1>
             <p className="text-gray-500">
               Performance data is loading. Check back soon.
