@@ -81,5 +81,13 @@ describe("outlet pages wire the Download CSV button", () => {
       expect(content).toContain("formatPurchasePrice(o)");
       expect(content).toContain("Purchase Price");
     });
+
+    it(`${level} page can fetch missing DR from the detail panel`, () => {
+      expect(content).toContain("computeDomainDr");
+      expect(content).toContain("useMutation");
+      expect(content).toContain("queryClient.setQueryData<DomainDrStatus[]>");
+      expect(content).toContain("Fetch DR");
+      expect(content).toContain("No DR found");
+    });
   }
 });
