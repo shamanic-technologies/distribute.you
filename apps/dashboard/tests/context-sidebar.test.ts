@@ -37,7 +37,7 @@ describe("Context sidebar", () => {
 
   it("should have focused app-level public analytics links instead of feature links", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    expect(content).toContain("Landing arrivals");
+    expect(content).toContain("Unique visitors");
     expect(content).toContain("Signup conversions");
     expect(content).toContain("Cards added");
     expect(content).toContain("/?view=landing");

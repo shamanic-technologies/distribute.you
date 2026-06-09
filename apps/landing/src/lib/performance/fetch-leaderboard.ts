@@ -93,6 +93,7 @@ export interface BrandLeaderboardEntry {
   brandUrl: string | null;
   brandDomain: string | null;
   brandName: string | null;
+  timeline?: BrandTimelinePoint[];
   emailsSent: number;
   emailsOpened: number;
   emailsClicked: number;
@@ -104,6 +105,15 @@ export interface BrandLeaderboardEntry {
   costPerOpenCents: number | null;
   costPerClickCents: number | null;
   costPerReplyCents: number | null;
+}
+
+export interface BrandTimelinePoint {
+  date: string;
+  cumulativePipelineUsd: number | null;
+  emailsSent: number | null;
+  emailsOpened: number | null;
+  emailsClicked: number | null;
+  emailsReplied: number | null;
 }
 
 export interface WorkflowLeaderboardEntry {

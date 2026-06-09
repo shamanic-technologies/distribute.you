@@ -1,6 +1,7 @@
 import { URLS } from "@distribute/content";
 import { unstable_cache } from "next/cache";
 import {
+  type BrandTimelinePoint,
   type BrandLeaderboardEntry,
   type WorkflowLeaderboardEntry,
 } from "@/lib/performance/fetch-leaderboard";
@@ -126,6 +127,7 @@ interface BrandRankedItem {
     domain: string | null;
   };
   stats: Record<string, number | null>;
+  timeline?: RawBrandTimelinePoint[];
 }
 
 interface WorkflowRankedResponse {
@@ -140,6 +142,29 @@ function num(stats: Record<string, number | null>, key: string): number {
   return (stats[key] as number) ?? 0;
 }
 
+interface RawBrandTimelinePoint {
+  date: string;
+  cumulativePipelineUsd?: number | null;
+  emailsSent?: number | null;
+  emailsOpened?: number | null;
+  emailsClicked?: number | null;
+  emailsReplied?: number | null;
+}
+
+function mapBrandTimeline(
+  timeline: RawBrandTimelinePoint[] | undefined,
+): BrandTimelinePoint[] | undefined {
+  if (!timeline?.length) return undefined;
+  return timeline.map((point) => ({
+    date: point.date,
+    cumulativePipelineUsd: point.cumulativePipelineUsd ?? null,
+    emailsSent: point.emailsSent ?? null,
+    emailsOpened: point.emailsOpened ?? null,
+    emailsClicked: point.emailsClicked ?? null,
+    emailsReplied: point.emailsReplied ?? null,
+  }));
+}
+
 function mapBrandEntry(item: BrandRankedItem): BrandLeaderboardEntry {
   const sent = num(item.stats, "recipientsSent");
   const opened = num(item.stats, "recipientsOpened");
@@ -151,6 +176,7 @@ function mapBrandEntry(item: BrandRankedItem): BrandLeaderboardEntry {
     brandName: item.brand.name ?? null,
     brandDomain: item.brand.domain ?? null,
     brandUrl: null,
+    timeline: mapBrandTimeline(item.timeline),
     emailsSent: sent,
     emailsOpened: opened,
     emailsClicked: clicked,

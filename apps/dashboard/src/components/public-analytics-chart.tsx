@@ -2,6 +2,7 @@
 
 import {
   CartesianGrid,
+  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -12,9 +13,13 @@ import {
 import type { DailyFunnelPoint } from "@/lib/public-stats";
 
 type MetricKey = "landingVisitors" | "signups" | "cardsAdded" | "signupConversionPct" | "cardConversionPct";
+type ChartSeries = {
+  metric: MetricKey;
+  color: string;
+};
 
 const METRIC_LABEL: Record<MetricKey, string> = {
-  landingVisitors: "Landing arrivals",
+  landingVisitors: "Unique visitors",
   signups: "Signups",
   cardsAdded: "Cards added",
   signupConversionPct: "Signup conversion",
@@ -37,20 +42,31 @@ function formatValue(value: number, metric: MetricKey): string {
 function ChartTooltip({
   active,
   payload,
-  metric,
+  series,
 }: {
   active?: boolean;
-  payload?: Array<{ payload: DailyFunnelPoint; value: number }>;
-  metric: MetricKey;
+  payload?: Array<{ dataKey?: MetricKey; payload: DailyFunnelPoint; value: number; color?: string }>;
+  series: ChartSeries[];
 }) {
   if (!active || !payload?.length) return null;
   const point = payload[0].payload;
+  const allowedMetrics = new Set(series.map((item) => item.metric));
+  const rows = payload.filter((item) => item.dataKey && allowedMetrics.has(item.dataKey));
   return (
     <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs shadow-sm">
       <p className="text-gray-500">{formatDateShort(point.date)}</p>
-      <p className="mt-1 font-semibold text-gray-900">
-        {formatValue(Number(payload[0].value), metric)} {METRIC_LABEL[metric].toLowerCase()}
-      </p>
+      <div className="mt-1 space-y-1">
+        {rows.map((item) => {
+          const metric = item.dataKey;
+          if (!metric) return null;
+          return (
+            <p key={metric} className="flex items-center gap-2 font-semibold text-gray-900">
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: item.color }} />
+              <span>{formatValue(Number(item.value), metric)} {METRIC_LABEL[metric].toLowerCase()}</span>
+            </p>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -59,11 +75,19 @@ export function PublicAnalyticsChart({
   data,
   metric,
   color,
+  series,
 }: {
   data: DailyFunnelPoint[];
-  metric: MetricKey;
-  color: string;
+  metric?: MetricKey;
+  color?: string;
+  series?: ChartSeries[];
 }) {
+  const chartSeries = series ?? (metric && color ? [{ metric, color }] : []);
+  const primaryMetric = chartSeries[0]?.metric;
+  if (chartSeries.length === 0 || !primaryMetric) {
+    throw new Error("PublicAnalyticsChart requires either metric/color or series");
+  }
+
   if (data.length === 0) {
     return (
       <div className="flex h-[280px] items-center justify-center text-sm text-gray-400">
@@ -86,21 +110,33 @@ export function PublicAnalyticsChart({
             minTickGap={24}
           />
           <YAxis
-            tickFormatter={(value) => formatValue(Number(value), metric)}
+            tickFormatter={(value) => formatValue(Number(value), primaryMetric)}
             tick={{ fontSize: 11, fill: "#94a3b8" }}
             tickLine={false}
             axisLine={false}
             width={54}
           />
-          <Tooltip content={<ChartTooltip metric={metric} />} />
-          <Line
-            type="monotone"
-            dataKey={metric}
-            dot={false}
-            activeDot={{ r: 4 }}
-            stroke={color}
-            strokeWidth={2}
-          />
+          <Tooltip content={<ChartTooltip series={chartSeries} />} />
+          {chartSeries.length > 1 && (
+            <Legend
+              verticalAlign="top"
+              align="right"
+              iconType="circle"
+              wrapperStyle={{ fontSize: 12, paddingBottom: 8 }}
+            />
+          )}
+          {chartSeries.map((item) => (
+            <Line
+              key={item.metric}
+              type="monotone"
+              dataKey={item.metric}
+              name={METRIC_LABEL[item.metric]}
+              dot={false}
+              activeDot={{ r: 4 }}
+              stroke={item.color}
+              strokeWidth={2}
+            />
+          ))}
         </LineChart>
       </ResponsiveContainer>
     </div>

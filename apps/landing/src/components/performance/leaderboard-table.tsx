@@ -15,6 +15,7 @@ import {
 import { defaultDir, compareForSort, type SortKey } from "@/lib/performance/sort-direction";
 
 const LOGO_DEV_TOKEN = process.env.NEXT_PUBLIC_LOGO_DEV_TOKEN;
+type BrandSortKey = Extract<SortKey, keyof BrandLeaderboardEntry>;
 
 function SortHeader({
   label,
@@ -41,20 +42,21 @@ function SortHeader({
 }
 
 export function BrandLeaderboard({ brands, maxEntries }: { brands: BrandLeaderboardEntry[]; maxEntries?: number }) {
-  const [sortKey, setSortKey] = useState<SortKey>("costPerReplyCents");
+  const [sortKey, setSortKey] = useState<BrandSortKey>("costPerReplyCents");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   function handleSort(key: SortKey) {
-    if (key === sortKey) {
+    const brandKey = key as BrandSortKey;
+    if (brandKey === sortKey) {
       setSortDir(sortDir === "desc" ? "asc" : "desc");
     } else {
-      setSortKey(key);
-      setSortDir(defaultDir(key));
+      setSortKey(brandKey);
+      setSortDir(defaultDir(brandKey));
     }
   }
 
   const sorted = [...brands].sort((a, b) =>
-    compareForSort(a[sortKey as keyof BrandLeaderboardEntry], b[sortKey as keyof BrandLeaderboardEntry], sortDir),
+    compareForSort(a[sortKey], b[sortKey], sortDir),
   );
 
   const visible = maxEntries ? sorted.slice(0, maxEntries) : sorted;
