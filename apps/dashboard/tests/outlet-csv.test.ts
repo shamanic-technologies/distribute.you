@@ -89,6 +89,14 @@ describe("outlet pages wire the Download CSV button", () => {
       expect(content).toContain("Purchase Price");
     });
 
+    it(`${level} page renders only a paginated slice of the filtered outlet list`, () => {
+      expect(content).toContain('from "@/components/table-pagination"');
+      expect(content).toContain("usePaginated(filteredOutlets)");
+      expect(content).toContain("paginatedOutlets.pageItems.map");
+      expect(content).toContain("<TablePager");
+      expect(content).not.toContain("filteredOutlets.map((outlet)");
+    });
+
     it(`${level} page can fetch missing DR from the detail panel`, () => {
       expect(content).toContain("computeDomainDr");
       expect(content).toContain("useMutation");
