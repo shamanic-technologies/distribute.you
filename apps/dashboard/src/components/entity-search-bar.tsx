@@ -6,6 +6,7 @@ interface EntitySearchBarProps {
   placeholder?: string;
   resultCount?: number;
   totalCount?: number;
+  className?: string;
 }
 
 export function EntitySearchBar({
@@ -14,10 +15,11 @@ export function EntitySearchBar({
   placeholder = "Search...",
   resultCount,
   totalCount,
+  className = "mb-4",
 }: EntitySearchBarProps) {
   const showCount = value.length > 0 && resultCount !== undefined && totalCount !== undefined;
   return (
-    <div className="relative mb-4">
+    <div className={`relative ${className}`}>
       <div className="relative">
         <svg
           className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"

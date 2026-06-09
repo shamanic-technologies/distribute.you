@@ -2321,8 +2321,23 @@ export interface DeduplicatedOutlet {
     sellPriceCents: number | null;
     currency: string | null;
   } | null;
+  priceRequestStatus: "ongoing" | "received" | null;
   relevanceScore: number;
   campaigns: OutletCampaign[];
+}
+
+export interface OutletPriceRequestResult {
+  outletId: string;
+  status: "ongoing" | "error";
+  editorialEmail?: string;
+  messageId?: string;
+  error?: string;
+}
+
+export interface OutletListResponse {
+  outlets: DeduplicatedOutlet[];
+  total: number;
+  byOutreachStatus?: Record<string, number>;
 }
 
 /** Flat outlet returned by GET /v1/campaigns/{id}/outlets */
@@ -2354,11 +2369,11 @@ export async function listBrandOutlets(
   featureSlug?: string,
   token?: string,
   campaignId?: string,
-): Promise<{ outlets: DeduplicatedOutlet[]; total: number; byOutreachStatus?: Record<string, number> }> {
+): Promise<OutletListResponse> {
   const params = new URLSearchParams({ brandId });
   if (featureSlug) params.set("featureSlug", featureSlug);
   if (campaignId) params.set("campaignId", campaignId);
-  const data = await apiCall<{ outlets: DeduplicatedOutlet[]; total: number; byOutreachStatus?: Record<string, number> }>(
+  const data = await apiCall<OutletListResponse>(
     `/outlets?${params}`,
     { token },
   );
@@ -2375,6 +2390,16 @@ export async function listCampaignOutlets(
   return apiCall<{ outlets: CampaignOutlet[] }>(
     `/campaigns/${campaignId}/outlets`,
     { token },
+  );
+}
+
+export async function requestOutletPurchasePrices(
+  outletIds: string[],
+  token?: string,
+): Promise<{ results: OutletPriceRequestResult[] }> {
+  return apiCall<{ results: OutletPriceRequestResult[] }>(
+    "/outlets/price-requests",
+    { token, method: "POST", body: { outletIds } },
   );
 }
 

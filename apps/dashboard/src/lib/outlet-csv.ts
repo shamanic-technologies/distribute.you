@@ -1,13 +1,10 @@
 import { toCsv, type CsvColumn } from "@/components/report/csv";
 import { statusLabel } from "@/lib/outlet-status";
 import type { DeduplicatedOutlet } from "@/lib/api";
+import { whyRelevantForMedianRelevanceCampaign } from "./outlet-csv-why-relevant";
 
 function whyRelevantFor(outlet: DeduplicatedOutlet): string {
-  const values = outlet.campaigns
-    .map((campaign) => campaign.whyRelevant?.trim())
-    .filter((value): value is string => Boolean(value));
-
-  return [...new Set(values)].join(" | ");
+  return whyRelevantForMedianRelevanceCampaign(outlet.campaigns);
 }
 
 /**
@@ -22,8 +19,9 @@ function whyRelevantFor(outlet: DeduplicatedOutlet): string {
  *   - `costCentsFor` — the per-outlet total cost in USD cents (string), or null
  *     when the cost query hasn't loaded / the outlet has no cost.
  *
- * Campaign-level relevance notes are joined onto the outlet row, deduplicated
- * when several campaigns carry the same note.
+ * The relevance note comes from the campaign whose relevance score is median
+ * for the outlet, matching the row's averaged relevance without concatenating
+ * every campaign explanation.
  *
  * Exports the WHOLE list passed in — never the active-tab / search-filtered
  * subset. Sorted by relevance desc so the most relevant outlets sit at the top.
