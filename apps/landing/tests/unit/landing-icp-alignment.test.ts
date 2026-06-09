@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
-const landingPagePath = path.resolve(__dirname, "../../src/app/page.tsx");
+const landingPagePath = path.resolve(__dirname, "../../public/landing-v2/index.html");
+const landingRoutePath = path.resolve(__dirname, "../../src/app/route.ts");
 const pricingPagePath = path.resolve(__dirname, "../../src/app/pricing/page.tsx");
 const investorsPagePath = path.resolve(__dirname, "../../src/app/investors/page.tsx");
 const featuresPath = path.resolve(__dirname, "../../../../shared/content/src/features.ts");
@@ -35,14 +36,17 @@ describe("Landing page: ICP-only alignment", () => {
     expect(page).not.toMatch(/rounded-3xl[^"]*p-2[^"]*shadow-2xl/);
   });
 
-  it("renders the GmailInbox component instead of phone push", () => {
-    expect(page).toMatch(/<GmailInbox/);
-    expect(page).toMatch(/from\s+["']@\/components\/gmail-inbox["']/);
+  it("serves the exact v2 static HTML through the root route", () => {
+    const route = fs.readFileSync(landingRoutePath, "utf-8");
+    expect(route).toMatch(/public\/landing-v2\/index\.html/);
+    expect(route).toMatch(/content-type/);
+    expect(route).toMatch(/text\/html/);
   });
 
-  it("renders the FreeVsCloud 2-tier component", () => {
-    expect(page).toMatch(/<FreeVsCloud/);
-    expect(page).toMatch(/from\s+["']@\/components\/free-vs-cloud["']/);
+  it("includes the exact v2 CSS, JS, and logo asset references", () => {
+    expect(page).toMatch(/href="css\/styles\.css"/);
+    expect(page).toMatch(/src="js\/main\.js"/);
+    expect(page).toMatch(/src="logo\/logo-distribute\.svg"/);
   });
 
   it("does NOT celebrate staying solo in the aspiration paragraph", () => {
