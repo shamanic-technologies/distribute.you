@@ -71,6 +71,18 @@ describe("outlet pages wire the Ask Purchase Price control", () => {
       expect(content).toContain("Purchase price request in progress");
     });
 
+    it(`${level} page lets the detail panel request one missing purchase price`, () => {
+      expect(content).toContain("onRequestPurchasePrice");
+      expect(content).toContain("requestPurchasePricesMutation.mutate([selectedOutlet.id])");
+      expect(content).toContain('outlet.priceRequestStatus !== "ongoing"');
+      expect(content).toContain('isRequestingPurchasePrice ? "Requesting..." : "Ask Purchase Price"');
+    });
+
+    it(`${level} page scopes purchase-price errors to page batch or selected outlet`, () => {
+      expect(content).toContain('purchasePriceRequestScope === "page"');
+      expect(content).toContain("purchasePriceRequestScope === selectedOutlet.id");
+    });
+
     it(`${level} page writes successful request results into the outlet list cache`, () => {
       expect(content).toContain("markOutletPriceRequestsOngoing(prev, result.results)");
       expect(content).toContain("queryClient.setQueryData<OutletListResponse>");
