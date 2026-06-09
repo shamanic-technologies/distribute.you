@@ -111,7 +111,7 @@ describe("Landing v2 static pages", () => {
   it("serves the exact designer performance page at /performance", () => {
     const route = fs.readFileSync(performanceRoutePath, "utf-8");
     expect(route).toMatch(/staticV2Response\("performance\.html"\)/);
-    expect(performance).toMatch(/Most founders get their<br>first reply within 48 hours\./);
+    expect(performance).toMatch(/Public campaign data,<br>updated from production\./);
     expect(performance).toMatch(/id="proofTrack"/);
     expect(performance).toMatch(/funnel-bar-fill/);
     expect(performance).toMatch(/<script src="js\/main\.js" defer><\/script>/);
