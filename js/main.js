@@ -1,32 +1,6 @@
 /* ═══════════════════════════════════════════════
-   DISTRIBUTE: main.js
+   DISTRIBUTE: main.js  (page-specific interactions)
    ═══════════════════════════════════════════════ */
-
-/* ── Theme toggle ── */
-const html = document.documentElement;
-const themeBtn = document.getElementById('themeBtn');
-
-function setTheme(theme) {
-  html.setAttribute('data-theme', theme);
-  localStorage.setItem('dt', theme);
-  if (themeBtn) {
-    themeBtn.setAttribute('aria-label',
-      theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
-  }
-}
-
-setTheme(localStorage.getItem('dt') || 'light');
-themeBtn?.addEventListener('click', () => {
-  setTheme(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
-});
-
-
-/* ── Nav: floating pill on scroll ── */
-const nav = document.getElementById('nav');
-window.addEventListener('scroll', () => {
-  nav.classList.toggle('scrolled', window.scrollY > 60);
-}, { passive: true });
-
 
 /* ── Scroll reveal ── */
 const revealEls = document.querySelectorAll('.r');
@@ -112,36 +86,7 @@ if (typingTarget) {
 }
 
 
-/* ── Burger menu ── */
-const navBurger = document.getElementById('navBurger');
-const navMobile = document.getElementById('navMobile');
-const navClose  = document.getElementById('navClose');
-
-function openMobileMenu() {
-  navMobile.classList.add('open');
-  navMobile.setAttribute('aria-hidden', 'false');
-  navBurger.setAttribute('aria-expanded', 'true');
-  document.body.style.overflow = 'hidden';
-}
-
-function closeMobileMenu() {
-  navMobile.classList.remove('open');
-  navMobile.setAttribute('aria-hidden', 'true');
-  navBurger.setAttribute('aria-expanded', 'false');
-  document.body.style.overflow = '';
-}
-
-navBurger?.addEventListener('click', openMobileMenu);
-navClose?.addEventListener('click', closeMobileMenu);
-navMobile?.addEventListener('click', e => {
-  if (e.target === navMobile) closeMobileMenu();
-});
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && navMobile?.classList.contains('open')) closeMobileMenu();
-});
-
-
-/* ── Dashboard bar animation (animate bar fills on scroll) ── */
+/* ── Dashboard bar animation ── */
 const barFills = document.querySelectorAll('.uid-bar-fill[data-width]');
 if (barFills.length) {
   const barObs = new IntersectionObserver(entries => {
