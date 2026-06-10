@@ -222,3 +222,21 @@ if (postProgress) {
     postProgress.style.width = total > 0 ? (window.scrollY / total * 100) + '%' : '0';
   }, { passive: true });
 }
+
+/* ── TOC scroll-spy ── */
+const tocLinks = document.querySelectorAll('.post-toc-list a[href^="#"]');
+if (tocLinks.length) {
+  const sections = [...tocLinks].map(a => document.getElementById(a.getAttribute('href').slice(1))).filter(Boolean);
+  function updateActiveToc() {
+    const scrollY = window.scrollY + 120;
+    let active = sections[0];
+    for (const s of sections) {
+      if (s.offsetTop <= scrollY) active = s;
+    }
+    tocLinks.forEach(a => {
+      a.classList.toggle('toc-active', a.getAttribute('href') === '#' + active.id);
+    });
+  }
+  window.addEventListener('scroll', updateActiveToc, { passive: true });
+  updateActiveToc();
+}
