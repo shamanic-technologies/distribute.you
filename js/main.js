@@ -212,3 +212,13 @@ if (dashEl) {
     if (entries[0].isIntersecting) runDashAnim();
   }, { threshold: 0.25 }).observe(dashEl);
 }
+
+
+/* ── Reading progress bar ── */
+const postProgress = document.querySelector('.post-progress');
+if (postProgress) {
+  window.addEventListener('scroll', () => {
+    const total = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+    postProgress.style.width = total > 0 ? (window.scrollY / total * 100) + '%' : '0';
+  }, { passive: true });
+}

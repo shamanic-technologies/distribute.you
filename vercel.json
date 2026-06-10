@@ -1,4 +1,9 @@
 {
   "cleanUrls": true,
-  "trailingSlash": false
+  "trailingSlash": false,
+  "redirects": [
+    { "source": "/cold-email-cost-per-contact",         "destination": "/cold-email-cost-guide/cold-email-cost-per-contact",         "permanent": true },
+    { "source": "/linkedin-inmail-cost-vs-cold-email",  "destination": "/cold-email-cost-guide/linkedin-inmail-cost-vs-cold-email",  "permanent": true },
+    { "source": "/ai-cold-email-saas-founders",         "destination": "/cold-email-for-saas-founders/ai-cold-email-saas-founders", "permanent": true }
+  ]
 }
