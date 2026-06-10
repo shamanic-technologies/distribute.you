@@ -15,10 +15,6 @@ const NAV_HTML = `
       <li><a href="/#pricing">Pricing</a></li>
     </ul>
     <div class="nav-right">
-      <button class="nav-toggle" id="themeBtn" aria-label="Switch to light mode">
-        <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-        <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-      </button>
       <a href="/sign-in" class="btn btn-g">Sign in</a>
       <a href="/sign-up" class="btn btn-p">Start free</a>
       <button class="nav-burger" id="navBurger" aria-label="Open menu" aria-expanded="false">
@@ -74,9 +70,6 @@ const FOOTER_HTML = `
           <li><a href="/cold-email-cost-guide">Cold email cost guide</a></li>
           <li><a href="/cold-email-vs-linkedin">Cold email vs LinkedIn</a></li>
           <li><a href="/cold-email-for-saas-founders">Cold email for SaaS founders</a></li>
-          <li><a href="/cold-email-cost-guide/cold-email-cost-per-contact">Cost per contact breakdown</a></li>
-          <li><a href="/cold-email-cost-guide/linkedin-inmail-cost-vs-cold-email">InMail cost vs cold email</a></li>
-          <li><a href="/cold-email-for-saas-founders/ai-cold-email-saas-founders">AI cold email for SaaS</a></li>
         </ul>
       </div>
       <div class="ft-col">
@@ -89,7 +82,7 @@ const FOOTER_HTML = `
       </div>
     </div>
     <div class="ft-bottom">
-      <span class="ft-copy">© 2026 distribute. MIT License. 100% open source.</span>
+      <span class="ft-copy">&copy; 2026 distribute. MIT License. 100% open source.</span>
       <div class="ft-links">
         <a href="/privacy">Privacy</a>
         <a href="/terms">Terms</a>
@@ -118,20 +111,6 @@ const FOOTER_HTML = `
   const path = window.location.pathname.replace(/\/$/, '');
   document.querySelectorAll('#nav [data-path]').forEach(a => {
     if (a.dataset.path === path) a.classList.add('active');
-  });
-
-  /* ── Theme ── */
-  const html = document.documentElement;
-  function setTheme(theme) {
-    html.setAttribute('data-theme', theme);
-    localStorage.setItem('dt', theme);
-    const btn = document.getElementById('themeBtn');
-    if (btn) btn.setAttribute('aria-label',
-      theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
-  }
-  setTheme(localStorage.getItem('dt') || 'light');
-  document.getElementById('themeBtn')?.addEventListener('click', () => {
-    setTheme(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
   });
 
   /* ── Nav scroll ── */
