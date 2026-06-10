@@ -237,7 +237,6 @@ if (postProgress) {
     { url: '/cold-email-for-saas-founders/cold-email-personalization-at-scale', tag: 'Personalization', title: 'Cold email personalization at scale', desc: 'How to write emails that feel personal when you\'re sending hundreds. What works at volume.' },
   ];
 
-  if (!document.body.classList.contains('page-post')) return;
   var grid = document.querySelector('.post-related-grid');
   if (!grid) return;
 
