@@ -2,10 +2,10 @@
 
 ## Context
 
-Co-founder pitch dossier for distribute.you. Deliverable: standalone HTML landing page demonstrating Design + Growth + Product. Sent to founders to close co-founder deal.
+Marketing site for distribute.you — AI cold email tool for SaaS founders. Static HTML/CSS/JS, deployed on Vercel (`website` branch → auto-deploy).
 
-**Their 3 confirmed problems:** low conversion, comprehension gap, weak SEO.  
-**ICP:** solo AI founders + bootstrapped micro-SaaS (NOT agencies).
+**ICP:** solo AI founders + bootstrapped micro-SaaS.  
+**Core claim:** AI reads each prospect's site, writes unique emails. $0.07/contact, 27% open rate.
 
 ---
 
@@ -13,89 +13,131 @@ Co-founder pitch dossier for distribute.you. Deliverable: standalone HTML landin
 
 ```
 /Users/adam/Distribute Lead AI/
-├── index.html          # 58KB standalone — no build tool, no framework
-└── logo/
-    └── logo-distribute-2.svg   # 750×750 SVG, dark bg + blue "D" glyph
+├── index.html                          # Main landing page
+├── css/styles.css                      # Single shared stylesheet (OKLCH tokens, light/dark)
+├── js/
+│   ├── components.js                   # Shared nav + footer (synchronous injection)
+│   └── main.js                         # Reading progress bar + TOC scroll-spy
+├── vercel.json                         # cleanUrls, trailingSlash:false, 301 redirects
+├── cold-email-cost-guide/
+│   ├── index.html                      # Pillar page
+│   ├── cold-email-cost-per-contact.html
+│   └── linkedin-inmail-cost-vs-cold-email.html
+└── cold-email-for-saas-founders/
+    ├── index.html                      # Pillar page
+    └── ai-cold-email-saas-founders.html
 ```
 
 ---
 
 ## Stack
 
-- Pure HTML/CSS/JS — no Tailwind, no bundler
-- Google Fonts: **Plus Jakarta Sans** (body) + **JetBrains Mono** (labels/data)
-- `localStorage` for light/dark theme persistence
-- Intersection Observer for scroll reveal (`.r` → `.on`)
-- Counter animation on stats scroll-in
+- Pure HTML/CSS/JS — no build tool, no framework
+- Google Fonts: **Inter** (body) + **JetBrains Mono** (labels/data/meta)
+- OKLCH color tokens (light + dark themes via `data-theme` on `<html>`)
+- `localStorage` key `dt` for theme persistence
+- Intersection Observer for scroll reveal
+- `window.scroll` for reading progress bar + TOC scroll-spy
 
 ---
 
 ## Design System
 
-### Color Tokens (CSS custom properties on `<html class="light|dark">`)
+### Color Tokens (CSS custom properties, light theme default via `[data-theme="light"]`)
 
-| Token | Light | Dark |
-|---|---|---|
-| `--bg` | `#F8F8F6` | `#0A0A0F` |
-| `--bg-alt` | `#F1F1EE` | `#0F0F16` |
-| `--surface` | `#FFFFFF` | `#131319` |
-| `--surface-hi` | `#F5F5F2` | `#1A1A24` |
-| `--text` | `#0E0E14` | `#EEEEF3` |
-| `--muted` | `#606070` | `#8080A4` |
-| `--sub` | `#3E3E50` | `#ABABC2` |
-| `--accent` | `#2563EB` | `#4A7DFF` |
+Key tokens:
+- `--bg`, `--bg-alt`, `--surface`, `--surface-hi`
+- `--text`, `--sub`, `--muted`
+- `--accent` (blue, OKLCH), `--accent-dim`, `--accent-brd`
+- `--green`, `--green-dim`, `--green-brd`
+- `--border`, `--border-hi`
+- `--shadow-card`
 
-### Type Scale
+Full token set in `css/styles.css` lines ~12–47.
 
-| Class | Size | Use |
-|---|---|---|
-| `.t-hero` | `clamp(3rem, 7vw, 5.5rem)` | Hero headline |
-| `.t-h2` | `clamp(1.875rem, 3.5vw, 2.75rem)` | Section titles |
-| `.t-h3` | `1.1rem` | Card titles, step headers |
-| `.t-body` | `1rem` | Body copy, CTAs, nav |
-| `.t-sm` | `0.85rem` | Secondary text, footnotes |
-| `.t-lbl` | `0.7rem` (JetBrains Mono) | Chips, badges, category labels |
-| `.t-mono` | `0.85rem` (JetBrains Mono) | Code/data display |
+### Font size variables
+`--fs-xs`, `--fs-sm`, `--fs-md`, `--fs-lg` — defined in `:root`.
 
 ### Layout
-
-- Max-width: `1100px` via `.wrap`
-- Section padding: `6rem 0`
-- Alternating backgrounds: `section` = `--surface`, `section.alt` = `--bg-alt`
+- `.wrap` — max-width 1100px, `padding: 0 2rem`
 
 ---
 
-## Key Sections
+## Article Template (post pages)
 
-1. **Nav** — sticky, blur backdrop, logo + beta chip, theme toggle
-2. **Hero** — headline + sub + CTA pair + hero note
-3. **Stats** — contained dark card (`.stats-card`) inside white section (`.stats-outer`), 4 counters
-4. **How it works** — 3-step process with step numbers
-5. **Channels** — 9 channel chips with color-coded categories
-6. **Who ships with Distribute** — ICP section (dark `.ai-block`)
-7. **Compare** — side-by-side "before/after" grid
-8. **Pricing** — pay-as-you-go card + $25 CTA
-9. **Integrations** — Gmail, Slack, Zapier, etc.
-10. **Footer** — logo, links, legal
+### HTML structure (all 3 article files use this — do NOT revert to old structure)
 
----
+```html
+<body class="page-guide page-post">
+  <div class="post-progress" aria-hidden="true"></div>
+  <div id="site-nav"></div>
+  <script src="/js/components.js"></script>
 
-## Accessibility
+  <nav class="post-breadcrumb">...</nav>
 
-- WCAG AA contrast on all text
-- `focus-visible` outlines on all interactive elements
-- `prefers-reduced-motion` disables all animations
-- Semantic HTML throughout
+  <div class="post-layout">           <!-- 2-col grid: 1fr 252px -->
+    <div class="post-main">           <!-- left column -->
+      <header class="post-header">   <!-- title, kicker, lede, meta -->
+      </header>
+      <main class="post-body">       <!-- post-section elements -->
+      </main>
+    </div>
+    <aside class="post-sidebar">     <!-- right column, sticky -->
+      <nav class="post-toc">...</nav>
+    </aside>
+  </div>
 
----
+  <aside class="post-related">...</aside>
+  <div id="site-footer"></div>
+  <script src="/js/main.js" defer></script>
+</body>
+```
 
-## What Was Improved vs distribute.you
+### Article visual components
 
-| Problem | Fix |
+| Class | Purpose |
 |---|---|
-| Headline too abstract ("Stripe of leads") | Concrete: "$1.42/reply. Drop a URL, get qualified leads in Gmail." |
-| Workflow not concrete | 3-step How it works with specific outputs |
-| Not niched | ICP section explicitly targets solo founders |
-| No SEO signals | Title tag with price, meta desc, JSON-LD schema |
-| Low visual hierarchy | 5-level type scale, alternating section backgrounds |
-| Gray-on-gray illegibility | Token-level contrast fix + surface/bg-alt structure |
+| `.post-key` | Blue callout box (accent-dim bg, no border-left) |
+| `.post-tip` | Green tip box (green-dim bg, no border-left) |
+| `.post-callout` | Neutral inline callout |
+| `.post-cta-inline` | Mid-article CTA aside |
+| `.post-stat-row` / `.post-stat` | White stat cards with shadow (NOT accent-dim bg) |
+| `.post-table-wrap` / `.post-table` | Data tables with `.pt-good`, `.pt-bad`, `.pt-ok`, `.pt-hl` cell classes |
+| `.post-related-grid` | 4-col related articles grid |
+
+### Critical CSS rules (do NOT break)
+- **No `border-left/right/top > 1px` as colored accent** on any block — top AI-tell. Use bg tints + full-perimeter 1px borders instead. Applies to `.post-key`, `.post-tip`, `.toc-active`, all callouts, cards.
+- `.post-stat` background: `var(--surface)` with `box-shadow: var(--shadow-card)` — NOT accent-dim
+- `.post-key` has `margin-top: 2.5rem`
+- `.post-section` spacing: `margin-bottom: 0.5rem`
+- TOC active state: bg tint + color change only, no side border
+
+---
+
+## SEO URL Structure
+
+Vercel `cleanUrls: true` — `.html` files served without extension.
+
+| URL | File |
+|---|---|
+| `/cold-email-cost-guide/cold-email-cost-per-contact` | `cold-email-cost-guide/cold-email-cost-per-contact.html` |
+| `/cold-email-cost-guide/linkedin-inmail-cost-vs-cold-email` | `cold-email-cost-guide/linkedin-inmail-cost-vs-cold-email.html` |
+| `/cold-email-for-saas-founders/ai-cold-email-saas-founders` | `cold-email-for-saas-founders/ai-cold-email-saas-founders.html` |
+
+Old root-level URLs 301-redirect to cluster URLs via `vercel.json`.
+
+---
+
+## JS Behaviors (main.js)
+
+- **Progress bar:** `.post-progress` width = scroll % of page height
+- **TOC scroll-spy:** IntersectionObserver-style via `window.scroll` — adds `.toc-active` to matching `post-toc-list a` as sections enter viewport
+
+---
+
+## Next Possible Work
+
+- More SEO cluster articles (e.g. `/cold-email-for-saas-founders/cold-email-subject-lines`)
+- Pillar page content (`cold-email-cost-guide/index.html`, `cold-email-for-saas-founders/index.html`)
+- Internal linking improvements
+- Dark mode CSS audit for article pages
