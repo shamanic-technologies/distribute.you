@@ -96,11 +96,20 @@ const FOOTER_HTML = `
 </footer>`;
 
 (function () {
-  /* ── Inject components ── */
+  /* ── Inject nav (sync — runs right after #site-nav div) ── */
   const navEl = document.getElementById('site-nav');
-  const ftEl  = document.getElementById('site-footer');
-  if (navEl)  navEl.outerHTML  = NAV_HTML;
-  if (ftEl)   ftEl.outerHTML   = FOOTER_HTML;
+  if (navEl) navEl.outerHTML = NAV_HTML;
+
+  /* ── Inject footer after DOM is ready ── */
+  function injectFooter() {
+    const ftEl = document.getElementById('site-footer');
+    if (ftEl) ftEl.outerHTML = FOOTER_HTML;
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', injectFooter);
+  } else {
+    injectFooter();
+  }
 
   /* ── Active nav link ── */
   const path = window.location.pathname.replace(/\/$/, '');
