@@ -2591,7 +2591,7 @@ footer    { border-top: 1px solid var(--border); padding: 3.5rem 0 0; background
 .post-breadcrumb-inner {
   display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
   max-width: 1100px; margin: 0 auto; padding: 0 2rem;
-  font-size: var(--fs-xs); color: var(--muted);
+  font-size: 0.85rem; color: var(--muted);
 }
 .post-breadcrumb-inner a { color: var(--muted); text-decoration: none; transition: color var(--dur); }
 .post-breadcrumb-inner a:hover { color: var(--text); }
@@ -2611,7 +2611,7 @@ footer    { border-top: 1px solid var(--border); padding: 3.5rem 0 0; background
 .post-header { padding: 2.75rem 0 2rem; border-bottom: 1px solid var(--border); }
 .post-kicker {
   display: inline-flex; align-items: center; gap: 0.5rem;
-  font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0.06em;
+  font-size: 0.85rem; font-weight: 600; letter-spacing: 0.06em;
   text-transform: uppercase; margin-bottom: 1rem;
 }
 .post-kicker a { color: var(--accent); text-decoration: none; }
@@ -2625,7 +2625,7 @@ footer    { border-top: 1px solid var(--border); padding: 3.5rem 0 0; background
 .post-lede { font-size: var(--fs-md); color: var(--sub); line-height: 1.75; margin: 0 0 1.125rem; }
 .post-meta {
   display: flex; align-items: center; gap: 0.75rem;
-  font-size: var(--fs-xs); color: var(--muted);
+  font-size: 0.85rem; color: var(--muted);
   font-family: 'JetBrains Mono', monospace;
 }
 .post-meta-sep { opacity: 0.4; }
@@ -2648,12 +2648,12 @@ footer    { border-top: 1px solid var(--border); padding: 3.5rem 0 0; background
   box-shadow: var(--shadow-card);
 }
 .post-toc-title {
-  font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase;
+  font-size: 0.85rem; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.07em; color: var(--muted); margin: 0 0 0.75rem; padding: 0 0.5rem;
 }
 .post-toc-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; }
 .post-toc-list a {
-  display: block; font-size: var(--fs-xs); color: var(--sub);
+  display: block; font-size: 0.85rem; color: var(--sub);
   text-decoration: none; line-height: 1.4; padding: 0.375rem 0.625rem;
   border-radius: var(--r-sm); transition: color var(--dur), background var(--dur);
 }
@@ -2672,7 +2672,7 @@ footer    { border-top: 1px solid var(--border); padding: 3.5rem 0 0; background
 }
 .post-section:first-child h2 { margin-top: 0; }
 .post-section h3 {
-  font-size: var(--fs-lg); font-weight: 700;
+  font-size: 1rem; font-weight: 700;
   color: var(--text); margin: 1.5rem 0 0.5rem; scroll-margin-top: 5.5rem;
 }
 .post-section p { font-size: var(--fs-md); color: var(--sub); line-height: 1.8; margin: 0 0 0.75rem; }
@@ -2695,7 +2695,7 @@ footer    { border-top: 1px solid var(--border); padding: 3.5rem 0 0; background
   font-size: 2rem; font-weight: 800;
   letter-spacing: -0.05em; line-height: 1; color: var(--accent);
 }
-.post-stat-l { font-size: var(--fs-sm); color: var(--sub); line-height: 1.45; }
+.post-stat-l { font-size: 0.85rem; color: var(--sub); line-height: 1.45; }
 .post-stat-row {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 0.875rem; margin: 1.25rem 0;
@@ -2707,10 +2707,10 @@ footer    { border-top: 1px solid var(--border); padding: 3.5rem 0 0; background
   background: var(--accent-dim); border: 1px solid var(--accent-brd);
   border-radius: var(--r-lg); padding: 1rem 1.25rem;
   margin-top: 2.5rem; margin-bottom: 0.75rem;
-  font-size: var(--fs-sm); color: var(--sub); line-height: 1.7;
+  font-size: 0.85rem; color: var(--sub); line-height: 1.7;
 }
 .post-key-label {
-  font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase;
+  font-size: 0.85rem; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.07em; color: var(--accent); margin: 0 0 0.375rem;
 }
 .post-key strong { color: var(--text); }
@@ -2719,10 +2719,10 @@ footer    { border-top: 1px solid var(--border); padding: 3.5rem 0 0; background
 .post-tip {
   background: var(--green-dim); border: 1px solid var(--green-brd);
   border-radius: var(--r-lg); padding: 1rem 1.25rem;
-  margin: 1rem 0; font-size: var(--fs-sm); color: var(--sub); line-height: 1.7;
+  margin: 1rem 0; font-size: 0.85rem; color: var(--sub); line-height: 1.7;
 }
 .post-tip-label {
-  font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase;
+  font-size: 0.85rem; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.07em; color: var(--green); margin: 0 0 0.375rem;
 }
 .post-tip strong { color: var(--text); }
@@ -2731,7 +2731,7 @@ footer    { border-top: 1px solid var(--border); padding: 3.5rem 0 0; background
 .post-callout {
   background: var(--surface); border: 1px solid var(--border-hi);
   border-radius: var(--r-lg); padding: 1rem 1.25rem;
-  margin: 1rem 0; font-size: var(--fs-sm); color: var(--sub); line-height: 1.7;
+  margin: 1rem 0; font-size: 0.85rem; color: var(--sub); line-height: 1.7;
 }
 .post-callout strong { color: var(--text); }
 
@@ -2740,10 +2740,10 @@ footer    { border-top: 1px solid var(--border); padding: 3.5rem 0 0; background
   border: 1px solid var(--border-hi); border-radius: var(--r-xl);
   overflow: hidden; margin: 1.25rem 0; box-shadow: var(--shadow-card);
 }
-.post-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+.post-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
 .post-table thead th {
   padding: 0.875rem 1.125rem; text-align: left;
-  font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.06em;
+  font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em;
   color: var(--muted); background: var(--surface); font-weight: 600;
   border-bottom: 1px solid var(--border-hi); border-right: 1px solid var(--border-hi);
 }
@@ -2751,7 +2751,7 @@ footer    { border-top: 1px solid var(--border); padding: 3.5rem 0 0; background
 .post-table tbody td {
   padding: 0.875rem 1.125rem; border-bottom: 1px solid var(--border);
   border-right: 1px solid var(--border); color: var(--sub);
-  vertical-align: top; line-height: 1.55; font-size: var(--fs-sm);
+  vertical-align: top; line-height: 1.55;
 }
 .post-table tbody td:last-child { border-right: none; }
 .post-table tbody tr:last-child td { border-bottom: none; }
@@ -2773,11 +2773,11 @@ footer    { border-top: 1px solid var(--border); padding: 3.5rem 0 0; background
 }
 .post-cta-inline > * { position: relative; z-index: 1; }
 .post-cta-inline h3 {
-  font-size: var(--fs-lg); font-weight: 800;
+  font-size: 1.375rem; font-weight: 800;
   color: oklch(96% 0.005 264); margin: 0 0 0.375rem; line-height: 1.25;
 }
 .post-cta-inline p {
-  font-size: var(--fs-sm); color: oklch(55% 0.016 264);
+  font-size: 0.85rem; color: oklch(55% 0.016 264);
   margin: 0 0 1.125rem; line-height: 1.65;
 }
 
@@ -2785,11 +2785,11 @@ footer    { border-top: 1px solid var(--border); padding: 3.5rem 0 0; background
 .post-related { border-top: 1px solid var(--border); background: var(--bg-alt); padding: 3rem 0; }
 .post-related-inner { max-width: 1100px; margin: 0 auto; padding: 0 2rem; }
 .post-related-label {
-  font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase;
+  font-size: 0.85rem; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.07em; color: var(--muted); margin: 0 0 0.25rem;
 }
 .post-related-heading {
-  font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em;
+  font-size: 1.375rem; font-weight: 800; letter-spacing: -0.02em;
   color: var(--text); margin: 0 0 1.25rem; line-height: 1.2;
 }
 .post-related-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
@@ -2801,12 +2801,12 @@ footer    { border-top: 1px solid var(--border); padding: 3.5rem 0 0; background
 }
 .post-related-card:hover { border-color: var(--accent-brd); transform: translateY(-2px); }
 .post-related-tag {
-  font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase;
+  font-size: 0.85rem; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.07em; color: var(--accent);
 }
-.post-related-title { font-size: var(--fs-sm); font-weight: 700; color: var(--text); line-height: 1.3; margin: 0; }
-.post-related-desc { font-size: var(--fs-xs); color: var(--sub); line-height: 1.55; flex: 1; }
-.post-related-arrow { font-size: var(--fs-xs); color: var(--muted); }
+.post-related-title { font-size: 0.85rem; font-weight: 700; color: var(--text); line-height: 1.3; margin: 0; }
+.post-related-desc { font-size: 0.85rem; color: var(--sub); line-height: 1.55; flex: 1; }
+.post-related-arrow { font-size: 0.85rem; color: var(--muted); }
 
 /* ── Responsive ── */
 @media (max-width: 900px) {
