@@ -74,6 +74,9 @@ const FOOTER_HTML = `
           <li><a href="/cold-email-cost-guide">Cold email cost guide</a></li>
           <li><a href="/cold-email-vs-linkedin">Cold email vs LinkedIn</a></li>
           <li><a href="/cold-email-for-saas-founders">Cold email for SaaS founders</a></li>
+          <li><a href="/cold-email-cost-per-contact">Cost per contact breakdown</a></li>
+          <li><a href="/linkedin-inmail-cost-vs-cold-email">InMail cost vs cold email</a></li>
+          <li><a href="/ai-cold-email-saas-founders">AI cold email for SaaS</a></li>
         </ul>
       </div>
       <div class="ft-col">
