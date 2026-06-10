@@ -223,6 +223,42 @@ if (postProgress) {
   }, { passive: true });
 }
 
+/* ── Related articles (random 3) ── */
+(function () {
+  var ARTICLES = [
+    { url: '/cold-email-cost-guide/cold-email-cost-per-contact', tag: 'Cost breakdown', title: 'Cold email cost per contact: the real numbers', desc: 'DIY stacks, agencies, and Distribute. What each approach actually costs once you count everything.' },
+    { url: '/cold-email-cost-guide/linkedin-inmail-cost-vs-cold-email', tag: 'Channel comparison', title: 'LinkedIn InMail cost vs cold email: what the math says', desc: 'Sales Navigator at $3-5 per message vs cold email at $0.07. The full cost-per-reply breakdown.' },
+    { url: '/cold-email-cost-guide/cold-email-roi', tag: 'ROI analysis', title: 'Cold email ROI: how to calculate real returns', desc: 'The formula, benchmarks, and sensitivity table. How deal size changes everything.' },
+    { url: '/cold-email-for-saas-founders/ai-cold-email-saas-founders', tag: 'AI outreach', title: 'AI cold email for SaaS founders: does it actually work?', desc: 'Per-prospect research at $0.07 per contact with a 27% open rate. Real campaign numbers.' },
+    { url: '/cold-email-for-saas-founders/cold-email-subject-lines-saas', tag: 'Subject lines', title: 'Cold email subject lines for SaaS founders', desc: 'The patterns that get 30%+ open rates. With real examples for SaaS outreach.' },
+    { url: '/cold-email-for-saas-founders/b2b-cold-email-reply-rate', tag: 'Benchmarks', title: 'B2B cold email reply rate benchmarks', desc: 'What 4% means and how to push it higher. Benchmarks by ICP specificity.' },
+    { url: '/cold-email-vs-linkedin/cold-email-vs-linkedin-ads', tag: 'Channel comparison', title: 'Cold email vs LinkedIn ads: which converts better?', desc: 'CPL, conversion rates, and time to first lead. A direct comparison for B2B outbound.' },
+    { url: '/cold-email-vs-linkedin/b2b-outbound-channel-comparison', tag: 'Channel guide', title: 'B2B outbound channel comparison: email, LinkedIn, cold calling', desc: 'Which outbound channel fits which use case. Cost, effort, and conversion data side by side.' },
+    { url: '/cold-email-for-saas-founders/cold-email-personalization-at-scale', tag: 'Personalization', title: 'Cold email personalization at scale', desc: 'How to write emails that feel personal when you\'re sending hundreds. What works at volume.' },
+  ];
+
+  if (!document.body.classList.contains('page-post')) return;
+  var grid = document.querySelector('.post-related-grid');
+  if (!grid) return;
+
+  var currentPath = window.location.pathname.replace(/\/$/, '');
+  var pool = ARTICLES.filter(function (a) { return a.url !== currentPath; });
+
+  for (var i = pool.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
+  }
+
+  grid.innerHTML = pool.slice(0, 3).map(function (a) {
+    return '<a href="' + a.url + '" class="post-related-card">'
+      + '<span class="post-related-tag">' + a.tag + '</span>'
+      + '<p class="post-related-title">' + a.title + '</p>'
+      + '<p class="post-related-desc">' + a.desc + '</p>'
+      + '<span class="post-related-arrow">Read &rarr;</span>'
+      + '</a>';
+  }).join('');
+})();
+
 /* ── TOC scroll-spy ── */
 const tocLinks = document.querySelectorAll('.post-toc-list a[href^="#"]');
 if (tocLinks.length) {
