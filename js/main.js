@@ -86,7 +86,7 @@ if (typingTarget) {
 }
 
 
-/* ── Dashboard bar animation ── */
+/* ── Sidebar bar fills (data-width) ── */
 const barFills = document.querySelectorAll('.uid-bar-fill[data-width]');
 if (barFills.length) {
   const barObs = new IntersectionObserver(entries => {
@@ -101,4 +101,80 @@ if (barFills.length) {
     el.style.width = '0';
     barObs.observe(el);
   });
+}
+
+
+/* ── Dashboard hero animation ── */
+const dashEl = document.querySelector('.uid-dash-anim');
+if (dashEl) {
+  let dashDone = false;
+
+  function countUp(el, target, duration, prefix, suffix, decimals) {
+    const start = performance.now();
+    function tick(now) {
+      const p = Math.min((now - start) / duration, 1);
+      const ease = 1 - Math.pow(1 - p, 3);
+      const val = ease * target;
+      el.textContent = prefix + (decimals ? val.toFixed(decimals) : Math.round(val).toLocaleString()) + suffix;
+      if (p < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  function runDashAnim() {
+    if (dashDone) return;
+    dashDone = true;
+
+    /* 1 — Bar chart: staggered grow from bottom */
+    const chartBars = dashEl.querySelectorAll('.uid-chart-bar');
+    chartBars.forEach((bar, i) => {
+      const dayIndex = Math.floor(i / 3);
+      const delay = dayIndex * 55 + (i % 3) * 18;
+      setTimeout(() => { bar.style.transform = 'scaleY(1)'; }, delay);
+    });
+
+    /* 2 — KPI counters */
+    const kpiNums = dashEl.querySelectorAll('.uid-kpi-n');
+    const kpiData = [
+      { target: 312, prefix: '',  suffix: '',  decimals: 0, delay: 80  },
+      { target: 84,  prefix: '',  suffix: '',  decimals: 0, delay: 110 },
+      { target: 7,   prefix: '',  suffix: '',  decimals: 0, delay: 140 },
+      { target: 72,  prefix: '',  suffix: '%', decimals: 0, delay: 170 },
+    ];
+    kpiNums.forEach((el, i) => {
+      const d = kpiData[i];
+      if (!d) return;
+      setTimeout(() => countUp(el, d.target, 900, d.prefix, d.suffix, d.decimals), d.delay);
+    });
+
+    /* 3 — Progress bar */
+    const progressFill = dashEl.querySelector('.uid-kpi-progress-fill');
+    if (progressFill) {
+      setTimeout(() => { progressFill.style.width = '72%'; }, 200);
+    }
+
+    /* 4 — ROI values */
+    const roiVals = dashEl.querySelectorAll('.uid-roi-val');
+    const roiData = [
+      { target: 45,   prefix: '',  suffix: 'x',  decimals: 0, delay: 250 },
+      { target: 9800, prefix: '$', suffix: '',    decimals: 0, delay: 310 },
+      { target: 0.07, prefix: '$', suffix: '',    decimals: 2, delay: 370 },
+    ];
+    roiVals.forEach((el, i) => {
+      const d = roiData[i];
+      if (!d) return;
+      el.textContent = d.prefix + (d.decimals ? (0).toFixed(d.decimals) : '0') + d.suffix;
+      setTimeout(() => countUp(el, d.target, 950, d.prefix, d.suffix, d.decimals), d.delay);
+    });
+
+    /* 5 — Table rows: staggered fade+slide */
+    const rows = dashEl.querySelectorAll('.uid-table tbody tr');
+    rows.forEach((row, i) => {
+      setTimeout(() => { row.classList.add('dash-row-in'); }, 550 + i * 100);
+    });
+  }
+
+  new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting) runDashAnim();
+  }, { threshold: 0.25 }).observe(dashEl);
 }
