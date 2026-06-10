@@ -144,13 +144,6 @@
               </div>
               <div><span class="uid-kpi-delta up">2.2%</span><span class="uid-kpi-vs">reply rate</span></div>
             </div>
-            <div class="uid-kpi">
-              <div class="uid-kpi-lbl">Budget used today</div>
-              <div class="uid-kpi-row">
-                <span class="uid-kpi-n" style="color:var(--accent)">72%</span>
-              </div>
-              <div class="uid-kpi-progress"><div class="uid-kpi-progress-fill" style="width:0"></div></div>
-            </div>
           </div>
 
           <!-- Grouped bar chart + ROI panel -->
@@ -207,6 +200,14 @@
 
             <!-- ROI panel -->
             <div class="uid-roi">
+              <div class="uid-roi-section">
+                <div class="uid-roi-lbl">Budget used today</div>
+                <div id="dash-budget-n" class="uid-roi-val" style="color:var(--accent)">22%</div>
+                <div class="uid-kpi-progress" style="margin-top:0.4rem">
+                  <div class="uid-kpi-progress-fill" id="dash-budget-bar" style="width:22%"></div>
+                </div>
+              </div>
+              <div class="uid-roi-divider"></div>
               <div class="uid-roi-section">
                 <div class="uid-roi-lbl">Expected ROI</div>
                 <div class="uid-roi-val" style="color:var(--green)">45x</div>

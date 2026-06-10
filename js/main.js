@@ -109,69 +109,103 @@ const dashEl = document.querySelector('.uid-dash-anim');
 if (dashEl) {
   let dashDone = false;
 
+  /* Count-up helper */
   function countUp(el, target, duration, prefix, suffix, decimals) {
     const start = performance.now();
     function tick(now) {
       const p = Math.min((now - start) / duration, 1);
-      const ease = 1 - Math.pow(1 - p, 3);
-      const val = ease * target;
+      const val = (1 - Math.pow(1 - p, 3)) * target;
       el.textContent = prefix + (decimals ? val.toFixed(decimals) : Math.round(val).toLocaleString()) + suffix;
       if (p < 1) requestAnimationFrame(tick);
     }
     requestAnimationFrame(tick);
   }
 
+  /* ── Budget loop ── */
+  const BUDGET_STEPS = [22, 35, 58, 72, 85, 60, 45];
+  const BUDGET_WAITS = [1600, 2000, 1800, 2200, 1500, 2400, 1700];
+  let budgetIdx = 0;
+  let budgetTimer = null;
+
+  function stepBudget() {
+    const val = BUDGET_STEPS[budgetIdx];
+    const n   = document.getElementById('dash-budget-n');
+    const bar = document.getElementById('dash-budget-bar');
+    if (n)   n.textContent   = val + '%';
+    if (bar) bar.style.width = val + '%';
+    budgetIdx = (budgetIdx + 1) % BUDGET_STEPS.length;
+    budgetTimer = setTimeout(stepBudget, BUDGET_WAITS[budgetIdx]);
+  }
+
+  /* ── Bar chart loop ── */
+  // Bars grouped by day (indices into querySelectorAll('.uid-chart-bar'))
+  const DAY_GROUPS = [[0,1],[2,3,4],[5,6,7],[8,9],[10,11,12],[13,14,15],[16,17]];
+
+  function runBarsLoop() {
+    const bars = dashEl.querySelectorAll('.uid-chart-bar');
+
+    // Reset all
+    bars.forEach(b => {
+      b.style.transition = 'none';
+      b.style.transform  = 'scaleY(0)';
+    });
+
+    // After reset frame, grow day by day
+    let delay = 60;
+    DAY_GROUPS.forEach(group => {
+      group.forEach(idx => {
+        const bar = bars[idx];
+        if (!bar) return;
+        setTimeout(() => {
+          bar.style.transition = 'transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)';
+          bar.style.transform  = 'scaleY(1)';
+        }, delay);
+        delay += 30;
+      });
+      delay += 90; // pause between days
+    });
+
+    // Loop: wait until all bars finished + pause, then restart
+    setTimeout(runBarsLoop, delay + 2800);
+  }
+
   function runDashAnim() {
     if (dashDone) return;
     dashDone = true;
 
-    /* 1 — Bar chart: staggered grow from bottom */
-    const chartBars = dashEl.querySelectorAll('.uid-chart-bar');
-    chartBars.forEach((bar, i) => {
-      const dayIndex = Math.floor(i / 3);
-      const delay = dayIndex * 55 + (i % 3) * 18;
-      setTimeout(() => { bar.style.transform = 'scaleY(1)'; }, delay);
-    });
-
-    /* 2 — KPI counters */
+    /* KPI count-up */
     const kpiNums = dashEl.querySelectorAll('.uid-kpi-n');
-    const kpiData = [
-      { target: 312, prefix: '',  suffix: '',  decimals: 0, delay: 80  },
-      { target: 84,  prefix: '',  suffix: '',  decimals: 0, delay: 110 },
-      { target: 7,   prefix: '',  suffix: '',  decimals: 0, delay: 140 },
-      { target: 72,  prefix: '',  suffix: '%', decimals: 0, delay: 170 },
-    ];
-    kpiNums.forEach((el, i) => {
-      const d = kpiData[i];
-      if (!d) return;
-      setTimeout(() => countUp(el, d.target, 900, d.prefix, d.suffix, d.decimals), d.delay);
+    [
+      { target: 312, prefix: '', suffix: '',  decimals: 0, delay: 80  },
+      { target: 84,  prefix: '', suffix: '',  decimals: 0, delay: 110 },
+      { target: 7,   prefix: '', suffix: '',  decimals: 0, delay: 140 },
+    ].forEach((d, i) => {
+      const el = kpiNums[i];
+      if (el) setTimeout(() => countUp(el, d.target, 900, d.prefix, d.suffix, d.decimals), d.delay);
     });
 
-    /* 3 — Progress bar */
-    const progressFill = dashEl.querySelector('.uid-kpi-progress-fill');
-    if (progressFill) {
-      setTimeout(() => { progressFill.style.width = '72%'; }, 200);
-    }
-
-    /* 4 — ROI values */
+    /* ROI count-up (indices 1-3 skip budget which has id) */
     const roiVals = dashEl.querySelectorAll('.uid-roi-val');
-    const roiData = [
-      { target: 45,   prefix: '',  suffix: 'x',  decimals: 0, delay: 250 },
-      { target: 9800, prefix: '$', suffix: '',    decimals: 0, delay: 310 },
-      { target: 0.07, prefix: '$', suffix: '',    decimals: 2, delay: 370 },
-    ];
-    roiVals.forEach((el, i) => {
-      const d = roiData[i];
-      if (!d) return;
-      el.textContent = d.prefix + (d.decimals ? (0).toFixed(d.decimals) : '0') + d.suffix;
-      setTimeout(() => countUp(el, d.target, 950, d.prefix, d.suffix, d.decimals), d.delay);
+    [
+      { target: 45,   prefix: '',  suffix: 'x', decimals: 0, delay: 200 },
+      { target: 9800, prefix: '$', suffix: '',  decimals: 0, delay: 260 },
+      { target: 0.07, prefix: '$', suffix: '',  decimals: 2, delay: 320 },
+    ].forEach((d, i) => {
+      const el = roiVals[i + 1]; // +1 because index 0 is budget (managed by loop)
+      if (el) {
+        el.textContent = d.prefix + (d.decimals ? (0).toFixed(d.decimals) : '0') + d.suffix;
+        setTimeout(() => countUp(el, d.target, 950, d.prefix, d.suffix, d.decimals), d.delay);
+      }
     });
 
-    /* 5 — Table rows: staggered fade+slide */
-    const rows = dashEl.querySelectorAll('.uid-table tbody tr');
-    rows.forEach((row, i) => {
-      setTimeout(() => { row.classList.add('dash-row-in'); }, 550 + i * 100);
+    /* Table rows stagger */
+    dashEl.querySelectorAll('.uid-table tbody tr').forEach((row, i) => {
+      setTimeout(() => row.classList.add('dash-row-in'), 500 + i * 100);
     });
+
+    /* Start loops */
+    runBarsLoop();
+    setTimeout(stepBudget, 400);
   }
 
   new IntersectionObserver(entries => {
