@@ -235,6 +235,9 @@ if (postProgress) {
     { url: '/cold-email-vs-linkedin/cold-email-vs-linkedin-ads', tag: 'Channel comparison', title: 'Cold email vs LinkedIn ads: which converts better?', desc: 'CPL, conversion rates, and time to first lead. A direct comparison for B2B outbound.' },
     { url: '/cold-email-vs-linkedin/b2b-outbound-channel-comparison', tag: 'Channel guide', title: 'B2B outbound channel comparison: email, LinkedIn, cold calling', desc: 'Which outbound channel fits which use case. Cost, effort, and conversion data side by side.' },
     { url: '/cold-email-for-saas-founders/cold-email-personalization-at-scale', tag: 'Personalization', title: 'Cold email personalization at scale', desc: 'How to write emails that feel personal when you\'re sending hundreds. What works at volume.' },
+    { url: '/cold-email-cost-guide/cold-email-setup-cost', tag: 'Infrastructure', title: 'Cold email setup cost: what building the infrastructure runs', desc: 'Domains, warmup, data, tools — $200-500/month before you send the first email. Every line item.' },
+    { url: '/cold-email-vs-linkedin/linkedin-connection-request-vs-cold-email', tag: 'Channel comparison', title: 'LinkedIn connection requests vs cold email: which works better?', desc: 'LinkedIn caps at 100-200 requests per week. Cold email has no limit. The full funnel math.' },
+    { url: '/cold-email-vs-linkedin/multichannel-outreach-strategy', tag: 'Strategy', title: 'Multichannel outreach: combining cold email and LinkedIn', desc: 'Cold email first, LinkedIn second. Prospects hit both channels convert at 2-3x the rate.' },
   ];
 
   var grid = document.querySelector('.post-related-grid');

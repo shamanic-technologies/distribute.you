@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cold email setup cost: what building the infrastructure actually runs</title>
+  <meta name="description" content="Domains, warmup, data, sending tools — DIY cold email infrastructure runs $200-500/month before you send a single email. Here's every line item, and what Distribute replaces.">
+  <link rel="canonical" href="https://distribute.you/cold-email-cost-guide/cold-email-setup-cost">
+  <link rel="stylesheet" href="/css/styles.css">
+  <script>document.documentElement.setAttribute('data-theme','light')</script>
+</head>
+<body class="page-guide page-post">
+<div class="post-progress" aria-hidden="true"></div>
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<div id="site-nav"></div>
+<script src="/js/components.js"></script>
+
+<nav class="post-breadcrumb" aria-label="Breadcrumb">
+  <div class="wrap post-breadcrumb-inner">
+    <a href="/">Home</a>
+    <span class="post-bc-sep">/</span>
+    <a href="/cold-email-cost-guide">Cold email cost guide</a>
+    <span class="post-bc-sep">/</span>
+    <span>Setup cost</span>
+  </div>
+</nav>
+
+<div class="post-layout">
+  <div class="post-main">
+
+    <header class="post-header" id="main-content">
+      <div class="post-kicker">
+        <a href="/cold-email-cost-guide">Cold email cost guide</a>
+        <span class="post-kicker-sep">&rsaquo;</span>
+        <span class="post-kicker-sub">Infrastructure</span>
+      </div>
+      <h1 class="post-headline">Cold email setup cost: what building the infrastructure actually runs</h1>
+      <p class="post-lede">Most cold email cost breakdowns start at "per contact." They skip the $200-500/month you spend before sending the first email. Domains, warmup, data subscriptions, sending tools — here's every line item in a DIY stack, and what each one costs.</p>
+      <div class="post-meta">
+        <span>Jun 2026</span>
+        <span class="post-meta-sep">&middot;</span>
+        <span>5 min read</span>
+      </div>
+    </header>
+
+    <main class="post-body">
+
+      <section class="post-section" id="full-stack-cost">
+        <h2>The full DIY stack cost</h2>
+        <p>A functional cold email infrastructure has five components. Most guides mention sending tools but skip the rest. Here's the complete picture:</p>
+
+        <div class="post-table-wrap">
+          <table class="post-table">
+            <thead>
+              <tr>
+                <th>Component</th>
+                <th>What it does</th>
+                <th>Monthly cost</th>
+                <th>Setup time</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Sending domains</td>
+                <td>Secondary domains (not your main domain) for outbound</td>
+                <td class="pt-bad">$12-20/domain, need 3-5</td>
+                <td class="pt-bad">1-2 days</td>
+              </tr>
+              <tr>
+                <td>Email inboxes</td>
+                <td>Google Workspace or similar per domain</td>
+                <td class="pt-bad">$6-12/inbox, 2 per domain</td>
+                <td class="pt-bad">2-4 hours</td>
+              </tr>
+              <tr>
+                <td>Domain warmup</td>
+                <td>Gradually build sending reputation before campaigns</td>
+                <td class="pt-bad">$30-97/month (tools like Mailreach)</td>
+                <td class="pt-bad">4-8 weeks wait</td>
+              </tr>
+              <tr>
+                <td>Prospect data</td>
+                <td>Apollo, Clay, or similar for verified contact info</td>
+                <td class="pt-bad">$49-149/month</td>
+                <td class="pt-ok">1-2 days</td>
+              </tr>
+              <tr>
+                <td>Sending platform</td>
+                <td>Instantly, Lemlist, Smartlead for sequencing</td>
+                <td class="pt-bad">$37-97/month</td>
+                <td class="pt-ok">1 day</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="post-stat-row">
+          <div class="post-stat">
+            <span class="post-stat-n">$200-500</span>
+            <span class="post-stat-l">monthly recurring cost for a functional DIY cold email stack</span>
+          </div>
+          <div class="post-stat">
+            <span class="post-stat-n">3-6 weeks</span>
+            <span class="post-stat-l">time before you can safely send your first campaign</span>
+          </div>
+          <div class="post-stat">
+            <span class="post-stat-n">$0</span>
+            <span class="post-stat-l">Distribute platform fee — you pay per contact, not per month</span>
+          </div>
+        </div>
+
+        <div class="post-key">
+          <p class="post-key-label">Key point</p>
+          At $300/month in infrastructure costs, you need to close <strong>real deals before breaking even</strong> — before accounting for the time to set it up. A $25 Distribute campaign costs $25 total, with no monthly overhead, no warmup period, and no domain setup.
+        </div>
+      </section>
+
+      <section class="post-section" id="domain-setup">
+        <h2>Domain setup: the most overlooked cost</h2>
+        <p>You should never send cold email from your main company domain. If it gets flagged as spam, your main business email gets flagged too. The standard practice is buying 3-5 secondary domains and rotating sends across them.</p>
+        <p>Each domain needs DNS records (SPF, DKIM, DMARC) configured correctly. This takes an hour to set up if you know what you're doing — longer if you don't. Then comes warmup: new domains need 4-8 weeks of low-volume activity to build a sending reputation before you can run real campaigns.</p>
+
+        <div class="post-callout">
+          <strong>Domain naming:</strong> Use variants of your main domain (distribute-hq.com, getdistribute.io, distribute.ai). Prospects see the "from" name, not the domain — but choose domains that don't look suspicious if someone checks the header.
+        </div>
+
+        <p>At 3-5 domains, you're spending $36-100/month on domains alone, plus $36-120/month on inboxes (2 per domain, Google Workspace at $6-12/inbox). That's $72-220/month before any tool costs — and you haven't sent an email yet.</p>
+      </section>
+
+      <section class="post-section" id="warmup-cost">
+        <h2>Warmup: the 4-8 week tax</h2>
+        <p>Warmup tools send low-volume emails between your inboxes and a network of other users, building engagement signals that improve deliverability. Without warmup, new domains get filtered immediately. Tools like Mailreach, Warmbox, and Instantly's built-in warmup run $30-97/month per account.</p>
+        <p>The real cost isn't the tool fee — it's the 4-8 week delay before you can run actual campaigns. If you buy domains today, you're not sending real outreach until 6-8 weeks from now. That's 6-8 weeks of not generating pipeline while paying infrastructure costs.</p>
+
+        <div class="post-tip">
+          <p class="post-tip-label">Pro tip</p>
+          <strong>Never skip warmup.</strong> Cold domains that send at volume immediately hit spam filters. Once a domain is flagged, deliverability degrades fast and doesn't recover easily. The 4-8 week wait is fixed cost — you can't compress it by sending more warmup volume.
+        </div>
+      </section>
+
+      <section class="post-section" id="data-cost">
+        <h2>Prospect data: $49-149/month for verified contacts</h2>
+        <p>Finding the right contacts requires a data provider. Apollo.io at $49/month gives you 1,000 export credits. Clay at $149/month gives you enrichment capabilities on top of contacts. Scraped data without enrichment has 15-30% bounce rates that damage deliverability.</p>
+        <p>Data cost scales with volume. A founder running 500 contacts/month can get by on Apollo's entry tier. An SDR team running 5,000 contacts/month needs a higher tier or multiple tools. This cost is often underestimated because it's hidden in "per export" pricing rather than a flat monthly fee.</p>
+
+        <div class="post-key">
+          <p class="post-key-label">Key point</p>
+          Distribute includes prospect sourcing in the $0.07 per contact fee. <strong>No separate data subscription needed.</strong> The AI finds prospects matching your ICP, verifies contacts, and includes them in the campaign cost.
+        </div>
+      </section>
+
+      <!-- MID-ARTICLE CTA -->
+      <aside class="post-cta-inline">
+        <h3>No domains to buy. No warmup to wait for. No subscriptions.</h3>
+        <p>$25 reaches 350 contacts. Infrastructure handled. First campaign in 5 minutes.</p>
+        <a href="/sign-up" class="btn btn-p">Start free, $25 credits</a>
+      </aside>
+
+      <section class="post-section" id="ongoing-maintenance">
+        <h2>Ongoing maintenance cost</h2>
+        <p>Setup cost is one-time. But a DIY stack requires ongoing maintenance that most guides don't mention: rotating domains when deliverability drops, refreshing data exports, updating sequences when response rates decline, monitoring bounce rates, and managing inbox health across 6-10 email accounts.</p>
+        <p>At an honest 2-4 hours/week of maintenance time, a solo founder spending that time is paying themselves to do infrastructure work instead of selling. For a $75/hour opportunity cost, that's $600-1,200/month in hidden costs on top of tool fees.</p>
+
+        <div class="post-table-wrap">
+          <table class="post-table">
+            <thead>
+              <tr>
+                <th>Cost type</th>
+                <th>DIY stack</th>
+                <th>Distribute</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Monthly tool cost</td>
+                <td class="pt-bad">$200-500</td>
+                <td class="pt-hl">$0 (pay per contact)</td>
+              </tr>
+              <tr>
+                <td>Setup time</td>
+                <td class="pt-bad">2-3 weeks</td>
+                <td class="pt-good">5 minutes</td>
+              </tr>
+              <tr>
+                <td>Time to first send</td>
+                <td class="pt-bad">4-8 weeks (warmup)</td>
+                <td class="pt-good">Same day</td>
+              </tr>
+              <tr>
+                <td>Weekly maintenance</td>
+                <td class="pt-bad">2-4 hours</td>
+                <td class="pt-good">Review replies only</td>
+              </tr>
+              <tr>
+                <td>Domain rotation</td>
+                <td class="pt-bad">Manual, monthly</td>
+                <td class="pt-good">Automatic</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <aside class="post-sidebar">
+    <nav class="post-toc" aria-label="Contents">
+      <p class="post-toc-title">In this article</p>
+      <ol class="post-toc-list">
+        <li><a href="#full-stack-cost">The full DIY stack cost</a></li>
+        <li><a href="#domain-setup">Domain setup</a></li>
+        <li><a href="#warmup-cost">Warmup: the 4-8 week tax</a></li>
+        <li><a href="#data-cost">Prospect data cost</a></li>
+        <li><a href="#ongoing-maintenance">Ongoing maintenance</a></li>
+      </ol>
+    </nav>
+  </aside>
+</div>
+
+<aside class="post-related">
+  <div class="post-related-inner">
+    <p class="post-related-label">Keep reading</p>
+    <div class="post-related-grid"></div>
+  </div>
+</aside>
+
+<div id="site-footer"></div>
+<script src="/js/main.js" defer></script>
+</body>
+</html>
