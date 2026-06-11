@@ -3,28 +3,29 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Performance: public campaign benchmarks | Distribute</title>
-  <meta name="description" content="Public benchmark data from real campaigns. Reply rates, cost per reply, open rates, and campaign volume. See what cold email through Distribute actually delivers.">
+  <title>Performance: real campaign results | Distribute</title>
+  <meta name="description" content="Real numbers from real campaigns. Reply rates, cost per lead, time to first conversation. See what cold email through Distribute actually delivers.">
   <link rel="canonical" href="https://distribute.you/performance">
   <meta property="og:type" content="website">
   <meta property="og:locale" content="en_US">
   <meta property="og:site_name" content="distribute">
   <meta property="og:url" content="https://distribute.you/performance">
-  <meta property="og:title" content="Performance: public campaign benchmarks | Distribute">
-  <meta property="og:description" content="Public benchmark data from real campaigns. Reply rates, cost per reply, open rates, and campaign volume. See what cold email through Distribute actually delivers.">
+  <meta property="og:title" content="Performance: real campaign results | Distribute">
+  <meta property="og:description" content="Real numbers from real campaigns. Reply rates, cost per lead, time to first conversation. See what cold email through Distribute actually delivers.">
   <meta property="og:image" content="https://distribute.you/opengraph-image">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="distribute performance - real campaign results">
+  <meta property="og:image:alt" content="distribute - AI cold email, done for you">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:site" content="@distribute_you">
   <meta name="twitter:creator" content="@distribute_you">
-  <meta name="twitter:title" content="Performance: public campaign benchmarks | Distribute">
-  <meta name="twitter:description" content="Public benchmark data from real campaigns. Reply rates, cost per reply, open rates, and campaign volume. See what cold email through Distribute actually delivers.">
+  <meta name="twitter:title" content="Performance: real campaign results | Distribute">
+  <meta name="twitter:description" content="Real numbers from real campaigns. Reply rates, cost per lead, time to first conversation. See what cold email through Distribute actually delivers.">
   <meta name="twitter:image" content="https://distribute.you/opengraph-image">
   <link rel="icon" href="/landing-v2/logo/logo-distribute.svg" type="image/svg+xml">
-  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","name":"distribute","legalName":"Shamanic Technologies","url":"https://distribute.you","logo":"https://distribute.you/landing-v2/logo/logo-distribute.svg","image":"https://distribute.you/landing-v2/logo/logo-distribute.svg","sameAs":["https://github.com/distribute-you","https://twitter.com/distribute_you"]},{"@type":"WebPage","name":"Performance: public campaign benchmarks | Distribute","url":"https://distribute.you/performance","description":"Public benchmark data from real campaigns. Reply rates, cost per reply, open rates, and campaign volume. See what cold email through Distribute actually delivers.","isPartOf":{"@type":"WebSite","name":"distribute","url":"https://distribute.you"},"publisher":{"@type":"Organization","name":"distribute","logo":"https://distribute.you/landing-v2/logo/logo-distribute.svg"}},{"@type":"Dataset","name":"distribute campaign performance data","description":"Public campaign performance metrics for cold email through distribute.","url":"https://distribute.you/performance","creator":{"@type":"Organization","name":"distribute","url":"https://distribute.you","logo":"https://distribute.you/landing-v2/logo/logo-distribute.svg"},"variableMeasured":[{"@type":"PropertyValue","name":"Cost per buyer reply","unitText":"USD"},{"@type":"PropertyValue","name":"Positive reply rate","unitText":"percent"},{"@type":"PropertyValue","name":"Open rate","unitText":"percent"},{"@type":"PropertyValue","name":"Emails sent","unitText":"count"}]}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","name":"distribute","legalName":"Shamanic Technologies","url":"https://distribute.you","logo":"https://distribute.you/landing-v2/logo/logo-distribute.svg","image":"https://distribute.you/landing-v2/logo/logo-distribute.svg","sameAs":["https://github.com/distribute-you","https://twitter.com/distribute_you"],"contactPoint":{"@type":"ContactPoint","email":"support@distribute.you","contactType":"customer service"}},{"@type":"WebSite","name":"distribute","url":"https://distribute.you","description":"AI outreach automation for solo founders. Drop a URL, set a budget, get qualified leads in Gmail.","publisher":{"@type":"Organization","name":"distribute","logo":"https://distribute.you/landing-v2/logo/logo-distribute.svg"}}]}</script>
   <link rel="stylesheet" href="css/styles.css">
+  <script>document.documentElement.setAttribute('data-theme',localStorage.getItem('dt')||'light')</script>
 </head>
 <body class="page-perf">
 <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -32,54 +33,9 @@
 <!-- ════════════════════════════════════════════
      NAV
 ════════════════════════════════════════════ -->
-<nav id="nav">
-  <div class="nav-inner">
-    <a href="/" class="nav-logo">
-      <img src="logo/logo-distribute.svg" class="nav-logo-img" alt="Distribute">
-      distribute <span class="nav-chip">beta</span>
-    </a>
-    <ul class="nav-links">
-      <li><a href="/pricing">Pricing</a></li>
-      <li><a href="/performance" class="active">Performance</a></li>
-      <li><a href="/benchmarks">Benchmarks</a></li>
-      <li><a href="/docs">Docs</a></li>
-    </ul>
-    <div class="nav-right">
-      <button class="nav-toggle" id="themeBtn" aria-label="Switch to light mode">
-        <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-        <svg class="i-sun"  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-      </button>
-      <a href="/sign-in" class="btn btn-g">Sign in</a>
-      <a href="/sign-up" class="btn btn-p">Start free</a>
-      <button class="nav-burger" id="navBurger" aria-label="Open menu" aria-expanded="false">
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg>
-      </button>
-    </div>
-  </div>
-</nav>
+<div id="site-nav"></div>
+<script src="js/components.js"></script>
 
-<!-- Mobile menu -->
-<div class="nav-mobile-overlay" id="navMobile" aria-hidden="true">
-  <div class="nav-mobile-top">
-    <a href="/" class="nav-mobile-logo">
-      <img src="logo/logo-distribute.svg" alt="">
-      distribute
-    </a>
-    <button class="nav-mobile-close" id="navClose" aria-label="Close menu">
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><line x1="4" y1="4" x2="16" y2="16"/><line x1="16" y1="4" x2="4" y2="16"/></svg>
-    </button>
-  </div>
-  <ul class="nav-mobile-links">
-    <li><a href="/pricing">Pricing</a></li>
-    <li><a href="/performance">Performance</a></li>
-    <li><a href="/benchmarks">Benchmarks</a></li>
-    <li><a href="/docs">Docs</a></li>
-  </ul>
-  <div class="nav-mobile-actions">
-    <a href="/sign-in" class="btn btn-g btn-lg">Sign in</a>
-    <a href="/sign-up" class="btn btn-p btn-lg">Start free</a>
-  </div>
-</div>
 
 
 <!-- ════════════════════════════════════════════
@@ -119,14 +75,14 @@
         </div>
         <div class="stat">
           <span class="stat-val" data-n="__POSITIVE_REPLY_RATE_NUMERIC__" data-suf="%" data-dec="1">__POSITIVE_REPLY_RATE__</span>
-          <span class="stat-lbl">positive reply rate across campaigns</span>
+          <span class="stat-lbl">reply rate across campaigns</span>
         </div>
         <div class="stat">
-          <span class="stat-val" data-n="__OPEN_RATE_NUMERIC__" data-suf="%" data-dec="1">__OPEN_RATE__</span>
+          <span class="stat-val" data-n="__OPEN_RATE_NUMERIC__" data-suf="%">__OPEN_RATE__</span>
           <span class="stat-lbl">average open rate</span>
         </div>
         <div class="stat">
-          <span class="stat-val" data-n="__EMAILS_SENT_NUMERIC__">__EMAILS_SENT__</span>
+          <span class="stat-val">__EMAILS_SENT__</span>
           <span class="stat-lbl">emails sent tracked</span>
         </div>
       </div>
@@ -140,9 +96,9 @@
 ════════════════════════════════════════════ -->
 <section class="s-proof">
   <div class="wrap sec-intro r">
-    <span class="t-lbl">Example campaign snapshots</span>
+    <span class="t-lbl">From real campaigns</span>
     <h2 class="t-h2">What people are getting.</h2>
-    <p class="t-body">Illustrative snapshots based on the same campaign mechanics. Live aggregate rates come from the public benchmark data above.</p>
+    <p class="t-body">These are unedited results from founders and operators who ran their first campaign in the last 90 days.</p>
   </div>
 
   <div class="proof-track-outer">
@@ -318,31 +274,31 @@
           </div>
           <div class="funnel-row">
             <div class="funnel-row-top">
-              <span class="funnel-label">__OPENED_PER_HUNDRED__ opened</span>
-              <span class="funnel-pct opened">__OPEN_RATE__</span>
+              <span class="funnel-label">38 opened</span>
+              <span class="funnel-pct opened">38%</span>
             </div>
             <div class="funnel-bar-track">
-              <div class="funnel-bar-fill opened" data-w="__OPENED_PER_HUNDRED_NUMERIC__%"></div>
+              <div class="funnel-bar-fill opened" data-w="38%"></div>
             </div>
             <span class="funnel-desc">Subject lines written for the recipient, not the batch</span>
           </div>
           <div class="funnel-row">
             <div class="funnel-row-top">
-              <span class="funnel-label">__POSITIVE_REPLIES_PER_HUNDRED__ positive replies</span>
-              <span class="funnel-pct replied">__POSITIVE_REPLY_RATE__</span>
+              <span class="funnel-label">2 replied</span>
+              <span class="funnel-pct replied">2.1%</span>
             </div>
             <div class="funnel-bar-track">
-              <div class="funnel-bar-fill replied" data-w="__POSITIVE_REPLIES_PER_HUNDRED_BAR_NUMERIC__%"></div>
+              <div class="funnel-bar-fill replied" data-w="2.1%"></div>
             </div>
-            <span class="funnel-desc">Positive replies only: interest, questions, and buyer intent</span>
+            <span class="funnel-desc">All reply types: interest, questions, unsubscribes</span>
           </div>
           <div class="funnel-row">
             <div class="funnel-row-top">
-              <span class="funnel-label">You read __POSITIVE_REPLIES_PER_HUNDRED_RANGE__</span>
+              <span class="funnel-label">You read 1-2</span>
               <span class="funnel-pct you-read">Buyers only</span>
             </div>
             <div class="funnel-bar-track">
-              <div class="funnel-bar-fill you-read" data-w="__POSITIVE_REPLIES_PER_HUNDRED_BAR_NUMERIC__%"></div>
+              <div class="funnel-bar-fill you-read" data-w="1.4%"></div>
             </div>
             <span class="funnel-desc">AI qualifies before forwarding. No spam, no noise.</span>
           </div>
@@ -429,55 +385,7 @@
 <!-- ════════════════════════════════════════════
      FOOTER
 ════════════════════════════════════════════ -->
-<footer>
-  <div class="wrap">
-    <div class="ft-grid">
-      <div class="ft-brand">
-        <a href="/" class="nav-logo">
-          <img src="logo/logo-distribute.svg" class="nav-logo-img" alt="Distribute">
-          distribute <span class="nav-chip">beta</span>
-        </a>
-        <p>AI outreach automation for solo founders and micro-SaaS builders. Drop a URL, set a budget, get qualified replies.</p>
-        <p class="ft-by">Built by <a href="https://twitter.com/kevinlourd">@kevinlourd</a> and contributors.</p>
-      </div>
-      <div class="ft-col">
-        <h4>Product</h4>
-        <ul>
-          <li><a href="/pricing">Pricing</a></li>
-          <li><a href="/performance">Performance</a></li>
-          <li><a href="/benchmarks">Benchmarks</a></li>
-          <li><a href="/blog">Blog</a></li>
-        </ul>
-      </div>
-      <div class="ft-col">
-        <h4>Developers</h4>
-        <ul>
-          <li><a href="/docs">Documentation</a></li>
-          <li><a href="/docs/api">API reference</a></li>
-          <li><a href="/docs/mcp">MCP server</a></li>
-          <li><a href="https://github.com/distribute-you">GitHub</a></li>
-        </ul>
-      </div>
-      <div class="ft-col">
-        <h4>Company</h4>
-        <ul>
-          <li><a href="/investors">Investors</a></li>
-          <li><a href="https://x.com/distribute_you">Twitter / X</a></li>
-          <li><a href="/sign-in">Sign in</a></li>
-          <li><a href="/sign-up">Sign up</a></li>
-        </ul>
-      </div>
-    </div>
-    <div class="ft-bottom">
-      <span class="ft-copy">© 2026 distribute. MIT License. 100% open source.</span>
-      <div class="ft-links">
-        <a href="/privacy">Privacy</a>
-        <a href="/terms">Terms</a>
-        <a href="https://status.distribute.you">Status</a>
-      </div>
-    </div>
-  </div>
-</footer>
+<div id="site-footer"></div>
 
 
 <script src="js/main.js" defer></script>

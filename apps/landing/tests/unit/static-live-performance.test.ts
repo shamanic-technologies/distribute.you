@@ -78,9 +78,7 @@ describe("Static landing live performance values", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const indexResponse = await staticV2Response("index.html");
     const performanceResponse = await staticV2Response("performance.html");
-    const indexHtml = await indexResponse.text();
     const performanceHtml = await performanceResponse.text();
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -95,11 +93,11 @@ describe("Static landing live performance values", () => {
       ),
       expect.any(Object),
     );
-    expect(indexHtml).toContain("$32.00/reply");
-    expect(indexHtml).toContain('data-n="32.00"');
-    expect(indexHtml).not.toContain("$1.42");
-
+    // Adam's home leads with cost-per-contact ($0.07/contact), a metric the live
+    // performance API does not expose, so it carries no live-cost token; the live
+    // best-positive-reply cost ($X.XX/reply) is injected on the performance page only.
     expect(performanceHtml).toContain("$32.00");
+    expect(performanceHtml).toContain('data-n="32.00"');
     expect(performanceHtml).toContain("38.0%");
     expect(performanceHtml).toContain("2.0%");
     expect(performanceHtml).toContain("100");
