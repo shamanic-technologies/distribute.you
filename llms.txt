@@ -1,0 +1,32 @@
+# Distribute
+
+> AI-powered cold email outreach for B2B founders and sales teams. Drop a product URL, set a budget, get qualified leads in your inbox. $0.07 per contact — research, copy, and delivery included. No subscriptions, no domain setup, no warmup wait.
+
+## Product
+
+- [How Distribute works](https://distribute.you/how-it-works): From product URL to qualified replies in 5 minutes. AI reads each prospect's site, writes a personalized email, sends from warmed domains.
+- [Performance](https://distribute.you/performance): Campaign benchmarks — 27% average open rate, 4% positive reply rate, 45x average ROI, 48-hour median time to first reply.
+- [Use cases](https://distribute.you/use-cases): SaaS founders, sales teams, agencies. How different teams use Distribute.
+
+## Guides
+
+### Cold email cost
+- [Cold email cost guide](https://distribute.you/cold-email-cost-guide): Full breakdown of what cold email costs across DIY, agency, and Distribute approaches.
+- [Cold email cost per contact](https://distribute.you/cold-email-cost-guide/cold-email-cost-per-contact): DIY stacks cost $0.20-0.50/contact. Distribute runs $0.07. What drives the difference.
+- [LinkedIn InMail cost vs cold email](https://distribute.you/cold-email-cost-guide/linkedin-inmail-cost-vs-cold-email): Sales Navigator InMail costs $3-5/message in practice. Cold email costs $0.07. Cost-per-reply comparison.
+- [Cold email ROI](https://distribute.you/cold-email-cost-guide/cold-email-roi): How to calculate real returns. 45x average ROI. The formula and benchmark numbers.
+- [Cold email setup cost](https://distribute.you/cold-email-cost-guide/cold-email-setup-cost): DIY infrastructure costs $200-500/month and 4-8 weeks to set up. Every line item explained.
+
+### Cold email for SaaS founders
+- [Cold email for SaaS founders](https://distribute.you/cold-email-for-saas-founders): How to get your first 10 paying customers using cold email. ICP, copy, and campaign setup.
+- [AI cold email for SaaS founders](https://distribute.you/cold-email-for-saas-founders/ai-cold-email-saas-founders): Per-prospect AI research produces 27% open rates vs 10-15% for template variation. Real numbers.
+- [Cold email subject lines for SaaS](https://distribute.you/cold-email-for-saas-founders/cold-email-subject-lines-saas): Patterns that get 30%+ open rates. With SaaS-specific examples.
+- [B2B cold email reply rate benchmarks](https://distribute.you/cold-email-for-saas-founders/b2b-cold-email-reply-rate): Industry averages by ICP specificity. What moves reply rate from 2% to 8%.
+- [Cold email personalization at scale](https://distribute.you/cold-email-for-saas-founders/cold-email-personalization-at-scale): Research-based signals (hiring patterns, funding, tech stack) that produce 27-45% open rates.
+
+### Cold email vs LinkedIn
+- [Cold email vs LinkedIn](https://distribute.you/cold-email-vs-linkedin): Full comparison — cost, reach, reply rates, platform limits.
+- [Cold email vs LinkedIn ads](https://distribute.you/cold-email-vs-linkedin/cold-email-vs-linkedin-ads): LinkedIn ads cost $60-150 per qualified lead. Cold email costs $1.75 per reply. Full funnel comparison.
+- [B2B outbound channel comparison](https://distribute.you/cold-email-vs-linkedin/b2b-outbound-channel-comparison): Cold email, LinkedIn InMail, cold calling, LinkedIn ads — cost per conversation across every channel.
+- [LinkedIn connection requests vs cold email](https://distribute.you/cold-email-vs-linkedin/linkedin-connection-request-vs-cold-email): LinkedIn caps at 100-200 requests/week. Cold email has no limit. Full funnel math.
+- [Multichannel outreach strategy](https://distribute.you/cold-email-vs-linkedin/multichannel-outreach-strategy): Cold email first, LinkedIn second. How to combine channels without being annoying.

@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+  <!-- Core pages -->
+  <url>
+    <loc>https://distribute.you/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://distribute.you/how-it-works</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://distribute.you/performance</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://distribute.you/use-cases</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Pillar pages -->
+  <url>
+    <loc>https://distribute.you/cold-email-cost-guide</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://distribute.you/cold-email-vs-linkedin</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://distribute.you/cold-email-for-saas-founders</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- cold-email-cost-guide articles -->
+  <url>
+    <loc>https://distribute.you/cold-email-cost-guide/cold-email-cost-per-contact</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://distribute.you/cold-email-cost-guide/linkedin-inmail-cost-vs-cold-email</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://distribute.you/cold-email-cost-guide/cold-email-roi</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://distribute.you/cold-email-cost-guide/cold-email-setup-cost</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- cold-email-for-saas-founders articles -->
+  <url>
+    <loc>https://distribute.you/cold-email-for-saas-founders/ai-cold-email-saas-founders</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://distribute.you/cold-email-for-saas-founders/cold-email-subject-lines-saas</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://distribute.you/cold-email-for-saas-founders/b2b-cold-email-reply-rate</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://distribute.you/cold-email-for-saas-founders/cold-email-personalization-at-scale</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- cold-email-vs-linkedin articles -->
+  <url>
+    <loc>https://distribute.you/cold-email-vs-linkedin/cold-email-vs-linkedin-ads</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://distribute.you/cold-email-vs-linkedin/b2b-outbound-channel-comparison</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://distribute.you/cold-email-vs-linkedin/linkedin-connection-request-vs-cold-email</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://distribute.you/cold-email-vs-linkedin/multichannel-outreach-strategy</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+</urlset>
