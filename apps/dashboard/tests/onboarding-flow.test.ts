@@ -14,10 +14,12 @@ describe("Onboarding flow", () => {
     expect(content).toContain('"use client"');
   });
 
-  it("should have a value proposition step", () => {
+  it("should have a booking-intro step as the first screen", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("Welcome to Distribute");
-    expect(content).toContain("value-prop");
+    expect(content).toContain("Book your onboarding call");
+    expect(content).toContain("booking-intro");
+    expect(content).toContain("Maybe later");
+    expect(content).toContain("calendar.app.google");
   });
 
   it("should have agency and company type selection", () => {
