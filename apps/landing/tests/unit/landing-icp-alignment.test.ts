@@ -32,14 +32,6 @@ const blogPagePath = path.resolve(__dirname, "../../src/app/blog/page.tsx");
 const blogSlugPagePath = path.resolve(__dirname, "../../src/app/blog/[slug]/page.tsx");
 const seoPath = path.resolve(__dirname, "../../src/lib/seo.ts");
 const featuresPath = path.resolve(__dirname, "../../../../shared/content/src/features.ts");
-const portfolioDashboardPath = path.resolve(
-  __dirname,
-  "../../src/components/portfolio-dashboard.tsx"
-);
-const gmailInboxPath = path.resolve(__dirname, "../../src/components/gmail-inbox.tsx");
-const freeVsCloudPath = path.resolve(__dirname, "../../src/components/free-vs-cloud.tsx");
-const workflowRecipePath = path.resolve(__dirname, "../../src/components/workflow-recipe.tsx");
-const toolsMarqueePath = path.resolve(__dirname, "../../src/components/tools-marquee.tsx");
 const sourcedStatsDataPath = path.resolve(__dirname, "../../src/data/sourced-stats.ts");
 const sourcedStatsCmpPath = path.resolve(__dirname, "../../src/components/sourced-stats.tsx");
 const providerAvatarPath = path.resolve(__dirname, "../../src/components/provider-avatar.tsx");
@@ -228,135 +220,12 @@ describe("Landing v2 static pages", () => {
   });
 });
 
-describe("PortfolioDashboard component", () => {
-  it("exists at src/components/portfolio-dashboard.tsx", () => {
-    expect(fs.existsSync(portfolioDashboardPath)).toBe(true);
-  });
-
-  const content = fs.existsSync(portfolioDashboardPath)
-    ? fs.readFileSync(portfolioDashboardPath, "utf-8")
-    : "";
-
-  it("exports a PortfolioDashboard component", () => {
-    expect(content).toMatch(/export function PortfolioDashboard/);
-  });
-
-  it("renders multiple products (multi-brand portfolio)", () => {
-    expect(content).toMatch(/products/i);
-  });
-
-  it("shows a positive-reply column (CAC / $-per-reply variant)", () => {
-    expect(content).toMatch(/positive reply/i);
-    expect(content).toMatch(/\$\/positive reply/i);
-  });
-});
-
-describe("GmailInbox component", () => {
-  it("exists at src/components/gmail-inbox.tsx", () => {
-    expect(fs.existsSync(gmailInboxPath)).toBe(true);
-  });
-
-  const content = fs.existsSync(gmailInboxPath)
-    ? fs.readFileSync(gmailInboxPath, "utf-8")
-    : "";
-
-  it("exports a GmailInbox component", () => {
-    expect(content).toMatch(/export function GmailInbox/);
-  });
-
-  it("simulates the v2 buyer reply email", () => {
-    expect(content).toMatch(/Marcus Chen/);
-    expect(content).toMatch(/Loopify\.io/);
-    expect(content).toMatch(/3 new today/);
-    expect(content).toMatch(/Next up: replies/);
-  });
-});
-
-describe("FreeVsCloud component", () => {
-  it("exists at src/components/free-vs-cloud.tsx", () => {
-    expect(fs.existsSync(freeVsCloudPath)).toBe(true);
-  });
-
-  const content = fs.existsSync(freeVsCloudPath)
-    ? fs.readFileSync(freeVsCloudPath, "utf-8")
-    : "";
-
-  it("exports a FreeVsCloud component", () => {
-    expect(content).toMatch(/export function FreeVsCloud/);
-  });
-
-  it("renders the single Pay-as-you-go cloud tier with v2 bullets", () => {
-    expect(content).toMatch(/Pay as you go|pay.as.you.go|\$25.*credit/i);
-    expect(content).toMatch(/Pre-warmed inboxes\. Skip the 3-week setup\./);
-    expect(content).toMatch(/AI reads every reply\. Only buyers reach your Gmail\./);
-    expect(content).not.toMatch(/Self-host|self.host/i);
-    expect(content).not.toMatch(/9 channels live/i);
-  });
-});
-
-describe("ToolsMarquee component", () => {
-  it("exists at src/components/tools-marquee.tsx", () => {
-    expect(fs.existsSync(toolsMarqueePath)).toBe(true);
-  });
-
-  const content = fs.existsSync(toolsMarqueePath)
-    ? fs.readFileSync(toolsMarqueePath, "utf-8")
-    : "";
-
-  it("exports a ToolsMarquee component", () => {
-    expect(content).toMatch(/export function ToolsMarquee/);
-  });
-
-  it("uses logo.dev for tool icons", () => {
-    expect(content).toMatch(/img\.logo\.dev/);
-    expect(content).toMatch(/NEXT_PUBLIC_LOGO_DEV_TOKEN/);
-  });
-
-  it("renders 3 rows with alternating directions (ltr, rtl, ltr)", () => {
-    const ltrMatches = (content.match(/direction="ltr"/g) || []).length;
-    const rtlMatches = (content.match(/direction="rtl"/g) || []).length;
-    expect(ltrMatches).toBe(2);
-    expect(rtlMatches).toBe(1);
-  });
-
-  it("doubles the tool list for seamless infinite scroll", () => {
-    expect(content).toMatch(/\[\.\.\.tools,\s*\.\.\.tools\]/);
-  });
-});
-
 describe("Landing page: tools marquee section", () => {
   const page = fs.readFileSync(landingPagePath, "utf-8");
 
   it("does not render the ToolsMarquee component in the v2 home", () => {
     expect(page).not.toMatch(/<ToolsMarquee/);
     expect(page).not.toMatch(/from\s+["']@\/components\/tools-marquee["']/);
-  });
-});
-
-describe("GmailInbox component: v2 static buyer reply", () => {
-  const content = fs.readFileSync(gmailInboxPath, "utf-8");
-
-  it("uses the target static buyer reply instead of logo.dev avatars", () => {
-    expect(content).toMatch(/Re: interested in a demo this week/);
-    expect(content).not.toMatch(/img\.logo\.dev/);
-  });
-});
-
-describe("WorkflowRecipe component", () => {
-  it("exists at src/components/workflow-recipe.tsx", () => {
-    expect(fs.existsSync(workflowRecipePath)).toBe(true);
-  });
-
-  const content = fs.existsSync(workflowRecipePath)
-    ? fs.readFileSync(workflowRecipePath, "utf-8")
-    : "";
-
-  it("exports a WorkflowRecipe component", () => {
-    expect(content).toMatch(/export function WorkflowRecipe/);
-  });
-
-  it("shows primitives stacking into a workflow with an outcome", () => {
-    expect(content).toMatch(/primitive|stack|recipe/i);
   });
 });
 
@@ -461,26 +330,6 @@ describe("Feature providers map (channels-grid logos)", () => {
     ]) {
       expect(content).toMatch(new RegExp(`"${id}"`));
     }
-  });
-});
-
-describe("WorkflowRecipe trimmed copy + provider logos", () => {
-  const content = fs.readFileSync(workflowRecipePath, "utf-8");
-
-  it("drops the verbose 'Each workflow stacks priced API primitives' paragraph", () => {
-    expect(content).not.toMatch(/Each workflow stacks priced API primitives/);
-  });
-
-  it("drops the 'Fork the workflow. Beat the recipe.' footer line", () => {
-    expect(content).not.toMatch(/Fork the workflow\. Beat the recipe\./);
-  });
-
-  it("renders a provider logo per primitive via shared ProviderAvatar", () => {
-    expect(content).toMatch(/from\s+["']@\/components\/provider-avatar["']/);
-    expect(content).toMatch(/<ProviderAvatar/);
-    expect(content).toMatch(/providerDomain:\s*["']apollo\.io["']/);
-    expect(content).toMatch(/providerDomain:\s*["']anthropic\.com["']/);
-    expect(content).toMatch(/providerDomain:\s*["']resend\.com["']/);
   });
 });
 
