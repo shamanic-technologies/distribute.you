@@ -4,10 +4,14 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useOrganizationList, useOrganization } from "@clerk/nextjs";
 import posthog from "posthog-js";
+import { createCheckoutSession } from "@/lib/api";
 import { extractDomain } from "@/lib/extract-domain";
 
 type AccountType = "agency" | "company";
-type Step = "value-prop" | "type-selection" | "url-input";
+type Step = "value-prop" | "type-selection" | "url-input" | "billing-setup";
+
+const DEFAULT_TOPUP_AMOUNT_CENTS = 5000;
+const DEFAULT_TOPUP_THRESHOLD_CENTS = 1000;
 
 export default function OnboardingPage() {
   const { createOrganization, setActive } = useOrganizationList();
@@ -22,12 +26,61 @@ export default function OnboardingPage() {
   const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [pendingBrandUrl, setPendingBrandUrl] = useState("");
+  const [pendingOrgId, setPendingOrgId] = useState("");
+  const [topupAmount, setTopupAmount] = useState((DEFAULT_TOPUP_AMOUNT_CENTS / 100).toString());
+  const [topupThreshold, setTopupThreshold] = useState((DEFAULT_TOPUP_THRESHOLD_CENTS / 100).toString());
+  const [billingLoading, setBillingLoading] = useState(false);
+  const [billingError, setBillingError] = useState<string | null>(null);
 
   const domain = extractDomain(url);
+  const topupAmountNumber = parseFloat(topupAmount);
+  const topupThresholdNumber = parseFloat(topupThreshold);
+  const topupAmountError = topupAmount && topupAmountNumber < 10 ? "Minimum top-up amount is $10." : null;
+  const topupThresholdError = topupThreshold && topupThresholdNumber < 5 ? "Minimum threshold is $5." : null;
+  const hasBillingValidationError =
+    !topupAmount ||
+    !topupThreshold ||
+    Number.isNaN(topupAmountNumber) ||
+    Number.isNaN(topupThresholdNumber) ||
+    !!topupAmountError ||
+    !!topupThresholdError;
 
   useEffect(() => {
     posthog.capture("onboarding_step_viewed", { step });
   }, [step]);
+
+  useEffect(() => {
+    const billingStatus = searchParams.get("billing");
+    if (billingStatus !== "cancelled" && billingStatus !== "required") return;
+
+    const returnedBrandUrl = searchParams.get("brandUrl") ?? "";
+    const returnedAccountType = searchParams.get("accountType");
+    const returnedOrgId = searchParams.get("orgId") ?? "";
+    const returnedTopup = searchParams.get("topup");
+    const returnedThreshold = searchParams.get("threshold");
+
+    setPendingBrandUrl(returnedBrandUrl);
+    setPendingOrgId(returnedOrgId);
+    setUrl(returnedBrandUrl);
+    if (returnedAccountType === "agency" || returnedAccountType === "company") {
+      setAccountType(returnedAccountType);
+    }
+    if (returnedTopup) {
+      const returnedTopupCents = parseInt(returnedTopup, 10);
+      if (Number.isFinite(returnedTopupCents)) setTopupAmount((returnedTopupCents / 100).toString());
+    }
+    if (returnedThreshold) {
+      const returnedThresholdCents = parseInt(returnedThreshold, 10);
+      if (Number.isFinite(returnedThresholdCents)) setTopupThreshold((returnedThresholdCents / 100).toString());
+    }
+    setBillingError(
+      billingStatus === "cancelled"
+        ? "Card setup was cancelled. Add a card to finish onboarding."
+        : "Add a card to finish onboarding."
+    );
+    setStep("billing-setup");
+  }, [searchParams]);
 
   const handleTypeSelect = (type: AccountType) => {
     posthog.capture("onboarding_account_type_selected", { account_type: type });
@@ -48,12 +101,14 @@ export default function OnboardingPage() {
       // Reuse the active org (signup auto-creates one) unless ?new=1 forces a
       // brand-new org. The org now exists before onboarding runs, so creating a
       // second one would orphan the auto-created org with no brand.
-      const reuseOrg = !forceNew && organization !== null;
+      const reuseOrg = !forceNew && !!organization?.id;
       let targetOrgId: string;
       if (reuseOrg) {
-        targetOrgId = organization!.id;
+        targetOrgId = organization.id;
       } else {
-        if (!createOrganization || !setActive) return;
+        if (!createOrganization || !setActive) {
+          throw new Error("Organization setup is not ready yet. Please try again.");
+        }
         const org = await createOrganization({ name: domain });
         await setActive({ organization: org.id });
         targetOrgId = org.id;
@@ -64,8 +119,9 @@ export default function OnboardingPage() {
         org_id: targetOrgId,
         reused_org: reuseOrg,
       });
-      // Full reload so Clerk session cookie is updated before API calls
-      window.location.href = `/orgs/${targetOrgId}/brands?autoCreate=${encodeURIComponent(brandUrl)}`;
+      setPendingBrandUrl(brandUrl);
+      setPendingOrgId(targetOrgId);
+      setStep("billing-setup");
     } catch (err) {
       posthog.capture("onboarding_workspace_create_failed", {
         account_type: accountType,
@@ -74,6 +130,49 @@ export default function OnboardingPage() {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleBillingCheckout = async () => {
+    if (!pendingBrandUrl || !pendingOrgId || !accountType || hasBillingValidationError) return;
+    setBillingLoading(true);
+    setBillingError(null);
+    const topupAmountCents = Math.round(topupAmountNumber * 100);
+    const topupThresholdCents = Math.round(topupThresholdNumber * 100);
+    posthog.capture("onboarding_billing_setup_started", {
+      account_type: accountType,
+      org_id: pendingOrgId,
+      topup_amount_cents: topupAmountCents,
+      topup_threshold_cents: topupThresholdCents,
+    });
+    try {
+      const successUrl = new URL(`/orgs/${pendingOrgId}/brands`, window.location.origin);
+      successUrl.searchParams.set("autoCreate", pendingBrandUrl);
+      successUrl.searchParams.set("billingSetup", "success");
+      successUrl.searchParams.set("pending_topup", topupAmountCents.toString());
+      successUrl.searchParams.set("pending_threshold", topupThresholdCents.toString());
+
+      const cancelUrl = new URL("/onboarding", window.location.origin);
+      cancelUrl.searchParams.set("billing", "cancelled");
+      cancelUrl.searchParams.set("brandUrl", pendingBrandUrl);
+      cancelUrl.searchParams.set("accountType", accountType);
+      cancelUrl.searchParams.set("orgId", pendingOrgId);
+      cancelUrl.searchParams.set("topup", topupAmountCents.toString());
+      cancelUrl.searchParams.set("threshold", topupThresholdCents.toString());
+
+      const session = await createCheckoutSession({
+        mode: "setup",
+        success_url: successUrl.toString(),
+        cancel_url: cancelUrl.toString(),
+      });
+      window.location.href = session.url;
+    } catch (err) {
+      posthog.capture("onboarding_billing_setup_failed", {
+        account_type: accountType,
+        org_id: pendingOrgId,
+      });
+      setBillingError(err instanceof Error ? err.message : "Failed to start card setup");
+      setBillingLoading(false);
     }
   };
 
@@ -183,6 +282,110 @@ export default function OnboardingPage() {
             </p>
           </button>
         </div>
+      </div>
+    );
+  }
+
+  if (step === "billing-setup") {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 p-8 md:p-12">
+        <button
+          onClick={() => setStep("url-input")}
+          className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 mb-6 transition"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Back
+        </button>
+        <div className="w-12 h-12 bg-brand-100 rounded-xl flex items-center justify-center mb-5">
+          <svg className="w-6 h-6 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h.01M11 15h2M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+        </div>
+        <h2 className="font-display text-2xl font-bold text-gray-900 mb-2">
+          Set up billing
+        </h2>
+        <p className="text-gray-500 mb-6">
+          You get $25 in free credits first. Add a card now so campaigns can keep running when credits run low.
+        </p>
+
+        <div className="-mx-8 md:-mx-12 border-y border-brand-200 bg-brand-50 px-8 md:px-12 py-4 mb-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Pay-As-You-Go</p>
+              <p className="text-sm text-gray-600 mt-1">No subscription. Your card is only used for future top-ups.</p>
+            </div>
+            <span className="text-xs font-medium text-brand-700 bg-white border border-brand-200 rounded-full px-2.5 py-1">
+              $0 today
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">Top-up amount</span>
+            <div className="relative mt-1">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+              <input
+                type="number"
+                min="10"
+                step="5"
+                value={topupAmount}
+                onChange={(e) => setTopupAmount(e.target.value)}
+                className={`w-full pl-7 pr-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 ${topupAmountError ? "border-red-300" : "border-gray-200"}`}
+              />
+            </div>
+            {topupAmountError && <p className="text-xs text-red-600 mt-1">{topupAmountError}</p>}
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">Top up when below</span>
+            <div className="relative mt-1">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+              <input
+                type="number"
+                min="5"
+                step="5"
+                value={topupThreshold}
+                onChange={(e) => setTopupThreshold(e.target.value)}
+                className={`w-full pl-7 pr-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 ${topupThresholdError ? "border-red-300" : "border-gray-200"}`}
+              />
+            </div>
+            {topupThresholdError && <p className="text-xs text-red-600 mt-1">{topupThresholdError}</p>}
+          </label>
+        </div>
+
+        <div className="space-y-2 text-sm text-gray-600 mb-6">
+          <div className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+            Your $25 free credits are used before any paid top-up.
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+            Auto top-up adds ${topupAmount || "50"} when your balance drops below ${topupThreshold || "10"}.
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+            You can change this anytime from billing settings.
+          </div>
+        </div>
+
+        {billingError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 mb-4 text-sm">
+            {billingError}
+          </div>
+        )}
+
+        <button
+          onClick={handleBillingCheckout}
+          disabled={!pendingBrandUrl || !pendingOrgId || billingLoading || hasBillingValidationError}
+          className="w-full px-6 py-3 bg-brand-600 text-white rounded-xl hover:bg-brand-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {billingLoading ? "Redirecting to Stripe..." : "Add card"}
+        </button>
+        <p className="text-xs text-center text-gray-400 mt-3">
+          Secure checkout by Stripe. No charge today.
+        </p>
       </div>
     );
   }

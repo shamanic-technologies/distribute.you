@@ -47,14 +47,15 @@ describe("Onboarding flow", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
     expect(content).not.toContain("apiKey");
     expect(content).not.toMatch(/Copy.*key/i);
-    // No "success" step type — onboarding redirects straight to /
-    expect(content).not.toContain('"success"');
   });
 
-  it("should redirect to brands page with autoCreate param after org creation", () => {
+  it("should collect a card before redirecting to brands auto-create", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("autoCreate=");
-    expect(content).toContain("/brands?autoCreate=");
+    expect(content).toContain('"billing-setup"');
+    expect(content).toContain("createCheckoutSession");
+    expect(content).toContain('mode: "setup"');
+    expect(content).toContain('successUrl.searchParams.set("autoCreate"');
+    expect(content).toContain('successUrl.searchParams.set("billingSetup", "success")');
   });
 });
 

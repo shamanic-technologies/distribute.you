@@ -20,6 +20,13 @@ describe("Brands page auto-creates brand from onboarding", () => {
     expect(content).toContain("upsertBrand");
   });
 
+  it("should configure onboarding billing before brand creation", () => {
+    expect(content).toContain("configureAutoTopup");
+    expect(content).toContain('searchParams.get("billingSetup")');
+    expect(content).toContain('searchParams.get("pending_topup")');
+    expect(content.indexOf("await configureAutoTopup")).toBeLessThan(content.indexOf("await upsertBrand"));
+  });
+
   it("should redirect to brand page after auto-creation", () => {
     expect(content).toContain("router.replace");
     expect(content).toContain(`/orgs/\${orgId}/brands/\${newBrandId}`);
@@ -46,8 +53,10 @@ describe("Onboarding page asks for URL and creates brand", () => {
     expect(content).toContain("Please enter a valid URL");
   });
 
-  it("should redirect to brands page with autoCreate after org creation", () => {
-    expect(content).toContain("/brands?autoCreate=");
-    expect(content).toContain("encodeURIComponent");
+  it("should send Stripe success back to brands with autoCreate", () => {
+    expect(content).toContain("createCheckoutSession");
+    expect(content).toContain('mode: "setup"');
+    expect(content).toContain("new URL(`/orgs/${pendingOrgId}/brands`");
+    expect(content).toContain('successUrl.searchParams.set("autoCreate"');
   });
 });
