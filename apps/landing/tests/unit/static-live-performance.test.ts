@@ -137,8 +137,10 @@ describe("Static landing live performance values", () => {
     expect(performanceHtml).not.toContain("__EMAILS_SENT__");
     expect(designSystemHtml).not.toContain("__BEST_POSITIVE_REPLY_COST__");
 
-    // Fallback (last-known-good) values are injected.
-    expect(indexHtml).toContain("$1.42");
+    // Fallback (last-known-good) values are injected on pages that carry the
+    // live cost token. The home leads with $0.07/contact and has no
+    // cost-per-reply token, so only performance/design-system inject the
+    // fallback — the home is asserted to be token-free above.
     expect(performanceHtml).toContain("$1.42");
     expect(errorSpy).toHaveBeenCalled();
 
