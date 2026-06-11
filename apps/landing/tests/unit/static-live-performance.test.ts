@@ -107,6 +107,46 @@ describe("Static landing live performance values", () => {
     expect(performanceHtml).not.toContain("$1.42");
   });
 
+  it("falls back to last-known-good numbers instead of aborting when the best metric is missing", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const fetchMock = vi.fn(async (url: string | URL | Request) => {
+      const href = String(url);
+      if (href.includes("/v1/public/features/best")) {
+        // best response is missing recipientsRepliesPositive (the transient
+        // shape that aborted the build).
+        return new Response(JSON.stringify({ best: {} }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ results: [] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const indexResponse = await staticV2Response("index.html");
+    const performanceResponse = await staticV2Response("performance.html");
+    const designSystemResponse = await staticV2Response("design-system.html");
+    const indexHtml = await indexResponse.text();
+    const performanceHtml = await performanceResponse.text();
+    const designSystemHtml = await designSystemResponse.text();
+
+    // No raw placeholder tokens leak into the served HTML.
+    expect(indexHtml).not.toContain("__BEST_POSITIVE_REPLY_COST__");
+    expect(performanceHtml).not.toContain("__OPEN_RATE__");
+    expect(performanceHtml).not.toContain("__EMAILS_SENT__");
+    expect(designSystemHtml).not.toContain("__BEST_POSITIVE_REPLY_COST__");
+
+    // Fallback (last-known-good) values are injected.
+    expect(indexHtml).toContain("$1.42");
+    expect(performanceHtml).toContain("$1.42");
+    expect(errorSpy).toHaveBeenCalled();
+
+    errorSpy.mockRestore();
+  });
+
   it("keeps the standalone sales landing on recipient-based public best keys", () => {
     expect(salesLandingPage).toContain('"recipientsOpened"');
     expect(salesLandingPage).toContain('"recipientsRepliesPositive"');

@@ -40,6 +40,27 @@ interface LivePerformanceMetrics {
 
 const SALES_COLD_EMAIL_FEATURE_SLUG = "sales-cold-email-outreach";
 const BEST_POSITIVE_REPLY_KEY = "recipientsRepliesPositive";
+
+// Last-known-good marketing numbers (the values these stats held before they
+// were sourced live). Used only when the public metrics API is unreachable or
+// transiently omits a field, so a build-time prerender never aborts the whole
+// landing deploy and a page never ships raw __PLACEHOLDER__ tokens.
+const FALLBACK_LIVE_PERFORMANCE_METRICS: LivePerformanceMetrics = {
+  costPerPositiveReplyLabel: "$1.42",
+  costPerPositiveReplyNumeric: "1.42",
+  openRateLabel: "38%",
+  openRateNumeric: "38",
+  positiveReplyRateLabel: "2.1%",
+  positiveReplyRateNumeric: "2.1",
+  openedPerHundredLabel: "38",
+  openedPerHundredNumeric: "38",
+  positiveRepliesPerHundredLabel: "2",
+  positiveRepliesPerHundredNumeric: "2.1",
+  positiveRepliesPerHundredRangeLabel: "1-2",
+  positiveRepliesPerHundredBarNumeric: "2.1",
+  emailsSentLabel: "14k",
+  emailsSentNumeric: "14000",
+};
 const BEST_POSITIVE_REPLY_COST_LABEL = "__BEST_POSITIVE_REPLY_COST__";
 const BEST_POSITIVE_REPLY_COST_NUMERIC = "__BEST_POSITIVE_REPLY_COST_NUMERIC__";
 const OPEN_RATE_LABEL = "__OPEN_RATE__";
@@ -165,6 +186,23 @@ async function fetchLivePerformanceMetrics(): Promise<LivePerformanceMetrics> {
   };
 }
 
+async function resolveLivePerformanceMetrics(): Promise<LivePerformanceMetrics> {
+  try {
+    return await fetchLivePerformanceMetrics();
+  } catch (error) {
+    // Build-time prerender must stay shippable: a missing/transient public
+    // metric (the public best endpoint occasionally omits a key while a
+    // workflow has no data for it) must not abort the entire landing deploy.
+    // Log loud and fall back to the last-known-good numbers. (CLAUDE.md
+    // "Exception — Vercel build-time prerender")
+    console.error(
+      "[landing] live performance metrics unavailable, using fallback values",
+      error,
+    );
+    return FALLBACK_LIVE_PERFORMANCE_METRICS;
+  }
+}
+
 export function staticV2Html(fileName: string) {
   const html = readFileSync(
     join(process.cwd(), "public/landing-v2", fileName),
@@ -200,7 +238,7 @@ async function withLivePerformanceMetrics(html: string) {
     return html;
   }
 
-  const liveMetrics = await fetchLivePerformanceMetrics();
+  const liveMetrics = await resolveLivePerformanceMetrics();
 
   return html
     .replaceAll(BEST_POSITIVE_REPLY_COST_NUMERIC, liveMetrics.costPerPositiveReplyNumeric)
