@@ -21,13 +21,6 @@ interface PaymentRequiredInfo {
   proactive?: boolean;
   /** Callback invoked after the user dismisses the modal having set up auto-topup (proactive flow only) */
   onAutoTopupConfigured?: () => void;
-  /** Runway variant: balance covers the first period but not indefinitely. Number of periods
-   *  the current balance lasts at this budget, and the period unit (e.g. "day"). When set, the
-   *  modal informs (not blocks) and offers a "Launch anyway" action via onProceed. */
-  runwayPeriods?: number;
-  runwayUnit?: string;
-  /** Proceed without topping up (runway variant — "Launch anyway"). */
-  onProceed?: () => void;
   /** Depletion variant (non-proactive): balance is exhausted and campaigns have
    *  stopped. Tailors the modal copy from "needed for this action" to the
    *  arrival-time "all campaigns stopped" message. */
@@ -243,23 +236,16 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
 
   const isProactive = info.proactive === true;
   const isDepleted = info.depleted === true;
-  const isRunway = isProactive && info.runwayPeriods !== undefined;
-  const runwayN = info.runwayPeriods ?? 0;
-  const runwayLabel = `${runwayN} ${info.runwayUnit ?? "period"}${runwayN > 1 ? "s" : ""}`;
   const balanceBelowRequired =
     info.balance_cents !== undefined &&
     info.required_cents !== undefined &&
     toCentsNumber(info.balance_cents) < toCentsNumber(info.required_cents);
-  const proactiveTitle = isRunway
-    ? `Enough credits for ~${runwayLabel}`
-    : balanceBelowRequired
-      ? "Campaign May Exceed Credits"
-      : "Recurring Campaign Needs Auto-Topup";
-  const proactiveDescription = isRunway
-    ? `Your ${formatBillingCents(info.balance_cents ?? 0)} balance covers about ${runwayLabel} at this budget — then the campaign stops. Set up auto-topup to keep it running, or launch now.`
-    : balanceBelowRequired
-      ? "Your campaign budget may exceed your current credit balance. Set up auto-topup to ensure your campaign is never interrupted."
-      : "Your recurring campaign needs auto-topup so it never stops mid-cycle when credits run out.";
+  const proactiveTitle = balanceBelowRequired
+    ? "Campaign May Exceed Credits"
+    : "Recurring Campaign Needs Auto-Topup";
+  const proactiveDescription = balanceBelowRequired
+    ? "Your campaign budget may exceed your current credit balance. Set up auto-topup to ensure your campaign is never interrupted."
+    : "Your recurring campaign needs auto-topup so it never stops mid-cycle when credits run out.";
 
   return (
     <BillingGuardContext.Provider value={{ showPaymentRequired, dismissPaymentRequired }}>
@@ -419,15 +405,6 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
               >
                 Cancel
               </button>
-
-              {isRunway && (
-                <button
-                  onClick={() => { setVisible(false); info.onProceed?.(); }}
-                  className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
-                >
-                  Launch anyway
-                </button>
-              )}
 
               {isProactive ? (
                 account?.has_payment_method ? (
