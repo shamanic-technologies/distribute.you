@@ -30,7 +30,6 @@ const featuresPath = path.resolve(__dirname, "../../../../shared/content/src/fea
 const sourcedStatsDataPath = path.resolve(__dirname, "../../src/data/sourced-stats.ts");
 const sourcedStatsCmpPath = path.resolve(__dirname, "../../src/components/sourced-stats.tsx");
 const providerAvatarPath = path.resolve(__dirname, "../../src/components/provider-avatar.tsx");
-const featureProvidersPath = path.resolve(__dirname, "../../src/data/feature-providers.ts");
 const benchmarksContentPath = path.resolve(__dirname, "../../src/data/benchmarks-content.ts");
 const navbarPath = path.resolve(__dirname, "../../src/components/navbar.tsx");
 const footerPath = path.resolve(__dirname, "../../src/components/footer.tsx");
@@ -293,32 +292,6 @@ describe("ProviderAvatar shared helper", () => {
   });
 });
 
-describe("Feature providers map (channels-grid logos)", () => {
-  it("exists at src/data/feature-providers.ts", () => {
-    expect(fs.existsSync(featureProvidersPath)).toBe(true);
-  });
-
-  const content = fs.existsSync(featureProvidersPath)
-    ? fs.readFileSync(featureProvidersPath, "utf-8")
-    : "";
-
-  it("maps each live feature to a provider stack with logo.dev domains", () => {
-    for (const id of [
-      "sales-outreach",
-      "journalist-outreach",
-      "vc-outreach",
-      "hiring-outreach",
-      "accelerators-outreach",
-      "pr-expert-quote-outreach",
-      "outlet-discovery",
-      "press-kit-generation",
-      "ai-visibility-scoring",
-    ]) {
-      expect(content).toMatch(new RegExp(`"${id}"`));
-    }
-  });
-});
-
 describe("Investors page: dream quote reframed (CAC/scale, not staying solo)", () => {
   const content = fs.readFileSync(investorsPagePath, "utf-8");
 
@@ -341,28 +314,22 @@ describe("benchmarks-content: SALES ctaClosing rewritten", () => {
   });
 });
 
-describe("shared/content/src/features.ts: backend-aligned catalog", () => {
+describe("shared/content/src/features.ts: sales-cold-email only", () => {
   const content = fs.readFileSync(featuresPath, "utf-8");
 
-  it("exposes at least 9 features (all backend channels)", () => {
+  it("exposes exactly one feature: sales-outreach", () => {
     const matches = content.match(/id:\s*["'][a-z-]+["']/g) || [];
-    expect(matches.length).toBeGreaterThanOrEqual(9);
+    expect(matches).toHaveLength(1);
+    expect(content).toMatch(/id:\s*"sales-outreach"/);
   });
 
-  it("includes the VC outreach channel", () => {
-    expect(content).toMatch(/vc-(outreach|cold-email)/i);
-  });
-
-  it("includes the Accelerators outreach channel", () => {
-    expect(content).toMatch(/accelerator/i);
-  });
-
-  it("includes the Press Kit channel", () => {
-    expect(content).toMatch(/press-kit/i);
-  });
-
-  it("marks at least one channel as coming-soon (e.g. Influencers or LinkedIn)", () => {
-    expect(content).toMatch(/coming-soon/);
-    expect(content).toMatch(/influencer|linkedin/i);
+  it("dropped every off-message channel", () => {
+    expect(content).not.toMatch(/journalist-outreach/);
+    expect(content).not.toMatch(/vc-outreach/);
+    expect(content).not.toMatch(/hiring-outreach/);
+    expect(content).not.toMatch(/accelerator/i);
+    expect(content).not.toMatch(/press-kit/i);
+    expect(content).not.toMatch(/influencer|linkedin-outreach/i);
+    expect(content).not.toMatch(/status:\s*"coming-soon"/);
   });
 });

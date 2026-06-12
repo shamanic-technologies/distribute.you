@@ -5,12 +5,6 @@ import {
 } from "@/lib/investors/fetch-metrics";
 import { formatCents, formatNumber, computeCAGR } from "@/lib/investors/format";
 import { BarChart, CGRLineChart } from "@/components/investors/charts";
-import { DISTRIBUTION_FEATURES } from "@distribute/content";
-
-const LIVE_CHANNEL_COUNT = DISTRIBUTION_FEATURES.filter((f) => f.status === "live").length;
-const COMING_SOON_CHANNEL_COUNT = DISTRIBUTION_FEATURES.filter(
-  (f) => f.status === "coming-soon"
-).length;
 
 // Last-resort zero metrics. The sections render SSR-sync (no <Suspense>), so a
 // throw from fetchInvestorMetrics would abort the whole Vercel prerender
@@ -72,17 +66,10 @@ export async function CompanyOverviewSection() {
   return (
     <div className="bg-gray-800/30 border border-gray-700/50 rounded-xl p-6 text-gray-300 space-y-4 text-sm leading-relaxed">
       <p>
-        <strong className="text-white">distribute</strong> is the Stripe of
-        Distribution — one credit-based account that runs outbound across many
-        channels (sales cold email, journalist pitch, VC outreach, hiring,
-        accelerators, PR expert quotes, and more). Builders provide a URL and a
-        per-channel budget; AI workflows handle prospecting, generation, sending,
+        <strong className="text-white">distribute</strong> is a pay-as-you-go
+        cloud platform for AI cold email outreach. Builders provide a URL and a
+        daily budget; AI workflows handle prospecting, email generation, sending,
         reply qualification, and reporting — ranked by real cost-per-positive-reply.
-      </p>
-      <p>
-        <strong className="text-white">{LIVE_CHANNEL_COUNT} channels are live</strong>{" "}
-        today, with <strong className="text-white">{COMING_SOON_CHANNEL_COUNT} more</strong>{" "}
-        in active development. The full catalog is in the Product section below.
       </p>
       <p>
         The business model is{" "}

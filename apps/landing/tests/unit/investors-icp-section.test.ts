@@ -44,8 +44,9 @@ describe("Investors page: ICP #1 section", () => {
     expect(page).toMatch(/Founder proximity/);
   });
 
-  it("mentions growing catalog of channels", () => {
-    expect(page).toMatch(/marketplace of channels/);
+  it("mentions the public cold-email roadmap expectation", () => {
+    expect(page).toMatch(/Roadmap expectation/);
+    expect(page).toMatch(/Cold email, compounding/);
   });
 });
 

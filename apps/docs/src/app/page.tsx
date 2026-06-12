@@ -4,32 +4,24 @@ import { CopyForLLM } from "@/components/copy-for-llm";
 
 const liveFeatures = DISTRIBUTION_FEATURES.filter((f) => f.status === "live");
 const comingFeatures = DISTRIBUTION_FEATURES.filter((f) => f.status === "coming-soon");
-const liveCount = liveFeatures.length;
 
 const channelList = liveFeatures
   .map((f) => `- ${f.title} — ${f.description}`)
   .join("\n");
 
-const comingList = comingFeatures
-  .map((f) => `- ${f.title} (coming) — ${f.description}`)
-  .join("\n");
-
 const LLM_INSTRUCTIONS = `# distribute Documentation
 
 ## What is distribute?
-The Stripe of Distribution. One API for sales, PR, VC, hiring, and more.
+AI cold email outreach, done for you. One API.
 Provide a URL + a daily budget; distribute handles lead finding, content generation,
 sending, and AI-qualified reply forwarding.
 
-## Channels (${liveCount} live)
+## What it does
 ${channelList}
-
-## Coming Soon
-${comingList}
 
 ## Key Concepts
 - Brands: your company/product profile, auto-analyzed from URL
-- Features: campaign types (Sales Cold Email, Journalist Pitch, etc.)
+- Features: campaign types (Sales Cold Email)
 - Workflows: execution engines behind features, auto-optimized by cost per qualified reply
 - Campaigns: running instances with budget limits
 
@@ -54,19 +46,19 @@ export default function DocsHome() {
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
       <p className="text-base text-gray-500 mb-8">
-        The Stripe of Distribution. Provide a URL and a budget — distribute finds the right people,
-        writes personalized outreach, sends it on your behalf, AI-qualifies the replies,
+        Provide a URL and a budget — distribute finds the right people,
+        writes personalized cold email, sends it on your behalf, AI-qualifies the replies,
         and forwards the good ones to your inbox.
       </p>
 
       <div className="prose">
         <h2>What is distribute?</h2>
         <p>
-          distribute is an AI-powered, multi-channel distribution platform. One account, one API,
-          many channels. You provide a URL and a daily budget per channel. We handle sending
+          distribute is an AI-powered cold email platform. One account, one API.
+          You provide a URL and a daily budget. We handle sending
           infrastructure, deliverability, reply qualification, and CAC attribution.
         </p>
-        <p>{liveCount} channels are live today:</p>
+        <p>What we do:</p>
         <ul>
           {liveFeatures.map((f) => (
             <li key={f.id}>
@@ -91,7 +83,7 @@ export default function DocsHome() {
         <ol>
           <li><a href={URLS.signUp}>Create an account</a> and get your API key</li>
           <li>Set up your brand — provide your URL, distribute analyzes your site automatically</li>
-          <li>Pick a channel, set a budget, launch a campaign</li>
+          <li>Set a budget and launch your cold email campaign</li>
           <li>Get notified when someone replies</li>
         </ol>
 
@@ -128,7 +120,7 @@ export default function DocsHome() {
 
         <h3>Features</h3>
         <p>
-          Features define the types of campaigns you can run (e.g. Sales Cold Email, Journalist Pitch, Press Kit Generation).
+          Features define the types of campaigns you can run (e.g. Sales Cold Email).
           Each feature has specific inputs, outputs, and performance metrics.
         </p>
 

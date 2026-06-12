@@ -11,9 +11,7 @@ const SIDEBAR_COLORS: Record<FeatureColor, { activeBg: string; activeText: strin
 
 export function DashboardPreview() {
   const features: { name: string; active: boolean; color: FeatureColor }[] = [
-    { name: "Sales Outreach", active: true, color: "cyan" },
-    { name: "Journalist Outreach", active: true, color: "emerald" },
-    { name: "Hiring Outreach", active: false, color: "violet" },
+    { name: "Sales Cold Email", active: true, color: "cyan" },
   ];
 
   const workflows = [
