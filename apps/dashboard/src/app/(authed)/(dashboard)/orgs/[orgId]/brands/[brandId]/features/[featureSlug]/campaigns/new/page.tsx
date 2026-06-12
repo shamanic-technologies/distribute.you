@@ -35,7 +35,9 @@ import {
   listWorkflowExamples,
   type WorkflowExampleEmail,
   getWorkflowProjection,
+  keepLastGoodWorkflowProjection,
   type WorkflowProjectionItem,
+  type WorkflowProjectionResponse,
   type SalesObjective,
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
@@ -576,16 +578,26 @@ export default function FeatureCreateCampaignPage() {
     });
   }, [workflowsData, rankedData, brandStatsData]);
 
-  // features-service is the SINGLE source for the funnel SUM math: per-workflow cost-per-close
-  // + funnel projection + the recommended workflow/budget. Conversion economics are read
-  // server-side from the brand's SAVED sales-economics. The funnel is LINEAR in budget, so we
-  // request the projection at $1 (per-dollar) and scale by budget client-side (pure ×; the
-  // route-combining SUM stays server-side). Invalidated when the econ upsert lands (see
-  // mutateSalesEcon.onSuccess) so edits reflect once persisted.
+  // features-service owns the econ-INDEPENDENT per-workflow GLOBAL unit costs (contacted/reply/
+  // click $) — slow-changing, so FETCH-ONCE (no poll): the cards update INSTANTLY from the client
+  // econLive recompute below, NOT from re-fetching this. We still allow refetchOnWindowFocus, but
+  // guard it with `structuralSharing: keepLastGoodWorkflowProjection` — the cold Neon chain can
+  // answer a refocus refetch with a valid-but-degenerate 200 (null unit costs / fewer workflows)
+  // that would otherwise collapse the budget cards + Launch button (both derive off
+  // costPerCloseUsd). Keep-last-good holds the resolved values across such a transient
+  // (CLAUDE.md "keep-last-good (cache-write boundary)"); a real downgrade still fails loud.
   const { data: projData } = useAuthQuery(
     ["workflowProjection", featureSlug, brandId, salesObjective],
     () => getWorkflowProjection({ featureSlug, brandId, objective: salesObjective, budgetUsd: 1 }),
-    { enabled: isSalesFunnel && featureDef?.implemented === true, ...pollOptions },
+    {
+      enabled: isSalesFunnel && featureDef?.implemented === true,
+      // TanStack types structuralSharing params as `unknown` — cast to the query's data type.
+      structuralSharing: (prev, next) =>
+        keepLastGoodWorkflowProjection(
+          prev as WorkflowProjectionResponse | undefined,
+          next as WorkflowProjectionResponse,
+        ),
+    },
   );
 
   const projByDynasty = useMemo(() => {
