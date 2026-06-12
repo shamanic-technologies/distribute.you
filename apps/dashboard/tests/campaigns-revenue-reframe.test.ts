@@ -53,7 +53,7 @@ describe("Campaigns list page — revenue/gains reorientation", () => {
   });
 
   it("preserves the existing static-shell + time-ago guards", () => {
-    expect(src).toContain("pending={!revealed}");
+    expect(src).toContain("pending={!chartsRevealed}");
     expect(src).toContain("timeAgo(campaign.createdAt)");
     expect(src).not.toContain("toLocaleDateString()");
   });
