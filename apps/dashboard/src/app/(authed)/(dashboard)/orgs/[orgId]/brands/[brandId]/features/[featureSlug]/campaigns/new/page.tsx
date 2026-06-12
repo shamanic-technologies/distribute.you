@@ -1461,7 +1461,7 @@ export default function FeatureCreateCampaignPage() {
               {isSalesFunnel && econReady && econSource === "cross-brand-average" && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-1 text-[11px] font-medium text-amber-700">
                   <SparklesIcon className="w-3 h-3" />
-                  Estimated · average of your other brands
+                  Estimated · based on similar brands
                 </span>
               )}
               {isSalesFunnel && econReady && econSource === "user" && (
