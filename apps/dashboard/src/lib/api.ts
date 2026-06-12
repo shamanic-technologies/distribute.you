@@ -682,6 +682,61 @@ export async function saveBrandSalesEconomics(
   return parsed.data;
 }
 
+// ── Welcome signup gift (platform admin, staff-only) ──
+// The welcome gift is a billing-service promo code (`code='welcome'`) whose grant
+// amount is re-priced live WITHOUT a deploy. api-service proxies it under
+// /v1/promo-codes/welcome (PATCH staff-gated server-side). amount_cents is integer
+// cents; the UI displays/edits in dollars. Read at redeem time, so a new amount
+// applies to the next signup immediately.
+const WelcomePromoSchema = z.object({
+  code: z.string(),
+  amount_cents: z.number(),
+});
+
+export interface WelcomePromo {
+  code: string;
+  amountCents: number;
+}
+
+/** GET /promo-codes/welcome — current welcome gift grant ({ code, amount_cents }). */
+export async function getWelcomePromo(token?: string): Promise<WelcomePromo> {
+  const raw = await apiCall<unknown>(`/promo-codes/welcome`, { token });
+  const parsed = WelcomePromoSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getWelcomePromo: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getWelcomePromo: invalid response shape");
+  }
+  return { code: parsed.data.code, amountCents: parsed.data.amount_cents };
+}
+
+/**
+ * PATCH /promo-codes/welcome — re-price the welcome gift. `amountCents` must be a
+ * non-negative integer (cents); the gateway gates this to staff and validates.
+ * Returns the persisted value.
+ */
+export async function setWelcomePromo(
+  amountCents: number,
+  token?: string,
+): Promise<WelcomePromo> {
+  const raw = await apiCall<unknown>(`/promo-codes/welcome`, {
+    token,
+    method: "PATCH",
+    body: { amountCents },
+  });
+  const parsed = WelcomePromoSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] setWelcomePromo: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] setWelcomePromo: invalid response shape");
+  }
+  return { code: parsed.data.code, amountCents: parsed.data.amount_cents };
+}
+
 // ── Effective sales economics (new-campaign prefill) ──
 // brand-service decides the default server-side: the brand's saved set when present
 // (source "user"), else the cross-brand average (source "cross-brand-average"), else
