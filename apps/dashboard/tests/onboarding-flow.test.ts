@@ -51,13 +51,15 @@ describe("Onboarding flow", () => {
     expect(content).not.toMatch(/Copy.*key/i);
   });
 
-  it("should collect a card before redirecting to brands auto-create", () => {
+  it("should redirect straight to brands auto-create with no billing/top-up step", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain('"billing-setup"');
-    expect(content).toContain("createCheckoutSession");
-    expect(content).toContain('mode: "setup"');
-    expect(content).toContain('successUrl.searchParams.set("autoCreate"');
-    expect(content).toContain('successUrl.searchParams.set("billingSetup", "success")');
+    // No card-capture / auto-topup step at onboarding — it tripped the $2 welcome
+    // credit because the brand-new balance sits below the top-up threshold. Card +
+    // auto-topup are set up later, on first campaign launch (billing-guard modal).
+    expect(content).not.toContain('"billing-setup"');
+    expect(content).not.toContain("createCheckoutSession");
+    expect(content).not.toContain("billingSetup");
+    expect(content).toContain('brandsUrl.searchParams.set("autoCreate"');
   });
 });
 
