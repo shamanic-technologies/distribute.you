@@ -12,6 +12,7 @@ import {
 import { formatCount } from "@/lib/format-number";
 import { FEATURE_GATES } from "@/lib/feature-gates";
 import { isServerFeatureFlagEnabled } from "@/lib/server-feature-flag";
+import { WelcomeGiftAdmin } from "@/components/admin/welcome-gift-admin";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -309,6 +310,12 @@ export default async function DashboardHome({ searchParams }: PageProps) {
             Updated {new Date(stats.updatedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
           </p>
         </section>
+
+        {/* Staff-only platform admin. This whole page is gated to staff above
+            (publicMetricsOk → redirect non-staff to /orgs), so the control is
+            staff-only by placement; the PATCH is additionally staff-gated at the
+            gateway. */}
+        <WelcomeGiftAdmin />
       </div>
     </div>
   );
