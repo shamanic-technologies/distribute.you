@@ -70,8 +70,8 @@ describe("Landing page: ICP-only alignment", () => {
     expect(page).toMatch(/The 3 months you skip/i);
   });
 
-  it("mentions $25 free credits in hero or CTA", () => {
-    expect(page).toMatch(/\$25.*free credits|free credits.*\$25/i);
+  it("mentions the 50 free emails offer in hero or CTA", () => {
+    expect(page).toMatch(/50 free emails/i);
   });
 
   it("renders the cold-email hero copy (no multi-channel grid)", () => {

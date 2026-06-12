@@ -90,10 +90,10 @@ const jsonLd = {
   offers: [
     {
       "@type": "Offer",
-      name: "$25 free credits",
+      name: "50 free emails",
       price: "0",
       priceCurrency: "USD",
-      description: "$25 free credits. No subscription. No credit card. Launch in 5 minutes.",
+      description: "50 free emails. No subscription. No credit card. Launch in 5 minutes.",
     },
   ],
   provider: {

@@ -7,13 +7,14 @@ import {
 } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { useOrganization } from "@clerk/nextjs";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   PERSIST_MAX_AGE_MS,
   cacheBuildId,
   persisterStorageKey,
   shouldPersistQuery,
 } from "@/lib/persist-cache";
+import { installIdleFocusManager } from "@/lib/idle-focus-manager";
 
 function makeQueryClient() {
   return new QueryClient({
@@ -100,6 +101,12 @@ export function QueryProvider({ children }: { children: ReactNode }) {
   // of this provider (dashboard + onboarding), so `useOrganization` is safe.
   const { organization } = useOrganization();
   const orgId = organization?.id ?? null;
+
+  // Pause all interval polling when the tab is hidden OR the user is idle.
+  // Installed once on the global focusManager (singleton) — survives org-switch
+  // remounts of the inner provider. Stops the continuous DOM churn that feeds
+  // PostHog's rrweb recorder and OOMs long-lived tabs. See idle-focus-manager.ts.
+  useEffect(() => installIdleFocusManager(), []);
 
   // Atomically reset the ENTIRE React Query cache — in-memory AND the active
   // persister — on org switch by remounting under a new `key` (TanStack canonical

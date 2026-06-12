@@ -121,6 +121,6 @@ export const DISTRIBUTION_STEPS: DistributionStep[] = [
   {
     number: 3,
     title: "Set a daily budget",
-    description: "$25 free to start. Top up when you want. We send, qualify, and forward replies to your Gmail.",
+    description: "First 50 emails free. Top up when you want. We send, qualify, and forward replies to your Gmail.",
   },
 ];
