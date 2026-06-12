@@ -13,7 +13,7 @@ export interface WorkflowRow {
   positiveReplies: number;
   /** USD cents of total run cost attributed to this workflow */
   totalCostCents: number;
-  expectedRevenueUsd: number | null;
+  /** Projected ROI (100 / cacPct from features-service workflow-projection). */
   roiMultiple: number | null;
   /** ISO timestamp from the Workflow row; used by the page's default composite sort. */
   createdAt: string;
@@ -39,14 +39,6 @@ function formatUsd(cents: number): string {
 function cpa(totalCostCents: number, count: number): string {
   if (count <= 0) return "—";
   return formatUsd(totalCostCents / count);
-}
-
-function formatUsdValue(usd: number | null): string {
-  if (usd == null) return "—";
-  if (usd === 0) return "$0";
-  if (usd < 0.01) return "<$0.01";
-  if (usd < 100) return `$${usd.toFixed(2)}`;
-  return `$${usd.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 }
 
 function formatRoi(roi: number | null): string {
@@ -96,12 +88,6 @@ function buildColumns(labels: WorkflowsTableLabels, showRevenueColumns: boolean)
   if (showRevenueColumns) {
     columns.push(
       {
-        key: "expectedRevenue",
-        label: "Expected revenue",
-        sortValue: (r) => String(r.expectedRevenueUsd ?? -1).padStart(14, "0"),
-        render: (r) => <span className="font-medium text-green-700">{formatUsdValue(r.expectedRevenueUsd)}</span>,
-      },
-      {
         key: "roi",
         label: "ROI",
         sortValue: (r) => String(r.roiMultiple ?? -1).padStart(14, "0"),
@@ -121,7 +107,6 @@ function buildDrawerEntries(labels: WorkflowsTableLabels, showRevenueColumns: bo
     { label: "Total cost", value: formatUsd(r.totalCostCents) },
     { label: "CAC / positive reply", value: cpa(r.totalCostCents, r.positiveReplies) },
     ...(showRevenueColumns ? [
-      { label: "Expected revenue", value: formatUsdValue(r.expectedRevenueUsd) },
       { label: "ROI", value: formatRoi(r.roiMultiple) },
     ] : []),
     { label: "Description", value: r.description, block: true },
