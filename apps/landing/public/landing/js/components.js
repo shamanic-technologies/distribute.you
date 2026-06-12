@@ -6,7 +6,7 @@ const NAV_HTML = `
 <nav id="nav">
   <div class="nav-inner">
     <a href="/" class="nav-logo">
-      <img src="/landing-v2/logo/logo-distribute.svg" class="nav-logo-img" alt="Distribute">
+      <img src="/landing/logo/logo-distribute.svg" class="nav-logo-img" alt="distribute">
       distribute <span class="nav-chip">beta</span>
     </a>
     <ul class="nav-links">
@@ -26,7 +26,7 @@ const NAV_HTML = `
 <div class="nav-mobile-overlay" id="navMobile" aria-hidden="true">
   <div class="nav-mobile-top">
     <a href="/" class="nav-mobile-logo">
-      <img src="/landing-v2/logo/logo-distribute.svg" alt="">
+      <img src="/landing/logo/logo-distribute.svg" alt="">
       distribute
     </a>
     <button class="nav-mobile-close" id="navClose" aria-label="Close menu">
@@ -50,7 +50,7 @@ const FOOTER_HTML = `
     <div class="ft-grid">
       <div class="ft-brand">
         <a href="/" class="nav-logo">
-          <img src="/landing-v2/logo/logo-distribute.svg" class="nav-logo-img" alt="Distribute">
+          <img src="/landing/logo/logo-distribute.svg" class="nav-logo-img" alt="distribute">
           distribute <span class="nav-chip">beta</span>
         </a>
         <p>AI outreach automation for solo founders and micro-SaaS builders. Drop a URL, set a budget, get qualified replies.</p>

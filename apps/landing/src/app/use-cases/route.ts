@@ -1,7 +1,7 @@
-import { staticV2Response } from "@/lib/static-v2-html";
+import { staticResponse } from "@/lib/static-html";
 
 export const revalidate = 300;
 
 export function GET() {
-  return staticV2Response("use-cases.html");
+  return staticResponse("use-cases.html");
 }

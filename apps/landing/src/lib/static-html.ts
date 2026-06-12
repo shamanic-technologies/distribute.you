@@ -203,7 +203,7 @@ async function resolveLivePerformanceMetrics(): Promise<LivePerformanceMetrics> 
   }
 }
 
-// Analytics for the statically-served landing-v2 pages. These route handlers
+// Analytics for the statically-served landing pages. These route handlers
 // return raw HTML and bypass the React root layout (GA) and Next client
 // instrumentation (PostHog), so the trackers must be injected here — otherwise
 // the home + SEO cluster pages record no unique visits. GA id mirrors
@@ -222,19 +222,17 @@ function analyticsHead(): string {
   return ga + posthog;
 }
 
-export function staticV2Html(fileName: string) {
+export function staticHtml(fileName: string) {
   const html = readFileSync(
-    join(process.cwd(), "public/landing-v2", fileName),
+    join(process.cwd(), "public/landing", fileName),
     "utf8",
   );
 
   const rewritten = html
-    .replaceAll('href="css/', 'href="/landing-v2/css/')
-    .replaceAll('src="js/', 'src="/landing-v2/js/')
-    .replaceAll('src="logo/logo-distribute-2.svg"', 'src="logo/logo-distribute.svg"')
-    .replaceAll('src="logo/', 'src="/landing-v2/logo/')
+    .replaceAll('href="css/', 'href="/landing/css/')
+    .replaceAll('src="js/', 'src="/landing/js/')
+    .replaceAll('src="logo/', 'src="/landing/logo/')
     .replaceAll('href="index.html"', 'href="/"')
-    .replaceAll('href="v2.html"', 'href="/"')
     .replaceAll('href="/docs/api"', `href="${URLS.apiDocs}"`)
     .replaceAll('href="/docs/mcp"', `href="${URLS.mcp}"`)
     .replaceAll('href="/docs"', `href="${URLS.docs}"`)
@@ -280,8 +278,8 @@ async function withLivePerformanceMetrics(html: string) {
     .replaceAll("$1.42", liveMetrics.costPerPositiveReplyLabel);
 }
 
-export async function staticV2Response(fileName: string) {
-  const html = await withLivePerformanceMetrics(staticV2Html(fileName));
+export async function staticResponse(fileName: string) {
+  const html = await withLivePerformanceMetrics(staticHtml(fileName));
 
   return new Response(html, {
     headers: {

@@ -72,11 +72,6 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
-  icons: {
-    icon: "/favicon.jpg",
-    shortcut: "/favicon.jpg",
-    apple: "/favicon.jpg",
-  },
   alternates: {
     canonical: SITE_URL,
   },

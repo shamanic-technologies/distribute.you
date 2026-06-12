@@ -51,35 +51,35 @@ function ProviderSection({ group }: { group: ProviderGroup }) {
             unoptimized
           />
         ) : (
-          <div className="flex h-9 w-9 items-center justify-center rounded bg-[var(--v2-surface-hi)] text-sm font-bold uppercase text-[var(--v2-sub)]">
+          <div className="flex h-9 w-9 items-center justify-center rounded bg-[var(--dy-surface-hi)] text-sm font-bold uppercase text-[var(--dy-sub)]">
             {group.provider[0]}
           </div>
         )}
-        <h2 className="v2-h2 text-2xl capitalize">
+        <h2 className="dy-h2 text-2xl capitalize">
           {group.provider}
         </h2>
       </div>
-      <div className="v2-card overflow-x-auto">
-        <table className="min-w-full divide-y divide-[var(--v2-border)]">
+      <div className="dy-card overflow-x-auto">
+        <table className="min-w-full divide-y divide-[var(--dy-border)]">
           <thead>
             <tr>
-              <th className="v2-mono px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--v2-muted)]">
+              <th className="dy-mono px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--dy-muted)]">
                 Cost Type
               </th>
-              <th className="v2-mono px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--v2-muted)]">
+              <th className="dy-mono px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--dy-muted)]">
                 Unit
               </th>
-              <th className="v2-mono px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-[var(--v2-muted)]">
+              <th className="dy-mono px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-[var(--dy-muted)]">
                 Price
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[var(--v2-border)]">
+          <tbody className="divide-y divide-[var(--dy-border)]">
             {group.rows.map((row) => (
-              <tr key={row.name} className="hover:bg-[var(--v2-surface-hi)]">
-                <td className="px-4 py-3 text-sm text-[var(--v2-text)]">{row.type}</td>
-                <td className="px-4 py-3 text-sm text-[var(--v2-sub)]">per {row.unit}</td>
-                <td className="v2-mono px-4 py-3 text-right text-sm font-medium text-[var(--v2-text)] tabular-nums">
+              <tr key={row.name} className="hover:bg-[var(--dy-surface-hi)]">
+                <td className="px-4 py-3 text-sm text-[var(--dy-text)]">{row.type}</td>
+                <td className="px-4 py-3 text-sm text-[var(--dy-sub)]">per {row.unit}</td>
+                <td className="dy-mono px-4 py-3 text-right text-sm font-medium text-[var(--dy-text)] tabular-nums">
                   {formatPrice(row.pricePerUnitInUsdCents)}
                 </td>
               </tr>
@@ -93,13 +93,13 @@ function ProviderSection({ group }: { group: ProviderGroup }) {
 
 function ErrorState({ message }: { message: string }) {
   return (
-    <div className="rounded-xl border border-[var(--v2-red-brd)] bg-[var(--v2-red-dim)] p-6 text-sm text-[var(--v2-text)]">
+    <div className="rounded-xl border border-[var(--dy-red-brd)] bg-[var(--dy-red-dim)] p-6 text-sm text-[var(--dy-text)]">
       <p className="font-semibold mb-1">Unable to load pricing.</p>
-      <p className="v2-body mb-3">
+      <p className="dy-body mb-3">
         We were unable to fetch live unit costs from our costs service. Please try again
         in a few minutes, or contact support if this persists.
       </p>
-      <pre className="overflow-x-auto rounded bg-[var(--v2-surface)] p-3 text-xs text-[var(--v2-red)]">
+      <pre className="overflow-x-auto rounded bg-[var(--dy-surface)] p-3 text-xs text-[var(--dy-red)]">
         {message}
       </pre>
     </div>

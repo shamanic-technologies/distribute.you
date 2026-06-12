@@ -84,30 +84,30 @@ export default function PrivacyPage() {
   return (
     <>
       <Navbar />
-      <main className="v2-page">
-        <Section variant="prose" outerClassName="v2-section">
-          <p className="v2-mono text-xs font-semibold uppercase tracking-[0.18em] text-[var(--v2-accent-hi)]">
+      <main className="dy-page">
+        <Section variant="prose" outerClassName="dy-section">
+          <p className="dy-mono text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dy-accent-hi)]">
             Legal
           </p>
-          <h1 className="v2-title mt-4 text-4xl">
+          <h1 className="dy-title mt-4 text-4xl">
             Privacy Policy
           </h1>
-          <p className="v2-mono mt-4 text-sm text-[var(--v2-muted)]">Last updated {LAST_UPDATED}</p>
-          <p className="v2-body mt-6 text-lg">
+          <p className="dy-mono mt-4 text-sm text-[var(--dy-muted)]">Last updated {LAST_UPDATED}</p>
+          <p className="dy-body mt-6 text-lg">
             This Privacy Policy explains how distribute collects, uses, and
             protects information when you use our websites, dashboard, APIs,
             and related services.
           </p>
         </Section>
 
-        <Section variant="prose" outerClassName="v2-section-tight">
+        <Section variant="prose" outerClassName="dy-section-tight">
           <div className="space-y-10">
             {SECTIONS.map((section) => (
               <section key={section.title}>
-                <h2 className="v2-h2 text-2xl">
+                <h2 className="dy-h2 text-2xl">
                   {section.title}
                 </h2>
-                <div className="v2-body mt-4 space-y-4 text-base">
+                <div className="dy-body mt-4 space-y-4 text-base">
                   {section.body.map((paragraph) => (
                     <p key={paragraph}>{paragraph}</p>
                   ))}
@@ -116,12 +116,12 @@ export default function PrivacyPage() {
             ))}
 
             <section>
-              <h2 className="v2-h2 text-2xl">
+              <h2 className="dy-h2 text-2xl">
                 Contact
               </h2>
-              <p className="v2-body mt-4 text-base">
+              <p className="dy-body mt-4 text-base">
                 For privacy questions or requests, contact{" "}
-                <a href={`mailto:${SUPPORT_EMAIL}`} className="text-[var(--v2-accent-hi)] underline">
+                <a href={`mailto:${SUPPORT_EMAIL}`} className="text-[var(--dy-accent-hi)] underline">
                   {SUPPORT_EMAIL}
                 </a>
                 .

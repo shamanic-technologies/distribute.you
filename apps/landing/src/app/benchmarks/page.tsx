@@ -84,14 +84,14 @@ function HeroStat({
   hint?: string;
 }) {
   return (
-    <div className="v2-card p-5">
-      <div className="v2-mono text-xs uppercase tracking-wider text-[var(--v2-muted)]">
+    <div className="dy-card p-5">
+      <div className="dy-mono text-xs uppercase tracking-wider text-[var(--dy-muted)]">
         {label}
       </div>
-      <div className="mt-1 text-2xl font-bold text-[var(--v2-text)] md:text-3xl">
+      <div className="mt-1 text-2xl font-bold text-[var(--dy-text)] md:text-3xl">
         {value}
       </div>
-      {hint && <div className="mt-1 text-xs text-[var(--v2-muted)]">{hint}</div>}
+      {hint && <div className="mt-1 text-xs text-[var(--dy-muted)]">{hint}</div>}
     </div>
   );
 }
@@ -118,13 +118,13 @@ export default async function BenchmarksPage() {
 
   if (!data) {
     return (
-      <main className="v2-page">
-        <section className="v2-section">
-          <div className="v2-shell text-center">
-            <h1 className="v2-title mb-3 text-3xl">
+      <main className="dy-page">
+        <section className="dy-section">
+          <div className="dy-shell text-center">
+            <h1 className="dy-title mb-3 text-3xl">
               Cold Email Benchmarks
             </h1>
-            <p className="v2-body">
+            <p className="dy-body">
               Performance data is loading. Check back soon.
             </p>
           </div>
@@ -167,25 +167,25 @@ export default async function BenchmarksPage() {
   };
 
   return (
-    <main className="v2-page">
+    <main className="dy-page">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(datasetJsonLd) }}
       />
 
       {/* Hero */}
-      <section className="v2-section">
-        <div className="v2-shell-wide">
-          <div className="v2-eyebrow mb-6">
-            <span className="v2-dot" />
+      <section className="dy-section">
+        <div className="dy-shell-wide">
+          <div className="dy-eyebrow mb-6">
+            <span className="dy-dot" />
             Open dataset
           </div>
-          <h1 className="v2-title mb-4 max-w-4xl text-4xl md:text-6xl">
+          <h1 className="dy-title mb-4 max-w-4xl text-4xl md:text-6xl">
             {feature.name}{" "}
-            <span className="text-[var(--v2-accent-hi)]">Benchmarks &amp; Statistics</span>{" "}
-            <span className="font-normal text-[var(--v2-muted)]">(2026)</span>
+            <span className="text-[var(--dy-accent-hi)]">Benchmarks &amp; Statistics</span>{" "}
+            <span className="font-normal text-[var(--dy-muted)]">(2026)</span>
           </h1>
-          <p className="v2-body mb-8 max-w-3xl text-base md:text-lg">
+          <p className="dy-body mb-8 max-w-3xl text-base md:text-lg">
             {feature.description}
           </p>
 
@@ -231,15 +231,15 @@ export default async function BenchmarksPage() {
       )}
 
       {/* Platform averages — our open dataset */}
-      <section className="v2-section-tight border-y border-[var(--v2-border)] bg-[var(--v2-bg-alt)]">
-        <div className="v2-shell-wide">
-          <p className="v2-mono mb-2 text-xs uppercase tracking-wider text-[var(--v2-muted)]">
+      <section className="dy-section-tight border-y border-[var(--dy-border)] bg-[var(--dy-bg-alt)]">
+        <div className="dy-shell-wide">
+          <p className="dy-mono mb-2 text-xs uppercase tracking-wider text-[var(--dy-muted)]">
             From the distribute open dataset
           </p>
-          <h2 className="v2-h2 mb-2 text-xl md:text-2xl">
+          <h2 className="dy-h2 mb-2 text-xl md:text-2xl">
             Platform averages
           </h2>
-          <p className="v2-body mb-6 text-sm">
+          <p className="dy-body mb-6 text-sm">
             Aggregated across every campaign run through {feature.name} — every
             brand, every workflow. Updated hourly.
           </p>
@@ -269,29 +269,29 @@ export default async function BenchmarksPage() {
       )}
 
       {/* Brand leaderboard */}
-      <section className="v2-section-tight">
-        <div className="v2-shell-wide">
+      <section className="dy-section-tight">
+        <div className="dy-shell-wide">
           <div className="flex items-end justify-between mb-4">
             <div>
-              <h2 className="v2-h2 text-xl md:text-2xl">
+              <h2 className="dy-h2 text-xl md:text-2xl">
                 Brand leaderboard
               </h2>
-              <p className="v2-body mt-1 text-sm">
+              <p className="dy-body mt-1 text-sm">
                 Every brand that has run {feature.name} through distribute.
                 Click column headers to sort.
               </p>
             </div>
-            <span className="v2-mono hidden text-xs text-[var(--v2-muted)] md:block">
+            <span className="dy-mono hidden text-xs text-[var(--dy-muted)] md:block">
               {brands.length.toLocaleString()} brands
             </span>
           </div>
           {brands.length > 0 ? (
-            <div className="v2-card overflow-hidden">
+            <div className="dy-card overflow-hidden">
               <BrandLeaderboard brands={brands} />
             </div>
           ) : (
-            <div className="v2-card py-12 text-center">
-              <p className="v2-body">
+            <div className="dy-card py-12 text-center">
+              <p className="dy-body">
                 No campaign data for {feature.name} yet. Check back soon.
               </p>
             </div>
@@ -305,32 +305,32 @@ export default async function BenchmarksPage() {
       )}
 
       {/* Workflow leaderboard */}
-      <section className="v2-section-tight border-y border-[var(--v2-border)] bg-[var(--v2-bg-alt)]">
-        <div className="v2-shell-wide">
+      <section className="dy-section-tight border-y border-[var(--dy-border)] bg-[var(--dy-bg-alt)]">
+        <div className="dy-shell-wide">
           <div className="flex items-end justify-between mb-4">
             <div>
-              <h2 className="v2-h2 text-xl md:text-2xl">
+              <h2 className="dy-h2 text-xl md:text-2xl">
                 Workflow leaderboard
               </h2>
-              <p className="v2-body mt-1 text-sm">
+              <p className="dy-body mt-1 text-sm">
                 Every workflow that runs {feature.name} — ranked by cost per
                 positive reply.
               </p>
             </div>
-            <span className="v2-mono hidden text-xs text-[var(--v2-muted)] md:block">
+            <span className="dy-mono hidden text-xs text-[var(--dy-muted)] md:block">
               {workflows.length.toLocaleString()} workflows
             </span>
           </div>
           {workflows.length > 0 ? (
-            <div className="v2-card overflow-hidden">
+            <div className="dy-card overflow-hidden">
               <WorkflowLeaderboard workflows={workflows} inSection />
             </div>
           ) : (
-            <div className="v2-card py-12 text-center">
-              <p className="v2-body">No workflow data yet.</p>
+            <div className="dy-card py-12 text-center">
+              <p className="dy-body">No workflow data yet.</p>
             </div>
           )}
-          <p className="v2-mono mt-4 text-xs text-[var(--v2-muted)]">
+          <p className="dy-mono mt-4 text-xs text-[var(--dy-muted)]">
             Updated {new Date(updatedAt).toLocaleString()}. Methodology is open
             source.
           </p>

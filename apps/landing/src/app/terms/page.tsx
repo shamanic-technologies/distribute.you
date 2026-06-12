@@ -617,19 +617,19 @@ export default function TermsPage() {
   return (
     <>
       <Navbar />
-      <main className="v2-page">
-        <Section variant="prose" outerClassName="v2-section">
+      <main className="dy-page">
+        <Section variant="prose" outerClassName="dy-section">
           <header className="mb-12">
-            <p className="v2-mono mb-3 text-xs uppercase tracking-wider text-[var(--v2-muted)]">
+            <p className="dy-mono mb-3 text-xs uppercase tracking-wider text-[var(--dy-muted)]">
               Legal
             </p>
-            <h1 className="v2-title mb-3 text-4xl md:text-5xl">
+            <h1 className="dy-title mb-3 text-4xl md:text-5xl">
               Terms of Service
             </h1>
-            <p className="v2-mono text-sm text-[var(--v2-muted)]">
+            <p className="dy-mono text-sm text-[var(--dy-muted)]">
               Last updated: {LAST_UPDATED}
             </p>
-            <p className="v2-body mt-6 text-base">
+            <p className="dy-body mt-6 text-base">
               These Terms govern your use of {SERVICE}. Please read them
               carefully — sections 4 (Pricing &amp; Auto-Reload), 5 (Outreach
               on Your Behalf), and 6 (Public Performance Data) describe how
@@ -639,9 +639,9 @@ export default function TermsPage() {
 
           <nav
             aria-label="Table of contents"
-            className="v2-card mb-12 p-5"
+            className="dy-card mb-12 p-5"
           >
-            <p className="v2-mono mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--v2-muted)]">
+            <p className="dy-mono mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--dy-muted)]">
               Contents
             </p>
             <ol className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
@@ -649,7 +649,7 @@ export default function TermsPage() {
                 <li key={s.id}>
                   <Link
                     href={`#${s.id}`}
-                    className="text-[var(--v2-sub)] transition hover:text-[var(--v2-accent-hi)]"
+                    className="text-[var(--dy-sub)] transition hover:text-[var(--dy-accent-hi)]"
                   >
                     {s.title}
                   </Link>
@@ -658,10 +658,10 @@ export default function TermsPage() {
             </ol>
           </nav>
 
-          <div className="v2-body space-y-10 text-base">
+          <div className="dy-body space-y-10 text-base">
             {SECTIONS.map((s) => (
               <section key={s.id} id={s.id} className="scroll-mt-24">
-                <h2 className="v2-h2 mb-4 text-2xl">
+                <h2 className="dy-h2 mb-4 text-2xl">
                   {s.title}
                 </h2>
                 <div className="space-y-4">{s.body}</div>

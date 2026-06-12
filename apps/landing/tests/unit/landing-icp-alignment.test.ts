@@ -2,19 +2,14 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
-const landingPagePath = path.resolve(__dirname, "../../public/landing-v2/index.html");
+const landingPagePath = path.resolve(__dirname, "../../public/landing/index.html");
 const performancePagePath = path.resolve(
   __dirname,
-  "../../public/landing-v2/performance.html"
-);
-const designSystemPagePath = path.resolve(
-  __dirname,
-  "../../public/landing-v2/design-system.html"
+  "../../public/landing/performance.html"
 );
 const landingRoutePath = path.resolve(__dirname, "../../src/app/route.ts");
 const performanceRoutePath = path.resolve(__dirname, "../../src/app/performance/route.ts");
-const designSystemRoutePath = path.resolve(__dirname, "../../src/app/design-system/route.ts");
-const staticV2HtmlPath = path.resolve(__dirname, "../../src/lib/static-v2-html.ts");
+const staticHtmlPath = path.resolve(__dirname, "../../src/lib/static-html.ts");
 const nextConfigPath = path.resolve(__dirname, "../../next.config.ts");
 const benchmarksPagePath = path.resolve(__dirname, "../../src/app/benchmarks/page.tsx");
 const benchmarksLayoutPath = path.resolve(__dirname, "../../src/app/benchmarks/layout.tsx");
@@ -55,12 +50,12 @@ describe("Landing page: ICP-only alignment", () => {
     expect(page).not.toMatch(/rounded-3xl[^"]*p-2[^"]*shadow-2xl/);
   });
 
-  it("serves the exact v2 static HTML through the root route", () => {
+  it("serves the exact static HTML through the root route", () => {
     const route = fs.readFileSync(landingRoutePath, "utf-8");
-    expect(route).toMatch(/staticV2Response\("index\.html"\)/);
+    expect(route).toMatch(/staticResponse\("index\.html"\)/);
   });
 
-  it("includes the exact v2 CSS, JS, and logo asset references", () => {
+  it("includes the exact CSS, JS, and logo asset references", () => {
     expect(page).toMatch(/href="css\/styles\.css"/);
     expect(page).toMatch(/src="js\/main\.js"/);
     expect(page).toMatch(/src="logo\/logo-distribute\.svg"/);
@@ -71,7 +66,7 @@ describe("Landing page: ICP-only alignment", () => {
     expect(page).not.toMatch(/staying solo/i);
   });
 
-  it("includes the v2 'The 3 months you skip' email-infra section", () => {
+  it("includes the 'The 3 months you skip' email-infra section", () => {
     expect(page).toMatch(/The 3 months you skip/i);
   });
 
@@ -79,7 +74,7 @@ describe("Landing page: ICP-only alignment", () => {
     expect(page).toMatch(/50 free emails/i);
   });
 
-  it("renders the v2 cold-email hero copy (no multi-channel grid)", () => {
+  it("renders the cold-email hero copy (no multi-channel grid)", () => {
     expect(page).toMatch(/AI cold email, done for you/);
     expect(page).toMatch(/100 sales calls/);
     expect(page).toMatch(/in 30 days\./);
@@ -96,13 +91,12 @@ describe("Landing page: ICP-only alignment", () => {
   });
 });
 
-describe("Landing v2 static pages", () => {
+describe("Landing static pages", () => {
   const performance = fs.readFileSync(performancePagePath, "utf-8");
-  const designSystem = fs.readFileSync(designSystemPagePath, "utf-8");
 
   it("serves the exact designer performance page at /performance", () => {
     const route = fs.readFileSync(performanceRoutePath, "utf-8");
-    expect(route).toMatch(/staticV2Response\("performance\.html"\)/);
+    expect(route).toMatch(/staticResponse\("performance\.html"\)/);
     expect(performance).toMatch(/Public campaign data,<br>updated from production\./);
     expect(performance).toMatch(/id="proofTrack"/);
     expect(performance).toMatch(/funnel-bar-fill/);
@@ -125,15 +119,9 @@ describe("Landing v2 static pages", () => {
     expect(slugRoute).toMatch(/NextResponse\.redirect\(new URL\("\/benchmarks"/);
   });
 
-  it("serves the designer design-system page as the v2 visual reference", () => {
-    const route = fs.readFileSync(designSystemRoutePath, "utf-8");
-    expect(route).toMatch(/staticV2Response\("design-system\.html"\)/);
-    expect(designSystem).toMatch(/Distribute — Design System/);
-    expect(designSystem).toMatch(/Tokens, typography, components, and patterns/);
-  });
 
   it("rewrites static designer links that would otherwise 404 on landing", () => {
-    const helper = fs.readFileSync(staticV2HtmlPath, "utf-8");
+    const helper = fs.readFileSync(staticHtmlPath, "utf-8");
     expect(helper).toMatch(/href="\/docs\/api"/);
     expect(helper).toMatch(/URLS\.apiDocs/);
     expect(helper).toMatch(/href="\/docs\/mcp"/);
@@ -144,8 +132,6 @@ describe("Landing v2 static pages", () => {
     expect(helper).toMatch(/URLS\.signUp/);
     expect(helper).toMatch(/github\.com\/distribute-you/);
     expect(helper).toMatch(/URLS\.github/);
-    expect(helper).toMatch(/logo-distribute-2\.svg/);
-    expect(helper).toMatch(/logo-distribute\.svg/);
   });
 
   it("keeps the local landing legal links routable", () => {
@@ -160,30 +146,30 @@ describe("Landing v2 static pages", () => {
     const footer = fs.readFileSync(footerPath, "utf-8");
     expect(navbar).toMatch(/\{ label: "Performance", href: urls\.performance \}/);
     expect(navbar).toMatch(/\{ label: "Benchmarks", href: urls\.benchmarks \}/);
-    expect(navbar).toMatch(/landing-v2\/logo\/logo-distribute\.svg/);
+    expect(navbar).toMatch(/landing\/logo\/logo-distribute\.svg/);
     expect(navbar).not.toMatch(/logo-head\.jpg/);
     expect(footer).toMatch(/\{ label: "Performance", href: "\/performance" \}/);
     expect(footer).toMatch(/\{ label: "Benchmarks", href: "\/benchmarks" \}/);
-    expect(footer).toMatch(/landing-v2\/logo\/logo-distribute\.svg/);
+    expect(footer).toMatch(/landing\/logo\/logo-distribute\.svg/);
     expect(footer).not.toMatch(/logo-head\.jpg/);
   });
 
-  it("uses the v2 visual system on React landing pages", () => {
+  it("uses the visual system on React landing pages", () => {
     const globals = fs.readFileSync(globalsPath, "utf-8");
     const pricing = fs.readFileSync(pricingPagePath, "utf-8");
     const benchmarks = fs.readFileSync(benchmarksPagePath, "utf-8");
     const privacy = fs.readFileSync(privacyPagePath, "utf-8");
-    expect(globals).toMatch(/--v2-bg:/);
+    expect(globals).toMatch(/--dy-bg:/);
     expect(globals).toMatch(/JetBrains\+Mono/);
     expect(globals).not.toMatch(/Fredoka/);
-    expect(pricing).toMatch(/<main className="v2-page">/);
-    expect(pricing).toMatch(/v2-title/);
-    expect(benchmarks).toMatch(/<main className="v2-page">/);
-    expect(benchmarks).toMatch(/v2-title/);
-    expect(privacy).toMatch(/<main className="v2-page">/);
+    expect(pricing).toMatch(/<main className="dy-page">/);
+    expect(pricing).toMatch(/dy-title/);
+    expect(benchmarks).toMatch(/<main className="dy-page">/);
+    expect(benchmarks).toMatch(/dy-title/);
+    expect(privacy).toMatch(/<main className="dy-page">/);
   });
 
-  it("keeps OpenGraph, Twitter, and JSON-LD aligned to the v2 brand assets", () => {
+  it("keeps OpenGraph, Twitter, and JSON-LD aligned to the brand assets", () => {
     const files = [
       landingPagePath,
       performancePagePath,
@@ -200,8 +186,8 @@ describe("Landing v2 static pages", () => {
     const combined = files.map((file) => fs.readFileSync(file, "utf-8")).join("\n");
 
     expect(fs.existsSync(path.resolve(__dirname, "../../src/app/benchmarks/opengraph-image.tsx"))).toBe(true);
-    expect(combined).toMatch(/\/landing-v2\/logo\/logo-distribute\.svg/);
-    expect(combined).toMatch(/logo:\s*BRAND_LOGO_URL|\"logo\":\"https:\/\/distribute\.you\/landing-v2\/logo\/logo-distribute\.svg\"/);
+    expect(combined).toMatch(/\/landing\/logo\/logo-distribute\.svg/);
+    expect(combined).toMatch(/logo:\s*BRAND_LOGO_URL|\"logo\":\"https:\/\/distribute\.you\/landing\/logo\/logo-distribute\.svg\"/);
     expect(combined).toMatch(/\/opengraph-image/);
     expect(combined).toMatch(/\/pricing\/opengraph-image/);
     expect(combined).toMatch(/\/benchmarks\/opengraph-image/);
@@ -213,9 +199,9 @@ describe("Landing v2 static pages", () => {
     for (const page of [landing, performance]) {
       expect(page).toMatch(/property="og:image" content="https:\/\/distribute\.you\/opengraph-image"/);
       expect(page).toMatch(/name="twitter:image" content="https:\/\/distribute\.you\/opengraph-image"/);
-      expect(page).toMatch(/rel="icon" href="\/landing-v2\/logo\/logo-distribute\.svg"/);
+      expect(page).toMatch(/rel="icon" href="\/landing\/logo\/logo-distribute\.svg"/);
       expect(page).toMatch(/"@type":"Organization"/);
-      expect(page).toMatch(/"logo":"https:\/\/distribute\.you\/landing-v2\/logo\/logo-distribute\.svg"/);
+      expect(page).toMatch(/"logo":"https:\/\/distribute\.you\/landing\/logo\/logo-distribute\.svg"/);
     }
   });
 });
@@ -223,7 +209,7 @@ describe("Landing v2 static pages", () => {
 describe("Landing page: tools marquee section", () => {
   const page = fs.readFileSync(landingPagePath, "utf-8");
 
-  it("does not render the ToolsMarquee component in the v2 home", () => {
+  it("does not render the ToolsMarquee component in the home", () => {
     expect(page).not.toMatch(/<ToolsMarquee/);
     expect(page).not.toMatch(/from\s+["']@\/components\/tools-marquee["']/);
   });
@@ -242,12 +228,12 @@ describe("Pricing page: ICP framing", () => {
 describe("Landing page: industry stats section", () => {
   const page = fs.readFileSync(landingPagePath, "utf-8");
 
-  it("does not render the legacy industry stats section in the v2 home", () => {
+  it("does not render the legacy industry stats section in the home", () => {
     expect(page).not.toMatch(/Why most cold email never gets read/);
     expect(page).not.toMatch(/Why distribution kills most solo products/);
   });
 
-  it("keeps the v2 pricing section immediately after the skipped-work section", () => {
+  it("keeps the pricing section immediately after the skipped-work section", () => {
     expect(page).toMatch(/The 3 months you skip/);
     expect(page).toMatch(/Pay per email\. Stop anytime\./);
     expect(page).not.toMatch(/Lemlist, Saleshandy, Adobe, and Gartner/);

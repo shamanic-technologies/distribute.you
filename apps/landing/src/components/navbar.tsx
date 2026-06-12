@@ -22,21 +22,21 @@ export function Navbar() {
   }
 
   return (
-    <nav className="v2-nav">
-      <div className="v2-nav-inner">
-        <a href="/" className="v2-nav-logo">
+    <nav className="dy-nav">
+      <div className="dy-nav-inner">
+        <a href="/" className="dy-nav-logo">
           <Image
-            src="/landing-v2/logo/logo-distribute.svg"
+            src="/landing/logo/logo-distribute.svg"
             alt="distribute"
             width={24}
             height={24}
             priority
           />
           <span>distribute</span>
-          <span className="v2-chip">BETA</span>
+          <span className="dy-chip">BETA</span>
         </a>
 
-        <div className="v2-nav-links">
+        <div className="dy-nav-links">
           {links.map((link) => (
             <a
               key={link.label}
@@ -48,18 +48,18 @@ export function Navbar() {
           ))}
         </div>
 
-        <div className="v2-nav-actions">
-          <a href={urls.signIn} className="v2-button-ghost">
+        <div className="dy-nav-actions">
+          <a href={urls.signIn} className="dy-button-ghost">
             Sign in
           </a>
-          <LinkButton href={urls.signUp} className="v2-button-primary">
+          <LinkButton href={urls.signUp} className="dy-button-primary">
             Start free
           </LinkButton>
         </div>
 
         <button
           onClick={() => setMenuOpen(!menuOpen)}
-          className="v2-nav-menu md:hidden"
+          className="dy-nav-menu md:hidden"
           aria-label="Toggle menu"
           aria-expanded={menuOpen}
         >
@@ -76,8 +76,8 @@ export function Navbar() {
       </div>
 
       {menuOpen && (
-        <div className="v2-nav-mobile md:hidden">
-          <div className="v2-shell space-y-1 py-3">
+        <div className="dy-nav-mobile md:hidden">
+          <div className="dy-shell space-y-1 py-3">
             {links.map((link) => (
               <a
                 key={link.label}
@@ -91,10 +91,10 @@ export function Navbar() {
             <a href={urls.signIn} className="block rounded-lg px-3 py-2 text-sm">
               Sign in
             </a>
-            <div className="border-t border-[var(--v2-border-hi)] pt-3">
+            <div className="border-t border-[var(--dy-border-hi)] pt-3">
               <LinkButton
                 href={urls.signUp}
-                className="v2-button-primary w-full"
+                className="dy-button-primary w-full"
               >
                 Start free
               </LinkButton>
