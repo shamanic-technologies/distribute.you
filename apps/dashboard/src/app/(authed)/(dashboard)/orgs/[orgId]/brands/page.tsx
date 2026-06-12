@@ -6,7 +6,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import posthog from "posthog-js";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { configureAutoTopup, listBrands, upsertBrand, extractBrandFields, SALES_PROFILE_FIELDS } from "@/lib/api";
+import { listBrands, upsertBrand, extractBrandFields, SALES_PROFILE_FIELDS } from "@/lib/api";
 import { extractDomain } from "@/lib/extract-domain";
 import { BrandLogo } from "@/components/brand-logo";
 import { pollOptions } from "@/lib/query-options";
@@ -46,31 +46,6 @@ export default function BrandsPage() {
     const source = searchParams.get("autoCreate") === rawUrl ? "onboarding" : "manual";
     posthog.capture("brand_create_started", { source });
     try {
-      if (source === "onboarding") {
-        if (searchParams.get("billingSetup") !== "success") {
-          const onboardingUrl = new URL("/onboarding", window.location.origin);
-          onboardingUrl.searchParams.set("billing", "required");
-          onboardingUrl.searchParams.set("brandUrl", url);
-          onboardingUrl.searchParams.set("orgId", orgId);
-          window.location.href = onboardingUrl.toString();
-          return;
-        }
-
-        const pendingTopup = searchParams.get("pending_topup");
-        const pendingThreshold = searchParams.get("pending_threshold");
-        const topupCents = pendingTopup ? parseInt(pendingTopup, 10) : NaN;
-        const thresholdCents = pendingThreshold ? parseInt(pendingThreshold, 10) : NaN;
-        if (!Number.isFinite(topupCents) || !Number.isFinite(thresholdCents)) {
-          throw new Error("Missing billing setup configuration");
-        }
-        await configureAutoTopup(topupCents, thresholdCents);
-        posthog.capture("onboarding_billing_setup_completed", {
-          org_id: orgId,
-          topup_amount_cents: topupCents,
-          topup_threshold_cents: thresholdCents,
-        });
-      }
-
       const { brandId: newBrandId } = await upsertBrand(url);
       // Mark onboarding complete (edge-gate signal — see proxy.ts / DIS-111).
       // The org now has a brand → it's a usable workspace. Idempotent server-side.
