@@ -1,8 +1,6 @@
-import { Suspense } from "react";
 import { PROD_URLS } from "@/lib/env-urls";
 import { BRAND_LOGO_URL } from "@/lib/seo";
 import { ProviderTablesAsync } from "@/components/pricing/provider-tables-async";
-import { ProviderTablesSkeleton } from "@/components/pricing/provider-tables-skeleton";
 import { Section } from "@/components/section";
 
 export const revalidate = 300;
@@ -116,9 +114,7 @@ export default function PricingPage() {
       </section>
 
       <Section variant="content" outerClassName="dy-section-tight">
-        <Suspense fallback={<ProviderTablesSkeleton />}>
-          <ProviderTablesAsync />
-        </Suspense>
+        <ProviderTablesAsync />
       </Section>
     </main>
   );

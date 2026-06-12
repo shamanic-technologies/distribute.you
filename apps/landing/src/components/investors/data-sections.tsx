@@ -1,5 +1,8 @@
 import { cache } from "react";
-import { fetchInvestorMetrics } from "@/lib/investors/fetch-metrics";
+import {
+  fetchInvestorMetrics,
+  type InvestorMetrics,
+} from "@/lib/investors/fetch-metrics";
 import { formatCents, formatNumber, computeCAGR } from "@/lib/investors/format";
 import { BarChart, CGRLineChart } from "@/components/investors/charts";
 import { DISTRIBUTION_FEATURES } from "@distribute/content";
@@ -9,7 +12,35 @@ const COMING_SOON_CHANNEL_COUNT = DISTRIBUTION_FEATURES.filter(
   (f) => f.status === "coming-soon"
 ).length;
 
-const getMetrics = cache(() => fetchInvestorMetrics(""));
+// Last-resort zero metrics. The sections render SSR-sync (no <Suspense>), so a
+// throw from fetchInvestorMetrics would abort the whole Vercel prerender
+// (CLAUDE.md "Exception — Vercel build-time prerender"). Fail soft to zeros so
+// the page always ships; a healthy build still renders the real numbers.
+const EMPTY_INVESTOR_METRICS: InvestorMetrics = {
+  updatedAt: new Date().toISOString(),
+  users: { total: 0, orgs: 0 },
+  billing: {
+    totalAccounts: 0,
+    accountsWithPaymentMethod: 0,
+    totalCreditedCents: "0",
+    totalRevenueCents: "0",
+  },
+  runs: { completed: 0, failed: 0, running: 0, totalCostInUsdCents: "0" },
+  monthlyGrowth: [],
+  weeklyGrowth: [],
+};
+
+const getMetrics = cache(async (): Promise<InvestorMetrics> => {
+  try {
+    return await fetchInvestorMetrics("");
+  } catch (err) {
+    console.error(
+      "[landing] investor metrics unavailable, rendering zeros",
+      err,
+    );
+    return EMPTY_INVESTOR_METRICS;
+  }
+});
 
 async function loadMetrics() {
   return getMetrics();

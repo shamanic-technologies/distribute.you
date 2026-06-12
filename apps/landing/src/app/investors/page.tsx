@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { Suspense } from "react";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { PROD_URLS } from "@/lib/env-urls";
@@ -18,13 +17,6 @@ import {
   MonthlyGrowthSection,
   WeeklyGrowthSection,
 } from "@/components/investors/data-sections";
-import {
-  CompanyOverviewSkeleton,
-  PlatformMetricsSkeleton,
-  RevenueCreditsSkeleton,
-  MonthlyGrowthSkeleton,
-  WeeklyGrowthSkeleton,
-} from "@/components/investors/skeletons";
 
 export const revalidate = 86400;
 
@@ -143,9 +135,7 @@ export default function InvestorsPage() {
             <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
               Company Overview
             </h2>
-            <Suspense fallback={<CompanyOverviewSkeleton />}>
-              <CompanyOverviewSection />
-            </Suspense>
+            <CompanyOverviewSection />
           </div>
         </section>
 
@@ -330,9 +320,7 @@ export default function InvestorsPage() {
             <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
               Platform Metrics
             </h2>
-            <Suspense fallback={<PlatformMetricsSkeleton />}>
-              <PlatformMetricsSection />
-            </Suspense>
+            <PlatformMetricsSection />
           </div>
         </section>
 
@@ -342,9 +330,7 @@ export default function InvestorsPage() {
             <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
               Revenue & Credits
             </h2>
-            <Suspense fallback={<RevenueCreditsSkeleton />}>
-              <RevenueCreditsSection />
-            </Suspense>
+            <RevenueCreditsSection />
           </div>
         </section>
 
@@ -354,9 +340,7 @@ export default function InvestorsPage() {
             <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
               Monthly Growth
             </h2>
-            <Suspense fallback={<MonthlyGrowthSkeleton />}>
-              <MonthlyGrowthSection />
-            </Suspense>
+            <MonthlyGrowthSection />
           </div>
         </section>
 
@@ -366,9 +350,7 @@ export default function InvestorsPage() {
             <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
               Weekly Growth
             </h2>
-            <Suspense fallback={<WeeklyGrowthSkeleton />}>
-              <WeeklyGrowthSection />
-            </Suspense>
+            <WeeklyGrowthSection />
           </div>
         </section>
 
