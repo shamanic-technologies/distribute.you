@@ -12,17 +12,7 @@ distribute is sales automation, done for you. Create an account, give us your UR
 
 ## Distribution Features
 
-- **Sales Outreach** — Find prospects, write personalized cold emails, send and track replies. Automatically. _(Live)_
-- **Journalist Outreach** — Pitch journalists who cover your space. Get press without a PR agency. _(Live)_
-- **VC Outreach** — Reach investors who back your stage and sector. Run a structured raise from your inbox. _(Live)_
-- **Hiring Outreach** — Reach candidates that match your needs. Cold outreach for recruiting. _(Live)_
-- **Accelerators Outreach** — Apply to YC, Techstars, and 200+ accelerators. We track deadlines and pitch on your behalf. _(Live)_
-- **PR Expert Quotes** — Get quoted in articles. Respond to HARO-style requests with on-brand quotes, auto-sent. _(Live)_
-- **Outlet Discovery** — Find media outlets and publications worth pitching for your brand and space. _(Live)_
-- **Press Kit Generation** — Generate a press kit page with assets, bio, screenshots, and contact in one click. _(Live)_
-- **AI Visibility Scoring** — Audit how your brand appears in answers from ChatGPT, Claude, Perplexity, and Gemini. Track mention rate, ranking, and share-of-voice against competitors. _(Live)_
-- **Influencer Outreach** — Reach creators in your niche. Match by audience size, engagement, and topical fit. _(Coming soon)_
-- **LinkedIn Outreach** — Sales outreach on LinkedIn — connection request, message, follow-up. Tracked like email. _(Coming soon)_
+- **Sales Cold Email** — Find prospects, write personalized cold emails, send and track replies. Automatically. _(Live)_
 
 ## Available Workflows
 

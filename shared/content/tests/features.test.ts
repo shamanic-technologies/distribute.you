@@ -5,8 +5,15 @@ import {
 } from "../src/features.js";
 
 describe("DISTRIBUTION_FEATURES", () => {
-  it("has at least 3 distribution features", () => {
-    expect(DISTRIBUTION_FEATURES.length).toBeGreaterThanOrEqual(3);
+  it("is sales-cold-email only (the off-message channels were stripped)", () => {
+    expect(DISTRIBUTION_FEATURES).toHaveLength(1);
+    expect(DISTRIBUTION_FEATURES[0].id).toBe("sales-outreach");
+    const ids = DISTRIBUTION_FEATURES.map((f) => f.id);
+    expect(ids).not.toContain("journalist-outreach");
+    expect(ids).not.toContain("vc-outreach");
+    expect(ids).not.toContain("hiring-outreach");
+    expect(ids).not.toContain("influencer-outreach");
+    expect(ids).not.toContain("linkedin-outreach");
   });
 
   it("each feature has required fields", () => {

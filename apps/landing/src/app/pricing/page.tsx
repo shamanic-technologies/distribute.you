@@ -12,7 +12,7 @@ const pricingJsonLd = {
   "@type": "Service",
   name: "distribute — Pay-as-you-go cloud distribution",
   description:
-    "Cloud distribution platform with pay-as-you-go pricing. We send cold email, PR pitches, and other outbound channels on your behalf. Every unit cost is published live.",
+    "Cloud platform with pay-as-you-go pricing. We send AI cold email outreach on your behalf — find prospects, write, send, qualify replies. Every unit cost is published live.",
   brand: { "@type": "Brand", name: "distribute" },
   provider: {
     "@type": "Organization",
