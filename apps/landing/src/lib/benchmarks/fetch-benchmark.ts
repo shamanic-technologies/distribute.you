@@ -314,6 +314,25 @@ export interface FeatureBenchmarkData {
   updatedAt: string;
 }
 
+// Bounded fetch for the build-time benchmark calls. A HUNG public-API request
+// (the leaderboard endpoints can take >60s under load) would otherwise stall the
+// Vercel prerender past its 60s page-build timeout and ABORT the whole landing
+// deploy. Abort at 15s and return null → the callers' existing `!ok → empty`
+// fallback renders an empty leaderboard instead, so a slow API degrades to
+// cached/empty data rather than failing the build. (CLAUDE.md "Vercel
+// build-time prerender must stay shippable".)
+async function fetchBounded(
+  url: string,
+  init: RequestInit & { next?: { revalidate: number } },
+): Promise<Response | null> {
+  try {
+    return await fetch(url, { ...init, signal: AbortSignal.timeout(15_000) });
+  } catch (err) {
+    console.error(`[landing] Benchmarks: fetch aborted/failed for ${url}`, err);
+    return null;
+  }
+}
+
 export async function fetchFeatureBenchmark(
   featureSlug: string,
   hostname = "",
@@ -344,55 +363,55 @@ async function _fetchFeatureBenchmarkUncached(
   }
 
   const [brandsRes, workflowsRes, brandRevenueRes, workflowRevenueRes] = await Promise.all([
-    fetch(
+    fetchBounded(
       `${apiUrl}/v1/public/features/ranked?featureSlug=${encodeURIComponent(featureSlug)}&objective=emailsSent&groupBy=brand&limit=100`,
       { headers, next: { revalidate: 300 } },
     ),
-    fetch(
+    fetchBounded(
       `${apiUrl}/v1/public/features/ranked?featureSlug=${encodeURIComponent(featureSlug)}&objective=emailsSent&groupBy=workflow&limit=100`,
       { headers, next: { revalidate: 300 } },
     ),
-    fetch(
+    fetchBounded(
       `${featuresUrl}/public/stats/revenue?featureSlug=${encodeURIComponent(featureSlug)}&groupBy=brand`,
       { headers: { Accept: "application/json" }, next: { revalidate: 300 } },
     ),
-    fetch(
+    fetchBounded(
       `${featuresUrl}/public/stats/revenue?featureSlug=${encodeURIComponent(featureSlug)}&groupBy=workflow`,
       { headers: { Accept: "application/json" }, next: { revalidate: 300 } },
     ),
   ]);
 
-  if (!brandsRes.ok) {
+  if (!brandsRes?.ok) {
     console.error(
-      `[landing] Benchmarks: brands fetch failed for ${featureSlug}: ${brandsRes.status}`,
+      `[landing] Benchmarks: brands fetch failed for ${featureSlug}: ${brandsRes?.status ?? "timeout"}`,
     );
   }
-  if (!workflowsRes.ok) {
+  if (!workflowsRes?.ok) {
     console.error(
-      `[landing] Benchmarks: workflows fetch failed for ${featureSlug}: ${workflowsRes.status}`,
+      `[landing] Benchmarks: workflows fetch failed for ${featureSlug}: ${workflowsRes?.status ?? "timeout"}`,
     );
   }
-  if (!brandRevenueRes.ok) {
+  if (!brandRevenueRes?.ok) {
     console.error(
-      `[landing] Benchmarks: brand revenue fetch failed for ${featureSlug}: ${brandRevenueRes.status}`,
+      `[landing] Benchmarks: brand revenue fetch failed for ${featureSlug}: ${brandRevenueRes?.status ?? "timeout"}`,
     );
   }
-  if (!workflowRevenueRes.ok) {
+  if (!workflowRevenueRes?.ok) {
     console.error(
-      `[landing] Benchmarks: workflow revenue fetch failed for ${featureSlug}: ${workflowRevenueRes.status}`,
+      `[landing] Benchmarks: workflow revenue fetch failed for ${featureSlug}: ${workflowRevenueRes?.status ?? "timeout"}`,
     );
   }
 
-  const brandsData: BrandRankedResponse = brandsRes.ok
+  const brandsData: BrandRankedResponse = brandsRes?.ok
     ? await brandsRes.json()
     : { results: [] };
-  const workflowsData: WorkflowRankedResponse = workflowsRes.ok
+  const workflowsData: WorkflowRankedResponse = workflowsRes?.ok
     ? await workflowsRes.json()
     : { results: [] };
-  const brandRevenueData: PublicBrandRevenueResponse = brandRevenueRes.ok
+  const brandRevenueData: PublicBrandRevenueResponse = brandRevenueRes?.ok
     ? await brandRevenueRes.json()
     : { results: [] };
-  const workflowRevenueData: PublicWorkflowRevenueResponse = workflowRevenueRes.ok
+  const workflowRevenueData: PublicWorkflowRevenueResponse = workflowRevenueRes?.ok
     ? await workflowRevenueRes.json()
     : { results: [] };
   const trajectoryBrandIds = new Set(

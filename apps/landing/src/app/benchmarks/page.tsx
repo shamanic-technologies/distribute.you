@@ -134,6 +134,12 @@ export default async function BenchmarksPage() {
   }
 
   const { feature, brands, workflows, aggregate, updatedAt } = data;
+  // BrandLeaderboard is the only client component that receives `brands`, and it
+  // never renders the per-brand `timeline` (the trajectory sparkline section is
+  // not mounted on this page). Serializing it shipped ~2.2MB of unused daily
+  // points to the browser (12.5k points across 6 brands). Drop it before the
+  // server→client boundary so the page stays lean.
+  const brandsForTable = brands.map(({ timeline: _timeline, ...rest }) => rest);
   const title = `${feature.name} Benchmarks & Statistics (2026)`;
   const description = `${feature.description} Sortable leaderboard updated hourly.`;
 
@@ -287,7 +293,7 @@ export default async function BenchmarksPage() {
           </div>
           {brands.length > 0 ? (
             <div className="dy-card overflow-hidden">
-              <BrandLeaderboard brands={brands} />
+              <BrandLeaderboard brands={brandsForTable} />
             </div>
           ) : (
             <div className="dy-card py-12 text-center">
