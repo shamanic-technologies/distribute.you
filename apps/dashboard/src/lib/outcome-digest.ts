@@ -1,11 +1,14 @@
 import { z } from "zod";
-import { FEATURE_GATES } from "./feature-gates";
 import { parseFeatureRevenue } from "./revenue-parse";
 import type { RevenueOverview } from "./revenue-view";
 
 export const OUTCOME_DIGEST_TEMPLATE = "daily-outcome-digest";
 export const OUTCOME_DIGEST_FEATURE_SLUG = "sales-cold-email-outreach";
-export const OUTCOME_DIGEST_BETA_FLAG = FEATURE_GATES["campaign-activity"].flag;
+// PostHog beta-cohort gate for the daily digest send. Reuses the existing
+// `beta-campaign-activity` cohort (Kevin + Adam) — the live-activity UI that
+// originally owned this flag was removed, but the cohort lives on as the
+// digest's audience selector.
+export const OUTCOME_DIGEST_BETA_FLAG = "beta-campaign-activity";
 
 const PAGE_LIMIT = 100;
 const MAX_TOP_OUTCOMES_PER_BRAND = 5;

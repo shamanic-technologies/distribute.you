@@ -43,10 +43,6 @@ export const FEATURE_GATES = {
   // Internal build-in-public metrics at the dashboard root. Staff-only: these
   // pages expose global signup/card/visitor counts and should not be public.
   "public-metrics": { flag: "alpha-public-metrics", maturity: "alpha" },
-  // Live activity feed on the campaign overview (reassurance ticker derived from
-  // run_events). Beta cohort (Kevin + Adam) while the funnel-slug allowlist
-  // matures — Adam is an external tester, so beta (opt-in), not alpha (staff).
-  "campaign-activity": { flag: "beta-campaign-activity", maturity: "beta" },
 } as const satisfies Record<string, FeatureGate>;
 
 export type FeatureGateKey = keyof typeof FEATURE_GATES;
