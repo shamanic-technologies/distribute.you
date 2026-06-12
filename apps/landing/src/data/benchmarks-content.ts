@@ -56,7 +56,7 @@ const SALES_COLD_EMAIL: BenchmarkContent = {
   whyMatters: {
     eyebrow: "Solo founder × cold sales",
     title: "Most of your first 100 customers come from a cold inbox",
-    body: "Cold sales email is the highest-leverage channel for a founder who hasn't raised. SEO takes a year. Ads burn your runway. A tight ICP filter + a 3-step sequence + warmed inboxes gets you replies inside a week and customers inside a month. The industry average is 3.43% reply rate; top-quartile campaigns hit 15–25%. The gap is targeting, personalization, and deliverability — distribute runs all three on autopilot from $25 in welcome credits.",
+    body: "Cold sales email is the highest-leverage channel for a founder who hasn't raised. SEO takes a year. Ads burn your runway. A tight ICP filter + a 3-step sequence + warmed inboxes gets you replies inside a week and customers inside a month. The industry average is 3.43% reply rate; top-quartile campaigns hit 15–25%. The gap is targeting, personalization, and deliverability — distribute runs all three on autopilot — your first 50 emails are free.",
   },
   studies: [
     {
@@ -114,17 +114,17 @@ const SALES_COLD_EMAIL: BenchmarkContent = {
     },
     {
       headline: "Real cost per positive reply, live",
-      body: "$25 welcome credits. No subscription. The dashboard tracks cost per qualified reply per product so you can double down on the winner.",
+      body: "50 free emails. No subscription. The dashboard tracks cost per qualified reply per product so you can double down on the winner.",
     },
   ],
   ctaPrimary: {
     headline: "Launch your first cold campaign in 60 seconds",
-    sub: "$25 welcome credits. Drop your URL. We pick the workflow that performs best for your ICP.",
-    cta: "Start free — $25 credits",
+    sub: "50 free emails. Drop your URL. We pick the workflow that performs best for your ICP.",
+    cta: "Start free — 50 free emails",
   },
   ctaClosing: {
     headline: "Ship more. Scale what works.",
-    sub: "Pick the winning workflow from this leaderboard and clone it for your brand. $25 credits to try, no subscription.",
+    sub: "Pick the winning workflow from this leaderboard and clone it for your brand. 50 free emails to try, no subscription.",
     cta: "Launch on autopilot",
   },
 };
@@ -135,7 +135,7 @@ const PR_COLD_EMAIL: BenchmarkContent = {
   whyMatters: {
     eyebrow: "Solo founder × media coverage",
     title: "You can earn press without a $5K/month PR retainer",
-    body: "96% of journalists prefer pitches by email (Muck Rack). 86% reject pitches outside their beat instantly (Cision). The bottleneck isn't access — it's relevance, timing, and follow-through. distribute discovers the right outlets for your story, generates personalized pitches grounded in the journalist's recent coverage, and tracks every open so you know who's actually reading. From $25 in welcome credits.",
+    body: "96% of journalists prefer pitches by email (Muck Rack). 86% reject pitches outside their beat instantly (Cision). The bottleneck isn't access — it's relevance, timing, and follow-through. distribute discovers the right outlets for your story, generates personalized pitches grounded in the journalist's recent coverage, and tracks every open so you know who's actually reading. Your first 50 emails are free.",
   },
   studies: [
     {
@@ -198,12 +198,12 @@ const PR_COLD_EMAIL: BenchmarkContent = {
   ],
   ctaPrimary: {
     headline: "Pitch journalists who actually cover your space",
-    sub: "$25 welcome credits. Drop your URL — we find on-beat journalists and pitch on your behalf.",
-    cta: "Start PR — $25 credits",
+    sub: "50 free emails. Drop your URL — we find on-beat journalists and pitch on your behalf.",
+    cta: "Start PR — 50 free emails",
   },
   ctaClosing: {
     headline: "Skip the PR retainer",
-    sub: "Clone the best-performing PR workflow from this leaderboard. Earn coverage from $25 in credits, no agency lock-in.",
+    sub: "Clone the best-performing PR workflow from this leaderboard. Earn coverage with 50 free emails, no agency lock-in.",
     cta: "Launch on autopilot",
   },
 };
@@ -214,7 +214,7 @@ const HIRING_COLD_EMAIL: BenchmarkContent = {
   whyMatters: {
     eyebrow: "Solo founder × first hires",
     title: "Sourced candidates are 5× more likely to be hired",
-    body: "Inbound recruiting is a luxury you don't have yet. Solo founders hire by sourcing — cold outreach to candidates who match the role. Industry data: sourced applicants convert 5× better than inbound (Gem 2025), recruiter InMails average 13% response (LinkedIn), short-form messages under 400 characters get +22% replies. distribute runs the entire sourcing motion — find, message, follow up, qualify — on autopilot from $25.",
+    body: "Inbound recruiting is a luxury you don't have yet. Solo founders hire by sourcing — cold outreach to candidates who match the role. Industry data: sourced applicants convert 5× better than inbound (Gem 2025), recruiter InMails average 13% response (LinkedIn), short-form messages under 400 characters get +22% replies. distribute runs the entire sourcing motion — find, message, follow up, qualify — on autopilot, your first 50 emails free.",
   },
   studies: [
     {
@@ -276,8 +276,8 @@ const HIRING_COLD_EMAIL: BenchmarkContent = {
   ],
   ctaPrimary: {
     headline: "Source your first hire in 48 hours",
-    sub: "$25 welcome credits. Tell us the role — we find matching candidates and send your first batch tonight.",
-    cta: "Start hiring — $25 credits",
+    sub: "50 free emails. Tell us the role — we find matching candidates and send your first batch tonight.",
+    cta: "Start hiring — 50 free emails",
   },
   ctaClosing: {
     headline: "First 5 hires. From your inbox.",
@@ -353,8 +353,8 @@ const VC_COLD_EMAIL: BenchmarkContent = {
   ],
   ctaPrimary: {
     headline: "Run a structured raise from your inbox",
-    sub: "$25 welcome credits. Tell us your stage and sector — we'll pitch the matching partners for you.",
-    cta: "Start fundraise — $25 credits",
+    sub: "50 free emails. Tell us your stage and sector — we'll pitch the matching partners for you.",
+    cta: "Start fundraise — 50 free emails",
   },
   ctaClosing: {
     headline: "Cold beats warm at volume.",
@@ -369,7 +369,7 @@ const ACCELERATORS_COLD_EMAIL: BenchmarkContent = {
   whyMatters: {
     eyebrow: "Solo founder × accelerator strategy",
     title: "YC takes <1%. The other 200 accelerators want you.",
-    body: "Y Combinator takes ~260 of 27,000+ applicants per batch (<1%). Techstars + 200 other accelerators run on rolling cycles with much higher acceptance rates — but you have to know about them and apply on time. distribute tracks every accelerator deadline, generates a tailored cold pitch per program, and books partner calls before applications even open. From $25 in welcome credits.",
+    body: "Y Combinator takes ~260 of 27,000+ applicants per batch (<1%). Techstars + 200 other accelerators run on rolling cycles with much higher acceptance rates — but you have to know about them and apply on time. distribute tracks every accelerator deadline, generates a tailored cold pitch per program, and books partner calls before applications even open. Your first 50 emails are free.",
   },
   studies: [
     {
@@ -430,8 +430,8 @@ const ACCELERATORS_COLD_EMAIL: BenchmarkContent = {
   ],
   ctaPrimary: {
     headline: "Apply to the right accelerators this cycle",
-    sub: "$25 welcome credits. Tell us your stage — we'll match you to the programs that fit.",
-    cta: "Start applying — $25 credits",
+    sub: "50 free emails. Tell us your stage — we'll match you to the programs that fit.",
+    cta: "Start applying — 50 free emails",
   },
   ctaClosing: {
     headline: "The 199 accelerators that aren't YC.",
@@ -500,12 +500,12 @@ const PR_EXPERT_QUOTE: BenchmarkContent = {
   ],
   ctaPrimary: {
     headline: "Build authority on autopilot",
-    sub: "$25 welcome credits. Tell us your expertise — we monitor every quote request and submit on your behalf.",
-    cta: "Start quotes — $25 credits",
+    sub: "50 free emails. Tell us your expertise — we monitor every quote request and submit on your behalf.",
+    cta: "Start quotes — 50 free emails",
   },
   ctaClosing: {
     headline: "Press without a publicist.",
-    sub: "Clone the best quote-outreach workflow on this leaderboard. Editorial backlinks, on autopilot, from $25.",
+    sub: "Clone the best quote-outreach workflow on this leaderboard. Editorial backlinks, on autopilot — your first 50 emails are free.",
     cta: "Launch on autopilot",
   },
 };
@@ -570,8 +570,8 @@ const OUTLET_DISCOVERY: BenchmarkContent = {
   ],
   ctaPrimary: {
     headline: "Build a 10-outlet media list in 60 seconds",
-    sub: "$25 welcome credits. Tell us your industry — we surface the outlets that actually cover your space.",
-    cta: "Find outlets — $25 credits",
+    sub: "50 free emails. Tell us your industry — we surface the outlets that actually cover your space.",
+    cta: "Find outlets — 50 free emails",
   },
   ctaClosing: {
     headline: "Stop sending to 200. Start sending to 10.",
@@ -649,8 +649,8 @@ const PRESS_KIT: BenchmarkContent = {
   ],
   ctaPrimary: {
     headline: "Generate your press kit page in one click",
-    sub: "$25 welcome credits. Drop your URL — we build a media-ready kit and host it.",
-    cta: "Generate kit — $25 credits",
+    sub: "50 free emails. Drop your URL — we build a media-ready kit and host it.",
+    cta: "Generate kit — 50 free emails",
   },
   ctaClosing: {
     headline: "Be reporter-ready before they ask.",
@@ -746,8 +746,8 @@ const AI_VISIBILITY: BenchmarkContent = {
   ],
   ctaPrimary: {
     headline: "See if ChatGPT recommends your brand",
-    sub: "$25 welcome credits. Drop your URL — we audit your AI visibility across 4 major answer engines.",
-    cta: "Run audit — $25 credits",
+    sub: "50 free emails. Drop your URL — we audit your AI visibility across 4 major answer engines.",
+    cta: "Run audit — 50 free emails",
   },
   ctaClosing: {
     headline: "Be the brand the model picks.",

@@ -29,7 +29,7 @@ const pricingJsonLd = {
     highPrice: "1",
     offerCount: 50,
     description:
-      "Variable pay-per-use pricing across 50+ priced API operations (AI tokens, leads, emails, etc.). $25 in welcome credits, no subscription.",
+      "Variable pay-per-use pricing across 50+ priced API operations (AI tokens, leads, emails, etc.). 50 free emails, no subscription.",
     seller: {
       "@type": "Organization",
       name: "distribute",

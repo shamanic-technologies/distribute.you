@@ -364,7 +364,7 @@ export default function OnboardingPage() {
           Set up billing
         </h2>
         <p className="text-gray-500 mb-6">
-          You get $25 in free credits first. Add a card now so campaigns can keep running when credits run low.
+          You get your first 50 emails free. Add a card now so campaigns can keep running when credits run low.
         </p>
 
         <div className="-mx-8 md:-mx-12 border-y border-brand-200 bg-brand-50 px-8 md:px-12 py-4 mb-5">
@@ -415,7 +415,7 @@ export default function OnboardingPage() {
         <div className="space-y-2 text-sm text-gray-600 mb-6">
           <div className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-            Your $25 free credits are used before any paid top-up.
+            Your free emails are used before any paid top-up.
           </div>
           <div className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
