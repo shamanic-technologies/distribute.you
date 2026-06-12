@@ -67,6 +67,8 @@ No `release.sh hotfix` here (that targets Railway semver services). Vercel deplo
 
 **Content sync:** all marketing/docs content lives in `shared/content/src/` (`urls.ts`, `mcps.ts`, `pricing.ts`, `features.ts`, `brand.ts`); public surfaces import `@distribute/content`. When changing: update src → `pnpm generate:readme` → verify build → commit the regenerated README. **README.md is GENERATED — never edit directly.**
 
+**Landing copy lives in TWO surfaces — a copy sweep MUST grep BOTH or it ships half-done.** The *served* prod landing is the STATIC set `apps/landing/public/landing-v2/**.html` (`apps/landing/src/app/route.ts` + `static-v2-html.ts` serve these — ~20 SEO pages: index, performance, design-system, how-it-works, use-cases, llms.txt + `cold-email-*` sub-trees), NOT the React `apps/landing/src/**` components alone. A grep of `src/` only misses the served HTML (sign-up buttons ×27, hero, `<meta>`/OG/twitter, JSON-LD offer, animated stat-counter, price-checks). Also sweep `apps/docs/src` + `shared/content/src`. The `landing-icp-alignment.test.ts` guard reads `public/landing-v2/index.html` — it's the canary that the static set was updated. When reframing a word/claim across the landing, `grep -rl '<term>' apps/landing/public apps/landing/src apps/docs shared/content`. Watch for a SECOND meaning of the same token (e.g. "$25 free gift" vs "$25 campaign costs ~$25 @ $0.07/email" economics) — reframe only the intended sense. (#1516)
+
 ### Missing Backend Fields
 
 If the dashboard needs a field/endpoint/capability the backend doesn't provide, NEVER work around it client-side (regex, slugify, name-derivation, aggregation heuristics). Draft a message for Kevin to forward to the backend team and block on the change.
