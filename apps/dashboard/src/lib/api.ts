@@ -1228,17 +1228,6 @@ export async function getFeatureRevenueByCampaign(
   }));
 }
 
-/** GET /features/:slug/revenue?groupBy=workflowSlug — per-workflow ROI for a brand+feature. */
-export async function getFeatureRevenueByWorkflow(
-  featureSlug: string,
-  brandId: string,
-  token?: string,
-): Promise<WorkflowRevenueGroup[]> {
-  const query = new URLSearchParams({ brandId, groupBy: "workflowSlug" });
-  const raw = await apiCall<unknown>(`/features/${featureSlug}/revenue?${query.toString()}`, { token });
-  return parseFeatureRevenueByWorkflow(raw, "getFeatureRevenueByWorkflow");
-}
-
 /** POST /brands — upsert brand by URL, returns brandId */
 export async function upsertBrand(
   url: string,
