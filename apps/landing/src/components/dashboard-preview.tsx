@@ -37,7 +37,7 @@ export function DashboardPreview() {
           </div>
           <div className="flex-1 flex justify-center">
             <div className="bg-gray-800 rounded-md px-4 py-1 text-xs text-gray-400 font-mono">
-              app.distribute.you/dashboard
+              dashboard.distribute.you/dashboard
             </div>
           </div>
         </div>
