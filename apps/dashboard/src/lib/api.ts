@@ -6,6 +6,7 @@ import {
   type QuoteOpportunityContext,
 } from "./quote-pitch-variables";
 import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "./org-desync";
+import { keepLastGoodFields, keepLastGoodList } from "./keep-last-good";
 import type { RevenueOverview } from "./revenue-view";
 import { parseFeatureRevenue } from "./revenue-parse";
 import { withAverageCampaignRelevanceScores } from "./outlet-relevance";
@@ -2047,6 +2048,37 @@ const WorkflowProjectionResponseSchema = z.object({
 export type WorkflowFunnelProjection = z.infer<typeof WorkflowFunnelProjectionSchema>;
 export type WorkflowProjectionItem = z.infer<typeof WorkflowProjectionItemSchema>;
 export type WorkflowProjectionResponse = z.infer<typeof WorkflowProjectionResponseSchema>;
+
+/**
+ * `structuralSharing` merge for the workflow-projection query. Every field above is `.nullable()`
+ * because a COLD Neon chain (api→features→workflow/runs/email-gateway/brand, all scale-to-zero)
+ * can answer a poll/refocus refetch with a VALID 200 whose unit costs / cost-per-close are null,
+ * or with fewer workflows, while it half-warms. That degenerate-but-valid payload would otherwise
+ * collapse the budget cards + Launch button (which derive off `costPerCloseUsd`). Keep the last-good
+ * per-workflow values + recommended pick across such a refetch; a real persistent downgrade still
+ * fails loud (console.error in keep-last-good). Opt-in here ONLY — a null is "transient/not-ready",
+ * not "removed". See lib/keep-last-good.ts + CLAUDE.md "keep-last-good (cache-write boundary)".
+ */
+export function keepLastGoodWorkflowProjection(
+  prev: WorkflowProjectionResponse | undefined,
+  next: WorkflowProjectionResponse,
+): WorkflowProjectionResponse {
+  if (!prev) return next;
+  const top = keepLastGoodFields(
+    prev,
+    next,
+    ["recommendedWorkflowDynastySlug", "recommendedBudgetUsd"],
+    "workflowProjection",
+  );
+  return {
+    ...top,
+    workflows: keepLastGoodList(prev.workflows, next.workflows, {
+      keyFn: (w) => w.workflowDynastySlug,
+      fields: ["contactedUsd", "replyUsd", "clickUsd", "costPerCloseUsd", "projection", "workflowDynastyName"],
+      label: "workflowProjection.workflows",
+    }),
+  };
+}
 
 /**
  * GET /features/:slug/workflow-projection — per-workflow cost-per-close + funnel projection
