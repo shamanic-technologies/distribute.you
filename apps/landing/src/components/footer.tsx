@@ -64,24 +64,24 @@ export function Footer({ disclaimer }: FooterProps) {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="v2-footer">
-      <div className="v2-footer-grid">
+    <footer className="dy-footer">
+      <div className="dy-footer-grid">
         <div>
-          <a href="/" className="v2-nav-logo">
+          <a href="/" className="dy-nav-logo">
             <Image
-              src="/landing-v2/logo/logo-distribute.svg"
+              src="/landing/logo/logo-distribute.svg"
               alt=""
               width={24}
               height={24}
             />
             <span>distribute</span>
-            <span className="v2-chip">BETA</span>
+            <span className="dy-chip">BETA</span>
           </a>
           <p className="mt-3 max-w-xs text-sm leading-7">
             AI cold email, done for you. Drop a URL, set a budget, get
             qualified replies.
           </p>
-          <p className="v2-mono mt-3 text-sm">
+          <p className="dy-mono mt-3 text-sm">
             Built by{" "}
             <a href="https://twitter.com/kevinlourd" target="_blank" rel="noopener noreferrer">
               @kevinlourd
@@ -104,7 +104,7 @@ export function Footer({ disclaimer }: FooterProps) {
         ))}
       </div>
 
-      <div className="v2-footer-bottom">
+      <div className="dy-footer-bottom">
         <span>© {year} distribute. MIT License. 100% open source.</span>
         <div className="flex flex-wrap gap-x-6 gap-y-2">
           <a href="/privacy">Privacy</a>
@@ -116,7 +116,7 @@ export function Footer({ disclaimer }: FooterProps) {
       </div>
 
       {disclaimer && (
-        <div className="v2-shell border-t border-[var(--v2-border)] py-5 text-xs leading-relaxed">
+        <div className="dy-shell border-t border-[var(--dy-border)] py-5 text-xs leading-relaxed">
           {disclaimer}
         </div>
       )}

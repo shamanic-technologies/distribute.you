@@ -1,22 +1,22 @@
 import { afterEach, describe, it, expect, vi } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
-import { staticV2Response } from "../../src/lib/static-v2-html";
+import { staticResponse } from "../../src/lib/static-html";
 
 const staticHtmlPath = path.resolve(
   __dirname,
-  "../../src/lib/static-v2-html.ts",
+  "../../src/lib/static-html.ts",
 );
 const salesLandingPagePath = path.resolve(
   __dirname,
   "../../../sales-cold-emails-landing/src/app/page.tsx",
 );
-const landingV2Dir = path.resolve(__dirname, "../../public/landing-v2");
+const landingDir = path.resolve(__dirname, "../../public/landing");
 
 const staticHtml = fs.readFileSync(staticHtmlPath, "utf-8");
 const salesLandingPage = fs.readFileSync(salesLandingPagePath, "utf-8");
-const staticPageSource = ["index.html", "performance.html", "design-system.html"]
-  .map((fileName) => fs.readFileSync(path.join(landingV2Dir, fileName), "utf-8"))
+const staticPageSource = ["index.html", "performance.html"]
+  .map((fileName) => fs.readFileSync(path.join(landingDir, fileName), "utf-8"))
   .join("\n");
 
 describe("Static landing live performance values", () => {
@@ -24,7 +24,7 @@ describe("Static landing live performance values", () => {
     vi.unstubAllGlobals();
   });
 
-  it("injects the public best positive-reply cost into v2 static pages", () => {
+  it("injects the public best positive-reply cost into static pages", () => {
     expect(staticHtml).toContain("/v1/public/features/best");
     expect(staticHtml).toContain("sales-cold-email-outreach");
     expect(staticHtml).toContain("recipientsRepliesPositive");
@@ -78,7 +78,7 @@ describe("Static landing live performance values", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const performanceResponse = await staticV2Response("performance.html");
+    const performanceResponse = await staticResponse("performance.html");
     const performanceHtml = await performanceResponse.text();
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -124,22 +124,19 @@ describe("Static landing live performance values", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const indexResponse = await staticV2Response("index.html");
-    const performanceResponse = await staticV2Response("performance.html");
-    const designSystemResponse = await staticV2Response("design-system.html");
+    const indexResponse = await staticResponse("index.html");
+    const performanceResponse = await staticResponse("performance.html");
     const indexHtml = await indexResponse.text();
     const performanceHtml = await performanceResponse.text();
-    const designSystemHtml = await designSystemResponse.text();
 
     // No raw placeholder tokens leak into the served HTML.
     expect(indexHtml).not.toContain("__BEST_POSITIVE_REPLY_COST__");
     expect(performanceHtml).not.toContain("__OPEN_RATE__");
     expect(performanceHtml).not.toContain("__EMAILS_SENT__");
-    expect(designSystemHtml).not.toContain("__BEST_POSITIVE_REPLY_COST__");
 
     // Fallback (last-known-good) values are injected on pages that carry the
     // live cost token. The home leads with $0.07/contact and has no
-    // cost-per-reply token, so only performance/design-system inject the
+    // cost-per-reply token, so only performance injects the
     // fallback — the home is asserted to be token-free above.
     expect(performanceHtml).toContain("$1.42");
     expect(errorSpy).toHaveBeenCalled();

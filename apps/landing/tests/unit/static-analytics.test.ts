@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { staticV2Html } from "../../src/lib/static-v2-html";
+import { staticHtml } from "../../src/lib/static-html";
 
-// The landing-v2 pages are served as raw HTML via route handlers that bypass
+// The landing pages are served as raw HTML via route handlers that bypass
 // the React root layout (GA) and Next client instrumentation (PostHog).
-// staticV2Html must inject both so the home + SEO cluster record unique visits.
-describe("Static landing-v2 pages carry GA + PostHog", () => {
+// staticHtml must inject both so the home + SEO cluster record unique visits.
+describe("Static landing pages carry GA + PostHog", () => {
   const prevToken = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
 
   beforeAll(() => {
@@ -17,7 +17,6 @@ describe("Static landing-v2 pages carry GA + PostHog", () => {
   const pages = [
     "index.html",
     "performance.html",
-    "design-system.html",
     "how-it-works.html",
     "use-cases.html",
     "cold-email-cost-guide.html",
@@ -28,7 +27,7 @@ describe("Static landing-v2 pages carry GA + PostHog", () => {
 
   for (const page of pages) {
     it(`injects GA + PostHog into ${page}`, () => {
-      const html = staticV2Html(page);
+      const html = staticHtml(page);
       expect(html).toContain(
         "googletagmanager.com/gtag/js?id=G-YJHNGLEJPP",
       );
@@ -43,7 +42,7 @@ describe("Static landing-v2 pages carry GA + PostHog", () => {
 
   it("omits the PostHog snippet when no token is configured", () => {
     process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN = "";
-    const html = staticV2Html("index.html");
+    const html = staticHtml("index.html");
     expect(html).toContain("googletagmanager.com/gtag/js?id=G-YJHNGLEJPP");
     expect(html).not.toContain("posthog.init(");
     process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN = "phc_test_token";

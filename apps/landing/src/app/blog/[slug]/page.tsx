@@ -82,49 +82,49 @@ export default async function BlogArticlePage({ params }: Props) {
   };
 
   return (
-    <main className="v2-page">
+    <main className="dy-page">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
       />
       <Navbar />
 
-      <Section variant="prose" outerClassName="v2-section-tight" as="div">
+      <Section variant="prose" outerClassName="dy-section-tight" as="div">
         <Link
           href="/blog"
-          className="mb-8 inline-flex items-center gap-1 text-sm text-[var(--v2-sub)] transition hover:text-[var(--v2-accent-hi)]"
+          className="mb-8 inline-flex items-center gap-1 text-sm text-[var(--dy-sub)] transition hover:text-[var(--dy-accent-hi)]"
         >
           ← All articles
         </Link>
 
         <header className="mb-10">
-          <div className="v2-mono mb-4 flex flex-wrap items-center gap-3 text-xs text-[var(--v2-muted)]">
+          <div className="dy-mono mb-4 flex flex-wrap items-center gap-3 text-xs text-[var(--dy-muted)]">
             <time dateTime={article.publishedAt} className="font-medium">
               {formatDate(article.publishedAt)}
             </time>
             {article.tags.slice(0, 4).map((t) => (
               <span
                 key={t}
-                className="rounded-full bg-[var(--v2-surface-hi)] px-2 py-0.5 text-[var(--v2-sub)]"
+                className="rounded-full bg-[var(--dy-surface-hi)] px-2 py-0.5 text-[var(--dy-sub)]"
               >
                 {t}
               </span>
             ))}
           </div>
 
-          <h1 className="v2-title mb-5 text-3xl md:text-5xl">
+          <h1 className="dy-title mb-5 text-3xl md:text-5xl">
             {article.title}
           </h1>
 
           {article.excerpt && (
-            <p className="v2-body text-lg md:text-xl">
+            <p className="dy-body text-lg md:text-xl">
               {article.excerpt}
             </p>
           )}
         </header>
 
         {article.coverImageUrl && (
-          <div className="relative mb-12 aspect-[16/9] w-full overflow-hidden rounded-2xl border border-[var(--v2-border-hi)] bg-[var(--v2-surface-hi)]">
+          <div className="relative mb-12 aspect-[16/9] w-full overflow-hidden rounded-2xl border border-[var(--dy-border-hi)] bg-[var(--dy-surface-hi)]">
             <Image
               src={article.coverImageUrl}
               alt={article.title}
@@ -143,35 +143,35 @@ export default async function BlogArticlePage({ params }: Props) {
           <div
             className="
               prose prose-lg max-w-none
-              prose-headings:text-[var(--v2-text)] prose-headings:tracking-tight
+              prose-headings:text-[var(--dy-text)] prose-headings:tracking-tight
               prose-h1:text-3xl prose-h2:text-2xl prose-h2:mt-12 prose-h3:text-xl
-              prose-p:text-[var(--v2-sub)] prose-p:leading-relaxed
-              prose-a:text-[var(--v2-accent-hi)] prose-a:no-underline hover:prose-a:underline
-              prose-strong:text-[var(--v2-text)]
-              prose-blockquote:border-l-[var(--v2-accent)] prose-blockquote:bg-[var(--v2-surface)] prose-blockquote:py-1 prose-blockquote:not-italic
-              prose-code:text-[var(--v2-accent-hi)] prose-code:bg-[var(--v2-accent-dim)] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none
-              prose-pre:bg-[var(--v2-surface)] prose-pre:text-[var(--v2-text)]
-              prose-img:rounded-xl prose-img:border prose-img:border-[var(--v2-border-hi)]
-              prose-li:text-[var(--v2-sub)]
+              prose-p:text-[var(--dy-sub)] prose-p:leading-relaxed
+              prose-a:text-[var(--dy-accent-hi)] prose-a:no-underline hover:prose-a:underline
+              prose-strong:text-[var(--dy-text)]
+              prose-blockquote:border-l-[var(--dy-accent)] prose-blockquote:bg-[var(--dy-surface)] prose-blockquote:py-1 prose-blockquote:not-italic
+              prose-code:text-[var(--dy-accent-hi)] prose-code:bg-[var(--dy-accent-dim)] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none
+              prose-pre:bg-[var(--dy-surface)] prose-pre:text-[var(--dy-text)]
+              prose-img:rounded-xl prose-img:border prose-img:border-[var(--dy-border-hi)]
+              prose-li:text-[var(--dy-sub)]
             "
             dangerouslySetInnerHTML={{ __html: body }}
           />
         ) : article.contentMarkdown ? (
-          <pre className="whitespace-pre-wrap font-sans leading-relaxed text-[var(--v2-sub)]">
+          <pre className="whitespace-pre-wrap font-sans leading-relaxed text-[var(--dy-sub)]">
             {article.contentMarkdown}
           </pre>
         ) : (
-          <p className="text-[var(--v2-muted)]">No content available for this article.</p>
+          <p className="text-[var(--dy-muted)]">No content available for this article.</p>
         )}
 
-        <div className="mt-16 flex items-center justify-between border-t border-[var(--v2-border)] pt-8 text-sm">
+        <div className="mt-16 flex items-center justify-between border-t border-[var(--dy-border)] pt-8 text-sm">
           <Link
             href="/blog"
-            className="inline-flex items-center gap-1 text-[var(--v2-sub)] transition hover:text-[var(--v2-accent-hi)]"
+            className="inline-flex items-center gap-1 text-[var(--dy-sub)] transition hover:text-[var(--dy-accent-hi)]"
           >
             ← All articles
           </Link>
-          <span className="v2-mono text-xs text-[var(--v2-muted)]">
+          <span className="dy-mono text-xs text-[var(--dy-muted)]">
             Updated {formatDate(article.updatedAt)}
           </span>
         </div>
