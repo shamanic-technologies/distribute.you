@@ -27,7 +27,8 @@ export function RevenueOverviewSection({
   brandId,
   featureSlug,
   basePath,
-  pending = false,
+  revenuePending = false,
+  costPending = false,
 }: {
   data?: RevenueOverview;
   newCampaignHref: string;
@@ -36,13 +37,17 @@ export function RevenueOverviewSection({
   featureSlug: string;
   /** /orgs/:orgId/brands/:brandId/features/:slug — for the Top-campaigns links. */
   basePath: string;
-  pending?: boolean;
+  /** features-service `/revenue` reveal — headline, chart, CAC/ROI, conversions. */
+  revenuePending?: boolean;
+  /** runs-service cost-breakdown reveal — the Total-spent figure only. */
+  costPending?: boolean;
 }) {
   // Static-shell-first: the section header, card frames, titles and the tab bar
-  // render on the first paint; only the data regions (headline value, chart,
-  // tables) skeleton while loading. `loading` folds `pending` (the page's
-  // coordinated reveal) with a defensive `!data` guard.
-  const loading = pending || !data;
+  // render on the first paint; only the data regions skeleton while loading.
+  // `revenueLoading` folds `revenuePending` with a defensive `!data` guard — it
+  // drives every region fed by features-service `/revenue`; the Total-spent figure
+  // (runs-service) reveals on its own `costPending` so it never waits on revenue.
+  const revenueLoading = revenuePending || !data;
   return (
     <div className="space-y-4">
       <div className="flex items-end justify-between">
@@ -64,7 +69,7 @@ export function RevenueOverviewSection({
           <div className="flex items-baseline justify-between mb-4">
             <h3 className="font-medium text-gray-800">Pipeline revenue over time</h3>
             <div className="text-right">
-              {loading ? (
+              {revenueLoading ? (
                 <Skeleton className="h-8 w-28" />
               ) : (
                 <p className="text-2xl font-bold text-gray-900 leading-none">
@@ -74,7 +79,7 @@ export function RevenueOverviewSection({
               <p className="text-[11px] text-gray-400 mt-1">expected pipeline</p>
             </div>
           </div>
-          {loading ? (
+          {revenueLoading ? (
             <Skeleton className="h-[260px] w-full rounded" />
           ) : (
             <RevenueChart series={data.timeSeries} />
@@ -87,7 +92,8 @@ export function RevenueOverviewSection({
         <RevenueCostSummary
           costBreakdown={costBreakdown}
           costEconomics={data?.costEconomics}
-          pending={loading}
+          pending={revenueLoading}
+          costPending={costPending}
           bottomCard={
             <TopCampaignsCard brandId={brandId} featureSlug={featureSlug} basePath={basePath} />
           }
@@ -96,7 +102,7 @@ export function RevenueOverviewSection({
 
       {/* Conversions — Organizations / Leads / Events tabs (same set as the
           dedicated Conversions page; paginated 20/page inside each table). */}
-      <ConversionsTabs data={data} pending={loading} />
+      <ConversionsTabs data={data} pending={revenueLoading} />
     </div>
   );
 }

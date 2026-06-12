@@ -67,10 +67,17 @@ describe("static-shell-first: cards accept `pending` and skeleton only values", 
 describe("static-shell-first: pages pass `pending`, not a whole-body skeleton swap", () => {
   const APP = "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]";
 
-  it("feature overview renders the section always with pending (no CoordinatedReveal whole-body wrap)", () => {
+  it("feature overview reveals each card on its OWN data (per-card barriers, no single AND gate)", () => {
     const overview = read(`${APP}/overview/page.tsx`);
     expect(overview).toContain("RevenueOverviewSection");
-    expect(overview).toContain("pending={!valuesRevealed}");
+    // Revenue data (features-service) and Total-spent (runs-service) resolve on
+    // different cold chains → separate latches, so the fast cost card never waits
+    // on the slower revenue call. No single `valuesRevealed` AND of both queries.
+    expect(overview).toContain("revenueRevealed");
+    expect(overview).toContain("costRevealed");
+    expect(overview).toContain("revenuePending={!revenueRevealed}");
+    expect(overview).toContain("costPending={!costRevealed}");
+    expect(overview).not.toContain("valuesRevealed");
   });
 
   it("campaigns page reveals each card on its OWN data (per-card barriers, no single whole-body gate)", () => {

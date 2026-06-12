@@ -136,13 +136,17 @@ describe("feature pages adopt the coordinated body reveal", () => {
   const read = (rel: string) =>
     fs.readFileSync(path.join(__dirname, rel), "utf-8");
 
-  it("feature overview reveals revenue + cost cards together", () => {
+  it("feature overview reveals revenue + cost cards on their OWN data (per-card barrier)", () => {
     const src = read(
       "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/overview/page.tsx",
     );
-    expect(src).toContain("CoordinatedReveal");
-    // both cold queries gate the one paint — no intra-card pop-in
-    expect(src).toMatch(/data !== undefined,\s*costData !== undefined/);
+    expect(src).toContain("useCoordinatedReveal");
+    // Revenue (features-service) and Total-spent (runs-service) resolve on different
+    // cold chains → SEPARATE latches, so the fast cost card never waits on the slower
+    // revenue call (#1551: one barrier per card, never a single AND of both queries).
+    expect(src).toMatch(/useCoordinatedReveal\(\[data !== undefined\]\)/);
+    expect(src).toMatch(/useCoordinatedReveal\(\[costData !== undefined\]\)/);
+    expect(src).not.toMatch(/data !== undefined,\s*costData !== undefined/);
   });
 
   it("legacy feature page reveals stats grid + campaigns list together", () => {
