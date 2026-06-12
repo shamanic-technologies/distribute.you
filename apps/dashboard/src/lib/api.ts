@@ -2000,14 +2000,14 @@ export async function fetchGlobalRankedWorkflows(params: {
 }
 
 // ── Sales-funnel workflow projection ────────────────────────────────────────
-// features-service is the SINGLE source for the sales-funnel SUM math: per-workflow
-// cost-per-close (meeting-booked sums the positive-reply route + the website-visit route,
-// funded by one budget; self-serve is clicks-only) + the funnel projection at a budget +
-// the recommended workflow/budget. Conversion rates + LTR come from the brand's SAVED
-// sales-economics (no client overrides). The dashboard only renders. Because the funnel
-// is LINEAR in budget, the page requests the projection at $1 and scales by budget for the
-// preset tiles (pure ×; the route-combining SUM stays server-side). Wire shape verified
-// against the deployed contract via api-registry. safeParse per CLAUDE.md (#1213/#1282).
+// features-service owns the per-workflow GLOBAL unit costs (contacted/reply/click $ — cross-org,
+// feature-scoped, econ-INDEPENDENT) + the recommended workflow. It ALSO returns a server-computed
+// cost-per-close + funnel projection from the brand's SAVED economics, but the campaigns/new page
+// no longer renders those directly: it recomputes cost-per-close + the funnel CLIENT-side from the
+// unit costs × the LIVE §2 econ inputs (lib/sales-funnel-projection.ts mirrors the server formula)
+// so the budget cards update instantly without a per-edit round-trip through the cold Neon chain.
+// On first paint the live econ == the saved econ, so the client numbers equal the server's exactly.
+// Wire shape verified against the deployed contract via api-registry. safeParse per CLAUDE.md.
 export type SalesObjective = "meeting-booked" | "self-serve";
 
 /** Per-workflow funnel projection at the requested budget. All fields null where the route
