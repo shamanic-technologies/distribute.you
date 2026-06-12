@@ -12,7 +12,7 @@ import {
   fetchFeatureStatsByWorkflow,
   fetchStatsRegistry,
   getReportRevenue,
-  getReportRevenueByWorkflow,
+  getReportWorkflowProjection,
 } from "@/lib/report-api";
 import type { StatsRegistry } from "@/lib/api";
 
@@ -63,7 +63,7 @@ export default async function WorkflowsPage({ params }: PageProps) {
   // column count matches the final render; labels are placeholders.
   const skeletonColumns = ["Workflow", "Version", "Leads Sent", "Leads Positive", "CAC / positive reply"];
   const revenueSkeletonColumns = isRevenueFeature(featureSlug)
-    ? [...skeletonColumns, "Expected revenue", "ROI"]
+    ? [...skeletonColumns, "ROI"]
     : skeletonColumns;
   return (
     <div className="p-4 sm:p-6 md:p-8 space-y-6">
@@ -84,14 +84,14 @@ export default async function WorkflowsPage({ params }: PageProps) {
 
 async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
   const revenueEnabled = isRevenueFeature(featureSlug);
-  const [allWorkflows, campaigns, totalStats, groupedStats, registry, brandRevenue, workflowRevenueGroups] = await Promise.all([
+  const [allWorkflows, campaigns, totalStats, groupedStats, registry, brandRevenue, workflowRoi] = await Promise.all([
     fetchWorkflows(orgId, featureSlug),
     fetchCampaigns(orgId, brandId, featureSlug),
     fetchFeatureStats(orgId, brandId, featureSlug),
     fetchFeatureStatsByWorkflow(orgId, brandId, featureSlug),
     fetchStatsRegistry(orgId),
     revenueEnabled ? getReportRevenue(orgId, brandId, featureSlug) : Promise.resolve(null),
-    revenueEnabled ? getReportRevenueByWorkflow(orgId, brandId, featureSlug) : Promise.resolve([]),
+    revenueEnabled ? getReportWorkflowProjection(orgId, brandId, featureSlug) : Promise.resolve([]),
   ]);
 
   const leadsSentLabel = registryLabel(registry, "leadsSent");
@@ -103,11 +103,11 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
 
   // Per-workflow stats index
   const statsBySlug = new Map(groupedStats.groups.map((g) => [g.workflowSlug ?? "", g]));
-  const revenueBySlug = new Map(workflowRevenueGroups.map((g) => [g.workflowSlug, g]));
+  // Projected ROI is keyed on the workflow DYNASTY (cross-version), not the versioned slug.
+  const roiByDynasty = new Map(workflowRoi.map((r) => [r.workflowDynastySlug, r.roi]));
 
   const rows: WorkflowRow[] = workflows.map((w) => {
     const g = statsBySlug.get(w.workflowSlug);
-    const revenue = revenueBySlug.get(w.workflowSlug);
     const stats = g?.stats ?? {};
     const cost = Number(g?.systemStats?.totalCostInUsdCents ?? 0);
     return {
@@ -119,8 +119,7 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
       emailsSent: typeof stats.leadsSent === "number" ? stats.leadsSent : 0,
       positiveReplies: typeof stats.leadsRepliesPositive === "number" ? stats.leadsRepliesPositive : 0,
       totalCostCents: cost,
-      expectedRevenueUsd: revenue?.totalPipelineUsd ?? null,
-      roiMultiple: revenue?.roiMultiple ?? null,
+      roiMultiple: roiByDynasty.get(w.workflowDynastySlug) ?? null,
       createdAt: w.createdAt,
     };
   });
@@ -154,7 +153,6 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
     positiveReplies: number;
     totalCostUsd: string;
     cacPerReply: string;
-    expectedRevenueUsd: string;
     roi: string;
   }
 
@@ -165,7 +163,6 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
     positiveReplies: r.positiveReplies,
     totalCostUsd: formatUsd(r.totalCostCents),
     cacPerReply: r.positiveReplies > 0 ? formatUsd(r.totalCostCents / r.positiveReplies) : "",
-    expectedRevenueUsd: revenueEnabled ? formatUsdValue(r.expectedRevenueUsd) : "",
     roi: revenueEnabled ? formatRoi(r.roiMultiple) : "",
   }));
 
@@ -179,7 +176,6 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
   ];
   if (revenueEnabled) {
     csvColumns.push(
-      { label: "Expected revenue", value: (r) => r.expectedRevenueUsd },
       { label: "ROI", value: (r) => r.roi },
     );
   }
