@@ -39,6 +39,7 @@ import {
   type SalesObjective,
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
+import { projectFunnel, type FunnelEconomics } from "@/lib/sales-funnel-projection";
 import { formatStatValue, sortDirectionForType } from "@/lib/format-stat";
 import { pollOptions } from "@/lib/query-options";
 import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-panel";
@@ -415,9 +416,10 @@ export default function FeatureCreateCampaignPage() {
     mutationFn: (input: BrandSalesEconomicsInput) => saveBrandSalesEconomics(brandId, input),
     onSuccess: (data) => {
       queryClient.setQueryData(["brandSalesEconomics", brandId], data);
-      // The workflow projection reads saved econ server-side — refresh it now that the edit
-      // persisted, so the budget cards reflect the new metrics without waiting for the poll.
-      queryClient.invalidateQueries({ queryKey: ["workflowProjection", featureSlug, brandId] });
+      // No projection invalidate: the budget cards recompute client-side from the LIVE econ inputs
+      // (see econLive + projectFunnel), so they already reflect the edit instantly. The server
+      // projection only supplies the econ-INDEPENDENT unit costs + workflow pick, which this edit
+      // does not change — refetching it would just re-pay the cold Neon round-trip for nothing.
     },
     onError: (err) => console.error("[dashboard] saveBrandSalesEconomics failed", err),
   });
@@ -592,38 +594,59 @@ export default function FeatureCreateCampaignPage() {
     return m;
   }, [projData]);
 
-  // Served cost-per-close for a workflow (the ROI comparator; lower = better).
+  // The brand's LIVE conversion economics (from the §2 inputs), as decimals — drives the
+  // client-side funnel recompute below so the budget cards update INSTANTLY as the user edits,
+  // without a per-edit round-trip through the cold Neon chain. On first paint these equal the
+  // brand's SAVED econ (hydrated above), so the recompute reproduces the server's numbers exactly.
+  const econLive = useMemo<FunnelEconomics>(
+    () => ({
+      ltv: parseFloat(econLtv) || 0,
+      r2m: (parseFloat(econReplyToMeeting) || 0) / 100,
+      v2m: (parseFloat(econVisitToMeeting) || 0) / 100,
+      m2c: (parseFloat(econMeetingToClose) || 0) / 100,
+      v2c: (parseFloat(econClickToClose) || 0) / 100,
+    }),
+    [econLtv, econReplyToMeeting, econVisitToMeeting, econMeetingToClose, econClickToClose],
+  );
+
+  // Cost-per-close for a workflow (the ROI comparator; lower = better). Recomputed client-side from
+  // the workflow's server-owned GLOBAL unit costs (econ-independent) × the LIVE economics — mirrors
+  // features-service `project()` (see lib/sales-funnel-projection.ts).
   const cpcFor = useCallback(
-    (dynastySlug: string): number | null => projByDynasty.get(dynastySlug)?.costPerCloseUsd ?? null,
-    [projByDynasty],
+    (dynastySlug: string): number | null => {
+      const w = projByDynasty.get(dynastySlug);
+      if (!w) return null;
+      return projectFunnel({ contactedUsd: w.contactedUsd, replyUsd: w.replyUsd, clickUsd: w.clickUsd }, econLive, null)
+        .costPerCloseUsd;
+    },
+    [projByDynasty, econLive],
   );
 
-  // CAC as a % of the customer's LTV — budget-invariant, served as projection.cacPct
-  // ((budget/revenue)×100 == cost-per-close/LTV×100). Used by the workflow picker.
+  // CAC as a % of the customer's LTV — budget-invariant, so compute at $1.
   const cacPctFor = useCallback(
-    (dynastySlug: string): number | null => projByDynasty.get(dynastySlug)?.projection?.cacPct ?? null,
-    [projByDynasty],
+    (dynastySlug: string): number | null => {
+      const w = projByDynasty.get(dynastySlug);
+      if (!w) return null;
+      return (
+        projectFunnel({ contactedUsd: w.contactedUsd, replyUsd: w.replyUsd, clickUsd: w.clickUsd }, econLive, 1)
+          .projection?.cacPct ?? null
+      );
+    },
+    [projByDynasty, econLive],
   );
 
-  // Render the funnel at any budget by scaling the served per-$ projection (computed at
-  // budgetUsd=1). Counts scale linearly with budget; cacPct/cacAbs are budget-invariant ratios.
+  // Render the funnel at any budget — recomputed client-side from unit costs × live economics.
   const projectFor = useCallback(
     (dynastySlug: string, budget: number): SalesProjectionView | null => {
-      const base = projByDynasty.get(dynastySlug)?.projection;
-      if (!base || budget <= 0) return null;
-      const scale = (v: number | null) => (v != null ? v * budget : null);
-      return {
-        contactedLeads: scale(base.contactedLeads),
-        replies: scale(base.replies),
-        visits: scale(base.visits),
-        meetings: scale(base.meetings),
-        closes: base.closes != null ? base.closes * budget : 0,
-        revenue: base.revenue != null ? base.revenue * budget : 0,
-        cacPct: base.cacPct,
-        cacAbs: base.cacAbs,
-      };
+      const w = projByDynasty.get(dynastySlug);
+      if (!w || budget <= 0) return null;
+      return projectFunnel(
+        { contactedUsd: w.contactedUsd, replyUsd: w.replyUsd, clickUsd: w.clickUsd },
+        econLive,
+        budget,
+      ).projection;
     },
-    [projByDynasty],
+    [projByDynasty, econLive],
   );
 
   // Auto-pick: the workflow features-service recommends (lowest cost-per-close for this
