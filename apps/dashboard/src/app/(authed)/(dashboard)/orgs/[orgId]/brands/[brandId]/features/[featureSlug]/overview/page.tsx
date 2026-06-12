@@ -37,10 +37,14 @@ export default function FeatureOverviewPage() {
     { enabled, ...pollOptions },
   );
 
-  // Coordinate the two cold queries: the section's static shell (header, card
-  // frames, titles, tab bar) renders immediately; the data regions (headline,
-  // chart, cost values, tables) reveal together once both resolve, then latch.
-  const valuesRevealed = useCoordinatedReveal([data !== undefined, costData !== undefined]);
+  // Per-card reveal (NOT one page-wide barrier): the revenue data (headline /
+  // chart / CAC / ROI / conversions) comes from features-service `/revenue`, the
+  // Total-spent figure from runs-service — two DIFFERENT cold chains. Gate each on
+  // its OWN query so the fast cost + Top-campaigns cards paint immediately instead
+  // of being held in skeleton by the slower revenue call. (#1551: one barrier per
+  // card, never a single AND that freezes everything until the slowest resolves.)
+  const revenueRevealed = useCoordinatedReveal([data !== undefined]);
+  const costRevealed = useCoordinatedReveal([costData !== undefined]);
 
   if (!isRevenueFeature(featureSlug)) {
     return (
@@ -54,8 +58,8 @@ export default function FeatureOverviewPage() {
 
   const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`;
 
-  // Only once resolved do we know the feature has no pipeline yet → full CTA.
-  if (valuesRevealed && data && data.totalPipelineUsd === null) {
+  // Only once revenue resolves do we know the feature has no pipeline yet → full CTA.
+  if (revenueRevealed && data && data.totalPipelineUsd === null) {
     return (
       <div className="p-4 md:p-8 max-w-7xl mx-auto">
         <RevenueEmptyState setupHref={`${basePath}/campaigns/new`} />
@@ -66,8 +70,9 @@ export default function FeatureOverviewPage() {
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
       <RevenueOverviewSection
-        data={valuesRevealed ? data : undefined}
-        pending={!valuesRevealed}
+        data={revenueRevealed ? data : undefined}
+        revenuePending={!revenueRevealed}
+        costPending={!costRevealed}
         newCampaignHref={`${basePath}/campaigns/new`}
         costBreakdown={costData?.costs ?? []}
         brandId={brandId}
