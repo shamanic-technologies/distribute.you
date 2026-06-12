@@ -169,7 +169,7 @@ describe("Billing guard provider", () => {
 
   it("should render a modal with insufficient credits message or proactive warning", () => {
     expect(content).toContain("Insufficient Credits");
-    expect(content).toContain("Campaign May Exceed Credits");
+    expect(content).toContain("Turn it on. Leave it on.");
   });
 
   it("should offer quick top-up amount buttons in the modal", () => {
@@ -391,24 +391,21 @@ describe("Billing guard auto-topup in modal", () => {
     expect(content).toContain("Minimum top-up is $10.");
   });
 
-  it("should support proactive mode with different title and description", () => {
+  it("should support proactive mode with an inspiring, sell-forward title and description", () => {
     expect(content).toContain("proactive");
-    expect(content).toContain("Campaign May Exceed Credits");
-    expect(content).toContain("campaign budget may exceed your current credit balance");
+    expect(content).toContain("Turn it on. Leave it on.");
+    expect(content).toContain("Auto-top-up keeps it running non-stop");
   });
 
-  it("should show recurring-specific copy when balance covers budget (recurring without auto-topup)", () => {
-    expect(content).toContain("Recurring Campaign Needs Auto-Topup");
-    expect(content).toContain("recurring campaign");
-  });
-
-  it("should pick proactive copy branch by comparing balance_cents to required_cents", () => {
-    expect(content).toMatch(/toCentsNumber\(\s*info\.balance_cents\s*\)\s*<\s*toCentsNumber\(\s*info\.required_cents\s*\)/);
+  it("should frame the proactive budget positively (runs on / per cycle), not a deficit alarm", () => {
+    expect(content).toContain("Your campaign runs on");
+    expect(content).not.toContain("Campaign May Exceed Credits");
+    expect(content).not.toContain("Recurring Campaign Needs Auto-Topup");
   });
 
   it("should allow configuring auto-topup without checkout in proactive mode", () => {
     expect(content).toContain("handleSetupAutoTopupOnly");
-    expect(content).toContain("Enable auto-top-up");
+    expect(content).toContain("Turn on auto-top-up");
     expect(content).toContain("onAutoTopupConfigured");
   });
 
@@ -416,7 +413,7 @@ describe("Billing guard auto-topup in modal", () => {
     // Add Credits presets are hard-block (non-proactive) only.
     expect(content).toContain("!isProactive");
     // Proactive CTA is the auto-topup enable, never the dollar top-up button.
-    expect(content).toContain("Enable auto-top-up");
+    expect(content).toContain("Turn on auto-top-up");
   });
 
   it("should capture a card with a no-charge setup-mode checkout when no payment method", () => {

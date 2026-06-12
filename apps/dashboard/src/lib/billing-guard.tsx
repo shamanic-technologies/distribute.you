@@ -31,6 +31,15 @@ function toCentsNumber(v: string | number): number {
   return typeof v === "string" ? parseFloat(v) : v;
 }
 
+function Spinner() {
+  return (
+    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={4} />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+    </svg>
+  );
+}
+
 interface BillingGuardContextValue {
   showPaymentRequired: (info: PaymentRequiredInfo) => void;
   dismissPaymentRequired: () => void;
@@ -236,16 +245,12 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
 
   const isProactive = info.proactive === true;
   const isDepleted = info.depleted === true;
-  const balanceBelowRequired =
-    info.balance_cents !== undefined &&
-    info.required_cents !== undefined &&
-    toCentsNumber(info.balance_cents) < toCentsNumber(info.required_cents);
-  const proactiveTitle = balanceBelowRequired
-    ? "Campaign May Exceed Credits"
-    : "Recurring Campaign Needs Auto-Topup";
-  const proactiveDescription = balanceBelowRequired
-    ? "Your campaign budget may exceed your current credit balance. Set up auto-topup to ensure your campaign is never interrupted."
-    : "Your recurring campaign needs auto-topup so it never stops mid-cycle when credits run out.";
+  // Proactive == recurring campaign launch (campaigns/new only fires proactive for
+  // recurring). It's not a "you might run out" warning — a recurring campaign spends
+  // every cycle, so auto-topup is what keeps the engine running. Sell that, don't alarm.
+  const proactiveTitle = "Turn it on. Leave it on.";
+  const proactiveDescription =
+    "Your campaign works every single day — finding leads, writing the emails, booking the meetings. Auto-top-up keeps it running non-stop, so you never miss the customer who was this close to saying yes. We save your card securely — nothing charged today — and add credits only when you’re about to run low.";
 
   return (
     <BillingGuardContext.Provider value={{ showPaymentRequired, dismissPaymentRequired }}>
@@ -254,11 +259,19 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50">
           <div className="bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-              </div>
+              {isProactive ? (
+                <div className="w-10 h-10 bg-brand-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <svg className="w-5 h-5 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+              ) : (
+                <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+              )}
               <h2 className="text-lg font-semibold text-gray-900">
                 {isProactive
                   ? proactiveTitle
@@ -276,21 +289,33 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
                   : "Your account doesn\u2019t have enough credits to complete this action. Add credits to continue."}
             </p>
 
-            {(info.balance_cents !== undefined || info.required_cents !== undefined) && (
-              <div className="bg-gray-50 rounded-lg p-3 mb-4 space-y-1 text-sm">
-                {info.balance_cents !== undefined && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Current balance</span>
-                    <span className="font-medium text-gray-900">{formatBillingCents(info.balance_cents)}</span>
-                  </div>
-                )}
-                {info.required_cents !== undefined && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">{isProactive ? "Campaign budget" : "Required"}</span>
-                    <span className="font-medium text-gray-900">{formatBillingCents(info.required_cents)}</span>
-                  </div>
-                )}
-              </div>
+            {/* Proactive (recurring launch): show ONLY the budget as a positive "this is
+                what your engine runs on" line in a brand-tinted box — never the scary
+                balance-vs-budget deficit, which reads as a "you can't afford this" alarm. */}
+            {isProactive ? (
+              info.required_cents !== undefined && (
+                <div className="bg-brand-50 border border-brand-100 rounded-lg p-3 mb-4 flex justify-between items-center text-sm">
+                  <span className="text-brand-700">Your campaign runs on</span>
+                  <span className="font-semibold text-brand-900">{formatBillingCents(info.required_cents)} <span className="font-normal text-brand-600">/ cycle</span></span>
+                </div>
+              )
+            ) : (
+              (info.balance_cents !== undefined || info.required_cents !== undefined) && (
+                <div className="bg-gray-50 rounded-lg p-3 mb-4 space-y-1 text-sm">
+                  {info.balance_cents !== undefined && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Current balance</span>
+                      <span className="font-medium text-gray-900">{formatBillingCents(info.balance_cents)}</span>
+                    </div>
+                  )}
+                  {info.required_cents !== undefined && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Required</span>
+                      <span className="font-medium text-gray-900">{formatBillingCents(info.required_cents)}</span>
+                    </div>
+                  )}
+                </div>
+              )
             )}
 
             {/* Top-up amount selection — hard-block (insufficient credits) only.
@@ -398,6 +423,23 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
               <p className="text-sm text-red-600 mb-3">{checkoutError}</p>
             )}
 
+            {isProactive && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-4 text-xs text-gray-500">
+                <span className="inline-flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                  No charge today
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                  Cancel anytime
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                  You’re in control
+                </span>
+              </div>
+            )}
+
             <div className="flex gap-3">
               <button
                 onClick={dismissPaymentRequired}
@@ -411,17 +453,19 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
                   <button
                     onClick={handleSetupAutoTopupOnly}
                     disabled={savingAutoTopup || hasValidationError || !topupAmount}
-                    className="flex-[2] px-4 py-2.5 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 transition disabled:opacity-50"
+                    className={`flex-[2] inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 transition ${savingAutoTopup ? "cursor-wait" : "disabled:opacity-50 disabled:cursor-not-allowed"}`}
                   >
-                    {savingAutoTopup ? "Saving..." : "Enable auto-top-up"}
+                    {savingAutoTopup && <Spinner />}
+                    {savingAutoTopup ? "Turning on…" : "Turn on auto-top-up →"}
                   </button>
                 ) : (
                   <button
                     onClick={handleCheckout}
                     disabled={checkoutLoading || hasValidationError || !topupAmount}
-                    className="flex-[2] px-4 py-2.5 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 transition disabled:opacity-50"
+                    className={`flex-[2] inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 transition ${checkoutLoading ? "cursor-wait" : "disabled:opacity-50 disabled:cursor-not-allowed"}`}
                   >
-                    {checkoutLoading ? "Redirecting..." : "Enable auto-top-up"}
+                    {checkoutLoading && <Spinner />}
+                    {checkoutLoading ? "Redirecting…" : "Turn on auto-top-up →"}
                   </button>
                 )
               ) : (
