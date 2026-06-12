@@ -451,16 +451,16 @@ describe("Proactive credit check in campaign creation (org-scoped)", () => {
     // Balance is ceil'd to match the ceil'd displayed balance, then compared per period
     // (a $1.996 balance shown as "$2.00" must not false-trigger for a $2 one-off).
     expect(content).toContain("Math.ceil(parseFloat(account.balance_cents))");
-    expect(content).toContain("coversFirstPeriod");
+    // One-off only blocks when the first period isn't covered.
+    expect(content).toContain("balanceCents < budgetCents");
   });
 
-  it("should check for recurring campaigns without auto-topup", () => {
+  it("should force auto-topup for recurring (mandatory, no launch-anyway)", () => {
+    // Recurring REQUIRES auto-topup regardless of current balance — no runway/onProceed escape.
     expect(content).toContain('budgetFrequency !== "one-off"');
-    expect(content).toContain("!account.has_auto_topup");
-  });
-
-  it("should call configureAutoTopup when card on file", () => {
-    expect(content).toContain("configureAutoTopup");
+    expect(content).toContain("isRecurring && !account.has_auto_topup");
+    expect(content).not.toContain("onProceed");
+    expect(content).not.toContain("runwayPeriods");
   });
 
   it("should NOT call legacy configureAutoReload", () => {

@@ -74,14 +74,15 @@ const SALES_OBJECTIVES: { key: SalesObjective; label: string; desc: string }[] =
   { key: "self-serve", label: "Self-serve sales", desc: "Customers buy from your site — optimize on clicks." },
 ];
 
-const BUDGET_TIERS: { key: Exclude<BudgetTier, "other">; label: string; factor: number }[] = [
-  { key: "starter", label: "Starter", factor: 0.5 },
-  { key: "recommended", label: "Recommended", factor: 1 },
-  { key: "growth", label: "Growth", factor: 2 },
+/** Each tier is sized for an absolute closes-per-month target (budget = closes × cost-per-close). */
+const BUDGET_TIERS: { key: Exclude<BudgetTier, "other">; label: string; closesPerMonth: number }[] = [
+  { key: "starter", label: "Starter", closesPerMonth: 3 },
+  { key: "recommended", label: "Recommended", closesPerMonth: 5 },
+  { key: "growth", label: "Growth", closesPerMonth: 10 },
 ];
 
-/** Recommended budget is sized for this many closes per month (Starter ×0.5, Growth ×2). */
-const TARGET_CLOSES_PER_MONTH = 10;
+/** Recommended budget is sized for this many closes per month (= the "recommended" tier). */
+const TARGET_CLOSES_PER_MONTH = 5;
 
 /** Conversion-economics defaults shown until the brand's saved set loads (or when none
  *  is saved yet). Persisted per brand in brand-service; see getBrandSalesEconomics. */
@@ -663,13 +664,13 @@ export default function FeatureCreateCampaignPage() {
 
   // Google-Ads-style budget tiers seeded from the 10-closes/mo target, + the chosen amount.
   const budgetPresets = useMemo(() => {
-    const rec = salesPlan.recommendedBudget;
-    if (rec == null) return null;
+    const cpc = salesPlan.costPerCloseUsd;
+    if (cpc == null) return null;
     return BUDGET_TIERS.map((t) => {
-      const monthly = Math.max(1, Math.round(rec * t.factor));
+      const monthly = Math.max(1, Math.round(t.closesPerMonth * cpc));
       return { ...t, monthly, daily: Math.max(1, Math.round(monthly / DAYS_PER_MONTH)) };
     });
-  }, [salesPlan.recommendedBudget]);
+  }, [salesPlan.costPerCloseUsd]);
 
   const effectiveBudget = useMemo(() => {
     if (budgetTier === "other") return parseFloat(budgetCustom) || 0;
@@ -1120,16 +1121,11 @@ export default function FeatureCreateCampaignPage() {
       // $1.996 balance shows "$2.00". Compare against that to avoid a false "exceeds".
       const balanceCents = Math.ceil(parseFloat(account.balance_cents));
       const isRecurring = budgetFrequency !== "one-off";
-      const coversFirstPeriod = balanceCents >= budgetCents;
 
-      // Can't even afford the first period → must add credits / set up auto-topup.
-      if (!coversFirstPeriod) {
-        if (account.has_payment_method) {
-          const topupCents = Math.max(1000, budgetCents);
-          await configureAutoTopup(topupCents, 500).catch(() => {});
-          doCreateCampaign();
-          return;
-        }
+      // Recurring campaigns REQUIRE auto-topup (a card on file). They keep spending every
+      // period, so a one-time balance is never enough — top-up is mandatory, no "launch
+      // anyway". The modal sets up the card (no charge) + auto-topup, then launches.
+      if (isRecurring && !account.has_auto_topup) {
         saveCampaignIntent();
         isCreatingRef.current = false;
         setIsCreating(false);
@@ -1145,23 +1141,15 @@ export default function FeatureCreateCampaignPage() {
         return;
       }
 
-      // Covers the first period but is recurring without auto-topup → warn how long the
-      // credits last, recommend auto-topup, but let the user launch anyway.
-      if (isRecurring && !account.has_auto_topup) {
-        const periods = Math.max(1, Math.floor(balanceCents / budgetCents));
+      // One-off that can't afford the first period → must recharge (add credits) or set up
+      // auto-topup. Hard-block modal, no "launch anyway". A funded one-off launches directly.
+      if (!isRecurring && balanceCents < budgetCents) {
         saveCampaignIntent();
         isCreatingRef.current = false;
         setIsCreating(false);
         showPaymentRequired({
           balance_cents: account.balance_cents,
           required_cents: budgetCents,
-          proactive: true,
-          runwayPeriods: periods,
-          runwayUnit: REVENUE_INTERVAL_LABEL[budgetFrequency],
-          onProceed: () => {
-            sessionStorage.removeItem("pendingCampaign");
-            doCreateCampaign();
-          },
           onAutoTopupConfigured: () => {
             sessionStorage.removeItem("pendingCampaign");
             doCreateCampaign();
@@ -1578,7 +1566,7 @@ export default function FeatureCreateCampaignPage() {
                           {p.key === "recommended" && <span className="text-[10px] text-brand-600">★</span>}
                         </div>
                         <div className="text-xl font-bold text-gray-800 mt-1">{fmtUsd0(p.daily)}<span className="text-xs font-medium text-gray-400"> / day</span></div>
-                        <div className="text-[11px] text-gray-400 mt-0.5">targets ~{Math.round(TARGET_CLOSES_PER_MONTH * p.factor)} closes / mo</div>
+                        <div className="text-[11px] text-gray-400 mt-0.5">targets ~{p.closesPerMonth} closes / mo</div>
                         {proj && (
                           <div className="mt-2 text-[11px] leading-relaxed">
                             <div className="text-green-700 font-semibold">~{fmtUsd0(proj.revenue)} revenue / month</div>
