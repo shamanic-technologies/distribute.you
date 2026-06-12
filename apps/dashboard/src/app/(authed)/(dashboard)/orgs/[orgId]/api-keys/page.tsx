@@ -18,7 +18,6 @@ import {
   type ByokKey,
   type KeySourcePreference,
 } from "@/lib/api";
-import { SkeletonApiKey } from "@/components/skeleton";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 import { pollOptions } from "@/lib/query-options";
 
@@ -216,27 +215,18 @@ export default function OrgApiKeysPage() {
     }
   }
 
-  // Reveal all key sections together once every query settles (barrier + latch),
-  // instead of painting the page as soon as the FIRST of the four resolved
-  // (which left the other sections empty/loading — a staggered reveal).
-  const ready = useCoordinatedReveal([
-    !apiKeysLoading,
+  // PER-SECTION reveal — the two sections are visually distinct cards, so each
+  // reveals on ITS OWN data (CLAUDE.md "independent ACROSS groups"). Platform keys
+  // only need `apiKeys`; Provider Keys need byok + workflows + keySources. A slow
+  // BYOK/workflows fetch no longer holds the Platform-key section in skeleton. The
+  // static shell (heading, "Create New API Key", "How to Use") always paints; only
+  // each section's data region skeletons until its own queries settle.
+  const platformReady = useCoordinatedReveal([!apiKeysLoading]);
+  const providersReady = useCoordinatedReveal([
     !byokLoading,
     !workflowsLoading,
     !keySourcesLoading,
   ]);
-
-  if (!ready) {
-    return (
-      <div className="p-4 md:p-8">
-        <div className="mb-6">
-          <h1 className="font-display text-2xl font-bold text-gray-800">Keys</h1>
-          <p className="text-gray-600">Manage API and provider keys for this organization.</p>
-        </div>
-        <SkeletonApiKey />
-      </div>
-    );
-  }
 
   return (
     <div className="p-4 md:p-8">
@@ -299,7 +289,12 @@ export default function OrgApiKeysPage() {
             </div>
           </div>
 
-          {keys.length > 0 && (
+          {!platformReady ? (
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <div className="h-4 w-28 bg-gray-200 rounded animate-pulse mb-4" />
+              <div className="h-12 bg-gray-100 rounded-lg animate-pulse" />
+            </div>
+          ) : keys.length > 0 ? (
             <div className="bg-white rounded-xl border border-gray-200 p-5">
               <h3 className="font-medium text-gray-800 mb-4">Your API Keys</h3>
               <div className="space-y-3">
@@ -329,7 +324,7 @@ export default function OrgApiKeysPage() {
                 ))}
               </div>
             </div>
-          )}
+          ) : null}
 
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <h3 className="font-medium text-gray-800 mb-4">How to Use</h3>
@@ -393,7 +388,18 @@ const client = new DistributeClient({
           </div>
         )}
 
-        {providers.length === 0 ? (
+        {!providersReady ? (
+          <div className="space-y-3 max-w-2xl">
+            {[1, 2].map((i) => (
+              <div key={i} className="bg-white rounded-xl border border-gray-200 p-5">
+                <div className="flex items-center gap-3">
+                  <div className="w-2.5 h-2.5 rounded-full bg-gray-200 animate-pulse" />
+                  <div className="h-5 w-40 bg-gray-200 rounded animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : providers.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-center max-w-2xl">
             <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-3">
               <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

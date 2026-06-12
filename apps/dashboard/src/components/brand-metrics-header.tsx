@@ -245,9 +245,9 @@ function MetricCardSkeleton() {
  * empty for a never-seen domain we fire the matching on-demand compute POST ONCE
  * so AhrefService actually checks Ahrefs ("getOrFetchIfNeverSeen"), writing the
  * result back into the read cache. The scrape never gates render — only the GETs
- * do. Each source owns its query; the four cards reveal together as one latched
- * group, gated first on the brand domain being known so the barrier never latches
- * an empty first paint.
+ * do. Each card owns its reveal latch and appears the moment ITS source settles,
+ * gated first on the brand domain being known so a card never latches an empty
+ * first paint — a slow metric never holds the other cards in skeleton.
  */
 export function BrandMetricsHeader({
   brandId: _brandId,
@@ -332,23 +332,23 @@ export function BrandMetricsHeader({
     );
   }, [traffic]);
 
-  // Reveal the four cards together once every FAST cache-read source has SETTLED
-  // (traffic + DR + ai-visibility GET). All four display queries are read-only
-  // cache GETs, so none can block the group — the paid Apify scrapes run off the
-  // render path via useGetOrFetchIfNeverSeen, never as a reveal-gating query (a
-  // slow/inline scrape POST in this barrier once froze all four cards — CLAUDE.md
-  // "never gate a reveal barrier on a slow/inline-compute query"). Gating on
-  // `!isPending` (settle) rather than `data !== undefined` means an errored query
-  // still reveals its "No data yet" state instead of a perpetual skeleton. A
-  // disabled query stays isPending forever, so each flag is gated on its own
-  // enabled condition; the domain-loaded flag goes first so we never latch an empty
-  // group during the first paint.
-  const revealed = useCoordinatedReveal([
-    domainReady,
-    !domainReady || !trafficPending,
-    !domainReady || !drPending,
-    !domainReady || !aiVisPending,
-  ]);
+  // PER-CARD reveal: each of the four KPI cards reveals on ITS OWN source the
+  // moment that source settles — a slow metric never holds the other three in
+  // skeleton (CLAUDE.md "independent ACROSS groups"; the row is four distinct
+  // cards, not one coherent card). Visits and Est. revenue both read the SAME
+  // traffic query, so they share a latch and reveal together (correct — one
+  // source). DR and AI-mentions are independent. All four display queries are
+  // read-only cache GETs; the paid Apify scrapes run off the render path via
+  // useGetOrFetchIfNeverSeen, never as a reveal-gating query (a slow/inline scrape
+  // POST in such a barrier once froze every card — CLAUDE.md "never gate a reveal
+  // barrier on a slow/inline-compute query"). Gating on `!isPending` (settle)
+  // rather than `data !== undefined` means an errored query still reveals its "No
+  // data yet" state instead of a perpetual skeleton. A disabled query stays
+  // isPending forever, so each flag is gated on its own enabled condition; the
+  // domain-loaded flag goes first so a card never latches an empty first paint.
+  const trafficRevealed = useCoordinatedReveal([domainReady, !domainReady || !trafficPending]);
+  const drRevealed = useCoordinatedReveal([domainReady, !domainReady || !drPending]);
+  const aiVisRevealed = useCoordinatedReveal([domainReady, !domainReady || !aiVisPending]);
 
   const drValue = dr?.latestValidDr;
   const revenue = traffic?.trafficValueMonthlyAvg;
@@ -357,7 +357,7 @@ export function BrandMetricsHeader({
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
       {/* 1 — Monthly organic visits */}
       <MetricCard title="Monthly visits" subtitle="organic, Ahrefs">
-        {!revealed ? (
+        {!trafficRevealed ? (
           <Skeleton className="flex-1 w-full" />
         ) : visitsSeries.length >= MIN_HISTORICAL_UNIQUE_DAYS ? (
           <MiniChart data={visitsSeries} color="#6366f1" fmt={formatInt} />
@@ -373,7 +373,7 @@ export function BrandMetricsHeader({
         title="Domain Rating"
         subtitle={dr?.latestValidDrDate ? formatDay(dr.latestValidDrDate) : null}
       >
-        {!revealed ? (
+        {!drRevealed ? (
           <Skeleton className="flex-1 w-full" />
         ) : drValue != null ? (
           <BigStat value={String(drValue)} caption="Ahrefs DR" />
@@ -384,7 +384,7 @@ export function BrandMetricsHeader({
 
       {/* 3 — Estimated monthly revenue (Ahrefs traffic value, latest only) */}
       <MetricCard title="Est. monthly revenue" subtitle="traffic value, Ahrefs">
-        {!revealed ? (
+        {!trafficRevealed ? (
           <Skeleton className="flex-1 w-full" />
         ) : revenue != null ? (
           <BigStat value={formatUsd(revenue)} caption="/ month" />
@@ -398,7 +398,7 @@ export function BrandMetricsHeader({
         title="AI mentions"
         subtitle={aiVis?.snapshotDate ? formatDay(aiVis.snapshotDate) : "Ahrefs Brand-Radar"}
       >
-        {!revealed ? (
+        {!aiVisRevealed ? (
           <Skeleton className="flex-1 w-full" />
         ) : aiVis?.snapshotDate ? (
           <BigStat value={formatInt(aiVis.mentionsTotal)} caption="across AI engines" />

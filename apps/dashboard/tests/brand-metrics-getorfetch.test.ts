@@ -86,10 +86,15 @@ describe("brand-metrics-header.tsx — getOrFetchIfNeverSeen wiring", () => {
     // as a background getOrFetchIfNeverSeen trigger, so every barrier flag is a fast
     // cache GET and ai-visibility is barrier-safe.
     expect(headerSrc).toContain("getDomainAiVisibility(domain as string)");
-    const barrier = headerSrc.match(/useCoordinatedReveal\(\[[\s\S]*?\]/)?.[0] ?? "";
-    expect(barrier).toContain("trafficPending");
-    expect(barrier).toContain("drPending");
-    expect(barrier).toContain("aiVisPending");
+    // Per-card reveal latches — each card gates on its OWN fast GET cache-read so a
+    // slow metric never holds the others (the ai-visibility scrape POST stays off
+    // the render path; a slow POST in a reveal barrier once froze all four cards).
+    expect(headerSrc).toContain("trafficRevealed = useCoordinatedReveal");
+    expect(headerSrc).toContain("drRevealed = useCoordinatedReveal");
+    expect(headerSrc).toContain("aiVisRevealed = useCoordinatedReveal");
+    expect(headerSrc).toContain("trafficPending");
+    expect(headerSrc).toContain("drPending");
+    expect(headerSrc).toContain("aiVisPending");
     // The POST is only a getOrFetch compute (metric "aivis"), never a render query.
     expect(headerSrc).toContain('metric: "aivis"');
     expect(headerSrc).not.toContain("() => computeDomainAiVisibility(");
