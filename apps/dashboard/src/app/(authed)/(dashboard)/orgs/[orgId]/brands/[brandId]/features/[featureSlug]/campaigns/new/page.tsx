@@ -93,6 +93,17 @@ const SALES_ECON_DEFAULTS = { ltv: "4000", replyToMeeting: "40", meetingToClose:
 
 const DAYS_PER_MONTH = 30.4;
 
+// Cold-start self-heal for the workflow-projection query. The projection rides a cold Neon chain
+// (api→features→workflow/runs/email-gateway/brand, all scale-to-zero) that can answer the FIRST
+// request with a valid-but-degenerate 200 (null unit costs / empty workflows) while half-warming —
+// collapsing the §3 budget cards to the "no data yet" message. keep-last-good (#1548) can't heal the
+// FIRST fetch (no prior good value to keep), and #1542 dropped the 5s poll, so a cold first load used
+// to stick on the message until a manual window-refocus. Re-add a BOUNDED poll: refetch only while no
+// workflow has a usable costPerCloseUsd, and give up after N tries so a genuinely-empty brand doesn't
+// poll forever. Stops the moment the chain warms — preserves #1542's fetch-once-when-good intent.
+const PROJECTION_WARMUP_INTERVAL_MS = 4000;
+const PROJECTION_WARMUP_TRIES = 5;
+
 /** Multiply a budget at a given cadence up to a monthly run-rate (one-off/monthly are
  *  already a single period). Outcomes are always normalized to a month. */
 const BUDGET_TO_MONTHLY: Record<BudgetFrequency, number> = { "one-off": 1, daily: DAYS_PER_MONTH, weekly: 4.345, monthly: 1 };
@@ -597,6 +608,17 @@ export default function FeatureCreateCampaignPage() {
           prev as WorkflowProjectionResponse | undefined,
           next as WorkflowProjectionResponse,
         ),
+      // Bounded cold-start self-heal (see PROJECTION_WARMUP_* above). Poll only while the projection
+      // carries NO usable cost-per-close (cold/half-warm degenerate 200), capped at PROJECTION_WARMUP_TRIES
+      // so a genuinely-empty brand stops polling; stop the instant a usable workflow appears.
+      refetchInterval: (query) => {
+        const data = query.state.data as WorkflowProjectionResponse | undefined;
+        const hasUsable = (data?.workflows ?? []).some((w) => w.costPerCloseUsd != null);
+        if (hasUsable) return false;
+        return query.state.dataUpdateCount < PROJECTION_WARMUP_TRIES
+          ? PROJECTION_WARMUP_INTERVAL_MS
+          : false;
+      },
     },
   );
 
