@@ -12,7 +12,7 @@ const NAV_HTML = `
     <ul class="nav-links">
       <li><a href="/how-it-works" data-path="/how-it-works">How it works</a></li>
       <li><a href="/use-cases" data-path="/use-cases">Use cases</a></li>
-      <li><a href="/#pricing">Pricing</a></li>
+      <li><a href="/pricing">Pricing</a></li>
     </ul>
     <div class="nav-right">
       <a href="https://dashboard.distribute.you/sign-in" class="btn btn-g">Sign in</a>
@@ -36,7 +36,7 @@ const NAV_HTML = `
   <ul class="nav-mobile-links">
     <li><a href="/how-it-works">How it works</a></li>
     <li><a href="/use-cases">Use cases</a></li>
-    <li><a href="/#pricing">Pricing</a></li>
+    <li><a href="/pricing">Pricing</a></li>
   </ul>
   <div class="nav-mobile-actions">
     <a href="https://dashboard.distribute.you/sign-in" class="btn btn-g btn-lg">Sign in</a>
@@ -61,7 +61,7 @@ const FOOTER_HTML = `
         <ul>
           <li><a href="/how-it-works">How it works</a></li>
           <li><a href="/use-cases">Use cases</a></li>
-          <li><a href="/#pricing">Pricing</a></li>
+          <li><a href="/pricing">Pricing</a></li>
         </ul>
       </div>
       <div class="ft-col">
