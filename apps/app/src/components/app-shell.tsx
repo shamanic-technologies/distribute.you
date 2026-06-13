@@ -1,27 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import { LEADS, EMAIL_SEQUENCE, type Lead, type LeadStatus } from "@/lib/mock-data";
+import { PIPELINE, PIPE_STATUS_META, OUTCOME_TOTALS, type PipeLead, type PipeStatus } from "@/lib/mock-data";
 import type { Brand } from "./onboarding-overlay";
-import { StatusChip } from "./status-chip";
-import { EmailChart } from "./email-chart";
-import { LeadDrawer } from "./lead-drawer";
-import { OverviewIcon, LeadsIcon, EmailIcon, CampaignIcon, ChartIcon, InfoIcon, SparkleIcon, ChevronDownIcon, PlusIcon, UserIcon, CardIcon, GearIcon, LogoutIcon, CheckIcon, CloseIcon } from "./icons";
+import {
+  OverviewIcon, InfoIcon, ChevronDownIcon, PlusIcon, UserIcon,
+  CardIcon, GearIcon, LogoutIcon, CheckIcon, CloseIcon, CalendarIcon, CartIcon,
+} from "./icons";
 
-type Tab = "overview" | "leads" | "emails" | "campaign" | "report" | "account" | "billing" | "brand-settings";
+type Tab = "overview" | "signups" | "meetings" | "purchases" | "help" | "account" | "billing" | "brand-settings";
 
 const TAB_TITLES: Record<Tab, string> = {
   overview: "Overview",
-  leads: "Leads",
-  emails: "Emails sent",
-  campaign: "Campaign",
-  report: "Performance",
+  signups: "Signups",
+  meetings: "Meetings Booked",
+  purchases: "Purchases",
+  help: "Help",
   account: "Account",
   billing: "Billing",
   "brand-settings": "Brand settings",
 };
 
 const hostnameOf = (url: string) => url.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+const fmtUsd = (n: number) => "$" + n.toLocaleString("en-US");
 
 /** Brand logo via favicon service, initials fallback on error. */
 function BrandAvatar({ brand, size = 24 }: { brand: Brand; size?: number }) {
@@ -45,9 +46,13 @@ function BrandAvatar({ brand, size = 24 }: { brand: Brand; size?: number }) {
 
 const monoCell: React.CSSProperties = { fontFamily: "'JetBrains Mono', monospace", fontSize: "var(--fs-xs)", color: "var(--muted)" };
 
+function PipeStatusChip({ status }: { status: PipeStatus }) {
+  const { label, tone } = PIPE_STATUS_META[status];
+  return <span className={`pipe-status pipe-${tone}`}>{label}</span>;
+}
+
 export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boolean; onReset: () => void }) {
   const [tab, setTab] = useState<Tab>("overview");
-  const [openLead, setOpenLead] = useState<Lead | null>(null);
 
   // Multi-brand mock state — seeded with the onboarded brand.
   const [brands, setBrands] = useState<Brand[]>([brand]);
@@ -60,7 +65,6 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
   const activeBrand = brands[activeIdx] ?? brand;
   const userEmail = `adam@${hostnameOf(activeBrand.url)}`;
 
-  const openDrawer = (id: number) => setOpenLead(LEADS.find((l) => l.id === id) ?? null);
   const closeMenus = () => { setBrandMenuOpen(false); setUserMenuOpen(false); };
 
   function selectBrand(i: number) {
@@ -85,6 +89,15 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
     setTab(t);
     setUserMenuOpen(false);
   }
+
+  const navItem = (key: Tab, icon: React.ReactNode, label: string, count?: number) => (
+    <li>
+      <a href="#" className={tab === key ? "active" : ""} onClick={(e) => { e.preventDefault(); setTab(key); }}>
+        {icon} {label}
+        {count !== undefined && <span className="app-nav-count">{count}</span>}
+      </a>
+    </li>
+  );
 
   return (
     <div className={`app-shell${hidden ? " app-hidden" : ""}`}>
@@ -120,12 +133,15 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
         </div>
 
         <ul className="app-nav">
-          <li><a href="#" className={tab === "overview" ? "active" : ""} onClick={(e) => { e.preventDefault(); setTab("overview"); }}><OverviewIcon /> Overview</a></li>
-          <li><a href="#" className={tab === "leads" ? "active" : ""} onClick={(e) => { e.preventDefault(); setTab("leads"); }}><LeadsIcon /> Leads <span className="app-nav-count">247</span></a></li>
-          <li><a href="#" className={tab === "emails" ? "active" : ""} onClick={(e) => { e.preventDefault(); setTab("emails"); }}><EmailIcon /> Emails <span className="app-nav-count">247</span></a></li>
-          <li><a href="#" className={tab === "campaign" ? "active" : ""} onClick={(e) => { e.preventDefault(); setTab("campaign"); }}><CampaignIcon /> Campaign</a></li>
-          <div className="app-nav-section">Report</div>
-          <li><a href="#" className={tab === "report" ? "active" : ""} onClick={(e) => { e.preventDefault(); setTab("report"); }}><ChartIcon /> Performance</a></li>
+          {navItem("overview", <OverviewIcon />, "Overview")}
+          {navItem("signups", <UserIcon />, "Signups", OUTCOME_TOTALS.signups)}
+          {navItem("meetings", <CalendarIcon />, "Meetings Booked", OUTCOME_TOTALS.meetings)}
+          {navItem("purchases", <CartIcon />, "Purchases", OUTCOME_TOTALS.purchases)}
+        </ul>
+
+        <ul className="app-nav app-nav-footer">
+          {navItem("brand-settings", <GearIcon />, "Settings")}
+          {navItem("help", <InfoIcon />, "Help")}
         </ul>
 
         <div className="app-sidebar-bottom">
@@ -166,18 +182,18 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
         <div className="app-topbar">
           <span className="app-topbar-title">{TAB_TITLES[tab]}</span>
           <div className="app-topbar-right">
+            <div className="app-date-pill">Jun 1 – Jun 7, 2026</div>
             <div className="app-live"><span className="app-live-dot" /> live</div>
-            <button className="btn btn-g" onClick={onReset} style={{ fontSize: "var(--fs-xs)", padding: "0.35rem 0.75rem" }}>Reset onboarding</button>
             <button className="btn btn-p">+ New campaign</button>
           </div>
         </div>
 
         <div className="app-content">
-          {tab === "overview" && <OverviewTab onOpen={openDrawer} onViewAll={() => setTab("leads")} />}
-          {tab === "leads" && <LeadsTab onOpen={openDrawer} />}
-          {tab === "emails" && <EmailsTab onOpen={openDrawer} />}
-          {tab === "campaign" && <CampaignTab />}
-          {tab === "report" && <ReportTab />}
+          {tab === "overview" && <OverviewTab />}
+          {tab === "signups" && <PipelinePage title="Signups" status="signed-up" />}
+          {tab === "meetings" && <PipelinePage title="Meetings Booked" status="meeting-booked" />}
+          {tab === "purchases" && <PipelinePage title="Purchases" status="purchased" />}
+          {tab === "help" && <HelpTab />}
           {tab === "account" && <AccountTab email={userEmail} />}
           {tab === "billing" && <BillingTab />}
           {tab === "brand-settings" && <BrandSettingsTab brand={activeBrand} />}
@@ -204,8 +220,192 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
           </div>
         </div>
       )}
+    </div>
+  );
+}
 
-      <LeadDrawer lead={openLead} onClose={() => setOpenLead(null)} />
+/* ── Pipeline table ── */
+function PipelineTable({ rows }: { rows: PipeLead[] }) {
+  return (
+    <table className="leads-table">
+      <thead><tr><th>Company</th><th>Status</th><th>Date</th><th>Pipeline revenue</th></tr></thead>
+      <tbody>
+        {rows.map((r) => (
+          <tr key={r.id}>
+            <td>
+              <div className="lead-org">
+                <div className={`lead-org-logo tone-${PIPE_STATUS_META[r.status].tone}`}>{r.initials}</div>
+                <div>
+                  <div className="lead-org-name">{r.company}</div>
+                  <div className="lead-contact">{r.contact}</div>
+                </div>
+              </div>
+            </td>
+            <td><PipeStatusChip status={r.status} /></td>
+            <td className="lead-date">{r.date}</td>
+            <td style={monoCell}>{fmtUsd(r.revenue)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+/* ── Pipeline revenue chart (Actual solid → Projected dashed), ported from the landing mockup ── */
+function PipelineChart() {
+  return (
+    <svg className="pipe-chart-svg" viewBox="0 0 700 140" style={{ width: "100%", display: "block", overflow: "visible" }}>
+      <line x1="30" y1="120" x2="670" y2="120" stroke="var(--muted)" strokeWidth="1" opacity="0.25" />
+      <path fill="var(--green)" fillOpacity="0.08" stroke="none"
+        d="M325.4,84.1 L374.6,75.3 L423.8,65.7 L473.1,55.5 L522.3,45.2 L571.5,34.9 L620.8,25.4 L670,15.9 L670,120 L325.4,120 Z" />
+      <path fill="var(--green)" fillOpacity="0.16" stroke="none"
+        d="M30,117.8 L79.2,113.4 L128.5,107.5 L177.7,103.1 L226.9,96.5 L276.2,89.9 L325.4,84.1 L325.4,120 L30,120 Z" />
+      <path fill="none" stroke="var(--green)" strokeWidth="2" strokeDasharray="4 4" strokeLinecap="round" strokeLinejoin="round"
+        d="M325.4,84.1 L374.6,75.3 L423.8,65.7 L473.1,55.5 L522.3,45.2 L571.5,34.9 L620.8,25.4 L670,15.9" />
+      <path fill="none" stroke="var(--green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+        d="M30,117.8 L79.2,113.4 L128.5,107.5 L177.7,103.1 L226.9,96.5 L276.2,89.9 L325.4,84.1" />
+      <line x1="325.4" y1="18" x2="325.4" y2="120" stroke="var(--muted)" strokeWidth="1" strokeDasharray="2 3" opacity="0.6" />
+      <circle cx="325.4" cy="84.1" r="3.5" fill="var(--green)" />
+      <text x="10" y="134" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="var(--muted)">Jun</text>
+      <text x="30" y="134" textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="var(--muted)">1</text>
+      <text x="177.7" y="134" textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="var(--muted)">4</text>
+      <text x="325.4" y="134" textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="var(--green)">7 · today</text>
+      <text x="473.1" y="134" textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="var(--muted)">10</text>
+      <text x="670" y="134" textAnchor="end" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="var(--muted)">14</text>
+    </svg>
+  );
+}
+
+/* ── Overview ── */
+function KpiInfo({ tip }: { tip: string }) {
+  return (
+    <span className="kpi-info-tip">
+      <InfoIcon width={11} height={11} />
+      <span className="kpi-info-bubble">{tip}</span>
+    </span>
+  );
+}
+
+function OverviewTab() {
+  return (
+    <div>
+      <div className="kpi-strip">
+        <div className="kpi-card">
+          <div className="kpi-label">Sign Ups <KpiInfo tip="Expected signups from your website visits" /></div>
+          <div className="kpi-val">{OUTCOME_TOTALS.signups}</div>
+          <div className="kpi-meta"><span className="kpi-delta up">+18%</span> vs last week</div>
+        </div>
+        <div className="kpi-card">
+          <div className="kpi-label">Meetings Booked <KpiInfo tip="Expected meetings booked from your positive replies" /></div>
+          <div className="kpi-val purple">{OUTCOME_TOTALS.meetings}</div>
+          <div className="kpi-meta"><span className="kpi-delta up">27%</span> booking rate</div>
+        </div>
+        <div className="kpi-card">
+          <div className="kpi-label">Purchases <KpiInfo tip="Expected purchases from signups and meetings booked" /></div>
+          <div className="kpi-val green">{OUTCOME_TOTALS.purchases}</div>
+          <div className="kpi-meta"><span className="kpi-delta up">2.2%</span> purchase rate</div>
+        </div>
+        <div className="kpi-card">
+          <div className="kpi-label">Pipeline revenue <KpiInfo tip="Expected revenue from purchases" /></div>
+          <div className="kpi-val green">{fmtUsd(OUTCOME_TOTALS.pipelineRevenue)}</div>
+          <div className="kpi-meta">This month</div>
+        </div>
+      </div>
+
+      <div className="chart-roi-wrap">
+        <div className="app-chart-wrap">
+          <div className="chart-header">
+            <div>
+              <div className="chart-title">Pipeline revenue over time</div>
+              <div className="chart-sub">Jun 1 – Jun 14, 2026</div>
+            </div>
+            <div className="chart-legend">
+              <div className="chart-legend-item"><span className="pipe-legend-line solid" /> Actual</div>
+              <div className="chart-legend-item"><span className="pipe-legend-line dashed" /> Projected</div>
+            </div>
+          </div>
+          <PipelineChart />
+        </div>
+
+        <div className="chart-roi-side">
+          <div className="kpi-card">
+            <div className="roi-section">
+              <div className="kpi-label">Budget spent today</div>
+              <div className="kpi-val accent">58%</div>
+              <div className="kpi-progress"><div className="kpi-progress-fill" style={{ width: "58%" }} /></div>
+            </div>
+            <div className="roi-divider" />
+            <div className="roi-section">
+              <div className="kpi-label">Expected ROI</div>
+              <div className="kpi-val green">45x</div>
+              <div className="kpi-meta">pipeline / spend</div>
+            </div>
+            <div className="roi-divider" />
+            <div className="roi-section">
+              <div className="kpi-label">Exp. revenue</div>
+              <div className="kpi-val green">$9,800</div>
+              <div className="kpi-meta">7 interested × $1,400</div>
+            </div>
+            <div className="roi-divider" />
+            <div className="roi-section">
+              <div className="kpi-label">Cost / contact</div>
+              <div className="kpi-val purple">$0.07</div>
+              <div className="kpi-meta">per contact reached</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="leads-panel">
+        <div className="leads-header">
+          <div>
+            <span className="leads-title">Recent activity</span>
+            <span className="leads-count">{PIPELINE.length} this week</span>
+          </div>
+        </div>
+        <PipelineTable rows={PIPELINE.slice(0, 5)} />
+      </div>
+    </div>
+  );
+}
+
+/* ── Signups / Meetings / Purchases (filtered) ── */
+function PipelinePage({ title, status }: { title: string; status: PipeStatus }) {
+  const rows = PIPELINE.filter((r) => r.status === status);
+  const total = rows.reduce((s, r) => s + r.revenue, 0);
+  return (
+    <div className="leads-panel">
+      <div className="leads-header">
+        <div>
+          <span className="leads-title">{title}</span>
+          <span className="leads-count">{rows.length} · {fmtUsd(total)} pipeline</span>
+        </div>
+      </div>
+      {rows.length ? <PipelineTable rows={rows} /> : <div className="empty-state"><p>Nothing here yet.</p></div>}
+    </div>
+  );
+}
+
+/* ── Help ── */
+const HELP_ITEMS = [
+  { q: "How does distribute find leads?", a: "We read your product URL, build your ICP, and source matching companies automatically — no lists to upload." },
+  { q: "What do I actually pay for?", a: "You set a daily budget and pick what to maximize. We deliver that outcome at the best ROI; you only pay per contact reached." },
+  { q: "Where do my results show up?", a: "Signups, booked meetings, and purchases land in this dashboard in real time, with the pipeline revenue each generated." },
+  { q: "Can I run more than one brand?", a: "Yes — use the brand switcher at the top left to add and switch between brands." },
+];
+
+function HelpTab() {
+  return (
+    <div className="leads-panel" style={{ maxWidth: 720 }}>
+      <div className="leads-header"><span className="leads-title">Help &amp; FAQ</span></div>
+      <div style={{ padding: "0.5rem 0" }}>
+        {HELP_ITEMS.map((h) => (
+          <div key={h.q} className="help-row">
+            <div className="help-q">{h.q}</div>
+            <div className="help-a">{h.a}</div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -280,7 +480,7 @@ function BillingTab() {
               <tr key={inv.date}>
                 <td className="lead-date">{inv.date}</td>
                 <td style={monoCell}>{inv.amount}</td>
-                <td><span className="seq-day" style={{ color: "var(--green)", background: "transparent", border: "none", padding: 0 }}>{inv.status}</span></td>
+                <td><span className="pipe-status pipe-green">{inv.status}</span></td>
               </tr>
             ))}
           </tbody>
@@ -322,352 +522,6 @@ function SettingRow({ label, value }: { label: string; value: string }) {
     <div className="ob-field-row">
       <div className="ob-field-key">{label}</div>
       <div className="ob-field-val"><input defaultValue={value} /></div>
-    </div>
-  );
-}
-
-/* ── Lead table row ── */
-function LeadRow({ lead, showPreview, onOpen }: { lead: Lead; showPreview: boolean; onOpen: (id: number) => void }) {
-  return (
-    <tr onClick={() => onOpen(lead.id)}>
-      <td>
-        <div className="lead-org">
-          <div className="lead-org-logo">{lead.initials}</div>
-          <div>
-            <div className="lead-org-name">{lead.company}</div>
-            <div className="lead-contact">{lead.contact} <span className="lead-role">· {lead.role}</span></div>
-          </div>
-        </div>
-      </td>
-      <td><StatusChip status={lead.status} /></td>
-      <td className="lead-date">{lead.date}</td>
-      {showPreview && (lead.preview
-        ? <td className="lead-preview">{lead.preview}</td>
-        : <td className="lead-preview" style={{ color: "var(--border-hi)" }}>—</td>)}
-      <td style={monoCell}>{lead.cost}</td>
-    </tr>
-  );
-}
-
-function LeadTable({ leads, onOpen }: { leads: Lead[]; onOpen: (id: number) => void }) {
-  return (
-    <table className="leads-table">
-      <thead><tr><th>Lead</th><th>Status</th><th>Date</th><th>Preview</th><th>Cost</th></tr></thead>
-      <tbody>{leads.map((l) => <LeadRow key={l.id} lead={l} showPreview onOpen={onOpen} />)}</tbody>
-    </table>
-  );
-}
-
-/* ── Overview ── */
-function OverviewTab({ onOpen, onViewAll }: { onOpen: (id: number) => void; onViewAll: () => void }) {
-  return (
-    <div>
-      <div className="kpi-strip">
-        <div className="kpi-card">
-          <div className="kpi-label">Emails sent</div>
-          <div className="kpi-val">247</div>
-          <div className="kpi-meta"><span className="kpi-delta up">+18%</span> vs last week</div>
-        </div>
-        <div className="kpi-card">
-          <div className="kpi-label">Opened</div>
-          <div className="kpi-val amber">94</div>
-          <div className="kpi-meta"><span className="kpi-delta up">38%</span> open rate</div>
-        </div>
-        <div className="kpi-card">
-          <div className="kpi-label">Replied</div>
-          <div className="kpi-val green">5</div>
-          <div className="kpi-meta"><span className="kpi-delta up">2.1%</span> reply rate</div>
-        </div>
-        <div className="kpi-card">
-          <div className="kpi-label" style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
-            Budget used today
-            <span className="kpi-info-tip">
-              <InfoIcon width={11} height={11} />
-              <span className="kpi-info-bubble">$18.00 used · $25.00 / day</span>
-            </span>
-          </div>
-          <div className="kpi-val accent">72%</div>
-          <div className="kpi-progress"><div className="kpi-progress-fill" style={{ width: "72%" }} /></div>
-        </div>
-      </div>
-
-      <div className="chart-roi-wrap">
-        <div className="app-chart-wrap">
-          <div className="chart-header">
-            <div>
-              <div className="chart-title">Emails per day</div>
-              <div className="chart-sub">Jun 1 – Jun 7, 2026 &nbsp;·&nbsp; $25 / day budget</div>
-            </div>
-            <div className="chart-legend">
-              <div className="chart-legend-item"><div className="chart-legend-dot" style={{ background: "var(--accent)" }} /> Sent</div>
-              <div className="chart-legend-item"><div className="chart-legend-dot" style={{ background: "var(--amber)" }} /> Opened</div>
-              <div className="chart-legend-item"><div className="chart-legend-dot" style={{ background: "var(--green)" }} /> Replied</div>
-            </div>
-          </div>
-          <EmailChart />
-        </div>
-
-        <div className="chart-roi-side">
-          <div className="kpi-card">
-            <div className="roi-section">
-              <div className="kpi-label">Expected ROI</div>
-              <div className="kpi-val green">8x</div>
-              <div className="kpi-meta">pipeline / spend</div>
-            </div>
-            <div className="roi-divider" />
-            <div className="roi-section">
-              <div className="kpi-label">Exp. revenue</div>
-              <div className="kpi-val green">$7,100</div>
-              <div className="kpi-meta">5 replies × $1,420 LTV</div>
-            </div>
-            <div className="roi-divider" />
-            <div className="roi-section">
-              <div className="kpi-label">Cost / reply</div>
-              <div className="kpi-val amber">$1.78</div>
-              <div className="kpi-meta">per qualified reply</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="leads-panel">
-        <div className="leads-header">
-          <div>
-            <span className="leads-title">Recent leads</span>
-            <span className="leads-count">247 total</span>
-          </div>
-          <button className="btn btn-g" style={{ fontSize: "var(--fs-xs)", padding: "0.35rem 0.75rem" }} onClick={onViewAll}>View all</button>
-        </div>
-        <LeadTable leads={LEADS.slice(0, 5)} onOpen={onOpen} />
-      </div>
-    </div>
-  );
-}
-
-/* ── Leads ── */
-const LEAD_FILTERS: { key: "all" | LeadStatus; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "opened", label: "Opened" },
-  { key: "replied", label: "Replied" },
-  { key: "sent", label: "Sent" },
-];
-
-function LeadsTab({ onOpen }: { onOpen: (id: number) => void }) {
-  const [filter, setFilter] = useState<"all" | LeadStatus>("all");
-  const filtered = filter === "all" ? LEADS : LEADS.filter((l) => l.status === filter);
-  return (
-    <div className="leads-panel">
-      <div className="leads-header">
-        <div>
-          <span className="leads-title">All leads</span>
-          <span className="leads-count">{filtered.length}</span>
-        </div>
-      </div>
-      <div className="leads-tabs">
-        {LEAD_FILTERS.map((f) => (
-          <button key={f.key} className={`leads-tab${filter === f.key ? " active" : ""}`} onClick={() => setFilter(f.key)}>{f.label}</button>
-        ))}
-      </div>
-      {filtered.length
-        ? <LeadTable leads={filtered} onOpen={onOpen} />
-        : <div className="empty-state"><p>No leads with status &quot;{filter}&quot; yet.</p></div>}
-    </div>
-  );
-}
-
-/* ── Emails ── */
-function EmailsTab({ onOpen }: { onOpen: (id: number) => void }) {
-  return (
-    <div className="leads-panel">
-      <div className="leads-header">
-        <div><span className="leads-title">Emails sent</span><span className="leads-count">247</span></div>
-      </div>
-      <table className="leads-table">
-        <thead><tr><th>Sent to</th><th>Status</th><th>Date</th><th>Cost</th></tr></thead>
-        <tbody>
-          {LEADS.filter((l) => l.status !== "bounced").map((l) => (
-            <tr key={l.id} onClick={() => onOpen(l.id)}>
-              <td>
-                <div className="lead-org">
-                  <div className="lead-org-logo">{l.initials}</div>
-                  <div>
-                    <div className="lead-org-name">{l.contact}</div>
-                    <div className="lead-contact">{l.company}</div>
-                  </div>
-                </div>
-              </td>
-              <td><StatusChip status={l.status} /></td>
-              <td className="lead-date">{l.date}</td>
-              <td style={monoCell}>{l.cost}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-/* ── Report ── */
-function ReportTab() {
-  return (
-    <div>
-      <div className="kpi-strip">
-        <div className="kpi-card">
-          <div className="kpi-label">Total spent</div>
-          <div className="kpi-val">$8.89</div>
-          <div className="kpi-meta">247 emails × $0.036</div>
-        </div>
-        <div className="kpi-card">
-          <div className="kpi-label">Pipeline value</div>
-          <div className="kpi-val green">$7,100</div>
-          <div className="kpi-meta">5 replies × $1,420 LTV avg</div>
-        </div>
-        <div className="kpi-card">
-          <div className="kpi-label">ROI</div>
-          <div className="kpi-val accent">7.9x</div>
-          <div className="kpi-meta">est. pipeline / spend</div>
-        </div>
-        <div className="kpi-card">
-          <div className="kpi-label">Avg cost / reply</div>
-          <div className="kpi-val">$1.78</div>
-          <div className="kpi-meta">this campaign</div>
-        </div>
-      </div>
-      <div className="leads-panel" style={{ marginTop: 0 }}>
-        <div className="leads-header"><span className="leads-title">Top cost sources</span></div>
-        <table className="leads-table">
-          <thead><tr><th>Source</th><th>Cost</th><th>Share</th></tr></thead>
-          <tbody>
-            <tr><td>Apollo lead enrichment</td><td>$2.96</td><td>33%</td></tr>
-            <tr><td>Email generation (Claude Sonnet 4.6)</td><td>$4.45</td><td>50%</td></tr>
-            <tr><td>Resend (send)</td><td>$0.99</td><td>11%</td></tr>
-            <tr><td>Reply classifier (Claude Haiku 4.5)</td><td>$0.49</td><td>6%</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-/* ── Campaign ── */
-const CAMPAIGN_BUDGETS = [
-  { tier: "Starter", price: "$29", target: "targets ~5 closes / mo", revenue: "~$12,507 revenue / month", active: false, badge: false },
-  { tier: "Recommended ★", price: "$58", target: "targets ~10 closes / mo", revenue: "~$24,999 revenue / month", active: true, badge: true },
-  { tier: "Growth", price: "$115", target: "targets ~20 closes / mo", revenue: "~$49,999 revenue / month", active: false, badge: false },
-  { tier: "Current", price: "$25", target: "targets ~4 closes / mo", revenue: "~$10,800 revenue / month", active: false, badge: false },
-];
-
-const CAMPAIGN_FIELDS_PRODUCT = [
-  { key: "URL", value: "https://prompthub.ai" },
-  { key: "Audience", value: "Founders and AI teams at early-stage SaaS building with LLMs" },
-  { key: "Outcome", value: "Sign up for a free trial or book a demo" },
-  { key: "Value", value: "Cut AI prompt iteration time by 60% with a collaborative prompt library" },
-];
-
-const CAMPAIGN_FIELDS_HOOKS = [
-  { key: "Urgency", value: "Teams moving to AI-first workflows risk falling behind competitors" },
-  { key: "Scarcity", value: "Early access pricing ends this quarter — founding slots limited" },
-  { key: "Risk", value: "Free 14-day trial, no credit card required" },
-  { key: "Proof", value: "Trusted by 200+ AI teams — 4.9/5 on Product Hunt" },
-];
-
-function renderSeqBody(body: string) {
-  // Wrap {var} tokens in styled spans.
-  const parts = body.split(/(\{[^}]+\})/g);
-  return parts.map((p, i) => (/^\{[^}]+\}$/.test(p) ? <span className="seq-var" key={i}>{p}</span> : <span key={i}>{p}</span>));
-}
-
-function CampaignFieldTable({ rows }: { rows: { key: string; value: string }[] }) {
-  return (
-    <div className="ob-field-table">
-      {rows.map((r) => (
-        <div className="ob-field-row" key={r.key}>
-          <div className="ob-field-key">{r.key}</div>
-          <div className="ob-field-val"><input defaultValue={r.value} placeholder="https://…" /></div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function CampaignTab() {
-  return (
-    <div>
-      <div className="leads-panel" style={{ marginBottom: "2rem" }}>
-        <div className="leads-header">
-          <span className="leads-title">Budget &amp; projections</span>
-          <button className="btn btn-g" style={{ fontSize: "var(--fs-xs)", padding: "0.35rem 0.75rem" }}>Change budget</button>
-        </div>
-        <div style={{ padding: "1.5rem" }}>
-          <div className="ob-budget-grid" style={{ marginBottom: "1.25rem" }}>
-            {CAMPAIGN_BUDGETS.map((b) => (
-              <div className={`ob-budget-card${b.active ? " active" : ""}`} key={b.tier}>
-                {b.badge ? <div className="ob-budget-badge">{b.tier}</div> : <div className="ob-budget-tier">{b.tier}</div>}
-                <div className="ob-budget-price">{b.price} <span>/ day</span></div>
-                <div className="ob-budget-target">{b.target}</div>
-                <div className="ob-budget-revenue">{b.revenue}</div>
-                <div className="ob-budget-cac">CAC ℹ 7%</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="leads-panel">
-        <div className="leads-header">
-          <span className="leads-title">ICP &amp; email strategy</span>
-          <div style={{ display: "flex", gap: "0.5rem" }}>
-            <button className="btn btn-g" style={{ fontSize: "var(--fs-xs)", padding: "0.35rem 0.75rem", display: "flex", alignItems: "center", gap: "0.35rem" }}>
-              <SparkleIcon width={11} height={11} /> Edit with AI
-            </button>
-            <button className="btn btn-p" style={{ fontSize: "var(--fs-xs)", padding: "0.35rem 0.75rem" }}>Save changes</button>
-          </div>
-        </div>
-        <div style={{ padding: "1.5rem" }}>
-          <div className="ob-cd-cols">
-            <div>
-              <div className="ob-cd-group-label">Your product</div>
-              <CampaignFieldTable rows={CAMPAIGN_FIELDS_PRODUCT} />
-            </div>
-            <div>
-              <div className="ob-cd-group-label">Email hooks</div>
-              <CampaignFieldTable rows={CAMPAIGN_FIELDS_HOOKS} />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="leads-panel" style={{ marginTop: "2rem" }}>
-        <div className="leads-header">
-          <div>
-            <span className="leads-title">Email sequence</span>
-            <span className="leads-count">3 emails · Legato</span>
-          </div>
-          <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
-            <span style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontFamily: "'JetBrains Mono',monospace", fontSize: "var(--fs-xs)", color: "var(--green)" }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--green)", flexShrink: 0 }} /> active
-            </span>
-            <button className="btn btn-g" style={{ fontSize: "var(--fs-xs)", padding: "0.35rem 0.75rem", display: "flex", alignItems: "center", gap: "0.35rem" }}>
-              <SparkleIcon width={11} height={11} /> Edit with AI
-            </button>
-          </div>
-        </div>
-        <div style={{ padding: "1.5rem 1.75rem" }}>
-          {EMAIL_SEQUENCE.map((s) => (
-            <div className="seq-step" key={s.day}>
-              <div className="seq-timeline"><div className="seq-dot" /><div className="seq-line" /></div>
-              <div className="seq-content">
-                <div className="seq-meta">
-                  <span className="seq-day">{s.day}</span>
-                  <span className="seq-tag">{s.tag}</span>
-                </div>
-                <div className="seq-subject">{renderSeqBody(s.subject)}</div>
-                <div className="seq-body">{renderSeqBody(s.body)}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
