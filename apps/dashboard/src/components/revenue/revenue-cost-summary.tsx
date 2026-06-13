@@ -53,15 +53,23 @@ export function RevenueCostSummary({
   costBreakdown = [],
   costEconomics,
   pending = false,
+  costPending,
   bottomCard,
 }: {
   costBreakdown?: CostByName[];
   costEconomics?: CostEconomics;
   pending?: boolean;
+  /** Reveal gate for the Total-spent figure (runs-service cost breakdown) when it
+   *  resolves on a DIFFERENT chain than `costEconomics` (features-service). The
+   *  feature Overview passes this so Total-spent never waits on the slower revenue
+   *  call; other consumers omit it → falls back to `pending` (single reveal). */
+  costPending?: boolean;
   /** Replaces the default "Top cost sources" card (e.g. a campaign budget card
    *  on the campaign page, where a brand-wide cost-source split doesn't apply). */
   bottomCard?: ReactNode;
 }) {
+  // Total-spent reveals on its own source where given; otherwise tracks `pending`.
+  const totalSpentPending = costPending ?? pending;
   const { entries, totalCents } = useMemo(() => {
     const e = costBreakdown
       .map((c) => ({ name: c.costName ?? "Unknown", cents: parseFloat(c.totalCostInUsdCents) || 0 }))
@@ -106,7 +114,7 @@ export function RevenueCostSummary({
         {/* Card frames + labels render instantly; only the value waits. */}
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <p className="text-xs text-gray-400">Total spent</p>
-          {pending ? (
+          {totalSpentPending ? (
             <Skeleton className="mt-1 h-7 w-24" />
           ) : (
             <p className="mt-1 text-xl font-bold text-gray-900">{formatUsd(totalCostUsd)}</p>

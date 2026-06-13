@@ -7,7 +7,7 @@ export const SITE_DESCRIPTION =
   "Drop your website URL. We email your ideal customers. AI reads every reply. Only real buyers land in your Gmail. You read 5 emails, not 200. No SDR. No setup. No subscription.";
 export const TWITTER_HANDLE = "@distribute_you";
 
-export const BRAND_LOGO_PATH = "/landing-v2/logo/logo-distribute.svg";
+export const BRAND_LOGO_PATH = "/landing/logo/logo-distribute.svg";
 export const BRAND_LOGO_URL = `${SITE_URL}${BRAND_LOGO_PATH}`;
 
 export const DEFAULT_OG_IMAGE_PATH = "/opengraph-image";

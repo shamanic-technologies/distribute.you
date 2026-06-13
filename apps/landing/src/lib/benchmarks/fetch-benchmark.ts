@@ -199,34 +199,6 @@ interface RawBrandTimelinePoint {
   emailsReplied?: number | null;
 }
 
-function mapBrandTimeline(
-  timeline: RawBrandTimelinePoint[] | undefined,
-): BrandTimelinePoint[] | undefined {
-  if (!timeline?.length) return undefined;
-  return timeline.map((point) => ({
-    date: point.date,
-    cumulativePipelineUsd: point.cumulativePipelineUsd ?? null,
-    emailsSent: point.emailsSent ?? null,
-    emailsOpened: point.emailsOpened ?? null,
-    emailsClicked: point.emailsClicked ?? null,
-    emailsReplied: point.emailsReplied ?? null,
-  }));
-}
-
-function mapRevenueTimeline(
-  timeline: RawBrandTimelinePoint[] | undefined,
-  expectedRevenueUsd: number | null,
-): BrandTimelinePoint[] | undefined {
-  const mapped = mapBrandTimeline(timeline);
-  if (!mapped?.length || expectedRevenueUsd == null) return mapped;
-  const lastIndex = mapped.length - 1;
-  return mapped.map((point, index) =>
-    index === lastIndex
-      ? { ...point, cumulativePipelineUsd: expectedRevenueUsd }
-      : point,
-  );
-}
-
 function mapBrandEntry(item: BrandRankedItem): BrandLeaderboardEntry {
   const sent = num(item.stats, "recipientsSent");
   const opened = num(item.stats, "recipientsOpened");
@@ -238,7 +210,6 @@ function mapBrandEntry(item: BrandRankedItem): BrandLeaderboardEntry {
     brandName: item.brand.name ?? null,
     brandDomain: item.brand.domain ?? null,
     brandUrl: null,
-    timeline: mapBrandTimeline(item.timeline),
     expectedRevenueUsd: null,
     roiMultiple: null,
     emailsSent: sent,
@@ -314,6 +285,43 @@ export interface FeatureBenchmarkData {
   updatedAt: string;
 }
 
+// Bounded fetch for the build-time benchmark calls. A HUNG public-API request
+// (the leaderboard endpoints can take >60s under load) would otherwise stall the
+// Vercel prerender past its 60s page-build timeout and ABORT the whole landing
+// deploy. Abort at 15s and return null → the callers' existing `!ok → empty`
+// fallback renders an empty leaderboard instead, so a slow API degrades to
+// cached/empty data rather than failing the build. (CLAUDE.md "Vercel
+// build-time prerender must stay shippable".)
+async function fetchBoundedJson<T>(
+  url: string,
+  init: RequestInit & { next?: { revalidate: number } },
+  label: string,
+  fallback: T,
+): Promise<T> {
+  // The public API can be slow to TRANSFER its (multi-MB) body from the Vercel
+  // build network. The AbortSignal.timeout must therefore cover BOTH the connect
+  // AND the body read, and the `.json()` parse must happen INSIDE this try/catch
+  // — otherwise a timeout that fires during `res.json()` throws UNCAUGHT and
+  // aborts the whole /benchmarks prerender, failing the entire deploy (the exact
+  // bug this fixes). On any failure return the fallback so the page renders empty
+  // and the build still ships. (CLAUDE.md "Vercel build-time prerender must stay
+  // shippable".)
+  try {
+    const res = await fetch(url, { ...init, signal: AbortSignal.timeout(20_000) });
+    if (!res.ok) {
+      console.error(`[landing] Benchmarks: ${label} fetch failed: ${res.status}`);
+      return fallback;
+    }
+    return (await res.json()) as T;
+  } catch (err) {
+    console.error(
+      `[landing] Benchmarks: ${label} fetch aborted/failed for ${url}`,
+      err,
+    );
+    return fallback;
+  }
+}
+
 export async function fetchFeatureBenchmark(
   featureSlug: string,
   hostname = "",
@@ -343,83 +351,46 @@ async function _fetchFeatureBenchmarkUncached(
     return null;
   }
 
-  const [brandsRes, workflowsRes, brandRevenueRes, workflowRevenueRes] = await Promise.all([
-    fetch(
+  const [brandsData, workflowsData, brandRevenueData, workflowRevenueData] = await Promise.all([
+    fetchBoundedJson<BrandRankedResponse>(
       `${apiUrl}/v1/public/features/ranked?featureSlug=${encodeURIComponent(featureSlug)}&objective=emailsSent&groupBy=brand&limit=100`,
       { headers, next: { revalidate: 300 } },
+      `brands (${featureSlug})`,
+      { results: [] },
     ),
-    fetch(
+    fetchBoundedJson<WorkflowRankedResponse>(
       `${apiUrl}/v1/public/features/ranked?featureSlug=${encodeURIComponent(featureSlug)}&objective=emailsSent&groupBy=workflow&limit=100`,
       { headers, next: { revalidate: 300 } },
+      `workflows (${featureSlug})`,
+      { results: [] },
     ),
-    fetch(
+    fetchBoundedJson<PublicBrandRevenueResponse>(
       `${featuresUrl}/public/stats/revenue?featureSlug=${encodeURIComponent(featureSlug)}&groupBy=brand`,
       { headers: { Accept: "application/json" }, next: { revalidate: 300 } },
+      `brand revenue (${featureSlug})`,
+      { results: [] },
     ),
-    fetch(
+    fetchBoundedJson<PublicWorkflowRevenueResponse>(
       `${featuresUrl}/public/stats/revenue?featureSlug=${encodeURIComponent(featureSlug)}&groupBy=workflow`,
       { headers: { Accept: "application/json" }, next: { revalidate: 300 } },
+      `workflow revenue (${featureSlug})`,
+      { results: [] },
     ),
   ]);
 
-  if (!brandsRes.ok) {
-    console.error(
-      `[landing] Benchmarks: brands fetch failed for ${featureSlug}: ${brandsRes.status}`,
-    );
-  }
-  if (!workflowsRes.ok) {
-    console.error(
-      `[landing] Benchmarks: workflows fetch failed for ${featureSlug}: ${workflowsRes.status}`,
-    );
-  }
-  if (!brandRevenueRes.ok) {
-    console.error(
-      `[landing] Benchmarks: brand revenue fetch failed for ${featureSlug}: ${brandRevenueRes.status}`,
-    );
-  }
-  if (!workflowRevenueRes.ok) {
-    console.error(
-      `[landing] Benchmarks: workflow revenue fetch failed for ${featureSlug}: ${workflowRevenueRes.status}`,
-    );
-  }
-
-  const brandsData: BrandRankedResponse = brandsRes.ok
-    ? await brandsRes.json()
-    : { results: [] };
-  const workflowsData: WorkflowRankedResponse = workflowsRes.ok
-    ? await workflowsRes.json()
-    : { results: [] };
-  const brandRevenueData: PublicBrandRevenueResponse = brandRevenueRes.ok
-    ? await brandRevenueRes.json()
-    : { results: [] };
-  const workflowRevenueData: PublicWorkflowRevenueResponse = workflowRevenueRes.ok
-    ? await workflowRevenueRes.json()
-    : { results: [] };
-  const trajectoryBrandIds = new Set(
-    brandRevenueData.results
-      .filter(
-        (item) =>
-          (item.headline?.totalPipelineUsd ?? 0) > 0 &&
-          (item.costEconomics?.roiMultiple ?? 0) > 1 &&
-          (item.timeline?.length ?? 0) >= 2,
-      )
-      .sort((a, b) => (b.headline?.totalPipelineUsd ?? 0) - (a.headline?.totalPipelineUsd ?? 0))
-      .slice(0, 6)
-      .map((item) => item.brand.id),
-  );
+  // NB: the per-brand `timeline` (~1,500 daily points × up to 6 brands ≈ 2.2MB)
+  // is intentionally NOT carried here. Its only consumer (ClientTrajectoriesSection)
+  // is not mounted, and keeping it blew the unstable_cache item past the 2MB limit
+  // (so the result was never cached → every revalidation re-hit the slow API).
   const revenueByBrand = new Map(
     brandRevenueData.results
       .filter((item) => (item.headline?.totalPipelineUsd ?? 0) > 0)
       .map((item) => {
-        const expectedRevenueUsd = item.headline?.totalPipelineUsd ?? null;
         return [
           item.brand.id,
           {
-            expectedRevenueUsd,
+            expectedRevenueUsd: item.headline?.totalPipelineUsd ?? null,
             roiMultiple: item.costEconomics?.roiMultiple ?? null,
-            timeline: trajectoryBrandIds.has(item.brand.id)
-              ? mapRevenueTimeline(item.timeline, expectedRevenueUsd)
-              : undefined,
           },
         ] as const;
       }),
@@ -433,7 +404,6 @@ async function _fetchFeatureBenchmarkUncached(
       ...brand,
       expectedRevenueUsd: revenue.expectedRevenueUsd,
       roiMultiple: revenue.roiMultiple,
-      timeline: revenue.timeline,
     }];
   });
 

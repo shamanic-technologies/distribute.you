@@ -2,7 +2,6 @@ import "server-only";
 import { unstable_cache } from "next/cache";
 import type { RevenueOverview } from "./revenue-view";
 import { parseFeatureRevenue } from "./revenue-parse";
-import { parseFeatureRevenueByWorkflow } from "./api";
 import type {
   Brand,
   Campaign,
@@ -13,7 +12,7 @@ import type {
   QuotePitchStatus,
   StatsRegistry,
   Workflow,
-  WorkflowRevenueGroup,
+  WorkflowProjectionResponse,
 } from "@/lib/api";
 import { isOpportunityOpen } from "@/lib/quote-pitch-status";
 
@@ -388,24 +387,48 @@ export async function getReportRevenue(
   )();
 }
 
-/** Expected pipeline revenue grouped by workflowSlug for the public report's
- *  brand-scoped workflow table. The math stays in features-service. */
-export async function getReportRevenueByWorkflow(
+/** PROJECTED per-workflow ROI for the public report's brand-scoped workflow
+ *  table. There is no realized per-workflow revenue stat — ROI is projected by
+ *  features-service `workflow-projection` (cross-org workflow efficiency × the
+ *  brand's saved sales-economics): ROI = 100 / cacPct, budget-invariant
+ *  (budgetUsd:1 just populates `projection`). Keyed on `workflowDynastySlug`.
+ *  Fail-soft: a cold/slow projection chain degrades to "—" ROI rather than
+ *  aborting the whole ISR prerender (CLAUDE.md build-time-prerender exception). */
+export interface WorkflowRoiProjection {
+  workflowDynastySlug: string;
+  roi: number | null;
+}
+
+export async function getReportWorkflowProjection(
   orgId: string,
   brandId: string,
   featureSlug: string,
-): Promise<WorkflowRevenueGroup[]> {
+): Promise<WorkflowRoiProjection[]> {
   return unstable_cache(
     async () => {
-      const raw = await adminGet<unknown>(
-        "featureRevenueByWorkflow",
-        `/features/${encodeURIComponent(featureSlug)}/revenue?brandId=${brandId}&groupBy=workflowSlug`,
-        orgId,
-        { "x-brand-id": brandId },
-      );
-      return parseFeatureRevenueByWorkflow(raw, "getReportRevenueByWorkflow");
+      try {
+        const raw = await adminGet<WorkflowProjectionResponse>(
+          "featureWorkflowProjection",
+          `/features/${encodeURIComponent(featureSlug)}/workflow-projection?brandId=${brandId}&objective=meeting-booked&budgetUsd=1`,
+          orgId,
+          { "x-brand-id": brandId },
+        );
+        return (raw.workflows ?? []).map((w) => {
+          const cacPct = w.projection?.cacPct;
+          return {
+            workflowDynastySlug: w.workflowDynastySlug,
+            roi: cacPct != null && cacPct > 0 ? 100 / cacPct : null,
+          };
+        });
+      } catch (err) {
+        console.error(
+          `[dashboard-report] getReportWorkflowProjection ${featureSlug} failed; ROI omitted:`,
+          err,
+        );
+        return [];
+      }
     },
-    [`getReportRevenueByWorkflow`, orgId, brandId, featureSlug],
+    [`getReportWorkflowProjection`, orgId, brandId, featureSlug],
     {
       tags: reportTags(orgId, brandId, featureSlug),
       revalidate: REPORT_REVALIDATE_SECONDS,

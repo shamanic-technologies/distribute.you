@@ -72,11 +72,6 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
-  icons: {
-    icon: "/favicon.jpg",
-    shortcut: "/favicon.jpg",
-    apple: "/favicon.jpg",
-  },
   alternates: {
     canonical: SITE_URL,
   },
@@ -95,10 +90,10 @@ const jsonLd = {
   offers: [
     {
       "@type": "Offer",
-      name: "$25 free credits",
+      name: "50 free emails",
       price: "0",
       priceCurrency: "USD",
-      description: "$25 free credits. No subscription. No credit card. Launch in 5 minutes.",
+      description: "50 free emails. No subscription. No credit card. Launch in 5 minutes.",
     },
   ],
   provider: {
@@ -167,6 +162,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* Google Tag Manager */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-TBD2WC2P');`,
+          }}
+        />
+        {/* End Google Tag Manager */}
         <script async src="https://www.googletagmanager.com/gtag/js?id=G-YJHNGLEJPP" />
         <script
           dangerouslySetInnerHTML={{
@@ -195,7 +197,16 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(howToJsonLd) }}
         />
       </head>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        {/* Google Tag Manager (noscript) */}
+        <noscript
+          dangerouslySetInnerHTML={{
+            __html: `<iframe src="https://www.googletagmanager.com/ns.html?id=GTM-TBD2WC2P" height="0" width="0" style="display:none;visibility:hidden"></iframe>`,
+          }}
+        />
+        {/* End Google Tag Manager (noscript) */}
+        {children}
+      </body>
     </html>
   );
 }

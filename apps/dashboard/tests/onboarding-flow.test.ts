@@ -14,10 +14,12 @@ describe("Onboarding flow", () => {
     expect(content).toContain('"use client"');
   });
 
-  it("should have a value proposition step", () => {
+  it("should have a booking-intro step as the first screen", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("Welcome to Distribute");
-    expect(content).toContain("value-prop");
+    expect(content).toContain("Book your onboarding call");
+    expect(content).toContain("booking-intro");
+    expect(content).toContain("Maybe later");
+    expect(content).toContain("calendar.app.google");
   });
 
   it("should have agency and company type selection", () => {
@@ -47,14 +49,17 @@ describe("Onboarding flow", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
     expect(content).not.toContain("apiKey");
     expect(content).not.toMatch(/Copy.*key/i);
-    // No "success" step type — onboarding redirects straight to /
-    expect(content).not.toContain('"success"');
   });
 
-  it("should redirect to brands page with autoCreate param after org creation", () => {
+  it("should redirect straight to brands auto-create with no billing/top-up step", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("autoCreate=");
-    expect(content).toContain("/brands?autoCreate=");
+    // No card-capture / auto-topup step at onboarding — it tripped the $2 welcome
+    // credit because the brand-new balance sits below the top-up threshold. Card +
+    // auto-topup are set up later, on first campaign launch (billing-guard modal).
+    expect(content).not.toContain('"billing-setup"');
+    expect(content).not.toContain("createCheckoutSession");
+    expect(content).not.toContain("billingSetup");
+    expect(content).toContain('brandsUrl.searchParams.set("autoCreate"');
   });
 });
 

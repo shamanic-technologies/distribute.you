@@ -11,9 +11,7 @@ const SIDEBAR_COLORS: Record<FeatureColor, { activeBg: string; activeText: strin
 
 export function DashboardPreview() {
   const features: { name: string; active: boolean; color: FeatureColor }[] = [
-    { name: "Sales Outreach", active: true, color: "cyan" },
-    { name: "Journalist Outreach", active: true, color: "emerald" },
-    { name: "Hiring Outreach", active: false, color: "violet" },
+    { name: "Sales Cold Email", active: true, color: "cyan" },
   ];
 
   const workflows = [
@@ -37,7 +35,7 @@ export function DashboardPreview() {
           </div>
           <div className="flex-1 flex justify-center">
             <div className="bg-gray-800 rounded-md px-4 py-1 text-xs text-gray-400 font-mono">
-              app.distribute.you/dashboard
+              dashboard.distribute.you/dashboard
             </div>
           </div>
         </div>

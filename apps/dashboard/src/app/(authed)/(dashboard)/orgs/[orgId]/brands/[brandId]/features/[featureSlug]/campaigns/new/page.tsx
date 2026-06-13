@@ -35,10 +35,13 @@ import {
   listWorkflowExamples,
   type WorkflowExampleEmail,
   getWorkflowProjection,
+  keepLastGoodWorkflowProjection,
   type WorkflowProjectionItem,
+  type WorkflowProjectionResponse,
   type SalesObjective,
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
+import { projectFunnel, type FunnelEconomics } from "@/lib/sales-funnel-projection";
 import { formatStatValue, sortDirectionForType } from "@/lib/format-stat";
 import { pollOptions } from "@/lib/query-options";
 import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-panel";
@@ -74,20 +77,32 @@ const SALES_OBJECTIVES: { key: SalesObjective; label: string; desc: string }[] =
   { key: "self-serve", label: "Self-serve sales", desc: "Customers buy from your site — optimize on clicks." },
 ];
 
-const BUDGET_TIERS: { key: Exclude<BudgetTier, "other">; label: string; factor: number }[] = [
-  { key: "starter", label: "Starter", factor: 0.5 },
-  { key: "recommended", label: "Recommended", factor: 1 },
-  { key: "growth", label: "Growth", factor: 2 },
+/** Each tier is sized for an absolute closes-per-month target (budget = closes × cost-per-close). */
+const BUDGET_TIERS: { key: Exclude<BudgetTier, "other">; label: string; closesPerMonth: number }[] = [
+  { key: "starter", label: "Starter", closesPerMonth: 3 },
+  { key: "recommended", label: "Recommended", closesPerMonth: 5 },
+  { key: "growth", label: "Growth", closesPerMonth: 10 },
 ];
 
-/** Recommended budget is sized for this many closes per month (Starter ×0.5, Growth ×2). */
-const TARGET_CLOSES_PER_MONTH = 10;
+/** Recommended budget is sized for this many closes per month (= the "recommended" tier). */
+const TARGET_CLOSES_PER_MONTH = 5;
 
 /** Conversion-economics defaults shown until the brand's saved set loads (or when none
  *  is saved yet). Persisted per brand in brand-service; see getBrandSalesEconomics. */
 const SALES_ECON_DEFAULTS = { ltv: "4000", replyToMeeting: "40", meetingToClose: "25", visitToMeeting: "20", clickToClose: "5" };
 
 const DAYS_PER_MONTH = 30.4;
+
+// Cold-start self-heal for the workflow-projection query. The projection rides a cold Neon chain
+// (api→features→workflow/runs/email-gateway/brand, all scale-to-zero) that can answer the FIRST
+// request with a valid-but-degenerate 200 (null unit costs / empty workflows) while half-warming —
+// collapsing the §3 budget cards to the "no data yet" message. keep-last-good (#1548) can't heal the
+// FIRST fetch (no prior good value to keep), and #1542 dropped the 5s poll, so a cold first load used
+// to stick on the message until a manual window-refocus. Re-add a BOUNDED poll: refetch only while no
+// workflow has a usable costPerCloseUsd, and give up after N tries so a genuinely-empty brand doesn't
+// poll forever. Stops the moment the chain warms — preserves #1542's fetch-once-when-good intent.
+const PROJECTION_WARMUP_INTERVAL_MS = 4000;
+const PROJECTION_WARMUP_TRIES = 5;
 
 /** Multiply a budget at a given cadence up to a monthly run-rate (one-off/monthly are
  *  already a single period). Outcomes are always normalized to a month. */
@@ -414,9 +429,10 @@ export default function FeatureCreateCampaignPage() {
     mutationFn: (input: BrandSalesEconomicsInput) => saveBrandSalesEconomics(brandId, input),
     onSuccess: (data) => {
       queryClient.setQueryData(["brandSalesEconomics", brandId], data);
-      // The workflow projection reads saved econ server-side — refresh it now that the edit
-      // persisted, so the budget cards reflect the new metrics without waiting for the poll.
-      queryClient.invalidateQueries({ queryKey: ["workflowProjection", featureSlug, brandId] });
+      // No projection invalidate: the budget cards recompute client-side from the LIVE econ inputs
+      // (see econLive + projectFunnel), so they already reflect the edit instantly. The server
+      // projection only supplies the econ-INDEPENDENT unit costs + workflow pick, which this edit
+      // does not change — refetching it would just re-pay the cold Neon round-trip for nothing.
     },
     onError: (err) => console.error("[dashboard] saveBrandSalesEconomics failed", err),
   });
@@ -573,16 +589,37 @@ export default function FeatureCreateCampaignPage() {
     });
   }, [workflowsData, rankedData, brandStatsData]);
 
-  // features-service is the SINGLE source for the funnel SUM math: per-workflow cost-per-close
-  // + funnel projection + the recommended workflow/budget. Conversion economics are read
-  // server-side from the brand's SAVED sales-economics. The funnel is LINEAR in budget, so we
-  // request the projection at $1 (per-dollar) and scale by budget client-side (pure ×; the
-  // route-combining SUM stays server-side). Invalidated when the econ upsert lands (see
-  // mutateSalesEcon.onSuccess) so edits reflect once persisted.
+  // features-service owns the econ-INDEPENDENT per-workflow GLOBAL unit costs (contacted/reply/
+  // click $) — slow-changing, so FETCH-ONCE (no poll): the cards update INSTANTLY from the client
+  // econLive recompute below, NOT from re-fetching this. We still allow refetchOnWindowFocus, but
+  // guard it with `structuralSharing: keepLastGoodWorkflowProjection` — the cold Neon chain can
+  // answer a refocus refetch with a valid-but-degenerate 200 (null unit costs / fewer workflows)
+  // that would otherwise collapse the budget cards + Launch button (both derive off
+  // costPerCloseUsd). Keep-last-good holds the resolved values across such a transient
+  // (CLAUDE.md "keep-last-good (cache-write boundary)"); a real downgrade still fails loud.
   const { data: projData } = useAuthQuery(
     ["workflowProjection", featureSlug, brandId, salesObjective],
     () => getWorkflowProjection({ featureSlug, brandId, objective: salesObjective, budgetUsd: 1 }),
-    { enabled: isSalesFunnel && featureDef?.implemented === true, ...pollOptions },
+    {
+      enabled: isSalesFunnel && featureDef?.implemented === true,
+      // TanStack types structuralSharing params as `unknown` — cast to the query's data type.
+      structuralSharing: (prev, next) =>
+        keepLastGoodWorkflowProjection(
+          prev as WorkflowProjectionResponse | undefined,
+          next as WorkflowProjectionResponse,
+        ),
+      // Bounded cold-start self-heal (see PROJECTION_WARMUP_* above). Poll only while the projection
+      // carries NO usable cost-per-close (cold/half-warm degenerate 200), capped at PROJECTION_WARMUP_TRIES
+      // so a genuinely-empty brand stops polling; stop the instant a usable workflow appears.
+      refetchInterval: (query) => {
+        const data = query.state.data as WorkflowProjectionResponse | undefined;
+        const hasUsable = (data?.workflows ?? []).some((w) => w.costPerCloseUsd != null);
+        if (hasUsable) return false;
+        return query.state.dataUpdateCount < PROJECTION_WARMUP_TRIES
+          ? PROJECTION_WARMUP_INTERVAL_MS
+          : false;
+      },
+    },
   );
 
   const projByDynasty = useMemo(() => {
@@ -591,38 +628,59 @@ export default function FeatureCreateCampaignPage() {
     return m;
   }, [projData]);
 
-  // Served cost-per-close for a workflow (the ROI comparator; lower = better).
+  // The brand's LIVE conversion economics (from the §2 inputs), as decimals — drives the
+  // client-side funnel recompute below so the budget cards update INSTANTLY as the user edits,
+  // without a per-edit round-trip through the cold Neon chain. On first paint these equal the
+  // brand's SAVED econ (hydrated above), so the recompute reproduces the server's numbers exactly.
+  const econLive = useMemo<FunnelEconomics>(
+    () => ({
+      ltv: parseFloat(econLtv) || 0,
+      r2m: (parseFloat(econReplyToMeeting) || 0) / 100,
+      v2m: (parseFloat(econVisitToMeeting) || 0) / 100,
+      m2c: (parseFloat(econMeetingToClose) || 0) / 100,
+      v2c: (parseFloat(econClickToClose) || 0) / 100,
+    }),
+    [econLtv, econReplyToMeeting, econVisitToMeeting, econMeetingToClose, econClickToClose],
+  );
+
+  // Cost-per-close for a workflow (the ROI comparator; lower = better). Recomputed client-side from
+  // the workflow's server-owned GLOBAL unit costs (econ-independent) × the LIVE economics — mirrors
+  // features-service `project()` (see lib/sales-funnel-projection.ts).
   const cpcFor = useCallback(
-    (dynastySlug: string): number | null => projByDynasty.get(dynastySlug)?.costPerCloseUsd ?? null,
-    [projByDynasty],
+    (dynastySlug: string): number | null => {
+      const w = projByDynasty.get(dynastySlug);
+      if (!w) return null;
+      return projectFunnel({ contactedUsd: w.contactedUsd, replyUsd: w.replyUsd, clickUsd: w.clickUsd }, econLive, null)
+        .costPerCloseUsd;
+    },
+    [projByDynasty, econLive],
   );
 
-  // CAC as a % of the customer's LTV — budget-invariant, served as projection.cacPct
-  // ((budget/revenue)×100 == cost-per-close/LTV×100). Used by the workflow picker.
+  // CAC as a % of the customer's LTV — budget-invariant, so compute at $1.
   const cacPctFor = useCallback(
-    (dynastySlug: string): number | null => projByDynasty.get(dynastySlug)?.projection?.cacPct ?? null,
-    [projByDynasty],
+    (dynastySlug: string): number | null => {
+      const w = projByDynasty.get(dynastySlug);
+      if (!w) return null;
+      return (
+        projectFunnel({ contactedUsd: w.contactedUsd, replyUsd: w.replyUsd, clickUsd: w.clickUsd }, econLive, 1)
+          .projection?.cacPct ?? null
+      );
+    },
+    [projByDynasty, econLive],
   );
 
-  // Render the funnel at any budget by scaling the served per-$ projection (computed at
-  // budgetUsd=1). Counts scale linearly with budget; cacPct/cacAbs are budget-invariant ratios.
+  // Render the funnel at any budget — recomputed client-side from unit costs × live economics.
   const projectFor = useCallback(
     (dynastySlug: string, budget: number): SalesProjectionView | null => {
-      const base = projByDynasty.get(dynastySlug)?.projection;
-      if (!base || budget <= 0) return null;
-      const scale = (v: number | null) => (v != null ? v * budget : null);
-      return {
-        contactedLeads: scale(base.contactedLeads),
-        replies: scale(base.replies),
-        visits: scale(base.visits),
-        meetings: scale(base.meetings),
-        closes: base.closes != null ? base.closes * budget : 0,
-        revenue: base.revenue != null ? base.revenue * budget : 0,
-        cacPct: base.cacPct,
-        cacAbs: base.cacAbs,
-      };
+      const w = projByDynasty.get(dynastySlug);
+      if (!w || budget <= 0) return null;
+      return projectFunnel(
+        { contactedUsd: w.contactedUsd, replyUsd: w.replyUsd, clickUsd: w.clickUsd },
+        econLive,
+        budget,
+      ).projection;
     },
-    [projByDynasty],
+    [projByDynasty, econLive],
   );
 
   // Auto-pick: the workflow features-service recommends (lowest cost-per-close for this
@@ -663,13 +721,13 @@ export default function FeatureCreateCampaignPage() {
 
   // Google-Ads-style budget tiers seeded from the 10-closes/mo target, + the chosen amount.
   const budgetPresets = useMemo(() => {
-    const rec = salesPlan.recommendedBudget;
-    if (rec == null) return null;
+    const cpc = salesPlan.costPerCloseUsd;
+    if (cpc == null) return null;
     return BUDGET_TIERS.map((t) => {
-      const monthly = Math.max(1, Math.round(rec * t.factor));
+      const monthly = Math.max(1, Math.round(t.closesPerMonth * cpc));
       return { ...t, monthly, daily: Math.max(1, Math.round(monthly / DAYS_PER_MONTH)) };
     });
-  }, [salesPlan.recommendedBudget]);
+  }, [salesPlan.costPerCloseUsd]);
 
   const effectiveBudget = useMemo(() => {
     if (budgetTier === "other") return parseFloat(budgetCustom) || 0;
@@ -1120,16 +1178,11 @@ export default function FeatureCreateCampaignPage() {
       // $1.996 balance shows "$2.00". Compare against that to avoid a false "exceeds".
       const balanceCents = Math.ceil(parseFloat(account.balance_cents));
       const isRecurring = budgetFrequency !== "one-off";
-      const coversFirstPeriod = balanceCents >= budgetCents;
 
-      // Can't even afford the first period → must add credits / set up auto-topup.
-      if (!coversFirstPeriod) {
-        if (account.has_payment_method) {
-          const topupCents = Math.max(1000, budgetCents);
-          await configureAutoTopup(topupCents, 500).catch(() => {});
-          doCreateCampaign();
-          return;
-        }
+      // Recurring campaigns REQUIRE auto-topup (a card on file). They keep spending every
+      // period, so a one-time balance is never enough — top-up is mandatory, no "launch
+      // anyway". The modal sets up the card (no charge) + auto-topup, then launches.
+      if (isRecurring && !account.has_auto_topup) {
         saveCampaignIntent();
         isCreatingRef.current = false;
         setIsCreating(false);
@@ -1145,23 +1198,15 @@ export default function FeatureCreateCampaignPage() {
         return;
       }
 
-      // Covers the first period but is recurring without auto-topup → warn how long the
-      // credits last, recommend auto-topup, but let the user launch anyway.
-      if (isRecurring && !account.has_auto_topup) {
-        const periods = Math.max(1, Math.floor(balanceCents / budgetCents));
+      // One-off that can't afford the first period → must recharge (add credits) or set up
+      // auto-topup. Hard-block modal, no "launch anyway". A funded one-off launches directly.
+      if (!isRecurring && balanceCents < budgetCents) {
         saveCampaignIntent();
         isCreatingRef.current = false;
         setIsCreating(false);
         showPaymentRequired({
           balance_cents: account.balance_cents,
           required_cents: budgetCents,
-          proactive: true,
-          runwayPeriods: periods,
-          runwayUnit: REVENUE_INTERVAL_LABEL[budgetFrequency],
-          onProceed: () => {
-            sessionStorage.removeItem("pendingCampaign");
-            doCreateCampaign();
-          },
           onAutoTopupConfigured: () => {
             sessionStorage.removeItem("pendingCampaign");
             doCreateCampaign();
@@ -1461,7 +1506,7 @@ export default function FeatureCreateCampaignPage() {
               {isSalesFunnel && econReady && econSource === "cross-brand-average" && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-1 text-[11px] font-medium text-amber-700">
                   <SparklesIcon className="w-3 h-3" />
-                  Estimated · average of your other brands
+                  Estimated · based on similar brands
                 </span>
               )}
               {isSalesFunnel && econReady && econSource === "user" && (
@@ -1578,7 +1623,7 @@ export default function FeatureCreateCampaignPage() {
                           {p.key === "recommended" && <span className="text-[10px] text-brand-600">★</span>}
                         </div>
                         <div className="text-xl font-bold text-gray-800 mt-1">{fmtUsd0(p.daily)}<span className="text-xs font-medium text-gray-400"> / day</span></div>
-                        <div className="text-[11px] text-gray-400 mt-0.5">targets ~{Math.round(TARGET_CLOSES_PER_MONTH * p.factor)} closes / mo</div>
+                        <div className="text-[11px] text-gray-400 mt-0.5">targets ~{p.closesPerMonth} closes / mo</div>
                         {proj && (
                           <div className="mt-2 text-[11px] leading-relaxed">
                             <div className="text-green-700 font-semibold">~{fmtUsd0(proj.revenue)} revenue / month</div>

@@ -20,6 +20,12 @@ describe("Brands page auto-creates brand from onboarding", () => {
     expect(content).toContain("upsertBrand");
   });
 
+  it("should NOT configure auto-topup at onboarding (would trip the $2 welcome credit)", () => {
+    expect(content).not.toContain("configureAutoTopup");
+    expect(content).not.toContain("billingSetup");
+    expect(content).not.toContain("pending_topup");
+  });
+
   it("should redirect to brand page after auto-creation", () => {
     expect(content).toContain("router.replace");
     expect(content).toContain(`/orgs/\${orgId}/brands/\${newBrandId}`);
@@ -46,8 +52,9 @@ describe("Onboarding page asks for URL and creates brand", () => {
     expect(content).toContain("Please enter a valid URL");
   });
 
-  it("should redirect to brands page with autoCreate after org creation", () => {
-    expect(content).toContain("/brands?autoCreate=");
-    expect(content).toContain("encodeURIComponent");
+  it("should redirect straight to brands with autoCreate (no Stripe step)", () => {
+    expect(content).not.toContain("createCheckoutSession");
+    expect(content).toContain("new URL(`/orgs/${targetOrgId}/brands`");
+    expect(content).toContain('brandsUrl.searchParams.set("autoCreate"');
   });
 });

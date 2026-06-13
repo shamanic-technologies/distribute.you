@@ -5,8 +5,10 @@ import { useParams, useRouter } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   fetchGlobalRankedWorkflows,
-  getFeatureRevenueByWorkflow,
+  getWorkflowProjection,
+  keepLastGoodWorkflowProjection,
   listWorkflows,
+  type WorkflowProjectionResponse,
 } from "@/lib/api";
 import { useFeatures } from "@/lib/features-context";
 import { isRevenueFeature } from "@/lib/revenue-feature";
@@ -36,17 +38,9 @@ function SortHeader({
       className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-brand-600 select-none"
       onClick={() => onSort(sortKey)}
     >
-      {label} {active ? (currentDir === "desc" ? "\u2193" : "\u2191") : ""}
+      {label} {active ? (currentDir === "desc" ? "↓" : "↑") : ""}
     </th>
   );
-}
-
-function formatUsdValue(usd: number | null | undefined): string {
-  if (usd == null) return "—";
-  if (usd === 0) return "$0";
-  if (usd < 0.01) return "<$0.01";
-  if (usd < 100) return `$${usd.toFixed(2)}`;
-  return `$${usd.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 }
 
 function formatRoi(roi: number | null | undefined): string {
@@ -101,11 +95,34 @@ export default function FeatureWorkflowsPage() {
     () => listWorkflows({ featureSlug }),
   );
 
-  const { data: workflowRevenue, isLoading: workflowRevenueLoading } = useAuthQuery(
-    ["featureRevenue", brandId, featureSlug, "workflow"],
-    () => getFeatureRevenueByWorkflow(featureSlug, brandId),
-    { enabled: revenueEnabled && wfDef?.implemented === true },
+  // Per-workflow PROJECTED ROI (no realized per-workflow revenue stat exists):
+  // features-service workflow-projection × the brand's saved sales-economics.
+  // ROI = 100 / cacPct, budget-invariant (budgetUsd:1 just populates `projection`).
+  // This is the cold Neon chain, so it is NOT gated into the table barrier below —
+  // the table reveals on workflows+ranked and each ROI cell shows its own skeleton
+  // while pending. keep-last-good guards a degenerate cold-chain refocus refetch.
+  const { data: projection } = useAuthQuery(
+    ["workflowProjection", brandId, featureSlug],
+    () => getWorkflowProjection({ featureSlug, brandId, objective: "meeting-booked", budgetUsd: 1 }),
+    {
+      enabled: revenueEnabled && wfDef?.implemented === true,
+      structuralSharing: (prev, next) =>
+        keepLastGoodWorkflowProjection(
+          prev as WorkflowProjectionResponse | undefined,
+          next as WorkflowProjectionResponse,
+        ),
+    },
   );
+  const roiPending = revenueEnabled && projection === undefined;
+
+  const roiByDynasty = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const w of projection?.workflows ?? []) {
+      const cacPct = w.projection?.cacPct;
+      if (cacPct != null && cacPct > 0) map.set(w.workflowDynastySlug, 100 / cacPct);
+    }
+    return map;
+  }, [projection]);
 
   // Active workflows grouped by workflowDynastySlug: keep only the latest per dynasty
   const dynastyWorkflows = useMemo(() => {
@@ -126,17 +143,16 @@ export default function FeatureWorkflowsPage() {
     for (const r of rankedData ?? []) {
       if (r.workflow.workflowDynastySlug) statsMap.set(r.workflow.workflowDynastySlug, r.stats);
     }
-    const revenueMap = new Map((workflowRevenue ?? []).map((r) => [r.workflowSlug, r]));
 
     return dynastyWorkflows.map((wf) => ({
       id: wf.id,
       workflowSlug: wf.workflowSlug,
+      workflowDynastySlug: wf.workflowDynastySlug,
       workflowDynastyName: wf.workflowDynastyName,
       stats: statsMap.get(wf.workflowDynastySlug) ?? {},
-      expectedRevenueUsd: revenueMap.get(wf.workflowSlug)?.totalPipelineUsd ?? null,
-      roiMultiple: revenueMap.get(wf.workflowSlug)?.roiMultiple ?? null,
+      roi: roiByDynasty.get(wf.workflowDynastySlug) ?? null,
     }));
-  }, [rankedData, workflowRevenue, dynastyWorkflows]);
+  }, [rankedData, dynastyWorkflows, roiByDynasty]);
 
   const handleSort = useCallback((key: string) => {
     setMetric((prev) => {
@@ -144,7 +160,7 @@ export default function FeatureWorkflowsPage() {
         setSortDir((d) => (d === "desc" ? "asc" : "desc"));
         return prev;
       }
-      const dir = sortDirectionForType(registry[key]?.type);
+      const dir = key === "roi" ? "desc" : sortDirectionForType(registry[key]?.type);
       setSortDir(dir);
       return key;
     });
@@ -153,16 +169,8 @@ export default function FeatureWorkflowsPage() {
   const sorted = useMemo(() => {
     if (rows.length === 0) return [];
     return [...rows].sort((a, b) => {
-      const aRaw = metric === "expectedRevenue"
-        ? a.expectedRevenueUsd
-        : metric === "roi"
-          ? a.roiMultiple
-          : a.stats[metric] ?? null;
-      const bRaw = metric === "expectedRevenue"
-        ? b.expectedRevenueUsd
-        : metric === "roi"
-          ? b.roiMultiple
-          : b.stats[metric] ?? null;
+      const aRaw = metric === "roi" ? a.roi : a.stats[metric] ?? null;
+      const bRaw = metric === "roi" ? b.roi : b.stats[metric] ?? null;
       const aNull = aRaw === null || aRaw === 0;
       const bNull = bRaw === null || bRaw === 0;
       if (aNull && bNull) return 0;
@@ -208,7 +216,7 @@ export default function FeatureWorkflowsPage() {
           New Workflow
         </button>
       </div>
-      {isLoading || featuresLoading || workflowsLoading || (revenueEnabled && workflowRevenueLoading) ? (
+      {isLoading || featuresLoading || workflowsLoading ? (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -220,17 +228,14 @@ export default function FeatureWorkflowsPage() {
                   </th>
                 ))}
                 {revenueEnabled && (
-                  <>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expected revenue</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ROI</th>
-                  </>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ROI</th>
                 )}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {[1, 2, 3].map((i) => (
                 <tr key={i}>
-                  {Array.from({ length: sortedOutputs.length + 1 + (revenueEnabled ? 2 : 0) }).map((_, j) => (
+                  {Array.from({ length: sortedOutputs.length + 1 + (revenueEnabled ? 1 : 0) }).map((_, j) => (
                     <td key={j} className="px-4 py-4">
                       <Skeleton className={`h-4 ${j === 0 ? "w-32" : "w-16"}`} />
                     </td>
@@ -272,22 +277,13 @@ export default function FeatureWorkflowsPage() {
                     />
                   ))}
                   {revenueEnabled && (
-                    <>
-                      <SortHeader
-                        label="Expected revenue"
-                        sortKey="expectedRevenue"
-                        currentSort={metric}
-                        currentDir={sortDir}
-                        onSort={handleSort}
-                      />
-                      <SortHeader
-                        label="ROI"
-                        sortKey="roi"
-                        currentSort={metric}
-                        currentDir={sortDir}
-                        onSort={handleSort}
-                      />
-                    </>
+                    <SortHeader
+                      label="ROI"
+                      sortKey="roi"
+                      currentSort={metric}
+                      currentDir={sortDir}
+                      onSort={handleSort}
+                    />
                   )}
                 </tr>
               </thead>
@@ -311,14 +307,9 @@ export default function FeatureWorkflowsPage() {
                       </td>
                     ))}
                     {revenueEnabled && (
-                      <>
-                        <td className="px-4 py-4 text-sm font-medium text-green-700">
-                          {formatUsdValue(wf.expectedRevenueUsd)}
-                        </td>
-                        <td className="px-4 py-4 text-sm font-medium text-green-700">
-                          {formatRoi(wf.roiMultiple)}
-                        </td>
-                      </>
+                      <td className="px-4 py-4 text-sm font-medium text-green-700">
+                        {roiPending ? <Skeleton className="h-4 w-12" /> : formatRoi(wf.roi)}
+                      </td>
                     )}
                   </tr>
                 ))}

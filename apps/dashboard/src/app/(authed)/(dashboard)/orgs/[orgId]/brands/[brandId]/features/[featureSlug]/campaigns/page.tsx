@@ -177,19 +177,26 @@ function GenericFeaturePage({
     { enabled: revenueEnabled, ...pollOptionsSlow },
   );
 
-  // One unified "all sections ready" gate so the WHOLE body reveals together (one paint,
-  // never a card-by-card cascade), then STAYS revealed. `useCoordinatedReveal` is a barrier
-  // (reveal only when every section has data) plus a monotonic latch (once shown, a poll /
-  // Clerk token rotation / transient query error never sends the body back to a skeleton).
-  // It pairs with the global `placeholderData: keepPreviousData`, which keeps each query's
-  // data on screen during refetch. See CLAUDE.md → "Coordinated reveal". A disabled query
-  // stays `isPending` forever, so the revenue flag short-circuits when not a revenue feature.
-  const revealed = useCoordinatedReveal([
-    campaignsData !== undefined,
+  // PER-CARD reveal — each card reveals on ITS OWN data the moment it lands, never
+  // behind one global barrier (CLAUDE.md "group at the finest COHERENT level,
+  // independent ACROSS groups"). The campaign LIST only needs `campaigns` (fast
+  // campaign-service) so it paints immediately instead of waiting for the slow
+  // features-service revenue/stats cold chain; the revenue hero / charts / cost
+  // donut reveal on THEIR sources as those return. Within each group the latch is a
+  // barrier + monotonic hold (a poll / Clerk token rotation / transient error never
+  // sends a shown card back to skeleton), paired with the global
+  // `placeholderData: keepPreviousData`. A disabled query stays `undefined` forever,
+  // but the hero block is revenue-gated in JSX so its latch is harmless when off.
+  const listRevealed = useCoordinatedReveal([campaignsData !== undefined, !featuresLoading]);
+  const statsRevealed = useCoordinatedReveal([featureStatsData !== undefined]);
+  const chartsRevealed = useCoordinatedReveal([
     featureStatsData !== undefined,
     brandCostData !== undefined,
-    !revenueEnabled || featureRevenueData !== undefined,
-    !featuresLoading,
+  ]);
+  const costRevealed = useCoordinatedReveal([brandCostData !== undefined]);
+  const heroRevealed = useCoordinatedReveal([
+    featureRevenueData !== undefined,
+    brandCostData !== undefined,
   ]);
 
   const totalCostCents = featureStatsData?.systemStats?.totalCostInUsdCents ?? 0;
@@ -213,7 +220,7 @@ function GenericFeaturePage({
           {/* Revenue features lead with the revenue hero below, so the header
               drops the cost total. Non-revenue features keep it. */}
           {!revenueEnabled &&
-            (!revealed ? (
+            (!statsRevealed ? (
               <div className="h-5 w-20 bg-gray-200 rounded animate-pulse" />
             ) : formatTotalCost(totalCostCents) ? (
               <span className="text-sm font-semibold text-gray-700">
@@ -239,7 +246,7 @@ function GenericFeaturePage({
             <div className="flex items-baseline justify-between mb-4">
               <h3 className="font-medium text-gray-800">Revenue generated over time</h3>
               <div className="text-right">
-                {!revealed ? (
+                {!heroRevealed ? (
                   <Skeleton className="h-8 w-28" />
                 ) : (
                   <p className="text-2xl font-bold text-gray-900 leading-none">
@@ -249,7 +256,7 @@ function GenericFeaturePage({
                 <p className="text-[11px] text-gray-400 mt-1">expected pipeline</p>
               </div>
             </div>
-            {!revealed || !featureRevenueData ? (
+            {!heroRevealed || !featureRevenueData ? (
               <Skeleton className="h-[260px] w-full rounded" />
             ) : (
               <RevenueChart series={featureRevenueData.timeSeries} />
@@ -258,7 +265,7 @@ function GenericFeaturePage({
           <RevenueCostSummary
             costBreakdown={brandCostBreakdown}
             costEconomics={featureRevenueData?.costEconomics}
-            pending={!revealed}
+            pending={!heroRevealed}
             bottomCard={<TopWorkflowsCard brandId={brandId} featureSlug={featureSlug} />}
           />
         </div>
@@ -269,25 +276,25 @@ function GenericFeaturePage({
           breakdown; non-revenue features keep the reply breakdown (+ a standalone
           cost donut below). Static-shell-first: frames + titles paint first, the
           bars/donut/numbers skeleton until the stats reveal together. */}
-      {(!revealed || (campaigns.length > 0 && (funnelChart || breakdownChart))) && (
+      {(!chartsRevealed || (campaigns.length > 0 && (funnelChart || breakdownChart))) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
           {(funnelChart || !featureDef) && (
             <FunnelMetrics
               steps={funnelChart && funnelChart.type === "funnel-bar" ? funnelChart.steps : []}
               stats={featureStats}
               registry={registry}
-              pending={!revealed}
+              pending={!chartsRevealed}
             />
           )}
           {revenueEnabled ? (
-            <CostBreakdown costBreakdown={brandCostBreakdown} pending={!revealed} />
+            <CostBreakdown costBreakdown={brandCostBreakdown} pending={!chartsRevealed} />
           ) : (
             (breakdownChart || !featureDef) && (
               <ReplyBreakdown
                 segments={breakdownChart && breakdownChart.type === "breakdown-bar" ? breakdownChart.segments : []}
                 stats={featureStats}
                 registry={registry}
-                pending={!revealed}
+                pending={!chartsRevealed}
               />
             )
           )}
@@ -297,16 +304,16 @@ function GenericFeaturePage({
       {/* Cost Breakdown standalone — non-revenue features only (revenue features
           show it in the charts row above, in place of reply breakdown).
           Frame + title instant, donut/values skeleton until ready. */}
-      {!revenueEnabled && (!revealed || brandCostBreakdown.length > 0) && (
+      {!revenueEnabled && (!costRevealed || brandCostBreakdown.length > 0) && (
         <div className="mb-6">
-          <CostBreakdown costBreakdown={brandCostBreakdown} pending={!revealed} />
+          <CostBreakdown costBreakdown={brandCostBreakdown} pending={!costRevealed} />
         </div>
       )}
 
       {/* Campaigns List */}
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-gray-700">Campaigns</h2>
-        {!revealed ? (
+        {!listRevealed ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
               <CampaignRowSkeleton key={i} />

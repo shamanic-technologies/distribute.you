@@ -6,6 +6,7 @@ import {
   type QuoteOpportunityContext,
 } from "./quote-pitch-variables";
 import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "./org-desync";
+import { keepLastGoodFields, keepLastGoodList } from "./keep-last-good";
 import type { RevenueOverview } from "./revenue-view";
 import { parseFeatureRevenue } from "./revenue-parse";
 import { withAverageCampaignRelevanceScores } from "./outlet-relevance";
@@ -682,60 +683,9 @@ export async function saveBrandSalesEconomics(
   return parsed.data;
 }
 
-// ── Welcome signup gift (platform admin, staff-only) ──
-// The welcome gift is a billing-service promo code (`code='welcome'`) whose grant
-// amount is re-priced live WITHOUT a deploy. api-service proxies it under
-// /v1/promo-codes/welcome (PATCH staff-gated server-side). amount_cents is integer
-// cents; the UI displays/edits in dollars. Read at redeem time, so a new amount
-// applies to the next signup immediately.
-const WelcomePromoSchema = z.object({
-  code: z.string(),
-  amount_cents: z.number(),
-});
-
-export interface WelcomePromo {
-  code: string;
-  amountCents: number;
-}
-
-/** GET /promo-codes/welcome — current welcome gift grant ({ code, amount_cents }). */
-export async function getWelcomePromo(token?: string): Promise<WelcomePromo> {
-  const raw = await apiCall<unknown>(`/promo-codes/welcome`, { token });
-  const parsed = WelcomePromoSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getWelcomePromo: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] getWelcomePromo: invalid response shape");
-  }
-  return { code: parsed.data.code, amountCents: parsed.data.amount_cents };
-}
-
-/**
- * PATCH /promo-codes/welcome — re-price the welcome gift. `amountCents` must be a
- * non-negative integer (cents); the gateway gates this to staff and validates.
- * Returns the persisted value.
- */
-export async function setWelcomePromo(
-  amountCents: number,
-  token?: string,
-): Promise<WelcomePromo> {
-  const raw = await apiCall<unknown>(`/promo-codes/welcome`, {
-    token,
-    method: "PATCH",
-    body: { amountCents },
-  });
-  const parsed = WelcomePromoSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] setWelcomePromo: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] setWelcomePromo: invalid response shape");
-  }
-  return { code: parsed.data.code, amountCents: parsed.data.amount_cents };
-}
+// The welcome signup gift is NOT front-end editable. Its grant amount is
+// code-owned and pinned at boot by instrumentation.ts (WELCOME_GIFT_CENTS →
+// PATCH /v1/promo-codes/welcome). No dashboard read/write helper exists by design.
 
 // ── Effective sales economics (new-campaign prefill) ──
 // brand-service decides the default server-side: the brand's saved set when present
@@ -1164,46 +1114,6 @@ export interface CampaignRevenueGroup {
   roiMultiple: number | null;
 }
 
-const FeatureRevenueByWorkflowSchema = z.object({
-  featureSlug: z.string(),
-  groupBy: z.literal("workflowSlug"),
-  groups: z.array(
-    z.object({
-      workflowSlug: z.string(),
-      headline: z.object({ totalPipelineUsd: z.number().nullable() }),
-      costEconomics: z.object({
-        totalCostUsd: z.number(),
-        costOfAcquisitionPct: z.number().nullable(),
-        roiMultiple: z.number().nullable(),
-      }),
-    }),
-  ),
-});
-
-export interface WorkflowRevenueGroup {
-  workflowSlug: string;
-  totalPipelineUsd: number | null;
-  totalCostUsd: number;
-  /** totalPipelineUsd / totalCostUsd. Null when cost is 0 or pipeline is null. */
-  roiMultiple: number | null;
-}
-
-export function parseFeatureRevenueByWorkflow(raw: unknown, label: string): WorkflowRevenueGroup[] {
-  const parsed = FeatureRevenueByWorkflowSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error(`[dashboard] ${label}: response shape mismatch`, {
-      issues: parsed.error.issues,
-    });
-    throw new Error(`[dashboard] ${label}: invalid response shape`);
-  }
-  return parsed.data.groups.map((g) => ({
-    workflowSlug: g.workflowSlug,
-    totalPipelineUsd: g.headline.totalPipelineUsd,
-    totalCostUsd: g.costEconomics.totalCostUsd,
-    roiMultiple: g.costEconomics.roiMultiple,
-  }));
-}
-
 /** GET /features/:slug/revenue?groupBy=campaignId — per-campaign ROI for a brand+feature. */
 export async function getFeatureRevenueByCampaign(
   featureSlug: string,
@@ -1225,17 +1135,6 @@ export async function getFeatureRevenueByCampaign(
     totalCostUsd: g.costEconomics.totalCostUsd,
     roiMultiple: g.costEconomics.roiMultiple,
   }));
-}
-
-/** GET /features/:slug/revenue?groupBy=workflowSlug — per-workflow ROI for a brand+feature. */
-export async function getFeatureRevenueByWorkflow(
-  featureSlug: string,
-  brandId: string,
-  token?: string,
-): Promise<WorkflowRevenueGroup[]> {
-  const query = new URLSearchParams({ brandId, groupBy: "workflowSlug" });
-  const raw = await apiCall<unknown>(`/features/${featureSlug}/revenue?${query.toString()}`, { token });
-  return parseFeatureRevenueByWorkflow(raw, "getFeatureRevenueByWorkflow");
 }
 
 /** POST /brands — upsert brand by URL, returns brandId */
@@ -2000,14 +1899,14 @@ export async function fetchGlobalRankedWorkflows(params: {
 }
 
 // ── Sales-funnel workflow projection ────────────────────────────────────────
-// features-service is the SINGLE source for the sales-funnel SUM math: per-workflow
-// cost-per-close (meeting-booked sums the positive-reply route + the website-visit route,
-// funded by one budget; self-serve is clicks-only) + the funnel projection at a budget +
-// the recommended workflow/budget. Conversion rates + LTR come from the brand's SAVED
-// sales-economics (no client overrides). The dashboard only renders. Because the funnel
-// is LINEAR in budget, the page requests the projection at $1 and scales by budget for the
-// preset tiles (pure ×; the route-combining SUM stays server-side). Wire shape verified
-// against the deployed contract via api-registry. safeParse per CLAUDE.md (#1213/#1282).
+// features-service owns the per-workflow GLOBAL unit costs (contacted/reply/click $ — cross-org,
+// feature-scoped, econ-INDEPENDENT) + the recommended workflow. It ALSO returns a server-computed
+// cost-per-close + funnel projection from the brand's SAVED economics, but the campaigns/new page
+// no longer renders those directly: it recomputes cost-per-close + the funnel CLIENT-side from the
+// unit costs × the LIVE §2 econ inputs (lib/sales-funnel-projection.ts mirrors the server formula)
+// so the budget cards update instantly without a per-edit round-trip through the cold Neon chain.
+// On first paint the live econ == the saved econ, so the client numbers equal the server's exactly.
+// Wire shape verified against the deployed contract via api-registry. safeParse per CLAUDE.md.
 export type SalesObjective = "meeting-booked" | "self-serve";
 
 /** Per-workflow funnel projection at the requested budget. All fields null where the route
@@ -2047,6 +1946,37 @@ const WorkflowProjectionResponseSchema = z.object({
 export type WorkflowFunnelProjection = z.infer<typeof WorkflowFunnelProjectionSchema>;
 export type WorkflowProjectionItem = z.infer<typeof WorkflowProjectionItemSchema>;
 export type WorkflowProjectionResponse = z.infer<typeof WorkflowProjectionResponseSchema>;
+
+/**
+ * `structuralSharing` merge for the workflow-projection query. Every field above is `.nullable()`
+ * because a COLD Neon chain (api→features→workflow/runs/email-gateway/brand, all scale-to-zero)
+ * can answer a poll/refocus refetch with a VALID 200 whose unit costs / cost-per-close are null,
+ * or with fewer workflows, while it half-warms. That degenerate-but-valid payload would otherwise
+ * collapse the budget cards + Launch button (which derive off `costPerCloseUsd`). Keep the last-good
+ * per-workflow values + recommended pick across such a refetch; a real persistent downgrade still
+ * fails loud (console.error in keep-last-good). Opt-in here ONLY — a null is "transient/not-ready",
+ * not "removed". See lib/keep-last-good.ts + CLAUDE.md "keep-last-good (cache-write boundary)".
+ */
+export function keepLastGoodWorkflowProjection(
+  prev: WorkflowProjectionResponse | undefined,
+  next: WorkflowProjectionResponse,
+): WorkflowProjectionResponse {
+  if (!prev) return next;
+  const top = keepLastGoodFields(
+    prev,
+    next,
+    ["recommendedWorkflowDynastySlug", "recommendedBudgetUsd"],
+    "workflowProjection",
+  );
+  return {
+    ...top,
+    workflows: keepLastGoodList(prev.workflows, next.workflows, {
+      keyFn: (w) => w.workflowDynastySlug,
+      fields: ["contactedUsd", "replyUsd", "clickUsd", "costPerCloseUsd", "projection", "workflowDynastyName"],
+      label: "workflowProjection.workflows",
+    }),
+  };
+}
 
 /**
  * GET /features/:slug/workflow-projection — per-workflow cost-per-close + funnel projection

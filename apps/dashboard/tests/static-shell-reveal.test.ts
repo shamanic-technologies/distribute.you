@@ -46,8 +46,13 @@ describe("static-shell-first: cards accept `pending` and skeleton only values", 
     expect(src).toContain('title="Est. monthly revenue"');
     expect(src).toContain('title="AI mentions"');
     // The skeleton now lives INSIDE the card (value region), not as a whole-card
-    // early return — the title/frame paint before the value resolves.
-    expect(src).toMatch(/!revealed \?/);
+    // early return — the title/frame paint before the value resolves. Each card
+    // reveals on its OWN source via a per-card latch (a slow metric never holds
+    // the others in skeleton), so there is no single shared `revealed` gate.
+    expect(src).toContain("trafficRevealed");
+    expect(src).toContain("drRevealed");
+    expect(src).toContain("aiVisRevealed");
+    expect(src).toMatch(/!trafficRevealed \?/);
   });
 
   it("RevenueCostSummary renders its labels outside the pending gate", () => {
@@ -62,15 +67,27 @@ describe("static-shell-first: cards accept `pending` and skeleton only values", 
 describe("static-shell-first: pages pass `pending`, not a whole-body skeleton swap", () => {
   const APP = "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]";
 
-  it("feature overview renders the section always with pending (no CoordinatedReveal whole-body wrap)", () => {
+  it("feature overview reveals each card on its OWN data (per-card barriers, no single AND gate)", () => {
     const overview = read(`${APP}/overview/page.tsx`);
     expect(overview).toContain("RevenueOverviewSection");
-    expect(overview).toContain("pending={!valuesRevealed}");
+    // Revenue data (features-service) and Total-spent (runs-service) resolve on
+    // different cold chains → separate latches, so the fast cost card never waits
+    // on the slower revenue call. No single `valuesRevealed` AND of both queries.
+    expect(overview).toContain("revenueRevealed");
+    expect(overview).toContain("costRevealed");
+    expect(overview).toContain("revenuePending={!revenueRevealed}");
+    expect(overview).toContain("costPending={!costRevealed}");
+    expect(overview).not.toContain("valuesRevealed");
   });
 
-  it("campaigns page renders charts with pending and drops the whole-body skeleton swap", () => {
+  it("campaigns page reveals each card on its OWN data (per-card barriers, no single whole-body gate)", () => {
     const campaigns = read(`${APP}/campaigns/page.tsx`);
-    expect(campaigns).toContain("pending={!revealed}");
+    // Per-card reveal latches — the list paints on `campaigns` alone instead of
+    // waiting for the slow features-service revenue/stats cold chain.
+    expect(campaigns).toContain("listRevealed");
+    expect(campaigns).toContain("chartsRevealed");
+    expect(campaigns).toContain("heroRevealed");
+    expect(campaigns).toContain("pending={!chartsRevealed}");
     // The old separate whole-card skeleton components are no longer imported/used.
     expect(campaigns).not.toContain("FunnelMetricsSkeleton");
     expect(campaigns).not.toContain("CostBreakdownSkeleton");

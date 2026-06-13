@@ -2,19 +2,14 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
-const landingPagePath = path.resolve(__dirname, "../../public/landing-v2/index.html");
+const landingPagePath = path.resolve(__dirname, "../../public/landing/index.html");
 const performancePagePath = path.resolve(
   __dirname,
-  "../../public/landing-v2/performance.html"
-);
-const designSystemPagePath = path.resolve(
-  __dirname,
-  "../../public/landing-v2/design-system.html"
+  "../../public/landing/performance.html"
 );
 const landingRoutePath = path.resolve(__dirname, "../../src/app/route.ts");
 const performanceRoutePath = path.resolve(__dirname, "../../src/app/performance/route.ts");
-const designSystemRoutePath = path.resolve(__dirname, "../../src/app/design-system/route.ts");
-const staticV2HtmlPath = path.resolve(__dirname, "../../src/lib/static-v2-html.ts");
+const staticHtmlPath = path.resolve(__dirname, "../../src/lib/static-html.ts");
 const nextConfigPath = path.resolve(__dirname, "../../next.config.ts");
 const benchmarksPagePath = path.resolve(__dirname, "../../src/app/benchmarks/page.tsx");
 const benchmarksLayoutPath = path.resolve(__dirname, "../../src/app/benchmarks/layout.tsx");
@@ -22,7 +17,7 @@ const benchmarksSlugRoutePath = path.resolve(
   __dirname,
   "../../src/app/benchmarks/[...slug]/route.ts",
 );
-const pricingPagePath = path.resolve(__dirname, "../../src/app/pricing/page.tsx");
+const pricingHtmlPath = path.resolve(__dirname, "../../public/landing/pricing.html");
 const privacyPagePath = path.resolve(__dirname, "../../src/app/privacy/page.tsx");
 const globalsPath = path.resolve(__dirname, "../../src/app/globals.css");
 const rootLayoutPath = path.resolve(__dirname, "../../src/app/layout.tsx");
@@ -32,18 +27,9 @@ const blogPagePath = path.resolve(__dirname, "../../src/app/blog/page.tsx");
 const blogSlugPagePath = path.resolve(__dirname, "../../src/app/blog/[slug]/page.tsx");
 const seoPath = path.resolve(__dirname, "../../src/lib/seo.ts");
 const featuresPath = path.resolve(__dirname, "../../../../shared/content/src/features.ts");
-const portfolioDashboardPath = path.resolve(
-  __dirname,
-  "../../src/components/portfolio-dashboard.tsx"
-);
-const gmailInboxPath = path.resolve(__dirname, "../../src/components/gmail-inbox.tsx");
-const freeVsCloudPath = path.resolve(__dirname, "../../src/components/free-vs-cloud.tsx");
-const workflowRecipePath = path.resolve(__dirname, "../../src/components/workflow-recipe.tsx");
-const toolsMarqueePath = path.resolve(__dirname, "../../src/components/tools-marquee.tsx");
 const sourcedStatsDataPath = path.resolve(__dirname, "../../src/data/sourced-stats.ts");
 const sourcedStatsCmpPath = path.resolve(__dirname, "../../src/components/sourced-stats.tsx");
 const providerAvatarPath = path.resolve(__dirname, "../../src/components/provider-avatar.tsx");
-const featureProvidersPath = path.resolve(__dirname, "../../src/data/feature-providers.ts");
 const benchmarksContentPath = path.resolve(__dirname, "../../src/data/benchmarks-content.ts");
 const navbarPath = path.resolve(__dirname, "../../src/components/navbar.tsx");
 const footerPath = path.resolve(__dirname, "../../src/components/footer.tsx");
@@ -63,12 +49,12 @@ describe("Landing page: ICP-only alignment", () => {
     expect(page).not.toMatch(/rounded-3xl[^"]*p-2[^"]*shadow-2xl/);
   });
 
-  it("serves the exact v2 static HTML through the root route", () => {
+  it("serves the exact static HTML through the root route", () => {
     const route = fs.readFileSync(landingRoutePath, "utf-8");
-    expect(route).toMatch(/staticV2Response\("index\.html"\)/);
+    expect(route).toMatch(/staticResponse\("index\.html"\)/);
   });
 
-  it("includes the exact v2 CSS, JS, and logo asset references", () => {
+  it("includes the exact CSS, JS, and logo asset references", () => {
     expect(page).toMatch(/href="css\/styles\.css"/);
     expect(page).toMatch(/src="js\/main\.js"/);
     expect(page).toMatch(/src="logo\/logo-distribute\.svg"/);
@@ -79,15 +65,15 @@ describe("Landing page: ICP-only alignment", () => {
     expect(page).not.toMatch(/staying solo/i);
   });
 
-  it("includes the v2 'The 3 months you skip' email-infra section", () => {
+  it("includes the 'The 3 months you skip' email-infra section", () => {
     expect(page).toMatch(/The 3 months you skip/i);
   });
 
-  it("mentions $25 free credits in hero or CTA", () => {
-    expect(page).toMatch(/\$25.*free credits|free credits.*\$25/i);
+  it("mentions the 50 free emails offer in hero or CTA", () => {
+    expect(page).toMatch(/50 free emails/i);
   });
 
-  it("renders the v2 cold-email hero copy (no multi-channel grid)", () => {
+  it("renders the cold-email hero copy (no multi-channel grid)", () => {
     expect(page).toMatch(/AI cold email, done for you/);
     expect(page).toMatch(/100 sales calls/);
     expect(page).toMatch(/in 30 days\./);
@@ -104,13 +90,12 @@ describe("Landing page: ICP-only alignment", () => {
   });
 });
 
-describe("Landing v2 static pages", () => {
+describe("Landing static pages", () => {
   const performance = fs.readFileSync(performancePagePath, "utf-8");
-  const designSystem = fs.readFileSync(designSystemPagePath, "utf-8");
 
   it("serves the exact designer performance page at /performance", () => {
     const route = fs.readFileSync(performanceRoutePath, "utf-8");
-    expect(route).toMatch(/staticV2Response\("performance\.html"\)/);
+    expect(route).toMatch(/staticResponse\("performance\.html"\)/);
     expect(performance).toMatch(/Public campaign data,<br>updated from production\./);
     expect(performance).toMatch(/id="proofTrack"/);
     expect(performance).toMatch(/funnel-bar-fill/);
@@ -133,15 +118,9 @@ describe("Landing v2 static pages", () => {
     expect(slugRoute).toMatch(/NextResponse\.redirect\(new URL\("\/benchmarks"/);
   });
 
-  it("serves the designer design-system page as the v2 visual reference", () => {
-    const route = fs.readFileSync(designSystemRoutePath, "utf-8");
-    expect(route).toMatch(/staticV2Response\("design-system\.html"\)/);
-    expect(designSystem).toMatch(/Distribute — Design System/);
-    expect(designSystem).toMatch(/Tokens, typography, components, and patterns/);
-  });
 
   it("rewrites static designer links that would otherwise 404 on landing", () => {
-    const helper = fs.readFileSync(staticV2HtmlPath, "utf-8");
+    const helper = fs.readFileSync(staticHtmlPath, "utf-8");
     expect(helper).toMatch(/href="\/docs\/api"/);
     expect(helper).toMatch(/URLS\.apiDocs/);
     expect(helper).toMatch(/href="\/docs\/mcp"/);
@@ -152,8 +131,6 @@ describe("Landing v2 static pages", () => {
     expect(helper).toMatch(/URLS\.signUp/);
     expect(helper).toMatch(/github\.com\/distribute-you/);
     expect(helper).toMatch(/URLS\.github/);
-    expect(helper).toMatch(/logo-distribute-2\.svg/);
-    expect(helper).toMatch(/logo-distribute\.svg/);
   });
 
   it("keeps the local landing legal links routable", () => {
@@ -168,35 +145,31 @@ describe("Landing v2 static pages", () => {
     const footer = fs.readFileSync(footerPath, "utf-8");
     expect(navbar).toMatch(/\{ label: "Performance", href: urls\.performance \}/);
     expect(navbar).toMatch(/\{ label: "Benchmarks", href: urls\.benchmarks \}/);
-    expect(navbar).toMatch(/landing-v2\/logo\/logo-distribute\.svg/);
+    expect(navbar).toMatch(/landing\/logo\/logo-distribute\.svg/);
     expect(navbar).not.toMatch(/logo-head\.jpg/);
     expect(footer).toMatch(/\{ label: "Performance", href: "\/performance" \}/);
     expect(footer).toMatch(/\{ label: "Benchmarks", href: "\/benchmarks" \}/);
-    expect(footer).toMatch(/landing-v2\/logo\/logo-distribute\.svg/);
+    expect(footer).toMatch(/landing\/logo\/logo-distribute\.svg/);
     expect(footer).not.toMatch(/logo-head\.jpg/);
   });
 
-  it("uses the v2 visual system on React landing pages", () => {
+  it("uses the visual system on React landing pages", () => {
     const globals = fs.readFileSync(globalsPath, "utf-8");
-    const pricing = fs.readFileSync(pricingPagePath, "utf-8");
     const benchmarks = fs.readFileSync(benchmarksPagePath, "utf-8");
     const privacy = fs.readFileSync(privacyPagePath, "utf-8");
-    expect(globals).toMatch(/--v2-bg:/);
+    expect(globals).toMatch(/--dy-bg:/);
     expect(globals).toMatch(/JetBrains\+Mono/);
     expect(globals).not.toMatch(/Fredoka/);
-    expect(pricing).toMatch(/<main className="v2-page">/);
-    expect(pricing).toMatch(/v2-title/);
-    expect(benchmarks).toMatch(/<main className="v2-page">/);
-    expect(benchmarks).toMatch(/v2-title/);
-    expect(privacy).toMatch(/<main className="v2-page">/);
+    expect(benchmarks).toMatch(/<main className="dy-page">/);
+    expect(benchmarks).toMatch(/dy-title/);
+    expect(privacy).toMatch(/<main className="dy-page">/);
   });
 
-  it("keeps OpenGraph, Twitter, and JSON-LD aligned to the v2 brand assets", () => {
+  it("keeps OpenGraph, Twitter, and JSON-LD aligned to the brand assets", () => {
     const files = [
       landingPagePath,
       performancePagePath,
       rootLayoutPath,
-      pricingPagePath,
       benchmarksPagePath,
       investorsPagePath,
       privacyPagePath,
@@ -208,10 +181,9 @@ describe("Landing v2 static pages", () => {
     const combined = files.map((file) => fs.readFileSync(file, "utf-8")).join("\n");
 
     expect(fs.existsSync(path.resolve(__dirname, "../../src/app/benchmarks/opengraph-image.tsx"))).toBe(true);
-    expect(combined).toMatch(/\/landing-v2\/logo\/logo-distribute\.svg/);
-    expect(combined).toMatch(/logo:\s*BRAND_LOGO_URL|\"logo\":\"https:\/\/distribute\.you\/landing-v2\/logo\/logo-distribute\.svg\"/);
+    expect(combined).toMatch(/\/landing\/logo\/logo-distribute\.svg/);
+    expect(combined).toMatch(/logo:\s*BRAND_LOGO_URL|\"logo\":\"https:\/\/distribute\.you\/landing\/logo\/logo-distribute\.svg\"/);
     expect(combined).toMatch(/\/opengraph-image/);
-    expect(combined).toMatch(/\/pricing\/opengraph-image/);
     expect(combined).toMatch(/\/benchmarks\/opengraph-image/);
     expect(combined).toMatch(/\/investors\/opengraph-image/);
     expect(combined).not.toMatch(/\/og-image\.jpg/);
@@ -221,164 +193,47 @@ describe("Landing v2 static pages", () => {
     for (const page of [landing, performance]) {
       expect(page).toMatch(/property="og:image" content="https:\/\/distribute\.you\/opengraph-image"/);
       expect(page).toMatch(/name="twitter:image" content="https:\/\/distribute\.you\/opengraph-image"/);
-      expect(page).toMatch(/rel="icon" href="\/landing-v2\/logo\/logo-distribute\.svg"/);
+      expect(page).toMatch(/rel="icon" href="\/landing\/logo\/logo-distribute\.svg"/);
       expect(page).toMatch(/"@type":"Organization"/);
-      expect(page).toMatch(/"logo":"https:\/\/distribute\.you\/landing-v2\/logo\/logo-distribute\.svg"/);
+      expect(page).toMatch(/"logo":"https:\/\/distribute\.you\/landing\/logo\/logo-distribute\.svg"/);
     }
-  });
-});
-
-describe("PortfolioDashboard component", () => {
-  it("exists at src/components/portfolio-dashboard.tsx", () => {
-    expect(fs.existsSync(portfolioDashboardPath)).toBe(true);
-  });
-
-  const content = fs.existsSync(portfolioDashboardPath)
-    ? fs.readFileSync(portfolioDashboardPath, "utf-8")
-    : "";
-
-  it("exports a PortfolioDashboard component", () => {
-    expect(content).toMatch(/export function PortfolioDashboard/);
-  });
-
-  it("renders multiple products (multi-brand portfolio)", () => {
-    expect(content).toMatch(/products/i);
-  });
-
-  it("shows a positive-reply column (CAC / $-per-reply variant)", () => {
-    expect(content).toMatch(/positive reply/i);
-    expect(content).toMatch(/\$\/positive reply/i);
-  });
-});
-
-describe("GmailInbox component", () => {
-  it("exists at src/components/gmail-inbox.tsx", () => {
-    expect(fs.existsSync(gmailInboxPath)).toBe(true);
-  });
-
-  const content = fs.existsSync(gmailInboxPath)
-    ? fs.readFileSync(gmailInboxPath, "utf-8")
-    : "";
-
-  it("exports a GmailInbox component", () => {
-    expect(content).toMatch(/export function GmailInbox/);
-  });
-
-  it("simulates the v2 buyer reply email", () => {
-    expect(content).toMatch(/Marcus Chen/);
-    expect(content).toMatch(/Loopify\.io/);
-    expect(content).toMatch(/3 new today/);
-    expect(content).toMatch(/Next up: replies/);
-  });
-});
-
-describe("FreeVsCloud component", () => {
-  it("exists at src/components/free-vs-cloud.tsx", () => {
-    expect(fs.existsSync(freeVsCloudPath)).toBe(true);
-  });
-
-  const content = fs.existsSync(freeVsCloudPath)
-    ? fs.readFileSync(freeVsCloudPath, "utf-8")
-    : "";
-
-  it("exports a FreeVsCloud component", () => {
-    expect(content).toMatch(/export function FreeVsCloud/);
-  });
-
-  it("renders the single Pay-as-you-go cloud tier with v2 bullets", () => {
-    expect(content).toMatch(/Pay as you go|pay.as.you.go|\$25.*credit/i);
-    expect(content).toMatch(/Pre-warmed inboxes\. Skip the 3-week setup\./);
-    expect(content).toMatch(/AI reads every reply\. Only buyers reach your Gmail\./);
-    expect(content).not.toMatch(/Self-host|self.host/i);
-    expect(content).not.toMatch(/9 channels live/i);
-  });
-});
-
-describe("ToolsMarquee component", () => {
-  it("exists at src/components/tools-marquee.tsx", () => {
-    expect(fs.existsSync(toolsMarqueePath)).toBe(true);
-  });
-
-  const content = fs.existsSync(toolsMarqueePath)
-    ? fs.readFileSync(toolsMarqueePath, "utf-8")
-    : "";
-
-  it("exports a ToolsMarquee component", () => {
-    expect(content).toMatch(/export function ToolsMarquee/);
-  });
-
-  it("uses logo.dev for tool icons", () => {
-    expect(content).toMatch(/img\.logo\.dev/);
-    expect(content).toMatch(/NEXT_PUBLIC_LOGO_DEV_TOKEN/);
-  });
-
-  it("renders 3 rows with alternating directions (ltr, rtl, ltr)", () => {
-    const ltrMatches = (content.match(/direction="ltr"/g) || []).length;
-    const rtlMatches = (content.match(/direction="rtl"/g) || []).length;
-    expect(ltrMatches).toBe(2);
-    expect(rtlMatches).toBe(1);
-  });
-
-  it("doubles the tool list for seamless infinite scroll", () => {
-    expect(content).toMatch(/\[\.\.\.tools,\s*\.\.\.tools\]/);
   });
 });
 
 describe("Landing page: tools marquee section", () => {
   const page = fs.readFileSync(landingPagePath, "utf-8");
 
-  it("does not render the ToolsMarquee component in the v2 home", () => {
+  it("does not render the ToolsMarquee component in the home", () => {
     expect(page).not.toMatch(/<ToolsMarquee/);
     expect(page).not.toMatch(/from\s+["']@\/components\/tools-marquee["']/);
   });
 });
 
-describe("GmailInbox component: v2 static buyer reply", () => {
-  const content = fs.readFileSync(gmailInboxPath, "utf-8");
+describe("Pricing page: budget calculator (static pricing.html)", () => {
+  const content = fs.readFileSync(pricingHtmlPath, "utf-8");
 
-  it("uses the target static buyer reply instead of logo.dev avatars", () => {
-    expect(content).toMatch(/Re: interested in a demo this week/);
-    expect(content).not.toMatch(/img\.logo\.dev/);
-  });
-});
-
-describe("WorkflowRecipe component", () => {
-  it("exists at src/components/workflow-recipe.tsx", () => {
-    expect(fs.existsSync(workflowRecipePath)).toBe(true);
+  it("serves the pay-per-email budget calculator", () => {
+    expect(content).toMatch(/calculator/i);
+    expect(content).toMatch(/0\.07/);
+    expect(content).toMatch(/px-calc/);
   });
 
-  const content = fs.existsSync(workflowRecipePath)
-    ? fs.readFileSync(workflowRecipePath, "utf-8")
-    : "";
-
-  it("exports a WorkflowRecipe component", () => {
-    expect(content).toMatch(/export function WorkflowRecipe/);
-  });
-
-  it("shows primitives stacking into a workflow with an outcome", () => {
-    expect(content).toMatch(/primitive|stack|recipe/i);
-  });
-});
-
-describe("Pricing page: ICP framing", () => {
-  const content = fs.readFileSync(pricingPagePath, "utf-8");
-
-  it("introduces the 3-layer pricing stack (primitives / workflows / outcomes)", () => {
-    expect(content).toMatch(/primitive/i);
-    expect(content).toMatch(/workflow/i);
-    expect(content).toMatch(/outcome/i);
+  it("uses the shared nav/footer + main asset bundle", () => {
+    expect(content).toMatch(/id="site-nav"/);
+    expect(content).toMatch(/id="site-footer"/);
+    expect(content).toMatch(/href="css\/styles\.css"/);
   });
 });
 
 describe("Landing page: industry stats section", () => {
   const page = fs.readFileSync(landingPagePath, "utf-8");
 
-  it("does not render the legacy industry stats section in the v2 home", () => {
+  it("does not render the legacy industry stats section in the home", () => {
     expect(page).not.toMatch(/Why most cold email never gets read/);
     expect(page).not.toMatch(/Why distribution kills most solo products/);
   });
 
-  it("keeps the v2 pricing section immediately after the skipped-work section", () => {
+  it("keeps the pricing section immediately after the skipped-work section", () => {
     expect(page).toMatch(/The 3 months you skip/);
     expect(page).toMatch(/Pay per email\. Stop anytime\./);
     expect(page).not.toMatch(/Lemlist, Saleshandy, Adobe, and Gartner/);
@@ -438,52 +293,6 @@ describe("ProviderAvatar shared helper", () => {
   });
 });
 
-describe("Feature providers map (channels-grid logos)", () => {
-  it("exists at src/data/feature-providers.ts", () => {
-    expect(fs.existsSync(featureProvidersPath)).toBe(true);
-  });
-
-  const content = fs.existsSync(featureProvidersPath)
-    ? fs.readFileSync(featureProvidersPath, "utf-8")
-    : "";
-
-  it("maps each live feature to a provider stack with logo.dev domains", () => {
-    for (const id of [
-      "sales-outreach",
-      "journalist-outreach",
-      "vc-outreach",
-      "hiring-outreach",
-      "accelerators-outreach",
-      "pr-expert-quote-outreach",
-      "outlet-discovery",
-      "press-kit-generation",
-      "ai-visibility-scoring",
-    ]) {
-      expect(content).toMatch(new RegExp(`"${id}"`));
-    }
-  });
-});
-
-describe("WorkflowRecipe trimmed copy + provider logos", () => {
-  const content = fs.readFileSync(workflowRecipePath, "utf-8");
-
-  it("drops the verbose 'Each workflow stacks priced API primitives' paragraph", () => {
-    expect(content).not.toMatch(/Each workflow stacks priced API primitives/);
-  });
-
-  it("drops the 'Fork the workflow. Beat the recipe.' footer line", () => {
-    expect(content).not.toMatch(/Fork the workflow\. Beat the recipe\./);
-  });
-
-  it("renders a provider logo per primitive via shared ProviderAvatar", () => {
-    expect(content).toMatch(/from\s+["']@\/components\/provider-avatar["']/);
-    expect(content).toMatch(/<ProviderAvatar/);
-    expect(content).toMatch(/providerDomain:\s*["']apollo\.io["']/);
-    expect(content).toMatch(/providerDomain:\s*["']anthropic\.com["']/);
-    expect(content).toMatch(/providerDomain:\s*["']resend\.com["']/);
-  });
-});
-
 describe("Investors page: dream quote reframed (CAC/scale, not staying solo)", () => {
   const content = fs.readFileSync(investorsPagePath, "utf-8");
 
@@ -506,28 +315,22 @@ describe("benchmarks-content: SALES ctaClosing rewritten", () => {
   });
 });
 
-describe("shared/content/src/features.ts: backend-aligned catalog", () => {
+describe("shared/content/src/features.ts: sales-cold-email only", () => {
   const content = fs.readFileSync(featuresPath, "utf-8");
 
-  it("exposes at least 9 features (all backend channels)", () => {
+  it("exposes exactly one feature: sales-outreach", () => {
     const matches = content.match(/id:\s*["'][a-z-]+["']/g) || [];
-    expect(matches.length).toBeGreaterThanOrEqual(9);
+    expect(matches).toHaveLength(1);
+    expect(content).toMatch(/id:\s*"sales-outreach"/);
   });
 
-  it("includes the VC outreach channel", () => {
-    expect(content).toMatch(/vc-(outreach|cold-email)/i);
-  });
-
-  it("includes the Accelerators outreach channel", () => {
-    expect(content).toMatch(/accelerator/i);
-  });
-
-  it("includes the Press Kit channel", () => {
-    expect(content).toMatch(/press-kit/i);
-  });
-
-  it("marks at least one channel as coming-soon (e.g. Influencers or LinkedIn)", () => {
-    expect(content).toMatch(/coming-soon/);
-    expect(content).toMatch(/influencer|linkedin/i);
+  it("dropped every off-message channel", () => {
+    expect(content).not.toMatch(/journalist-outreach/);
+    expect(content).not.toMatch(/vc-outreach/);
+    expect(content).not.toMatch(/hiring-outreach/);
+    expect(content).not.toMatch(/accelerator/i);
+    expect(content).not.toMatch(/press-kit/i);
+    expect(content).not.toMatch(/influencer|linkedin-outreach/i);
+    expect(content).not.toMatch(/status:\s*"coming-soon"/);
   });
 });

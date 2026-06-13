@@ -15,16 +15,26 @@ const fetchContent = fs.readFileSync(benchmarkFetchPath, "utf-8");
 const componentContent = fs.readFileSync(componentPath, "utf-8");
 
 describe("benchmark client trajectories", () => {
-  it("preserves an optional public brand timeline from the ranked response", () => {
-    expect(fetchContent).toContain("timeline?: RawBrandTimelinePoint[]");
-    expect(fetchContent).toContain("timeline: mapBrandTimeline(item.timeline)");
+  it("does NOT carry per-brand timeline (stripped: blew the 2MB unstable_cache, never rendered)", () => {
+    // The per-brand `timeline` (~1,500 daily points × up to 6 brands ≈ 2.2MB)
+    // pushed the cached benchmark result past the 2MB unstable_cache limit (so it
+    // never cached → every revalidation re-hit the slow API → build timeouts), and
+    // its only consumer (ClientTrajectoriesSection) is not mounted. It is stripped.
+    expect(fetchContent).not.toContain("timeline: mapBrandTimeline(item.timeline)");
+    expect(fetchContent).not.toContain("function mapRevenueTimeline");
+    expect(fetchContent).not.toContain("trajectoryBrandIds");
+    // The revenue fields still drive the brand table.
     expect(fetchContent).toContain("expectedRevenueUsd: item.headline?.totalPipelineUsd");
     expect(fetchContent).toContain("roiMultiple: item.costEconomics?.roiMultiple");
-    expect(fetchContent).toContain("function mapRevenueTimeline");
-    expect(fetchContent).toContain("cumulativePipelineUsd: expectedRevenueUsd");
-    expect(fetchContent).toContain("const trajectoryBrandIds = new Set");
-    expect(fetchContent).toContain("(item.costEconomics?.roiMultiple ?? 0) > 1");
-    expect(fetchContent).toContain(".slice(0, 6)");
+  });
+
+  it("bounds every build-time benchmark fetch so a slow API can't abort the deploy", () => {
+    // fetchBoundedJson parses INSIDE the try/catch (covers a timeout during
+    // res.json()) and returns a fallback on any failure — the fix for the uncaught
+    // TimeoutError that aborted the /benchmarks prerender and failed deploys.
+    expect(fetchContent).toContain("function fetchBoundedJson");
+    expect(fetchContent).toContain("AbortSignal.timeout");
+    expect(fetchContent).toContain("return fallback");
   });
 
   it("fetches public revenue timelines from features-service", () => {

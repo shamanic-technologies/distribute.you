@@ -1,15 +1,40 @@
 import { cache } from "react";
-import { fetchInvestorMetrics } from "@/lib/investors/fetch-metrics";
+import {
+  fetchInvestorMetrics,
+  type InvestorMetrics,
+} from "@/lib/investors/fetch-metrics";
 import { formatCents, formatNumber, computeCAGR } from "@/lib/investors/format";
 import { BarChart, CGRLineChart } from "@/components/investors/charts";
-import { DISTRIBUTION_FEATURES } from "@distribute/content";
 
-const LIVE_CHANNEL_COUNT = DISTRIBUTION_FEATURES.filter((f) => f.status === "live").length;
-const COMING_SOON_CHANNEL_COUNT = DISTRIBUTION_FEATURES.filter(
-  (f) => f.status === "coming-soon"
-).length;
+// Last-resort zero metrics. The sections render SSR-sync (no <Suspense>), so a
+// throw from fetchInvestorMetrics would abort the whole Vercel prerender
+// (CLAUDE.md "Exception — Vercel build-time prerender"). Fail soft to zeros so
+// the page always ships; a healthy build still renders the real numbers.
+const EMPTY_INVESTOR_METRICS: InvestorMetrics = {
+  updatedAt: new Date().toISOString(),
+  users: { total: 0, orgs: 0 },
+  billing: {
+    totalAccounts: 0,
+    accountsWithPaymentMethod: 0,
+    totalCreditedCents: "0",
+    totalRevenueCents: "0",
+  },
+  runs: { completed: 0, failed: 0, running: 0, totalCostInUsdCents: "0" },
+  monthlyGrowth: [],
+  weeklyGrowth: [],
+};
 
-const getMetrics = cache(() => fetchInvestorMetrics(""));
+const getMetrics = cache(async (): Promise<InvestorMetrics> => {
+  try {
+    return await fetchInvestorMetrics("");
+  } catch (err) {
+    console.error(
+      "[landing] investor metrics unavailable, rendering zeros",
+      err,
+    );
+    return EMPTY_INVESTOR_METRICS;
+  }
+});
 
 async function loadMetrics() {
   return getMetrics();
@@ -41,17 +66,10 @@ export async function CompanyOverviewSection() {
   return (
     <div className="bg-gray-800/30 border border-gray-700/50 rounded-xl p-6 text-gray-300 space-y-4 text-sm leading-relaxed">
       <p>
-        <strong className="text-white">distribute</strong> is the Stripe of
-        Distribution — one credit-based account that runs outbound across many
-        channels (sales cold email, journalist pitch, VC outreach, hiring,
-        accelerators, PR expert quotes, and more). Builders provide a URL and a
-        per-channel budget; AI workflows handle prospecting, generation, sending,
+        <strong className="text-white">distribute</strong> is a pay-as-you-go
+        cloud platform for AI cold email outreach. Builders provide a URL and a
+        daily budget; AI workflows handle prospecting, email generation, sending,
         reply qualification, and reporting — ranked by real cost-per-positive-reply.
-      </p>
-      <p>
-        <strong className="text-white">{LIVE_CHANNEL_COUNT} channels are live</strong>{" "}
-        today, with <strong className="text-white">{COMING_SOON_CHANNEL_COUNT} more</strong>{" "}
-        in active development. The full catalog is in the Product section below.
       </p>
       <p>
         The business model is{" "}
