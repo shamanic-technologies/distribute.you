@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { PIPELINE, PIPE_STATUS_META, OUTCOME_TOTALS, type PipeLead, type PipeStatus } from "@/lib/mock-data";
+import { PIPELINE, STAGE_META, OUTCOME_TOTALS, type PipeLead, type Stage, type Funnel } from "@/lib/mock-data";
 import type { Brand } from "./onboarding-overlay";
 import {
-  OverviewIcon, InfoIcon, ChevronDownIcon, PlusIcon, UserIcon,
+  OverviewIcon, InfoIcon, ChevronDownIcon, ChevronLeftIcon, PlusIcon, UserIcon,
   CardIcon, GearIcon, LogoutIcon, CheckIcon, CloseIcon, CalendarIcon, CartIcon,
 } from "./icons";
 
@@ -21,8 +21,35 @@ const TAB_TITLES: Record<Tab, string> = {
   "brand-settings": "Brand settings",
 };
 
+// Per-page funnel config. entry = the measured/inferred stage (carries a probability),
+// terminal = the confirmed stage. Stale once an entry-stage row exceeds staleDays.
+type PageKey = "signups" | "meetings" | "purchases";
+interface PageCfg {
+  key: PageKey; title: string; funnel: Funnel; entry: Stage; terminal: Stage;
+  confirmLabel: string; revertLabel: string; staleDays: number; staleNote: string; value: number;
+}
+const PAGE_CFG: Record<PageKey, PageCfg> = {
+  signups:   { key: "signups",   title: "Signups",         funnel: "website", entry: "visited",   terminal: "signed-up",      confirmLabel: "Mark as signed up", revertLabel: "Revert to visited",       staleDays: 14,  staleNote: "no signup in 14 days",      value: 120 },
+  purchases: { key: "purchases", title: "Purchases",       funnel: "website", entry: "signed-up", terminal: "purchased",      confirmLabel: "Mark as purchased", revertLabel: "Revert to signed up",     staleDays: 180, staleNote: "no purchase in 6 months",   value: 1400 },
+  meetings:  { key: "meetings",  title: "Meetings Booked", funnel: "meeting", entry: "replied",   terminal: "meeting-booked", confirmLabel: "Mark as booked",    revertLabel: "Revert to positive reply", staleDays: 30,  staleNote: "no meeting in 1 month",     value: 480 },
+};
+
 const hostnameOf = (url: string) => url.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
-const fmtUsd = (n: number) => "$" + n.toLocaleString("en-US");
+const fmtUsd = (n: number) => "$" + Math.round(n).toLocaleString("en-US");
+
+const isStale = (l: PipeLead, c: PageCfg) => l.stage === c.entry && l.daysAgo > c.staleDays;
+const isConfirmed = (l: PipeLead, c: PageCfg) => l.stage === c.terminal;
+function expectedRev(l: PipeLead, c: PageCfg): number {
+  if (isConfirmed(l, c)) return c.value;
+  if (isStale(l, c)) return 0;
+  return l.prob * c.value;
+}
+/** Pick the page a lead belongs to (used for Overview row clicks). */
+function cfgForLead(l: PipeLead): PageCfg {
+  if (l.funnel === "meeting") return PAGE_CFG.meetings;
+  if (l.stage === "purchased" || l.stage === "signed-up") return PAGE_CFG.purchases;
+  return PAGE_CFG.signups;
+}
 
 /** Brand logo via favicon service, initials fallback on error. */
 function BrandAvatar({ brand, size = 24 }: { brand: Brand; size?: number }) {
@@ -34,27 +61,27 @@ function BrandAvatar({ brand, size = 24 }: { brand: Brand; size?: number }) {
   }
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img
-      className="app-brand-avatar-img"
-      style={{ width: size, height: size }}
-      src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
-      alt=""
-      onError={() => setFailed(true)}
-    />
+    <img className="app-brand-avatar-img" style={{ width: size, height: size }}
+      src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`} alt="" onError={() => setFailed(true)} />
   );
 }
 
 const monoCell: React.CSSProperties = { fontFamily: "'JetBrains Mono', monospace", fontSize: "var(--fs-xs)", color: "var(--muted)" };
 
-function PipeStatusChip({ status }: { status: PipeStatus }) {
-  const { label, tone } = PIPE_STATUS_META[status];
+function StageChip({ stage }: { stage: Stage }) {
+  const { label, tone } = STAGE_META[stage];
   return <span className={`pipe-status pipe-${tone}`}>{label}</span>;
 }
 
 export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boolean; onReset: () => void }) {
   const [tab, setTab] = useState<Tab>("overview");
 
-  // Multi-brand mock state — seeded with the onboarded brand.
+  // Pipeline lead state (mutable — confirm/revert acts on it).
+  const [leads, setLeads] = useState<PipeLead[]>(PIPELINE);
+  const [openId, setOpenId] = useState<number | null>(null);
+  const openLead = leads.find((l) => l.id === openId) ?? null;
+
+  // Multi-brand mock state.
   const [brands, setBrands] = useState<Brand[]>([brand]);
   const [activeIdx, setActiveIdx] = useState(0);
   const [brandMenuOpen, setBrandMenuOpen] = useState(false);
@@ -67,27 +94,28 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
 
   const closeMenus = () => { setBrandMenuOpen(false); setUserMenuOpen(false); };
 
-  function selectBrand(i: number) {
-    setActiveIdx(i);
-    setBrandMenuOpen(false);
-    setTab("overview");
-  }
-
+  function selectBrand(i: number) { setActiveIdx(i); setBrandMenuOpen(false); setTab("overview"); }
   function addBrand() {
     const url = newUrl.trim();
     if (!url) return;
     const norm = /^https?:\/\//.test(url) ? url : `https://${url}`;
-    const next: Brand = { name: hostnameOf(norm), url: norm };
-    setBrands((b) => [...b, next]);
+    setBrands((b) => [...b, { name: hostnameOf(norm), url: norm }]);
     setActiveIdx(brands.length);
-    setNewUrl("");
-    setAddOpen(false);
-    setTab("overview");
+    setNewUrl(""); setAddOpen(false); setTab("overview");
   }
+  function goSub(t: Tab) { setTab(t); setUserMenuOpen(false); }
 
-  function goSub(t: Tab) {
-    setTab(t);
-    setUserMenuOpen(false);
+  function confirmStage(l: PipeLead, c: PageCfg) {
+    setLeads((ls) => ls.map((x) => x.id === l.id ? {
+      ...x, stage: c.terminal, daysAgo: 0, prob: 1,
+      events: [{ ts: "just now", label: STAGE_META[c.terminal].label, tone: STAGE_META[c.terminal].tone }, ...x.events],
+    } : x));
+  }
+  function revertStage(l: PipeLead, c: PageCfg) {
+    setLeads((ls) => ls.map((x) => x.id === l.id ? {
+      ...x, stage: c.entry, prob: x.prob || 0.25,
+      events: [{ ts: "just now", label: `Reverted to ${STAGE_META[c.entry].label}`, tone: "muted" }, ...x.events],
+    } : x));
   }
 
   const navItem = (key: Tab, icon: React.ReactNode, label: string, count?: number) => (
@@ -103,7 +131,6 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
     <div className={`app-shell${hidden ? " app-hidden" : ""}`}>
       {/* Sidebar */}
       <aside className="app-sidebar">
-        {/* Brand switcher (replaces the platform logo) */}
         <div className="app-brand-switcher">
           <button className="app-brand-trigger" onClick={() => { setBrandMenuOpen((v) => !v); setUserMenuOpen(false); }}>
             <BrandAvatar brand={activeBrand} size={26} />
@@ -113,7 +140,6 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
             </div>
             <ChevronDownIcon className="app-brand-caret" width={14} height={14} />
           </button>
-
           {brandMenuOpen && (
             <div className="app-menu app-brand-menu">
               <div className="app-menu-label">Brands</div>
@@ -153,7 +179,6 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
             </div>
             <ChevronDownIcon className="app-user-caret" width={14} height={14} />
           </button>
-
           {userMenuOpen && (
             <div className="app-menu app-user-menu">
               <div className="app-menu-userhead">
@@ -174,7 +199,6 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
         </div>
       </aside>
 
-      {/* Click-away backdrop for open menus */}
       {(brandMenuOpen || userMenuOpen) && <div className="app-menu-backdrop" onClick={closeMenus} />}
 
       {/* Main */}
@@ -189,10 +213,10 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
         </div>
 
         <div className="app-content">
-          {tab === "overview" && <OverviewTab />}
-          {tab === "signups" && <PipelinePage title="Signups" status="signed-up" />}
-          {tab === "meetings" && <PipelinePage title="Meetings Booked" status="meeting-booked" />}
-          {tab === "purchases" && <PipelinePage title="Purchases" status="purchased" />}
+          {tab === "overview" && <OverviewTab leads={leads} onOpen={setOpenId} />}
+          {tab === "signups" && <PipelinePage cfg={PAGE_CFG.signups} leads={leads} onOpen={setOpenId} />}
+          {tab === "meetings" && <PipelinePage cfg={PAGE_CFG.meetings} leads={leads} onOpen={setOpenId} />}
+          {tab === "purchases" && <PipelinePage cfg={PAGE_CFG.purchases} leads={leads} onOpen={setOpenId} />}
           {tab === "help" && <HelpTab />}
           {tab === "account" && <AccountTab email={userEmail} />}
           {tab === "billing" && <BillingTab />}
@@ -220,30 +244,50 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
           </div>
         </div>
       )}
+
+      <EventDrawer
+        lead={openLead}
+        cfg={openLead ? cfgForLead(openLead) : null}
+        onClose={() => setOpenId(null)}
+        onConfirm={confirmStage}
+        onRevert={revertStage}
+      />
     </div>
   );
 }
 
 /* ── Pipeline table ── */
-function PipelineTable({ rows }: { rows: PipeLead[] }) {
+function ProbCell({ l, c }: { l: PipeLead; c: PageCfg }) {
+  if (isConfirmed(l, c)) return <span className="pipe-prob-confirmed"><CheckIcon width={12} height={12} /> confirmed</span>;
+  const pct = isStale(l, c) ? 0 : Math.round(l.prob * 100);
+  return (
+    <div className="pipe-prob">
+      <div className="pipe-prob-bar"><div className="pipe-prob-fill" style={{ width: `${pct}%` }} /></div>
+      <span className="pipe-prob-n">{pct}%</span>
+    </div>
+  );
+}
+
+function PipelineTable({ rows, cfg, onOpen }: { rows: PipeLead[]; cfg: PageCfg; onOpen: (id: number) => void }) {
   return (
     <table className="leads-table">
-      <thead><tr><th>Company</th><th>Status</th><th>Date</th><th>Pipeline revenue</th></tr></thead>
+      <thead><tr><th>Company</th><th>Status</th><th>Probability</th><th>Expected revenue</th><th>Last activity</th></tr></thead>
       <tbody>
         {rows.map((r) => (
-          <tr key={r.id}>
+          <tr key={r.id} onClick={() => onOpen(r.id)}>
             <td>
               <div className="lead-org">
-                <div className={`lead-org-logo tone-${PIPE_STATUS_META[r.status].tone}`}>{r.initials}</div>
+                <div className={`lead-org-logo tone-${STAGE_META[r.stage].tone}`}>{r.initials}</div>
                 <div>
                   <div className="lead-org-name">{r.company}</div>
                   <div className="lead-contact">{r.contact}</div>
                 </div>
               </div>
             </td>
-            <td><PipeStatusChip status={r.status} /></td>
-            <td className="lead-date">{r.date}</td>
-            <td style={monoCell}>{fmtUsd(r.revenue)}</td>
+            <td><StageChip stage={r.stage} /></td>
+            <td><ProbCell l={r} c={cfg} /></td>
+            <td style={monoCell}>{fmtUsd(expectedRev(r, cfg))}</td>
+            <td className="lead-date">{r.daysAgo === 0 ? "today" : `${r.daysAgo}d ago`}</td>
           </tr>
         ))}
       </tbody>
@@ -251,28 +295,92 @@ function PipelineTable({ rows }: { rows: PipeLead[] }) {
   );
 }
 
-/* ── Pipeline revenue chart (Actual solid → Projected dashed), ported from the landing mockup ── */
-function PipelineChart() {
+/* ── Signups / Meetings / Purchases ── */
+function PipelinePage({ cfg, leads, onOpen }: { cfg: PageCfg; leads: PipeLead[]; onOpen: (id: number) => void }) {
+  const [sub, setSub] = useState<"active" | "stale">("active");
+  const mine = leads.filter((l) => l.funnel === cfg.funnel && (l.stage === cfg.entry || l.stage === cfg.terminal));
+  const stale = mine.filter((l) => isStale(l, cfg));
+  const active = mine.filter((l) => !isStale(l, cfg));
+  const rows = sub === "active" ? active : stale;
+  const expectedTotal = active.reduce((s, l) => s + expectedRev(l, cfg), 0);
+
   return (
-    <svg className="pipe-chart-svg" viewBox="0 0 700 140" style={{ width: "100%", display: "block", overflow: "visible" }}>
-      <line x1="30" y1="120" x2="670" y2="120" stroke="var(--muted)" strokeWidth="1" opacity="0.25" />
-      <path fill="var(--green)" fillOpacity="0.08" stroke="none"
-        d="M325.4,84.1 L374.6,75.3 L423.8,65.7 L473.1,55.5 L522.3,45.2 L571.5,34.9 L620.8,25.4 L670,15.9 L670,120 L325.4,120 Z" />
-      <path fill="var(--green)" fillOpacity="0.16" stroke="none"
-        d="M30,117.8 L79.2,113.4 L128.5,107.5 L177.7,103.1 L226.9,96.5 L276.2,89.9 L325.4,84.1 L325.4,120 L30,120 Z" />
-      <path fill="none" stroke="var(--green)" strokeWidth="2" strokeDasharray="4 4" strokeLinecap="round" strokeLinejoin="round"
-        d="M325.4,84.1 L374.6,75.3 L423.8,65.7 L473.1,55.5 L522.3,45.2 L571.5,34.9 L620.8,25.4 L670,15.9" />
-      <path fill="none" stroke="var(--green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-        d="M30,117.8 L79.2,113.4 L128.5,107.5 L177.7,103.1 L226.9,96.5 L276.2,89.9 L325.4,84.1" />
-      <line x1="325.4" y1="18" x2="325.4" y2="120" stroke="var(--muted)" strokeWidth="1" strokeDasharray="2 3" opacity="0.6" />
-      <circle cx="325.4" cy="84.1" r="3.5" fill="var(--green)" />
-      <text x="10" y="134" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="var(--muted)">Jun</text>
-      <text x="30" y="134" textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="var(--muted)">1</text>
-      <text x="177.7" y="134" textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="var(--muted)">4</text>
-      <text x="325.4" y="134" textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="var(--green)">7 · today</text>
-      <text x="473.1" y="134" textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="var(--muted)">10</text>
-      <text x="670" y="134" textAnchor="end" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="var(--muted)">14</text>
-    </svg>
+    <div className="leads-panel">
+      <div className="leads-header">
+        <div>
+          <span className="leads-title">{cfg.title}</span>
+          <span className="leads-count">{fmtUsd(expectedTotal)} expected</span>
+        </div>
+      </div>
+      <div className="leads-tabs">
+        <button className={`leads-tab${sub === "active" ? " active" : ""}`} onClick={() => setSub("active")}>Active <span className="app-nav-count">{active.length}</span></button>
+        <button className={`leads-tab${sub === "stale" ? " active" : ""}`} onClick={() => setSub("stale")}>Stale <span className="app-nav-count">{stale.length}</span></button>
+      </div>
+      {sub === "stale" && <div className="pipe-stale-note">Stale = {cfg.staleNote} → counted as 0% probability.</div>}
+      {rows.length
+        ? <PipelineTable rows={rows} cfg={cfg} onOpen={onOpen} />
+        : <div className="empty-state"><p>{sub === "stale" ? "Nothing stale — every lead is still in play." : "Nothing here yet."}</p></div>}
+    </div>
+  );
+}
+
+/* ── Event-history drawer ── */
+function EventDrawer({ lead, cfg, onClose, onConfirm, onRevert }: {
+  lead: PipeLead | null; cfg: PageCfg | null;
+  onClose: () => void; onConfirm: (l: PipeLead, c: PageCfg) => void; onRevert: (l: PipeLead, c: PageCfg) => void;
+}) {
+  const open = !!lead && !!cfg;
+  return (
+    <>
+      <div className={`lead-drawer-overlay${open ? " open" : ""}`} onClick={onClose} />
+      <div className={`lead-drawer${open ? " open" : ""}`}>
+        {lead && cfg && (
+          <>
+            <div className="drawer-header">
+              <button className="drawer-back" onClick={onClose}><ChevronLeftIcon width={14} height={14} /> Back</button>
+              <button className="drawer-close" onClick={onClose}><CloseIcon width={12} height={12} /></button>
+            </div>
+            <div className="drawer-lead-info">
+              <div className={`drawer-org-logo tone-${STAGE_META[lead.stage].tone}`}>{lead.initials}</div>
+              <div style={{ flex: 1 }}>
+                <div className="drawer-org-name">{lead.company}</div>
+                <div className="drawer-contact">{lead.contact}</div>
+                <div className="drawer-meta">
+                  <StageChip stage={lead.stage} /> · {fmtUsd(expectedRev(lead, cfg))} expected
+                  {!isConfirmed(lead, cfg) && ` · ${isStale(lead, cfg) ? 0 : Math.round(lead.prob * 100)}% likely`}
+                </div>
+              </div>
+            </div>
+
+            <div className="drawer-thread">
+              <div className="drawer-thread-title">Event history</div>
+              <div className="pipe-timeline">
+                {lead.events.map((e, i) => (
+                  <div className="pipe-tl-row" key={i}>
+                    <div className="pipe-tl-rail">
+                      <span className={`pipe-tl-dot tone-${e.tone ?? "muted"}`} />
+                      {i < lead.events.length - 1 && <span className="pipe-tl-line" />}
+                    </div>
+                    <div className="pipe-tl-body">
+                      <div className="pipe-tl-label">{e.label}</div>
+                      <div className="pipe-tl-ts">{e.ts}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="drawer-actions">
+              {isConfirmed(lead, cfg) ? (
+                <button className="btn btn-g" style={{ flex: 1, justifyContent: "center" }} onClick={() => onRevert(lead, cfg)}>{cfg.revertLabel}</button>
+              ) : (
+                <button className="btn btn-p" style={{ flex: 1, justifyContent: "center" }} onClick={() => onConfirm(lead, cfg)}>{cfg.confirmLabel}</button>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -286,7 +394,28 @@ function KpiInfo({ tip }: { tip: string }) {
   );
 }
 
-function OverviewTab() {
+function PipelineChart() {
+  return (
+    <svg className="pipe-chart-svg" viewBox="0 0 700 140" style={{ width: "100%", display: "block", overflow: "visible" }}>
+      <line x1="30" y1="120" x2="670" y2="120" stroke="var(--muted)" strokeWidth="1" opacity="0.25" />
+      <path fill="var(--green)" fillOpacity="0.08" stroke="none" d="M325.4,84.1 L374.6,75.3 L423.8,65.7 L473.1,55.5 L522.3,45.2 L571.5,34.9 L620.8,25.4 L670,15.9 L670,120 L325.4,120 Z" />
+      <path fill="var(--green)" fillOpacity="0.16" stroke="none" d="M30,117.8 L79.2,113.4 L128.5,107.5 L177.7,103.1 L226.9,96.5 L276.2,89.9 L325.4,84.1 L325.4,120 L30,120 Z" />
+      <path fill="none" stroke="var(--green)" strokeWidth="2" strokeDasharray="4 4" strokeLinecap="round" strokeLinejoin="round" d="M325.4,84.1 L374.6,75.3 L423.8,65.7 L473.1,55.5 L522.3,45.2 L571.5,34.9 L620.8,25.4 L670,15.9" />
+      <path fill="none" stroke="var(--green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" d="M30,117.8 L79.2,113.4 L128.5,107.5 L177.7,103.1 L226.9,96.5 L276.2,89.9 L325.4,84.1" />
+      <line x1="325.4" y1="18" x2="325.4" y2="120" stroke="var(--muted)" strokeWidth="1" strokeDasharray="2 3" opacity="0.6" />
+      <circle cx="325.4" cy="84.1" r="3.5" fill="var(--green)" />
+      <text x="10" y="134" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="var(--muted)">Jun</text>
+      <text x="30" y="134" textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="var(--muted)">1</text>
+      <text x="177.7" y="134" textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="var(--muted)">4</text>
+      <text x="325.4" y="134" textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="var(--green)">7 · today</text>
+      <text x="473.1" y="134" textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="var(--muted)">10</text>
+      <text x="670" y="134" textAnchor="end" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="var(--muted)">14</text>
+    </svg>
+  );
+}
+
+function OverviewTab({ leads, onOpen }: { leads: PipeLead[]; onOpen: (id: number) => void }) {
+  const recent = [...leads].sort((a, b) => a.daysAgo - b.daysAgo).slice(0, 5);
   return (
     <div>
       <div className="kpi-strip">
@@ -358,40 +487,40 @@ function OverviewTab() {
 
       <div className="leads-panel">
         <div className="leads-header">
-          <div>
-            <span className="leads-title">Recent activity</span>
-            <span className="leads-count">{PIPELINE.length} this week</span>
-          </div>
+          <div><span className="leads-title">Recent activity</span><span className="leads-count">{recent.length} latest</span></div>
         </div>
-        <PipelineTable rows={PIPELINE.slice(0, 5)} />
+        <table className="leads-table">
+          <thead><tr><th>Company</th><th>Status</th><th>Expected revenue</th><th>Last activity</th></tr></thead>
+          <tbody>
+            {recent.map((r) => {
+              const c = cfgForLead(r);
+              return (
+                <tr key={r.id} onClick={() => onOpen(r.id)}>
+                  <td>
+                    <div className="lead-org">
+                      <div className={`lead-org-logo tone-${STAGE_META[r.stage].tone}`}>{r.initials}</div>
+                      <div><div className="lead-org-name">{r.company}</div><div className="lead-contact">{r.contact}</div></div>
+                    </div>
+                  </td>
+                  <td><StageChip stage={r.stage} /></td>
+                  <td style={monoCell}>{fmtUsd(expectedRev(r, c))}</td>
+                  <td className="lead-date">{r.daysAgo === 0 ? "today" : `${r.daysAgo}d ago`}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
-    </div>
-  );
-}
-
-/* ── Signups / Meetings / Purchases (filtered) ── */
-function PipelinePage({ title, status }: { title: string; status: PipeStatus }) {
-  const rows = PIPELINE.filter((r) => r.status === status);
-  const total = rows.reduce((s, r) => s + r.revenue, 0);
-  return (
-    <div className="leads-panel">
-      <div className="leads-header">
-        <div>
-          <span className="leads-title">{title}</span>
-          <span className="leads-count">{rows.length} · {fmtUsd(total)} pipeline</span>
-        </div>
-      </div>
-      {rows.length ? <PipelineTable rows={rows} /> : <div className="empty-state"><p>Nothing here yet.</p></div>}
     </div>
   );
 }
 
 /* ── Help ── */
 const HELP_ITEMS = [
-  { q: "How does distribute find leads?", a: "We read your product URL, build your ICP, and source matching companies automatically — no lists to upload." },
-  { q: "What do I actually pay for?", a: "You set a daily budget and pick what to maximize. We deliver that outcome at the best ROI; you only pay per contact reached." },
-  { q: "Where do my results show up?", a: "Signups, booked meetings, and purchases land in this dashboard in real time, with the pipeline revenue each generated." },
-  { q: "Can I run more than one brand?", a: "Yes — use the brand switcher at the top left to add and switch between brands." },
+  { q: "What does distribute actually measure?", a: "Only two things for sure: website visits and positive email replies. Signups, meetings, and purchases are inferred with a probability until you confirm them." },
+  { q: "Why does a lead show a probability?", a: "A 'Visited website' lead hasn't signed up yet — we estimate how likely they are to convert, and show the expected revenue (probability × deal value)." },
+  { q: "What happens to stale leads?", a: "A visit with no signup in 14 days, a signup with no purchase in 6 months, or a reply with no meeting in 1 month drops to 0% and moves to the Stale tab." },
+  { q: "Can I correct a status?", a: "Yes — open any lead and mark it signed up / purchased / booked, or revert it back. The expected revenue recomputes instantly." },
 ];
 
 function HelpTab() {
@@ -444,21 +573,9 @@ function BillingTab() {
   return (
     <div>
       <div className="kpi-strip">
-        <div className="kpi-card">
-          <div className="kpi-label">Current plan</div>
-          <div className="kpi-val">Recommended</div>
-          <div className="kpi-meta">$58 / day budget</div>
-        </div>
-        <div className="kpi-card">
-          <div className="kpi-label">Spent this month</div>
-          <div className="kpi-val accent">$412</div>
-          <div className="kpi-meta">of ~$1,740 cap</div>
-        </div>
-        <div className="kpi-card">
-          <div className="kpi-label">Auto top-up</div>
-          <div className="kpi-val green">On</div>
-          <div className="kpi-meta">+$100 below $20</div>
-        </div>
+        <div className="kpi-card"><div className="kpi-label">Current plan</div><div className="kpi-val">Recommended</div><div className="kpi-meta">$58 / day budget</div></div>
+        <div className="kpi-card"><div className="kpi-label">Spent this month</div><div className="kpi-val accent">$412</div><div className="kpi-meta">of ~$1,740 cap</div></div>
+        <div className="kpi-card"><div className="kpi-label">Auto top-up</div><div className="kpi-val green">On</div><div className="kpi-meta">+$100 below $20</div></div>
       </div>
       <div className="leads-panel" style={{ marginBottom: "2rem", maxWidth: 640 }}>
         <div className="leads-header">
@@ -477,11 +594,7 @@ function BillingTab() {
           <thead><tr><th>Date</th><th>Amount</th><th>Status</th></tr></thead>
           <tbody>
             {INVOICES.map((inv) => (
-              <tr key={inv.date}>
-                <td className="lead-date">{inv.date}</td>
-                <td style={monoCell}>{inv.amount}</td>
-                <td><span className="pipe-status pipe-green">{inv.status}</span></td>
-              </tr>
+              <tr key={inv.date}><td className="lead-date">{inv.date}</td><td style={monoCell}>{inv.amount}</td><td><span className="pipe-status pipe-green">{inv.status}</span></td></tr>
             ))}
           </tbody>
         </table>
