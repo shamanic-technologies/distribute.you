@@ -44,8 +44,16 @@ const onboardingBenefits = [
 ];
 
 export default function OnboardingPage() {
-  const { createOrganization, setActive } = useOrganizationList();
+  const { createOrganization, setActive, userMemberships } = useOrganizationList({
+    userMemberships: { infinite: true },
+  });
   const { organization } = useOrganization();
+  // Orgs the user can return to instead of creating a new one. Exclude the active
+  // org: a fresh signup auto-creates a brand-less org that is the one the first-run
+  // gate bounces back to onboarding, so it is never a "go back" target.
+  const otherOrgs = (userMemberships?.data ?? []).filter(
+    (m) => m.organization.id !== organization?.id,
+  );
   const searchParams = useSearchParams();
   // The "New organization" dropdown entry passes ?new=1 to force a brand-new org
   // even when a populated org is already active. A fresh signup arrives here with
@@ -116,6 +124,17 @@ export default function OnboardingPage() {
     }
   };
 
+
+  const handleReturnToOrg = async (orgId: string) => {
+    posthog.capture("onboarding_return_to_existing_org", { org_id: orgId });
+    // Mirror the breadcrumb org switcher: AWAIT setActive before navigating so the
+    // Clerk session (and its org claim) has rotated before the URL drives the
+    // first-run gate — navigating early carries the old org in the lag window (DIS-143).
+    if (setActive) {
+      await setActive({ organization: orgId });
+    }
+    window.location.href = `/orgs/${orgId}`;
+  };
 
   // Step 1: Onboarding call booking
   if (step === "booking-intro") {
@@ -200,6 +219,41 @@ export default function OnboardingPage() {
           >
             Maybe later
           </button>
+
+          {otherOrgs.length > 0 && (
+            <div className="mt-7 border-t border-gray-100 pt-6">
+              <p className="mb-3 text-center text-sm font-semibold text-gray-500">
+                Already have a workspace?
+              </p>
+              <div className="space-y-2">
+                {otherOrgs.map((m) => (
+                  <button
+                    key={m.organization.id}
+                    onClick={() => handleReturnToOrg(m.organization.id)}
+                    className="flex w-full items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-left transition hover:border-brand-400 hover:shadow-sm"
+                  >
+                    {m.organization.hasImage ? (
+                      <img
+                        src={m.organization.imageUrl}
+                        alt=""
+                        className="h-8 w-8 shrink-0 rounded-lg object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-950 text-sm font-semibold text-white">
+                        {m.organization.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span className="flex-1 truncate text-sm font-medium text-gray-900">
+                      {m.organization.name}
+                    </span>
+                    <span className="text-sm font-semibold text-brand-600">
+                      Go &rarr;
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
