@@ -48,8 +48,8 @@ describe("Auth pages branding", () => {
     expect(signUpContent).toContain("logo-head.jpg");
   });
 
-  it("sign-in page should use logo-head.jpg", () => {
-    expect(signInContent).toContain("logo-head.jpg");
+  it("sign-in page should use logo-distribute.svg", () => {
+    expect(signInContent).toContain("logo-distribute.svg");
   });
 });
 
