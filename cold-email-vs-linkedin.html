@@ -10,6 +10,18 @@
     gtag('js', new Date());
     gtag('config', 'AW-18233267088');
   </script>
+  <script>
+    function gtagSendEvent(url) {
+      var callback = function () { if (typeof url === 'string') window.location = url; };
+      gtag('event', 'manual_event_PURCHASE', { 'event_callback': callback, 'event_timeout': 2000 });
+      return false;
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+      document.querySelectorAll('a[href^="https://app.distribute.you"]').forEach(function (a) {
+        a.addEventListener('click', function (e) { e.preventDefault(); gtagSendEvent(this.href); });
+      });
+    });
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cold email vs LinkedIn for B2B outreach: the honest comparison</title>
   <meta name="description" content="LinkedIn limits you to 100-200 connection requests per week and $80/month for 50 InMail credits. Cold email has no platform caps. Here's how the numbers compare.">

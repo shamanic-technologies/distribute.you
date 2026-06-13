@@ -10,6 +10,18 @@
     gtag('js', new Date());
     gtag('config', 'AW-18233267088');
   </script>
+  <script>
+    function gtagSendEvent(url) {
+      var callback = function () { if (typeof url === 'string') window.location = url; };
+      gtag('event', 'manual_event_PURCHASE', { 'event_callback': callback, 'event_timeout': 2000 });
+      return false;
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+      document.querySelectorAll('a[href^="https://app.distribute.you"]').forEach(function (a) {
+        a.addEventListener('click', function (e) { e.preventDefault(); gtagSendEvent(this.href); });
+      });
+    });
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cold email setup cost: what building the infrastructure actually runs</title>
   <meta name="description" content="Domains, warmup, data, sending tools — DIY cold email infrastructure runs $200-500/month before you send a single email. Here's every line item, and what Distribute replaces.">

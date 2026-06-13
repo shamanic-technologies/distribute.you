@@ -10,6 +10,18 @@
     gtag('js', new Date());
     gtag('config', 'AW-18233267088');
   </script>
+  <script>
+    function gtagSendEvent(url) {
+      var callback = function () { if (typeof url === 'string') window.location = url; };
+      gtag('event', 'manual_event_PURCHASE', { 'event_callback': callback, 'event_timeout': 2000 });
+      return false;
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+      document.querySelectorAll('a[href^="https://app.distribute.you"]').forEach(function (a) {
+        a.addEventListener('click', function (e) { e.preventDefault(); gtagSendEvent(this.href); });
+      });
+    });
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>B2B cold email reply rate: benchmarks and what moves the number</title>
   <meta name="description" content="The average B2B cold email gets 2-5% total replies. Campaigns with tight ICPs and AI-researched personalization hit 8-12%. Here's what the benchmarks mean and how to use them.">

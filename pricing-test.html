@@ -10,6 +10,18 @@
     gtag('js', new Date());
     gtag('config', 'AW-18233267088');
   </script>
+  <script>
+    function gtagSendEvent(url) {
+      var callback = function () { if (typeof url === 'string') window.location = url; };
+      gtag('event', 'manual_event_PURCHASE', { 'event_callback': callback, 'event_timeout': 2000 });
+      return false;
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+      document.querySelectorAll('a[href^="https://app.distribute.you"]').forEach(function (a) {
+        a.addEventListener('click', function (e) { e.preventDefault(); gtagSendEvent(this.href); });
+      });
+    });
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <title>Pricing | Distribute</title>
@@ -325,7 +337,7 @@
             <span>Est. cost per lead: <b id="calc-cpl">$3.57</b></span>
           </div>
           <div style="display:flex; gap:0.625rem; flex-wrap:wrap;">
-            <a href="https://app.distribute.you/signup" class="btn btn-p">Start free: 50 emails</a>
+            <a href="https://app.distribute.you" class="btn btn-p">Start free: 50 emails</a>
             <a href="/how-it-works" class="btn btn-g">How it works</a>
           </div>
         </div>
@@ -495,7 +507,7 @@
         <h2 class="t-hero">Start your first campaign today.</h2>
         <p>50 emails free. No card required. Takes five minutes.</p>
         <div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;margin-bottom:1rem">
-          <a href="https://app.distribute.you/signup" class="btn btn-p btn-lg">Start free: 50 emails</a>
+          <a href="https://app.distribute.you" class="btn btn-p btn-lg">Start free: 50 emails</a>
           <a href="/how-it-works" class="btn btn-g-dark btn-lg">See how it works</a>
         </div>
         <p class="t-lbl" style="color:oklch(58% 0.016 264);opacity:0.8">No monthly fee &nbsp;·&nbsp; No setup cost &nbsp;·&nbsp; Credits never auto-renew</p>
