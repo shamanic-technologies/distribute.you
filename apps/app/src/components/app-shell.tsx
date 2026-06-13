@@ -5,7 +5,7 @@ import { PIPELINE, STAGE_META, OUTCOME_TOTALS, type PipeLead, type Stage, type F
 import type { Brand } from "./onboarding-overlay";
 import {
   OverviewIcon, InfoIcon, ChevronDownIcon, ChevronLeftIcon, PlusIcon, UserIcon,
-  CardIcon, GearIcon, LogoutIcon, CheckIcon, CloseIcon, CalendarIcon, CartIcon,
+  CardIcon, GearIcon, LogoutIcon, CheckIcon, CloseIcon, CalendarIcon, CartIcon, MenuIcon,
 } from "./icons";
 
 type Tab = "overview" | "signups" | "meetings" | "purchases" | "help" | "account" | "billing" | "brand-settings";
@@ -88,13 +88,14 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [newUrl, setNewUrl] = useState("");
+  const [navOpen, setNavOpen] = useState(false); // mobile off-canvas sidebar
 
   const activeBrand = brands[activeIdx] ?? brand;
   const userEmail = `adam@${hostnameOf(activeBrand.url)}`;
 
   const closeMenus = () => { setBrandMenuOpen(false); setUserMenuOpen(false); };
 
-  function selectBrand(i: number) { setActiveIdx(i); setBrandMenuOpen(false); setTab("overview"); }
+  function selectBrand(i: number) { setActiveIdx(i); setBrandMenuOpen(false); setNavOpen(false); setTab("overview"); }
   function addBrand() {
     const url = newUrl.trim();
     if (!url) return;
@@ -103,7 +104,7 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
     setActiveIdx(brands.length);
     setNewUrl(""); setAddOpen(false); setTab("overview");
   }
-  function goSub(t: Tab) { setTab(t); setUserMenuOpen(false); }
+  function goSub(t: Tab) { setTab(t); setUserMenuOpen(false); setNavOpen(false); }
 
   function confirmStage(l: PipeLead, c: PageCfg) {
     setLeads((ls) => ls.map((x) => x.id === l.id ? {
@@ -120,7 +121,7 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
 
   const navItem = (key: Tab, icon: React.ReactNode, label: string, count?: number) => (
     <li>
-      <a href="#" className={tab === key ? "active" : ""} onClick={(e) => { e.preventDefault(); setTab(key); }}>
+      <a href="#" className={tab === key ? "active" : ""} onClick={(e) => { e.preventDefault(); setTab(key); setNavOpen(false); }}>
         {icon} {label}
         {count !== undefined && <span className="app-nav-count">{count}</span>}
       </a>
@@ -130,7 +131,7 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
   return (
     <div className={`app-shell${hidden ? " app-hidden" : ""}`}>
       {/* Sidebar */}
-      <aside className="app-sidebar">
+      <aside className={`app-sidebar${navOpen ? " open" : ""}`}>
         <div className="app-brand-switcher">
           <button className="app-brand-trigger" onClick={() => { setBrandMenuOpen((v) => !v); setUserMenuOpen(false); }}>
             <BrandAvatar brand={activeBrand} size={26} />
@@ -200,10 +201,12 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
       </aside>
 
       {(brandMenuOpen || userMenuOpen) && <div className="app-menu-backdrop" onClick={closeMenus} />}
+      {navOpen && <div className="app-nav-backdrop" onClick={() => setNavOpen(false)} />}
 
       {/* Main */}
       <main className="app-main">
         <div className="app-topbar">
+          <button className="app-burger" onClick={() => setNavOpen(true)} aria-label="Open menu"><MenuIcon width={18} height={18} /></button>
           <span className="app-topbar-title">{TAB_TITLES[tab]}</span>
           <div className="app-topbar-right">
             <div className="app-date-pill">Jun 1 – Jun 7, 2026</div>
