@@ -69,13 +69,13 @@ describe("Landing page: ICP-only alignment", () => {
     expect(page).toMatch(/The 3 months you skip/i);
   });
 
-  it("mentions the 50 free emails offer in hero or CTA", () => {
-    expect(page).toMatch(/50 free emails/i);
+  it("mentions the 50 free prospects offer in hero or CTA", () => {
+    expect(page).toMatch(/50 free prospects/i);
   });
 
-  it("renders the cold-email hero copy (no multi-channel grid)", () => {
-    expect(page).toMatch(/AI cold email, done for you/);
-    expect(page).toMatch(/100 sales calls/);
+  it("renders the autopilot sales hero copy (no multi-channel grid)", () => {
+    expect(page).toMatch(/Drive Sales in Autopilot/);
+    expect(page).toMatch(/100 sales/);
     expect(page).toMatch(/in 30 days\./);
     expect(page).not.toMatch(/channels live/);
     expect(page).not.toMatch(/DISTRIBUTION_FEATURES/);

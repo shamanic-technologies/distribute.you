@@ -137,36 +137,42 @@ if (dashEl) {
     budgetTimer = setTimeout(stepBudget, BUDGET_WAITS[budgetIdx]);
   }
 
-  /* ── Bar chart loop ── */
-  // Bars grouped by day (indices into querySelectorAll('.uid-chart-bar'))
-  const DAY_GROUPS = [[0,1],[2,3,4],[5,6,7],[8,9],[10,11,12],[13,14,15],[16,17]];
+  /* ── Revenue chart loop ── */
+  // Draws the actual (solid) pipeline-revenue line, then fades in areas,
+  // the today marker, and the projected (dashed) line.
+  function runRevLoop() {
+    const actual = dashEl.querySelector('.uid-rev-actual');
+    const proj   = dashEl.querySelector('.uid-rev-proj');
+    const fades  = dashEl.querySelectorAll('.uid-rev-fade');
 
-  function runBarsLoop() {
-    const bars = dashEl.querySelectorAll('.uid-chart-bar');
+    // Reset
+    if (actual) {
+      const len = actual.getTotalLength();
+      actual.style.transition       = 'none';
+      actual.style.strokeDasharray  = len;
+      actual.style.strokeDashoffset = len;
+    }
+    if (proj) { proj.style.transition = 'none'; proj.style.opacity = '0'; }
+    fades.forEach(f => { f.style.transition = 'none'; f.style.opacity = '0'; });
 
-    // Reset all
-    bars.forEach(b => {
-      b.style.transition = 'none';
-      b.style.transform  = 'scaleY(0)';
-    });
-
-    // After reset frame, grow day by day
-    let delay = 60;
-    DAY_GROUPS.forEach(group => {
-      group.forEach(idx => {
-        const bar = bars[idx];
-        if (!bar) return;
-        setTimeout(() => {
-          bar.style.transition = 'transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)';
-          bar.style.transform  = 'scaleY(1)';
-        }, delay);
-        delay += 30;
+    // Draw after reset frame
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (actual) {
+        actual.style.transition       = 'stroke-dashoffset 1.1s cubic-bezier(0.16, 1, 0.3, 1)';
+        actual.style.strokeDashoffset = '0';
+      }
+      fades.forEach((f, i) => {
+        f.style.transition = 'opacity 0.7s ease';
+        setTimeout(() => { f.style.opacity = '1'; }, 150 + i * 70);
       });
-      delay += 90; // pause between days
-    });
+      if (proj) {
+        proj.style.transition = 'opacity 0.9s ease';
+        setTimeout(() => { proj.style.opacity = '1'; }, 1000);
+      }
+    }));
 
-    // Loop: wait until all bars finished + pause, then restart
-    setTimeout(runBarsLoop, delay + 2800);
+    // Loop
+    setTimeout(runRevLoop, 6000);
   }
 
   function runDashAnim() {
@@ -204,7 +210,7 @@ if (dashEl) {
     });
 
     /* Start loops */
-    runBarsLoop();
+    runRevLoop();
     setTimeout(stepBudget, 400);
   }
 
