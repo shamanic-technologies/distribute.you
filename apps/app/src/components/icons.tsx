@@ -130,6 +130,12 @@ export const LogoutIcon = (p: IconProps) => (
   </svg>
 );
 
+export const MenuIcon = (p: IconProps) => (
+  <svg {...base({ strokeWidth: 1.75, ...p })}>
+    <path d="M2 4h12M2 8h12M2 12h12" />
+  </svg>
+);
+
 export const CalendarIcon = (p: IconProps) => (
   <svg {...base(p)}>
     <rect x="2" y="3" width="12" height="11" rx="1.5" />

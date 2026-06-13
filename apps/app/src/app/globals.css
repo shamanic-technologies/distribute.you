@@ -165,7 +165,11 @@ button { font-family: inherit; cursor: pointer; }
   background: var(--surface); border-right: 1px solid var(--border-hi);
   display: flex; flex-direction: column;
   padding: 1.25rem 0; position: fixed; top: 0; left: 0; bottom: 0; z-index: 50;
+  transition: transform 0.28s var(--ease);
 }
+.app-burger { display: none; background: none; border: none; color: var(--sub); cursor: pointer; padding: 0.25rem; margin-right: 0.25rem; align-items: center; }
+.app-burger:hover { color: var(--text); }
+.app-nav-backdrop { display: none; position: fixed; inset: 0; z-index: 49; background: oklch(0% 0 0 / 0.4); }
 .app-sidebar-logo {
   display: flex; align-items: center; gap: 0.5rem;
   padding: 0 1.25rem 1.25rem; border-bottom: 1px solid var(--border);
@@ -681,11 +685,42 @@ button { font-family: inherit; cursor: pointer; }
 
 /* ── Responsive ── */
 @media (max-width: 900px) {
-  .app-sidebar { transform: translateX(-100%); }
+  /* Off-canvas sidebar + hamburger */
+  .app-sidebar { transform: translateX(-100%); box-shadow: var(--shadow-lg); }
+  .app-sidebar.open { transform: translateX(0); }
+  .app-nav-backdrop { display: block; }
   .app-main { margin-left: 0; }
+  .app-burger { display: inline-flex; }
+
   .kpi-strip, .ob-budget-grid { grid-template-columns: 1fr 1fr; }
   .chart-roi-wrap { flex-direction: column; }
   .chart-roi-side { width: 100%; }
   .lead-drawer { width: 100%; }
   .ob-cd-cols { grid-template-columns: 1fr; }
+
+  /* Wide tables scroll horizontally instead of overflowing */
+  .leads-panel { overflow-x: auto; }
+  .leads-table { min-width: 600px; }
+}
+
+@media (max-width: 600px) {
+  .app-topbar { padding: 0 1rem; }
+  .app-date-pill { display: none; }
+  .app-content { padding: 1rem; }
+  .kpi-strip { grid-template-columns: 1fr 1fr; gap: 0.625rem; }
+  .ob-budget-grid { grid-template-columns: 1fr 1fr; }
+
+  /* Onboarding card on phones */
+  .onboarding-overlay { padding: 1rem 0.75rem; }
+  .onboarding-card { padding: 1.5rem 1.25rem; border-radius: 1rem; }
+  .onboarding-card.wide { max-width: 100%; }
+  .ob-features { flex-direction: column; }
+  .ob-rate-row { flex-wrap: wrap; gap: 0.5rem; }
+
+  /* Topbar action compacts */
+  .app-topbar-right .btn-p { font-size: var(--fs-xs); padding: 0.4rem 0.7rem; }
+}
+
+@media (max-width: 420px) {
+  .kpi-strip { grid-template-columns: 1fr; }
 }
