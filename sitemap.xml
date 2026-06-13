@@ -8,6 +8,11 @@
     <priority>1.0</priority>
   </url>
   <url>
+    <loc>https://distribute.you/pricing</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://distribute.you/how-it-works</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
