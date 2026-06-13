@@ -2,7 +2,11 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { clerkClient } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
-const ALLOWED_EMAILS = ["kevin.lourd@gmail.com"];
+const ALLOWED_EMAILS = [
+  "kevin.lourd@gmail.com",
+  "kevin@distribute.you",
+  "adam@distribute.you",
+];
 
 const isProtectedRoute = createRouteMatcher(["/(.*)"]);
 
