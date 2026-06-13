@@ -20,29 +20,24 @@ Static HTML/CSS/JS. No framework, no build step.
 
 ### Deploy workflow (read this before touching Vercel)
 
-**NEVER run `vercel --prod` locally.** It uploads a local build and hijacks the domain
-instantly, overriding the real GitHub-triggered build. `autoAssignCustomDomains: true`
-means the last production deploy always wins — your stale local build will freeze the
-live site for hours.
+**⛔ NEVER run `vercel --prod` or `vercel deploy --prod` locally — ever.**
+It uploads a stale local build, hijacks the production domain instantly, AND wipes
+the project's build settings (framework, output dir, env). This caused a 404 on
+sign-in. `autoAssignCustomDomains: true` means the last prod deploy always wins —
+recovery requires manually re-entering all build settings in the Vercel dashboard.
 
-**Ship to production → push to `website` branch:**
-```bash
-git push origin website
-```
-Vercel's `productionBranch` must be set to `website` for this to auto-promote.
-Change it at: https://vercel.com/blooming-generation/distribute-landing/settings/git
-(Production Branch field → change `main` to `website`)
+**Ship to production → merge to `main` branch.** Vercel auto-builds and publishes.
 
-**Local preview (safe, never touches the production domain):**
+**Local preview only (never touches prod domain):**
 ```bash
-vercel   # no --prod flag → creates a preview URL only
+vercel deploy   # NO --prod flag → creates a preview URL only
 ```
 
 **Promote a preview to production without re-uploading:**
 ```bash
 vercel promote <preview-url> --scope blooming-generation
 ```
-Use this after `vercel` (no --prod) builds a READY preview, or to roll back to any previous build.
+Use this after `vercel deploy` (no --prod) builds a READY preview, or to roll back.
 
 **NOTE on branch strategy:** The repo `shamanic-technologies/distribute.you` is a monorepo.
 `main` = app code (dashboard, services). `website` = landing site only.
