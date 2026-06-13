@@ -659,6 +659,10 @@ const PLATFORM_CHAT_CONFIGS = [
   },
 ];
 
+// Welcome signup-gift grant, in integer cents. Code-owned source of truth —
+// pinned at boot (see register()), never front-end editable.
+const WELCOME_GIFT_CENTS = 200;
+
 const TRANSIENT_CODES = new Set(["ECONNRESET", "ETIMEDOUT", "ECONNREFUSED", "UND_ERR_CONNECT_TIMEOUT"]);
 
 async function fetchWithRetry(
@@ -825,5 +829,32 @@ export async function register() {
     );
   } catch (err) {
     console.warn("[instrumentation] Chat config deployment error:", err);
+  }
+
+  // Pin the welcome signup gift. The grant amount is code-owned, NOT front-end
+  // editable: re-asserted to this constant on every boot so no UI / API client
+  // can re-price it. Change the gift by editing WELCOME_GIFT_CENTS + redeploying.
+  try {
+    const res = await fetchWithRetry(`${apiUrl}/v1/promo-codes/welcome`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": apiKey,
+      },
+      body: JSON.stringify({ amountCents: WELCOME_GIFT_CENTS }),
+    });
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      console.error(
+        `[instrumentation] Welcome gift pin failed: ${res.status} ${body}`,
+      );
+    } else {
+      console.log(
+        `[instrumentation] Pinned welcome gift to ${WELCOME_GIFT_CENTS} cents`,
+      );
+    }
+  } catch (err) {
+    console.error("[instrumentation] Welcome gift pin error:", err);
   }
 }
