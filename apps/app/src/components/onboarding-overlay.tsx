@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { CheckIcon, ChevronLeftIcon, EmailIcon, ChartIcon, SparkleIcon, SpinnerIcon, CircleIcon } from "./icons";
+import { CheckIcon, ChevronLeftIcon, CampaignIcon, ChartIcon, SparkleIcon, SpinnerIcon, CircleIcon } from "./icons";
 
 export interface Brand {
   name: string;
@@ -34,7 +34,7 @@ const RATE_META: Record<RateKey, { label: string; suffix: string; hint: string }
   ltv: { label: "Lifetime revenue / paid client", suffix: "$", hint: "Average revenue a customer brings over their lifetime." },
   v2s: { label: "Website visit → signup", suffix: "%", hint: "Of visitors who land on your site, how many sign up." },
   s2c: { label: "Signup → paid client", suffix: "%", hint: "Of signups, how many become paying customers." },
-  r2m: { label: "Positive reply → meeting booked", suffix: "%", hint: "Of positive email replies, how many book a meeting." },
+  r2m: { label: "Positive reply → meeting booked", suffix: "%", hint: "Of positive replies, how many book a meeting." },
   m2c: { label: "Meeting booked → close won", suffix: "%", hint: "Of booked meetings, how many close." },
 };
 
@@ -70,8 +70,8 @@ const TIER_LABELS = ["Starter", "Recommended", "Growth"] as const;
 const LOADING_STEPS = [
   { id: "ls-1", title: "Reading your product...", label: "Reading", delay: 1200 },
   { id: "ls-2", title: "Extracting ICP and objectives...", label: "Extracting your ICP and objectives", delay: 1600 },
-  { id: "ls-3", title: "Selecting email strategy...", label: "Selecting email strategy", delay: 1200 },
-  { id: "ls-4", title: "Drafting first email templates...", label: "Drafting your first email templates", delay: 1000 },
+  { id: "ls-3", title: "Selecting outreach strategy...", label: "Selecting outreach strategy", delay: 1200 },
+  { id: "ls-4", title: "Drafting your first outreach...", label: "Drafting your first outreach", delay: 1000 },
 ];
 
 function hostnameOf(url: string) {
@@ -217,24 +217,24 @@ export function OnboardingOverlay({ hidden, onComplete }: { hidden: boolean; onC
             <span className="ob-logo-name">distribute</span>
             <span className="nav-chip">beta</span>
           </div>
-          <h1 className="ob-title">Cold email outreach,<br />done for you.</h1>
-          <p className="ob-sub">Drop your product URL and a daily budget. We find leads, write the emails, send them, and forward qualified replies to Gmail.</p>
+          <h1 className="ob-title">You set the goal.<br />We deliver the outcome.</h1>
+          <p className="ob-sub">Drop your product URL and a daily budget. Pick what to maximize — signups, meetings, or sales — and we deliver it at the best ROI on the market. Stop anytime.</p>
 
           <div className="ob-features">
             <div className="ob-feature">
-              <div className="ob-feature-icon"><EmailIcon width={16} height={16} /></div>
-              <div className="ob-feature-title">Auto emails</div>
-              <div className="ob-feature-desc">Personalized cold emails sent daily</div>
+              <div className="ob-feature-icon"><CampaignIcon width={16} height={16} /></div>
+              <div className="ob-feature-title">Pick your goal</div>
+              <div className="ob-feature-desc">Signups, meetings, or sales — you choose</div>
             </div>
             <div className="ob-feature">
               <div className="ob-feature-icon"><CheckIcon width={16} height={16} /></div>
-              <div className="ob-feature-title">Qualified only</div>
-              <div className="ob-feature-desc">Only positive replies reach you</div>
+              <div className="ob-feature-title">Best ROI</div>
+              <div className="ob-feature-desc">We deliver the outcome at the best cost on the market</div>
             </div>
             <div className="ob-feature">
               <div className="ob-feature-icon"><ChartIcon width={16} height={16} /></div>
-              <div className="ob-feature-title">Pay per send</div>
-              <div className="ob-feature-desc">$0.036/email, avg $1.42/reply</div>
+              <div className="ob-feature-title">Pay per outcome</div>
+              <div className="ob-feature-desc">$15/signup · $90/meeting · $120/sale</div>
             </div>
           </div>
 
@@ -271,12 +271,12 @@ export function OnboardingOverlay({ hidden, onComplete }: { hidden: boolean; onC
             Back
           </button>
           <h2 className="ob-title" style={{ fontSize: "1.6rem" }}>What are we promoting?</h2>
-          <p className="ob-sub" style={{ marginBottom: "1.5rem" }}>We read your product, find the leads, and write every email. Just drop the URL.</p>
+          <p className="ob-sub" style={{ marginBottom: "1.5rem" }}>We read your product, find the leads, and run the outreach for you. Just drop the URL.</p>
 
           <div className="form-group">
             <label className="form-label" htmlFor="input-url">Product URL</label>
             <input type="url" className="form-input" id="input-url" placeholder="https://yourproduct.com" value={url} onChange={(e) => setUrl(e.target.value)} />
-            <p className="form-hint">We read your site to extract your ICP, value prop, and email strategy.</p>
+            <p className="form-hint">We read your site to extract your ICP, value prop, and outreach strategy.</p>
           </div>
 
           <div className="ob-actions" style={{ marginTop: "2rem" }}>
@@ -475,7 +475,7 @@ export function OnboardingOverlay({ hidden, onComplete }: { hidden: boolean; onC
               </div>
             </div>
             <div>
-              <div className="ob-cd-group-label">Email hooks</div>
+              <div className="ob-cd-group-label">Messaging hooks</div>
               <div className="ob-field-table">
                 <FieldRow label="Urgency" value={fields.urgency} onChange={setField("urgency")} />
                 <FieldRow label="Scarcity" value={fields.scarcity} onChange={setField("scarcity")} />
