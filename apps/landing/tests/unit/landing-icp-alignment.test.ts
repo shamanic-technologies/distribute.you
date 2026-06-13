@@ -65,8 +65,8 @@ describe("Landing page: ICP-only alignment", () => {
     expect(page).not.toMatch(/staying solo/i);
   });
 
-  it("includes the 'The 3 months you skip' email-infra section", () => {
-    expect(page).toMatch(/The 3 months you skip/i);
+  it("includes the 'full-time GTM job you skip' section", () => {
+    expect(page).toMatch(/The full-time GTM job you skip/i);
   });
 
   it("mentions the 50 free prospects offer in hero or CTA", () => {
@@ -234,7 +234,7 @@ describe("Landing page: industry stats section", () => {
   });
 
   it("keeps the pricing section immediately after the skipped-work section", () => {
-    expect(page).toMatch(/The 3 months you skip/);
+    expect(page).toMatch(/The full-time GTM job you skip/);
     expect(page).toMatch(/Pay per prospect reached\. Stop anytime\./);
     expect(page).not.toMatch(/Lemlist, Saleshandy, Adobe, and Gartner/);
   });
