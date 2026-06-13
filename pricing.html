@@ -160,23 +160,13 @@
     font-size: 0.65rem; color: var(--muted); text-align: center; line-height: 1.6;
   }
 
-  /* ── Rate ── */
-  .px-rate { padding: 5rem 0; background: var(--bg-alt); text-align: center; }
-  .px-rate-num {
-    font-size: clamp(3.5rem, 9vw, 6rem); font-weight: 900;
-    color: var(--text); line-height: 1; letter-spacing: -0.04em; margin-bottom: 0.4rem;
+  /* ── Included icons ── */
+  .included-icon {
+    width: 36px; height: 36px; background: var(--accent-dim);
+    border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    margin-bottom: 0.875rem; flex-shrink: 0;
   }
-  .px-rate-unit {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: var(--fs-sm); color: var(--sub); margin-bottom: 2.25rem;
-  }
-  .px-rate-pills { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; }
-  .px-rate-pill {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: var(--fs-xs); color: var(--sub);
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 999px; padding: 0.3rem 0.875rem;
-  }
+  .included-icon svg { width: 18px; height: 18px; stroke: var(--accent); fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
 
   /* ── Included ── */
   .px-included { padding: 5rem 0; }
@@ -187,11 +177,7 @@
     padding: 1.5rem;
     box-shadow: 0 1px 6px oklch(0% 0 0 / 0.05), 0 1px 2px oklch(0% 0 0 / 0.03);
   }
-  .included-dot {
-    width: 8px; height: 8px; background: var(--accent);
-    border-radius: 50%; margin-bottom: 0.875rem;
-  }
-  .included-item strong { display: block; font-size: var(--fs-base); font-weight: 700; color: var(--text); margin-bottom: 0.35rem; }
+.included-item strong { display: block; font-size: var(--fs-base); font-weight: 700; color: var(--text); margin-bottom: 0.35rem; }
   .included-item p { font-size: var(--fs-sm); color: var(--sub); line-height: 1.6; margin: 0; }
 
   /* ── Section labels ── */
@@ -350,21 +336,6 @@
     </div>
   </section>
 
-  <!-- ══ RATE ══ -->
-  <section class="px-rate">
-    <div class="wrap">
-      <div class="px-rate-num">$0.07</div>
-      <div class="px-rate-unit">per contact reached</div>
-      <div class="px-rate-pills">
-        <span class="px-rate-pill">No monthly fee</span>
-        <span class="px-rate-pill">No minimum spend</span>
-        <span class="px-rate-pill">Credits valid 12 months</span>
-        <span class="px-rate-pill">Pause anytime</span>
-        <span class="px-rate-pill">50 emails free to start</span>
-      </div>
-    </div>
-  </section>
-
   <!-- ══ INCLUDED ══ -->
   <section class="px-included">
     <div class="wrap">
@@ -375,32 +346,32 @@
       </div>
       <div class="included-grid">
         <div class="included-item">
-          <div class="included-dot"></div>
+          <div class="included-icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div>
           <strong>Prospect sourcing</strong>
           <p>We find contacts matching your ICP from public data and enriched databases. No list-building on your end.</p>
         </div>
         <div class="included-item">
-          <div class="included-dot"></div>
+          <div class="included-icon"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>
           <strong>Personalized copy</strong>
           <p>Each email is written for that specific contact: their company, role, and context. Not a mail merge.</p>
         </div>
         <div class="included-item">
-          <div class="included-dot"></div>
+          <div class="included-icon"><svg viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></div>
           <strong>Sending infrastructure</strong>
           <p>Domains, warm-up, and delivery: fully managed. No technical setup, no DNS headaches.</p>
         </div>
         <div class="included-item">
-          <div class="included-dot"></div>
+          <div class="included-icon"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg></div>
           <strong>Reply qualification</strong>
           <p>AI screens every reply and surfaces only the contacts worth a conversation. No noise filtering on your end.</p>
         </div>
         <div class="included-item">
-          <div class="included-dot"></div>
+          <div class="included-icon"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg></div>
           <strong>Compliance built in</strong>
           <p>Every email includes a working opt-out. Unsubscribes are processed automatically and suppressed across all campaigns.</p>
         </div>
         <div class="included-item">
-          <div class="included-dot"></div>
+          <div class="included-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div>
           <strong>Campaign dashboard</strong>
           <p>Sends, opens, replies, and qualified leads: all tracked in one view. Export your data anytime.</p>
         </div>
