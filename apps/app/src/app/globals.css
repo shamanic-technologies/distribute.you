@@ -150,6 +150,9 @@ button { font-family: inherit; cursor: pointer; }
 .btn-g { background: transparent; color: var(--sub); border: 1px solid var(--border-hi); }
 .btn-g:hover { color: var(--text); border-color: var(--border-hi); background: var(--surface); }
 .btn-lg { padding: 0.8rem 1.75rem; font-size: var(--fs-md); }
+.btn-google { justify-content: center; gap: 0.6rem; background: var(--surface); color: var(--text); border: 1px solid var(--border-hi); }
+.btn-google:hover { border-color: var(--accent-brd); background: var(--surface-hi); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
 
 
 /* ── App shell ── */
@@ -510,6 +513,45 @@ button { font-family: inherit; cursor: pointer; }
 .seq-subject { font-size: var(--fs-base); font-weight: 600; color: var(--text); margin-bottom: 0.375rem; letter-spacing: -0.01em; }
 .seq-body { font-size: var(--fs-sm); color: var(--sub); line-height: 1.65; max-width: 640px; }
 .seq-var { font-family: 'JetBrains Mono', monospace; font-size: 0.85em; background: var(--accent-dim); color: var(--accent); padding: 0.05rem 0.3rem; border-radius: 0.2rem; border: 1px solid var(--accent-brd); }
+
+/* ── Onboarding: objective / funnel choice cards ── */
+.ob-choice-list { display: flex; flex-direction: column; gap: 0.625rem; }
+.ob-choice-card {
+  display: flex; align-items: flex-start; gap: 0.75rem; width: 100%; text-align: left;
+  border: 1px solid var(--border-hi); border-radius: var(--r-lg);
+  padding: 0.875rem 1rem; background: var(--surface); cursor: pointer;
+  transition: all var(--dur); font-family: inherit;
+}
+.ob-choice-card:hover { border-color: var(--accent-brd); background: var(--accent-dim); }
+.ob-choice-card.active { border-color: var(--accent); background: var(--accent-dim); box-shadow: 0 0 0 3px var(--accent-dim); }
+.ob-choice-radio, .ob-choice-check {
+  width: 1.15rem; height: 1.15rem; flex-shrink: 0; margin-top: 0.1rem;
+  border: 1.5px solid var(--border-hi); display: flex; align-items: center; justify-content: center;
+  color: oklch(100% 0 0); transition: all var(--dur);
+}
+.ob-choice-radio { border-radius: 50%; }
+.ob-choice-check { border-radius: var(--r-sm); }
+.ob-choice-card.active .ob-choice-radio,
+.ob-choice-check.on { background: var(--accent); border-color: var(--accent); }
+.ob-choice-title { font-size: var(--fs-base); font-weight: 700; color: var(--text); margin-bottom: 0.15rem; letter-spacing: -0.01em; }
+.ob-choice-desc { font-size: var(--fs-sm); color: var(--muted); line-height: 1.5; }
+
+/* ── Onboarding: conversion-rate inputs ── */
+.ob-rate-list { display: flex; flex-direction: column; gap: 0.625rem; }
+.ob-rate-row {
+  display: flex; align-items: center; gap: 1rem; justify-content: space-between;
+  border: 1px solid var(--border-hi); border-radius: var(--r-lg); padding: 0.75rem 1rem; background: var(--surface);
+}
+.ob-rate-name { font-size: var(--fs-sm); font-weight: 600; color: var(--text); margin-bottom: 0.1rem; }
+.ob-rate-hint { font-size: var(--fs-xs); color: var(--muted); line-height: 1.45; }
+.ob-rate-input { display: flex; align-items: center; gap: 0.25rem; flex-shrink: 0; }
+.ob-rate-affix { font-size: var(--fs-sm); color: var(--muted); font-weight: 700; }
+.ob-rate-input input {
+  width: 5rem; border: 1px solid var(--border-hi); border-radius: var(--r-md);
+  padding: 0.45rem 0.6rem; background: var(--bg); color: var(--text);
+  font-size: var(--fs-base); font-family: inherit; text-align: right; outline: none;
+}
+.ob-rate-input input:focus { border-color: var(--accent-brd); box-shadow: 0 0 0 3px var(--accent-dim); }
 
 /* ── Responsive ── */
 @media (max-width: 900px) {
