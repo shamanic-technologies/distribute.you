@@ -184,7 +184,7 @@ if (dashEl) {
     [
       { target: 312, prefix: '', suffix: '',  decimals: 0, delay: 80  },
       { target: 84,  prefix: '', suffix: '',  decimals: 0, delay: 110 },
-      { target: 7,   prefix: '', suffix: '',  decimals: 0, delay: 140 },
+      { target: 67,  prefix: '', suffix: '',  decimals: 0, delay: 140 },
     ].forEach((d, i) => {
       const el = kpiNums[i];
       if (el) setTimeout(() => countUp(el, d.target, 900, d.prefix, d.suffix, d.decimals), d.delay);
