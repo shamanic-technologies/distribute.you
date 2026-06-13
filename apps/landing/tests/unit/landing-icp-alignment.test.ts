@@ -17,7 +17,7 @@ const benchmarksSlugRoutePath = path.resolve(
   __dirname,
   "../../src/app/benchmarks/[...slug]/route.ts",
 );
-const pricingPagePath = path.resolve(__dirname, "../../src/app/pricing/page.tsx");
+const pricingHtmlPath = path.resolve(__dirname, "../../public/landing/pricing.html");
 const privacyPagePath = path.resolve(__dirname, "../../src/app/privacy/page.tsx");
 const globalsPath = path.resolve(__dirname, "../../src/app/globals.css");
 const rootLayoutPath = path.resolve(__dirname, "../../src/app/layout.tsx");
@@ -155,14 +155,11 @@ describe("Landing static pages", () => {
 
   it("uses the visual system on React landing pages", () => {
     const globals = fs.readFileSync(globalsPath, "utf-8");
-    const pricing = fs.readFileSync(pricingPagePath, "utf-8");
     const benchmarks = fs.readFileSync(benchmarksPagePath, "utf-8");
     const privacy = fs.readFileSync(privacyPagePath, "utf-8");
     expect(globals).toMatch(/--dy-bg:/);
     expect(globals).toMatch(/JetBrains\+Mono/);
     expect(globals).not.toMatch(/Fredoka/);
-    expect(pricing).toMatch(/<main className="dy-page">/);
-    expect(pricing).toMatch(/dy-title/);
     expect(benchmarks).toMatch(/<main className="dy-page">/);
     expect(benchmarks).toMatch(/dy-title/);
     expect(privacy).toMatch(/<main className="dy-page">/);
@@ -173,7 +170,6 @@ describe("Landing static pages", () => {
       landingPagePath,
       performancePagePath,
       rootLayoutPath,
-      pricingPagePath,
       benchmarksPagePath,
       investorsPagePath,
       privacyPagePath,
@@ -188,7 +184,6 @@ describe("Landing static pages", () => {
     expect(combined).toMatch(/\/landing\/logo\/logo-distribute\.svg/);
     expect(combined).toMatch(/logo:\s*BRAND_LOGO_URL|\"logo\":\"https:\/\/distribute\.you\/landing\/logo\/logo-distribute\.svg\"/);
     expect(combined).toMatch(/\/opengraph-image/);
-    expect(combined).toMatch(/\/pricing\/opengraph-image/);
     expect(combined).toMatch(/\/benchmarks\/opengraph-image/);
     expect(combined).toMatch(/\/investors\/opengraph-image/);
     expect(combined).not.toMatch(/\/og-image\.jpg/);
@@ -214,13 +209,19 @@ describe("Landing page: tools marquee section", () => {
   });
 });
 
-describe("Pricing page: ICP framing", () => {
-  const content = fs.readFileSync(pricingPagePath, "utf-8");
+describe("Pricing page: budget calculator (static pricing.html)", () => {
+  const content = fs.readFileSync(pricingHtmlPath, "utf-8");
 
-  it("introduces the 3-layer pricing stack (primitives / workflows / outcomes)", () => {
-    expect(content).toMatch(/primitive/i);
-    expect(content).toMatch(/workflow/i);
-    expect(content).toMatch(/outcome/i);
+  it("serves the pay-per-email budget calculator", () => {
+    expect(content).toMatch(/calculator/i);
+    expect(content).toMatch(/0\.07/);
+    expect(content).toMatch(/px-calc/);
+  });
+
+  it("uses the shared nav/footer + main asset bundle", () => {
+    expect(content).toMatch(/id="site-nav"/);
+    expect(content).toMatch(/id="site-footer"/);
+    expect(content).toMatch(/href="css\/styles\.css"/);
   });
 });
 
