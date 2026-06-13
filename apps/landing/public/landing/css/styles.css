@@ -994,8 +994,8 @@ section  { padding: 6rem 0; }
     radial-gradient(ellipse 50% 60% at 15% 20%, oklch(64% 0.20 295 / 0.12) 0%, transparent 55%);
 }
 .s-cta .wrap   { position: relative; z-index: 1; }
-.s-cta .t-hero { color: oklch(96% 0.005 264); margin-bottom: 1.5rem; }
-.s-cta p       { font-size: var(--fs-md); color: oklch(58% 0.016 264); margin-bottom: 2rem; }
+.s-cta .t-hero { font-size: clamp(1.75rem, 3vw, 2.5rem); color: oklch(96% 0.005 264); margin-bottom: 1.25rem; }
+.s-cta p       { font-size: var(--fs-base); color: oklch(58% 0.016 264); margin-bottom: 1.75rem; }
 
 
 /* ═══════════════════════════════════════════════
