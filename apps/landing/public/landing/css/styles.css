@@ -404,7 +404,7 @@ section  { padding: 6rem 0; }
 .uid-tb-btn.primary { background: var(--accent); border-color: var(--accent); color: oklch(100% 0 0); }
 
 .uid-kpis {
-  display: grid; grid-template-columns: repeat(3, 1fr);
+  display: grid; grid-template-columns: repeat(4, 1fr);
   border-bottom: 1px solid var(--border); flex-shrink: 0;
 }
 .uid-kpi { padding: 0.875rem 1.25rem; border-right: 1px solid var(--border); }
