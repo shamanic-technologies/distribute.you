@@ -183,6 +183,63 @@ button { font-family: inherit; cursor: pointer; }
 .app-sidebar-brand-name { font-size: var(--fs-base); font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
 .app-sidebar-brand-url  { font-size: var(--fs-xs); color: var(--accent); font-family: 'JetBrains Mono', monospace; }
 
+/* ── Brand switcher ── */
+.app-brand-switcher { position: relative; padding: 0 0.75rem 0.875rem; margin: 0 0 0.25rem; border-bottom: 1px solid var(--border); }
+.app-brand-trigger {
+  display: flex; align-items: center; gap: 0.6rem; width: 100%;
+  padding: 0.5rem 0.6rem; border-radius: var(--r-md);
+  background: transparent; border: 1px solid transparent; cursor: pointer;
+  transition: all var(--dur); text-align: left;
+}
+.app-brand-trigger:hover { background: var(--surface-hi); border-color: var(--border); }
+.app-brand-avatar {
+  border-radius: var(--r-sm); background: var(--accent-dim); border: 1px solid var(--accent-brd);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 700; color: var(--accent); flex-shrink: 0; line-height: 1;
+}
+.app-brand-avatar-img { border-radius: var(--r-sm); border: 1px solid var(--border-hi); object-fit: cover; flex-shrink: 0; background: oklch(100% 0 0); }
+.app-brand-meta { min-width: 0; flex: 1; }
+.app-brand-name { font-size: var(--fs-base); font-weight: 700; color: var(--text); letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app-brand-url { font-size: var(--fs-xs); color: var(--accent); font-family: 'JetBrains Mono', monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app-brand-caret, .app-user-caret { color: var(--muted); flex-shrink: 0; }
+
+/* ── Dropdown / popover menus ── */
+.app-menu-backdrop { position: fixed; inset: 0; z-index: 60; }
+.app-menu {
+  position: absolute; z-index: 70; background: var(--surface);
+  border: 1px solid var(--border-hi); border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg); padding: 0.375rem; min-width: 210px;
+}
+.app-brand-menu { top: calc(100% - 0.5rem); left: 0.75rem; right: 0.75rem; }
+.app-user-menu { bottom: calc(100% + 0.4rem); left: 0.75rem; right: 0.75rem; }
+.app-menu-label { font-family: 'JetBrains Mono', monospace; font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); padding: 0.4rem 0.6rem 0.3rem; }
+.app-menu-item {
+  display: flex; align-items: center; gap: 0.6rem; width: 100%;
+  padding: 0.5rem 0.6rem; border-radius: var(--r-md);
+  background: transparent; border: none; cursor: pointer;
+  font-size: var(--fs-sm); font-weight: 500; color: var(--sub); font-family: inherit; text-align: left;
+  transition: all var(--dur);
+}
+.app-menu-item:hover { background: var(--surface-hi); color: var(--text); }
+.app-menu-item svg { flex-shrink: 0; opacity: 0.7; }
+.app-menu-item-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-menu-check { color: var(--accent); opacity: 1; }
+.app-menu-add { color: var(--accent); font-weight: 600; }
+.app-menu-danger:hover { color: var(--red, #e5484d); }
+.app-menu-sep { height: 1px; background: var(--border); margin: 0.375rem 0; }
+.app-menu-userhead { display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.6rem 0.25rem; }
+
+/* ── Add-brand modal ── */
+.app-modal-overlay { position: fixed; inset: 0; z-index: 210; background: oklch(0% 0 0 / 0.5); display: flex; align-items: center; justify-content: center; padding: 1rem; }
+.app-modal { background: var(--surface); border: 1px solid var(--border-hi); border-radius: var(--r-lg); box-shadow: var(--shadow-lg); width: 100%; max-width: 420px; padding: 1.5rem; }
+.app-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.875rem; }
+.app-modal-title { font-size: var(--fs-md); font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
+.app-modal-close { background: none; border: none; cursor: pointer; color: var(--muted); display: flex; padding: 0.25rem; border-radius: var(--r-sm); transition: all var(--dur); }
+.app-modal-close:hover { color: var(--text); background: var(--surface-hi); }
+
+.app-sidebar-user-meta { min-width: 0; flex: 1; }
+.app-sidebar-user-meta .app-sidebar-uname, .app-sidebar-user-meta .app-sidebar-uemail { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 .app-nav { list-style: none; padding: 0.75rem 0.75rem 0; flex: 1; }
 .app-nav li a {
   display: flex; align-items: center; gap: 0.625rem;
@@ -197,8 +254,8 @@ button { font-family: inherit; cursor: pointer; }
 .app-nav-section { font-family: 'JetBrains Mono', monospace; font-size: var(--fs-xs); color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; padding: 1rem 0.625rem 0.375rem; }
 .app-nav-count { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: var(--fs-xs); color: var(--muted); background: var(--surface-hi); padding: 0.1rem 0.4rem; border-radius: var(--r-sm); }
 
-.app-sidebar-bottom { padding: 0.75rem; border-top: 1px solid var(--border); margin-top: auto; }
-.app-sidebar-user { display: flex; align-items: center; gap: 0.625rem; padding: 0.375rem 0.5rem; border-radius: var(--r-md); cursor: pointer; transition: background var(--dur); }
+.app-sidebar-bottom { padding: 0.75rem; border-top: 1px solid var(--border); margin-top: auto; position: relative; }
+.app-sidebar-user { display: flex; align-items: center; gap: 0.625rem; width: 100%; padding: 0.375rem 0.5rem; border-radius: var(--r-md); cursor: pointer; transition: background var(--dur); background: transparent; border: none; font-family: inherit; text-align: left; }
 .app-sidebar-user:hover { background: var(--surface-hi); }
 .app-sidebar-avatar { width: 1.75rem; height: 1.75rem; border-radius: 50%; background: var(--accent-dim); border: 1px solid var(--accent-brd); display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 700; color: var(--accent); flex-shrink: 0; }
 .app-sidebar-uname { font-size: var(--fs-sm); font-weight: 600; color: var(--text); }

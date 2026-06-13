@@ -1,15 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { LEADS, EMAIL_SEQUENCE, type Lead, type LeadStatus } from "@/lib/mock-data";
 import type { Brand } from "./onboarding-overlay";
 import { StatusChip } from "./status-chip";
 import { EmailChart } from "./email-chart";
 import { LeadDrawer } from "./lead-drawer";
-import { OverviewIcon, LeadsIcon, EmailIcon, CampaignIcon, ChartIcon, InfoIcon, SparkleIcon } from "./icons";
+import { OverviewIcon, LeadsIcon, EmailIcon, CampaignIcon, ChartIcon, InfoIcon, SparkleIcon, ChevronDownIcon, PlusIcon, UserIcon, CardIcon, GearIcon, LogoutIcon, CheckIcon, CloseIcon } from "./icons";
 
-type Tab = "overview" | "leads" | "emails" | "campaign" | "report";
+type Tab = "overview" | "leads" | "emails" | "campaign" | "report" | "account" | "billing" | "brand-settings";
 
 const TAB_TITLES: Record<Tab, string> = {
   overview: "Overview",
@@ -17,7 +16,32 @@ const TAB_TITLES: Record<Tab, string> = {
   emails: "Emails sent",
   campaign: "Campaign",
   report: "Performance",
+  account: "Account",
+  billing: "Billing",
+  "brand-settings": "Brand settings",
 };
+
+const hostnameOf = (url: string) => url.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+
+/** Brand logo via favicon service, initials fallback on error. */
+function BrandAvatar({ brand, size = 24 }: { brand: Brand; size?: number }) {
+  const [failed, setFailed] = useState(false);
+  const domain = hostnameOf(brand.url);
+  const initials = brand.name.replace(/^https?:\/\//, "").slice(0, 2).toUpperCase();
+  if (failed || !domain) {
+    return <span className="app-brand-avatar" style={{ width: size, height: size, fontSize: size * 0.42 }}>{initials}</span>;
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      className="app-brand-avatar-img"
+      style={{ width: size, height: size }}
+      src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
+      alt=""
+      onError={() => setFailed(true)}
+    />
+  );
+}
 
 const monoCell: React.CSSProperties = { fontFamily: "'JetBrains Mono', monospace", fontSize: "var(--fs-xs)", color: "var(--muted)" };
 
@@ -25,22 +49,74 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
   const [tab, setTab] = useState<Tab>("overview");
   const [openLead, setOpenLead] = useState<Lead | null>(null);
 
+  // Multi-brand mock state — seeded with the onboarded brand.
+  const [brands, setBrands] = useState<Brand[]>([brand]);
+  const [activeIdx, setActiveIdx] = useState(0);
+  const [brandMenuOpen, setBrandMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [newUrl, setNewUrl] = useState("");
+
+  const activeBrand = brands[activeIdx] ?? brand;
+  const userEmail = `adam@${hostnameOf(activeBrand.url)}`;
+
   const openDrawer = (id: number) => setOpenLead(LEADS.find((l) => l.id === id) ?? null);
+  const closeMenus = () => { setBrandMenuOpen(false); setUserMenuOpen(false); };
+
+  function selectBrand(i: number) {
+    setActiveIdx(i);
+    setBrandMenuOpen(false);
+    setTab("overview");
+  }
+
+  function addBrand() {
+    const url = newUrl.trim();
+    if (!url) return;
+    const norm = /^https?:\/\//.test(url) ? url : `https://${url}`;
+    const next: Brand = { name: hostnameOf(norm), url: norm };
+    setBrands((b) => [...b, next]);
+    setActiveIdx(brands.length);
+    setNewUrl("");
+    setAddOpen(false);
+    setTab("overview");
+  }
+
+  function goSub(t: Tab) {
+    setTab(t);
+    setUserMenuOpen(false);
+  }
 
   return (
     <div className={`app-shell${hidden ? " app-hidden" : ""}`}>
       {/* Sidebar */}
       <aside className="app-sidebar">
-        <a href="#" className="app-sidebar-logo" onClick={(e) => e.preventDefault()}>
-          <Image src="/logo/logo-distribute.svg" alt="distribute" width={24} height={24} />
-          <span>distribute</span>
-          <span className="nav-chip">beta</span>
-        </a>
+        {/* Brand switcher (replaces the platform logo) */}
+        <div className="app-brand-switcher">
+          <button className="app-brand-trigger" onClick={() => { setBrandMenuOpen((v) => !v); setUserMenuOpen(false); }}>
+            <BrandAvatar brand={activeBrand} size={26} />
+            <div className="app-brand-meta">
+              <div className="app-brand-name">{activeBrand.name}</div>
+              <div className="app-brand-url">{hostnameOf(activeBrand.url)}</div>
+            </div>
+            <ChevronDownIcon className="app-brand-caret" width={14} height={14} />
+          </button>
 
-        <div className="app-sidebar-brand">
-          <div className="app-sidebar-brand-label">Brand</div>
-          <div className="app-sidebar-brand-name">{brand.name}</div>
-          <div className="app-sidebar-brand-url">{brand.url}</div>
+          {brandMenuOpen && (
+            <div className="app-menu app-brand-menu">
+              <div className="app-menu-label">Brands</div>
+              {brands.map((b, i) => (
+                <button key={b.url + i} className="app-menu-item" onClick={() => selectBrand(i)}>
+                  <BrandAvatar brand={b} size={20} />
+                  <span className="app-menu-item-name">{b.name}</span>
+                  {i === activeIdx && <CheckIcon className="app-menu-check" width={13} height={13} />}
+                </button>
+              ))}
+              <div className="app-menu-sep" />
+              <button className="app-menu-item app-menu-add" onClick={() => { setBrandMenuOpen(false); setAddOpen(true); }}>
+                <PlusIcon width={14} height={14} /> Add brand
+              </button>
+            </div>
+          )}
         </div>
 
         <ul className="app-nav">
@@ -53,15 +129,37 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
         </ul>
 
         <div className="app-sidebar-bottom">
-          <div className="app-sidebar-user">
+          <button className="app-sidebar-user" onClick={() => { setUserMenuOpen((v) => !v); setBrandMenuOpen(false); }}>
             <div className="app-sidebar-avatar">AN</div>
-            <div>
+            <div className="app-sidebar-user-meta">
               <div className="app-sidebar-uname">Adam Nasri</div>
-              <div className="app-sidebar-uemail">adam@{brand.name}</div>
+              <div className="app-sidebar-uemail">{userEmail}</div>
             </div>
-          </div>
+            <ChevronDownIcon className="app-user-caret" width={14} height={14} />
+          </button>
+
+          {userMenuOpen && (
+            <div className="app-menu app-user-menu">
+              <div className="app-menu-userhead">
+                <div className="app-sidebar-avatar">AN</div>
+                <div>
+                  <div className="app-sidebar-uname">Adam Nasri</div>
+                  <div className="app-sidebar-uemail">{userEmail}</div>
+                </div>
+              </div>
+              <div className="app-menu-sep" />
+              <button className="app-menu-item" onClick={() => goSub("account")}><UserIcon width={15} height={15} /> Account</button>
+              <button className="app-menu-item" onClick={() => goSub("billing")}><CardIcon width={15} height={15} /> Billing</button>
+              <button className="app-menu-item" onClick={() => goSub("brand-settings")}><GearIcon width={15} height={15} /> Brand settings</button>
+              <div className="app-menu-sep" />
+              <button className="app-menu-item app-menu-danger" onClick={onReset}><LogoutIcon width={15} height={15} /> Sign out</button>
+            </div>
+          )}
         </div>
       </aside>
+
+      {/* Click-away backdrop for open menus */}
+      {(brandMenuOpen || userMenuOpen) && <div className="app-menu-backdrop" onClick={closeMenus} />}
 
       {/* Main */}
       <main className="app-main">
@@ -80,10 +178,150 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
           {tab === "emails" && <EmailsTab onOpen={openDrawer} />}
           {tab === "campaign" && <CampaignTab />}
           {tab === "report" && <ReportTab />}
+          {tab === "account" && <AccountTab email={userEmail} />}
+          {tab === "billing" && <BillingTab />}
+          {tab === "brand-settings" && <BrandSettingsTab brand={activeBrand} />}
         </div>
       </main>
 
+      {addOpen && (
+        <div className="app-modal-overlay" onClick={() => setAddOpen(false)}>
+          <div className="app-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="app-modal-head">
+              <span className="app-modal-title">Add a brand</span>
+              <button className="app-modal-close" onClick={() => setAddOpen(false)}><CloseIcon width={12} height={12} /></button>
+            </div>
+            <p className="ob-sub" style={{ fontSize: "var(--fs-sm)", marginBottom: "1rem" }}>Drop the product URL — we read the site and spin up a new workspace.</p>
+            <div className="form-group" style={{ marginBottom: "1rem" }}>
+              <label className="form-label" htmlFor="add-brand-url">Product URL</label>
+              <input id="add-brand-url" className="form-input" type="url" placeholder="https://yourproduct.com" value={newUrl}
+                onChange={(e) => setNewUrl(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addBrand(); }} autoFocus />
+            </div>
+            <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+              <button className="btn btn-g" onClick={() => setAddOpen(false)}>Cancel</button>
+              <button className="btn btn-p" onClick={addBrand} disabled={!newUrl.trim()}>Add brand →</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <LeadDrawer lead={openLead} onClose={() => setOpenLead(null)} />
+    </div>
+  );
+}
+
+/* ── Account ── */
+function AccountTab({ email }: { email: string }) {
+  return (
+    <div className="leads-panel" style={{ maxWidth: 640 }}>
+      <div className="leads-header"><span className="leads-title">Your account</span></div>
+      <div style={{ padding: "1.5rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1.5rem" }}>
+          <div className="app-sidebar-avatar" style={{ width: "3rem", height: "3rem", fontSize: "1rem" }}>AN</div>
+          <div>
+            <div style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--text)" }}>Adam Nasri</div>
+            <div style={{ fontSize: "var(--fs-sm)", color: "var(--muted)" }}>{email}</div>
+          </div>
+        </div>
+        <div className="ob-field-table">
+          <SettingRow label="Full name" value="Adam Nasri" />
+          <SettingRow label="Email" value={email} />
+          <SettingRow label="Role" value="Founder" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Billing ── */
+const INVOICES = [
+  { date: "Jun 1, 2026", amount: "$58.00", status: "Paid" },
+  { date: "May 1, 2026", amount: "$58.00", status: "Paid" },
+  { date: "Apr 1, 2026", amount: "$29.00", status: "Paid" },
+];
+
+function BillingTab() {
+  return (
+    <div>
+      <div className="kpi-strip">
+        <div className="kpi-card">
+          <div className="kpi-label">Current plan</div>
+          <div className="kpi-val">Recommended</div>
+          <div className="kpi-meta">$58 / day budget</div>
+        </div>
+        <div className="kpi-card">
+          <div className="kpi-label">Spent this month</div>
+          <div className="kpi-val accent">$412</div>
+          <div className="kpi-meta">of ~$1,740 cap</div>
+        </div>
+        <div className="kpi-card">
+          <div className="kpi-label">Auto top-up</div>
+          <div className="kpi-val green">On</div>
+          <div className="kpi-meta">+$100 below $20</div>
+        </div>
+      </div>
+      <div className="leads-panel" style={{ marginBottom: "2rem", maxWidth: 640 }}>
+        <div className="leads-header">
+          <span className="leads-title">Payment method</span>
+          <button className="btn btn-g" style={{ fontSize: "var(--fs-xs)", padding: "0.35rem 0.75rem" }}>Update</button>
+        </div>
+        <div style={{ padding: "1.25rem 1.5rem", display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <CardIcon width={18} height={18} />
+          <span style={{ fontSize: "var(--fs-sm)", color: "var(--text)" }}>Visa •••• 4242</span>
+          <span style={{ fontSize: "var(--fs-xs)", color: "var(--muted)", marginLeft: "auto" }}>expires 08 / 28</span>
+        </div>
+      </div>
+      <div className="leads-panel">
+        <div className="leads-header"><span className="leads-title">Invoices</span></div>
+        <table className="leads-table">
+          <thead><tr><th>Date</th><th>Amount</th><th>Status</th></tr></thead>
+          <tbody>
+            {INVOICES.map((inv) => (
+              <tr key={inv.date}>
+                <td className="lead-date">{inv.date}</td>
+                <td style={monoCell}>{inv.amount}</td>
+                <td><span className="seq-day" style={{ color: "var(--green)", background: "transparent", border: "none", padding: 0 }}>{inv.status}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ── Brand settings ── */
+function BrandSettingsTab({ brand }: { brand: Brand }) {
+  return (
+    <div className="leads-panel" style={{ maxWidth: 640 }}>
+      <div className="leads-header">
+        <span className="leads-title">Brand settings</span>
+        <button className="btn btn-p" style={{ fontSize: "var(--fs-xs)", padding: "0.35rem 0.75rem" }}>Save changes</button>
+      </div>
+      <div style={{ padding: "1.5rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1.5rem" }}>
+          <BrandAvatar brand={brand} size={40} />
+          <div>
+            <div style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--text)" }}>{brand.name}</div>
+            <div style={{ fontSize: "var(--fs-sm)", color: "var(--accent)", fontFamily: "'JetBrains Mono', monospace" }}>{hostnameOf(brand.url)}</div>
+          </div>
+        </div>
+        <div className="ob-field-table">
+          <SettingRow label="Brand name" value={brand.name} />
+          <SettingRow label="URL" value={brand.url} />
+          <SettingRow label="Audience" value="Founders and AI teams at early-stage SaaS building with LLMs" />
+          <SettingRow label="Value" value="Cut AI prompt iteration time by 60% with a collaborative prompt library" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SettingRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="ob-field-row">
+      <div className="ob-field-key">{label}</div>
+      <div className="ob-field-val"><input defaultValue={value} /></div>
     </div>
   );
 }
