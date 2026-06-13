@@ -17,7 +17,7 @@
       return false;
     }
     document.addEventListener('DOMContentLoaded', function () {
-      document.querySelectorAll('a[href^="https://app.distribute.you"]').forEach(function (a) {
+      document.querySelectorAll('a[href^="https://dashboard.distribute.you"]').forEach(function (a) {
         a.addEventListener('click', function (e) { e.preventDefault(); gtagSendEvent(this.href); });
       });
     });

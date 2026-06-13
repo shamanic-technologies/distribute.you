@@ -16,7 +16,7 @@ Static HTML/CSS/JS. No framework, no build step.
 - **`.vercel/project.json`:** `{ "projectId": "prj_Bk1opzmyy6hBaYaDx3yz2849L2C2", "orgId": "team_lYmJIUH6q2rTY6dUfDiYtpAt" }`
 - **Production URL:** `https://distribute.you`
 - Framework preset: none (static, cleared manually via API)
-- `vercel.json`: `cleanUrls: true`, `trailingSlash: false`, 301 redirects for old root URLs
+- `vercel.json`: `cleanUrls: true`, `trailingSlash: false`, 301 redirects for old root URLs + pricing-test
 
 ### Deploy workflow (read this before touching Vercel)
 
@@ -55,13 +55,20 @@ Never merge `website` into `main` — they are independent branches with differe
 ```
 /Users/adam/Distribute Lead AI/
 ├── index.html                                          # Main landing page
-├── pricing-test.html                                   # Pricing page (noindex, draft)
-├── privacy.html                                        # Privacy policy
-├── terms.html                                          # Terms of service
-├── sitemap.xml                                         # 19 URLs
+├── pricing.html                                        # Live pricing page (distribute.you/pricing)
+├── pricing-test.html                                   # noindex draft — redirects to /pricing via vercel.json
+├── how-it-works.html
+├── use-cases.html
+├── performance.html
+├── privacy.html
+├── terms.html
+├── sitemap.xml                                         # 20 URLs (includes /pricing)
 ├── robots.txt                                          # Allow all, Disallow /design-system
-├── llms.txt                                            # AI crawler index (Perplexity, ChatGPT, Bing)
-├── css/styles.css                                      # Single shared stylesheet
+├── llms.txt                                            # AI crawler index
+├── css/
+│   ├── base.css                                        # Tokens + nav + footer + animations + a11y (ALL pages)
+│   ├── marketing.css                                   # Hero → integrations, pricing, perf, how-it-works, use-cases
+│   └── articles.css                                    # Pillar + article template + legal pages
 ├── js/
 │   ├── components.js                                   # Nav + footer injection (synchronous)
 │   └── main.js                                         # Progress bar, TOC spy, related articles shuffle
@@ -70,10 +77,13 @@ Never merge `website` into `main` — they are independent branches with differe
 │   ├── index.html                                      # Pillar page
 │   ├── cold-email-cost-per-contact.html
 │   ├── linkedin-inmail-cost-vs-cold-email.html
+│   ├── cold-email-roi.html
 │   └── cold-email-setup-cost.html
 ├── cold-email-for-saas-founders/
 │   ├── index.html                                      # Pillar page
 │   ├── ai-cold-email-saas-founders.html
+│   ├── cold-email-subject-lines-saas.html
+│   ├── b2b-cold-email-reply-rate.html
 │   └── cold-email-personalization-at-scale.html
 └── cold-email-vs-linkedin/
     ├── index.html                                      # Pillar page
@@ -83,7 +93,68 @@ Never merge `website` into `main` — they are independent branches with differe
     └── multichannel-outreach-strategy.html
 ```
 
-**12 articles total** — 4 per pillar page.
+### CSS split (base / marketing / articles)
+
+`css/styles.css` is the legacy monolith — do not edit it. All pages now load split files:
+
+| File | Pages that load it |
+|------|-------------------|
+| `css/base.css` | ALL pages |
+| `css/marketing.css` | index, use-cases, how-it-works, pricing, pricing-test, performance |
+| `css/articles.css` | all pillar/article pages, privacy, terms |
+
+Each page's `<head>` has:
+```html
+<link rel="stylesheet" href="/css/base.css">
+<link rel="stylesheet" href="/css/marketing.css">   <!-- or articles.css -->
+```
+
+---
+
+## Google Ads Tracking
+
+**Tag ID:** `AW-18233267088`
+
+Added to ALL site HTML pages (except design-system, landing page v2, Distribute dashboard).
+Injected right after `<meta charset="UTF-8">`:
+
+```html
+<!-- Google Ads tag -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=AW-18233267088"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'AW-18233267088');
+</script>
+```
+
+### Conversion tracking
+
+Event name: `manual_event_PURCHASE`
+
+Auto-attaches to ALL `app.distribute.you` links via DOMContentLoaded listener.
+Fires before navigation, waits max 2000ms for Google to record, then redirects.
+
+```html
+<script>
+  function gtagSendEvent(url) {
+    var callback = function () { if (typeof url === 'string') window.location = url; };
+    gtag('event', 'manual_event_PURCHASE', { 'event_callback': callback, 'event_timeout': 2000 });
+    return false;
+  }
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('a[href^="https://app.distribute.you"]').forEach(function (a) {
+      a.addEventListener('click', function (e) { e.preventDefault(); gtagSendEvent(this.href); });
+    });
+  });
+</script>
+```
+
+**App URL:** `https://app.distribute.you` (no `/signup` — that page does not exist)
+
+To set up the conversion action in Google Ads:
+Tools → Conversions → add action → Website → use event `manual_event_PURCHASE`.
 
 ---
 
@@ -91,7 +162,7 @@ Never merge `website` into `main` — they are independent branches with differe
 
 - Pure HTML/CSS/JS — no build tool
 - Google Fonts: **Inter** (body) + **JetBrains Mono** (labels/mono/meta)
-- OKLCH color tokens — light mode only (`data-theme="light"` hardcoded, `localStorage` key `dt` unused)
+- OKLCH color tokens — light mode only (`data-theme="light"` hardcoded)
 - Intersection Observer for scroll reveal, `window.scroll` for progress bar + TOC spy
 
 ---
@@ -109,7 +180,7 @@ Never merge `website` into `main` — they are independent branches with differe
 --shadow-card
 ```
 
-Full token set: `css/styles.css` lines ~12–95.
+Full token set: `css/base.css` lines ~12–95.
 
 ### Font size variables (`:root`)
 
@@ -167,7 +238,7 @@ Used at the bottom of every page. Background: `oklch(6.5% 0.012 264)` with radia
     <div class="r">
       <h2 class="t-hero">Your headline here.</h2>
       <p>Supporting line.</p>
-      <a href="..." class="btn btn-p btn-lg">CTA button</a>
+      <a href="https://app.distribute.you" class="btn btn-p btn-lg">CTA button</a>
     </div>
   </div>
 </section>
@@ -179,7 +250,7 @@ The `.t-hero` inside `.s-cta` is automatically downsized to `.t-display` via CSS
 
 ## FAQ Style (all pages)
 
-Use `<details>`/`<summary>` with class `.guide-faq-item` (pillar pages) or `.faq-item` (pricing-test).
+Use `<details>`/`<summary>` with class `.guide-faq-item` (pillar pages) or `.faq-item` (pricing).
 Both render as cards with shadow + full border. No flat bordered lists.
 
 ```html
@@ -190,6 +261,28 @@ Both render as cards with shadow + full border. No flat bordered lists.
   </details>
 </div>
 ```
+
+---
+
+## Pricing Page
+
+**Live URL:** `https://distribute.you/pricing` — file: `pricing.html`
+`pricing-test.html` still exists (noindex) and 301-redirects to `/pricing` via `vercel.json`.
+
+### Calculator (Google Ads style)
+
+Budget slider $20–$1000 with quick buttons ($20/$50/$100/$250/$500).
+Live outputs: contacts / opens / replies / qualified leads / cost per lead.
+
+Math constants:
+```js
+COST = 0.07        // $ per contact
+OPEN_RATE = 0.35
+REPLY_RATE = 0.05
+QUALIFY = 0.40
+```
+
+At $100: ~1,428 contacts / 499 opens / 71 replies / 28 qualified leads / $3.57 CPL.
 
 ---
 
@@ -237,18 +330,17 @@ Both render as cards with shadow + full border. No flat bordered lists.
 | `.post-table-wrap` / `.post-table` | Data tables with `.pt-good`, `.pt-bad`, `.pt-ok`, `.pt-hl` |
 | `.post-related-grid` | Filled by JS — leave empty in HTML |
 
-**JSON-LD schema** on all 12 articles: `Article` + `BreadcrumbList` in `@graph`, injected in `<head>`.
+**JSON-LD schema** on all articles: `Article` + `BreadcrumbList` in `@graph`, injected in `<head>`.
 
 ---
 
 ## Related Articles (JS)
 
 `js/main.js` contains a self-contained IIFE that:
-- Holds a pool of 12 articles (url, tag, title, desc)
+- Holds a pool of all articles (url, tag, title, desc)
 - Filters out the current page
 - Fisher-Yates shuffles the pool
 - Renders 3 random `.post-related-card` links into `.post-related-grid`
-- Runs on every page (not restricted to `page-post`)
 
 **To add new articles:** append to the `ARTICLES` array in main.js and add an empty `<div class="post-related-grid"></div>` in the article HTML.
 
@@ -257,24 +349,16 @@ Both render as cards with shadow + full border. No flat bordered lists.
 ## Legal Pages
 
 `privacy.html` and `terms.html` — body class `page-legal`.
-CSS in `styles.css` under `/* ── Legal pages ──*/`.
+CSS in `css/articles.css` under `/* ── Legal pages ──*/`.
 Uses `var(--fs-lg)` for h2, `var(--fs-md)` for body text.
 
 ---
 
 ## SEO Files
 
-- `sitemap.xml` — 19 URLs, priorities: homepage 1.0, pillar 0.9, articles 0.8, other 0.7
+- `sitemap.xml` — 20 URLs, priorities: homepage 1.0, pillar 0.9, articles 0.8, other 0.7
 - `robots.txt` — allow all, disallow `/design-system`, points to sitemap
 - `llms.txt` — AI crawler friendly index of all content
-
----
-
-## Pricing Page (draft)
-
-`pricing-test.html` — `noindex`. URL: `https://distribute.you/pricing-test`.
-Prices are provisional placeholders. Rename to `pricing.html` + remove `noindex` when prices confirmed.
-Has its own `<style>` block (page-specific CSS). Uses `.t-display` for h1, `.s-cta` for CTA section.
 
 ---
 
