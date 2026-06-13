@@ -100,6 +100,47 @@ export const BUDGET_PLANS: Record<string, BudgetPlan> = {
   growth:      { daily: 115, emails: 3194, visits: 220, meetings: 44, closes: 20, revenue: 49999 },
 };
 
+/* ───────────────────────────────────────────────
+   Outcome-based pipeline (signups → meetings → purchases),
+   mirrors the dashboard mockup shown on the staging landing page.
+   ─────────────────────────────────────────────── */
+
+export type PipeStatus = "signed-up" | "meeting-booked" | "purchased";
+
+export interface PipeLead {
+  id: number;
+  company: string;
+  initials: string;
+  contact: string;
+  status: PipeStatus;
+  date: string;
+  revenue: number;
+}
+
+export const PIPE_STATUS_META: Record<PipeStatus, { label: string; tone: "accent" | "purple" | "green" }> = {
+  "signed-up": { label: "Signed up", tone: "accent" },
+  "meeting-booked": { label: "Meeting booked", tone: "purple" },
+  purchased: { label: "Purchased", tone: "green" },
+};
+
+/** Aggregate headline counts shown in the sidebar + KPI strip. */
+export const OUTCOME_TOTALS = { signups: 312, meetings: 84, purchases: 67, pipelineRevenue: 343325 };
+
+export const PIPELINE: PipeLead[] = [
+  { id: 1, company: "Eventilla", initials: "EV", contact: "Pekka Huttunen", status: "purchased", date: "Jun 7", revenue: 1400 },
+  { id: 2, company: "ColorID", initials: "CI", contact: "Gary Smith", status: "meeting-booked", date: "Jun 7", revenue: 480 },
+  { id: 3, company: "McCorkell", initials: "MC", contact: "Scott McCorkell", status: "signed-up", date: "Jun 6", revenue: 120 },
+  { id: 4, company: "Builders of Auth.", initials: "BA", contact: "Adam McChesney", status: "meeting-booked", date: "Jun 6", revenue: 480 },
+  { id: 5, company: "GlobalQuark", initials: "GQ", contact: "Alfredo Godoy", status: "purchased", date: "Jun 6", revenue: 1400 },
+  { id: 6, company: "Promptbase", initials: "PB", contact: "Jake Williams", status: "signed-up", date: "Jun 5", revenue: 120 },
+  { id: 7, company: "Typeframe", initials: "TF", contact: "Maria Santos", status: "meeting-booked", date: "Jun 5", revenue: 480 },
+  { id: 8, company: "Notionize", initials: "NO", contact: "Sarah Park", status: "purchased", date: "Jun 4", revenue: 1400 },
+  { id: 9, company: "Supaforms", initials: "SF", contact: "Tom Bakker", status: "signed-up", date: "Jun 4", revenue: 120 },
+  { id: 10, company: "Loopify", initials: "LO", contact: "Marcus Chen", status: "signed-up", date: "Jun 3", revenue: 120 },
+  { id: 11, company: "Stackr", initials: "ST", contact: "Nina Roth", status: "meeting-booked", date: "Jun 3", revenue: 480 },
+  { id: 12, company: "Cohortly", initials: "CO", contact: "Diego Lima", status: "purchased", date: "Jun 2", revenue: 1400 },
+];
+
 export interface SequenceStep {
   day: string;
   tag: string;

@@ -610,6 +610,43 @@ button { font-family: inherit; cursor: pointer; }
 }
 .ob-rate-input input:focus { border-color: var(--accent-brd); box-shadow: 0 0 0 3px var(--accent-dim); }
 
+/* ── Outcome dashboard ── */
+.kpi-val.purple { color: var(--purple); }
+
+.app-nav-footer { flex: 0 0 auto; padding-top: 0; padding-bottom: 0.25rem; }
+
+.app-date-pill {
+  display: flex; align-items: center; gap: 0.35rem;
+  font-family: 'JetBrains Mono', monospace; font-size: var(--fs-xs); color: var(--muted);
+  border: 1px solid var(--border-hi); border-radius: var(--r-sm); padding: 0.25rem 0.55rem;
+}
+
+/* Pipeline status chips */
+.pipe-status {
+  display: inline-flex; align-items: center; font-family: 'JetBrains Mono', monospace;
+  font-size: var(--fs-xs); font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 999px;
+  border: 1px solid transparent;
+}
+.pipe-green  { background: var(--green-dim);  color: var(--green);  border-color: var(--green); }
+.pipe-purple { background: var(--purple-dim); color: var(--purple); border-color: var(--purple-brd); }
+.pipe-accent { background: var(--accent-dim); color: var(--accent); border-color: var(--accent-brd); }
+
+/* Lead logo tone variants */
+.lead-org-logo.tone-green  { background: var(--green-dim);  color: var(--green);  border-color: var(--green); }
+.lead-org-logo.tone-purple { background: var(--purple-dim); color: var(--purple); border-color: var(--purple-brd); }
+.lead-org-logo.tone-accent { background: var(--accent-dim); color: var(--accent); border-color: var(--accent-brd); }
+
+/* Chart legend lines */
+.pipe-legend-line { display: inline-block; width: 14px; height: 0; vertical-align: middle; margin-right: 0.1rem; }
+.pipe-legend-line.solid  { border-top: 2px solid var(--green); }
+.pipe-legend-line.dashed { border-top: 2px dashed var(--green); }
+
+/* Help FAQ */
+.help-row { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); }
+.help-row:last-child { border-bottom: none; }
+.help-q { font-size: var(--fs-base); font-weight: 700; color: var(--text); margin-bottom: 0.35rem; letter-spacing: -0.01em; }
+.help-a { font-size: var(--fs-sm); color: var(--sub); line-height: 1.6; }
+
 /* ── Responsive ── */
 @media (max-width: 900px) {
   .app-sidebar { transform: translateX(-100%); }

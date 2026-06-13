@@ -129,3 +129,18 @@ export const LogoutIcon = (p: IconProps) => (
     <path d="M10 3H4v10h6M7 8h7M11.5 5.5L14 8l-2.5 2.5" />
   </svg>
 );
+
+export const CalendarIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <rect x="2" y="3" width="12" height="11" rx="1.5" />
+    <path d="M5 1.5v3M11 1.5v3M2 6.5h12" />
+  </svg>
+);
+
+export const CartIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <path d="M1.5 2h2l1.2 7.5h7l1.3-5.5H4" />
+    <circle cx="6" cy="13" r="1" />
+    <circle cx="12" cy="13" r="1" />
+  </svg>
+);
