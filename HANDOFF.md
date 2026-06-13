@@ -25,22 +25,28 @@ instantly, overriding the real GitHub-triggered build. `autoAssignCustomDomains:
 means the last production deploy always wins — your stale local build will freeze the
 live site for hours.
 
-**Ship to production → merge to `main`:**
+**Ship to production → push to `website` branch:**
 ```bash
-git push origin main   # Vercel auto-builds (~1 min) and promotes to distribute.you
+git push origin website
 ```
+Vercel's `productionBranch` must be set to `website` for this to auto-promote.
+Change it at: https://vercel.com/blooming-generation/distribute-landing/settings/git
+(Production Branch field → change `main` to `website`)
 
 **Local preview (safe, never touches the production domain):**
 ```bash
-vercel   # no --prod flag → preview URL only
+vercel   # no --prod flag → creates a preview URL only
 ```
 
-**Promote an existing build without uploading anything:**
+**Promote a preview to production without re-uploading:**
 ```bash
-vercel ls distribute-landing --scope blooming-generation --prod   # find the READY git deploy URL
-vercel promote <deploy-url> --scope blooming-generation           # re-point domain to it
+vercel promote <preview-url> --scope blooming-generation
 ```
-Use promote to roll back or re-point to any previous git build.
+Use this after `vercel` (no --prod) builds a READY preview, or to roll back to any previous build.
+
+**NOTE on branch strategy:** The repo `shamanic-technologies/distribute.you` is a monorepo.
+`main` = app code (dashboard, services). `website` = landing site only.
+Never merge `website` into `main` — they are independent branches with different histories.
 
 ---
 
