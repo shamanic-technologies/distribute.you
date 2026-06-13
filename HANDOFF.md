@@ -1,11 +1,46 @@
 # Distribute Lead AI — Handoff
 
-## Context
+## What this is
 
-Marketing site for distribute.you — AI cold email tool for SaaS founders. Static HTML/CSS/JS, deployed on Vercel (`website` branch → auto-deploy).
+Marketing site for **distribute.you** — AI cold email outreach tool for SaaS founders / B2B.
+Static HTML/CSS/JS. No framework, no build step.
 
-**ICP:** solo AI founders + bootstrapped micro-SaaS.  
+**ICP:** solo AI founders, bootstrapped micro-SaaS.
 **Core claim:** AI reads each prospect's site, writes unique emails. $0.07/contact, 27% open rate.
+
+---
+
+## Deployment
+
+- **Vercel project:** `distribute-landing` under team `blooming-generation`
+- **`.vercel/project.json`:** `{ "projectId": "prj_Bk1opzmyy6hBaYaDx3yz2849L2C2", "orgId": "team_lYmJIUH6q2rTY6dUfDiYtpAt" }`
+- **Production URL:** `https://distribute.you`
+- Framework preset: none (static, cleared manually via API)
+- `vercel.json`: `cleanUrls: true`, `trailingSlash: false`, 301 redirects for old root URLs
+
+### Deploy workflow (read this before touching Vercel)
+
+**NEVER run `vercel --prod` locally.** It uploads a local build and hijacks the domain
+instantly, overriding the real GitHub-triggered build. `autoAssignCustomDomains: true`
+means the last production deploy always wins — your stale local build will freeze the
+live site for hours.
+
+**Ship to production → merge to `main`:**
+```bash
+git push origin main   # Vercel auto-builds (~1 min) and promotes to distribute.you
+```
+
+**Local preview (safe, never touches the production domain):**
+```bash
+vercel   # no --prod flag → preview URL only
+```
+
+**Promote an existing build without uploading anything:**
+```bash
+vercel ls distribute-landing --scope blooming-generation --prod   # find the READY git deploy URL
+vercel promote <deploy-url> --scope blooming-generation           # re-point domain to it
+```
+Use promote to roll back or re-point to any previous git build.
 
 ---
 
@@ -13,131 +48,231 @@ Marketing site for distribute.you — AI cold email tool for SaaS founders. Stat
 
 ```
 /Users/adam/Distribute Lead AI/
-├── index.html                          # Main landing page
-├── css/styles.css                      # Single shared stylesheet (OKLCH tokens, light/dark)
+├── index.html                                          # Main landing page
+├── pricing-test.html                                   # Pricing page (noindex, draft)
+├── privacy.html                                        # Privacy policy
+├── terms.html                                          # Terms of service
+├── sitemap.xml                                         # 19 URLs
+├── robots.txt                                          # Allow all, Disallow /design-system
+├── llms.txt                                            # AI crawler index (Perplexity, ChatGPT, Bing)
+├── css/styles.css                                      # Single shared stylesheet
 ├── js/
-│   ├── components.js                   # Shared nav + footer (synchronous injection)
-│   └── main.js                         # Reading progress bar + TOC scroll-spy
-├── vercel.json                         # cleanUrls, trailingSlash:false, 301 redirects
+│   ├── components.js                                   # Nav + footer injection (synchronous)
+│   └── main.js                                         # Progress bar, TOC spy, related articles shuffle
+├── vercel.json
 ├── cold-email-cost-guide/
-│   ├── index.html                      # Pillar page
+│   ├── index.html                                      # Pillar page
 │   ├── cold-email-cost-per-contact.html
-│   └── linkedin-inmail-cost-vs-cold-email.html
-└── cold-email-for-saas-founders/
-    ├── index.html                      # Pillar page
-    └── ai-cold-email-saas-founders.html
+│   ├── linkedin-inmail-cost-vs-cold-email.html
+│   └── cold-email-setup-cost.html
+├── cold-email-for-saas-founders/
+│   ├── index.html                                      # Pillar page
+│   ├── ai-cold-email-saas-founders.html
+│   └── cold-email-personalization-at-scale.html
+└── cold-email-vs-linkedin/
+    ├── index.html                                      # Pillar page
+    ├── cold-email-vs-linkedin-ads.html
+    ├── b2b-outbound-channel-comparison.html
+    ├── linkedin-connection-request-vs-cold-email.html
+    └── multichannel-outreach-strategy.html
 ```
+
+**12 articles total** — 4 per pillar page.
 
 ---
 
 ## Stack
 
-- Pure HTML/CSS/JS — no build tool, no framework
-- Google Fonts: **Inter** (body) + **JetBrains Mono** (labels/data/meta)
-- OKLCH color tokens (light + dark themes via `data-theme` on `<html>`)
-- `localStorage` key `dt` for theme persistence
-- Intersection Observer for scroll reveal
-- `window.scroll` for reading progress bar + TOC scroll-spy
+- Pure HTML/CSS/JS — no build tool
+- Google Fonts: **Inter** (body) + **JetBrains Mono** (labels/mono/meta)
+- OKLCH color tokens — light mode only (`data-theme="light"` hardcoded, `localStorage` key `dt` unused)
+- Intersection Observer for scroll reveal, `window.scroll` for progress bar + TOC spy
 
 ---
 
 ## Design System
 
-### Color Tokens (CSS custom properties, light theme default via `[data-theme="light"]`)
+### Color tokens (light theme in `[data-theme="light"]`)
 
-Key tokens:
-- `--bg`, `--bg-alt`, `--surface`, `--surface-hi`
-- `--text`, `--sub`, `--muted`
-- `--accent` (blue, OKLCH), `--accent-dim`, `--accent-brd`
-- `--green`, `--green-dim`, `--green-brd`
-- `--border`, `--border-hi`
-- `--shadow-card`
+```css
+--bg, --bg-alt, --surface, --surface-hi
+--text, --sub, --muted, --body
+--accent, --accent-hi, --accent-dim, --accent-brd
+--green, --green-dim, --green-brd
+--border, --border-hi
+--shadow-card
+```
 
-Full token set in `css/styles.css` lines ~12–47.
+Full token set: `css/styles.css` lines ~12–95.
 
-### Font size variables
-`--fs-xs`, `--fs-sm`, `--fs-md`, `--fs-lg` — defined in `:root`.
+### Font size variables (`:root`)
 
-### Layout
-- `.wrap` — max-width 1100px, `padding: 0 2rem`
+```css
+--fs-2xs: 0.625rem
+--fs-xs:  0.7rem
+--fs-sm:  0.8rem
+--fs-base: 0.9rem
+--fs-md:  1rem
+--fs-lg:  1.1rem
+```
+
+### Type scale classes
+
+```css
+.t-hero    /* clamp(2.8rem, 6.5vw, 5.25rem)  — main hero headings only */
+.t-display /* clamp(2.25rem, 5vw, 3.5rem)    — pricing h1, CTA section title */
+.t-h2      /* clamp(1.75rem, 3vw, 2.5rem)    — section headings */
+.t-h3      /* var(--fs-lg)                   */
+.t-body    /* var(--fs-md)                   */
+.t-sm      /* var(--fs-base)                 */
+.t-lbl     /* JetBrains Mono, --fs-xs, uppercase */
+.t-mono    /* JetBrains Mono, --fs-base      */
+```
+
+`.s-cta .t-hero` is overridden to `.t-display` size — CTA titles are NOT as large as hero titles.
+
+### Layout containers
+
+```css
+.wrap        /* max-width: 1100px */
+.wrap-sm     /* max-width: 700px  */
+.wrap-narrow /* max-width: 920px  */
+.wrap-faq    /* max-width: 760px  */
+```
 
 ---
 
-## Article Template (post pages)
+## Absolute Design Rules (never break)
 
-### HTML structure (all 3 article files use this — do NOT revert to old structure)
+1. **No `border-left/right/top > 1px` as colored accent** on any block element (cards, callouts, list items, alerts). Use background tints + full-perimeter 1px borders, or leading icons, or nothing.
+2. **No em-dash `—` (U+2014)** in any user-facing copy. Use `:`, `,`, `.`, or `()` instead.
+3. **No emojis** in code/copy unless user explicitly requests.
+4. All new user-facing copy must pass humanizer review before shipping.
 
+---
+
+## Dark CTA Section (`.s-cta`)
+
+Used at the bottom of every page. Background: `oklch(6.5% 0.012 264)` with radial gradient glow.
+
+```html
+<section class="s-cta">
+  <div class="wrap">
+    <div class="r">
+      <h2 class="t-hero">Your headline here.</h2>
+      <p>Supporting line.</p>
+      <a href="..." class="btn btn-p btn-lg">CTA button</a>
+    </div>
+  </div>
+</section>
+```
+
+The `.t-hero` inside `.s-cta` is automatically downsized to `.t-display` via CSS override.
+
+---
+
+## FAQ Style (all pages)
+
+Use `<details>`/`<summary>` with class `.guide-faq-item` (pillar pages) or `.faq-item` (pricing-test).
+Both render as cards with shadow + full border. No flat bordered lists.
+
+```html
+<div class="guide-faq r">
+  <details class="guide-faq-item">
+    <summary><span class="guide-faq-q">Question text</span><svg class="guide-faq-chevron">...</svg></summary>
+    <p class="guide-faq-a">Answer text.</p>
+  </details>
+</div>
+```
+
+---
+
+## Article Template
+
+**Body classes:** `page-guide page-post`
+
+**Structure:**
 ```html
 <body class="page-guide page-post">
   <div class="post-progress" aria-hidden="true"></div>
   <div id="site-nav"></div>
   <script src="/js/components.js"></script>
-
   <nav class="post-breadcrumb">...</nav>
-
-  <div class="post-layout">           <!-- 2-col grid: 1fr 252px -->
-    <div class="post-main">           <!-- left column -->
-      <header class="post-header">   <!-- title, kicker, lede, meta -->
-      </header>
-      <main class="post-body">       <!-- post-section elements -->
+  <div class="post-layout">             <!-- grid: 1fr 252px -->
+    <div class="post-main">
+      <header class="post-header">...</header>
+      <main class="post-body">
+        <!-- .post-section elements -->
       </main>
     </div>
-    <aside class="post-sidebar">     <!-- right column, sticky -->
+    <aside class="post-sidebar">
       <nav class="post-toc">...</nav>
     </aside>
   </div>
-
-  <aside class="post-related">...</aside>
+  <aside class="post-related">
+    <div class="post-related-inner">
+      <div class="post-related-grid"></div>  <!-- JS fills 3 random cards -->
+    </div>
+  </aside>
   <div id="site-footer"></div>
   <script src="/js/main.js" defer></script>
 </body>
 ```
 
-### Article visual components
+**Article components:**
 
 | Class | Purpose |
 |---|---|
-| `.post-key` | Blue callout box (accent-dim bg, no border-left) |
-| `.post-tip` | Green tip box (green-dim bg, no border-left) |
+| `.post-key` | Blue callout (accent-dim bg, full border — no side accent) |
+| `.post-tip` | Green tip box |
 | `.post-callout` | Neutral inline callout |
-| `.post-cta-inline` | Mid-article CTA aside |
-| `.post-stat-row` / `.post-stat` | White stat cards with shadow (NOT accent-dim bg) |
-| `.post-table-wrap` / `.post-table` | Data tables with `.pt-good`, `.pt-bad`, `.pt-ok`, `.pt-hl` cell classes |
-| `.post-related-grid` | 4-col related articles grid |
+| `.post-cta-inline` | Mid-article CTA |
+| `.post-stat-row` / `.post-stat` | Stat cards with shadow, `var(--surface)` bg |
+| `.post-table-wrap` / `.post-table` | Data tables with `.pt-good`, `.pt-bad`, `.pt-ok`, `.pt-hl` |
+| `.post-related-grid` | Filled by JS — leave empty in HTML |
 
-### Critical CSS rules (do NOT break)
-- **No `border-left/right/top > 1px` as colored accent** on any block — top AI-tell. Use bg tints + full-perimeter 1px borders instead. Applies to `.post-key`, `.post-tip`, `.toc-active`, all callouts, cards.
-- `.post-stat` background: `var(--surface)` with `box-shadow: var(--shadow-card)` — NOT accent-dim
-- `.post-key` has `margin-top: 2.5rem`
-- `.post-section` spacing: `margin-bottom: 0.5rem`
-- TOC active state: bg tint + color change only, no side border
+**JSON-LD schema** on all 12 articles: `Article` + `BreadcrumbList` in `@graph`, injected in `<head>`.
 
 ---
 
-## SEO URL Structure
+## Related Articles (JS)
 
-Vercel `cleanUrls: true` — `.html` files served without extension.
+`js/main.js` contains a self-contained IIFE that:
+- Holds a pool of 12 articles (url, tag, title, desc)
+- Filters out the current page
+- Fisher-Yates shuffles the pool
+- Renders 3 random `.post-related-card` links into `.post-related-grid`
+- Runs on every page (not restricted to `page-post`)
 
-| URL | File |
-|---|---|
-| `/cold-email-cost-guide/cold-email-cost-per-contact` | `cold-email-cost-guide/cold-email-cost-per-contact.html` |
-| `/cold-email-cost-guide/linkedin-inmail-cost-vs-cold-email` | `cold-email-cost-guide/linkedin-inmail-cost-vs-cold-email.html` |
-| `/cold-email-for-saas-founders/ai-cold-email-saas-founders` | `cold-email-for-saas-founders/ai-cold-email-saas-founders.html` |
-
-Old root-level URLs 301-redirect to cluster URLs via `vercel.json`.
-
----
-
-## JS Behaviors (main.js)
-
-- **Progress bar:** `.post-progress` width = scroll % of page height
-- **TOC scroll-spy:** IntersectionObserver-style via `window.scroll` — adds `.toc-active` to matching `post-toc-list a` as sections enter viewport
+**To add new articles:** append to the `ARTICLES` array in main.js and add an empty `<div class="post-related-grid"></div>` in the article HTML.
 
 ---
 
-## Next Possible Work
+## Legal Pages
 
-- More SEO cluster articles (e.g. `/cold-email-for-saas-founders/cold-email-subject-lines`)
-- Pillar page content (`cold-email-cost-guide/index.html`, `cold-email-for-saas-founders/index.html`)
-- Internal linking improvements
-- Dark mode CSS audit for article pages
+`privacy.html` and `terms.html` — body class `page-legal`.
+CSS in `styles.css` under `/* ── Legal pages ──*/`.
+Uses `var(--fs-lg)` for h2, `var(--fs-md)` for body text.
+
+---
+
+## SEO Files
+
+- `sitemap.xml` — 19 URLs, priorities: homepage 1.0, pillar 0.9, articles 0.8, other 0.7
+- `robots.txt` — allow all, disallow `/design-system`, points to sitemap
+- `llms.txt` — AI crawler friendly index of all content
+
+---
+
+## Pricing Page (draft)
+
+`pricing-test.html` — `noindex`. URL: `https://distribute.you/pricing-test`.
+Prices are provisional placeholders. Rename to `pricing.html` + remove `noindex` when prices confirmed.
+Has its own `<style>` block (page-specific CSS). Uses `.t-display` for h1, `.s-cta` for CTA section.
+
+---
+
+## Old Vercel Project (deprecated)
+
+Previous deploys went to `distribute-lead-ai` under `adam-atomic-gits-projects`.
+That project still exists but is no longer updated. All future deploys go to `distribute-landing` / `blooming-generation`.

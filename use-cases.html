@@ -6,7 +6,16 @@
   <title>Use cases: cold email for SaaS founders, agencies, freelancers, and B2B brands</title>
   <meta name="description" content="Whether you're a SaaS founder looking for your first 10 customers, an agency filling your pipeline, or a freelancer breaking the feast-or-famine cycle, Distribute works the same way.">
   <link rel="canonical" href="https://distribute.you/use-cases">
-  <link rel="stylesheet" href="/css/styles.css">
+  <!-- OG / Twitter -->
+  <meta property="og:type"        content="website">
+  <meta property="og:url"         content="https://distribute.you/use-cases">
+  <meta property="og:title"       content="Use cases: cold email for SaaS founders, agencies, freelancers and B2B brands">
+  <meta property="og:description" content="Whether you are a SaaS founder, agency, or freelancer, Distribute finds prospects and writes cold email campaigns for you. $0.07 per contact.">
+  <meta property="og:image"       content="https://distribute.you/images/distribute-og-image-light.webp">
+  <meta name="twitter:card"       content="summary_large_image">
+  <meta name="twitter:image"      content="https://distribute.you/images/distribute-og-image-light.webp">
+  <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/marketing.css">
   <script>document.documentElement.setAttribute('data-theme',localStorage.getItem('dt')||'light')</script>
 </head>
 <body class="page-uc">
@@ -32,14 +41,20 @@
     </div>
     <h1 class="t-hero a2">Cold email for the way<br>you actually work.</h1>
     <p class="uc-sub a3">Solo founder running 3 products. Agency owner trying to fill a pipeline. Freelancer breaking the feast-or-famine cycle. Different businesses, same result: qualified buyers in your inbox.</p>
-    <nav class="uc-tabs a4" aria-label="Use case sections">
-      <a href="#saas" class="uc-tab">SaaS founders</a>
-      <a href="#agency" class="uc-tab">Agencies</a>
-      <a href="#freelance" class="uc-tab">Freelancers</a>
-      <a href="#ecommerce" class="uc-tab">B2B brands</a>
-    </nav>
   </div>
 </section>
+
+<div id="uc-tabs-sentinel"></div>
+<div class="uc-tabs-bar" id="uc-tabs-bar">
+  <div class="wrap">
+    <nav class="uc-tabs" aria-label="Jump to section">
+      <a href="#saas"      class="uc-tab active" data-section="saas">SaaS founders</a>
+      <a href="#agency"    class="uc-tab"         data-section="agency">Agencies</a>
+      <a href="#freelance" class="uc-tab"         data-section="freelance">Freelancers</a>
+      <a href="#ecommerce" class="uc-tab"         data-section="ecommerce">B2B brands</a>
+    </nav>
+  </div>
+</div>
 
 
 <!-- ════════════════════════════════════════════
@@ -77,8 +92,8 @@
           </div>
           <div class="uc-funnel-row">
             <span class="uc-funnel-label">Opened</span>
-            <div class="uc-funnel-track"><div class="uid-bar-fill uc-bar-accent" data-width="27%" style="opacity:0.65"></div></div>
-            <span class="uc-funnel-val">13 <em>27%</em></span>
+            <div class="uc-funnel-track"><div class="uid-bar-fill uc-bar-accent" data-width="35%" style="opacity:0.65"></div></div>
+            <span class="uc-funnel-val">13 <em>35%</em></span>
           </div>
           <div class="uc-funnel-row">
             <span class="uc-funnel-label">Replied</span>
@@ -197,7 +212,7 @@
       <div class="uc-freelance-header">
         <span class="uc-tag uc-tag-purple t-lbl">Freelancers</span>
         <h2 class="t-h2">One campaign can fill your next 3 months.</h2>
-        <p class="t-body">The feast-or-famine cycle comes back to inconsistent outreach. You stop pitching when you're busy, then scramble when the project ends. Cold email in the background costs $25 to start and takes 15 minutes a week.</p>
+        <p class="t-body">The feast-or-famine cycle comes back to inconsistent outreach. You stop pitching when you're busy, then scramble when the project ends. Cold email in the background costs free to start and takes 15 minutes a week.</p>
       </div>
 
       <!-- 3 blocks -->
@@ -210,7 +225,7 @@
             <span class="uc-kpi-l">calls booked</span>
           </div>
           <div class="uc-kpi">
-            <span class="uc-kpi-n uc-kpi-purple">$25</span>
+            <span class="uc-kpi-n uc-kpi-purple">$20</span>
             <span class="uc-kpi-l">total spent</span>
           </div>
           <div class="uc-kpi">
@@ -297,7 +312,7 @@
         <span class="uc-visual-title t-lbl" style="display:block;margin-bottom:1rem">Campaign · 200 emails</span>
         <div class="uc-stats-grid">
           <div class="uc-stat-box">
-            <span class="uc-stat-n uc-stat-teal">27%</span>
+            <span class="uc-stat-n uc-stat-teal">35%</span>
             <span class="uc-stat-l">open rate</span>
           </div>
           <div class="uc-stat-box">
@@ -360,7 +375,7 @@
           <span class="stat-lbl">reply rate across all campaigns</span>
         </div>
         <div class="stat">
-          <span class="stat-val">27%</span>
+          <span class="stat-val">35%</span>
           <span class="stat-lbl">average open rate</span>
         </div>
         <div class="stat">
@@ -418,9 +433,9 @@
 <section class="s-cta">
   <div class="wrap">
     <div class="r">
-      <h2 class="t-hero">Start with $25. Keep what works.</h2>
+      <h2 class="t-hero">Start free. Keep what works.</h2>
       <p>No subscription. No agency fee. Just pay for what you send and keep the leads you get.</p>
-      <a href="https://app.distribute.you/sign-up" class="btn btn-p btn-lg">Start free, $25 credits</a>
+      <a href="https://app.distribute.you/sign-up" class="btn btn-p btn-lg">Send 50 emails free</a>
     </div>
   </div>
 </section>
@@ -433,5 +448,28 @@
 
 
 <script src="/js/main.js" defer></script>
+<script>
+(function () {
+  var sentinel = document.getElementById('uc-tabs-sentinel');
+  var bar      = document.getElementById('uc-tabs-bar');
+  if (!sentinel || !bar) return;
+
+  var links    = bar.querySelectorAll('[data-section]');
+  var sections = ['saas','agency','freelance','ecommerce']
+    .map(function(id){ return document.getElementById(id); }).filter(Boolean);
+
+  new IntersectionObserver(function(e){
+    bar.classList.toggle('is-stuck', !e[0].isIntersecting);
+  }, { rootMargin: '-56px 0px 0px 0px' }).observe(sentinel);
+
+  function setActive(id){
+    links.forEach(function(a){ a.classList.toggle('active', a.dataset.section === id); });
+  }
+  var sObs = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){ if(entry.isIntersecting) setActive(entry.target.id); });
+  }, { rootMargin:'-40% 0px -55% 0px', threshold:0 });
+  sections.forEach(function(s){ sObs.observe(s); });
+})();
+</script>
 </body>
 </html>
