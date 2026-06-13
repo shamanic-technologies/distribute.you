@@ -74,7 +74,7 @@ describe("Landing page: ICP-only alignment", () => {
   });
 
   it("renders the autopilot sales hero copy (no multi-channel grid)", () => {
-    expect(page).toMatch(/Drive Sales in Autopilot/);
+    expect(page).toMatch(/Sales Automation Platform/);
     expect(page).toMatch(/100 sales/);
     expect(page).toMatch(/in 30 days\./);
     expect(page).not.toMatch(/channels live/);
