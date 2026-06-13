@@ -235,7 +235,7 @@ describe("Landing page: industry stats section", () => {
 
   it("keeps the pricing section immediately after the skipped-work section", () => {
     expect(page).toMatch(/70 hours per week you skip/);
-    expect(page).toMatch(/Pay per prospect reached\. Stop anytime\./);
+    expect(page).toMatch(/You set the goal\. We deliver the outcome\./);
     expect(page).not.toMatch(/Lemlist, Saleshandy, Adobe, and Gartner/);
   });
 });
