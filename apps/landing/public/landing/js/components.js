@@ -15,8 +15,8 @@ const NAV_HTML = `
       <li><a href="/#pricing">Pricing</a></li>
     </ul>
     <div class="nav-right">
-      <a href="/sign-in" class="btn btn-g">Sign in</a>
-      <a href="/sign-up" class="btn btn-p">Start free</a>
+      <a href="https://dashboard.distribute.you/sign-in" class="btn btn-g">Sign in</a>
+      <a href="https://dashboard.distribute.you/sign-up" class="btn btn-p">Start free</a>
       <button class="nav-burger" id="navBurger" aria-label="Open menu" aria-expanded="false">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg>
       </button>
@@ -39,8 +39,8 @@ const NAV_HTML = `
     <li><a href="/#pricing">Pricing</a></li>
   </ul>
   <div class="nav-mobile-actions">
-    <a href="/sign-in" class="btn btn-g btn-lg">Sign in</a>
-    <a href="/sign-up" class="btn btn-p btn-lg">Start free</a>
+    <a href="https://dashboard.distribute.you/sign-in" class="btn btn-g btn-lg">Sign in</a>
+    <a href="https://dashboard.distribute.you/sign-up" class="btn btn-p btn-lg">Start free</a>
   </div>
 </div>`;
 
@@ -76,8 +76,8 @@ const FOOTER_HTML = `
         <h4>Company</h4>
         <ul>
           <li><a href="https://x.com/distribute_you">Twitter / X</a></li>
-          <li><a href="/sign-in">Sign in</a></li>
-          <li><a href="/sign-up">Sign up</a></li>
+          <li><a href="https://dashboard.distribute.you/sign-in">Sign in</a></li>
+          <li><a href="https://dashboard.distribute.you/sign-up">Sign up</a></li>
         </ul>
       </div>
     </div>
