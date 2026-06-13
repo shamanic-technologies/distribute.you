@@ -964,6 +964,32 @@ section  { padding: 6rem 0; }
 .price-foot-v   { font-family: 'JetBrains Mono', monospace; font-size: var(--fs-lg); font-weight: 600; color: var(--accent); }
 .price-actions  { display: flex; gap: 0.625rem; margin-top: 1rem; }
 
+/* Outcome-economics price card (ROI hero + per-outcome stat row) */
+.price-roi {
+  padding: 2rem 1.4rem 1.6rem; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 0.35rem;
+}
+.price-roi-v {
+  font-size: 3.4rem; font-weight: 800; line-height: 1;
+  color: var(--accent); letter-spacing: -0.04em;
+}
+.price-roi-l { font-size: var(--fs-sm); font-weight: 600; color: var(--text); }
+.price-roi-sub { font-family: 'JetBrains Mono', monospace; font-size: var(--fs-xs); color: var(--muted); }
+.price-outcomes {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--border); margin-top: auto;
+}
+.price-outcome {
+  padding: 1rem 0.4rem; text-align: center;
+  border-right: 1px solid var(--border);
+}
+.price-outcome:last-child { border-right: none; }
+.price-outcome-v {
+  display: block; font-family: 'JetBrains Mono', monospace;
+  font-size: var(--fs-lg); font-weight: 700; color: var(--text);
+}
+.price-outcome-l { display: block; margin-top: 0.2rem; font-size: var(--fs-2xs); color: var(--muted); }
+
 
 /* ═══════════════════════════════════════════════
    INTEGRATIONS
