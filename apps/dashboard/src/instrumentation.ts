@@ -661,7 +661,7 @@ const PLATFORM_CHAT_CONFIGS = [
 
 // Welcome signup-gift grant, in integer cents. Code-owned source of truth —
 // pinned at boot (see register()), never front-end editable.
-const WELCOME_GIFT_CENTS = 200;
+const WELCOME_GIFT_CENTS = 500;
 
 const TRANSIENT_CODES = new Set(["ECONNRESET", "ETIMEDOUT", "ECONNREFUSED", "UND_ERR_CONNECT_TIMEOUT"]);
 
