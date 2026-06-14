@@ -29,6 +29,42 @@ describe("api.ts — brand sales-economics businessModel wiring", () => {
     expect(content).toContain("input.businessModel !== undefined");
     expect(content).toContain("{ businessModel: input.businessModel }");
   });
+
+  it("exposes a BrandFunnelStage type with the 3 funnel elements", () => {
+    expect(content).toContain('export type BrandFunnelStage =');
+    expect(content).toContain('"website_signup"');
+    expect(content).toContain('"website_purchase"');
+    expect(content).toContain('"sales_meeting"');
+  });
+
+  it("exposes a BrandOptimizationGoal type (signups | booked_meetings | sales)", () => {
+    expect(content).toContain(
+      'export type BrandOptimizationGoal = "signups" | "booked_meetings" | "sales"',
+    );
+  });
+
+  it("BrandSalesEconomics carries funnelStages + optimizationGoal (read shape includes them)", () => {
+    expect(content).toContain("funnelStages: BrandFunnelStage[]");
+    expect(content).toContain("optimizationGoal: BrandOptimizationGoal");
+  });
+
+  it("keeps funnelStages + optimizationGoal optional on the input (campaign form omits them)", () => {
+    expect(content).toContain("funnelStages?: BrandFunnelStage[]");
+    expect(content).toContain("optimizationGoal?: BrandOptimizationGoal");
+  });
+
+  it("the Zod schema parses funnelStages (array enum) + optimizationGoal (enum)", () => {
+    expect(content).toContain("funnelStages: z.array(");
+    expect(content).toContain('z.literal("website_signup")');
+    expect(content).toContain('z.literal("booked_meetings")');
+  });
+
+  it("PUT body sends funnelStages + optimizationGoal only when defined (partial-update)", () => {
+    expect(content).toContain("input.funnelStages !== undefined");
+    expect(content).toContain("{ funnelStages: input.funnelStages }");
+    expect(content).toContain("input.optimizationGoal !== undefined");
+    expect(content).toContain("{ optimizationGoal: input.optimizationGoal }");
+  });
 });
 
 describe("BrandSalesEconomicsCard component", () => {
@@ -60,6 +96,21 @@ describe("BrandSalesEconomicsCard component", () => {
     expect(content).toContain("Website visit → close");
     expect(content).toContain("Business model");
     expect(content).toContain("Save");
+  });
+
+  it("renders the Sales-funnel multi-select with the 3 funnel elements", () => {
+    expect(content).toContain("Sales funnel");
+    expect(content).toContain("Website Signup");
+    expect(content).toContain("Website Purchase");
+    expect(content).toContain("Sales Meeting");
+    expect(content).toContain("toggleFunnelStage");
+  });
+
+  it("renders the Optimization-goal single-choice (# Signups / # Booked Meetings / $ Sales)", () => {
+    expect(content).toContain("Optimization goal");
+    expect(content).toContain("# Signups");
+    expect(content).toContain("# Booked Meetings");
+    expect(content).toContain("$ Sales");
   });
 });
 
