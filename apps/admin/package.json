@@ -7,27 +7,44 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "playwright test",
+    "test": "vitest run --exclude 'tests/e2e/**'",
+    "test:watch": "vitest --exclude 'tests/e2e/**'",
     "test:e2e": "playwright test",
-    "test:ui": "playwright test --ui",
-    "test:unit": "vitest run"
+    "test:ui": "playwright test --ui"
   },
   "dependencies": {
+    "@ai-sdk/react": "^3.0.118",
     "@clerk/nextjs": "^7.0.7",
-    "@tanstack/react-table": "^8.21.3",
+    "@heroicons/react": "^2.1.0",
+    "@tailwindcss/postcss": "^4",
+    "@tailwindcss/typography": "^0.5.19",
+    "@tanstack/query-sync-storage-persister": "^5.100.14",
+    "@tanstack/react-query": "^5.100.14",
+    "@tanstack/react-query-persist-client": "^5.100.14",
+    "ai": "^6.0.116",
+    "canvas-confetti": "^1.9.4",
+    "isomorphic-dompurify": "^3.12.0",
+    "lottie-react": "^2.4.1",
+    "mermaid": "^11.13.0",
     "next": "^16.2.1",
+    "posthog-js": "^1.386.6",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "react-markdown": "^10.1.0",
+    "react-useanimations": "^2.10.0",
+    "recharts": "^3.8.1",
+    "remark-gfm": "^4.0.1",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@clerk/testing": "^1.5.1",
     "@playwright/test": "^1.52.0",
-    "@tailwindcss/postcss": "^4",
+    "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^20.0.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "tailwindcss": "^4.2.2",
     "typescript": "^5.3.0",
-    "vitest": "^4.1.5"
+    "vitest": "^4.0.18"
   }
 }

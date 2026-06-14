@@ -1,7 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
-  globalSetup: "./global.setup.ts",
   testDir: "./tests/e2e",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
@@ -9,18 +8,23 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: "html",
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3002",
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3001",
     trace: "on-first-retry",
   },
   projects: [
     {
+      name: "setup",
+      testMatch: /global\.setup\.ts/,
+    },
+    {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
+      dependencies: ["setup"],
     },
   ],
   webServer: {
     command: "pnpm dev",
-    url: "http://localhost:3002",
+    url: "http://localhost:3001",
     reuseExistingServer: !process.env.CI,
   },
 });
