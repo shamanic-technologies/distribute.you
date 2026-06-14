@@ -19,21 +19,26 @@ const DEFAULTS = {
   replyToMeetingPct: "40",
   visitToMeetingPct: "20",
   meetingToClosePct: "25",
-  visitToClosePct: "5",
+  // Self-serve close is now two steps: visit→signup × signup→paid = the old
+  // visit→close (25 × 20% = 5%, matching the prior default).
+  visitToSignupPct: "25",
+  signupToPaidClientPct: "20",
 } as const;
 
 type PctKey =
   | "replyToMeetingPct"
   | "visitToMeetingPct"
   | "meetingToClosePct"
-  | "visitToClosePct";
+  | "visitToSignupPct"
+  | "signupToPaidClientPct";
 
 type FormState = {
   lifetimeRevenueUsd: string;
   replyToMeetingPct: string;
   visitToMeetingPct: string;
   meetingToClosePct: string;
-  visitToClosePct: string;
+  visitToSignupPct: string;
+  signupToPaidClientPct: string;
   businessModel: BrandBusinessModel | null;
   funnelStages: BrandFunnelStage[];
   optimizationGoal: BrandOptimizationGoal;
@@ -41,11 +46,6 @@ type FormState = {
 
 // The funnel elements a brand can have (multi-select).
 const FUNNEL_STAGES: { value: BrandFunnelStage; label: string; tip: string }[] = [
-  {
-    value: "website_signup",
-    label: "Website Signup",
-    tip: "Visitors create an account / sign up on your website.",
-  },
   {
     value: "website_purchase",
     label: "Website Purchase",
@@ -58,33 +58,51 @@ const FUNNEL_STAGES: { value: BrandFunnelStage; label: string; tip: string }[] =
   },
 ];
 
-// The single metric the brand optimises for ($ Sales is the default).
-const OPTIMIZATION_GOALS: { value: BrandOptimizationGoal; label: string }[] = [
-  { value: "signups", label: "# Signups" },
-  { value: "booked_meetings", label: "# Booked Meetings" },
-  { value: "sales", label: "$ Sales" },
+// The single metric the brand optimises for ($ Sales is the default). `stages` =
+// which funnel stages make this goal relevant; [] = always relevant.
+const OPTIMIZATION_GOALS: {
+  value: BrandOptimizationGoal;
+  label: string;
+  stages: BrandFunnelStage[];
+}[] = [
+  { value: "signups", label: "# Signups", stages: ["website_purchase"] },
+  { value: "booked_meetings", label: "# Booked Meetings", stages: ["sales_meeting"] },
+  { value: "sales", label: "$ Sales", stages: [] },
 ];
 
-const PCT_FIELDS: { key: PctKey; label: string; tip: string }[] = [
+// Each conversion rate belongs to a funnel path; `stages` drives which fields show
+// for the selected funnel. The self-serve path is now two steps (visit→signup,
+// signup→paid client) — their product replaces the old visit→close rate.
+const PCT_FIELDS: { key: PctKey; label: string; tip: string; stages: BrandFunnelStage[] }[] = [
   {
     key: "replyToMeetingPct",
     label: "Positive reply → meeting",
     tip: "Of leads who reply positively, the share you turn into a booked meeting.",
+    stages: ["sales_meeting"],
   },
   {
     key: "visitToMeetingPct",
     label: "Website visit → meeting",
     tip: "Of leads who click through to your website, the share that book a meeting.",
+    stages: ["sales_meeting"],
   },
   {
     key: "meetingToClosePct",
     label: "Meeting → close",
     tip: "Of booked meetings, the share that become paying customers.",
+    stages: ["sales_meeting"],
   },
   {
-    key: "visitToClosePct",
-    label: "Website visit → close",
-    tip: "Of leads who visit your website, the share that buy without a meeting (self-serve).",
+    key: "visitToSignupPct",
+    label: "Website visit → signup",
+    tip: "Of leads who visit your website, the share that sign up.",
+    stages: ["website_purchase"],
+  },
+  {
+    key: "signupToPaidClientPct",
+    label: "Signup → paid client",
+    tip: "Of signups, the share that become paying customers.",
+    stages: ["website_purchase"],
   },
 ];
 
@@ -115,7 +133,8 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
             replyToMeetingPct: String(e.replyToMeetingPct),
             visitToMeetingPct: String(e.visitToMeetingPct),
             meetingToClosePct: String(e.meetingToClosePct),
-            visitToClosePct: String(e.visitToClosePct),
+            visitToSignupPct: String(e.visitToSignupPct),
+            signupToPaidClientPct: String(e.signupToPaidClientPct),
             businessModel: e.businessModel,
             funnelStages: e.funnelStages,
             optimizationGoal: e.optimizationGoal,
@@ -151,16 +170,24 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
   }
 
   function toggleFunnelStage(stage: BrandFunnelStage) {
-    setForm((f) =>
-      f
-        ? {
-            ...f,
-            funnelStages: f.funnelStages.includes(stage)
-              ? f.funnelStages.filter((s) => s !== stage)
-              : [...f.funnelStages, stage],
-          }
-        : f,
-    );
+    setForm((f) => {
+      if (!f) return f;
+      const funnelStages = f.funnelStages.includes(stage)
+        ? f.funnelStages.filter((s) => s !== stage)
+        : [...f.funnelStages, stage];
+      // If the selected optimization goal no longer maps to a chosen funnel stage,
+      // fall back to $ Sales (always relevant) so no hidden goal stays selected.
+      const goalDef = OPTIMIZATION_GOALS.find((g) => g.value === f.optimizationGoal);
+      const goalStillRelevant =
+        !goalDef ||
+        goalDef.stages.length === 0 ||
+        goalDef.stages.some((s) => funnelStages.includes(s));
+      return {
+        ...f,
+        funnelStages,
+        optimizationGoal: goalStillRelevant ? f.optimizationGoal : "sales",
+      };
+    });
     setDirty(true);
     setSaved(false);
   }
@@ -172,12 +199,20 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
       replyToMeetingPct: toInt(form.replyToMeetingPct),
       visitToMeetingPct: toInt(form.visitToMeetingPct),
       meetingToClosePct: toInt(form.meetingToClosePct),
-      visitToClosePct: toInt(form.visitToClosePct),
+      visitToSignupPct: toInt(form.visitToSignupPct),
+      signupToPaidClientPct: toInt(form.signupToPaidClientPct),
       businessModel: form.businessModel,
       funnelStages: form.funnelStages,
       optimizationGoal: form.optimizationGoal,
     });
   }
+
+  // Show only the fields/goals relevant to the selected funnel stage(s); [] stages =
+  // always shown. Nothing selected → only the always-on rows (Lifetime Revenue + $ Sales).
+  const isRelevant = (stages: BrandFunnelStage[]) =>
+    stages.length === 0 || stages.some((s) => form?.funnelStages.includes(s));
+  const visiblePctFields = PCT_FIELDS.filter((f) => isRelevant(f.stages));
+  const visibleGoals = OPTIMIZATION_GOALS.filter((g) => isRelevant(g.stages));
 
   if (isPending || !form) {
     return (
@@ -256,7 +291,7 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
         <div className="mb-5">
           <label className="block text-xs text-gray-500 mb-1.5">Optimization goal</label>
           <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5">
-            {OPTIMIZATION_GOALS.map((g) => {
+            {visibleGoals.map((g) => {
               const active = form.optimizationGoal === g.value;
               return (
                 <button
@@ -300,8 +335,8 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
             </div>
           </div>
 
-          {/* Conversion rates */}
-          {PCT_FIELDS.map((f) => (
+          {/* Conversion rates — only those relevant to the selected funnel */}
+          {visiblePctFields.map((f) => (
             <div key={f.key}>
               <label className="block text-xs text-gray-500 mb-1" title={f.tip}>
                 {f.label}
