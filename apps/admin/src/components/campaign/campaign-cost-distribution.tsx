@@ -1,0 +1,160 @@
+"use client";
+
+import { useMemo } from "react";
+import type { BrandRun } from "@/lib/api";
+import { Skeleton } from "@/components/skeleton";
+
+interface CampaignCostDistributionProps {
+  runs: BrandRun[];
+  statsTotalCents?: number | null;
+  pending?: boolean;
+}
+
+const COLORS = [
+  "#6366f1", // indigo
+  "#f59e0b", // amber
+  "#10b981", // emerald
+  "#ef4444", // red
+  "#8b5cf6", // violet
+  "#06b6d4", // cyan
+  "#f97316", // orange
+  "#ec4899", // pink
+  "#14b8a6", // teal
+  "#84cc16", // lime
+];
+
+function formatCostName(name: string): string {
+  return name
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatUsdCents(cents: number): string {
+  const usd = cents / 100;
+  if (usd < 0.01) return "<$0.01";
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+export function CampaignCostDistribution({ runs, statsTotalCents, pending = false }: CampaignCostDistributionProps) {
+  const segments = useMemo(() => {
+    const map = new Map<string, number>();
+
+    for (const run of runs) {
+      for (const cost of run.costs) {
+        const val = parseFloat(cost.totalCostInUsdCents);
+        if (!isNaN(val) && val > 0) {
+          const name = cost.costName ?? "Unknown";
+          map.set(name, (map.get(name) || 0) + val);
+        }
+      }
+    }
+
+    // Add "Other" segment for costs not captured by brand runs
+    // (e.g. campaign execution costs: enrichment, email generation, sending)
+    const categorizedTotal = Array.from(map.values()).reduce((s, v) => s + v, 0);
+    if (statsTotalCents && statsTotalCents > categorizedTotal) {
+      const diff = statsTotalCents - categorizedTotal;
+      if (diff > 0.001) {
+        map.set("Other", diff);
+      }
+    }
+
+    const entries = Array.from(map.entries())
+      .map(([name, cents]) => ({ name, cents }))
+      .sort((a, b) => b.cents - a.cents);
+
+    const total = statsTotalCents && statsTotalCents > 0 ? statsTotalCents : entries.reduce((sum, e) => sum + e.cents, 0);
+
+    return entries.map((entry, i) => ({
+      ...entry,
+      percentage: total > 0 ? (entry.cents / total) * 100 : 0,
+      color: COLORS[i % COLORS.length],
+    }));
+  }, [runs, statsTotalCents]);
+
+  const totalCents = statsTotalCents && statsTotalCents > 0
+    ? statsTotalCents
+    : segments.reduce((sum, s) => sum + s.cents, 0);
+
+  if (!pending && totalCents === 0) {
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <h3 className="font-medium text-gray-800 mb-4">Cost Breakdown</h3>
+        <p className="text-sm text-gray-500 text-center py-4">No cost data yet</p>
+      </div>
+    );
+  }
+
+  // Build conic-gradient stops
+  let cumulative = 0;
+  const stops = segments.map((seg) => {
+    const start = cumulative;
+    cumulative += seg.percentage;
+    return `${seg.color} ${start}% ${cumulative}%`;
+  });
+
+  // When pending with no data, render placeholder legend rows (label text skeletoned)
+  const hasSegments = segments.length > 0;
+  const legendRows = hasSegments
+    ? segments
+    : Array.from({ length: 4 }, (_, i) => ({
+        name: `placeholder-${i}`,
+        cents: 0,
+        percentage: 0,
+        color: COLORS[i % COLORS.length],
+      }));
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <h3 className="font-medium text-gray-800 mb-4">Cost Breakdown</h3>
+
+      <div className="flex flex-col sm:flex-row items-center gap-6">
+        {/* Donut chart */}
+        {pending ? (
+          <div className="rounded-full flex-shrink-0 relative" style={{ width: 160, height: 160 }}>
+            <Skeleton className="rounded-full w-full h-full" />
+            <div className="absolute inset-5 bg-white rounded-full flex items-center justify-center">
+              <Skeleton className="h-4 w-12" />
+            </div>
+          </div>
+        ) : (
+          <div
+            className="rounded-full flex-shrink-0 relative"
+            style={{
+              width: 160,
+              height: 160,
+              background: `conic-gradient(${stops.join(", ")})`,
+            }}
+          >
+            <div className="absolute inset-5 bg-white rounded-full flex items-center justify-center">
+              <span className="text-sm font-semibold text-gray-800">
+                {formatUsdCents(totalCents)}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Legend */}
+        <div className="flex-1 space-y-2 w-full min-w-0">
+          {legendRows.map((seg) => (
+            <div key={seg.name} className="flex items-center gap-2">
+              <span
+                className="w-3 h-3 rounded-full flex-shrink-0"
+                style={{ backgroundColor: seg.color }}
+              />
+              <span className="text-sm text-gray-700 flex-1 truncate">
+                {hasSegments ? formatCostName(seg.name) : <Skeleton className="h-4 w-24" />}
+              </span>
+              <span className="text-sm font-medium text-gray-800 flex-shrink-0">
+                {pending ? <Skeleton className="h-4 w-12" /> : formatUsdCents(seg.cents)}
+              </span>
+              <span className="text-xs text-gray-500 w-10 text-right flex-shrink-0">
+                {pending ? <Skeleton className="h-3 w-8 ml-auto" /> : `${seg.percentage.toFixed(0)}%`}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

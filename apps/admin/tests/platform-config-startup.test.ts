@@ -1,0 +1,290 @@
+import { describe, it, expect } from "vitest";
+import * as fs from "fs";
+import * as path from "path";
+
+const instrumentationPath = path.resolve(__dirname, "../src/instrumentation.ts");
+const content = fs.readFileSync(instrumentationPath, "utf-8");
+
+describe("Platform config registration at startup", () => {
+  describe("platform keys", () => {
+    const expectedKeys = [
+      { provider: "anthropic", envVar: "ANTHROPIC_API_KEY" },
+      { provider: "apollo", envVar: "APOLLO_API_KEY" },
+      { provider: "instantly", envVar: "INSTANTLY_API_KEY" },
+      { provider: "firecrawl", envVar: "FIRECRAWL_API_KEY" },
+      { provider: "google", envVar: "GEMINI_API_KEY" },
+      { provider: "postmark", envVar: "POSTMARK_API_KEY" },
+      { provider: "postmark-broadcast-stream", envVar: "POSTMARK_BROADCAST_STREAM_ID" },
+      { provider: "postmark-inbound-stream", envVar: "POSTMARK_INBOUND_STREAM_ID" },
+      { provider: "postmark-transactional-stream", envVar: "POSTMARK_TRANSACTIONAL_STREAM_ID" },
+      { provider: "postmark-from-address", envVar: "POSTMARK_FROM_ADDRESS" },
+      { provider: "stripe", envVar: "STRIPE_SECRET_KEY" },
+      { provider: "stripe-webhook", envVar: "STRIPE_WEBHOOK_SECRET" },
+      { provider: "api-service-mcp", envVar: "ADMIN_DISTRIBUTE_API_KEY" },
+      { provider: "serper-dev", envVar: "SERPER_DEV_API_KEY" },
+      { provider: "google-client-id", envVar: "GOOGLE_CLIENT_ID" },
+      { provider: "google-client-secret", envVar: "GOOGLE_CLIENT_SECRET" },
+      { provider: "google-developer-token", envVar: "GOOGLE_DEVELOPER_TOKEN" },
+      { provider: "google-mcc-account-id", envVar: "GOOGLE_MCC_ACCOUNT_ID" },
+      { provider: "featured-username", envVar: "FEATURED_COM_USERNAME" },
+      { provider: "featured-password", envVar: "FEATURED_COM_PASSWORD" },
+      { provider: "apify", envVar: "APIFY_API_KEY" },
+    ];
+
+    it("should call POST /platform-keys via api-service", () => {
+      expect(content).toContain("/platform-keys");
+      expect(content).toContain('method: "POST"');
+    });
+
+    for (const { provider, envVar } of expectedKeys) {
+      it(`should register ${provider} key from ${envVar}`, () => {
+        expect(content).toContain(`provider: "${provider}"`);
+        expect(content).toContain(`envVar: "${envVar}"`);
+      });
+    }
+
+    it("should register exactly 28 platform keys", () => {
+      const matches = content.match(/provider: "[^"]+", envVar: "[^"]+"/g);
+      expect(matches).toHaveLength(28);
+    });
+
+    it("should skip missing env vars instead of blocking all registrations", () => {
+      expect(content).toContain("Skipping");
+      expect(content).toContain("env vars not set");
+      expect(content).not.toContain("Missing platform key env vars");
+    });
+
+    it("should throw within the key block if zero keys can be registered", () => {
+      expect(content).toContain("No platform key env vars are set");
+    });
+
+    it("should log but not crash process on key registration failure", () => {
+      expect(content).toContain("Platform key registration error:");
+      // The outer catch must NOT re-throw — transient failures shouldn't kill the process
+      const keyBlock = content.slice(
+        content.indexOf("// Register platform keys"),
+        content.indexOf("// Register platform prompts"),
+      );
+      const outerCatchMatch = keyBlock.match(/\} catch \(err\) \{[^}]*\}/g);
+      expect(outerCatchMatch).toBeTruthy();
+      // The last catch in the block should NOT contain "throw err"
+      const lastCatch = outerCatchMatch![outerCatchMatch!.length - 1];
+      expect(lastCatch).not.toContain("throw err");
+    });
+  });
+
+  describe("platform prompts", () => {
+    it("should call PUT /platform-prompts via api-service", () => {
+      expect(content).toContain("/platform-prompts");
+    });
+
+    it("should register the cold-email prompt type", () => {
+      expect(content).toContain('type: "cold-email"');
+    });
+
+    it("should include all 6 template variables as {name, description} objects", () => {
+      const vars = [
+        "leadFirstName",
+        "leadLastName",
+        "leadTitle",
+        "leadCompanyName",
+        "leadCompanyIndustry",
+        "clientCompanyName",
+      ];
+      for (const v of vars) {
+        expect(content).toContain(`name: "${v}"`);
+      }
+    });
+
+    it("should declare COLD_EMAIL_VARIABLES as an array of {name, description} objects, not strings", () => {
+      const arrMatch = content.match(/const COLD_EMAIL_VARIABLES\s*=\s*\[([\s\S]*?)\];/);
+      expect(arrMatch).toBeTruthy();
+      const arr = arrMatch![1];
+      const entryMatches = arr.match(/\{\s*name:\s*"[^"]+",\s*description:\s*[^}]+\}/g);
+      expect(entryMatches).toHaveLength(6);
+      expect(arr).not.toMatch(/^\s*"[a-zA-Z]+",?\s*$/m);
+    });
+
+    it("should dynamically insert today's date in the prompt", () => {
+      expect(content).toContain('toISOString().split("T")[0]');
+    });
+
+    it("should log but not crash process on prompt registration failure", () => {
+      expect(content).toContain("Platform prompt deployment failed");
+      const promptBlock = content.slice(
+        content.indexOf("// Register platform prompts"),
+        content.indexOf("// Register platform chat configs"),
+      );
+      const outerCatchMatch = promptBlock.match(/\} catch \(err\) \{[^}]*\}/g);
+      expect(outerCatchMatch).toBeTruthy();
+      const lastCatch = outerCatchMatch![outerCatchMatch!.length - 1];
+      expect(lastCatch).not.toContain("throw err");
+    });
+  });
+
+  describe("platform chat configs", () => {
+    it("should call PUT /platform-chat/config via api-service", () => {
+      expect(content).toContain("/platform-chat/config");
+    });
+
+    it("should register all three chat config keys", () => {
+      expect(content).toContain('key: "workflow"');
+      expect(content).toContain('key: "press-kit"');
+      expect(content).toContain('key: "feature"');
+    });
+
+    it("should include the workflow editor system prompt", () => {
+      expect(content).toContain("expert workflow editor embedded in a workflow management dashboard");
+    });
+
+    it("should include the press kit editor system prompt", () => {
+      expect(content).toContain("expert press kit editor embedded in a media kit management dashboard");
+    });
+
+    it("should include the feature designer system prompt", () => {
+      expect(content).toContain("expert feature designer embedded in a feature management dashboard");
+    });
+
+    it("should include allowedTools for each config", () => {
+      expect(content).toContain("WORKFLOW_ALLOWED_TOOLS");
+      expect(content).toContain("PRESS_KIT_ALLOWED_TOOLS");
+      expect(content).toContain("FEATURE_ALLOWED_TOOLS");
+    });
+
+    it("should instruct the model to use workflowId from context for all tool calls", () => {
+      expect(content).toContain("workflowId");
+      expect(content).toContain("NEVER ask the user for the workflow ID");
+    });
+
+    it("should not include removed mcpServerUrl or mcpKeyName fields", () => {
+      expect(content).not.toContain("mcpServerUrl");
+      expect(content).not.toContain("mcpKeyName");
+    });
+
+    it("should be non-blocking (warn on failure, not throw)", () => {
+      expect(content).toContain("chat config(s) failed");
+      expect(content).toContain("console.warn");
+    });
+
+    it("should include the three new workflow tool names in WORKFLOW_ALLOWED_TOOLS", () => {
+      const arrMatch = content.match(/const WORKFLOW_ALLOWED_TOOLS\s*=\s*\[([\s\S]*?)\];/);
+      expect(arrMatch).toBeTruthy();
+      const arr = arrMatch![1];
+      expect(arr).toContain('"create_workflow"');
+      expect(arr).toContain('"upgrade_workflow"');
+      expect(arr).toContain('"fork_workflow"');
+    });
+
+    it("should not include the removed workflow tool names in WORKFLOW_ALLOWED_TOOLS", () => {
+      const arrMatch = content.match(/const WORKFLOW_ALLOWED_TOOLS\s*=\s*\[([\s\S]*?)\];/);
+      expect(arrMatch).toBeTruthy();
+      const arr = arrMatch![1];
+      expect(arr).not.toContain('"update_workflow"');
+      expect(arr).not.toContain('"update_workflow_node_config"');
+      expect(arr).not.toContain('"generate_workflow"');
+    });
+
+    it("should mention each of the three new workflow tools in the system prompt", () => {
+      expect(content).toContain("create_workflow");
+      expect(content).toContain("upgrade_workflow");
+      expect(content).toContain("fork_workflow");
+    });
+
+    it("should not reference any removed workflow tool name anywhere in the file", () => {
+      expect(content).not.toMatch(/\bupdate_workflow\b/);
+      expect(content).not.toMatch(/\bupdate_workflow_node_config\b/);
+      expect(content).not.toMatch(/\bgenerate_workflow\b/);
+    });
+
+    it("should enforce that create_workflow is only for features with no existing workflow", () => {
+      expect(content).toMatch(/create_workflow[\s\S]{0,400}(no\s+workflow|no\s+existing\s+workflow|first\s+workflow|never\s+had\s+a\s+workflow)/i);
+    });
+
+    it("should classify fixing missing/misnamed $ref in inputMapping as upgrade_workflow (not fork)", () => {
+      expect(content).toMatch(/upgrade_workflow[\s\S]*\\\$ref[\s\S]*inputMapping/i);
+    });
+
+    it("should include a DAG-topology heuristic distinguishing upgrade vs fork", () => {
+      expect(content).toMatch(/DAG\s+topology\s+unchanged/i);
+    });
+
+    it("should clarify that fork 'changed inputs/outputs' means template/contract change, not $ref wiring fix", () => {
+      expect(content).toMatch(/template\s+contract|contract\s+change|new\s+(?:template\s+)?variable/i);
+      expect(content).toMatch(/not\s+(?:a\s+)?(?:bug.?fix|fix(?:ing)?\s+(?:broken\s+)?\\\$ref|wiring\s+fix)/i);
+    });
+
+    it("should give a concrete inputMapping-rename example in the upgrade_workflow guidance", () => {
+      expect(content).toMatch(/rename\s+inputMapping\s+keys/i);
+    });
+  });
+
+  describe("transient network retry", () => {
+    it("should define a fetchWithRetry wrapper", () => {
+      expect(content).toContain("async function fetchWithRetry");
+    });
+
+    it("should retry on known transient error codes", () => {
+      expect(content).toContain("ECONNRESET");
+      expect(content).toContain("ETIMEDOUT");
+      expect(content).toContain("ECONNREFUSED");
+    });
+
+    it("should use fetchWithRetry for all startup HTTP calls", () => {
+      const registerBlock = content.slice(content.indexOf("export async function register()"));
+      const plainFetchCalls = registerBlock.match(/[^h]fetch\(/g);
+      expect(plainFetchCalls).toBeNull();
+      const retryFetchCalls = registerBlock.match(/fetchWithRetry\(/g);
+      expect(retryFetchCalls!.length).toBeGreaterThanOrEqual(4);
+    });
+
+    it("should use exponential backoff", () => {
+      expect(content).toContain("baseDelayMs * 2 ** attempt");
+    });
+  });
+
+  describe("file location", () => {
+    it("should be in src/ alongside app/ so Next.js finds it", () => {
+      const srcPath = path.resolve(__dirname, "../src/instrumentation.ts");
+      expect(fs.existsSync(srcPath)).toBe(true);
+    });
+
+    it("should NOT be at the project root (Next.js ignores it there when using src/)", () => {
+      const rootPath = path.resolve(__dirname, "../instrumentation.ts");
+      expect(fs.existsSync(rootPath)).toBe(false);
+    });
+  });
+
+  describe("turbo.json passthrough", () => {
+    const turboPath = path.resolve(__dirname, "../../../turbo.json");
+    const turboContent = fs.readFileSync(turboPath, "utf-8");
+    const turboConfig = JSON.parse(turboContent);
+    const globalPassThrough: string[] = turboConfig.globalPassThroughEnv ?? [];
+
+    it('should use globalPassThroughEnv: ["*"] so all env vars reach instrumentation', () => {
+      expect(globalPassThrough).toContain("*");
+    });
+  });
+
+  describe("routing", () => {
+    it("should route all calls through api-service, not internal services", () => {
+      expect(content).not.toContain("KEY_SERVICE_URL");
+      expect(content).not.toContain("CONTENT_GENERATION_SERVICE_URL");
+      expect(content).not.toContain("CHAT_SERVICE_URL");
+    });
+
+    it("should use existing NEXT_PUBLIC_DISTRIBUTE_API_URL and ADMIN_DISTRIBUTE_API_KEY", () => {
+      expect(content).toContain("NEXT_PUBLIC_DISTRIBUTE_API_URL");
+      expect(content).toContain("ADMIN_DISTRIBUTE_API_KEY");
+    });
+
+    it("should not introduce redundant API_SERVICE_URL/API_SERVICE_API_KEY env vars", () => {
+      expect(content).not.toContain("API_SERVICE_URL");
+      expect(content).not.toContain("API_SERVICE_API_KEY");
+    });
+
+    it("should authenticate all calls with X-API-Key", () => {
+      const apiKeyUsages = content.match(/"X-API-Key": apiKey/g);
+      expect(apiKeyUsages!.length).toBeGreaterThanOrEqual(4); // emails + keys + prompts + chat
+    });
+  });
+});
