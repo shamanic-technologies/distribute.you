@@ -17,6 +17,14 @@ interface Brand {
   domain: string;
 }
 
+interface OrgOption {
+  id: string;
+  name: string;
+  slug: string | null;
+  imageUrl?: string | null;
+  hasImage?: boolean;
+}
+
 interface Campaign {
   id: string;
   name: string;
@@ -93,9 +101,9 @@ export function BreadcrumbNav() {
   const pathname = usePathname();
   const router = useRouter();
   const { organization } = useOrganization();
-  const { userMemberships, setActive } = useOrganizationList({
-    userMemberships: { infinite: true },
-  });
+  // `setActive` only — the admin org switcher lists EVERY platform org (via the
+  // Clerk Backend API behind /api/admin/orgs), not just the caller's memberships.
+  const { setActive } = useOrganizationList();
   const { features, getFeature } = useFeatures();
   // Gate the feature switcher exactly like the sidebar + brand overview: a
   // non-staff viewer sees only GA features, staff (flag on) sees all. Without
@@ -110,6 +118,9 @@ export function BreadcrumbNav() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [workflowName, setWorkflowName] = useState<string | null>(null);
+  const [allOrgs, setAllOrgs] = useState<OrgOption[]>([]);
+  const [orgSearch, setOrgSearch] = useState("");
+  const [orgsLoading, setOrgsLoading] = useState(false);
 
   // Parse path structure: /orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]
   // Also handles app-level: /features/[featureId] and /features/[featureId]/new
@@ -132,6 +143,28 @@ export function BreadcrumbNav() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const fetchOrgs = useCallback(async (q: string) => {
+    setOrgsLoading(true);
+    try {
+      const res = await fetch(`/api/admin/orgs?q=${encodeURIComponent(q)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setAllOrgs(data.organizations || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch orgs:", err);
+    } finally {
+      setOrgsLoading(false);
+    }
+  }, []);
+
+  // Fetch all platform orgs when the org dropdown opens; debounce on search.
+  useEffect(() => {
+    if (openDropdown !== "org") return;
+    const t = setTimeout(() => fetchOrgs(orgSearch), 250);
+    return () => clearTimeout(t);
+  }, [openDropdown, orgSearch, fetchOrgs]);
 
   const fetchBrands = useCallback(async () => {
     if (brandListCache.data && Date.now() - brandListCache.timestamp < CACHE_TTL) {
@@ -219,6 +252,17 @@ export function BreadcrumbNav() {
     // that resolves carries the OLD org in the lag window → write commits under the
     // wrong org, later read 404s (DIS-143 stale write). The proxy's fail-closed guard
     // is the backstop; awaiting closes the race at the source.
+    //
+    // ADMIN auto-join (option A): the target org may be a customer org the admin
+    // is NOT yet a member of. Clerk `setActive` rejects a non-member org, so first
+    // make the admin a real member (role org:admin) server-side. Idempotent no-op
+    // if already a member. AWAIT before setActive so the membership exists when the
+    // session rotates.
+    try {
+      await fetch(`/api/admin/orgs/${clerkOrgId}/join`, { method: "POST" });
+    } catch (err) {
+      console.error("Failed to join org:", err);
+    }
     if (setActive) {
       await setActive({ organization: clerkOrgId });
     }
@@ -312,27 +356,42 @@ export function BreadcrumbNav() {
           <Chevron open={openDropdown === "org"} />
         </button>
         {openDropdown === "org" && (
-          <div className="absolute left-0 top-full mt-1 w-56 bg-white rounded-lg border border-gray-200 shadow-xl py-1 z-50">
+          <div className="absolute left-0 top-full mt-1 w-72 bg-white rounded-lg border border-gray-200 shadow-xl py-1 z-50">
             <div className="px-3 py-2 border-b border-gray-100">
-              <p className="text-xs text-gray-500 font-medium">Switch organization</p>
+              <p className="text-xs text-gray-500 font-medium mb-1.5">Switch organization</p>
+              <input
+                autoFocus
+                value={orgSearch}
+                onChange={(e) => setOrgSearch(e.target.value)}
+                placeholder="Search all organizations…"
+                className="w-full text-sm px-2 py-1 border border-gray-200 rounded focus:ring-2 focus:ring-brand-300 focus:outline-none"
+              />
             </div>
-            {userMemberships?.data?.map((m) => (
-              <button
-                key={m.organization.id}
-                onClick={() => handleOrgSwitch(m.organization.id)}
-                className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition ${
-                  organization?.id === m.organization.id ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                <OrgAvatar name={m.organization.name} imageUrl={m.organization.imageUrl} hasImage={m.organization.hasImage} sizeClass="w-6 h-6" />
-                <span className="truncate">{m.organization.name}</span>
-                {organization?.id === m.organization.id && (
-                  <svg className="w-4 h-4 text-brand-600 ml-auto" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                )}
-              </button>
-            ))}
+            <div className="max-h-80 overflow-y-auto">
+              {orgsLoading && (
+                <p className="px-3 py-2 text-xs text-gray-400">Loading…</p>
+              )}
+              {!orgsLoading && allOrgs.length === 0 && (
+                <p className="px-3 py-2 text-xs text-gray-400">No organizations found</p>
+              )}
+              {allOrgs.map((o) => (
+                <button
+                  key={o.id}
+                  onClick={() => handleOrgSwitch(o.id)}
+                  className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition ${
+                    organization?.id === o.id ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  <OrgAvatar name={o.name} imageUrl={o.imageUrl} hasImage={o.hasImage} sizeClass="w-6 h-6" />
+                  <span className="truncate">{o.name}</span>
+                  {organization?.id === o.id && (
+                    <svg className="w-4 h-4 text-brand-600 ml-auto flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
             <div className="border-t border-gray-100 mt-1 pt-1">
               <button
                 onClick={() => { setOpenDropdown(null); router.push("/onboarding?new=1"); }}
