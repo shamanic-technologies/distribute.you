@@ -30,6 +30,15 @@ const TAB_TITLES: Record<Tab, string> = {
   "settings-campaign": "Campaign settings",
 };
 
+// Sub-tabs per settings page — each renders its own panel (see SettingsSubNav consumers).
+const SETTINGS_SUBTABS: Partial<Record<Tab, string[]>> = {
+  "settings-account":  ["Profile", "Notifications", "Security"],
+  "settings-billing":  ["Plan", "Payment", "Invoices"],
+  "settings-brand":    ["General", "Audience & ICP", "Tracking"],
+  "settings-org":      ["General", "Team", "Integrations"],
+  "settings-campaign": ["General", "Budget", "Targeting", "Funnel"],
+};
+
 type PageKey = "signups" | "meetings" | "purchases";
 interface PageCfg {
   key: PageKey; title: string; funnel: Funnel; entry: Stage; terminal: Stage;
@@ -86,13 +95,19 @@ function LiveBadge() {
   );
 }
 
-function Breadcrumb({ tab, campaignName }: { tab: Tab; campaignName: string | null }) {
+function Breadcrumb({ tab, campaignName, subLabel }: { tab: Tab; campaignName: string | null; subLabel?: string | null }) {
   if (tab.startsWith("settings-")) {
     return (
       <span className="app-topbar-title">
         <span className="app-breadcrumb-parent">Settings</span>
         <span className="app-breadcrumb-sep"> › </span>
-        <span className="app-breadcrumb-current">{TAB_TITLES[tab]}</span>
+        <span className={subLabel ? "app-breadcrumb-parent" : "app-breadcrumb-current"}>{TAB_TITLES[tab]}</span>
+        {subLabel && (
+          <>
+            <span className="app-breadcrumb-sep"> › </span>
+            <span className="app-breadcrumb-current">{subLabel}</span>
+          </>
+        )}
       </span>
     );
   }
@@ -127,6 +142,7 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
   const [newUrl, setNewUrl] = useState("");
   const [navOpen, setNavOpen] = useState(false);
   const [activeCampaign, setActiveCampaign] = useState<MockCampaign | null>(null);
+  const [subTab, setSubTab] = useState(0); // active settings sub-tab index (reset on every nav)
 
   const activeBrand = brands[activeIdx] ?? brand;
   const userEmail = `adam@${hostnameOf(activeBrand.url)}`;
@@ -147,19 +163,19 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
 
   const closeMenus = () => { setBrandMenuOpen(false); setUserMenuOpen(false); };
 
-  function selectBrand(i: number) { setActiveIdx(i); setBrandMenuOpen(false); setNavOpen(false); setTab("overview"); setActiveCampaign(null); }
+  function selectBrand(i: number) { setActiveIdx(i); setBrandMenuOpen(false); setNavOpen(false); setTab("overview"); setSubTab(0); setActiveCampaign(null); }
   function addBrand() {
     const url = newUrl.trim();
     if (!url) return;
     const norm = /^https?:\/\//.test(url) ? url : `https://${url}`;
     setBrands((b) => [...b, { name: hostnameOf(norm), url: norm }]);
     setActiveIdx(brands.length);
-    setNewUrl(""); setAddOpen(false); setTab("overview"); setActiveCampaign(null);
+    setNewUrl(""); setAddOpen(false); setTab("overview"); setSubTab(0); setActiveCampaign(null);
   }
-  function goSub(t: Tab) { setTab(t); setUserMenuOpen(false); setNavOpen(false); }
+  function goSub(t: Tab) { setTab(t); setSubTab(0); setUserMenuOpen(false); setNavOpen(false); }
 
-  function enterCampaign(c: MockCampaign) { setActiveCampaign(c); setTab("overview"); setNavOpen(false); }
-  function exitCampaign() { setActiveCampaign(null); setTab("campaigns"); }
+  function enterCampaign(c: MockCampaign) { setActiveCampaign(c); setTab("overview"); setSubTab(0); setNavOpen(false); }
+  function exitCampaign() { setActiveCampaign(null); setTab("campaigns"); setSubTab(0); }
 
   function confirmStage(l: PipeLead, c: PageCfg) {
     setLeads((ls) => ls.map((x) => x.id === l.id ? {
@@ -176,7 +192,7 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
 
   const navItem = (key: Tab, icon: React.ReactNode, label: string, count?: number) => (
     <li key={key}>
-      <a href="#" className={tab === key ? "active" : ""} onClick={(e) => { e.preventDefault(); setTab(key); setNavOpen(false); }}>
+      <a href="#" className={tab === key ? "active" : ""} onClick={(e) => { e.preventDefault(); setTab(key); setSubTab(0); setNavOpen(false); }}>
         {icon} {label}
         {count !== undefined && <span className="app-nav-count">{count}</span>}
       </a>
@@ -243,7 +259,7 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
           <div className="app-campaign-settings-block">
             <button
               className={`app-campaign-settings-link${tab === "settings-campaign" ? " active" : ""}`}
-              onClick={() => { setTab("settings-campaign"); setNavOpen(false); }}
+              onClick={() => { setTab("settings-campaign"); setSubTab(0); setNavOpen(false); }}
             >
               <GearIcon width={14} height={14} /> Campaign settings
             </button>
@@ -294,7 +310,7 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
           <button className="app-burger" onClick={() => setNavOpen(true)} aria-label="Open menu">
             <MenuIcon width={18} height={18} />
           </button>
-          <Breadcrumb tab={tab} campaignName={activeCampaign?.name ?? null} />
+          <Breadcrumb tab={tab} campaignName={activeCampaign?.name ?? null} subLabel={SETTINGS_SUBTABS[tab]?.[subTab] ?? null} />
           <div className="app-topbar-right" />
         </div>
 
@@ -305,11 +321,11 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
           {tab === "purchases"         && <PipelinePage cfg={PAGE_CFG.purchases} leads={visibleLeads} onOpen={setOpenId} campaignMode={!!activeCampaign} />}
           {tab === "campaigns"         && !activeCampaign && <CampaignsPage campaigns={MOCK_CAMPAIGNS} leads={leads} onSelect={enterCampaign} />}
           {tab === "help"              && <HelpTab />}
-          {tab === "settings-account"  && <AccountTab email={userEmail} />}
-          {tab === "settings-billing"  && <BillingTab />}
-          {tab === "settings-brand"    && <BrandSettingsTab brand={activeBrand} />}
-          {tab === "settings-org"      && <OrgSettingsTab email={userEmail} />}
-          {tab === "settings-campaign" && activeCampaign && <CampaignSettingsPage campaign={activeCampaign} />}
+          {tab === "settings-account"  && <AccountTab email={userEmail} sub={subTab} setSub={setSubTab} />}
+          {tab === "settings-billing"  && <BillingTab sub={subTab} setSub={setSubTab} />}
+          {tab === "settings-brand"    && <BrandSettingsTab brand={activeBrand} sub={subTab} setSub={setSubTab} />}
+          {tab === "settings-org"      && <OrgSettingsTab email={userEmail} sub={subTab} setSub={setSubTab} />}
+          {tab === "settings-campaign" && activeCampaign && <CampaignSettingsPage campaign={activeCampaign} sub={subTab} setSub={setSubTab} />}
         </div>
       </main>
 
@@ -779,35 +795,89 @@ function SettingsHeader({ title, action }: { title: string; action?: React.React
   );
 }
 
+function SaveBtn() {
+  return <button className="btn btn-p" style={{ fontSize: "var(--fs-xs)", padding: "0.35rem 0.75rem" }}>Save changes</button>;
+}
+
+/** Functional settings sub-nav: each item swaps the panel below. */
+function SettingsSubNav({ items, active, onPick }: { items: string[]; active: number; onPick: (i: number) => void }) {
+  return (
+    <div className="settings-sub-nav">
+      {items.map((it, i) => (
+        <button key={it} className={`settings-sub-nav-item${i === active ? " active" : ""}`} onClick={() => onPick(i)}>{it}</button>
+      ))}
+    </div>
+  );
+}
+
+/** Toggle row used in Notifications / Integrations panels. */
+function ToggleRow({ label, desc, on }: { label: string; desc: string; on: boolean }) {
+  const [checked, setChecked] = useState(on);
+  return (
+    <div className="settings-toggle-row">
+      <div>
+        <div className="settings-toggle-label">{label}</div>
+        <div className="settings-toggle-desc">{desc}</div>
+      </div>
+      <button className={`settings-switch${checked ? " on" : ""}`} onClick={() => setChecked((v) => !v)} aria-pressed={checked}>
+        <span className="settings-switch-knob" />
+      </button>
+    </div>
+  );
+}
+
+const panelPad: React.CSSProperties = { padding: "1.5rem" };
+
 /* ══════════════════════════════════════════════
    SETTINGS — MY ACCOUNT
 ═══════════════════════════════════════════════ */
-function AccountTab({ email }: { email: string }) {
+interface SettingsTabProps { sub: number; setSub: (n: number) => void }
+
+function AccountTab({ email, sub, setSub }: { email: string } & SettingsTabProps) {
   return (
     <div className="leads-panel" style={{ maxWidth: 640 }}>
-      <SettingsHeader
-        title="My account"
-        action={<button className="btn btn-p" style={{ fontSize: "var(--fs-xs)", padding: "0.35rem 0.75rem" }}>Save changes</button>}
-      />
-      <div className="settings-sub-nav">
-        <span className="settings-sub-nav-item active">Profile</span>
-        <span className="settings-sub-nav-item">Notifications</span>
-        <span className="settings-sub-nav-item">Security</span>
-      </div>
-      <div style={{ padding: "1.5rem" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1.5rem" }}>
-          <div className="app-sidebar-avatar" style={{ width: "3rem", height: "3rem", fontSize: "1rem" }}>AN</div>
-          <div>
-            <div style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--text)" }}>Adam Nasri</div>
-            <div style={{ fontSize: "var(--fs-sm)", color: "var(--muted)" }}>{email}</div>
+      <SettingsHeader title="My account" action={<SaveBtn />} />
+      <SettingsSubNav items={SETTINGS_SUBTABS["settings-account"]!} active={sub} onPick={setSub} />
+
+      {sub === 0 && (
+        <div style={panelPad}>
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1.5rem" }}>
+            <div className="app-sidebar-avatar" style={{ width: "3rem", height: "3rem", fontSize: "1rem" }}>AN</div>
+            <div>
+              <div style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--text)" }}>Adam Nasri</div>
+              <div style={{ fontSize: "var(--fs-sm)", color: "var(--muted)" }}>{email}</div>
+            </div>
+          </div>
+          <div className="ob-field-table">
+            <SettingRow label="Full name" value="Adam Nasri" />
+            <SettingRow label="Email"     value={email} />
+            <SettingRow label="Role"      value="Founder" />
+            <SettingRow label="Time zone" value="America / New York" />
           </div>
         </div>
-        <div className="ob-field-table">
-          <SettingRow label="Full name" value="Adam Nasri" />
-          <SettingRow label="Email"     value={email} />
-          <SettingRow label="Role"      value="Founder" />
+      )}
+
+      {sub === 1 && (
+        <div style={panelPad}>
+          <ToggleRow label="Weekly summary"     desc="A digest of pipeline, outcomes and spend every Monday." on />
+          <ToggleRow label="New positive reply" desc="Email me the moment a lead replies positively." on />
+          <ToggleRow label="Stale lead alert"   desc="Notify when a lead goes stale and drops to 0%." on={false} />
+          <ToggleRow label="Budget warnings"    desc="Tell me when a campaign nears its daily cap." on />
+          <ToggleRow label="Product updates"    desc="Occasional news about new features." on={false} />
         </div>
-      </div>
+      )}
+
+      {sub === 2 && (
+        <div style={panelPad}>
+          <div className="ob-field-table" style={{ marginBottom: "1.5rem" }}>
+            <SettingRow label="Current password" value="••••••••••" />
+            <SettingRow label="New password"     value="" />
+            <SettingRow label="Confirm password" value="" />
+          </div>
+          <ToggleRow label="Two-factor authentication" desc="Require a one-time code at sign-in." on={false} />
+          <ToggleRow label="Active sessions"           desc="1 device · this browser · New York, US." on />
+        </div>
+      )}
     </div>
   );
 }
@@ -821,40 +891,82 @@ const INVOICES = [
   { date: "Apr 1, 2026",  amount: "$29.00", status: "Paid" },
 ];
 
-function BillingTab() {
+const PLAN_TIERS = [
+  { name: "Starter",     price: "$29 / day",  note: "~5 closes / mo",  current: false },
+  { name: "Recommended", price: "$58 / day",  note: "~10 closes / mo", current: true  },
+  { name: "Growth",      price: "$115 / day", note: "~20 closes / mo", current: false },
+];
+
+function BillingTab({ sub, setSub }: SettingsTabProps) {
   return (
-    <div>
+    <div style={{ maxWidth: 720 }}>
       <div className="kpi-strip">
         <div className="kpi-card"><div className="kpi-label">Current plan</div><div className="kpi-val">Recommended</div><div className="kpi-meta">$58 / day budget</div></div>
         <div className="kpi-card"><div className="kpi-label">Spent this month</div><div className="kpi-val accent">$412</div><div className="kpi-meta">of ~$1,740 cap</div></div>
         <div className="kpi-card"><div className="kpi-label">Auto top-up</div><div className="kpi-val green">On</div><div className="kpi-meta">+$100 below $20</div></div>
       </div>
-      <div className="leads-panel" style={{ marginBottom: "2rem", maxWidth: 640 }}>
-        <SettingsHeader
-          title="Payment method"
-          action={<button className="btn btn-g" style={{ fontSize: "var(--fs-xs)", padding: "0.35rem 0.75rem" }}>Update</button>}
-        />
-        <div className="settings-sub-nav">
-          <span className="settings-sub-nav-item active">Plan</span>
-          <span className="settings-sub-nav-item">Payment</span>
-          <span className="settings-sub-nav-item">Invoices</span>
-        </div>
-        <div style={{ padding: "1.25rem 1.5rem", display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <CardIcon width={18} height={18} />
-          <span style={{ fontSize: "var(--fs-sm)", color: "var(--text)" }}>Visa •••• 4242</span>
-          <span style={{ fontSize: "var(--fs-xs)", color: "var(--muted)", marginLeft: "auto" }}>expires 08 / 28</span>
-        </div>
-      </div>
+
       <div className="leads-panel">
-        <div className="leads-header"><span className="leads-title">Invoices</span></div>
-        <table className="leads-table">
-          <thead><tr><th>Date</th><th>Amount</th><th>Status</th></tr></thead>
-          <tbody>
-            {INVOICES.map((inv) => (
-              <tr key={inv.date}><td className="lead-date">{inv.date}</td><td style={monoCell}>{inv.amount}</td><td><span className="pipe-status pipe-green">{inv.status}</span></td></tr>
-            ))}
-          </tbody>
-        </table>
+        <SettingsHeader title="Billing" action={<SaveBtn />} />
+        <SettingsSubNav items={SETTINGS_SUBTABS["settings-billing"]!} active={sub} onPick={setSub} />
+
+        {sub === 0 && (
+          <div style={panelPad}>
+            <div className="billing-tier-grid">
+              {PLAN_TIERS.map((t) => (
+                <div key={t.name} className={`billing-tier${t.current ? " current" : ""}`}>
+                  {t.current && <span className="billing-tier-badge">Current</span>}
+                  <div className="billing-tier-name">{t.name}</div>
+                  <div className="billing-tier-price">{t.price}</div>
+                  <div className="billing-tier-note">{t.note}</div>
+                  <button className={`btn ${t.current ? "btn-g" : "btn-p"}`} style={{ width: "100%", justifyContent: "center", marginTop: "0.75rem", fontSize: "var(--fs-xs)" }} disabled={t.current}>
+                    {t.current ? "Active" : "Switch"}
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="settings-toggle-row" style={{ marginTop: "1.25rem" }}>
+              <div>
+                <div className="settings-toggle-label">Auto top-up</div>
+                <div className="settings-toggle-desc">Add $100 when the balance drops below $20.</div>
+              </div>
+              <span className="pipe-status pipe-green">On</span>
+            </div>
+          </div>
+        )}
+
+        {sub === 1 && (
+          <div style={panelPad}>
+            <div className="billing-card-row">
+              <CardIcon width={20} height={20} />
+              <span style={{ fontSize: "var(--fs-sm)", color: "var(--text)", fontWeight: 600 }}>Visa •••• 4242</span>
+              <span style={{ fontSize: "var(--fs-xs)", color: "var(--muted)", marginLeft: "auto" }}>expires 08 / 28</span>
+              <button className="btn btn-g" style={{ fontSize: "var(--fs-xs)", padding: "0.3rem 0.7rem" }}>Update</button>
+            </div>
+            <div className="ob-field-table" style={{ marginTop: "1.25rem" }}>
+              <SettingRow label="Billing email" value="billing@prompthub.ai" />
+              <SettingRow label="Company name" value="Prompthub Inc." />
+              <SettingRow label="Tax / VAT ID" value="—" />
+              <SettingRow label="Country"      value="United States" />
+            </div>
+          </div>
+        )}
+
+        {sub === 2 && (
+          <table className="leads-table">
+            <thead><tr><th>Date</th><th>Amount</th><th>Status</th><th>Invoice</th></tr></thead>
+            <tbody>
+              {INVOICES.map((inv) => (
+                <tr key={inv.date}>
+                  <td className="lead-date">{inv.date}</td>
+                  <td style={monoCell}>{inv.amount}</td>
+                  <td><span className="pipe-status pipe-green">{inv.status}</span></td>
+                  <td style={{ fontSize: "var(--fs-xs)", color: "var(--accent)" }}>Download</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
@@ -863,33 +975,63 @@ function BillingTab() {
 /* ══════════════════════════════════════════════
    SETTINGS — BRAND
 ═══════════════════════════════════════════════ */
-function BrandSettingsTab({ brand }: { brand: Brand }) {
+function BrandSettingsTab({ brand, sub, setSub }: { brand: Brand } & SettingsTabProps) {
   return (
     <div className="leads-panel" style={{ maxWidth: 640 }}>
-      <SettingsHeader
-        title="Brand settings"
-        action={<button className="btn btn-p" style={{ fontSize: "var(--fs-xs)", padding: "0.35rem 0.75rem" }}>Save changes</button>}
-      />
-      <div className="settings-sub-nav">
-        <span className="settings-sub-nav-item active">General</span>
-        <span className="settings-sub-nav-item">Audience &amp; ICP</span>
-        <span className="settings-sub-nav-item">Tracking</span>
-      </div>
-      <div style={{ padding: "1.5rem" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1.5rem" }}>
-          <BrandAvatar brand={brand} size={40} />
-          <div>
-            <div style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--text)" }}>{brand.name}</div>
-            <div style={{ fontSize: "var(--fs-sm)", color: "var(--accent)", fontFamily: "'JetBrains Mono', monospace" }}>{hostnameOf(brand.url)}</div>
+      <SettingsHeader title="Brand settings" action={<SaveBtn />} />
+      <SettingsSubNav items={SETTINGS_SUBTABS["settings-brand"]!} active={sub} onPick={setSub} />
+
+      {sub === 0 && (
+        <div style={panelPad}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1.5rem" }}>
+            <BrandAvatar brand={brand} size={40} />
+            <div>
+              <div style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--text)" }}>{brand.name}</div>
+              <div style={{ fontSize: "var(--fs-sm)", color: "var(--accent)", fontFamily: "'JetBrains Mono', monospace" }}>{hostnameOf(brand.url)}</div>
+            </div>
+          </div>
+          <div className="ob-field-table">
+            <SettingRow label="Brand name"  value={brand.name} />
+            <SettingRow label="URL"         value={brand.url} />
+            <SettingRow label="One-liner"   value="A collaborative prompt library for AI teams" />
+            <SettingRow label="Value"       value="Cut prompt iteration time by 60% with a shared, versioned library" />
           </div>
         </div>
-        <div className="ob-field-table">
-          <SettingRow label="Brand name" value={brand.name} />
-          <SettingRow label="URL"        value={brand.url} />
-          <SettingRow label="Audience"   value="Founders and AI teams at early-stage SaaS building with LLMs" />
-          <SettingRow label="Value"      value="Cut AI prompt iteration time by 60% with a collaborative prompt library" />
+      )}
+
+      {sub === 1 && (
+        <div style={panelPad}>
+          <div className="ob-field-table">
+            <SettingRow label="Target audience" value="Founders and AI / ML teams at early-stage SaaS" />
+            <SettingRow label="Company size"    value="2–50 employees" />
+            <SettingRow label="Geography"       value="North America, Western Europe" />
+            <SettingRow label="Job titles"      value="Founder, CTO, Head of AI, ML Engineer" />
+            <SettingRow label="Avg deal value"  value="$1,400" />
+            <SettingRow label="Exclusions"      value="Agencies, students, competitors" />
+          </div>
         </div>
-      </div>
+      )}
+
+      {sub === 2 && (
+        <div style={panelPad}>
+          <p className="ob-sub" style={{ fontSize: "var(--fs-sm)", marginBottom: "1rem" }}>
+            We measure two real signals — website visits and positive replies. Everything downstream is inferred until confirmed.
+          </p>
+          <div className="ob-field-table">
+            <SettingRow label="Tracking domain" value={hostnameOf(brand.url)} />
+            <SettingRow label="Tracking pixel"  value="<script src=&quot;https://t.distribute.you/p.js&quot;>" />
+            <SettingRow label="Signup event"    value="signup_completed" />
+            <SettingRow label="Purchase event"  value="purchase_completed" />
+          </div>
+          <div className="settings-toggle-row" style={{ marginTop: "1rem" }}>
+            <div>
+              <div className="settings-toggle-label">Pixel status</div>
+              <div className="settings-toggle-desc">Last visit received 3 minutes ago.</div>
+            </div>
+            <span className="pipe-status pipe-green">● connected</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -897,46 +1039,77 @@ function BrandSettingsTab({ brand }: { brand: Brand }) {
 /* ══════════════════════════════════════════════
    SETTINGS — ORG
 ═══════════════════════════════════════════════ */
-function OrgSettingsTab({ email }: { email: string }) {
+const TEAM_MEMBERS = [
+  { initials: "AN", name: "Adam Nasri",  role: "Owner",  status: "Active",  emailLocal: "adam" },
+  { initials: "KL", name: "Kevin Lourd", role: "Admin",  status: "Active",  emailLocal: "kevin" },
+  { initials: "JD", name: "Jordan Diaz", role: "Member", status: "Invited", emailLocal: "jordan" },
+];
+
+const INTEGRATIONS = [
+  { name: "Gmail",     desc: "Forward qualified replies to your inbox.",   connected: true  },
+  { name: "Slack",     desc: "Post new outcomes to a channel.",            connected: true  },
+  { name: "HubSpot",   desc: "Sync leads and pipeline to your CRM.",       connected: false },
+  { name: "Salesforce", desc: "Push closed-won deals to opportunities.",   connected: false },
+  { name: "Webhook",   desc: "Send every event to your own endpoint.",     connected: false },
+];
+
+function OrgSettingsTab({ email, sub, setSub }: { email: string } & SettingsTabProps) {
   const domain = email.split("@")[1] ?? "example.com";
   return (
-    <div style={{ maxWidth: 640 }}>
-      <div className="leads-panel" style={{ marginBottom: "1.5rem" }}>
-        <SettingsHeader
-          title="Org settings"
-          action={<button className="btn btn-p" style={{ fontSize: "var(--fs-xs)", padding: "0.35rem 0.75rem" }}>Save changes</button>}
-        />
-        <div className="settings-sub-nav">
-          <span className="settings-sub-nav-item active">General</span>
-          <span className="settings-sub-nav-item">Team</span>
-          <span className="settings-sub-nav-item">Integrations</span>
-        </div>
-        <div style={{ padding: "1.5rem" }}>
+    <div className="leads-panel" style={{ maxWidth: 680 }}>
+      <SettingsHeader title="Workspace settings" action={<SaveBtn />} />
+      <SettingsSubNav items={SETTINGS_SUBTABS["settings-org"]!} active={sub} onPick={setSub} />
+
+      {sub === 0 && (
+        <div style={panelPad}>
           <div className="ob-field-table">
-            <SettingRow label="Org name"  value={domain} />
-            <SettingRow label="Plan"      value="Recommended" />
-            <SettingRow label="Time zone" value="America / New York" />
-            <SettingRow label="Website"   value={`https://${domain}`} />
+            <SettingRow label="Workspace name" value={domain} />
+            <SettingRow label="Plan"           value="Recommended" />
+            <SettingRow label="Time zone"      value="America / New York" />
+            <SettingRow label="Website"        value={`https://${domain}`} />
+            <SettingRow label="Brands"         value="1 active" />
           </div>
         </div>
-      </div>
+      )}
 
-      <div className="leads-panel">
-        <div className="leads-header">
-          <span className="leads-title">Team</span>
-          <button className="btn btn-g" style={{ fontSize: "var(--fs-xs)", padding: "0.35rem 0.75rem" }}>+ Invite</button>
+      {sub === 1 && (
+        <>
+          <div className="leads-header" style={{ borderTop: "1px solid var(--border)" }}>
+            <span className="leads-count">{TEAM_MEMBERS.length} members</span>
+            <button className="btn btn-g" style={{ fontSize: "var(--fs-xs)", padding: "0.35rem 0.75rem" }}>+ Invite</button>
+          </div>
+          <table className="leads-table">
+            <thead><tr><th>Member</th><th>Role</th><th>Status</th></tr></thead>
+            <tbody>
+              {TEAM_MEMBERS.map((m) => (
+                <tr key={m.emailLocal}>
+                  <td><div className="lead-org"><div className="app-sidebar-avatar" style={{ width: "1.75rem", height: "1.75rem", fontSize: "0.6rem", borderRadius: "50%" }}>{m.initials}</div><div><div className="lead-org-name">{m.name}</div><div className="lead-contact">{m.emailLocal}@{domain}</div></div></div></td>
+                  <td style={{ fontSize: "var(--fs-sm)", color: "var(--sub)" }}>{m.role}</td>
+                  <td>{m.status === "Active"
+                    ? <span className="pipe-status pipe-green">Active</span>
+                    : <span className="pipe-status pipe-amber">Invited</span>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+
+      {sub === 2 && (
+        <div style={panelPad}>
+          {INTEGRATIONS.map((it) => (
+            <div key={it.name} className="settings-toggle-row">
+              <div>
+                <div className="settings-toggle-label">{it.name}</div>
+                <div className="settings-toggle-desc">{it.desc}</div>
+              </div>
+              {it.connected
+                ? <span className="pipe-status pipe-green">● connected</span>
+                : <button className="btn btn-g" style={{ fontSize: "var(--fs-xs)", padding: "0.3rem 0.7rem" }}>Connect</button>}
+            </div>
+          ))}
         </div>
-        <table className="leads-table">
-          <thead><tr><th>Member</th><th>Role</th><th>Status</th></tr></thead>
-          <tbody>
-            <tr>
-              <td><div className="lead-org"><div className="app-sidebar-avatar" style={{ width: "1.75rem", height: "1.75rem", fontSize: "0.6rem", borderRadius: "50%" }}>AN</div><div><div className="lead-org-name">Adam Nasri</div><div className="lead-contact">{email}</div></div></div></td>
-              <td style={{ fontSize: "var(--fs-sm)", color: "var(--sub)" }}>Owner</td>
-              <td><span className="pipe-status pipe-green">Active</span></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      )}
     </div>
   );
 }
@@ -944,39 +1117,77 @@ function OrgSettingsTab({ email }: { email: string }) {
 /* ══════════════════════════════════════════════
    SETTINGS — CAMPAIGN
 ═══════════════════════════════════════════════ */
-function CampaignSettingsPage({ campaign }: { campaign: MockCampaign }) {
+const FUNNEL_STEPS = [
+  { step: "Visited website", measured: true,  note: "Measured — tracking pixel" },
+  { step: "Signed up",       measured: false, note: "Inferred — confirm to lock" },
+  { step: "Purchased",       measured: false, note: "Inferred — confirm to lock" },
+  { step: "Positive reply",  measured: true,  note: "Measured — inbox signal" },
+  { step: "Meeting booked",  measured: false, note: "Inferred — confirm to lock" },
+];
+
+function CampaignSettingsPage({ campaign, sub, setSub }: { campaign: MockCampaign } & SettingsTabProps) {
   return (
     <div className="leads-panel" style={{ maxWidth: 640 }}>
-      <SettingsHeader
-        title="Campaign settings"
-        action={<button className="btn btn-p" style={{ fontSize: "var(--fs-xs)", padding: "0.35rem 0.75rem" }}>Save changes</button>}
-      />
-      <div className="settings-sub-nav">
-        <span className="settings-sub-nav-item active">General</span>
-        <span className="settings-sub-nav-item">Budget</span>
-        <span className="settings-sub-nav-item">Targeting</span>
-        <span className="settings-sub-nav-item">Funnel</span>
+      <SettingsHeader title="Campaign settings" action={<SaveBtn />} />
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.75rem 1.5rem 0" }}>
+        <span style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--text)" }}>{campaign.name}</span>
+        {campaign.status === "live"
+          ? <span className="pipe-status pipe-green" style={{ fontSize: "var(--fs-xs)" }}>● live</span>
+          : <span className="pipe-status" style={{ fontSize: "var(--fs-xs)", background: "var(--surface-hi)", color: "var(--muted)", borderColor: "var(--border-hi)" }}>○ paused</span>}
       </div>
-      <div style={{ padding: "1.5rem" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1.5rem" }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--text)" }}>{campaign.name}</div>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "0.25rem" }}>
-              {campaign.status === "live"
-                ? <span className="pipe-status pipe-green" style={{ fontSize: "var(--fs-xs)" }}>● live</span>
-                : <span className="pipe-status" style={{ fontSize: "var(--fs-xs)", background: "var(--surface-hi)", color: "var(--muted)", borderColor: "var(--border-hi)" }}>○ paused</span>}
-              {campaign.budgetPerDay > 0 && <span style={{ fontSize: "var(--fs-xs)", color: "var(--muted)" }}>${campaign.budgetPerDay}/day budget</span>}
-            </div>
+      <SettingsSubNav items={SETTINGS_SUBTABS["settings-campaign"]!} active={sub} onPick={setSub} />
+
+      {sub === 0 && (
+        <div style={panelPad}>
+          <div className="ob-field-table">
+            <SettingRow label="Name"   value={campaign.name} />
+            <SettingRow label="Status" value={campaign.status} />
+            <SettingRow label="Goal"   value="Signups · Meetings · Purchases" />
+            <SettingRow label="Created" value="Jun 1, 2026" />
           </div>
         </div>
-        <div className="ob-field-table">
-          <SettingRow label="Name"     value={campaign.name} />
-          <SettingRow label="Budget"   value={`$${campaign.budgetPerDay} / day`} />
-          <SettingRow label="Status"   value={campaign.status} />
-          <SettingRow label="Audience" value="Founders and AI teams at early-stage SaaS building with LLMs" />
-          <SettingRow label="Goal"     value="Sign-ups, Meetings, Purchases" />
+      )}
+
+      {sub === 1 && (
+        <div style={panelPad}>
+          <div className="ob-field-table">
+            <SettingRow label="Daily budget"   value={`$${campaign.budgetPerDay} / day`} />
+            <SettingRow label="Monthly cap"    value={`$${campaign.budgetPerDay * 30}`} />
+            <SettingRow label="Cost / contact" value="$0.07" />
+            <SettingRow label="Auto top-up"    value="On — +$100 below $20" />
+          </div>
         </div>
-      </div>
+      )}
+
+      {sub === 2 && (
+        <div style={panelPad}>
+          <div className="ob-field-table">
+            <SettingRow label="Audience"     value="Founders and AI / ML teams at early-stage SaaS" />
+            <SettingRow label="Geography"    value="North America" />
+            <SettingRow label="Company size" value="2–50 employees" />
+            <SettingRow label="Job titles"   value="Founder, CTO, Head of AI" />
+          </div>
+        </div>
+      )}
+
+      {sub === 3 && (
+        <div style={panelPad}>
+          <p className="ob-sub" style={{ fontSize: "var(--fs-sm)", marginBottom: "1rem" }}>
+            Only the measured steps are tracked for sure — the rest are inferred with a probability until you confirm them.
+          </p>
+          {FUNNEL_STEPS.map((f) => (
+            <div key={f.step} className="settings-toggle-row">
+              <div>
+                <div className="settings-toggle-label">{f.step}</div>
+                <div className="settings-toggle-desc">{f.note}</div>
+              </div>
+              {f.measured
+                ? <span className="pipe-status pipe-green">measured</span>
+                : <span className="pipe-status pipe-amber">inferred</span>}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
