@@ -53,7 +53,7 @@ const FOOTER_HTML = `
           <img src="/landing/logo/logo-distribute.svg" class="nav-logo-img" alt="distribute">
           distribute <span class="nav-chip">beta</span>
         </a>
-        <p>AI outreach automation for solo founders and micro-SaaS builders. Drop a URL, set a budget, get qualified replies.</p>
+        <p>AI outreach automation platform. Drop a URL, set a daily budget, get sales.</p>
         <p class="ft-by">Built by <a href="https://twitter.com/kevinlourd">@kevinlourd</a> and contributors.</p>
       </div>
       <div class="ft-col">

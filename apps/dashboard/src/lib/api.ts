@@ -1454,8 +1454,10 @@ export interface FullLead {
   facebookUrl: string | null;
   enrichedAt: string | null;
   organization: LeadOrganizationView | null;
-  contacts: LeadContactMethodView[];
-  employmentHistory: LeadEmploymentEntryView[];
+  // Optional: omitted by the slim `view=basic` projection (brand leads list).
+  // Present in the full payload (campaign leads, feature leads). #1620
+  contacts?: LeadContactMethodView[];
+  employmentHistory?: LeadEmploymentEntryView[];
 }
 
 /** A leads_campaigns row plus the canonical FullLead — mirrors lead-service LeadDetail. */
@@ -1549,7 +1551,13 @@ export async function listCampaignLeads(campaignId: string, token?: string): Pro
 }
 
 export async function listBrandLeads(brandId: string, token?: string): Promise<{ leads: Lead[] }> {
-  const raw = await apiCall<unknown>(`/leads?brandId=${brandId}`, { token });
+  // `view=basic` returns the slim lead projection (thin person + thin org, no
+  // employmentHistory / extra org columns). The brand leads page renders the
+  // table, status tabs, search, and detail panel from thin fields only, so the
+  // full payload (~150 MB for a 50k-lead brand, pulled every poll) is wasteful.
+  // Requires api-service to forward the `view` param. listCampaignLeads +
+  // feature leads stay full-fat. See shamanic-technologies/distribute.you#1620.
+  const raw = await apiCall<unknown>(`/leads?brandId=${brandId}&view=basic`, { token });
   return parseLeadsResponse(raw, "listBrandLeads");
 }
 

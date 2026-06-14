@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { CheckIcon, ChevronLeftIcon, CampaignIcon, ChartIcon, SparkleIcon, SpinnerIcon, CircleIcon } from "./icons";
+import { CheckIcon, ChevronLeftIcon, ChartIcon, SparkleIcon, SpinnerIcon, CircleIcon } from "./icons";
 
 export interface Brand {
   name: string;
@@ -218,23 +218,23 @@ export function OnboardingOverlay({ hidden, onComplete }: { hidden: boolean; onC
             <span className="nav-chip">beta</span>
           </div>
           <h1 className="ob-title">You set the goal.<br />We deliver the outcome.</h1>
-          <p className="ob-sub">Drop your product URL and a daily budget. Pick what to maximize — signups, meetings, or sales — and we deliver it at the best ROI on the market. Stop anytime.</p>
+          <p className="ob-sub">Drop your product URL and a daily budget. We find your leads, reach out across the best channels, and turn them into signups, meetings and sales.</p>
 
           <div className="ob-features">
             <div className="ob-feature">
-              <div className="ob-feature-icon"><CampaignIcon width={16} height={16} /></div>
+              <div className="ob-feature-icon"><SparkleIcon width={16} height={16} /></div>
               <div className="ob-feature-title">Pick your goal</div>
-              <div className="ob-feature-desc">Signups, meetings, or sales — you choose</div>
+              <div className="ob-feature-desc">Maximize signups, meetings, or sales</div>
             </div>
             <div className="ob-feature">
               <div className="ob-feature-icon"><CheckIcon width={16} height={16} /></div>
               <div className="ob-feature-title">Best ROI</div>
-              <div className="ob-feature-desc">We deliver the outcome at the best cost on the market</div>
+              <div className="ob-feature-desc">Best return on the market, measured per outcome</div>
             </div>
             <div className="ob-feature">
               <div className="ob-feature-icon"><ChartIcon width={16} height={16} /></div>
               <div className="ob-feature-title">Pay per outcome</div>
-              <div className="ob-feature-desc">$15/signup · $90/meeting · $120/sale</div>
+              <div className="ob-feature-desc">$15 / signup · $90 / meeting · $120 / sale</div>
             </div>
           </div>
 
@@ -271,7 +271,7 @@ export function OnboardingOverlay({ hidden, onComplete }: { hidden: boolean; onC
             Back
           </button>
           <h2 className="ob-title" style={{ fontSize: "1.6rem" }}>What are we promoting?</h2>
-          <p className="ob-sub" style={{ marginBottom: "1.5rem" }}>We read your product, find the leads, and run the outreach for you. Just drop the URL.</p>
+          <p className="ob-sub" style={{ marginBottom: "1.5rem" }}>We read your product, find the leads, and run the outreach. Just drop the URL.</p>
 
           <div className="form-group">
             <label className="form-label" htmlFor="input-url">Product URL</label>
