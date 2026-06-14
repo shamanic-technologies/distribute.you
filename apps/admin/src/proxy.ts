@@ -6,6 +6,7 @@ import {
   matchBrandPath,
   hasExplicitHierarchyIntent,
 } from "@/lib/last-brand";
+import { isAdminEmail } from "@/lib/admin-allowlist";
 
 const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
@@ -29,16 +30,6 @@ const isAuthRoute = createRouteMatcher([
 const isOnboardingRoute = createRouteMatcher(["/onboarding(.*)"]);
 const isApiRoute = createRouteMatcher(["/api(.*)"]);
 
-// Admin-only allowlist. The admin app is a fork of the dashboard served on
-// admin.distribute.you; only internal staff may use it. Gated at the edge off
-// the session `email` claim (zero fetch) — any signed-in non-staff user is
-// refused with 403 on every non-public route.
-const ADMIN_ALLOWED_EMAILS = [
-  "kevin.lourd@gmail.com",
-  "kevin@distribute.you",
-  "adam@distribute.you",
-];
-
 export default clerkMiddleware(
   async (auth, req) => {
     const { userId, sessionClaims } = await auth();
@@ -48,8 +39,7 @@ export default clerkMiddleware(
     // routes stay open so allowed users can reach sign-in; unauth users fall
     // through to the standard sign-in redirect below.
     if (userId && !isPublicRoute(req)) {
-      const email = sessionClaims?.email;
-      if (!email || !ADMIN_ALLOWED_EMAILS.includes(email)) {
+      if (!isAdminEmail(sessionClaims?.email)) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
     }

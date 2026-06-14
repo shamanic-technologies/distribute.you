@@ -69,7 +69,9 @@ describe("Org logos render Clerk imageUrl (item 4)", () => {
   it("breadcrumb root + switcher use organization.imageUrl via OrgAvatar", () => {
     expect(breadcrumb).toContain("function OrgAvatar(");
     expect(breadcrumb).toContain("imageUrl={organization?.imageUrl}");
-    expect(breadcrumb).toContain("imageUrl={m.organization.imageUrl}");
+    // Switcher lists all platform orgs (admin god-mode) via OrgAvatar with the
+    // org's Clerk imageUrl — `o` is the per-org row from /api/admin/orgs.
+    expect(breadcrumb).toContain("imageUrl={o.imageUrl}");
     // No more hardcoded-initial-only org badge.
     expect(breadcrumb).not.toContain("{organization?.name?.[0] || \"O\"}");
   });
