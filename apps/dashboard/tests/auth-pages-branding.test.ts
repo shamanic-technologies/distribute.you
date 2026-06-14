@@ -44,12 +44,12 @@ describe("Auth pages branding", () => {
     expect(signUpContent).toContain("https://distribute.you");
   });
 
-  it("sign-up page should use logo-head.jpg", () => {
-    expect(signUpContent).toContain("logo-head.jpg");
+  it("sign-up page should use logo-distribute.svg", () => {
+    expect(signUpContent).toContain("logo-distribute.svg");
   });
 
-  it("sign-in page should use logo-head.jpg", () => {
-    expect(signInContent).toContain("logo-head.jpg");
+  it("sign-in page should use logo-distribute.svg", () => {
+    expect(signInContent).toContain("logo-distribute.svg");
   });
 });
 

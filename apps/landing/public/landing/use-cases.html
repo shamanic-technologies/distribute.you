@@ -106,8 +106,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           </div>
           <div class="uc-funnel-row">
             <span class="uc-funnel-label">Opened</span>
-            <div class="uc-funnel-track"><div class="uid-bar-fill uc-bar-accent" data-width="27%" style="opacity:0.65"></div></div>
-            <span class="uc-funnel-val">13 <em>27%</em></span>
+            <div class="uc-funnel-track"><div class="uid-bar-fill uc-bar-accent" data-width="35%" style="opacity:0.65"></div></div>
+            <span class="uc-funnel-val">16 <em>35%</em></span>
           </div>
           <div class="uc-funnel-row">
             <span class="uc-funnel-label">Replied</span>
@@ -326,7 +326,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <span class="uc-visual-title t-lbl" style="display:block;margin-bottom:1rem">Campaign · 200 emails</span>
         <div class="uc-stats-grid">
           <div class="uc-stat-box">
-            <span class="uc-stat-n uc-stat-teal">27%</span>
+            <span class="uc-stat-n uc-stat-teal">35%</span>
             <span class="uc-stat-l">open rate</span>
           </div>
           <div class="uc-stat-box">
@@ -389,7 +389,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           <span class="stat-lbl">reply rate across all campaigns</span>
         </div>
         <div class="stat">
-          <span class="stat-val">27%</span>
+          <span class="stat-val">35%</span>
           <span class="stat-lbl">average open rate</span>
         </div>
         <div class="stat">
@@ -449,7 +449,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div class="r">
       <h2 class="t-hero">Start with $25. Keep what works.</h2>
       <p>No subscription. No agency fee. Just pay for what you send and keep the leads you get.</p>
-      <a href="https://dashboard.distribute.you/sign-up" class="btn btn-p btn-lg">Start free, 50 free emails</a>
+      <a href="https://dashboard.distribute.you/sign-up" class="btn btn-p btn-lg">Send 50 free emails</a>
     </div>
   </div>
 </section>
@@ -462,5 +462,49 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 
 <script src="js/main.js" defer></script>
+<script>
+(function () {
+  var hero = document.querySelector('.uc-hero');
+  var origTabs = document.querySelector('.uc-tabs');
+  if (!hero || !origTabs) return;
+
+  // Build sticky nav
+  var stickyNav = document.createElement('nav');
+  stickyNav.className = 'uc-sticky-nav';
+  stickyNav.setAttribute('aria-label', 'Use case sections');
+  stickyNav.innerHTML = origTabs.innerHTML;
+  document.body.appendChild(stickyNav);
+
+  // Show/hide sticky nav when hero leaves viewport
+  var heroObs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      stickyNav.classList.toggle('uc-sticky-visible', !e.isIntersecting);
+    });
+  }, { threshold: 0 });
+  heroObs.observe(hero);
+
+  // Highlight active section tab (both original and sticky nav)
+  var sectionIds = ['saas', 'agency', 'freelance', 'ecommerce'];
+  var sectionObs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (!e.isIntersecting) return;
+      [origTabs, stickyNav].forEach(function (nav) {
+        nav.querySelectorAll('.uc-tab').forEach(function (t) { t.classList.remove('is-active'); });
+        var active = nav.querySelector('[href="#' + e.target.id + '"]');
+        if (active) active.classList.add('is-active');
+      });
+    });
+  }, { rootMargin: '-20% 0px -60% 0px', threshold: 0 });
+
+  sectionIds.forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) sectionObs.observe(el);
+  });
+
+  // Set first tab active on load
+  origTabs.querySelector('[href="#saas"]') && origTabs.querySelector('[href="#saas"]').classList.add('is-active');
+  stickyNav.querySelector('[href="#saas"]') && stickyNav.querySelector('[href="#saas"]').classList.add('is-active');
+})();
+</script>
 </body>
 </html>

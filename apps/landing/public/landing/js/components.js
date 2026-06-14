@@ -82,7 +82,7 @@ const FOOTER_HTML = `
       </div>
     </div>
     <div class="ft-bottom">
-      <span class="ft-copy">&copy; 2026 distribute. MIT License. 100% open source.</span>
+      <span class="ft-copy">&copy; 2026 distribute.</span>
       <div class="ft-links">
         <a href="/privacy">Privacy</a>
         <a href="/terms">Terms</a>

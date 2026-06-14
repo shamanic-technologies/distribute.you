@@ -32,9 +32,14 @@ describe("Static landing pages carry GA + PostHog", () => {
         "googletagmanager.com/gtag/js?id=G-YJHNGLEJPP",
       );
       expect(html).toContain("gtag('config','G-YJHNGLEJPP')");
+      // Google Ads tag (no conversion event on the landing — linker only)
+      expect(html).toContain("gtag('config','AW-18233267088')");
       expect(html).toContain("posthog.init('phc_test_token'");
       // both trackers land inside <head>, before content
       expect(html.indexOf("googletagmanager")).toBeLessThan(
+        html.indexOf("</head>"),
+      );
+      expect(html.indexOf("AW-18233267088")).toBeLessThan(
         html.indexOf("</head>"),
       );
     });

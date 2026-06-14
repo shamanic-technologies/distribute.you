@@ -42,7 +42,10 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div
+      className="min-h-screen flex"
+      style={{ fontFamily: '"Inter", system-ui, sans-serif', fontSize: "1rem" }}
+    >
       {/* Left: Brand panel */}
       <div
         className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 relative overflow-hidden"
@@ -58,30 +61,40 @@ export default function SignInPage() {
           }}
         />
 
+        {/* Logo */}
         <div className="relative z-10">
           <Link
             href="https://distribute.you"
             className="inline-flex items-center gap-3"
           >
             <Image
-              src="/logo-head.jpg"
+              src="/logo-distribute.svg"
               alt="distribute"
-              width={36}
-              height={36}
-              className="rounded-lg"
+              width={32}
+              height={32}
             />
             <span
-              className="font-semibold text-xl tracking-tight"
-              style={{ color: "oklch(97% 0.003 264)" }}
+              style={{
+                fontFamily: '"Inter", system-ui, sans-serif',
+                fontSize: "1.125rem",
+                fontWeight: 600,
+                letterSpacing: "-0.01em",
+                color: "oklch(97% 0.003 264)",
+              }}
             >
               distribute
             </span>
             <span
-              className="text-[10px] font-medium px-1.5 py-0.5 rounded uppercase tracking-[0.15em]"
               style={{
+                fontFamily: '"JetBrains Mono", "Courier New", monospace',
+                fontSize: "0.625rem",
+                fontWeight: 500,
+                padding: "0.2em 0.5em",
+                borderRadius: "4px",
+                textTransform: "uppercase",
+                letterSpacing: "0.15em",
                 background: "oklch(55% 0.24 264 / 0.2)",
                 color: "oklch(72% 0.18 264)",
-                fontFamily: '"JetBrains Mono", "Courier New", monospace',
               }}
             >
               beta
@@ -89,43 +102,70 @@ export default function SignInPage() {
           </Link>
         </div>
 
+        {/* Tagline block */}
         <div className="relative z-10">
           <p
-            className="text-[10px] uppercase tracking-[0.2em] mb-4"
             style={{
-              color: "oklch(55% 0.24 264)",
               fontFamily: '"JetBrains Mono", "Courier New", monospace',
+              fontSize: "0.625rem",
+              fontWeight: 500,
+              textTransform: "uppercase",
+              letterSpacing: "0.2em",
+              color: "oklch(55% 0.24 264)",
+              marginBottom: "1.25rem",
             }}
           >
             The Stripe of Distribution
           </p>
           <h2
-            className="text-4xl font-bold leading-tight mb-4"
-            style={{ color: "oklch(97% 0.003 264)" }}
+            style={{
+              fontFamily: '"Inter", system-ui, sans-serif',
+              fontSize: "clamp(2.25rem, 4vw, 3rem)",
+              fontWeight: 700,
+              lineHeight: 1.15,
+              letterSpacing: "-0.02em",
+              color: "oklch(97% 0.003 264)",
+              marginBottom: "1.25rem",
+            }}
           >
             Your distribution,
             <br />
             automated.
           </h2>
           <p
-            className="text-lg max-w-md leading-relaxed"
-            style={{ color: "oklch(58% 0.008 264)" }}
+            style={{
+              fontFamily: '"Inter", system-ui, sans-serif',
+              fontSize: "1.125rem",
+              fontWeight: 400,
+              lineHeight: 1.6,
+              color: "oklch(58% 0.008 264)",
+              maxWidth: "28rem",
+            }}
           >
             Give us your URL. We handle outreach, emails, and every touchpoint
             in between.
           </p>
         </div>
 
+        {/* Footer bullets */}
         <div
-          className="relative z-10 flex items-center gap-6 text-sm"
-          style={{ color: "oklch(42% 0.006 264)" }}
+          className="relative z-10 flex items-center gap-6"
+          style={{
+            fontFamily: '"Inter", system-ui, sans-serif',
+            fontSize: "0.875rem",
+            color: "oklch(42% 0.006 264)",
+          }}
         >
           {["Zero config", "Transparent variable costs", "Data-driven"].map(
             (item) => (
               <div key={item} className="flex items-center gap-2">
                 <span
-                  className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                  style={{ background: "oklch(55% 0.24 264)" }}
+                  className="rounded-full flex-shrink-0"
+                  style={{
+                    width: "6px",
+                    height: "6px",
+                    background: "oklch(55% 0.24 264)",
+                  }}
                 />
                 {item}
               </div>
@@ -141,30 +181,38 @@ export default function SignInPage() {
       >
         <div className="w-full max-w-md">
           {/* Mobile logo */}
-          <div className="lg:hidden flex justify-center mb-8">
+          <div className="lg:hidden flex justify-center mb-10">
             <Link
               href="https://distribute.you"
               className="inline-flex items-center gap-2"
             >
               <Image
-                src="/logo-head.jpg"
+                src="/logo-distribute.svg"
                 alt="distribute"
-                width={32}
-                height={32}
-                className="rounded-lg"
+                width={28}
+                height={28}
               />
               <span
-                className="font-semibold text-lg"
-                style={{ color: "oklch(12% 0.008 264)" }}
+                style={{
+                  fontFamily: '"Inter", system-ui, sans-serif',
+                  fontSize: "1.125rem",
+                  fontWeight: 600,
+                  color: "oklch(12% 0.008 264)",
+                }}
               >
                 distribute
               </span>
               <span
-                className="text-[10px] font-medium px-1.5 py-0.5 rounded uppercase tracking-[0.15em]"
                 style={{
+                  fontFamily: '"JetBrains Mono", "Courier New", monospace',
+                  fontSize: "0.625rem",
+                  fontWeight: 500,
+                  padding: "0.2em 0.5em",
+                  borderRadius: "4px",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.15em",
                   background: "oklch(55% 0.24 264 / 0.1)",
                   color: "oklch(38% 0.18 264)",
-                  fontFamily: '"JetBrains Mono", "Courier New", monospace',
                 }}
               >
                 beta
@@ -172,18 +220,32 @@ export default function SignInPage() {
             </Link>
           </div>
 
+          {/* Heading */}
           <div className="text-center mb-8">
             <h1
-              className="text-2xl font-bold mb-2"
-              style={{ color: "oklch(12% 0.008 264)" }}
+              style={{
+                fontFamily: '"Inter", system-ui, sans-serif',
+                fontSize: "1.875rem",
+                fontWeight: 700,
+                letterSpacing: "-0.02em",
+                color: "oklch(12% 0.008 264)",
+                marginBottom: "0.5rem",
+              }}
             >
               Welcome back
             </h1>
-            <p style={{ color: "oklch(48% 0.006 264)" }}>
+            <p
+              style={{
+                fontFamily: '"Inter", system-ui, sans-serif',
+                fontSize: "1rem",
+                color: "oklch(48% 0.006 264)",
+              }}
+            >
               Sign in to your distribute dashboard
             </p>
           </div>
 
+          {/* Card */}
           <div
             className="rounded-2xl p-6"
             style={{
@@ -195,8 +257,12 @@ export default function SignInPage() {
             <button
               onClick={handleGoogleSignIn}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-3 rounded-xl px-4 py-3 font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-[0.97]"
+              className="w-full flex items-center justify-center gap-3 rounded-xl px-4 transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-[0.97]"
               style={{
+                fontFamily: '"Inter", system-ui, sans-serif',
+                fontSize: "0.9375rem",
+                fontWeight: 500,
+                padding: "0.75rem 1rem",
                 background: "oklch(98% 0.003 264)",
                 border: "1px solid oklch(87% 0.006 264)",
                 color: "oklch(22% 0.008 264)",
@@ -224,10 +290,7 @@ export default function SignInPage() {
                   />
                 </svg>
               ) : (
-                <svg
-                  className="w-5 h-5 flex-shrink-0"
-                  viewBox="0 0 24 24"
-                >
+                <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
                   <path
                     fill="#4285F4"
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -250,8 +313,12 @@ export default function SignInPage() {
             </button>
 
             <div
-              className="mt-6 text-center text-sm"
-              style={{ color: "oklch(52% 0.006 264)" }}
+              className="mt-6 text-center"
+              style={{
+                fontFamily: '"Inter", system-ui, sans-serif',
+                fontSize: "0.875rem",
+                color: "oklch(52% 0.006 264)",
+              }}
             >
               Don&apos;t have an account?{" "}
               <Link
@@ -265,8 +332,12 @@ export default function SignInPage() {
           </div>
 
           <p
-            className="mt-6 text-center text-xs"
-            style={{ color: "oklch(62% 0.006 264)" }}
+            className="mt-6 text-center"
+            style={{
+              fontFamily: '"Inter", system-ui, sans-serif',
+              fontSize: "0.75rem",
+              color: "oklch(62% 0.006 264)",
+            }}
           >
             By signing in, you agree to our{" "}
             <a
