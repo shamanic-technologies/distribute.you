@@ -20,6 +20,14 @@
 
   --font-display: "Fredoka", system-ui, -apple-system, sans-serif;
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  /* Landing-aligned mono — labels, eyebrows, stat ticks (matches apps/landing). */
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Radius scale ported from the landing design system (apps/landing globals). */
+  --dy-radius-sm: 0.375rem;
+  --dy-radius-md: 0.625rem;
+  --dy-radius-lg: 0.875rem;
+  --dy-radius-xl: 1rem;
 
   /* ── Type scale — compressed one more step (round 2) ───────────────
    * #1297 kept body at the 14/12 floor and pulled only headings down.
@@ -74,10 +82,92 @@ body {
 
 h1, h2, h3, .font-display {
   font-family: var(--font-display);
+  /* Landing-aligned heading treatment: tight tracking on Fredoka displays so
+   * dashboard headings read as the same family as the landing's .dy-title/.dy-h2
+   * (which use -0.03/-0.04em). Fredoka is rounder than Inter, so -0.02em is the
+   * tasteful equivalent. Font-size/line-height untouched (no layout shift). */
+  letter-spacing: -0.02em;
 }
 
 @utility text-balance {
   text-wrap: balance;
+}
+
+/* ── Landing design-system alignment (brand-consistency pass) ──────────
+ * Shared accent vocabulary ported from apps/landing/src/app/globals.css so
+ * the dashboard reads as the same product family. Light-mode adapted.
+ * Type + mono already match via the @theme tokens above; these are the
+ * opt-in accent primitives (gradient text, mono eyebrow pill). */
+
+/* Pink brand gradient for hero numbers / key titles (identical to landing). */
+.gradient-text {
+  background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Full-spectrum subtle gradient (landing's gradient-text-subtle). */
+.gradient-text-subtle {
+  background: linear-gradient(135deg, #10b981 0%, #06b6d4 20%, #3b82f6 40%, #8b5cf6 60%, #ec4899 80%, #f59e0b 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Soft multi-stop wash for page/section backgrounds (landing's gradient-bg). */
+.gradient-bg {
+  background: linear-gradient(135deg, #ecfdf5 0%, #ecfeff 20%, #eff6ff 40%, #f5f3ff 60%, #fdf2f8 80%, #fffbeb 100%);
+}
+html.dark .gradient-bg {
+  background: linear-gradient(135deg, #0f172a 0%, #111827 50%, #1e1b2e 100%);
+}
+
+/* Mono uppercase eyebrow pill — the landing's section-label signature
+ * (.dy-eyebrow), light-mode adapted. Use above section/page titles. */
+.dy-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--color-brand-200, #fbcfe8);
+  border-radius: 999px;
+  background: var(--color-brand-50, #fdf2f8);
+  color: var(--color-brand-700, #be185d);
+  padding: 0.25rem 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+html.dark .dy-eyebrow {
+  border-color: rgba(219, 39, 119, 0.3);
+  background: rgba(219, 39, 119, 0.15);
+  color: #f9a8d4;
+}
+
+/* Brand status dot for the eyebrow pill. */
+.dy-dot {
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 999px;
+  background: var(--color-brand-500, #ec4899);
+  flex: none;
+}
+
+/* Canonical-card depth — the landing's cards carry a soft layered shadow
+ * (--dy-shadow-card); the dashboard's `bg-white rounded-xl border` cards were
+ * flat. Apply the light-mode equivalent to the card pattern so every surface
+ * gains the same polish family-wide, in ONE place (203 inline usages, no sweep).
+ * In @layer base so any explicit shadow-* utility (modals: shadow-xl, etc.)
+ * still wins — this only fills in cards that declared no shadow. */
+@layer base {
+  .bg-white.rounded-xl.border {
+    box-shadow: 0 1px 3px rgba(17, 24, 39, 0.04), 0 8px 24px -6px rgba(17, 24, 39, 0.06);
+  }
+  html.dark .bg-white.rounded-xl.border {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 8px 24px -6px rgba(0, 0, 0, 0.3);
+  }
 }
 
 /* ── Dark mode global overrides ────────────────────────────────────── */
