@@ -6,6 +6,7 @@ import { ContextSidebar } from "@/components/context-sidebar";
 import { Header } from "@/components/header";
 import { OrgActivator } from "@/components/org-activator";
 import { AuthEventTracker } from "@/components/auth-event-tracker";
+import { AdsPurchaseTracker } from "@/components/ads-purchase-tracker";
 import { UserActivityTracker } from "@/components/user-activity-tracker";
 import { UserResolver } from "@/components/user-resolver";
 import { OrgCacheInvalidator } from "@/components/org-cache-invalidator";
@@ -69,6 +70,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
       <OrgActivator />
       <AuthEventTracker />
+      <AdsPurchaseTracker />
       <UserActivityTracker />
       <UserResolver />
       <Header minimal={isOnboardingSetup} />
