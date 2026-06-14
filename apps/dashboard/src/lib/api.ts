@@ -597,10 +597,7 @@ export type BrandBusinessModel = "b2c" | "b2b";
 // Which stages exist in the brand's sales funnel (multi-select). Stored on the
 // sales-economics record; both GET and PUT responses always include the array
 // (never null — a brand that never set it reads []).
-export type BrandFunnelStage =
-  | "website_signup"
-  | "website_purchase"
-  | "sales_meeting";
+export type BrandFunnelStage = "website_purchase" | "sales_meeting";
 
 // The single metric the brand wants to optimise for. Server default "sales"
 // (revenue) when never set; GET/PUT responses always include a non-null value.
@@ -611,6 +608,11 @@ export interface BrandSalesEconomics {
   replyToMeetingPct: number;
   visitToMeetingPct: number;
   meetingToClosePct: number;
+  // Self-serve close decomposed into two steps. visitToClosePct is now DERIVED
+  // server-side (= visitToSignupPct × signupToPaidClientPct) and stays on the
+  // response for the projection engine — never sent on the PUT (see Input).
+  visitToSignupPct: number;
+  signupToPaidClientPct: number;
   visitToClosePct: number;
   businessModel: BrandBusinessModel | null;
   funnelStages: BrandFunnelStage[];
@@ -624,9 +626,14 @@ export interface BrandSalesEconomics {
 // businessModel / funnelStages / optimizationGoal are partial-update fields on PUT:
 // omit = leave unchanged. The campaign form omits all three (edits only the 5 metrics);
 // the Brand Settings editor sends them explicitly. Hence optional in the input.
+// visitToClosePct is derived server-side, never sent — omit it from the input.
 export type BrandSalesEconomicsInput = Omit<
   BrandSalesEconomics,
-  "updatedAt" | "businessModel" | "funnelStages" | "optimizationGoal"
+  | "updatedAt"
+  | "businessModel"
+  | "funnelStages"
+  | "optimizationGoal"
+  | "visitToClosePct"
 > & {
   businessModel?: BrandBusinessModel | null;
   funnelStages?: BrandFunnelStage[];
@@ -638,14 +645,12 @@ const BrandSalesEconomicsSchema = z.object({
   replyToMeetingPct: z.number(),
   visitToMeetingPct: z.number(),
   meetingToClosePct: z.number(),
+  visitToSignupPct: z.number(),
+  signupToPaidClientPct: z.number(),
   visitToClosePct: z.number(),
   businessModel: z.union([z.literal("b2c"), z.literal("b2b")]).nullable(),
   funnelStages: z.array(
-    z.union([
-      z.literal("website_signup"),
-      z.literal("website_purchase"),
-      z.literal("sales_meeting"),
-    ]),
+    z.union([z.literal("website_purchase"), z.literal("sales_meeting")]),
   ),
   optimizationGoal: z.union([
     z.literal("signups"),
@@ -697,7 +702,9 @@ export async function saveBrandSalesEconomics(
       replyToMeetingPct: input.replyToMeetingPct,
       visitToMeetingPct: input.visitToMeetingPct,
       meetingToClosePct: input.meetingToClosePct,
-      visitToClosePct: input.visitToClosePct,
+      // Self-serve close as two steps; brand-service derives visitToClosePct.
+      visitToSignupPct: input.visitToSignupPct,
+      signupToPaidClientPct: input.signupToPaidClientPct,
       // Partial-update: send businessModel only when the caller set it (settings
       // editor). Omitting it leaves the stored value unchanged; null clears it.
       ...(input.businessModel !== undefined
@@ -738,6 +745,8 @@ export interface EffectiveSalesEconomics {
   replyToMeetingPct: number;
   visitToMeetingPct: number;
   meetingToClosePct: number;
+  visitToSignupPct: number;
+  signupToPaidClientPct: number;
   visitToClosePct: number;
 }
 
@@ -751,6 +760,8 @@ const EffectiveSalesEconomicsSchema = z.object({
   replyToMeetingPct: z.coerce.number(),
   visitToMeetingPct: z.coerce.number(),
   meetingToClosePct: z.coerce.number(),
+  visitToSignupPct: z.coerce.number(),
+  signupToPaidClientPct: z.coerce.number(),
   visitToClosePct: z.coerce.number(),
 });
 
