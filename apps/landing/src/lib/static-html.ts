@@ -209,9 +209,15 @@ async function resolveLivePerformanceMetrics(): Promise<LivePerformanceMetrics> 
 // the home + SEO cluster pages record no unique visits. GA id mirrors
 // app/layout.tsx; PostHog mirrors instrumentation-client.ts.
 const GA_MEASUREMENT_ID = "G-YJHNGLEJPP";
+// Google Ads conversion tracking. The landing only loads the tag (+ conversion
+// linker, auto-enabled by gtag config) so the gclid is captured into the
+// `_gcl_aw` cookie on the registrable domain `.distribute.you`, shared with
+// dashboard.distribute.you. The actual conversions (signup, add-card) fire in
+// the dashboard app, where the real events happen. No conversion event here.
+const GOOGLE_ADS_ID = "AW-18233267088";
 
 function analyticsHead(): string {
-  const ga = `<script async src="https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${GA_MEASUREMENT_ID}');</script>`;
+  const ga = `<script async src="https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${GA_MEASUREMENT_ID}');gtag('config','${GOOGLE_ADS_ID}');</script>`;
 
   const phToken = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
   const phHost = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://eu.i.posthog.com";

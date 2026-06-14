@@ -2,26 +2,6 @@
 <html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
-  <!-- Google Ads tag -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=AW-18233267088"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'AW-18233267088');
-  </script>
-  <script>
-    function gtagSendEvent(url) {
-      var callback = function () { if (typeof url === 'string') window.location = url; };
-      gtag('event', 'manual_event_PURCHASE', { 'event_callback': callback, 'event_timeout': 2000 });
-      return false;
-    }
-    document.addEventListener('DOMContentLoaded', function () {
-      document.querySelectorAll('a[href^="https://dashboard.distribute.you"]').forEach(function (a) {
-        a.addEventListener('click', function (e) { e.preventDefault(); gtagSendEvent(this.href); });
-      });
-    });
-  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>distribute: pricing — pay per email sent | $0.07/contact</title>
   <meta name="description" content="$0.07 per contact. Research, writing, delivery included. 50 emails free to start.">

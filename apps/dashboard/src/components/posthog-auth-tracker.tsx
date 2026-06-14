@@ -35,6 +35,15 @@ export function PostHogAuthTracker() {
       provider: "google",
       org_id: orgId,
     });
+
+    // Google Ads signup conversion — fires on the same once-per-user signup
+    // signal as the PostHog event. The Ads conversion action must listen to the
+    // event name `manual_event_SIGNUP`. The AW tag (config in app/layout.tsx)
+    // reads the `_gcl_aw` gclid cookie set on the landing for attribution.
+    if (authType === "signup") {
+      const gtag = (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag;
+      gtag?.("event", "manual_event_SIGNUP");
+    }
   }, [isSignedIn, orgId, user, userId]);
 
   return null;
