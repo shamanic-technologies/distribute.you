@@ -1,0 +1,382 @@
+import { describe, it, expect } from "vitest";
+import * as fs from "fs";
+import * as path from "path";
+
+describe("Feature campaigns list page", () => {
+  const pagePath = path.resolve(
+    __dirname,
+    "../src/app/(authed)/(dashboard)/features/[featureId]/page.tsx"
+  );
+  const content = fs.readFileSync(pagePath, "utf-8");
+
+  it("should be a client component", () => {
+    expect(content).toContain('"use client"');
+  });
+
+  describe("Campaigns list", () => {
+    it("should have campaigns-list test id", () => {
+      expect(content).toContain("campaigns-list");
+    });
+
+    it("should have campaign-card test id", () => {
+      expect(content).toContain("campaign-card");
+    });
+
+    it("should use listCampaigns for data", () => {
+      expect(content).toContain("listCampaigns");
+    });
+
+    it("should use fetchFeatureStats for stats", () => {
+      expect(content).toContain("fetchFeatureStats");
+    });
+
+    it("should filter campaigns by featureSlug", () => {
+      expect(content).toContain("featureSlug === featureId");
+    });
+  });
+
+  describe("Auto-redirect to create page when no campaigns", () => {
+    it("should import useRouter for redirect", () => {
+      expect(content).toContain("useRouter");
+    });
+
+    it("should import useEffect for redirect logic", () => {
+      expect(content).toContain("useEffect");
+    });
+
+    it("should redirect to /new when campaigns are loaded and empty", () => {
+      expect(content).toContain("router.replace(`/features/${featureId}/new`)");
+    });
+
+    it("should only redirect after loading is complete and data is available", () => {
+      expect(content).toContain("!isLoading && campaignsData && featureCampaigns.length === 0");
+    });
+  });
+
+  describe("Create Campaign link", () => {
+    it("should have create-campaign-link test id", () => {
+      expect(content).toContain("create-campaign-link");
+    });
+
+    it("should link to /new subpage", () => {
+      expect(content).toContain("/features/${featureId}/new");
+    });
+
+    it("should show Create Campaign text", () => {
+      expect(content).toContain("Create Campaign");
+    });
+  });
+
+  describe("Stats overview", () => {
+    it("should have campaigns-stats test id", () => {
+      expect(content).toContain("campaigns-stats");
+    });
+
+    it("should show dynamic stat cards from outputs and registry", () => {
+      expect(content).toContain("Campaigns");
+      expect(content).toContain("Runs");
+      expect(content).toContain("Total Cost");
+      expect(content).toContain("formatStatValue");
+    });
+  });
+
+  describe("Campaign card details", () => {
+    it("should show campaign status badges", () => {
+      expect(content).toContain("ongoing");
+      expect(content).toContain("completed");
+      expect(content).toContain("failed");
+    });
+
+    it("should show dynamic campaign stats from outputs", () => {
+      expect(content).toContain("rowOutputs");
+      expect(content).toContain("formatStatValue");
+      expect(content).toContain("registry");
+    });
+
+    it("should show time ago for creation", () => {
+      expect(content).toContain("timeAgo");
+      expect(content).toContain("createdAt");
+    });
+  });
+
+  it("should NOT contain old workflow table content", () => {
+    expect(content).not.toContain("SortHeader");
+    expect(content).not.toContain("mode-selector");
+    expect(content).not.toContain("Autopilot");
+    expect(content).not.toContain("budget-controls");
+  });
+});
+
+describe("Create campaign page", () => {
+  const pagePath = path.resolve(
+    __dirname,
+    "../src/app/(authed)/(dashboard)/features/[featureId]/new/page.tsx"
+  );
+  const content = fs.readFileSync(pagePath, "utf-8");
+
+  it("should be a client component", () => {
+    expect(content).toContain('"use client"');
+  });
+
+  it("should have back link to campaigns only when campaigns exist", () => {
+    expect(content).toContain("Back to campaigns");
+    expect(content).toContain("/features/${featureId}");
+    // Back link is conditionally shown based on activeCampaigns.length
+    expect(content).toContain("activeCampaigns.length > 0");
+  });
+
+  describe("Performance table columns", () => {
+    it("should have Workflow column", () => {
+      expect(content).toContain("Workflow");
+    });
+
+    it("should have Runs column", () => {
+      expect(content).toContain("Runs");
+      expect(content).toContain("completedRuns");
+    });
+
+    it("should have Outcomes column", () => {
+      expect(content).toContain("Outcomes");
+      expect(content).toContain("totalOutcomes");
+    });
+
+    it("should have $/Outcome column", () => {
+      expect(content).toContain("$/Outcome");
+      expect(content).toContain("costPerOutcome");
+    });
+  });
+
+  describe("Mode selector", () => {
+    it("should have Autopilot mode", () => {
+      expect(content).toContain("Autopilot");
+      expect(content).toContain('"autopilot"');
+    });
+
+    it("should have Manual mode", () => {
+      expect(content).toContain("Manual");
+      expect(content).toContain('"manual"');
+    });
+
+    it("should have mode-selector test id", () => {
+      expect(content).toContain("mode-selector");
+    });
+  });
+
+  describe("Metric dropdown", () => {
+    it("should have metric selector", () => {
+      expect(content).toContain("metric-selector");
+    });
+
+    it("should have all metric options", () => {
+      expect(content).toContain("$/Outcome");
+      expect(content).toContain("Outcomes");
+      expect(content).toContain("Runs");
+    });
+  });
+
+  describe("Budget controls", () => {
+    it("should have budget controls", () => {
+      expect(content).toContain("budget-controls");
+    });
+
+    it("should have budget amount input", () => {
+      expect(content).toContain("budgetAmount");
+    });
+
+    it("should have all budget frequencies", () => {
+      expect(content).toContain("one-off");
+      expect(content).toContain("daily");
+      expect(content).toContain("weekly");
+      expect(content).toContain("monthly");
+    });
+  });
+
+  describe("Go button", () => {
+    it("should have Go button", () => {
+      expect(content).toContain("go-button");
+      expect(content).toContain("Go →");
+    });
+  });
+
+  describe("Status display", () => {
+    it("should have status display", () => {
+      expect(content).toContain("status-display");
+    });
+
+    it("should handle campaign statuses", () => {
+      expect(content).toContain("ongoing");
+      expect(content).toContain("paused");
+      expect(content).toContain("completed");
+      expect(content).toContain("failed");
+    });
+
+    it("should have stop action", () => {
+      expect(content).toContain("stopCampaign");
+    });
+  });
+
+  describe("Sort direction", () => {
+    it("should sort cost metrics ascending by default (lower is better)", () => {
+      expect(content).toContain("defaultSortDir");
+      expect(content).toContain('COST_METRICS');
+      expect(content).toContain('"asc"');
+    });
+
+    it("should sort rate metrics descending by default (higher is better)", () => {
+      expect(content).toContain('"desc"');
+    });
+
+    it("should include all cost metrics in COST_METRICS set", () => {
+      expect(content).toContain("costPerOutcome");
+    });
+
+    it("should use defaultSortDir when changing metric via dropdown", () => {
+      expect(content).toContain("setSortDir(defaultSortDir(key))");
+    });
+
+    it("should use defaultSortDir when changing metric via header click", () => {
+      expect(content).toContain("setSortDir(defaultSortDir(key))");
+    });
+
+    it("should initialize sort direction as asc for default costPerOutcome metric", () => {
+      expect(content).toContain('useState<"asc" | "desc">("asc")');
+    });
+  });
+
+  describe("Data source", () => {
+    it("should use fetchRankedWorkflows for data", () => {
+      expect(content).toContain("fetchRankedWorkflows");
+    });
+
+    it("should use RankedWorkflowItem type", () => {
+      expect(content).toContain("RankedWorkflowItem");
+    });
+  });
+
+  describe("Brand selector", () => {
+    it("should have brand-selector test id", () => {
+      expect(content).toContain("brand-selector");
+    });
+
+    it("should fetch brands via listBrands", () => {
+      expect(content).toContain("listBrands");
+    });
+
+    it("should allow selecting existing brand or entering new URL", () => {
+      expect(content).toContain("selectedBrandId");
+      expect(content).toContain("newBrandUrl");
+      expect(content).toContain("__new__");
+    });
+
+    it("should show new brand URL input", () => {
+      expect(content).toContain('type="url"');
+      expect(content).toContain("https://example.com");
+    });
+
+    it("should auto-prepend https:// to URLs missing a protocol", () => {
+      expect(content).toContain('`https://${trimmed}`');
+      expect(content).toContain("/^https?:\\/\\//i");
+    });
+  });
+
+  describe("Auto-fill from prefill endpoint", () => {
+    it("should use prefillFeatureInputs for field extraction", () => {
+      expect(content).toContain("prefillFeatureInputs");
+    });
+
+    it("should use prefillToStringMap to convert prefill response", () => {
+      expect(content).toContain("prefillToStringMap");
+    });
+
+    it("should upsert brand from URL for new brands before extracting", () => {
+      expect(content).toContain("upsertBrand");
+      expect(content).toContain("upsertBrand(resolvedBrandUrl)");
+    });
+
+    it("should have extractedFieldsToFormData mapping function", () => {
+      expect(content).toContain("extractedFieldsToFormData");
+    });
+
+    it("should show loading spinner while fetching profile", () => {
+      expect(content).toContain("isLoadingProfile");
+      expect(content).toContain("profile-loading");
+      expect(content).toContain("Analyzing brand profile");
+      expect(content).toContain("animate-spin");
+    });
+
+    it("should only show form AFTER profile is loaded, not before", () => {
+      expect(content).toContain("setShowForm(true)");
+      expect(content).toContain("showForm && !isLoadingProfile");
+    });
+
+    it("should map extracted fields to form data", () => {
+      expect(content).toContain("fields.targetAudience");
+      expect(content).toContain("fields.callToAction");
+      expect(content).toContain("fields.valueProposition");
+    });
+  });
+
+  describe("Campaign creation", () => {
+    it("should have campaign creation form", () => {
+      expect(content).toContain("campaign-form");
+      expect(content).toContain("createCampaign");
+    });
+
+    it("should have required campaign fields", () => {
+      expect(content).toContain("brandUrl");
+      expect(content).toContain("featureInputs");
+      expect(content).toContain("workflowSlug");
+    });
+
+    it("should wrap form inputs in featureInputs, not spread as top-level", () => {
+      // Regression: inputValues must be sent inside featureInputs, not spread
+      expect(content).toContain("featureInputs: inputFields");
+      expect(content).not.toMatch(/\.\.\.formData,\s*\n\s*\.\.\.budgetParams/);
+    });
+  });
+});
+
+describe("API campaign function", () => {
+  const apiPath = path.resolve(__dirname, "../src/lib/api.ts");
+  const content = fs.readFileSync(apiPath, "utf-8");
+
+  it("should have createCampaign function", () => {
+    expect(content).toContain("createCampaign");
+    expect(content).toContain("workflowSlug");
+    expect(content).toContain("brandUrl");
+  });
+
+  it("should have brandId in Campaign type", () => {
+    expect(content).toContain("brandId: string | null");
+  });
+
+  it("should use featureInputs in Campaign type instead of legacy top-level fields", () => {
+    expect(content).toContain("featureInputs: Record<string, string> | null");
+    // Legacy top-level fields should not exist on Campaign
+    expect(content).not.toMatch(/^\s+targetAudience: string/m);
+    expect(content).not.toMatch(/^\s+targetOutcome: string/m);
+    expect(content).not.toMatch(/^\s+scarcity: string/m);
+  });
+
+  it("should have extractBrandFields function", () => {
+    expect(content).toContain("export async function extractBrandFields");
+    expect(content).toContain('method: "POST"');
+    expect(content).toContain("/extract-fields");
+  });
+
+  it("should have prefillFeatureInputs function", () => {
+    expect(content).toContain("export async function prefillFeatureInputs");
+    expect(content).toContain("/features/");
+    expect(content).toContain("/prefill");
+  });
+
+  it("should have prefillToStringMap function", () => {
+    expect(content).toContain("export function prefillToStringMap");
+  });
+
+  it("should have upsertBrand function", () => {
+    expect(content).toContain("upsertBrand");
+    expect(content).toContain("POST");
+    expect(content).toContain("/brands");
+  });
+});
