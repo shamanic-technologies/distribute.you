@@ -164,7 +164,7 @@ button { font-family: inherit; cursor: pointer; }
   width: 220px; flex-shrink: 0;
   background: var(--surface); border-right: 1px solid var(--border-hi);
   display: flex; flex-direction: column;
-  padding: 1.25rem 0; position: fixed; top: 0; left: 0; bottom: 0; z-index: 50;
+  padding: 0 0 1.25rem; position: fixed; top: 0; left: 0; bottom: 0; z-index: 50;
   transition: transform 0.28s var(--ease);
 }
 .app-burger { display: none; background: none; border: none; color: var(--sub); cursor: pointer; padding: 0.25rem; margin-right: 0.25rem; align-items: center; }
@@ -187,8 +187,12 @@ button { font-family: inherit; cursor: pointer; }
 .app-sidebar-brand-name { font-size: var(--fs-base); font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
 .app-sidebar-brand-url  { font-size: var(--fs-xs); color: var(--accent); font-family: 'JetBrains Mono', monospace; }
 
-/* ── Brand switcher ── */
-.app-brand-switcher { position: relative; padding: 0 0.75rem 0.875rem; margin: 0 0 0.25rem; border-bottom: 1px solid var(--border); }
+/* ── Brand switcher — height matches topbar (3.5rem) ── */
+.app-brand-switcher {
+  position: relative; padding: 0 0.75rem;
+  min-height: 3.5rem; display: flex; align-items: center;
+  border-bottom: 1px solid var(--border);
+}
 .app-brand-trigger {
   display: flex; align-items: center; gap: 0.6rem; width: 100%;
   padding: 0.5rem 0.6rem; border-radius: var(--r-md);
@@ -273,11 +277,23 @@ button { font-family: inherit; cursor: pointer; }
   padding: 0 2rem; height: 3.5rem; display: flex; align-items: center;
   justify-content: space-between; position: sticky; top: 0; z-index: 40;
 }
+/* Breadcrumb */
 .app-topbar-title { font-size: var(--fs-md); font-weight: 700; letter-spacing: -0.02em; color: var(--text); }
+.app-breadcrumb-parent  { color: var(--muted); font-weight: 500; }
+.app-breadcrumb-sep     { color: var(--border-hi); margin: 0 0.1rem; }
+.app-breadcrumb-current { color: var(--text); font-weight: 700; }
+
 .app-topbar-right { display: flex; align-items: center; gap: 0.625rem; }
+
+/* Live badge — body placement */
 .app-live { display: flex; align-items: center; gap: 0.375rem; font-family: 'JetBrains Mono', monospace; font-size: var(--fs-xs); color: var(--green); }
-.app-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse-live 2s infinite; }
+.app-live-body { padding: 0.15rem 0.5rem; border-radius: var(--r-sm); background: var(--green-dim); border: 1px solid var(--green-brd); }
+.app-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse-live 2s infinite; flex-shrink: 0; }
 @keyframes pulse-live { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+/* Overview live row */
+.overview-live-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.25rem; }
+.overview-live-label { font-size: var(--fs-xs); color: var(--muted); font-family: 'JetBrains Mono', monospace; }
 
 .app-content { padding: 2rem; flex: 1; }
 
@@ -617,7 +633,35 @@ button { font-family: inherit; cursor: pointer; }
 /* ── Outcome dashboard ── */
 .kpi-val.purple { color: var(--purple); }
 
-.app-nav-footer { flex: 0 0 auto; padding-top: 0; padding-bottom: 0.25rem; }
+.app-nav-settings { flex: 0 0 auto; padding-top: 0; }
+.app-nav-footer   { flex: 0 0 auto; padding-top: 0; padding-bottom: 0.25rem; }
+
+/* Campaign settings panel */
+.campaign-settings-panel {
+  border-bottom: 1px solid var(--border); padding: 1.25rem 1.5rem;
+  background: var(--surface-hi);
+}
+.campaign-settings-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 1rem;
+}
+.campaign-settings-btn {
+  display: flex; align-items: center; gap: 0.375rem;
+  font-size: var(--fs-xs); padding: 0.35rem 0.65rem;
+}
+.campaign-settings-btn.active { color: var(--accent); border-color: var(--accent-brd); background: var(--accent-dim); }
+
+/* Settings sub-nav (tabs within a settings page) */
+.settings-sub-nav {
+  display: flex; gap: 0; border-bottom: 1px solid var(--border); padding: 0 1.5rem;
+}
+.settings-sub-nav-item {
+  font-size: var(--fs-sm); font-weight: 500; color: var(--muted);
+  padding: 0.625rem 0; margin-right: 1.5rem;
+  border-bottom: 2px solid transparent; cursor: pointer;
+  transition: all var(--dur);
+}
+.settings-sub-nav-item.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
 
 .app-date-pill {
   display: flex; align-items: center; gap: 0.35rem;

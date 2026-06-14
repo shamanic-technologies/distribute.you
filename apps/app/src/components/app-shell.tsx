@@ -6,19 +6,23 @@ import type { Brand } from "./onboarding-overlay";
 import {
   OverviewIcon, InfoIcon, ChevronDownIcon, ChevronLeftIcon, PlusIcon, UserIcon,
   CardIcon, GearIcon, LogoutIcon, CheckIcon, CloseIcon, CalendarIcon, CartIcon, MenuIcon,
+  LeadsIcon,
 } from "./icons";
 
-type Tab = "overview" | "signups" | "meetings" | "purchases" | "help" | "account" | "billing" | "brand-settings";
+type Tab =
+  | "overview" | "signups" | "meetings" | "purchases" | "help"
+  | "settings-brand" | "settings-org" | "settings-account" | "settings-billing";
 
 const TAB_TITLES: Record<Tab, string> = {
-  overview: "Overview",
-  signups: "Signups",
-  meetings: "Meetings Booked",
-  purchases: "Purchases",
-  help: "Help",
-  account: "Account",
-  billing: "Billing",
-  "brand-settings": "Brand settings",
+  overview:          "Overview",
+  signups:           "Signups",
+  meetings:          "Meetings Booked",
+  purchases:         "Purchases",
+  help:              "Help",
+  "settings-brand":   "Brand settings",
+  "settings-org":     "Org settings",
+  "settings-account": "My account",
+  "settings-billing": "Billing",
 };
 
 // Per-page funnel config. entry = the measured/inferred stage (carries a probability),
@@ -29,29 +33,28 @@ interface PageCfg {
   confirmLabel: string; revertLabel: string; staleDays: number; staleNote: string; value: number;
 }
 const PAGE_CFG: Record<PageKey, PageCfg> = {
-  signups:   { key: "signups",   title: "Signups",         funnel: "website", entry: "visited",   terminal: "signed-up",      confirmLabel: "Mark as signed up", revertLabel: "Revert to visited",       staleDays: 14,  staleNote: "no signup in 14 days",      value: 120 },
-  purchases: { key: "purchases", title: "Purchases",       funnel: "website", entry: "signed-up", terminal: "purchased",      confirmLabel: "Mark as purchased", revertLabel: "Revert to signed up",     staleDays: 180, staleNote: "no purchase in 6 months",   value: 1400 },
-  meetings:  { key: "meetings",  title: "Meetings Booked", funnel: "meeting", entry: "replied",   terminal: "meeting-booked", confirmLabel: "Mark as booked",    revertLabel: "Revert to positive reply", staleDays: 30,  staleNote: "no meeting in 1 month",     value: 480 },
+  signups:   { key: "signups",   title: "Signups",         funnel: "website", entry: "visited",   terminal: "signed-up",      confirmLabel: "Mark as signed up", revertLabel: "Revert to visited",        staleDays: 14,  staleNote: "no signup in 14 days",     value: 120  },
+  purchases: { key: "purchases", title: "Purchases",       funnel: "website", entry: "signed-up", terminal: "purchased",      confirmLabel: "Mark as purchased", revertLabel: "Revert to signed up",      staleDays: 180, staleNote: "no purchase in 6 months",  value: 1400 },
+  meetings:  { key: "meetings",  title: "Meetings Booked", funnel: "meeting", entry: "replied",   terminal: "meeting-booked", confirmLabel: "Mark as booked",    revertLabel: "Revert to positive reply", staleDays: 30,  staleNote: "no meeting in 1 month",    value: 480  },
 };
 
 const hostnameOf = (url: string) => url.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
 const fmtUsd = (n: number) => "$" + Math.round(n).toLocaleString("en-US");
 
-const isStale = (l: PipeLead, c: PageCfg) => l.stage === c.entry && l.daysAgo > c.staleDays;
+const isStale     = (l: PipeLead, c: PageCfg) => l.stage === c.entry && l.daysAgo > c.staleDays;
 const isConfirmed = (l: PipeLead, c: PageCfg) => l.stage === c.terminal;
 function expectedRev(l: PipeLead, c: PageCfg): number {
   if (isConfirmed(l, c)) return c.value;
   if (isStale(l, c)) return 0;
   return l.prob * c.value;
 }
-/** Pick the page a lead belongs to (used for Overview row clicks). */
 function cfgForLead(l: PipeLead): PageCfg {
   if (l.funnel === "meeting") return PAGE_CFG.meetings;
   if (l.stage === "purchased" || l.stage === "signed-up") return PAGE_CFG.purchases;
   return PAGE_CFG.signups;
 }
 
-/** Brand logo via favicon service, initials fallback on error. */
+/* ── Brand logo via favicon service, initials fallback ── */
 function BrandAvatar({ brand, size = 24 }: { brand: Brand; size?: number }) {
   const [failed, setFailed] = useState(false);
   const domain = hostnameOf(brand.url);
@@ -73,22 +76,55 @@ function StageChip({ stage }: { stage: Stage }) {
   return <span className={`pipe-status pipe-${tone}`}>{label}</span>;
 }
 
+/* ── Live badge (reusable inline component) ── */
+function LiveBadge() {
+  return (
+    <span className="app-live app-live-body">
+      <span className="app-live-dot" /> live
+    </span>
+  );
+}
+
+/* ── Breadcrumb ── */
+function Breadcrumb({ tab, brandName }: { tab: Tab; brandName: string }) {
+  if (tab === "overview") {
+    return <span className="app-topbar-title">{brandName}</span>;
+  }
+  if (tab.startsWith("settings-")) {
+    return (
+      <span className="app-topbar-title">
+        <span className="app-breadcrumb-parent">Settings</span>
+        <span className="app-breadcrumb-sep"> › </span>
+        <span className="app-breadcrumb-current">{TAB_TITLES[tab]}</span>
+      </span>
+    );
+  }
+  return (
+    <span className="app-topbar-title">
+      <span className="app-breadcrumb-parent">{brandName}</span>
+      <span className="app-breadcrumb-sep"> › </span>
+      <span className="app-breadcrumb-current">{TAB_TITLES[tab]}</span>
+    </span>
+  );
+}
+
+/* ══════════════════════════════════════════════
+   APP SHELL
+═══════════════════════════════════════════════ */
 export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boolean; onReset: () => void }) {
   const [tab, setTab] = useState<Tab>("overview");
 
-  // Pipeline lead state (mutable — confirm/revert acts on it).
   const [leads, setLeads] = useState<PipeLead[]>(PIPELINE);
   const [openId, setOpenId] = useState<number | null>(null);
   const openLead = leads.find((l) => l.id === openId) ?? null;
 
-  // Multi-brand mock state.
   const [brands, setBrands] = useState<Brand[]>([brand]);
   const [activeIdx, setActiveIdx] = useState(0);
   const [brandMenuOpen, setBrandMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [newUrl, setNewUrl] = useState("");
-  const [navOpen, setNavOpen] = useState(false); // mobile off-canvas sidebar
+  const [navOpen, setNavOpen] = useState(false);
 
   const activeBrand = brands[activeIdx] ?? brand;
   const userEmail = `adam@${hostnameOf(activeBrand.url)}`;
@@ -120,7 +156,7 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
   }
 
   const navItem = (key: Tab, icon: React.ReactNode, label: string, count?: number) => (
-    <li>
+    <li key={key}>
       <a href="#" className={tab === key ? "active" : ""} onClick={(e) => { e.preventDefault(); setTab(key); setNavOpen(false); }}>
         {icon} {label}
         {count !== undefined && <span className="app-nav-count">{count}</span>}
@@ -130,8 +166,9 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
 
   return (
     <div className={`app-shell${hidden ? " app-hidden" : ""}`}>
-      {/* Sidebar */}
+      {/* ── Sidebar ── */}
       <aside className={`app-sidebar${navOpen ? " open" : ""}`}>
+        {/* Brand switcher — height-aligned with topbar */}
         <div className="app-brand-switcher">
           <button className="app-brand-trigger" onClick={() => { setBrandMenuOpen((v) => !v); setUserMenuOpen(false); }}>
             <BrandAvatar brand={activeBrand} size={26} />
@@ -159,15 +196,25 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
           )}
         </div>
 
+        {/* Main nav */}
         <ul className="app-nav">
-          {navItem("overview", <OverviewIcon />, "Overview")}
-          {navItem("signups", <UserIcon />, "Signups", OUTCOME_TOTALS.signups)}
-          {navItem("meetings", <CalendarIcon />, "Meetings Booked", OUTCOME_TOTALS.meetings)}
-          {navItem("purchases", <CartIcon />, "Purchases", OUTCOME_TOTALS.purchases)}
+          {navItem("overview",  <OverviewIcon />,  "Overview")}
+          {navItem("signups",   <UserIcon />,      "Signups",         OUTCOME_TOTALS.signups)}
+          {navItem("meetings",  <CalendarIcon />,  "Meetings Booked", OUTCOME_TOTALS.meetings)}
+          {navItem("purchases", <CartIcon />,      "Purchases",       OUTCOME_TOTALS.purchases)}
         </ul>
 
+        {/* Settings section */}
+        <div className="app-nav-section">Settings</div>
+        <ul className="app-nav app-nav-settings">
+          {navItem("settings-brand",   <GearIcon />,   "Brand settings")}
+          {navItem("settings-org",     <LeadsIcon />,  "Org settings")}
+          {navItem("settings-account", <UserIcon />,   "My account")}
+          {navItem("settings-billing", <CardIcon />,   "Billing")}
+        </ul>
+
+        {/* Footer */}
         <ul className="app-nav app-nav-footer">
-          {navItem("brand-settings", <GearIcon />, "Settings")}
           {navItem("help", <InfoIcon />, "Help")}
         </ul>
 
@@ -190,9 +237,9 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
                 </div>
               </div>
               <div className="app-menu-sep" />
-              <button className="app-menu-item" onClick={() => goSub("account")}><UserIcon width={15} height={15} /> Account</button>
-              <button className="app-menu-item" onClick={() => goSub("billing")}><CardIcon width={15} height={15} /> Billing</button>
-              <button className="app-menu-item" onClick={() => goSub("brand-settings")}><GearIcon width={15} height={15} /> Brand settings</button>
+              <button className="app-menu-item" onClick={() => goSub("settings-account")}><UserIcon width={15} height={15} /> My account</button>
+              <button className="app-menu-item" onClick={() => goSub("settings-billing")}><CardIcon width={15} height={15} /> Billing</button>
+              <button className="app-menu-item" onClick={() => goSub("settings-brand")}><GearIcon width={15} height={15} /> Brand settings</button>
               <div className="app-menu-sep" />
               <button className="app-menu-item app-menu-danger" onClick={onReset}><LogoutIcon width={15} height={15} /> Sign out</button>
             </div>
@@ -203,30 +250,30 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
       {(brandMenuOpen || userMenuOpen) && <div className="app-menu-backdrop" onClick={closeMenus} />}
       {navOpen && <div className="app-nav-backdrop" onClick={() => setNavOpen(false)} />}
 
-      {/* Main */}
+      {/* ── Main ── */}
       <main className="app-main">
         <div className="app-topbar">
-          <button className="app-burger" onClick={() => setNavOpen(true)} aria-label="Open menu"><MenuIcon width={18} height={18} /></button>
-          <span className="app-topbar-title">{TAB_TITLES[tab]}</span>
-          <div className="app-topbar-right">
-            <div className="app-date-pill">Jun 1 – Jun 7, 2026</div>
-            <div className="app-live"><span className="app-live-dot" /> live</div>
-            <button className="btn btn-p">+ New campaign</button>
-          </div>
+          <button className="app-burger" onClick={() => setNavOpen(true)} aria-label="Open menu">
+            <MenuIcon width={18} height={18} />
+          </button>
+          <Breadcrumb tab={tab} brandName={activeBrand.name} />
+          <div className="app-topbar-right" />
         </div>
 
         <div className="app-content">
-          {tab === "overview" && <OverviewTab leads={leads} onOpen={setOpenId} />}
-          {tab === "signups" && <PipelinePage cfg={PAGE_CFG.signups} leads={leads} onOpen={setOpenId} />}
-          {tab === "meetings" && <PipelinePage cfg={PAGE_CFG.meetings} leads={leads} onOpen={setOpenId} />}
-          {tab === "purchases" && <PipelinePage cfg={PAGE_CFG.purchases} leads={leads} onOpen={setOpenId} />}
-          {tab === "help" && <HelpTab />}
-          {tab === "account" && <AccountTab email={userEmail} />}
-          {tab === "billing" && <BillingTab />}
-          {tab === "brand-settings" && <BrandSettingsTab brand={activeBrand} />}
+          {tab === "overview"          && <OverviewTab  leads={leads} onOpen={setOpenId} />}
+          {tab === "signups"           && <PipelinePage cfg={PAGE_CFG.signups}   leads={leads} onOpen={setOpenId} />}
+          {tab === "meetings"          && <PipelinePage cfg={PAGE_CFG.meetings}  leads={leads} onOpen={setOpenId} />}
+          {tab === "purchases"         && <PipelinePage cfg={PAGE_CFG.purchases} leads={leads} onOpen={setOpenId} />}
+          {tab === "help"              && <HelpTab />}
+          {tab === "settings-account"  && <AccountTab email={userEmail} />}
+          {tab === "settings-billing"  && <BillingTab />}
+          {tab === "settings-brand"    && <BrandSettingsTab brand={activeBrand} />}
+          {tab === "settings-org"      && <OrgSettingsTab email={userEmail} />}
         </div>
       </main>
 
+      {/* Add brand modal */}
       {addOpen && (
         <div className="app-modal-overlay" onClick={() => setAddOpen(false)}>
           <div className="app-modal" onClick={(e) => e.stopPropagation()}>
@@ -259,7 +306,9 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
   );
 }
 
-/* ── Pipeline table ── */
+/* ══════════════════════════════════════════════
+   PIPELINE TABLE
+═══════════════════════════════════════════════ */
 function ProbCell({ l, c }: { l: PipeLead; c: PageCfg }) {
   if (isConfirmed(l, c)) return <span className="pipe-prob-confirmed"><CheckIcon width={12} height={12} /> confirmed</span>;
   const pct = isStale(l, c) ? 0 : Math.round(l.prob * 100);
@@ -298,11 +347,35 @@ function PipelineTable({ rows, cfg, onOpen }: { rows: PipeLead[]; cfg: PageCfg; 
   );
 }
 
-/* ── Signups / Meetings / Purchases ── */
+/* ══════════════════════════════════════════════
+   PIPELINE PAGE (Signups / Meetings / Purchases)
+═══════════════════════════════════════════════ */
+function CampaignSettingsPanel({ cfg, onClose }: { cfg: PageCfg; onClose: () => void }) {
+  return (
+    <div className="campaign-settings-panel">
+      <div className="campaign-settings-head">
+        <span className="leads-title" style={{ fontSize: "var(--fs-sm)" }}>Campaign settings — {cfg.title}</span>
+        <button className="app-modal-close" onClick={onClose}><CloseIcon width={11} height={11} /></button>
+      </div>
+      <div className="ob-field-table" style={{ marginBottom: "1rem" }}>
+        <SettingRow label="Budget"   value="$58 / day" />
+        <SettingRow label="Status"   value="live" />
+        <SettingRow label="Audience" value="Founders and AI teams at early-stage SaaS" />
+        <SettingRow label="Goal"     value={`${cfg.title} — ${cfg.confirmLabel}`} />
+      </div>
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <button className="btn btn-p" style={{ fontSize: "var(--fs-xs)", padding: "0.35rem 0.75rem" }}>Save changes</button>
+      </div>
+    </div>
+  );
+}
+
 function PipelinePage({ cfg, leads, onOpen }: { cfg: PageCfg; leads: PipeLead[]; onOpen: (id: number) => void }) {
   const [sub, setSub] = useState<"active" | "stale">("active");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
   const mine = leads.filter((l) => l.funnel === cfg.funnel && (l.stage === cfg.entry || l.stage === cfg.terminal));
-  const stale = mine.filter((l) => isStale(l, cfg));
+  const stale  = mine.filter((l) =>  isStale(l, cfg));
   const active = mine.filter((l) => !isStale(l, cfg));
   const rows = sub === "active" ? active : stale;
   const expectedTotal = active.reduce((s, l) => s + expectedRev(l, cfg), 0);
@@ -310,14 +383,26 @@ function PipelinePage({ cfg, leads, onOpen }: { cfg: PageCfg; leads: PipeLead[];
   return (
     <div className="leads-panel">
       <div className="leads-header">
-        <div>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
           <span className="leads-title">{cfg.title}</span>
           <span className="leads-count">{fmtUsd(expectedTotal)} expected</span>
+          <LiveBadge />
         </div>
+        <button
+          className={`btn btn-g campaign-settings-btn${settingsOpen ? " active" : ""}`}
+          onClick={() => setSettingsOpen((v) => !v)}
+          title="Campaign settings"
+        >
+          <GearIcon width={13} height={13} />
+          Settings
+        </button>
       </div>
+
+      {settingsOpen && <CampaignSettingsPanel cfg={cfg} onClose={() => setSettingsOpen(false)} />}
+
       <div className="leads-tabs">
         <button className={`leads-tab${sub === "active" ? " active" : ""}`} onClick={() => setSub("active")}>Active <span className="app-nav-count">{active.length}</span></button>
-        <button className={`leads-tab${sub === "stale" ? " active" : ""}`} onClick={() => setSub("stale")}>Stale <span className="app-nav-count">{stale.length}</span></button>
+        <button className={`leads-tab${sub === "stale"  ? " active" : ""}`} onClick={() => setSub("stale")}>Stale <span className="app-nav-count">{stale.length}</span></button>
       </div>
       {sub === "stale" && <div className="pipe-stale-note">Stale = {cfg.staleNote} → counted as 0% probability.</div>}
       {rows.length
@@ -327,7 +412,9 @@ function PipelinePage({ cfg, leads, onOpen }: { cfg: PageCfg; leads: PipeLead[];
   );
 }
 
-/* ── Event-history drawer ── */
+/* ══════════════════════════════════════════════
+   EVENT-HISTORY DRAWER
+═══════════════════════════════════════════════ */
 function EventDrawer({ lead, cfg, onClose, onConfirm, onRevert }: {
   lead: PipeLead | null; cfg: PageCfg | null;
   onClose: () => void; onConfirm: (l: PipeLead, c: PageCfg) => void; onRevert: (l: PipeLead, c: PageCfg) => void;
@@ -354,7 +441,6 @@ function EventDrawer({ lead, cfg, onClose, onConfirm, onRevert }: {
                 </div>
               </div>
             </div>
-
             <div className="drawer-thread">
               <div className="drawer-thread-title">Event history</div>
               <div className="pipe-timeline">
@@ -372,7 +458,6 @@ function EventDrawer({ lead, cfg, onClose, onConfirm, onRevert }: {
                 ))}
               </div>
             </div>
-
             <div className="drawer-actions">
               {isConfirmed(lead, cfg) ? (
                 <button className="btn btn-g" style={{ flex: 1, justifyContent: "center" }} onClick={() => onRevert(lead, cfg)}>{cfg.revertLabel}</button>
@@ -387,7 +472,9 @@ function EventDrawer({ lead, cfg, onClose, onConfirm, onRevert }: {
   );
 }
 
-/* ── Overview ── */
+/* ══════════════════════════════════════════════
+   OVERVIEW
+═══════════════════════════════════════════════ */
 function KpiInfo({ tip }: { tip: string }) {
   return (
     <span className="kpi-info-tip">
@@ -407,12 +494,11 @@ function PipelineChart() {
       <path fill="none" stroke="var(--green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" d="M30,117.8 L79.2,113.4 L128.5,107.5 L177.7,103.1 L226.9,96.5 L276.2,89.9 L325.4,84.1" />
       <line x1="325.4" y1="18" x2="325.4" y2="120" stroke="var(--muted)" strokeWidth="1" strokeDasharray="2 3" opacity="0.6" />
       <circle cx="325.4" cy="84.1" r="3.5" fill="var(--green)" />
-      <text x="10" y="134" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="var(--muted)">Jun</text>
-      <text x="30" y="134" textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="var(--muted)">1</text>
-      <text x="177.7" y="134" textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="var(--muted)">4</text>
-      <text x="325.4" y="134" textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="var(--green)">7 · today</text>
-      <text x="473.1" y="134" textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="var(--muted)">10</text>
-      <text x="670" y="134" textAnchor="end" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="var(--muted)">14</text>
+      <text x="30" y="134" textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="var(--muted)">Day 1</text>
+      <text x="177.7" y="134" textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="var(--muted)">Day 4</text>
+      <text x="325.4" y="134" textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="var(--green)">today</text>
+      <text x="473.1" y="134" textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="var(--muted)">Day 10</text>
+      <text x="670" y="134" textAnchor="end" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="var(--muted)">Day 14</text>
     </svg>
   );
 }
@@ -421,6 +507,12 @@ function OverviewTab({ leads, onOpen }: { leads: PipeLead[]; onOpen: (id: number
   const recent = [...leads].sort((a, b) => a.daysAgo - b.daysAgo).slice(0, 5);
   return (
     <div>
+      {/* Live indicator */}
+      <div className="overview-live-row">
+        <LiveBadge />
+        <span className="overview-live-label">Campaign running — distribute is actively sending outreach</span>
+      </div>
+
       <div className="kpi-strip">
         <div className="kpi-card">
           <div className="kpi-label">Sign Ups <KpiInfo tip="Expected signups from your website visits" /></div>
@@ -449,7 +541,6 @@ function OverviewTab({ leads, onOpen }: { leads: PipeLead[]; onOpen: (id: number
           <div className="chart-header">
             <div>
               <div className="chart-title">Pipeline revenue over time</div>
-              <div className="chart-sub">Jun 1 – Jun 14, 2026</div>
             </div>
             <div className="chart-legend">
               <div className="chart-legend-item"><span className="pipe-legend-line solid" /> Actual</div>
@@ -518,12 +609,14 @@ function OverviewTab({ leads, onOpen }: { leads: PipeLead[]; onOpen: (id: number
   );
 }
 
-/* ── Help ── */
+/* ══════════════════════════════════════════════
+   HELP
+═══════════════════════════════════════════════ */
 const HELP_ITEMS = [
   { q: "What does distribute actually measure?", a: "Only two things for sure: website visits and positive email replies. Signups, meetings, and purchases are inferred with a probability until you confirm them." },
-  { q: "Why does a lead show a probability?", a: "A 'Visited website' lead hasn't signed up yet — we estimate how likely they are to convert, and show the expected revenue (probability × deal value)." },
-  { q: "What happens to stale leads?", a: "A visit with no signup in 14 days, a signup with no purchase in 6 months, or a reply with no meeting in 1 month drops to 0% and moves to the Stale tab." },
-  { q: "Can I correct a status?", a: "Yes — open any lead and mark it signed up / purchased / booked, or revert it back. The expected revenue recomputes instantly." },
+  { q: "Why does a lead show a probability?",    a: "A 'Visited website' lead hasn't signed up yet — we estimate how likely they are to convert, and show the expected revenue (probability × deal value)." },
+  { q: "What happens to stale leads?",           a: "A visit with no signup in 14 days, a signup with no purchase in 6 months, or a reply with no meeting in 1 month drops to 0% and moves to the Stale tab." },
+  { q: "Can I correct a status?",               a: "Yes — open any lead and mark it signed up / purchased / booked, or revert it back. The expected revenue recomputes instantly." },
 ];
 
 function HelpTab() {
@@ -542,11 +635,42 @@ function HelpTab() {
   );
 }
 
-/* ── Account ── */
+/* ══════════════════════════════════════════════
+   SETTINGS — SHARED UTILS
+═══════════════════════════════════════════════ */
+function SettingRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="ob-field-row">
+      <div className="ob-field-key">{label}</div>
+      <div className="ob-field-val"><input defaultValue={value} /></div>
+    </div>
+  );
+}
+
+function SettingsHeader({ title, action }: { title: string; action?: React.ReactNode }) {
+  return (
+    <div className="leads-header">
+      <span className="leads-title">{title}</span>
+      {action}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════
+   SETTINGS — MY ACCOUNT
+═══════════════════════════════════════════════ */
 function AccountTab({ email }: { email: string }) {
   return (
     <div className="leads-panel" style={{ maxWidth: 640 }}>
-      <div className="leads-header"><span className="leads-title">Your account</span></div>
+      <SettingsHeader
+        title="My account"
+        action={<button className="btn btn-p" style={{ fontSize: "var(--fs-xs)", padding: "0.35rem 0.75rem" }}>Save changes</button>}
+      />
+      <div className="settings-sub-nav">
+        <span className="settings-sub-nav-item active">Profile</span>
+        <span className="settings-sub-nav-item">Notifications</span>
+        <span className="settings-sub-nav-item">Security</span>
+      </div>
       <div style={{ padding: "1.5rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1.5rem" }}>
           <div className="app-sidebar-avatar" style={{ width: "3rem", height: "3rem", fontSize: "1rem" }}>AN</div>
@@ -557,19 +681,21 @@ function AccountTab({ email }: { email: string }) {
         </div>
         <div className="ob-field-table">
           <SettingRow label="Full name" value="Adam Nasri" />
-          <SettingRow label="Email" value={email} />
-          <SettingRow label="Role" value="Founder" />
+          <SettingRow label="Email"     value={email} />
+          <SettingRow label="Role"      value="Founder" />
         </div>
       </div>
     </div>
   );
 }
 
-/* ── Billing ── */
+/* ══════════════════════════════════════════════
+   SETTINGS — BILLING
+═══════════════════════════════════════════════ */
 const INVOICES = [
-  { date: "Jun 1, 2026", amount: "$58.00", status: "Paid" },
-  { date: "May 1, 2026", amount: "$58.00", status: "Paid" },
-  { date: "Apr 1, 2026", amount: "$29.00", status: "Paid" },
+  { date: "Jun 1, 2026",  amount: "$58.00", status: "Paid" },
+  { date: "May 1, 2026",  amount: "$58.00", status: "Paid" },
+  { date: "Apr 1, 2026",  amount: "$29.00", status: "Paid" },
 ];
 
 function BillingTab() {
@@ -581,9 +707,14 @@ function BillingTab() {
         <div className="kpi-card"><div className="kpi-label">Auto top-up</div><div className="kpi-val green">On</div><div className="kpi-meta">+$100 below $20</div></div>
       </div>
       <div className="leads-panel" style={{ marginBottom: "2rem", maxWidth: 640 }}>
-        <div className="leads-header">
-          <span className="leads-title">Payment method</span>
-          <button className="btn btn-g" style={{ fontSize: "var(--fs-xs)", padding: "0.35rem 0.75rem" }}>Update</button>
+        <SettingsHeader
+          title="Payment method"
+          action={<button className="btn btn-g" style={{ fontSize: "var(--fs-xs)", padding: "0.35rem 0.75rem" }}>Update</button>}
+        />
+        <div className="settings-sub-nav">
+          <span className="settings-sub-nav-item active">Plan</span>
+          <span className="settings-sub-nav-item">Payment</span>
+          <span className="settings-sub-nav-item">Invoices</span>
         </div>
         <div style={{ padding: "1.25rem 1.5rem", display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <CardIcon width={18} height={18} />
@@ -606,13 +737,20 @@ function BillingTab() {
   );
 }
 
-/* ── Brand settings ── */
+/* ══════════════════════════════════════════════
+   SETTINGS — BRAND
+═══════════════════════════════════════════════ */
 function BrandSettingsTab({ brand }: { brand: Brand }) {
   return (
     <div className="leads-panel" style={{ maxWidth: 640 }}>
-      <div className="leads-header">
-        <span className="leads-title">Brand settings</span>
-        <button className="btn btn-p" style={{ fontSize: "var(--fs-xs)", padding: "0.35rem 0.75rem" }}>Save changes</button>
+      <SettingsHeader
+        title="Brand settings"
+        action={<button className="btn btn-p" style={{ fontSize: "var(--fs-xs)", padding: "0.35rem 0.75rem" }}>Save changes</button>}
+      />
+      <div className="settings-sub-nav">
+        <span className="settings-sub-nav-item active">General</span>
+        <span className="settings-sub-nav-item">Audience &amp; ICP</span>
+        <span className="settings-sub-nav-item">Tracking</span>
       </div>
       <div style={{ padding: "1.5rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1.5rem" }}>
@@ -624,20 +762,58 @@ function BrandSettingsTab({ brand }: { brand: Brand }) {
         </div>
         <div className="ob-field-table">
           <SettingRow label="Brand name" value={brand.name} />
-          <SettingRow label="URL" value={brand.url} />
-          <SettingRow label="Audience" value="Founders and AI teams at early-stage SaaS building with LLMs" />
-          <SettingRow label="Value" value="Cut AI prompt iteration time by 60% with a collaborative prompt library" />
+          <SettingRow label="URL"        value={brand.url} />
+          <SettingRow label="Audience"   value="Founders and AI teams at early-stage SaaS building with LLMs" />
+          <SettingRow label="Value"      value="Cut AI prompt iteration time by 60% with a collaborative prompt library" />
         </div>
       </div>
     </div>
   );
 }
 
-function SettingRow({ label, value }: { label: string; value: string }) {
+/* ══════════════════════════════════════════════
+   SETTINGS — ORG
+═══════════════════════════════════════════════ */
+function OrgSettingsTab({ email }: { email: string }) {
+  const domain = email.split("@")[1] ?? "example.com";
   return (
-    <div className="ob-field-row">
-      <div className="ob-field-key">{label}</div>
-      <div className="ob-field-val"><input defaultValue={value} /></div>
+    <div style={{ maxWidth: 640 }}>
+      <div className="leads-panel" style={{ marginBottom: "1.5rem" }}>
+        <SettingsHeader
+          title="Org settings"
+          action={<button className="btn btn-p" style={{ fontSize: "var(--fs-xs)", padding: "0.35rem 0.75rem" }}>Save changes</button>}
+        />
+        <div className="settings-sub-nav">
+          <span className="settings-sub-nav-item active">General</span>
+          <span className="settings-sub-nav-item">Team</span>
+          <span className="settings-sub-nav-item">Integrations</span>
+        </div>
+        <div style={{ padding: "1.5rem" }}>
+          <div className="ob-field-table">
+            <SettingRow label="Org name"  value={domain} />
+            <SettingRow label="Plan"      value="Recommended" />
+            <SettingRow label="Time zone" value="America / New York" />
+            <SettingRow label="Website"   value={`https://${domain}`} />
+          </div>
+        </div>
+      </div>
+
+      <div className="leads-panel">
+        <div className="leads-header">
+          <span className="leads-title">Team</span>
+          <button className="btn btn-g" style={{ fontSize: "var(--fs-xs)", padding: "0.35rem 0.75rem" }}>+ Invite</button>
+        </div>
+        <table className="leads-table">
+          <thead><tr><th>Member</th><th>Role</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><div className="lead-org"><div className="app-sidebar-avatar" style={{ width: "1.75rem", height: "1.75rem", fontSize: "0.6rem", borderRadius: "50%" }}>AN</div><div><div className="lead-org-name">Adam Nasri</div><div className="lead-contact">{email}</div></div></div></td>
+              <td style={{ fontSize: "var(--fs-sm)", color: "var(--sub)" }}>Owner</td>
+              <td><span className="pipe-status pipe-green">Active</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
