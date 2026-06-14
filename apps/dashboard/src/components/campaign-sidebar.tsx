@@ -28,19 +28,6 @@ const WorkflowIcon = () => (
   </svg>
 );
 
-const RunsIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-);
-
-const LogsIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h10" />
-  </svg>
-);
-
 const InputsIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -147,9 +134,9 @@ export function CampaignSidebar({ campaignId, orgId, brandId, featureSlug, entit
   // Reveal the whole nav together once the feature + entity registry defs load
   // (entity items depend on them); skeleton rows until then. See CLAUDE.md → "Coordinated reveal".
   const defsReady = !featuresLoading && !registryLoading;
-  const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/${campaignId}`;
+  const basePath = `/orgs/${orgId}/brands/${brandId}/campaigns/${campaignId}`;
   const backHref = explicitHierarchyHref(
-    `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`,
+    `/orgs/${orgId}/brands/${brandId}/campaigns`,
   );
 
   const featureDef = getFeature(featureSlug);
@@ -186,23 +173,11 @@ export function CampaignSidebar({ campaignId, orgId, brandId, featureSlug, entit
           {
             id: "workflow",
             label: "Workflow",
-            href: `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/${workflowId}`,
+            href: `/orgs/${orgId}/brands/${brandId}/workflows/${workflowId}`,
             icon: <WorkflowIcon />,
           },
         ]
       : []),
-    {
-      id: "runs",
-      label: "Runs",
-      href: `${basePath}/runs`,
-      icon: <RunsIcon />,
-    },
-    {
-      id: "logs",
-      label: "Logs",
-      href: `${basePath}/logs`,
-      icon: <LogsIcon />,
-    },
   ];
 
   return (

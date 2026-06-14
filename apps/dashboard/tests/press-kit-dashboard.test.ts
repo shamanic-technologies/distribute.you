@@ -64,7 +64,7 @@ describe("press-kit-dashboard", () => {
   describe("campaign press-kits list page", () => {
     const pagePath = path.join(
       SRC,
-      "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/page.tsx",
+      "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/[id]/press-kits/page.tsx",
     );
     const pageSrc = fs.readFileSync(pagePath, "utf-8");
 
@@ -120,7 +120,7 @@ describe("press-kit-dashboard", () => {
   describe("campaign press-kit detail page", () => {
     const detailPath = path.join(
       SRC,
-      "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/[kitId]/page.tsx",
+      "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/[id]/press-kits/[kitId]/page.tsx",
     );
     const detailSrc = fs.readFileSync(detailPath, "utf-8");
 
@@ -190,7 +190,7 @@ describe("press-kit-dashboard", () => {
 
     const pagePath = path.join(
       SRC,
-      "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/page.tsx",
+      "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/[id]/press-kits/page.tsx",
     );
     const pageSrc = fs.readFileSync(pagePath, "utf-8");
 
@@ -206,7 +206,7 @@ describe("press-kit-dashboard", () => {
 
     const detailPath = path.join(
       SRC,
-      "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/[kitId]/page.tsx",
+      "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/[id]/press-kits/[kitId]/page.tsx",
     );
     const detailSrc = fs.readFileSync(detailPath, "utf-8");
 
@@ -253,8 +253,8 @@ describe("press-kit-dashboard", () => {
 
   describe("public URL uses backend publicUrl field", () => {
     const pressKitFiles = [
-      path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/page.tsx"),
-      path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/[kitId]/page.tsx"),
+      path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/[id]/press-kits/page.tsx"),
+      path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/[id]/press-kits/[kitId]/page.tsx"),
       path.join(SRC, "src/components/campaign/press-kit-results.tsx"),
     ];
 

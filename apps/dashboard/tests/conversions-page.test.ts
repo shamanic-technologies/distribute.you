@@ -4,7 +4,7 @@ import * as path from "path";
 
 const pagePath = path.resolve(
   __dirname,
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/conversions/page.tsx",
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/conversions/page.tsx",
 );
 const sidebarPath = path.resolve(
   __dirname,
@@ -12,20 +12,18 @@ const sidebarPath = path.resolve(
 );
 const gatesPath = path.resolve(__dirname, "../src/lib/feature-gates.ts");
 const revenueFeaturePath = path.resolve(__dirname, "../src/lib/revenue-feature.ts");
-const featurePagePath = path.resolve(
-  __dirname,
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/page.tsx",
-);
+// Single-feature product: the feature segment was flattened into the brand
+// level, so the brand ROOT page IS the (sole) feature's Revenue overview. There
+// is no separate `/overview` page anymore — overviewPage === the brand root.
 const overviewPagePath = path.resolve(
   __dirname,
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/overview/page.tsx",
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
 );
 
 const page = fs.readFileSync(pagePath, "utf-8");
 const sidebar = fs.readFileSync(sidebarPath, "utf-8");
 const gates = fs.readFileSync(gatesPath, "utf-8");
 const revenueFeature = fs.readFileSync(revenueFeaturePath, "utf-8");
-const featurePage = fs.readFileSync(featurePagePath, "utf-8");
 const overviewPage = fs.readFileSync(overviewPagePath, "utf-8");
 const reportApi = fs.readFileSync(path.resolve(__dirname, "../src/lib/report-api.ts"), "utf-8");
 const reportFeaturePage = fs.readFileSync(
@@ -69,19 +67,15 @@ describe("revenue surface is restricted to revenue features (not all features)",
   });
 });
 
-describe("Overview is its own page + sidebar button (NOT embedded in Campaigns)", () => {
-  it("Campaigns (feature root) page does NOT embed the revenue section", () => {
-    expect(featurePage).not.toContain("RevenueOverviewSection");
-  });
-
-  it("dedicated overview page renders the revenue section, gated on isRevenueFeature", () => {
+describe("Overview = the brand root page + sidebar button", () => {
+  it("brand root page renders the revenue section inline, gated on isRevenueFeature", () => {
+    // The feature segment is gone — the brand root IS the overview.
     expect(overviewPage).toContain("RevenueOverviewSection");
     expect(overviewPage).toContain("isRevenueFeature(featureSlug)");
   });
 
   it("sidebar adds an Overview entry above Campaigns, gated on the revenue surface", () => {
     expect(sidebar).toContain('id: "overview"');
-    expect(sidebar).toContain("/overview");
     expect(sidebar).toContain("revenueOk");
     // Overview must come before Campaigns in the source (rendered above it).
     expect(sidebar.indexOf('id: "overview"')).toBeLessThan(

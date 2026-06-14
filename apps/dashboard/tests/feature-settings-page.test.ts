@@ -7,7 +7,7 @@ import * as path from "path";
 describe("Feature Settings page (GA Sales Economics, mirrors Brand Settings)", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/settings/page.tsx",
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/settings/page.tsx",
   );
   const brandSettingsPath = path.join(
     __dirname,
