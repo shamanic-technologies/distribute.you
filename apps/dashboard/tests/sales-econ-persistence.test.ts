@@ -38,12 +38,15 @@ describe("Brand sales-economics persistence", () => {
     expect(apiContent).toContain("SaveBrandSalesEconomicsResponseSchema.safeParse");
   });
 
-  it("locks the 5 wire field names byte-stable", () => {
+  it("locks the wire field names byte-stable (self-serve close decomposed into 2 steps)", () => {
     for (const key of [
       "lifetimeRevenueUsd",
       "replyToMeetingPct",
       "visitToMeetingPct",
       "meetingToClosePct",
+      "visitToSignupPct",
+      "signupToPaidClientPct",
+      // visitToClosePct stays on the READ shape (derived server-side from the 2 steps)
       "visitToClosePct",
     ]) {
       expect(apiContent).toContain(key);
