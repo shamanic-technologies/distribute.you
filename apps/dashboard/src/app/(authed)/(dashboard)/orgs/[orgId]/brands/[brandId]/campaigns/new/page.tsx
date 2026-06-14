@@ -18,9 +18,11 @@ import {
   getBrand,
   listBrands,
   getSalesEconomicsEffective,
+  getBrandSalesEconomics,
   saveBrandSalesEconomics,
   type SalesEconomicsSource,
   type BrandSalesEconomicsInput,
+  type BrandOptimizationGoal,
   getWorkflowKeyStatus,
   prefillFeatureInputs,
   prefillToStringMap,
@@ -74,9 +76,19 @@ type BudgetTier = "starter" | "recommended" | "growth" | "other";
 
 const SALES_FUNNEL_FEATURE_SLUG = "sales-cold-email-outreach";
 
+// Façon de vendre — how the brand closes. Drives the funnel math (projection query key)
+// and which conversion-metric inputs show. Prefilled from the brand's funnelStages.
 const SALES_OBJECTIVES: { key: SalesObjective; label: string; desc: string }[] = [
-  { key: "meeting-booked", label: "Meeting-booked sales", desc: "You close deals from booked meetings — optimize on positive replies." },
-  { key: "self-serve", label: "Self-serve sales", desc: "Customers buy from your site — optimize on clicks." },
+  { key: "meeting-booked", label: "Booked meeting", desc: "You close deals from booked meetings." },
+  { key: "self-serve", label: "Product (self-serve)", desc: "Customers buy directly on your site." },
+];
+
+// Objectif — the metric this brand wants to maximize. Prefilled from the brand's
+// optimizationGoal; campaign-local intent (no funnel-math change, no write-back).
+const SALES_OPTIMIZATION_GOALS: { key: BrandOptimizationGoal; label: string; desc: string }[] = [
+  { key: "signups", label: "Signups", desc: "Maximize new free signups." },
+  { key: "booked_meetings", label: "Booked meetings", desc: "Maximize booked sales meetings." },
+  { key: "sales", label: "Sales", desc: "Maximize closed revenue." },
 ];
 
 /** Each tier is sized for an absolute closes-per-month target (budget = closes × cost-per-close). */
@@ -375,6 +387,9 @@ export default function FeatureCreateCampaignPage() {
   const brandPickerRef = useRef<HTMLDivElement>(null);
 
   // ── Sales funnel state (sales-cold-email only) ──
+  // `objective` = the metric to maximize (campaign-local, prefilled from brand). `salesObjective`
+  // = façon de vendre (product/meeting), which drives the funnel math + metric inputs.
+  const [objective, setObjective] = useState<BrandOptimizationGoal>("sales");
   const [salesObjective, setSalesObjective] = useState<SalesObjective>("meeting-booked");
   const [econLtv, setEconLtv] = useState(SALES_ECON_DEFAULTS.ltv);
   const [econReplyToMeeting, setEconReplyToMeeting] = useState(SALES_ECON_DEFAULTS.replyToMeeting);
@@ -429,6 +444,27 @@ export default function FeatureCreateCampaignPage() {
     // never clobber edits.
     econHydrated.current = true;
   }, [isSalesFunnel, salesEconData]);
+
+  // ── Prefill objectif + façon de vendre from the brand's saved economics ──
+  // The effective endpoint only returns the 6 conversion numbers; the brand's
+  // optimizationGoal + funnelStages live on the non-effective sales-economics row.
+  // Both selectors are campaign-local (no write-back) — they just default to the
+  // brand's choice. funnelStages containing "sales_meeting" → meeting, else product.
+  const { data: brandEconData } = useAuthQuery(
+    ["brandSalesEconomics", brandId],
+    () => getBrandSalesEconomics(brandId),
+    { enabled: isSalesFunnel },
+  );
+  const objectiveHydrated = useRef(false);
+  useEffect(() => {
+    if (!isSalesFunnel || objectiveHydrated.current || brandEconData === undefined) return;
+    const e = brandEconData.salesEconomics;
+    if (e) {
+      setObjective(e.optimizationGoal);
+      setSalesObjective(e.funnelStages.includes("sales_meeting") ? "meeting-booked" : "self-serve");
+    }
+    objectiveHydrated.current = true;
+  }, [isSalesFunnel, brandEconData]);
 
   const { mutate: mutateSalesEcon } = useMutation({
     mutationFn: (input: BrandSalesEconomicsInput) => saveBrandSalesEconomics(brandId, input),
@@ -1484,31 +1520,56 @@ export default function FeatureCreateCampaignPage() {
       {/* ░░ Sales funnel (sales-cold-email) ░░ */}
       {isSalesFunnel && (
         <div className="space-y-4 mb-4">
-          {/* 1 · Objective */}
+          {/* 1 · Objective + selling mode (both prefilled from the brand) */}
           <div className="bg-white rounded-xl border border-gray-200">
             <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
               <span className="w-5 h-5 inline-flex items-center justify-center text-[11px] font-bold text-white bg-brand-500 rounded-full">1</span>
-              <h2 className="font-display font-semibold text-gray-800">How does this campaign sell?</h2>
+              <h2 className="font-display font-semibold text-gray-800">Objective &amp; selling mode</h2>
             </div>
-            <div className="p-5">
-              <p className="text-sm text-gray-500 mb-4">Pick what this campaign should maximize — we optimize workflow selection for it.</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {SALES_OBJECTIVES.map((o) => {
-                  const active = salesObjective === o.key;
-                  return (
-                    <button
-                      key={o.key}
-                      type="button"
-                      onClick={() => setSalesObjective(o.key)}
-                      className={`text-left p-4 rounded-xl border transition ${
-                        active ? "border-brand-500 bg-brand-50 ring-1 ring-brand-200" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                      }`}
-                    >
-                      <div className={`text-sm font-semibold ${active ? "text-brand-700" : "text-gray-800"}`}>{o.label}</div>
-                      <div className="text-xs text-gray-500 mt-1">{o.desc}</div>
-                    </button>
-                  );
-                })}
+            <div className="p-5 space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Objective</label>
+                <p className="text-xs text-gray-500 mb-3">What this campaign should maximize — prefilled from the brand.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {SALES_OPTIMIZATION_GOALS.map((o) => {
+                    const active = objective === o.key;
+                    return (
+                      <button
+                        key={o.key}
+                        type="button"
+                        onClick={() => setObjective(o.key)}
+                        className={`text-left p-4 rounded-xl border transition ${
+                          active ? "border-brand-500 bg-brand-50 ring-1 ring-brand-200" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        <div className={`text-sm font-semibold ${active ? "text-brand-700" : "text-gray-800"}`}>{o.label}</div>
+                        <div className="text-xs text-gray-500 mt-1">{o.desc}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Selling mode</label>
+                <p className="text-xs text-gray-500 mb-3">How you close — product or booked meeting. Prefilled from the brand.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {SALES_OBJECTIVES.map((o) => {
+                    const active = salesObjective === o.key;
+                    return (
+                      <button
+                        key={o.key}
+                        type="button"
+                        onClick={() => setSalesObjective(o.key)}
+                        className={`text-left p-4 rounded-xl border transition ${
+                          active ? "border-brand-500 bg-brand-50 ring-1 ring-brand-200" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        <div className={`text-sm font-semibold ${active ? "text-brand-700" : "text-gray-800"}`}>{o.label}</div>
+                        <div className="text-xs text-gray-500 mt-1">{o.desc}</div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>
@@ -1802,60 +1863,66 @@ export default function FeatureCreateCampaignPage() {
                 );
               })()}
 
+            </div>
+          </div>
+
+          {/* 4 · Campaign details */}
+          <div className="bg-white rounded-xl border border-gray-200">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-5 h-5 inline-flex items-center justify-center text-[11px] font-bold text-white bg-brand-500 rounded-full">4</span>
+                <h2 className="font-display font-semibold text-gray-800">Campaign details</h2>
+              </div>
+              <button type="button" onClick={() => setShowChat(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition text-gray-500 hover:text-brand-600 hover:bg-brand-50 border border-gray-200">
+                <SparklesIcon className="w-3.5 h-3.5" />
+                Edit with AI
+              </button>
+            </div>
+            <div className="p-5">
+              {isLoadingProfile ? (
+                <p className="text-sm text-gray-400">Analyzing brand profile&hellip;</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Brand URL</label>
+                    <input type="text" value={formData.brandUrl ?? ""} onChange={(e) => setFormData((p) => ({ ...p, brandUrl: e.target.value }))}
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
+                  </div>
+                  {featureInputs.map((input) => (
+                    <div key={input.key}>
+                      <label className="block text-xs text-gray-500 mb-1">{input.label}</label>
+                      <input type="text" value={formData[input.key] ?? ""} onChange={(e) => setFormData((p) => ({ ...p, [input.key]: e.target.value }))}
+                        placeholder={input.placeholder ?? input.description}
+                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
+                    </div>
+                  ))}
+                </div>
+              )}
               {salesPick && (
-                <div className="flex items-center justify-center gap-2 mt-3 text-xs text-gray-500">
+                <div className="mt-4 flex items-center gap-2 border-t border-gray-100 pt-3 text-xs text-gray-500">
                   <SparklesIcon className="w-3.5 h-3.5 text-brand-500" />
-                  <span>{salesWorkflowOverrideId ? "selected workflow" : "auto-selected workflow"}</span>
+                  <span>{salesWorkflowOverrideId ? "Selected workflow" : "Auto-selected workflow"}</span>
                   <span className="font-medium text-gray-800">{salesPick.workflowDynastyName}</span>
                   <button type="button" onClick={() => { setModalSelectedWorkflowId(salesPick?.id ?? null); setShowWorkflowPicker(true); }}
-                    className="ml-1 text-xs font-medium text-brand-600 hover:text-brand-700 underline underline-offset-2 transition">
-                    See example emails
+                    className="ml-auto text-xs font-medium text-brand-600 hover:text-brand-700 underline underline-offset-2 transition">
+                    Choose a workflow
                   </button>
                 </div>
               )}
-
-              <details className="mt-4 border-t border-gray-100 pt-3">
-                <summary className="cursor-pointer text-sm text-gray-500 font-medium select-none">Campaign details</summary>
-                <div className="mt-3 flex justify-end">
-                  <button type="button" onClick={() => setShowChat(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition text-gray-500 hover:text-brand-600 hover:bg-brand-50 border border-gray-200">
-                    <SparklesIcon className="w-3.5 h-3.5" />
-                    Edit with AI
-                  </button>
-                </div>
-                {isLoadingProfile ? (
-                  <p className="mt-3 text-sm text-gray-400">Analyzing brand profile&hellip;</p>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Brand URL</label>
-                      <input type="text" value={formData.brandUrl ?? ""} onChange={(e) => setFormData((p) => ({ ...p, brandUrl: e.target.value }))}
-                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
-                    </div>
-                    {featureInputs.map((input) => (
-                      <div key={input.key}>
-                        <label className="block text-xs text-gray-500 mb-1">{input.label}</label>
-                        <input type="text" value={formData[input.key] ?? ""} onChange={(e) => setFormData((p) => ({ ...p, [input.key]: e.target.value }))}
-                          placeholder={input.placeholder ?? input.description}
-                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </details>
-
-              {createError && <p className="mt-3 text-sm text-red-600">{createError}</p>}
-
-              <button
-                onClick={handleCreateCampaign}
-                disabled={isCreating || isLoadingProfile || !effectiveBudget || !salesPick}
-                className={`mt-4 w-full px-5 py-3 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition flex items-center justify-center gap-2 ${isCreating ? "cursor-wait" : "disabled:opacity-40 disabled:cursor-not-allowed"}`}
-              >
-                {isCreating && <Spinner />}
-                {isCreating ? "Launching…" : "Launch campaign"}
-              </button>
             </div>
           </div>
+
+          {createError && <p className="text-sm text-red-600">{createError}</p>}
+
+          <button
+            onClick={handleCreateCampaign}
+            disabled={isCreating || isLoadingProfile || !effectiveBudget || !salesPick}
+            className={`w-full px-5 py-3 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition flex items-center justify-center gap-2 ${isCreating ? "cursor-wait" : "disabled:opacity-40 disabled:cursor-not-allowed"}`}
+          >
+            {isCreating && <Spinner />}
+            {isCreating ? "Launching…" : "Launch campaign"}
+          </button>
 
           {showWorkflowPicker && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowWorkflowPicker(false)}>
