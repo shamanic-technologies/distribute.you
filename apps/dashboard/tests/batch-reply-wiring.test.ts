@@ -13,7 +13,7 @@ const read = (rel: string) =>
   fs.readFileSync(path.resolve(__dirname, rel), "utf8");
 
 const campaignHitlPage = read(
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/quote-requests/page.tsx",
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/[id]/quote-requests/page.tsx",
 );
 const publicHitlQueue = read("../src/components/report/public-hitl-queue.tsx");
 const batchCore = read("../src/lib/batch-quote-reply.ts");

@@ -1,12 +1,19 @@
 "use client";
 
+import { useSoleFeatureSlug } from "@/lib/sole-feature";
+
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
-import { listBrandLeads, getLeadConsolidatedStatus, type Lead, type LeadConsolidatedStatus } from "@/lib/api";
 import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
+import { listBrandLeads, listWorkflows, getLeadConsolidatedStatus, type Lead, type LeadConsolidatedStatus, type ManualQualificationStatus } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
+import { WorkflowTag } from "@/components/report/workflow-tag";
+import { ManualQualificationBadge } from "@/components/leads/manual-qualification-badge";
+import { EditLeadStatusModal } from "@/components/leads/edit-lead-status-modal";
+import { useManualQualifications } from "@/lib/use-manual-qualification";
+import { buildLatestQualificationMap, qualificationKey } from "@/lib/manual-qualification";
 
 const LEAD_STATUS_ORDER: LeadConsolidatedStatus[] = [
   "replied",
@@ -76,6 +83,10 @@ function timeAgo(date: string | Date): string {
   return `${years}y ago`;
 }
 
+// Shared logo.dev token (also used in `BrandLogo`, public
+// `components/report/leads-table.tsx`, and the landing's
+// `provider-avatar.tsx`). Replaces the old Google S2 favicons surface to
+// keep the company-avatar treatment consistent across the whole app.
 const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
 
 function CompanyLogo({ domain, name }: { domain: string | null; name: string | null }) {
@@ -173,18 +184,42 @@ function LeadsTable({ leads, selectedLead, onSelectLead, statusOf }: {
   );
 }
 
-export default function BrandLeadsPage() {
+export default function FeatureLeadsPage() {
   const params = useParams();
   const brandId = params.brandId as string;
+  const featureSlug = useSoleFeatureSlug();
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("contacted");
   const [search, setSearch] = useState("");
+  const [editStatusOpen, setEditStatusOpen] = useState(false);
   const hasAutoSelectedTab = useRef(false);
 
   const { data, isPending } = useAuthQuery(
     ["brandLeads", brandId],
     () => listBrandLeads(brandId),
     { refetchInterval: POLL_INTERVAL },
+  );
+
+  // Workflow display names — fetched once per feature and looked up by
+  // `lead.workflowSlug` so the side panel can render a colored
+  // `<WorkflowTag>` for the lead's workflow. Same hue across the public
+  // report and the internal page (deterministic hash on the display name).
+  const { data: workflowsData } = useAuthQuery(
+    ["featureWorkflows", featureSlug],
+    () => listWorkflows({ featureSlug }),
+  );
+  const workflowNameBySlug = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const w of workflowsData?.workflows ?? []) {
+      map.set(w.workflowSlug, w.workflowDynastyName);
+    }
+    return map;
+  }, [workflowsData]);
+
+  const { data: qualificationsData } = useManualQualifications(brandId);
+  const qualificationByKey = useMemo(
+    () => buildLatestQualificationMap(qualificationsData?.qualifications ?? []),
+    [qualificationsData],
   );
 
   const leads = data?.leads ?? [];
@@ -198,19 +233,21 @@ export default function BrandLeadsPage() {
     [leads],
   );
 
-  // Monotonic status latch — see use-monotonic-status.ts. The brand-wide leads
-  // list shares the email-gateway delivery overlay, so a transient poll dropout
-  // would otherwise empty the viewed tab. Keep the most-advanced status seen this
-  // mount; `statusOf` is the single source the table, tabs, and panel bucket on.
+  // Monotonic status latch: each lead's tab is derived from the email-gateway
+  // delivery overlay, which can transiently drop on a poll and bounce a lead
+  // back to "Processing" — emptying the tab being viewed, then repopulating.
+  // Engagement is append-only, so a less-advanced status on a later poll is a
+  // stale read: keep the most-advanced status seen this mount (see #1257 latch
+  // philosophy). `statusOf` is the single source the table, tabs, and side
+  // panel all bucket on.
   const statusEntries = useMemo(
     () => sortedLeads.map((l) => ({ id: l.id, status: getLeadConsolidatedStatus(l) })),
     [sortedLeads],
   );
-  const latchedStatus = useMonotonicStatuses(statusEntries, LEAD_STATUS_ORDER, "brand-leads");
+  const latchedStatus = useMonotonicStatuses(statusEntries, LEAD_STATUS_ORDER, "leads");
   const statusOf = (lead: Lead): LeadConsolidatedStatus =>
     (latchedStatus.get(lead.id) as LeadConsolidatedStatus | undefined) ?? getLeadConsolidatedStatus(lead);
 
-  // Group leads by consolidated status
   const groupedByStatus = useMemo(() => {
     const groups = new Map<LeadConsolidatedStatus, Lead[]>();
     for (const status of LEAD_STATUS_ORDER) groups.set(status, []);
@@ -221,13 +258,16 @@ export default function BrandLeadsPage() {
     return groups;
   }, [sortedLeads, latchedStatus]);
 
-  // Auto-select first non-empty tab
   useEffect(() => {
     if (hasAutoSelectedTab.current || sortedLeads.length === 0) return;
     hasAutoSelectedTab.current = true;
     const first = LEAD_STATUS_ORDER.find((s) => (groupedByStatus.get(s)?.length ?? 0) > 0);
     if (first) setActiveTab(first);
   }, [sortedLeads.length, groupedByStatus]);
+
+  useEffect(() => {
+    if (!selectedLead && editStatusOpen) setEditStatusOpen(false);
+  }, [selectedLead, editStatusOpen]);
 
   const activeList = activeTab === "all"
     ? sortedLeads
@@ -255,10 +295,22 @@ export default function BrandLeadsPage() {
     { key: "all", label: "All", count: sortedLeads.length },
   ];
 
-  const showSkeleton = isPending && !data;
+  if (isPending && !data) {
+    return (
+      <div className="p-4 md:p-8">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 w-32 bg-gray-200 rounded" />
+          {[1, 2, 3].map((i) => <div key={i} className="h-12 bg-gray-100 rounded-lg" />)}
+        </div>
+      </div>
+    );
+  }
 
   const selectedFull = selectedLead?.lead ?? null;
   const selectedOrg = selectedFull?.organization ?? null;
+  const selectedManualStatus: ManualQualificationStatus | null = selectedLead
+    ? qualificationByKey.get(qualificationKey(selectedLead.campaignId, selectedLead.email))?.status ?? null
+    : null;
 
   return (
     <div className="flex flex-col md:flex-row h-full relative">
@@ -289,14 +341,7 @@ export default function BrandLeadsPage() {
 
         <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by name, company, title, or email..." resultCount={filteredLeads.length} totalCount={activeList.length} />
 
-        {showSkeleton ? (
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden animate-pulse">
-            <div className="h-10 bg-gray-100 border-b border-gray-100" />
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-14 border-b border-gray-50 last:border-b-0" />
-            ))}
-          </div>
-        ) : leads.length === 0 ? (
+        {leads.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
             <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No leads yet</h3>
             <p className="text-gray-600 text-sm">Leads will appear here once campaigns run.</p>
@@ -327,6 +372,30 @@ export default function BrandLeadsPage() {
                 </div>
                 <div><span className="text-gray-500">Title:</span><p className="font-medium">{selectedFull?.headline || "-"}</p></div>
                 <div><span className="text-gray-500">Status:</span><p className="font-medium flex items-center gap-1.5 flex-wrap"><StatusBadge status={statusOf(selectedLead)} />{selectedLead.global?.bounced && <span className="text-xs px-2 py-0.5 rounded-full border bg-red-50 text-red-600 border-red-200">Global Bounced</span>}{selectedLead.global?.unsubscribed && <span className="text-xs px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">Global Unsubscribed</span>}</p></div>
+                <div className="sm:col-span-2">
+                  <span className="text-gray-500">Manual qualif:</span>
+                  <p className="mt-1 flex items-center gap-2 flex-wrap">
+                    {selectedManualStatus ? (
+                      <ManualQualificationBadge status={selectedManualStatus} />
+                    ) : (
+                      <span className="text-xs text-gray-400">—</span>
+                    )}
+                    <button
+                      type="button"
+                      data-testid="open-edit-status-modal"
+                      onClick={() => setEditStatusOpen(true)}
+                      className="text-xs px-2.5 py-1 rounded-md border border-gray-200 text-gray-700 hover:bg-gray-50"
+                    >
+                      Edit status
+                    </button>
+                  </p>
+                </div>
+                {selectedLead.workflowSlug && (
+                  <div className="sm:col-span-2">
+                    <span className="text-gray-500">Workflow:</span>
+                    <p className="mt-1"><WorkflowTag name={workflowNameBySlug.get(selectedLead.workflowSlug) ?? selectedLead.workflowSlug} /></p>
+                  </div>
+                )}
                 {selectedFull?.linkedinUrl && <div className="sm:col-span-2"><span className="text-gray-500">LinkedIn:</span><p><a href={selectedFull.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-sm">{selectedFull.linkedinUrl}</a></p></div>}
               </div>
             </div>
@@ -346,6 +415,14 @@ export default function BrandLeadsPage() {
             )}
           </div>
         </div>
+      )}
+      {editStatusOpen && selectedLead && (
+        <EditLeadStatusModal
+          lead={selectedLead}
+          brandId={brandId}
+          currentStatus={selectedManualStatus}
+          onClose={() => setEditStatusOpen(false)}
+        />
       )}
     </div>
   );

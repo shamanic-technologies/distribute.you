@@ -12,7 +12,7 @@ const leadsWrapperPath = path.resolve(
 );
 const journalistsPagePath = path.resolve(
   __dirname,
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/journalists/page.tsx",
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/journalists/page.tsx",
 );
 
 describe("Generic EditManualQualificationModal — decoupled from Lead", () => {

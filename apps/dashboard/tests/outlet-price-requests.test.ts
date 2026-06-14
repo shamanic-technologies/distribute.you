@@ -16,11 +16,11 @@ const outletPages = {
   ),
   feature: path.resolve(
     __dirname,
-    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/outlets/page.tsx",
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/outlets/page.tsx",
   ),
   campaign: path.resolve(
     __dirname,
-    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/outlets/page.tsx",
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/[id]/outlets/page.tsx",
   ),
 };
 

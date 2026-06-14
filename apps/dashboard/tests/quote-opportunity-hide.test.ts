@@ -13,14 +13,14 @@ const apiLib = read("../src/lib/api.ts");
 const reportApi = read("../src/lib/report-api.ts");
 const submitHook = read("../src/lib/use-quote-opportunities.ts");
 const featureRequestsPage = read(
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/quote-requests/page.tsx",
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/quote-requests/page.tsx",
 );
 const campaignRequestsPage = read(
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/quote-requests/page.tsx",
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/[id]/quote-requests/page.tsx",
 );
 const contextSidebar = read("../src/components/context-sidebar.tsx");
 const sidebarWrapper = read(
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/sidebar-wrapper.tsx",
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/[id]/sidebar-wrapper.tsx",
 );
 
 describe("isOpportunityOpen — hide ⟺ Send would be blocked (backend reply idempotency)", () => {

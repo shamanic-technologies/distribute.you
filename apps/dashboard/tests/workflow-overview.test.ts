@@ -238,7 +238,7 @@ describe("Chat proxy route (SSE → Data Stream Protocol)", () => {
 describe("Workflow viewer page composition", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/workflows/[workflowId]/page.tsx"
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/workflows/[workflowId]/page.tsx"
   );
 
   it("should NOT import dagToMermaid or mermaid", () => {

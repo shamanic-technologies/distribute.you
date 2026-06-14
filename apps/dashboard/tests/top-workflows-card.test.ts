@@ -6,7 +6,7 @@ const SRC = path.join(__dirname, "../src");
 const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
 
 const CAMPAIGNS_PAGE =
-  "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/page.tsx";
+  "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/page.tsx";
 
 /**
  * The feature Campaigns page's cost/efficiency column shows a Top-3 workflows-by-ROI

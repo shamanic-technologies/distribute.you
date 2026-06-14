@@ -192,33 +192,11 @@ describe("resolveFeatureLanding — auto-skip into the single GA feature", () =>
   });
 });
 
-describe("brand overview page — auto-skip into the feature", () => {
-  const page = fs.readFileSync(
-    path.join(
-      __dirname,
-      "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
-    ),
-    "utf-8",
-  );
-
-  it("computes the landing via the shared pure helper", () => {
-    expect(page).toContain("resolveFeatureLanding");
-    expect(page).toContain("router.replace");
-  });
-
-  it("only considers GA + implemented features (posthog-independent, no flash)", () => {
-    expect(page).toContain("GA_BRAND_FEATURES.has(f.slug)");
-  });
-
-  it("renders nothing while the redirect is certain (no overview flash)", () => {
-    expect(page).toMatch(/if \(willRedirect\)/);
-  });
-
-  it("keeps the brand overview reachable on explicit hierarchy navigation", () => {
-    expect(page).toContain("hasExplicitHierarchyIntent");
-    expect(page).toContain("!explicitHierarchy");
-  });
-});
+// The "brand overview page — auto-skip into the feature" describe block was
+// removed: the single-feature flatten dropped the brand-overview redirect into
+// `/features/[slug]` (resolveFeatureLanding / willRedirect / GA_BRAND_FEATURES
+// gating). The brand root now IS the overview and renders inline, no redirect.
+// The pure `resolveFeatureLanding` helper is still covered by its own block above.
 
 describe("hierarchy links — breadcrumb, header, sidebar", () => {
   const breadcrumb = fs.readFileSync(

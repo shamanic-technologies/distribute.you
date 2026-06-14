@@ -1,5 +1,7 @@
 "use client";
 
+import { useSoleFeatureSlug } from "@/lib/sole-feature";
+
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
@@ -420,26 +422,27 @@ function OutletDetailPanel({
 
 /* ─── Main Page ──────────────────────────────────────────────────────── */
 
-export default function BrandOutletsPage() {
+export default function FeatureOutletsPage() {
   const params = useParams();
   const brandId = params.brandId as string;
+  const featureSlug = useSoleFeatureSlug();
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<DeduplicatedOutlet | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("all");
   const [search, setSearch] = useState("");
   const [purchasePriceRequestScope, setPurchasePriceRequestScope] = useState<"page" | string | null>(null);
   const hasAutoSelectedTab = useRef(false);
-  const outletsQueryKey = ["brandOutlets", brandId] as const;
+  const outletsQueryKey = ["brandOutlets", brandId, featureSlug] as const;
 
   const { data, isPending } = useAuthQuery(
     outletsQueryKey,
-    () => listBrandOutlets(brandId),
+    () => listBrandOutlets(brandId, featureSlug),
     pollOptions,
   );
 
   const { data: costsByOutlet } = useAuthQuery(
-    ["outletStatsCosts", brandId, "outletId"],
-    () => getOutletStatsCosts(brandId, "outletId"),
+    ["outletStatsCosts", brandId, featureSlug, "outletId"],
+    () => getOutletStatsCosts(brandId, "outletId", featureSlug),
   );
 
   const outlets = data?.outlets ?? [];
@@ -575,7 +578,7 @@ export default function BrandOutletsPage() {
     () => outlets.map((o) => ({ id: o.id, status: deriveDisplayStatusFromCounts(o.status?.brand) })),
     [outlets],
   );
-  const latchedStatuses = useMonotonicStatuses(outletStatusEntries, STATUS_PRIORITY, "brand-outlets");
+  const latchedStatuses = useMonotonicStatuses(outletStatusEntries, STATUS_PRIORITY, "outlets");
 
   // Full-list CSV (all outlets, ignores the active tab + search filter). Status &
   // cost mirror the card badge/chip via the page's own latched-status + cost maps.
@@ -590,7 +593,7 @@ export default function BrandOutletsPage() {
     [outlets, latchedStatuses, costMap, drMap],
   );
 
-  // Group outlets by display status
+  // Group outlets by display status derived from structured counts
   const groupedByStatus = useMemo(() => {
     const groups = new Map<string, DeduplicatedOutlet[]>();
     for (const status of STATUS_PRIORITY) {
@@ -692,7 +695,7 @@ export default function BrandOutletsPage() {
               )}
             </div>
           </div>
-          <CsvDownloadButton filename={`outlets-${brandId}.csv`} csv={csv} isEmpty={outlets.length === 0} />
+          <CsvDownloadButton filename={`outlets-${featureSlug}.csv`} csv={csv} isEmpty={outlets.length === 0} />
         </div>
 
         {/* Status tabs */}

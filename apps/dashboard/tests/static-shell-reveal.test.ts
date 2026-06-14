@@ -65,10 +65,12 @@ describe("static-shell-first: cards accept `pending` and skeleton only values", 
 });
 
 describe("static-shell-first: pages pass `pending`, not a whole-body skeleton swap", () => {
-  const APP = "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]";
+  // Feature routes were flattened up to the brand level (single-feature product);
+  // the brand root page IS the overview now.
+  const APP = "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]";
 
   it("feature overview reveals each card on its OWN data (per-card barriers, no single AND gate)", () => {
-    const overview = read(`${APP}/overview/page.tsx`);
+    const overview = read(`${APP}/page.tsx`);
     expect(overview).toContain("RevenueOverviewSection");
     // Revenue data (features-service) and Total-spent (runs-service) resolve on
     // different cold chains → separate latches, so the fast cost card never waits

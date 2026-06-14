@@ -4,7 +4,7 @@ import * as path from "path";
 
 const featurePagePath = path.resolve(
   __dirname,
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/page.tsx",
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
 );
 const byokBannerPath = path.resolve(
   __dirname,
@@ -17,11 +17,11 @@ const runButtonPath = path.resolve(
 const apiLibPath = path.resolve(__dirname, "../src/lib/api.ts");
 const quoteRequestsPath = path.resolve(
   __dirname,
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/quote-requests/page.tsx",
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/[id]/quote-requests/page.tsx",
 );
 const quotePitchesPath = path.resolve(
   __dirname,
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/quote-pitches/page.tsx",
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/[id]/quote-pitches/page.tsx",
 );
 
 const featurePageContent = fs.readFileSync(featurePagePath, "utf-8");

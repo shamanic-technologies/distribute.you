@@ -5,7 +5,7 @@ import * as path from "path";
 const apiPath = path.resolve(__dirname, "../src/lib/api.ts");
 const createPagePath = path.resolve(
   __dirname,
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx"
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/new/page.tsx"
 );
 
 describe("sendCampaignEmail function", () => {

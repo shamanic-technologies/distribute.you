@@ -4,11 +4,11 @@ import * as path from "path";
 
 const REQUESTS_PATH = path.resolve(
   __dirname,
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/quote-requests/page.tsx",
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/quote-requests/page.tsx",
 );
 const PITCHES_PATH = path.resolve(
   __dirname,
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/quote-pitches/page.tsx",
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/quote-pitches/page.tsx",
 );
 
 describe("Feature-level quote pages", () => {

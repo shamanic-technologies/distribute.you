@@ -22,15 +22,15 @@ describe("Feature slug resolution in features-context", () => {
 describe("Feature pages use featureSlug for API calls", () => {
   const featurePagePath = path.join(
     __dirname,
-    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/page.tsx",
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/page.tsx",
   );
   const campaignNewPath = path.join(
     __dirname,
-    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx",
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/new/page.tsx",
   );
   const workflowsPath = path.join(
     __dirname,
-    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/workflows/page.tsx",
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/workflows/page.tsx",
   );
 
   it("feature page uses featureSlug directly for API calls", () => {
@@ -61,26 +61,12 @@ describe("Feature pages use featureSlug for API calls", () => {
 });
 
 describe("All feature links use slug directly", () => {
-  const sidebarPath = path.join(__dirname, "../src/components/context-sidebar.tsx");
-  const brandPagePath = path.join(
-    __dirname,
-    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
-  );
   const breadcrumbPath = path.join(__dirname, "../src/components/breadcrumb-nav.tsx");
 
-  it("sidebar builds feature links with f.slug", () => {
-    const content = fs.readFileSync(sidebarPath, "utf-8");
-    expect(content).toContain("f.slug");
-    expect(content).toContain("f.name");
-    expect(content).not.toMatch(/\bf\.dynasty(Slug|Name)\b/);
-  });
-
-  it("brand page builds feature links with f.slug", () => {
-    const content = fs.readFileSync(brandPagePath, "utf-8");
-    expect(content).toContain("f.slug");
-    expect(content).toContain("f.name");
-    expect(content).not.toMatch(/\bf\.dynasty(Slug|Name)\b/);
-  });
+  // The brand-overview feature grid and the brand-level sidebar feature-group
+  // links were REMOVED (single-feature product — feature nav flattened into the
+  // brand level), so they no longer build per-feature f.slug links. The only
+  // remaining feature-link surface is the app-level feature switcher below.
 
   it("breadcrumb feature switcher uses f.slug", () => {
     const content = fs.readFileSync(breadcrumbPath, "utf-8");

@@ -23,7 +23,7 @@ const read = (rel: string) =>
   fs.readFileSync(path.join(__dirname, rel), "utf-8");
 
 const sidebarWrapper = read(
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/sidebar-wrapper.tsx",
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/[id]/sidebar-wrapper.tsx",
 );
 const contextSidebar = read("../src/components/context-sidebar.tsx");
 

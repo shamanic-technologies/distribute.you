@@ -7,8 +7,9 @@ const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
 
 describe("Cost & efficiency card on feature Overview (served costEconomics)", () => {
   const card = read("components/revenue/revenue-cost-summary.tsx");
+  // Feature flattened into the brand level — the brand root page IS the overview.
   const overview =
-    read("app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/overview/page.tsx");
+    read("app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx");
 
   it("renders Total spent, Cost of acquisition and ROI cards with info hints", () => {
     expect(card).toContain("Total spent");

@@ -87,7 +87,7 @@ describe("context-sidebar — alpha gating + maturity badges", () => {
   // App/Brand sidebars legitimately keep their own Features sections.
   const org = sidebar.slice(
     sidebar.indexOf("function OrgLevelSidebar"),
-    sidebar.indexOf("const OutcomeOutletIcon"),
+    sidebar.indexOf("const ENTITY_ICON_MAP"),
   );
 
   it("OrgLevelSidebar no longer renders an org-level Features section", () => {
@@ -108,7 +108,7 @@ describe("context-sidebar — alpha gating + maturity badges", () => {
   // Scope to the BrandSettingsLevelSidebar function body only.
   const brandSettings = sidebar.slice(
     sidebar.indexOf("function BrandSettingsLevelSidebar"),
-    sidebar.indexOf("const ENTITY_ICON_MAP"),
+    sidebar.indexOf("function AppFeatureLevelSidebar"),
   );
 
   it("Brand Info moved out of BrandLevelSidebar into BrandSettingsLevelSidebar (alpha-gated)", () => {
@@ -120,39 +120,23 @@ describe("context-sidebar — alpha gating + maturity badges", () => {
     expect(brandSettings).toMatch(/FEATURE_GATES\["brand-info"\]/);
   });
 
-  it("BrandLevelSidebar gates features behind brand-features alpha flag + GA set", () => {
-    expect(brand).toMatch(/FEATURE_GATES\["brand-features"\]/);
-    expect(brand).toMatch(/GA_BRAND_FEATURES/);
-  });
-
   it("BrandLevelSidebar renders a GA Database section header (for all users)", () => {
     expect(brand).toMatch(/Database<\/h4>/);
   });
-
-  it("BrandLevelSidebar gates Outlets/Journalists/Articles behind brand-database alpha; Leads+Emails stay GA", () => {
-    expect(brand).toMatch(/FEATURE_GATES\["brand-database"\]/);
-    // Leads + Emails are the GA exceptions kept regardless of the flag.
-    expect(brand).toMatch(/item\.id === "leads" \|\| item\.id === "emails"/);
-  });
 });
 
-describe("brand overview page — alpha gating + Outcomes", () => {
+describe("brand overview page — is the (sole) feature's Revenue overview", () => {
   const page = read(
     "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
   );
 
-  it("imports the shared gating primitives", () => {
-    expect(page).toMatch(/useFeatureFlag/);
-    expect(page).toMatch(/MaturityBadge/);
-    expect(page).toMatch(/FEATURE_GATES/);
-    expect(page).toMatch(/GA_BRAND_FEATURES/);
-  });
-
-  it("gates features behind the brand-features alpha flag", () => {
-    expect(page).toMatch(/FEATURE_GATES\["brand-features"\]/);
-  });
-
-  it("no longer renders a Brand Info card (moved under Brand Settings)", () => {
-    expect(page).not.toMatch(/FEATURE_GATES\["brand-info"\]/);
+  // The feature segment was flattened into the brand level (single-feature
+  // product): the brand root renders the feature's Revenue & Conversions overview
+  // inline. The old feature-grid + Ahrefs BrandMetricsHeader + per-feature alpha
+  // gating + Brand Info card were all REMOVED from this page.
+  it("renders the Revenue overview inline (not a feature grid / metrics header)", () => {
+    expect(page).toMatch(/RevenueOverviewSection/);
+    expect(page).not.toMatch(/BrandMetricsHeader/);
+    expect(page).not.toMatch(/FEATURE_GATES/);
   });
 });

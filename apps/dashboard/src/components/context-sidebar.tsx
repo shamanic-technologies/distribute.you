@@ -21,10 +21,11 @@ import {
 import { isOpportunityOpen } from "@/lib/quote-pitch-status";
 import { isExpertQuoteFeature } from "@/lib/expert-quote-feature";
 import { isRevenueFeature } from "@/lib/revenue-feature";
+import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { formatCount } from "@/lib/format-number";
 import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { MaturityBadge } from "@/components/maturity-badge";
-import { FEATURE_GATES, GA_BRAND_FEATURES, type Maturity } from "@/lib/feature-gates";
+import { FEATURE_GATES, type Maturity } from "@/lib/feature-gates";
 import { explicitHierarchyHref } from "@/lib/last-brand";
 
 interface SidebarItem {
@@ -45,7 +46,7 @@ function SidebarLink({
   item: SidebarItem;
   isActive: boolean;
   // When true, render a skeleton pill instead of the count so a whole group of
-  // entity badges reveals its numbers together (see FeatureLevelSidebar).
+  // entity badges reveals its numbers together (see BrandLevelSidebar).
   badgePending?: boolean;
 }) {
   return (
@@ -147,12 +148,6 @@ const KeyIcon = () => (
   </svg>
 );
 
-const ProviderKeyIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-  </svg>
-);
-
 const OrgIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -243,6 +238,13 @@ const ExternalLinkIcon = () => (
   </svg>
 );
 
+const SettingsIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+  </svg>
+);
+
 // Features that expose the public client report. Generic across features
 // once a backend public-proxy lands; gated for now. The pr-expert-quote-*
 // family is matched via isExpertQuoteFeature (not listed here) so a workflow
@@ -251,66 +253,48 @@ const REPORT_ENABLED_FEATURES = new Set([
   "sales-cold-email-outreach",
 ]);
 
-const ICON_NAME_MAP: Record<string, () => React.ReactNode> = {
-  globe: () => <BrandIcon />,
-  megaphone: () => <NewspaperIcon />,
-  envelope: () => <EnvelopeIcon />,
-  document: () => <DocumentIcon />,
-  calendar: () => <CalendarIcon />,
-  building: () => <OrgIcon />,
-};
-
-function getFeatureIcon(featureSlug: string, icon?: string): React.ReactNode {
-  // Map icon name strings to actual icon components
-  if (icon && ICON_NAME_MAP[icon]) return ICON_NAME_MAP[icon]();
-  // Fallback to slug-based icons
-  if (featureSlug.startsWith("sales")) return <EnvelopeIcon />;
-  if (featureSlug.startsWith("outlets")) return <OrgIcon />;
-  if (featureSlug.startsWith("journalists")) return <NewspaperIcon />;
-  if (featureSlug.startsWith("press-kit")) return <DocumentIcon />;
-  if (featureSlug.startsWith("webinar")) return <CalendarIcon />;
-  if (featureSlug.startsWith("welcome")) return <EnvelopeIcon />;
-  return <WorkflowIcon />;
-}
-
+// The product ships ONE feature, so the feature level was flattened into the
+// brand: no `/features/[featureSlug]` segment. Brand-level sections live directly
+// under `/orgs/[orgId]/brands/[brandId]/...`.
 interface NavigationLevel {
-  type: "app" | "appFeature" | "org" | "brand" | "brandSettings" | "feature" | "featureSettings" | "workflow" | "campaign";
+  type: "app" | "appFeature" | "org" | "brand" | "brandSettings" | "workflow" | "campaign";
   orgId?: string;
   brandId?: string;
-  featureSlug?: string;
   campaignId?: string;
   workflowId?: string;
   featureId?: string;
 }
 
 function getNavigationLevel(segments: string[]): NavigationLevel {
-  // /orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]
+  // /orgs/[orgId]/brands/[brandId]/<section>/...
   if (segments[0] === "orgs" && segments[1]) {
     const orgId = segments[1];
     if (segments[2] === "brands" && segments[3]) {
       const brandId = segments[3];
-      if (segments[4] === "settings" || segments[4] === "brand-info" || segments[4] === "usage") {
-          return { type: "brandSettings", orgId, brandId };
-        }
-        if (segments[4] === "features" && segments[5]) {
-        const featureSlug = segments[5];
-        if (segments[6] === "campaigns" && segments[7]) {
-          if (segments[7] === "new") {
-            return { type: "feature", orgId, brandId, featureSlug };
-          }
-          return { type: "campaign", orgId, brandId, featureSlug, campaignId: segments[7] };
-        }
-        if (segments[6] === "workflows" && segments[7]) {
-          return { type: "workflow", orgId, brandId, featureSlug, workflowId: segments[7] };
-        }
-        // Feature Settings sub-level — its landing (/settings, the Sales
-        // Economics page, GA) and the Workflows list (staff-only) both render the
-        // FeatureSettingsLevelSidebar. Mirrors how /settings routes to brandSettings.
-        if (segments[6] === "settings" || segments[6] === "workflows") {
-          return { type: "featureSettings", orgId, brandId, featureSlug };
-        }
-        return { type: "feature", orgId, brandId, featureSlug };
+      const section = segments[4];
+      // Campaign detail (campaigns/[id]) → CampaignSidebar via the campaign
+      // layout; the list + create stay in the brand sidebar.
+      if (section === "campaigns" && segments[5] && segments[5] !== "new") {
+        return { type: "campaign", orgId, brandId, campaignId: segments[5] };
       }
+      // Workflow detail (workflows/[id]) → workflow sidebar; the list + new live
+      // under Brand Settings.
+      if (section === "workflows" && segments[5] && segments[5] !== "new") {
+        return { type: "workflow", orgId, brandId, workflowId: segments[5] };
+      }
+      // Brand Settings group: settings / usage / brand-info / workflows(list+new).
+      if (
+        section === "settings" ||
+        section === "usage" ||
+        section === "brand-info" ||
+        section === "workflows"
+      ) {
+        return { type: "brandSettings", orgId, brandId };
+      }
+      // Everything else → brand sidebar: root overview, campaigns list/new,
+      // conversions, and every entity page (leads / emails / outlets /
+      // journalists / articles / competitors / prompts / quote-pitches /
+      // quote-requests / visibility-runs).
       return { type: "brand", orgId, brandId };
     }
     return { type: "org", orgId };
@@ -407,249 +391,6 @@ function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string 
   );
 }
 
-// Icons for outcomes section
-const OutcomeOutletIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-  </svg>
-);
-
-const OutcomeArticleIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-  </svg>
-);
-
-const OutcomeLeadIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-  </svg>
-);
-
-const SettingsIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-  </svg>
-);
-
-// Ordered feature groups for the brand sidebar. Each feature slug belongs to one
-// group, rendered top-to-bottom in this order. Any feature the backend returns
-// that isn't listed here lands in a trailing "Other" group, so a newly-shipped
-// feature is never silently hidden from the nav (fail-visible).
-const BRAND_FEATURE_GROUPS: { title: string; slugs: string[] }[] = [
-  { title: "Sales Outreach", slugs: ["sales-cold-email-outreach"] },
-  { title: "Press Outreach", slugs: ["pr-cold-email-outreach", "pr-expert-quote-outreach"] },
-  { title: "Investors Outreach", slugs: ["vc-cold-email-outreach", "accelerators-cold-email-outreach"] },
-  { title: "Hiring Outreach", slugs: ["hiring-cold-email-outreach"] },
-  { title: "Tools", slugs: ["press-kit-page-generation", "outlet-database-discovery", "ai-visibility-scoring", "pr-expert-quote-opportunities"] },
-];
-
-// Brand Level Sidebar
-function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandId: string; pathname: string }) {
-  const { features, isLoading: featuresLoading } = useFeatures();
-  // Immature features are alpha (staff-only). Default-hidden until PostHog
-  // resolves the flag, so they never flash for a non-staff viewer. Brand Info
-  // moved under Brand Settings — see BrandSettingsLevelSidebar.
-  const featuresAlphaOk = useFeatureFlag(FEATURE_GATES["brand-features"].flag);
-  const basePath = `/orgs/${orgId}/brands/${brandId}`;
-  const topItems: SidebarItem[] = [
-    { id: "overview", label: "Overview", href: explicitHierarchyHref(basePath), icon: <HomeIcon /> },
-  ];
-
-  // Every feature except the GA exceptions renders under the brand-features
-  // alpha gate; the exceptions stay GA (no flag, no badge).
-  const featureItems: SidebarItem[] = features
-    .filter((f) => GA_BRAND_FEATURES.has(f.slug) || featuresAlphaOk)
-    .map((f) => ({
-      id: f.slug,
-      label: f.name,
-      href: `${basePath}/features/${f.slug}`,
-      icon: getFeatureIcon(f.slug, f.icon),
-      comingSoon: !f.implemented,
-      maturity: GA_BRAND_FEATURES.has(f.slug) ? undefined : FEATURE_GATES["brand-features"].maturity,
-    }));
-
-  // Group the gated feature items by BRAND_FEATURE_GROUPS order. Empty groups are
-  // dropped; any feature not in a declared group falls into a trailing "Other"
-  // group so a newly-shipped feature never disappears from the nav.
-  const featureItemBySlug = new Map(featureItems.map((i) => [i.id, i]));
-  const groupedSlugs = new Set(BRAND_FEATURE_GROUPS.flatMap((g) => g.slugs));
-  const featureSections: { title: string; items: SidebarItem[] }[] = BRAND_FEATURE_GROUPS
-    .map((g) => ({
-      title: g.title,
-      items: g.slugs.map((s) => featureItemBySlug.get(s)).filter((i): i is SidebarItem => !!i),
-    }))
-    .filter((g) => g.items.length > 0);
-  const ungroupedItems = featureItems.filter((i) => !groupedSlugs.has(i.id));
-  if (ungroupedItems.length > 0) {
-    featureSections.push({ title: "Other", items: ungroupedItems });
-  }
-
-  // Brand-level outcome counts
-  const { data: outletsData, isPending: outletsPending } = useAuthQuery(
-    ["brandOutlets", brandId],
-    () => listBrandOutlets(brandId),
-    { refetchInterval: 5_000 },
-  );
-  const { data: journalistsData, isPending: journalistsPending } = useAuthQuery(
-    ["enrichedJournalists", brandId],
-    () => listJournalistsEnriched(brandId),
-    { refetchInterval: 5_000 },
-  );
-  const { data: leadsData, isPending: leadsPending } = useAuthQuery(
-    ["brandLeads", brandId],
-    () => listBrandLeads(brandId),
-    { refetchInterval: 5_000 },
-  );
-  const { data: emailsData, isPending: emailsPending } = useAuthQuery(
-    ["brandEmails", brandId],
-    () => listBrandEmails(brandId),
-    { refetchInterval: 5_000 },
-  );
-  const { data: articlesData, isPending: articlesPending } = useAuthQuery(
-    ["brandArticles", brandId],
-    () => listBrandArticles(brandId),
-    { refetchInterval: 5_000 },
-  );
-
-  // Nav items reveal as one group once the feature list (which the Features
-  // section needs) loads; the 5 outcome badges are a finer sub-group revealed
-  // when their counts settle. See CLAUDE.md → "Coordinated reveal".
-  const defsReady = !featuresLoading;
-  const badgesRevealed = useCoordinatedReveal([
-    !outletsPending,
-    !journalistsPending,
-    !leadsPending,
-    !emailsPending,
-    !articlesPending,
-  ]);
-
-  // Outlets/Journalists/Articles belong to the not-yet-launched PR/press
-  // features → alpha (staff-only) behind the dedicated brand-database flag.
-  // Leads/Emails belong to sales-cold-email (GA) → always shown. Default-hidden
-  // until PostHog resolves the flag (no flash). See CLAUDE.md → feature gating.
-  const dbAlphaOk = useFeatureFlag(FEATURE_GATES["brand-database"].flag);
-  const dbMaturity = FEATURE_GATES["brand-database"].maturity;
-  const outcomeItems: SidebarItem[] = [
-    { id: "outlets", label: "Outlets", href: `${basePath}/outlets`, icon: <OutcomeOutletIcon />, badge: outletsData?.total, maturity: dbMaturity },
-    { id: "journalists", label: "Journalists", href: `${basePath}/journalists`, icon: <NewspaperIcon />, badge: journalistsData?.total ?? journalistsData?.journalists?.length, maturity: dbMaturity },
-    { id: "articles", label: "Articles", href: `${basePath}/articles`, icon: <OutcomeArticleIcon />, badge: articlesData?.discoveries?.length, maturity: dbMaturity },
-    { id: "leads", label: "Leads", href: `${basePath}/leads`, icon: <OutcomeLeadIcon />, badge: leadsData?.leads?.length },
-    { id: "emails", label: "Emails", href: `${basePath}/emails`, icon: <EnvelopeIcon />, badge: emailsData?.emails?.length },
-  ].filter((item) => dbAlphaOk || item.id === "leads" || item.id === "emails");
-
-  return (
-    <SidebarSection title="Brand" backHref={`/orgs/${orgId}/brands`} backLabel="Brands">
-      {/* Whole nav reveals as one group once the feature list loads (the grouped
-          feature sections + Database both need it); skeleton rows until then so
-          static and data-dependent items don't paint in two waves. Database badge
-          numbers are a finer sub-group via badgePending. */}
-      {!defsReady ? (
-        <>
-          {[0].map((i) => <SidebarNavRowSkeleton key={`top-${i}`} />)}
-          <div className="pt-2 mt-2 border-t border-gray-100">
-            {[0, 1, 2, 3, 4, 5].map((i) => <SidebarNavRowSkeleton key={`feat-${i}`} />)}
-          </div>
-          <div className="pt-2 mt-2 border-t border-gray-100">
-            <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Database</h4>
-            {[0, 1, 2, 3, 4].map((i) => <SidebarNavRowSkeleton key={`db-${i}`} />)}
-          </div>
-        </>
-      ) : (
-        <>
-      {topItems.map((item) => (
-        <SidebarLink
-          key={item.id}
-          item={item}
-          isActive={item.id === "overview" ? pathname === item.href : pathname.startsWith(item.href)}
-        />
-      ))}
-      {featureSections.map((section) => (
-        <div key={section.title} className="pt-2 mt-2 border-t border-gray-100">
-          <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{section.title}</h4>
-          {section.items.map((item) => (
-            <SidebarLink
-              key={item.id}
-              item={item}
-              isActive={pathname.startsWith(item.href)}
-            />
-          ))}
-        </div>
-      ))}
-      {outcomeItems.length > 0 && (
-        <div className="pt-2 mt-2 border-t border-gray-100">
-          <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Database</h4>
-          {outcomeItems.map((item) => (
-            <SidebarLink
-              key={item.id}
-              item={item}
-              badgePending={!badgesRevealed}
-              isActive={pathname.startsWith(item.href)}
-            />
-          ))}
-        </div>
-      )}
-      <div className="pt-2 mt-2 border-t border-gray-100">
-        <SidebarLink
-          item={{ id: "settings", label: "Brand Settings", href: `${basePath}/settings`, icon: <SettingsIcon /> }}
-          isActive={pathname.startsWith(`${basePath}/settings`)}
-        />
-      </div>
-        </>
-      )}
-    </SidebarSection>
-  );
-}
-
-// Brand Settings Level Sidebar
-function BrandSettingsLevelSidebar({ orgId, brandId, pathname }: {
-  orgId: string;
-  brandId: string;
-  pathname: string;
-}) {
-  const brandBase = `/orgs/${orgId}/brands/${brandId}`;
-  const basePath = `${brandBase}/settings`;
-  // Brand Info is alpha (staff-only); default-hidden until PostHog resolves.
-  const brandInfoOk = useFeatureFlag(FEATURE_GATES["brand-info"].flag);
-
-  const items: SidebarItem[] = [
-    { id: "settings", label: "Brand Settings", href: basePath, icon: <SettingsIcon /> },
-    {
-      id: "usage",
-      label: "Usage",
-      href: `${brandBase}/usage`,
-      icon: (
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
-        </svg>
-      ),
-    },
-  ];
-  if (brandInfoOk) {
-    items.push({
-      id: "brand-info",
-      label: "Brand Info",
-      href: `${brandBase}/brand-info`,
-      icon: <InfoIcon />,
-      maturity: FEATURE_GATES["brand-info"].maturity,
-    });
-  }
-
-  return (
-    <SidebarSection title="Settings" backHref={`/orgs/${orgId}/brands/${brandId}`} backLabel="Brand">
-      {items.map((item) => (
-        <SidebarLink
-          key={item.id}
-          item={item}
-          isActive={pathname === item.href || pathname.startsWith(item.href + "/")}
-        />
-      ))}
-    </SidebarSection>
-  );
-}
-
 // Entity icon mapping for sidebar — maps registry icon names to SVG components
 const ENTITY_ICON_MAP: Record<string, () => React.ReactNode> = {
   users: () => <OrgIcon />,
@@ -666,18 +407,20 @@ function getEntitySidebarIcon(iconName: string): React.ReactNode {
   return iconFn ? iconFn() : <WorkflowIcon />;
 }
 
-// Feature Level Sidebar — shows feature-specific sub-menus
-function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
+// Brand Level Sidebar — the product ships ONE feature, so this merges the old
+// brand overview nav with the feature sub-menu: Overview, Campaigns, Conversions,
+// the entity Database, Report, and the Brand Settings entry. The sole feature's
+// slug is resolved from features-context (no `/features/[featureSlug]` segment).
+function BrandLevelSidebar({ orgId, brandId, pathname }: {
   orgId: string;
   brandId: string;
-  featureSlug: string;
   pathname: string;
 }) {
+  const featureSlug = useSoleFeatureSlug();
   const { getFeature, isLoading: featuresLoading } = useFeatures();
   const { registry, isLoading: registryLoading } = useEntityRegistry();
-  const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`;
+  const basePath = `/orgs/${orgId}/brands/${brandId}`;
   const feature = getFeature(featureSlug);
-  const title = feature?.name ?? featureSlug;
   const entities = feature?.entities ?? [];
   const entityNames = useMemo(() => entities.map((e) => e.name), [entities]);
 
@@ -722,8 +465,8 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
     () => listBrandArticles(brandId, featureSlug),
     { enabled: articlesEnabled, refetchInterval: 5_000 },
   );
-  // Gold catalog (GET /orgs/opportunities) — same source the feature
-  // quote-requests page renders, so the badge equals the page count.
+  // Gold catalog (GET /orgs/opportunities) — same source the quote-requests page
+  // renders, so the badge equals the page count.
   const rankedOppsEnabled = entityNames.includes("quote-requests");
   const { data: rankedOppsData, isPending: rankedOppsPending } = useAuthQuery(
     ["rankedOpportunities", { brandId }],
@@ -732,15 +475,10 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   );
 
   // Reveal EVERY entity badge together (one paint), then keep the numbers
-  // latched on screen. A disabled query stays `isPending: true` forever, so each
-  // flag is gated behind its own `enabled` condition. See CLAUDE.md → "Coordinated reveal".
-  //
-  // `defsReady` MUST gate the barrier FIRST: until the feature (its entity list)
-  // and the entity registry load, `entityNames` is empty, so every count query is
-  // disabled and every `!enabled || !isPending` flag is true — the barrier would
-  // otherwise pass instantly and latch an EMPTY group (no skeleton, counts then
-  // trickle in one-by-one). With the gate, we wait for the defs, THEN for each
-  // now-enabled count query to settle, THEN reveal all numbers at once.
+  // latched. A disabled query stays `isPending: true` forever, so each flag is
+  // gated behind its own `enabled` condition. `defsReady` gates the barrier FIRST
+  // (until the feature + registry load, entityNames is empty → every count query
+  // disabled). See CLAUDE.md → "Coordinated reveal".
   const defsReady = !featuresLoading && !registryLoading;
   const badgesRevealed = useCoordinatedReveal([
     defsReady,
@@ -759,8 +497,7 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
     outlets: outletsData?.total,
     journalists: journalistsData?.total ?? journalistsData?.journalists?.length,
     articles: articlesData?.discoveries?.length,
-    // Open (non-pitched) count so the badge == the queue the page renders — the
-    // page hides already-pitched opportunities (DIS-107 badge↔page coherence).
+    // Open (non-pitched) count so the badge == the queue the page renders.
     "quote-requests": rankedOppsData?.opportunities.filter((o) =>
       isOpportunityOpen(o.pitchStatus),
     ).length,
@@ -780,9 +517,9 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
 
   const entityItems: SidebarItem[] = entities
     .filter((e) => registry[e.name])
-    // No feature-level companies page yet (blocked on a brand-scoped companies
-    // API) — the backend declares the entity, so the link would 404. Hide it
-    // until the page exists. Campaign-level companies page is unaffected. (DIS)
+    // No companies page yet (blocked on a brand-scoped companies API) — the
+    // backend declares the entity, so the link would 404. Hide it until the page
+    // exists. Campaign-level companies page is unaffected.
     .filter((e) => e.name !== "companies")
     .map((e) => {
       const config = registry[e.name];
@@ -796,7 +533,7 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
     });
 
   // Revenue surface (Overview + Conversions) — only on revenue features
-  // (sales-cold-email today). GA.
+  // (sales-cold-email today). GA. Overview is the brand root.
   const revenueOk = isRevenueFeature(featureSlug);
   const topItems: SidebarItem[] = [
     ...(revenueOk
@@ -804,7 +541,7 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
           {
             id: "overview",
             label: "Overview",
-            href: `${basePath}/overview`,
+            href: explicitHierarchyHref(basePath),
             icon: <OverviewIcon />,
           } satisfies SidebarItem,
         ]
@@ -828,17 +565,11 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   const reportHref = `/report/${orgId}/${brandId}/${featureSlug}`;
 
   return (
-    <SidebarSection
-      title={title}
-      backHref={`/orgs/${orgId}/brands/${brandId}`}
-      backLabel="Brand"
-    >
-      {/* Reveal the WHOLE nav as one group: the top items are static and the
-          Database items need feature + registry defs, so painting them as they
-          resolve makes the static rows appear first and the Database block pop in
-          a beat later. Hold everything behind `defsReady` with skeleton rows, then
-          render every item together. (Warm nav → defsReady is true immediately →
-          no skeleton.) Badge numbers are a finer sub-group revealed via badgePending. */}
+    <SidebarSection title="Brand" backHref={`/orgs/${orgId}/brands`} backLabel="Brands">
+      {/* Reveal the WHOLE nav as one group: top items are static and the Database
+          items need feature + registry defs. Hold everything behind `defsReady`
+          with skeleton rows, then render every item together. Badge numbers are a
+          finer sub-group revealed via badgePending. */}
       {!defsReady ? (
         <>
           {[0, 1, 2].map((i) => (
@@ -853,97 +584,112 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
         </>
       ) : (
         <>
-      {topItems.map((item) => (
-        <SidebarLink
-          key={item.id}
-          item={item}
-          isActive={item.id === "campaigns" ? pathname === item.href : pathname.startsWith(item.href)}
-        />
-      ))}
-      {entityItems.length > 0 && (
-        <div className="pt-2 mt-2 border-t border-gray-100">
-          <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Database</h4>
-          {entityItems.map((item) => (
+          {topItems.map((item) => (
             <SidebarLink
               key={item.id}
               item={item}
-              badgePending={!badgesRevealed}
-              isActive={pathname.startsWith(item.href)}
+              isActive={
+                item.id === "overview"
+                  ? pathname === basePath
+                  : item.id === "campaigns" || item.id === "create"
+                    ? pathname === item.href
+                    : pathname.startsWith(item.href)
+              }
             />
           ))}
-        </div>
-      )}
-      {reportEnabled && (
-        <div className="pt-2 mt-2 border-t border-gray-100">
-          <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Report</h4>
-          <a
-            href={reportHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs transition text-gray-600 hover:bg-gray-50 hover:text-gray-800"
-          >
-            <span className="w-5 h-5 text-gray-400"><ReportIcon /></span>
-            <span className="flex-1">Report</span>
-            <span className="text-gray-300"><ExternalLinkIcon /></span>
-          </a>
-        </div>
-      )}
-      <div className="pt-2 mt-2 border-t border-gray-100">
-        <SidebarLink
-          item={{
-            id: "feature-settings",
-            label: "Feature Settings",
-            href: `${basePath}/settings`,
-            icon: <SettingsIcon />,
-          }}
-          isActive={pathname.startsWith(`${basePath}/settings`)}
-        />
-      </div>
+          {entityItems.length > 0 && (
+            <div className="pt-2 mt-2 border-t border-gray-100">
+              <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Database</h4>
+              {entityItems.map((item) => (
+                <SidebarLink
+                  key={item.id}
+                  item={item}
+                  badgePending={!badgesRevealed}
+                  isActive={pathname.startsWith(item.href)}
+                />
+              ))}
+            </div>
+          )}
+          {reportEnabled && (
+            <div className="pt-2 mt-2 border-t border-gray-100">
+              <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Report</h4>
+              <a
+                href={reportHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs transition text-gray-600 hover:bg-gray-50 hover:text-gray-800"
+              >
+                <span className="w-5 h-5 text-gray-400"><ReportIcon /></span>
+                <span className="flex-1">Report</span>
+                <span className="text-gray-300"><ExternalLinkIcon /></span>
+              </a>
+            </div>
+          )}
+          <div className="pt-2 mt-2 border-t border-gray-100">
+            <SidebarLink
+              item={{
+                id: "settings",
+                label: "Brand Settings",
+                href: `${basePath}/settings`,
+                icon: <SettingsIcon />,
+              }}
+              isActive={pathname.startsWith(`${basePath}/settings`)}
+            />
+          </div>
         </>
       )}
     </SidebarSection>
   );
 }
 
-// Feature Settings Level Sidebar — mirrors Brand Settings. Reached from the
-// "Feature Settings" entry at the bottom of FeatureLevelSidebar. The landing
-// (/settings, Sales Economics) is GA; Workflows is a staff-only (alpha) sub-page.
-function FeatureSettingsLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
+// Brand Settings Level Sidebar — Brand Settings + Usage + Brand Info, plus the
+// Workflows list folded in from the old Feature Settings level.
+function BrandSettingsLevelSidebar({ orgId, brandId, pathname }: {
   orgId: string;
   brandId: string;
-  featureSlug: string;
   pathname: string;
 }) {
-  const { getFeature } = useFeatures();
-  const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`;
-  const feature = getFeature(featureSlug);
-  const title = feature?.name ?? featureSlug;
-  // Workflows is alpha (staff-only); default-hidden until PostHog resolves so it
-  // never flashes for a non-staff viewer. The Feature Settings landing is GA.
+  const brandBase = `/orgs/${orgId}/brands/${brandId}`;
+  const basePath = `${brandBase}/settings`;
+  // Brand Info + Workflows are alpha (staff-only); default-hidden until PostHog resolves.
+  const brandInfoOk = useFeatureFlag(FEATURE_GATES["brand-info"].flag);
   const workflowsOk = useFeatureFlag(FEATURE_GATES["workflows"].flag);
 
   const items: SidebarItem[] = [
+    { id: "settings", label: "Brand Settings", href: basePath, icon: <SettingsIcon /> },
     {
-      id: "feature-settings",
-      label: "Feature Settings",
-      href: `${basePath}/settings`,
-      icon: <SettingsIcon />,
+      id: "usage",
+      label: "Usage",
+      href: `${brandBase}/usage`,
+      icon: (
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+        </svg>
+      ),
     },
-    ...(workflowsOk
-      ? [
-          {
-            id: "workflows",
-            label: "Workflows",
-            href: `${basePath}/workflows`,
-            icon: <WorkflowIcon />,
-            maturity: FEATURE_GATES["workflows"].maturity,
-          } satisfies SidebarItem,
-        ]
-      : []),
   ];
+  if (brandInfoOk) {
+    items.push({
+      id: "brand-info",
+      label: "Brand Info",
+      href: `${brandBase}/brand-info`,
+      icon: <InfoIcon />,
+      maturity: FEATURE_GATES["brand-info"].maturity,
+    });
+  }
+  if (workflowsOk) {
+    items.push({
+      id: "workflows",
+      label: "Workflows",
+      href: `${brandBase}/workflows`,
+      icon: <WorkflowIcon />,
+      maturity: FEATURE_GATES["workflows"].maturity,
+    });
+  }
 
   return (
-    <SidebarSection title="Feature Settings" backHref={basePath} backLabel={title}>
+    <SidebarSection title="Settings" backHref={brandBase} backLabel="Brand">
       {items.map((item) => (
         <SidebarLink
           key={item.id}
@@ -997,24 +743,24 @@ function AppFeatureLevelSidebar({ featureId, pathname }: {
 }
 
 // Workflow Detail Level Sidebar
-function WorkflowLevelSidebar({ orgId, brandId, featureSlug, workflowId, pathname }: {
+function WorkflowLevelSidebar({ orgId, brandId, workflowId, pathname }: {
   orgId: string;
   brandId: string;
-  featureSlug: string;
   workflowId: string;
   pathname: string;
 }) {
+  const featureSlug = useSoleFeatureSlug();
   const { getFeature } = useFeatures();
-  const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/${workflowId}`;
+  const basePath = `/orgs/${orgId}/brands/${brandId}/workflows/${workflowId}`;
   const feature = getFeature(featureSlug);
-  const title = feature?.name ?? featureSlug;
+  const title = feature?.name ?? "Workflow";
 
   const items: SidebarItem[] = [
     { id: "viewer", label: "Workflow Viewer", href: basePath, icon: <WorkflowIcon /> },
   ];
 
   return (
-    <SidebarSection title={title} backHref={`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows`} backLabel="Workflows">
+    <SidebarSection title={title} backHref={`/orgs/${orgId}/brands/${brandId}/workflows`} backLabel="Workflows">
       {items.map((item) => (
         <SidebarLink
           key={item.id}
@@ -1042,12 +788,8 @@ export function ContextSidebar() {
       return <BrandLevelSidebar orgId={level.orgId!} brandId={level.brandId!} pathname={pathname} />;
     case "brandSettings":
       return <BrandSettingsLevelSidebar orgId={level.orgId!} brandId={level.brandId!} pathname={pathname} />;
-    case "feature":
-      return <FeatureLevelSidebar orgId={level.orgId!} brandId={level.brandId!} featureSlug={level.featureSlug!} pathname={pathname} />;
-    case "featureSettings":
-      return <FeatureSettingsLevelSidebar orgId={level.orgId!} brandId={level.brandId!} featureSlug={level.featureSlug!} pathname={pathname} />;
     case "workflow":
-      return <WorkflowLevelSidebar orgId={level.orgId!} brandId={level.brandId!} featureSlug={level.featureSlug!} workflowId={level.workflowId!} pathname={pathname} />;
+      return <WorkflowLevelSidebar orgId={level.orgId!} brandId={level.brandId!} workflowId={level.workflowId!} pathname={pathname} />;
     case "campaign":
       // Campaign level defers to CampaignSidebar in the campaign layout
       return null;

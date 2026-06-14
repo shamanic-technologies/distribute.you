@@ -88,7 +88,7 @@ function PersonInitials({ firstName, lastName }: { firstName: string; lastName: 
   );
 }
 
-export default function BrandEmailsPage() {
+export default function FeatureEmailsPage() {
   const params = useParams();
   const brandId = params.brandId as string;
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
@@ -112,7 +112,18 @@ export default function BrandEmailsPage() {
     });
   }, [emails, search]);
 
-  const showSkeleton = isPending && !data;
+  if (isPending && !data) {
+    return (
+      <div className="p-4 md:p-8">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 w-32 bg-gray-200 rounded" />
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-16 bg-gray-100 rounded-xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col md:flex-row h-full relative">
@@ -132,13 +143,7 @@ export default function BrandEmailsPage() {
 
         <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by name, company, or subject..." resultCount={filteredEmails.length} totalCount={emails.length} />
 
-        {showSkeleton ? (
-          <div className="space-y-2 animate-pulse">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-[76px] bg-gray-100 rounded-xl border border-gray-200" />
-            ))}
-          </div>
-        ) : filteredEmails.length === 0 ? (
+        {filteredEmails.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
             <h3 className="font-display font-bold text-lg text-gray-800 mb-2">{emails.length === 0 ? "No emails yet" : "No matching emails"}</h3>
             <p className="text-gray-600 text-sm">{emails.length === 0 ? "Emails will appear here once campaigns generate them." : "Try a different search term."}</p>

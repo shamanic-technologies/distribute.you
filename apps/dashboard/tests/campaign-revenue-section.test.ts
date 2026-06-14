@@ -6,7 +6,7 @@ const SRC = path.join(__dirname, "../src");
 const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
 
 const DETAIL_PAGE =
-  "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/page.tsx";
+  "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/[id]/page.tsx";
 
 /**
  * Sales-cold-email campaign page mirrors the feature Overview: a "Pipeline
