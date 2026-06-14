@@ -5,21 +5,23 @@ import * as path from "path";
 const SRC = path.join(__dirname, "../src");
 const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
 
+// Single-feature product: the feature segment was flattened into the brand
+// level. The brand ROOT page IS the (sole) feature's Overview; the campaigns
+// list lives at the brand-level /campaigns route.
 const FEATURE_DIR =
-  "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]";
+  "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]";
 
 describe("Feature landing defaults to Overview (item 1)", () => {
   const indexPage = read(`${FEATURE_DIR}/page.tsx`);
   const campaignsPage = read(`${FEATURE_DIR}/campaigns/page.tsx`);
   const sidebar = read("components/context-sidebar.tsx");
 
-  it("bare feature page is a redirect decider, not the campaigns list", () => {
-    expect(indexPage).toContain("router.replace");
-    expect(indexPage).toContain("/overview");
-    expect(indexPage).toContain("/campaigns");
+  it("brand root page IS the Overview (renders the revenue section inline, not the campaigns list)", () => {
+    // No redirect-decider anymore — the brand root renders the overview directly.
+    expect(indexPage).toContain("RevenueOverviewSection");
     // Overview shown for revenue features (GA — no flag gate).
     expect(indexPage).toContain("isRevenueFeature");
-    // The campaigns list must NOT live in the bare page anymore.
+    // The campaigns list must NOT live in the overview page.
     expect(indexPage).not.toContain("listCampaignsByBrand");
   });
 

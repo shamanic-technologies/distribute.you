@@ -12,7 +12,7 @@ describe("Brand sales-economics persistence", () => {
   const apiContent = fs.readFileSync(path.join(__dirname, apiRel), "utf-8");
 
   const pageRel =
-    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx";
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/new/page.tsx";
   const pageContent = fs.readFileSync(path.join(__dirname, pageRel), "utf-8");
 
   it("api.ts exposes a getBrandSalesEconomics reader on the locked path", () => {

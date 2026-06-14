@@ -3,9 +3,11 @@ import * as fs from "fs";
 import * as path from "path";
 
 // ── Route roots ──────────────────────────────────────────────────────────────
+// Single-feature product: the feature segment was flattened into the brand
+// level, so the former feature-level pages now live directly under the brand.
 const FEATURE_ROOT = path.resolve(
   __dirname,
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]",
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]",
 );
 const CAMPAIGN_ROOT = path.join(FEATURE_ROOT, "campaigns/[id]");
 const VIEWS_ROOT = path.resolve(__dirname, "../src/components/visibility");
@@ -90,7 +92,7 @@ describe("Feature-level AI-visibility pages (union across the brand's campaigns)
         it("builds a FEATURE-level basePath (no /campaigns/ segment)", () => {
           const content = read(filePath);
           expect(content).toContain(
-            "`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`",
+            "`/orgs/${orgId}/brands/${brandId}`",
           );
           expect(content).not.toContain("/campaigns/${campaignId}");
         });

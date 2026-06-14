@@ -5,7 +5,7 @@ import * as path from "path";
 describe("Workflow list page shows all workflows (not just those with stats)", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/workflows/page.tsx"
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/workflows/page.tsx"
   );
 
   const content = fs.readFileSync(pagePath, "utf-8");

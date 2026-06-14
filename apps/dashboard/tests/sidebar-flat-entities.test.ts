@@ -30,8 +30,11 @@ describe("Sidebars render Feature Service entities flat — no hardcoded outcome
       expect(contextSidebar).not.toMatch(/CollapsibleGroupList/);
     });
 
-    it("renders BrandLevelSidebar outcomeItems flat", () => {
-      expect(contextSidebar).toMatch(/outcomeItems\.map\(/);
+    it("renders BrandLevelSidebar top items flat (no hardcoded outcome groups)", () => {
+      // The old `outcomeItems` group machinery is gone — the brand sidebar now
+      // maps a flat `topItems` list (Overview/Campaigns/Create/Conversions).
+      expect(contextSidebar).toMatch(/topItems\.map\(/);
+      expect(contextSidebar).not.toMatch(/outcomeItems/);
     });
 
     it("renders FeatureLevelSidebar entityItems flat", () => {

@@ -10,7 +10,7 @@ import * as path from "path";
 describe("Campaigns list page — revenue/gains reorientation", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/page.tsx"
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/page.tsx"
   );
   const src = fs.readFileSync(pagePath, "utf-8");
 

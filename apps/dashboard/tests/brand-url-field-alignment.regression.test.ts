@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
-// Regression: Go button on /orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new
+// Regression: Go button on /orgs/[orgId]/brands/[brandId]/campaigns/new
 // was disabled because brand-service /internal/brands/:id returns `url` (deployed minimal
 // shape) but dashboard `BrandDetail` declared `brandUrl`. resolvedBrandUrl resolved to "",
 // disabling the button. Brand-service is also inconsistent: /orgs/brands still emits
@@ -13,15 +13,9 @@ const apiContent = fs.readFileSync(apiPath, "utf-8");
 
 const newCampaignPagePath = path.resolve(
   __dirname,
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx",
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/new/page.tsx",
 );
 const newCampaignPage = fs.readFileSync(newCampaignPagePath, "utf-8");
-
-const brandDetailPagePath = path.resolve(
-  __dirname,
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
-);
-const brandDetailPage = fs.readFileSync(brandDetailPagePath, "utf-8");
 
 const legacyNewPagePath = path.resolve(
   __dirname,
@@ -54,12 +48,9 @@ describe("Brand URL field alignment (regression: Go button disabled)", () => {
     });
   });
 
-  describe("brand detail page", () => {
-    it("renders brand.url for href, not brand.brandUrl", () => {
-      expect(brandDetailPage).toContain("href={brand.url}");
-      expect(brandDetailPage).not.toContain("href={brand.brandUrl}");
-    });
-  });
+  // The "brand detail page renders brand.url for href" case was removed: the
+  // brand root page is now the (sole) feature's Revenue overview and no longer
+  // displays a brand-URL link (the feature segment was flattened into the brand).
 
   describe("legacy features/[featureId]/new page", () => {
     it("reads b.url for the selected brand lookup", () => {

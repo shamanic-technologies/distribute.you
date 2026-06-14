@@ -10,7 +10,7 @@ const funnelContent = read("src/components/campaign/funnel-metrics.tsx");
 const replyContent = read("src/components/campaign/reply-breakdown.tsx");
 const panelRel = "src/components/campaign/leads-stats-panel.tsx";
 const leadsPageRel =
-  "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/leads/page.tsx";
+  "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/[id]/leads/page.tsx";
 
 describe("api.ts — deprecated apollo stats removed", () => {
   it("does not export ApolloStats interface", () => {

@@ -1,5 +1,7 @@
 "use client";
 
+import { useSoleFeatureSlug } from "@/lib/sole-feature";
+
 import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
@@ -33,21 +35,22 @@ function formatDate(dateStr: string | null): string {
   }
 }
 
-export default function BrandArticlesPage() {
+export default function FeatureArticlesPage() {
   const params = useParams();
   const brandId = params.brandId as string;
+  const featureSlug = useSoleFeatureSlug();
   const [selected, setSelected] = useState<ArticleDiscoveryItem | null>(null);
   const [search, setSearch] = useState("");
 
   const { data, isPending } = useAuthQuery(
-    ["brandArticles", brandId],
-    () => listBrandArticles(brandId),
+    ["brandArticles", brandId, featureSlug],
+    () => listBrandArticles(brandId, featureSlug),
     { refetchInterval: POLL_INTERVAL },
   );
 
   const { data: outletsData } = useAuthQuery(
-    ["brandOutlets", brandId],
-    () => listBrandOutlets(brandId),
+    ["brandOutlets", brandId, featureSlug],
+    () => listBrandOutlets(brandId, featureSlug),
   );
 
   const { data: journalistsData } = useAuthQuery(

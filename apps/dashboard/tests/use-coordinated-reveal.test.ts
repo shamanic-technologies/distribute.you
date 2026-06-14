@@ -55,7 +55,7 @@ describe("consumers adopt the coordinated reveal", () => {
   const featurePage = fs.readFileSync(
     path.join(
       __dirname,
-      "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/page.tsx",
+      "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/page.tsx",
     ),
     "utf-8",
   );
@@ -111,8 +111,8 @@ describe("route-transition loading.tsx boundaries (instant nav skeletons)", () =
   const boundaries = [
     `${authed}/loading.tsx`,
     `${authed}/brands/[brandId]/loading.tsx`,
-    `${authed}/brands/[brandId]/features/[featureSlug]/loading.tsx`,
-    `${authed}/brands/[brandId]/features/[featureSlug]/campaigns/[id]/loading.tsx`,
+    `${authed}/brands/[brandId]/loading.tsx`,
+    `${authed}/brands/[brandId]/campaigns/[id]/loading.tsx`,
   ];
 
   it("ships a loading.tsx at every dashboard segment level (org/brand/feature/campaign)", () => {
@@ -138,7 +138,7 @@ describe("feature pages adopt the coordinated body reveal", () => {
 
   it("feature overview reveals revenue + cost cards on their OWN data (per-card barrier)", () => {
     const src = read(
-      "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/overview/page.tsx",
+      "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
     );
     expect(src).toContain("useCoordinatedReveal");
     // Revenue (features-service) and Total-spent (runs-service) resolve on different

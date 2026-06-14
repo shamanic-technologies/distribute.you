@@ -147,9 +147,9 @@ export function CampaignSidebar({ campaignId, orgId, brandId, featureSlug, entit
   // Reveal the whole nav together once the feature + entity registry defs load
   // (entity items depend on them); skeleton rows until then. See CLAUDE.md → "Coordinated reveal".
   const defsReady = !featuresLoading && !registryLoading;
-  const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/campaigns/${campaignId}`;
+  const basePath = `/orgs/${orgId}/brands/${brandId}/campaigns/${campaignId}`;
   const backHref = explicitHierarchyHref(
-    `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`,
+    `/orgs/${orgId}/brands/${brandId}/campaigns`,
   );
 
   const featureDef = getFeature(featureSlug);
@@ -186,7 +186,7 @@ export function CampaignSidebar({ campaignId, orgId, brandId, featureSlug, entit
           {
             id: "workflow",
             label: "Workflow",
-            href: `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/${workflowId}`,
+            href: `/orgs/${orgId}/brands/${brandId}/workflows/${workflowId}`,
             icon: <WorkflowIcon />,
           },
         ]

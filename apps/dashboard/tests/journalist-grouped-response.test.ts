@@ -5,11 +5,11 @@ import * as path from "path";
 const apiPath = path.resolve(__dirname, "../src/lib/api.ts");
 const featurePagePath = path.resolve(
   __dirname,
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/journalists/page.tsx",
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/journalists/page.tsx",
 );
 const campaignPagePath = path.resolve(
   __dirname,
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/journalists/page.tsx",
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/[id]/journalists/page.tsx",
 );
 const brandPagePath = path.resolve(
   __dirname,
