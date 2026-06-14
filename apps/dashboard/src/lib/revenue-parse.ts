@@ -36,6 +36,9 @@ const RevenueLeadSchema = z.object({
   orgDomain: z.string().nullish(),
   tags: z.array(z.string()),
   expectedRevenueUsd: z.number(),
+  // Only present on a `?lens=` (Signups / Booked Meetings / Sales) response;
+  // `.nullish()` so the un-lensed overview parse (no field) still succeeds.
+  conversionProbabilityPct: z.number().nullish(),
   date: z.string().nullable(),
 });
 const RevenueEventSchema = z.object({

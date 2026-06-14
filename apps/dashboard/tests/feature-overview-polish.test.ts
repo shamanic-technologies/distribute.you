@@ -79,7 +79,6 @@ describe("Org logos render Clerk imageUrl (item 4)", () => {
 
 describe("Conversion events show lead photos (item 5)", () => {
   const conversions = read("components/revenue/conversions-table.tsx");
-  const conversionsPage = read(`${FEATURE_DIR}/conversions/page.tsx`);
   const reportRevenue = read("components/report/revenue-view.tsx");
 
   it("event table takes a photoByLeadId map (no forced null avatar)", () => {
@@ -89,8 +88,7 @@ describe("Conversion events show lead photos (item 5)", () => {
     expect(conversions).toContain("onError={() => setBroken(true)}");
   });
 
-  it("the Events tab/section is removed from the conversions page + public report", () => {
-    expect(conversionsPage).not.toContain("EventConversionsTable");
+  it("the Events tab/section is removed from the public report", () => {
     expect(reportRevenue).not.toContain("EventConversionsTable");
   });
 });

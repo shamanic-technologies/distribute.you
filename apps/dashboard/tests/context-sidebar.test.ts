@@ -65,11 +65,13 @@ describe("Context sidebar", () => {
   it("should have brand-level items (single-feature nav flattened into the brand)", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
     // The feature segment is gone; the brand sidebar absorbs the feature nav:
-    // Overview, Campaigns, Create Campaign, Conversions + the entity Database.
+    // Overview, Campaigns + the entity Database. "Create Campaign" and the old
+    // "Conversions" page were removed (#beta outcome lenses replaced them).
     expect(content).toContain('label: "Campaigns"');
-    expect(content).toContain('label: "Create Campaign"');
     expect(content).toContain('label: "Overview"');
     expect(content).toContain("Database");
+    expect(content).not.toContain('label: "Create Campaign"');
+    expect(content).not.toContain('href: `${basePath}/conversions`');
   });
 
   it("should grey out coming soon items with a tag (SidebarLink primitive)", () => {

@@ -9,6 +9,7 @@ import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "./org-desync";
 import { keepLastGoodFields, keepLastGoodList } from "./keep-last-good";
 import type { RevenueOverview } from "./revenue-view";
 import { parseFeatureRevenue } from "./revenue-parse";
+import type { OutcomeLens } from "./outcome-lens";
 import { withAverageCampaignRelevanceScores } from "./outlet-relevance";
 
 const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
@@ -1134,6 +1135,24 @@ export async function getFeatureRevenue(
   if (campaignId) query.set("campaignId", campaignId);
   const raw = await apiCall<unknown>(`/features/${featureSlug}/revenue?${query.toString()}`, { token });
   return parseFeatureRevenue(raw, "getFeatureRevenue");
+}
+
+// ─── Outcome lenses (Signups / Booked Meetings / Sales) ──────────────────────
+// Same /revenue endpoint with `?lens=`. features-service filters leads to the
+// lens signal and computes the per-lead conversion probability + expected
+// revenue (probability × the brand's lifetime revenue). The dashboard renders
+// the returned `leads[]` (each carrying `conversionProbabilityPct`) and the
+// `totalPipelineUsd` headline — NO client-side math. See `outcome-lens.ts`.
+/** GET /features/:slug/revenue?lens=<lens> — leads + per-lead probability for one outcome lens. */
+export async function getFeatureOutcomes(
+  featureSlug: string,
+  brandId: string,
+  lens: OutcomeLens,
+  token?: string,
+): Promise<RevenueOverview> {
+  const query = new URLSearchParams({ brandId, lens });
+  const raw = await apiCall<unknown>(`/features/${featureSlug}/revenue?${query.toString()}`, { token });
+  return parseFeatureRevenue(raw, "getFeatureOutcomes");
 }
 
 // ─── Per-campaign revenue ROI (grouped) ──────────────────────────────────────
