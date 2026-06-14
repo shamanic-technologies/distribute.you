@@ -84,10 +84,15 @@ export function OutcomeLeadsTable({
   leads,
   probabilityLabel,
   empty,
+  onSelect,
+  selectedLeadId,
 }: {
   leads: ConversionLead[];
   probabilityLabel: string;
   empty: string;
+  /** Row click → open the lead detail panel. */
+  onSelect?: (lead: ConversionLead) => void;
+  selectedLeadId?: string | null;
 }) {
   const { pageItems, page, setPage, pageCount, total, from, to } = usePaginated(leads);
 
@@ -112,8 +117,15 @@ export function OutcomeLeadsTable({
         <tbody>
           {pageItems.map((l) => {
             const name = fullName(l.firstName, l.lastName);
+            const selected = selectedLeadId === l.leadId;
             return (
-              <tr key={l.leadId} className="border-t border-gray-100 hover:bg-gray-50/60">
+              <tr
+                key={l.leadId}
+                onClick={onSelect ? () => onSelect(l) : undefined}
+                className={`border-t border-gray-100 ${
+                  onSelect ? "cursor-pointer" : ""
+                } ${selected ? "bg-brand-50" : "hover:bg-gray-50/60"}`}
+              >
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
                     <Avatar photoUrl={l.photoUrl} name={name} />
