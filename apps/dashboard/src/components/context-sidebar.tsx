@@ -22,6 +22,8 @@ import { isOpportunityOpen } from "@/lib/quote-pitch-status";
 import { isExpertQuoteFeature } from "@/lib/expert-quote-feature";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
+import { useIsBetaUser } from "@/lib/use-beta-user";
+import { OUTCOME_LENSES, OUTCOME_LENS_ORDER } from "@/lib/outcome-lens";
 import { formatCount } from "@/lib/format-number";
 import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { MaturityBadge } from "@/components/maturity-badge";
@@ -205,12 +207,6 @@ const BillingIcon = () => (
 const CrmIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-  </svg>
-);
-
-const PlusIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
   </svg>
 );
 
@@ -417,6 +413,7 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
   pathname: string;
 }) {
   const featureSlug = useSoleFeatureSlug();
+  const isBeta = useIsBetaUser();
   const { getFeature, isLoading: featuresLoading } = useFeatures();
   const { registry, isLoading: registryLoading } = useEntityRegistry();
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
@@ -532,8 +529,10 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
       };
     });
 
-  // Revenue surface (Overview + Conversions) — only on revenue features
-  // (sales-cold-email today). GA. Overview is the brand root.
+  // Revenue surface (Overview) — only on revenue features (sales-cold-email
+  // today). GA. Overview is the brand root. The Signups / Booked Meetings /
+  // Sales outcome lenses below are BETA (Kevin + Adam only, email allowlist) and
+  // replaced the old Conversions page.
   const revenueOk = isRevenueFeature(featureSlug);
   const topItems: SidebarItem[] = [
     ...(revenueOk
@@ -547,16 +546,16 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
         ]
       : []),
     { id: "campaigns", label: "Campaigns", href: `${basePath}/campaigns`, icon: <EnvelopeIcon /> },
-    { id: "create", label: "Create Campaign", href: `${basePath}/campaigns/new`, icon: <PlusIcon /> },
-    ...(revenueOk
-      ? [
-          {
-            id: "conversions",
-            label: "Conversions",
-            href: `${basePath}/conversions`,
+    ...(revenueOk && isBeta
+      ? OUTCOME_LENS_ORDER.map(
+          (lens): SidebarItem => ({
+            id: OUTCOME_LENSES[lens].lens,
+            label: OUTCOME_LENSES[lens].label,
+            href: `${basePath}/${OUTCOME_LENSES[lens].segment}`,
             icon: <ConversionsIcon />,
-          } satisfies SidebarItem,
-        ]
+            maturity: "beta",
+          }),
+        )
       : []),
   ];
 
@@ -715,7 +714,6 @@ function AppFeatureLevelSidebar({ featureId, pathname }: {
 
   const items: SidebarItem[] = [
     { id: "campaigns", label: "Campaigns", href: basePath, icon: <EnvelopeIcon /> },
-    { id: "create", label: "Create Campaign", href: `${basePath}/new`, icon: <PlusIcon /> },
     ...(workflowsOk
       ? [
           {

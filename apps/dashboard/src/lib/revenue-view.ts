@@ -48,6 +48,13 @@ export interface ConversionLead {
   orgDomain?: string | null;
   tags: string[];
   expectedRevenueUsd: number;
+  /**
+   * Per-lead conversion probability (0–100) for the requested outcome lens.
+   * Present ONLY on a lensed `?lens=` response (Signups / Booked Meetings /
+   * Sales pages); absent/null on the un-lensed overview. features-service is the
+   * single source — the dashboard never derives it.
+   */
+  conversionProbabilityPct?: number | null;
   /** Most-advanced event date; null until per-event timestamps exist. */
   date: string | null;
 }
