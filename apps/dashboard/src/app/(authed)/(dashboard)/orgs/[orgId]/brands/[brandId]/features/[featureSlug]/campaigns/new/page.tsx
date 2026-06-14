@@ -89,7 +89,7 @@ const TARGET_CLOSES_PER_MONTH = 5;
 
 /** Conversion-economics defaults shown until the brand's saved set loads (or when none
  *  is saved yet). Persisted per brand in brand-service; see getBrandSalesEconomics. */
-const SALES_ECON_DEFAULTS = { ltv: "4000", replyToMeeting: "40", meetingToClose: "25", visitToMeeting: "20", clickToClose: "5" };
+const SALES_ECON_DEFAULTS = { ltv: "4000", replyToMeeting: "40", meetingToClose: "25", visitToMeeting: "20", visitToSignup: "25", signupToPaid: "20" };
 
 const DAYS_PER_MONTH = 30.4;
 
@@ -378,7 +378,9 @@ export default function FeatureCreateCampaignPage() {
   const [econReplyToMeeting, setEconReplyToMeeting] = useState(SALES_ECON_DEFAULTS.replyToMeeting);
   const [econMeetingToClose, setEconMeetingToClose] = useState(SALES_ECON_DEFAULTS.meetingToClose);
   const [econVisitToMeeting, setEconVisitToMeeting] = useState(SALES_ECON_DEFAULTS.visitToMeeting);
-  const [econClickToClose, setEconClickToClose] = useState(SALES_ECON_DEFAULTS.clickToClose);
+  // Self-serve close decomposed: visit→signup × signup→paid. brand-service derives visitToClosePct.
+  const [econVisitToSignup, setEconVisitToSignup] = useState(SALES_ECON_DEFAULTS.visitToSignup);
+  const [econSignupToPaid, setEconSignupToPaid] = useState(SALES_ECON_DEFAULTS.signupToPaid);
   const [showWorkflowPicker, setShowWorkflowPicker] = useState(false);
   const [salesWorkflowOverrideId, setSalesWorkflowOverrideId] = useState<string | null>(null);
   const [modalSelectedWorkflowId, setModalSelectedWorkflowId] = useState<string | null>(null);
@@ -416,7 +418,8 @@ export default function FeatureCreateCampaignPage() {
       setEconReplyToMeeting(String(e.replyToMeetingPct));
       setEconVisitToMeeting(String(e.visitToMeetingPct));
       setEconMeetingToClose(String(e.meetingToClosePct));
-      setEconClickToClose(String(e.visitToClosePct));
+      setEconVisitToSignup(String(e.visitToSignupPct));
+      setEconSignupToPaid(String(e.signupToPaidClientPct));
       setEconSource(salesEconData.source);
     }
     // Mark hydrated even when economics is null (empty table → keep
@@ -441,7 +444,13 @@ export default function FeatureCreateCampaignPage() {
   // Update one metric input + schedule a debounced upsert of the full set. Hydration
   // uses the raw setters (not this), so loading saved values never triggers a write.
   const updateEcon = (
-    field: "ltv" | "replyToMeeting" | "visitToMeeting" | "meetingToClose" | "clickToClose",
+    field:
+      | "ltv"
+      | "replyToMeeting"
+      | "visitToMeeting"
+      | "meetingToClose"
+      | "visitToSignup"
+      | "signupToPaid",
     value: string,
   ) => {
     const next = {
@@ -449,14 +458,16 @@ export default function FeatureCreateCampaignPage() {
       replyToMeeting: econReplyToMeeting,
       visitToMeeting: econVisitToMeeting,
       meetingToClose: econMeetingToClose,
-      clickToClose: econClickToClose,
+      visitToSignup: econVisitToSignup,
+      signupToPaid: econSignupToPaid,
       [field]: value,
     };
     if (field === "ltv") setEconLtv(value);
     else if (field === "replyToMeeting") setEconReplyToMeeting(value);
     else if (field === "visitToMeeting") setEconVisitToMeeting(value);
     else if (field === "meetingToClose") setEconMeetingToClose(value);
-    else setEconClickToClose(value);
+    else if (field === "visitToSignup") setEconVisitToSignup(value);
+    else setEconSignupToPaid(value);
     // User edited a value → these are now the brand's own numbers, not an estimate.
     if (econSource !== "user") setEconSource("user");
 
@@ -468,7 +479,8 @@ export default function FeatureCreateCampaignPage() {
         replyToMeetingPct: Math.round(parseFloat(next.replyToMeeting) || 0),
         visitToMeetingPct: Math.round(parseFloat(next.visitToMeeting) || 0),
         meetingToClosePct: Math.round(parseFloat(next.meetingToClose) || 0),
-        visitToClosePct: Math.round(parseFloat(next.clickToClose) || 0),
+        visitToSignupPct: Math.round(parseFloat(next.visitToSignup) || 0),
+        signupToPaidClientPct: Math.round(parseFloat(next.signupToPaid) || 0),
       });
     }, 700);
   };
@@ -638,9 +650,12 @@ export default function FeatureCreateCampaignPage() {
       r2m: (parseFloat(econReplyToMeeting) || 0) / 100,
       v2m: (parseFloat(econVisitToMeeting) || 0) / 100,
       m2c: (parseFloat(econMeetingToClose) || 0) / 100,
-      v2c: (parseFloat(econClickToClose) || 0) / 100,
+      // Self-serve close = visit→signup × signup→paid (mirrors brand-service's derived visitToClosePct).
+      v2c:
+        ((parseFloat(econVisitToSignup) || 0) / 100) *
+        ((parseFloat(econSignupToPaid) || 0) / 100),
     }),
-    [econLtv, econReplyToMeeting, econVisitToMeeting, econMeetingToClose, econClickToClose],
+    [econLtv, econReplyToMeeting, econVisitToMeeting, econMeetingToClose, econVisitToSignup, econSignupToPaid],
   );
 
   // Cost-per-close for a workflow (the ROI comparator; lower = better). Recomputed client-side from
@@ -1570,18 +1585,32 @@ export default function FeatureCreateCampaignPage() {
                     </div>
                   </>
                 ) : (
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Website visit → close" tip="Of leads who visit your website, the share that buy without a meeting (self-serve)." /></label>
-                    {econReady ? (
-                      <div className="relative">
-                        <input type="number" min="0" max="100" step="1" value={econClickToClose} onChange={(e) => updateEcon("clickToClose", e.target.value)}
-                          className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
-                      </div>
-                    ) : (
-                      <Skeleton className="h-9 w-full rounded-lg" />
-                    )}
-                  </div>
+                  <>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Website visit → signup" tip="Of leads who visit your website, the share that sign up." /></label>
+                      {econReady ? (
+                        <div className="relative">
+                          <input type="number" min="0" max="100" step="1" value={econVisitToSignup} onChange={(e) => updateEcon("visitToSignup", e.target.value)}
+                            className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                        </div>
+                      ) : (
+                        <Skeleton className="h-9 w-full rounded-lg" />
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Signup → paid client" tip="Of signups, the share that become paying customers." /></label>
+                      {econReady ? (
+                        <div className="relative">
+                          <input type="number" min="0" max="100" step="1" value={econSignupToPaid} onChange={(e) => updateEcon("signupToPaid", e.target.value)}
+                            className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                        </div>
+                      ) : (
+                        <Skeleton className="h-9 w-full rounded-lg" />
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
             </div>
