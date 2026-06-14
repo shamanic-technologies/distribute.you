@@ -53,7 +53,7 @@ import { CampaignAIPanel } from "@/components/campaigns/campaign-ai-panel";
 import { BrandLogo } from "@/components/brand-logo";
 import { Skeleton } from "@/components/skeleton";
 import { EmailSignature } from "@/components/email-signature";
-import { SparklesIcon, XMarkIcon, EllipsisVerticalIcon, PlusIcon, InformationCircleIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
+import { SparklesIcon, XMarkIcon, EllipsisVerticalIcon, PlusIcon, InformationCircleIcon, ChevronDownIcon, CheckIcon } from "@heroicons/react/20/solid";
 
 type Mode = "autopilot" | "manual";
 type BudgetFrequency = "one-off" | "daily" | "weekly" | "monthly";
@@ -76,11 +76,13 @@ type BudgetTier = "starter" | "recommended" | "growth" | "other";
 
 const SALES_FUNNEL_FEATURE_SLUG = "sales-cold-email-outreach";
 
-// Façon de vendre — how the brand closes. Drives the funnel math (projection query key)
-// and which conversion-metric inputs show. Prefilled from the brand's funnelStages.
-const SALES_OBJECTIVES: { key: SalesObjective; label: string; desc: string }[] = [
-  { key: "meeting-booked", label: "Booked meeting", desc: "You close deals from booked meetings." },
-  { key: "self-serve", label: "Product (self-serve)", desc: "Customers buy directly on your site." },
+// Selling mode — how the brand closes. MULTI-select (a brand can do both). Drives which
+// objectives + conversion metrics are relevant, and the funnel math (any meeting mode →
+// meeting-booked projection, product-only → self-serve). Prefilled from funnelStages.
+type SellingMode = "product" | "meeting";
+const SELLING_MODES: { key: SellingMode; label: string; desc: string }[] = [
+  { key: "product", label: "Product (self-serve)", desc: "Customers buy directly on your site." },
+  { key: "meeting", label: "Booked meeting", desc: "You close deals from booked meetings." },
 ];
 
 // Objectif — the metric this brand wants to maximize. Prefilled from the brand's
@@ -90,6 +92,14 @@ const SALES_OPTIMIZATION_GOALS: { key: BrandOptimizationGoal; label: string; des
   { key: "booked_meetings", label: "Booked meetings", desc: "Maximize booked sales meetings." },
   { key: "sales", label: "Sales", desc: "Maximize closed revenue." },
 ];
+
+// Which objectives make sense for each selling mode. The selectable set is the union over
+// the chosen modes; "sales" is valid for any mode. Order preserved by OBJECTIVE_ORDER.
+const OBJECTIVES_BY_MODE: Record<SellingMode, BrandOptimizationGoal[]> = {
+  product: ["signups", "sales"],
+  meeting: ["booked_meetings", "sales"],
+};
+const OBJECTIVE_ORDER: BrandOptimizationGoal[] = ["signups", "booked_meetings", "sales"];
 
 /** Each tier is sized for an absolute closes-per-month target (budget = closes × cost-per-close). */
 const BUDGET_TIERS: { key: Exclude<BudgetTier, "other">; label: string; closesPerMonth: number }[] = [
@@ -387,10 +397,35 @@ export default function FeatureCreateCampaignPage() {
   const brandPickerRef = useRef<HTMLDivElement>(null);
 
   // ── Sales funnel state (sales-cold-email only) ──
-  // `objective` = the metric to maximize (campaign-local, prefilled from brand). `salesObjective`
-  // = façon de vendre (product/meeting), which drives the funnel math + metric inputs.
+  // `objective` = the metric to maximize (campaign-local, prefilled from brand).
+  // `sellingModes` = how the brand closes (MULTI-select product/meeting, prefilled).
   const [objective, setObjective] = useState<BrandOptimizationGoal>("sales");
-  const [salesObjective, setSalesObjective] = useState<SalesObjective>("meeting-booked");
+  const [sellingModes, setSellingModes] = useState<SellingMode[]>(["meeting"]);
+  // Binary mode for the existing features-service projection: any meeting → meeting-booked
+  // (SUMS reply + visit routes), product-only → self-serve.
+  const salesObjective: SalesObjective = sellingModes.includes("meeting") ? "meeting-booked" : "self-serve";
+  // Objectives selectable for the chosen modes (union; "sales" always present).
+  const allowedObjectives = OBJECTIVE_ORDER.filter((g) =>
+    sellingModes.some((m) => OBJECTIVES_BY_MODE[m].includes(g)),
+  );
+  // Reset the objective when the chosen modes no longer permit it.
+  useEffect(() => {
+    if (sellingModes.length === 0) return;
+    const allowed = OBJECTIVE_ORDER.filter((g) =>
+      sellingModes.some((m) => OBJECTIVES_BY_MODE[m].includes(g)),
+    );
+    if (!allowed.includes(objective)) setObjective(allowed[allowed.length - 1] ?? "sales");
+  }, [sellingModes, objective]);
+  const toggleSellingMode = (m: SellingMode) =>
+    setSellingModes((prev) =>
+      prev.includes(m) ? (prev.length > 1 ? prev.filter((x) => x !== m) : prev) : [...prev, m],
+    );
+  // Which conversion-metric inputs to show (selling mode × objective).
+  const showVisitToSignup = sellingModes.includes("product");
+  const showSignupToPaid = sellingModes.includes("product") && objective === "sales";
+  const showReplyToMeeting = sellingModes.includes("meeting");
+  const showVisitToMeeting = sellingModes.includes("meeting");
+  const showMeetingToClose = sellingModes.includes("meeting") && objective === "sales";
   const [econLtv, setEconLtv] = useState(SALES_ECON_DEFAULTS.ltv);
   const [econReplyToMeeting, setEconReplyToMeeting] = useState(SALES_ECON_DEFAULTS.replyToMeeting);
   const [econMeetingToClose, setEconMeetingToClose] = useState(SALES_ECON_DEFAULTS.meetingToClose);
@@ -460,8 +495,12 @@ export default function FeatureCreateCampaignPage() {
     if (!isSalesFunnel || objectiveHydrated.current || brandEconData === undefined) return;
     const e = brandEconData.salesEconomics;
     if (e) {
+      const modes: SellingMode[] = [];
+      if (e.funnelStages.includes("website_purchase")) modes.push("product");
+      if (e.funnelStages.includes("sales_meeting")) modes.push("meeting");
+      setSellingModes(modes.length > 0 ? modes : ["meeting"]);
+      // The reset effect corrects this if the brand's goal isn't valid for the prefilled modes.
       setObjective(e.optimizationGoal);
-      setSalesObjective(e.funnelStages.includes("sales_meeting") ? "meeting-booked" : "self-serve");
     }
     objectiveHydrated.current = true;
   }, [isSalesFunnel, brandEconData]);
@@ -1528,10 +1567,39 @@ export default function FeatureCreateCampaignPage() {
             </div>
             <div className="p-5 space-y-5">
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Selling mode</label>
+                <p className="text-xs text-gray-500 mb-3">How you close — pick all that apply. Prefilled from the brand.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {SELLING_MODES.map((o) => {
+                    const active = sellingModes.includes(o.key);
+                    return (
+                      <button
+                        key={o.key}
+                        type="button"
+                        onClick={() => toggleSellingMode(o.key)}
+                        className={`flex items-start gap-3 text-left p-4 rounded-xl border transition ${
+                          active ? "border-brand-500 bg-brand-50 ring-1 ring-brand-200" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        <span className={`mt-0.5 w-4 h-4 rounded inline-flex items-center justify-center border transition ${
+                          active ? "bg-brand-500 border-brand-500 text-white" : "border-gray-300 bg-white"
+                        }`}>
+                          {active && <CheckIcon className="w-3 h-3" />}
+                        </span>
+                        <span>
+                          <span className={`block text-sm font-semibold ${active ? "text-brand-700" : "text-gray-800"}`}>{o.label}</span>
+                          <span className="block text-xs text-gray-500 mt-1">{o.desc}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Objective</label>
-                <p className="text-xs text-gray-500 mb-3">What this campaign should maximize — prefilled from the brand.</p>
+                <p className="text-xs text-gray-500 mb-3">What this campaign should maximize — limited to what your selling mode supports.</p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {SALES_OPTIMIZATION_GOALS.map((o) => {
+                  {SALES_OPTIMIZATION_GOALS.filter((o) => allowedObjectives.includes(o.key)).map((o) => {
                     const active = objective === o.key;
                     return (
                       <button
@@ -1549,32 +1617,10 @@ export default function FeatureCreateCampaignPage() {
                   })}
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Selling mode</label>
-                <p className="text-xs text-gray-500 mb-3">How you close — product or booked meeting. Prefilled from the brand.</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {SALES_OBJECTIVES.map((o) => {
-                    const active = salesObjective === o.key;
-                    return (
-                      <button
-                        key={o.key}
-                        type="button"
-                        onClick={() => setSalesObjective(o.key)}
-                        className={`text-left p-4 rounded-xl border transition ${
-                          active ? "border-brand-500 bg-brand-50 ring-1 ring-brand-200" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                        }`}
-                      >
-                        <div className={`text-sm font-semibold ${active ? "text-brand-700" : "text-gray-800"}`}>{o.label}</div>
-                        <div className="text-xs text-gray-500 mt-1">{o.desc}</div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
             </div>
           </div>
 
-          {/* 2 · Conversion metrics (feature-level, adapts to objective) */}
+          {/* 2 · Conversion metrics (feature-level, adapts to selling mode × objective) */}
           <div className="bg-white rounded-xl border border-gray-200">
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -1608,72 +1654,75 @@ export default function FeatureCreateCampaignPage() {
                     <Skeleton className="h-9 w-full rounded-lg" />
                   )}
                 </div>
-                {salesObjective === "meeting-booked" ? (
-                  <>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Positive reply → meeting" tip="Of leads who reply positively, the share you turn into a booked meeting." /></label>
-                      {econReady ? (
-                        <div className="relative">
-                          <input type="number" min="0" max="100" step="1" value={econReplyToMeeting} onChange={(e) => updateEcon("replyToMeeting", e.target.value)}
-                            className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
-                        </div>
-                      ) : (
-                        <Skeleton className="h-9 w-full rounded-lg" />
-                      )}
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Website visit → meeting" tip="Of leads who click through to your website, the share that book a meeting." /></label>
-                      {econReady ? (
-                        <div className="relative">
-                          <input type="number" min="0" max="100" step="1" value={econVisitToMeeting} onChange={(e) => updateEcon("visitToMeeting", e.target.value)}
-                            className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
-                        </div>
-                      ) : (
-                        <Skeleton className="h-9 w-full rounded-lg" />
-                      )}
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Meeting → close" tip="Of booked meetings, the share that become paying customers." /></label>
-                      {econReady ? (
-                        <div className="relative">
-                          <input type="number" min="0" max="100" step="1" value={econMeetingToClose} onChange={(e) => updateEcon("meetingToClose", e.target.value)}
-                            className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
-                        </div>
-                      ) : (
-                        <Skeleton className="h-9 w-full rounded-lg" />
-                      )}
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Website visit → signup" tip="Of leads who visit your website, the share that sign up." /></label>
-                      {econReady ? (
-                        <div className="relative">
-                          <input type="number" min="0" max="100" step="1" value={econVisitToSignup} onChange={(e) => updateEcon("visitToSignup", e.target.value)}
-                            className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
-                        </div>
-                      ) : (
-                        <Skeleton className="h-9 w-full rounded-lg" />
-                      )}
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Signup → paid client" tip="Of signups, the share that become paying customers." /></label>
-                      {econReady ? (
-                        <div className="relative">
-                          <input type="number" min="0" max="100" step="1" value={econSignupToPaid} onChange={(e) => updateEcon("signupToPaid", e.target.value)}
-                            className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
-                        </div>
-                      ) : (
-                        <Skeleton className="h-9 w-full rounded-lg" />
-                      )}
-                    </div>
-                  </>
+                {showReplyToMeeting && (
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Positive reply → meeting" tip="Of leads who reply positively, the share you turn into a booked meeting." /></label>
+                    {econReady ? (
+                      <div className="relative">
+                        <input type="number" min="0" max="100" step="1" value={econReplyToMeeting} onChange={(e) => updateEcon("replyToMeeting", e.target.value)}
+                          className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                      </div>
+                    ) : (
+                      <Skeleton className="h-9 w-full rounded-lg" />
+                    )}
+                  </div>
+                )}
+                {showVisitToMeeting && (
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Website visit → meeting" tip="Of leads who click through to your website, the share that book a meeting." /></label>
+                    {econReady ? (
+                      <div className="relative">
+                        <input type="number" min="0" max="100" step="1" value={econVisitToMeeting} onChange={(e) => updateEcon("visitToMeeting", e.target.value)}
+                          className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                      </div>
+                    ) : (
+                      <Skeleton className="h-9 w-full rounded-lg" />
+                    )}
+                  </div>
+                )}
+                {showMeetingToClose && (
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Meeting → close" tip="Of booked meetings, the share that become paying customers." /></label>
+                    {econReady ? (
+                      <div className="relative">
+                        <input type="number" min="0" max="100" step="1" value={econMeetingToClose} onChange={(e) => updateEcon("meetingToClose", e.target.value)}
+                          className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                      </div>
+                    ) : (
+                      <Skeleton className="h-9 w-full rounded-lg" />
+                    )}
+                  </div>
+                )}
+                {showVisitToSignup && (
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Website visit → signup" tip="Of leads who visit your website, the share that sign up." /></label>
+                    {econReady ? (
+                      <div className="relative">
+                        <input type="number" min="0" max="100" step="1" value={econVisitToSignup} onChange={(e) => updateEcon("visitToSignup", e.target.value)}
+                          className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                      </div>
+                    ) : (
+                      <Skeleton className="h-9 w-full rounded-lg" />
+                    )}
+                  </div>
+                )}
+                {showSignupToPaid && (
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Signup → paid client" tip="Of signups, the share that become paying customers." /></label>
+                    {econReady ? (
+                      <div className="relative">
+                        <input type="number" min="0" max="100" step="1" value={econSignupToPaid} onChange={(e) => updateEcon("signupToPaid", e.target.value)}
+                          className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                      </div>
+                    ) : (
+                      <Skeleton className="h-9 w-full rounded-lg" />
+                    )}
+                  </div>
                 )}
               </div>
             </div>
