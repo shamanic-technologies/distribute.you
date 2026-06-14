@@ -6,6 +6,8 @@ import {
   getBrandSalesEconomics,
   saveBrandSalesEconomics,
   type BrandBusinessModel,
+  type BrandFunnelStage,
+  type BrandOptimizationGoal,
   type BrandSalesEconomicsInput,
 } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
@@ -33,7 +35,35 @@ type FormState = {
   meetingToClosePct: string;
   visitToClosePct: string;
   businessModel: BrandBusinessModel | null;
+  funnelStages: BrandFunnelStage[];
+  optimizationGoal: BrandOptimizationGoal;
 };
+
+// The funnel elements a brand can have (multi-select).
+const FUNNEL_STAGES: { value: BrandFunnelStage; label: string; tip: string }[] = [
+  {
+    value: "website_signup",
+    label: "Website Signup",
+    tip: "Visitors create an account / sign up on your website.",
+  },
+  {
+    value: "website_purchase",
+    label: "Website Purchase",
+    tip: "Visitors buy directly on your website (self-serve).",
+  },
+  {
+    value: "sales_meeting",
+    label: "Sales Meeting",
+    tip: "Leads book a sales meeting before becoming customers.",
+  },
+];
+
+// The single metric the brand optimises for ($ Sales is the default).
+const OPTIMIZATION_GOALS: { value: BrandOptimizationGoal; label: string }[] = [
+  { value: "signups", label: "# Signups" },
+  { value: "booked_meetings", label: "# Booked Meetings" },
+  { value: "sales", label: "$ Sales" },
+];
 
 const PCT_FIELDS: { key: PctKey; label: string; tip: string }[] = [
   {
@@ -87,8 +117,15 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
             meetingToClosePct: String(e.meetingToClosePct),
             visitToClosePct: String(e.visitToClosePct),
             businessModel: e.businessModel,
+            funnelStages: e.funnelStages,
+            optimizationGoal: e.optimizationGoal,
           }
-        : { ...DEFAULTS, businessModel: null },
+        : {
+            ...DEFAULTS,
+            businessModel: null,
+            funnelStages: [],
+            optimizationGoal: "sales",
+          },
     );
     hydrated.current = true;
   }, [data]);
@@ -113,6 +150,21 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
     setSaved(false);
   }
 
+  function toggleFunnelStage(stage: BrandFunnelStage) {
+    setForm((f) =>
+      f
+        ? {
+            ...f,
+            funnelStages: f.funnelStages.includes(stage)
+              ? f.funnelStages.filter((s) => s !== stage)
+              : [...f.funnelStages, stage],
+          }
+        : f,
+    );
+    setDirty(true);
+    setSaved(false);
+  }
+
   function handleSave() {
     if (!form) return;
     mutate({
@@ -122,6 +174,8 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
       meetingToClosePct: toInt(form.meetingToClosePct),
       visitToClosePct: toInt(form.visitToClosePct),
       businessModel: form.businessModel,
+      funnelStages: form.funnelStages,
+      optimizationGoal: form.optimizationGoal,
     });
   }
 
@@ -167,6 +221,55 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
                   }`}
                 >
                   {m.toUpperCase()}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Sales funnel elements (multi-select) */}
+        <div className="mb-5">
+          <label className="block text-xs text-gray-500 mb-1.5">Sales funnel</label>
+          <div className="flex flex-wrap gap-2">
+            {FUNNEL_STAGES.map((s) => {
+              const active = form.funnelStages.includes(s.value);
+              return (
+                <button
+                  key={s.value}
+                  type="button"
+                  title={s.tip}
+                  onClick={() => toggleFunnelStage(s.value)}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-lg border transition ${
+                    active
+                      ? "bg-brand-50 border-brand-200 text-brand-700 ring-1 ring-brand-200"
+                      : "bg-white border-gray-200 text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  {s.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Optimization goal (single-choice) */}
+        <div className="mb-5">
+          <label className="block text-xs text-gray-500 mb-1.5">Optimization goal</label>
+          <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5">
+            {OPTIMIZATION_GOALS.map((g) => {
+              const active = form.optimizationGoal === g.value;
+              return (
+                <button
+                  key={g.value}
+                  type="button"
+                  onClick={() => update("optimizationGoal", g.value)}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition ${
+                    active
+                      ? "bg-white shadow-sm text-brand-700 ring-1 ring-brand-200"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  {g.label}
                 </button>
               );
             })}
