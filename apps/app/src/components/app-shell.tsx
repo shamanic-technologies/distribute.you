@@ -1,32 +1,35 @@
 "use client";
 
 import { useState } from "react";
-import { PIPELINE, STAGE_META, OUTCOME_TOTALS, type PipeLead, type Stage, type Funnel } from "@/lib/mock-data";
+import {
+  PIPELINE, STAGE_META, OUTCOME_TOTALS, MOCK_CAMPAIGNS,
+  type PipeLead, type Stage, type Funnel, type MockCampaign,
+} from "@/lib/mock-data";
 import type { Brand } from "./onboarding-overlay";
 import {
   OverviewIcon, InfoIcon, ChevronDownIcon, ChevronLeftIcon, PlusIcon, UserIcon,
-  CardIcon, GearIcon, LogoutIcon, CheckIcon, CloseIcon, CalendarIcon, CartIcon, MenuIcon,
-  LeadsIcon,
+  CardIcon, GearIcon, LogoutIcon, CheckIcon, CloseIcon, CalendarIcon, CartIcon,
+  MenuIcon, LeadsIcon, CampaignIcon,
 } from "./icons";
 
 type Tab =
-  | "overview" | "signups" | "meetings" | "purchases" | "help"
-  | "settings-brand" | "settings-org" | "settings-account" | "settings-billing";
+  | "overview" | "signups" | "meetings" | "purchases" | "campaigns" | "help"
+  | "settings-brand" | "settings-org" | "settings-account" | "settings-billing" | "settings-campaign";
 
 const TAB_TITLES: Record<Tab, string> = {
-  overview:          "Overview",
-  signups:           "Signups",
-  meetings:          "Meetings Booked",
-  purchases:         "Purchases",
-  help:              "Help",
-  "settings-brand":   "Brand settings",
-  "settings-org":     "Org settings",
-  "settings-account": "My account",
-  "settings-billing": "Billing",
+  overview:            "Overview",
+  signups:             "Signups",
+  meetings:            "Meetings Booked",
+  purchases:           "Purchases",
+  campaigns:           "Campaigns",
+  help:                "Help",
+  "settings-brand":    "Brand settings",
+  "settings-org":      "Org settings",
+  "settings-account":  "My account",
+  "settings-billing":  "Billing",
+  "settings-campaign": "Campaign settings",
 };
 
-// Per-page funnel config. entry = the measured/inferred stage (carries a probability),
-// terminal = the confirmed stage. Stale once an entry-stage row exceeds staleDays.
 type PageKey = "signups" | "meetings" | "purchases";
 interface PageCfg {
   key: PageKey; title: string; funnel: Funnel; entry: Stage; terminal: Stage;
@@ -54,7 +57,6 @@ function cfgForLead(l: PipeLead): PageCfg {
   return PAGE_CFG.signups;
 }
 
-/* ── Brand logo via favicon service, initials fallback ── */
 function BrandAvatar({ brand, size = 24 }: { brand: Brand; size?: number }) {
   const [failed, setFailed] = useState(false);
   const domain = hostnameOf(brand.url);
@@ -76,7 +78,6 @@ function StageChip({ stage }: { stage: Stage }) {
   return <span className={`pipe-status pipe-${tone}`}>{label}</span>;
 }
 
-/* ── Live badge (reusable inline component) ── */
 function LiveBadge() {
   return (
     <span className="app-live app-live-body">
@@ -85,11 +86,7 @@ function LiveBadge() {
   );
 }
 
-/* ── Breadcrumb ── */
-function Breadcrumb({ tab, brandName }: { tab: Tab; brandName: string }) {
-  if (tab === "overview") {
-    return <span className="app-topbar-title">{brandName}</span>;
-  }
+function Breadcrumb({ tab, campaignName }: { tab: Tab; campaignName: string | null }) {
   if (tab.startsWith("settings-")) {
     return (
       <span className="app-topbar-title">
@@ -99,13 +96,17 @@ function Breadcrumb({ tab, brandName }: { tab: Tab; brandName: string }) {
       </span>
     );
   }
-  return (
-    <span className="app-topbar-title">
-      <span className="app-breadcrumb-parent">{brandName}</span>
-      <span className="app-breadcrumb-sep"> › </span>
-      <span className="app-breadcrumb-current">{TAB_TITLES[tab]}</span>
-    </span>
-  );
+  if (campaignName) {
+    if (tab === "overview") return <span className="app-topbar-title">{campaignName}</span>;
+    return (
+      <span className="app-topbar-title">
+        <span className="app-breadcrumb-parent">{campaignName}</span>
+        <span className="app-breadcrumb-sep"> › </span>
+        <span className="app-breadcrumb-current">{TAB_TITLES[tab] ?? tab}</span>
+      </span>
+    );
+  }
+  return <span className="app-topbar-title">{TAB_TITLES[tab] ?? "Overview"}</span>;
 }
 
 /* ══════════════════════════════════════════════
@@ -125,22 +126,40 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
   const [addOpen, setAddOpen] = useState(false);
   const [newUrl, setNewUrl] = useState("");
   const [navOpen, setNavOpen] = useState(false);
+  const [activeCampaign, setActiveCampaign] = useState<MockCampaign | null>(null);
 
   const activeBrand = brands[activeIdx] ?? brand;
   const userEmail = `adam@${hostnameOf(activeBrand.url)}`;
+  const [workspaceName] = useState(() => hostnameOf(brand.url) || brand.name);
+
+  // Leads filtered to the active campaign (or all in brand mode)
+  const visibleLeads = activeCampaign
+    ? leads.filter((l) => activeCampaign.leadIds.includes(l.id))
+    : leads;
+
+  // KPI totals — campaign-scoped or global
+  const totals = activeCampaign ? {
+    signups:         visibleLeads.filter(l => l.funnel === "website" && (l.stage === "signed-up" || l.stage === "purchased")).length,
+    meetings:        visibleLeads.filter(l => l.funnel === "meeting" && l.stage === "meeting-booked").length,
+    purchases:       visibleLeads.filter(l => l.stage === "purchased").length,
+    pipelineRevenue: visibleLeads.reduce((s, l) => s + expectedRev(l, cfgForLead(l)), 0),
+  } : OUTCOME_TOTALS;
 
   const closeMenus = () => { setBrandMenuOpen(false); setUserMenuOpen(false); };
 
-  function selectBrand(i: number) { setActiveIdx(i); setBrandMenuOpen(false); setNavOpen(false); setTab("overview"); }
+  function selectBrand(i: number) { setActiveIdx(i); setBrandMenuOpen(false); setNavOpen(false); setTab("overview"); setActiveCampaign(null); }
   function addBrand() {
     const url = newUrl.trim();
     if (!url) return;
     const norm = /^https?:\/\//.test(url) ? url : `https://${url}`;
     setBrands((b) => [...b, { name: hostnameOf(norm), url: norm }]);
     setActiveIdx(brands.length);
-    setNewUrl(""); setAddOpen(false); setTab("overview");
+    setNewUrl(""); setAddOpen(false); setTab("overview"); setActiveCampaign(null);
   }
   function goSub(t: Tab) { setTab(t); setUserMenuOpen(false); setNavOpen(false); }
+
+  function enterCampaign(c: MockCampaign) { setActiveCampaign(c); setTab("overview"); setNavOpen(false); }
+  function exitCampaign() { setActiveCampaign(null); setTab("campaigns"); }
 
   function confirmStage(l: PipeLead, c: PageCfg) {
     setLeads((ls) => ls.map((x) => x.id === l.id ? {
@@ -168,30 +187,44 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
     <div className={`app-shell${hidden ? " app-hidden" : ""}`}>
       {/* ── Sidebar ── */}
       <aside className={`app-sidebar${navOpen ? " open" : ""}`}>
-        {/* Brand switcher — height-aligned with topbar */}
-        <div className="app-brand-switcher">
-          <button className="app-brand-trigger" onClick={() => { setBrandMenuOpen((v) => !v); setUserMenuOpen(false); }}>
-            <BrandAvatar brand={activeBrand} size={26} />
-            <div className="app-brand-meta">
-              <div className="app-brand-name">{activeBrand.name}</div>
-              <div className="app-brand-url">{hostnameOf(activeBrand.url)}</div>
-            </div>
-            <ChevronDownIcon className="app-brand-caret" width={14} height={14} />
-          </button>
-          {brandMenuOpen && (
-            <div className="app-menu app-brand-menu">
-              <div className="app-menu-label">Brands</div>
-              {brands.map((b, i) => (
-                <button key={b.url + i} className="app-menu-item" onClick={() => selectBrand(i)}>
-                  <BrandAvatar brand={b} size={20} />
-                  <span className="app-menu-item-name">{b.name}</span>
-                  {i === activeIdx && <CheckIcon className="app-menu-check" width={13} height={13} />}
+
+        {/* Workspace → Brand → Campaign hierarchy */}
+        <div className="app-workspace-header">
+          <div className="app-workspace-row">
+            <span className="app-workspace-icon">{workspaceName.slice(0, 1).toUpperCase()}</span>
+            <span className="app-workspace-name">{workspaceName}</span>
+          </div>
+
+          <div className="app-brand-row">
+            <button className="app-brand-trigger" onClick={() => { setBrandMenuOpen((v) => !v); setUserMenuOpen(false); }}>
+              <BrandAvatar brand={activeBrand} size={16} />
+              <span className="app-brand-name">{activeBrand.name}</span>
+              <ChevronDownIcon className="app-brand-caret" width={11} height={11} />
+            </button>
+            {brandMenuOpen && (
+              <div className="app-menu app-brand-menu">
+                <div className="app-menu-label">Brands</div>
+                {brands.map((b, i) => (
+                  <button key={b.url + i} className="app-menu-item" onClick={() => selectBrand(i)}>
+                    <BrandAvatar brand={b} size={18} />
+                    <span className="app-menu-item-name">{b.name}</span>
+                    {i === activeIdx && <CheckIcon className="app-menu-check" width={13} height={13} />}
+                  </button>
+                ))}
+                <div className="app-menu-sep" />
+                <button className="app-menu-item app-menu-add" onClick={() => { setBrandMenuOpen(false); setAddOpen(true); }}>
+                  <PlusIcon width={14} height={14} /> Add brand
                 </button>
-              ))}
-              <div className="app-menu-sep" />
-              <button className="app-menu-item app-menu-add" onClick={() => { setBrandMenuOpen(false); setAddOpen(true); }}>
-                <PlusIcon width={14} height={14} /> Add brand
+              </div>
+            )}
+          </div>
+
+          {activeCampaign && (
+            <div className="app-campaign-row">
+              <button className="app-campaign-back" onClick={exitCampaign} title="Back to all campaigns">
+                <ChevronLeftIcon width={11} height={11} />
               </button>
+              <span className="app-campaign-name">{activeCampaign.name}</span>
             </div>
           )}
         </div>
@@ -199,19 +232,23 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
         {/* Main nav */}
         <ul className="app-nav">
           {navItem("overview",  <OverviewIcon />,  "Overview")}
-          {navItem("signups",   <UserIcon />,      "Signups",         OUTCOME_TOTALS.signups)}
-          {navItem("meetings",  <CalendarIcon />,  "Meetings Booked", OUTCOME_TOTALS.meetings)}
-          {navItem("purchases", <CartIcon />,      "Purchases",       OUTCOME_TOTALS.purchases)}
+          {navItem("signups",   <UserIcon />,      "Signups",         totals.signups)}
+          {navItem("meetings",  <CalendarIcon />,  "Meetings Booked", totals.meetings)}
+          {navItem("purchases", <CartIcon />,      "Purchases",       totals.purchases)}
+          {!activeCampaign && navItem("campaigns", <CampaignIcon />, "Campaigns", MOCK_CAMPAIGNS.length)}
         </ul>
 
-        {/* Settings section */}
-        <div className="app-nav-section">Settings</div>
-        <ul className="app-nav app-nav-settings">
-          {navItem("settings-brand",   <GearIcon />,   "Brand settings")}
-          {navItem("settings-org",     <LeadsIcon />,  "Org settings")}
-          {navItem("settings-account", <UserIcon />,   "My account")}
-          {navItem("settings-billing", <CardIcon />,   "Billing")}
-        </ul>
+        {/* Campaign settings button (campaign mode only) */}
+        {activeCampaign && (
+          <div className="app-campaign-settings-block">
+            <button
+              className={`app-campaign-settings-link${tab === "settings-campaign" ? " active" : ""}`}
+              onClick={() => { setTab("settings-campaign"); setNavOpen(false); }}
+            >
+              <GearIcon width={14} height={14} /> Campaign settings
+            </button>
+          </div>
+        )}
 
         {/* Footer */}
         <ul className="app-nav app-nav-footer">
@@ -238,8 +275,9 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
               </div>
               <div className="app-menu-sep" />
               <button className="app-menu-item" onClick={() => goSub("settings-account")}><UserIcon width={15} height={15} /> My account</button>
-              <button className="app-menu-item" onClick={() => goSub("settings-billing")}><CardIcon width={15} height={15} /> Billing</button>
               <button className="app-menu-item" onClick={() => goSub("settings-brand")}><GearIcon width={15} height={15} /> Brand settings</button>
+              <button className="app-menu-item" onClick={() => goSub("settings-org")}><LeadsIcon width={15} height={15} /> Org settings</button>
+              <button className="app-menu-item" onClick={() => goSub("settings-billing")}><CardIcon width={15} height={15} /> Billing</button>
               <div className="app-menu-sep" />
               <button className="app-menu-item app-menu-danger" onClick={onReset}><LogoutIcon width={15} height={15} /> Sign out</button>
             </div>
@@ -256,20 +294,22 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
           <button className="app-burger" onClick={() => setNavOpen(true)} aria-label="Open menu">
             <MenuIcon width={18} height={18} />
           </button>
-          <Breadcrumb tab={tab} brandName={activeBrand.name} />
+          <Breadcrumb tab={tab} campaignName={activeCampaign?.name ?? null} />
           <div className="app-topbar-right" />
         </div>
 
         <div className="app-content">
-          {tab === "overview"          && <OverviewTab  leads={leads} onOpen={setOpenId} />}
-          {tab === "signups"           && <PipelinePage cfg={PAGE_CFG.signups}   leads={leads} onOpen={setOpenId} />}
-          {tab === "meetings"          && <PipelinePage cfg={PAGE_CFG.meetings}  leads={leads} onOpen={setOpenId} />}
-          {tab === "purchases"         && <PipelinePage cfg={PAGE_CFG.purchases} leads={leads} onOpen={setOpenId} />}
+          {tab === "overview"          && <OverviewTab leads={visibleLeads} onOpen={setOpenId} totals={totals} />}
+          {tab === "signups"           && <PipelinePage cfg={PAGE_CFG.signups}   leads={visibleLeads} onOpen={setOpenId} campaignMode={!!activeCampaign} />}
+          {tab === "meetings"          && <PipelinePage cfg={PAGE_CFG.meetings}  leads={visibleLeads} onOpen={setOpenId} campaignMode={!!activeCampaign} />}
+          {tab === "purchases"         && <PipelinePage cfg={PAGE_CFG.purchases} leads={visibleLeads} onOpen={setOpenId} campaignMode={!!activeCampaign} />}
+          {tab === "campaigns"         && !activeCampaign && <CampaignsPage campaigns={MOCK_CAMPAIGNS} leads={leads} onSelect={enterCampaign} />}
           {tab === "help"              && <HelpTab />}
           {tab === "settings-account"  && <AccountTab email={userEmail} />}
           {tab === "settings-billing"  && <BillingTab />}
           {tab === "settings-brand"    && <BrandSettingsTab brand={activeBrand} />}
           {tab === "settings-org"      && <OrgSettingsTab email={userEmail} />}
+          {tab === "settings-campaign" && activeCampaign && <CampaignSettingsPage campaign={activeCampaign} />}
         </div>
       </main>
 
@@ -302,6 +342,85 @@ export function AppShell({ brand, hidden, onReset }: { brand: Brand; hidden: boo
         onConfirm={confirmStage}
         onRevert={revertStage}
       />
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════
+   CAMPAIGNS LIST PAGE
+═══════════════════════════════════════════════ */
+function CampaignsPage({ campaigns, leads, onSelect }: {
+  campaigns: MockCampaign[];
+  leads: PipeLead[];
+  onSelect: (c: MockCampaign) => void;
+}) {
+  const liveCount  = campaigns.filter(c => c.status === "live").length;
+  const liveBudget = campaigns.filter(c => c.status === "live").reduce((s, c) => s + c.budgetPerDay, 0);
+
+  function cStats(c: MockCampaign) {
+    const cl = leads.filter(l => c.leadIds.includes(l.id));
+    return {
+      signups:   cl.filter(l => l.funnel === "website" && (l.stage === "signed-up" || l.stage === "purchased")).length,
+      meetings:  cl.filter(l => l.funnel === "meeting" && l.stage === "meeting-booked").length,
+      purchases: cl.filter(l => l.stage === "purchased").length,
+      revenue:   cl.reduce((s, l) => s + expectedRev(l, cfgForLead(l)), 0),
+    };
+  }
+
+  const totalPurchases = campaigns.reduce((s, c) => s + cStats(c).purchases, 0);
+
+  return (
+    <div>
+      <div className="kpi-strip" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+        <div className="kpi-card">
+          <div className="kpi-label">Active campaigns</div>
+          <div className="kpi-val accent">{liveCount}</div>
+          <div className="kpi-meta">{campaigns.length - liveCount} paused</div>
+        </div>
+        <div className="kpi-card">
+          <div className="kpi-label">Daily budget</div>
+          <div className="kpi-val">${liveBudget}</div>
+          <div className="kpi-meta">across live campaigns</div>
+        </div>
+        <div className="kpi-card">
+          <div className="kpi-label">Total purchases</div>
+          <div className="kpi-val green">{totalPurchases}</div>
+          <div className="kpi-meta">confirmed</div>
+        </div>
+      </div>
+
+      <div className="leads-panel">
+        <div className="leads-header">
+          <span className="leads-title">Campaigns</span>
+          <span className="leads-count">{campaigns.length} total</span>
+        </div>
+        <table className="leads-table">
+          <thead><tr>
+            <th>Campaign</th><th>Status</th><th>Budget</th>
+            <th>Signups</th><th>Meetings</th><th>Purchases</th><th>Pipeline</th>
+          </tr></thead>
+          <tbody>
+            {campaigns.map(c => {
+              const s = cStats(c);
+              return (
+                <tr key={c.id} onClick={() => onSelect(c)}>
+                  <td><div className="lead-org-name">{c.name}</div></td>
+                  <td>
+                    {c.status === "live"
+                      ? <span className="pipe-status pipe-green">● live</span>
+                      : <span className="pipe-status" style={{ background: "var(--surface-hi)", color: "var(--muted)", borderColor: "var(--border-hi)" }}>○ paused</span>}
+                  </td>
+                  <td style={monoCell}>{c.budgetPerDay > 0 ? `$${c.budgetPerDay}/day` : "—"}</td>
+                  <td style={monoCell}>{s.signups}</td>
+                  <td style={monoCell}>{s.meetings}</td>
+                  <td style={monoCell}>{s.purchases}</td>
+                  <td style={monoCell}>{fmtUsd(s.revenue)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -370,7 +489,9 @@ function CampaignSettingsPanel({ cfg, onClose }: { cfg: PageCfg; onClose: () => 
   );
 }
 
-function PipelinePage({ cfg, leads, onOpen }: { cfg: PageCfg; leads: PipeLead[]; onOpen: (id: number) => void }) {
+function PipelinePage({ cfg, leads, onOpen, campaignMode }: {
+  cfg: PageCfg; leads: PipeLead[]; onOpen: (id: number) => void; campaignMode?: boolean;
+}) {
   const [sub, setSub] = useState<"active" | "stale">("active");
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -388,17 +509,18 @@ function PipelinePage({ cfg, leads, onOpen }: { cfg: PageCfg; leads: PipeLead[];
           <span className="leads-count">{fmtUsd(expectedTotal)} expected</span>
           <LiveBadge />
         </div>
-        <button
-          className={`btn btn-g campaign-settings-btn${settingsOpen ? " active" : ""}`}
-          onClick={() => setSettingsOpen((v) => !v)}
-          title="Campaign settings"
-        >
-          <GearIcon width={13} height={13} />
-          Settings
-        </button>
+        {!campaignMode && (
+          <button
+            className={`btn btn-g campaign-settings-btn${settingsOpen ? " active" : ""}`}
+            onClick={() => setSettingsOpen((v) => !v)}
+            title="Campaign settings"
+          >
+            <GearIcon width={13} height={13} /> Settings
+          </button>
+        )}
       </div>
 
-      {settingsOpen && <CampaignSettingsPanel cfg={cfg} onClose={() => setSettingsOpen(false)} />}
+      {!campaignMode && settingsOpen && <CampaignSettingsPanel cfg={cfg} onClose={() => setSettingsOpen(false)} />}
 
       <div className="leads-tabs">
         <button className={`leads-tab${sub === "active" ? " active" : ""}`} onClick={() => setSub("active")}>Active <span className="app-nav-count">{active.length}</span></button>
@@ -503,11 +625,12 @@ function PipelineChart() {
   );
 }
 
-function OverviewTab({ leads, onOpen }: { leads: PipeLead[]; onOpen: (id: number) => void }) {
+type Totals = { signups: number; meetings: number; purchases: number; pipelineRevenue: number };
+
+function OverviewTab({ leads, onOpen, totals }: { leads: PipeLead[]; onOpen: (id: number) => void; totals: Totals }) {
   const recent = [...leads].sort((a, b) => a.daysAgo - b.daysAgo).slice(0, 5);
   return (
     <div>
-      {/* Live indicator */}
       <div className="overview-live-row">
         <LiveBadge />
         <span className="overview-live-label">Campaign running — distribute is actively sending outreach</span>
@@ -516,22 +639,22 @@ function OverviewTab({ leads, onOpen }: { leads: PipeLead[]; onOpen: (id: number
       <div className="kpi-strip">
         <div className="kpi-card">
           <div className="kpi-label">Sign Ups <KpiInfo tip="Expected signups from your website visits" /></div>
-          <div className="kpi-val">{OUTCOME_TOTALS.signups}</div>
+          <div className="kpi-val">{totals.signups}</div>
           <div className="kpi-meta"><span className="kpi-delta up">+18%</span> vs last week</div>
         </div>
         <div className="kpi-card">
           <div className="kpi-label">Meetings Booked <KpiInfo tip="Expected meetings booked from your positive replies" /></div>
-          <div className="kpi-val purple">{OUTCOME_TOTALS.meetings}</div>
+          <div className="kpi-val purple">{totals.meetings}</div>
           <div className="kpi-meta"><span className="kpi-delta up">27%</span> booking rate</div>
         </div>
         <div className="kpi-card">
           <div className="kpi-label">Purchases <KpiInfo tip="Expected purchases from signups and meetings booked" /></div>
-          <div className="kpi-val green">{OUTCOME_TOTALS.purchases}</div>
+          <div className="kpi-val green">{totals.purchases}</div>
           <div className="kpi-meta"><span className="kpi-delta up">2.2%</span> purchase rate</div>
         </div>
         <div className="kpi-card">
           <div className="kpi-label">Pipeline revenue <KpiInfo tip="Expected revenue from purchases" /></div>
-          <div className="kpi-val green">{fmtUsd(OUTCOME_TOTALS.pipelineRevenue)}</div>
+          <div className="kpi-val green">{fmtUsd(totals.pipelineRevenue)}</div>
           <div className="kpi-meta">This month</div>
         </div>
       </div>
@@ -813,6 +936,46 @@ function OrgSettingsTab({ email }: { email: string }) {
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════
+   SETTINGS — CAMPAIGN
+═══════════════════════════════════════════════ */
+function CampaignSettingsPage({ campaign }: { campaign: MockCampaign }) {
+  return (
+    <div className="leads-panel" style={{ maxWidth: 640 }}>
+      <SettingsHeader
+        title="Campaign settings"
+        action={<button className="btn btn-p" style={{ fontSize: "var(--fs-xs)", padding: "0.35rem 0.75rem" }}>Save changes</button>}
+      />
+      <div className="settings-sub-nav">
+        <span className="settings-sub-nav-item active">General</span>
+        <span className="settings-sub-nav-item">Budget</span>
+        <span className="settings-sub-nav-item">Targeting</span>
+        <span className="settings-sub-nav-item">Funnel</span>
+      </div>
+      <div style={{ padding: "1.5rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1.5rem" }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--text)" }}>{campaign.name}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "0.25rem" }}>
+              {campaign.status === "live"
+                ? <span className="pipe-status pipe-green" style={{ fontSize: "var(--fs-xs)" }}>● live</span>
+                : <span className="pipe-status" style={{ fontSize: "var(--fs-xs)", background: "var(--surface-hi)", color: "var(--muted)", borderColor: "var(--border-hi)" }}>○ paused</span>}
+              {campaign.budgetPerDay > 0 && <span style={{ fontSize: "var(--fs-xs)", color: "var(--muted)" }}>${campaign.budgetPerDay}/day budget</span>}
+            </div>
+          </div>
+        </div>
+        <div className="ob-field-table">
+          <SettingRow label="Name"     value={campaign.name} />
+          <SettingRow label="Budget"   value={`$${campaign.budgetPerDay} / day`} />
+          <SettingRow label="Status"   value={campaign.status} />
+          <SettingRow label="Audience" value="Founders and AI teams at early-stage SaaS building with LLMs" />
+          <SettingRow label="Goal"     value="Sign-ups, Meetings, Purchases" />
+        </div>
       </div>
     </div>
   );

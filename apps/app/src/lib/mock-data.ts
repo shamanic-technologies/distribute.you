@@ -254,6 +254,23 @@ export const PIPELINE: PipeLead[] = [
   },
 ];
 
+/* ───────────────────────────────────────────────
+   Mock campaigns
+   ─────────────────────────────────────────────── */
+export interface MockCampaign {
+  id: number;
+  name: string;
+  status: "live" | "paused";
+  budgetPerDay: number;
+  leadIds: number[]; // which pipeline leads belong to this campaign
+}
+
+export const MOCK_CAMPAIGNS: MockCampaign[] = [
+  { id: 1, name: "SaaS founders — cold outreach", status: "live",   budgetPerDay: 58, leadIds: [1, 2, 3, 4, 9, 10] },
+  { id: 2, name: "AI teams — LinkedIn scrape",    status: "live",   budgetPerDay: 29, leadIds: [5, 6, 11] },
+  { id: 3, name: "Startup CTOs — newsletter",     status: "paused", budgetPerDay: 0,  leadIds: [7, 8, 12] },
+];
+
 export interface SequenceStep {
   day: string;
   tag: string;
