@@ -1,0 +1,143 @@
+import { auth } from "@clerk/nextjs/server";
+import { NextRequest, NextResponse } from "next/server";
+import { checkProxyOrg } from "@/lib/proxy-org";
+
+export const maxDuration = 300;
+
+const API_URL =
+  process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
+const API_KEY = process.env.ADMIN_DISTRIBUTE_API_KEY;
+
+async function proxyRequest(
+  req: NextRequest,
+  segmentData: { params: Promise<{ path: string[] }> }
+) {
+  try {
+    const { userId: clerkUserId, orgId: clerkOrgId, sessionClaims } = await auth();
+    if (!clerkUserId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!API_KEY) {
+      console.error("[api-proxy] ADMIN_DISTRIBUTE_API_KEY env var is not set");
+      return NextResponse.json(
+        { error: "API key not configured" },
+        { status: 500 }
+      );
+    }
+    if (!clerkOrgId) {
+      return NextResponse.json(
+        { error: "No active organization. Please complete onboarding." },
+        { status: 403 }
+      );
+    }
+
+    // Fail closed if the org the UI is rendering (x-active-org-id) disagrees with
+    // the session JWT org. Never forward under the wrong org (DIS-143).
+    const orgErr = checkProxyOrg(clerkOrgId, req.headers.get("x-active-org-id"));
+    if (orgErr) return NextResponse.json(orgErr.body, { status: orgErr.status });
+
+    const { path } = await segmentData.params;
+    const url = new URL(`/v1/${path.join("/")}`, API_URL);
+    req.nextUrl.searchParams.forEach((value, key) => {
+      url.searchParams.set(key, value);
+    });
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "X-API-Key": API_KEY,
+      "x-external-org-id": clerkOrgId,
+      "x-external-user-id": clerkUserId,
+    };
+
+    // Forward optional context headers from client
+    for (const key of [
+      "x-brand-id",
+      "x-campaign-id",
+      "x-feature-slug",
+      "x-workflow-slug",
+    ]) {
+      const value = req.headers.get(key);
+      if (value) headers[key] = value;
+    }
+
+    // Identity-enrichment headers read from the session-token claims (DIS-111)
+    // instead of a per-request currentUser() round-trip to Clerk. The claims are
+    // `{{user.primary_email_address}}` / `{{user.first_name}}` / `{{user.last_name}}`.
+    if (sessionClaims?.email) headers["x-email"] = sessionClaims.email;
+    if (sessionClaims?.firstName) headers["x-first-name"] = sessionClaims.firstName;
+    if (sessionClaims?.lastName) headers["x-last-name"] = sessionClaims.lastName;
+
+    const body =
+      req.method !== "GET" && req.method !== "HEAD"
+        ? await req.text()
+        : undefined;
+
+    const res = await fetch(url.toString(), {
+      method: req.method,
+      headers,
+      body,
+    });
+
+    const contentType = res.headers.get("Content-Type") || "application/json";
+
+    // Stream SSE responses through instead of buffering
+    if (contentType.includes("text/event-stream") && res.body) {
+      return new NextResponse(res.body, {
+        status: res.status,
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+        },
+      });
+    }
+
+    const data = await res.text();
+    return new NextResponse(data, {
+      status: res.status,
+      headers: { "Content-Type": contentType },
+    });
+  } catch (err) {
+    const { path } = await segmentData.params;
+    console.error(`[api-proxy] ${req.method} /v1/${path.join("/")} failed:`, err);
+    return NextResponse.json(
+      { error: "Proxy error", detail: err instanceof Error ? err.message : String(err) },
+      { status: 502 }
+    );
+  }
+}
+
+export async function GET(
+  req: NextRequest,
+  segmentData: { params: Promise<{ path: string[] }> }
+) {
+  return proxyRequest(req, segmentData);
+}
+
+export async function POST(
+  req: NextRequest,
+  segmentData: { params: Promise<{ path: string[] }> }
+) {
+  return proxyRequest(req, segmentData);
+}
+
+export async function PUT(
+  req: NextRequest,
+  segmentData: { params: Promise<{ path: string[] }> }
+) {
+  return proxyRequest(req, segmentData);
+}
+
+export async function DELETE(
+  req: NextRequest,
+  segmentData: { params: Promise<{ path: string[] }> }
+) {
+  return proxyRequest(req, segmentData);
+}
+
+export async function PATCH(
+  req: NextRequest,
+  segmentData: { params: Promise<{ path: string[] }> }
+) {
+  return proxyRequest(req, segmentData);
+}

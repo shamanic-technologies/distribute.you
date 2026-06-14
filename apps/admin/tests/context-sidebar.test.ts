@@ -1,0 +1,151 @@
+import { describe, it, expect } from "vitest";
+import * as fs from "fs";
+import * as path from "path";
+
+describe("Context sidebar", () => {
+  const sidebarPath = path.join(__dirname, "../src/components/context-sidebar.tsx");
+
+  it("should exist", () => {
+    expect(fs.existsSync(sidebarPath)).toBe(true);
+  });
+
+  it("should be a client component", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    expect(content).toContain('"use client"');
+  });
+
+  it("should import useFeatures from features-context", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    expect(content).toContain("useFeatures");
+    expect(content).toContain("@/lib/features-context");
+  });
+
+  it("should handle all navigation levels", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    expect(content).toContain('"app"');
+    expect(content).toContain('"org"');
+    expect(content).toContain('"brand"');
+    expect(content).toContain('"feature"');
+    expect(content).toContain('"campaign"');
+  });
+
+  it("should return null for campaign level (defers to CampaignSidebar)", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    expect(content).toContain('case "campaign"');
+    expect(content).toContain("return null");
+  });
+
+  it("should have focused app-level public analytics links instead of feature links", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    expect(content).toContain("Unique visitors");
+    expect(content).toContain("Signup conversions");
+    expect(content).toContain("Cards added");
+    expect(content).toContain("/?view=landing");
+    expect(content).not.toContain('href: `/features/${f.slug}`');
+  });
+
+  it("should NOT have API Keys at app level", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    expect(content).not.toContain('href: "/api-keys"');
+  });
+
+  it("should have API Keys at org level", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    expect(content).toContain('`/orgs/${orgId}/api-keys`');
+  });
+
+  it("should NOT have a Workflows link in app-level sidebar", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    expect(content).not.toContain('href: "/workflows"');
+  });
+
+  it("should have brand-level items with feature links", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    expect(content).toContain('"Brand Info"');
+    expect(content).toContain("features/");
+  });
+
+  it("should grey out coming soon features with a tag", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    expect(content).toContain("comingSoon");
+    expect(content).toContain("Coming soon");
+    expect(content).toContain("opacity-60");
+    expect(content).toContain("!f.implemented");
+  });
+  it("should NOT have 'All Organizations' back link in org sidebar", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    expect(content).not.toContain('"All Organizations"');
+  });
+
+  it("should have Brands link at org level", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    expect(content).toContain('`/orgs/${orgId}/brands`');
+  });
+
+  it("should have Features section in org sidebar with useFeatures", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    // OrgLevelSidebar maps features from useFeatures to featureItems
+    expect(content).toContain("useFeatures");
+    expect(content).toContain("featureItems");
+  });
+
+  it("should NOT have a Tools section in brand sidebar (outlets and journalists moved to campaign modules)", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    expect(content).not.toContain("/tools/outlets");
+    expect(content).not.toContain("/tools/journalists");
+    expect(content).not.toContain("/tools/press-kits");
+  });
+
+  it("should have brand back link point to brands page", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    expect(content).toContain('backLabel="Brands"');
+    expect(content).toContain('`/orgs/${orgId}/brands`');
+  });
+
+  it("should have unified Keys entry at org level", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    expect(content).toContain('"Keys"');
+    expect(content).toContain('`/orgs/${orgId}/api-keys`');
+  });
+
+  it("should have Workflows link in app feature sidebar", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    expect(content).toContain('"Workflows"');
+    expect(content).toContain('`${basePath}/workflows`');
+  });
+
+  it("wires the featureSettings nav level to the EXISTING /settings + /workflows routes (not an orphan)", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    // Feature Settings sub-level: GA landing (/settings, Sales Economics) +
+    // staff-only Workflows. Both are real routes (no removed/404 route, unlike
+    // the prior dead `/settings` link this guard originally protected against).
+    expect(content).toContain("featureSettings");
+    expect(content).toContain("FeatureSettingsLevelSidebar");
+    expect(content).toContain('case "featureSettings"');
+    expect(content).toContain('`${basePath}/settings`');
+    expect(content).toContain('`${basePath}/workflows`');
+  });
+
+  it("the Feature Settings entry is GA (no flag); only Workflows under it is alpha", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    // Not the old dead `id:"settings" label:"Settings"` pattern…
+    expect(content).not.toContain('id: "settings", label: "Settings"');
+    // …it's the GA Feature Settings entry pointing at the real /settings landing.
+    expect(content).toContain('label: "Feature Settings"');
+    // Workflows (not Feature Settings) is what stays alpha-gated.
+    expect(content).toContain('FEATURE_GATES["workflows"]');
+    expect(content).not.toContain('FEATURE_GATES["feature-settings"]');
+  });
+
+  it("keeps the feature-level Workflows route (under Feature Settings, staff-only)", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    expect(content).toContain('`${basePath}/workflows`');
+  });
+});
+
+describe("Old sidebar removed", () => {
+  it("should not have the old sidebar.tsx file", () => {
+    const oldSidebar = path.join(__dirname, "../src/components/sidebar.tsx");
+    expect(fs.existsSync(oldSidebar)).toBe(false);
+  });
+});
