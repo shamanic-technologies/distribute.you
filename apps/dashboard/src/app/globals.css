@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
@@ -7,18 +7,24 @@
 
 /* ── Theme ────────────────────────────────────────────────────────── */
 @theme {
-  --color-brand-50: #fdf2f8;
-  --color-brand-100: #fce7f3;
-  --color-brand-200: #fbcfe8;
-  --color-brand-300: #f9a8d4;
-  --color-brand-400: #f472b6;
-  --color-brand-500: #ec4899;
-  --color-brand-600: #db2777;
-  --color-brand-700: #be185d;
-  --color-brand-800: #9d174d;
-  --color-brand-900: #831843;
+  /* Brand = the LANDING accent (indigo-blue, OKLCH hue 264). The served
+   * landing's --accent is oklch(50% 0.250 264) in light / oklch(64% 0.220 264)
+   * in dark — NOT pink. brand-600 anchors the landing light accent so every
+   * `brand-*` Tailwind utility recolors to the landing in one place. */
+  --color-brand-50: oklch(97% 0.018 264);
+  --color-brand-100: oklch(93% 0.04 264);
+  --color-brand-200: oklch(87% 0.08 264);
+  --color-brand-300: oklch(78% 0.13 264);
+  --color-brand-400: oklch(66% 0.19 264);
+  --color-brand-500: oklch(58% 0.235 264);
+  --color-brand-600: oklch(50% 0.250 264);
+  --color-brand-700: oklch(45% 0.235 264);
+  --color-brand-800: oklch(40% 0.19 264);
+  --color-brand-900: oklch(34% 0.15 264);
 
-  --font-display: "Fredoka", system-ui, -apple-system, sans-serif;
+  /* Display = Inter (the landing has no separate display face; headings are
+   * Inter 800 with tight tracking). Fredoka removed to match the landing. */
+  --font-display: "Inter", system-ui, -apple-system, sans-serif;
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
   /* Landing-aligned mono — labels, eyebrows, stat ticks (matches apps/landing). */
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -60,8 +66,11 @@
 
 /* ── Base ─────────────────────────────────────────────────────────── */
 :root {
-  --foreground: #1a1a2e;
-  --background: #ffffff;
+  /* Light = the landing's default theme (served HTML forces data-theme=light).
+   * Page bg / text ported from the landing [data-theme="light"] tokens — a
+   * faint cool off-white page, near-black blue text. */
+  --foreground: oklch(12% 0.012 264);
+  --background: oklch(99% 0.002 264);
 
   /* ── Landing OKLCH palette (apps/landing/src/app/globals.css) ────────
    * The dashboard's dark theme is retuned to the LANDING look so the two
@@ -106,16 +115,15 @@ html.dark body::before {
   background:
     radial-gradient(ellipse 70% 55% at 50% -5%, oklch(64% 0.22 264 / 0.14), transparent 65%),
     radial-gradient(ellipse 45% 40% at 85% 35%, oklch(64% 0.2 295 / 0.1), transparent 55%),
-    radial-gradient(ellipse 45% 45% at 10% 70%, oklch(64% 0.2 340 / 0.09), transparent 55%);
+    radial-gradient(ellipse 45% 45% at 10% 70%, oklch(64% 0.18 220 / 0.08), transparent 55%);
 }
 
 h1, h2, h3, .font-display {
   font-family: var(--font-display);
-  /* Landing-aligned heading treatment: tight tracking on Fredoka displays so
-   * dashboard headings read as the same family as the landing's .dy-title/.dy-h2
-   * (which use -0.03/-0.04em). Fredoka is rounder than Inter, so -0.02em is the
-   * tasteful equivalent. Font-size/line-height untouched (no layout shift). */
-  letter-spacing: -0.02em;
+  font-weight: 800;
+  /* Landing heading treatment: Inter 800 with tight tracking, matching the
+   * landing's .t-h2/.t-h3 (-0.03em). Font-size/line-height untouched (no shift). */
+  letter-spacing: -0.03em;
 }
 
 @utility text-balance {
@@ -128,9 +136,9 @@ h1, h2, h3, .font-display {
  * Type + mono already match via the @theme tokens above; these are the
  * opt-in accent primitives (gradient text, mono eyebrow pill). */
 
-/* Pink brand gradient for hero numbers / key titles (identical to landing). */
+/* Indigo brand gradient for hero numbers / key titles (matches landing accent). */
 .gradient-text {
-  background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+  background: linear-gradient(135deg, oklch(58% 0.235 264) 0%, oklch(50% 0.250 264) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -171,9 +179,9 @@ html.dark .gradient-bg {
   text-transform: uppercase;
 }
 html.dark .dy-eyebrow {
-  border-color: rgba(219, 39, 119, 0.3);
-  background: rgba(219, 39, 119, 0.15);
-  color: #f9a8d4;
+  border-color: oklch(64% 0.22 264 / 0.3);
+  background: oklch(64% 0.22 264 / 0.15);
+  color: oklch(80% 0.12 264);
 }
 
 /* Brand status dot for the eyebrow pill. */
@@ -237,10 +245,10 @@ html.dark .hover\:bg-red-50:hover { background-color: rgba(239, 68, 68, 0.15); }
 html.dark .hover\:text-gray-800:hover { color: var(--dy-text); }
 html.dark .hover\:text-gray-600:hover { color: var(--dy-sub); }
 
-/* Brand colors in dark — slightly brighter/adjusted */
-html.dark .bg-brand-50 { background-color: rgba(219, 39, 119, 0.15); }
-html.dark .bg-brand-100 { background-color: rgba(219, 39, 119, 0.2); }
-html.dark .border-brand-200 { border-color: rgba(219, 39, 119, 0.3); }
+/* Brand colors in dark — landing indigo accent (hue 264) */
+html.dark .bg-brand-50 { background-color: oklch(64% 0.22 264 / 0.15); }
+html.dark .bg-brand-100 { background-color: oklch(64% 0.22 264 / 0.2); }
+html.dark .border-brand-200 { border-color: oklch(64% 0.22 264 / 0.3); }
 
 /* Status/accent backgrounds */
 html.dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.15); }
@@ -260,8 +268,8 @@ html.dark .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0,0,0,0.3); }
 /* Ring colors */
 html.dark .ring-gray-200 { --tw-ring-color: var(--dy-border-hi); }
 html.dark .ring-gray-300 { --tw-ring-color: var(--dy-border-hi); }
-html.dark .focus\:ring-brand-500:focus { --tw-ring-color: #db2777; }
-html.dark .focus\:border-brand-500:focus { border-color: #db2777; }
+html.dark .focus\:ring-brand-500:focus { --tw-ring-color: oklch(64% 0.22 264); }
+html.dark .focus\:border-brand-500:focus { border-color: oklch(64% 0.22 264); }
 
 /* Placeholder text — readable against the dy-surface input background. */
 html.dark .placeholder-gray-400::placeholder { color: var(--dy-muted); }
@@ -287,10 +295,10 @@ html.dark .text-amber-800 { color: #f59e0b; }
 html.dark .bg-amber-50 { background-color: rgba(245, 158, 11, 0.08); }
 html.dark .border-amber-200 { border-color: rgba(245, 158, 11, 0.15); }
 
-/* Brand accent (tool call blocks) dark overrides */
-html.dark .text-brand-700 { color: #f9a8d4; }
-html.dark .text-brand-800 { color: #fbcfe8; }
-html.dark .border-brand-300 { border-color: rgba(219, 39, 119, 0.25); }
+/* Brand accent (tool call blocks) dark overrides — landing indigo (hue 264) */
+html.dark .text-brand-700 { color: oklch(80% 0.12 264); }
+html.dark .text-brand-800 { color: oklch(88% 0.07 264); }
+html.dark .border-brand-300 { border-color: oklch(64% 0.22 264 / 0.25); }
 
 /* White/70 backgrounds (PrettyJSON) — ensure dark-readable */
 html.dark .bg-white\/70 { background-color: rgba(255, 255, 255, 0.04); }

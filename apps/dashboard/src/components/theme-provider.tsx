@@ -18,9 +18,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const stored = localStorage.getItem("theme") as Theme | null;
-    // Dark by default to match the landing's dark-default look; explicit
-    // user choice (stored) still wins, and the toggle still flips to light.
-    const initial = stored || "dark";
+    // Light by default to match the served landing (data-theme=light); explicit
+    // user choice (stored) still wins, and the toggle still flips to dark.
+    const initial = stored || "light";
     setTheme(initial);
     document.documentElement.classList.toggle("dark", initial === "dark");
   }, []);
