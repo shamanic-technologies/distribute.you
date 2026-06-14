@@ -15,6 +15,29 @@ const betaAllowlist = read("../src/lib/beta-allowlist.ts");
 const api = read("../src/lib/api.ts");
 const revenueParse = read("../src/lib/revenue-parse.ts");
 
+describe("row click → lead detail panel (status history + emails sent)", () => {
+  it("the panel component exists", () => {
+    expect(exists("../src/components/revenue/outcome-lead-panel.tsx")).toBe(true);
+  });
+  it("table rows are clickable (onSelect) and the page renders the panel on select", () => {
+    expect(outcomeTable).toContain("onSelect");
+    expect(outcomePage).toContain("OutcomeLeadPanel");
+    expect(outcomePage).toContain("setSelected");
+  });
+  it("panel data is joined from existing endpoints — no faked/backend data", () => {
+    expect(outcomePage).toContain("listBrandLeads");
+    expect(outcomePage).toContain("listBrandEmails");
+  });
+  it("panel shows status history + emails sent", () => {
+    const panel = read("../src/components/revenue/outcome-lead-panel.tsx");
+    expect(panel).toContain("Status history");
+    expect(panel).toContain("Emails sent");
+    // status reached comes from real lead booleans; only known timestamps shown
+    expect(panel).toContain("lastDeliveredAt");
+    expect(panel).toContain("servedAt");
+  });
+});
+
 describe("old Conversions surface is gone", () => {
   it("the conversions page route is deleted", () => {
     expect(exists(`${brandDir}/conversions/page.tsx`)).toBe(false);

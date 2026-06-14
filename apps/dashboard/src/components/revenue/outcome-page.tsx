@@ -1,15 +1,21 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { useIsBetaUser } from "@/lib/use-beta-user";
-import { getFeatureOutcomes } from "@/lib/api";
+import { getFeatureOutcomes, listBrandLeads, listBrandEmails, type Lead, type Email } from "@/lib/api";
+import type { ConversionLead } from "@/lib/revenue-view";
 import { OUTCOME_LENSES, type OutcomeLens } from "@/lib/outcome-lens";
 import { OutcomeLeadsTable } from "@/components/revenue/outcome-leads-table";
+import { OutcomeLeadPanel } from "@/components/revenue/outcome-lead-panel";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { Skeleton } from "@/components/skeleton";
+
+const nameKey = (first: string | null, last: string | null) =>
+  `${(first ?? "").trim().toLowerCase()}|${(last ?? "").trim().toLowerCase()}`;
 
 function formatUsd(n: number | null): string {
   if (n === null) return "—";
@@ -37,6 +43,36 @@ export function OutcomePage({ lens }: { lens: OutcomeLens }) {
     () => getFeatureOutcomes(featureSlug, brandId, lens),
     { enabled },
   );
+
+  // Detail-panel data — joined from existing endpoints (display affordance, no
+  // backend change): full Lead (status booleans + timestamps) by leadId, and the
+  // emails sent to the lead matched by name. Both gated on `enabled`.
+  const { data: leadsData } = useAuthQuery(
+    ["brandLeads", brandId],
+    () => listBrandLeads(brandId),
+    { enabled },
+  );
+  const { data: emailsData } = useAuthQuery(
+    ["brandEmails", brandId],
+    () => listBrandEmails(brandId),
+    { enabled },
+  );
+
+  const leadById = useMemo(() => {
+    const m = new Map<string, Lead>();
+    for (const l of leadsData?.leads ?? []) m.set(l.id, l);
+    return m;
+  }, [leadsData]);
+  const emailsByName = useMemo(() => {
+    const m = new Map<string, Email[]>();
+    for (const e of emailsData?.emails ?? []) {
+      const k = nameKey(e.leadFirstName, e.leadLastName);
+      (m.get(k) ?? m.set(k, []).get(k)!).push(e);
+    }
+    return m;
+  }, [emailsData]);
+
+  const [selected, setSelected] = useState<ConversionLead | null>(null);
 
   if (!isBeta || !revenueOk) {
     return (
@@ -76,6 +112,18 @@ export function OutcomePage({ lens }: { lens: OutcomeLens }) {
           leads={data.leads}
           probabilityLabel={meta.probabilityLabel}
           empty={meta.empty}
+          onSelect={setSelected}
+          selectedLeadId={selected?.leadId}
+        />
+      )}
+
+      {selected && (
+        <OutcomeLeadPanel
+          lead={selected}
+          fullLead={leadById.get(selected.leadId) ?? null}
+          emails={emailsByName.get(nameKey(selected.firstName, selected.lastName)) ?? []}
+          probabilityLabel={meta.probabilityLabel}
+          onClose={() => setSelected(null)}
         />
       )}
     </div>
