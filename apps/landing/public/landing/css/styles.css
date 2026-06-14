@@ -1041,19 +1041,24 @@ section  { padding: 6rem 0; }
 
 /* ── Sticky anchor nav (use-cases) ── */
 .uc-sticky-nav {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
-  background: var(--bg); border-bottom: 1px solid var(--border);
-  padding: 0.625rem 1rem;
-  box-shadow: 0 2px 8px oklch(0% 0 0 / 0.08);
-  display: flex; justify-content: center; gap: 0.5rem; flex-wrap: wrap;
-  transform: translateY(-100%); transition: transform 0.22s ease;
+  position: fixed; top: 1rem; left: 50%; z-index: 200;
+  transform: translateX(-50%) translateY(-200%);
+  transition: transform 0.22s ease;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  padding: 0.25rem;
+  box-shadow: 0 4px 20px oklch(0% 0 0 / 0.10), 0 1px 4px oklch(0% 0 0 / 0.06);
+  display: flex; gap: 0.25rem;
+  white-space: nowrap;
 }
-.uc-sticky-nav.uc-sticky-visible { transform: translateY(0); }
+.uc-sticky-nav.uc-sticky-visible {
+  transform: translateX(-50%) translateY(0);
+}
 .uc-sticky-nav .uc-tab {
-  background: var(--surface); border-color: var(--border); color: var(--sub);
+  background: transparent; border-color: transparent; color: var(--sub);
 }
 .uc-sticky-nav .uc-tab:hover {
-  background: var(--bg-alt); border-color: var(--muted); color: var(--text);
+  background: var(--surface); border-color: transparent; color: var(--text);
 }
 .uc-tab.is-active {
   background: var(--accent-dim) !important;

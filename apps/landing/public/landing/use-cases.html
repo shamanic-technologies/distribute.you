@@ -475,13 +475,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   stickyNav.innerHTML = origTabs.innerHTML;
   document.body.appendChild(stickyNav);
 
-  // Show/hide sticky nav when hero leaves viewport
-  var heroObs = new IntersectionObserver(function (entries) {
-    entries.forEach(function (e) {
-      stickyNav.classList.toggle('uc-sticky-visible', !e.isIntersecting);
-    });
-  }, { threshold: 0 });
-  heroObs.observe(hero);
+  // Show/hide sticky nav after 80px scroll
+  window.addEventListener('scroll', function () {
+    stickyNav.classList.toggle('uc-sticky-visible', window.scrollY > 80);
+  }, { passive: true });
 
   // Highlight active section tab (both original and sticky nav)
   var sectionIds = ['saas', 'agency', 'freelance', 'ecommerce'];
