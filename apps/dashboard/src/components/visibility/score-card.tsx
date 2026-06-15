@@ -48,7 +48,7 @@ export function ScoreCard(props: ScoreCardProps) {
     <div className="bg-white rounded-xl border border-gray-200 p-4">
       <p className="text-xs text-gray-500 uppercase tracking-wider mb-1 inline-flex items-center gap-1">
         {label}
-        {tooltip && <InfoTooltip tip={tooltip} placement="top" />}
+        {tooltip && <InfoTooltip tip={tooltip} placement="top" float />}
         {badge}
       </p>
       <div className="flex items-baseline gap-2">
