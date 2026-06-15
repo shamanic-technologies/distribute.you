@@ -52,7 +52,7 @@ j=d.createElement(s),dl=l!="dataLayer"?"&l="+l:"";j.async=true;j.src=
       padding: 2rem 1.5rem 1.5rem;
       background: var(--bg);
       border-bottom: 1px solid var(--border);
-      min-height: 240px;
+      height: 310px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -221,6 +221,32 @@ j=d.createElement(s),dl=l!="dataLayer"?"&l="+l:"";j.async=true;j.src=
     .illu-funnel-bar { height: 18px; border-radius: 3px; background: var(--accent); display: flex; align-items: center; padding: 0 6px; }
     .illu-funnel-bar span { font-size: 0.58rem; font-weight: 600; color: #fff; white-space: nowrap; }
     .illu-funnel-val { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--muted); }
+
+    /* ═══ hero-sub override ═══ */
+    .hero-sub { max-width: 40rem; }
+
+    /* ═══ FAQ (pricing-style) ═══ */
+    .s-faq-inner { max-width: 760px; margin: 0 auto; padding: 0 2rem; }
+    .s-faq-head { margin-bottom: 2.5rem; }
+    .faq-list { display: flex; flex-direction: column; gap: 0.75rem; }
+    details.faq-item {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      overflow: hidden; box-shadow: 0 1px 6px oklch(0% 0 0 / 0.05), 0 1px 2px oklch(0% 0 0 / 0.03);
+    }
+    details.faq-item[open] { box-shadow: 0 2px 12px oklch(0% 0 0 / 0.07), 0 1px 3px oklch(0% 0 0 / 0.04); }
+    details.faq-item summary {
+      list-style: none; padding: 1.125rem 1.375rem; cursor: pointer;
+      font-size: var(--fs-base); font-weight: 600; color: var(--text);
+      display: flex; justify-content: space-between; align-items: center; gap: 1rem; user-select: none;
+    }
+    details.faq-item summary::-webkit-details-marker { display: none; }
+    details.faq-item summary::after {
+      content: '+'; font-size: var(--fs-lg); font-weight: 400; color: var(--accent);
+      flex-shrink: 0; transition: transform 0.2s ease; font-family: 'JetBrains Mono', monospace; line-height: 1;
+    }
+    details.faq-item[open] summary::after { transform: rotate(45deg); }
+    details.faq-item[open] summary { border-bottom: 1px solid var(--border); }
+    .faq-body { padding: 1.125rem 1.375rem; font-size: var(--fs-base); color: var(--sub); line-height: 1.7; }
 
     /* ═══ Responsive ═══ */
     @media (max-width: 900px) {
@@ -543,7 +569,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <!-- Step 1: Drop URL -->
       <div class="step-card r d1">
         <div class="step-illu">
-          <div style="width:100%;max-width:280px">
+          <div style="width:100%;max-width:310px">
             <!-- Browser chrome -->
             <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:0 4px 20px oklch(0% 0 0 / 0.08)">
               <div style="background:var(--surface);border-bottom:1px solid var(--border);padding:0.5rem 0.75rem;display:flex;align-items:center;gap:0.5rem">
@@ -626,7 +652,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <!-- Step 3: Results in inbox -->
       <div class="step-card r d3">
         <div class="step-illu">
-          <div style="width:100%;max-width:280px">
+          <div style="width:100%;max-width:310px">
             <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:0 4px 20px oklch(0% 0 0 / 0.08)">
               <!-- Gmail header -->
               <div style="padding:0.5rem 0.875rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
@@ -1068,8 +1094,8 @@ Marcus</span>
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.75"><path d="M2 4l6 5 6-5"/><rect x="2" y="4" width="12" height="9" rx="1.5"/></svg>
               </span>
               <div>
-                <div style="font-size:0.75rem;font-weight:700;color:var(--text)">Your agency campaign</div>
-                <div style="font-family:'JetBrains Mono',monospace;font-size:0.62rem;color:var(--muted)">$50/day · live</div>
+                <div style="font-size:0.9rem;font-weight:700;color:var(--text)">Your agency campaign</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--muted)">$50/day · live</div>
               </div>
             </div>
             <span style="display:flex;align-items:center;gap:0.35rem;font-size:0.65rem;font-weight:600;color:var(--green)">
@@ -1102,8 +1128,8 @@ Marcus</span>
           </div>
           <div style="padding:0.75rem 1.25rem 1rem;border-top:1px solid var(--border)">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem">
-              <span style="font-size:0.7rem;color:var(--muted)">Budget used today</span>
-              <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--accent)">$11 / $50</span>
+              <span style="font-size:0.85rem;color:var(--muted)">Budget used today</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:0.9rem;font-weight:700;color:var(--accent)">$11 / $50</span>
             </div>
             <div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden">
               <div style="height:100%;width:22%;background:var(--accent);border-radius:3px"></div>
@@ -1119,36 +1145,36 @@ Marcus</span>
 <!-- ════════════════════════════════════════════
      FAQ
 ════════════════════════════════════════════ -->
-<section class="s-faq">
-  <div class="wrap">
-    <div class="sec-intro r">
-      <span class="t-lbl">FAQ</span>
+<section class="s-faq" style="padding:5rem 0">
+  <div class="s-faq-inner">
+    <div class="s-faq-head">
+      <p class="t-lbl">Questions</p>
       <h2 class="t-h2">Common questions</h2>
     </div>
-    <div class="faq-grid r">
+    <div class="faq-list">
       <details class="faq-item">
-        <summary class="faq-q">Does distribute work for agencies that manage client campaigns?</summary>
-        <div class="faq-a">Yes. You can run multiple campaigns from one account, one per client. Each has its own URL, budget, audience, and dashboard. You control the spend and see results separately for each client.</div>
+        <summary>Does distribute work for agencies that manage client campaigns?</summary>
+        <div class="faq-body">Yes. You can run multiple campaigns from one account, one per client. Each has its own URL, budget, audience, and dashboard. You control the spend and see results separately for each client.</div>
       </details>
       <details class="faq-item">
-        <summary class="faq-q">What kind of emails does distribute write?</summary>
-        <div class="faq-a">Personalized cold emails based on your site and the prospect's company. We research each contact before writing. Subject lines and copy are tested and optimized over time based on reply rates.</div>
+        <summary>What kind of emails does distribute write?</summary>
+        <div class="faq-body">Personalized cold emails based on your site and the prospect's company. We research each contact before writing. Subject lines and copy are tested and optimized over time based on reply rates.</div>
       </details>
       <details class="faq-item">
-        <summary class="faq-q">How does the 50 free emails trial work?</summary>
-        <div class="faq-a">Sign up, drop your URL, and we send your first 50 emails for free. No credit card required. You see real results before spending anything. After that, you pay $0.07 per contact reached.</div>
+        <summary>How does the 50 free emails trial work?</summary>
+        <div class="faq-body">Sign up, drop your URL, and we send your first 50 emails for free. No credit card required. You see real results before spending anything. After that, you pay $0.07 per contact reached.</div>
       </details>
       <details class="faq-item">
-        <summary class="faq-q">What happens when a prospect replies?</summary>
-        <div class="faq-a">AI reads the reply and classifies it. If the person is interested, we forward the full conversation to your Gmail inbox with a "buyer" label. You reply directly. Unsubscribes and out-of-office messages never reach you.</div>
+        <summary>What happens when a prospect replies?</summary>
+        <div class="faq-body">AI reads the reply and classifies it. If the person is interested, we forward the full conversation to your Gmail inbox with a "buyer" label. You reply directly. Unsubscribes and out-of-office messages never reach you.</div>
       </details>
       <details class="faq-item">
-        <summary class="faq-q">Can I stop at any time?</summary>
-        <div class="faq-a">Yes. Pause or stop any campaign immediately. Any unused budget stays in your account for future campaigns.</div>
+        <summary>Can I stop at any time?</summary>
+        <div class="faq-body">Yes. Pause or stop any campaign immediately. Any unused budget stays in your account for future campaigns.</div>
       </details>
       <details class="faq-item">
-        <summary class="faq-q">Do you handle deliverability and email warm-up?</summary>
-        <div class="faq-a">We handle everything. Domain setup, email warm-up, sending infrastructure, bounce management, and deliverability monitoring. You don't need to touch any of it.</div>
+        <summary>Do you handle deliverability and email warm-up?</summary>
+        <div class="faq-body">We handle everything. Domain setup, email warm-up, sending infrastructure, bounce management, and deliverability monitoring. You don't need to touch any of it.</div>
       </details>
     </div>
   </div>
