@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getBrand, getFeatureRevenue, getBrandCostBreakdown, fetchFeatureStats } from "@/lib/api";
+import { getBrand, getFeatureRevenue, getBrandCostBreakdown, fetchFeatureStats, getBrandSalesEconomics } from "@/lib/api";
 import { pollOptions, pollOptionsSlow } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
@@ -62,6 +62,14 @@ export default function BrandOverviewPage() {
   const featureStats = featureStatsData?.stats ?? {};
   const totalCostCents = featureStatsData?.systemStats?.totalCostInUsdCents ?? 0;
 
+  // Brand funnel config → gate the Meetings/Signups beta card pairs.
+  const { data: economicsData } = useAuthQuery(
+    ["brandSalesEconomics", brandId],
+    () => getBrandSalesEconomics(brandId),
+    { enabled, ...pollOptions },
+  );
+  const funnelStages = economicsData?.salesEconomics?.funnelStages;
+
   // Per-card reveal (NOT one page-wide barrier): revenue (features-service) and
   // total-spend (runs-service) are two different cold chains — gate each on its
   // own query so the fast cost card isn't held by the slower revenue call.
@@ -107,14 +115,6 @@ export default function BrandOverviewPage() {
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
-      {/* Outreach stat cards (GA + beta). Shared component → same set on all 3
-          surfaces (brand-scoped featureStats + systemStats cost). */}
-      <OutreachStatCards
-        stats={featureStats}
-        totalCostCents={totalCostCents}
-        pending={!statsRevealed}
-      />
-
       <RevenueOverviewSection
         data={revenueRevealed ? data : undefined}
         revenuePending={!revenueRevealed}
@@ -125,6 +125,18 @@ export default function BrandOverviewPage() {
         featureSlug={featureSlug}
         basePath={basePath}
       />
+
+      {/* Outreach stat cards (GA + beta) — placed BELOW the Revenue & Conversions
+          block (the headline revenue overview leads the page). Shared component →
+          same set on all surfaces. Funnel-stage-gated beta pairs. */}
+      <div className="mt-6">
+        <OutreachStatCards
+          stats={featureStats}
+          totalCostCents={totalCostCents}
+          pending={!statsRevealed}
+          funnelStages={funnelStages}
+        />
+      </div>
     </div>
   );
 }

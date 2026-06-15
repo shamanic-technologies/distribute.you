@@ -21,6 +21,7 @@ import {
   type CostStatsGroup,
 } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
+import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
 
 function timeAgo(date: string | Date): string {
   const now = Date.now();
@@ -442,6 +443,7 @@ export default function CampaignPressKitsPage() {
 
   return (
     <div className="p-4 md:p-8 max-w-5xl">
+      <OutreachStatCardsAuto />
 
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">

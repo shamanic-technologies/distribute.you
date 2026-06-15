@@ -9,6 +9,7 @@ import {
   type QuotePitch,
   type QuotePitchStatus,
 } from "@/lib/api";
+import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
 
 const STATUS_STYLES: Record<QuotePitchStatus, string> = {
   drafted: "bg-gray-100 text-gray-700 border-gray-200",
@@ -66,6 +67,7 @@ export default function QuotePitchesPage() {
 
   return (
     <div className="p-4 md:p-8" data-testid="quote-pitches-page">
+      <OutreachStatCardsAuto />
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold text-gray-800">Pitches</h1>

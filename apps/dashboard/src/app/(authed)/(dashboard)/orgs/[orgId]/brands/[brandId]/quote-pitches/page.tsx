@@ -12,6 +12,7 @@ import {
   type QuotePitchStatus,
 } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
+import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
 
 const STATUS_STYLES: Record<QuotePitchStatus, string> = {
   drafted: "bg-gray-100 text-gray-700 border-gray-200",
@@ -89,6 +90,7 @@ export default function FeatureQuotePitchesPage() {
 
   return (
     <div className="p-4 md:p-8" data-testid="feature-quote-pitches-page">
+      <OutreachStatCardsAuto />
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-2xl font-bold text-gray-800">

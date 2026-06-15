@@ -12,6 +12,7 @@ import { EntitySearchBar } from "@/components/entity-search-bar";
 import { WorkflowTag } from "@/components/report/workflow-tag";
 import { ManualQualificationBadge } from "@/components/leads/manual-qualification-badge";
 import { EditLeadStatusModal } from "@/components/leads/edit-lead-status-modal";
+import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
 import { useManualQualifications } from "@/lib/use-manual-qualification";
 import { buildLatestQualificationMap, qualificationKey } from "@/lib/manual-qualification";
 
@@ -315,6 +316,7 @@ export default function FeatureLeadsPage() {
   return (
     <div className="flex flex-col md:flex-row h-full relative">
       <div className={`${selectedLead ? 'hidden md:block md:w-1/2' : 'w-full'} p-4 md:p-8 overflow-y-auto transition-all`}>
+        <OutreachStatCardsAuto />
         <div className="flex items-start justify-between mb-4">
           <h1 className="font-display text-xl font-bold text-gray-800">
             Leads

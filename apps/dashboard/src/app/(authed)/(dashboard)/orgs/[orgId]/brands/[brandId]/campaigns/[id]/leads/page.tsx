@@ -6,6 +6,7 @@ import { getLeadConsolidatedStatus, type Lead, type LeadConsolidatedStatus } fro
 import { useCampaign } from "@/lib/campaign-context";
 import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
 import { EntitySearchBar } from "@/components/entity-search-bar";
+import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
 
 const LEAD_STATUS_ORDER: LeadConsolidatedStatus[] = [
   "replied",
@@ -294,6 +295,7 @@ export default function CampaignLeadsPage() {
     <div className="flex flex-col md:flex-row h-full relative">
       {/* Lead Table */}
       <div className={`${selectedLead ? 'hidden md:block md:w-1/2' : 'w-full'} p-4 md:p-8 overflow-y-auto transition-all`}>
+        <OutreachStatCardsAuto />
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <h1 className="font-display text-xl font-bold text-gray-800">

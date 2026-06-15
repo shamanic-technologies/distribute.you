@@ -10,6 +10,7 @@ import {
   listCampaignsByBrand,
   fetchFeatureStats,
   getBrandCostBreakdown,
+  getBrandSalesEconomics,
   getFeatureRevenue,
   type Campaign,
   type StatsRegistry,
@@ -148,6 +149,14 @@ function GenericFeaturePage({
     pollOptions,
   );
 
+  // Brand funnel config → gate the Meetings/Signups beta card pairs.
+  const { data: economicsData } = useAuthQuery(
+    ["brandSalesEconomics", brandId],
+    () => getBrandSalesEconomics(brandId),
+    pollOptions,
+  );
+  const funnelStages = economicsData?.salesEconomics?.funnelStages;
+
   // Per-campaign stats (groupBy=campaignId)
   const { data: campaignStatsData, isLoading: campaignStatsLoading } = useAuthQuery(
     ["featureStats", featureSlug, brandId, "byCampaign"],
@@ -245,6 +254,7 @@ function GenericFeaturePage({
         stats={featureStats}
         totalCostCents={totalCostCents}
         pending={!statsRevealed}
+        funnelStages={funnelStages}
       />
 
       {/* Revenue hero (revenue features) — leads with $ generated over time + the

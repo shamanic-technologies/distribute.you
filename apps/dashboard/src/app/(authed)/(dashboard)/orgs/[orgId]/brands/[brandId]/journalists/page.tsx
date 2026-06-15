@@ -27,6 +27,7 @@ import { useManualQualifications } from "@/lib/use-manual-qualification";
 import { buildLatestQualificationMap, qualificationKey } from "@/lib/manual-qualification";
 import { EditManualQualificationModal } from "@/components/manual-qualification/edit-manual-qualification-modal";
 import { ManualQualificationBadge } from "@/components/leads/manual-qualification-badge";
+import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
 
 const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
 
@@ -179,6 +180,7 @@ export default function FeatureJournalistsPage() {
     <div className="flex flex-col md:flex-row h-full relative">
       {/* Journalist List */}
       <div className={`${selected ? "hidden md:block md:w-1/2" : "w-full"} p-4 md:p-8 overflow-y-auto transition-all`}>
+        <OutreachStatCardsAuto />
         <div className="flex items-center justify-between mb-4">
           <h1 className="font-display text-xl font-bold text-gray-800">
             Journalists
