@@ -227,6 +227,12 @@ const PersonasIcon = () => (
   </svg>
 );
 
+const BrandProfileIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z" />
+  </svg>
+);
+
 const SettingsIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -544,6 +550,13 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
             label: "Customer Personas",
             href: `${basePath}/personas`,
             icon: <PersonasIcon />,
+            maturity: "beta",
+          } satisfies SidebarItem,
+          {
+            id: "brand-profile",
+            label: "Brand Profile",
+            href: `${basePath}/brand-profile`,
+            icon: <BrandProfileIcon />,
             maturity: "beta",
           } satisfies SidebarItem,
         ]
