@@ -123,14 +123,14 @@ export function TopCampaignsByCpcCard({
 
   const rows = useMemo<CostRow[]>(() => {
     if (!statsData || !campaignsData) return [];
-    // Per-campaign CPC = total run cost ÷ link clicks (both from the grouped
-    // stats call). No clicks → no defined CPC (null).
+    // Per-campaign CPC computed by features-service (derived stat
+    // `costPerRecipientClickCents` = total run cost ÷ link clicks). The dashboard
+    // only reads + formats — no client-side math. Absent (no clicks) → null.
     const cpcById = new Map<string, number | null>();
     for (const g of statsData.groups ?? []) {
       if (!g.campaignId) continue;
-      const clicks = g.stats.recipientsClicked ?? 0;
-      const costUsd = g.systemStats.totalCostInUsdCents / 100;
-      cpcById.set(g.campaignId, clicks > 0 ? costUsd / clicks : null);
+      const cents = g.stats.costPerRecipientClickCents;
+      cpcById.set(g.campaignId, cents == null ? null : cents / 100);
     }
     return campaignsData.campaigns
       .filter((c) => c.featureSlug === featureSlug)
