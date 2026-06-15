@@ -1,7 +1,14 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
+import {
+  BUDGET_TIERS,
+  DEFAULT_BUDGET,
+  formatBudget,
+  type BudgetCadence,
+  type BudgetSelection,
+} from "@/lib/mock-campaign-budget";
 import {
   getBrand,
   listExtractedFields,
@@ -48,11 +55,28 @@ export function RunCampaignModal({
   open,
   onClose,
   brandId,
+  mode = "create",
+  initialBudget,
+  onLaunch,
 }: {
   open: boolean;
   onClose: () => void;
   brandId: string;
+  /** "create" = full Run-Campaign flow; "edit" = budget-only (edit a live campaign). */
+  mode?: "create" | "edit";
+  initialBudget?: BudgetSelection;
+  /** Called with the chosen budget on Launch (create) / Save (edit). */
+  onLaunch?: (budget: BudgetSelection) => void;
 }) {
+  const isEdit = mode === "edit";
+  const [budget, setBudget] = useState<BudgetSelection>(initialBudget ?? DEFAULT_BUDGET);
+
+  // Re-sync the budget to the incoming selection each time the modal opens.
+  useEffect(() => {
+    if (open) setBudget(initialBudget ?? DEFAULT_BUDGET);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   // Lock body scroll while open.
   useEffect(() => {
     if (!open) return;
@@ -108,9 +132,11 @@ export function RunCampaignModal({
         {/* Header */}
         <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-6 py-4">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Run Campaign</h2>
+            <h2 className="text-lg font-semibold text-gray-900">{isEdit ? "Edit budget" : "Run Campaign"}</h2>
             <p className="text-sm text-gray-500 mt-0.5">
-              Launch a new Signups campaign for {brandName}.
+              {isEdit
+                ? `Adjust your live Signups campaign budget for ${brandName}.`
+                : `Launch a new Signups campaign for ${brandName}.`}
             </p>
           </div>
           <button
@@ -126,7 +152,8 @@ export function RunCampaignModal({
         </div>
 
         <div className="px-6 py-5 space-y-6">
-          {/* Objective — locked to Signups */}
+          {/* Objective — locked to Signups (create flow only) */}
+          {!isEdit && (
           <section>
             <div className="flex items-center gap-2 mb-2">
               <h3 className="text-sm font-semibold text-gray-900">Objective</h3>
@@ -157,8 +184,97 @@ export function RunCampaignModal({
               })}
             </div>
           </section>
+          )}
+
+          {/* Budget — tier cards (Starter / Recommended / Growth) + Other */}
+          <section>
+            <h3 className="text-sm font-semibold text-gray-900 mb-2">Budget</h3>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {BUDGET_TIERS.map((t) => {
+                const active = budget.tier === t.key;
+                return (
+                  <button
+                    key={t.key}
+                    type="button"
+                    onClick={() => setBudget({ tier: t.key, amount: t.daily, cadence: "daily" })}
+                    className={`text-left p-4 rounded-xl border transition ${
+                      active
+                        ? "border-brand-500 bg-brand-50 ring-1 ring-brand-200"
+                        : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className={`text-xs font-semibold uppercase tracking-wide ${active ? "text-brand-700" : "text-gray-500"}`}>
+                        {t.label}
+                      </span>
+                      {t.recommended && <span className="text-[10px] text-brand-600">★</span>}
+                    </div>
+                    <div className="text-xl font-bold text-gray-800 mt-1">
+                      ${t.daily}
+                      <span className="text-xs font-medium text-gray-400"> / day</span>
+                    </div>
+                    <div className="text-[11px] text-gray-400 mt-0.5">targets ~{t.closesPerMonth} closes / mo</div>
+                  </button>
+                );
+              })}
+
+              {/* Other — custom amount + cadence */}
+              <button
+                type="button"
+                onClick={() =>
+                  setBudget((b) => (b.tier === "other" ? b : { tier: "other", amount: b.amount, cadence: "daily" }))
+                }
+                className={`text-left p-4 rounded-xl border transition ${
+                  budget.tier === "other"
+                    ? "border-brand-500 bg-brand-50 ring-1 ring-brand-200"
+                    : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                <span className={`text-xs font-semibold uppercase tracking-wide ${budget.tier === "other" ? "text-brand-700" : "text-gray-500"}`}>
+                  Other
+                </span>
+                <div className="relative mt-1">
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="5"
+                    value={budget.tier === "other" ? budget.amount || "" : ""}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) =>
+                      setBudget((b) => ({
+                        tier: "other",
+                        amount: parseFloat(e.target.value) || 0,
+                        cadence: b.tier === "other" ? b.cadence : "daily",
+                      }))
+                    }
+                    placeholder="0"
+                    className="w-full pl-6 pr-2 py-1.5 text-lg font-bold text-gray-800 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300"
+                  />
+                </div>
+                <select
+                  value={budget.tier === "other" ? budget.cadence : "daily"}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) =>
+                    setBudget((b) => ({
+                      tier: "other",
+                      amount: b.amount,
+                      cadence: e.target.value as BudgetCadence,
+                    }))
+                  }
+                  className="mt-2 w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-300"
+                >
+                  <option value="one-off">One-off</option>
+                  <option value="daily">per day</option>
+                  <option value="weekly">per week</option>
+                  <option value="monthly">per month</option>
+                </select>
+              </button>
+            </div>
+          </section>
 
           {/* Campaign settings — Customer Personas + Brand Profile recap */}
+          {!isEdit && (
           <section>
             <h3 className="text-sm font-semibold text-gray-900 mb-1">Campaign settings</h3>
             <p className="text-xs text-gray-400 mb-3">
@@ -211,25 +327,34 @@ export function RunCampaignModal({
               </div>
             </div>
           </section>
+          )}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 border-t border-gray-100 px-6 py-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-100"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-300"
-          >
-            <RocketIcon />
-            Launch campaign
-          </button>
+        <div className="flex items-center justify-between gap-2 border-t border-gray-100 px-6 py-4">
+          <span className="text-xs text-gray-400">
+            Budget: <span className="font-medium text-gray-600">{formatBudget(budget)}</span>
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-100"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onLaunch?.(budget);
+                onClose();
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-300"
+            >
+              <RocketIcon />
+              {isEdit ? "Save budget" : "Launch campaign"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
