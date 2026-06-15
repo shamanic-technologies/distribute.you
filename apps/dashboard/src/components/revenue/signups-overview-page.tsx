@@ -9,6 +9,7 @@ import {
   getFeatureOutcomes,
   getBrandCostBreakdown,
   fetchFeatureStats,
+  listBrandLeads,
 } from "@/lib/api";
 import { pollOptions, pollOptionsSlow } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
@@ -20,6 +21,7 @@ import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { ScoreCard } from "@/components/visibility/score-card";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { PersonaStatsCard } from "@/components/revenue/persona-stats-card";
+import { SignupsLeadsTable } from "@/components/revenue/signups-leads-table";
 import { RunCampaignModal } from "@/components/campaign/run-campaign-modal";
 import { DEFAULT_BUDGET, formatBudget, type BudgetSelection } from "@/lib/mock-campaign-budget";
 
@@ -111,6 +113,15 @@ export function SignupsOverviewPage() {
     { enabled, ...pollOptions },
   );
   const featureStats = featureStatsData?.stats ?? {};
+
+  // Real brand leads → the engaged-leads table (opened / clicked / signed up).
+  // The signups-lensed `data.leads` only counts click-throughs (so it read
+  // empty); this widens the table to all engagement.
+  const { data: leadsData, isPending: leadsPending } = useAuthQuery(
+    ["brandLeads", brandId],
+    () => listBrandLeads(brandId),
+    { enabled, ...pollOptions },
+  );
 
   const revenueRevealed = useCoordinatedReveal([data !== undefined]);
   const costRevealed = useCoordinatedReveal([costData !== undefined]);
@@ -275,6 +286,9 @@ export function SignupsOverviewPage() {
           basePath={basePath}
           topRow={signupStatRow}
           hideHeader
+          conversions={
+            <SignupsLeadsTable leads={leadsData?.leads ?? []} pending={leadsPending} />
+          }
         />
         <PersonaStatsCard />
       </div>
