@@ -62,6 +62,21 @@ function timeUntil(date: string | Date): string {
   return `in ${years}y`;
 }
 
+// Compact budget label for the status pill — mirrors the signups pill's
+// "$X/day" aesthetic from its real campaign budget fields.
+function formatCampaignBudget(c: {
+  maxBudgetDailyUsd?: number | string | null;
+  maxBudgetWeeklyUsd?: number | string | null;
+  maxBudgetMonthlyUsd?: number | string | null;
+  maxBudgetTotalUsd?: number | string | null;
+}): string | null {
+  if (c.maxBudgetDailyUsd) return `$${Number(c.maxBudgetDailyUsd).toLocaleString("en-US")}/day`;
+  if (c.maxBudgetWeeklyUsd) return `$${Number(c.maxBudgetWeeklyUsd).toLocaleString("en-US")}/wk`;
+  if (c.maxBudgetMonthlyUsd) return `$${Number(c.maxBudgetMonthlyUsd).toLocaleString("en-US")}/mo`;
+  if (c.maxBudgetTotalUsd) return `$${Number(c.maxBudgetTotalUsd).toLocaleString("en-US")} total`;
+  return null;
+}
+
 function formatTotalCost(cents: string | null | undefined): string | null {
   if (!cents) return null;
   const val = parseFloat(cents);
@@ -239,9 +254,35 @@ export default function CampaignOverviewPage() {
         <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
           <div className="flex items-center gap-3 min-w-0">
             <h1 className="font-display text-2xl font-bold text-gray-800 truncate">{campaign.name}</h1>
-            <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(campaign.status)}`}>
-              {campaign.status}
-            </span>
+            {/* Status pill — mirrors the signups page green "Campaign active · $budget"
+                pulsing pill for ongoing; neutral gray pill (same shape) when stopped.
+                The Stop/Relaunch action stays on the right. */}
+            {campaign.status === "ongoing" ? (
+              <span className="shrink-0 inline-flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-1.5 text-xs font-medium text-green-700">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+                </span>
+                Campaign active
+                {formatCampaignBudget(campaign) && (
+                  <>
+                    <span className="text-green-300">&middot;</span>
+                    <span className="font-semibold">{formatCampaignBudget(campaign)}</span>
+                  </>
+                )}
+              </span>
+            ) : (
+              <span className={`shrink-0 inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium ${getStatusColor(campaign.status)}`}>
+                <span className="inline-flex h-2 w-2 rounded-full bg-current opacity-50" />
+                {campaign.status}
+                {formatCampaignBudget(campaign) && (
+                  <>
+                    <span className="opacity-40">&middot;</span>
+                    <span className="font-semibold">{formatCampaignBudget(campaign)}</span>
+                  </>
+                )}
+              </span>
+            )}
             {campaign.status === "stopped" && campaign.toResumeAt && (
               <span className="text-xs text-gray-500">
                 Resumes {timeUntil(campaign.toResumeAt)}
