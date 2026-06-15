@@ -321,7 +321,7 @@ section  { padding: 6rem 0; }
 
 /* ── Dashboard sidebar ── */
 .uid-sidebar {
-  width: 172px; flex-shrink: 0;
+  width: 190px; flex-shrink: 0;
   background: oklch(9% 0.012 264);
   border-right: 1px solid var(--border);
   display: flex; flex-direction: column;
@@ -440,9 +440,9 @@ section  { padding: 6rem 0; }
 .uid-kpi-vs         { font-size: var(--fs-xs); color: var(--muted); margin-left: 0.25rem; }
 
 .uid-body {
-  display: grid; grid-template-columns: 1fr 200px;
+  display: grid; grid-template-columns: 1fr 211px;
   border-bottom: 1px solid var(--border);
-  flex: 1; min-height: 0; overflow: hidden;
+  flex: 1; min-height: 200px; overflow: hidden;
 }
 .uid-chart-area {
   padding: 1rem 1.25rem;
@@ -556,7 +556,7 @@ section  { padding: 6rem 0; }
 
 /* ROI side panel */
 .uid-roi { display: flex; flex-direction: column; overflow: hidden; }
-.uid-roi-section { flex: 1; padding: 0.75rem 0.875rem; display: flex; flex-direction: column; justify-content: center; }
+.uid-roi-section { flex: 1; padding: 1.35rem 1.5rem; display: flex; flex-direction: column; justify-content: center; }
 .uid-roi-divider { height: 1px; background: var(--border); flex-shrink: 0; }
 .uid-roi-lbl  { font-family: 'JetBrains Mono', monospace; font-size: var(--fs-xs); color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.2rem; }
 .uid-roi-val  { font-size: 1.2rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1; margin-bottom: 0.15rem; }
