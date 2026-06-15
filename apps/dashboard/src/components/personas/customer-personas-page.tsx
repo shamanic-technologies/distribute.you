@@ -141,7 +141,7 @@ export function CustomerPersonasPage() {
   // A brand-new persona starts as an UNSAVED draft card — the user fills it in
   // and Saves, or Cancels it away before it's ever persisted.
   const addPersona = (name = "New Persona") => {
-    const created = { id: nextId(), name: capWords(name), filters: {}, status: "active" as const, unsaved: true };
+    const created = { id: nextId(), name: uniqueName(capWords(name)), filters: {}, status: "active" as const, unsaved: true };
     setPersonas((prev) => [created, ...prev]);
     return created;
   };
@@ -156,17 +156,36 @@ export function CustomerPersonasPage() {
   const setStatus = (id: string, status: Persona["status"]) =>
     updatePersona(id, { status });
 
+  // Persona names are UNIQUE at all times (case-insensitive, across active +
+  // paused + archived). `exceptId` lets a draft compare against everyone else.
+  const isNameTaken = (name: string, exceptId?: string) => {
+    const needle = name.trim().toLowerCase();
+    return personas.some((p) => p.id !== exceptId && p.name.trim().toLowerCase() === needle);
+  };
+
+  // Append " copy", " copy 2", … until the name is free — used when duplicating
+  // so a copy never collides.
+  const uniqueName = (base: string) => {
+    const trimmed = base.trim() || "Persona";
+    if (!isNameTaken(trimmed)) return trimmed;
+    for (let i = 2; ; i++) {
+      const candidate = `${trimmed} ${i}`;
+      if (!isNameTaken(candidate)) return candidate;
+    }
+  };
+
   // Commit a draft (new) persona: the card's edits become its saved values.
   const commitNew = (id: string, name: string, filters: Filters) =>
     updatePersona(id, { name: capWords(name), filters, unsaved: false });
 
   // Save edits as a NEW persona — every edit is a duplicate at save time, the
-  // source is never mutated.
+  // source is never mutated. Guard uniqueness as a backstop (the card also
+  // blocks a colliding name).
   const saveAsNew = (name: string, filters: Filters) => {
     const copy: Filters = {};
     for (const [k, v] of Object.entries(filters)) copy[k as CategoryKey] = [...(v ?? [])];
     setPersonas((prev) => [
-      { id: nextId(), name: capWords(name), filters: copy, status: "active" },
+      { id: nextId(), name: uniqueName(capWords(name)), filters: copy, status: "active" },
       ...prev,
     ]);
   };
@@ -188,15 +207,16 @@ export function CustomerPersonasPage() {
     const after = (kw: RegExp) => text.replace(kw, "").replace(/^(the|a|persona|named|called)\s+/i, "").replace(/["']/g, "").replace(/\bpersona\b/i, "").trim();
 
     if (/\b(create|add|new)\b/.test(lower)) {
-      const name = after(/.*?\b(create|add|new)\b/i) || "New Persona";
+      const name = uniqueName(after(/.*?\b(create|add|new)\b/i) || "New Persona");
       const p = addPersona(name);
       return { reply: `Started a draft persona “${p.name}”. Add targeting filters, then Save it (or Cancel).`, toolCalls: [{ tool: "create_persona", summary: `Drafted “${p.name}”` }] };
     }
     if (/\b(duplicate|clone|copy)\b/.test(lower)) {
       const p = findByName(after(/.*?\b(duplicate|clone|copy)\b/i));
       if (!p) return helpTurn("Which persona should I duplicate? Try: duplicate Scaling SaaS Founders");
-      saveAsNew(`${p.name} copy`, p.filters);
-      return { reply: `Duplicated “${p.name}” into a new persona.`, toolCalls: [{ tool: "duplicate_persona", summary: `Duplicated “${p.name}”` }] };
+      const newName = uniqueName(`${p.name} copy`);
+      saveAsNew(newName, p.filters);
+      return { reply: `Duplicated “${p.name}” into “${newName}”.`, toolCalls: [{ tool: "duplicate_persona", summary: `Duplicated → “${newName}”` }] };
     }
     if (/\b(archive|hide|remove|delete)\b/.test(lower)) {
       const p = findByName(after(/.*?\b(archive|hide|remove|delete)\b/i));
@@ -315,6 +335,7 @@ export function CustomerPersonasPage() {
                 onCommitNew={(name, filters) => commitNew(persona.id, name, filters)}
                 onCancelNew={() => removePersona(persona.id)}
                 onSetStatus={(s) => setStatus(persona.id, s)}
+                checkNameTaken={(n) => isNameTaken(n, persona.unsaved ? persona.id : undefined)}
               />
             ))}
           </div>
@@ -361,12 +382,14 @@ function PersonaCard({
   onCommitNew,
   onCancelNew,
   onSetStatus,
+  checkNameTaken,
 }: {
   persona: Persona;
   onSaveAsNew: (name: string, filters: Filters) => void;
   onCommitNew: (name: string, filters: Filters) => void;
   onCancelNew: () => void;
   onSetStatus: (status: Persona["status"]) => void;
+  checkNameTaken: (name: string) => boolean;
 }) {
   const isNew = persona.unsaved === true;
   const isArchived = persona.status === "archived";
@@ -385,6 +408,10 @@ function PersonaCard({
   const totalFilters = Object.values(filters).reduce((n, arr) => n + (arr?.length ?? 0), 0);
   const dirty = name !== persona.name || !filtersEqual(filters, persona.filters);
   const showSaveBar = editable && (isNew || dirty);
+  // Names are unique at all times — block Save on a collision (a saved-as-new
+  // persona must also differ from its source, forcing a rename).
+  const nameTaken = checkNameTaken(name);
+  const nameInvalid = !name.trim() || nameTaken;
 
   const addChip = (key: CategoryKey, raw: string) => {
     const value = raw.trim();
@@ -416,6 +443,7 @@ function PersonaCard({
   };
 
   const handleSave = () => {
+    if (nameInvalid) return;
     if (isNew) onCommitNew(name, filters);
     else {
       onSaveAsNew(name, filters);
@@ -596,8 +624,14 @@ function PersonaCard({
           edited. Every edit is saved as a duplicate; both are cancellable. */}
       {showSaveBar && (
         <div className="flex items-center justify-between gap-2 pt-3 border-t border-gray-100">
-          <span className="text-[11px] text-amber-600">
-            {isNew ? "Draft — not saved yet" : "Unsaved changes"}
+          <span className={`text-[11px] ${nameTaken ? "text-red-600" : "text-amber-600"}`}>
+            {nameTaken
+              ? "Name already used — pick a unique name"
+              : !name.trim()
+                ? "Name required"
+                : isNew
+                  ? "Draft — not saved yet"
+                  : "Unsaved changes"}
           </span>
           <div className="flex items-center gap-1.5">
             <button
@@ -610,7 +644,7 @@ function PersonaCard({
             <button
               type="button"
               onClick={handleSave}
-              disabled={!name.trim()}
+              disabled={nameInvalid}
               className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
             >
               {isNew ? "Save persona" : "Save as new persona"}
