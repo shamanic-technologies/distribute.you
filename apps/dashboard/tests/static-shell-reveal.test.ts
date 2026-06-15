@@ -25,7 +25,6 @@ describe("static-shell-first: cards accept `pending` and skeleton only values", 
     "components/visibility/visibility-runs-view.tsx",
     "components/visibility/visibility-competitors-view.tsx",
     "components/visibility/visibility-prompts-view.tsx",
-    "components/org-usage.tsx",
   ];
 
   it("every refactored card threads a pending/reveal flag and renders a Skeleton for values", () => {

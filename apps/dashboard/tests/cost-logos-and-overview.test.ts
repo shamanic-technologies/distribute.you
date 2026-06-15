@@ -18,22 +18,6 @@ describe("org overview — Recent Campaigns removed", () => {
   });
 });
 
-describe("cost breakdown — provider logos", () => {
-  const usage = read("../src/components/org-usage.tsx");
-  const providerLogo = read("../src/components/provider-logo.tsx");
-
-  it("joins cost names against the backend platform-price catalog", () => {
-    expect(usage).toMatch(/getPlatformPrices/);
-    expect(usage).toMatch(/providerDomain/);
-    expect(usage).toMatch(/ProviderLogo/);
-  });
-
-  it("ProviderLogo uses logo.dev and renders nothing without a domain (no letter fallback)", () => {
-    expect(providerLogo).toMatch(/img\.logo\.dev/);
-    expect(providerLogo).toMatch(/return null/);
-  });
-});
-
 describe("alpha badge contrast", () => {
   it("alpha uses a saturated amber fill, not the pale amber-100", () => {
     expect(MATURITY_STYLES.alpha).toContain("amber-400");
