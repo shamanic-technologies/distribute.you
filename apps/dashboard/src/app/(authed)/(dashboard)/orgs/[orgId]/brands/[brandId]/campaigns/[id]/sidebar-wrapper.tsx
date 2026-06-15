@@ -9,7 +9,7 @@ import { useFeatures } from "@/lib/features-context";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
-import { listWorkflows, listCampaignOutlets, listJournalistsEnriched, listMediaKitsByCampaign, fetchFeatureStats, listAllRankedOpportunities, listAllQuotePitches } from "@/lib/api";
+import { listCampaignOutlets, listJournalistsEnriched, listMediaKitsByCampaign, fetchFeatureStats, listAllRankedOpportunities, listAllQuotePitches } from "@/lib/api";
 import { isOpportunityOpen } from "@/lib/quote-pitch-status";
 
 interface Props {
@@ -26,11 +26,6 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId }: Props) {
   const featureDef = getFeature(featureSlug);
   const entities = featureDef?.entities ?? [];
   const entityNames = useMemo(() => entities.map((e) => e.name), [entities]);
-
-  const { data: workflowsData } = useAuthQuery(
-    ["workflows"],
-    () => listWorkflows(),
-  );
 
   // Feature stats for this campaign — same source the list page uses
   const { data: featureStatsData, isLoading: featureStatsLoading } = useAuthQuery(
@@ -101,15 +96,6 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId }: Props) {
     ...entities.map((e) => !(entityLoading[e.name] ?? false)),
   ]);
 
-  const workflowId = useMemo(() => {
-    if (!campaign?.workflowSlug || !workflowsData?.workflows) return undefined;
-    const match = workflowsData.workflows.find((w) => w.workflowSlug === campaign.workflowSlug);
-    if (!match && campaign.workflowSlug) {
-      console.error(`[dashboard] Campaign ${campaign.id} has workflowSlug="${campaign.workflowSlug}" which does not match any workflow slug. This campaign may have been created with the workflow name instead of slug.`);
-    }
-    return match?.id;
-  }, [campaign?.workflowSlug, workflowsData?.workflows]);
-
   const companyCount = useMemo(() => {
     const names = new Set(leads.map((l) => l.lead?.organization?.name ?? null).filter(Boolean));
     return names.size;
@@ -158,7 +144,6 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId }: Props) {
       brandId={brandId}
       featureSlug={featureSlug}
       entityCounts={entityCounts}
-      workflowId={workflowId}
       featureInputs={campaign?.featureInputs}
     />
   );

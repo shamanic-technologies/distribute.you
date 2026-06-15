@@ -22,12 +22,6 @@ const OverviewIcon = () => (
   </svg>
 );
 
-const WorkflowIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
-  </svg>
-);
-
 const InputsIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -122,11 +116,10 @@ interface CampaignSidebarProps {
   brandId: string;
   featureSlug: string;
   entityCounts?: Record<string, number | "loading" | undefined>;
-  workflowId?: string;
   featureInputs?: Record<string, string> | null;
 }
 
-export function CampaignSidebar({ campaignId, orgId, brandId, featureSlug, entityCounts, workflowId, featureInputs }: CampaignSidebarProps) {
+export function CampaignSidebar({ campaignId, orgId, brandId, featureSlug, entityCounts, featureInputs }: CampaignSidebarProps) {
   const [inputsPanelOpen, setInputsPanelOpen] = useState(false);
   const [promptPanelOpen, setPromptPanelOpen] = useState(false);
   const { getFeature, isLoading: featuresLoading } = useFeatures();
@@ -167,26 +160,12 @@ export function CampaignSidebar({ campaignId, orgId, brandId, featureSlug, entit
     },
   ];
 
-  const settingsItems = [
-    ...(workflowId
-      ? [
-          {
-            id: "workflow",
-            label: "Workflow",
-            href: `/orgs/${orgId}/brands/${brandId}/workflows/${workflowId}`,
-            icon: <WorkflowIcon />,
-          },
-        ]
-      : []),
-  ];
-
   return (
     <>
       <McpSidebar
         navPending={!defsReady}
         items={items}
         outcomesItems={entityItems}
-        settingsItems={settingsItems}
         settingsExtra={(showPromptButton || hasInputs) ? (
           <>
             {showPromptButton && (
