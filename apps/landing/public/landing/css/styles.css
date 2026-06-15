@@ -311,6 +311,12 @@ section  { padding: 6rem 0; }
 [data-theme="light"] .hero-ui {
   box-shadow: 0 -2px 24px oklch(0% 0 0 / 0.07), 0 0 0 1px var(--border-hi);
 }
+[data-theme="light"] .hero-bg {
+  background:
+    radial-gradient(ellipse 85% 60% at 50% -8%, oklch(72% 0.085 228 / 0.32) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 80% at -8% 55%, oklch(75% 0.065 218 / 0.22) 0%, transparent 65%),
+    radial-gradient(ellipse 60% 80% at 108% 55%, oklch(73% 0.072 248 / 0.22) 0%, transparent 65%);
+}
 .hero-ui-fade {
   position: absolute; bottom: 0; left: 0; right: 0;
   height: 28%;

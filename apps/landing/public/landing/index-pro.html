@@ -241,6 +241,14 @@ j=d.createElement(s),dl=l!="dataLayer"?"&l="+l:"";j.async=true;j.src=
     details.faq-item[open] summary { border-bottom: 1px solid var(--border); }
     .faq-body { padding: 1.125rem 1.375rem; font-size: var(--fs-base); color: var(--sub); line-height: 1.7; }
 
+    /* ═══ Light-mode gradients ═══ */
+    [data-theme="light"] .step-illu {
+      background: linear-gradient(160deg, oklch(88% 0.036 232) 0%, oklch(96% 0.010 238) 100%);
+    }
+    [data-theme="light"] .feat-card {
+      background: linear-gradient(170deg, oklch(88% 0.036 232) 0%, oklch(99.5% 0.001 264) 50%);
+    }
+
     /* ═══ Responsive ═══ */
     @media (max-width: 900px) {
       .steps-bento { grid-template-columns: 1fr; }
