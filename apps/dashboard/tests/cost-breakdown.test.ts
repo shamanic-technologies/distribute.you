@@ -41,20 +41,15 @@ describe("CostBreakdown component", () => {
   });
 });
 
-describe("Campaign overview page includes CostBreakdown", () => {
+describe("Campaign detail page no longer renders the Cost Breakdown card", () => {
   const pagePath = path.join(
     __dirname,
     "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/[id]/page.tsx"
   );
   const content = fs.readFileSync(pagePath, "utf-8");
 
-  it("should import CostBreakdown component", () => {
-    expect(content).toContain("import { CostBreakdown }");
-    expect(content).toContain("cost-breakdown");
-  });
-
-  it("should pass costBreakdown from stats to CostBreakdown", () => {
-    expect(content).toContain("<CostBreakdown");
-    expect(content).toContain("costBreakdown={stats.costBreakdown}");
+  it("should not import or render the CostBreakdown card", () => {
+    expect(content).not.toContain("import { CostBreakdown }");
+    expect(content).not.toContain("<CostBreakdown");
   });
 });

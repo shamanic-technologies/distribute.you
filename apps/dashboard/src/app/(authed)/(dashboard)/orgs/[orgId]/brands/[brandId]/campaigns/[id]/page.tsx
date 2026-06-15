@@ -14,9 +14,7 @@ import { isRevenueFeature } from "@/lib/revenue-feature";
 import { pollOptionsSlow } from "@/lib/query-options";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 import { CampaignLaunchModal } from "@/components/campaign/campaign-launch-modal";
-import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
-import { CostBreakdown } from "@/components/campaign/cost-breakdown";
 import { CampaignRevenueSection } from "@/components/campaign/campaign-revenue-section";
 import { PressKitResults } from "@/components/campaign/press-kit-results";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
@@ -84,7 +82,6 @@ export default function CampaignOverviewPage() {
 
   const entities = featureDef?.entities ?? [];
   const entityNames = entities.map((e) => e.name);
-  const funnelChart = featureDef?.charts?.find((c) => c.type === "funnel-bar");
   const breakdownChart = featureDef?.charts?.find((c) => c.type === "breakdown-bar");
 
   const { campaign, stats, loading } = useCampaign();
@@ -312,42 +309,22 @@ export default function CampaignOverviewPage() {
           <CampaignRevenueSection
             data={revenueData}
             pending={!revenueRevealed}
-            statsPending={Object.keys(statsRecord).length === 0}
-            funnelSteps={funnelChart?.type === "funnel-bar" ? funnelChart.steps : undefined}
-            statsRecord={statsRecord}
-            registry={registry}
             costBreakdown={stats?.costBreakdown ?? []}
             campaign={campaign}
           />
         </div>
       ) : (
         <>
-          {/* Charts (funnel + breakdown) — only when charts are defined and data has been loaded at least once */}
-          {(funnelChart || breakdownChart) && Object.keys(statsRecord).length > 0 && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-              {funnelChart && funnelChart.type === "funnel-bar" && (
-                <FunnelMetrics
-                  steps={funnelChart.steps}
-                  stats={statsRecord}
-                  registry={registry}
-                />
-              )}
-              {breakdownChart && breakdownChart.type === "breakdown-bar" && (
+          {/* Reply breakdown — only when defined and data has been loaded at least once */}
+          {breakdownChart && Object.keys(statsRecord).length > 0 && (
+            <div className="mb-6">
+              {breakdownChart.type === "breakdown-bar" && (
                 <ReplyBreakdown
                   segments={breakdownChart.segments}
                   stats={statsRecord}
                   registry={registry}
                 />
               )}
-            </div>
-          )}
-
-          {/* Cost breakdown */}
-          {stats?.costBreakdown && stats.costBreakdown.length > 0 && (
-            <div className="mb-6">
-              <CostBreakdown
-                costBreakdown={stats.costBreakdown}
-              />
             </div>
           )}
         </>
