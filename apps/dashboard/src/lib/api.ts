@@ -789,6 +789,157 @@ export async function getSalesEconomicsEffective(
   return parsed.data;
 }
 
+// ── Personas + Brand Profile (beta) ───────────────────────────────
+// Persisted per brand in brand-service via api-service /v1/brands/:id/personas
+// and /v1/brands/:id/brand-profile (same gateway convention as sales-economics).
+// Personas are immutable except status (edit = create a new one) and names are
+// unique per brand. Brand-profile saves are immutable forked versions.
+export type PersonaStatusWire = "active" | "paused" | "archived";
+
+export interface PersonaWire {
+  id: string;
+  brandId: string;
+  name: string;
+  filters: Record<string, string[]>;
+  status: PersonaStatusWire;
+  createdAt: string;
+}
+
+const PersonaSchema = z.object({
+  id: z.string(),
+  brandId: z.string(),
+  name: z.string(),
+  filters: z.record(z.string(), z.array(z.string())),
+  status: z.union([z.literal("active"), z.literal("paused"), z.literal("archived")]),
+  createdAt: z.string(),
+});
+
+const ListPersonasResponseSchema = z.object({ personas: z.array(PersonaSchema) });
+const PersonaResponseSchema = z.object({ persona: PersonaSchema });
+
+/** GET /brands/:brandId/personas — all personas for the brand (optionally status-filtered). */
+export async function listPersonas(
+  brandId: string,
+  status?: PersonaStatusWire,
+  token?: string,
+): Promise<{ personas: PersonaWire[] }> {
+  const query = status ? `?status=${status}` : "";
+  const raw = await apiCall<unknown>(`/brands/${brandId}/personas${query}`, { token });
+  const parsed = ListPersonasResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] listPersonas: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] listPersonas: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** POST /brands/:brandId/personas — create. 409 when the name is already used for the brand. */
+export async function createPersona(
+  brandId: string,
+  input: { name: string; filters: Record<string, string[]> },
+  token?: string,
+): Promise<{ persona: PersonaWire }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/personas`, { token, method: "POST", body: input });
+  const parsed = PersonaResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] createPersona: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] createPersona: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** POST /brands/:brandId/personas/:personaId/duplicate — new persona (name auto-uniquified). */
+export async function duplicatePersona(
+  brandId: string,
+  personaId: string,
+  name?: string,
+  token?: string,
+): Promise<{ persona: PersonaWire }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/personas/${personaId}/duplicate`, {
+    token,
+    method: "POST",
+    body: name ? { name } : {},
+  });
+  const parsed = PersonaResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] duplicatePersona: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] duplicatePersona: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** PATCH /brands/:brandId/personas/:personaId/status — pause / resume / archive / restore. */
+export async function setPersonaStatus(
+  brandId: string,
+  personaId: string,
+  status: PersonaStatusWire,
+  token?: string,
+): Promise<{ persona: PersonaWire }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/personas/${personaId}/status`, {
+    token,
+    method: "PATCH",
+    body: { status },
+  });
+  const parsed = PersonaResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] setPersonaStatus: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] setPersonaStatus: invalid response shape");
+  }
+  return parsed.data;
+}
+
+export interface BrandProfileVersionWire {
+  id: string;
+  brandId: string;
+  version: number;
+  fields: Record<string, string | string[]>;
+  createdAt: string;
+}
+
+const BrandProfileVersionSchema = z.object({
+  id: z.string(),
+  brandId: z.string(),
+  version: z.number(),
+  fields: z.record(z.string(), z.union([z.string(), z.array(z.string())])),
+  createdAt: z.string(),
+});
+
+const GetBrandProfileResponseSchema = z.object({
+  current: BrandProfileVersionSchema.nullable(),
+  versions: z.array(z.object({ id: z.string(), version: z.number(), createdAt: z.string() })),
+});
+
+const SaveBrandProfileResponseSchema = z.object({ version: BrandProfileVersionSchema });
+
+/** GET /brands/:brandId/brand-profile — latest (or derived v1) + version list. */
+export async function getBrandProfile(
+  brandId: string,
+  token?: string,
+): Promise<{ current: BrandProfileVersionWire | null; versions: { id: string; version: number; createdAt: string }[] }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/brand-profile`, { token });
+  const parsed = GetBrandProfileResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getBrandProfile: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] getBrandProfile: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** POST /brands/:brandId/brand-profile — save a new immutable version. */
+export async function saveBrandProfileVersion(
+  brandId: string,
+  fields: Record<string, string | string[]>,
+  token?: string,
+): Promise<{ version: BrandProfileVersionWire }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/brand-profile`, { token, method: "POST", body: { fields } });
+  const parsed = SaveBrandProfileResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] saveBrandProfileVersion: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] saveBrandProfileVersion: invalid response shape");
+  }
+  return parsed.data;
+}
+
 // Brand field extraction
 export interface ExtractFieldDef {
   key: string;
