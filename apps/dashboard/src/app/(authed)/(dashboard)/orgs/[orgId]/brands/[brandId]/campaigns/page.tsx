@@ -19,9 +19,7 @@ import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useFeatures } from "@/lib/features-context";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 import { useStopCampaign, useIsStoppingCampaign } from "@/lib/use-stop-campaign";
-import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
-import { CostBreakdown } from "@/components/campaign/cost-breakdown";
 import { RevenueChart } from "@/components/revenue/revenue-chart";
 import { RevenueCostSummary } from "@/components/revenue/revenue-cost-summary";
 import { TopCampaignsCard } from "@/components/revenue/top-campaigns-card";
@@ -120,7 +118,6 @@ function GenericFeaturePage({
   // revenue generated instead of spend. Non-revenue features keep the cost view.
   const revenueEnabled = isRevenueFeature(featureSlug);
 
-  const funnelChart = featureDef?.charts?.find((c) => c.type === "funnel-bar");
   const breakdownChart = featureDef?.charts?.find((c) => c.type === "breakdown-bar");
   const outputs = featureDef?.outputs ?? [];
   // Show first N outputs by displayOrder in campaign rows
@@ -205,7 +202,6 @@ function GenericFeaturePage({
     featureStatsData !== undefined,
     brandCostData !== undefined,
   ]);
-  const costRevealed = useCoordinatedReveal([brandCostData !== undefined]);
   const heroRevealed = useCoordinatedReveal([
     featureRevenueData !== undefined,
     brandCostData !== undefined,
@@ -298,42 +294,16 @@ function GenericFeaturePage({
         </div>
       )}
 
-      {/* Charts row — funnel + a distribution card. Revenue features show the
-          cost-distribution donut here (very useful) in place of the reply
-          breakdown; non-revenue features keep the reply breakdown (+ a standalone
-          cost donut below). Static-shell-first: frames + titles paint first, the
-          bars/donut/numbers skeleton until the stats reveal together. */}
-      {(!chartsRevealed || (campaigns.length > 0 && (funnelChart || breakdownChart))) && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-          {(funnelChart || !featureDef) && (
-            <FunnelMetrics
-              steps={funnelChart && funnelChart.type === "funnel-bar" ? funnelChart.steps : []}
-              stats={featureStats}
-              registry={registry}
-              pending={!chartsRevealed}
-            />
-          )}
-          {revenueEnabled ? (
-            <CostBreakdown costBreakdown={brandCostBreakdown} pending={!chartsRevealed} />
-          ) : (
-            (breakdownChart || !featureDef) && (
-              <ReplyBreakdown
-                segments={breakdownChart && breakdownChart.type === "breakdown-bar" ? breakdownChart.segments : []}
-                stats={featureStats}
-                registry={registry}
-                pending={!chartsRevealed}
-              />
-            )
-          )}
-        </div>
-      )}
-
-      {/* Cost Breakdown standalone — non-revenue features only (revenue features
-          show it in the charts row above, in place of reply breakdown).
-          Frame + title instant, donut/values skeleton until ready. */}
-      {!revenueEnabled && (!costRevealed || brandCostBreakdown.length > 0) && (
+      {/* Reply breakdown — non-revenue features only. Static-shell-first: frame +
+          title paint first, the bars/numbers skeleton until the stats reveal. */}
+      {!revenueEnabled && (!chartsRevealed || (campaigns.length > 0 && (breakdownChart || !featureDef))) && (
         <div className="mb-6">
-          <CostBreakdown costBreakdown={brandCostBreakdown} pending={!costRevealed} />
+          <ReplyBreakdown
+            segments={breakdownChart && breakdownChart.type === "breakdown-bar" ? breakdownChart.segments : []}
+            stats={featureStats}
+            registry={registry}
+            pending={!chartsRevealed}
+          />
         </div>
       )}
 
