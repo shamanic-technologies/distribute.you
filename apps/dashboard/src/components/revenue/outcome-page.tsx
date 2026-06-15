@@ -45,11 +45,12 @@ function formatCount(n: number | null | undefined): string {
   if (n > 0 && n < 10) return n.toFixed(1);
   return Math.round(n).toLocaleString("en-US");
 }
-// Cost per <unit> = total spent / unit count. No units → no defined cost ("—").
-function costPer(totalCostCents: number, denom: number): string {
-  if (denom <= 0) return "—";
-  const usd = totalCostCents / 100 / denom;
-  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
+// Render a server-computed cents amount as $X.X. features-service owns the
+// division (e.g. costPerRecipientClickCents = total spend ÷ link clicks); the
+// dashboard only formats. Absent (no denominator) → "—".
+function formatUsdFromCents(cents: number | null | undefined): string {
+  if (cents === null || cents === undefined) return "—";
+  return `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
 }
 
 /**
@@ -166,17 +167,33 @@ export function OutcomePage({ lens }: { lens: OutcomeLens }) {
       </div>
 
       {/* Top stats — static shell (labels) always paint; only the value region
-          skeletons. Three cards: expected outcome count · cost per outcome ·
-          expected revenue. All computed server-side (features-service). */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          skeletons. All numbers computed server-side (features-service), the
+          dashboard only formats. Signups leads with the real click funnel input
+          (Clicks · Cost per click) then the signup econ; other lenses show the
+          three outcome cards (count · cost per outcome · expected revenue). */}
+      <div className={isSignups ? "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4" : "grid grid-cols-1 sm:grid-cols-3 gap-4"}>
         {[
-          { label: meta.countLabel, value: formatCount(data?.costEconomics.expectedConversions) },
-          { label: meta.costPerLabel, value: formatUsd(data?.costEconomics.costPerConversionUsd) },
-          { label: meta.revenueLabel, value: formatUsd(data?.totalPipelineUsd) },
+          ...(isSignups
+            ? [
+                {
+                  label: "Clicks",
+                  value: formatCount(statsData?.stats.recipientsClicked ?? null),
+                  pending: statsPending || !statsData,
+                },
+                {
+                  label: "Cost per click",
+                  value: formatUsdFromCents(statsData?.stats.costPerRecipientClickCents),
+                  pending: statsPending || !statsData,
+                },
+              ]
+            : []),
+          { label: meta.countLabel, value: formatCount(data?.costEconomics.expectedConversions), pending: isPending || !data },
+          { label: meta.costPerLabel, value: formatUsd(data?.costEconomics.costPerConversionUsd), pending: isPending || !data },
+          { label: meta.revenueLabel, value: formatUsd(data?.totalPipelineUsd), pending: isPending || !data },
         ].map((stat) => (
           <div key={stat.label} className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
             <p className="text-xs text-gray-400">{stat.label}</p>
-            {isPending || !data ? (
+            {stat.pending ? (
               <Skeleton className="mt-1 h-8 w-24 rounded" />
             ) : (
               <p className="mt-1 text-2xl font-bold text-gray-900">{stat.value}</p>
@@ -185,33 +202,13 @@ export function OutcomePage({ lens }: { lens: OutcomeLens }) {
         ))}
       </div>
 
-      {/* Signups only — real Clicks + CPC, the funnel input to a signup. Static
-          shell (labels) always paints; only the value region skeletons. */}
-      {isSignups && (
-        <div className="grid grid-cols-2 sm:grid-cols-2 gap-4">
-          {[
-            { label: "Clicks", value: formatCount(statsData?.stats.recipientsClicked ?? null) },
-            {
-              label: "Cost per click",
-              value: costPer(statsData?.systemStats.totalCostInUsdCents ?? 0, statsData?.stats.recipientsClicked ?? 0),
-            },
-          ].map((stat) => (
-            <div key={stat.label} className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
-              <p className="text-xs text-gray-400">{stat.label}</p>
-              {statsPending || !statsData ? (
-                <Skeleton className="mt-1 h-8 w-24 rounded" />
-              ) : (
-                <p className="mt-1 text-2xl font-bold text-gray-900">{stat.value}</p>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* Signups: leads table on the left half, cost-efficiency leaderboards on
           the right. Other lenses keep the full-width table. */}
       {isSignups ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          {/* min-w-0 lets the table column shrink below its content width so the
+              table scrolls inside its card instead of overflowing the page. */}
+          <div className="min-w-0">
           {isPending || !data ? (
             <Skeleton className="h-64 w-full rounded-xl" />
           ) : (
@@ -224,6 +221,7 @@ export function OutcomePage({ lens }: { lens: OutcomeLens }) {
               selectedLeadId={selected?.leadId}
             />
           )}
+          </div>
           <div className="space-y-4">
             <TopCampaignsByCpcCard brandId={brandId} featureSlug={featureSlug} basePath={basePath} />
             <TopCampaignsByCostPerSignupCard brandId={brandId} featureSlug={featureSlug} basePath={basePath} />
