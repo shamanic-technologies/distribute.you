@@ -20,6 +20,35 @@ export type CategoryKey =
 
 export type Filters = Partial<Record<CategoryKey, string[]>>;
 
+/** Per-category label + soft chip tone, shared by the Personas page and the
+ *  Run-Campaign modal recap so chips look identical on both surfaces. */
+export const CATEGORY_META: Record<CategoryKey, { label: string; tone: string }> = {
+  industry: { label: "Industry", tone: "bg-indigo-50 text-indigo-700 border-indigo-200" },
+  employeeRange: { label: "Employee range", tone: "bg-sky-50 text-sky-700 border-sky-200" },
+  revenueRange: { label: "Revenue range", tone: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  location: { label: "Location (HQ)", tone: "bg-amber-50 text-amber-700 border-amber-200" },
+  jobTitles: { label: "Job titles", tone: "bg-rose-50 text-rose-700 border-rose-200" },
+  seniority: { label: "Seniority", tone: "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200" },
+  department: { label: "Department", tone: "bg-violet-50 text-violet-700 border-violet-200" },
+  keywords: { label: "Keywords", tone: "bg-teal-50 text-teal-700 border-teal-200" },
+  technologies: { label: "Technologies", tone: "bg-cyan-50 text-cyan-700 border-cyan-200" },
+  fundingStage: { label: "Funding stage", tone: "bg-lime-50 text-lime-700 border-lime-200" },
+};
+
+/** Stable category render order. */
+export const CATEGORY_ORDER: CategoryKey[] = [
+  "industry",
+  "employeeRange",
+  "revenueRange",
+  "location",
+  "jobTitles",
+  "seniority",
+  "department",
+  "keywords",
+  "technologies",
+  "fundingStage",
+];
+
 export interface Persona {
   id: string;
   name: string;

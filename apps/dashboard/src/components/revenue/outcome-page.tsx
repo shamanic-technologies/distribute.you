@@ -27,6 +27,7 @@ import {
   TopCampaignsByCostPerSignupCard,
 } from "@/components/revenue/top-campaigns-by-cost";
 import { PersonaCostCard } from "@/components/revenue/persona-cost-card";
+import { RunCampaignModal } from "@/components/campaign/run-campaign-modal";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { Skeleton } from "@/components/skeleton";
 
@@ -145,6 +146,7 @@ export function OutcomePage({ lens }: { lens: OutcomeLens }) {
   ) as Map<string, LeadConsolidatedStatus>;
 
   const [selected, setSelected] = useState<ConversionLead | null>(null);
+  const [runOpen, setRunOpen] = useState(false);
 
   if (!isBeta || !revenueOk) {
     return (
@@ -159,12 +161,26 @@ export function OutcomePage({ lens }: { lens: OutcomeLens }) {
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
       {/* Static shell — header renders on first paint, never skeletoned. */}
-      <div>
-        <div className="flex items-center gap-2">
-          <h1 className="text-xl font-semibold text-gray-900">{meta.label}</h1>
-          <MaturityBadge level="beta" />
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-semibold text-gray-900">{meta.label}</h1>
+            <MaturityBadge level="beta" />
+          </div>
+          <p className="text-sm text-gray-500 mt-1">{meta.subtitle}</p>
         </div>
-        <p className="text-sm text-gray-500 mt-1">{meta.subtitle}</p>
+        {isSignups && (
+          <button
+            type="button"
+            onClick={() => setRunOpen(true)}
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-300"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7a14.9 14.9 0 01.06-.312 15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312" />
+            </svg>
+            Run Campaign
+          </button>
+        )}
       </div>
 
       {/* Top stats — static shell (labels) always paint; only the value region
@@ -243,6 +259,11 @@ export function OutcomePage({ lens }: { lens: OutcomeLens }) {
 
       {/* Cost per persona — mockup card, signups lens only. */}
       {isSignups && <PersonaCostCard />}
+
+      {/* Run Campaign — mockup modal, signups lens only. */}
+      {isSignups && (
+        <RunCampaignModal open={runOpen} onClose={() => setRunOpen(false)} brandId={brandId} />
+      )}
 
       {selected && (
         <OutcomeLeadPanel
