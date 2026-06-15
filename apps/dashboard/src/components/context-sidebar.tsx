@@ -251,10 +251,9 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
       if (section === "campaigns" && segments[5] && segments[5] !== "new") {
         return { type: "campaign", orgId, brandId, campaignId: segments[5] };
       }
-      // Brand Settings group: settings / usage / brand-info / workflows(list+new).
+      // Brand Settings group: settings / brand-info / workflows(list+new).
       if (
         section === "settings" ||
-        section === "usage" ||
         section === "brand-info" ||
         section === "workflows"
       ) {
@@ -595,7 +594,7 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
   );
 }
 
-// Brand Settings Level Sidebar — Brand Settings + Usage + Brand Info, plus the
+// Brand Settings Level Sidebar — Brand Settings + Brand Info, plus the
 // Workflows list folded in from the old Feature Settings level.
 function BrandSettingsLevelSidebar({ orgId, brandId, pathname }: {
   orgId: string;
@@ -610,17 +609,6 @@ function BrandSettingsLevelSidebar({ orgId, brandId, pathname }: {
 
   const items: SidebarItem[] = [
     { id: "settings", label: "Brand Settings", href: basePath, icon: <SettingsIcon /> },
-    {
-      id: "usage",
-      label: "Usage",
-      href: `${brandBase}/usage`,
-      icon: (
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
-        </svg>
-      ),
-    },
   ];
   if (brandInfoOk) {
     items.push({
