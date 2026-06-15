@@ -70,10 +70,14 @@ export function CreditAlerts() {
   const subject = plural ? "campaigns" : "campaign";
   const verbHave = plural ? "have" : "has";
 
+  // Only `depleted` (balance ≤ 0) means the campaigns actually stopped. A
+  // runwayDays of 0 still has POSITIVE credit (less than one day of burn) — the
+  // campaigns keep running until the balance truly hits zero, so don't claim
+  // "stopped". Auto-topup being off is a nudge condition, NOT proof of depletion.
   const message =
-    status.depleted || status.runwayDays === 0
+    status.depleted
       ? `Out of credit — your ${subject} ${plural ? "have" : "has"} stopped.`
-      : status.runwayDays === 1
+      : status.runwayDays !== null && status.runwayDays <= 1
         ? `Your ${subject} will stop within a day — you’re almost out of credit.`
         : `Your ${subject} ${verbHave} about ${status.runwayDays} days of credit left.`;
 
