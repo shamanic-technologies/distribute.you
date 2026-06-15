@@ -32,6 +32,7 @@ export function RevenueOverviewSection({
   revenuePending = false,
   costPending = false,
   hideHeader = false,
+  conversions,
 }: {
   data?: RevenueOverview;
   newCampaignHref: string;
@@ -49,6 +50,9 @@ export function RevenueOverviewSection({
   /** Hide the "Revenue & Conversions" header + New Campaign button (the Signups
    *  page provides its own header + Run Campaign action). */
   hideHeader?: boolean;
+  /** Replace the default Organizations/Leads conversion tabs (the Signups page
+   *  supplies its own engaged-leads table: opened / clicked / signed up). */
+  conversions?: ReactNode;
 }) {
   // Static-shell-first: the section header, card frames, titles and the tab bar
   // render on the first paint; only the data regions skeleton while loading.
@@ -112,9 +116,10 @@ export function RevenueOverviewSection({
         />
       </div>
 
-      {/* Conversions — Organizations / Leads / Events tabs (same set as the
-          dedicated Conversions page; paginated 20/page inside each table). */}
-      <ConversionsTabs data={data} pending={revenueLoading} />
+      {/* Conversions — the default Organizations / Leads tabs, OR a caller-
+          supplied replacement (the Signups page passes its own engaged-leads
+          table: opened / clicked / signed up). */}
+      {conversions ?? <ConversionsTabs data={data} pending={revenueLoading} />}
     </div>
   );
 }
