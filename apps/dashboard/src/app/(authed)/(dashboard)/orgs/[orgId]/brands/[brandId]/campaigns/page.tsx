@@ -24,6 +24,7 @@ import { CostBreakdown } from "@/components/campaign/cost-breakdown";
 import { RevenueChart } from "@/components/revenue/revenue-chart";
 import { RevenueCostSummary } from "@/components/revenue/revenue-cost-summary";
 import { TopCampaignsCard } from "@/components/revenue/top-campaigns-card";
+import { ScoreCard } from "@/components/visibility/score-card";
 import { Skeleton } from "@/components/skeleton";
 import { formatStatValue } from "@/lib/format-stat";
 import { pollOptions, pollOptionsSlow } from "@/lib/query-options";
@@ -90,6 +91,18 @@ function formatTotalCost(cents: number): string | null {
 function formatUsd(n: number | null): string {
   if (n === null) return "—";
   return `$${Math.round(n).toLocaleString("en-US")}`;
+}
+
+function formatCount(n: number): string {
+  return Number(n).toLocaleString("en-US");
+}
+
+// Cost per click = total spent / link clicks. No clicks → no defined CPC (show
+// "—", never a divide-by-zero / fake $0).
+function formatCpc(totalCostCents: number, clicks: number): string {
+  if (clicks <= 0) return "—";
+  const usd = totalCostCents / 100 / clicks;
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
 }
 
 export default function FeaturePage() {
@@ -236,6 +249,28 @@ function GenericFeaturePage({
             New Campaign
           </Link>
         </div>
+      </div>
+
+      {/* Stat cards — Impressions (Opens) / Clicks (Link Clicks) / CPC. Static-shell
+          first: labels paint immediately, values skeleton until featureStats lands.
+          All values derive from already-fetched featureStats + systemStats cost. */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <ScoreCard
+          label="Impressions"
+          value={formatCount(featureStats.recipientsOpened ?? 0)}
+          pending={!statsRevealed}
+        />
+        <ScoreCard
+          label="Clicks"
+          value={formatCount(featureStats.recipientsClicked ?? 0)}
+          pending={!statsRevealed}
+        />
+        <ScoreCard
+          label="CPC"
+          tooltip="Cost per click — total spent divided by link clicks."
+          value={formatCpc(totalCostCents, featureStats.recipientsClicked ?? 0)}
+          pending={!statsRevealed}
+        />
       </div>
 
       {/* Revenue hero (revenue features) — leads with $ generated over time + the
