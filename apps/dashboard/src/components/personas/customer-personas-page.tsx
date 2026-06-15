@@ -5,6 +5,12 @@ import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { MaturityBadge } from "@/components/maturity-badge";
+import {
+  SEED_PERSONAS,
+  type CategoryKey,
+  type Filters,
+  type Persona,
+} from "@/lib/mock-personas";
 
 /**
  * Customer Personas — PURE-UI MOCKUP (beta).
@@ -19,19 +25,9 @@ import { MaturityBadge } from "@/components/maturity-badge";
 // ---------------------------------------------------------------------------
 // Filter vocabulary — Apollo-inspired targeting dimensions. `suggestions` feed
 // the add-chip datalist so the mockup feels populated; users can type anything.
+// The persona type + seed data live in `@/lib/mock-personas` (shared with the
+// signups "Cost by persona" card so names stay in sync).
 // ---------------------------------------------------------------------------
-type CategoryKey =
-  | "industry"
-  | "employeeRange"
-  | "revenueRange"
-  | "location"
-  | "jobTitles"
-  | "seniority"
-  | "department"
-  | "keywords"
-  | "technologies"
-  | "fundingStage";
-
 interface FilterCategory {
   key: CategoryKey;
   label: string;
@@ -100,62 +96,6 @@ const FILTER_CATEGORIES: FilterCategory[] = [
     label: "Funding stage",
     tone: "bg-lime-50 text-lime-700 border-lime-200",
     suggestions: ["Bootstrapped", "Pre-seed", "Seed", "Series A", "Series B", "Series C+", "Public"],
-  },
-];
-
-const CATEGORY_BY_KEY: Record<CategoryKey, FilterCategory> = Object.fromEntries(
-  FILTER_CATEGORIES.map((c) => [c.key, c]),
-) as Record<CategoryKey, FilterCategory>;
-
-type Filters = Partial<Record<CategoryKey, string[]>>;
-
-interface Persona {
-  id: string;
-  name: string;
-  filters: Filters;
-}
-
-// ---------------------------------------------------------------------------
-// Seed data — three example personas so the page looks alive on first paint.
-// ---------------------------------------------------------------------------
-const SEED_PERSONAS: Persona[] = [
-  {
-    id: "seed-1",
-    name: "Scaling SaaS Founders",
-    filters: {
-      industry: ["SaaS", "Developer Tools"],
-      employeeRange: ["11-50", "51-200"],
-      revenueRange: ["$1M-$10M"],
-      location: ["United States", "United Kingdom"],
-      jobTitles: ["Founder", "CEO"],
-      seniority: ["C-Suite"],
-      fundingStage: ["Seed", "Series A"],
-    },
-  },
-  {
-    id: "seed-2",
-    name: "Enterprise Growth Leaders",
-    filters: {
-      industry: ["Fintech", "E-commerce"],
-      employeeRange: ["501-1,000", "1,001-5,000"],
-      revenueRange: ["$100M-$500M"],
-      location: ["EMEA"],
-      jobTitles: ["VP Sales", "Head of Growth"],
-      department: ["Sales", "Marketing"],
-      technologies: ["Salesforce", "Segment"],
-    },
-  },
-  {
-    id: "seed-3",
-    name: "Early Marketing Buyers",
-    filters: {
-      industry: ["Marketing & Advertising"],
-      employeeRange: ["11-50"],
-      location: ["Remote"],
-      jobTitles: ["CMO", "Head of Marketing"],
-      keywords: ["product-led growth", "outbound"],
-      technologies: ["HubSpot"],
-    },
   },
 ];
 

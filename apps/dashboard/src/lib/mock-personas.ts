@@ -1,0 +1,96 @@
+/**
+ * Mock persona data — shared between the Customer Personas page (the editable
+ * cards) and the signups "Cost by persona" card, so both show the SAME persona
+ * names. PURE MOCKUP: personas aren't persisted or attributed in the backend
+ * yet, so the per-persona cost numbers below are deterministic placeholders.
+ * Replace with real per-persona attribution once the data layer lands.
+ */
+
+export type CategoryKey =
+  | "industry"
+  | "employeeRange"
+  | "revenueRange"
+  | "location"
+  | "jobTitles"
+  | "seniority"
+  | "department"
+  | "keywords"
+  | "technologies"
+  | "fundingStage";
+
+export type Filters = Partial<Record<CategoryKey, string[]>>;
+
+export interface Persona {
+  id: string;
+  name: string;
+  filters: Filters;
+}
+
+export const SEED_PERSONAS: Persona[] = [
+  {
+    id: "seed-1",
+    name: "Scaling SaaS Founders",
+    filters: {
+      industry: ["SaaS", "Developer Tools"],
+      employeeRange: ["11-50", "51-200"],
+      revenueRange: ["$1M-$10M"],
+      location: ["United States", "United Kingdom"],
+      jobTitles: ["Founder", "CEO"],
+      seniority: ["C-Suite"],
+      fundingStage: ["Seed", "Series A"],
+    },
+  },
+  {
+    id: "seed-2",
+    name: "Enterprise Growth Leaders",
+    filters: {
+      industry: ["Fintech", "E-commerce"],
+      employeeRange: ["501-1,000", "1,001-5,000"],
+      revenueRange: ["$100M-$500M"],
+      location: ["EMEA"],
+      jobTitles: ["VP Sales", "Head of Growth"],
+      department: ["Sales", "Marketing"],
+      technologies: ["Salesforce", "Segment"],
+    },
+  },
+  {
+    id: "seed-3",
+    name: "Early Marketing Buyers",
+    filters: {
+      industry: ["Marketing & Advertising"],
+      employeeRange: ["11-50"],
+      location: ["Remote"],
+      jobTitles: ["CMO", "Head of Marketing"],
+      keywords: ["product-led growth", "outbound"],
+      technologies: ["HubSpot"],
+    },
+  },
+];
+
+/** Stable hash of a string → 0..1, so mock numbers don't change between renders. */
+function hash01(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  // >>> 0 → unsigned; divide by max uint32 → [0, 1).
+  return (h >>> 0) / 0xffffffff;
+}
+
+/**
+ * Deterministic mock cost economics for a persona (placeholder until the
+ * backend attributes real spend per persona). CPC ~$0.04–$0.16, cost per
+ * signup ~$9–$45 — plausible cold-email ranges.
+ */
+export function personaMockCost(personaId: string): {
+  cpcUsd: number;
+  costPerSignupUsd: number;
+} {
+  const a = hash01(personaId);
+  const b = hash01(`${personaId}:signup`);
+  return {
+    cpcUsd: 0.04 + a * 0.12,
+    costPerSignupUsd: 9 + b * 36,
+  };
+}

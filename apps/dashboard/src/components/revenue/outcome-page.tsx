@@ -26,6 +26,7 @@ import {
   TopCampaignsByCpcCard,
   TopCampaignsByCostPerSignupCard,
 } from "@/components/revenue/top-campaigns-by-cost";
+import { PersonaCostCard } from "@/components/revenue/persona-cost-card";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { Skeleton } from "@/components/skeleton";
 
@@ -239,6 +240,9 @@ export function OutcomePage({ lens }: { lens: OutcomeLens }) {
           selectedLeadId={selected?.leadId}
         />
       )}
+
+      {/* Cost per persona — mockup card, signups lens only. */}
+      {isSignups && <PersonaCostCard />}
 
       {selected && (
         <OutcomeLeadPanel
