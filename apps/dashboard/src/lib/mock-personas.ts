@@ -108,18 +108,34 @@ function hash01(s: string): number {
 }
 
 /**
- * Deterministic mock cost economics for a persona (placeholder until the
- * backend attributes real spend per persona). CPC ~$0.04–$0.16, cost per
- * signup ~$9–$45 — plausible cold-email ranges.
+ * Deterministic mock signups economics for a persona (placeholder until the
+ * backend attributes real spend + conversions per persona). Plausible
+ * cold-email ranges: CPC ~$0.04–$0.16, cost per signup ~$9–$45, a few hundred
+ * clicks, a single-digit-to-low-double-digit expected signups, and the signup
+ * pipeline revenue that implies.
  */
 export function personaMockCost(personaId: string): {
   cpcUsd: number;
   costPerSignupUsd: number;
+  clicks: number;
+  signups: number;
+  expectedRevenueUsd: number;
 } {
   const a = hash01(personaId);
   const b = hash01(`${personaId}:signup`);
+  const c = hash01(`${personaId}:clicks`);
+  const cpcUsd = 0.04 + a * 0.12;
+  const costPerSignupUsd = 9 + b * 36;
+  const clicks = Math.round(120 + c * 680); // ~120–800 clicks
+  // ~2.5%–7% click→signup, so signups scales off clicks.
+  const signups = Math.max(1, Math.round(clicks * (0.025 + a * 0.045)));
+  // Signup worth ~$120–$320 LTR (mock), pipeline = signups × value.
+  const signupValueUsd = 120 + b * 200;
   return {
-    cpcUsd: 0.04 + a * 0.12,
-    costPerSignupUsd: 9 + b * 36,
+    cpcUsd,
+    costPerSignupUsd,
+    clicks,
+    signups,
+    expectedRevenueUsd: signups * signupValueUsd,
   };
 }

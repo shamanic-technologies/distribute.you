@@ -49,7 +49,13 @@ describe("old Conversions surface is gone", () => {
 });
 
 describe("three outcome pages exist (Signups / Booked Meetings / Sales)", () => {
-  for (const seg of ["signups", "booked-meetings", "sales"]) {
+  // Signups mirrors the brand Overview (signups-lensed) via SignupsOverviewPage;
+  // booked-meetings / sales keep the plainer shared OutcomePage.
+  it("route signups/page.tsx exists and renders SignupsOverviewPage", () => {
+    expect(exists(`${brandDir}/signups/page.tsx`)).toBe(true);
+    expect(read(`${brandDir}/signups/page.tsx`)).toContain("SignupsOverviewPage");
+  });
+  for (const seg of ["booked-meetings", "sales"]) {
     it(`route ${seg}/page.tsx exists and renders OutcomePage`, () => {
       expect(exists(`${brandDir}/${seg}/page.tsx`)).toBe(true);
       expect(read(`${brandDir}/${seg}/page.tsx`)).toContain("OutcomePage");
