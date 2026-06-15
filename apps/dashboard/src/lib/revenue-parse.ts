@@ -53,6 +53,10 @@ const CostEconomicsSchema = z.object({
   totalCostUsd: z.number(),
   costOfAcquisitionPct: z.number().nullable(),
   roiMultiple: z.number().nullable(),
+  // Lens-only (Signups / Booked Meetings / Sales). `.nullish()` so the un-lensed
+  // overview + grouped responses (which omit the field) still parse.
+  expectedConversions: z.number().nullish(),
+  costPerConversionUsd: z.number().nullish(),
 });
 const FeatureRevenueResponseSchema = z.object({
   featureSlug: z.string(),
