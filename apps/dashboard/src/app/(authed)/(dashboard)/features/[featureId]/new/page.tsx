@@ -461,10 +461,16 @@ export default function CreateCampaignPage() {
         // Reset loader — modal will handle the flow
         isCreatingRef.current = false;
         setIsCreating(false);
+        // Default auto-topup reload = campaign daily price × 10 (normalize budget to daily by cadence).
+        const dailyCents =
+          budgetFrequency === "weekly" ? budgetCents / 7 :
+          budgetFrequency === "monthly" ? budgetCents / 30.4 :
+          budgetCents;
         showPaymentRequired({
           balance_cents: account.balance_cents,
           required_cents: budgetCents,
           proactive: true,
+          suggestedTopupCents: Math.round(dailyCents * 10),
           onAutoTopupConfigured: () => {
             sessionStorage.removeItem("pendingCampaign");
             doCreateCampaign();
