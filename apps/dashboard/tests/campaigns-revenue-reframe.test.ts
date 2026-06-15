@@ -43,13 +43,9 @@ describe("Campaigns list page — revenue/gains reorientation", () => {
     expect(src).toContain("ROI");
   });
 
-  it("keeps the non-revenue cost path (cost donut gated, not removed)", () => {
-    expect(src).toContain("CostBreakdown");
-    expect(src).toContain("!revenueEnabled");
-  });
-
-  it("revenue features show the cost-distribution donut in place of reply breakdown", () => {
-    expect(src).toMatch(/revenueEnabled \?\s*\(\s*<CostBreakdown/);
+  it("no longer renders the Campaign Funnel or Cost Breakdown cards", () => {
+    expect(src).not.toContain("<FunnelMetrics");
+    expect(src).not.toContain("<CostBreakdown");
   });
 
   it("preserves the existing static-shell + time-ago guards", () => {

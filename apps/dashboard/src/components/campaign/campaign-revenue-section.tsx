@@ -3,11 +3,9 @@
 import { RevenueChart } from "@/components/revenue/revenue-chart";
 import { RevenueCostSummary } from "@/components/revenue/revenue-cost-summary";
 import { ConversionsTabs } from "@/components/revenue/conversions-tabs";
-import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
-import { CostBreakdown } from "@/components/campaign/cost-breakdown";
 import { CampaignBudgetCard } from "@/components/campaign/campaign-budget-card";
 import { Skeleton } from "@/components/skeleton";
-import type { Campaign, CostByName, FunnelStep, StatsRegistry } from "@/lib/api";
+import type { Campaign, CostByName } from "@/lib/api";
 import type { RevenueOverview } from "@/lib/revenue-view";
 
 function formatUsd(n: number | null): string {
@@ -18,29 +16,19 @@ function formatUsd(n: number | null): string {
 /**
  * Campaign-scoped revenue layout — mirrors the feature Overview (DIS-229): a
  * "Pipeline revenue over time" line chart with a cost/budget stats column on top
- * (Row 1), the campaign funnel + cost-distribution donut on a 50/50 row (Row 2),
- * and the shared Organizations / Leads / Events conversion tabs below (Row 3).
+ * (Row 1), and the shared Organizations / Leads / Events conversion tabs below
+ * (Row 2).
  *
- * Two reveal sources, each card skeletons on ITS own data (static-shell-first):
- *  - `pending` (campaign-scoped /revenue): line chart, CAC/ROI, conversions.
- *  - `statsPending` (merged campaign + feature stats): funnel + cost donut.
+ * `pending` (campaign-scoped /revenue) drives the line chart, CAC/ROI, conversions.
  */
 export function CampaignRevenueSection({
   data,
   pending,
-  statsPending,
-  funnelSteps,
-  statsRecord,
-  registry,
   costBreakdown,
   campaign,
 }: {
   data?: RevenueOverview;
   pending: boolean;
-  statsPending: boolean;
-  funnelSteps?: FunnelStep[];
-  statsRecord: Record<string, number>;
-  registry: StatsRegistry;
   costBreakdown: CostByName[];
   campaign: Campaign;
 }) {
@@ -77,20 +65,7 @@ export function CampaignRevenueSection({
         />
       </div>
 
-      {/* Row 2 — campaign funnel (incl. Clicks) + cost distribution, 50/50 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {funnelSteps && (
-          <FunnelMetrics
-            steps={funnelSteps}
-            stats={statsRecord}
-            registry={registry}
-            pending={statsPending}
-          />
-        )}
-        <CostBreakdown costBreakdown={costBreakdown} pending={statsPending} />
-      </div>
-
-      {/* Row 3 — Organizations / Leads / Events conversions (same as Overview) */}
+      {/* Row 2 — Organizations / Leads / Events conversions (same as Overview) */}
       <ConversionsTabs data={data} pending={pending} />
     </div>
   );

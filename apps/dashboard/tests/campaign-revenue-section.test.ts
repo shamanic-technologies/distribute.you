@@ -79,13 +79,12 @@ describe("CampaignRevenueSection — overview-style layout for the campaign page
     expect(sec).toContain("bottomCard={<CampaignBudgetCard");
   });
 
-  it("row 2: funnel bar (1/2) + cost-distribution donut (1/2)", () => {
-    expect(sec).toContain("FunnelMetrics");
-    expect(sec).toContain("CostBreakdown");
-    expect(sec).toContain("lg:grid-cols-2");
+  it("no longer renders the funnel bar or cost-distribution donut cards", () => {
+    expect(sec).not.toContain("FunnelMetrics");
+    expect(sec).not.toContain("<CostBreakdown");
   });
 
-  it("row 3: the shared conversions tabs", () => {
+  it("row 2: the shared conversions tabs", () => {
     expect(sec).toContain("ConversionsTabs");
   });
 

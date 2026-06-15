@@ -41,7 +41,6 @@ describe("Feature page stats use centralized feature stats endpoint", () => {
   });
 
   it("should use charts from featureDef for rendering", () => {
-    expect(content).toContain("funnelChart");
     expect(content).toContain("breakdownChart");
     expect(content).toContain("featureDef?.charts");
   });

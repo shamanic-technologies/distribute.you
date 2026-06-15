@@ -801,21 +801,49 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <div class="feat-card r d1">
         <div class="feat-illu" aria-hidden="true">
           <div style="width:100%">
-            <svg viewBox="0 0 280 65" style="width:100%;height:auto;display:block;overflow:visible">
-              <line x1="0" y1="16" x2="280" y2="16" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="3 2"/>
-              <line x1="0" y1="33" x2="280" y2="33" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="3 2"/>
-              <line x1="0" y1="50" x2="280" y2="50" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="3 2"/>
-              <path d="M0,57 C70,48 140,37 210,25 C245,18 262,13 280,10 L280,65 L0,65 Z" fill="var(--accent)" fill-opacity="0.09" stroke="none"/>
-              <path d="M0,37 C70,37 140,36 210,35 C245,35 262,34 280,34 L280,65 L0,65 Z" fill="var(--muted)" fill-opacity="0.07" stroke="none"/>
-              <path d="M0,37 C70,37 140,36 210,35 C245,35 262,34 280,34" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M0,57 C70,48 140,37 210,25 C245,18 262,13 280,10" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <circle cx="280" cy="10" r="3.5" fill="var(--accent)"/>
-              <circle cx="280" cy="34" r="2.5" fill="var(--muted)"/>
+            <svg viewBox="0 0 280 78" style="width:100%;height:auto;display:block;overflow:visible">
+              <!-- Y-axis -->
+              <line x1="26" y1="4" x2="26" y2="58" stroke="var(--border)" stroke-width="0.6"/>
+              <!-- X-axis -->
+              <line x1="26" y1="58" x2="270" y2="58" stroke="var(--border)" stroke-width="0.6"/>
+              <!-- Y grid at 35% (y=8) -->
+              <line x1="24" y1="8" x2="26" y2="8" stroke="var(--border)" stroke-width="0.6"/>
+              <line x1="26" y1="8" x2="270" y2="8" stroke="var(--border)" stroke-width="0.4" stroke-dasharray="3 2"/>
+              <text x="22" y="11" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="7" fill="var(--muted)">35%</text>
+              <!-- Y grid at 28% (y=26) -->
+              <line x1="24" y1="26" x2="26" y2="26" stroke="var(--border)" stroke-width="0.6"/>
+              <line x1="26" y1="26" x2="270" y2="26" stroke="var(--border)" stroke-width="0.4" stroke-dasharray="3 2"/>
+              <text x="22" y="29" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="7" fill="var(--muted)">28%</text>
+              <!-- Y grid at 21% (y=43) -->
+              <line x1="24" y1="43" x2="26" y2="43" stroke="var(--border)" stroke-width="0.6"/>
+              <line x1="26" y1="43" x2="270" y2="43" stroke="var(--border)" stroke-width="0.4" stroke-dasharray="3 2"/>
+              <text x="22" y="46" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="7" fill="var(--muted)">21%</text>
+              <!-- X tick marks -->
+              <line x1="27" y1="58" x2="27" y2="62" stroke="var(--border)" stroke-width="0.6"/>
+              <line x1="87" y1="58" x2="87" y2="62" stroke="var(--border)" stroke-width="0.6"/>
+              <line x1="147" y1="58" x2="147" y2="62" stroke="var(--border)" stroke-width="0.6"/>
+              <line x1="207" y1="58" x2="207" y2="62" stroke="var(--border)" stroke-width="0.6"/>
+              <line x1="265" y1="58" x2="265" y2="62" stroke="var(--border)" stroke-width="0.6"/>
+              <!-- X labels -->
+              <text x="27" y="70" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="var(--muted)">W1</text>
+              <text x="87" y="70" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="var(--muted)">W2</text>
+              <text x="147" y="70" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="var(--muted)">W3</text>
+              <text x="207" y="70" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="var(--muted)">W4</text>
+              <text x="265" y="70" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="var(--muted)">W5</text>
+              <!-- Industry avg: flat dashed at 21% (y=43) -->
+              <path d="M27,43 L265,43" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="4 3" stroke-linecap="round" opacity="0.5"/>
+              <circle cx="265" cy="43" r="2" fill="var(--muted)" opacity="0.5"/>
+              <!-- Distribute: area fill, S-curve from 21% to 35% -->
+              <path d="M27,43 C55,43 82,40 115,30 C148,20 178,11 207,9 C232,7 250,7 265,7 L265,58 L27,58 Z" fill="var(--accent)" fill-opacity="0.1" stroke="none"/>
+              <!-- Distribute: curve -->
+              <path d="M27,43 C55,43 82,40 115,30 C148,20 178,11 207,9 C232,7 250,7 265,7" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <!-- End dot -->
+              <circle cx="265" cy="7" r="3.5" fill="var(--accent)"/>
             </svg>
             <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.45rem">
               <div style="display:flex;gap:0.875rem">
                 <div style="display:flex;align-items:center;gap:4px"><span style="width:14px;height:2px;border-radius:1px;background:var(--accent);display:block"></span><span style="font-size:0.63rem;color:var(--text)">distribute</span></div>
-                <div style="display:flex;align-items:center;gap:4px"><span style="width:14px;height:2px;border-radius:1px;background:var(--muted);display:block"></span><span style="font-size:0.63rem;color:var(--muted)">industry avg</span></div>
+                <div style="display:flex;align-items:center;gap:4px"><span style="width:14px;height:2px;border-radius:1px;background:var(--muted);display:block;opacity:0.5"></span><span style="font-size:0.63rem;color:var(--muted)">industry avg</span></div>
               </div>
               <div style="display:flex;gap:0.5rem;align-items:baseline">
                 <span style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;font-weight:700;color:var(--accent)">35%</span>
@@ -1043,8 +1071,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
               <span style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;font-weight:700;color:var(--accent)">~$90</span>
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between">
-              <span style="font-size:0.87rem;color:var(--muted)">Cost per meeting</span>
-              <span style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;font-weight:700;color:var(--text)">$90</span>
+              <span style="font-size:0.87rem;color:var(--muted)">Avg. cost per new client</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;font-weight:700;color:var(--green)">$120</span>
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between">
               <span style="font-size:0.87rem;color:var(--muted)">Avg. ROI</span>
@@ -1113,7 +1141,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <div class="wrap">
     <div class="r">
       <h2 class="t-hero">URL. Budget.<br>Clients.</h2>
-      <p>50 free emails. No setup fee. No credit card. Live in 5 minutes.</p>
+      <p>50 free emails. No setup fee. Live in 5 minutes.</p>
       <a href="https://dashboard.distribute.you/sign-up" class="btn btn-p btn-lg">Send 50 free emails</a>
     </div>
   </div>
