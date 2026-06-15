@@ -49,9 +49,10 @@ export const CATEGORY_ORDER: CategoryKey[] = [
   "fundingStage",
 ];
 
-// Personas are never hard-edited or deleted in the backend — only forked. The
-// user can pause one (kept but not running) or archive it (hidden to the
-// Archived tab). `status` drives the Active / Archived split on the page.
+// A persona is never edited in place — any edit produces a duplicate at save
+// time, so a campaign can keep pointing at the exact version it launched with.
+// The user can pause one (kept, not running) or archive it (hidden to the
+// Archived tab). `status` drives the Active / Archived split.
 export type PersonaStatus = "active" | "paused" | "archived";
 
 export interface Persona {
@@ -59,6 +60,9 @@ export interface Persona {
   name: string;
   filters: Filters;
   status: PersonaStatus;
+  /** A freshly-created persona not yet saved — shown as a draft card with
+   *  Save / Cancel, removable before it's ever persisted. */
+  unsaved?: boolean;
 }
 
 export const SEED_PERSONAS: Persona[] = [
