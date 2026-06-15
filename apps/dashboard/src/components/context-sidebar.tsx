@@ -253,11 +253,10 @@ const REPORT_ENABLED_FEATURES = new Set([
 // brand: no `/features/[featureSlug]` segment. Brand-level sections live directly
 // under `/orgs/[orgId]/brands/[brandId]/...`.
 interface NavigationLevel {
-  type: "app" | "appFeature" | "org" | "brand" | "brandSettings" | "workflow" | "campaign";
+  type: "app" | "appFeature" | "org" | "brand" | "brandSettings" | "campaign";
   orgId?: string;
   brandId?: string;
   campaignId?: string;
-  workflowId?: string;
   featureId?: string;
 }
 
@@ -272,11 +271,6 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
       // layout; the list + create stay in the brand sidebar.
       if (section === "campaigns" && segments[5] && segments[5] !== "new") {
         return { type: "campaign", orgId, brandId, campaignId: segments[5] };
-      }
-      // Workflow detail (workflows/[id]) → workflow sidebar; the list + new live
-      // under Brand Settings.
-      if (section === "workflows" && segments[5] && segments[5] !== "new") {
-        return { type: "workflow", orgId, brandId, workflowId: segments[5] };
       }
       // Brand Settings group: settings / usage / brand-info / workflows(list+new).
       if (
@@ -740,36 +734,6 @@ function AppFeatureLevelSidebar({ featureId, pathname }: {
   );
 }
 
-// Workflow Detail Level Sidebar
-function WorkflowLevelSidebar({ orgId, brandId, workflowId, pathname }: {
-  orgId: string;
-  brandId: string;
-  workflowId: string;
-  pathname: string;
-}) {
-  const featureSlug = useSoleFeatureSlug();
-  const { getFeature } = useFeatures();
-  const basePath = `/orgs/${orgId}/brands/${brandId}/workflows/${workflowId}`;
-  const feature = getFeature(featureSlug);
-  const title = feature?.name ?? "Workflow";
-
-  const items: SidebarItem[] = [
-    { id: "viewer", label: "Workflow Viewer", href: basePath, icon: <WorkflowIcon /> },
-  ];
-
-  return (
-    <SidebarSection title={title} backHref={`/orgs/${orgId}/brands/${brandId}/workflows`} backLabel="Workflows">
-      {items.map((item) => (
-        <SidebarLink
-          key={item.id}
-          item={item}
-          isActive={pathname === item.href || pathname.startsWith(item.href + "/")}
-        />
-      ))}
-    </SidebarSection>
-  );
-}
-
 export function ContextSidebar() {
   const pathname = usePathname();
   const segments = pathname.split("/").filter(Boolean);
@@ -786,8 +750,6 @@ export function ContextSidebar() {
       return <BrandLevelSidebar orgId={level.orgId!} brandId={level.brandId!} pathname={pathname} />;
     case "brandSettings":
       return <BrandSettingsLevelSidebar orgId={level.orgId!} brandId={level.brandId!} pathname={pathname} />;
-    case "workflow":
-      return <WorkflowLevelSidebar orgId={level.orgId!} brandId={level.brandId!} workflowId={level.workflowId!} pathname={pathname} />;
     case "campaign":
       // Campaign level defers to CampaignSidebar in the campaign layout
       return null;
