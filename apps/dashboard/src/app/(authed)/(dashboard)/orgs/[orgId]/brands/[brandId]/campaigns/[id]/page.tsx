@@ -19,7 +19,7 @@ import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
 import { CampaignRevenueSection } from "@/components/campaign/campaign-revenue-section";
 import { PressKitResults } from "@/components/campaign/press-kit-results";
-import { ScoreCard } from "@/components/visibility/score-card";
+import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import {
   RelaunchCampaignModal,
   buildBudgetParams,
@@ -71,18 +71,6 @@ function formatTotalCost(cents: string | null | undefined): string | null {
   const usd = val / 100;
   if (usd < 0.01) return "<$0.01";
   return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-function formatCount(n: number): string {
-  return Number(n).toLocaleString("en-US");
-}
-
-// Cost per click = total spent / link clicks. No clicks → no defined CPC (show
-// "—", never a divide-by-zero / fake $0).
-function formatCpc(totalCostCents: number, clicks: number): string {
-  if (clicks <= 0) return "—";
-  const usd = totalCostCents / 100 / clicks;
-  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
 }
 
 export default function CampaignOverviewPage() {
@@ -289,27 +277,13 @@ export default function CampaignOverviewPage() {
         )}
       </div>
 
-      {/* Stat cards — Impressions (Opens) / Clicks (Link Clicks) / CPC. Static-shell
-          first: labels paint immediately, values skeleton until featureStats lands.
-          All values derive from the campaign-scoped featureStats + systemStats cost. */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <ScoreCard
-          label="Impressions"
-          value={formatCount(featureStats.recipientsOpened ?? 0)}
-          pending={!statsRevealed}
-        />
-        <ScoreCard
-          label="Clicks"
-          value={formatCount(featureStats.recipientsClicked ?? 0)}
-          pending={!statsRevealed}
-        />
-        <ScoreCard
-          label="CPC"
-          tooltip="Cost per click — total spent divided by link clicks."
-          value={formatCpc(totalCostCents, featureStats.recipientsClicked ?? 0)}
-          pending={!statsRevealed}
-        />
-      </div>
+      {/* Outreach stat cards (GA + beta). Shared component → same set on all 3
+          surfaces (campaign-scoped featureStats + systemStats cost). */}
+      <OutreachStatCards
+        stats={featureStats}
+        totalCostCents={totalCostCents}
+        pending={!statsRevealed}
+      />
 
       {/* Entity-specific results */}
       {entityNames.includes("press-kits") && campaign && (
