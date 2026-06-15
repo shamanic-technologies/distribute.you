@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
@@ -21,6 +21,7 @@ import { ScoreCard } from "@/components/visibility/score-card";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { PersonaStatsCard } from "@/components/revenue/persona-stats-card";
 import { RunCampaignModal } from "@/components/campaign/run-campaign-modal";
+import { DEFAULT_BUDGET, formatBudget, type BudgetSelection } from "@/lib/mock-campaign-budget";
 
 const formatCount = (n: number | null | undefined): string =>
   n === null || n === undefined ? "—" : Number(n).toLocaleString("en-US");
@@ -53,7 +54,34 @@ export function SignupsOverviewPage() {
   const enabled = isBeta && revenueOk;
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
 
-  const [runOpen, setRunOpen] = useState(false);
+  // Mock campaign state — once "launched" via the modal, the page shows a green
+  // "Campaign active · $X/day" pill instead of the Run Campaign button. Persisted
+  // to sessionStorage (per brand) so the demo survives a reload. No real campaign.
+  interface CampaignState {
+    active: boolean;
+    budget: BudgetSelection;
+  }
+  const storageKey = `signups-campaign:${brandId}`;
+  const [campaign, setCampaign] = useState<CampaignState>(() => {
+    if (typeof window === "undefined") return { active: false, budget: DEFAULT_BUDGET };
+    try {
+      const raw = window.sessionStorage.getItem(storageKey);
+      if (raw) return JSON.parse(raw) as CampaignState;
+    } catch {
+      /* ignore */
+    }
+    return { active: false, budget: DEFAULT_BUDGET };
+  });
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.sessionStorage.setItem(storageKey, JSON.stringify(campaign));
+    } catch {
+      /* ignore */
+    }
+  }, [storageKey, campaign]);
+
+  const [modalMode, setModalMode] = useState<null | "create" | "edit">(null);
 
   const { data: brandData, isPending: brandLoading } = useAuthQuery(
     ["brand", brandId],
@@ -101,17 +129,60 @@ export function SignupsOverviewPage() {
           Track the conversion funnel from clicks to paid signups.
         </p>
       </div>
-      <button
-        type="button"
-        onClick={() => setRunOpen(true)}
-        className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-300"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7a14.9 14.9 0 01.06-.312 15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312" />
-        </svg>
-        Run Campaign
-      </button>
+      {campaign.active ? (
+        // Active campaign — green status pill showing the budget; click to edit.
+        <button
+          type="button"
+          onClick={() => setModalMode("edit")}
+          title="Edit budget"
+          className="group shrink-0 inline-flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs font-medium text-green-700 transition hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-300"
+        >
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+          </span>
+          Campaign active
+          <span className="text-green-300">·</span>
+          <span className="font-semibold">{formatBudget(campaign.budget)}</span>
+          <svg className="w-3.5 h-3.5 text-green-400 group-hover:text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+          </svg>
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setModalMode("create")}
+          className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-300"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7a14.9 14.9 0 01.06-.312 15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312" />
+          </svg>
+          Run Campaign
+        </button>
+      )}
     </div>
+  );
+
+  // Create flow → launches a (mock) campaign; Edit flow → budget-only.
+  const modals = (
+    <>
+      <RunCampaignModal
+        open={modalMode === "create"}
+        mode="create"
+        onClose={() => setModalMode(null)}
+        brandId={brandId}
+        initialBudget={campaign.budget}
+        onLaunch={(b) => setCampaign({ active: true, budget: b })}
+      />
+      <RunCampaignModal
+        open={modalMode === "edit"}
+        mode="edit"
+        onClose={() => setModalMode(null)}
+        brandId={brandId}
+        initialBudget={campaign.budget}
+        onLaunch={(b) => setCampaign((c) => ({ ...c, budget: b }))}
+      />
+    </>
   );
 
   if (!enabled) {
@@ -141,7 +212,7 @@ export function SignupsOverviewPage() {
       <div className="p-4 md:p-8 max-w-7xl mx-auto">
         {header}
         <RevenueEmptyState setupHref={`${basePath}/campaigns/new`} />
-        <RunCampaignModal open={runOpen} onClose={() => setRunOpen(false)} brandId={brandId} />
+        {modals}
       </div>
     );
   }
@@ -203,10 +274,11 @@ export function SignupsOverviewPage() {
           featureSlug={featureSlug}
           basePath={basePath}
           topRow={signupStatRow}
+          hideHeader
         />
         <PersonaStatsCard />
       </div>
-      <RunCampaignModal open={runOpen} onClose={() => setRunOpen(false)} brandId={brandId} />
+      {modals}
     </div>
   );
 }
