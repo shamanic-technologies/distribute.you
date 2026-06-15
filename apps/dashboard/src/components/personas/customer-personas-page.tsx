@@ -1,16 +1,27 @@
 "use client";
 
 import { useState } from "react";
+import { SparklesIcon } from "@heroicons/react/20/solid";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { MaturityBadge } from "@/components/maturity-badge";
+import { EditWithAIPanel, type AiTurn } from "@/components/ai-edit/edit-with-ai-panel";
 import {
   SEED_PERSONAS,
   type CategoryKey,
   type Filters,
   type Persona,
 } from "@/lib/mock-personas";
+
+// Default "here's what I can do" turn for the Edit-with-AI mockup.
+function helpTurn(prefix?: string): AiTurn {
+  return {
+    reply:
+      (prefix ? prefix + "\n\n" : "") +
+      "I can create, fork, pause/resume and archive personas. Try:\n• Create a persona named Mid-market RevOps\n• Fork Scaling SaaS Founders\n• Pause Early Marketing Buyers\n• Archive Enterprise Growth Leaders",
+  };
+}
 
 /**
  * Customer Personas — PURE-UI MOCKUP (beta).
@@ -114,6 +125,8 @@ export function CustomerPersonasPage() {
   const revenueOk = isRevenueFeature(featureSlug);
 
   const [personas, setPersonas] = useState<Persona[]>(SEED_PERSONAS);
+  const [tab, setTab] = useState<"active" | "archived">("active");
+  const [aiOpen, setAiOpen] = useState(false);
 
   if (!isBeta || !revenueOk) {
     return (
@@ -125,19 +138,88 @@ export function CustomerPersonasPage() {
     );
   }
 
-  const addPersona = () => {
-    setPersonas((prev) => [
-      { id: nextId(), name: "New Persona", filters: {} },
-      ...prev,
-    ]);
+  const addPersona = (name = "New Persona") => {
+    const created = { id: nextId(), name: capWords(name), filters: {}, status: "active" as const };
+    setPersonas((prev) => [created, ...prev]);
+    return created;
   };
 
   const updatePersona = (id: string, next: Partial<Persona>) => {
     setPersonas((prev) => prev.map((p) => (p.id === id ? { ...p, ...next } : p)));
   };
 
-  const deletePersona = (id: string) => {
-    setPersonas((prev) => prev.filter((p) => p.id !== id));
+  const setStatus = (id: string, status: Persona["status"]) =>
+    updatePersona(id, { status });
+
+  // Fork is the ONLY way to "edit" a persona in the backend model — produce a
+  // fresh active copy, never mutate the source. (The inline chip editing on a
+  // card is the mockup stand-in for opening that fork to edit.)
+  const forkPersona = (id: string) => {
+    setPersonas((prev) => {
+      const src = prev.find((p) => p.id === id);
+      if (!src) return prev;
+      const filters: Filters = {};
+      for (const [k, v] of Object.entries(src.filters)) filters[k as CategoryKey] = [...(v ?? [])];
+      return [{ id: nextId(), name: capWords(`${src.name} copy`), filters, status: "active" }, ...prev];
+    });
+  };
+
+  const findByName = (q: string): Persona | undefined => {
+    const needle = q.trim().toLowerCase();
+    if (!needle) return undefined;
+    return (
+      personas.find((p) => p.name.toLowerCase() === needle) ??
+      personas.find((p) => p.name.toLowerCase().includes(needle))
+    );
+  };
+
+  // Client-side "AI" interpreter for the Edit-with-AI mockup. Keyword-based, no
+  // LLM — maps obvious phrasings to the same operations the buttons expose.
+  const runAiCommand = (raw: string): AiTurn => {
+    const text = raw.trim();
+    const lower = text.toLowerCase();
+    const after = (kw: RegExp) => text.replace(kw, "").replace(/^(the|a|persona|named|called)\s+/i, "").replace(/["']/g, "").replace(/\bpersona\b/i, "").trim();
+
+    if (/\b(create|add|new)\b/.test(lower)) {
+      const name = after(/.*?\b(create|add|new)\b/i) || "New Persona";
+      const p = addPersona(name);
+      return { reply: `Created the persona “${p.name}”. Add targeting filters on its card.`, toolCalls: [{ tool: "create_persona", summary: `Created “${p.name}” (active)` }] };
+    }
+    if (/\b(fork|duplicate|clone|copy)\b/.test(lower)) {
+      const p = findByName(after(/.*?\b(fork|duplicate|clone|copy)\b/i));
+      if (!p) return helpTurn("Which persona should I fork? Try: fork Scaling SaaS Founders");
+      forkPersona(p.id);
+      return { reply: `Forked “${p.name}” into a new active copy.`, toolCalls: [{ tool: "fork_persona", summary: `Forked “${p.name}”` }] };
+    }
+    if (/\b(archive|hide|remove|delete)\b/.test(lower)) {
+      const p = findByName(after(/.*?\b(archive|hide|remove|delete)\b/i));
+      if (!p) return helpTurn("Which persona should I archive? Personas are never deleted — only archived.");
+      setStatus(p.id, "archived");
+      return { reply: `Archived “${p.name}”. It’s in the Archived tab — nothing is ever hard-deleted.`, toolCalls: [{ tool: "archive_persona", summary: `Archived “${p.name}”` }] };
+    }
+    if (/\b(restore|unarchive|reactivate)\b/.test(lower)) {
+      const p = findByName(after(/.*?\b(restore|unarchive|reactivate)\b/i));
+      if (!p) return helpTurn("Which persona should I restore?");
+      setStatus(p.id, "active");
+      return { reply: `Restored “${p.name}” to Active.`, toolCalls: [{ tool: "restore_persona", summary: `Restored “${p.name}”` }] };
+    }
+    if (/\b(pause|stop)\b/.test(lower)) {
+      const p = findByName(after(/.*?\b(pause|stop)\b/i));
+      if (!p) return helpTurn("Which persona should I pause?");
+      setStatus(p.id, "paused");
+      return { reply: `Paused “${p.name}” — kept, just not running.`, toolCalls: [{ tool: "pause_persona", summary: `Paused “${p.name}”` }] };
+    }
+    if (/\b(resume|unpause|activate)\b/.test(lower)) {
+      const p = findByName(after(/.*?\b(resume|unpause|activate)\b/i));
+      if (!p) return helpTurn("Which persona should I resume?");
+      setStatus(p.id, "active");
+      return { reply: `Resumed “${p.name}”.`, toolCalls: [{ tool: "resume_persona", summary: `Resumed “${p.name}”` }] };
+    }
+    if (/\b(list|show|what)\b/.test(lower)) {
+      const active = personas.filter((p) => p.status !== "archived");
+      return { reply: active.length ? `You have ${active.length} active persona(s):\n${active.map((p) => `• ${p.name}${p.status === "paused" ? " (paused)" : ""}`).join("\n")}` : "No active personas yet.", toolCalls: [{ tool: "list_personas", summary: `Read ${active.length} active persona(s)` }] };
+    }
+    return helpTurn();
   };
 
   return (
@@ -154,40 +236,91 @@ export function CustomerPersonasPage() {
             filters we&apos;ll use to find and prioritize leads.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={addPersona}
-          className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-300"
-        >
-          <PlusIcon />
-          New persona
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setAiOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-medium text-brand-700 transition hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-300"
+          >
+            <SparklesIcon className="w-4 h-4" />
+            Edit with AI
+          </button>
+          <button
+            type="button"
+            onClick={() => addPersona()}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-300"
+          >
+            <PlusIcon />
+            New persona
+          </button>
+        </div>
+      </div>
+
+      {/* Active / Archived tabs */}
+      <div className="flex gap-1 border-b border-gray-200">
+        {(["active", "archived"] as const).map((t) => {
+          const count = personas.filter((p) => (t === "archived" ? p.status === "archived" : p.status !== "archived")).length;
+          return (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTab(t)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition capitalize ${
+                tab === t ? "border-brand-600 text-brand-600" : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {t} <span className="text-xs text-gray-400">({count})</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Cards grid */}
-      {personas.length === 0 ? (
-        <div className="bg-white rounded-xl border border-dashed border-gray-300 p-12 text-center">
-          <p className="text-sm text-gray-500">No personas yet.</p>
-          <button
-            type="button"
-            onClick={addPersona}
-            className="mt-3 text-xs font-medium text-brand-600 hover:text-brand-700"
-          >
-            + Create your first persona
-          </button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          {personas.map((persona) => (
-            <PersonaCard
-              key={persona.id}
-              persona={persona}
-              onChange={(next) => updatePersona(persona.id, next)}
-              onDelete={() => deletePersona(persona.id)}
-            />
-          ))}
-        </div>
-      )}
+      {(() => {
+        const visible = personas.filter((p) =>
+          tab === "archived" ? p.status === "archived" : p.status !== "archived",
+        );
+        if (visible.length === 0) {
+          return (
+            <div className="bg-white rounded-xl border border-dashed border-gray-300 p-12 text-center">
+              <p className="text-sm text-gray-500">
+                {tab === "archived" ? "No archived personas." : "No personas yet."}
+              </p>
+              {tab === "active" && (
+                <button
+                  type="button"
+                  onClick={() => addPersona()}
+                  className="mt-3 text-xs font-medium text-brand-600 hover:text-brand-700"
+                >
+                  + Create your first persona
+                </button>
+              )}
+            </div>
+          );
+        }
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {visible.map((persona) => (
+              <PersonaCard
+                key={persona.id}
+                persona={persona}
+                onChange={(next) => updatePersona(persona.id, next)}
+                onFork={() => forkPersona(persona.id)}
+                onSetStatus={(s) => setStatus(persona.id, s)}
+              />
+            ))}
+          </div>
+        );
+      })()}
+
+      <EditWithAIPanel
+        open={aiOpen}
+        onClose={() => setAiOpen(false)}
+        title="Edit personas with AI"
+        intro="Hi — I can create, fork, pause, resume and archive your personas. What would you like to change?"
+        suggestions={["Create a persona named Mid-market RevOps", "Fork Scaling SaaS Founders", "Archive Early Marketing Buyers"]}
+        onSend={runAiCommand}
+      />
     </div>
   );
 }
@@ -198,14 +331,15 @@ export function CustomerPersonasPage() {
 function PersonaCard({
   persona,
   onChange,
-  onDelete,
+  onFork,
+  onSetStatus,
 }: {
   persona: Persona;
   onChange: (next: Partial<Persona>) => void;
-  onDelete: () => void;
+  onFork: () => void;
+  onSetStatus: (status: Persona["status"]) => void;
 }) {
   const [editingName, setEditingName] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   /** Which category currently has its add-input open. */
   const [adding, setAdding] = useState<CategoryKey | null>(null);
   const [draft, setDraft] = useState("");
@@ -265,39 +399,60 @@ function PersonaCard({
               <PencilIcon className="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-500 shrink-0" />
             </button>
           )}
-          <p className="mt-0.5 text-[11px] text-gray-400">
-            {totalFilters} {totalFilters === 1 ? "filter" : "filters"}
+          <p className="mt-0.5 flex items-center gap-2 text-[11px] text-gray-400">
+            <span>{totalFilters} {totalFilters === 1 ? "filter" : "filters"}</span>
+            {persona.status === "paused" && (
+              <span className="rounded-full bg-amber-50 text-amber-600 border border-amber-200 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide">
+                Paused
+              </span>
+            )}
+            {persona.status === "archived" && (
+              <span className="rounded-full bg-gray-100 text-gray-500 border border-gray-200 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide">
+                Archived
+              </span>
+            )}
           </p>
         </div>
 
-        {/* Delete */}
-        {confirmDelete ? (
-          <div className="flex items-center gap-1.5 shrink-0">
+        {/* Actions — personas are never hard-deleted, only forked / paused /
+            archived. Archived cards offer Restore instead. */}
+        <div className="flex items-center gap-1 shrink-0">
+          {persona.status === "archived" ? (
             <button
               type="button"
-              onClick={onDelete}
-              className="rounded-md bg-red-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+              onClick={() => onSetStatus("active")}
+              className="rounded-md px-2 py-1 text-[11px] font-medium text-brand-600 hover:bg-brand-50 transition"
             >
-              Delete
+              Restore
             </button>
-            <button
-              type="button"
-              onClick={() => setConfirmDelete(false)}
-              className="rounded-md px-2 py-1 text-[11px] text-gray-500 hover:text-gray-700"
-            >
-              Cancel
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setConfirmDelete(true)}
-            aria-label="Delete persona"
-            className="shrink-0 rounded-md p-1.5 text-gray-300 hover:bg-red-50 hover:text-red-500 transition"
-          >
-            <TrashIcon />
-          </button>
-        )}
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => onSetStatus(persona.status === "paused" ? "active" : "paused")}
+                className="rounded-md px-2 py-1 text-[11px] text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition"
+              >
+                {persona.status === "paused" ? "Resume" : "Pause"}
+              </button>
+              <button
+                type="button"
+                onClick={onFork}
+                title="Fork — personas are edited by forking, never in place"
+                className="rounded-md px-2 py-1 text-[11px] text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition"
+              >
+                Fork
+              </button>
+              <button
+                type="button"
+                onClick={() => onSetStatus("archived")}
+                aria-label="Archive persona"
+                className="rounded-md p-1.5 text-gray-300 hover:bg-gray-100 hover:text-gray-600 transition"
+              >
+                <ArchiveIcon />
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Filter rows */}
@@ -404,10 +559,10 @@ function PencilIcon({ className }: { className?: string }) {
   );
 }
 
-function TrashIcon() {
+function ArchiveIcon() {
   return (
     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25-2.25m-2.25 2.25V3.75M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
     </svg>
   );
 }

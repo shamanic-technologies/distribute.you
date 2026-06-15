@@ -49,10 +49,16 @@ export const CATEGORY_ORDER: CategoryKey[] = [
   "fundingStage",
 ];
 
+// Personas are never hard-edited or deleted in the backend — only forked. The
+// user can pause one (kept but not running) or archive it (hidden to the
+// Archived tab). `status` drives the Active / Archived split on the page.
+export type PersonaStatus = "active" | "paused" | "archived";
+
 export interface Persona {
   id: string;
   name: string;
   filters: Filters;
+  status: PersonaStatus;
 }
 
 export const SEED_PERSONAS: Persona[] = [
@@ -68,6 +74,7 @@ export const SEED_PERSONAS: Persona[] = [
       seniority: ["C-Suite"],
       fundingStage: ["Seed", "Series A"],
     },
+    status: "active",
   },
   {
     id: "seed-2",
@@ -81,6 +88,7 @@ export const SEED_PERSONAS: Persona[] = [
       department: ["Sales", "Marketing"],
       technologies: ["Salesforce", "Segment"],
     },
+    status: "active",
   },
   {
     id: "seed-3",
@@ -93,6 +101,7 @@ export const SEED_PERSONAS: Persona[] = [
       keywords: ["product-led growth", "outbound"],
       technologies: ["HubSpot"],
     },
+    status: "active",
   },
 ];
 
