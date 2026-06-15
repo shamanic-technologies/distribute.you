@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   OrgConversionsTable,
   LeadConversionsTable,
@@ -8,8 +8,8 @@ import {
 import { Skeleton } from "@/components/skeleton";
 import type { RevenueOverview } from "@/lib/revenue-view";
 
-type ConversionTab = "organizations" | "leads";
-const CONVERSION_TABS: { id: ConversionTab; label: string }[] = [
+type ConversionTab = "extra" | "organizations" | "leads";
+const BASE_TABS: { id: ConversionTab; label: string }[] = [
   { id: "organizations", label: "Organizations" },
   { id: "leads", label: "Leads" },
 ];
@@ -19,20 +19,28 @@ const CONVERSION_TABS: { id: ConversionTab; label: string }[] = [
  * and the campaign page so both render the identical table set (each table
  * paginates 20/page). The tab bar is static shell (renders on the first paint);
  * only the table body skeletons while `pending` or data is absent.
+ *
+ * `extraFirstTab` (optional) prepends a caller-supplied tab, selected by default
+ * — the Signups page uses it for a "Personas" tab. Overview passes nothing.
  */
 export function ConversionsTabs({
   data,
   pending = false,
+  extraFirstTab,
 }: {
   data?: RevenueOverview;
   pending?: boolean;
+  extraFirstTab?: { label: string; content: ReactNode };
 }) {
-  const [tab, setTab] = useState<ConversionTab>("organizations");
+  const tabs = extraFirstTab
+    ? [{ id: "extra" as const, label: extraFirstTab.label }, ...BASE_TABS]
+    : BASE_TABS;
+  const [tab, setTab] = useState<ConversionTab>(tabs[0].id);
   const loading = pending || !data;
   return (
     <div className="space-y-3">
       <div className="inline-flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg p-1">
-        {CONVERSION_TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
@@ -56,6 +64,7 @@ export function ConversionsTabs({
         </div>
       ) : (
         <>
+          {tab === "extra" && extraFirstTab?.content}
           {tab === "organizations" && <OrgConversionsTable orgs={data.organizations} />}
           {tab === "leads" && <LeadConversionsTable leads={data.leads} />}
         </>
