@@ -1041,7 +1041,7 @@ section  { padding: 6rem 0; }
 
 /* ── Sticky anchor nav (use-cases) ── */
 .uc-sticky-nav {
-  position: fixed; top: 1rem; left: 50%; z-index: 200;
+  position: fixed; top: 80px; left: 50%; z-index: 200;
   transform: translateX(-50%) translateY(-200%);
   transition: transform 0.22s ease;
   background: var(--bg); border: 1px solid var(--border);
