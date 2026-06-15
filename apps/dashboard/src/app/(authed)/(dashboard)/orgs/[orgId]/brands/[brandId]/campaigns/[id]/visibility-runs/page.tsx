@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { VisibilityRunsView } from "@/components/visibility/visibility-runs-view";
+import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
 
 export default function VisibilityRunsPage() {
   const params = useParams();
@@ -11,5 +12,10 @@ export default function VisibilityRunsPage() {
 
   const basePath = `/orgs/${orgId}/brands/${brandId}/campaigns/${campaignId}`;
 
-  return <VisibilityRunsView scope={{ brandId, campaignId }} basePath={basePath} />;
+  return (
+    <>
+      <OutreachStatCardsAuto />
+      <VisibilityRunsView scope={{ brandId, campaignId }} basePath={basePath} />
+    </>
+  );
 }

@@ -11,6 +11,7 @@ import {
   type JournalistStatusBooleans,
 } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
+import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
 import {
   STATUS_PRIORITY,
   STATUS_DESCRIPTIONS,
@@ -155,6 +156,7 @@ export default function CampaignJournalistsPage() {
     <div className="flex flex-col md:flex-row h-full relative">
       {/* Journalist List */}
       <div className={`${selected ? "hidden md:block md:w-1/2" : "w-full"} p-4 md:p-8 overflow-y-auto transition-all`}>
+        <OutreachStatCardsAuto />
         <div className="flex items-center justify-between mb-4">
           <h1 className="font-display text-xl font-bold text-gray-800">
             Journalists

@@ -31,6 +31,7 @@ import {
   useGenerateQuoteDraft,
   useSubmitQuotePitch,
 } from "@/lib/use-quote-opportunities";
+import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
 
 const PITCH_MIN = 100;
 const PITCH_MAX = 2500;
@@ -143,6 +144,7 @@ function HitlQueuePage() {
 
   return (
     <div className="p-4 md:p-8" data-testid="quote-opportunities-hitl-page">
+      <OutreachStatCardsAuto />
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-gray-800">
           Quote Opportunities
@@ -654,6 +656,7 @@ function FlatQuoteRequestsPage() {
 
   return (
     <div className="p-4 md:p-8" data-testid="quote-requests-page">
+      <OutreachStatCardsAuto />
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-gray-800">Quote requests</h1>
         <p className="text-sm text-gray-500 mt-1">

@@ -33,6 +33,7 @@ import { CsvDownloadButton } from "@/components/report/csv-button";
 import { buildOutletCsv } from "@/lib/outlet-csv";
 import { TablePager, usePaginated } from "@/components/table-pagination";
 import { markOutletPriceRequestsOngoing } from "@/lib/outlet-price-requests";
+import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
 
 type Tab = string | "all";
 
@@ -674,6 +675,7 @@ export default function FeatureOutletsPage() {
   return (
     <div className="flex flex-col md:flex-row h-full relative">
       <div className={`${selected ? "hidden md:block md:w-1/2" : "w-full"} p-4 md:p-8 overflow-y-auto transition-all`}>
+        <OutreachStatCardsAuto />
         {/* Header */}
         <div className="flex items-start justify-between gap-3 mb-6">
           <div className="flex items-center gap-3">

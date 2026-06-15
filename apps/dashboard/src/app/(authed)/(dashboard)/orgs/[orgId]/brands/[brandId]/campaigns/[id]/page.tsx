@@ -9,7 +9,7 @@ import { useCampaign } from "@/lib/campaign-context";
 import { useStopCampaign, useIsStoppingCampaign } from "@/lib/use-stop-campaign";
 import { useFeatures } from "@/lib/features-context";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { fetchFeatureStats, getFeatureRevenue, createCampaign, sendCampaignEmail, ApiError } from "@/lib/api";
+import { fetchFeatureStats, getFeatureRevenue, getBrandSalesEconomics, createCampaign, sendCampaignEmail, ApiError } from "@/lib/api";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { pollOptionsSlow } from "@/lib/query-options";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
@@ -174,6 +174,14 @@ export default function CampaignOverviewPage() {
 
   const featureStats = featureStatsData?.stats ?? {};
   const totalCostCents = featureStatsData?.systemStats?.totalCostInUsdCents ?? 0;
+
+  // Brand funnel config → gate the Meetings/Signups beta card pairs.
+  const { data: economicsData } = useAuthQuery(
+    ["brandSalesEconomics", brandId],
+    () => getBrandSalesEconomics(brandId),
+    { enabled: true, refetchInterval: 5_000 },
+  );
+  const funnelStages = economicsData?.salesEconomics?.funnelStages;
   const campaignStatsRecord: Record<string, number> = stats
     ? Object.fromEntries(
         Object.entries(stats).filter((e): e is [string, number] => typeof e[1] === "number")
@@ -283,6 +291,7 @@ export default function CampaignOverviewPage() {
         stats={featureStats}
         totalCostCents={totalCostCents}
         pending={!statsRevealed}
+        funnelStages={funnelStages}
       />
 
       {/* Entity-specific results */}

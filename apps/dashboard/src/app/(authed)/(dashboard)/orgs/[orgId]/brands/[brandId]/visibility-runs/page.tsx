@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { VisibilityRunsView } from "@/components/visibility/visibility-runs-view";
+import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
 
 // Feature-level visibility runs: union across the brand's campaigns for this
 // feature (brand-scoped query, no campaign filter). Same display as the
@@ -13,5 +14,10 @@ export default function FeatureVisibilityRunsPage() {
 
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
 
-  return <VisibilityRunsView scope={{ brandId }} basePath={basePath} />;
+  return (
+    <>
+      <OutreachStatCardsAuto />
+      <VisibilityRunsView scope={{ brandId }} basePath={basePath} />
+    </>
+  );
 }
