@@ -25,7 +25,7 @@ import { ConversionsTabs } from "@/components/revenue/conversions-tabs";
 import { PersonaConversionsTable } from "@/components/revenue/conversions-table";
 import { RunCampaignModal } from "@/components/campaign/run-campaign-modal";
 import { DEFAULT_BUDGET, formatBudget, type BudgetSelection } from "@/lib/mock-campaign-budget";
-import { buildSignupRevenueSeries } from "@/lib/signups-revenue-series";
+import { buildSignupRevenueSeries, deriveOrgsFromLeads } from "@/lib/signups-revenue-series";
 
 const formatCount = (n: number | null | undefined): string =>
   n === null || n === undefined ? "—" : Number(n).toLocaleString("en-US");
@@ -138,6 +138,14 @@ export function SignupsOverviewPage() {
     const series = buildSignupRevenueSeries(leadsData?.leads ?? [], data.totalPipelineUsd ?? 0, nowMs);
     return series.length ? { ...data, timeSeries: series } : data;
   }, [data, leadsData, nowMs]);
+
+  // The signups-lensed `/revenue` returns leads but an EMPTY organizations[]
+  // (Organizations tab read blank). Derive org rows by grouping the leads.
+  const conversionsData = useMemo(() => {
+    if (!chartData) return chartData;
+    if (chartData.organizations && chartData.organizations.length > 0) return chartData;
+    return { ...chartData, organizations: deriveOrgsFromLeads(chartData.leads ?? []) };
+  }, [chartData]);
 
   // Header — always paints (static shell), carries identity + the Run Campaign
   // action even while the body loads.
@@ -299,14 +307,17 @@ export function SignupsOverviewPage() {
           topRow={signupStatRow}
           hideHeader
           conversions={
-            // The Overview's Organizations / Leads tabs PLUS a leading "Personas"
-            // tab (org × user rows with a mock persona column).
+            // Overview's Organizations / Leads tabs (orgs derived from leads) PLUS
+            // a leading "Personas" tab. Every row opens a detail panel.
             <ConversionsTabs
-              data={chartData}
+              data={conversionsData}
               pending={!revenueRevealed}
+              enableDetail
               extraFirstTab={{
                 label: "Personas",
-                content: <PersonaConversionsTable leads={chartData?.leads ?? []} />,
+                content: (onSelect) => (
+                  <PersonaConversionsTable leads={conversionsData?.leads ?? []} onSelect={onSelect} />
+                ),
               }}
             />
           }
