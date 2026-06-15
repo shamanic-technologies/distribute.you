@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
@@ -21,9 +21,11 @@ import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { ScoreCard } from "@/components/visibility/score-card";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { PersonaStatsCard } from "@/components/revenue/persona-stats-card";
-import { SignupsLeadsTable } from "@/components/revenue/signups-leads-table";
+import { ConversionsTabs } from "@/components/revenue/conversions-tabs";
+import { PersonaConversionsTable } from "@/components/revenue/conversions-table";
 import { RunCampaignModal } from "@/components/campaign/run-campaign-modal";
 import { DEFAULT_BUDGET, formatBudget, type BudgetSelection } from "@/lib/mock-campaign-budget";
+import { buildSignupRevenueSeries } from "@/lib/signups-revenue-series";
 
 const formatCount = (n: number | null | undefined): string =>
   n === null || n === undefined ? "—" : Number(n).toLocaleString("en-US");
@@ -114,10 +116,9 @@ export function SignupsOverviewPage() {
   );
   const featureStats = featureStatsData?.stats ?? {};
 
-  // Real brand leads → the engaged-leads table (opened / clicked / signed up).
-  // The signups-lensed `data.leads` only counts click-throughs (so it read
-  // empty); this widens the table to all engagement.
-  const { data: leadsData, isPending: leadsPending } = useAuthQuery(
+  // Real brand leads → used to synthesize the expected-revenue chart curve from
+  // engaged leads' activity dates (the lensed /revenue has no dated series yet).
+  const { data: leadsData } = useAuthQuery(
     ["brandLeads", brandId],
     () => listBrandLeads(brandId),
     { enabled, ...pollOptions },
@@ -126,6 +127,17 @@ export function SignupsOverviewPage() {
   const revenueRevealed = useCoordinatedReveal([data !== undefined]);
   const costRevealed = useCoordinatedReveal([costData !== undefined]);
   const statsRevealed = useCoordinatedReveal([featureStatsData !== undefined]);
+
+  // The signups-lensed `/revenue` returns a total but NO dated time-series yet,
+  // so the chart read "No dated revenue yet". Synthesize an expected-revenue
+  // curve from the engaged leads' dates, scaled to the real total (mockup).
+  const nowMs = useMemo(() => Date.now(), []);
+  const chartData = useMemo(() => {
+    if (!data) return data;
+    if (data.timeSeries && data.timeSeries.length > 0) return data;
+    const series = buildSignupRevenueSeries(leadsData?.leads ?? [], data.totalPipelineUsd ?? 0, nowMs);
+    return series.length ? { ...data, timeSeries: series } : data;
+  }, [data, leadsData, nowMs]);
 
   // Header — always paints (static shell), carries identity + the Run Campaign
   // action even while the body loads.
@@ -276,7 +288,7 @@ export function SignupsOverviewPage() {
       {header}
       <div className="space-y-6">
         <RevenueOverviewSection
-          data={revenueRevealed ? data : undefined}
+          data={revenueRevealed ? chartData : undefined}
           revenuePending={!revenueRevealed}
           costPending={!costRevealed}
           newCampaignHref={`${basePath}/campaigns/new`}
@@ -287,7 +299,16 @@ export function SignupsOverviewPage() {
           topRow={signupStatRow}
           hideHeader
           conversions={
-            <SignupsLeadsTable leads={leadsData?.leads ?? []} pending={leadsPending} />
+            // The Overview's Organizations / Leads tabs PLUS a leading "Personas"
+            // tab (org × user rows with a mock persona column).
+            <ConversionsTabs
+              data={chartData}
+              pending={!revenueRevealed}
+              extraFirstTab={{
+                label: "Personas",
+                content: <PersonaConversionsTable leads={chartData?.leads ?? []} />,
+              }}
+            />
           }
         />
         <PersonaStatsCard />
