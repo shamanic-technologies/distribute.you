@@ -27,7 +27,6 @@ import {
   TopCampaignsByCostPerSignupCard,
 } from "@/components/revenue/top-campaigns-by-cost";
 import { MaturityBadge } from "@/components/maturity-badge";
-import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
 import { Skeleton } from "@/components/skeleton";
 
 const nameKey = (first: string | null, last: string | null) =>
@@ -157,8 +156,6 @@ export function OutcomePage({ lens }: { lens: OutcomeLens }) {
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
-      <OutreachStatCardsAuto />
-
       {/* Static shell — header renders on first paint, never skeletoned. */}
       <div>
         <div className="flex items-center gap-2">
