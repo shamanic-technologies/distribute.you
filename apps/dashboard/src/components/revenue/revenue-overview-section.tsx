@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { RevenueChart } from "@/components/revenue/revenue-chart";
 import { ConversionsTabs } from "@/components/revenue/conversions-tabs";
@@ -27,6 +28,7 @@ export function RevenueOverviewSection({
   brandId,
   featureSlug,
   basePath,
+  topRow,
   revenuePending = false,
   costPending = false,
 }: {
@@ -37,6 +39,8 @@ export function RevenueOverviewSection({
   featureSlug: string;
   /** /orgs/:orgId/brands/:brandId/features/:slug — for the Top-campaigns links. */
   basePath: string;
+  /** Optional row rendered under the header, above the Pipeline-revenue hero. */
+  topRow?: ReactNode;
   /** features-service `/revenue` reveal — headline, chart, CAC/ROI, conversions. */
   revenuePending?: boolean;
   /** runs-service cost-breakdown reveal — the Total-spent figure only. */
@@ -62,6 +66,8 @@ export function RevenueOverviewSection({
           New Campaign
         </Link>
       </div>
+
+      {topRow}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Headline + chart */}
