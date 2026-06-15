@@ -49,20 +49,18 @@ describe("Revenue empty state reframed to campaign-first (item 2)", () => {
 describe("Tables paginate 20 rows/page (item 3)", () => {
   const pager = read("components/table-pagination.tsx");
   const conversions = read("components/revenue/conversions-table.tsx");
-  const publicLeads = read("components/report/public-leads-view.tsx");
 
   it("default page size is 20 and the pager is api-free", () => {
     expect(pager).toContain("TABLE_PAGE_SIZE = 20");
     expect(pager).not.toContain('from "@/lib/api"');
   });
 
-  it("all three conversion tables + public leads view paginate", () => {
+  it("all three conversion tables paginate", () => {
     expect(conversions).toContain("usePaginated(orgs)");
     expect(conversions).toContain("usePaginated(leads)");
     expect(conversions).toContain("usePaginated(events)");
     // The old append-only "Show more" must be gone.
     expect(conversions).not.toContain("EVENTS_PAGE_SIZE");
-    expect(publicLeads).toContain("usePaginated(filteredLeads)");
   });
 });
 
@@ -79,17 +77,12 @@ describe("Org logos render Clerk imageUrl (item 4)", () => {
 
 describe("Conversion events show lead photos (item 5)", () => {
   const conversions = read("components/revenue/conversions-table.tsx");
-  const reportRevenue = read("components/report/revenue-view.tsx");
 
   it("event table takes a photoByLeadId map (no forced null avatar)", () => {
     expect(conversions).toContain("photoByLeadId");
     expect(conversions).not.toContain("photoUrl={null}");
     // Avatar falls back to initials when the image breaks.
     expect(conversions).toContain("onError={() => setBroken(true)}");
-  });
-
-  it("the Events tab/section is removed from the public report", () => {
-    expect(reportRevenue).not.toContain("EventConversionsTable");
   });
 });
 

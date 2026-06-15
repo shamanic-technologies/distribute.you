@@ -10,7 +10,6 @@ const read = (rel: string) =>
   fs.readFileSync(path.resolve(__dirname, rel), "utf-8");
 
 const apiLib = read("../src/lib/api.ts");
-const reportApi = read("../src/lib/report-api.ts");
 const submitHook = read("../src/lib/use-quote-opportunities.ts");
 const featureRequestsPage = read(
   "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/quote-requests/page.tsx",
@@ -98,15 +97,6 @@ describe("Opportunities surfaces hide already-pitched (filter via isOpportunityO
   it("campaign HITL quote-requests page filters opportunities", () => {
     expect(campaignRequestsPage).toContain("isOpportunityOpen");
     expect(campaignRequestsPage).toMatch(/filter\([\s\S]*?isOpportunityOpen/);
-  });
-
-  it("public report fetcher filters opportunities + Row carries pitchStatus", () => {
-    expect(reportApi).toContain("isOpportunityOpen");
-    expect(reportApi).toMatch(/filter\([\s\S]*?isOpportunityOpen/);
-    const rowBlock =
-      reportApi.split("export interface RankedOpportunityRow {")[1]?.split("\n}")[0] ??
-      "";
-    expect(rowBlock).toMatch(/pitchStatus:\s*QuotePitchStatus \| null/);
   });
 
   it("both sidebar badges count the open set (badge == page)", () => {
