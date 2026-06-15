@@ -19,7 +19,6 @@ import {
   listAllRankedOpportunities,
 } from "@/lib/api";
 import { isOpportunityOpen } from "@/lib/quote-pitch-status";
-import { isExpertQuoteFeature } from "@/lib/expert-quote-feature";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { useIsBetaUser } from "@/lib/use-beta-user";
@@ -210,12 +209,6 @@ const CrmIcon = () => (
   </svg>
 );
 
-const ReportIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-  </svg>
-);
-
 const ConversionsIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 17l6-6 4 4 7-8m0 0h-4m4 0v4" />
@@ -228,26 +221,12 @@ const OverviewIcon = () => (
   </svg>
 );
 
-const ExternalLinkIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-3.5 h-3.5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-  </svg>
-);
-
 const SettingsIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
   </svg>
 );
-
-// Features that expose the public client report. Generic across features
-// once a backend public-proxy lands; gated for now. The pr-expert-quote-*
-// family is matched via isExpertQuoteFeature (not listed here) so a workflow
-// re-version doesn't drop the report link.
-const REPORT_ENABLED_FEATURES = new Set([
-  "sales-cold-email-outreach",
-]);
 
 // The product ships ONE feature, so the feature level was flattened into the
 // brand: no `/features/[featureSlug]` segment. Brand-level sections live directly
@@ -553,10 +532,6 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
       : []),
   ];
 
-  const reportEnabled =
-    REPORT_ENABLED_FEATURES.has(featureSlug) || isExpertQuoteFeature(featureSlug);
-  const reportHref = `/report/${orgId}/${brandId}/${featureSlug}`;
-
   return (
     <SidebarSection title="Brand" backHref={`/orgs/${orgId}/brands`} backLabel="Brands">
       {/* Reveal the WHOLE nav as one group: top items are static and the Database
@@ -601,21 +576,6 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
                   isActive={pathname.startsWith(item.href)}
                 />
               ))}
-            </div>
-          )}
-          {reportEnabled && (
-            <div className="pt-2 mt-2 border-t border-gray-100">
-              <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Report</h4>
-              <a
-                href={reportHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs transition text-gray-600 hover:bg-gray-50 hover:text-gray-800"
-              >
-                <span className="w-5 h-5 text-gray-400"><ReportIcon /></span>
-                <span className="flex-1">Report</span>
-                <span className="text-gray-300"><ExternalLinkIcon /></span>
-              </a>
             </div>
           )}
           <div className="pt-2 mt-2 border-t border-gray-100">
