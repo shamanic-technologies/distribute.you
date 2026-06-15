@@ -25,7 +25,6 @@ describe("static-shell-first: cards accept `pending` and skeleton only values", 
     "components/visibility/visibility-runs-view.tsx",
     "components/visibility/visibility-competitors-view.tsx",
     "components/visibility/visibility-prompts-view.tsx",
-    "components/brand-usage.tsx",
     "components/org-usage.tsx",
   ];
 
