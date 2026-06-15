@@ -8,6 +8,7 @@ import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import {
   getFeatureOutcomes,
+  fetchFeatureStats,
   listBrandLeads,
   listBrandEmails,
   getLeadConsolidatedStatus,
@@ -21,6 +22,10 @@ import { LEAD_STATUS_PRIORITY } from "@/lib/lead-status-display";
 import { OUTCOME_LENSES, type OutcomeLens } from "@/lib/outcome-lens";
 import { OutcomeLeadsTable } from "@/components/revenue/outcome-leads-table";
 import { OutcomeLeadPanel } from "@/components/revenue/outcome-lead-panel";
+import {
+  TopCampaignsByCpcCard,
+  TopCampaignsByCostPerSignupCard,
+} from "@/components/revenue/top-campaigns-by-cost";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { Skeleton } from "@/components/skeleton";
 
@@ -40,6 +45,12 @@ function formatCount(n: number | null | undefined): string {
   if (n > 0 && n < 10) return n.toFixed(1);
   return Math.round(n).toLocaleString("en-US");
 }
+// Cost per <unit> = total spent / unit count. No units → no defined cost ("—").
+function costPer(totalCostCents: number, denom: number): string {
+  if (denom <= 0) return "—";
+  const usd = totalCostCents / 100 / denom;
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
+}
 
 /**
  * Shared body for the three outcome lenses (Signups / Booked Meetings / Sales).
@@ -49,9 +60,14 @@ function formatCount(n: number | null | undefined): string {
  */
 export function OutcomePage({ lens }: { lens: OutcomeLens }) {
   const params = useParams();
+  const orgId = params.orgId as string;
   const brandId = params.brandId as string;
   const featureSlug = useSoleFeatureSlug();
   const meta = OUTCOME_LENSES[lens];
+  // Clicks → signups is the signups funnel, so the click stat cards + the
+  // cost-efficiency leaderboards only render on the signups lens.
+  const isSignups = lens === "signups";
+  const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`;
 
   const isBeta = useIsBetaUser();
   const revenueOk = isRevenueFeature(featureSlug);
@@ -61,6 +77,13 @@ export function OutcomePage({ lens }: { lens: OutcomeLens }) {
     ["featureOutcomes", brandId, featureSlug, lens],
     () => getFeatureOutcomes(featureSlug, brandId, lens),
     { enabled },
+  );
+
+  // Brand-level outreach stats — real Clicks + CPC for the signups header cards.
+  const { data: statsData, isPending: statsPending } = useAuthQuery(
+    ["featureStats", featureSlug, brandId],
+    () => fetchFeatureStats(featureSlug, { brandId }),
+    { enabled: enabled && isSignups },
   );
 
   // Detail-panel data — joined from existing endpoints (display affordance, no
@@ -162,7 +185,51 @@ export function OutcomePage({ lens }: { lens: OutcomeLens }) {
         ))}
       </div>
 
-      {isPending || !data ? (
+      {/* Signups only — real Clicks + CPC, the funnel input to a signup. Static
+          shell (labels) always paints; only the value region skeletons. */}
+      {isSignups && (
+        <div className="grid grid-cols-2 sm:grid-cols-2 gap-4">
+          {[
+            { label: "Clicks", value: formatCount(statsData?.stats.recipientsClicked ?? null) },
+            {
+              label: "Cost per click",
+              value: costPer(statsData?.systemStats.totalCostInUsdCents ?? 0, statsData?.stats.recipientsClicked ?? 0),
+            },
+          ].map((stat) => (
+            <div key={stat.label} className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
+              <p className="text-xs text-gray-400">{stat.label}</p>
+              {statsPending || !statsData ? (
+                <Skeleton className="mt-1 h-8 w-24 rounded" />
+              ) : (
+                <p className="mt-1 text-2xl font-bold text-gray-900">{stat.value}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Signups: leads table on the left half, cost-efficiency leaderboards on
+          the right. Other lenses keep the full-width table. */}
+      {isSignups ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          {isPending || !data ? (
+            <Skeleton className="h-64 w-full rounded-xl" />
+          ) : (
+            <OutcomeLeadsTable
+              leads={data.leads}
+              probabilityLabel={meta.probabilityLabel}
+              empty={meta.empty}
+              statusByLeadId={statusByLeadId}
+              onSelect={setSelected}
+              selectedLeadId={selected?.leadId}
+            />
+          )}
+          <div className="space-y-4">
+            <TopCampaignsByCpcCard brandId={brandId} featureSlug={featureSlug} basePath={basePath} />
+            <TopCampaignsByCostPerSignupCard brandId={brandId} featureSlug={featureSlug} basePath={basePath} />
+          </div>
+        </div>
+      ) : isPending || !data ? (
         <Skeleton className="h-64 w-full rounded-xl" />
       ) : (
         <OutcomeLeadsTable

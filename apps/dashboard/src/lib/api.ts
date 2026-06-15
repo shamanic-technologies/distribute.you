@@ -1143,14 +1143,21 @@ export async function getFeatureRevenue(
 // revenue (probability × the brand's lifetime revenue). The dashboard renders
 // the returned `leads[]` (each carrying `conversionProbabilityPct`) and the
 // `totalPipelineUsd` headline — NO client-side math. See `outcome-lens.ts`.
-/** GET /features/:slug/revenue?lens=<lens> — leads + per-lead probability for one outcome lens. */
+/**
+ * GET /features/:slug/revenue?lens=<lens> — leads + per-lead probability for one
+ * outcome lens. Pass `campaignId` to scope the lens to a single campaign (still an
+ * overview response, just campaign-filtered) — used to rank campaigns by their
+ * server-computed cost-per-conversion (no client-side math).
+ */
 export async function getFeatureOutcomes(
   featureSlug: string,
   brandId: string,
   lens: OutcomeLens,
+  campaignId?: string,
   token?: string,
 ): Promise<RevenueOverview> {
   const query = new URLSearchParams({ brandId, lens });
+  if (campaignId) query.set("campaignId", campaignId);
   const raw = await apiCall<unknown>(`/features/${featureSlug}/revenue?${query.toString()}`, { token });
   return parseFeatureRevenue(raw, "getFeatureOutcomes");
 }
