@@ -10,13 +10,13 @@ j=d.createElement(s),dl=l!="dataLayer"?"&l="+l:"";j.async=true;j.src=
 <!-- End Google Tag Manager -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>distribute: Automated outbound at $0.07/contact | For agencies</title>
+  <title>distribute: Automated outbound at ~$90/meeting | For agencies</title>
   <meta name="description" content="URL + budget = automated cold email outreach. Prospecting, copywriting, delivery, reply qualification. 35% open rate. 27% booking rate. $90/meeting. 50 free emails.">
   <link rel="canonical" href="https://distribute.you/pro">
   <meta property="og:type" content="website">
   <meta property="og:locale" content="en_US">
   <meta property="og:url" content="https://distribute.you/pro">
-  <meta property="og:title" content="distribute: Automated outbound at $0.07/contact">
+  <meta property="og:title" content="distribute: Automated outbound at ~$90/meeting">
   <meta property="og:description" content="URL + budget = automated cold email outreach. 35% open rate. 27% booking rate. $90/meeting.">
   <meta property="og:image" content="https://distribute.you/opengraph-image">
   <meta name="twitter:card" content="summary_large_image">
@@ -215,8 +215,11 @@ j=d.createElement(s),dl=l!="dataLayer"?"&l="+l:"";j.async=true;j.src=
     }
     .metrics-table .m-val.green { color: var(--green); }
 
-    /* ═══ hero-sub override ═══ */
+    /* ═══ hero overrides ═══ */
     .hero-sub { max-width: 40rem; }
+    @media (min-width: 900px) {
+      .hero-content { max-width: 760px; }
+    }
 
     /* ═══ FAQ (pricing-style) ═══ */
     .s-faq-inner { max-width: 760px; margin: 0 auto; padding: 0 2rem; }
@@ -247,6 +250,13 @@ j=d.createElement(s),dl=l!="dataLayer"?"&l="+l:"";j.async=true;j.src=
     }
     [data-theme="light"] .feat-card {
       background: linear-gradient(170deg, oklch(88% 0.036 232) 0%, oklch(99.5% 0.001 264) 50%);
+    }
+    [data-theme="light"] .metrics-table {
+      background: var(--surface);
+      box-shadow: 0 2px 14px oklch(0% 0 0 / 0.06), 0 1px 4px oklch(0% 0 0 / 0.04);
+    }
+    [data-theme="light"] .metrics-table th {
+      background: linear-gradient(160deg, oklch(88% 0.036 232) 0%, oklch(96% 0.010 238) 100%);
     }
 
     /* ═══ Responsive ═══ */
@@ -286,7 +296,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       </div>
 
       <h1 class="t-hero a2">
-        Automated outbound.<br>$0.07/contact.
+        Automated outbound.<br>~$90/meeting.
       </h1>
 
       <p class="hero-sub a3">
@@ -452,9 +462,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
               </div>
               <div class="uid-roi-divider"></div>
               <div class="uid-roi-section">
-                <div class="uid-roi-lbl">Expected ROI</div>
-                <div class="uid-roi-val" style="color:var(--green)">45x</div>
-                <div class="uid-roi-meta">pipeline / spend</div>
+                <div class="uid-roi-lbl">Avg. ROI</div>
+                <div class="uid-roi-val" style="color:var(--green)">~4x</div>
+                <div class="uid-roi-meta">avg. pipeline / spend</div>
               </div>
               <div class="uid-roi-divider"></div>
               <div class="uid-roi-section">
@@ -464,9 +474,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
               </div>
               <div class="uid-roi-divider"></div>
               <div class="uid-roi-section">
-                <div class="uid-roi-lbl">Cost / contact</div>
-                <div class="uid-roi-val" style="color:var(--purple)">$0.07</div>
-                <div class="uid-roi-meta">per contact reached</div>
+                <div class="uid-roi-lbl">Cost / meeting</div>
+                <div class="uid-roi-val" style="color:var(--purple)">~$90</div>
+                <div class="uid-roi-meta">avg. per meeting booked</div>
               </div>
             </div>
           </div>
@@ -526,8 +536,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div class="stats-card">
       <div class="stats-inner">
         <div class="stat">
-          <span class="stat-val accent">$0.07</span>
-          <span class="stat-lbl">per contact reached</span>
+          <span class="stat-val accent">~$90</span>
+          <span class="stat-lbl">avg. per meeting</span>
         </div>
         <div class="stat">
           <span class="stat-val">35%</span>
@@ -538,8 +548,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           <span class="stat-lbl">meeting booking rate</span>
         </div>
         <div class="stat">
-          <span class="stat-val">45x</span>
-          <span class="stat-lbl">expected ROI</span>
+          <span class="stat-val">~4x avg</span>
+          <span class="stat-lbl">ROI</span>
         </div>
       </div>
     </div>
@@ -607,7 +617,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <!-- Step 2 -->
       <div class="step-card r d2">
         <div class="step-illu">
-          <div style="width:100%;max-width:240px">
+          <div style="width:100%;max-width:290px">
             <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.25rem;box-shadow:0 4px 20px oklch(0% 0 0 / 0.08);display:flex;flex-direction:column;gap:0.875rem">
               <div>
                 <div style="font-size:0.7rem;color:var(--muted);font-weight:500;margin-bottom:0.35rem">Daily budget</div>
@@ -630,7 +640,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 <div style="font-size:0.7rem;color:var(--muted);font-weight:500;margin-bottom:0.35rem">Objective</div>
                 <div style="display:flex;gap:0.4rem;white-space:nowrap">
                   <div style="flex:1;background:var(--green-dim);color:var(--green);border:1px solid var(--green-brd);border-radius:6px;padding:0.3rem 0.5rem;font-size:0.65rem;font-weight:600;text-align:center;display:flex;align-items:center;justify-content:center;gap:0.3rem"><svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 6l3 3 6-6"/></svg>Meetings booked</div>
-                  <div style="flex:1;background:var(--bg-alt);color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:0.3rem 0.5rem;font-size:0.65rem;font-weight:600;text-align:center">Self-serve</div>
+                  <div style="flex:1;background:var(--bg-alt);color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:0.3rem 0.5rem;font-size:0.65rem;font-weight:600;text-align:center">Sign Up</div>
                 </div>
               </div>
               <div style="background:var(--accent);color:#fff;border-radius:8px;padding:0.55rem 1rem;font-size:var(--fs-sm);font-weight:600;text-align:center;cursor:default">
@@ -642,7 +652,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <div class="step-body">
           <span class="step-num-pill">step 02</span>
           <h3 class="step-title">Set budget and objective.</h3>
-          <p class="step-desc">Daily spend cap. Target volume. Campaign objective: meetings booked or self-serve. We handle copy, deliverability, and sending.</p>
+          <p class="step-desc">Daily spend cap. Target volume. Campaign objective: meetings booked or sign-up. We handle copy, deliverability, and sending.</p>
           <div class="step-meta-row">
             <span class="step-meta">$10/day min</span>
             <span class="step-meta">~700 contacts/day at $50</span>
@@ -712,7 +722,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- ════════════════════════════════════════════
      METRICS TABLE
 ════════════════════════════════════════════ -->
-<section class="s-for" style="padding-top:0">
+<section class="s-for" style="padding-top:5rem">
   <div class="wrap">
     <div class="sec-intro r">
       <span class="t-lbl">Performance data</span>
@@ -744,14 +754,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <td>varies</td>
           </tr>
           <tr>
-            <td>Cost per contact reached</td>
-            <td class="m-val">$0.07</td>
-            <td>$0.30–$1.00</td>
-            <td>$3–$8</td>
-          </tr>
-          <tr>
-            <td>Cost per meeting booked</td>
-            <td class="m-val">$90</td>
+            <td>Avg. cost per meeting</td>
+            <td class="m-val">~$90</td>
             <td>$200–$400</td>
             <td>$500–$1,500</td>
           </tr>
@@ -769,9 +773,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           </tr>
           <tr>
             <td>Expected ROI</td>
-            <td class="m-val green">45x</td>
-            <td>8–15x</td>
-            <td>3–5x</td>
+            <td class="m-val green">~4x avg</td>
+            <td>2–4x</td>
+            <td>1–2x</td>
           </tr>
         </tbody>
       </table>
@@ -783,7 +787,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- ════════════════════════════════════════════
      FEATURE BENTO — technical copy
 ════════════════════════════════════════════ -->
-<section class="s-how" style="padding-top:0">
+<section class="s-how" style="padding-top:5rem">
   <div class="wrap">
     <div class="sec-intro r">
       <span class="t-lbl">What's included</span>
@@ -796,37 +800,31 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <!-- Open rate -->
       <div class="feat-card r d1">
         <div class="feat-illu" aria-hidden="true">
-          <div style="display:flex;align-items:flex-end;gap:5px;height:70px">
-            <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
-              <div style="border-radius:3px 3px 0 0;width:22px;background:var(--accent);height:52px"></div>
-              <div style="font-size:0.58rem;color:var(--accent);font-family:'JetBrains Mono',monospace;font-weight:600">35%</div>
+          <div style="width:100%">
+            <svg viewBox="0 0 280 65" style="width:100%;height:auto;display:block;overflow:visible">
+              <line x1="0" y1="16" x2="280" y2="16" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="3 2"/>
+              <line x1="0" y1="33" x2="280" y2="33" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="3 2"/>
+              <line x1="0" y1="50" x2="280" y2="50" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="3 2"/>
+              <path d="M0,57 C70,48 140,37 210,25 C245,18 262,13 280,10 L280,65 L0,65 Z" fill="var(--accent)" fill-opacity="0.09" stroke="none"/>
+              <path d="M0,37 C70,37 140,36 210,35 C245,35 262,34 280,34 L280,65 L0,65 Z" fill="var(--muted)" fill-opacity="0.07" stroke="none"/>
+              <path d="M0,37 C70,37 140,36 210,35 C245,35 262,34 280,34" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M0,57 C70,48 140,37 210,25 C245,18 262,13 280,10" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="280" cy="10" r="3.5" fill="var(--accent)"/>
+              <circle cx="280" cy="34" r="2.5" fill="var(--muted)"/>
+            </svg>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.45rem">
+              <div style="display:flex;gap:0.875rem">
+                <div style="display:flex;align-items:center;gap:4px"><span style="width:14px;height:2px;border-radius:1px;background:var(--accent);display:block"></span><span style="font-size:0.63rem;color:var(--text)">distribute</span></div>
+                <div style="display:flex;align-items:center;gap:4px"><span style="width:14px;height:2px;border-radius:1px;background:var(--muted);display:block"></span><span style="font-size:0.63rem;color:var(--muted)">industry avg</span></div>
+              </div>
+              <div style="display:flex;gap:0.5rem;align-items:baseline">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;font-weight:700;color:var(--accent)">35%</span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--muted)">~21%</span>
+              </div>
             </div>
-            <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
-              <div style="border-radius:3px 3px 0 0;width:22px;background:var(--accent);height:44px"></div>
-              <div style="font-size:0.58rem;color:var(--muted);font-family:'JetBrains Mono',monospace"></div>
-            </div>
-            <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
-              <div style="border-radius:3px 3px 0 0;width:22px;background:var(--accent);height:48px"></div>
-              <div style="font-size:0.58rem;color:var(--muted);font-family:'JetBrains Mono',monospace"></div>
-            </div>
-            <div style="width:12px"></div>
-            <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
-              <div style="border-radius:3px 3px 0 0;width:22px;background:var(--border);height:30px"></div>
-              <div style="font-size:0.58rem;color:var(--muted);font-family:'JetBrains Mono',monospace;font-weight:600">21%</div>
-            </div>
-            <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
-              <div style="border-radius:3px 3px 0 0;width:22px;background:var(--border);height:24px"></div>
-            </div>
-            <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
-              <div style="border-radius:3px 3px 0 0;width:22px;background:var(--border);height:27px"></div>
-            </div>
-          </div>
-          <div style="margin-left:1rem;display:flex;flex-direction:column;gap:6px">
-            <div style="display:flex;align-items:center;gap:5px;font-size:0.65rem;color:var(--text)"><span style="width:10px;height:10px;border-radius:2px;background:var(--accent);display:block"></span>distribute</div>
-            <div style="display:flex;align-items:center;gap:5px;font-size:0.65rem;color:var(--muted)"><span style="width:10px;height:10px;border-radius:2px;background:var(--border);border:1px solid var(--border-hi);display:block"></span>Industry avg</div>
           </div>
         </div>
-        <h3 class="feat-title">35% open rate</h3>
+        <h3 class="feat-title">35% average open rate</h3>
         <p class="feat-desc">Continuous A/B on subject lines and copy. Cold email industry average is 21%. We test until we beat it.</p>
         <div class="feat-stat-row">
           <div class="feat-stat">
@@ -899,25 +897,25 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <!-- Cost (wide) -->
       <div class="feat-card wide r d1" style="flex-direction:row;align-items:center;gap:2.5rem">
         <div style="flex:1;min-width:0">
-          <h3 class="feat-title">$0.07 per contact. No per-seat pricing.</h3>
-          <p class="feat-desc" style="margin-top:0.5rem">One contact = one full email sequence = $0.07. No seat fees. No tool subscriptions. No infrastructure to maintain. Scale up or down without renegotiating.</p>
+          <h3 class="feat-title">~$90 avg. cost per meeting</h3>
+          <p class="feat-desc" style="margin-top:0.5rem">One meeting booked, full sequence included. No seat fees. No tool subscriptions. No infrastructure to maintain. Scale up or down without renegotiating.</p>
         </div>
         <div class="feat-illu" style="flex:1;min-width:0;height:auto" aria-hidden="true">
           <div style="width:100%;display:flex;flex-direction:column;gap:6px">
             <div style="display:flex;align-items:center;gap:8px">
               <span style="font-size:0.65rem;color:var(--muted);min-width:84px">distribute</span>
-              <div style="flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="height:100%;border-radius:3px;background:var(--accent);width:7%"></div></div>
-              <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;font-weight:700;color:var(--accent);min-width:40px;text-align:right">$0.07</span>
+              <div style="flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="height:100%;border-radius:3px;background:var(--accent);width:6%"></div></div>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;font-weight:700;color:var(--accent);min-width:44px;text-align:right">~$90</span>
             </div>
             <div style="display:flex;align-items:center;gap:8px">
-              <span style="font-size:0.65rem;color:var(--muted);min-width:84px">Apollo+tools</span>
-              <div style="flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="height:100%;border-radius:3px;background:var(--muted);width:45%"></div></div>
-              <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;font-weight:600;color:var(--muted);min-width:40px;text-align:right">$0.30</span>
+              <span style="font-size:0.65rem;color:var(--muted);min-width:84px">Cold email avg</span>
+              <div style="flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="height:100%;border-radius:3px;background:var(--muted);width:17%"></div></div>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;font-weight:600;color:var(--muted);min-width:44px;text-align:right">~$250</span>
             </div>
             <div style="display:flex;align-items:center;gap:8px">
               <span style="font-size:0.65rem;color:var(--muted);min-width:84px">SDR hire</span>
-              <div style="flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="height:100%;border-radius:3px;background:var(--muted);width:90%"></div></div>
-              <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;font-weight:600;color:var(--muted);min-width:40px;text-align:right">$6</span>
+              <div style="flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="height:100%;border-radius:3px;background:var(--muted);width:70%"></div></div>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;font-weight:600;color:var(--muted);min-width:44px;text-align:right">~$1k</span>
             </div>
           </div>
         </div>
@@ -943,40 +941,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         </div>
         <h3 class="feat-title">Full deliverability stack</h3>
         <p class="feat-desc">Domain setup, warm-up, DKIM/SPF/DMARC, rotation, bounce and spam monitoring. Nothing to configure. You never touch it.</p>
-      </div>
-
-      <!-- Pipeline tracking -->
-      <div class="feat-card r d3">
-        <div class="feat-illu" aria-hidden="true">
-          <div style="width:100%;display:flex;flex-direction:column;gap:4px">
-            <div style="display:flex;align-items:center;gap:6px">
-              <span style="font-size:0.62rem;color:var(--muted);min-width:64px">Contacted</span>
-              <div style="height:16px;border-radius:3px;background:var(--accent);width:100%;display:flex;align-items:center;padding:0 6px">
-                <span style="font-size:0.58rem;font-weight:600;color:#fff">700/day</span>
-              </div>
-            </div>
-            <div style="display:flex;align-items:center;gap:6px">
-              <span style="font-size:0.62rem;color:var(--muted);min-width:64px">Opened</span>
-              <div style="height:16px;border-radius:3px;background:var(--accent);width:35%;display:flex;align-items:center;padding:0 6px;opacity:0.85">
-                <span style="font-size:0.58rem;font-weight:600;color:#fff">35%</span>
-              </div>
-            </div>
-            <div style="display:flex;align-items:center;gap:6px">
-              <span style="font-size:0.62rem;color:var(--muted);min-width:64px">Replied</span>
-              <div style="height:16px;border-radius:3px;background:var(--purple);width:12%;display:flex;align-items:center;padding:0 6px;opacity:0.85;min-width:28px">
-                <span style="font-size:0.58rem;font-weight:600;color:#fff">12%</span>
-              </div>
-            </div>
-            <div style="display:flex;align-items:center;gap:6px">
-              <span style="font-size:0.62rem;color:var(--muted);min-width:64px">Meetings</span>
-              <div style="height:16px;border-radius:3px;background:var(--green);width:5%;display:flex;align-items:center;padding:0 6px;opacity:0.85;min-width:28px">
-                <span style="font-size:0.58rem;font-weight:600;color:#fff">27%</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <h3 class="feat-title">Pipeline tracking</h3>
-        <p class="feat-desc">Contacts, opens, replies, meetings, purchases. Updated in real time. API access available for custom reporting or CRM sync.</p>
       </div>
 
     </div>
@@ -1015,7 +979,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         </div>
         <ul class="cmp-list">
           <li><span class="cmp-icon">✓</span><span>URL + budget. That's the entire input.</span></li>
-          <li><span class="cmp-icon">✓</span><span>$0.07/contact. No tool subscriptions.</span></li>
+          <li><span class="cmp-icon">✓</span><span>~$90/meeting avg. No seat fees.</span></li>
           <li><span class="cmp-icon">✓</span><span>Deliverability handled. Nothing to configure.</span></li>
           <li><span class="cmp-icon">✓</span><span>AI writes and optimizes copy continuously.</span></li>
           <li><span class="cmp-icon">✓</span><span>Only qualified buyers reach your inbox.</span></li>
@@ -1038,9 +1002,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <div>
         <span class="t-lbl" style="color: var(--accent); display: block; margin-bottom: 0.875rem;">Pricing</span>
         <h2 class="t-h2" style="margin-bottom: 1rem;">Usage-based. No seats. No contracts.</h2>
-        <p class="t-body" style="color: var(--sub); margin-bottom: 0.875rem;">$0.07 per contact reached. $10/day minimum. Pause or stop any campaign instantly. Unused budget stays in your account. Multi-client billing: each campaign tracked separately, single invoice.</p>
+        <p class="t-body" style="color: var(--sub); margin-bottom: 0.875rem;">~$90/meeting avg. $10/day minimum. Pause or stop any campaign instantly. Unused budget stays in your account. Multi-client billing: each campaign tracked separately, single invoice.</p>
         <div class="price-checks">
-          <div class="price-check"><span class="price-check-icon">✓</span><span class="price-check-text">$0.07/contact. No per-seat licensing.</span></div>
+          <div class="price-check"><span class="price-check-icon">✓</span><span class="price-check-text">~$90/meeting avg. No seat licensing.</span></div>
           <div class="price-check"><span class="price-check-icon">✓</span><span class="price-check-text">$10/day minimum. No upper limit.</span></div>
           <div class="price-check"><span class="price-check-icon">✓</span><span class="price-check-text">Pause or cancel anytime. Unused budget stays.</span></div>
           <div class="price-check"><span class="price-check-icon">✓</span><span class="price-check-text">Multi-client: separate campaigns, one account, one invoice.</span></div>
@@ -1075,16 +1039,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           </div>
           <div style="padding:1.1rem 1.25rem;display:flex;flex-direction:column;gap:0.75rem">
             <div style="display:flex;align-items:center;justify-content:space-between">
-              <span style="font-size:0.87rem;color:var(--muted)">Cost per contact</span>
-              <span style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;font-weight:700;color:var(--accent)">$0.07</span>
+              <span style="font-size:0.87rem;color:var(--muted)">Avg. cost per meeting</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;font-weight:700;color:var(--accent)">~$90</span>
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between">
               <span style="font-size:0.87rem;color:var(--muted)">Cost per meeting</span>
               <span style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;font-weight:700;color:var(--text)">$90</span>
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between">
-              <span style="font-size:0.87rem;color:var(--muted)">Expected ROI</span>
-              <span style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;font-weight:700;color:var(--green)">45x</span>
+              <span style="font-size:0.87rem;color:var(--muted)">Avg. ROI</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;font-weight:700;color:var(--green)">~4x avg</span>
             </div>
           </div>
           <div style="padding:1.1rem 1.25rem 1.5rem;border-top:1px solid var(--border)">
