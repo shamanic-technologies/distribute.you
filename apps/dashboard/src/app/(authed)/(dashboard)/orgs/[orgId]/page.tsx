@@ -7,7 +7,6 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { listBrands } from "@/lib/api";
 import { hasExplicitHierarchyIntent, resolveLandingBrand } from "@/lib/last-brand";
 import { BrandLogo } from "@/components/brand-logo";
-import { OrgUsageSection } from "@/components/org-usage";
 import { pollOptions } from "@/lib/query-options";
 
 export default function OrgOverviewPage() {
@@ -103,11 +102,6 @@ export default function OrgOverviewPage() {
             ))}
           </div>
         )}
-      </div>
-
-      {/* Usage */}
-      <div>
-        <OrgUsageSection brands={brands} />
       </div>
     </div>
   );
