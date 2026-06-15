@@ -203,6 +203,7 @@ export function SignupsOverviewPage() {
           featureSlug={featureSlug}
           basePath={basePath}
           topRow={signupStatRow}
+          hideHeader
         />
         <PersonaStatsCard />
       </div>
