@@ -34,6 +34,10 @@ function formatUsd(n: number | null | undefined): string {
 }
 function formatCount(n: number | null | undefined): string {
   if (n === null || n === undefined) return "—";
+  // Expected count is a Σ of probabilities — often < 1 (e.g. 0.44 expected
+  // signups). Rounding to an integer would show a misleading "0"; keep one
+  // decimal under 10 (mirrors the sub-10% probability format), integer above.
+  if (n > 0 && n < 10) return n.toFixed(1);
   return Math.round(n).toLocaleString("en-US");
 }
 
@@ -73,9 +77,20 @@ export function OutcomePage({ lens }: { lens: OutcomeLens }) {
     { enabled },
   );
 
+  // Key on the CANONICAL lead id (`leadId`), NOT the leads_campaigns membership
+  // row `id` — features-service revenue keys its leads on `leadId`, so the join
+  // (status column + panel) only matches on `leadId`. A lead can appear under
+  // several campaign memberships brand-wide; keep the most-advanced status row.
   const leadById = useMemo(() => {
+    const rank = (l: Lead) => LEAD_STATUS_PRIORITY.indexOf(getLeadConsolidatedStatus(l));
     const m = new Map<string, Lead>();
-    for (const l of leadsData?.leads ?? []) m.set(l.id, l);
+    for (const l of leadsData?.leads ?? []) {
+      if (!l.leadId) continue;
+      const prev = m.get(l.leadId);
+      // Lower index = more advanced; an unranked status sorts last (Infinity).
+      const idx = (r: number) => (r === -1 ? Number.POSITIVE_INFINITY : r);
+      if (!prev || idx(rank(l)) < idx(rank(prev))) m.set(l.leadId, l);
+    }
     return m;
   }, [leadsData]);
   const emailsByName = useMemo(() => {
