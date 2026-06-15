@@ -242,10 +242,10 @@ export function BrandProfilePage() {
     const text = raw.trim();
     const lower = text.toLowerCase();
 
-    if (/\b(save|fork|new version|commit)\b/.test(lower)) {
+    if (/\b(save|new version|commit)\b/.test(lower)) {
       if (!dirty) return { reply: "Nothing changed since the last save." };
       save();
-      return { reply: "Saved — forked the draft into a new version.", toolCalls: [{ tool: "save_brand_profile", summary: "Forked a new version" }] };
+      return { reply: "Saved as a new version.", toolCalls: [{ tool: "save_brand_profile", summary: "Saved a new version" }] };
     }
 
     // "set/change/update <field> to <value>"  /  "add <value> to <field>"

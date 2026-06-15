@@ -19,7 +19,7 @@ function helpTurn(prefix?: string): AiTurn {
   return {
     reply:
       (prefix ? prefix + "\n\n" : "") +
-      "I can create, fork, pause/resume and archive personas. Try:\n• Create a persona named Mid-market RevOps\n• Fork Scaling SaaS Founders\n• Pause Early Marketing Buyers\n• Archive Enterprise Growth Leaders",
+      "I can create, duplicate, pause/resume and archive personas. Try:\n• Create a persona named Mid-market RevOps\n• Duplicate Scaling SaaS Founders\n• Pause Early Marketing Buyers\n• Archive Enterprise Growth Leaders",
   };
 }
 
@@ -138,8 +138,10 @@ export function CustomerPersonasPage() {
     );
   }
 
+  // A brand-new persona starts as an UNSAVED draft card — the user fills it in
+  // and Saves, or Cancels it away before it's ever persisted.
   const addPersona = (name = "New Persona") => {
-    const created = { id: nextId(), name: capWords(name), filters: {}, status: "active" as const };
+    const created = { id: nextId(), name: capWords(name), filters: {}, status: "active" as const, unsaved: true };
     setPersonas((prev) => [created, ...prev]);
     return created;
   };
@@ -148,20 +150,25 @@ export function CustomerPersonasPage() {
     setPersonas((prev) => prev.map((p) => (p.id === id ? { ...p, ...next } : p)));
   };
 
+  const removePersona = (id: string) =>
+    setPersonas((prev) => prev.filter((p) => p.id !== id));
+
   const setStatus = (id: string, status: Persona["status"]) =>
     updatePersona(id, { status });
 
-  // Fork is the ONLY way to "edit" a persona in the backend model — produce a
-  // fresh active copy, never mutate the source. (The inline chip editing on a
-  // card is the mockup stand-in for opening that fork to edit.)
-  const forkPersona = (id: string) => {
-    setPersonas((prev) => {
-      const src = prev.find((p) => p.id === id);
-      if (!src) return prev;
-      const filters: Filters = {};
-      for (const [k, v] of Object.entries(src.filters)) filters[k as CategoryKey] = [...(v ?? [])];
-      return [{ id: nextId(), name: capWords(`${src.name} copy`), filters, status: "active" }, ...prev];
-    });
+  // Commit a draft (new) persona: the card's edits become its saved values.
+  const commitNew = (id: string, name: string, filters: Filters) =>
+    updatePersona(id, { name: capWords(name), filters, unsaved: false });
+
+  // Save edits as a NEW persona — every edit is a duplicate at save time, the
+  // source is never mutated.
+  const saveAsNew = (name: string, filters: Filters) => {
+    const copy: Filters = {};
+    for (const [k, v] of Object.entries(filters)) copy[k as CategoryKey] = [...(v ?? [])];
+    setPersonas((prev) => [
+      { id: nextId(), name: capWords(name), filters: copy, status: "active" },
+      ...prev,
+    ]);
   };
 
   const findByName = (q: string): Persona | undefined => {
@@ -183,13 +190,13 @@ export function CustomerPersonasPage() {
     if (/\b(create|add|new)\b/.test(lower)) {
       const name = after(/.*?\b(create|add|new)\b/i) || "New Persona";
       const p = addPersona(name);
-      return { reply: `Created the persona “${p.name}”. Add targeting filters on its card.`, toolCalls: [{ tool: "create_persona", summary: `Created “${p.name}” (active)` }] };
+      return { reply: `Started a draft persona “${p.name}”. Add targeting filters, then Save it (or Cancel).`, toolCalls: [{ tool: "create_persona", summary: `Drafted “${p.name}”` }] };
     }
-    if (/\b(fork|duplicate|clone|copy)\b/.test(lower)) {
-      const p = findByName(after(/.*?\b(fork|duplicate|clone|copy)\b/i));
-      if (!p) return helpTurn("Which persona should I fork? Try: fork Scaling SaaS Founders");
-      forkPersona(p.id);
-      return { reply: `Forked “${p.name}” into a new active copy.`, toolCalls: [{ tool: "fork_persona", summary: `Forked “${p.name}”` }] };
+    if (/\b(duplicate|clone|copy)\b/.test(lower)) {
+      const p = findByName(after(/.*?\b(duplicate|clone|copy)\b/i));
+      if (!p) return helpTurn("Which persona should I duplicate? Try: duplicate Scaling SaaS Founders");
+      saveAsNew(`${p.name} copy`, p.filters);
+      return { reply: `Duplicated “${p.name}” into a new persona.`, toolCalls: [{ tool: "duplicate_persona", summary: `Duplicated “${p.name}”` }] };
     }
     if (/\b(archive|hide|remove|delete)\b/.test(lower)) {
       const p = findByName(after(/.*?\b(archive|hide|remove|delete)\b/i));
@@ -304,8 +311,9 @@ export function CustomerPersonasPage() {
               <PersonaCard
                 key={persona.id}
                 persona={persona}
-                onChange={(next) => updatePersona(persona.id, next)}
-                onFork={() => forkPersona(persona.id)}
+                onSaveAsNew={(name, filters) => saveAsNew(name, filters)}
+                onCommitNew={(name, filters) => commitNew(persona.id, name, filters)}
+                onCancelNew={() => removePersona(persona.id)}
                 onSetStatus={(s) => setStatus(persona.id, s)}
               />
             ))}
@@ -317,69 +325,120 @@ export function CustomerPersonasPage() {
         open={aiOpen}
         onClose={() => setAiOpen(false)}
         title="Edit personas with AI"
-        intro="Hi — I can create, fork, pause, resume and archive your personas. What would you like to change?"
-        suggestions={["Create a persona named Mid-market RevOps", "Fork Scaling SaaS Founders", "Archive Early Marketing Buyers"]}
+        intro="Hi — I can create, duplicate, pause, resume and archive your personas. What would you like to change?"
+        suggestions={["Create a persona named Mid-market RevOps", "Duplicate Scaling SaaS Founders", "Archive Early Marketing Buyers"]}
         onSend={runAiCommand}
       />
     </div>
   );
 }
 
+function cloneFilters(f: Filters): Filters {
+  const out: Filters = {};
+  for (const [k, v] of Object.entries(f)) out[k as CategoryKey] = [...(v ?? [])];
+  return out;
+}
+
+function filtersEqual(a: Filters, b: Filters): boolean {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]) as Set<CategoryKey>;
+  for (const k of keys) {
+    const av = a[k] ?? [];
+    const bv = b[k] ?? [];
+    if (av.length !== bv.length || av.some((x, i) => x !== bv[i])) return false;
+  }
+  return true;
+}
+
 // ---------------------------------------------------------------------------
-// Persona card — name (editable, ≤4 words) + per-category chip rows.
+// Persona card — edits NEVER mutate the saved persona. A brand-new persona is
+// an unsaved draft you Save or Cancel; editing an existing persona surfaces
+// "Unsaved changes" + "Save as new persona" (the edit becomes a duplicate at
+// save), with Cancel to revert. Both can always be undone before Save.
 // ---------------------------------------------------------------------------
 function PersonaCard({
   persona,
-  onChange,
-  onFork,
+  onSaveAsNew,
+  onCommitNew,
+  onCancelNew,
   onSetStatus,
 }: {
   persona: Persona;
-  onChange: (next: Partial<Persona>) => void;
-  onFork: () => void;
+  onSaveAsNew: (name: string, filters: Filters) => void;
+  onCommitNew: (name: string, filters: Filters) => void;
+  onCancelNew: () => void;
   onSetStatus: (status: Persona["status"]) => void;
 }) {
-  const [editingName, setEditingName] = useState(false);
-  /** Which category currently has its add-input open. */
-  const [adding, setAdding] = useState<CategoryKey | null>(null);
-  const [draft, setDraft] = useState("");
+  const isNew = persona.unsaved === true;
+  const isArchived = persona.status === "archived";
+  const editable = !isArchived;
 
-  const wordCount = persona.name.trim() === "" ? 0 : persona.name.trim().split(/\s+/).length;
+  const [editingName, setEditingName] = useState(false);
+  const [adding, setAdding] = useState<CategoryKey | null>(null);
+  const [chipDraft, setChipDraft] = useState("");
+
+  // Local working copy. The saved persona (props) is the baseline and is never
+  // mutated in place — Save commits a new draft or duplicates the edits.
+  const [name, setName] = useState(persona.name);
+  const [filters, setFilters] = useState<Filters>(() => cloneFilters(persona.filters));
+
+  const wordCount = name.trim() === "" ? 0 : name.trim().split(/\s+/).length;
+  const totalFilters = Object.values(filters).reduce((n, arr) => n + (arr?.length ?? 0), 0);
+  const dirty = name !== persona.name || !filtersEqual(filters, persona.filters);
+  const showSaveBar = editable && (isNew || dirty);
 
   const addChip = (key: CategoryKey, raw: string) => {
     const value = raw.trim();
+    setChipDraft("");
     if (!value) return;
-    const current = persona.filters[key] ?? [];
-    if (current.some((v) => v.toLowerCase() === value.toLowerCase())) {
-      setDraft("");
-      return;
-    }
-    onChange({ filters: { ...persona.filters, [key]: [...current, value] } });
-    setDraft("");
+    setFilters((prev) => {
+      const current = prev[key] ?? [];
+      if (current.some((v) => v.toLowerCase() === value.toLowerCase())) return prev;
+      return { ...prev, [key]: [...current, value] };
+    });
   };
 
   const removeChip = (key: CategoryKey, value: string) => {
-    const current = persona.filters[key] ?? [];
-    const next = current.filter((v) => v !== value);
-    const filters = { ...persona.filters };
-    if (next.length) filters[key] = next;
-    else delete filters[key];
-    onChange({ filters });
+    setFilters((prev) => {
+      const current = prev[key] ?? [];
+      const next = current.filter((v) => v !== value);
+      const out = { ...prev };
+      if (next.length) out[key] = next;
+      else delete out[key];
+      return out;
+    });
   };
 
-  const totalFilters = Object.values(persona.filters).reduce((n, arr) => n + (arr?.length ?? 0), 0);
+  const resetDraft = () => {
+    setName(persona.name);
+    setFilters(cloneFilters(persona.filters));
+    setEditingName(false);
+    setAdding(null);
+  };
+
+  const handleSave = () => {
+    if (isNew) onCommitNew(name, filters);
+    else {
+      onSaveAsNew(name, filters);
+      resetDraft();
+    }
+  };
+
+  const handleCancel = () => {
+    if (isNew) onCancelNew();
+    else resetDraft();
+  };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5 flex flex-col gap-4">
+    <div className={`bg-white rounded-xl border p-5 flex flex-col gap-4 ${showSaveBar ? "border-brand-300 ring-1 ring-brand-200" : "border-gray-200"}`}>
       {/* Card header */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          {editingName ? (
+          {editingName && editable ? (
             <div>
               <input
                 autoFocus
-                value={persona.name}
-                onChange={(e) => onChange({ name: capWords(e.target.value) })}
+                value={name}
+                onChange={(e) => setName(capWords(e.target.value))}
                 onBlur={() => setEditingName(false)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === "Escape") setEditingName(false);
@@ -392,16 +451,22 @@ function PersonaCard({
           ) : (
             <button
               type="button"
-              onClick={() => setEditingName(true)}
+              onClick={() => editable && setEditingName(true)}
+              disabled={!editable}
               className="group flex items-center gap-1.5 text-left"
             >
-              <span className="text-base font-semibold text-gray-900 truncate">{persona.name || "Untitled"}</span>
-              <PencilIcon className="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-500 shrink-0" />
+              <span className="text-base font-semibold text-gray-900 truncate">{name || "Untitled"}</span>
+              {editable && <PencilIcon className="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-500 shrink-0" />}
             </button>
           )}
           <p className="mt-0.5 flex items-center gap-2 text-[11px] text-gray-400">
             <span>{totalFilters} {totalFilters === 1 ? "filter" : "filters"}</span>
-            {persona.status === "paused" && (
+            {isNew && (
+              <span className="rounded-full bg-brand-50 text-brand-600 border border-brand-200 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide">
+                Draft
+              </span>
+            )}
+            {!isNew && persona.status === "paused" && (
               <span className="rounded-full bg-amber-50 text-amber-600 border border-amber-200 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide">
                 Paused
               </span>
@@ -414,51 +479,45 @@ function PersonaCard({
           </p>
         </div>
 
-        {/* Actions — personas are never hard-deleted, only forked / paused /
-            archived. Archived cards offer Restore instead. */}
-        <div className="flex items-center gap-1 shrink-0">
-          {persona.status === "archived" ? (
-            <button
-              type="button"
-              onClick={() => onSetStatus("active")}
-              className="rounded-md px-2 py-1 text-[11px] font-medium text-brand-600 hover:bg-brand-50 transition"
-            >
-              Restore
-            </button>
-          ) : (
-            <>
+        {/* Lifecycle actions — never hard-delete. New drafts have none (Save /
+            Cancel live in the save bar). Archived cards only offer Restore. */}
+        {!isNew && (
+          <div className="flex items-center gap-1 shrink-0">
+            {isArchived ? (
               <button
                 type="button"
-                onClick={() => onSetStatus(persona.status === "paused" ? "active" : "paused")}
-                className="rounded-md px-2 py-1 text-[11px] text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition"
+                onClick={() => onSetStatus("active")}
+                className="rounded-md px-2 py-1 text-[11px] font-medium text-brand-600 hover:bg-brand-50 transition"
               >
-                {persona.status === "paused" ? "Resume" : "Pause"}
+                Restore
               </button>
-              <button
-                type="button"
-                onClick={onFork}
-                title="Fork — personas are edited by forking, never in place"
-                className="rounded-md px-2 py-1 text-[11px] text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition"
-              >
-                Fork
-              </button>
-              <button
-                type="button"
-                onClick={() => onSetStatus("archived")}
-                aria-label="Archive persona"
-                className="rounded-md p-1.5 text-gray-300 hover:bg-gray-100 hover:text-gray-600 transition"
-              >
-                <ArchiveIcon />
-              </button>
-            </>
-          )}
-        </div>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => onSetStatus(persona.status === "paused" ? "active" : "paused")}
+                  className="rounded-md px-2 py-1 text-[11px] text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition"
+                >
+                  {persona.status === "paused" ? "Resume" : "Pause"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSetStatus("archived")}
+                  aria-label="Archive persona"
+                  className="rounded-md p-1.5 text-gray-300 hover:bg-gray-100 hover:text-gray-600 transition"
+                >
+                  <ArchiveIcon />
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Filter rows */}
       <div className="space-y-2.5">
         {FILTER_CATEGORIES.map((cat) => {
-          const values = persona.filters[cat.key] ?? [];
+          const values = filters[cat.key] ?? [];
           const isAdding = adding === cat.key;
           return (
             <div key={cat.key} className="grid grid-cols-[7.5rem_1fr] gap-2 items-start">
@@ -470,34 +529,38 @@ function PersonaCard({
                     className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border ${cat.tone}`}
                   >
                     {v}
-                    <button
-                      type="button"
-                      onClick={() => removeChip(cat.key, v)}
-                      aria-label={`Remove ${v}`}
-                      className="opacity-60 hover:opacity-100"
-                    >
-                      <XIcon />
-                    </button>
+                    {editable && (
+                      <button
+                        type="button"
+                        onClick={() => removeChip(cat.key, v)}
+                        aria-label={`Remove ${v}`}
+                        className="opacity-60 hover:opacity-100"
+                      >
+                        <XIcon />
+                      </button>
+                    )}
                   </span>
                 ))}
 
-                {isAdding ? (
+                {!editable ? (
+                  values.length === 0 && <span className="text-xs text-gray-300">—</span>
+                ) : isAdding ? (
                   <span className="inline-flex items-center">
                     <input
                       autoFocus
                       list={`sugg-${cat.key}`}
-                      value={draft}
-                      onChange={(e) => setDraft(e.target.value)}
+                      value={chipDraft}
+                      onChange={(e) => setChipDraft(e.target.value)}
                       onBlur={() => {
-                        addChip(cat.key, draft);
+                        addChip(cat.key, chipDraft);
                         setAdding(null);
                       }}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
-                          addChip(cat.key, draft);
+                          addChip(cat.key, chipDraft);
                         } else if (e.key === "Escape") {
-                          setDraft("");
+                          setChipDraft("");
                           setAdding(null);
                         }
                       }}
@@ -514,7 +577,7 @@ function PersonaCard({
                   <button
                     type="button"
                     onClick={() => {
-                      setDraft("");
+                      setChipDraft("");
                       setAdding(cat.key);
                     }}
                     className="inline-flex items-center gap-0.5 text-xs text-gray-400 hover:text-brand-600 border border-dashed border-gray-300 hover:border-brand-300 rounded-full px-2 py-0.5 transition"
@@ -528,6 +591,33 @@ function PersonaCard({
           );
         })}
       </div>
+
+      {/* Save bar — appears for an unsaved draft, or once an existing persona is
+          edited. Every edit is saved as a duplicate; both are cancellable. */}
+      {showSaveBar && (
+        <div className="flex items-center justify-between gap-2 pt-3 border-t border-gray-100">
+          <span className="text-[11px] text-amber-600">
+            {isNew ? "Draft — not saved yet" : "Unsaved changes"}
+          </span>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="rounded-lg px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={!name.trim()}
+              className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+            >
+              {isNew ? "Save persona" : "Save as new persona"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
