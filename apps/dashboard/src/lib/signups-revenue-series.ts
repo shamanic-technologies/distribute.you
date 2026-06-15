@@ -1,5 +1,5 @@
 import type { Lead } from "@/lib/api";
-import type { RevenuePoint } from "@/lib/revenue-view";
+import type { RevenuePoint, ConversionLead, ConversionOrg } from "@/lib/revenue-view";
 
 /**
  * A lead counts as engaged once it OPENED, CLICKED, or SIGNED UP. `signedUp`
@@ -64,4 +64,40 @@ export function buildSignupRevenueSeries(leads: Lead[], total: number, nowMs: nu
   // total — the curve always ends at the headline number.
   if (pts.length) pts[pts.length - 1].cumulativePipelineUsd = total;
   return pts;
+}
+
+/**
+ * Derive Organization rows by grouping the lead conversions by company — used on
+ * the Signups page where the lensed `/revenue` returns leads but an EMPTY
+ * `organizations[]` (so the Organizations tab read blank). Aggregates expected
+ * revenue, unions the conversion channels, and keeps the most-recent activity.
+ */
+export function deriveOrgsFromLeads(leads: ConversionLead[]): ConversionOrg[] {
+  const byOrg = new Map<string, ConversionOrg>();
+  for (const l of leads) {
+    const name = l.orgName ?? "Unknown";
+    const key = name.toLowerCase();
+    const existing = byOrg.get(key);
+    if (!existing) {
+      byOrg.set(key, {
+        orgId: null,
+        orgName: name,
+        orgLogoUrl: l.orgLogoUrl ?? null,
+        orgDomain: l.orgDomain ?? null,
+        topPerson: { firstName: l.firstName, lastName: l.lastName, photoUrl: l.photoUrl },
+        tags: [...l.tags],
+        expectedRevenueUsd: l.expectedRevenueUsd,
+        mostAdvancedDate: l.date,
+      });
+      continue;
+    }
+    existing.orgLogoUrl = existing.orgLogoUrl ?? l.orgLogoUrl ?? null;
+    existing.orgDomain = existing.orgDomain ?? l.orgDomain ?? null;
+    existing.expectedRevenueUsd += l.expectedRevenueUsd;
+    for (const t of l.tags) if (!existing.tags.includes(t)) existing.tags.push(t);
+    if (l.date && (!existing.mostAdvancedDate || l.date > existing.mostAdvancedDate)) {
+      existing.mostAdvancedDate = l.date;
+    }
+  }
+  return Array.from(byOrg.values()).sort((a, b) => b.expectedRevenueUsd - a.expectedRevenueUsd);
 }
