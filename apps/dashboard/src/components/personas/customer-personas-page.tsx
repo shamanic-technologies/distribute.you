@@ -1,14 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import { useParams } from "next/navigation";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { SparklesIcon } from "@heroicons/react/20/solid";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useIsBetaUser } from "@/lib/use-beta-user";
+import { useAuthQuery } from "@/lib/use-auth-query";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { EditWithAIPanel, type AiTurn } from "@/components/ai-edit/edit-with-ai-panel";
+import { listPersonas, createPersona, duplicatePersona, setPersonaStatus } from "@/lib/api";
 import {
-  SEED_PERSONAS,
   type CategoryKey,
   type Filters,
   type Persona,
@@ -124,9 +127,32 @@ export function CustomerPersonasPage() {
   const isBeta = useIsBetaUser();
   const revenueOk = isRevenueFeature(featureSlug);
 
-  const [personas, setPersonas] = useState<Persona[]>(SEED_PERSONAS);
+  const params = useParams();
+  const brandId = params.brandId as string;
+  const queryClient = useQueryClient();
+
+  // Unsaved new personas live in client state until Saved (then POSTed) or
+  // Cancelled. Persisted personas come from the backend query.
+  const [drafts, setDrafts] = useState<Persona[]>([]);
   const [tab, setTab] = useState<"active" | "archived">("active");
   const [aiOpen, setAiOpen] = useState(false);
+
+  const { data, isPending } = useAuthQuery(["personas", brandId], () => listPersonas(brandId));
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["personas", brandId] });
+  const createMut = useMutation({
+    mutationFn: (i: { name: string; filters: Filters }) =>
+      createPersona(brandId, { name: i.name, filters: i.filters as Record<string, string[]> }),
+    onSuccess: invalidate,
+  });
+  const dupMut = useMutation({
+    mutationFn: (id: string) => duplicatePersona(brandId, id),
+    onSuccess: invalidate,
+  });
+  const statusMut = useMutation({
+    mutationFn: (i: { id: string; status: Persona["status"] }) => setPersonaStatus(brandId, i.id, i.status),
+    onSuccess: invalidate,
+  });
 
   if (!isBeta || !revenueOk) {
     return (
@@ -138,33 +164,37 @@ export function CustomerPersonasPage() {
     );
   }
 
-  // A brand-new persona starts as an UNSAVED draft card — the user fills it in
-  // and Saves, or Cancels it away before it's ever persisted.
+  const serverPersonas: Persona[] = (data?.personas ?? []).map((p) => ({
+    id: p.id,
+    name: p.name,
+    filters: p.filters,
+    status: p.status,
+  }));
+  // Drafts first (top of the list), then persisted personas.
+  const personas: Persona[] = [...drafts, ...serverPersonas];
+
+  // A brand-new persona starts as an UNSAVED draft card — Saved (POST) or
+  // Cancelled away before it's ever persisted.
   const addPersona = (name = "New Persona") => {
     const created = { id: nextId(), name: uniqueName(capWords(name)), filters: {}, status: "active" as const, unsaved: true };
-    setPersonas((prev) => [created, ...prev]);
+    setDrafts((prev) => [created, ...prev]);
     return created;
   };
 
-  const updatePersona = (id: string, next: Partial<Persona>) => {
-    setPersonas((prev) => prev.map((p) => (p.id === id ? { ...p, ...next } : p)));
-  };
+  // Cancel an unsaved draft (only drafts call this — persisted personas archive).
+  const removePersona = (id: string) => setDrafts((prev) => prev.filter((p) => p.id !== id));
 
-  const removePersona = (id: string) =>
-    setPersonas((prev) => prev.filter((p) => p.id !== id));
-
-  const setStatus = (id: string, status: Persona["status"]) =>
-    updatePersona(id, { status });
+  const setStatus = (id: string, status: Persona["status"]) => statusMut.mutate({ id, status });
 
   // Persona names are UNIQUE at all times (case-insensitive, across active +
-  // paused + archived). `exceptId` lets a draft compare against everyone else.
+  // paused + archived + unsaved drafts). `exceptId` lets a draft compare against
+  // everyone else.
   const isNameTaken = (name: string, exceptId?: string) => {
     const needle = name.trim().toLowerCase();
     return personas.some((p) => p.id !== exceptId && p.name.trim().toLowerCase() === needle);
   };
 
-  // Append " copy", " copy 2", … until the name is free — used when duplicating
-  // so a copy never collides.
+  // Append " 2", " 3", … until the name is free — used when duplicating locally.
   const uniqueName = (base: string) => {
     const trimmed = base.trim() || "Persona";
     if (!isNameTaken(trimmed)) return trimmed;
@@ -174,21 +204,14 @@ export function CustomerPersonasPage() {
     }
   };
 
-  // Commit a draft (new) persona: the card's edits become its saved values.
+  // Commit a draft (new) persona → POST, drop the local draft on success.
   const commitNew = (id: string, name: string, filters: Filters) =>
-    updatePersona(id, { name: capWords(name), filters, unsaved: false });
+    createMut.mutate({ name: capWords(name), filters }, { onSuccess: () => removePersona(id) });
 
   // Save edits as a NEW persona — every edit is a duplicate at save time, the
-  // source is never mutated. Guard uniqueness as a backstop (the card also
-  // blocks a colliding name).
-  const saveAsNew = (name: string, filters: Filters) => {
-    const copy: Filters = {};
-    for (const [k, v] of Object.entries(filters)) copy[k as CategoryKey] = [...(v ?? [])];
-    setPersonas((prev) => [
-      { id: nextId(), name: uniqueName(capWords(name)), filters: copy, status: "active" },
-      ...prev,
-    ]);
-  };
+  // source is never mutated.
+  const saveAsNew = (name: string, filters: Filters) =>
+    createMut.mutate({ name: capWords(name), filters });
 
   const findByName = (q: string): Persona | undefined => {
     const needle = q.trim().toLowerCase();
@@ -214,9 +237,9 @@ export function CustomerPersonasPage() {
     if (/\b(duplicate|clone|copy)\b/.test(lower)) {
       const p = findByName(after(/.*?\b(duplicate|clone|copy)\b/i));
       if (!p) return helpTurn("Which persona should I duplicate? Try: duplicate Scaling SaaS Founders");
-      const newName = uniqueName(`${p.name} copy`);
-      saveAsNew(newName, p.filters);
-      return { reply: `Duplicated “${p.name}” into “${newName}”.`, toolCalls: [{ tool: "duplicate_persona", summary: `Duplicated → “${newName}”` }] };
+      if (p.unsaved) saveAsNew(uniqueName(`${p.name} copy`), p.filters);
+      else dupMut.mutate(p.id);
+      return { reply: `Duplicating “${p.name}” into a new persona.`, toolCalls: [{ tool: "duplicate_persona", summary: `Duplicated “${p.name}”` }] };
     }
     if (/\b(archive|hide|remove|delete)\b/.test(lower)) {
       const p = findByName(after(/.*?\b(archive|hide|remove|delete)\b/i));
@@ -248,6 +271,21 @@ export function CustomerPersonasPage() {
     }
     return helpTurn();
   };
+
+  if (isPending && personas.length === 0) {
+    return (
+      <div className="p-4 md:p-8 max-w-7xl mx-auto">
+        <div className="animate-pulse space-y-4">
+          <div className="h-7 w-48 bg-gray-200 rounded" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {[0, 1].map((i) => (
+              <div key={i} className="h-56 bg-gray-100 rounded-xl" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">

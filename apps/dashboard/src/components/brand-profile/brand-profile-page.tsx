@@ -1,12 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import { useParams } from "next/navigation";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { SparklesIcon } from "@heroicons/react/20/solid";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useIsBetaUser } from "@/lib/use-beta-user";
+import { useAuthQuery } from "@/lib/use-auth-query";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { EditWithAIPanel, type AiTurn } from "@/components/ai-edit/edit-with-ai-panel";
+import { getBrandProfile, saveBrandProfileVersion } from "@/lib/api";
 
 // Default "here's what I can do" turn for the Edit-with-AI mockup.
 function helpTurn(prefix?: string): AiTurn {
@@ -110,14 +114,8 @@ const ALL_FIELDS: FieldDef[] = SECTIONS.flatMap((s) => s.fields);
 
 type ProfileFields = Record<string, string | string[]>;
 
-interface ProfileVersion {
-  version: number;
-  savedAt: number;
-  fields: ProfileFields;
-}
-
-// Deep-clone field values so a forked version never shares array references with
-// the working draft (forks must be immutable snapshots).
+// Normalize a fields map to every known field key with the right empty type, and
+// clone arrays so edits never mutate the saved baseline.
 function cloneFields(fields: ProfileFields): ProfileFields {
   const out: ProfileFields = {};
   for (const f of ALL_FIELDS) {
@@ -127,34 +125,10 @@ function cloneFields(fields: ProfileFields): ProfileFields {
   return out;
 }
 
-// ---------------------------------------------------------------------------
-// Seed — a believable v1 so the page looks alive on first paint.
-// ---------------------------------------------------------------------------
-const SEED_FIELDS: ProfileFields = {
-  companyOverview:
-    "Distribute is a done-for-you growth platform that runs cold-email, PR and ads on autopilot for solo builders and small teams.",
-  valueProposition:
-    "Give us a URL and a budget — we handle lead finding, outreach and reporting, with variable cost per outcome.",
-  keyFeatures: ["Automated lead sourcing", "AI-written outreach", "Per-channel reporting", "Bring-your-own-keys"],
-  productDifferentiators: ["Pay per outcome, not per seat", "No agency retainer", "Multi-channel from one budget"],
-  competitors: ["Clay", "Instantly", "Apollo", "Smartlead"],
-  leadership: ["Kevin Lourd — Founder", "Adam — Growth"],
-  funding: "Bootstrapped.",
-  awardsAndRecognition: [],
-  revenueMilestones: ["First $1k MRR", "100 active brands"],
-  socialProof: ["3.4% avg reply rate across 40 brands", "“Replaced our $4k/mo agency” — beta user"],
-  callToAction: "Start your first campaign in under 5 minutes.",
-  urgency: "Launch slots are limited while we scale infrastructure.",
-  scarcity: "Onboarding capped at 50 new brands per week.",
-  riskReversal: "No contract — pause or stop any campaign anytime.",
-  additionalContext: "Thin wrapper over Apollo, Anthropic, Resend and LinkedIn — borrows trust from the providers.",
-};
-
-const SEED_VERSION: ProfileVersion = { version: 1, savedAt: 0, fields: cloneFields(SEED_FIELDS) };
-
-function timeAgo(ts: number): string {
-  if (!ts) return "—";
-  const s = Math.floor((Date.now() - ts) / 1000);
+function timeAgo(ts: number | string): string {
+  const ms = typeof ts === "string" ? new Date(ts).getTime() : ts;
+  if (!ms || Number.isNaN(ms)) return "—";
+  const s = Math.floor((Date.now() - ms) / 1000);
   if (s < 60) return "just now";
   if (s < 3600) return `${Math.floor(s / 60)}m ago`;
   if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
@@ -179,12 +153,22 @@ export function BrandProfilePage() {
   const isBeta = useIsBetaUser();
   const revenueOk = isRevenueFeature(featureSlug);
 
-  const [versions, setVersions] = useState<ProfileVersion[]>([SEED_VERSION]);
-  const [draft, setDraft] = useState<ProfileFields>(() => cloneFields(SEED_FIELDS));
+  const params = useParams();
+  const brandId = params.brandId as string;
+  const queryClient = useQueryClient();
   const [aiOpen, setAiOpen] = useState(false);
+  // null = following the saved baseline; an object = the user's working edits.
+  const [draft, setDraft] = useState<ProfileFields | null>(null);
 
-  const latest = versions[versions.length - 1];
-  const dirty = useMemo(() => !fieldsEqual(draft, latest.fields), [draft, latest]);
+  const { data, isPending } = useAuthQuery(["brandProfile", brandId], () => getBrandProfile(brandId));
+
+  const saveMut = useMutation({
+    mutationFn: (fields: ProfileFields) => saveBrandProfileVersion(brandId, fields),
+    onSuccess: () => {
+      setDraft(null);
+      queryClient.invalidateQueries({ queryKey: ["brandProfile", brandId] });
+    },
+  });
 
   if (!isBeta || !revenueOk) {
     return (
@@ -196,36 +180,53 @@ export function BrandProfilePage() {
     );
   }
 
-  const setText = (key: string, value: string) => setDraft((prev) => ({ ...prev, [key]: value }));
+  if (isPending) {
+    return (
+      <div className="p-4 md:p-8 max-w-5xl mx-auto">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 w-48 bg-gray-200 rounded" />
+          <div className="h-64 bg-gray-100 rounded-xl" />
+        </div>
+      </div>
+    );
+  }
+
+  const baseline = cloneFields((data?.current?.fields ?? {}) as ProfileFields);
+  const fields = draft ?? baseline;
+  const dirty = draft !== null && !fieldsEqual(draft, baseline);
+  const savedAt = data?.current?.createdAt ?? null;
+  const versions = data?.versions ?? [];
+
+  const setText = (key: string, value: string) =>
+    setDraft((prev) => ({ ...(prev ?? baseline), [key]: value }));
 
   const addItem = (key: string, raw: string) => {
     const value = raw.trim();
     if (!value) return;
     setDraft((prev) => {
-      const current = Array.isArray(prev[key]) ? (prev[key] as string[]) : [];
-      if (current.some((v) => v.toLowerCase() === value.toLowerCase())) return prev;
-      return { ...prev, [key]: [...current, value] };
+      const cur = prev ?? baseline;
+      const arr = Array.isArray(cur[key]) ? (cur[key] as string[]) : [];
+      if (arr.some((v) => v.toLowerCase() === value.toLowerCase())) return cur;
+      return { ...cur, [key]: [...arr, value] };
     });
   };
 
   const removeItem = (key: string, value: string) => {
     setDraft((prev) => {
-      const current = Array.isArray(prev[key]) ? (prev[key] as string[]) : [];
-      return { ...prev, [key]: current.filter((v) => v !== value) };
+      const cur = prev ?? baseline;
+      const arr = Array.isArray(cur[key]) ? (cur[key] as string[]) : [];
+      return { ...cur, [key]: arr.filter((v) => v !== value) };
     });
   };
 
-  // Save = fork the working draft into a new immutable version. Never mutate a
-  // prior version — that is what lets a campaign pin a specific version later.
+  // Save = POST a new immutable version. Prior versions are never mutated — that
+  // is what lets a campaign pin a specific version later.
   const save = () => {
-    if (!dirty) return;
-    setVersions((prev) => [
-      ...prev,
-      { version: prev[prev.length - 1].version + 1, savedAt: Date.now(), fields: cloneFields(draft) },
-    ]);
+    if (!dirty || saveMut.isPending) return;
+    saveMut.mutate(fields);
   };
 
-  const discard = () => setDraft(cloneFields(latest.fields));
+  const discard = () => setDraft(null);
 
   const findField = (q: string): FieldDef | undefined => {
     const needle = q.trim().toLowerCase();
@@ -303,7 +304,7 @@ export function BrandProfilePage() {
           {dirty ? (
             <span className="text-xs text-amber-600">Unsaved changes</span>
           ) : (
-            <span className="text-xs text-gray-400">Saved {timeAgo(latest.savedAt)}</span>
+            <span className="text-xs text-gray-400">{savedAt ? `Saved ${timeAgo(savedAt)}` : "Not saved yet"}</span>
           )}
           {dirty && (
             <button
@@ -335,7 +336,7 @@ export function BrandProfilePage() {
                 <FieldEditor
                   key={field.key}
                   field={field}
-                  value={draft[field.key]}
+                  value={fields[field.key]}
                   onText={(v) => setText(field.key, v)}
                   onAdd={(v) => addItem(field.key, v)}
                   onRemove={(v) => removeItem(field.key, v)}
@@ -354,9 +355,9 @@ export function BrandProfilePage() {
           <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">Version history</h2>
           <ul className="space-y-2">
             {[...versions].reverse().map((v) => (
-              <li key={v.version} className="flex items-center justify-between text-sm">
+              <li key={v.id} className="flex items-center justify-between text-sm">
                 <span className="font-medium text-gray-700">v{v.version}</span>
-                <span className="text-xs text-gray-400">{v.savedAt ? timeAgo(v.savedAt) : "initial"}</span>
+                <span className="text-xs text-gray-400">{timeAgo(v.createdAt)}</span>
               </li>
             ))}
           </ul>
