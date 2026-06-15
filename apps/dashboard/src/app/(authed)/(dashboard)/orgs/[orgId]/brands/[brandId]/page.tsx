@@ -124,19 +124,18 @@ export default function BrandOverviewPage() {
         brandId={brandId}
         featureSlug={featureSlug}
         basePath={basePath}
+        topRow={
+          /* Outreach stat cards (GA + beta) — under the "Revenue & Conversions"
+             header, directly above the Pipeline-revenue hero (mirrors the
+             Campaigns page). Funnel-stage-gated beta pairs. */
+          <OutreachStatCards
+            stats={featureStats}
+            totalCostCents={totalCostCents}
+            pending={!statsRevealed}
+            funnelStages={funnelStages}
+          />
+        }
       />
-
-      {/* Outreach stat cards (GA + beta) — placed BELOW the Revenue & Conversions
-          block (the headline revenue overview leads the page). Shared component →
-          same set on all surfaces. Funnel-stage-gated beta pairs. */}
-      <div className="mt-6">
-        <OutreachStatCards
-          stats={featureStats}
-          totalCostCents={totalCostCents}
-          pending={!statsRevealed}
-          funnelStages={funnelStages}
-        />
-      </div>
     </div>
   );
 }
