@@ -25,6 +25,12 @@ export interface OutcomeLensMeta {
   subtitle: string;
   /** Probability column header. */
   probabilityLabel: string;
+  /** Top-stat: expected outcome COUNT label (e.g. "Expected signups"). */
+  countLabel: string;
+  /** Top-stat: cost-per-outcome label (e.g. "Cost per signup"). */
+  costPerLabel: string;
+  /** Top-stat: expected-revenue label (e.g. "Expected revenue from signups"). */
+  revenueLabel: string;
   /** Empty-table copy. */
   empty: string;
 }
@@ -36,6 +42,9 @@ export const OUTCOME_LENSES: Record<OutcomeLens, OutcomeLensMeta> = {
     label: "Signups",
     subtitle: "Leads who clicked through to your site, with their probability of signing up and the revenue that signup is worth.",
     probabilityLabel: "Signup probability",
+    countLabel: "Expected signups",
+    costPerLabel: "Cost per signup",
+    revenueLabel: "Expected revenue from signups",
     empty: "No website clicks yet.",
   },
   "booked-meetings": {
@@ -44,6 +53,9 @@ export const OUTCOME_LENSES: Record<OutcomeLens, OutcomeLensMeta> = {
     label: "Booked Meetings",
     subtitle: "Leads who replied positively, with their probability of booking a meeting and the revenue that meeting is worth.",
     probabilityLabel: "Meeting probability",
+    countLabel: "Expected meetings",
+    costPerLabel: "Cost per meeting",
+    revenueLabel: "Expected revenue from meetings",
     empty: "No positive replies yet.",
   },
   sales: {
@@ -52,6 +64,9 @@ export const OUTCOME_LENSES: Record<OutcomeLens, OutcomeLensMeta> = {
     label: "Sales",
     subtitle: "Leads who clicked and/or replied positively, with their combined probability of becoming a paying customer and the expected revenue.",
     probabilityLabel: "Sale probability",
+    countLabel: "Expected sales",
+    costPerLabel: "Cost per sale",
+    revenueLabel: "Expected revenue from sales",
     empty: "No clicks or positive replies yet.",
   },
 };

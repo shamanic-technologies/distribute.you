@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import type { ConversionLead } from "@/lib/revenue-view";
+import type { LeadConsolidatedStatus } from "@/lib/api";
+import { leadStatusLabel, leadStatusStyle } from "@/lib/lead-status-display";
 import { usePaginated, TablePager } from "@/components/table-pagination";
 
 // ── formatting ──────────────────────────────────────────────────────────────
@@ -84,12 +86,15 @@ export function OutcomeLeadsTable({
   leads,
   probabilityLabel,
   empty,
+  statusByLeadId,
   onSelect,
   selectedLeadId,
 }: {
   leads: ConversionLead[];
   probabilityLabel: string;
   empty: string;
+  /** Latched consolidated status per leadId (from listBrandLeads + monotonic latch). Missing → "—". */
+  statusByLeadId?: Map<string, LeadConsolidatedStatus>;
   /** Row click → open the lead detail panel. */
   onSelect?: (lead: ConversionLead) => void;
   selectedLeadId?: string | null;
@@ -110,6 +115,7 @@ export function OutcomeLeadsTable({
         <thead>
           <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
             <th className="px-4 py-3 font-medium">Lead</th>
+            <th className="px-4 py-3 font-medium">Status</th>
             <th className="px-4 py-3 font-medium text-right">{probabilityLabel}</th>
             <th className="px-4 py-3 font-medium text-right">Expected revenue</th>
           </tr>
@@ -137,6 +143,20 @@ export function OutcomeLeadsTable({
                       </p>
                     </div>
                   </div>
+                </td>
+                <td className="px-4 py-3">
+                  {(() => {
+                    const status = statusByLeadId?.get(l.leadId);
+                    return status ? (
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full border whitespace-nowrap ${leadStatusStyle(status)}`}
+                      >
+                        {leadStatusLabel(status)}
+                      </span>
+                    ) : (
+                      <span className="text-gray-300">—</span>
+                    );
+                  })()}
                 </td>
                 <td className="px-4 py-3 text-right font-medium text-gray-700 whitespace-nowrap tabular-nums">
                   {formatPct(l.conversionProbabilityPct)}
