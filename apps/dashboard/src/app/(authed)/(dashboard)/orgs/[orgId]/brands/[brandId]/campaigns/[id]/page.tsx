@@ -19,6 +19,7 @@ import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
 import { CampaignRevenueSection } from "@/components/campaign/campaign-revenue-section";
 import { PressKitResults } from "@/components/campaign/press-kit-results";
+import { ScoreCard } from "@/components/visibility/score-card";
 import {
   RelaunchCampaignModal,
   buildBudgetParams,
@@ -72,6 +73,18 @@ function formatTotalCost(cents: string | null | undefined): string | null {
   return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+function formatCount(n: number): string {
+  return Number(n).toLocaleString("en-US");
+}
+
+// Cost per click = total spent / link clicks. No clicks → no defined CPC (show
+// "—", never a divide-by-zero / fake $0).
+function formatCpc(totalCostCents: number, clicks: number): string {
+  if (clicks <= 0) return "—";
+  const usd = totalCostCents / 100 / clicks;
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
+}
+
 export default function CampaignOverviewPage() {
   const params = useParams();
   const router = useRouter();
@@ -114,6 +127,8 @@ export default function CampaignOverviewPage() {
   // together once the fast GET resolves, then latch. A disabled query never
   // resolves → gate its flag so a non-revenue feature doesn't block on it.
   const revenueRevealed = useCoordinatedReveal([!revenueEnabled || revenueData !== undefined]);
+  // Stat cards reveal on the campaign-scoped featureStats query.
+  const statsRevealed = useCoordinatedReveal([featureStatsData !== undefined]);
 
   const handleStop = () => {
     if (!campaign) return;
@@ -170,6 +185,7 @@ export default function CampaignOverviewPage() {
   }
 
   const featureStats = featureStatsData?.stats ?? {};
+  const totalCostCents = featureStatsData?.systemStats?.totalCostInUsdCents ?? 0;
   const campaignStatsRecord: Record<string, number> = stats
     ? Object.fromEntries(
         Object.entries(stats).filter((e): e is [string, number] => typeof e[1] === "number")
@@ -271,6 +287,28 @@ export default function CampaignOverviewPage() {
         {relaunchError && (
           <p className="mt-2 text-sm text-red-600">{relaunchError}</p>
         )}
+      </div>
+
+      {/* Stat cards — Impressions (Opens) / Clicks (Link Clicks) / CPC. Static-shell
+          first: labels paint immediately, values skeleton until featureStats lands.
+          All values derive from the campaign-scoped featureStats + systemStats cost. */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <ScoreCard
+          label="Impressions"
+          value={formatCount(featureStats.recipientsOpened ?? 0)}
+          pending={!statsRevealed}
+        />
+        <ScoreCard
+          label="Clicks"
+          value={formatCount(featureStats.recipientsClicked ?? 0)}
+          pending={!statsRevealed}
+        />
+        <ScoreCard
+          label="CPC"
+          tooltip="Cost per click — total spent divided by link clicks."
+          value={formatCpc(totalCostCents, featureStats.recipientsClicked ?? 0)}
+          pending={!statsRevealed}
+        />
       </div>
 
       {/* Entity-specific results */}

@@ -3,13 +3,26 @@
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getBrand, getFeatureRevenue, getBrandCostBreakdown } from "@/lib/api";
+import { getBrand, getFeatureRevenue, getBrandCostBreakdown, fetchFeatureStats } from "@/lib/api";
 import { pollOptions, pollOptionsSlow } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
+import { ScoreCard } from "@/components/visibility/score-card";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
+
+function formatCount(n: number): string {
+  return Number(n).toLocaleString("en-US");
+}
+
+// Cost per click = total spent / link clicks. No clicks → no defined CPC (show
+// "—", never a divide-by-zero / fake $0).
+function formatCpc(totalCostCents: number, clicks: number): string {
+  if (clicks <= 0) return "—";
+  const usd = totalCostCents / 100 / clicks;
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
+}
 
 /**
  * Brand overview = the (sole) feature's Revenue & Conversions overview, rendered
@@ -51,11 +64,22 @@ export default function BrandOverviewPage() {
     { enabled, ...pollOptions },
   );
 
+  // Feature-level stats (Impressions / Clicks / CPC cards). Shares the Campaigns
+  // page's query key + 5s cadence so both observers refetch one cache entry.
+  const { data: featureStatsData } = useAuthQuery(
+    ["featureStats", featureSlug, brandId],
+    () => fetchFeatureStats(featureSlug, { brandId }),
+    { enabled, ...pollOptions },
+  );
+  const featureStats = featureStatsData?.stats ?? {};
+  const totalCostCents = featureStatsData?.systemStats?.totalCostInUsdCents ?? 0;
+
   // Per-card reveal (NOT one page-wide barrier): revenue (features-service) and
   // total-spend (runs-service) are two different cold chains — gate each on its
   // own query so the fast cost card isn't held by the slower revenue call.
   const revenueRevealed = useCoordinatedReveal([data !== undefined]);
   const costRevealed = useCoordinatedReveal([costData !== undefined]);
+  const statsRevealed = useCoordinatedReveal([featureStatsData !== undefined]);
 
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
 
@@ -95,6 +119,28 @@ export default function BrandOverviewPage() {
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
+      {/* Stat cards — Impressions (Opens) / Clicks (Link Clicks) / CPC. Static-shell
+          first: labels paint immediately, values skeleton until featureStats lands.
+          All values derive from the brand-scoped featureStats + systemStats cost. */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <ScoreCard
+          label="Impressions"
+          value={formatCount(featureStats.recipientsOpened ?? 0)}
+          pending={!statsRevealed}
+        />
+        <ScoreCard
+          label="Clicks"
+          value={formatCount(featureStats.recipientsClicked ?? 0)}
+          pending={!statsRevealed}
+        />
+        <ScoreCard
+          label="CPC"
+          tooltip="Cost per click — total spent divided by link clicks."
+          value={formatCpc(totalCostCents, featureStats.recipientsClicked ?? 0)}
+          pending={!statsRevealed}
+        />
+      </div>
+
       <RevenueOverviewSection
         data={revenueRevealed ? data : undefined}
         revenuePending={!revenueRevealed}
