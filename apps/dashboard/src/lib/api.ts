@@ -888,6 +888,42 @@ export async function setPersonaStatus(
   return parsed.data;
 }
 
+/** A persona DRAFT proposed by the backend — no id/status/createdAt (not persisted). */
+export interface PersonaDraft {
+  name: string;
+  filters: Record<string, string[]>;
+}
+
+const SuggestPersonasResponseSchema = z.object({
+  personas: z.array(z.object({
+    name: z.string(),
+    filters: z.record(z.string(), z.array(z.string())),
+  })),
+});
+
+/**
+ * POST /brands/:brandId/personas/suggest — generate persona DRAFTS from the brand
+ * profile (does NOT persist). Used by the beta onboarding to propose personas the
+ * user edits, then saves the kept ones via `createPersona`.
+ */
+export async function suggestPersonas(
+  brandId: string,
+  count?: number,
+  token?: string,
+): Promise<{ personas: PersonaDraft[] }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/personas/suggest`, {
+    token,
+    method: "POST",
+    body: count ? { count } : {},
+  });
+  const parsed = SuggestPersonasResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] suggestPersonas: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] suggestPersonas: invalid response shape");
+  }
+  return parsed.data;
+}
+
 export interface BrandProfileVersionWire {
   id: string;
   brandId: string;
