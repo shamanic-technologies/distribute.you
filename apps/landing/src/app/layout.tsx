@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     "cold email dashboard",
     "AI reply qualification",
     "pay-as-you-go cold email",
-    "no subscription cold email",
+    "pay-as-you-go cold email",
     "distribute.you",
   ],
   authors: [{ name: "distribute" }],
@@ -93,7 +93,7 @@ const jsonLd = {
       name: "$25 free credits",
       price: "0",
       priceCurrency: "USD",
-      description: "$25 free credits. No subscription. Launch in 5 minutes.",
+      description: "$25 free credits. Cancel anytime. Launch in 5 minutes.",
     },
   ],
   provider: {

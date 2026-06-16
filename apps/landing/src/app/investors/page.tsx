@@ -397,7 +397,7 @@ export default function InvestorsPage() {
                 </div>
                 <div>
                   <p className="text-gray-400 mb-1">Payments</p>
-                  <p className="text-white">Stripe (credit top-ups, no subscriptions)</p>
+                  <p className="text-white">Stripe (usage-based credit top-ups, auto-replenished)</p>
                 </div>
                 <div>
                   <p className="text-gray-400 mb-1">Auth</p>

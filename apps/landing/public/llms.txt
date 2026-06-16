@@ -4,7 +4,7 @@
 > outbound channels on behalf of solo founders. You give us a URL and a daily
 > budget; we send from agency-warmed inboxes, AI-qualify replies, and forward
 > only the positive ones to your Gmail. Every workflow is open source on
-> GitHub under MIT. Every unit cost is published live. No subscription.
+> GitHub under MIT. Every unit cost is published live. Cancel anytime.
 
 ## Brand
 
@@ -12,7 +12,7 @@
 - Tagline: The Stripe of Distribution
 - ICP: The Serial Builder — 16-40 years old, solo CEO-founder, ships 3+ products
   per year, refuses subscriptions, wants founder reachable
-- Pricing model: Pay-as-you-go credits, $25 free credits (we match your first $25 spent dollar for dollar), no subscription
+- Pricing model: Pay-as-you-go credits, $25 free credits (we match your first $25 spent dollar for dollar), auto-topup keeps daily campaigns funded
 - Open source: All workflows on https://github.com/shamanic-technologies
 
 ## Key pages
