@@ -284,3 +284,18 @@ if (tocLinks.length) {
   window.addEventListener('scroll', updateActiveToc, { passive: true });
   updateActiveToc();
 }
+
+
+/* ── Pricing CTA → dashboard signup, prefilling the brand website ── */
+const pricingForm = document.getElementById('pricing-form');
+if (pricingForm) {
+  pricingForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    const input = document.getElementById('pricing-url');
+    const raw = ((input && input.value) || '').trim();
+    // Reduce to a bare domain; empty input → plain signup (no prefill).
+    const site = raw.replace(/^https?:\/\//i, '').replace(/\/.*$/, '').trim();
+    const base = 'https://dashboard.distribute.you/sign-up';
+    window.location.href = site ? base + '?url=' + encodeURIComponent(site) : base;
+  });
+}
