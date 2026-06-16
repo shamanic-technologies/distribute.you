@@ -296,16 +296,12 @@ export default function FeatureLeadsPage() {
     { key: "all", label: "All", count: sortedLeads.length },
   ];
 
-  if (isPending && !data) {
-    return (
-      <div className="p-4 md:p-8">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 w-32 bg-gray-200 rounded" />
-          {[1, 2, 3].map((i) => <div key={i} className="h-12 bg-gray-100 rounded-lg" />)}
-        </div>
-      </div>
-    );
-  }
+  // Static-shell-first (CLAUDE.md "Page composition: shell+nav+header render
+  // instantly; each card owns its skeleton"). The shell (stat cards, h1, tabs,
+  // search) paints immediately; only the table region skeletons while the slow
+  // `brandLeads` fetch (lead-service is the bottleneck) is still cold. Gating the
+  // WHOLE page on this blanked the screen for the entire load.
+  const loading = isPending && !data;
 
   const selectedFull = selectedLead?.lead ?? null;
   const selectedOrg = selectedFull?.organization ?? null;
@@ -320,7 +316,7 @@ export default function FeatureLeadsPage() {
         <div className="flex items-start justify-between mb-4">
           <h1 className="font-display text-xl font-bold text-gray-800">
             Leads
-            <span className="ml-2 text-sm font-normal text-gray-500">({leads.length.toLocaleString("en-US")} across all campaigns)</span>
+            {!loading && <span className="ml-2 text-sm font-normal text-gray-500">({leads.length.toLocaleString("en-US")} across all campaigns)</span>}
           </h1>
         </div>
 
@@ -343,7 +339,13 @@ export default function FeatureLeadsPage() {
 
         <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by name, company, title, or email..." resultCount={filteredLeads.length} totalCount={activeList.length} />
 
-        {leads.length === 0 ? (
+        {loading ? (
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="animate-pulse divide-y divide-gray-100">
+              {[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-14 bg-gray-50" />)}
+            </div>
+          </div>
+        ) : leads.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
             <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No leads yet</h3>
             <p className="text-gray-600 text-sm">Leads will appear here once campaigns run.</p>
