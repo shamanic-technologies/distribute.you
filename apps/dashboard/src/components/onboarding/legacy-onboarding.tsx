@@ -1,17 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useOrganizationList, useOrganization, useSession } from "@clerk/nextjs";
 import {
   ArrowTopRightOnSquareIcon,
-  ArrowTrendingDownIcon,
+  ArrowTrendingUpIcon,
   BriefcaseIcon,
   BuildingOffice2Icon,
   CalendarDaysIcon,
-  CheckCircleIcon,
   ChevronLeftIcon,
   ClockIcon,
+  CurrencyDollarIcon,
   PhoneIcon,
 } from "@heroicons/react/24/outline";
 import posthog from "posthog-js";
@@ -23,17 +23,20 @@ type Step = "booking-intro" | "type-selection" | "url-input";
 
 const ONBOARDING_CALL_URL = "https://calendar.app.google/nVBre64wcCoUFMvN6";
 
+// Value prop mirrors the landing pricing block ("Pay per outcome, like Google
+// Ads." → ~$15/signup · ~$90/meeting · ~$120/sale · best ROI on the market) so
+// the onboarding screen sells the same outcome economics as distribute.you.
 const onboardingBenefits = [
   {
-    title: "<$2 CPMs",
-    description: "Average after onboarding",
-    icon: ArrowTrendingDownIcon,
+    title: "Pay per outcome",
+    description: "~$15 / signup · ~$90 / meeting · ~$120 / sale — varies by industry",
+    icon: CurrencyDollarIcon,
     iconClassName: "bg-emerald-50 text-emerald-600",
   },
   {
-    title: "95% success rate",
-    description: "Campaign success rate",
-    icon: CheckCircleIcon,
+    title: "Best ROI on the market",
+    description: "We find leads, reach out, and turn them into sales",
+    icon: ArrowTrendingUpIcon,
     iconClassName: "bg-blue-50 text-blue-600",
   },
   {
@@ -72,9 +75,33 @@ export function LegacyOnboarding() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const domain = extractDomain(url);
+  // Set when the user clicks "Pick a time" (opens the booking calendar in a new
+  // tab). On returning to this tab we advance them past the booking step so the
+  // flow moves forward once they've gone to book — see the visibility effect.
+  const bookingClickedRef = useRef(false);
 
   useEffect(() => {
     posthog.capture("onboarding_step_viewed", { step });
+  }, [step]);
+
+  // Auto-advance off the booking step when the user comes back from booking a
+  // meeting. The "Pick a time" link opens the calendar in a new tab → this tab
+  // goes hidden; on re-show, if they'd clicked book and are still on the booking
+  // step, move them to type-selection. Re-registers per step so `step` is fresh.
+  useEffect(() => {
+    function onVisibilityChange() {
+      if (
+        document.visibilityState === "visible" &&
+        bookingClickedRef.current &&
+        step === "booking-intro"
+      ) {
+        bookingClickedRef.current = false;
+        posthog.capture("onboarding_advance_after_booking");
+        setStep("type-selection");
+      }
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
   }, [step]);
 
   const handleTypeSelect = (type: AccountType) => {
@@ -222,6 +249,7 @@ export function LegacyOnboarding() {
             target="_blank"
             rel="noreferrer"
             onClick={() => {
+              bookingClickedRef.current = true;
               posthog.capture("onboarding_call_booking_clicked", {
                 booking_url: ONBOARDING_CALL_URL,
               });
