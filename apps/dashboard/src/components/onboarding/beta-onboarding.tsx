@@ -32,10 +32,14 @@ import {
   suggestPersonas,
   createPersona,
   getWorkflowProjection,
+  getFeature,
+  prefillFeatureInputs,
+  prefillToStringMap,
   createCampaign,
   type EffectiveSalesEconomics,
   type WorkflowProjectionResponse,
   type PersonaDraft,
+  type FeatureInput,
 } from "@/lib/api";
 import { extractDomain } from "@/lib/extract-domain";
 import { type Filters } from "@/lib/mock-personas";
@@ -223,6 +227,9 @@ export function BetaOnboarding() {
 
   const projectionRef = useRef<WorkflowProjectionResponse | null>(null);
   const econRef = useRef<EffectiveSalesEconomics | null>(null);
+  // The sales feature's declared input definitions — needed to build the
+  // `featureInputs` map the /campaigns create endpoint requires at launch.
+  const salesInputsRef = useRef<FeatureInput[]>([]);
 
   const domain = extractDomain(url);
   const hostname = domain ?? url.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
@@ -304,13 +311,15 @@ export function BetaOnboarding() {
     orgIdRef.current = targetOrgId;
     posthog.capture("onboarding_brand_created", { flow: "beta", org_id: targetOrgId, brand_id: brandId });
 
-    const [prof, econRes, sug, proj] = await Promise.all([
+    const [prof, econRes, sug, proj, feat] = await Promise.all([
       getBrandProfile(brandId),
       getSalesEconomicsEffective(brandId),
       suggestPersonas(brandId, 3),
       getWorkflowProjection({ featureSlug: SALES_FEATURE_SLUG, brandId, objective: "self-serve", budgetUsd: PROJECTION_REF_BUDGET }),
+      getFeature(SALES_FEATURE_SLUG),
     ]);
 
+    salesInputsRef.current = feat.feature.inputs ?? [];
     if (prof.current) setProfile(prof.current.fields);
     if (econRes.economics) {
       const e = econRes.economics;
@@ -413,10 +422,23 @@ export function BetaOnboarding() {
         consentedChannels: Array.from(channels),
         agencyConsentAt: new Date().toISOString(),
       });
+      // The /campaigns endpoint requires `featureInputs` — the feature's declared
+      // inputs filled from the (now-saved) brand profile. Mirror campaigns/new:
+      // prefill the values, then map them onto the feature's declared input keys.
+      const prefilled = prefillToStringMap(
+        (await prefillFeatureInputs(SALES_FEATURE_SLUG, [brandId])).prefilled,
+      );
+      const featureInputs: Record<string, string> = {};
+      for (const input of salesInputsRef.current) {
+        const val = prefilled[input.key]?.trim();
+        if (val) featureInputs[input.key] = val;
+      }
       const { campaign } = await createCampaign({
         name: `${hostname} — ${OUTCOMES.find((o) => o.key === outcome)?.label ?? "Outreach"}`,
         workflowSlug,
         brandUrls: [brandUrl],
+        featureSlug: SALES_FEATURE_SLUG,
+        featureInputs,
         maxBudgetDailyUsd: String(budget),
       });
       posthog.capture("onboarding_completed", { flow: "beta", outcome, budget });
