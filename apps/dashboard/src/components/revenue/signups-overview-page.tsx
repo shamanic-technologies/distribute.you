@@ -230,8 +230,8 @@ export function SignupsOverviewPage() {
     return (
       <div className="p-4 md:p-8 max-w-7xl mx-auto">
         <p className="text-gray-500 mb-3">Brand not found</p>
-        <Link href={`/orgs/${orgId}/brands`} className="text-sm text-brand-600 hover:underline">
-          ← Back to brands
+        <Link href={`/orgs/${orgId}`} className="text-sm text-brand-600 hover:underline">
+          ← Back to overview
         </Link>
       </div>
     );

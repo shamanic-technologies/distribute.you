@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useOrganizationList, useOrganization } from "@clerk/nextjs";
+import { useOrganizationList, useOrganization, useSession } from "@clerk/nextjs";
 import {
   ArrowTopRightOnSquareIcon,
   ArrowTrendingDownIcon,
@@ -16,6 +16,7 @@ import {
 } from "@heroicons/react/24/outline";
 import posthog from "posthog-js";
 import { extractDomain } from "@/lib/extract-domain";
+import { upsertBrand, extractBrandFields, SALES_PROFILE_FIELDS } from "@/lib/api";
 
 type AccountType = "agency" | "company";
 type Step = "booking-intro" | "type-selection" | "url-input";
@@ -48,6 +49,7 @@ export function LegacyOnboarding() {
     userMemberships: { infinite: true },
   });
   const { organization } = useOrganization();
+  const { session } = useSession();
   // Orgs the user can return to instead of creating a new one. Exclude the active
   // org: a fresh signup auto-creates a brand-less org that is the one the first-run
   // gate bounces back to onboarding, so it is never a "go back" target.
@@ -59,9 +61,14 @@ export function LegacyOnboarding() {
   // even when a populated org is already active. A fresh signup arrives here with
   // no param and an auto-created (brand-less) active org → that org is reused.
   const forceNew = searchParams.get("new") === "1";
-  const [step, setStep] = useState<Step>("booking-intro");
-  const [accountType, setAccountType] = useState<AccountType | null>(null);
-  const [url, setUrl] = useState("");
+  // Website carried from the landing pricing CTA (sign-up ?url= → here). When
+  // present, prefill the brand website + name (domain) and land straight on the
+  // url step — booking + type are skipped for this fast path (type defaults to
+  // "company"; the user can still go Back to change it).
+  const prefillUrl = (searchParams.get("url") ?? "").trim();
+  const [step, setStep] = useState<Step>(prefillUrl ? "url-input" : "booking-intro");
+  const [accountType, setAccountType] = useState<AccountType | null>(prefillUrl ? "company" : null);
+  const [url, setUrl] = useState(prefillUrl);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const domain = extractDomain(url);
@@ -108,12 +115,26 @@ export function LegacyOnboarding() {
         reused_org: reuseOrg,
       });
       // No billing step at onboarding: card + auto-topup are configured later, on
-      // first campaign launch (billing-guard modal). Go straight to brand creation
-      // so the $2 welcome credit is never tripped by an auto-topup threshold the
-      // brand-new balance already sits below.
-      const brandsUrl = new URL(`/orgs/${targetOrgId}/brands`, window.location.origin);
-      brandsUrl.searchParams.set("autoCreate", brandUrl);
-      window.location.href = brandsUrl.toString();
+      // first campaign launch (billing-guard modal). Create the brand inline so the
+      // $2 welcome credit is never tripped by an auto-topup threshold the brand-new
+      // balance already sits below, then land straight on the brand.
+      posthog.capture("brand_create_started", { source: "onboarding" });
+      const { brandId: newBrandId } = await upsertBrand(brandUrl);
+      // Mark onboarding complete (edge-gate signal — see proxy.ts / DIS-111).
+      // The org now has a brand → it's a usable workspace. Idempotent server-side.
+      await fetch("/api/onboarding/complete", { method: "POST" }).catch((e) =>
+        console.error("[dashboard] failed to mark onboarding complete:", e)
+      );
+      // Re-mint the session token so the fresh `orgMeta.onboardingComplete` claim
+      // is in the cookie the edge gate reads — otherwise the stale JWT loops the
+      // next navigation back to /onboarding (DIS-111).
+      await session?.getToken({ skipCache: true }).catch(() => {});
+      extractBrandFields([newBrandId], SALES_PROFILE_FIELDS).catch(() => {});
+      posthog.capture("brand_create_completed", {
+        brand_id: newBrandId,
+        source: "onboarding",
+      });
+      window.location.href = `/orgs/${targetOrgId}/brands/${newBrandId}`;
     } catch (err) {
       posthog.capture("onboarding_workspace_create_failed", {
         account_type: accountType,

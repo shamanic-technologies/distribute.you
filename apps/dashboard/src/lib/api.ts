@@ -2329,32 +2329,6 @@ export async function getBillingBalance(token?: string): Promise<BillingBalance>
   return apiCall<BillingBalance>("/billing/accounts/balance", { token });
 }
 
-// Org-wide runs ledger (runs-service /v1/runs via api-service proxy).
-// Used by the billing page Runs tab. List endpoint returns one item per run with
-// own-cost totals only — per-cost-name breakdown is on GET /v1/runs/{id}.
-// Per runs-service: id is required, default sort is startedAt DESC.
-export interface OrgRun {
-  id: string;
-  status: string;
-  startedAt: string | null;
-  completedAt: string | null;
-  ownCostInUsdCents: string | null;
-  serviceName: string | null;
-  taskName: string | null;
-}
-
-export async function listOrgRuns(
-  limit: number,
-  offset: number,
-  token?: string,
-): Promise<{ runs: OrgRun[]; offset: number; limit?: number }> {
-  const qs = new URLSearchParams({ limit: String(limit), offset: String(offset) });
-  return apiCall<{ runs: OrgRun[]; offset: number; limit?: number }>(
-    `/runs?${qs.toString()}`,
-    { token },
-  );
-}
-
 export async function configureAutoTopup(
   topupAmountCents: number,
   topupThresholdCents?: number,

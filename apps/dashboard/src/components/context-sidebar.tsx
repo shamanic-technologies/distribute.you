@@ -155,12 +155,6 @@ const OrgIcon = () => (
   </svg>
 );
 
-const BrandIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-  </svg>
-);
-
 const InfoIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -301,7 +295,6 @@ function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string 
   const keysEnabled = useFeatureFlag(FEATURE_GATES["keys"].flag);
   const topItems: SidebarItem[] = [
     { id: "overview", label: "Overview", href: explicitHierarchyHref(`/orgs/${orgId}`), icon: <HomeIcon /> },
-    { id: "brands", label: "Brands", href: `/orgs/${orgId}/brands`, icon: <BrandIcon /> },
   ];
 
   return (
@@ -543,7 +536,7 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
   ];
 
   return (
-    <SidebarSection title="Brand" backHref={`/orgs/${orgId}/brands`} backLabel="Brands">
+    <SidebarSection title="Brand" backHref={`/orgs/${orgId}`} backLabel="Overview">
       {/* Reveal the WHOLE nav as one group: top items are static and the Database
           items need feature + registry defs. Hold everything behind `defsReady`
           with skeleton rows, then render every item together. Badge numbers are a
