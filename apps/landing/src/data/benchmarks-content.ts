@@ -114,7 +114,7 @@ const SALES_COLD_EMAIL: BenchmarkContent = {
     },
     {
       headline: "Real cost per positive reply, live",
-      body: "$25 free credits. No subscription. The dashboard tracks cost per qualified reply per product so you can double down on the winner.",
+      body: "$25 free credits. Cancel anytime. The dashboard tracks cost per qualified reply per product so you can double down on the winner.",
     },
   ],
   ctaPrimary: {
@@ -124,7 +124,7 @@ const SALES_COLD_EMAIL: BenchmarkContent = {
   },
   ctaClosing: {
     headline: "Ship more. Scale what works.",
-    sub: "Pick the winning workflow from this leaderboard and clone it for your brand. $25 free credits to try, no subscription.",
+    sub: "Pick the winning workflow from this leaderboard and clone it for your brand. $25 free credits to try, cancel anytime.",
     cta: "Launch on autopilot",
   },
 };
