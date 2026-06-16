@@ -617,6 +617,43 @@ section  { padding: 6rem 0; }
 [data-theme="light"] .stat-lbl { color: var(--muted); }
 
 
+/* ── Pricing (pay per outcome) ── */
+.s-pricing { background: var(--bg); padding: 5rem 0 3.5rem; }
+.pricing-card {
+  max-width: 720px; margin: 0 auto; text-align: center;
+  background: var(--surface); border: 1px solid var(--border-hi);
+  border-radius: var(--r-xl); padding: 3rem 2.5rem;
+  box-shadow: var(--shadow-card);
+}
+.pricing-eyebrow { color: var(--accent); display: block; margin-bottom: 0.875rem; }
+.pricing-h { color: var(--text); margin-bottom: 1rem; }
+.pricing-body { color: var(--sub); max-width: 38rem; margin: 0 auto 1.5rem; }
+.pricing-indicative {
+  display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.5rem;
+  font-family: 'JetBrains Mono', monospace; font-size: var(--fs-sm); color: var(--muted);
+  margin-bottom: 2rem;
+}
+.pricing-indicative strong { color: var(--text); font-weight: 700; }
+.pricing-dot { color: var(--border-hi); }
+.pricing-vary { color: var(--accent); margin-left: 0.25rem; }
+.pricing-form { display: flex; gap: 0.625rem; max-width: 480px; margin: 0 auto; }
+.pricing-input {
+  flex: 1; min-width: 0; padding: 0.8rem 1rem; border-radius: var(--r-md);
+  border: 1px solid var(--border-hi); background: var(--bg);
+  font-size: var(--fs-base); color: var(--text); font-family: inherit; outline: none;
+  transition: border-color var(--dur), box-shadow var(--dur);
+}
+.pricing-input::placeholder { color: var(--muted); }
+.pricing-input:focus { border-color: var(--accent-brd); box-shadow: 0 0 0 3px var(--accent-dim); }
+.pricing-form .btn { white-space: nowrap; flex-shrink: 0; }
+.pricing-hint { font-family: 'JetBrains Mono', monospace; font-size: var(--fs-xs); color: var(--muted); margin-top: 1rem; }
+@media (max-width: 640px) {
+  .pricing-card { padding: 2.25rem 1.25rem; }
+  .pricing-form { flex-direction: column; }
+  .pricing-form .btn { width: 100%; justify-content: center; }
+}
+
+
 /* ── Section intro ── */
 .sec-intro         { margin-bottom: 3.5rem; }
 .sec-intro .t-lbl  { color: var(--accent); display: block; margin-bottom: 0.875rem; }
