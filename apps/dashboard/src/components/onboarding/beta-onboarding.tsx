@@ -374,6 +374,27 @@ export function BetaOnboarding() {
         visitToSignupPct: rates.v2s,
         signupToPaidClientPct: rates.s2c,
       });
+      // Recompute the projection from the rates we just saved. The loading-time
+      // projection ran on the brand's DEFAULT economics (this step comes after
+      // loading), which left the pricing recommended budget + per-outcome counts
+      // stale ($1/day, ~0 signups). Server reads econ from saved sales-economics,
+      // so refetch now. Best-effort: a failure must not block the flow (econ is
+      // already persisted; pricing falls back to the prior projection).
+      try {
+        const proj = await getWorkflowProjection({ featureSlug: SALES_FEATURE_SLUG, brandId, objective: "self-serve", budgetUsd: PROJECTION_REF_BUDGET });
+        // Keep-last-good: only adopt the refreshed projection if it's usable — the
+        // cold Neon chain can return a valid-but-degenerate 200 (null unit costs /
+        // counts). Don't let a double-cold refetch overwrite a usable loading value.
+        const usable = proj.workflows.some(
+          (w) => w.costPerCloseUsd != null || (w.projection != null && (w.projection.visits != null || w.projection.closes != null)),
+        );
+        if (usable) {
+          projectionRef.current = proj;
+          if (proj.recommendedBudgetUsd && proj.recommendedBudgetUsd > 0) setBudget(Math.round(proj.recommendedBudgetUsd));
+        }
+      } catch (e) {
+        console.error("[dashboard] onboarding: projection refresh after rates failed:", e);
+      }
       setStep("personas");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save your rates.");
