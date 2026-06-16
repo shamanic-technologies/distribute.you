@@ -27,7 +27,7 @@ import { extractDomain } from "@/lib/extract-domain";
  * Beta onboarding (allowlist only — see `beta-allowlist.ts`). Ports the stepped
  * flow from the `apps/app` mockup (app.distribute.you) into the real dashboard:
  * welcome → type → URL → an ANIMATED build sequence that runs WHILE the brand is
- * actually created (replacing the dead spinner the legacy flow showed) → a short
+ * actually created (replacing the dead spinner the default flow showed) → a short
  * strategy review (objective / funnels / conversion rates) → straight into the
  * real `campaigns/new` config (which owns budget, funnel + Edit-with-AI).
  *
@@ -175,7 +175,7 @@ export function BetaOnboarding() {
     const trimmed = url.trim();
     const brandUrl = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
     // Reuse the active org (signup auto-creates one) unless ?new=1 forces a brand-new
-    // org — same rule as the legacy flow.
+    // org — same rule as the default flow.
     const reuseOrg = !forceNew && !!organization?.id;
     let targetOrgId: string;
     if (reuseOrg) {
@@ -196,7 +196,7 @@ export function BetaOnboarding() {
     // Re-mint the session token so the fresh `orgMeta.onboardingComplete` claim is
     // in the cookie the edge gate reads — else the stale JWT loops back to /onboarding.
     await session?.getToken({ skipCache: true }).catch(() => {});
-    // Kick brand-field extraction in the background (fire-and-forget, same as legacy).
+    // Kick brand-field extraction in the background (fire-and-forget, same as default).
     extractBrandFields([brandId], SALES_PROFILE_FIELDS).catch(() => {});
     brandIdRef.current = brandId;
     posthog.capture("onboarding_brand_created", { flow: "beta", org_id: targetOrgId, brand_id: brandId });

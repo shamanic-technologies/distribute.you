@@ -56,7 +56,7 @@ describe("Auth pages branding", () => {
 describe("Onboarding page should not reference mcpfactory", () => {
   const onboardingPath = path.join(
     __dirname,
-    "../src/components/onboarding/legacy-onboarding.tsx"
+    "../src/components/onboarding/default-onboarding.tsx"
   );
   const content = fs.readFileSync(onboardingPath, "utf-8");
 

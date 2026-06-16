@@ -3,7 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 describe("Onboarding page creates the brand inline (no /brands?autoCreate hop)", () => {
-  const pagePath = path.join(__dirname, "../src/components/onboarding/legacy-onboarding.tsx");
+  const pagePath = path.join(__dirname, "../src/components/onboarding/default-onboarding.tsx");
   const content = fs.readFileSync(pagePath, "utf-8");
 
   it("should ask for website URL, not a name", () => {

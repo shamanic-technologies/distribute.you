@@ -3,7 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 describe("Onboarding flow", () => {
-  const pagePath = path.join(__dirname, "../src/components/onboarding/legacy-onboarding.tsx");
+  const pagePath = path.join(__dirname, "../src/components/onboarding/default-onboarding.tsx");
 
   it("should have an onboarding page", () => {
     expect(fs.existsSync(pagePath)).toBe(true);

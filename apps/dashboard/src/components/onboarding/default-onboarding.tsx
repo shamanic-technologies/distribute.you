@@ -47,7 +47,7 @@ const onboardingBenefits = [
   },
 ];
 
-export function LegacyOnboarding() {
+export function DefaultOnboarding() {
   const { createOrganization, setActive, userMemberships } = useOrganizationList({
     userMemberships: { infinite: true },
   });

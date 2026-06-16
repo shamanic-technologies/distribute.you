@@ -43,7 +43,7 @@ describe("Multi-brand extract-fields response types", () => {
 
   it("callers pass brandIds as array parameter", () => {
     const onboardingPage = fs.readFileSync(
-      path.join(__dirname, "../src/components/onboarding/legacy-onboarding.tsx"),
+      path.join(__dirname, "../src/components/onboarding/default-onboarding.tsx"),
       "utf-8",
     );
     const brandInfoPage = fs.readFileSync(
