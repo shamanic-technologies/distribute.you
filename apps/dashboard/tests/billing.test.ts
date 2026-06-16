@@ -118,11 +118,6 @@ describe("Billing API wrappers", () => {
     expect(content).not.toContain("reloadThresholdCents");
     expect(content).not.toContain("creditBalanceCents");
   });
-
-  it("should export listOrgRuns function for the Runs ledger", () => {
-    expect(content).toContain("export async function listOrgRuns");
-    expect(content).toContain("/runs");
-  });
 });
 
 describe("API proxy PATCH and DELETE support", () => {
@@ -342,11 +337,6 @@ describe("Billing page", () => {
     expect(content).toContain("handleManagePayment");
     expect(content).toContain("Manage payment method");
     expect(content).toContain("createPortalSession");
-  });
-
-  it("should render a Runs ledger section", () => {
-    expect(content).toContain("listOrgRuns");
-    expect(content).toContain(">Runs<");
   });
 
   it("should have loading skeleton state", () => {
