@@ -242,7 +242,7 @@ export default function SignUpPage() {
                 color: "oklch(48% 0.006 264)",
               }}
             >
-              50 free emails. No card required.
+              $25 free credits.
             </p>
           </div>
 

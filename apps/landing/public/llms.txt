@@ -12,7 +12,7 @@
 - Tagline: The Stripe of Distribution
 - ICP: The Serial Builder — 16-40 years old, solo CEO-founder, ships 3+ products
   per year, refuses subscriptions, wants founder reachable
-- Pricing model: Pay-as-you-go credits, 50 free emails, no subscription
+- Pricing model: Pay-as-you-go credits, $25 free credits (we match your first $25 spent dollar for dollar), no subscription
 - Open source: All workflows on https://github.com/shamanic-technologies
 
 ## Key pages

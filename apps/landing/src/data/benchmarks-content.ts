@@ -56,7 +56,7 @@ const SALES_COLD_EMAIL: BenchmarkContent = {
   whyMatters: {
     eyebrow: "Solo founder × cold sales",
     title: "Most of your first 100 customers come from a cold inbox",
-    body: "Cold sales email is the highest-leverage channel for a founder who hasn't raised. SEO takes a year. Ads burn your runway. A tight ICP filter + a 3-step sequence + warmed inboxes gets you replies inside a week and customers inside a month. The industry average is 3.43% reply rate; top-quartile campaigns hit 15–25%. The gap is targeting, personalization, and deliverability — distribute runs all three on autopilot — your first 50 emails are free.",
+    body: "Cold sales email is the highest-leverage channel for a founder who hasn't raised. SEO takes a year. Ads burn your runway. A tight ICP filter + a 3-step sequence + warmed inboxes gets you replies inside a week and customers inside a month. The industry average is 3.43% reply rate; top-quartile campaigns hit 15–25%. The gap is targeting, personalization, and deliverability — distribute runs all three on autopilot — your first $25 spent is matched in free credits.",
   },
   studies: [
     {
@@ -114,17 +114,17 @@ const SALES_COLD_EMAIL: BenchmarkContent = {
     },
     {
       headline: "Real cost per positive reply, live",
-      body: "50 free emails. No subscription. The dashboard tracks cost per qualified reply per product so you can double down on the winner.",
+      body: "$25 free credits. No subscription. The dashboard tracks cost per qualified reply per product so you can double down on the winner.",
     },
   ],
   ctaPrimary: {
     headline: "Launch your first cold campaign in 60 seconds",
-    sub: "50 free emails. Drop your URL. We pick the workflow that performs best for your ICP.",
-    cta: "Start free — 50 free emails",
+    sub: "$25 free credits. Drop your URL. We pick the workflow that performs best for your ICP.",
+    cta: "Start free — $25 free credits",
   },
   ctaClosing: {
     headline: "Ship more. Scale what works.",
-    sub: "Pick the winning workflow from this leaderboard and clone it for your brand. 50 free emails to try, no subscription.",
+    sub: "Pick the winning workflow from this leaderboard and clone it for your brand. $25 free credits to try, no subscription.",
     cta: "Launch on autopilot",
   },
 };
