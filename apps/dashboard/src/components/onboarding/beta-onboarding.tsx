@@ -9,93 +9,155 @@ import {
 } from "@clerk/nextjs";
 import {
   ArrowRightIcon,
-  ChartBarIcon,
   CheckIcon,
   ChevronLeftIcon,
   CursorArrowRaysIcon,
-  SparklesIcon,
+  EnvelopeIcon,
+  ChatBubbleLeftRightIcon,
+  PaperAirplaneIcon,
+  DevicePhoneMobileIcon,
+  UserGroupIcon,
+  PlusIcon,
+  XMarkIcon,
+  ShieldCheckIcon,
 } from "@heroicons/react/24/outline";
 import posthog from "posthog-js";
 import {
   upsertBrand,
   extractBrandFields,
   SALES_PROFILE_FIELDS,
+  getBrandProfile,
+  saveBrandProfileVersion,
+  getSalesEconomicsEffective,
+  saveBrandSalesEconomics,
+  suggestPersonas,
+  createPersona,
+  getWorkflowProjection,
+  createCampaign,
+  type EffectiveSalesEconomics,
+  type WorkflowProjectionResponse,
+  type PersonaDraft,
 } from "@/lib/api";
 import { extractDomain } from "@/lib/extract-domain";
 
 /**
- * Beta onboarding (allowlist only — see `beta-allowlist.ts`). Ports the stepped
- * flow from the `apps/app` mockup (app.distribute.you) into the real dashboard:
- * welcome → type → URL → an ANIMATED build sequence that runs WHILE the brand is
- * actually created (replacing the dead spinner the default flow showed) → a short
- * strategy review (objective / funnels / conversion rates) → straight into the
- * real `campaigns/new` config (which owns budget, funnel + Edit-with-AI).
- *
- * Scope note (Option 1): objective / funnels / rates are collected for engagement
- * but are NOT yet persisted to the backend — the wired source of truth for those
- * lives in `campaigns/new`. Persisting them (so they prefill the campaign) is the
- * Option-2 follow-up and needs a backend sales-economics save at this step.
+ * Beta onboarding (allowlist only — see `beta-allowlist.ts`). A guided flow ported
+ * from the app.distribute.you mockup: welcome → URL → an ANIMATED build sequence that
+ * runs WHILE the brand is created AND its profile / personas / economics / pricing
+ * projection are fetched for real → objective → funnels → conversion rates → review
+ * AI-proposed personas → review brand profile → agency-channel consent → per-outcome
+ * pricing → launches a real campaign. Everything is wired to live endpoints; the only
+ * client-only concept is the "Coming soon" channels (only cold email delivers today).
  */
+
+const SALES_FEATURE_SLUG = "sales-cold-email-outreach";
+const PROJECTION_REF_BUDGET = 100; // counts come back at this budget; unit costs are budget-invariant
 
 type Step =
   | "welcome"
-  | "type"
   | "url"
   | "loading"
   | "objective"
   | "funnels"
-  | "rates";
+  | "rates"
+  | "personas"
+  | "profile"
+  | "consent"
+  | "pricing";
 
-type AccountType = "agency" | "company";
-
-type Objective = "signups" | "meetings" | "purchases";
-const OBJECTIVES: { key: Objective; label: string; desc: string }[] = [
-  { key: "signups", label: "Signups", desc: "Maximize free signups / trial starts on your site." },
-  { key: "meetings", label: "Booked Meetings", desc: "Maximize sales meetings booked from outreach." },
-  { key: "purchases", label: "Purchases", desc: "Maximize paying customers and revenue." },
+// The six outcomes the user can maximize (Kevin's list). Each maps to a projection
+// count so the pricing cards show the chosen unit, never "closes".
+type Outcome =
+  | "page-visits"
+  | "signups"
+  | "purchases"
+  | "conversations"
+  | "meetings"
+  | "sales-revenue";
+const OUTCOMES: { key: Outcome; label: string; unit: string; desc: string }[] = [
+  { key: "page-visits", label: "Page visits", unit: "visits", desc: "Maximize qualified traffic to your site." },
+  { key: "signups", label: "Signups", unit: "signups", desc: "Maximize free signups / trial starts." },
+  { key: "purchases", label: "Purchases", unit: "purchases", desc: "Maximize paying customers." },
+  { key: "conversations", label: "Conversations", unit: "conversations", desc: "Maximize replies from interested prospects." },
+  { key: "meetings", label: "Sales meetings", unit: "meetings", desc: "Maximize booked sales meetings." },
+  { key: "sales-revenue", label: "Overall $ of sales", unit: "revenue", desc: "Maximize total sales revenue." },
 ];
 
-type Funnel = "website-signups" | "sales-meetings" | "website-purchases";
+// Only two funnels are offered (Kevin): Website Purchase + Sales Meeting.
+type Funnel = "website-purchases" | "sales-meetings";
 const FUNNELS: { key: Funnel; label: string; desc: string }[] = [
-  { key: "website-signups", label: "Website Signups", desc: "Visitors create an account on your site." },
-  { key: "sales-meetings", label: "Sales Meetings", desc: "Replies turn into booked sales meetings." },
-  { key: "website-purchases", label: "Website Purchases", desc: "Visitors buy directly on your site." },
+  { key: "website-purchases", label: "Website Purchase", desc: "Visitors buy directly on your site." },
+  { key: "sales-meetings", label: "Sales Meeting", desc: "Replies turn into booked sales meetings." },
 ];
 
-type RateKey = "ltv" | "v2s" | "s2c" | "r2m" | "m2c";
+type RateKey = "ltv" | "v2s" | "s2c" | "v2m" | "r2m" | "m2c";
 const RATE_META: Record<RateKey, { label: string; suffix: "$" | "%"; hint: string }> = {
   ltv: { label: "Lifetime revenue / paid client", suffix: "$", hint: "Average revenue a customer brings over their lifetime." },
   v2s: { label: "Website visit → signup", suffix: "%", hint: "Of visitors who land on your site, how many sign up." },
   s2c: { label: "Signup → paid client", suffix: "%", hint: "Of signups, how many become paying customers." },
+  v2m: { label: "Website visit → meeting", suffix: "%", hint: "Of visitors, how many book a meeting." },
   r2m: { label: "Positive reply → meeting booked", suffix: "%", hint: "Of positive replies, how many book a meeting." },
   m2c: { label: "Meeting booked → close won", suffix: "%", hint: "Of booked meetings, how many close." },
 };
 
-// Ask only the strictly-necessary rates given the objective + active funnels.
-function ratesNeeded(objective: Objective, funnels: Set<Funnel>): RateKey[] {
-  const out: RateKey[] = [];
-  const websiteActive = funnels.has("website-signups") || funnels.has("website-purchases");
-  const meetingsActive = funnels.has("sales-meetings");
-  if (objective === "signups") {
-    if (websiteActive) out.push("v2s");
-    return out;
-  }
-  if (objective === "meetings") {
-    if (meetingsActive) out.push("r2m");
-    return out;
-  }
-  out.push("ltv");
-  if (websiteActive) out.push("v2s", "s2c");
-  if (meetingsActive) out.push("r2m", "m2c");
+// Ask only the rates the chosen funnels need (+ ltv for revenue).
+function ratesNeeded(funnels: Set<Funnel>): RateKey[] {
+  const out: RateKey[] = ["ltv"];
+  if (funnels.has("website-purchases")) out.push("v2s", "s2c");
+  if (funnels.has("sales-meetings")) out.push("r2m", "m2c");
   return out;
 }
 
+// Outreach channels. Cold email is the only one that delivers today; the rest are
+// captured as intent (badged "Coming soon"). Email is locked ON.
+type Channel = "email" | "linkedin" | "whatsapp" | "telegram" | "sms" | "referral";
+const CHANNELS: { key: Channel; label: string; icon: typeof EnvelopeIcon; live: boolean }[] = [
+  { key: "email", label: "Cold email", icon: EnvelopeIcon, live: true },
+  { key: "linkedin", label: "LinkedIn DM", icon: UserGroupIcon, live: false },
+  { key: "whatsapp", label: "WhatsApp messages", icon: ChatBubbleLeftRightIcon, live: false },
+  { key: "telegram", label: "Telegram messages", icon: PaperAirplaneIcon, live: false },
+  { key: "sms", label: "SMS", icon: DevicePhoneMobileIcon, live: false },
+  { key: "referral", label: "Referral agent", icon: UserGroupIcon, live: false },
+];
+
+// The five agency-model benefits (landing how-it-works "Sent on your behalf").
+const AGENCY_BENEFITS = [
+  "Zero reputation risk — your domain never touches cold outreach.",
+  "Zero setup — no DNS, SPF/DKIM, warming or mailboxes on your side.",
+  "Zero inbox to babysit — we screen replies and forward the positive ones.",
+  "Full CRM visibility — you keep the whole view, nothing hidden.",
+  "Test demand before revealing your brand on niche markets.",
+];
+
+// Brand-profile editable fields, grouped (mirrors the /brand-profile page).
+const PROFILE_GROUPS: { title: string; fields: { key: string; label: string; list?: boolean }[] }[] = [
+  { title: "Positioning", fields: [
+    { key: "companyOverview", label: "Company overview" },
+    { key: "valueProposition", label: "Value proposition" },
+  ] },
+  { title: "Product", fields: [
+    { key: "keyFeatures", label: "Key features", list: true },
+    { key: "productDifferentiators", label: "Differentiators", list: true },
+  ] },
+  { title: "Conversion levers", fields: [
+    { key: "callToAction", label: "Call to action" },
+    { key: "urgency", label: "Urgency" },
+    { key: "scarcity", label: "Scarcity" },
+    { key: "riskReversal", label: "Risk reversal" },
+  ] },
+];
+
 const LOADING_STEPS = [
   { id: "ls-1", label: "Reading your product", delay: 1400 },
-  { id: "ls-2", label: "Extracting your ICP and objectives", delay: 1600 },
+  { id: "ls-2", label: "Extracting your ICP and personas", delay: 1600 },
   { id: "ls-3", label: "Selecting outreach strategy", delay: 1400 },
-  { id: "ls-4", label: "Drafting your first outreach", delay: 1400 },
+  { id: "ls-4", label: "Projecting your economics", delay: 1400 },
 ];
+
+type EditablePersona = { name: string; filters: Record<string, string[]> };
+
+const fmtUsd0 = (n: number) => "$" + Math.round(n).toLocaleString("en-US");
+const fmtCount = (n: number) => Math.round(n).toLocaleString("en-US");
 
 export function BetaOnboarding() {
   const router = useRouter();
@@ -106,24 +168,32 @@ export function BetaOnboarding() {
   const forceNew = searchParams.get("new") === "1";
 
   const [step, setStep] = useState<Step>("welcome");
-  const [accountType, setAccountType] = useState<AccountType | null>(null);
-  const [url, setUrl] = useState("");
+  const [url, setUrl] = useState(searchParams.get("url")?.trim() ?? "");
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  const [objective, setObjective] = useState<Objective>("purchases");
+  const [outcome, setOutcome] = useState<Outcome>("purchases");
   const [funnels, setFunnels] = useState<Set<Funnel>>(
-    () => new Set<Funnel>(["website-signups", "sales-meetings", "website-purchases"]),
+    () => new Set<Funnel>(["website-purchases", "sales-meetings"]),
   );
-  const [rates, setRates] = useState<Record<RateKey, number>>({ ltv: 2500, v2s: 5, s2c: 10, r2m: 30, m2c: 25 });
+  const [rates, setRates] = useState<Record<RateKey, number>>({ ltv: 2500, v2s: 5, s2c: 10, v2m: 3, r2m: 30, m2c: 25 });
+  const [personas, setPersonas] = useState<EditablePersona[]>([]);
+  const [profile, setProfile] = useState<Record<string, string | string[]>>({});
+  const [channels, setChannels] = useState<Set<Channel>>(() => new Set<Channel>(["email"]));
+  const [budget, setBudget] = useState<number | null>(null);
 
-  // Loading-sequence + real brand-create coordination.
+  // Loading-sequence + real fetch coordination. We only advance past the loader once
+  // BOTH the animation finished AND the brand exists + its data is fetched.
   const [loadStep, setLoadStep] = useState(0);
   const [loadDone, setLoadDone] = useState(false);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
-  // Brand id from the real create; we only advance past the loader once BOTH the
-  // animation finished AND the brand actually exists.
   const brandIdRef = useRef<string | null>(null);
+  const orgIdRef = useRef<string | null>(null);
+  const fetchDoneRef = useRef(false);
   const animDoneRef = useRef(false);
+
+  const projectionRef = useRef<WorkflowProjectionResponse | null>(null);
+  const econRef = useRef<EffectiveSalesEconomics | null>(null);
 
   const domain = extractDomain(url);
   const hostname = domain ?? url.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
@@ -131,7 +201,6 @@ export function BetaOnboarding() {
   useEffect(() => {
     posthog.capture("onboarding_step_viewed", { step, flow: "beta" });
   }, [step]);
-
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
   function toggleFunnel(key: Funnel) {
@@ -142,12 +211,18 @@ export function BetaOnboarding() {
       return next;
     });
   }
+  function toggleChannel(key: Channel) {
+    if (key === "email") return; // locked on
+    setChannels((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
 
-  // Both the animation and the real create must finish before leaving the loader.
   function maybeAdvancePastLoading() {
-    if (animDoneRef.current && brandIdRef.current) {
-      setStep("objective");
-    }
+    if (animDoneRef.current && fetchDoneRef.current) setStep("objective");
   }
 
   function runLoadingAnimation() {
@@ -171,11 +246,10 @@ export function BetaOnboarding() {
     timers.current.push(last);
   }
 
-  async function createBrand(): Promise<void> {
+  // Create the brand for real, then fetch everything the later steps render.
+  async function createBrandAndFetch(): Promise<void> {
     const trimmed = url.trim();
     const brandUrl = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-    // Reuse the active org (signup auto-creates one) unless ?new=1 forces a brand-new
-    // org — same rule as the default flow.
     const reuseOrg = !forceNew && !!organization?.id;
     let targetOrgId: string;
     if (reuseOrg) {
@@ -189,21 +263,45 @@ export function BetaOnboarding() {
       targetOrgId = org.id;
     }
     const { brandId } = await upsertBrand(brandUrl);
-    // Mark onboarding complete (edge-gate signal — proxy.ts / DIS-111). Idempotent.
     await fetch("/api/onboarding/complete", { method: "POST" }).catch((e) =>
       console.error("[dashboard] failed to mark onboarding complete:", e),
     );
-    // Re-mint the session token so the fresh `orgMeta.onboardingComplete` claim is
-    // in the cookie the edge gate reads — else the stale JWT loops back to /onboarding.
     await session?.getToken({ skipCache: true }).catch(() => {});
-    // Kick brand-field extraction in the background (fire-and-forget, same as default).
-    extractBrandFields([brandId], SALES_PROFILE_FIELDS).catch(() => {});
+    // Extract brand fields (populates the brand profile), then fetch everything.
+    await extractBrandFields([brandId], SALES_PROFILE_FIELDS).catch((e) =>
+      console.error("[dashboard] extractBrandFields failed:", e),
+    );
     brandIdRef.current = brandId;
+    orgIdRef.current = targetOrgId;
     posthog.capture("onboarding_brand_created", { flow: "beta", org_id: targetOrgId, brand_id: brandId });
-    setTargetOrgId(targetOrgId);
-  }
 
-  const [orgIdForCampaign, setTargetOrgId] = useState<string | null>(null);
+    const [prof, econRes, sug, proj] = await Promise.all([
+      getBrandProfile(brandId),
+      getSalesEconomicsEffective(brandId),
+      suggestPersonas(brandId, 3),
+      getWorkflowProjection({ featureSlug: SALES_FEATURE_SLUG, brandId, objective: "self-serve", budgetUsd: PROJECTION_REF_BUDGET }),
+    ]);
+
+    if (prof.current) setProfile(prof.current.fields);
+    if (econRes.economics) {
+      const e = econRes.economics;
+      econRef.current = e;
+      setRates({
+        ltv: e.lifetimeRevenueUsd,
+        v2s: e.visitToSignupPct,
+        s2c: e.signupToPaidClientPct,
+        v2m: e.visitToMeetingPct,
+        r2m: e.replyToMeetingPct,
+        m2c: e.meetingToClosePct,
+      });
+    }
+    setPersonas(sug.personas.map((p: PersonaDraft) => ({ name: p.name, filters: p.filters })));
+    projectionRef.current = proj;
+    if (proj.recommendedBudgetUsd && proj.recommendedBudgetUsd > 0) {
+      setBudget(Math.round(proj.recommendedBudgetUsd));
+    }
+    fetchDoneRef.current = true;
+  }
 
   async function startAnalyze() {
     if (!domain) return;
@@ -212,7 +310,7 @@ export function BetaOnboarding() {
     runLoadingAnimation();
     posthog.capture("onboarding_workspace_create_started", { flow: "beta", domain });
     try {
-      await createBrand();
+      await createBrandAndFetch();
       maybeAdvancePastLoading();
     } catch (err) {
       posthog.capture("onboarding_workspace_create_failed", { flow: "beta", domain });
@@ -222,253 +320,231 @@ export function BetaOnboarding() {
     }
   }
 
-  function finish() {
+  // ── Step transitions that persist ────────────────────────────────
+  async function saveRatesAndContinue() {
     const brandId = brandIdRef.current;
-    if (!brandId || !orgIdForCampaign) return;
-    posthog.capture("onboarding_completed", { flow: "beta", objective });
-    router.push(`/orgs/${orgIdForCampaign}/brands/${brandId}/campaigns/new`);
+    if (!brandId) return;
+    setBusy(true);
+    try {
+      await saveBrandSalesEconomics(brandId, {
+        lifetimeRevenueUsd: rates.ltv,
+        replyToMeetingPct: rates.r2m,
+        visitToMeetingPct: rates.v2m,
+        meetingToClosePct: rates.m2c,
+        visitToSignupPct: rates.v2s,
+        signupToPaidClientPct: rates.s2c,
+      });
+      setStep("personas");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save your rates.");
+    } finally {
+      setBusy(false);
+    }
   }
 
-  const neededRates = ratesNeeded(objective, funnels);
-  const card = "bg-white rounded-2xl border border-gray-200 p-8 md:p-12";
+  async function savePersonasAndContinue() {
+    const brandId = brandIdRef.current;
+    if (!brandId) return;
+    setBusy(true);
+    try {
+      // Persist each kept persona draft. Names are unique per brand; a 409 on an
+      // accidental dup is non-fatal here (skip it, keep going).
+      for (const p of personas) {
+        if (!p.name.trim()) continue;
+        await createPersona(brandId, { name: p.name.trim(), filters: p.filters }).catch((e) =>
+          console.error("[dashboard] createPersona (onboarding) failed:", e),
+        );
+      }
+      setStep("profile");
+    } finally {
+      setBusy(false);
+    }
+  }
 
-  // Step: Welcome
+  async function launch() {
+    const brandId = brandIdRef.current;
+    const orgId = orgIdRef.current;
+    const proj = projectionRef.current;
+    if (!brandId || !orgId || !proj || budget == null) return;
+    const workflowSlug = proj.recommendedWorkflowDynastySlug;
+    if (!workflowSlug) {
+      setError("No outreach workflow is available for this brand yet.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      // Persist the brand profile edits + the channel consent in one version.
+      const trimmed = url.trim();
+      const brandUrl = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+      await saveBrandProfileVersion(brandId, {
+        ...profile,
+        consentedChannels: Array.from(channels),
+        agencyConsentAt: new Date().toISOString(),
+      });
+      const { campaign } = await createCampaign({
+        name: `${hostname} — ${OUTCOMES.find((o) => o.key === outcome)?.label ?? "Outreach"}`,
+        workflowSlug,
+        brandUrls: [brandUrl],
+        maxBudgetDailyUsd: String(budget),
+      });
+      posthog.capture("onboarding_completed", { flow: "beta", outcome, budget });
+      router.push(`/orgs/${orgId}/brands/${brandId}/campaigns/${campaign.id}`);
+    } catch (err) {
+      posthog.capture("onboarding_launch_failed", { flow: "beta" });
+      setError(err instanceof Error ? err.message : "Launch failed. Please try again.");
+      setBusy(false);
+    }
+  }
+
+  // ── Per-outcome economics for the pricing cards ──────────────────
+  // All counts are objective-agnostic; we derive each outcome's cost-per-unit from
+  // the ONE projection fetched at PROJECTION_REF_BUDGET (budget-invariant), exactly
+  // like campaigns/new. signups are derived from visits × visit→signup rate.
+  // The recommended workflow's funnel projection (counts at PROJECTION_REF_BUDGET).
+  function activeProjection() {
+    const resp = projectionRef.current;
+    if (!resp) return null;
+    const rec = resp.recommendedWorkflowDynastySlug
+      ? resp.workflows.find((w) => w.workflowDynastySlug === resp.recommendedWorkflowDynastySlug)
+      : resp.workflows[0];
+    return (rec ?? resp.workflows[0])?.projection ?? null;
+  }
+
+  function outcomeUnitCost(): number | null {
+    const p = activeProjection();
+    if (!p) return null;
+    const B = PROJECTION_REF_BUDGET;
+    const per = (count: number | null | undefined) =>
+      count && count > 0 ? B / count : null;
+    switch (outcome) {
+      case "page-visits": return per(p.visits);
+      case "signups": return p.visits && p.visits > 0 ? B / (p.visits * (rates.v2s / 100)) : null;
+      case "purchases": return per(p.closes);
+      case "conversations": return per(p.replies);
+      case "meetings": return per(p.meetings);
+      case "sales-revenue": return null; // revenue shows ROI instead of a unit cost
+    }
+  }
+  function revenuePerDollar(): number | null {
+    const p = activeProjection();
+    if (!p?.revenue || p.revenue <= 0) return null;
+    return p.revenue / PROJECTION_REF_BUDGET;
+  }
+
+  const neededRates = ratesNeeded(funnels);
+  const card = "bg-white rounded-2xl border border-gray-200 p-8 md:p-12";
+  const outcomeMeta = OUTCOMES.find((o) => o.key === outcome)!;
+
+  // ── Step renders ─────────────────────────────────────────────────
   if (step === "welcome") {
     return (
       <div className={card}>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-brand-600">
-          Beta
-        </span>
-        <h1 className="mt-4 font-display text-3xl font-bold leading-tight text-gray-950">
-          You set the goal.<br />We deliver the outcome.
-        </h1>
-        <p className="mt-3 text-sm leading-6 text-gray-500">
-          Drop your product URL and a daily budget. We find your leads, reach out across the
-          best channels, and turn them into signups, meetings and sales.
-        </p>
-
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-brand-600">Beta</span>
+        <h1 className="mt-4 font-display text-3xl font-bold leading-tight text-gray-950">Pay per outcome,<br />like Google Ads.</h1>
+        <p className="mt-3 text-sm leading-6 text-gray-500">Drop your product URL and a daily budget. We find your leads, reach out across the best channels on your behalf, and turn them into signups, meetings and sales.</p>
         <div className="mt-7 grid gap-3 sm:grid-cols-3">
           {[
-            { icon: SparklesIcon, title: "Pick your goal", desc: "Maximize signups, meetings, or sales" },
-            { icon: CheckIcon, title: "Best ROI", desc: "Best return on the market, measured per outcome" },
-            { icon: ChartBarIcon, title: "Pay per outcome", desc: "$15 / signup · $90 / meeting · $120 / sale" },
+            { v: "~$15", l: "/ signup" },
+            { v: "~$90", l: "/ meeting" },
+            { v: "~$120", l: "/ purchase" },
           ].map((f) => (
-            <div key={f.title} className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-100 text-brand-600">
-                <f.icon className="h-4 w-4" />
-              </div>
-              <div className="mt-3 text-sm font-semibold text-gray-900">{f.title}</div>
-              <div className="mt-1 text-xs leading-5 text-gray-500">{f.desc}</div>
+            <div key={f.l} className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <div className="text-2xl font-bold text-gray-950">{f.v}</div>
+              <div className="mt-1 text-xs text-gray-500">{f.l}</div>
             </div>
           ))}
         </div>
-
-        <button
-          onClick={() => setStep("type")}
-          className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700"
-        >
-          Get started
-          <ArrowRightIcon className="h-4 w-4" />
+        <button onClick={() => setStep("url")} className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700">
+          Get started <ArrowRightIcon className="h-4 w-4" />
         </button>
       </div>
     );
   }
 
-  // Step: Account type
-  if (step === "type") {
-    return (
-      <div className={card}>
-        <BackButton onClick={() => setStep("welcome")} />
-        <h2 className="font-display text-2xl font-bold text-gray-900">How will you use Distribute?</h2>
-        <p className="mt-2 mb-8 text-gray-500">This helps us set up your workspace correctly.</p>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {([
-            { key: "agency" as const, title: "Agency", desc: "Manage distribution for multiple client brands from one dashboard" },
-            { key: "company" as const, title: "Company", desc: "Automate distribution for your own brand" },
-          ]).map((t) => (
-            <button
-              key={t.key}
-              onClick={() => {
-                posthog.capture("onboarding_account_type_selected", { flow: "beta", account_type: t.key });
-                setAccountType(t.key);
-                setStep("url");
-              }}
-              className="group rounded-xl border-2 border-gray-200 bg-white p-6 text-left transition hover:border-brand-400 hover:shadow-md"
-            >
-              <h3 className="mb-1 text-lg font-semibold text-gray-900">{t.title}</h3>
-              <p className="text-sm text-gray-500">{t.desc}</p>
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // Step: URL
   if (step === "url") {
     return (
       <div className={card}>
-        <BackButton onClick={() => setStep("type")} />
         <h2 className="font-display text-2xl font-bold text-gray-900">What are we promoting?</h2>
-        <p className="mt-2 mb-6 text-gray-500">
-          We read your product, find the leads, and run the outreach. Just drop the URL.
-        </p>
-        {error && (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
+        <p className="mt-2 mb-6 text-gray-500">We read your product, find the leads, and run the outreach. Just drop the URL.</p>
+        {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
         <input
-          type="url"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder={accountType === "agency" ? "e.g. your-agency.com" : "e.g. acme.com"}
-          autoFocus
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && domain) startAnalyze();
-          }}
+          type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="e.g. acme.com" autoFocus
+          onKeyDown={(e) => { if (e.key === "Enter" && domain) startAnalyze(); }}
           className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-brand-500"
         />
-        {url.trim() && !domain && (
-          <p className="mt-2 text-sm text-red-500">Please enter a valid URL (e.g. acme.com)</p>
-        )}
-        <button
-          onClick={startAnalyze}
-          disabled={!domain}
-          className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          Analyze my product
-          <ArrowRightIcon className="h-4 w-4" />
+        {url.trim() && !domain && <p className="mt-2 text-sm text-red-500">Please enter a valid URL (e.g. acme.com)</p>}
+        <button onClick={startAnalyze} disabled={!domain} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
+          Analyze my product <ArrowRightIcon className="h-4 w-4" />
         </button>
       </div>
     );
   }
 
-  // Step: Loading (animation runs while the brand is created for real)
   if (step === "loading") {
     return (
       <div className={card}>
-        <div className="mb-2 text-center text-lg font-semibold text-gray-950">
-          {loadDone ? "Your strategy is ready." : "Building your strategy…"}
-        </div>
-        <p className="mb-6 text-center text-sm text-gray-500">
-          Reading <span className="font-medium text-gray-700">{hostname}</span>
-        </p>
+        <div className="mb-2 text-center text-lg font-semibold text-gray-950">{loadDone ? "Your strategy is ready." : "Building your strategy…"}</div>
+        <p className="mb-6 text-center text-sm text-gray-500">Reading <span className="font-medium text-gray-700">{hostname}</span></p>
         <div className="space-y-2">
           {LOADING_STEPS.map((s, i) => {
-            const isDone = loadDone || i < loadStep;
-            const isActive = !loadDone && i === loadStep;
+            const isDone = (loadDone && fetchDoneRef.current) || i < loadStep;
+            const isActive = !isDone && i === loadStep;
             return (
-              <div
-                key={s.id}
-                className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition ${
-                  isActive ? "border-brand-200 bg-brand-50" : "border-gray-100 bg-white"
-                } ${isDone || isActive ? "opacity-100" : "opacity-40"}`}
-              >
+              <div key={s.id} className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition ${isActive ? "border-brand-200 bg-brand-50" : "border-gray-100 bg-white"} ${isDone || isActive ? "opacity-100" : "opacity-40"}`}>
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center">
-                  {isDone ? (
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-                      <CheckIcon className="h-3.5 w-3.5" />
-                    </span>
-                  ) : isActive ? (
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
-                  ) : (
-                    <span className="h-2.5 w-2.5 rounded-full bg-gray-300" />
-                  )}
+                  {isDone ? <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-600"><CheckIcon className="h-3.5 w-3.5" /></span>
+                    : isActive ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
+                    : <span className="h-2.5 w-2.5 rounded-full bg-gray-300" />}
                 </span>
-                <span className={`text-sm ${isActive ? "font-medium text-gray-900" : "text-gray-600"}`}>
-                  {s.label}
-                </span>
+                <span className={`text-sm ${isActive ? "font-medium text-gray-900" : "text-gray-600"}`}>{s.label}</span>
               </div>
             );
           })}
         </div>
-        {loadDone && !brandIdRef.current && (
-          <p className="mt-5 text-center text-xs text-gray-400">Finishing setup…</p>
-        )}
+        {loadDone && !fetchDoneRef.current && <p className="mt-5 text-center text-xs text-gray-400">Finishing setup…</p>}
       </div>
     );
   }
 
-  // Step: Objective
   if (step === "objective") {
     return (
       <div className={card}>
         <h2 className="font-display text-2xl font-bold text-gray-900">What do you want to maximize?</h2>
-        <p className="mt-2 mb-6 text-gray-500">
-          Pick the one growth metric this campaign optimizes for. We tune budget and targeting around it.
-        </p>
-        <div className="space-y-3">
-          {OBJECTIVES.map((o) => (
-            <ChoiceCard
-              key={o.key}
-              active={objective === o.key}
-              onClick={() => setObjective(o.key)}
-              title={o.label}
-              desc={o.desc}
-            />
+        <p className="mt-2 mb-6 text-gray-500">Pick the one outcome this campaign optimizes for. The pricing is shown per this outcome.</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {OUTCOMES.map((o) => (
+            <ChoiceCard key={o.key} active={outcome === o.key} onClick={() => setOutcome(o.key)} title={o.label} desc={o.desc} />
           ))}
         </div>
-        <button
-          onClick={() => setStep("funnels")}
-          className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700"
-        >
-          Continue
-          <ArrowRightIcon className="h-4 w-4" />
-        </button>
+        <NextButton onClick={() => setStep("funnels")} />
       </div>
     );
   }
 
-  // Step: Funnels (multi-select)
   if (step === "funnels") {
     return (
       <div className={card}>
         <BackButton onClick={() => setStep("objective")} />
         <h2 className="font-display text-2xl font-bold text-gray-900">Which sales funnels do you use?</h2>
-        <p className="mt-2 mb-6 text-gray-500">
-          Select every path a prospect can take to become a customer. We only ask for the conversion
-          rates these funnels need.
-        </p>
+        <p className="mt-2 mb-6 text-gray-500">Select every path a prospect can take to become a customer.</p>
         <div className="space-y-3">
           {FUNNELS.map((f) => (
-            <ChoiceCard
-              key={f.key}
-              active={funnels.has(f.key)}
-              onClick={() => toggleFunnel(f.key)}
-              title={f.label}
-              desc={f.desc}
-              check
-            />
+            <ChoiceCard key={f.key} active={funnels.has(f.key)} onClick={() => toggleFunnel(f.key)} title={f.label} desc={f.desc} check />
           ))}
         </div>
-        <button
-          onClick={() => setStep("rates")}
-          disabled={funnels.size === 0}
-          className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          Continue
-          <ArrowRightIcon className="h-4 w-4" />
-        </button>
+        <NextButton onClick={() => setStep("rates")} disabled={funnels.size === 0} />
       </div>
     );
   }
 
-  // Step: Conversion rates (gated by objective + funnels)
-  return (
-    <div className={card}>
-      <BackButton onClick={() => setStep("funnels")} />
-      <h2 className="font-display text-2xl font-bold text-gray-900">Your conversion rates.</h2>
-      <p className="mt-2 mb-6 text-gray-500">
-        Just the numbers we need to project results for{" "}
-        <strong>{OBJECTIVES.find((o) => o.key === objective)?.label}</strong>. Estimates are fine —
-        tweak anytime.
-      </p>
-      {neededRates.length === 0 ? (
-        <div className="rounded-xl border border-gray-200 bg-gray-50 p-5 text-sm text-gray-500">
-          No conversion rates needed for this funnel selection.
-        </div>
-      ) : (
+  if (step === "rates") {
+    return (
+      <div className={card}>
+        <BackButton onClick={() => setStep("funnels")} />
+        <h2 className="font-display text-2xl font-bold text-gray-900">Your conversion rates.</h2>
+        <p className="mt-2 mb-6 text-gray-500">We pre-filled these from your profile. Estimates are fine — tweak anytime.</p>
+        {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
         <div className="space-y-3">
           {neededRates.map((k) => (
             <div key={k} className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 p-4">
@@ -478,26 +554,156 @@ export function BetaOnboarding() {
               </div>
               <div className="flex shrink-0 items-center gap-1 rounded-lg border border-gray-200 px-2 py-1">
                 {RATE_META[k].suffix === "$" && <span className="text-sm text-gray-400">$</span>}
-                <input
-                  type="number"
-                  min={0}
-                  value={rates[k]}
-                  onChange={(e) => setRates((r) => ({ ...r, [k]: Number(e.target.value) }))}
-                  className="w-16 bg-transparent text-right text-sm text-gray-900 focus:outline-none"
-                />
+                <input type="number" min={0} value={rates[k]} onChange={(e) => setRates((r) => ({ ...r, [k]: Number(e.target.value) }))} className="w-16 bg-transparent text-right text-sm text-gray-900 focus:outline-none" />
                 {RATE_META[k].suffix === "%" && <span className="text-sm text-gray-400">%</span>}
               </div>
             </div>
           ))}
         </div>
-      )}
-      <button
-        onClick={finish}
-        disabled={!brandIdRef.current}
-        className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        Configure my campaign
-        <CursorArrowRaysIcon className="h-4 w-4" />
+        <NextButton onClick={saveRatesAndContinue} busy={busy} label="Continue" />
+      </div>
+    );
+  }
+
+  if (step === "personas") {
+    return (
+      <div className={card}>
+        <BackButton onClick={() => setStep("rates")} />
+        <h2 className="font-display text-2xl font-bold text-gray-900">Your target personas.</h2>
+        <p className="mt-2 mb-6 text-gray-500">We drafted these from your product. Rename, remove, or add — you can refine targeting later on the Personas page.</p>
+        <div className="space-y-3">
+          {personas.map((p, i) => (
+            <div key={i} className="rounded-xl border border-gray-200 p-4">
+              <div className="flex items-center gap-2">
+                <input value={p.name} onChange={(e) => setPersonas((ps) => ps.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} className="flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-300" placeholder="Persona name" />
+                <button onClick={() => setPersonas((ps) => ps.filter((_, j) => j !== i))} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"><XMarkIcon className="h-4 w-4" /></button>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {Object.entries(p.filters).flatMap(([cat, vals]) => vals.map((v) => (
+                  <span key={`${cat}:${v}`} className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">{v}</span>
+                )))}
+                {Object.values(p.filters).every((v) => v.length === 0) && <span className="text-[11px] text-gray-400">No filters — set them on the Personas page.</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+        <button onClick={() => setPersonas((ps) => [...ps, { name: "", filters: {} }])} className="mt-3 flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700">
+          <PlusIcon className="h-4 w-4" /> Add a persona
+        </button>
+        <NextButton onClick={savePersonasAndContinue} busy={busy} label="Continue" />
+      </div>
+    );
+  }
+
+  if (step === "profile") {
+    const getF = (k: string) => profile[k];
+    return (
+      <div className={card}>
+        <BackButton onClick={() => setStep("personas")} />
+        <h2 className="font-display text-2xl font-bold text-gray-900">Your brand profile.</h2>
+        <p className="mt-2 mb-6 text-gray-500">We read <span className="font-medium text-gray-700">{hostname}</span> and drafted this. Edit anything before we write your outreach.</p>
+        <div className="space-y-5">
+          {PROFILE_GROUPS.map((g) => (
+            <div key={g.title}>
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">{g.title}</div>
+              <div className="space-y-3">
+                {g.fields.map((f) => {
+                  const raw = getF(f.key);
+                  const value = Array.isArray(raw) ? raw.join("\n") : (raw ?? "");
+                  return (
+                    <div key={f.key}>
+                      <label className="mb-1 block text-xs font-medium text-gray-600">{f.label}{f.list && <span className="text-gray-400"> (one per line)</span>}</label>
+                      <textarea
+                        rows={f.list ? 3 : 2} value={value}
+                        onChange={(e) => setProfile((pr) => ({ ...pr, [f.key]: f.list ? e.target.value.split("\n").map((s) => s.trim()).filter(Boolean) : e.target.value }))}
+                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-300"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+        <NextButton onClick={() => setStep("consent")} label="Continue" />
+      </div>
+    );
+  }
+
+  if (step === "consent") {
+    return (
+      <div className={card}>
+        <BackButton onClick={() => setStep("profile")} />
+        <div className="mb-4 flex items-center gap-2">
+          <ShieldCheckIcon className="h-5 w-5 text-brand-600" />
+          <h2 className="font-display text-2xl font-bold text-gray-900">We reach out on your behalf.</h2>
+        </div>
+        <p className="mb-4 text-sm leading-6 text-gray-500">distribute is a marketing agency. All outreach goes out from inboxes and domains <strong>we own and warm</strong> — never from yours, like a PR firm pitching from its own contacts.</p>
+        <ul className="mb-6 space-y-1.5">
+          {AGENCY_BENEFITS.map((b) => (
+            <li key={b} className="flex items-start gap-2 text-xs leading-5 text-gray-600"><CheckIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />{b}</li>
+          ))}
+        </ul>
+        <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">Channels we may use on your behalf</div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {CHANNELS.map((c) => {
+            const on = channels.has(c.key);
+            return (
+              <button key={c.key} onClick={() => toggleChannel(c.key)} disabled={c.key === "email"}
+                className={`flex items-center gap-3 rounded-xl border-2 p-3 text-left transition ${on ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"} ${c.key === "email" ? "cursor-default" : ""}`}>
+                <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${on ? "bg-brand-100 text-brand-600" : "bg-gray-100 text-gray-400"}`}><c.icon className="h-4 w-4" /></span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium text-gray-900">{c.label}</span>
+                  {c.key === "email" ? <span className="text-[11px] text-gray-400">Always on</span> : !c.live && <span className="text-[11px] text-amber-600">Coming soon</span>}
+                </span>
+                <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 ${on ? "border-brand-500 bg-brand-500 text-white" : "border-gray-300"}`}>{on && <CheckIcon className="h-3 w-3" />}</span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-4 text-[11px] leading-5 text-gray-400">By continuing you authorize distribute to contact prospects on your behalf, representing your brand, per our <a href="https://distribute.you/terms" target="_blank" rel="noreferrer" className="underline">Terms</a>.</p>
+        <NextButton onClick={() => setStep("pricing")} label="Continue" />
+      </div>
+    );
+  }
+
+  // pricing
+  const unitCost = outcomeUnitCost();
+  const rpd = revenuePerDollar();
+  const recommended = budget ?? (projectionRef.current?.recommendedBudgetUsd ? Math.round(projectionRef.current.recommendedBudgetUsd) : 30);
+  const tiers = [Math.max(5, Math.round(recommended * 0.5)), recommended, recommended * 2];
+  const tierLabels = ["Starter", "Recommended", "Growth"];
+  return (
+    <div className={card}>
+      <BackButton onClick={() => setStep("consent")} />
+      <h2 className="font-display text-2xl font-bold text-gray-900">Your daily budget.</h2>
+      <p className="mt-2 mb-6 text-gray-500">Maximizing <strong>{outcomeMeta.label}</strong>. Pick a daily budget — we project {outcomeMeta.unit} per month.</p>
+      {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+      <div className="grid gap-3 sm:grid-cols-3">
+        {tiers.map((b, i) => {
+          const perMonth = outcome === "sales-revenue"
+            ? (rpd != null ? rpd * b * 30 : null)
+            : (unitCost != null ? (b * 30) / unitCost : null);
+          return (
+            <button key={i} onClick={() => setBudget(b)} className={`rounded-xl border-2 p-4 text-left transition ${budget === b ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"}`}>
+              {i === 1 ? <div className="mb-1 inline-block rounded-full bg-brand-100 px-2 py-0.5 text-[10px] font-semibold text-brand-700">Recommended ★</div> : <div className="mb-1 text-xs font-semibold text-gray-500">{tierLabels[i]}</div>}
+              <div className="text-xl font-bold text-gray-950">{fmtUsd0(b)} <span className="text-xs font-normal text-gray-400">/ day</span></div>
+              <div className="mt-1 text-xs text-gray-500">
+                {perMonth != null
+                  ? (outcome === "sales-revenue" ? `~${fmtUsd0(perMonth)} sales / mo` : `~${fmtCount(perMonth)} ${outcomeMeta.unit} / mo`)
+                  : "—"}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+      <div className="mt-3 flex items-center gap-2 rounded-xl border border-gray-200 p-3">
+        <span className="text-sm text-gray-400">$</span>
+        <input type="number" min={1} value={budget ?? ""} onChange={(e) => setBudget(Number(e.target.value))} placeholder="Custom daily budget" className="flex-1 bg-transparent text-sm text-gray-900 focus:outline-none" />
+        <span className="text-xs text-gray-400">/ day</span>
+      </div>
+      <button onClick={launch} disabled={busy || budget == null || budget <= 0} className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
+        {busy ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> Launching…</> : <>Launch campaign <CursorArrowRaysIcon className="h-4 w-4" /></>}
       </button>
     </div>
   );
@@ -505,43 +711,24 @@ export function BetaOnboarding() {
 
 function BackButton({ onClick }: { onClick: () => void }) {
   return (
-    <button
-      onClick={onClick}
-      className="mb-6 flex items-center gap-1.5 text-sm text-gray-400 transition hover:text-gray-600"
-    >
-      <ChevronLeftIcon className="h-4 w-4" />
-      Back
+    <button onClick={onClick} className="mb-6 flex items-center gap-1.5 text-sm text-gray-400 transition hover:text-gray-600">
+      <ChevronLeftIcon className="h-4 w-4" /> Back
     </button>
   );
 }
 
-function ChoiceCard({
-  active,
-  onClick,
-  title,
-  desc,
-  check = false,
-}: {
-  active: boolean;
-  onClick: () => void;
-  title: string;
-  desc: string;
-  check?: boolean;
-}) {
+function NextButton({ onClick, disabled = false, busy = false, label = "Continue" }: { onClick: () => void; disabled?: boolean; busy?: boolean; label?: string }) {
   return (
-    <button
-      onClick={onClick}
-      className={`flex w-full items-start gap-3 rounded-xl border-2 p-4 text-left transition ${
-        active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"
-      }`}
-    >
-      <span
-        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center border-2 ${
-          check ? "rounded-md" : "rounded-full"
-        } ${active ? "border-brand-500 bg-brand-500 text-white" : "border-gray-300"}`}
-      >
-        {active && <CheckIcon className="h-3 w-3" />}
-      </span>
+    <button onClick={onClick} disabled={disabled || busy} className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
+      {busy ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> Saving…</> : <>{label} <ArrowRightIcon className="h-4 w-4" /></>}
+    </button>
+  );
+}
+
+function ChoiceCard({ active, onClick, title, desc, check = false }: { active: boolean; onClick: () => void; title: string; desc: string; check?: boolean }) {
+  return (
+    <button onClick={onClick} className={`flex w-full items-start gap-3 rounded-xl border-2 p-4 text-left transition ${active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"}`}>
+      <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center border-2 ${check ? "rounded-md" : "rounded-full"} ${active ? "border-brand-500 bg-brand-500 text-white" : "border-gray-300"}`}>{active && <CheckIcon className="h-3 w-3" />}</span>
       <span>
         <span className="block text-sm font-semibold text-gray-900">{title}</span>
         <span className="mt-0.5 block text-xs leading-5 text-gray-500">{desc}</span>
