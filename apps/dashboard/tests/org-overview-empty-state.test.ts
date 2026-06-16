@@ -9,9 +9,9 @@ describe("Org overview page empty state", () => {
   );
   const content = fs.readFileSync(pagePath, "utf-8");
 
-  it("should hide 'View all' link when no brands exist", () => {
-    expect(content).toContain("brands.length > 4");
-    expect(content).toContain("View all →");
+  it("should not link to the removed brands list page", () => {
+    expect(content).not.toContain("View all →");
+    expect(content).not.toContain("`/orgs/${orgId}/brands`");
   });
 
   it("should show a CTA to launch first campaign when no brands exist", () => {

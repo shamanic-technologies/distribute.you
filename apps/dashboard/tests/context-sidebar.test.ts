@@ -87,9 +87,9 @@ describe("Context sidebar", () => {
     expect(content).not.toContain('"All Organizations"');
   });
 
-  it("should have Brands link at org level", () => {
+  it("should NOT have a Brands link at org level (brands list removed)", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    expect(content).toContain('`/orgs/${orgId}/brands`');
+    expect(content).not.toContain('label: "Brands"');
   });
 
   it("should NOT have a Tools section in brand sidebar (outlets and journalists moved to campaign modules)", () => {
@@ -99,10 +99,10 @@ describe("Context sidebar", () => {
     expect(content).not.toContain("/tools/press-kits");
   });
 
-  it("should have brand back link point to brands page", () => {
+  it("should have brand back link point to the org overview", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    expect(content).toContain('backLabel="Brands"');
-    expect(content).toContain('`/orgs/${orgId}/brands`');
+    expect(content).toContain('backLabel="Overview"');
+    expect(content).toContain('backHref={`/orgs/${orgId}`}');
   });
 
   it("should have unified Keys entry at org level", () => {

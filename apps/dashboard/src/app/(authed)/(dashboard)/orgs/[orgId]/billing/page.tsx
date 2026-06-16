@@ -5,18 +5,15 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import {
   getBillingAccount,
-  listOrgRuns,
   createCheckoutSession,
   createPortalSession,
   type BillingAccount,
-  type OrgRun,
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
 import { formatBillingCents } from "@/lib/format-number";
 import { pollOptions } from "@/lib/query-options";
 
 const TOPUP_AMOUNTS = [1000, 2500, 5000, 10000]; // cents
-const RUNS_PAGE_SIZE = 10;
 
 export default function BillingPage() {
   const params = useParams();
@@ -34,15 +31,6 @@ export default function BillingPage() {
   const { data: account, isLoading: accountLoading } = useAuthQuery<BillingAccount>(
     ["billingAccount"],
     () => getBillingAccount(),
-    pollOptions,
-  );
-
-  const [runsPage, setRunsPage] = useState(0);
-
-  // Runs ledger (server-paginated via runs-service proxy)
-  const { data: runsData, isLoading: runsLoading } = useAuthQuery<{ runs: OrgRun[]; offset: number; limit?: number }>(
-    ["orgRuns", runsPage],
-    () => listOrgRuns(RUNS_PAGE_SIZE, runsPage * RUNS_PAGE_SIZE),
     pollOptions,
   );
 
@@ -249,19 +237,6 @@ export default function BillingPage() {
         </div>
       </div>
     );
-  }
-
-  const orgRuns: OrgRun[] = runsData?.runs ?? [];
-  const runsHasNext = orgRuns.length === RUNS_PAGE_SIZE;
-  const runsHasPrev = runsPage > 0;
-
-  function runRowLabel(run: OrgRun): string {
-    if (run.taskName && run.serviceName) return `${run.serviceName}.${run.taskName}`;
-    return run.taskName ?? run.serviceName ?? "Run";
-  }
-
-  function runRowTimestamp(run: OrgRun): string | null {
-    return run.completedAt ?? run.startedAt;
   }
 
   return (
@@ -530,80 +505,6 @@ export default function BillingPage() {
             </button>
           </div>
         )}
-
-        {/* Runs Ledger — per-run cost history (sourced from runs-service) */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-medium text-gray-900">Runs</h2>
-          </div>
-
-          {runsLoading ? (
-            <div className="space-y-3 animate-pulse">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-12 bg-gray-100 rounded-lg" />
-              ))}
-            </div>
-          ) : orgRuns.length === 0 ? (
-            <p className="text-sm text-gray-500">No runs yet.</p>
-          ) : (
-            <>
-              <div className="divide-y divide-gray-100">
-                {orgRuns.map((run) => {
-                  const ts = runRowTimestamp(run);
-                  const cost = run.ownCostInUsdCents ? parseFloat(run.ownCostInUsdCents) : 0;
-                  return (
-                    <div key={run.id} className="flex items-center justify-between py-3">
-                      <div>
-                        <p className="text-sm text-gray-800">{runRowLabel(run)}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          {ts
-                            ? new Date(ts).toLocaleDateString(undefined, {
-                                year: "numeric",
-                                month: "short",
-                                day: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })
-                            : "—"}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-red-600">
-                          -{formatBillingCents(Math.abs(cost))}
-                        </p>
-                        <p className="text-xs text-gray-400 capitalize">{run.status}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {(runsHasPrev || runsHasNext) && (
-                <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-2">
-                  <p className="text-xs text-gray-400">
-                    Page {runsPage + 1}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setRunsPage((p) => Math.max(0, p - 1))}
-                      disabled={!runsHasPrev}
-                      className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                    >
-                      Previous
-                    </button>
-                    <button
-                      onClick={() => setRunsPage((p) => p + 1)}
-                      disabled={!runsHasNext}
-                      className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                    >
-                      Next
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
       </div>
     </div>
   );
