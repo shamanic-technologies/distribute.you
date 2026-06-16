@@ -9,17 +9,8 @@ import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { MaturityBadge } from "@/components/maturity-badge";
-import { EditWithAIPanel, type AiTurn } from "@/components/ai-edit/edit-with-ai-panel";
+import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
 import { getBrandProfile, saveBrandProfileVersion } from "@/lib/api";
-
-// Default "here's what I can do" turn for the Edit-with-AI mockup.
-function helpTurn(prefix?: string): AiTurn {
-  return {
-    reply:
-      (prefix ? prefix + "\n\n" : "") +
-      "I can edit any brand-profile field and save a new version. Try:\n• Set Value proposition to …\n• Add Stripe to Competitors\n• Save",
-  };
-}
 
 /**
  * Brand Profile — PURE-UI MOCKUP (beta).
@@ -228,56 +219,6 @@ export function BrandProfilePage() {
 
   const discard = () => setDraft(null);
 
-  const findField = (q: string): FieldDef | undefined => {
-    const needle = q.trim().toLowerCase();
-    if (!needle) return undefined;
-    return (
-      ALL_FIELDS.find((f) => f.label.toLowerCase() === needle || f.key.toLowerCase() === needle) ??
-      ALL_FIELDS.find((f) => needle.includes(f.label.toLowerCase()) || f.label.toLowerCase().includes(needle))
-    );
-  };
-
-  // Client-side "AI" interpreter for the Edit-with-AI mockup. Keyword-based, no
-  // LLM — edits the working draft, then Save forks it into a new version.
-  const runAiCommand = (raw: string): AiTurn => {
-    const text = raw.trim();
-    const lower = text.toLowerCase();
-
-    if (/\b(save|new version|commit)\b/.test(lower)) {
-      if (!dirty) return { reply: "Nothing changed since the last save." };
-      save();
-      return { reply: "Saved as a new version.", toolCalls: [{ tool: "save_brand_profile", summary: "Saved a new version" }] };
-    }
-
-    // "set/change/update <field> to <value>"  /  "add <value> to <field>"
-    const setMatch = text.match(/\b(?:set|change|update)\s+(.+?)\s+to\s+(.+)$/i);
-    const addMatch = text.match(/\badd\s+(.+?)\s+to\s+(.+)$/i);
-    if (setMatch) {
-      const field = findField(setMatch[1]);
-      if (!field) return helpTurn(`I couldn’t find a field called “${setMatch[1].trim()}”.`);
-      if (field.kind === "text") {
-        setText(field.key, setMatch[2].trim());
-        return { reply: `Updated ${field.label}.`, toolCalls: [{ tool: "set_field", summary: `${field.label} = “${setMatch[2].trim()}”` }] };
-      }
-      addItem(field.key, setMatch[2].trim());
-      return { reply: `Added to ${field.label}.`, toolCalls: [{ tool: "add_item", summary: `${field.label} += “${setMatch[2].trim()}”` }] };
-    }
-    if (addMatch) {
-      const field = findField(addMatch[2]);
-      if (!field) return helpTurn(`I couldn’t find a field called “${addMatch[2].trim()}”.`);
-      if (field.kind === "list") {
-        addItem(field.key, addMatch[1].trim());
-        return { reply: `Added to ${field.label}.`, toolCalls: [{ tool: "add_item", summary: `${field.label} += “${addMatch[1].trim()}”` }] };
-      }
-      setText(field.key, addMatch[1].trim());
-      return { reply: `Set ${field.label}.`, toolCalls: [{ tool: "set_field", summary: `${field.label} = “${addMatch[1].trim()}”` }] };
-    }
-    if (/\b(list|show|what)\b/.test(lower)) {
-      return { reply: `The brand profile has these fields:\n${ALL_FIELDS.map((f) => `• ${f.label}`).join("\n")}`, toolCalls: [{ tool: "read_brand_profile", summary: `Read ${ALL_FIELDS.length} fields` }] };
-    }
-    return helpTurn();
-  };
-
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto">
       {/* Header */}
@@ -364,13 +305,15 @@ export function BrandProfilePage() {
         </div>
       )}
 
-      <EditWithAIPanel
+      <EditWithAIChat
         open={aiOpen}
         onClose={() => setAiOpen(false)}
         title="Edit brand profile with AI"
         intro="Hi — I can edit any field of your brand profile and save a new version. What would you like to change?"
         suggestions={["Set Value proposition to …", "Add Stripe to Competitors", "Save"]}
-        onSend={runAiCommand}
+        configKey="brand-profile-editor"
+        brandId={brandId}
+        invalidateKeys={[["brandProfile", brandId]]}
       />
     </div>
   );
