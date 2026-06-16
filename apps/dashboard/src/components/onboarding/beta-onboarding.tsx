@@ -18,7 +18,6 @@ import {
   DevicePhoneMobileIcon,
   UserGroupIcon,
   PlusIcon,
-  XMarkIcon,
   ShieldCheckIcon,
 } from "@heroicons/react/24/outline";
 import posthog from "posthog-js";
@@ -39,6 +38,9 @@ import {
   type PersonaDraft,
 } from "@/lib/api";
 import { extractDomain } from "@/lib/extract-domain";
+import { type Filters } from "@/lib/mock-personas";
+import { PersonaCard } from "@/components/personas/persona-card";
+import { SECTIONS, FieldEditor, type ProfileFields } from "@/components/brand-profile/field-editor";
 
 /**
  * Beta onboarding (allowlist only — see `beta-allowlist.ts`). A guided flow ported
@@ -58,7 +60,6 @@ type Step =
   | "url"
   | "loading"
   | "objective"
-  | "funnels"
   | "rates"
   | "personas"
   | "profile"
@@ -108,6 +109,46 @@ function ratesNeeded(funnels: Set<Funnel>): RateKey[] {
   return out;
 }
 
+// ── Rate-input formatting ────────────────────────────────────────────
+// Number fields render as TEXT (not <input type="number">) so we can show
+// thousands separators ("2,500"), allow decimals ("0.5"), and reformat each
+// keystroke — which also kills the leading-zero bug (typing over "0" → "1",
+// never "01"). The numeric value is parsed back out for persistence.
+function groupInt(intStr: string): string {
+  return intStr.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+// Sanitize a raw input string → { display text, numeric value }.
+function formatRateInput(raw: string): { text: string; value: number } {
+  let s = raw.replace(/[^\d.]/g, "");
+  const firstDot = s.indexOf(".");
+  if (firstDot !== -1) {
+    // keep only the first dot
+    s = s.slice(0, firstDot + 1) + s.slice(firstDot + 1).replace(/\./g, "");
+  }
+  if (s === "") return { text: "", value: 0 };
+  const [intPart, decPart] = s.split(".");
+  let intClean = intPart.replace(/^0+(?=\d)/, ""); // strip leading zeros (keep one)
+  if (intClean === "") intClean = "0";
+  const grouped = groupInt(intClean);
+  const text = decPart !== undefined ? `${grouped}.${decPart}` : grouped;
+  const value = parseFloat(`${intClean}.${decPart ?? ""}`.replace(/\.$/, "")) || 0;
+  return { text, value };
+}
+
+// Format a stored numeric rate as the initial display text (comma-grouped).
+function rateToText(n: number): string {
+  if (!isFinite(n)) return "";
+  const [intPart, decPart] = String(n).split(".");
+  const grouped = groupInt(intPart);
+  return decPart !== undefined ? `${grouped}.${decPart}` : grouped;
+}
+function ratesToText(r: Record<RateKey, number>): Record<RateKey, string> {
+  return Object.fromEntries(
+    (Object.keys(r) as RateKey[]).map((k) => [k, rateToText(r[k])]),
+  ) as Record<RateKey, string>;
+}
+
 // Outreach channels. Cold email is the only one that delivers today; the rest are
 // captured as intent (badged "Coming soon"). Email is locked ON.
 type Channel = "email" | "linkedin" | "whatsapp" | "telegram" | "sms" | "referral";
@@ -129,24 +170,6 @@ const AGENCY_BENEFITS = [
   "Test demand before revealing your brand on niche markets.",
 ];
 
-// Brand-profile editable fields, grouped (mirrors the /brand-profile page).
-const PROFILE_GROUPS: { title: string; fields: { key: string; label: string; list?: boolean }[] }[] = [
-  { title: "Positioning", fields: [
-    { key: "companyOverview", label: "Company overview" },
-    { key: "valueProposition", label: "Value proposition" },
-  ] },
-  { title: "Product", fields: [
-    { key: "keyFeatures", label: "Key features", list: true },
-    { key: "productDifferentiators", label: "Differentiators", list: true },
-  ] },
-  { title: "Conversion levers", fields: [
-    { key: "callToAction", label: "Call to action" },
-    { key: "urgency", label: "Urgency" },
-    { key: "scarcity", label: "Scarcity" },
-    { key: "riskReversal", label: "Risk reversal" },
-  ] },
-];
-
 const LOADING_STEPS = [
   { id: "ls-1", label: "Reading your product", delay: 1400 },
   { id: "ls-2", label: "Extracting your ICP and personas", delay: 1600 },
@@ -154,7 +177,9 @@ const LOADING_STEPS = [
   { id: "ls-4", label: "Projecting your economics", delay: 1400 },
 ];
 
-type EditablePersona = { name: string; filters: Record<string, string[]> };
+type EditablePersona = { id: string; name: string; filters: Filters };
+let personaSeq = 0;
+const nextPersonaId = () => `ob-persona-${++personaSeq}`;
 
 const fmtUsd0 = (n: number) => "$" + Math.round(n).toLocaleString("en-US");
 const fmtCount = (n: number) => Math.round(n).toLocaleString("en-US");
@@ -177,6 +202,10 @@ export function BetaOnboarding() {
     () => new Set<Funnel>(["website-purchases", "sales-meetings"]),
   );
   const [rates, setRates] = useState<Record<RateKey, number>>({ ltv: 2500, v2s: 5, s2c: 10, v2m: 3, r2m: 30, m2c: 25 });
+  // Display strings for the rate inputs (comma-grouped, decimals preserved).
+  const [rateText, setRateText] = useState<Record<RateKey, string>>(() =>
+    ratesToText({ ltv: 2500, v2s: 5, s2c: 10, v2m: 3, r2m: 30, m2c: 25 }),
+  );
   const [personas, setPersonas] = useState<EditablePersona[]>([]);
   const [profile, setProfile] = useState<Record<string, string | string[]>>({});
   const [channels, setChannels] = useState<Set<Channel>>(() => new Set<Channel>(["email"]));
@@ -286,16 +315,18 @@ export function BetaOnboarding() {
     if (econRes.economics) {
       const e = econRes.economics;
       econRef.current = e;
-      setRates({
+      const loaded: Record<RateKey, number> = {
         ltv: e.lifetimeRevenueUsd,
         v2s: e.visitToSignupPct,
         s2c: e.signupToPaidClientPct,
         v2m: e.visitToMeetingPct,
         r2m: e.replyToMeetingPct,
         m2c: e.meetingToClosePct,
-      });
+      };
+      setRates(loaded);
+      setRateText(ratesToText(loaded));
     }
-    setPersonas(sug.personas.map((p: PersonaDraft) => ({ name: p.name, filters: p.filters })));
+    setPersonas(sug.personas.map((p: PersonaDraft) => ({ id: nextPersonaId(), name: p.name, filters: p.filters as Filters })));
     projectionRef.current = proj;
     if (proj.recommendedBudgetUsd && proj.recommendedBudgetUsd > 0) {
       setBudget(Math.round(proj.recommendedBudgetUsd));
@@ -351,7 +382,7 @@ export function BetaOnboarding() {
       // accidental dup is non-fatal here (skip it, keep going).
       for (const p of personas) {
         if (!p.name.trim()) continue;
-        await createPersona(brandId, { name: p.name.trim(), filters: p.filters }).catch((e) =>
+        await createPersona(brandId, { name: p.name.trim(), filters: p.filters as Record<string, string[]> }).catch((e) =>
           console.error("[dashboard] createPersona (onboarding) failed:", e),
         );
       }
@@ -517,23 +548,7 @@ export function BetaOnboarding() {
             <ChoiceCard key={o.key} active={outcome === o.key} onClick={() => setOutcome(o.key)} title={o.label} desc={o.desc} />
           ))}
         </div>
-        <NextButton onClick={() => setStep("funnels")} />
-      </div>
-    );
-  }
-
-  if (step === "funnels") {
-    return (
-      <div className={card}>
-        <BackButton onClick={() => setStep("objective")} />
-        <h2 className="font-display text-2xl font-bold text-gray-900">Which sales funnels do you use?</h2>
-        <p className="mt-2 mb-6 text-gray-500">Select every path a prospect can take to become a customer.</p>
-        <div className="space-y-3">
-          {FUNNELS.map((f) => (
-            <ChoiceCard key={f.key} active={funnels.has(f.key)} onClick={() => toggleFunnel(f.key)} title={f.label} desc={f.desc} check />
-          ))}
-        </div>
-        <NextButton onClick={() => setStep("rates")} disabled={funnels.size === 0} />
+        <NextButton onClick={() => setStep("rates")} />
       </div>
     );
   }
@@ -541,10 +556,21 @@ export function BetaOnboarding() {
   if (step === "rates") {
     return (
       <div className={card}>
-        <BackButton onClick={() => setStep("funnels")} />
+        <BackButton onClick={() => setStep("objective")} />
         <h2 className="font-display text-2xl font-bold text-gray-900">Your conversion rates.</h2>
         <p className="mt-2 mb-6 text-gray-500">We pre-filled these from your profile. Estimates are fine — tweak anytime.</p>
         {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+
+        {/* Sales funnels — drives which rates we ask for below. */}
+        <div className="mb-5">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">Which sales funnels do you use?</div>
+          <div className="space-y-2">
+            {FUNNELS.map((f) => (
+              <ChoiceCard key={f.key} active={funnels.has(f.key)} onClick={() => toggleFunnel(f.key)} title={f.label} desc={f.desc} check />
+            ))}
+          </div>
+        </div>
+
         <div className="space-y-3">
           {neededRates.map((k) => (
             <div key={k} className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 p-4">
@@ -554,13 +580,23 @@ export function BetaOnboarding() {
               </div>
               <div className="flex shrink-0 items-center gap-1 rounded-lg border border-gray-200 px-2 py-1">
                 {RATE_META[k].suffix === "$" && <span className="text-sm text-gray-400">$</span>}
-                <input type="number" min={0} value={rates[k]} onChange={(e) => setRates((r) => ({ ...r, [k]: Number(e.target.value) }))} className="w-16 bg-transparent text-right text-sm text-gray-900 focus:outline-none" />
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={rateText[k]}
+                  onChange={(e) => {
+                    const { text, value } = formatRateInput(e.target.value);
+                    setRateText((t) => ({ ...t, [k]: text }));
+                    setRates((r) => ({ ...r, [k]: value }));
+                  }}
+                  className="w-20 bg-transparent text-right text-sm text-gray-900 focus:outline-none"
+                />
                 {RATE_META[k].suffix === "%" && <span className="text-sm text-gray-400">%</span>}
               </div>
             </div>
           ))}
         </div>
-        <NextButton onClick={saveRatesAndContinue} busy={busy} label="Continue" />
+        <NextButton onClick={saveRatesAndContinue} busy={busy} disabled={funnels.size === 0} label="Continue" />
       </div>
     );
   }
@@ -570,24 +606,18 @@ export function BetaOnboarding() {
       <div className={card}>
         <BackButton onClick={() => setStep("rates")} />
         <h2 className="font-display text-2xl font-bold text-gray-900">Your target personas.</h2>
-        <p className="mt-2 mb-6 text-gray-500">We drafted these from your product. Rename, remove, or add — you can refine targeting later on the Personas page.</p>
+        <p className="mt-2 mb-6 text-gray-500">We drafted these from your product. Edit the name and targeting filters — or add another.</p>
         <div className="space-y-3">
-          {personas.map((p, i) => (
-            <div key={i} className="rounded-xl border border-gray-200 p-4">
-              <div className="flex items-center gap-2">
-                <input value={p.name} onChange={(e) => setPersonas((ps) => ps.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} className="flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-300" placeholder="Persona name" />
-                <button onClick={() => setPersonas((ps) => ps.filter((_, j) => j !== i))} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"><XMarkIcon className="h-4 w-4" /></button>
-              </div>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {Object.entries(p.filters).flatMap(([cat, vals]) => vals.map((v) => (
-                  <span key={`${cat}:${v}`} className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">{v}</span>
-                )))}
-                {Object.values(p.filters).every((v) => v.length === 0) && <span className="text-[11px] text-gray-400">No filters — set them on the Personas page.</span>}
-              </div>
-            </div>
+          {personas.map((p) => (
+            <PersonaCard
+              key={p.id}
+              persona={{ id: p.id, name: p.name, filters: p.filters, status: "active", unsaved: true }}
+              onChange={(name, filters) => setPersonas((ps) => ps.map((x) => x.id === p.id ? { ...x, name, filters } : x))}
+              onRemove={() => setPersonas((ps) => ps.filter((x) => x.id !== p.id))}
+            />
           ))}
         </div>
-        <button onClick={() => setPersonas((ps) => [...ps, { name: "", filters: {} }])} className="mt-3 flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700">
+        <button onClick={() => setPersonas((ps) => [...ps, { id: nextPersonaId(), name: "", filters: {} }])} className="mt-3 flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700">
           <PlusIcon className="h-4 w-4" /> Add a persona
         </button>
         <NextButton onClick={savePersonasAndContinue} busy={busy} label="Continue" />
@@ -596,31 +626,46 @@ export function BetaOnboarding() {
   }
 
   if (step === "profile") {
-    const getF = (k: string) => profile[k];
+    // Same inline-edit UX as the Brand Profile page: text shows as read view,
+    // click to edit; list fields are chip editors. Edits write back to `profile`,
+    // persisted at launch via saveBrandProfileVersion.
+    const setText = (key: string, value: string) =>
+      setProfile((pr) => ({ ...pr, [key]: value }));
+    const addItem = (key: string, raw: string) => {
+      const value = raw.trim();
+      if (!value) return;
+      setProfile((pr) => {
+        const arr = Array.isArray(pr[key]) ? (pr[key] as string[]) : [];
+        if (arr.some((v) => v.toLowerCase() === value.toLowerCase())) return pr;
+        return { ...pr, [key]: [...arr, value] };
+      });
+    };
+    const removeItem = (key: string, value: string) =>
+      setProfile((pr) => {
+        const arr = Array.isArray(pr[key]) ? (pr[key] as string[]) : [];
+        return { ...pr, [key]: arr.filter((v) => v !== value) };
+      });
+    const fields = profile as ProfileFields;
     return (
       <div className={card}>
         <BackButton onClick={() => setStep("personas")} />
         <h2 className="font-display text-2xl font-bold text-gray-900">Your brand profile.</h2>
-        <p className="mt-2 mb-6 text-gray-500">We read <span className="font-medium text-gray-700">{hostname}</span> and drafted this. Edit anything before we write your outreach.</p>
-        <div className="space-y-5">
-          {PROFILE_GROUPS.map((g) => (
-            <div key={g.title}>
-              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">{g.title}</div>
-              <div className="space-y-3">
-                {g.fields.map((f) => {
-                  const raw = getF(f.key);
-                  const value = Array.isArray(raw) ? raw.join("\n") : (raw ?? "");
-                  return (
-                    <div key={f.key}>
-                      <label className="mb-1 block text-xs font-medium text-gray-600">{f.label}{f.list && <span className="text-gray-400"> (one per line)</span>}</label>
-                      <textarea
-                        rows={f.list ? 3 : 2} value={value}
-                        onChange={(e) => setProfile((pr) => ({ ...pr, [f.key]: f.list ? e.target.value.split("\n").map((s) => s.trim()).filter(Boolean) : e.target.value }))}
-                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-300"
-                      />
-                    </div>
-                  );
-                })}
+        <p className="mt-2 mb-6 text-gray-500">We read <span className="font-medium text-gray-700">{hostname}</span> and drafted this. Click any field to edit before we write your outreach.</p>
+        <div className="space-y-4">
+          {SECTIONS.map((section) => (
+            <div key={section.title} className="bg-white rounded-xl border border-gray-200 p-5">
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">{section.title}</h3>
+              <div className="space-y-5">
+                {section.fields.map((field) => (
+                  <FieldEditor
+                    key={field.key}
+                    field={field}
+                    value={fields[field.key]}
+                    onText={(v) => setText(field.key, v)}
+                    onAdd={(v) => addItem(field.key, v)}
+                    onRemove={(v) => removeItem(field.key, v)}
+                  />
+                ))}
               </div>
             </div>
           ))}
