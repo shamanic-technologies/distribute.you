@@ -5,13 +5,14 @@ import Link from "next/link";
 import { useSignUp } from "@clerk/nextjs/legacy";
 import { useAuth } from "@clerk/nextjs";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import posthog from "posthog-js";
 
 export default function SignUpPage() {
   const { signUp, isLoaded } = useSignUp();
   const { isSignedIn } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -26,10 +27,18 @@ export default function SignUpPage() {
     try {
       sessionStorage.setItem("distribute_auth_intent", "signup");
       posthog.capture("signup_google_oauth_started", { provider: "google" });
+      // A website carried from the landing pricing CTA (?url=) prefills the
+      // onboarding brand. /onboarding is exempt from the first-run gate, so
+      // landing there directly (vs the default /orgs → bare /onboarding bounce
+      // that drops the query) preserves the param through the OAuth round-trip.
+      const prefillUrl = (searchParams.get("url") || "").trim();
+      const redirectUrlComplete = prefillUrl
+        ? `/onboarding?url=${encodeURIComponent(prefillUrl)}`
+        : "/orgs";
       await signUp.authenticateWithRedirect({
         strategy: "oauth_google",
         redirectUrl: "/sso-callback",
-        redirectUrlComplete: "/orgs",
+        redirectUrlComplete,
       });
     } catch (error) {
       posthog.capture("signup_google_oauth_failed", { provider: "google" });

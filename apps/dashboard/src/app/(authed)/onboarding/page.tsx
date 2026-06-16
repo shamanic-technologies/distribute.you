@@ -59,9 +59,14 @@ export default function OnboardingPage() {
   // even when a populated org is already active. A fresh signup arrives here with
   // no param and an auto-created (brand-less) active org → that org is reused.
   const forceNew = searchParams.get("new") === "1";
-  const [step, setStep] = useState<Step>("booking-intro");
-  const [accountType, setAccountType] = useState<AccountType | null>(null);
-  const [url, setUrl] = useState("");
+  // Website carried from the landing pricing CTA (sign-up ?url= → here). When
+  // present, prefill the brand website + name (domain) and land straight on the
+  // url step — booking + type are skipped for this fast path (type defaults to
+  // "company"; the user can still go Back to change it).
+  const prefillUrl = (searchParams.get("url") ?? "").trim();
+  const [step, setStep] = useState<Step>(prefillUrl ? "url-input" : "booking-intro");
+  const [accountType, setAccountType] = useState<AccountType | null>(prefillUrl ? "company" : null);
+  const [url, setUrl] = useState(prefillUrl);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const domain = extractDomain(url);
