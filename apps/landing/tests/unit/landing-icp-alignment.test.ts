@@ -69,8 +69,8 @@ describe("Landing page: ICP-only alignment", () => {
     expect(page).toMatch(/70 hours per week you skip/i);
   });
 
-  it("mentions the 50 free prospects offer in hero or CTA", () => {
-    expect(page).toMatch(/50 free prospects/i);
+  it("mentions the $25 free credits offer in hero or CTA", () => {
+    expect(page).toMatch(/\$25 free credits/i);
   });
 
   it("renders the autopilot sales hero copy (no multi-channel grid)", () => {
