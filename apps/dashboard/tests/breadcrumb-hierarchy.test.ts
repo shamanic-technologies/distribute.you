@@ -23,12 +23,13 @@ describe("Breadcrumb hierarchy", () => {
     expect(content).toContain("/onboarding");
   });
 
-  it("should parse org/brand/feature/campaign from path structure", () => {
+  it("should parse org/brand/feature from path structure", () => {
     const content = fs.readFileSync(breadcrumbPath, "utf-8");
     expect(content).toContain('"orgs"');
     expect(content).toContain('"brands"');
     expect(content).toContain('"features"');
-    expect(content).toContain('"campaigns"');
+    // The campaign switcher was removed with the campaign concept.
+    expect(content).not.toContain('"campaigns"');
   });
 
   it("should use /orgs/ path prefix for brand links", () => {

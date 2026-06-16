@@ -12,14 +12,12 @@ const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
  * content". See CLAUDE.md → "Static-shell-first reveal".
  */
 describe("static-shell-first: cards accept `pending` and skeleton only values", () => {
+  // The campaign/* cards (funnel-metrics, reply-breakdown, cost-breakdown,
+  // campaign-cost-distribution, leads-stats-panel) were removed with the campaign
+  // concept; the surviving static-shell cards are listed below.
   const cards = [
     "components/revenue/revenue-cost-summary.tsx",
     "components/revenue/revenue-overview-section.tsx",
-    "components/campaign/funnel-metrics.tsx",
-    "components/campaign/reply-breakdown.tsx",
-    "components/campaign/cost-breakdown.tsx",
-    "components/campaign/campaign-cost-distribution.tsx",
-    "components/campaign/leads-stats-panel.tsx",
     "components/brand-metrics-header.tsx",
     "components/visibility/score-card.tsx",
     "components/visibility/visibility-runs-view.tsx",
@@ -80,22 +78,12 @@ describe("static-shell-first: pages pass `pending`, not a whole-body skeleton sw
     expect(overview).not.toContain("valuesRevealed");
   });
 
-  it("campaigns page reveals each card on its OWN data (per-card barriers, no single whole-body gate)", () => {
-    const campaigns = read(`${APP}/campaigns/page.tsx`);
-    // Per-card reveal latches — the list paints on `campaigns` alone instead of
-    // waiting for the slow features-service revenue/stats cold chain.
-    expect(campaigns).toContain("listRevealed");
-    expect(campaigns).toContain("chartsRevealed");
-    expect(campaigns).toContain("heroRevealed");
-    expect(campaigns).toContain("pending={!chartsRevealed}");
-    // The old separate whole-card skeleton components are no longer imported/used.
-    expect(campaigns).not.toContain("FunnelMetricsSkeleton");
-    expect(campaigns).not.toContain("CostBreakdownSkeleton");
-  });
+  // The campaigns LIST page was removed with the campaign concept; the brand
+  // overview block above is the surviving per-card-barrier guard.
 
-  it("sales campaign budget cards do not wait for the economics badge query", () => {
-    const createCampaign = read(`${APP}/campaigns/new/page.tsx`);
-    const budgetReadyLine = createCampaign.match(/const budgetReady = [^;]+;/)?.[0];
+  it("launch budget cards do not wait for the economics badge query", () => {
+    const launch = read(`${APP}/launch/page.tsx`);
+    const budgetReadyLine = launch.match(/const budgetReady = [^;]+;/)?.[0];
     expect(budgetReadyLine).toBe("const budgetReady = projReady && !workflowsLoading;");
   });
 });

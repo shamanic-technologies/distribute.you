@@ -463,7 +463,7 @@ export function BetaOnboarding() {
         maxBudgetDailyUsd: String(budget),
       });
       posthog.capture("onboarding_completed", { flow: "beta", outcome, budget });
-      router.push(`/orgs/${orgId}/brands/${brandId}/campaigns/${campaign.id}`);
+      router.push(`/orgs/${orgId}/brands/${brandId}?launched=${campaign.id}`);
     } catch (err) {
       posthog.capture("onboarding_launch_failed", { flow: "beta" });
       setError(err instanceof Error ? err.message : "Launch failed. Please try again.");

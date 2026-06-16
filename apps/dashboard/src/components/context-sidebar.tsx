@@ -22,7 +22,6 @@ import { isOpportunityOpen } from "@/lib/quote-pitch-status";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { useIsBetaUser } from "@/lib/use-beta-user";
-import { OUTCOME_LENSES, OUTCOME_LENS_ORDER } from "@/lib/outcome-lens";
 import { formatCount } from "@/lib/format-number";
 import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { MaturityBadge } from "@/components/maturity-badge";
@@ -203,12 +202,6 @@ const CrmIcon = () => (
   </svg>
 );
 
-const ConversionsIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 17l6-6 4 4 7-8m0 0h-4m4 0v4" />
-  </svg>
-);
-
 const OverviewIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 5a1 1 0 011-1h5v7H4V5zm0 8h6v6H5a1 1 0 01-1-1v-5zm10-9h5a1 1 0 011 1v5h-6V4zm0 8h6v6a1 1 0 01-1 1h-5v-7z" />
@@ -238,10 +231,9 @@ const SettingsIcon = () => (
 // brand: no `/features/[featureSlug]` segment. Brand-level sections live directly
 // under `/orgs/[orgId]/brands/[brandId]/...`.
 interface NavigationLevel {
-  type: "app" | "appFeature" | "org" | "brand" | "brandSettings" | "campaign";
+  type: "app" | "appFeature" | "org" | "brand" | "brandSettings";
   orgId?: string;
   brandId?: string;
-  campaignId?: string;
   featureId?: string;
 }
 
@@ -252,11 +244,6 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
     if (segments[2] === "brands" && segments[3]) {
       const brandId = segments[3];
       const section = segments[4];
-      // Campaign detail (campaigns/[id]) → CampaignSidebar via the campaign
-      // layout; the list + create stay in the brand sidebar.
-      if (section === "campaigns" && segments[5] && segments[5] !== "new") {
-        return { type: "campaign", orgId, brandId, campaignId: segments[5] };
-      }
       // Brand Settings group: settings / brand-info / workflows(list+new).
       if (
         section === "settings" ||
@@ -265,8 +252,8 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
       ) {
         return { type: "brandSettings", orgId, brandId };
       }
-      // Everything else → brand sidebar: root overview, campaigns list/new,
-      // conversions, and every entity page (leads / emails / outlets /
+      // Everything else → brand sidebar: root overview, the launch funnel
+      // (/launch), and every entity page (leads / emails / outlets /
       // journalists / articles / competitors / prompts / quote-pitches /
       // quote-requests / visibility-runs).
       return { type: "brand", orgId, brandId };
@@ -359,10 +346,11 @@ function getEntitySidebarIcon(iconName: string): React.ReactNode {
   return iconFn ? iconFn() : <WorkflowIcon />;
 }
 
-// Brand Level Sidebar — the product ships ONE feature, so this merges the old
-// brand overview nav with the feature sub-menu: Overview, Campaigns, Conversions,
-// the entity Database, Report, and the Brand Settings entry. The sole feature's
-// slug is resolved from features-context (no `/features/[featureSlug]` segment).
+// Brand Level Sidebar — the product ships ONE feature AND ONE subscription
+// (campaign) per brand, so everything collapses to the brand level: Overview,
+// the entity Database, and the Brand Settings entry. The sole feature's slug is
+// resolved from features-context (no `/features/[featureSlug]` segment, no
+// campaign level). The launch funnel lives at `/launch`.
 function BrandLevelSidebar({ orgId, brandId, pathname }: {
   orgId: string;
   brandId: string;
@@ -486,9 +474,8 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
     });
 
   // Revenue surface (Overview) — only on revenue features (sales-cold-email
-  // today). GA. Overview is the brand root. The Signups / Booked Meetings /
-  // Sales outcome lenses below are BETA (Kevin + Adam only, email allowlist) and
-  // replaced the old Conversions page.
+  // today). GA. Overview is the brand root. Customer Personas / Brand Profile
+  // below are BETA (Kevin + Adam only, email allowlist).
   const revenueOk = isRevenueFeature(featureSlug);
   const topItems: SidebarItem[] = [
     ...(revenueOk
@@ -501,20 +488,7 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
           } satisfies SidebarItem,
         ]
       : []),
-    { id: "campaigns", label: "Campaigns", href: `${basePath}/campaigns`, icon: <EnvelopeIcon /> },
-    ...(revenueOk && isBeta
-      ? OUTCOME_LENS_ORDER.map(
-          (lens): SidebarItem => ({
-            id: OUTCOME_LENSES[lens].lens,
-            label: OUTCOME_LENSES[lens].label,
-            href: `${basePath}/${OUTCOME_LENSES[lens].segment}`,
-            icon: <ConversionsIcon />,
-            maturity: "beta",
-          }),
-        )
-      : []),
-    // Customer Personas — beta mockup (Apollo-style targeting cards). Sits
-    // directly under the Sales lens, same beta gate.
+    // Customer Personas — beta mockup (Apollo-style targeting cards). Beta gate.
     ...(revenueOk && isBeta
       ? [
           {
@@ -562,9 +536,7 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
               isActive={
                 item.id === "overview"
                   ? pathname === basePath
-                  : item.id === "campaigns" || item.id === "create"
-                    ? pathname === item.href
-                    : pathname.startsWith(item.href)
+                  : pathname.startsWith(item.href)
               }
             />
           ))}
@@ -702,9 +674,6 @@ export function ContextSidebar() {
       return <BrandLevelSidebar orgId={level.orgId!} brandId={level.brandId!} pathname={pathname} />;
     case "brandSettings":
       return <BrandSettingsLevelSidebar orgId={level.orgId!} brandId={level.brandId!} pathname={pathname} />;
-    case "campaign":
-      // Campaign level defers to CampaignSidebar in the campaign layout
-      return null;
     default:
       return <AppLevelSidebar />;
   }

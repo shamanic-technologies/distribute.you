@@ -16,40 +16,18 @@ import * as path from "path";
  * which is the same source of truth as the header total. Both header and
  * pie chart now derive from runs-service, guaranteeing consistency.
  */
-describe("CostBreakdown uses runs-service cost breakdown (not manual run aggregation)", () => {
-  const componentPath = path.join(
-    __dirname,
-    "../src/components/campaign/cost-breakdown.tsx"
-  );
-  const content = fs.readFileSync(componentPath, "utf-8");
-
-  it("should accept costBreakdown from runs-service", () => {
-    expect(content).toContain("CostByName");
-    expect(content).toContain("costBreakdown");
-  });
-
-  it("should NOT manually walk lead/email run trees", () => {
-    expect(content).not.toContain("enrichmentRun");
-    expect(content).not.toContain("generationRun");
-    expect(content).not.toContain("collectCosts");
-  });
-});
-
-/**
- * Brand page also uses runs-service cost breakdown (same as campaign page).
- * Previously it used CampaignCostDistribution with manual brand-run aggregation,
- * which produced a large "Other" category. Now it uses the same CostBreakdown
- * component fed by runs-service /v1/stats/costs/by-cost-name?brandId=X.
- */
-describe("Brand page uses runs-service cost breakdown (no Other category)", () => {
+// The CostBreakdown component + the campaigns LIST page were removed with the
+// campaign concept. The brand Overview is the surviving cost-breakdown surface;
+// it fetches the authoritative runs-service breakdown via getBrandCostBreakdown
+// (the donut renders inside RevenueCostSummary now, not an inline component).
+describe("Brand overview uses runs-service cost breakdown (no manual aggregation)", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/page.tsx"
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx"
   );
   const content = fs.readFileSync(pagePath, "utf-8");
 
-  it("should use CostBreakdown, not CampaignCostDistribution", () => {
-    expect(content).toContain("CostBreakdown");
+  it("should not use the old CampaignCostDistribution (manual brand-run aggregation)", () => {
     expect(content).not.toContain("CampaignCostDistribution");
   });
 

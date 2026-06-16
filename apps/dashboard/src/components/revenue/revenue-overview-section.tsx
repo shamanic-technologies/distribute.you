@@ -5,7 +5,6 @@ import Link from "next/link";
 import { RevenueChart } from "@/components/revenue/revenue-chart";
 import { ConversionsTabs } from "@/components/revenue/conversions-tabs";
 import { RevenueCostSummary } from "@/components/revenue/revenue-cost-summary";
-import { TopCampaignsCard } from "@/components/revenue/top-campaigns-card";
 import { Skeleton } from "@/components/skeleton";
 import type { CostByName } from "@/lib/api";
 import type { RevenueOverview } from "@/lib/revenue-view";
@@ -102,17 +101,15 @@ export function RevenueOverviewSection({
           )}
         </div>
 
-        {/* Cost & efficiency — spend metrics (total / cost-of-acquisition / ROI)
-            with the Top-3 campaigns-by-ROI list as the bottom card (the brand-wide
-            top-cost-sources list stays on the Campaigns page). */}
+        {/* Cost & efficiency — spend metrics (total / cost-of-acquisition / ROI).
+            Bottom card defaults to the brand-wide Top-3 cost-source list (the old
+            Top-campaigns-by-ROI card was dropped with the campaign concept — there's
+            no per-campaign detail page to link to anymore). */}
         <RevenueCostSummary
           costBreakdown={costBreakdown}
           costEconomics={data?.costEconomics}
           pending={revenueLoading}
           costPending={costPending}
-          bottomCard={
-            <TopCampaignsCard brandId={brandId} featureSlug={featureSlug} basePath={basePath} />
-          }
         />
       </div>
 

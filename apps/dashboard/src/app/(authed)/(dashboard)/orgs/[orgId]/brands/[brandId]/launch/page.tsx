@@ -1204,7 +1204,9 @@ export default function FeatureCreateCampaignPage() {
       // (Framework: write the mutation response to the cache, don't just invalidate.)
       queryClient.setQueryData(["campaign", result.campaign.id], { campaign: result.campaign });
       await queryClient.invalidateQueries({ queryKey: ["campaigns", { brandId }] });
-      router.push(`/orgs/${orgId}/brands/${brandId}/campaigns/${result.campaign.id}`);
+      // Land back on the brand Overview with a launched marker so it can mount the
+      // launch-progress modal keyed on the new subscription id.
+      router.push(`/orgs/${orgId}/brands/${brandId}?launched=${result.campaign.id}`);
       // Don't reset isCreating on success — the page is navigating away.
       // Resetting here would briefly flash the button back to its idle state.
     } catch (err) {
@@ -1213,14 +1215,14 @@ export default function FeatureCreateCampaignPage() {
       if (err instanceof ApiError && err.status === 402) {
         // 402 is handled by BillingGuardProvider modal — don't show inline error
       } else if (err instanceof ApiError && err.status === 409) {
-        setCreateError("A campaign with this name already exists. Please try again.");
+        setCreateError("Outreach with this name already exists. Please try again.");
       } else if (err instanceof ApiError && err.body.error === "missing_keys") {
         const mk = (err.body.missing as string[]) ?? [];
         setCreateError(
-          `Missing provider keys: ${mk.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(", ")}. Configure them in Provider Keys settings before creating a campaign.`
+          `Missing provider keys: ${mk.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(", ")}. Configure them in Provider Keys settings before launching.`
         );
       } else {
-        setCreateError(err instanceof Error ? err.message : "Failed to create campaign");
+        setCreateError(err instanceof Error ? err.message : "Failed to launch outreach");
       }
     }
   }, [selectedRow, budgetAmount, budgetFrequency, formData, router, orgId, brandId, featureSlug, featureInputs, additionalBrands]);
@@ -1382,12 +1384,12 @@ export default function FeatureCreateCampaignPage() {
           }
           sendCampaignEmail("campaign_created", result.campaign).catch(() => {});
           await queryClient.invalidateQueries({ queryKey: ["campaigns", { brandId }] });
-          router.push(`/orgs/${orgId}/brands/${brandId}/campaigns/${result.campaign.id}`);
+          router.push(`/orgs/${orgId}/brands/${brandId}?launched=${result.campaign.id}`);
         } catch (err) {
           if (err instanceof ApiError && err.status === 402) {
             // Still insufficient — billing guard will handle
           } else {
-            setCreateError(err instanceof Error ? err.message : "Failed to create campaign");
+            setCreateError(err instanceof Error ? err.message : "Failed to launch outreach");
           }
           setIsCreating(false);
         }
@@ -1432,17 +1434,17 @@ export default function FeatureCreateCampaignPage() {
       {isCreating && (
         <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
           <Spinner className="h-8 w-8 text-brand-500" />
-          <p className="mt-4 text-sm font-medium text-gray-700">Launching your campaign…</p>
+          <p className="mt-4 text-sm font-medium text-gray-700">Launching your outreach…</p>
           <p className="mt-1 text-xs text-gray-400">Setting up your workflow and budget. This takes a few seconds.</p>
         </div>
       )}
       {/* Header */}
       <div className="mb-6">
-        <h1 className="font-display text-2xl font-bold text-gray-800">Create Campaign</h1>
+        <h1 className="font-display text-2xl font-bold text-gray-800">Launch outreach</h1>
         <p className="text-gray-600">
           {isSalesFunnel
             ? "Set a revenue goal — we pick the best workflow and size your budget."
-            : "Select a workflow and configure your campaign."}
+            : "Select a workflow and configure your outreach."}
         </p>
       </div>
 
@@ -1548,7 +1550,7 @@ export default function FeatureCreateCampaignPage() {
             <p className="text-sm text-amber-800">
               <span className="font-medium">Missing provider keys:</span>{" "}
               {missingProviders.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(", ")}.
-              {" "}Configure them to run campaigns with your own keys.
+              {" "}Configure them to run outreach with your own keys.
             </p>
             {org && (
               <Link
@@ -1603,7 +1605,7 @@ export default function FeatureCreateCampaignPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Objective</label>
-                <p className="text-xs text-gray-500 mb-3">What this campaign should maximize — limited to what your selling mode supports.</p>
+                <p className="text-xs text-gray-500 mb-3">What your outreach should maximize — limited to what your selling mode supports.</p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {SALES_OPTIMIZATION_GOALS.filter((o) => allowedObjectives.includes(o.key)).map((o) => {
                     const active = objective === o.key;
@@ -1646,7 +1648,7 @@ export default function FeatureCreateCampaignPage() {
               )}
             </div>
             <div className="p-5">
-              <p className="text-sm text-gray-500 mb-4">Reused across every sales campaign for this brand</p>
+              <p className="text-sm text-gray-500 mb-4">Reused across all sales outreach for this brand</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Customer Lifetime Revenue" tip="Average total revenue (not gross margin) one customer brings over their lifetime." /></label>
@@ -1921,12 +1923,12 @@ export default function FeatureCreateCampaignPage() {
             </div>
           </div>
 
-          {/* 4 · Campaign details */}
+          {/* 4 · Outreach details */}
           <div className="bg-white rounded-xl border border-gray-200">
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-5 h-5 inline-flex items-center justify-center text-[11px] font-bold text-white bg-brand-500 rounded-full">4</span>
-                <h2 className="font-display font-semibold text-gray-800">Campaign details</h2>
+                <h2 className="font-display font-semibold text-gray-800">Outreach details</h2>
               </div>
               <button type="button" onClick={() => setShowChat(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition text-gray-500 hover:text-brand-600 hover:bg-brand-50 border border-gray-200">
@@ -1976,7 +1978,7 @@ export default function FeatureCreateCampaignPage() {
             className={`w-full px-5 py-3 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition flex items-center justify-center gap-2 ${isCreating ? "cursor-wait" : "disabled:opacity-40 disabled:cursor-not-allowed"}`}
           >
             {isCreating && <Spinner />}
-            {isCreating ? "Launching…" : "Launch campaign"}
+            {isCreating ? "Launching…" : "Launch outreach"}
           </button>
 
           {showWorkflowPicker && (
@@ -2231,7 +2233,7 @@ export default function FeatureCreateCampaignPage() {
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <h3 className="text-sm font-medium text-gray-700">Campaign Details</h3>
+                <h3 className="text-sm font-medium text-gray-700">Outreach Details</h3>
                 <span className="text-xs text-gray-400 truncate max-w-[300px]">{formData.brandUrl}</span>
               </div>
               <button
@@ -2269,7 +2271,7 @@ export default function FeatureCreateCampaignPage() {
                 className={`px-5 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition flex items-center gap-2 ${isCreating ? "cursor-wait" : "disabled:opacity-50"}`}
               >
                 {isCreating && <Spinner />}
-                {isCreating ? "Creating…" : "Start Campaign"}
+                {isCreating ? "Creating…" : "Launch outreach"}
               </button>
               <button
                 onClick={() => setShowForm(false)}
@@ -2300,7 +2302,7 @@ export default function FeatureCreateCampaignPage() {
           </div>
           <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No performance data yet</h3>
           <p className="text-gray-600 text-sm max-w-md mx-auto">
-            Performance data will appear here as campaigns run.
+            Performance data will appear here as your outreach runs.
           </p>
         </div>
       ) : (

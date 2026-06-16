@@ -14,13 +14,7 @@ const submitHook = read("../src/lib/use-quote-opportunities.ts");
 const featureRequestsPage = read(
   "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/quote-requests/page.tsx",
 );
-const campaignRequestsPage = read(
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/[id]/quote-requests/page.tsx",
-);
 const contextSidebar = read("../src/components/context-sidebar.tsx");
-const sidebarWrapper = read(
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/[id]/sidebar-wrapper.tsx",
-);
 
 describe("isOpportunityOpen — hide ⟺ Send would be blocked (backend reply idempotency)", () => {
   it("treats a never-pitched opportunity (null) as open", () => {
@@ -94,29 +88,15 @@ describe("Opportunities surfaces hide already-pitched (filter via isOpportunityO
     expect(featureRequestsPage).toMatch(/filter\([\s\S]*?isOpportunityOpen/);
   });
 
-  it("campaign HITL quote-requests page filters opportunities", () => {
-    expect(campaignRequestsPage).toContain("isOpportunityOpen");
-    expect(campaignRequestsPage).toMatch(/filter\([\s\S]*?isOpportunityOpen/);
-  });
-
-  it("both sidebar badges count the open set (badge == page)", () => {
+  it("the brand sidebar badge counts the open set (badge == page)", () => {
     expect(contextSidebar).toMatch(/"quote-requests":[\s\S]*?isOpportunityOpen/);
-    expect(sidebarWrapper).toMatch(/"quote-requests":[\s\S]*?isOpportunityOpen/);
   });
 });
 
-describe("Submit threads campaignId so the pitch shows on the campaign pitches page", () => {
-  it("campaign handleSend passes campaignId in the reply body", () => {
-    const handleSendBlock =
-      campaignRequestsPage.split("const handleSend")[1]?.split("};")[0] ?? "";
-    expect(handleSendBlock).toContain("campaignId");
-  });
-
-  it("DetailPanel receives campaignId from the page", () => {
-    expect(campaignRequestsPage).toMatch(/campaignId=\{campaignId\}/);
-    expect(campaignRequestsPage).toContain("const campaignId = params.id as string");
-  });
-});
+// The "campaign HITL quote-requests page filters" + "Submit threads campaignId"
+// blocks were removed: the campaign-level quote-requests page (+ its
+// sidebar-wrapper) was deleted with the campaign concept. The brand-level page
+// + the brand sidebar badge are the survivors.
 
 describe("useSubmitQuotePitch invalidates the pages' actual query keys (prefix form)", () => {
   it("invalidates rankedOpportunities + quotePitches + featureQuotePitches by prefix", () => {

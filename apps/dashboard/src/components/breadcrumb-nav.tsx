@@ -26,23 +26,14 @@ interface OrgOption {
   hasImage?: boolean;
 }
 
-interface Campaign {
-  id: string;
-  name: string;
-}
-
 // Caches
 const brandListCache: { data: Brand[] | null; timestamp: number } = { data: null, timestamp: 0 };
-const campaignListCache: Record<string, { data: Campaign[]; timestamp: number }> = {};
 const CACHE_TTL = 60000;
 
 /** Clear module-level breadcrumb caches (called on org switch) */
 export function clearBreadcrumbCaches() {
   brandListCache.data = null;
   brandListCache.timestamp = 0;
-  for (const key of Object.keys(campaignListCache)) {
-    delete campaignListCache[key];
-  }
 }
 
 const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
@@ -121,7 +112,6 @@ export function BreadcrumbNav() {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [brands, setBrands] = useState<Brand[]>([]);
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [workflowName, setWorkflowName] = useState<string | null>(null);
   const [allOrgs, setAllOrgs] = useState<OrgOption[]>([]);
@@ -135,10 +125,6 @@ export function BreadcrumbNav() {
   const orgId = pathParts[0] === "orgs" && pathParts[1] ? pathParts[1] : null;
   const brandId = orgId && pathParts[2] === "brands" && pathParts[3] ? pathParts[3] : null;
   const section = brandId ? pathParts[4] ?? null : null;
-  const campaignId =
-    brandId && section === "campaigns" && pathParts[5] && pathParts[5] !== "new"
-      ? pathParts[5]
-      : null;
   const workflowId =
     brandId && section === "workflows" && pathParts[5] && pathParts[5] !== "new"
       ? pathParts[5]
@@ -203,36 +189,9 @@ export function BreadcrumbNav() {
     }
   }, []);
 
-  const fetchCampaigns = useCallback(async () => {
-    if (!brandId) return;
-    const cached = campaignListCache[brandId];
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      setCampaigns(cached.data);
-      return;
-    }
-    setLoading((l) => ({ ...l, campaigns: true }));
-    try {
-      const res = await fetch(`/api/v1/campaigns?brandId=${brandId}`);
-      if (res.ok) {
-        const data = await res.json();
-        const list = data.campaigns || [];
-        campaignListCache[brandId] = { data: list, timestamp: Date.now() };
-        setCampaigns(list);
-      }
-    } catch (err) {
-      console.error("Failed to fetch campaigns:", err);
-    } finally {
-      setLoading((l) => ({ ...l, campaigns: false }));
-    }
-  }, [brandId]);
-
   useEffect(() => {
     if (brandId) fetchBrands();
   }, [brandId, fetchBrands]);
-
-  useEffect(() => {
-    if (campaignId) fetchCampaigns();
-  }, [campaignId, fetchCampaigns]);
 
   useEffect(() => {
     if (!workflowId) { setWorkflowName(null); return; }
@@ -248,7 +207,6 @@ export function BreadcrumbNav() {
     } else {
       setOpenDropdown(key);
       if (key === "brand") fetchBrands();
-      if (key === "campaign") fetchCampaigns();
     }
   };
 
@@ -292,16 +250,7 @@ export function BreadcrumbNav() {
     }
   };
 
-  const handleCampaignSwitch = (newCampaignId: string) => {
-    setOpenDropdown(null);
-    if (orgId && brandId) {
-      const subpage = pathParts[6] || "";
-      router.push(`/orgs/${orgId}/brands/${brandId}/campaigns/${newCampaignId}${subpage ? "/" + subpage : ""}`);
-    }
-  };
-
   const currentBrand = brands.find((b) => b.id === brandId);
-  const currentCampaign = campaigns.find((c) => c.id === campaignId);
   const appFeatureDef = appFeatureId ? getFeature(appFeatureId) : null;
   const appFeatureLabel = appFeatureDef ? (appFeatureDef.name) : appFeatureId;
 
@@ -326,7 +275,7 @@ export function BreadcrumbNav() {
     <nav
       className={`flex items-center text-sm min-w-0 ${
         // Mobile: the breadcrumb chain can exceed the viewport — scroll it
-        // horizontally so org/brand/campaign + their switchers stay reachable.
+        // horizontally so org/brand + their switchers stay reachable.
         // When a dropdown is open switch to overflow-visible, else the
         // absolutely-positioned panel gets clipped by the scroll container.
         openDropdown ? "overflow-visible" : "overflow-x-auto"
@@ -453,11 +402,11 @@ export function BreadcrumbNav() {
               </div>
             )}
           </div>
-          {/* Subpage label (e.g. "New" for create campaign) */}
+          {/* Subpage label for the launch funnel. */}
           {appFeatureSubpage === "new" && (
             <>
               <Sep />
-              <span className="px-2 py-1 text-gray-600">Create Campaign</span>
+              <span className="px-2 py-1 text-gray-600">Launch</span>
             </>
           )}
         </>
@@ -509,50 +458,6 @@ export function BreadcrumbNav() {
         </>
       )}
 
-      {/* CAMPAIGN */}
-      {campaignId && orgId && brandId && (
-        <>
-          <Sep />
-          <div className="relative flex items-center">
-            <Link href={`/orgs/${orgId}/brands/${brandId}/campaigns/${campaignId}`} className="px-2 py-1 rounded-md hover:bg-gray-100 transition font-medium text-gray-800">
-              {currentCampaign?.name || "Campaign"}
-            </Link>
-            <button onClick={() => toggleDropdown("campaign")} className="p-1 hover:bg-gray-100 rounded transition">
-              <Chevron open={openDropdown === "campaign"} />
-            </button>
-            {openDropdown === "campaign" && (
-              <div className="absolute left-0 top-full mt-1 w-56 bg-white rounded-lg border border-gray-200 shadow-xl py-1 z-50 max-h-64 overflow-y-auto">
-                <div className="px-3 py-2 border-b border-gray-100">
-                  <p className="text-xs text-gray-500 font-medium">Switch campaign</p>
-                </div>
-                {loading.campaigns ? (
-                  <div className="px-3 py-4 text-center text-gray-400 text-sm">Loading...</div>
-                ) : campaigns.length === 0 ? (
-                  <div className="px-3 py-4 text-center text-gray-400 text-sm">No campaigns</div>
-                ) : (
-                  campaigns.map((c) => (
-                    <button
-                      key={c.id}
-                      onClick={() => handleCampaignSwitch(c.id)}
-                      className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition ${
-                        campaignId === c.id ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
-                      }`}
-                    >
-                      <span className="truncate">{c.name}</span>
-                      {campaignId === c.id && (
-                        <svg className="w-4 h-4 text-brand-600 ml-auto flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </button>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
-        </>
-      )}
-
       {/* WORKFLOW */}
       {workflowId && orgId && brandId && (
         <>
@@ -570,16 +475,10 @@ export function BreadcrumbNav() {
           <span className="px-2 py-1 text-gray-600">Brand Info</span>
         </>
       )}
-      {brandId && orgId && section === "campaigns" && !pathParts[5] && (
+      {brandId && orgId && section === "launch" && (
         <>
           <Sep />
-          <span className="px-2 py-1 text-gray-600">Campaigns</span>
-        </>
-      )}
-      {brandId && orgId && section === "campaigns" && pathParts[5] === "new" && (
-        <>
-          <Sep />
-          <span className="px-2 py-1 text-gray-600">Create Campaign</span>
+          <span className="px-2 py-1 text-gray-600">Launch</span>
         </>
       )}
       {brandId && orgId && section === "workflows" && !pathParts[5] && (
@@ -594,12 +493,6 @@ export function BreadcrumbNav() {
           <span className="px-2 py-1 text-gray-600">
             {pathParts[5] === "outlets" ? "Outlets" : pathParts[5] === "press-kits" ? "Press Kits" : pathParts[5] === "journalists" ? "Journalists" : pathParts[5]}
           </span>
-        </>
-      )}
-      {brandId && orgId && section === "campaigns" && pathParts[6] === "prompt" && (
-        <>
-          <Sep />
-          <span className="px-2 py-1 text-gray-600">Email Prompt</span>
         </>
       )}
     </nav>
