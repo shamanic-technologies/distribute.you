@@ -13,7 +13,7 @@ const apiContent = fs.readFileSync(apiPath, "utf-8");
 
 const newCampaignPagePath = path.resolve(
   __dirname,
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/new/page.tsx",
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/launch/page.tsx",
 );
 const newCampaignPage = fs.readFileSync(newCampaignPagePath, "utf-8");
 

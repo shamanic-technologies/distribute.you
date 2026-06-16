@@ -5,8 +5,7 @@ import Image from "next/image";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
-import { listCampaignEvents } from "@/lib/api";
-import { useCampaign } from "@/lib/campaign-context";
+import { listCampaignEvents, getCampaign, listCampaignLeads } from "@/lib/api";
 import {
   LAUNCH_STEPS,
   launchStepFromEvents,
@@ -15,18 +14,24 @@ import {
 } from "@/lib/campaign-launch-progress";
 
 /**
- * Non-closable launch modal. After a campaign is created the first email takes
- * minutes to arrive (find leads → write email → set up sending); a silent screen
- * reads as "nothing happened". This overlays the whole dashboard and walks the
- * user through four reassurance steps — each advancing on a REAL backend signal,
- * not a timer — then closes the instant the first lead is contacted.
+ * Non-closable launch modal. Right after an outreach launches the first email
+ * takes minutes to arrive (find leads → write email → set up sending); a silent
+ * screen reads as "nothing happened". This overlays the whole dashboard and
+ * walks the user through four reassurance steps — each advancing on a REAL
+ * backend signal, not a timer — then closes the instant the first lead is
+ * contacted.
  *
- * Gate (option B): only an ONGOING, not-yet-contacted campaign is blocked, and
- * only until the user takes the 5-minute escape. An established campaign (>=1
- * contacted lead) or a stopped campaign never sees the modal, so a finished or
- * paused run can't trap anyone. The escape (shown only after 5 min without a
- * first email) persist-dismisses this campaign for the session so a stalled
- * launch is escapable exactly once and doesn't re-block on revisit.
+ * Self-contained: it takes ONLY the new subscription's `campaignId` (read from
+ * the brand-overview `?launched=` marker) and fetches the campaign (for status +
+ * brand URLs) and leads itself — no campaign context needed, so it mounts on the
+ * brand Overview.
+ *
+ * Gate (option B): only an ONGOING, not-yet-contacted run is blocked, and only
+ * until the user takes the 5-minute escape. An established run (>=1 contacted
+ * lead) or a stopped run never sees the modal, so a finished or paused run can't
+ * trap anyone. The escape (shown only after 5 min without a first email)
+ * persist-dismisses this run for the session so a stalled launch is escapable
+ * exactly once and doesn't re-block on revisit.
  */
 
 // Mirror CampaignActivity's window + query key so React Query dedupes a single
@@ -88,14 +93,28 @@ function StepRow({ label, done, current }: { label: string; done: boolean; curre
 
 export function CampaignLaunchModal({
   campaignId,
-  brandUrls,
-  campaignStatus,
 }: {
   campaignId: string;
-  brandUrls: string[];
-  campaignStatus: string;
 }) {
-  const { leads, leadsLoading } = useCampaign();
+  // Fetch the just-launched subscription for its status + brand URLs (the
+  // brand-overview ?launched= marker pre-seeds the ["campaign", id] cache, so
+  // this paints instantly). Reuse the campaign-detail query keys so any other
+  // observer dedupes.
+  const { data: campaignData } = useAuthQuery(
+    ["campaign", campaignId],
+    () => getCampaign(campaignId),
+    pollOptions,
+  );
+  const campaignStatus = campaignData?.campaign.status ?? "";
+  const brandUrls = campaignData?.campaign.brandUrls ?? [];
+
+  // Leads for this run — drives the "contacted" close condition.
+  const { data: leadsData, isPending: leadsLoading } = useAuthQuery(
+    ["campaignLeads", campaignId],
+    () => listCampaignLeads(campaignId),
+    pollOptions,
+  );
+  const leads = leadsData?.leads ?? [];
 
   // Same key as CampaignActivity → shared cache, one poll. CampaignActivity's
   // observer is flag-gated (disabled for non-staff); this one stays enabled so

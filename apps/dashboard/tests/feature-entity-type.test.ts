@@ -26,14 +26,15 @@ describe("Feature.entities uses FeatureEntity objects, not strings", () => {
     expect(content).not.toMatch(/entities:\s*string\[\]/);
   });
 
-  // Campaign sidebar must use .name for entity name lookups
+  // The shared context-sidebar must use .name for entity name lookups
+  // (campaign-sidebar.tsx was removed with the campaign concept).
   const sidebarPath = path.join(
     __dirname,
-    "../src/components/campaign-sidebar.tsx"
+    "../src/components/context-sidebar.tsx"
   );
   const sidebarContent = fs.readFileSync(sidebarPath, "utf-8");
 
-  it("should reference entity.name (not entity as string) in campaign-sidebar", () => {
+  it("should reference entity.name (not entity as string) in context-sidebar", () => {
     expect(sidebarContent).toContain("e.name");
   });
 });

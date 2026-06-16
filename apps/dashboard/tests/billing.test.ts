@@ -8,7 +8,7 @@ const billingPagePath = path.resolve(__dirname, "../src/app/(authed)/(dashboard)
 const billingGuardPath = path.resolve(__dirname, "../src/lib/billing-guard.tsx");
 const layoutPath = path.resolve(__dirname, "../src/app/(authed)/(dashboard)/layout.tsx");
 const sidebarPath = path.resolve(__dirname, "../src/components/context-sidebar.tsx");
-const campaignNewOrgPath = path.resolve(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/new/page.tsx");
+const campaignNewOrgPath = path.resolve(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/launch/page.tsx");
 const campaignNewFeaturePath = path.resolve(__dirname, "../src/app/(authed)/(dashboard)/features/[featureId]/new/page.tsx");
 
 describe("Billing API wrappers", () => {

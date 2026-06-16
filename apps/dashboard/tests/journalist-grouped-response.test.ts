@@ -7,10 +7,6 @@ const featurePagePath = path.resolve(
   __dirname,
   "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/journalists/page.tsx",
 );
-const campaignPagePath = path.resolve(
-  __dirname,
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/[id]/journalists/page.tsx",
-);
 const brandPagePath = path.resolve(
   __dirname,
   "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/journalists/page.tsx",
@@ -56,7 +52,6 @@ describe("EnrichedJournalist type matches grouped API response", () => {
 describe("Journalist pages use journalistId as key (not flat id)", () => {
   const pages = [
     { name: "feature-level", path: featurePagePath },
-    { name: "campaign-level", path: campaignPagePath },
     { name: "brand-level", path: brandPagePath },
   ];
 
@@ -74,7 +69,6 @@ describe("Journalist pages use journalistId as key (not flat id)", () => {
 describe("Journalist pages derive status from cumulative booleans", () => {
   const pages = [
     { name: "feature-level", path: featurePagePath },
-    { name: "campaign-level", path: campaignPagePath },
     { name: "brand-level", path: brandPagePath },
   ];
 
@@ -91,7 +85,6 @@ describe("Journalist pages derive status from cumulative booleans", () => {
 describe("Journalist pages auto-select first non-empty tab on load", () => {
   const pages = [
     { name: "feature-level", path: featurePagePath },
-    { name: "campaign-level", path: campaignPagePath },
     { name: "brand-level", path: brandPagePath },
   ];
 
@@ -111,7 +104,6 @@ describe("Journalist pages auto-select first non-empty tab on load", () => {
 describe("Journalist detail panel shows per-campaign entries", () => {
   const pages = [
     { name: "feature-level", path: featurePagePath },
-    { name: "campaign-level", path: campaignPagePath },
     { name: "brand-level", path: brandPagePath },
   ];
 
