@@ -59,7 +59,7 @@ export function Header({ minimal = false }: { minimal?: boolean }) {
           )}
 
           {!minimal && (
-            <div className="hidden sm:block min-w-0 flex-1">
+            <div className="min-w-0 flex-1">
               <BreadcrumbNav />
             </div>
           )}
