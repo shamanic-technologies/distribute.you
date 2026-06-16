@@ -316,6 +316,12 @@ No global width knob: the authed shell `<main>` is full-width; each page sets it
 
 Applied to the dense surfaces (brand overview, org overview, brands list, brand-info). Forms (`campaigns/new`, settings, billing, api-keys) stay narrow. (#1300-follow-up)
 
+### Dashboard mobile — tables scroll, never crush; breadcrumb is mobile-visible
+
+- **A dense `<table>` MUST live in an `overflow-x-auto` wrapper with a `min-w-[Npx]` on the table** (`min-w-[640px]` for 4+ col, `min-w-[480px]` for the progressive-`hidden sm:table-cell` leads tables) — NOT the copy-pasted `<div className="bg-white rounded-xl border border-gray-200 overflow-hidden">` wrapper, which makes columns squeeze/wrap into mush on a phone instead of scrolling. The `overflow-hidden`+`w-full` pattern was duplicated across ~6 surfaces (brand+campaign quote-requests, brand+campaign leads, visibility prompts/competitors/runs/run-detail) — when adding a new table, start from the `overflow-x-auto` + `min-w` form. (#1746)
+- **The header breadcrumb (`components/header.tsx` → `BreadcrumbNav`) is visible at ALL widths** — do NOT re-add `hidden sm:block` (it left mobile users with only the distribute logo: no org/brand name, no org switcher). The `<nav>` in `breadcrumb-nav.tsx` scrolls horizontally on narrow screens (`overflow-x-auto`) and flips to `overflow-visible` while a dropdown is open so the absolutely-positioned switcher panel isn't clipped by the scroll container. (#1746)
+- **A page-by-page mobile/load AUDIT by subagents over-reports** — it invented a `min-w-[500px]` and a 7-col table in a page that actually delegates to a shared component. Confirm each flagged defect against the EXACT served string (grep the literal) before sweeping; the "split-panel `absolute inset-0` detail overlay" is the intended mobile drawer, NOT a bug. (#1746)
+
 ### Dashboard sidebars are SHARED per nav level — one edit covers every page at that level
 
 `src/components/context-sidebar.tsx` → `ContextSidebar` switches on the URL to ONE sidebar per level. No per-page sidebar. A sidebar change on "the X page" applies to EVERY page at that level + usually a campaign-level analog — map all levels + surface the blast radius before scoping. (#1223)

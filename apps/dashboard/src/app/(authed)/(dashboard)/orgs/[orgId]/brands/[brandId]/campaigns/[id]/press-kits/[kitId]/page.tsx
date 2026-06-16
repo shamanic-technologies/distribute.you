@@ -392,7 +392,7 @@ export default function CampaignPressKitDetailPage() {
 
             {/* Stats for validated kits */}
             {kit.status === "validated" && stats && (
-              <div className="grid grid-cols-3 gap-3 mb-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
                 <div className="bg-white border border-gray-100 rounded-lg p-3">
                   <div className="text-[10px] text-gray-500 uppercase tracking-wider">Views</div>
                   <div className="text-lg font-semibold text-gray-900">{formatCount(stats.totalViews)}</div>
@@ -575,7 +575,7 @@ export default function CampaignPressKitDetailPage() {
                 ) : null}
               </>
             ) : (
-              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden" style={{ height: "calc(100vh - 320px)", minHeight: 400 }}>
+              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden h-[calc(100dvh-300px)] min-h-[360px]">
                 <PressKitChat
                   kitId={kitId}
                   brandId={brandId}

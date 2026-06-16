@@ -72,8 +72,8 @@ export default function FeatureQuoteRequestsPage() {
       ) : opportunities.length === 0 ? (
         <EmptyState message="No ranked opportunities yet. They appear here after the next scoring run." />
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+          <table className="w-full min-w-[640px] text-sm">
             <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
               <tr>
                 <th className="px-4 py-2 text-left">Opportunity</th>

@@ -323,7 +323,16 @@ export function BreadcrumbNav() {
   );
 
   return (
-    <nav className="flex items-center text-sm min-w-0" ref={dropdownRef}>
+    <nav
+      className={`flex items-center text-sm min-w-0 ${
+        // Mobile: the breadcrumb chain can exceed the viewport — scroll it
+        // horizontally so org/brand/campaign + their switchers stay reachable.
+        // When a dropdown is open switch to overflow-visible, else the
+        // absolutely-positioned panel gets clipped by the scroll container.
+        openDropdown ? "overflow-visible" : "overflow-x-auto"
+      }`}
+      ref={dropdownRef}
+    >
       {/* ORG — always shown as root */}
       <div className="relative flex items-center">
         <Link href={organization ? explicitHierarchyHref(`/orgs/${organization.id}`) : explicitHierarchyHref("/")} className="px-2 py-1 rounded-md hover:bg-gray-100 transition flex items-center gap-1.5">

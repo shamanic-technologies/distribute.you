@@ -104,8 +104,8 @@ export function VisibilityRunDetailView({ basePath }: { basePath: string }) {
             No competitor mentions detected.
           </div>
         ) : (
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
               <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
                 <tr>
                   <th className="px-4 py-2 text-left">Name</th>
@@ -212,8 +212,8 @@ export function VisibilityRunDetailView({ basePath }: { basePath: string }) {
           <h2 className="text-sm font-semibold text-gray-700 mb-3">
             Citation opportunities
           </h2>
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
               <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
                 <tr>
                   <th className="px-4 py-2 text-left">Domain</th>
