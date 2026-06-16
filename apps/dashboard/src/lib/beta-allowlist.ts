@@ -15,6 +15,7 @@ export const BETA_ALLOWED_EMAILS = [
   "kevin@distribute.you",
   "adam@distribute.you",
   "adam2d3d@gmail.com",
+  "kevin@pressbeat.io",
 ];
 
 export function isBetaEmail(email?: string | null): boolean {
