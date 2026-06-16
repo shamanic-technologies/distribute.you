@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useFeatures } from "@/lib/features-context";
 import { useEntityRegistry } from "@/lib/entity-registry-context";
@@ -280,32 +280,11 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
   return { type: "app" };
 }
 
-// App Level Sidebar
-function AppLevelSidebar({ pathname }: { pathname: string }) {
-  const searchParams = useSearchParams();
-  const publicMetricsOk = useFeatureFlag(FEATURE_GATES["public-metrics"].flag);
-  const analyticsItems: SidebarItem[] = [
-    { id: "landing", label: "Unique visitors", href: "/?view=landing", icon: <OverviewIcon />, maturity: FEATURE_GATES["public-metrics"].maturity },
-    { id: "signups", label: "Signup conversions", href: "/?view=signups", icon: <ConversionsIcon />, maturity: FEATURE_GATES["public-metrics"].maturity },
-    { id: "cards", label: "Cards added", href: "/?view=cards", icon: <BillingIcon />, maturity: FEATURE_GATES["public-metrics"].maturity },
-  ];
-
-  const activeView = searchParams.get("view");
-  const normalizedView = activeView === "signups" || activeView === "cards" ? activeView : "landing";
-
-  if (!publicMetricsOk) return null;
-
-  return (
-    <SidebarSection title="Dashboard">
-      {analyticsItems.map((item) => (
-        <SidebarLink
-          key={item.id}
-          item={item}
-          isActive={pathname === "/" && normalizedView === item.id}
-        />
-      ))}
-    </SidebarSection>
-  );
+// App Level Sidebar — the dashboard root only routes (redirects to /orgs), so
+// there is no app-level nav. The old build-in-public "public metrics" section
+// was removed.
+function AppLevelSidebar() {
+  return null;
 }
 
 // Org Level Sidebar
@@ -714,7 +693,7 @@ export function ContextSidebar() {
 
   switch (level.type) {
     case "app":
-      return <AppLevelSidebar pathname={pathname} />;
+      return <AppLevelSidebar />;
     case "appFeature":
       return <AppFeatureLevelSidebar featureId={level.featureId!} pathname={pathname} />;
     case "org":
@@ -727,6 +706,6 @@ export function ContextSidebar() {
       // Campaign level defers to CampaignSidebar in the campaign layout
       return null;
     default:
-      return <AppLevelSidebar pathname={pathname} />;
+      return <AppLevelSidebar />;
   }
 }

@@ -38,12 +38,12 @@ describe("Context sidebar", () => {
     expect(content).toContain("return null");
   });
 
-  it("should have focused app-level public analytics links instead of feature links", () => {
+  it("should render no app-level nav (root only redirects to /orgs)", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    expect(content).toContain("Unique visitors");
-    expect(content).toContain("Signup conversions");
-    expect(content).toContain("Cards added");
-    expect(content).toContain("/?view=landing");
+    // The build-in-public "public metrics" analytics links were removed; the
+    // app-level sidebar now renders nothing.
+    expect(content).not.toContain("Unique visitors");
+    expect(content).not.toContain("/?view=landing");
     expect(content).not.toContain('href: `/features/${f.slug}`');
   });
 

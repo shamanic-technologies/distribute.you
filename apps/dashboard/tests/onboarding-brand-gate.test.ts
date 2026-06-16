@@ -21,7 +21,7 @@ const apiProxyRoute = fs.readFileSync(
   "utf-8"
 );
 const onboardingPage = fs.readFileSync(
-  path.join(__dirname, "../src/app/(authed)/onboarding/page.tsx"),
+  path.join(__dirname, "../src/components/onboarding/legacy-onboarding.tsx"),
   "utf-8"
 );
 const signUpPage = fs.readFileSync(
