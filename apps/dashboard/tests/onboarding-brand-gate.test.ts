@@ -53,7 +53,12 @@ describe("DIS-111 edge gate lives in proxy.ts", () => {
 
   it("does not send completed auth flows to the public metrics root", () => {
     expect(proxy).toContain('new URL("/orgs", req.url)');
-    expect(signUpPage).toContain('redirectUrlComplete: "/orgs"');
+    // Sign-up defaults completed flows to /orgs; a landing pricing ?url= prefill
+    // instead routes to /onboarding (gate-exempt) to carry the brand website
+    // through the Google OAuth round-trip.
+    expect(signUpPage).toContain("redirectUrlComplete");
+    expect(signUpPage).toContain(': "/orgs"');
+    expect(signUpPage).toContain("/onboarding?url=");
     expect(signUpPage).toContain('router.replace("/orgs")');
     expect(signInPage).toContain('redirectUrlComplete: "/orgs"');
     expect(signInPage).toContain('router.replace("/orgs")');
