@@ -12,11 +12,11 @@ import {
 import {
   getBrand,
   listExtractedFields,
+  listPersonas,
   flattenFieldValue,
   SALES_PROFILE_FIELDS,
 } from "@/lib/api";
 import {
-  SEED_PERSONAS,
   CATEGORY_META,
   CATEGORY_ORDER,
   type CategoryKey,
@@ -107,6 +107,12 @@ export function RunCampaignModal({
     () => listExtractedFields(brandId),
     { enabled: open },
   );
+  const { data: personasData } = useAuthQuery(
+    ["personas", brandId],
+    () => listPersonas(brandId),
+    { enabled: open },
+  );
+  const personas = (personasData?.personas ?? []).filter((p) => p.status !== "archived");
 
   if (!open) return null;
 
@@ -288,7 +294,10 @@ export function RunCampaignModal({
                 <MaturityBadge level="beta" />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {SEED_PERSONAS.map((p) => (
+                {personas.length === 0 && (
+                  <p className="text-sm text-gray-400">No personas yet.</p>
+                )}
+                {personas.map((p) => (
                   <div key={p.id} className="rounded-xl border border-gray-200 p-3">
                     <p className="text-sm font-semibold text-gray-900">{p.name}</p>
                     <div className="mt-2 flex flex-wrap gap-1.5">

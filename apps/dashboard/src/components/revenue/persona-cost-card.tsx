@@ -1,16 +1,24 @@
 "use client";
 
-import { SEED_PERSONAS, personaMockCost } from "@/lib/mock-personas";
+import { useParams } from "next/navigation";
+import { useAuthQuery } from "@/lib/use-auth-query";
+import { listPersonas } from "@/lib/api";
+import { personaMockCost } from "@/lib/mock-personas";
 import { MaturityBadge } from "@/components/maturity-badge";
 
 /**
- * Signups "Cost by persona" card — PURE MOCKUP. Lists each Customer Persona
- * with its CPC and cost per signup. Numbers are deterministic placeholders
- * (`personaMockCost`); real per-persona attribution needs the backend data
- * layer. Names come from the shared seed list so they match the Personas page.
+ * Signups "Cost by persona" card. Persona NAMES are real (brand-service via the
+ * personas page); the CPC + cost-per-signup numbers are still deterministic
+ * placeholders (`personaMockCost`) until real per-persona attribution lands
+ * (features-service FR #298). Shows the brand's non-archived personas.
  */
 export function PersonaCostCard() {
-  const rows = SEED_PERSONAS.map((p) => ({ persona: p, ...personaMockCost(p.id) }));
+  const params = useParams();
+  const brandId = params.brandId as string;
+  const { data } = useAuthQuery(["personas", brandId], () => listPersonas(brandId));
+  const rows = (data?.personas ?? [])
+    .filter((p) => p.status !== "archived")
+    .map((p) => ({ persona: p, ...personaMockCost(p.id) }));
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
@@ -32,6 +40,11 @@ export function PersonaCostCard() {
             </tr>
           </thead>
           <tbody>
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={3} className="py-4 text-center text-xs text-gray-400">No personas yet.</td>
+              </tr>
+            )}
             {rows.map(({ persona, cpcUsd, costPerSignupUsd }) => (
               <tr key={persona.id} className="border-b border-gray-50 last:border-0">
                 <td className="py-2.5 pr-4 font-medium text-gray-900">{persona.name}</td>

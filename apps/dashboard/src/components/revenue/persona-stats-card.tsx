@@ -1,6 +1,9 @@
 "use client";
 
-import { SEED_PERSONAS, personaMockCost } from "@/lib/mock-personas";
+import { useParams } from "next/navigation";
+import { useAuthQuery } from "@/lib/use-auth-query";
+import { listPersonas } from "@/lib/api";
+import { personaMockCost } from "@/lib/mock-personas";
 import { MaturityBadge } from "@/components/maturity-badge";
 
 const usd = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
@@ -8,13 +11,18 @@ const usd2 = (n: number) => `$${n.toFixed(2)}`;
 const num = (n: number) => n.toLocaleString("en-US");
 
 /**
- * Stats by Customer Persona — PURE MOCKUP. Per-persona signups breakdown
- * (Clicks · Signups · Cost per signup · Expected revenue). Numbers are
- * deterministic placeholders (`personaMockCost`) until the backend attributes
- * real spend + conversions per persona. Names come from the shared seed list.
+ * Stats by Customer Persona. Persona NAMES are real (brand-service via the
+ * personas page); the Clicks/Signups/cost/revenue numbers are still
+ * deterministic placeholders (`personaMockCost`) until real per-persona
+ * attribution lands (features-service FR #298). Non-archived personas only.
  */
 export function PersonaStatsCard() {
-  const rows = SEED_PERSONAS.map((p) => ({ persona: p, ...personaMockCost(p.id) }));
+  const params = useParams();
+  const brandId = params.brandId as string;
+  const { data } = useAuthQuery(["personas", brandId], () => listPersonas(brandId));
+  const rows = (data?.personas ?? [])
+    .filter((p) => p.status !== "archived")
+    .map((p) => ({ persona: p, ...personaMockCost(p.id) }));
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
@@ -39,6 +47,11 @@ export function PersonaStatsCard() {
             </tr>
           </thead>
           <tbody>
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={6} className="py-4 text-center text-xs text-gray-400">No personas yet.</td>
+              </tr>
+            )}
             {rows.map(({ persona, clicks, signups, cpcUsd, costPerSignupUsd, expectedRevenueUsd }) => (
               <tr key={persona.id} className="border-b border-gray-50 last:border-0">
                 <td className="py-2.5 pr-4 font-medium text-gray-900">{persona.name}</td>
