@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>distribute: pricing — pay per email sent | $0.07/contact</title>
-  <meta name="description" content="$0.07 per contact. Research, writing, delivery included. $25 free credits to start.">
+  <title>distribute: pricing — outcome-based | $4-$7 per click</title>
+  <meta name="description" content="$4-$7 per click, $70-$250 per buyer conversation. Research, writing, delivery included. $25 free credits to start.">
   <link rel="canonical" href="https://distribute.you/pricing">
   <meta property="og:type"        content="website">
   <meta property="og:url"         content="https://distribute.you/pricing">
   <meta property="og:title"       content="distribute: pricing — pay per email sent">
-  <meta property="og:description" content="$0.07 per contact. Research, writing, delivery included. $25 free credits to start.">
+  <meta property="og:description" content="$4-$7 per click, $70-$250 per buyer conversation. Research, writing, delivery included. $25 free credits to start.">
   <meta property="og:image"       content="https://distribute.you/opengraph-image">
   <meta name="twitter:card"       content="summary_large_image">
   <meta name="twitter:image"      content="https://distribute.you/opengraph-image">
@@ -103,7 +103,7 @@
   }
 
   .calc-metrics {
-    display: grid; grid-template-columns: repeat(4, 1fr);
+    display: grid; grid-template-columns: repeat(2, 1fr);
     background: var(--border); border: 1px solid var(--border);
     border-radius: 12px; overflow: hidden; gap: 1px;
     margin-bottom: 1.75rem;
@@ -239,7 +239,7 @@
     <div class="wrap">
       <div class="px-eyebrow">Pricing</div>
       <h1 class="t-hero">Any budget.<br>Real prospects.</h1>
-      <p class="px-hero-sub">Move the slider to see exactly what your budget gets you. $0.07 per contact reached. No monthly fee.</p>
+      <p class="px-hero-sub">Move the slider to see exactly what your budget gets you. $4-$7 per click, $70-$250 per buyer conversation. No monthly fee.</p>
     </div>
   </section>
 
@@ -251,54 +251,43 @@
         <div class="calc-top">
           <span class="calc-card-label">Monthly budget</span>
           <div class="calc-quick" role="group" aria-label="Quick budget amounts">
-            <button class="calc-qbtn" data-budget="20">$20</button>
-            <button class="calc-qbtn" data-budget="50">$50</button>
-            <button class="calc-qbtn active" data-budget="100">$100</button>
             <button class="calc-qbtn" data-budget="250">$250</button>
-            <button class="calc-qbtn" data-budget="500">$500</button>
+            <button class="calc-qbtn active" data-budget="500">$500</button>
+            <button class="calc-qbtn" data-budget="1000">$1,000</button>
+            <button class="calc-qbtn" data-budget="2500">$2,500</button>
           </div>
         </div>
 
         <div class="calc-budget-row">
-          <div class="calc-budget-val" id="calc-budget">$100</div>
+          <div class="calc-budget-val" id="calc-budget">$500</div>
           <div class="calc-budget-per">/ month</div>
         </div>
 
         <div class="calc-slider-wrap">
           <input
             type="range" class="calc-slider" id="calc-slider"
-            min="20" max="1000" value="100" step="5"
+            min="250" max="5000" value="500" step="50"
             aria-label="Monthly budget"
           >
         </div>
 
         <div class="calc-metrics" role="region" aria-label="Estimated results">
           <div class="calc-metric">
-            <div class="calc-metric-num" id="calc-contacts">1.4k</div>
-            <div class="calc-metric-name">contacts</div>
-            <div class="calc-metric-rate">$0.07 each</div>
+            <div class="calc-metric-num" id="calc-clicks">90</div>
+            <div class="calc-metric-name">clicks</div>
+            <div class="calc-metric-rate">$4-$7 each</div>
           </div>
           <div class="calc-metric">
-            <div class="calc-metric-num" id="calc-opens">499</div>
-            <div class="calc-metric-name">opens</div>
-            <div class="calc-metric-rate">35% rate</div>
-          </div>
-          <div class="calc-metric">
-            <div class="calc-metric-num" id="calc-replies">71</div>
-            <div class="calc-metric-name">replies</div>
-            <div class="calc-metric-rate">5% rate</div>
-          </div>
-          <div class="calc-metric">
-            <div class="calc-metric-num" id="calc-leads">28</div>
-            <div class="calc-metric-name">qualified</div>
-            <div class="calc-metric-rate">of replies</div>
+            <div class="calc-metric-num" id="calc-convos">3</div>
+            <div class="calc-metric-name">buyer conversations</div>
+            <div class="calc-metric-rate">$70-$250 each</div>
           </div>
         </div>
 
         <div class="calc-footer">
           <div class="calc-stats">
-            <span>Cost per contact: <b>$0.07</b></span>
-            <span>Est. cost per lead: <b id="calc-cpl">$3.57</b></span>
+            <span>Cost per click: <b>$4-$7</b></span>
+            <span>Cost per buyer conversation: <b>$70-$250</b></span>
           </div>
           <div style="display:flex; gap:0.625rem; flex-wrap:wrap;">
             <a href="/sign-up" class="btn btn-p">Get $25 free credits</a>
@@ -307,8 +296,8 @@
         </div>
 
         <p class="calc-disclaimer">
-          Based on 35% open rate and 5% reply rate from active campaigns.
-          "Qualified" = positive or interested replies. Individual results vary by industry and offer.
+          Based on a $4-$7 cost per click and $70-$250 per positive reply (a buyer conversation worth engaging),
+          in line with B2B industry benchmarks. Individual results vary by industry and offer.
         </p>
 
       </div>
@@ -363,8 +352,8 @@
     <div class="wrap-narrow">
       <div style="margin-bottom:2.5rem; max-width:540px;">
         <p class="px-label">Cost comparison</p>
-        <h2 class="px-h2">Cold email is the cheapest B2B channel. By far.</h2>
-        <p class="px-lead">At $0.07 per contact, Distribute costs 100 to 200 times less than LinkedIn Ads or an in-house SDR.</p>
+        <h2 class="px-h2">Cold email delivers outcomes for less.</h2>
+        <p class="px-lead">At $4-$7 per click and $70-$250 per buyer conversation, Distribute delivers the same outcomes as LinkedIn Ads or an in-house SDR — done for you, no retainer.</p>
       </div>
       <div class="compare-wrap">
         <table class="compare-table">
@@ -378,8 +367,8 @@
           </thead>
           <tbody>
             <tr>
-              <td>Cost per contact reached</td>
-              <td class="td-dist td-win">$0.07</td>
+              <td>Cost per click</td>
+              <td class="td-dist td-win">$4-$7</td>
               <td>$8–25</td>
               <td>$50–150</td>
             </tr>
@@ -471,19 +460,14 @@
 
 <script>
 (function () {
-  var COST    = 0.07;
-  var OPEN    = 0.35;
-  var REPLY   = 0.05;
-  var QUALIFY = 0.40;
-  var MIN = 20, MAX = 1000;
+  var CPC   = 5.5;   // $4-$7 per click, midpoint
+  var CONVO = 160;   // $70-$250 per buyer conversation, midpoint
+  var MIN = 250, MAX = 5000;
 
-  var slider     = document.getElementById('calc-slider');
-  var budgetEl   = document.getElementById('calc-budget');
-  var contactsEl = document.getElementById('calc-contacts');
-  var opensEl    = document.getElementById('calc-opens');
-  var repliesEl  = document.getElementById('calc-replies');
-  var leadsEl    = document.getElementById('calc-leads');
-  var cplEl      = document.getElementById('calc-cpl');
+  var slider    = document.getElementById('calc-slider');
+  var budgetEl  = document.getElementById('calc-budget');
+  var clicksEl  = document.getElementById('calc-clicks');
+  var convosEl  = document.getElementById('calc-convos');
 
   function fmt(n) {
     if (n >= 10000) return Math.round(n / 1000) + 'k';
@@ -492,18 +476,12 @@
   }
 
   function update(budget) {
-    var contacts = Math.floor(budget / COST);
-    var opens    = Math.floor(contacts * OPEN);
-    var replies  = Math.floor(contacts * REPLY);
-    var leads    = Math.floor(replies * QUALIFY);
-    var cpl      = leads > 0 ? '$' + (budget / leads).toFixed(2) : '<$1';
+    var clicks = Math.floor(budget / CPC);
+    var convos = Math.floor(budget / CONVO);
 
-    budgetEl.textContent   = '$' + budget;
-    contactsEl.textContent = fmt(contacts);
-    opensEl.textContent    = fmt(opens);
-    repliesEl.textContent  = fmt(replies);
-    leadsEl.textContent    = leads > 0 ? leads : '1';
-    cplEl.textContent      = cpl;
+    budgetEl.textContent = '$' + budget;
+    clicksEl.textContent = fmt(clicks);
+    convosEl.textContent = convos > 0 ? convos : 1;
 
     var pct = ((budget - MIN) / (MAX - MIN) * 100).toFixed(2) + '%';
     slider.style.setProperty('--pct', pct);
@@ -530,7 +508,7 @@
     });
   });
 
-  update(100);
+  update(500);
 })();
 </script>
 
