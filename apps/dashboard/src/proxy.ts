@@ -40,9 +40,10 @@ export default clerkMiddleware(
       return NextResponse.redirect(new URL("/orgs", req.url));
     }
 
-    // `/?view=overview` is the dashboard hierarchy intent emitted by the
-    // authed header logo. Treat it as dashboard navigation, not as the public
-    // build-in-public metrics page, so first-run users hit onboarding pre-paint.
+    // `/?view=overview` is the dashboard hierarchy intent emitted by the authed
+    // header logo. Resolve it at the edge so first-run users hit onboarding
+    // pre-paint and everyone else lands on /orgs with their search preserved
+    // (the root page itself is now a bare redirect to /orgs).
     if (userId && isExplicitDashboardRoot) {
       if (sessionClaims?.orgMeta?.onboardingComplete !== true) {
         return NextResponse.redirect(new URL("/onboarding", req.url));

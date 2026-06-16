@@ -38,7 +38,7 @@ describe("Brands page auto-creates brand from onboarding", () => {
 });
 
 describe("Onboarding page asks for URL and creates brand", () => {
-  const pagePath = path.join(__dirname, "../src/app/(authed)/onboarding/page.tsx");
+  const pagePath = path.join(__dirname, "../src/components/onboarding/legacy-onboarding.tsx");
   const content = fs.readFileSync(pagePath, "utf-8");
 
   it("should ask for website URL, not a name", () => {

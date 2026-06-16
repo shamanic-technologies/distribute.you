@@ -40,9 +40,6 @@ export const FEATURE_GATES = {
   // (Outlets/Journalists/Articles). Leads + Emails stay GA (sales-cold-email is
   // launched). Independent of brand-features so it can graduate on its own.
   "brand-database": { flag: "alpha-brand-database", maturity: "alpha" },
-  // Internal build-in-public metrics at the dashboard root. Staff-only: these
-  // pages expose global signup/card/visitor counts and should not be public.
-  "public-metrics": { flag: "alpha-public-metrics", maturity: "alpha" },
 } as const satisfies Record<string, FeatureGate>;
 
 export type FeatureGateKey = keyof typeof FEATURE_GATES;
