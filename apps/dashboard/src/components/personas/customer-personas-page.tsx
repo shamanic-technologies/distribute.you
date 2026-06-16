@@ -9,22 +9,13 @@ import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { MaturityBadge } from "@/components/maturity-badge";
-import { EditWithAIPanel, type AiTurn } from "@/components/ai-edit/edit-with-ai-panel";
-import { listPersonas, createPersona, duplicatePersona, setPersonaStatus } from "@/lib/api";
+import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
+import { listPersonas, createPersona, setPersonaStatus } from "@/lib/api";
 import {
   type CategoryKey,
   type Filters,
   type Persona,
 } from "@/lib/mock-personas";
-
-// Default "here's what I can do" turn for the Edit-with-AI mockup.
-function helpTurn(prefix?: string): AiTurn {
-  return {
-    reply:
-      (prefix ? prefix + "\n\n" : "") +
-      "I can create, duplicate, pause/resume and archive personas. Try:\n• Create a persona named Mid-market RevOps\n• Duplicate Scaling SaaS Founders\n• Pause Early Marketing Buyers\n• Archive Enterprise Growth Leaders",
-  };
-}
 
 /**
  * Customer Personas — PURE-UI MOCKUP (beta).
@@ -145,10 +136,6 @@ export function CustomerPersonasPage() {
       createPersona(brandId, { name: i.name, filters: i.filters as Record<string, string[]> }),
     onSuccess: invalidate,
   });
-  const dupMut = useMutation({
-    mutationFn: (id: string) => duplicatePersona(brandId, id),
-    onSuccess: invalidate,
-  });
   const statusMut = useMutation({
     mutationFn: (i: { id: string; status: Persona["status"] }) => setPersonaStatus(brandId, i.id, i.status),
     onSuccess: invalidate,
@@ -212,65 +199,6 @@ export function CustomerPersonasPage() {
   // source is never mutated.
   const saveAsNew = (name: string, filters: Filters) =>
     createMut.mutate({ name: capWords(name), filters });
-
-  const findByName = (q: string): Persona | undefined => {
-    const needle = q.trim().toLowerCase();
-    if (!needle) return undefined;
-    return (
-      personas.find((p) => p.name.toLowerCase() === needle) ??
-      personas.find((p) => p.name.toLowerCase().includes(needle))
-    );
-  };
-
-  // Client-side "AI" interpreter for the Edit-with-AI mockup. Keyword-based, no
-  // LLM — maps obvious phrasings to the same operations the buttons expose.
-  const runAiCommand = (raw: string): AiTurn => {
-    const text = raw.trim();
-    const lower = text.toLowerCase();
-    const after = (kw: RegExp) => text.replace(kw, "").replace(/^(the|a|persona|named|called)\s+/i, "").replace(/["']/g, "").replace(/\bpersona\b/i, "").trim();
-
-    if (/\b(create|add|new)\b/.test(lower)) {
-      const name = uniqueName(after(/.*?\b(create|add|new)\b/i) || "New Persona");
-      const p = addPersona(name);
-      return { reply: `Started a draft persona “${p.name}”. Add targeting filters, then Save it (or Cancel).`, toolCalls: [{ tool: "create_persona", summary: `Drafted “${p.name}”` }] };
-    }
-    if (/\b(duplicate|clone|copy)\b/.test(lower)) {
-      const p = findByName(after(/.*?\b(duplicate|clone|copy)\b/i));
-      if (!p) return helpTurn("Which persona should I duplicate? Try: duplicate Scaling SaaS Founders");
-      if (p.unsaved) saveAsNew(uniqueName(`${p.name} copy`), p.filters);
-      else dupMut.mutate(p.id);
-      return { reply: `Duplicating “${p.name}” into a new persona.`, toolCalls: [{ tool: "duplicate_persona", summary: `Duplicated “${p.name}”` }] };
-    }
-    if (/\b(archive|hide|remove|delete)\b/.test(lower)) {
-      const p = findByName(after(/.*?\b(archive|hide|remove|delete)\b/i));
-      if (!p) return helpTurn("Which persona should I archive? Personas are never deleted — only archived.");
-      setStatus(p.id, "archived");
-      return { reply: `Archived “${p.name}”. It’s in the Archived tab — nothing is ever hard-deleted.`, toolCalls: [{ tool: "archive_persona", summary: `Archived “${p.name}”` }] };
-    }
-    if (/\b(restore|unarchive|reactivate)\b/.test(lower)) {
-      const p = findByName(after(/.*?\b(restore|unarchive|reactivate)\b/i));
-      if (!p) return helpTurn("Which persona should I restore?");
-      setStatus(p.id, "active");
-      return { reply: `Restored “${p.name}” to Active.`, toolCalls: [{ tool: "restore_persona", summary: `Restored “${p.name}”` }] };
-    }
-    if (/\b(pause|stop)\b/.test(lower)) {
-      const p = findByName(after(/.*?\b(pause|stop)\b/i));
-      if (!p) return helpTurn("Which persona should I pause?");
-      setStatus(p.id, "paused");
-      return { reply: `Paused “${p.name}” — kept, just not running.`, toolCalls: [{ tool: "pause_persona", summary: `Paused “${p.name}”` }] };
-    }
-    if (/\b(resume|unpause|activate)\b/.test(lower)) {
-      const p = findByName(after(/.*?\b(resume|unpause|activate)\b/i));
-      if (!p) return helpTurn("Which persona should I resume?");
-      setStatus(p.id, "active");
-      return { reply: `Resumed “${p.name}”.`, toolCalls: [{ tool: "resume_persona", summary: `Resumed “${p.name}”` }] };
-    }
-    if (/\b(list|show|what)\b/.test(lower)) {
-      const active = personas.filter((p) => p.status !== "archived");
-      return { reply: active.length ? `You have ${active.length} active persona(s):\n${active.map((p) => `• ${p.name}${p.status === "paused" ? " (paused)" : ""}`).join("\n")}` : "No active personas yet.", toolCalls: [{ tool: "list_personas", summary: `Read ${active.length} active persona(s)` }] };
-    }
-    return helpTurn();
-  };
 
   if (isPending && personas.length === 0) {
     return (
@@ -380,13 +308,15 @@ export function CustomerPersonasPage() {
         );
       })()}
 
-      <EditWithAIPanel
+      <EditWithAIChat
         open={aiOpen}
         onClose={() => setAiOpen(false)}
         title="Edit personas with AI"
         intro="Hi — I can create, duplicate, pause, resume and archive your personas. What would you like to change?"
         suggestions={["Create a persona named Mid-market RevOps", "Duplicate Scaling SaaS Founders", "Archive Early Marketing Buyers"]}
-        onSend={runAiCommand}
+        configKey="persona-editor"
+        brandId={brandId}
+        invalidateKeys={[["personas", brandId]]}
       />
     </div>
   );
