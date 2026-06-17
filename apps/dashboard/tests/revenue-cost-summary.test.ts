@@ -5,17 +5,18 @@ import * as path from "path";
 const SRC = path.join(__dirname, "../src");
 const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
 
-describe("Cost & efficiency card on feature Overview (actual spend)", () => {
+describe("Cost summary card on feature Overview (actual spend)", () => {
   const card = read("components/revenue/revenue-cost-summary.tsx");
   // Feature flattened into the brand level — the brand root page IS the overview.
   const overview =
     read("app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx");
 
-  it("renders Total spent, Cost of acquisition and ROI cards with info hints", () => {
+  it("renders Total spent without Cost of acquisition or ROI cards", () => {
     expect(card).toContain("Total spent");
-    expect(card).toContain("Cost of acquisition");
-    expect(card).toContain("ROI");
-    expect(card).toContain("InfoHint");
+    expect(card).not.toContain("Cost of acquisition");
+    expect(card).not.toContain("Share of expected pipeline revenue");
+    expect(card).not.toContain("ROI");
+    expect(card).not.toContain("Return multiple on spend");
   });
 
   it("top cost sources show provider logo + share, no $ amounts", () => {
@@ -26,14 +27,14 @@ describe("Cost & efficiency card on feature Overview (actual spend)", () => {
     expect(card).not.toContain("formatUsd(s.cents");
   });
 
-  it("Overview wires the cost breakdown through the revenue section into the 3 cards", () => {
+  it("Overview wires the cost breakdown through the revenue section into the summary card", () => {
     expect(overview).toContain("getBrandCostBreakdown");
     expect(overview).toContain("costBreakdown={costData?.costs ?? []}");
     const section = read("components/revenue/revenue-overview-section.tsx");
-    // The cost cards now live in the right-of-chart column, replacing the old
+    // The cost summary lives in the right-of-chart column, replacing the old
     // org/lead/event counters.
     expect(section).toContain("RevenueCostSummary");
-    expect(section).toContain("totalPipelineUsd={data?.totalPipelineUsd}");
+    expect(section).not.toContain("costEconomics={data?.costEconomics}");
     expect(section).not.toContain("Converting organizations");
     expect(section).not.toContain("Lead conversions");
   });
@@ -43,13 +44,12 @@ describe("Cost & efficiency card on feature Overview (actual spend)", () => {
     expect(card).not.toContain("parseFloat(c.totalCostInUsdCents)");
   });
 
-  it("CAC % and ROI × are derived from actual spend, not provisioned-inclusive costEconomics", () => {
-    expect(card).toContain("(totalCostUsd / totalPipelineUsd) * 100");
-    expect(card).toContain("totalPipelineUsd / totalCostUsd");
+  it("does not derive hidden cost efficiency ratios in the browser", () => {
     expect(card).not.toContain("costEconomics?.costOfAcquisitionPct");
     expect(card).not.toContain("costEconomics?.roiMultiple");
-    expect(card).toContain('cacPct == null ? "—"');
-    expect(card).toContain('roiMultiple == null ? "—"');
+    expect(card).not.toContain("cacPct");
+    expect(card).not.toContain("roiMultiple");
+    expect(card).not.toContain("totalPipelineUsd");
   });
 
   it("the /revenue parser threads costEconomics through the view-model", () => {
