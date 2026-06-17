@@ -235,7 +235,7 @@ export function PersonaCard({
               {editable && <PencilIcon className="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-500 shrink-0" />}
             </button>
           )}
-          <p className="mt-0.5 flex items-center gap-2 text-[11px] text-gray-400">
+          <p className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-gray-400">
             <span>{totalFilters} {totalFilters === 1 ? "filter" : "filters"}</span>
             {!embedded && isNew && (
               <span className="rounded-full bg-brand-50 text-brand-600 border border-brand-200 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide">
@@ -308,15 +308,15 @@ export function PersonaCard({
           const values = filters[cat.key] ?? [];
           const isAdding = adding === cat.key;
           return (
-            <div key={cat.key} className="grid grid-cols-[7.5rem_1fr] gap-2 items-start">
-              <span className="pt-1 text-[11px] font-medium text-gray-400">{cat.label}</span>
-              <div className="flex flex-wrap items-center gap-1.5">
+            <div key={cat.key} className="grid grid-cols-1 items-start gap-1 sm:grid-cols-[7.5rem_1fr] sm:gap-2">
+              <span className="text-[11px] font-medium text-gray-400 sm:pt-1">{cat.label}</span>
+              <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                 {values.map((v) => (
                   <span
                     key={v}
-                    className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border ${cat.tone}`}
+                    className={`inline-flex max-w-full items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${cat.tone}`}
                   >
-                    {v}
+                    <span className="min-w-0 break-words">{v}</span>
                     {editable && (
                       <button
                         type="button"
@@ -353,7 +353,7 @@ export function PersonaCard({
                         }
                       }}
                       placeholder={`Add ${cat.label.toLowerCase()}…`}
-                      className="text-xs px-2 py-0.5 rounded-full border border-brand-300 bg-white focus:outline-none focus:ring-2 focus:ring-brand-300 w-36"
+                      className="w-36 max-w-full rounded-full border border-brand-300 bg-white px-2 py-0.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand-300"
                     />
                     <datalist id={`sugg-${cat.key}`}>
                       {cat.suggestions.map((s) => (
@@ -383,7 +383,7 @@ export function PersonaCard({
       {/* Save bar — appears for an unsaved draft, or once an existing persona is
           edited. Every edit is saved as a duplicate; both are cancellable. */}
       {showSaveBar && (
-        <div className="flex items-center justify-between gap-2 pt-3 border-t border-gray-100">
+        <div className="flex flex-col items-stretch gap-2 border-t border-gray-100 pt-3 sm:flex-row sm:items-center sm:justify-between">
           <span className={`text-[11px] ${nameTaken ? "text-red-600" : "text-amber-600"}`}>
             {nameTaken
               ? "Name already used — pick a unique name"
@@ -393,7 +393,7 @@ export function PersonaCard({
                   ? "Draft — not saved yet"
                   : "Unsaved changes"}
           </span>
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center justify-end gap-1.5">
             <button
               type="button"
               onClick={handleCancel}
