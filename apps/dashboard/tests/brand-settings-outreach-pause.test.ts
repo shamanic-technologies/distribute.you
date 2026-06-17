@@ -7,13 +7,18 @@ const settingsPage = readFileSync(
   resolve(ROOT, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/settings/page.tsx"),
   "utf8",
 );
+const brandStatusControl = readFileSync(
+  resolve(ROOT, "src/components/brand/brand-status-control.tsx"),
+  "utf8",
+);
 
-describe("Brand Settings outreach pause card", () => {
-  it("uses the same brand-level pause API as the overview control", () => {
-    expect(settingsPage).toContain("getBrandPause");
-    expect(settingsPage).toContain("setBrandPause");
-    expect(settingsPage).toContain('["brandPause", brandId]');
-    expect(settingsPage).toContain("setBrandPause(brandId, true)");
+describe("Brand Settings outreach status control", () => {
+  it("reuses the same brand-level status control as Overview", () => {
+    expect(settingsPage).toContain("BrandStatusControl");
+    expect(settingsPage).toContain("<BrandStatusControl brandId={brandId} />");
+    expect(brandStatusControl).toContain("getBrandPause");
+    expect(brandStatusControl).toContain("setBrandPause");
+    expect(brandStatusControl).toContain('["brandPause", brandId]');
   });
 
   it("does not derive brand pause state from campaign stop/list state", () => {
@@ -22,15 +27,16 @@ describe("Brand Settings outreach pause card", () => {
     expect(settingsPage).not.toContain('status !== "stopped"');
   });
 
-  it("renders an already-paused state instead of another active pause CTA", () => {
-    expect(settingsPage).toContain("Your outreach is already paused.");
-    expect(settingsPage).toContain("No new emails go out while inactive");
-    expect(settingsPage).toContain('paused ? "Paused" :');
-    expect(settingsPage).toContain("disabled={paused || saving}");
+  it("shows active/paused status and a Pause/Restart toggle from the shared control", () => {
+    expect(brandStatusControl).toContain("Paused");
+    expect(brandStatusControl).toContain("Active");
+    expect(brandStatusControl).toContain('paused ? "Restart" : "Pause"');
+    expect(brandStatusControl).toContain("setPaused(!paused)");
   });
 
-  it("reassures active brands that the daily budget remains the spend cap", () => {
-    expect(settingsPage).toContain("Outreach is active.");
-    expect(settingsPage).toContain("daily budget above remains the hard cap");
+  it("keeps budget and goal controls visible beside the run status", () => {
+    expect(brandStatusControl).toContain("budgetLabel");
+    expect(brandStatusControl).toContain("openBudgetDialog");
+    expect(brandStatusControl).toContain("Optimization goal");
   });
 });
