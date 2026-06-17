@@ -149,6 +149,16 @@ const LOADING_STEPS = [
   { id: "ls-4", label: "Projecting your economics", delay: 1400 },
 ];
 
+const GENERIC_AI_SETUP_ERROR = "Our AI analysis service had a temporary issue. Your workspace is ready, but some suggestions may need to be filled in manually.";
+
+function displaySetupError(err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err);
+  if (/chat-service|LLM call failed|\/complete/i.test(message)) {
+    return "Our AI analysis service had a temporary issue. Please try again in a minute.";
+  }
+  return err instanceof Error ? err.message : "Setup failed. Please try again.";
+}
+
 // Rotating soft-tag palette for the services chips (visual variety, like personas).
 const TAG_TONES = [
   "bg-indigo-50 text-indigo-700 border-indigo-200",
@@ -191,6 +201,7 @@ export function BetaOnboarding() {
   const [step, setStep] = useState<Step>("welcome");
   const [url, setUrl] = useState(searchParams.get("url")?.trim() ?? "");
   const [error, setError] = useState<string | null>(null);
+  const [setupIssues, setSetupIssues] = useState({ extraction: false, persona: false });
   const [busy, setBusy] = useState(false);
 
   const [outcome, setOutcome] = useState<Outcome>("signups");
@@ -279,9 +290,10 @@ export function BetaOnboarding() {
     // refresh / manual dashboard-URL nav slipped past proxy.ts onto a half-set-up
     // dashboard (no rates/personas/consent/campaign). See launch(). (#1770)
     // Extract brand fields (populates the brand profile + services), then fetch all.
-    await extractBrandFields([newBrandId], SALES_PROFILE_FIELDS).catch((e) =>
-      console.error("[dashboard] extractBrandFields failed:", e),
-    );
+    await extractBrandFields([newBrandId], SALES_PROFILE_FIELDS).catch((e) => {
+      console.error("[dashboard] extractBrandFields failed:", e);
+      setSetupIssues((prev) => ({ ...prev, extraction: true }));
+    });
     brandIdRef.current = newBrandId;
     orgIdRef.current = targetOrgId;
     setBrandId(newBrandId);
@@ -290,7 +302,11 @@ export function BetaOnboarding() {
     const [prof, econRes, sug, proj, feat] = await Promise.all([
       getBrandProfile(newBrandId),
       getSalesEconomicsEffective(newBrandId),
-      suggestPersonas(newBrandId, 1),
+      suggestPersonas(newBrandId, 1).catch((e) => {
+        console.error("[dashboard] suggestPersonas (onboarding seed) failed:", e);
+        setSetupIssues((prev) => ({ ...prev, persona: true }));
+        return { personas: [] as PersonaDraft[] };
+      }),
       getWorkflowProjection({ featureSlug: SALES_FEATURE_SLUG, brandId: newBrandId, objective: "self-serve", budgetUsd: PROJECTION_REF_BUDGET }),
       getFeature(SALES_FEATURE_SLUG),
     ]);
@@ -329,6 +345,7 @@ export function BetaOnboarding() {
   async function startAnalyze() {
     if (!domain) return;
     setError(null);
+    setSetupIssues({ extraction: false, persona: false });
     setStep("loading");
     runLoadingAnimation();
     posthog.capture("onboarding_workspace_create_started", { flow: "beta", domain });
@@ -338,7 +355,8 @@ export function BetaOnboarding() {
     } catch (err) {
       posthog.capture("onboarding_workspace_create_failed", { flow: "beta", domain });
       timers.current.forEach(clearTimeout);
-      setError(err instanceof Error ? err.message : "Setup failed. Please try again.");
+      console.error("[dashboard] onboarding setup failed:", err);
+      setError(displaySetupError(err));
       setStep("url");
     }
   }
@@ -581,6 +599,7 @@ export function BetaOnboarding() {
       <div className={card}>
         <h2 className="font-display text-2xl font-bold text-gray-900">What services do you want to promote with us?</h2>
         <p className="mt-2 mb-6 text-gray-500">We drafted these from <span className="font-medium text-gray-700">{hostname}</span>. Add or remove until the list matches what you sell.</p>
+        {setupIssues.extraction && <SetupWarning />}
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 p-4">
           {services.map((s, i) => (
             <span key={s} className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${TAG_TONES[i % TAG_TONES.length]}`}>
@@ -662,6 +681,7 @@ export function BetaOnboarding() {
     return (
       <OnboardingPersonas
         brandId={brandId}
+        personaSuggestionFailed={setupIssues.persona}
         onBack={() => setStep("rates")}
         onContinue={() => setStep("consent")}
       />
@@ -768,10 +788,12 @@ const nextDraftId = () => `ob-draft-${++obDraftSeq}`;
 
 function OnboardingPersonas({
   brandId,
+  personaSuggestionFailed,
   onBack,
   onContinue,
 }: {
   brandId: string | null;
+  personaSuggestionFailed: boolean;
   onBack: () => void;
   onContinue: () => void;
 }) {
@@ -837,6 +859,7 @@ function OnboardingPersonas({
           <SparklesIcon className="h-4 w-4" /> Edit with AI
         </button>
       </div>
+      {personaSuggestionFailed && <SetupWarning className="mt-4" />}
 
       <div className="mt-6 space-y-3">
         {isPending && personas.length === 0 ? (
@@ -875,6 +898,14 @@ function OnboardingPersonas({
           invalidateKeys={[["personas", brandId]]}
         />
       )}
+    </div>
+  );
+}
+
+function SetupWarning({ className = "mb-4" }: { className?: string }) {
+  return (
+    <div className={`${className} rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800`}>
+      {GENERIC_AI_SETUP_ERROR}
     </div>
   );
 }
