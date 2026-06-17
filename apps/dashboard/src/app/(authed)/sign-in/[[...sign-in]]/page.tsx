@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSignIn } from "@clerk/nextjs/legacy";
 import { useAuth } from "@clerk/nextjs";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import posthog from "posthog-js";
 
@@ -13,6 +13,7 @@ export default function SignInPage() {
   const { isSignedIn } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const redirectStartedRef = useRef(false);
 
   useEffect(() => {
     if (isSignedIn) {
@@ -20,21 +21,41 @@ export default function SignInPage() {
     }
   }, [isSignedIn, router]);
 
-  const handleGoogleSignIn = async () => {
-    if (!isLoaded || isSignedIn) return;
-    setLoading(true);
-    try {
-      posthog.capture("signin_google_oauth_started", { provider: "google" });
-      await signIn.authenticateWithRedirect({
-        strategy: "oauth_google",
-        redirectUrl: "/sso-callback",
-        redirectUrlComplete: "/orgs",
-      });
-    } catch (error) {
-      posthog.capture("signin_google_oauth_failed", { provider: "google" });
-      console.error("Sign in error:", error);
-      setLoading(false);
+  useEffect(() => {
+    if (
+      !loading ||
+      !isLoaded ||
+      isSignedIn ||
+      !signIn ||
+      redirectStartedRef.current
+    ) {
+      return;
     }
+
+    redirectStartedRef.current = true;
+
+    const startGoogleSignIn = async () => {
+      try {
+        posthog.capture("signin_google_oauth_started", { provider: "google" });
+        await signIn.authenticateWithRedirect({
+          strategy: "oauth_google",
+          redirectUrl: "/sso-callback",
+          redirectUrlComplete: "/orgs",
+        });
+      } catch (error) {
+        redirectStartedRef.current = false;
+        posthog.capture("signin_google_oauth_failed", { provider: "google" });
+        console.error("Sign in error:", error);
+        setLoading(false);
+      }
+    };
+
+    void startGoogleSignIn();
+  }, [isLoaded, isSignedIn, loading, signIn]);
+
+  const handleGoogleSignIn = () => {
+    if (loading || isSignedIn) return;
+    setLoading(true);
   };
 
   if (isSignedIn) {
@@ -255,9 +276,13 @@ export default function SignInPage() {
             }}
           >
             <button
+              type="button"
               onClick={handleGoogleSignIn}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-3 rounded-xl px-4 transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-[0.97]"
+              aria-busy={loading}
+              className={`w-full flex items-center justify-center gap-3 rounded-xl px-4 transition-colors ${
+                loading ? "cursor-wait" : "hover:brightness-[0.97]"
+              }`}
               style={{
                 fontFamily: '"Inter", system-ui, sans-serif',
                 fontSize: "0.9375rem",

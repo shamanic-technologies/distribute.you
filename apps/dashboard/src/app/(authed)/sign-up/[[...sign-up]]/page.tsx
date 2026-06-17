@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSignUp } from "@clerk/nextjs/legacy";
 import { useAuth } from "@clerk/nextjs";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import posthog from "posthog-js";
 
@@ -14,6 +14,7 @@ export default function SignUpPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
+  const redirectStartedRef = useRef(false);
 
   useEffect(() => {
     if (isSignedIn) {
@@ -21,30 +22,50 @@ export default function SignUpPage() {
     }
   }, [isSignedIn, router]);
 
-  const handleGoogleSignUp = async () => {
-    if (!isLoaded || isSignedIn) return;
-    setLoading(true);
-    try {
-      sessionStorage.setItem("distribute_auth_intent", "signup");
-      posthog.capture("signup_google_oauth_started", { provider: "google" });
-      // A website carried from the landing pricing CTA (?url=) prefills the
-      // onboarding brand. /onboarding is exempt from the first-run gate, so
-      // landing there directly (vs the default /orgs → bare /onboarding bounce
-      // that drops the query) preserves the param through the OAuth round-trip.
-      const prefillUrl = (searchParams.get("url") || "").trim();
-      const redirectUrlComplete = prefillUrl
-        ? `/onboarding?url=${encodeURIComponent(prefillUrl)}`
-        : "/orgs";
-      await signUp.authenticateWithRedirect({
-        strategy: "oauth_google",
-        redirectUrl: "/sso-callback",
-        redirectUrlComplete,
-      });
-    } catch (error) {
-      posthog.capture("signup_google_oauth_failed", { provider: "google" });
-      console.error("Sign up error:", error);
-      setLoading(false);
+  useEffect(() => {
+    if (
+      !loading ||
+      !isLoaded ||
+      isSignedIn ||
+      !signUp ||
+      redirectStartedRef.current
+    ) {
+      return;
     }
+
+    redirectStartedRef.current = true;
+
+    const startGoogleSignUp = async () => {
+      try {
+        sessionStorage.setItem("distribute_auth_intent", "signup");
+        posthog.capture("signup_google_oauth_started", { provider: "google" });
+        // A website carried from the landing pricing CTA (?url=) prefills the
+        // onboarding brand. /onboarding is exempt from the first-run gate, so
+        // landing there directly (vs the default /orgs -> bare /onboarding bounce
+        // that drops the query) preserves the param through the OAuth round-trip.
+        const prefillUrl = (searchParams.get("url") || "").trim();
+        const redirectUrlComplete = prefillUrl
+          ? `/onboarding?url=${encodeURIComponent(prefillUrl)}`
+          : "/orgs";
+        await signUp.authenticateWithRedirect({
+          strategy: "oauth_google",
+          redirectUrl: "/sso-callback",
+          redirectUrlComplete,
+        });
+      } catch (error) {
+        redirectStartedRef.current = false;
+        posthog.capture("signup_google_oauth_failed", { provider: "google" });
+        console.error("Sign up error:", error);
+        setLoading(false);
+      }
+    };
+
+    void startGoogleSignUp();
+  }, [isLoaded, isSignedIn, loading, searchParams, signUp]);
+
+  const handleGoogleSignUp = () => {
+    if (loading || isSignedIn) return;
+    setLoading(true);
   };
 
   if (isSignedIn) {
@@ -265,9 +286,13 @@ export default function SignUpPage() {
             }}
           >
             <button
+              type="button"
               onClick={handleGoogleSignUp}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-3 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-[0.97]"
+              aria-busy={loading}
+              className={`w-full flex items-center justify-center gap-3 rounded-xl transition-colors ${
+                loading ? "cursor-wait" : "hover:brightness-[0.97]"
+              }`}
               style={{
                 fontFamily: '"Inter", system-ui, sans-serif',
                 fontSize: "0.9375rem",
