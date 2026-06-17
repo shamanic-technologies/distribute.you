@@ -44,19 +44,29 @@ describe("Cost summary card on feature Overview (actual spend)", () => {
     expect(card).not.toContain("parseFloat(c.totalCostInUsdCents)");
   });
 
+  it("Total spent only keeps cents below ten dollars", () => {
+    expect(card).toContain("const fractionDigits = usd < 10 ? 2 : 0");
+    expect(card).toContain("minimumFractionDigits: fractionDigits");
+    expect(card).toContain("maximumFractionDigits: fractionDigits");
+  });
+
   it("Overview replaces the bottom cost-source card with real top personas", () => {
     const api = read("lib/api.ts");
     const personaCard = read("components/revenue/top-personas-card.tsx");
     expect(overview).toContain("fetchFeaturePersonaStats");
+    expect(overview).toContain("listPersonas(brandId, \"active\")");
     expect(overview).toContain("featurePersonaStats");
     expect(overview).toContain("<TopPersonasCard");
+    expect(overview).toContain("personas={personaStatsRevealed ? personasData?.personas : undefined}");
     expect(overview).toContain("costBottomCard=");
     expect(api).toContain("export async function fetchFeaturePersonaStats");
     expect(api).toContain("`/features/${featureSlug}/persona-stats?");
     expect(personaCard).toContain("Top 3 personas");
+    expect(personaCard).toContain("fallbackRows");
     expect(personaCard).toContain("row.metrics.cpcCents");
     expect(personaCard).toContain("row.metrics.cpprCents");
-    expect(personaCard).toContain("No persona-tagged results yet.");
+    expect(personaCard).toContain('if (cents == null) return "-";');
+    expect(personaCard).not.toContain("No persona-tagged results yet.");
   });
 
   it("does not derive hidden cost efficiency ratios in the browser", () => {

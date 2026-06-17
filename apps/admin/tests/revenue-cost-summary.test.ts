@@ -25,6 +25,12 @@ describe("Cost & efficiency card on feature Overview (served costEconomics)", ()
     expect(card).not.toContain("formatUsd(s.cents");
   });
 
+  it("Total spent only keeps cents below ten dollars", () => {
+    expect(card).toContain("const fractionDigits = usd < 10 ? 2 : 0");
+    expect(card).toContain("minimumFractionDigits: fractionDigits");
+    expect(card).toContain("maximumFractionDigits: fractionDigits");
+  });
+
   it("Overview wires the cost breakdown through the revenue section into the 3 cards", () => {
     expect(overview).toContain("getBrandCostBreakdown");
     expect(overview).toContain("costBreakdown={costData?.costs ?? []}");
