@@ -6,14 +6,7 @@ const contextSidebar = fs.readFileSync(
   path.join(__dirname, "../src/components/context-sidebar.tsx"),
   "utf-8",
 );
-const campaignSidebar = fs.readFileSync(
-  path.join(__dirname, "../src/components/campaign-sidebar.tsx"),
-  "utf-8",
-);
-const mcpSidebar = fs.readFileSync(
-  path.join(__dirname, "../src/components/mcp-sidebar.tsx"),
-  "utf-8",
-);
+// campaign-sidebar.tsx + mcp-sidebar.tsx were deleted with the campaign concept.
 
 describe("Sidebars render Feature Service entities flat — no hardcoded outcome groups", () => {
   describe("context-sidebar.tsx", () => {
@@ -32,7 +25,7 @@ describe("Sidebars render Feature Service entities flat — no hardcoded outcome
 
     it("renders BrandLevelSidebar top items flat (no hardcoded outcome groups)", () => {
       // The old `outcomeItems` group machinery is gone — the brand sidebar now
-      // maps a flat `topItems` list (Overview/Campaigns/Create/Conversions).
+      // maps a flat `topItems` list (Overview + beta personas/brand-profile).
       expect(contextSidebar).toMatch(/topItems\.map\(/);
       expect(contextSidebar).not.toMatch(/outcomeItems/);
     });
@@ -44,43 +37,6 @@ describe("Sidebars render Feature Service entities flat — no hardcoded outcome
     it("has no hardcoded Sales/Hiring/Journalists group labels", () => {
       expect(contextSidebar).not.toMatch(/label:\s*"Sales"/);
       expect(contextSidebar).not.toMatch(/label:\s*"Hiring"/);
-    });
-  });
-
-  describe("campaign-sidebar.tsx", () => {
-    it("has no OUTCOME_GROUPS constant", () => {
-      expect(campaignSidebar).not.toMatch(/OUTCOME_GROUPS/);
-    });
-
-    it("does not import McpSidebarGroup type", () => {
-      expect(campaignSidebar).not.toMatch(/McpSidebarGroup/);
-    });
-
-    it("does not pass outcomesGroups to McpSidebar", () => {
-      expect(campaignSidebar).not.toMatch(/outcomesGroups/);
-    });
-
-    it("passes entityItems flat via outcomesItems prop", () => {
-      expect(campaignSidebar).toMatch(/outcomesItems=\{entityItems\}/);
-    });
-
-    it("has no hardcoded Sales/Hiring/Journalists group labels", () => {
-      expect(campaignSidebar).not.toMatch(/label:\s*"Sales"/);
-      expect(campaignSidebar).not.toMatch(/label:\s*"Hiring"/);
-    });
-  });
-
-  describe("mcp-sidebar.tsx", () => {
-    it("has no outcomesGroups prop", () => {
-      expect(mcpSidebar).not.toMatch(/outcomesGroups/);
-    });
-
-    it("has no CollapsibleOutcomeGroup or CollapsibleOutcomeGroupList components", () => {
-      expect(mcpSidebar).not.toMatch(/CollapsibleOutcomeGroup/);
-    });
-
-    it("does not export McpSidebarGroup interface", () => {
-      expect(mcpSidebar).not.toMatch(/export interface McpSidebarGroup/);
     });
   });
 });

@@ -1,0 +1,939 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  useOrganization,
+  useOrganizationList,
+  useSession,
+} from "@clerk/nextjs";
+import {
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
+import {
+  ArrowRightIcon,
+  CheckIcon,
+  ChevronLeftIcon,
+  CursorArrowRaysIcon,
+  GiftIcon,
+  MagnifyingGlassIcon,
+  PaperAirplaneIcon,
+  PlusIcon,
+  ShieldCheckIcon,
+  TrophyIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
+import { SparklesIcon } from "@heroicons/react/20/solid";
+import posthog from "posthog-js";
+import {
+  upsertBrand,
+  extractBrandFields,
+  SALES_PROFILE_FIELDS,
+  getBrandProfile,
+  saveBrandProfileVersion,
+  getSalesEconomicsEffective,
+  saveBrandSalesEconomics,
+  suggestPersonas,
+  createPersona,
+  setPersonaStatus,
+  listPersonas,
+  getWorkflowProjection,
+  getFeature,
+  prefillFeatureInputs,
+  prefillToStringMap,
+  createCampaign,
+  type EffectiveSalesEconomics,
+  type WorkflowProjectionResponse,
+  type PersonaDraft,
+  type FeatureInput,
+} from "@/lib/api";
+import { extractDomain } from "@/lib/extract-domain";
+import { useAuthQuery } from "@/lib/use-auth-query";
+import { type Filters, type Persona } from "@/lib/mock-personas";
+import { PersonaCard, capWords } from "@/components/personas/persona-card";
+import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
+
+/**
+ * Beta onboarding (allowlist only — see `beta-allowlist.ts`). A guided flow ported
+ * from the app.distribute.you mockup: welcome → URL → an ANIMATED build sequence that
+ * runs WHILE the brand is created AND its profile / services / personas / economics /
+ * pricing projection are fetched for real → services to promote → sales goal →
+ * one conversion rate → review the AI-proposed persona (server-backed, Edit-with-AI)
+ * → agency-channel consent → outcome-count budget → launches a real campaign.
+ * Everything is wired to live endpoints.
+ */
+
+const SALES_FEATURE_SLUG = "sales-cold-email-outreach";
+const PROJECTION_REF_BUDGET = 100; // counts come back at this budget; unit costs are budget-invariant
+
+type Step =
+  | "welcome"
+  | "url"
+  | "loading"
+  | "services"
+  | "objective"
+  | "rates"
+  | "personas"
+  | "consent"
+  | "pricing";
+
+// The two sales goals (Kevin): Signups or Sales Meetings. Each maps to a
+// projection count so the budget cards show the chosen unit, never "closes".
+type Outcome = "signups" | "meetings";
+const OUTCOMES: { key: Outcome; label: string; unit: string; desc: string }[] = [
+  { key: "signups", label: "Signups", unit: "signups", desc: "Maximize free signups / trial starts." },
+  { key: "meetings", label: "Sales meetings", unit: "meetings", desc: "Maximize booked sales meetings." },
+];
+
+// Each goal needs exactly ONE conversion rate. Signups → website-visit→signup;
+// meetings → positive-reply→meeting.
+type RateKey = "ltv" | "v2s" | "s2c" | "v2m" | "r2m" | "m2c";
+const RATE_META: Record<RateKey, { label: string; suffix: "$" | "%"; hint: string }> = {
+  ltv: { label: "Lifetime revenue / paid client", suffix: "$", hint: "Average revenue a customer brings over their lifetime." },
+  v2s: { label: "Website visits to signup rate", suffix: "%", hint: "Of visitors who land on your site, how many sign up." },
+  s2c: { label: "Signup → paid client", suffix: "%", hint: "Of signups, how many become paying customers." },
+  v2m: { label: "Website visit → meeting", suffix: "%", hint: "Of visitors, how many book a meeting." },
+  r2m: { label: "Positive reply to sales meeting", suffix: "%", hint: "Of positive replies, how many book a meeting." },
+  m2c: { label: "Meeting booked → close won", suffix: "%", hint: "Of booked meetings, how many close." },
+};
+// The single rate each goal asks for.
+const RATE_FOR_OUTCOME: Record<Outcome, RateKey> = { signups: "v2s", meetings: "r2m" };
+
+// ── Rate-input formatting ────────────────────────────────────────────
+// Number fields render as TEXT (not <input type="number">) so we can show
+// thousands separators ("2,500"), allow decimals ("0.5"), and reformat each
+// keystroke — which also kills the leading-zero bug (typing over "0" → "1",
+// never "01"). The numeric value is parsed back out for persistence.
+function groupInt(intStr: string): string {
+  return intStr.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+// Sanitize a raw input string → { display text, numeric value }.
+function formatRateInput(raw: string): { text: string; value: number } {
+  let s = raw.replace(/[^\d.]/g, "");
+  const firstDot = s.indexOf(".");
+  if (firstDot !== -1) {
+    s = s.slice(0, firstDot + 1) + s.slice(firstDot + 1).replace(/\./g, "");
+  }
+  if (s === "") return { text: "", value: 0 };
+  const [intPart, decPart] = s.split(".");
+  let intClean = intPart.replace(/^0+(?=\d)/, "");
+  if (intClean === "") intClean = "0";
+  const grouped = groupInt(intClean);
+  const text = decPart !== undefined ? `${grouped}.${decPart}` : grouped;
+  const value = parseFloat(`${intClean}.${decPart ?? ""}`.replace(/\.$/, "")) || 0;
+  return { text, value };
+}
+
+function rateToText(n: number): string {
+  if (!isFinite(n)) return "";
+  const [intPart, decPart] = String(n).split(".");
+  const grouped = groupInt(intPart);
+  return decPart !== undefined ? `${grouped}.${decPart}` : grouped;
+}
+
+// The five agency-model benefits (landing how-it-works "Sent on your behalf").
+const AGENCY_BENEFITS = [
+  "Zero reputation risk — your domain never touches cold outreach.",
+  "Zero setup — no DNS, SPF/DKIM, warming or mailboxes on your side.",
+  "Zero inbox to babysit — we screen replies and forward the positive ones.",
+  "Full CRM visibility — you keep the whole view, nothing hidden.",
+  "Test demand before revealing your brand on niche markets.",
+];
+
+const LOADING_STEPS = [
+  { id: "ls-1", label: "Reading your product", delay: 1400 },
+  { id: "ls-2", label: "Extracting your services and personas", delay: 1600 },
+  { id: "ls-3", label: "Selecting outreach strategy", delay: 1400 },
+  { id: "ls-4", label: "Projecting your economics", delay: 1400 },
+];
+
+const GENERIC_AI_SETUP_ERROR = "Our AI analysis service had a temporary issue. Your workspace is ready, but some suggestions may need to be filled in manually.";
+
+function displaySetupError(err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err);
+  if (/chat-service|LLM call failed|\/complete/i.test(message)) {
+    return "Our AI analysis service had a temporary issue. Please try again in a minute.";
+  }
+  return err instanceof Error ? err.message : "Setup failed. Please try again.";
+}
+
+// Rotating soft-tag palette for the services chips (visual variety, like personas).
+const TAG_TONES = [
+  "bg-indigo-50 text-indigo-700 border-indigo-200",
+  "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "bg-amber-50 text-amber-700 border-amber-200",
+  "bg-rose-50 text-rose-700 border-rose-200",
+  "bg-sky-50 text-sky-700 border-sky-200",
+  "bg-violet-50 text-violet-700 border-violet-200",
+];
+
+// Outcome-count budget tiers (per month). "Other" is a custom count.
+const COUNT_TIERS = [5, 25, 125];
+
+let personaSeq = 0;
+const nextPersonaId = () => `ob-persona-${++personaSeq}`;
+
+const fmtUsd0 = (n: number) => "$" + Math.round(n).toLocaleString("en-US");
+const fmtCount = (n: number) => Math.round(n).toLocaleString("en-US");
+
+// Coerce a stored profile field (string | string[]) to a string[] of trimmed items.
+function toStringList(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map((v) => String(v).trim()).filter(Boolean);
+  if (typeof value === "string") {
+    return value
+      .split(/\r?\n|,/)
+      .map((v) => v.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+export function BetaOnboarding() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { organization } = useOrganization();
+  const { createOrganization, setActive } = useOrganizationList();
+  const { session } = useSession();
+  const forceNew = searchParams.get("new") === "1";
+
+  const [step, setStep] = useState<Step>("welcome");
+  const [url, setUrl] = useState(searchParams.get("url")?.trim() ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [setupIssues, setSetupIssues] = useState({ extraction: false, persona: false });
+  const [busy, setBusy] = useState(false);
+
+  const [outcome, setOutcome] = useState<Outcome>("signups");
+  const [rates, setRates] = useState<Record<RateKey, number>>({ ltv: 2500, v2s: 5, s2c: 10, v2m: 3, r2m: 30, m2c: 25 });
+  const [rateText, setRateText] = useState<Record<RateKey, string>>(() => ({ ltv: "2,500", v2s: "5", s2c: "10", v2m: "3", r2m: "30", m2c: "25" }));
+  const [services, setServices] = useState<string[]>([]);
+  const [serviceDraft, setServiceDraft] = useState("");
+  const [profile, setProfile] = useState<Record<string, string | string[]>>({});
+  // Outcome-count budget selection. selectedCount drives the derived $/day; budget
+  // is the $/day value sent to the campaign. Tiers are derived from a STABLE base
+  // (the projection unit cost), never from the selection — so clicking a card never
+  // reshuffles the cards (the old $/day-tier bug).
+  const [selectedCount, setSelectedCount] = useState<number | null>(null);
+  const [customCount, setCustomCount] = useState("");
+
+  // Loading-sequence + real fetch coordination. We only advance past the loader once
+  // BOTH the animation finished AND the brand exists + its data is fetched.
+  const [loadStep, setLoadStep] = useState(0);
+  const [loadDone, setLoadDone] = useState(false);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const [brandId, setBrandId] = useState<string | null>(null);
+  const brandIdRef = useRef<string | null>(null);
+  const orgIdRef = useRef<string | null>(null);
+  const fetchDoneRef = useRef(false);
+  const animDoneRef = useRef(false);
+
+  const projectionRef = useRef<WorkflowProjectionResponse | null>(null);
+  const econRef = useRef<EffectiveSalesEconomics | null>(null);
+  // The sales feature's declared input definitions — needed to build the
+  // `featureInputs` map the /campaigns create endpoint requires at launch.
+  const salesInputsRef = useRef<FeatureInput[]>([]);
+
+  const domain = extractDomain(url);
+  const hostname = domain ?? url.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+
+  useEffect(() => {
+    posthog.capture("onboarding_step_viewed", { step, flow: "beta" });
+  }, [step]);
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+
+  function maybeAdvancePastLoading() {
+    if (animDoneRef.current && fetchDoneRef.current) setStep("services");
+  }
+
+  function runLoadingAnimation() {
+    timers.current.forEach(clearTimeout);
+    timers.current = [];
+    setLoadDone(false);
+    setLoadStep(0);
+    animDoneRef.current = false;
+    let elapsed = 0;
+    LOADING_STEPS.forEach((s, i) => {
+      const t = setTimeout(() => setLoadStep(i), elapsed);
+      timers.current.push(t);
+      elapsed += s.delay;
+    });
+    const last = setTimeout(() => {
+      setLoadStep(LOADING_STEPS.length - 1);
+      setLoadDone(true);
+      animDoneRef.current = true;
+      maybeAdvancePastLoading();
+    }, elapsed);
+    timers.current.push(last);
+  }
+
+  // Create the brand for real, then fetch everything the later steps render.
+  async function createBrandAndFetch(): Promise<void> {
+    const trimmed = url.trim();
+    const brandUrl = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    const reuseOrg = !forceNew && !!organization?.id;
+    let targetOrgId: string;
+    if (reuseOrg) {
+      targetOrgId = organization.id;
+    } else {
+      if (!createOrganization || !setActive) {
+        throw new Error("Organization setup is not ready yet. Please try again.");
+      }
+      const org = await createOrganization({ name: domain ?? hostname });
+      await setActive({ organization: org.id });
+      targetOrgId = org.id;
+    }
+    const { brandId: newBrandId } = await upsertBrand(brandUrl);
+    // NOTE: onboarding is marked complete only at the END of the flow (in
+    // launch(), after the campaign is created) — NOT here. Marking it complete
+    // at brand creation set the edge-gate signal 6 steps early, so a mid-flow
+    // refresh / manual dashboard-URL nav slipped past proxy.ts onto a half-set-up
+    // dashboard (no rates/personas/consent/campaign). See launch(). (#1770)
+    // Extract brand fields (populates the brand profile + services), then fetch all.
+    await extractBrandFields([newBrandId], SALES_PROFILE_FIELDS).catch((e) => {
+      console.error("[dashboard] extractBrandFields failed:", e);
+      setSetupIssues((prev) => ({ ...prev, extraction: true }));
+    });
+    brandIdRef.current = newBrandId;
+    orgIdRef.current = targetOrgId;
+    setBrandId(newBrandId);
+    posthog.capture("onboarding_brand_created", { flow: "beta", org_id: targetOrgId, brand_id: newBrandId });
+
+    const [prof, econRes, sug, proj, feat] = await Promise.all([
+      getBrandProfile(newBrandId),
+      getSalesEconomicsEffective(newBrandId),
+      suggestPersonas(newBrandId, 1).catch((e) => {
+        console.error("[dashboard] suggestPersonas (onboarding seed) failed:", e);
+        setSetupIssues((prev) => ({ ...prev, persona: true }));
+        return { personas: [] as PersonaDraft[] };
+      }),
+      getWorkflowProjection({ featureSlug: SALES_FEATURE_SLUG, brandId: newBrandId, objective: "self-serve", budgetUsd: PROJECTION_REF_BUDGET }),
+      getFeature(SALES_FEATURE_SLUG),
+    ]);
+
+    salesInputsRef.current = feat.feature.inputs ?? [];
+    if (prof.current) {
+      setProfile(prof.current.fields);
+      setServices(toStringList(prof.current.fields.services));
+    }
+    if (econRes.economics) {
+      const e = econRes.economics;
+      econRef.current = e;
+      const loaded: Record<RateKey, number> = {
+        ltv: e.lifetimeRevenueUsd,
+        v2s: e.visitToSignupPct,
+        s2c: e.signupToPaidClientPct,
+        v2m: e.visitToMeetingPct,
+        r2m: e.replyToMeetingPct,
+        m2c: e.meetingToClosePct,
+      };
+      setRates(loaded);
+      setRateText(Object.fromEntries((Object.keys(loaded) as RateKey[]).map((k) => [k, rateToText(loaded[k])])) as Record<RateKey, string>);
+    }
+    // Persist the ONE suggested persona right away so the personas step is
+    // server-backed (Edit-with-AI + the persona cards read/write live data).
+    const first: PersonaDraft | undefined = sug.personas[0];
+    if (first?.name?.trim()) {
+      await createPersona(newBrandId, { name: capWords(first.name.trim()), filters: first.filters }).catch((e) =>
+        console.error("[dashboard] createPersona (onboarding seed) failed:", e),
+      );
+    }
+    projectionRef.current = proj;
+    fetchDoneRef.current = true;
+  }
+
+  async function startAnalyze() {
+    if (!domain) return;
+    setError(null);
+    setSetupIssues({ extraction: false, persona: false });
+    setStep("loading");
+    runLoadingAnimation();
+    posthog.capture("onboarding_workspace_create_started", { flow: "beta", domain });
+    try {
+      await createBrandAndFetch();
+      maybeAdvancePastLoading();
+    } catch (err) {
+      posthog.capture("onboarding_workspace_create_failed", { flow: "beta", domain });
+      timers.current.forEach(clearTimeout);
+      console.error("[dashboard] onboarding setup failed:", err);
+      setError(displaySetupError(err));
+      setStep("url");
+    }
+  }
+
+  // ── Step transitions that persist ────────────────────────────────
+  async function saveRatesAndContinue() {
+    const id = brandIdRef.current;
+    if (!id) return;
+    setBusy(true);
+    try {
+      await saveBrandSalesEconomics(id, {
+        lifetimeRevenueUsd: rates.ltv,
+        replyToMeetingPct: rates.r2m,
+        visitToMeetingPct: rates.v2m,
+        meetingToClosePct: rates.m2c,
+        visitToSignupPct: rates.v2s,
+        signupToPaidClientPct: rates.s2c,
+      });
+      // Recompute the projection from the rates we just saved (loading-time
+      // projection ran on the brand's DEFAULT economics). Best-effort +
+      // keep-last-good: only adopt a usable (non-degenerate) refetch.
+      try {
+        const proj = await getWorkflowProjection({ featureSlug: SALES_FEATURE_SLUG, brandId: id, objective: "self-serve", budgetUsd: PROJECTION_REF_BUDGET });
+        const usable = proj.workflows.some(
+          (w) => w.costPerCloseUsd != null || (w.projection != null && (w.projection.visits != null || w.projection.closes != null)),
+        );
+        if (usable) projectionRef.current = proj;
+      } catch (e) {
+        console.error("[dashboard] onboarding: projection refresh after rates failed:", e);
+      }
+      setStep("personas");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save your rates.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function launch() {
+    const id = brandIdRef.current;
+    const orgId = orgIdRef.current;
+    const proj = projectionRef.current;
+    const budget = derivedBudget();
+    if (!id || !orgId || !proj || budget == null) return;
+    const workflowSlug = proj.recommendedWorkflowDynastySlug;
+    if (!workflowSlug) {
+      setError("No outreach workflow is available for this brand yet.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      // Persist the brand profile edits (incl. services) + the agency consent.
+      const trimmed = url.trim();
+      const brandUrl = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+      await saveBrandProfileVersion(id, {
+        ...profile,
+        services,
+        consentedChannels: ["email"],
+        agencyConsentAt: new Date().toISOString(),
+      });
+      const prefilled = prefillToStringMap(
+        (await prefillFeatureInputs(SALES_FEATURE_SLUG, [id])).prefilled,
+      );
+      const featureInputs: Record<string, string> = {};
+      for (const input of salesInputsRef.current) {
+        const val = prefilled[input.key]?.trim();
+        if (val) featureInputs[input.key] = val;
+      }
+      const { campaign } = await createCampaign({
+        name: `${hostname} — ${OUTCOMES.find((o) => o.key === outcome)?.label ?? "Outreach"}`,
+        workflowSlug,
+        brandUrls: [brandUrl],
+        featureSlug: SALES_FEATURE_SLUG,
+        featureInputs,
+        maxBudgetDailyUsd: String(budget),
+      });
+      posthog.capture("onboarding_completed", { flow: "beta", outcome, budget });
+      // Mark onboarding complete ONLY now — the flow is genuinely finished (a real
+      // campaign launched). This is the edge-gate signal proxy.ts reads; setting it
+      // earlier (at brand creation) let a mid-flow refresh bypass the rest of the
+      // wizard onto the dashboard (DIS-111 / first-run gate). (#1770)
+      await fetch("/api/onboarding/complete", { method: "POST" }).catch((e) =>
+        console.error("[dashboard] failed to mark onboarding complete:", e),
+      );
+      // Re-mint the session token so the fresh `orgMeta.onboardingComplete` claim is
+      // in the cookie the edge gate reads BEFORE we navigate — otherwise the stale
+      // JWT loops the next navigation back to /onboarding (DIS-111).
+      await session?.getToken({ skipCache: true }).catch(() => {});
+      router.push(`/orgs/${orgId}/brands/${id}?launched=${campaign.id}`);
+    } catch (err) {
+      posthog.capture("onboarding_launch_failed", { flow: "beta" });
+      setError(err instanceof Error ? err.message : "Launch failed. Please try again.");
+      setBusy(false);
+    }
+  }
+
+  // ── Per-outcome economics for the budget cards ──────────────────
+  // The recommended workflow's funnel projection (counts at PROJECTION_REF_BUDGET).
+  function activeProjection() {
+    const resp = projectionRef.current;
+    if (!resp) return null;
+    const rec = resp.recommendedWorkflowDynastySlug
+      ? resp.workflows.find((w) => w.workflowDynastySlug === resp.recommendedWorkflowDynastySlug)
+      : resp.workflows[0];
+    return (rec ?? resp.workflows[0])?.projection ?? null;
+  }
+
+  // $ per chosen outcome (budget-invariant): PROJECTION_REF_BUDGET ÷ per-day count.
+  function outcomeUnitCost(): number | null {
+    const p = activeProjection();
+    if (!p) return null;
+    const B = PROJECTION_REF_BUDGET;
+    if (outcome === "signups") {
+      const signupsPerDay = p.visits && p.visits > 0 ? p.visits * (rates.v2s / 100) : 0;
+      return signupsPerDay > 0 ? B / signupsPerDay : null;
+    }
+    return p.meetings && p.meetings > 0 ? B / p.meetings : null;
+  }
+
+  // Daily budget needed to hit `n` outcomes / month.
+  function budgetForCount(n: number): number | null {
+    const uc = outcomeUnitCost();
+    if (uc == null || uc <= 0) return null;
+    return Math.max(1, Math.round((n * uc) / 30));
+  }
+
+  // The $/day for the current selection (or null if nothing usable yet).
+  function derivedBudget(): number | null {
+    if (selectedCount == null) return null;
+    const b = budgetForCount(selectedCount);
+    if (b != null) return b;
+    // Degenerate projection — fall back to the recommended budget so launch works.
+    const rec = projectionRef.current?.recommendedBudgetUsd;
+    return rec && rec > 0 ? Math.round(rec) : null;
+  }
+
+  const card = "bg-white rounded-2xl border border-gray-200 p-8 md:p-12";
+  const outcomeMeta = OUTCOMES.find((o) => o.key === outcome)!;
+
+  // ── Service-tag editor helpers ────────────────────────────────────
+  function addService(raw: string) {
+    const value = raw.trim();
+    setServiceDraft("");
+    if (!value) return;
+    setServices((prev) => (prev.some((s) => s.toLowerCase() === value.toLowerCase()) ? prev : [...prev, value]));
+  }
+  function removeService(value: string) {
+    setServices((prev) => prev.filter((s) => s !== value));
+  }
+
+  // ── Step renders ─────────────────────────────────────────────────
+  if (step === "welcome") {
+    return (
+      <div className={card}>
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-brand-600">Beta</span>
+        <h1 className="mt-4 font-display text-3xl font-bold leading-tight text-gray-950">Pay per outcome,<br />like Google Ads.</h1>
+        <p className="mt-3 text-sm leading-6 text-gray-500">Drop your product URL and a daily budget. We find your leads, reach out across the best channels on your behalf, and turn them into signups, meetings and sales.</p>
+        <div className="mt-7 grid gap-3 sm:grid-cols-3">
+          {[
+            {
+              title: "Drop your URL",
+              desc: "We read your product and buyer profile.",
+              Icon: MagnifyingGlassIcon,
+            },
+            {
+              title: "We run outreach",
+              desc: "Finds leads and contacts buyers across the best channels.",
+              Icon: PaperAirplaneIcon,
+            },
+            {
+              title: "You get outcomes",
+              desc: "Signups, meetings, and sales land back with you.",
+              Icon: TrophyIcon,
+            },
+          ].map((f) => (
+            <div key={f.title} className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-brand-100 bg-white text-brand-600">
+                <f.Icon className="h-4 w-4" />
+              </div>
+              <div className="mt-3 text-sm font-semibold text-gray-950">{f.title}</div>
+              <div className="mt-1 text-xs leading-5 text-gray-500">{f.desc}</div>
+            </div>
+          ))}
+        </div>
+        <button onClick={() => setStep("url")} className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700">
+          Get started <ArrowRightIcon className="h-4 w-4" />
+        </button>
+      </div>
+    );
+  }
+
+  if (step === "url") {
+    return (
+      <div className={card}>
+        <h2 className="font-display text-2xl font-bold text-gray-900">What are we promoting?</h2>
+        <p className="mt-2 mb-6 text-gray-500">We read your product, find the leads, and run the outreach. Just drop the URL.</p>
+        {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+        <input
+          type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="e.g. acme.com" autoFocus
+          onKeyDown={(e) => { if (e.key === "Enter" && domain) startAnalyze(); }}
+          className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-brand-500"
+        />
+        {url.trim() && !domain && <p className="mt-2 text-sm text-red-500">Please enter a valid URL (e.g. acme.com)</p>}
+        <button onClick={startAnalyze} disabled={!domain} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
+          Analyze my product <ArrowRightIcon className="h-4 w-4" />
+        </button>
+      </div>
+    );
+  }
+
+  if (step === "loading") {
+    return (
+      <div className={card}>
+        <div className="mb-2 text-center text-lg font-semibold text-gray-950">{loadDone ? "Your strategy is ready." : "Building your strategy…"}</div>
+        <p className="mb-6 text-center text-sm text-gray-500">Reading <span className="font-medium text-gray-700">{hostname}</span></p>
+        <div className="space-y-2">
+          {LOADING_STEPS.map((s, i) => {
+            const isDone = (loadDone && fetchDoneRef.current) || i < loadStep;
+            const isActive = !isDone && i === loadStep;
+            return (
+              <div key={s.id} className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition ${isActive ? "border-brand-200 bg-brand-50" : "border-gray-100 bg-white"} ${isDone || isActive ? "opacity-100" : "opacity-40"}`}>
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center">
+                  {isDone ? <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-600"><CheckIcon className="h-3.5 w-3.5" /></span>
+                    : isActive ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
+                    : <span className="h-2.5 w-2.5 rounded-full bg-gray-300" />}
+                </span>
+                <span className={`text-sm ${isActive ? "font-medium text-gray-900" : "text-gray-600"}`}>{s.label}</span>
+              </div>
+            );
+          })}
+        </div>
+        {loadDone && !fetchDoneRef.current && <p className="mt-5 text-center text-xs text-gray-400">Finishing setup…</p>}
+      </div>
+    );
+  }
+
+  if (step === "services") {
+    return (
+      <div className={card}>
+        <h2 className="font-display text-2xl font-bold text-gray-900">What services do you want to promote with us?</h2>
+        <p className="mt-2 mb-6 text-gray-500">We drafted these from <span className="font-medium text-gray-700">{hostname}</span>. Add or remove until the list matches what you sell.</p>
+        {setupIssues.extraction && <SetupWarning />}
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 p-4">
+          {services.map((s, i) => (
+            <span key={s} className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${TAG_TONES[i % TAG_TONES.length]}`}>
+              {s}
+              <button type="button" onClick={() => removeService(s)} aria-label={`Remove ${s}`} className="opacity-60 transition hover:opacity-100">
+                <XMarkIcon className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+          <input
+            value={serviceDraft}
+            onChange={(e) => setServiceDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); addService(serviceDraft); }
+              else if (e.key === "Backspace" && serviceDraft === "" && services.length) removeService(services[services.length - 1]);
+            }}
+            onBlur={() => addService(serviceDraft)}
+            placeholder={services.length ? "Add a service…" : "e.g. SEO audits"}
+            className="min-w-[8rem] flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:outline-none"
+          />
+        </div>
+        {services.length === 0 && <p className="mt-2 text-xs text-gray-400">Add at least one service to continue.</p>}
+        <NextButton onClick={() => setStep("objective")} disabled={services.length === 0} />
+      </div>
+    );
+  }
+
+  if (step === "objective") {
+    return (
+      <div className={card}>
+        <BackButton onClick={() => setStep("services")} />
+        <h2 className="font-display text-2xl font-bold text-gray-900">What is your primary sales goal?</h2>
+        <p className="mt-2 mb-6 text-gray-500">Pick the one outcome this campaign optimizes for. The budget is shown per this outcome.</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {OUTCOMES.map((o) => (
+            <ChoiceCard key={o.key} active={outcome === o.key} onClick={() => setOutcome(o.key)} title={o.label} desc={o.desc} />
+          ))}
+        </div>
+        <NextButton onClick={() => setStep("rates")} />
+      </div>
+    );
+  }
+
+  if (step === "rates") {
+    const k = RATE_FOR_OUTCOME[outcome];
+    return (
+      <div className={card}>
+        <BackButton onClick={() => setStep("objective")} />
+        <h2 className="font-display text-2xl font-bold text-gray-900">Your conversion rates.</h2>
+        <p className="mt-2 mb-6 text-gray-500">We pre-filled this from your profile. An estimate is fine — tweak anytime.</p>
+        {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+        <div className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 p-4">
+          <div className="min-w-0">
+            <div className="text-sm font-medium text-gray-900">{RATE_META[k].label}</div>
+            <div className="mt-0.5 text-xs text-gray-500">{RATE_META[k].hint}</div>
+          </div>
+          <div className="flex shrink-0 items-center gap-1 rounded-lg border border-gray-200 px-2 py-1">
+            {RATE_META[k].suffix === "$" && <span className="text-sm text-gray-400">$</span>}
+            <input
+              type="text"
+              inputMode="decimal"
+              value={rateText[k]}
+              onChange={(e) => {
+                const { text, value } = formatRateInput(e.target.value);
+                setRateText((t) => ({ ...t, [k]: text }));
+                setRates((r) => ({ ...r, [k]: value }));
+              }}
+              className="w-20 bg-transparent text-right text-sm text-gray-900 focus:outline-none"
+            />
+            {RATE_META[k].suffix === "%" && <span className="text-sm text-gray-400">%</span>}
+          </div>
+        </div>
+        <NextButton onClick={saveRatesAndContinue} busy={busy} label="Continue" />
+      </div>
+    );
+  }
+
+  if (step === "personas") {
+    return (
+      <OnboardingPersonas
+        brandId={brandId}
+        personaSuggestionFailed={setupIssues.persona}
+        onBack={() => setStep("rates")}
+        onContinue={() => setStep("consent")}
+      />
+    );
+  }
+
+  if (step === "consent") {
+    return (
+      <div className={card}>
+        <BackButton onClick={() => setStep("personas")} />
+        <div className="mb-4 flex items-center gap-2">
+          <ShieldCheckIcon className="h-5 w-5 text-brand-600" />
+          <h2 className="font-display text-2xl font-bold text-gray-900">We reach out on your behalf.</h2>
+        </div>
+        <p className="mb-4 text-sm leading-6 text-gray-500">distribute is a marketing agency. All outreach goes out from inboxes and domains <strong>we own and warm</strong> — never from yours, like a PR firm pitching from its own contacts.</p>
+        <ul className="mb-6 space-y-1.5">
+          {AGENCY_BENEFITS.map((b) => (
+            <li key={b} className="flex items-start gap-2 text-xs leading-5 text-gray-600"><CheckIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />{b}</li>
+          ))}
+        </ul>
+        <p className="text-[11px] leading-5 text-gray-400">By continuing you authorize distribute to contact prospects on your behalf, representing your brand, per our <a href="https://distribute.you/terms" target="_blank" rel="noreferrer" className="underline">Terms</a>.</p>
+        <NextButton onClick={() => setStep("pricing")} label="Continue" />
+      </div>
+    );
+  }
+
+  // pricing — outcome-count budget
+  const unitCost = outcomeUnitCost();
+  const selectedBudget = derivedBudget();
+  return (
+    <div className={card}>
+      <BackButton onClick={() => setStep("consent")} />
+      <h2 className="font-display text-2xl font-bold text-gray-900">Your monthly target.</h2>
+      <p className="mt-2 mb-5 text-gray-500">Pick how many <strong>{outcomeMeta.unit}</strong> you want each month — we set the daily budget to hit it.</p>
+      {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+
+      {/* First-week match callout */}
+      <div className="mb-5 flex items-start gap-3 rounded-xl border border-brand-200 bg-brand-50 p-4">
+        <GiftIcon className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />
+        <p className="text-sm leading-6 text-brand-800"><strong>We double your first week — free.</strong> We match your spend dollar-for-dollar up to <strong>$25</strong>, so week one goes twice as far.</p>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-4">
+        {COUNT_TIERS.map((n, i) => {
+          const b = budgetForCount(n);
+          const active = selectedCount === n;
+          return (
+            <button key={n} onClick={() => setSelectedCount(n)} className={`rounded-xl border-2 p-4 text-left transition ${active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"}`}>
+              {i === 1 ? <div className="mb-1 inline-block rounded-full bg-brand-100 px-2 py-0.5 text-[10px] font-semibold text-brand-700">Recommended ★</div> : <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">{i === 0 ? "Starter" : "Growth"}</div>}
+              <div className="text-xl font-bold text-gray-950">{fmtCount(n)}</div>
+              <div className="text-xs text-gray-500">{outcomeMeta.unit} / mo</div>
+              <div className="mt-2 text-xs text-gray-400">{b != null ? `~${fmtUsd0(b)} / day` : "—"}</div>
+            </button>
+          );
+        })}
+        {/* Other — custom count */}
+        {(() => {
+          const customN = Number(customCount);
+          const isCustom = customCount !== "" && customN > 0;
+          const active = isCustom && selectedCount === customN;
+          const b = isCustom ? budgetForCount(customN) : null;
+          return (
+            <div className={`rounded-xl border-2 p-4 transition ${active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white"}`}>
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">Other</div>
+              <input
+                type="number"
+                min={1}
+                value={customCount}
+                onChange={(e) => {
+                  setCustomCount(e.target.value);
+                  const v = Number(e.target.value);
+                  setSelectedCount(v > 0 ? v : null);
+                }}
+                placeholder="Custom"
+                className="w-full bg-transparent text-xl font-bold text-gray-950 placeholder-gray-300 focus:outline-none"
+              />
+              <div className="text-xs text-gray-500">{outcomeMeta.unit} / mo</div>
+              <div className="mt-2 text-xs text-gray-400">{b != null ? `~${fmtUsd0(b)} / day` : "—"}</div>
+            </div>
+          );
+        })()}
+      </div>
+
+      {selectedBudget != null && (
+        <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+          Daily budget: <strong className="text-gray-900">{fmtUsd0(selectedBudget)} / day</strong>
+          {unitCost != null && <span className="text-gray-400"> · ~{fmtUsd0(unitCost)} / {outcomeMeta.unit.replace(/s$/, "")}</span>}
+        </div>
+      )}
+
+      <button onClick={launch} disabled={busy || selectedBudget == null} className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
+        {busy ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> Launching…</> : <>Launch campaign <CursorArrowRaysIcon className="h-4 w-4" /></>}
+      </button>
+    </div>
+  );
+}
+
+// ── Personas step — server-backed (mirrors the Customer Personas page) ──────
+// The brand exists by now (created during loading) and the AI-suggested persona
+// was already persisted, so this reads/writes live personas: PersonaCard with the
+// full save / archive lifecycle + an Edit-with-AI chat, exactly like the page.
+let obDraftSeq = 0;
+const nextDraftId = () => `ob-draft-${++obDraftSeq}`;
+
+function OnboardingPersonas({
+  brandId,
+  personaSuggestionFailed,
+  onBack,
+  onContinue,
+}: {
+  brandId: string | null;
+  personaSuggestionFailed: boolean;
+  onBack: () => void;
+  onContinue: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [drafts, setDrafts] = useState<Persona[]>([]);
+  const [aiOpen, setAiOpen] = useState(false);
+
+  const { data, isPending } = useAuthQuery(
+    ["personas", brandId ?? ""],
+    () => listPersonas(brandId as string),
+    { enabled: !!brandId },
+  );
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["personas", brandId ?? ""] });
+  const createMut = useMutation({
+    mutationFn: (i: { name: string; filters: Filters }) =>
+      createPersona(brandId as string, { name: i.name, filters: i.filters as Record<string, string[]> }),
+    onSuccess: invalidate,
+  });
+  const statusMut = useMutation({
+    mutationFn: (i: { id: string; status: Persona["status"] }) => setPersonaStatus(brandId as string, i.id, i.status),
+    onSuccess: invalidate,
+  });
+
+  const serverPersonas: Persona[] = (data?.personas ?? [])
+    .filter((p) => p.status !== "archived")
+    .map((p) => ({ id: p.id, name: p.name, filters: p.filters, status: p.status }));
+  const personas: Persona[] = [...drafts, ...serverPersonas];
+
+  const isNameTaken = (name: string, exceptId?: string) => {
+    const needle = name.trim().toLowerCase();
+    return personas.some((p) => p.id !== exceptId && p.name.trim().toLowerCase() === needle);
+  };
+  const uniqueName = (base: string) => {
+    const trimmed = base.trim() || "Persona";
+    if (!isNameTaken(trimmed)) return trimmed;
+    for (let i = 2; ; i++) {
+      const candidate = `${trimmed} ${i}`;
+      if (!isNameTaken(candidate)) return candidate;
+    }
+  };
+  const addPersona = () => setDrafts((prev) => [{ id: nextDraftId(), name: uniqueName("New Persona"), filters: {}, status: "active", unsaved: true }, ...prev]);
+  const removeDraft = (id: string) => setDrafts((prev) => prev.filter((p) => p.id !== id));
+  const commitNew = (id: string, name: string, filters: Filters) =>
+    createMut.mutate({ name: capWords(name), filters }, { onSuccess: () => removeDraft(id) });
+  const saveAsNew = (name: string, filters: Filters) => createMut.mutate({ name: capWords(name), filters });
+
+  const card = "bg-white rounded-2xl border border-gray-200 p-8 md:p-12";
+  return (
+    <div className={card}>
+      <BackButton onClick={onBack} />
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="font-display text-2xl font-bold text-gray-900">Who do you want to sell to?</h2>
+          <p className="mt-2 text-gray-500">We drafted your main persona. Edit the targeting filters, add another, or ask AI.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => brandId && setAiOpen(true)}
+          disabled={!brandId}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-medium text-brand-700 transition hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-300 disabled:opacity-50"
+        >
+          <SparklesIcon className="h-4 w-4" /> Edit with AI
+        </button>
+      </div>
+      {personaSuggestionFailed && <SetupWarning className="mt-4" />}
+
+      <div className="mt-6 space-y-3">
+        {isPending && personas.length === 0 ? (
+          <div className="h-56 animate-pulse rounded-xl bg-gray-100" />
+        ) : personas.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-gray-300 p-10 text-center text-sm text-gray-500">No personas yet.</div>
+        ) : (
+          personas.map((persona) => (
+            <PersonaCard
+              key={persona.id}
+              persona={persona}
+              onSaveAsNew={(name, filters) => saveAsNew(name, filters)}
+              onCommitNew={(name, filters) => commitNew(persona.id, name, filters)}
+              onCancelNew={() => removeDraft(persona.id)}
+              onSetStatus={(s) => statusMut.mutate({ id: persona.id, status: s })}
+              checkNameTaken={(n) => isNameTaken(n, persona.unsaved ? persona.id : undefined)}
+            />
+          ))
+        )}
+      </div>
+
+      <button onClick={addPersona} className="mt-3 flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700">
+        <PlusIcon className="h-4 w-4" /> Add a persona
+      </button>
+      <NextButton onClick={onContinue} label="Continue" />
+
+      {brandId && (
+        <EditWithAIChat
+          open={aiOpen}
+          onClose={() => setAiOpen(false)}
+          title="Edit personas with AI"
+          intro="Hi — I can create, duplicate, pause, resume and archive your personas. What would you like to change?"
+          suggestions={["Add a persona for mid-market RevOps leaders", "Narrow the main persona to Series A+ SaaS", "Add fintech founders in the US"]}
+          configKey="persona-editor"
+          brandId={brandId}
+          invalidateKeys={[["personas", brandId]]}
+        />
+      )}
+    </div>
+  );
+}
+
+function SetupWarning({ className = "mb-4" }: { className?: string }) {
+  return (
+    <div className={`${className} rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800`}>
+      {GENERIC_AI_SETUP_ERROR}
+    </div>
+  );
+}
+
+function BackButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="mb-6 flex items-center gap-1.5 text-sm text-gray-400 transition hover:text-gray-600">
+      <ChevronLeftIcon className="h-4 w-4" /> Back
+    </button>
+  );
+}
+
+function NextButton({ onClick, disabled = false, busy = false, label = "Continue" }: { onClick: () => void; disabled?: boolean; busy?: boolean; label?: string }) {
+  return (
+    <button onClick={onClick} disabled={disabled || busy} className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
+      {busy ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> Saving…</> : <>{label} <ArrowRightIcon className="h-4 w-4" /></>}
+    </button>
+  );
+}
+
+function ChoiceCard({ active, onClick, title, desc, check = false }: { active: boolean; onClick: () => void; title: string; desc: string; check?: boolean }) {
+  return (
+    <button onClick={onClick} className={`flex w-full items-start gap-3 rounded-xl border-2 p-4 text-left transition ${active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"}`}>
+      <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center border-2 ${check ? "rounded-md" : "rounded-full"} ${active ? "border-brand-500 bg-brand-500 text-white" : "border-gray-300"}`}>{active && <CheckIcon className="h-3 w-3" />}</span>
+      <span>
+        <span className="block text-sm font-semibold text-gray-900">{title}</span>
+        <span className="mt-0.5 block text-xs leading-5 text-gray-500">{desc}</span>
+      </span>
+    </button>
+  );
+}

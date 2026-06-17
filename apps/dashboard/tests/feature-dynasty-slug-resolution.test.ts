@@ -22,11 +22,11 @@ describe("Feature slug resolution in features-context", () => {
 describe("Feature pages use featureSlug for API calls", () => {
   const featurePagePath = path.join(
     __dirname,
-    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/page.tsx",
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
   );
   const campaignNewPath = path.join(
     __dirname,
-    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/new/page.tsx",
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/launch/page.tsx",
   );
   const workflowsPath = path.join(
     __dirname,
@@ -60,18 +60,9 @@ describe("Feature pages use featureSlug for API calls", () => {
   });
 });
 
-describe("All feature links use slug directly", () => {
-  const breadcrumbPath = path.join(__dirname, "../src/components/breadcrumb-nav.tsx");
-
-  // The brand-overview feature grid and the brand-level sidebar feature-group
-  // links were REMOVED (single-feature product — feature nav flattened into the
-  // brand level), so they no longer build per-feature f.slug links. The only
-  // remaining feature-link surface is the app-level feature switcher below.
-
-  it("breadcrumb feature switcher uses f.slug", () => {
-    const content = fs.readFileSync(breadcrumbPath, "utf-8");
-    expect(content).toContain("f.slug");
-    expect(content).toContain("f.name");
-    expect(content).not.toMatch(/\bf\.dynasty(Slug|Name)\b/);
-  });
-});
+// The brand-overview feature grid, the brand-level sidebar feature-group links,
+// AND the breadcrumb app-level feature switcher were all REMOVED (single-feature
+// product — feature nav flattened into the brand level; the app-level feature
+// "Campaigns" island + its switcher were removed in the #1768 follow-up). No
+// surface builds per-feature f.slug links anymore, so the breadcrumb
+// feature-switcher assertion was dropped here.

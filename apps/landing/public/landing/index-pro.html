@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>distribute: Automated outbound at ~$90/meeting | For agencies</title>
+  <meta name="description" content="URL + budget = automated cold email outreach: prospecting, copywriting, delivery, reply qualification. 35% open, 27% booking, ~$90/meeting. $25 free credits.">
+  <link rel="canonical" href="https://distribute.you/pro">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:site_name" content="distribute">
+  <meta property="og:url" content="https://distribute.you/pro">
+  <meta property="og:title" content="distribute: automated outbound at ~$90/meeting">
+  <meta property="og:description" content="URL + budget = automated cold email outreach. 35% open, 27% booking, ~$90/meeting.">
+  <meta property="og:image" content="https://distribute.you/opengraph-image">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="distribute - AI cold email, done for you">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@distribute_you">
+  <meta name="twitter:creator" content="@distribute_you">
+  <meta name="twitter:title" content="distribute: automated outbound at ~$90/meeting">
+  <meta name="twitter:description" content="URL + budget = automated cold email outreach. 35% open, 27% booking, ~$90/meeting.">
+  <meta name="twitter:image" content="https://distribute.you/opengraph-image">
+  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","name":"distribute","legalName":"Shamanic Technologies","url":"https://distribute.you","logo":"https://distribute.you/landing/logo/logo-distribute.svg","image":"https://distribute.you/landing/logo/logo-distribute.svg","sameAs":["https://github.com/distribute-you","https://twitter.com/distribute_you"],"contactPoint":{"@type":"ContactPoint","email":"support@distribute.you","contactType":"customer service"}},{"@type":"WebSite","name":"distribute","url":"https://distribute.you/pro","description":"Automated cold email outbound for agencies. Drop a URL and a budget; meetings land in your inbox at ~$90 each.","publisher":{"@type":"Organization","name":"distribute","logo":"https://distribute.you/landing/logo/logo-distribute.svg"}},{"@type":"SoftwareApplication","name":"distribute","description":"Automated cold email outbound for agencies. Prospecting, copywriting, delivery, and reply qualification done for you.","url":"https://distribute.you/pro","applicationCategory":"BusinessApplication","operatingSystem":"Web","logo":"https://distribute.you/landing/logo/logo-distribute.svg","image":"https://distribute.you/opengraph-image","offers":{"@type":"Offer","price":"0","priceCurrency":"USD","description":"$25 free credits — we match your first $25 spent. Cancel anytime."}}]}</script>
+  <link rel="icon" href="/landing/logo/logo-distribute.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/styles.css">
+  <script>document.documentElement.setAttribute('data-theme',localStorage.getItem('dt')||'light')</script>
+  <style>
+    /* ═══ Illustrated step cards ═══ */
+    .steps-bento {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+      margin-top: 2.5rem;
+    }
+    .step-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-card);
+    }
+    .step-illu {
+      padding: 2rem 1.5rem 1.5rem;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      height: 310px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .step-body {
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      flex: 1;
+    }
+    .step-num-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      background: var(--accent-dim);
+      border: 1px solid var(--accent-brd);
+      color: var(--accent);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: var(--fs-xs);
+      padding: 0.15rem 0.5rem;
+      border-radius: var(--r-pill);
+      font-weight: 500;
+      width: fit-content;
+    }
+    .step-title {
+      font-size: var(--fs-lg);
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.3;
+    }
+    .step-desc {
+      font-size: var(--fs-sm);
+      color: var(--sub);
+      line-height: 1.6;
+    }
+    .step-meta-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.25rem;
+    }
+    .step-meta {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: var(--fs-xs);
+      color: var(--accent);
+      background: var(--accent-dim);
+      border: 1px solid var(--accent-brd);
+      border-radius: var(--r-pill);
+      padding: 0.15rem 0.45rem;
+      white-space: nowrap;
+    }
+
+    /* ═══ Feature bento ═══ */
+    .feat-bento {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-top: 2.5rem;
+    }
+    .feat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 1.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      overflow: hidden;
+      position: relative;
+      box-shadow: var(--shadow-card);
+    }
+    .feat-card.wide { grid-column: span 2; }
+    .feat-illu {
+      height: 130px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      position: relative;
+      margin-bottom: 1.25rem;
+    }
+    .feat-title {
+      font-size: var(--fs-base);
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.3;
+    }
+    .feat-desc {
+      font-size: var(--fs-sm);
+      color: var(--sub);
+      line-height: 1.6;
+      margin-top: -0.25rem;
+    }
+    .feat-stat-row {
+      display: flex;
+      gap: 1.5rem;
+      margin-top: 0.25rem;
+    }
+    .feat-stat {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+    .feat-stat-n {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .feat-stat-l {
+      font-size: var(--fs-xs);
+      color: var(--muted);
+    }
+
+    /* ═══ Pro hero variant ═══ */
+    .hero-pro-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: var(--fs-xs);
+      color: var(--accent);
+      background: var(--accent-dim);
+      border: 1px solid var(--accent-brd);
+      border-radius: var(--r-pill);
+      padding: 0.2rem 0.7rem;
+      margin-bottom: 1.25rem;
+    }
+
+    /* ═══ Metrics table ═══ */
+    .metrics-table {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      overflow: hidden;
+      margin-top: 2.5rem;
+    }
+    .metrics-table table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .metrics-table th {
+      background: var(--bg-alt);
+      padding: 0.75rem 1rem;
+      text-align: left;
+      font-size: var(--fs-xs);
+      font-weight: 600;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+      border-bottom: 1px solid var(--border);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .metrics-table td {
+      padding: 0.75rem 1rem;
+      font-size: var(--fs-sm);
+      color: var(--text);
+      border-bottom: 1px solid var(--border);
+    }
+    .metrics-table tr:last-child td { border-bottom: none; }
+    .metrics-table .m-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .metrics-table .m-val.green { color: var(--green); }
+
+    /* ═══ hero overrides ═══ */
+    .hero-sub { max-width: 40rem; }
+    @media (min-width: 900px) {
+      .hero-content { max-width: 760px; }
+    }
+
+    /* ═══ FAQ (pricing-style) ═══ */
+    .s-faq-inner { max-width: 760px; margin: 0 auto; padding: 0 2rem; }
+    .s-faq-head { margin-bottom: 2.5rem; }
+    .faq-list { display: flex; flex-direction: column; gap: 0.75rem; }
+    details.faq-item {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      overflow: hidden; box-shadow: 0 1px 6px oklch(0% 0 0 / 0.05), 0 1px 2px oklch(0% 0 0 / 0.03);
+    }
+    details.faq-item[open] { box-shadow: 0 2px 12px oklch(0% 0 0 / 0.07), 0 1px 3px oklch(0% 0 0 / 0.04); }
+    details.faq-item summary {
+      list-style: none; padding: 1.125rem 1.375rem; cursor: pointer;
+      font-size: var(--fs-base); font-weight: 600; color: var(--text);
+      display: flex; justify-content: space-between; align-items: center; gap: 1rem; user-select: none;
+    }
+    details.faq-item summary::-webkit-details-marker { display: none; }
+    details.faq-item summary::after {
+      content: '+'; font-size: var(--fs-lg); font-weight: 400; color: var(--accent);
+      flex-shrink: 0; transition: transform 0.2s ease; font-family: 'JetBrains Mono', monospace; line-height: 1;
+    }
+    details.faq-item[open] summary::after { transform: rotate(45deg); }
+    details.faq-item[open] summary { border-bottom: 1px solid var(--border); }
+    .faq-body { padding: 1.125rem 1.375rem; font-size: var(--fs-base); color: var(--sub); line-height: 1.7; }
+
+    /* ═══ Light-mode gradients ═══ */
+    [data-theme="light"] .step-illu {
+      background: linear-gradient(160deg, oklch(88% 0.036 232) 0%, oklch(96% 0.010 238) 100%);
+    }
+    [data-theme="light"] .feat-card {
+      background: linear-gradient(170deg, oklch(88% 0.036 232) 0%, oklch(99.5% 0.001 264) 50%);
+    }
+    [data-theme="light"] .metrics-table {
+      background: var(--surface);
+      box-shadow: 0 2px 14px oklch(0% 0 0 / 0.06), 0 1px 4px oklch(0% 0 0 / 0.04);
+    }
+    [data-theme="light"] .metrics-table th {
+      background: linear-gradient(160deg, oklch(88% 0.036 232) 0%, oklch(96% 0.010 238) 100%);
+    }
+
+    /* ═══ Responsive ═══ */
+    @media (max-width: 900px) {
+      .steps-bento { grid-template-columns: 1fr; }
+      .feat-bento { grid-template-columns: 1fr 1fr; }
+      .feat-card.wide { grid-column: span 2; }
+    }
+    @media (max-width: 640px) {
+      .feat-bento { grid-template-columns: 1fr; }
+      .feat-card.wide { grid-column: span 1; }
+    }
+  </style>
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to main content</a>
+<div id="site-nav"></div>
+<script src="js/components.js"></script>
+
+
+<!-- ════════════════════════════════════════════
+     HERO
+════════════════════════════════════════════ -->
+<section class="hero">
+  <div class="hero-bg" aria-hidden="true"></div>
+  <div class="hero-noise" aria-hidden="true"></div>
+
+  <div class="wrap">
+    <div class="hero-content">
+      <div class="hero-eyebrow t-lbl a1">
+        <span class="hero-dot" aria-hidden="true"></span>
+        Outbound infrastructure for agencies
+      </div>
+
+      <h1 class="t-hero a2">
+        Automated outbound.<br>~$90/meeting.
+      </h1>
+
+      <p class="hero-sub a3">
+        URL + budget = distribute. Prospecting, copywriting, delivery, reply qualification, and reporting. 35% open rate. 27% booking rate. $90/meeting.
+      </p>
+
+      <div class="hero-actions a4">
+        <a href="https://dashboard.distribute.you/sign-up" class="btn btn-p btn-lg">Get $25 free credits</a>
+        <a href="/pricing" class="btn btn-g btn-lg">See pricing</a>
+      </div>
+      <p class="hero-note a4">No setup fee. No seat licensing. $25 in free credits.</p>
+    </div>
+  </div>
+
+  <!-- Dashboard UI mockup -->
+  <div class="wrap hero-dash-wrap">
+    <div class="hero-ui-outer a5">
+      <div class="hero-ui-glow" aria-hidden="true"></div>
+
+      <div class="hero-ui uid-dash-anim" role="img" aria-label="distribute dashboard showing active campaign for stackr.ai">
+        <!-- Sidebar -->
+        <nav class="uid-sidebar" aria-hidden="true">
+          <div class="uid-logo">
+            <img src="logo/logo-distribute.svg" class="uid-logo-img" alt="">
+            <span class="uid-logo-name">distribute</span>
+          </div>
+          <div class="uid-brand">
+            <div class="uid-brand-label">Campaign</div>
+            <div class="uid-brand-name">stackr.ai</div>
+            <div class="uid-brand-url">stackr.ai</div>
+          </div>
+          <ul class="uid-nav">
+            <li class="active">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>
+              Overview
+            </li>
+            <li>
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5.5" r="2.5"/><path d="M1 14c0-2.8 2-5 5-5h0c3 0 5 2.2 5 5"/><circle cx="13" cy="7" r="2"/><path d="M15 13c0-2-1.2-3.5-2-3.5"/></svg>
+              Signups
+              <span class="uid-badge-count">312</span>
+            </li>
+            <li>
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4l6 5 6-5"/><rect x="2" y="4" width="12" height="9" rx="1.5"/></svg>
+              Meetings Booked
+              <span class="uid-badge-count">84</span>
+            </li>
+            <li>
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12l3-5 3 3 2-4 4 6"/></svg>
+              Purchases
+              <span class="uid-badge-count">67</span>
+            </li>
+          </ul>
+          <ul class="uid-nav uid-sidebar-footer">
+            <li>
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2.5"/><path d="M8 2v1.5M8 12.5V14M2 8h1.5M12.5 8H14"/></svg>
+              Settings
+            </li>
+            <li>
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 7v1m0 3h.01"/></svg>
+              Help
+            </li>
+          </ul>
+        </nav>
+
+        <!-- Main area -->
+        <div class="uid-main" aria-hidden="true">
+          <div class="uid-topbar">
+            <span class="uid-topbar-title">Overview</span>
+            <div class="uid-topbar-right">
+              <div class="uid-date-pill">
+                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="12" rx="1.5"/><path d="M5 2v2M11 2v2M2 7h12"/></svg>
+                Jun 1 – Jun 7, 2026
+              </div>
+              <div class="uid-live">
+                <span class="uid-live-dot"></span>
+                live
+              </div>
+            </div>
+          </div>
+
+          <div class="uid-kpis">
+            <div class="uid-kpi">
+              <div class="uid-kpi-lbl">Sign Ups <span class="uid-kpi-info" data-tip="Expected signups from your website visits">i</span></div>
+              <div class="uid-kpi-row">
+                <span class="uid-kpi-n">312</span>
+                <div class="uid-kpi-icon">
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4l6 5 6-5"/><rect x="2" y="4" width="12" height="9" rx="1.5"/></svg>
+                </div>
+              </div>
+              <div><span class="uid-kpi-delta up">+18%</span><span class="uid-kpi-vs">vs last week</span></div>
+            </div>
+            <div class="uid-kpi">
+              <div class="uid-kpi-lbl">Meetings Booked <span class="uid-kpi-info" data-tip="Expected meetings from positive replies">i</span></div>
+              <div class="uid-kpi-row">
+                <span class="uid-kpi-n" style="color:var(--purple)">84</span>
+                <div class="uid-kpi-icon" style="background:var(--purple-dim)">
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--purple)"><path d="M1 8c0 0 2.5-5 7-5s7 5 7 5-2.5 5-7 5-7-5-7-5z"/><circle cx="8" cy="8" r="2"/></svg>
+                </div>
+              </div>
+              <div><span class="uid-kpi-delta up">35%</span><span class="uid-kpi-vs">open rate</span></div>
+            </div>
+            <div class="uid-kpi">
+              <div class="uid-kpi-lbl">Purchases <span class="uid-kpi-info">i</span></div>
+              <div class="uid-kpi-row">
+                <span class="uid-kpi-n" style="color:var(--green)">67</span>
+                <div class="uid-kpi-icon" style="background:var(--green-dim)">
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--green)"><path d="M3 8l3 3 7-7"/></svg>
+                </div>
+              </div>
+              <div><span class="uid-kpi-delta up">2.2%</span><span class="uid-kpi-vs">purchase rate</span></div>
+            </div>
+            <div class="uid-kpi">
+              <div class="uid-kpi-lbl">Pipeline revenue</div>
+              <div class="uid-kpi-row">
+                <span class="uid-kpi-n" style="color:var(--green)">$343,325</span>
+                <div class="uid-kpi-icon" style="background:var(--green-dim)">
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--green)"><path d="M8 1.5v13M11 4.2H6.6a2 2 0 000 4h2.8a2 2 0 010 4H5"/></svg>
+                </div>
+              </div>
+              <div><span class="uid-kpi-vs">This month</span></div>
+            </div>
+          </div>
+
+          <div class="uid-body">
+            <div class="uid-chart-area">
+              <div class="uid-chart-head">
+                <span class="uid-chart-title">Pipeline revenue over time</span>
+                <div style="display:flex;align-items:center;gap:0.5rem;">
+                  <span class="uid-chart-total">Jun 1–14, 2026</span>
+                  <span style="display:flex;gap:0.5rem;align-items:center;font-family:'JetBrains Mono',monospace;font-size:var(--fs-xs);color:var(--muted);">
+                    <span style="display:flex;align-items:center;gap:0.2rem;"><span style="display:inline-block;width:12px;border-top:2px solid var(--green)"></span>Actual</span>
+                    <span style="display:flex;align-items:center;gap:0.2rem;"><span style="display:inline-block;width:12px;border-top:2px dashed var(--green)"></span>Projected</span>
+                  </span>
+                </div>
+              </div>
+              <svg class="uid-chart-svg" viewBox="0 0 700 140" style="width:100%;display:block;overflow:visible">
+                <line x1="30" y1="120" x2="670" y2="120" stroke="var(--muted)" stroke-width="1" opacity="0.25"/>
+                <path class="uid-rev-fade" fill="var(--green)" fill-opacity="0.08" stroke="none" opacity="0"
+                  d="M325.4,84.1 L374.6,75.3 L423.8,65.7 L473.1,55.5 L522.3,45.2 L571.5,34.9 L620.8,25.4 L670,15.9 L670,120 L325.4,120 Z"/>
+                <path class="uid-rev-fade" fill="var(--green)" fill-opacity="0.16" stroke="none" opacity="0"
+                  d="M30,117.8 L79.2,113.4 L128.5,107.5 L177.7,103.1 L226.9,96.5 L276.2,89.9 L325.4,84.1 L325.4,120 L30,120 Z"/>
+                <path class="uid-rev-proj" fill="none" stroke="var(--green)" stroke-width="2" stroke-dasharray="4 4" stroke-linecap="round" stroke-linejoin="round" opacity="0"
+                  d="M325.4,84.1 L374.6,75.3 L423.8,65.7 L473.1,55.5 L522.3,45.2 L571.5,34.9 L620.8,25.4 L670,15.9"/>
+                <path class="uid-rev-actual" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                  d="M30,117.8 L79.2,113.4 L128.5,107.5 L177.7,103.1 L226.9,96.5 L276.2,89.9 L325.4,84.1"/>
+                <line class="uid-rev-fade" x1="325.4" y1="18" x2="325.4" y2="120" stroke="var(--muted)" stroke-width="1" stroke-dasharray="2 3" opacity="0"/>
+                <circle class="uid-rev-fade" cx="325.4" cy="84.1" r="3.5" fill="var(--green)" opacity="0"/>
+                <text x="10" y="134" font-family="JetBrains Mono, monospace" font-size="9" fill="var(--muted)">Jun</text>
+                <text x="30" y="134" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="var(--muted)">1</text>
+                <text x="177.7" y="134" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="var(--muted)">4</text>
+                <text x="325.4" y="134" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="var(--green)">7 · today</text>
+                <text x="473.1" y="134" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="var(--muted)">10</text>
+                <text x="670" y="134" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="9" fill="var(--muted)">14</text>
+              </svg>
+            </div>
+            <div class="uid-roi">
+              <div class="uid-roi-section">
+                <div class="uid-roi-lbl">Budget spent today</div>
+                <div id="dash-budget-n" class="uid-roi-val" style="color:var(--accent)">22%</div>
+                <div class="uid-kpi-progress" style="margin-top:0.4rem">
+                  <div class="uid-kpi-progress-fill" id="dash-budget-bar" style="width:22%"></div>
+                </div>
+              </div>
+              <div class="uid-roi-divider"></div>
+              <div class="uid-roi-section">
+                <div class="uid-roi-lbl">Avg. ROI</div>
+                <div class="uid-roi-val" style="color:var(--green)">~4x</div>
+                <div class="uid-roi-meta">avg. pipeline / spend</div>
+              </div>
+              <div class="uid-roi-divider"></div>
+              <div class="uid-roi-section">
+                <div class="uid-roi-lbl">Exp. revenue</div>
+                <div class="uid-roi-val" style="color:var(--green)">$9,800</div>
+                <div class="uid-roi-meta">7 interested × $1,400</div>
+              </div>
+              <div class="uid-roi-divider"></div>
+              <div class="uid-roi-section">
+                <div class="uid-roi-lbl">Cost / meeting</div>
+                <div class="uid-roi-val" style="color:var(--purple)">~$90</div>
+                <div class="uid-roi-meta">avg. per meeting booked</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="uid-table-wrap">
+            <table class="uid-table">
+              <thead>
+                <tr>
+                  <th>Company</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                  <th>Pipeline revenue</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><div style="display:flex;align-items:center;gap:0.4rem;"><span style="width:1.4rem;height:1.4rem;border-radius:50%;background:var(--accent-dim);border:1px solid var(--accent-brd);display:inline-flex;align-items:center;justify-content:center;font-size:0.55rem;font-weight:700;color:var(--accent);flex-shrink:0">EV</span><div><div style="font-size:var(--fs-xs);font-weight:600;color:var(--text)">Eventilla</div><div style="font-size:var(--fs-xs);color:var(--muted)">Pekka Huttunen</div></div></div></td>
+                  <td><span class="uid-status green">Purchased</span></td>
+                  <td><span class="uid-meta">Jun 7</span></td>
+                  <td><span class="uid-meta">$1,400</span></td>
+                </tr>
+                <tr>
+                  <td><div style="display:flex;align-items:center;gap:0.4rem;"><span style="width:1.4rem;height:1.4rem;border-radius:50%;background:var(--purple-dim);border:1px solid var(--purple-brd);display:inline-flex;align-items:center;justify-content:center;font-size:0.55rem;font-weight:700;color:var(--purple);flex-shrink:0">CI</span><div><div style="font-size:var(--fs-xs);font-weight:600;color:var(--text)">ColorID</div><div style="font-size:var(--fs-xs);color:var(--muted)">Gary Smith</div></div></div></td>
+                  <td><span class="uid-status" style="background:var(--purple-dim);color:var(--purple);border:1px solid var(--purple-brd)">Meeting booked</span></td>
+                  <td><span class="uid-meta">Jun 7</span></td>
+                  <td><span class="uid-meta">$480</span></td>
+                </tr>
+                <tr>
+                  <td><div style="display:flex;align-items:center;gap:0.4rem;"><span style="width:1.4rem;height:1.4rem;border-radius:50%;background:var(--accent-dim);border:1px solid var(--accent-brd);display:inline-flex;align-items:center;justify-content:center;font-size:0.55rem;font-weight:700;color:var(--accent);flex-shrink:0">MC</span><div><div style="font-size:var(--fs-xs);font-weight:600;color:var(--text)">McCorkell</div><div style="font-size:var(--fs-xs);color:var(--muted)">Scott McCorkell</div></div></div></td>
+                  <td><span class="uid-status" style="background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-brd)">Signed up</span></td>
+                  <td><span class="uid-meta">Jun 6</span></td>
+                  <td><span class="uid-meta">$120</span></td>
+                </tr>
+                <tr>
+                  <td><div style="display:flex;align-items:center;gap:0.4rem;"><span style="width:1.4rem;height:1.4rem;border-radius:50%;background:var(--purple-dim);border:1px solid var(--purple-brd);display:inline-flex;align-items:center;justify-content:center;font-size:0.55rem;font-weight:700;color:var(--purple);flex-shrink:0">BA</span><div><div style="font-size:var(--fs-xs);font-weight:600;color:var(--text)">Builders of Auth.</div><div style="font-size:var(--fs-xs);color:var(--muted)">Adam McChesney</div></div></div></td>
+                  <td><span class="uid-status" style="background:var(--purple-dim);color:var(--purple);border:1px solid var(--purple-brd)">Meeting booked</span></td>
+                  <td><span class="uid-meta">Jun 6</span></td>
+                  <td><span class="uid-meta">$480</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-ui-fade" aria-hidden="true"></div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════════════════
+     STATS — numbers first
+════════════════════════════════════════════ -->
+<div class="stats-band" id="main-content">
+  <div class="wrap">
+    <div class="stats-card">
+      <div class="stats-inner">
+        <div class="stat">
+          <span class="stat-val accent">~$90</span>
+          <span class="stat-lbl">avg. per meeting</span>
+        </div>
+        <div class="stat">
+          <span class="stat-val">35%</span>
+          <span class="stat-lbl">email open rate</span>
+        </div>
+        <div class="stat">
+          <span class="stat-val">27%</span>
+          <span class="stat-lbl">meeting booking rate</span>
+        </div>
+        <div class="stat">
+          <span class="stat-val">~4x avg</span>
+          <span class="stat-lbl">ROI</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════
+     HOW IT WORKS — illustrated, technical
+════════════════════════════════════════════ -->
+<section class="s-how">
+  <div class="wrap">
+    <div class="sec-intro r">
+      <span class="t-lbl">How it works</span>
+      <h2 class="t-h2">URL in. Clients out.</h2>
+      <p class="t-body">No SDR. No sequences. No cold email stack to manage. Three inputs: your URL, your budget, your objective. Everything else is distribute.</p>
+    </div>
+
+    <div class="steps-bento">
+
+      <!-- Step 1 -->
+      <div class="step-card r d1">
+        <div class="step-illu">
+          <div style="width:100%;max-width:310px">
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:0 4px 20px oklch(0% 0 0 / 0.08)">
+              <div style="background:var(--surface);border-bottom:1px solid var(--border);padding:0.5rem 0.75rem;display:flex;align-items:center;gap:0.5rem">
+                <div style="display:flex;gap:0.3rem">
+                  <span style="width:8px;height:8px;border-radius:50%;background:#FF5F57;display:block"></span>
+                  <span style="width:8px;height:8px;border-radius:50%;background:#FFBD2E;display:block"></span>
+                  <span style="width:8px;height:8px;border-radius:50%;background:#28CA41;display:block"></span>
+                </div>
+                <div style="flex:1;background:var(--bg-alt);border:1px solid var(--border);border-radius:5px;padding:0.25rem 0.5rem;display:flex;align-items:center;gap:0.35rem">
+                  <svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--muted);flex-shrink:0"><circle cx="8" cy="8" r="6"/><path d="M8 2c0 0-3 2.5-3 6s3 6 3 6"/><path d="M2 8h12"/></svg>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--text)">youragency.com</span>
+                </div>
+              </div>
+              <div style="padding:1rem">
+                <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.875rem;font-size:0.7rem;color:var(--muted)">
+                  <span style="width:20px;height:20px;border-radius:50%;background:var(--accent-dim);border:1px solid var(--accent-brd);display:inline-flex;align-items:center;justify-content:center;color:var(--accent)">
+                    <svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3l1.5 3.5L13 8l-3.5 1.5L8 13l-1.5-3.5L3 8l3.5-1.5z"/></svg>
+                  </span>
+                  Deriving ICP from site...
+                </div>
+                <div style="font-size:0.65rem;color:var(--muted);margin-bottom:0.5rem;font-weight:500">Target segments identified:</div>
+                <div style="display:flex;flex-wrap:wrap;gap:0.4rem">
+                  <span style="background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-brd);border-radius:100px;padding:0.2rem 0.6rem;font-size:0.65rem;font-weight:500">Marketing agencies</span>
+                  <span style="background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-brd);border-radius:100px;padding:0.2rem 0.6rem;font-size:0.65rem;font-weight:500">B2B consultants</span>
+                  <span style="background:var(--purple-dim);color:var(--purple);border:1px solid var(--purple-brd);border-radius:100px;padding:0.2rem 0.6rem;font-size:0.65rem;font-weight:500">Scale-up founders</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="step-body">
+          <span class="step-num-pill">step 01</span>
+          <h3 class="step-title">Drop URL. We derive ICP.</h3>
+          <p class="step-desc">AI reads your site, infers your ideal client profile, and builds the targeting brief. You review and adjust. Done in 30 seconds.</p>
+          <div class="step-meta-row">
+            <span class="step-meta">~30 sec</span>
+            <span class="step-meta">no setup form</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="step-card r d2">
+        <div class="step-illu">
+          <div style="width:100%;max-width:290px">
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.25rem;box-shadow:0 4px 20px oklch(0% 0 0 / 0.08);display:flex;flex-direction:column;gap:0.875rem">
+              <div>
+                <div style="font-size:0.7rem;color:var(--muted);font-weight:500;margin-bottom:0.35rem">Daily budget</div>
+                <div style="background:var(--bg-alt);border:1px solid var(--accent-brd);border-radius:6px;padding:0.4rem 0.7rem;font-size:var(--fs-sm);color:var(--text);font-weight:600;display:flex;justify-content:space-between;align-items:center">
+                  <span>$50 / day</span>
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--muted)"><path d="M4 6l4 4 4-4"/></svg>
+                </div>
+              </div>
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
+                  <span style="font-size:0.7rem;color:var(--muted);font-weight:500">Volume / day</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--accent);font-weight:700">~700 contacts</span>
+                </div>
+                <div style="position:relative;height:4px;background:var(--border);border-radius:2px">
+                  <div style="position:absolute;left:0;top:0;height:100%;width:65%;background:var(--accent);border-radius:2px"></div>
+                  <div style="position:absolute;top:50%;left:65%;transform:translate(-50%,-50%);width:13px;height:13px;border-radius:50%;background:var(--accent);border:2px solid var(--bg)"></div>
+                </div>
+              </div>
+              <div>
+                <div style="font-size:0.7rem;color:var(--muted);font-weight:500;margin-bottom:0.35rem">Objective</div>
+                <div style="display:flex;gap:0.4rem;white-space:nowrap">
+                  <div style="flex:1;background:var(--green-dim);color:var(--green);border:1px solid var(--green-brd);border-radius:6px;padding:0.3rem 0.5rem;font-size:0.65rem;font-weight:600;text-align:center;display:flex;align-items:center;justify-content:center;gap:0.3rem"><svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 6l3 3 6-6"/></svg>Meetings booked</div>
+                  <div style="flex:1;background:var(--bg-alt);color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:0.3rem 0.5rem;font-size:0.65rem;font-weight:600;text-align:center">Sign Up</div>
+                </div>
+              </div>
+              <div style="background:var(--accent);color:#fff;border-radius:8px;padding:0.55rem 1rem;font-size:var(--fs-sm);font-weight:600;text-align:center;cursor:default">
+                Launch campaign
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="step-body">
+          <span class="step-num-pill">step 02</span>
+          <h3 class="step-title">Set budget and objective.</h3>
+          <p class="step-desc">Daily spend cap. Target volume. Campaign objective: meetings booked or sign-up. We handle copy, deliverability, and sending.</p>
+          <div class="step-meta-row">
+            <span class="step-meta">$10/day min</span>
+            <span class="step-meta">~700 contacts/day at $50</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="step-card r d3">
+        <div class="step-illu">
+          <div style="width:100%;max-width:310px">
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:0 4px 20px oklch(0% 0 0 / 0.08)">
+              <div style="padding:0.5rem 0.875rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+                <div style="display:flex;align-items:center;gap:0.4rem">
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style="color:var(--muted)" stroke="currentColor" stroke-width="1.5"><path d="M2 4l6 5 6-5"/><rect x="2" y="4" width="12" height="9" rx="1.5"/></svg>
+                  <span style="font-size:0.7rem;font-weight:600;color:var(--text)">Qualified replies</span>
+                </div>
+                <span style="background:var(--accent);color:#fff;border-radius:100px;padding:0.1rem 0.45rem;font-size:0.6rem;font-weight:700">3 new</span>
+              </div>
+              <div style="padding:0.65rem 0.875rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:0.5rem">
+                <span style="width:26px;height:26px;border-radius:50%;background:var(--accent-dim);border:1px solid var(--accent-brd);color:var(--accent);font-size:0.55rem;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">JD</span>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:0.7rem;font-weight:600;color:var(--text)">John D. · Acme Agency</div>
+                  <div style="font-size:0.64rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">When can we schedule a call?</div>
+                </div>
+                <span style="background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-brd);border-radius:100px;padding:0.1rem 0.4rem;font-size:0.58rem;font-weight:600;flex-shrink:0;font-family:'JetBrains Mono',monospace">buyer</span>
+              </div>
+              <div style="padding:0.65rem 0.875rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:0.5rem">
+                <span style="width:26px;height:26px;border-radius:50%;background:var(--purple-dim);border:1px solid var(--purple-brd);color:var(--purple);font-size:0.55rem;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">SM</span>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:0.7rem;font-weight:600;color:var(--text)">Sarah M. · TechGroup</div>
+                  <div style="font-size:0.64rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Interested in a 15-min call this week</div>
+                </div>
+                <span style="background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-brd);border-radius:100px;padding:0.1rem 0.4rem;font-size:0.58rem;font-weight:600;flex-shrink:0;font-family:'JetBrains Mono',monospace">buyer</span>
+              </div>
+              <div style="padding:0.65rem 0.875rem;display:flex;align-items:center;gap:0.5rem;opacity:0.5">
+                <span style="width:26px;height:26px;border-radius:50%;background:var(--border);color:var(--muted);font-size:0.55rem;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">RK</span>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:0.7rem;font-weight:600;color:var(--sub)">Robert K.</div>
+                  <div style="font-size:0.64rem;color:var(--muted)">Not interested right now</div>
+                </div>
+                <span style="background:var(--border);color:var(--muted);border-radius:100px;padding:0.1rem 0.4rem;font-size:0.58rem;font-weight:600;flex-shrink:0;font-family:'JetBrains Mono',monospace">filtered</span>
+              </div>
+              <div style="padding:0.5rem 0.875rem;background:var(--bg-alt);border-top:1px solid var(--border);font-size:0.7rem;color:var(--muted);display:flex;align-items:center;justify-content:space-between">
+                <span>47 sent · 35% open rate</span>
+                <span style="color:var(--green);font-weight:600">5 buyers</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="step-body">
+          <span class="step-num-pill">step 03</span>
+          <h3 class="step-title">Qualified replies forwarded.</h3>
+          <p class="step-desc">AI reads every reply. Intent classification: interested, unsubscribe, bounce, out-of-office. Only buyers reach you. Pipeline tracked from first contact to close.</p>
+          <div class="step-meta-row">
+            <span class="step-meta">AI intent classifier</span>
+            <span class="step-meta">Gmail-native delivery</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════════════════
+     METRICS TABLE
+════════════════════════════════════════════ -->
+<section class="s-for" style="padding-top:5rem">
+  <div class="wrap">
+    <div class="sec-intro r">
+      <span class="t-lbl">Performance data</span>
+      <h2 class="t-h2">What the numbers look like</h2>
+      <p class="t-body">Based on campaigns across industries. Your numbers will vary by audience, offer, and budget. $10/day minimum, no upper limit.</p>
+    </div>
+
+    <div class="metrics-table r">
+      <table>
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th>distribute</th>
+            <th>Industry avg (cold email)</th>
+            <th>SDR hire</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Email open rate</td>
+            <td class="m-val">35%</td>
+            <td>21%</td>
+            <td>varies</td>
+          </tr>
+          <tr>
+            <td>Meeting booking rate (from replies)</td>
+            <td class="m-val">27%</td>
+            <td>10–15%</td>
+            <td>varies</td>
+          </tr>
+          <tr>
+            <td>Avg. cost per meeting</td>
+            <td class="m-val">~$90</td>
+            <td>$200–$400</td>
+            <td>$500–$1,500</td>
+          </tr>
+          <tr>
+            <td>Cost per new client</td>
+            <td class="m-val green">$120</td>
+            <td>$300–$600</td>
+            <td>$1,000+</td>
+          </tr>
+          <tr>
+            <td>Time to first contact sent</td>
+            <td class="m-val">5 min</td>
+            <td>days</td>
+            <td>weeks</td>
+          </tr>
+          <tr>
+            <td>Expected ROI</td>
+            <td class="m-val green">~4x avg</td>
+            <td>2–4x</td>
+            <td>1–2x</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════════════════
+     FEATURE BENTO — technical copy
+════════════════════════════════════════════ -->
+<section class="s-how" style="padding-top:5rem">
+  <div class="wrap">
+    <div class="sec-intro r">
+      <span class="t-lbl">What's included</span>
+      <h2 class="t-h2">Full-stack outbound, nothing left to manage</h2>
+      <p class="t-body">Prospecting, copy, deliverability, qualification, tracking. Every component handled. Stop anytime, unused budget stays in your account.</p>
+    </div>
+
+    <div class="feat-bento">
+
+      <!-- Open rate -->
+      <div class="feat-card r d1">
+        <div class="feat-illu" aria-hidden="true">
+          <div style="width:100%">
+            <svg viewBox="0 0 280 78" style="width:100%;height:auto;display:block;overflow:visible">
+              <!-- Y-axis -->
+              <line x1="26" y1="4" x2="26" y2="58" stroke="var(--border)" stroke-width="0.6"/>
+              <!-- X-axis -->
+              <line x1="26" y1="58" x2="270" y2="58" stroke="var(--border)" stroke-width="0.6"/>
+              <!-- Y grid at 35% (y=8) -->
+              <line x1="24" y1="8" x2="26" y2="8" stroke="var(--border)" stroke-width="0.6"/>
+              <line x1="26" y1="8" x2="270" y2="8" stroke="var(--border)" stroke-width="0.4" stroke-dasharray="3 2"/>
+              <text x="22" y="11" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="7" fill="var(--muted)">35%</text>
+              <!-- Y grid at 28% (y=26) -->
+              <line x1="24" y1="26" x2="26" y2="26" stroke="var(--border)" stroke-width="0.6"/>
+              <line x1="26" y1="26" x2="270" y2="26" stroke="var(--border)" stroke-width="0.4" stroke-dasharray="3 2"/>
+              <text x="22" y="29" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="7" fill="var(--muted)">28%</text>
+              <!-- Y grid at 21% (y=43) -->
+              <line x1="24" y1="43" x2="26" y2="43" stroke="var(--border)" stroke-width="0.6"/>
+              <line x1="26" y1="43" x2="270" y2="43" stroke="var(--border)" stroke-width="0.4" stroke-dasharray="3 2"/>
+              <text x="22" y="46" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="7" fill="var(--muted)">21%</text>
+              <!-- X tick marks -->
+              <line x1="27" y1="58" x2="27" y2="62" stroke="var(--border)" stroke-width="0.6"/>
+              <line x1="87" y1="58" x2="87" y2="62" stroke="var(--border)" stroke-width="0.6"/>
+              <line x1="147" y1="58" x2="147" y2="62" stroke="var(--border)" stroke-width="0.6"/>
+              <line x1="207" y1="58" x2="207" y2="62" stroke="var(--border)" stroke-width="0.6"/>
+              <line x1="265" y1="58" x2="265" y2="62" stroke="var(--border)" stroke-width="0.6"/>
+              <!-- X labels -->
+              <text x="27" y="70" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="var(--muted)">W1</text>
+              <text x="87" y="70" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="var(--muted)">W2</text>
+              <text x="147" y="70" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="var(--muted)">W3</text>
+              <text x="207" y="70" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="var(--muted)">W4</text>
+              <text x="265" y="70" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="var(--muted)">W5</text>
+              <!-- Industry avg: flat dashed at 21% (y=43) -->
+              <path d="M27,43 L265,43" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="4 3" stroke-linecap="round" opacity="0.5"/>
+              <circle cx="265" cy="43" r="2" fill="var(--muted)" opacity="0.5"/>
+              <!-- Distribute: area fill, S-curve from 21% to 35% -->
+              <path d="M27,43 C55,43 82,40 115,30 C148,20 178,11 207,9 C232,7 250,7 265,7 L265,58 L27,58 Z" fill="var(--accent)" fill-opacity="0.1" stroke="none"/>
+              <!-- Distribute: curve -->
+              <path d="M27,43 C55,43 82,40 115,30 C148,20 178,11 207,9 C232,7 250,7 265,7" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <!-- End dot -->
+              <circle cx="265" cy="7" r="3.5" fill="var(--accent)"/>
+            </svg>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.45rem">
+              <div style="display:flex;gap:0.875rem">
+                <div style="display:flex;align-items:center;gap:4px"><span style="width:14px;height:2px;border-radius:1px;background:var(--accent);display:block"></span><span style="font-size:0.63rem;color:var(--text)">distribute</span></div>
+                <div style="display:flex;align-items:center;gap:4px"><span style="width:14px;height:2px;border-radius:1px;background:var(--muted);display:block;opacity:0.5"></span><span style="font-size:0.63rem;color:var(--muted)">industry avg</span></div>
+              </div>
+              <div style="display:flex;gap:0.5rem;align-items:baseline">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;font-weight:700;color:var(--accent)">35%</span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--muted)">~21%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <h3 class="feat-title">35% average open rate</h3>
+        <p class="feat-desc">Continuous A/B on subject lines and copy. Cold email industry average is 21%. We test until we beat it.</p>
+        <div class="feat-stat-row">
+          <div class="feat-stat">
+            <span class="feat-stat-n">35%</span>
+            <span class="feat-stat-l">open rate</span>
+          </div>
+          <div class="feat-stat">
+            <span class="feat-stat-n" style="color:var(--green)">27%</span>
+            <span class="feat-stat-l">booking rate</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI qualification -->
+      <div class="feat-card r d2">
+        <div class="feat-illu" aria-hidden="true">
+          <div style="width:100%;display:flex;flex-direction:column;gap:5px">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0.4rem 0.6rem;background:var(--accent-dim);border:1px solid var(--accent-brd);border-radius:7px">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="width:20px;height:20px;border-radius:50%;background:var(--accent-dim);border:1px solid var(--accent-brd);color:var(--accent);font-size:0.5rem;font-weight:700;display:inline-flex;align-items:center;justify-content:center">JD</span>
+                <span style="font-size:0.65rem;font-weight:600;color:var(--text)">intent: meeting request</span>
+              </div>
+              <span style="background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-brd);border-radius:100px;padding:0.08rem 0.35rem;font-size:0.58rem;font-weight:600;font-family:'JetBrains Mono',monospace">buyer</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0.4rem 0.6rem;background:var(--accent-dim);border:1px solid var(--accent-brd);border-radius:7px">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="width:20px;height:20px;border-radius:50%;background:var(--purple-dim);border:1px solid var(--purple-brd);color:var(--purple);font-size:0.5rem;font-weight:700;display:inline-flex;align-items:center;justify-content:center">SM</span>
+                <span style="font-size:0.65rem;font-weight:600;color:var(--text)">intent: call this week</span>
+              </div>
+              <span style="background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-brd);border-radius:100px;padding:0.08rem 0.35rem;font-size:0.58rem;font-weight:600;font-family:'JetBrains Mono',monospace">buyer</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0.4rem 0.6rem;background:var(--bg-alt);border:1px solid var(--border);border-radius:7px;opacity:0.45">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="width:20px;height:20px;border-radius:50%;background:var(--border);color:var(--muted);font-size:0.5rem;font-weight:700;display:inline-flex;align-items:center;justify-content:center">RK</span>
+                <span style="font-size:0.65rem;color:var(--muted)">intent: auto-reply OOO</span>
+              </div>
+              <span style="background:var(--border);color:var(--muted);border-radius:100px;padding:0.08rem 0.35rem;font-size:0.58rem;font-weight:600;font-family:'JetBrains Mono',monospace">filtered</span>
+            </div>
+          </div>
+        </div>
+        <h3 class="feat-title">AI reply classification</h3>
+        <p class="feat-desc">Every reply: intent classification into buyer, bounce, unsubscribe, or OOO. Only buyers reach your inbox. Noise stays out of your flow.</p>
+      </div>
+
+      <!-- Multi-client -->
+      <div class="feat-card r d3">
+        <div class="feat-illu" aria-hidden="true">
+          <div style="width:100%;display:flex;flex-direction:column;gap:5px">
+            <div style="display:flex;align-items:center;gap:8px;background:var(--bg-alt);border:1px solid var(--border);border-radius:8px;padding:0.45rem 0.75rem">
+              <span style="width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0"></span>
+              <span style="font-size:0.7rem;font-weight:600;color:var(--text);flex:1">Acme Corp · $50/day</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--green)">live</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;background:var(--bg-alt);border:1px solid var(--border);border-radius:8px;padding:0.45rem 0.75rem">
+              <span style="width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0"></span>
+              <span style="font-size:0.7rem;font-weight:600;color:var(--text);flex:1">TechGroup · $30/day</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--green)">live</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;background:var(--bg-alt);border:1px solid var(--border);border-radius:8px;padding:0.45rem 0.75rem">
+              <span style="width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0"></span>
+              <span style="font-size:0.7rem;font-weight:600;color:var(--text);flex:1">Your agency · $80/day</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--accent)">live</span>
+            </div>
+          </div>
+        </div>
+        <h3 class="feat-title">Multi-client, one account</h3>
+        <p class="feat-desc">Run separate campaigns per client from one account. Each has its own URL, budget, audience, and reporting. You control all spend.</p>
+      </div>
+
+      <!-- Cost (wide) -->
+      <div class="feat-card wide r d1" style="flex-direction:row;align-items:center;gap:2.5rem">
+        <div style="flex:1;min-width:0">
+          <h3 class="feat-title">~$90 avg. cost per meeting</h3>
+          <p class="feat-desc" style="margin-top:0.5rem">One meeting booked, full sequence included. No seat fees. No tool subscriptions. No infrastructure to maintain. Scale up or down without renegotiating.</p>
+        </div>
+        <div class="feat-illu" style="flex:1;min-width:0;height:auto" aria-hidden="true">
+          <div style="width:100%;display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:0.65rem;color:var(--muted);min-width:84px">distribute</span>
+              <div style="flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="height:100%;border-radius:3px;background:var(--accent);width:6%"></div></div>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;font-weight:700;color:var(--accent);min-width:44px;text-align:right">~$90</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:0.65rem;color:var(--muted);min-width:84px">Cold email avg</span>
+              <div style="flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="height:100%;border-radius:3px;background:var(--muted);width:17%"></div></div>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;font-weight:600;color:var(--muted);min-width:44px;text-align:right">~$250</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:0.65rem;color:var(--muted);min-width:84px">SDR hire</span>
+              <div style="flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="height:100%;border-radius:3px;background:var(--muted);width:70%"></div></div>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;font-weight:600;color:var(--muted);min-width:44px;text-align:right">~$1k</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Deliverability -->
+      <div class="feat-card r d2">
+        <div class="feat-illu" aria-hidden="true">
+          <div style="display:flex;flex-direction:column;gap:0.4rem;width:100%">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0.4rem 0.6rem;background:var(--green-dim);border:1px solid var(--green-brd);border-radius:7px">
+              <span style="font-size:0.65rem;font-weight:600;color:var(--text)">Domain warm-up</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:0.62rem;color:var(--green)">handled</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0.4rem 0.6rem;background:var(--green-dim);border:1px solid var(--green-brd);border-radius:7px">
+              <span style="font-size:0.65rem;font-weight:600;color:var(--text)">DKIM / SPF / DMARC</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:0.62rem;color:var(--green)">configured</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0.4rem 0.6rem;background:var(--green-dim);border:1px solid var(--green-brd);border-radius:7px">
+              <span style="font-size:0.65rem;font-weight:600;color:var(--text)">Bounce management</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:0.62rem;color:var(--green)">automatic</span>
+            </div>
+          </div>
+        </div>
+        <h3 class="feat-title">Full deliverability stack</h3>
+        <p class="feat-desc">Domain setup, warm-up, DKIM/SPF/DMARC, rotation, bounce and spam monitoring. Nothing to configure. You never touch it.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════════════════
+     COMPARE
+════════════════════════════════════════════ -->
+<section class="s-compare">
+  <div class="wrap">
+    <div class="sec-intro r">
+      <span class="t-lbl">The alternative</span>
+      <h2 class="t-h2">What you're replacing</h2>
+      <p class="t-body">Running cold email yourself means Apollo or Sales Nav for prospecting, Instantly or Lemlist for sequences, a domain warm-up service, someone to write the copy, and someone to read the replies. Distribute replaces all of it.</p>
+    </div>
+    <div class="compare r">
+      <div class="cmp-bad">
+        <div class="cmp-head">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1.5 1.5l9 9M10.5 1.5l-9 9" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+          DIY cold email stack
+        </div>
+        <ul class="cmp-list">
+          <li><span class="cmp-icon">✕</span><span>Apollo/Sales Nav for prospect lists ($100-$500/mo)</span></li>
+          <li><span class="cmp-icon">✕</span><span>Instantly/Lemlist for sequences ($100-$300/mo)</span></li>
+          <li><span class="cmp-icon">✕</span><span>Domain setup, warm-up, rotation (days of setup)</span></li>
+          <li><span class="cmp-icon">✕</span><span>Copywriter for email sequences ($500-$2,000)</span></li>
+          <li><span class="cmp-icon">✕</span><span>Someone reading every reply to qualify leads</span></li>
+        </ul>
+      </div>
+      <div class="cmp-good">
+        <div class="cmp-head">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1.5 6l3 3 6-6" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          With distribute
+        </div>
+        <ul class="cmp-list">
+          <li><span class="cmp-icon">✓</span><span>URL + budget. That's the entire input.</span></li>
+          <li><span class="cmp-icon">✓</span><span>~$90/meeting avg. No seat fees.</span></li>
+          <li><span class="cmp-icon">✓</span><span>Deliverability handled. Nothing to configure.</span></li>
+          <li><span class="cmp-icon">✓</span><span>AI writes and optimizes copy continuously.</span></li>
+          <li><span class="cmp-icon">✓</span><span>Only qualified buyers reach your inbox.</span></li>
+        </ul>
+        <div class="cmp-foot">
+          <a href="https://dashboard.distribute.you/sign-up" class="btn btn-p">Get $25 free credits</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════════════════
+     PRICING
+════════════════════════════════════════════ -->
+<section id="pricing" class="s-pricing">
+  <div class="wrap">
+    <div class="price-layout r">
+      <div>
+        <span class="t-lbl" style="color: var(--accent); display: block; margin-bottom: 0.875rem;">Pricing</span>
+        <h2 class="t-h2" style="margin-bottom: 1rem;">Usage-based. No seats. No contracts.</h2>
+        <p class="t-body" style="color: var(--sub); margin-bottom: 0.875rem;">~$90/meeting avg. $10/day minimum. Pause or stop any campaign instantly. Unused budget stays in your account. Multi-client billing: each campaign tracked separately, single invoice.</p>
+        <div class="price-checks">
+          <div class="price-check"><span class="price-check-icon">✓</span><span class="price-check-text">~$90/meeting avg. No seat licensing.</span></div>
+          <div class="price-check"><span class="price-check-icon">✓</span><span class="price-check-text">$10/day minimum. No upper limit.</span></div>
+          <div class="price-check"><span class="price-check-icon">✓</span><span class="price-check-text">Pause or cancel anytime. Unused budget stays.</span></div>
+          <div class="price-check"><span class="price-check-icon">✓</span><span class="price-check-text">Multi-client: separate campaigns, one account, one invoice.</span></div>
+        </div>
+        <a href="https://dashboard.distribute.you/sign-up" class="btn btn-p" style="margin-top: 2rem; display: inline-flex;">Get $25 free credits</a>
+      </div>
+      <div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--shadow-card)">
+          <div style="background:var(--accent-dim);border-bottom:1px solid var(--accent-brd);padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:0.6rem">
+              <span style="width:28px;height:28px;border-radius:8px;background:var(--accent);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.75"><path d="M2 4l6 5 6-5"/><rect x="2" y="4" width="12" height="9" rx="1.5"/></svg>
+              </span>
+              <div>
+                <div style="font-size:0.9rem;font-weight:700;color:var(--text)">Your campaign</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--muted)">$50/day · live</div>
+              </div>
+            </div>
+            <span style="display:flex;align-items:center;gap:0.35rem;font-size:0.65rem;font-weight:600;color:var(--green)">
+              <span style="width:6px;height:6px;border-radius:50%;background:var(--green);display:block"></span>live
+            </span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-bottom:1px solid var(--border)">
+            <div style="padding:1.25rem 1.25rem;border-right:1px solid var(--border)">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:1.75rem;font-weight:700;color:var(--accent)">700</div>
+              <div style="font-size:0.82rem;color:var(--muted);margin-top:0.2rem">contacts/day</div>
+            </div>
+            <div style="padding:1.25rem 1.25rem">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:1.75rem;font-weight:700;color:var(--green)">35%</div>
+              <div style="font-size:0.82rem;color:var(--muted);margin-top:0.2rem">open rate</div>
+            </div>
+          </div>
+          <div style="padding:1.1rem 1.25rem;display:flex;flex-direction:column;gap:0.75rem">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span style="font-size:0.87rem;color:var(--muted)">Avg. cost per meeting</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;font-weight:700;color:var(--accent)">~$90</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span style="font-size:0.87rem;color:var(--muted)">Avg. cost per new client</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;font-weight:700;color:var(--green)">$120</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span style="font-size:0.87rem;color:var(--muted)">Avg. ROI</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;font-weight:700;color:var(--green)">~4x avg</span>
+            </div>
+          </div>
+          <div style="padding:1.1rem 1.25rem 1.5rem;border-top:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.6rem">
+              <span style="font-size:1rem;color:var(--muted)">Budget used today</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:1.1rem;font-weight:700;color:var(--accent)">$11 / $50</span>
+            </div>
+            <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+              <div style="height:100%;width:22%;background:var(--accent);border-radius:3px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════════════════
+     FAQ
+════════════════════════════════════════════ -->
+<section class="s-faq" style="padding:5rem 0">
+  <div class="s-faq-inner">
+    <div class="s-faq-head">
+      <p class="t-lbl">Questions</p>
+      <h2 class="t-h2">Technical questions</h2>
+    </div>
+    <div class="faq-list">
+      <details class="faq-item">
+        <summary>What domains do you send from?</summary>
+        <div class="faq-body">We provision sending domains and manage all deliverability: setup, warm-up, DKIM/SPF/DMARC, rotation, and reputation monitoring. Replies are forwarded to your Gmail inbox. You never touch the sending infrastructure.</div>
+      </details>
+      <details class="faq-item">
+        <summary>How does AI reply classification work?</summary>
+        <div class="faq-body">Every reply gets processed by our classifier. Categories: buyer (interested, wants a call, asks a question), unsubscribe, bounce, out-of-office, and neutral. Only "buyer" replies get forwarded to your inbox with full conversation context and the prospect's contact data.</div>
+      </details>
+      <details class="faq-item">
+        <summary>Can I run campaigns for multiple clients from one account?</summary>
+        <div class="faq-body">Yes. Each campaign is isolated: its own URL, audience, budget, copy, and dashboard. You see all campaigns from your account. Billing is per campaign. You can pause or stop individual campaigns without affecting others.</div>
+      </details>
+      <details class="faq-item">
+        <summary>What's the minimum viable budget for results?</summary>
+        <div class="faq-body">$10/day is the minimum. At $10/day (~140 contacts), expect 1-3 qualified replies per week depending on your offer and audience. Most agencies run $30-100/day per client campaign for consistent pipeline.</div>
+      </details>
+      <details class="faq-item">
+        <summary>How does prospecting work?</summary>
+        <div class="faq-body">We derive your ICP from your site URL and targeting brief. We source contacts from multiple databases, verify them, and enrich each one before writing personalized emails. You do not provide a prospect list.</div>
+      </details>
+      <details class="faq-item">
+        <summary>Is there an API?</summary>
+        <div class="faq-body">API access is in private beta. If you need API access for CRM sync, reporting, or campaign management at scale, contact us. We prioritize agencies managing 3+ concurrent client campaigns.</div>
+      </details>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════════════════
+     FINAL CTA
+════════════════════════════════════════════ -->
+<section class="s-cta">
+  <div class="wrap">
+    <div class="r">
+      <h2 class="t-hero">URL. Budget.<br>Clients.</h2>
+      <p>$25 free credits. No setup fee. Live in 5 minutes.</p>
+      <a href="https://dashboard.distribute.you/sign-up" class="btn btn-p btn-lg">Get $25 free credits</a>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════════════════
+     FOOTER
+════════════════════════════════════════════ -->
+<div id="site-footer"></div>
+<script src="js/main.js" defer></script>
+</body>
+</html>

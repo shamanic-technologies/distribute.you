@@ -20,8 +20,8 @@ const apiProxyRoute = fs.readFileSync(
   path.join(__dirname, "../src/app/(authed)/api/v1/[...path]/route.ts"),
   "utf-8"
 );
-const brandsPage = fs.readFileSync(
-  path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/page.tsx"),
+const onboardingPage = fs.readFileSync(
+  path.join(__dirname, "../src/components/onboarding/default-onboarding.tsx"),
   "utf-8"
 );
 const signUpPage = fs.readFileSync(
@@ -86,9 +86,9 @@ describe("DIS-111 drops per-request currentUser() in the API proxy", () => {
   });
 });
 
-describe("DIS-111 brands page refreshes the token after marking onboarding complete", () => {
+describe("DIS-111 onboarding page refreshes the token after marking onboarding complete", () => {
   it("re-mints the session token so the edge gate sees the fresh claim", () => {
-    expect(brandsPage).toContain('"/api/onboarding/complete"');
-    expect(brandsPage).toMatch(/getToken\(\s*\{\s*skipCache:\s*true\s*\}\s*\)/);
+    expect(onboardingPage).toContain('"/api/onboarding/complete"');
+    expect(onboardingPage).toMatch(/getToken\(\s*\{\s*skipCache:\s*true\s*\}\s*\)/);
   });
 });

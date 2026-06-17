@@ -1,5 +1,7 @@
 "use client";
 
+import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
 
 /**
@@ -51,23 +53,64 @@ export type MetricKey = keyof typeof METRIC_INFO;
  * placement="top" (default) opens the bubble above the icon — for score
  * cards, which have room above. placement="bottom" opens it downward into
  * the table body so it stays inside the table card's `overflow-hidden` box.
+ *
+ * `float` renders the bubble in a body portal at fixed viewport coords, so it
+ * ESCAPES any ancestor `overflow` clip — required inside the single-line stat
+ * row (`overflow-x-auto`, which also clips vertically per CSS), where the
+ * default absolute bubble would be cut off. (#stat-cards tooltip clip)
  */
+const BUBBLE_CLASS =
+  "w-52 rounded-lg bg-gray-900 text-white text-[11px] font-normal normal-case leading-snug px-2 py-1.5 shadow-lg whitespace-normal tracking-normal";
+
 export function InfoTooltip({
   tip,
   placement = "top",
+  float = false,
 }: {
   tip: string;
   placement?: "top" | "bottom";
+  float?: boolean;
 }) {
-  const pos =
-    placement === "top"
-      ? "bottom-full mb-1"
-      : "top-full mt-1";
+  const iconRef = useRef<HTMLSpanElement>(null);
+  const [coords, setCoords] = useState<{ x: number; y: number } | null>(null);
+
+  if (float) {
+    const open = () => {
+      const r = iconRef.current?.getBoundingClientRect();
+      if (r) setCoords({ x: r.left + r.width / 2, y: r.top });
+    };
+    const close = () => setCoords(null);
+    return (
+      <span
+        ref={iconRef}
+        className="inline-flex align-middle"
+        onMouseEnter={open}
+        onMouseLeave={close}
+        onFocus={open}
+        onBlur={close}
+      >
+        <InformationCircleIcon className="w-3.5 h-3.5 text-gray-400 cursor-help" />
+        {coords !== null &&
+          typeof document !== "undefined" &&
+          createPortal(
+            <span
+              className={`pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-full ${BUBBLE_CLASS}`}
+              style={{ left: coords.x, top: coords.y - 6 }}
+            >
+              {tip}
+            </span>,
+            document.body,
+          )}
+      </span>
+    );
+  }
+
+  const pos = placement === "top" ? "bottom-full mb-1" : "top-full mt-1";
   return (
     <span className="group relative inline-flex align-middle">
       <InformationCircleIcon className="w-3.5 h-3.5 text-gray-400 cursor-help" />
       <span
-        className={`pointer-events-none absolute ${pos} left-1/2 -translate-x-1/2 hidden group-hover:block z-20 w-52 rounded-lg bg-gray-900 text-white text-[11px] font-normal normal-case leading-snug px-2 py-1.5 shadow-lg whitespace-normal tracking-normal`}
+        className={`pointer-events-none absolute ${pos} left-1/2 -translate-x-1/2 hidden group-hover:block z-20 ${BUBBLE_CLASS}`}
       >
         {tip}
       </span>

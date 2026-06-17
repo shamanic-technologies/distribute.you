@@ -3,7 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 describe("Onboarding flow", () => {
-  const pagePath = path.join(__dirname, "../src/app/(authed)/onboarding/page.tsx");
+  const pagePath = path.join(__dirname, "../src/components/onboarding/default-onboarding.tsx");
 
   it("should have an onboarding page", () => {
     expect(fs.existsSync(pagePath)).toBe(true);
@@ -51,7 +51,7 @@ describe("Onboarding flow", () => {
     expect(content).not.toMatch(/Copy.*key/i);
   });
 
-  it("should redirect straight to brands auto-create with no billing/top-up step", () => {
+  it("should create the brand inline and land on it, with no billing/top-up step", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
     // No card-capture / auto-topup step at onboarding — it tripped the $2 welcome
     // credit because the brand-new balance sits below the top-up threshold. Card +
@@ -59,7 +59,10 @@ describe("Onboarding flow", () => {
     expect(content).not.toContain('"billing-setup"');
     expect(content).not.toContain("createCheckoutSession");
     expect(content).not.toContain("billingSetup");
-    expect(content).toContain('brandsUrl.searchParams.set("autoCreate"');
+    // Brand is created inline here (the old /brands?autoCreate hop is gone) and we
+    // hard-nav straight to the new brand detail page.
+    expect(content).toContain("upsertBrand");
+    expect(content).toContain("/orgs/${targetOrgId}/brands/${newBrandId}");
   });
 });
 

@@ -248,7 +248,7 @@ export default function InvestorsPage() {
                     <li>Agency-style sender on his behalf</li>
                     <li>AI-qualified replies forwarded to Gmail</li>
                     <li>Public unit prices + 2x margin baked in</li>
-                    <li>Pay-as-you-go credits, first 50 emails free</li>
+                    <li>Pay-as-you-go credits, first $25 spent matched free</li>
                     <li>Multi-brand portfolio in one dashboard</li>
                     <li>Open source as a safety valve</li>
                   </ul>
@@ -397,7 +397,7 @@ export default function InvestorsPage() {
                 </div>
                 <div>
                   <p className="text-gray-400 mb-1">Payments</p>
-                  <p className="text-white">Stripe (credit top-ups, no subscriptions)</p>
+                  <p className="text-white">Stripe (usage-based credit top-ups, auto-replenished)</p>
                 </div>
                 <div>
                   <p className="text-gray-400 mb-1">Auth</p>

@@ -68,33 +68,8 @@ export function resolveLandingBrand(
   return brands[0]?.id ?? null;
 }
 
-/**
- * One step deeper than `resolveLandingBrand`: once the user lands on a brand,
- * skip the brand overview straight into the feature when the brand has exactly
- * ONE feature to act on (public release ships a single GA feature, so the
- * overview is a pass-through with no real choice). Pure — wired into the brand
- * overview page, which already fetches both inputs.
- *
- * @param gaImplementedFeatures the GA + implemented features visible to ALL
- *   viewers (caller filters on `f.implemented && GA_BRAND_FEATURES.has(slug)`,
- *   NOT the alpha-gated viewer-visible set — that depends on a PostHog flag that
- *   may not have resolved at redirect time, which would flash). When a 2nd
- *   feature ships GA this is length 2 → returns null → the overview renders
- *   again, no code change needed.
- * @param campaigns the brand's campaigns (across features).
- *
- * Returns:
- *   - exactly 1 GA feature → its slug + whether it still needs a first campaign
- *     (no campaign references that slug → `needsCampaign: true` → route to the
- *     Create Campaign page; else route to the feature).
- *   - 0 or 2+ GA features → null (let the overview render; nothing to skip to).
- */
-export function resolveFeatureLanding(
-  gaImplementedFeatures: ReadonlyArray<{ slug: string }>,
-  campaigns: ReadonlyArray<{ featureSlug?: string | null }>,
-): { featureSlug: string; needsCampaign: boolean } | null {
-  if (gaImplementedFeatures.length !== 1) return null;
-  const featureSlug = gaImplementedFeatures[0].slug;
-  const needsCampaign = !campaigns.some((c) => c.featureSlug === featureSlug);
-  return { featureSlug, needsCampaign };
-}
+// A bare brand URL always lands on the brand Overview. The product ships ONE
+// feature AND ONE subscription per brand, so there's no "skip into the feature /
+// route to create-campaign" decision to make — the Overview is the home and the
+// launch funnel lives at `/launch`. (The old `resolveFeatureLanding` campaign
+// branch was removed when the campaign concept was hidden from the UI.)

@@ -26,10 +26,6 @@ describe("feature-gates registry", () => {
     expect(FEATURE_GATES["brand-database"]).toEqual({ flag: "alpha-brand-database", maturity: "alpha" });
   });
 
-  it("gates public metrics as alpha", () => {
-    expect(FEATURE_GATES["public-metrics"]).toEqual({ flag: "alpha-public-metrics", maturity: "alpha" });
-  });
-
   it("every flag follows the <maturity>-<surface> naming convention", () => {
     for (const gate of Object.values(FEATURE_GATES)) {
       expect(gate.flag.startsWith(`${gate.maturity}-`)).toBe(true);

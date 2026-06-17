@@ -83,20 +83,8 @@ describe("prompt-assignment data layer + UI wiring (source contract)", () => {
     expect(saveBlock).toContain('method: "PUT"');
   });
 
-  it("prompt panel shows promptType slug + copy, an editor, and runs the integrity check before save", () => {
-    const panel = read("../src/components/campaign/campaign-prompt-panel.tsx");
-    expect(panel).toContain("checkVariableIntegrity");
-    expect(panel).toContain("variableIntegrityMessage");
-    expect(panel).toContain("promptType");
-    expect(panel).toContain("copy");
-    expect(panel).toContain("textarea");
-  });
-
-  it("campaign sidebar adds a Prompt button gated to the pr-expert-quote family", () => {
-    const sidebar = read("../src/components/campaign-sidebar.tsx");
-    expect(sidebar).toContain("CampaignPromptPanel");
-    // Gated via the family helper, not a hardcoded slug, so a workflow
-    // re-version (-opportunities → -outreach) doesn't drop the Prompt button.
-    expect(sidebar).toContain("isExpertQuoteFeature(featureSlug)");
-  });
+  // The campaign-prompt-panel + the campaign-sidebar Prompt button were removed
+  // with the campaign concept (the per-campaign Prompt slide-over lived on the
+  // deleted campaign sidebar). The api.ts prompt-assignment data layer above is
+  // the surviving contract.
 });
