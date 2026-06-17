@@ -8,18 +8,20 @@ import {
   useSession,
 } from "@clerk/nextjs";
 import {
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
+import {
   ArrowRightIcon,
   CheckIcon,
   ChevronLeftIcon,
   CursorArrowRaysIcon,
-  EnvelopeIcon,
-  ChatBubbleLeftRightIcon,
-  PaperAirplaneIcon,
-  DevicePhoneMobileIcon,
-  UserGroupIcon,
+  GiftIcon,
   PlusIcon,
   ShieldCheckIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
+import { SparklesIcon } from "@heroicons/react/20/solid";
 import posthog from "posthog-js";
 import {
   upsertBrand,
@@ -31,6 +33,8 @@ import {
   saveBrandSalesEconomics,
   suggestPersonas,
   createPersona,
+  setPersonaStatus,
+  listPersonas,
   getWorkflowProjection,
   getFeature,
   prefillFeatureInputs,
@@ -42,18 +46,19 @@ import {
   type FeatureInput,
 } from "@/lib/api";
 import { extractDomain } from "@/lib/extract-domain";
-import { type Filters } from "@/lib/mock-personas";
-import { PersonaCard } from "@/components/personas/persona-card";
-import { SECTIONS, FieldEditor, type ProfileFields } from "@/components/brand-profile/field-editor";
+import { useAuthQuery } from "@/lib/use-auth-query";
+import { type Filters, type Persona } from "@/lib/mock-personas";
+import { PersonaCard, capWords } from "@/components/personas/persona-card";
+import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
 
 /**
  * Beta onboarding (allowlist only — see `beta-allowlist.ts`). A guided flow ported
  * from the app.distribute.you mockup: welcome → URL → an ANIMATED build sequence that
- * runs WHILE the brand is created AND its profile / personas / economics / pricing
- * projection are fetched for real → objective → funnels → conversion rates → review
- * AI-proposed personas → review brand profile → agency-channel consent → per-outcome
- * pricing → launches a real campaign. Everything is wired to live endpoints; the only
- * client-only concept is the "Coming soon" channels (only cold email delivers today).
+ * runs WHILE the brand is created AND its profile / services / personas / economics /
+ * pricing projection are fetched for real → services to promote → sales goal →
+ * one conversion rate → review the AI-proposed persona (server-backed, Edit-with-AI)
+ * → agency-channel consent → outcome-count budget → launches a real campaign.
+ * Everything is wired to live endpoints.
  */
 
 const SALES_FEATURE_SLUG = "sales-cold-email-outreach";
@@ -63,55 +68,34 @@ type Step =
   | "welcome"
   | "url"
   | "loading"
+  | "services"
   | "objective"
   | "rates"
   | "personas"
-  | "profile"
   | "consent"
   | "pricing";
 
-// The six outcomes the user can maximize (Kevin's list). Each maps to a projection
-// count so the pricing cards show the chosen unit, never "closes".
-type Outcome =
-  | "page-visits"
-  | "signups"
-  | "purchases"
-  | "conversations"
-  | "meetings"
-  | "sales-revenue";
+// The two sales goals (Kevin): Signups or Sales Meetings. Each maps to a
+// projection count so the budget cards show the chosen unit, never "closes".
+type Outcome = "signups" | "meetings";
 const OUTCOMES: { key: Outcome; label: string; unit: string; desc: string }[] = [
-  { key: "page-visits", label: "Page visits", unit: "visits", desc: "Maximize qualified traffic to your site." },
   { key: "signups", label: "Signups", unit: "signups", desc: "Maximize free signups / trial starts." },
-  { key: "purchases", label: "Purchases", unit: "purchases", desc: "Maximize paying customers." },
-  { key: "conversations", label: "Conversations", unit: "conversations", desc: "Maximize replies from interested prospects." },
   { key: "meetings", label: "Sales meetings", unit: "meetings", desc: "Maximize booked sales meetings." },
-  { key: "sales-revenue", label: "Overall $ of sales", unit: "revenue", desc: "Maximize total sales revenue." },
 ];
 
-// Only two funnels are offered (Kevin): Website Purchase + Sales Meeting.
-type Funnel = "website-purchases" | "sales-meetings";
-const FUNNELS: { key: Funnel; label: string; desc: string }[] = [
-  { key: "website-purchases", label: "Website Purchase", desc: "Visitors buy directly on your site." },
-  { key: "sales-meetings", label: "Sales Meeting", desc: "Replies turn into booked sales meetings." },
-];
-
+// Each goal needs exactly ONE conversion rate. Signups → website-visit→signup;
+// meetings → positive-reply→meeting.
 type RateKey = "ltv" | "v2s" | "s2c" | "v2m" | "r2m" | "m2c";
 const RATE_META: Record<RateKey, { label: string; suffix: "$" | "%"; hint: string }> = {
   ltv: { label: "Lifetime revenue / paid client", suffix: "$", hint: "Average revenue a customer brings over their lifetime." },
-  v2s: { label: "Website visit → signup", suffix: "%", hint: "Of visitors who land on your site, how many sign up." },
+  v2s: { label: "Website visits to signup rate", suffix: "%", hint: "Of visitors who land on your site, how many sign up." },
   s2c: { label: "Signup → paid client", suffix: "%", hint: "Of signups, how many become paying customers." },
   v2m: { label: "Website visit → meeting", suffix: "%", hint: "Of visitors, how many book a meeting." },
-  r2m: { label: "Positive reply → meeting booked", suffix: "%", hint: "Of positive replies, how many book a meeting." },
+  r2m: { label: "Positive reply to sales meeting", suffix: "%", hint: "Of positive replies, how many book a meeting." },
   m2c: { label: "Meeting booked → close won", suffix: "%", hint: "Of booked meetings, how many close." },
 };
-
-// Ask only the rates the chosen funnels need (+ ltv for revenue).
-function ratesNeeded(funnels: Set<Funnel>): RateKey[] {
-  const out: RateKey[] = ["ltv"];
-  if (funnels.has("website-purchases")) out.push("v2s", "s2c");
-  if (funnels.has("sales-meetings")) out.push("r2m", "m2c");
-  return out;
-}
+// The single rate each goal asks for.
+const RATE_FOR_OUTCOME: Record<Outcome, RateKey> = { signups: "v2s", meetings: "r2m" };
 
 // ── Rate-input formatting ────────────────────────────────────────────
 // Number fields render as TEXT (not <input type="number">) so we can show
@@ -127,12 +111,11 @@ function formatRateInput(raw: string): { text: string; value: number } {
   let s = raw.replace(/[^\d.]/g, "");
   const firstDot = s.indexOf(".");
   if (firstDot !== -1) {
-    // keep only the first dot
     s = s.slice(0, firstDot + 1) + s.slice(firstDot + 1).replace(/\./g, "");
   }
   if (s === "") return { text: "", value: 0 };
   const [intPart, decPart] = s.split(".");
-  let intClean = intPart.replace(/^0+(?=\d)/, ""); // strip leading zeros (keep one)
+  let intClean = intPart.replace(/^0+(?=\d)/, "");
   if (intClean === "") intClean = "0";
   const grouped = groupInt(intClean);
   const text = decPart !== undefined ? `${grouped}.${decPart}` : grouped;
@@ -140,30 +123,12 @@ function formatRateInput(raw: string): { text: string; value: number } {
   return { text, value };
 }
 
-// Format a stored numeric rate as the initial display text (comma-grouped).
 function rateToText(n: number): string {
   if (!isFinite(n)) return "";
   const [intPart, decPart] = String(n).split(".");
   const grouped = groupInt(intPart);
   return decPart !== undefined ? `${grouped}.${decPart}` : grouped;
 }
-function ratesToText(r: Record<RateKey, number>): Record<RateKey, string> {
-  return Object.fromEntries(
-    (Object.keys(r) as RateKey[]).map((k) => [k, rateToText(r[k])]),
-  ) as Record<RateKey, string>;
-}
-
-// Outreach channels. Cold email is the only one that delivers today; the rest are
-// captured as intent (badged "Coming soon"). Email is locked ON.
-type Channel = "email" | "linkedin" | "whatsapp" | "telegram" | "sms" | "referral";
-const CHANNELS: { key: Channel; label: string; icon: typeof EnvelopeIcon; live: boolean }[] = [
-  { key: "email", label: "Cold email", icon: EnvelopeIcon, live: true },
-  { key: "linkedin", label: "LinkedIn DM", icon: UserGroupIcon, live: false },
-  { key: "whatsapp", label: "WhatsApp messages", icon: ChatBubbleLeftRightIcon, live: false },
-  { key: "telegram", label: "Telegram messages", icon: PaperAirplaneIcon, live: false },
-  { key: "sms", label: "SMS", icon: DevicePhoneMobileIcon, live: false },
-  { key: "referral", label: "Referral agent", icon: UserGroupIcon, live: false },
-];
 
 // The five agency-model benefits (landing how-it-works "Sent on your behalf").
 const AGENCY_BENEFITS = [
@@ -176,17 +141,41 @@ const AGENCY_BENEFITS = [
 
 const LOADING_STEPS = [
   { id: "ls-1", label: "Reading your product", delay: 1400 },
-  { id: "ls-2", label: "Extracting your ICP and personas", delay: 1600 },
+  { id: "ls-2", label: "Extracting your services and personas", delay: 1600 },
   { id: "ls-3", label: "Selecting outreach strategy", delay: 1400 },
   { id: "ls-4", label: "Projecting your economics", delay: 1400 },
 ];
 
-type EditablePersona = { id: string; name: string; filters: Filters };
+// Rotating soft-tag palette for the services chips (visual variety, like personas).
+const TAG_TONES = [
+  "bg-indigo-50 text-indigo-700 border-indigo-200",
+  "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "bg-amber-50 text-amber-700 border-amber-200",
+  "bg-rose-50 text-rose-700 border-rose-200",
+  "bg-sky-50 text-sky-700 border-sky-200",
+  "bg-violet-50 text-violet-700 border-violet-200",
+];
+
+// Outcome-count budget tiers (per month). "Other" is a custom count.
+const COUNT_TIERS = [5, 25, 125];
+
 let personaSeq = 0;
 const nextPersonaId = () => `ob-persona-${++personaSeq}`;
 
 const fmtUsd0 = (n: number) => "$" + Math.round(n).toLocaleString("en-US");
 const fmtCount = (n: number) => Math.round(n).toLocaleString("en-US");
+
+// Coerce a stored profile field (string | string[]) to a string[] of trimmed items.
+function toStringList(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map((v) => String(v).trim()).filter(Boolean);
+  if (typeof value === "string") {
+    return value
+      .split(/\r?\n|,/)
+      .map((v) => v.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
 
 export function BetaOnboarding() {
   const router = useRouter();
@@ -201,25 +190,25 @@ export function BetaOnboarding() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const [outcome, setOutcome] = useState<Outcome>("purchases");
-  const [funnels, setFunnels] = useState<Set<Funnel>>(
-    () => new Set<Funnel>(["website-purchases", "sales-meetings"]),
-  );
+  const [outcome, setOutcome] = useState<Outcome>("signups");
   const [rates, setRates] = useState<Record<RateKey, number>>({ ltv: 2500, v2s: 5, s2c: 10, v2m: 3, r2m: 30, m2c: 25 });
-  // Display strings for the rate inputs (comma-grouped, decimals preserved).
-  const [rateText, setRateText] = useState<Record<RateKey, string>>(() =>
-    ratesToText({ ltv: 2500, v2s: 5, s2c: 10, v2m: 3, r2m: 30, m2c: 25 }),
-  );
-  const [personas, setPersonas] = useState<EditablePersona[]>([]);
+  const [rateText, setRateText] = useState<Record<RateKey, string>>(() => ({ ltv: "2,500", v2s: "5", s2c: "10", v2m: "3", r2m: "30", m2c: "25" }));
+  const [services, setServices] = useState<string[]>([]);
+  const [serviceDraft, setServiceDraft] = useState("");
   const [profile, setProfile] = useState<Record<string, string | string[]>>({});
-  const [channels, setChannels] = useState<Set<Channel>>(() => new Set<Channel>(["email"]));
-  const [budget, setBudget] = useState<number | null>(null);
+  // Outcome-count budget selection. selectedCount drives the derived $/day; budget
+  // is the $/day value sent to the campaign. Tiers are derived from a STABLE base
+  // (the projection unit cost), never from the selection — so clicking a card never
+  // reshuffles the cards (the old $/day-tier bug).
+  const [selectedCount, setSelectedCount] = useState<number | null>(null);
+  const [customCount, setCustomCount] = useState("");
 
   // Loading-sequence + real fetch coordination. We only advance past the loader once
   // BOTH the animation finished AND the brand exists + its data is fetched.
   const [loadStep, setLoadStep] = useState(0);
   const [loadDone, setLoadDone] = useState(false);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const [brandId, setBrandId] = useState<string | null>(null);
   const brandIdRef = useRef<string | null>(null);
   const orgIdRef = useRef<string | null>(null);
   const fetchDoneRef = useRef(false);
@@ -239,26 +228,8 @@ export function BetaOnboarding() {
   }, [step]);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
-  function toggleFunnel(key: Funnel) {
-    setFunnels((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }
-  function toggleChannel(key: Channel) {
-    if (key === "email") return; // locked on
-    setChannels((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }
-
   function maybeAdvancePastLoading() {
-    if (animDoneRef.current && fetchDoneRef.current) setStep("objective");
+    if (animDoneRef.current && fetchDoneRef.current) setStep("services");
   }
 
   function runLoadingAnimation() {
@@ -298,30 +269,34 @@ export function BetaOnboarding() {
       await setActive({ organization: org.id });
       targetOrgId = org.id;
     }
-    const { brandId } = await upsertBrand(brandUrl);
+    const { brandId: newBrandId } = await upsertBrand(brandUrl);
     // NOTE: onboarding is marked complete only at the END of the flow (in
     // launch(), after the campaign is created) — NOT here. Marking it complete
     // at brand creation set the edge-gate signal 6 steps early, so a mid-flow
     // refresh / manual dashboard-URL nav slipped past proxy.ts onto a half-set-up
-    // dashboard (no rates/personas/consent/campaign). See launch().
-    // Extract brand fields (populates the brand profile), then fetch everything.
-    await extractBrandFields([brandId], SALES_PROFILE_FIELDS).catch((e) =>
+    // dashboard (no rates/personas/consent/campaign). See launch(). (#1770)
+    // Extract brand fields (populates the brand profile + services), then fetch all.
+    await extractBrandFields([newBrandId], SALES_PROFILE_FIELDS).catch((e) =>
       console.error("[dashboard] extractBrandFields failed:", e),
     );
-    brandIdRef.current = brandId;
+    brandIdRef.current = newBrandId;
     orgIdRef.current = targetOrgId;
-    posthog.capture("onboarding_brand_created", { flow: "beta", org_id: targetOrgId, brand_id: brandId });
+    setBrandId(newBrandId);
+    posthog.capture("onboarding_brand_created", { flow: "beta", org_id: targetOrgId, brand_id: newBrandId });
 
     const [prof, econRes, sug, proj, feat] = await Promise.all([
-      getBrandProfile(brandId),
-      getSalesEconomicsEffective(brandId),
-      suggestPersonas(brandId, 3),
-      getWorkflowProjection({ featureSlug: SALES_FEATURE_SLUG, brandId, objective: "self-serve", budgetUsd: PROJECTION_REF_BUDGET }),
+      getBrandProfile(newBrandId),
+      getSalesEconomicsEffective(newBrandId),
+      suggestPersonas(newBrandId, 1),
+      getWorkflowProjection({ featureSlug: SALES_FEATURE_SLUG, brandId: newBrandId, objective: "self-serve", budgetUsd: PROJECTION_REF_BUDGET }),
       getFeature(SALES_FEATURE_SLUG),
     ]);
 
     salesInputsRef.current = feat.feature.inputs ?? [];
-    if (prof.current) setProfile(prof.current.fields);
+    if (prof.current) {
+      setProfile(prof.current.fields);
+      setServices(toStringList(prof.current.fields.services));
+    }
     if (econRes.economics) {
       const e = econRes.economics;
       econRef.current = e;
@@ -334,13 +309,17 @@ export function BetaOnboarding() {
         m2c: e.meetingToClosePct,
       };
       setRates(loaded);
-      setRateText(ratesToText(loaded));
+      setRateText(Object.fromEntries((Object.keys(loaded) as RateKey[]).map((k) => [k, rateToText(loaded[k])])) as Record<RateKey, string>);
     }
-    setPersonas(sug.personas.map((p: PersonaDraft) => ({ id: nextPersonaId(), name: p.name, filters: p.filters as Filters })));
+    // Persist the ONE suggested persona right away so the personas step is
+    // server-backed (Edit-with-AI + the persona cards read/write live data).
+    const first: PersonaDraft | undefined = sug.personas[0];
+    if (first?.name?.trim()) {
+      await createPersona(newBrandId, { name: capWords(first.name.trim()), filters: first.filters }).catch((e) =>
+        console.error("[dashboard] createPersona (onboarding seed) failed:", e),
+      );
+    }
     projectionRef.current = proj;
-    if (proj.recommendedBudgetUsd && proj.recommendedBudgetUsd > 0) {
-      setBudget(Math.round(proj.recommendedBudgetUsd));
-    }
     fetchDoneRef.current = true;
   }
 
@@ -363,11 +342,11 @@ export function BetaOnboarding() {
 
   // ── Step transitions that persist ────────────────────────────────
   async function saveRatesAndContinue() {
-    const brandId = brandIdRef.current;
-    if (!brandId) return;
+    const id = brandIdRef.current;
+    if (!id) return;
     setBusy(true);
     try {
-      await saveBrandSalesEconomics(brandId, {
+      await saveBrandSalesEconomics(id, {
         lifetimeRevenueUsd: rates.ltv,
         replyToMeetingPct: rates.r2m,
         visitToMeetingPct: rates.v2m,
@@ -375,24 +354,15 @@ export function BetaOnboarding() {
         visitToSignupPct: rates.v2s,
         signupToPaidClientPct: rates.s2c,
       });
-      // Recompute the projection from the rates we just saved. The loading-time
-      // projection ran on the brand's DEFAULT economics (this step comes after
-      // loading), which left the pricing recommended budget + per-outcome counts
-      // stale ($1/day, ~0 signups). Server reads econ from saved sales-economics,
-      // so refetch now. Best-effort: a failure must not block the flow (econ is
-      // already persisted; pricing falls back to the prior projection).
+      // Recompute the projection from the rates we just saved (loading-time
+      // projection ran on the brand's DEFAULT economics). Best-effort +
+      // keep-last-good: only adopt a usable (non-degenerate) refetch.
       try {
-        const proj = await getWorkflowProjection({ featureSlug: SALES_FEATURE_SLUG, brandId, objective: "self-serve", budgetUsd: PROJECTION_REF_BUDGET });
-        // Keep-last-good: only adopt the refreshed projection if it's usable — the
-        // cold Neon chain can return a valid-but-degenerate 200 (null unit costs /
-        // counts). Don't let a double-cold refetch overwrite a usable loading value.
+        const proj = await getWorkflowProjection({ featureSlug: SALES_FEATURE_SLUG, brandId: id, objective: "self-serve", budgetUsd: PROJECTION_REF_BUDGET });
         const usable = proj.workflows.some(
           (w) => w.costPerCloseUsd != null || (w.projection != null && (w.projection.visits != null || w.projection.closes != null)),
         );
-        if (usable) {
-          projectionRef.current = proj;
-          if (proj.recommendedBudgetUsd && proj.recommendedBudgetUsd > 0) setBudget(Math.round(proj.recommendedBudgetUsd));
-        }
+        if (usable) projectionRef.current = proj;
       } catch (e) {
         console.error("[dashboard] onboarding: projection refresh after rates failed:", e);
       }
@@ -404,30 +374,12 @@ export function BetaOnboarding() {
     }
   }
 
-  async function savePersonasAndContinue() {
-    const brandId = brandIdRef.current;
-    if (!brandId) return;
-    setBusy(true);
-    try {
-      // Persist each kept persona draft. Names are unique per brand; a 409 on an
-      // accidental dup is non-fatal here (skip it, keep going).
-      for (const p of personas) {
-        if (!p.name.trim()) continue;
-        await createPersona(brandId, { name: p.name.trim(), filters: p.filters as Record<string, string[]> }).catch((e) =>
-          console.error("[dashboard] createPersona (onboarding) failed:", e),
-        );
-      }
-      setStep("profile");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function launch() {
-    const brandId = brandIdRef.current;
+    const id = brandIdRef.current;
     const orgId = orgIdRef.current;
     const proj = projectionRef.current;
-    if (!brandId || !orgId || !proj || budget == null) return;
+    const budget = derivedBudget();
+    if (!id || !orgId || !proj || budget == null) return;
     const workflowSlug = proj.recommendedWorkflowDynastySlug;
     if (!workflowSlug) {
       setError("No outreach workflow is available for this brand yet.");
@@ -436,19 +388,17 @@ export function BetaOnboarding() {
     setBusy(true);
     setError(null);
     try {
-      // Persist the brand profile edits + the channel consent in one version.
+      // Persist the brand profile edits (incl. services) + the agency consent.
       const trimmed = url.trim();
       const brandUrl = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-      await saveBrandProfileVersion(brandId, {
+      await saveBrandProfileVersion(id, {
         ...profile,
-        consentedChannels: Array.from(channels),
+        services,
+        consentedChannels: ["email"],
         agencyConsentAt: new Date().toISOString(),
       });
-      // The /campaigns endpoint requires `featureInputs` — the feature's declared
-      // inputs filled from the (now-saved) brand profile. Mirror campaigns/new:
-      // prefill the values, then map them onto the feature's declared input keys.
       const prefilled = prefillToStringMap(
-        (await prefillFeatureInputs(SALES_FEATURE_SLUG, [brandId])).prefilled,
+        (await prefillFeatureInputs(SALES_FEATURE_SLUG, [id])).prefilled,
       );
       const featureInputs: Record<string, string> = {};
       for (const input of salesInputsRef.current) {
@@ -467,7 +417,7 @@ export function BetaOnboarding() {
       // Mark onboarding complete ONLY now — the flow is genuinely finished (a real
       // campaign launched). This is the edge-gate signal proxy.ts reads; setting it
       // earlier (at brand creation) let a mid-flow refresh bypass the rest of the
-      // wizard onto the dashboard (DIS-111 / first-run gate).
+      // wizard onto the dashboard (DIS-111 / first-run gate). (#1770)
       await fetch("/api/onboarding/complete", { method: "POST" }).catch((e) =>
         console.error("[dashboard] failed to mark onboarding complete:", e),
       );
@@ -475,7 +425,7 @@ export function BetaOnboarding() {
       // in the cookie the edge gate reads BEFORE we navigate — otherwise the stale
       // JWT loops the next navigation back to /onboarding (DIS-111).
       await session?.getToken({ skipCache: true }).catch(() => {});
-      router.push(`/orgs/${orgId}/brands/${brandId}?launched=${campaign.id}`);
+      router.push(`/orgs/${orgId}/brands/${id}?launched=${campaign.id}`);
     } catch (err) {
       posthog.capture("onboarding_launch_failed", { flow: "beta" });
       setError(err instanceof Error ? err.message : "Launch failed. Please try again.");
@@ -483,10 +433,7 @@ export function BetaOnboarding() {
     }
   }
 
-  // ── Per-outcome economics for the pricing cards ──────────────────
-  // All counts are objective-agnostic; we derive each outcome's cost-per-unit from
-  // the ONE projection fetched at PROJECTION_REF_BUDGET (budget-invariant), exactly
-  // like campaigns/new. signups are derived from visits × visit→signup rate.
+  // ── Per-outcome economics for the budget cards ──────────────────
   // The recommended workflow's funnel projection (counts at PROJECTION_REF_BUDGET).
   function activeProjection() {
     const resp = projectionRef.current;
@@ -497,30 +444,48 @@ export function BetaOnboarding() {
     return (rec ?? resp.workflows[0])?.projection ?? null;
   }
 
+  // $ per chosen outcome (budget-invariant): PROJECTION_REF_BUDGET ÷ per-day count.
   function outcomeUnitCost(): number | null {
     const p = activeProjection();
     if (!p) return null;
     const B = PROJECTION_REF_BUDGET;
-    const per = (count: number | null | undefined) =>
-      count && count > 0 ? B / count : null;
-    switch (outcome) {
-      case "page-visits": return per(p.visits);
-      case "signups": return p.visits && p.visits > 0 ? B / (p.visits * (rates.v2s / 100)) : null;
-      case "purchases": return per(p.closes);
-      case "conversations": return per(p.replies);
-      case "meetings": return per(p.meetings);
-      case "sales-revenue": return null; // revenue shows ROI instead of a unit cost
+    if (outcome === "signups") {
+      const signupsPerDay = p.visits && p.visits > 0 ? p.visits * (rates.v2s / 100) : 0;
+      return signupsPerDay > 0 ? B / signupsPerDay : null;
     }
-  }
-  function revenuePerDollar(): number | null {
-    const p = activeProjection();
-    if (!p?.revenue || p.revenue <= 0) return null;
-    return p.revenue / PROJECTION_REF_BUDGET;
+    return p.meetings && p.meetings > 0 ? B / p.meetings : null;
   }
 
-  const neededRates = ratesNeeded(funnels);
+  // Daily budget needed to hit `n` outcomes / month.
+  function budgetForCount(n: number): number | null {
+    const uc = outcomeUnitCost();
+    if (uc == null || uc <= 0) return null;
+    return Math.max(1, Math.round((n * uc) / 30));
+  }
+
+  // The $/day for the current selection (or null if nothing usable yet).
+  function derivedBudget(): number | null {
+    if (selectedCount == null) return null;
+    const b = budgetForCount(selectedCount);
+    if (b != null) return b;
+    // Degenerate projection — fall back to the recommended budget so launch works.
+    const rec = projectionRef.current?.recommendedBudgetUsd;
+    return rec && rec > 0 ? Math.round(rec) : null;
+  }
+
   const card = "bg-white rounded-2xl border border-gray-200 p-8 md:p-12";
   const outcomeMeta = OUTCOMES.find((o) => o.key === outcome)!;
+
+  // ── Service-tag editor helpers ────────────────────────────────────
+  function addService(raw: string) {
+    const value = raw.trim();
+    setServiceDraft("");
+    if (!value) return;
+    setServices((prev) => (prev.some((s) => s.toLowerCase() === value.toLowerCase()) ? prev : [...prev, value]));
+  }
+  function removeService(value: string) {
+    setServices((prev) => prev.filter((s) => s !== value));
+  }
 
   // ── Step renders ─────────────────────────────────────────────────
   if (step === "welcome") {
@@ -529,11 +494,10 @@ export function BetaOnboarding() {
         <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-brand-600">Beta</span>
         <h1 className="mt-4 font-display text-3xl font-bold leading-tight text-gray-950">Pay per outcome,<br />like Google Ads.</h1>
         <p className="mt-3 text-sm leading-6 text-gray-500">Drop your product URL and a daily budget. We find your leads, reach out across the best channels on your behalf, and turn them into signups, meetings and sales.</p>
-        <div className="mt-7 grid gap-3 sm:grid-cols-3">
+        <div className="mt-7 grid gap-3 sm:grid-cols-2">
           {[
             { v: "~$15", l: "/ signup" },
             { v: "~$90", l: "/ meeting" },
-            { v: "~$120", l: "/ purchase" },
           ].map((f) => (
             <div key={f.l} className="rounded-xl border border-gray-200 bg-gray-50 p-4">
               <div className="text-2xl font-bold text-gray-950">{f.v}</div>
@@ -593,11 +557,44 @@ export function BetaOnboarding() {
     );
   }
 
+  if (step === "services") {
+    return (
+      <div className={card}>
+        <h2 className="font-display text-2xl font-bold text-gray-900">What services do you want to promote with us?</h2>
+        <p className="mt-2 mb-6 text-gray-500">We drafted these from <span className="font-medium text-gray-700">{hostname}</span>. Add or remove until the list matches what you sell.</p>
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 p-4">
+          {services.map((s, i) => (
+            <span key={s} className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${TAG_TONES[i % TAG_TONES.length]}`}>
+              {s}
+              <button type="button" onClick={() => removeService(s)} aria-label={`Remove ${s}`} className="opacity-60 transition hover:opacity-100">
+                <XMarkIcon className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+          <input
+            value={serviceDraft}
+            onChange={(e) => setServiceDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); addService(serviceDraft); }
+              else if (e.key === "Backspace" && serviceDraft === "" && services.length) removeService(services[services.length - 1]);
+            }}
+            onBlur={() => addService(serviceDraft)}
+            placeholder={services.length ? "Add a service…" : "e.g. SEO audits"}
+            className="min-w-[8rem] flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:outline-none"
+          />
+        </div>
+        {services.length === 0 && <p className="mt-2 text-xs text-gray-400">Add at least one service to continue.</p>}
+        <NextButton onClick={() => setStep("objective")} disabled={services.length === 0} />
+      </div>
+    );
+  }
+
   if (step === "objective") {
     return (
       <div className={card}>
-        <h2 className="font-display text-2xl font-bold text-gray-900">What do you want to maximize?</h2>
-        <p className="mt-2 mb-6 text-gray-500">Pick the one outcome this campaign optimizes for. The pricing is shown per this outcome.</p>
+        <BackButton onClick={() => setStep("services")} />
+        <h2 className="font-display text-2xl font-bold text-gray-900">What is your primary sales goal?</h2>
+        <p className="mt-2 mb-6 text-gray-500">Pick the one outcome this campaign optimizes for. The budget is shown per this outcome.</p>
         <div className="grid gap-3 sm:grid-cols-2">
           {OUTCOMES.map((o) => (
             <ChoiceCard key={o.key} active={outcome === o.key} onClick={() => setOutcome(o.key)} title={o.label} desc={o.desc} />
@@ -609,131 +606,53 @@ export function BetaOnboarding() {
   }
 
   if (step === "rates") {
+    const k = RATE_FOR_OUTCOME[outcome];
     return (
       <div className={card}>
         <BackButton onClick={() => setStep("objective")} />
         <h2 className="font-display text-2xl font-bold text-gray-900">Your conversion rates.</h2>
-        <p className="mt-2 mb-6 text-gray-500">We pre-filled these from your profile. Estimates are fine — tweak anytime.</p>
+        <p className="mt-2 mb-6 text-gray-500">We pre-filled this from your profile. An estimate is fine — tweak anytime.</p>
         {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
-
-        {/* Sales funnels — drives which rates we ask for below. */}
-        <div className="mb-5">
-          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">Which sales funnels do you use?</div>
-          <div className="space-y-2">
-            {FUNNELS.map((f) => (
-              <ChoiceCard key={f.key} active={funnels.has(f.key)} onClick={() => toggleFunnel(f.key)} title={f.label} desc={f.desc} check />
-            ))}
+        <div className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 p-4">
+          <div className="min-w-0">
+            <div className="text-sm font-medium text-gray-900">{RATE_META[k].label}</div>
+            <div className="mt-0.5 text-xs text-gray-500">{RATE_META[k].hint}</div>
+          </div>
+          <div className="flex shrink-0 items-center gap-1 rounded-lg border border-gray-200 px-2 py-1">
+            {RATE_META[k].suffix === "$" && <span className="text-sm text-gray-400">$</span>}
+            <input
+              type="text"
+              inputMode="decimal"
+              value={rateText[k]}
+              onChange={(e) => {
+                const { text, value } = formatRateInput(e.target.value);
+                setRateText((t) => ({ ...t, [k]: text }));
+                setRates((r) => ({ ...r, [k]: value }));
+              }}
+              className="w-20 bg-transparent text-right text-sm text-gray-900 focus:outline-none"
+            />
+            {RATE_META[k].suffix === "%" && <span className="text-sm text-gray-400">%</span>}
           </div>
         </div>
-
-        <div className="space-y-3">
-          {neededRates.map((k) => (
-            <div key={k} className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 p-4">
-              <div className="min-w-0">
-                <div className="text-sm font-medium text-gray-900">{RATE_META[k].label}</div>
-                <div className="mt-0.5 text-xs text-gray-500">{RATE_META[k].hint}</div>
-              </div>
-              <div className="flex shrink-0 items-center gap-1 rounded-lg border border-gray-200 px-2 py-1">
-                {RATE_META[k].suffix === "$" && <span className="text-sm text-gray-400">$</span>}
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={rateText[k]}
-                  onChange={(e) => {
-                    const { text, value } = formatRateInput(e.target.value);
-                    setRateText((t) => ({ ...t, [k]: text }));
-                    setRates((r) => ({ ...r, [k]: value }));
-                  }}
-                  className="w-20 bg-transparent text-right text-sm text-gray-900 focus:outline-none"
-                />
-                {RATE_META[k].suffix === "%" && <span className="text-sm text-gray-400">%</span>}
-              </div>
-            </div>
-          ))}
-        </div>
-        <NextButton onClick={saveRatesAndContinue} busy={busy} disabled={funnels.size === 0} label="Continue" />
+        <NextButton onClick={saveRatesAndContinue} busy={busy} label="Continue" />
       </div>
     );
   }
 
   if (step === "personas") {
     return (
-      <div className={card}>
-        <BackButton onClick={() => setStep("rates")} />
-        <h2 className="font-display text-2xl font-bold text-gray-900">Your target personas.</h2>
-        <p className="mt-2 mb-6 text-gray-500">We drafted these from your product. Edit the name and targeting filters — or add another.</p>
-        <div className="space-y-3">
-          {personas.map((p) => (
-            <PersonaCard
-              key={p.id}
-              persona={{ id: p.id, name: p.name, filters: p.filters, status: "active", unsaved: true }}
-              onChange={(name, filters) => setPersonas((ps) => ps.map((x) => x.id === p.id ? { ...x, name, filters } : x))}
-              onRemove={() => setPersonas((ps) => ps.filter((x) => x.id !== p.id))}
-            />
-          ))}
-        </div>
-        <button onClick={() => setPersonas((ps) => [...ps, { id: nextPersonaId(), name: "", filters: {} }])} className="mt-3 flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700">
-          <PlusIcon className="h-4 w-4" /> Add a persona
-        </button>
-        <NextButton onClick={savePersonasAndContinue} busy={busy} label="Continue" />
-      </div>
-    );
-  }
-
-  if (step === "profile") {
-    // Same inline-edit UX as the Brand Profile page: text shows as read view,
-    // click to edit; list fields are chip editors. Edits write back to `profile`,
-    // persisted at launch via saveBrandProfileVersion.
-    const setText = (key: string, value: string) =>
-      setProfile((pr) => ({ ...pr, [key]: value }));
-    const addItem = (key: string, raw: string) => {
-      const value = raw.trim();
-      if (!value) return;
-      setProfile((pr) => {
-        const arr = Array.isArray(pr[key]) ? (pr[key] as string[]) : [];
-        if (arr.some((v) => v.toLowerCase() === value.toLowerCase())) return pr;
-        return { ...pr, [key]: [...arr, value] };
-      });
-    };
-    const removeItem = (key: string, value: string) =>
-      setProfile((pr) => {
-        const arr = Array.isArray(pr[key]) ? (pr[key] as string[]) : [];
-        return { ...pr, [key]: arr.filter((v) => v !== value) };
-      });
-    const fields = profile as ProfileFields;
-    return (
-      <div className={card}>
-        <BackButton onClick={() => setStep("personas")} />
-        <h2 className="font-display text-2xl font-bold text-gray-900">Your brand profile.</h2>
-        <p className="mt-2 mb-6 text-gray-500">We read <span className="font-medium text-gray-700">{hostname}</span> and drafted this. Click any field to edit before we write your outreach.</p>
-        <div className="space-y-4">
-          {SECTIONS.map((section) => (
-            <div key={section.title} className="bg-white rounded-xl border border-gray-200 p-5">
-              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">{section.title}</h3>
-              <div className="space-y-5">
-                {section.fields.map((field) => (
-                  <FieldEditor
-                    key={field.key}
-                    field={field}
-                    value={fields[field.key]}
-                    onText={(v) => setText(field.key, v)}
-                    onAdd={(v) => addItem(field.key, v)}
-                    onRemove={(v) => removeItem(field.key, v)}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-        <NextButton onClick={() => setStep("consent")} label="Continue" />
-      </div>
+      <OnboardingPersonas
+        brandId={brandId}
+        onBack={() => setStep("rates")}
+        onContinue={() => setStep("consent")}
+      />
     );
   }
 
   if (step === "consent") {
     return (
       <div className={card}>
-        <BackButton onClick={() => setStep("profile")} />
+        <BackButton onClick={() => setStep("personas")} />
         <div className="mb-4 flex items-center gap-2">
           <ShieldCheckIcon className="h-5 w-5 text-brand-600" />
           <h2 className="font-display text-2xl font-bold text-gray-900">We reach out on your behalf.</h2>
@@ -744,67 +663,199 @@ export function BetaOnboarding() {
             <li key={b} className="flex items-start gap-2 text-xs leading-5 text-gray-600"><CheckIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />{b}</li>
           ))}
         </ul>
-        <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">Channels we may use on your behalf</div>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {CHANNELS.map((c) => {
-            const on = channels.has(c.key);
-            return (
-              <button key={c.key} onClick={() => toggleChannel(c.key)} disabled={c.key === "email"}
-                className={`flex items-center gap-3 rounded-xl border-2 p-3 text-left transition ${on ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"} ${c.key === "email" ? "cursor-default" : ""}`}>
-                <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${on ? "bg-brand-100 text-brand-600" : "bg-gray-100 text-gray-400"}`}><c.icon className="h-4 w-4" /></span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium text-gray-900">{c.label}</span>
-                  {c.key === "email" ? <span className="text-[11px] text-gray-400">Always on</span> : !c.live && <span className="text-[11px] text-amber-600">Coming soon</span>}
-                </span>
-                <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 ${on ? "border-brand-500 bg-brand-500 text-white" : "border-gray-300"}`}>{on && <CheckIcon className="h-3 w-3" />}</span>
-              </button>
-            );
-          })}
-        </div>
-        <p className="mt-4 text-[11px] leading-5 text-gray-400">By continuing you authorize distribute to contact prospects on your behalf, representing your brand, per our <a href="https://distribute.you/terms" target="_blank" rel="noreferrer" className="underline">Terms</a>.</p>
+        <p className="text-[11px] leading-5 text-gray-400">By continuing you authorize distribute to contact prospects on your behalf, representing your brand, per our <a href="https://distribute.you/terms" target="_blank" rel="noreferrer" className="underline">Terms</a>.</p>
         <NextButton onClick={() => setStep("pricing")} label="Continue" />
       </div>
     );
   }
 
-  // pricing
+  // pricing — outcome-count budget
   const unitCost = outcomeUnitCost();
-  const rpd = revenuePerDollar();
-  const recommended = budget ?? (projectionRef.current?.recommendedBudgetUsd ? Math.round(projectionRef.current.recommendedBudgetUsd) : 30);
-  const tiers = [Math.max(5, Math.round(recommended * 0.5)), recommended, recommended * 2];
-  const tierLabels = ["Starter", "Recommended", "Growth"];
+  const selectedBudget = derivedBudget();
   return (
     <div className={card}>
       <BackButton onClick={() => setStep("consent")} />
-      <h2 className="font-display text-2xl font-bold text-gray-900">Your daily budget.</h2>
-      <p className="mt-2 mb-6 text-gray-500">Maximizing <strong>{outcomeMeta.label}</strong>. Pick a daily budget — we project {outcomeMeta.unit} per month.</p>
+      <h2 className="font-display text-2xl font-bold text-gray-900">Your monthly target.</h2>
+      <p className="mt-2 mb-5 text-gray-500">Pick how many <strong>{outcomeMeta.unit}</strong> you want each month — we set the daily budget to hit it.</p>
       {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
-      <div className="grid gap-3 sm:grid-cols-3">
-        {tiers.map((b, i) => {
-          const perMonth = outcome === "sales-revenue"
-            ? (rpd != null ? rpd * b * 30 : null)
-            : (unitCost != null ? (b * 30) / unitCost : null);
+
+      {/* First-week match callout */}
+      <div className="mb-5 flex items-start gap-3 rounded-xl border border-brand-200 bg-brand-50 p-4">
+        <GiftIcon className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />
+        <p className="text-sm leading-6 text-brand-800"><strong>We double your first week — free.</strong> We match your spend dollar-for-dollar up to <strong>$25</strong>, so week one goes twice as far.</p>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-4">
+        {COUNT_TIERS.map((n, i) => {
+          const b = budgetForCount(n);
+          const active = selectedCount === n;
           return (
-            <button key={i} onClick={() => setBudget(b)} className={`rounded-xl border-2 p-4 text-left transition ${budget === b ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"}`}>
-              {i === 1 ? <div className="mb-1 inline-block rounded-full bg-brand-100 px-2 py-0.5 text-[10px] font-semibold text-brand-700">Recommended ★</div> : <div className="mb-1 text-xs font-semibold text-gray-500">{tierLabels[i]}</div>}
-              <div className="text-xl font-bold text-gray-950">{fmtUsd0(b)} <span className="text-xs font-normal text-gray-400">/ day</span></div>
-              <div className="mt-1 text-xs text-gray-500">
-                {perMonth != null
-                  ? (outcome === "sales-revenue" ? `~${fmtUsd0(perMonth)} sales / mo` : `~${fmtCount(perMonth)} ${outcomeMeta.unit} / mo`)
-                  : "—"}
-              </div>
+            <button key={n} onClick={() => setSelectedCount(n)} className={`rounded-xl border-2 p-4 text-left transition ${active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"}`}>
+              {i === 1 ? <div className="mb-1 inline-block rounded-full bg-brand-100 px-2 py-0.5 text-[10px] font-semibold text-brand-700">Recommended ★</div> : <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">{i === 0 ? "Starter" : "Growth"}</div>}
+              <div className="text-xl font-bold text-gray-950">{fmtCount(n)}</div>
+              <div className="text-xs text-gray-500">{outcomeMeta.unit} / mo</div>
+              <div className="mt-2 text-xs text-gray-400">{b != null ? `~${fmtUsd0(b)} / day` : "—"}</div>
             </button>
           );
         })}
+        {/* Other — custom count */}
+        {(() => {
+          const customN = Number(customCount);
+          const isCustom = customCount !== "" && customN > 0;
+          const active = isCustom && selectedCount === customN;
+          const b = isCustom ? budgetForCount(customN) : null;
+          return (
+            <div className={`rounded-xl border-2 p-4 transition ${active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white"}`}>
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">Other</div>
+              <input
+                type="number"
+                min={1}
+                value={customCount}
+                onChange={(e) => {
+                  setCustomCount(e.target.value);
+                  const v = Number(e.target.value);
+                  setSelectedCount(v > 0 ? v : null);
+                }}
+                placeholder="Custom"
+                className="w-full bg-transparent text-xl font-bold text-gray-950 placeholder-gray-300 focus:outline-none"
+              />
+              <div className="text-xs text-gray-500">{outcomeMeta.unit} / mo</div>
+              <div className="mt-2 text-xs text-gray-400">{b != null ? `~${fmtUsd0(b)} / day` : "—"}</div>
+            </div>
+          );
+        })()}
       </div>
-      <div className="mt-3 flex items-center gap-2 rounded-xl border border-gray-200 p-3">
-        <span className="text-sm text-gray-400">$</span>
-        <input type="number" min={1} value={budget ?? ""} onChange={(e) => setBudget(Number(e.target.value))} placeholder="Custom daily budget" className="flex-1 bg-transparent text-sm text-gray-900 focus:outline-none" />
-        <span className="text-xs text-gray-400">/ day</span>
-      </div>
-      <button onClick={launch} disabled={busy || budget == null || budget <= 0} className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
+
+      {selectedBudget != null && (
+        <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+          Daily budget: <strong className="text-gray-900">{fmtUsd0(selectedBudget)} / day</strong>
+          {unitCost != null && <span className="text-gray-400"> · ~{fmtUsd0(unitCost)} / {outcomeMeta.unit.replace(/s$/, "")}</span>}
+        </div>
+      )}
+
+      <button onClick={launch} disabled={busy || selectedBudget == null} className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
         {busy ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> Launching…</> : <>Launch campaign <CursorArrowRaysIcon className="h-4 w-4" /></>}
       </button>
+    </div>
+  );
+}
+
+// ── Personas step — server-backed (mirrors the Customer Personas page) ──────
+// The brand exists by now (created during loading) and the AI-suggested persona
+// was already persisted, so this reads/writes live personas: PersonaCard with the
+// full save / archive lifecycle + an Edit-with-AI chat, exactly like the page.
+let obDraftSeq = 0;
+const nextDraftId = () => `ob-draft-${++obDraftSeq}`;
+
+function OnboardingPersonas({
+  brandId,
+  onBack,
+  onContinue,
+}: {
+  brandId: string | null;
+  onBack: () => void;
+  onContinue: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [drafts, setDrafts] = useState<Persona[]>([]);
+  const [aiOpen, setAiOpen] = useState(false);
+
+  const { data, isPending } = useAuthQuery(
+    ["personas", brandId ?? ""],
+    () => listPersonas(brandId as string),
+    { enabled: !!brandId },
+  );
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["personas", brandId ?? ""] });
+  const createMut = useMutation({
+    mutationFn: (i: { name: string; filters: Filters }) =>
+      createPersona(brandId as string, { name: i.name, filters: i.filters as Record<string, string[]> }),
+    onSuccess: invalidate,
+  });
+  const statusMut = useMutation({
+    mutationFn: (i: { id: string; status: Persona["status"] }) => setPersonaStatus(brandId as string, i.id, i.status),
+    onSuccess: invalidate,
+  });
+
+  const serverPersonas: Persona[] = (data?.personas ?? [])
+    .filter((p) => p.status !== "archived")
+    .map((p) => ({ id: p.id, name: p.name, filters: p.filters, status: p.status }));
+  const personas: Persona[] = [...drafts, ...serverPersonas];
+
+  const isNameTaken = (name: string, exceptId?: string) => {
+    const needle = name.trim().toLowerCase();
+    return personas.some((p) => p.id !== exceptId && p.name.trim().toLowerCase() === needle);
+  };
+  const uniqueName = (base: string) => {
+    const trimmed = base.trim() || "Persona";
+    if (!isNameTaken(trimmed)) return trimmed;
+    for (let i = 2; ; i++) {
+      const candidate = `${trimmed} ${i}`;
+      if (!isNameTaken(candidate)) return candidate;
+    }
+  };
+  const addPersona = () => setDrafts((prev) => [{ id: nextDraftId(), name: uniqueName("New Persona"), filters: {}, status: "active", unsaved: true }, ...prev]);
+  const removeDraft = (id: string) => setDrafts((prev) => prev.filter((p) => p.id !== id));
+  const commitNew = (id: string, name: string, filters: Filters) =>
+    createMut.mutate({ name: capWords(name), filters }, { onSuccess: () => removeDraft(id) });
+  const saveAsNew = (name: string, filters: Filters) => createMut.mutate({ name: capWords(name), filters });
+
+  const card = "bg-white rounded-2xl border border-gray-200 p-8 md:p-12";
+  return (
+    <div className={card}>
+      <BackButton onClick={onBack} />
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="font-display text-2xl font-bold text-gray-900">Who do you want to sell to?</h2>
+          <p className="mt-2 text-gray-500">We drafted your main persona. Edit the targeting filters, add another, or ask AI.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => brandId && setAiOpen(true)}
+          disabled={!brandId}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-medium text-brand-700 transition hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-300 disabled:opacity-50"
+        >
+          <SparklesIcon className="h-4 w-4" /> Edit with AI
+        </button>
+      </div>
+
+      <div className="mt-6 space-y-3">
+        {isPending && personas.length === 0 ? (
+          <div className="h-56 animate-pulse rounded-xl bg-gray-100" />
+        ) : personas.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-gray-300 p-10 text-center text-sm text-gray-500">No personas yet.</div>
+        ) : (
+          personas.map((persona) => (
+            <PersonaCard
+              key={persona.id}
+              persona={persona}
+              onSaveAsNew={(name, filters) => saveAsNew(name, filters)}
+              onCommitNew={(name, filters) => commitNew(persona.id, name, filters)}
+              onCancelNew={() => removeDraft(persona.id)}
+              onSetStatus={(s) => statusMut.mutate({ id: persona.id, status: s })}
+              checkNameTaken={(n) => isNameTaken(n, persona.unsaved ? persona.id : undefined)}
+            />
+          ))
+        )}
+      </div>
+
+      <button onClick={addPersona} className="mt-3 flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700">
+        <PlusIcon className="h-4 w-4" /> Add a persona
+      </button>
+      <NextButton onClick={onContinue} label="Continue" />
+
+      {brandId && (
+        <EditWithAIChat
+          open={aiOpen}
+          onClose={() => setAiOpen(false)}
+          title="Edit personas with AI"
+          intro="Hi — I can create, duplicate, pause, resume and archive your personas. What would you like to change?"
+          suggestions={["Add a persona for mid-market RevOps leaders", "Narrow the main persona to Series A+ SaaS", "Add fintech founders in the US"]}
+          configKey="persona-editor"
+          brandId={brandId}
+          invalidateKeys={[["personas", brandId]]}
+        />
+      )}
     </div>
   );
 }
