@@ -65,6 +65,13 @@ describe("Org switch cross-org isolation framework", () => {
     expect(content).toContain("clearBreadcrumbCaches");
   });
 
+  it("OrgCacheInvalidator does not overwrite an org URL that already matches the active org", () => {
+    const content = read(invalidatorPath);
+    expect(content).toContain("usePathname");
+    expect(content).toContain("const urlOrgId = orgIdFromPath(pathname);");
+    expect(content).toContain("if (urlOrgId !== currentOrgId)");
+  });
+
   it("OrgCacheInvalidator does NOT act on initial mount", () => {
     expect(read(invalidatorPath)).toContain("prevOrgId.current !== null");
   });
