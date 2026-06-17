@@ -66,8 +66,14 @@ describe("api.ts — brand sales-economics businessModel wiring", () => {
     expect(content).toContain("funnelStages: z.array(");
     expect(content).toContain('z.literal("website_purchase")');
     expect(content).toContain('z.literal("sales_meetings")');
-    const removedRevenueGoalLiteral = ["z.literal(\"sal", "es\")"].join("");
-    expect(content).not.toContain(removedRevenueGoalLiteral);
+    expect(content).toContain("normalizeBrandOptimizationGoal");
+  });
+
+  it("normalizes legacy producer optimization goals at the API boundary", () => {
+    expect(content).toContain("type BrandOptimizationGoalWire");
+    expect(content).toContain('z.literal("booked_meetings")');
+    expect(content).toContain('z.literal("sales")');
+    expect(content).toContain("return goal === \"signups\" ? \"signups\" : \"sales_meetings\"");
   });
 
   it("PUT body sends the decomposed self-serve steps + omits derived visitToClosePct", () => {
@@ -81,7 +87,7 @@ describe("api.ts — brand sales-economics businessModel wiring", () => {
     expect(content).toContain("input.funnelStages !== undefined");
     expect(content).toContain("{ funnelStages: input.funnelStages }");
     expect(content).toContain("input.optimizationGoal !== undefined");
-    expect(content).toContain("{ optimizationGoal: input.optimizationGoal }");
+    expect(content).toContain("serializeBrandOptimizationGoal(input.optimizationGoal)");
   });
 });
 
