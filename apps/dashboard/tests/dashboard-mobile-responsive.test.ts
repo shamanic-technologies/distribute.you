@@ -31,6 +31,10 @@ describe("Dashboard mobile responsiveness", () => {
     path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/settings/page.tsx"),
     "utf-8",
   );
+  const brandStatusControl = fs.readFileSync(
+    path.join(__dirname, "../src/components/brand/brand-status-control.tsx"),
+    "utf-8",
+  );
   const outletsPage = fs.readFileSync(
     path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/outlets/page.tsx"),
     "utf-8",
@@ -62,9 +66,10 @@ describe("Dashboard mobile responsiveness", () => {
     expect(brandInfoPage).toContain("mb-4 flex flex-col gap-3 sm:flex-row");
     expect(brandInfoPage).toContain("overflow-x-auto");
     expect(brandInfoPage).toContain("whitespace-nowrap");
-    expect(settingsPage).toContain("flex flex-col gap-4 p-4 sm:flex-row");
-    expect(settingsPage).toContain("w-full rounded-md border border-red-600");
-    expect(settingsPage).toContain("flex flex-col-reverse gap-3 sm:flex-row");
+    expect(settingsPage).toContain("<BrandStatusControl brandId={brandId} />");
+    expect(settingsPage).toContain('<BrandDailyBudgetCard brandId={brandId} variant="section" />');
+    expect(brandStatusControl).toContain("flex flex-wrap items-center justify-between gap-3");
+    expect(brandStatusControl).toContain("flex items-center gap-3");
   });
 
   it("wraps outlet rows and bulk actions inside the viewport", () => {

@@ -51,6 +51,8 @@ describe("Brand Settings page", () => {
 
   it("renders the fused Outreach & Budget section with the budget editor", () => {
     expect(content).toContain("Outreach & Budget");
+    expect(content).toContain("<BrandStatusControl brandId={brandId} />");
     expect(content).toContain('<BrandDailyBudgetCard brandId={brandId} variant="section" />');
+    expect(content).not.toContain("PauseOutreachCard");
   });
 });
