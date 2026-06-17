@@ -162,7 +162,7 @@ describe("org landing page — client fallback redirect", () => {
 // The "brand overview page — auto-skip into the feature" + the pure
 // `resolveFeatureLanding` helper were removed when the campaign concept was
 // hidden from the UI: a bare brand URL always lands on the brand Overview (one
-// feature + one subscription per brand → no feature/create-campaign choice to
+// brand-level feature home → no feature/create-campaign choice to
 // make).
 
 describe("hierarchy links — breadcrumb, header, sidebar", () => {

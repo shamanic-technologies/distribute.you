@@ -55,6 +55,7 @@ async function proxyRequest(
       "x-campaign-id",
       "x-feature-slug",
       "x-workflow-slug",
+      "x-run-id",
     ]) {
       const value = req.headers.get(key);
       if (value) headers[key] = value;

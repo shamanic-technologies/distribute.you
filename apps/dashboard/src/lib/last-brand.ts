@@ -68,8 +68,8 @@ export function resolveLandingBrand(
   return brands[0]?.id ?? null;
 }
 
-// A bare brand URL always lands on the brand Overview. The product ships ONE
-// feature AND ONE subscription per brand, so there's no "skip into the feature /
+// A bare brand URL always lands on the brand Overview. The product ships one
+// primary feature at the brand level, so there's no "skip into the feature /
 // route to create-campaign" decision to make — the Overview is the home. (The old
 // `resolveFeatureLanding` campaign branch was removed when the campaign concept
 // was hidden from the UI.)

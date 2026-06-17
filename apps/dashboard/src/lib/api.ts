@@ -785,6 +785,7 @@ export async function saveBrandDailyBudget(
     token,
     method: "PATCH",
     body: { dailyBudgetCents },
+    headers: { "x-run-id": globalThis.crypto.randomUUID() },
   });
   const parsed = SaveBrandDailyBudgetResponseSchema.safeParse(raw);
   if (!parsed.success) {
@@ -2425,12 +2426,8 @@ export async function disableAutoTopup(token?: string): Promise<BillingAccount> 
   return apiCall<BillingAccount>("/billing/accounts/auto_topup", { token, method: "DELETE" });
 }
 
-// `mode: "setup"` mints a no-charge Stripe Checkout that only captures a reusable
-// off-session card (omit topup_amount_cents). Default "payment" charges the amount.
 export async function createCheckoutSession(
-  params:
-    | { topup_amount_cents: number; mode?: "payment"; success_url: string; cancel_url: string }
-    | { mode: "setup"; success_url: string; cancel_url: string },
+  params: { topup_amount_cents: number; success_url: string; cancel_url: string },
   token?: string
 ): Promise<CheckoutSession> {
   return apiCall<CheckoutSession>("/billing/checkout-sessions", {

@@ -4,7 +4,7 @@ import * as path from "path";
 
 // Source-substring guard for the beta guided onboarding. Pins the load-bearing
 // wiring (live endpoints, services step, goal-driven rate, outcome-count budget,
-// server-backed personas + Edit-with-AI, agency consent) so a refactor that
+// wallet setup, server-backed personas + Edit-with-AI, agency consent) so a refactor that
 // silently drops a real fetch / the launch is caught. Beta-gated via isBetaEmail.
 describe("Beta onboarding guided flow", () => {
   const src = fs.readFileSync(
@@ -84,9 +84,11 @@ describe("Beta onboarding guided flow", () => {
     expect(src).not.toContain("Always on");
   });
 
-  it("budget is picked as outcome-count tiers with the first-week match callout", () => {
+  it("budget is picked as outcome-count tiers before wallet setup", () => {
     expect(src).toContain("COUNT_TIERS");
     expect(src).toContain("budgetForCount");
-    expect(src).toContain("double your first week");
+    expect(src).toContain("Continue to wallet setup");
+    expect(src).toContain("Set up your org wallet.");
+    expect(src).toContain("Your first load is matched dollar-for-dollar up to $25 free.");
   });
 });

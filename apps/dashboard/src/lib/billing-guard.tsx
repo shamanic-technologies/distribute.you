@@ -208,23 +208,11 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
         successUrl.searchParams.set("pending_threshold", thresholdCents.toString());
       }
 
-      // Proactive flow with no card on file: capture a reusable card via a no-charge
-      // setup-mode Checkout ($0). The pending_topup params (set above) enable auto-topup
-      // on return. Non-proactive (hard 402) keeps the charge-mode top-up.
-      const useSetupMode = info.proactive === true && !account?.has_payment_method;
-      const session = await createCheckoutSession(
-        useSetupMode
-          ? {
-              mode: "setup",
-              success_url: successUrl.toString(),
-              cancel_url: window.location.href,
-            }
-          : {
-              topup_amount_cents: effectiveAmountCents,
-              success_url: successUrl.toString(),
-              cancel_url: window.location.href,
-            }
-      );
+      const session = await createCheckoutSession({
+        topup_amount_cents: effectiveAmountCents,
+        success_url: successUrl.toString(),
+        cancel_url: window.location.href,
+      });
       window.location.href = session.url;
     } catch (err) {
       setCheckoutError(err instanceof Error ? err.message : "Failed to start checkout");
@@ -253,12 +241,11 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
 
   const isProactive = info.proactive === true;
   const isDepleted = info.depleted === true;
-  // Proactive == recurring campaign launch (campaigns/new only fires proactive for
-  // recurring). It's not a "you might run out" warning — a recurring campaign spends
-  // every cycle, so auto-topup is what keeps the engine running. Sell that, don't alarm.
-  const proactiveTitle = "Turn it on. Leave it on.";
+  // Proactive == wallet runway protection. It's not a "you might run out" warning:
+  // auto-topup keeps the org wallet funded while brand daily budgets cap allocation.
+  const proactiveTitle = "Keep the wallet funded.";
   const proactiveDescription =
-    "Your campaign works every single day — finding leads, writing the emails, booking the meetings. Auto-top-up keeps it running non-stop, so you never miss the customer who was this close to saying yes. We save your card securely — nothing charged today — and add credits only when you’re about to run low.";
+    "Your credits live in an org-level wallet. Auto-top-up adds credits when the balance runs low, while each brand daily budget stays the spend cap. You can pause the campaign at any time.";
 
   return (
     <BillingGuardContext.Provider value={{ showPaymentRequired, dismissPaymentRequired }}>
@@ -297,14 +284,13 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
                   : "Your account doesn\u2019t have enough credits to complete this action. Add credits to continue."}
             </p>
 
-            {/* Proactive (recurring launch): show ONLY the budget as a positive "this is
-                what your engine runs on" line in a brand-tinted box — never the scary
-                balance-vs-budget deficit, which reads as a "you can't afford this" alarm. */}
+            {/* Proactive wallet protection: show the brand daily budget cap, never
+                frame it as a campaign checkout price. */}
             {isProactive ? (
               info.required_cents !== undefined && (
                 <div className="bg-brand-50 border border-brand-100 rounded-lg p-3 mb-4 flex justify-between items-center text-sm">
-                  <span className="text-brand-700">Your campaign runs on</span>
-                  <span className="font-semibold text-brand-900">{formatBillingCents(info.required_cents)} <span className="font-normal text-brand-600">/ cycle</span></span>
+                  <span className="text-brand-700">Brand daily budget cap</span>
+                  <span className="font-semibold text-brand-900">{formatBillingCents(info.required_cents)} <span className="font-normal text-brand-600">/ day</span></span>
                 </div>
               )
             ) : (
@@ -326,8 +312,7 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
               )
             )}
 
-            {/* Top-up amount selection — hard-block (insufficient credits) only.
-                Proactive modals are centered on auto-topup; no one-time "Add Credits". */}
+            {/* Top-up amount selection — hard-block (insufficient credits) only. */}
             {!isProactive && (
               <>
                 <h3 className="text-sm font-medium text-gray-800 mb-2">Add Credits</h3>
@@ -368,9 +353,7 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
                 <div>
                   <p className="text-sm font-medium text-gray-800">Auto-top-up</p>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    {account?.has_payment_method
-                      ? "Automatically add credits when your balance gets low, so your campaigns never stop."
-                      : "We’ll securely save your card (no charge now) and automatically add credits when your balance gets low, so your campaigns never stop."}
+                    Automatically add org wallet credits when your balance gets low, so your campaigns keep running.
                   </p>
                 </div>
               ) : (
@@ -435,15 +418,15 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-4 text-xs text-gray-500">
                 <span className="inline-flex items-center gap-1">
                   <svg className="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                  No charge today
+                  Org-level wallet
                 </span>
                 <span className="inline-flex items-center gap-1">
                   <svg className="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                  Cancel anytime
+                  Pause anytime
                 </span>
                 <span className="inline-flex items-center gap-1">
                   <svg className="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                  You’re in control
+                  Brand budget cap
                 </span>
               </div>
             )}
@@ -473,7 +456,7 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
                     className={`flex-[2] inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 transition ${checkoutLoading ? "cursor-wait" : "disabled:opacity-50 disabled:cursor-not-allowed"}`}
                   >
                     {checkoutLoading && <Spinner />}
-                    {checkoutLoading ? "Redirecting…" : "Turn on auto-top-up →"}
+                    {checkoutLoading ? "Redirecting…" : `Load ${formatBillingCents(effectiveAmountCents || 0)} & turn on auto-top-up →`}
                   </button>
                 )
               ) : (

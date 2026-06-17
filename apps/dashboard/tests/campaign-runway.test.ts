@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   campaignDailyBudgetCents,
-  isActiveRecurringCampaign,
+  isActiveDailyBudgetCampaign,
   computeRunway,
   runwaySeverity,
 } from "../src/lib/campaign-runway";
@@ -47,15 +47,15 @@ describe("campaignDailyBudgetCents", () => {
   });
 });
 
-describe("isActiveRecurringCampaign", () => {
-  it("stopped recurring → false", () => {
-    expect(isActiveRecurringCampaign(camp({ status: "stopped", maxBudgetDailyUsd: "25" }))).toBe(false);
+describe("isActiveDailyBudgetCampaign", () => {
+  it("stopped daily-budget campaign → false", () => {
+    expect(isActiveDailyBudgetCampaign(camp({ status: "stopped", maxBudgetDailyUsd: "25" }))).toBe(false);
   });
   it("running + daily → true", () => {
-    expect(isActiveRecurringCampaign(camp({ status: "running", maxBudgetDailyUsd: "25" }))).toBe(true);
+    expect(isActiveDailyBudgetCampaign(camp({ status: "running", maxBudgetDailyUsd: "25" }))).toBe(true);
   });
   it("running + one-off only → false", () => {
-    expect(isActiveRecurringCampaign(camp({ status: "running", maxBudgetTotalUsd: "100" }))).toBe(false);
+    expect(isActiveDailyBudgetCampaign(camp({ status: "running", maxBudgetTotalUsd: "100" }))).toBe(false);
   });
 });
 
@@ -64,17 +64,17 @@ describe("computeRunway", () => {
     const r = computeRunway([camp({ maxBudgetDailyUsd: "25" })], { balance_cents: "2500" });
     expect(r.runwayDays).toBe(1);
     expect(r.dailyBurnCents).toBe(2500);
-    expect(r.recurringCount).toBe(1);
+    expect(r.activeDailyBudgetCount).toBe(1);
     expect(r.depleted).toBe(false);
   });
-  it("sums burn across multiple active recurring campaigns", () => {
+  it("sums burn across multiple active daily-budget campaigns", () => {
     const r = computeRunway(
       [camp({ id: "a", maxBudgetDailyUsd: "10" }), camp({ id: "b", maxBudgetDailyUsd: "15" })],
       { balance_cents: "10000" },
     );
     expect(r.dailyBurnCents).toBe(2500);
     expect(r.runwayDays).toBe(4);
-    expect(r.recurringCount).toBe(2);
+    expect(r.activeDailyBudgetCount).toBe(2);
   });
   it("ignores stopped + one-off campaigns in the burn", () => {
     const r = computeRunway(
@@ -86,14 +86,14 @@ describe("computeRunway", () => {
       { balance_cents: "5000" },
     );
     expect(r.dailyBurnCents).toBe(2500);
-    expect(r.recurringCount).toBe(1);
+    expect(r.activeDailyBudgetCount).toBe(1);
   });
   it("balance 0 → depleted, runwayDays 0", () => {
     const r = computeRunway([camp({ maxBudgetDailyUsd: "25" })], { balance_cents: "0" });
     expect(r.depleted).toBe(true);
     expect(r.runwayDays).toBe(0);
   });
-  it("no recurring campaign → burn 0, runwayDays null", () => {
+  it("no active daily-budget campaign → burn 0, runwayDays null", () => {
     const r = computeRunway([camp({ maxBudgetTotalUsd: "100" })], { balance_cents: "5000" });
     expect(r.dailyBurnCents).toBe(0);
     expect(r.runwayDays).toBeNull();
@@ -101,7 +101,7 @@ describe("computeRunway", () => {
 });
 
 describe("runwaySeverity", () => {
-  const base = { dailyBurnCents: 2500, recurringCount: 1, depleted: false };
+  const base = { dailyBurnCents: 2500, activeDailyBudgetCount: 1, depleted: false };
   it("auto-topup on → null (safety net in place)", () => {
     expect(runwaySeverity({ ...base, runwayDays: 0 }, true)).toBeNull();
   });
@@ -114,8 +114,8 @@ describe("runwaySeverity", () => {
   it("runway 10 days → null", () => {
     expect(runwaySeverity({ ...base, runwayDays: 10 }, false)).toBeNull();
   });
-  it("no recurring campaign → null", () => {
-    expect(runwaySeverity({ ...base, recurringCount: 0, runwayDays: null }, false)).toBeNull();
+  it("no active daily-budget campaign → null", () => {
+    expect(runwaySeverity({ ...base, activeDailyBudgetCount: 0, runwayDays: null }, false)).toBeNull();
   });
   it("depleted (0 days) → urgent", () => {
     expect(runwaySeverity({ ...base, runwayDays: 0, depleted: true }, false)).toBe("urgent");

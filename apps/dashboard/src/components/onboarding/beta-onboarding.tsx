@@ -15,6 +15,7 @@ import {
   ArrowRightIcon,
   CheckIcon,
   ChevronLeftIcon,
+  CreditCardIcon,
   CursorArrowRaysIcon,
   GiftIcon,
   MagnifyingGlassIcon,
@@ -42,7 +43,10 @@ import {
   getFeature,
   prefillFeatureInputs,
   prefillToStringMap,
+  configureAutoTopup,
+  createCheckoutSession,
   createCampaign,
+  saveBrandDailyBudget,
   type EffectiveSalesEconomics,
   type WorkflowProjectionResponse,
   type PersonaDraft,
@@ -53,6 +57,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { type Filters, type Persona } from "@/lib/mock-personas";
 import { PersonaCard, capWords } from "@/components/personas/persona-card";
 import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
+import { BrandLogo } from "@/components/brand-logo";
 
 /**
  * Beta onboarding (allowlist only — see `beta-allowlist.ts`). A guided flow ported
@@ -66,6 +71,10 @@ import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
 
 const SALES_FEATURE_SLUG = "sales-cold-email-outreach";
 const PROJECTION_REF_BUDGET = 100; // counts come back at this budget; unit costs are budget-invariant
+const WALLET_PENDING_KEY = "distribute:onboarding-wallet-launch";
+const MIN_INITIAL_LOAD_USD = 10;
+const MIN_TOPUP_USD = 10;
+const MIN_THRESHOLD_USD = 5;
 
 type Step =
   | "welcome"
@@ -76,7 +85,8 @@ type Step =
   | "rates"
   | "personas"
   | "consent"
-  | "pricing";
+  | "pricing"
+  | "wallet";
 
 // The two sales goals (Kevin): Signups or Sales Meetings. Each maps to a
 // projection count so the budget cards show the chosen unit, never "closes".
@@ -178,6 +188,55 @@ const nextPersonaId = () => `ob-persona-${++personaSeq}`;
 const fmtUsd0 = (n: number) => "$" + Math.round(n).toLocaleString("en-US");
 const fmtCount = (n: number) => Math.round(n).toLocaleString("en-US");
 
+type PendingWalletLaunch = {
+  version: 1;
+  brandId: string;
+  orgId: string;
+  brandUrl: string;
+  hostname: string;
+  outcome: Outcome;
+  budgetUsd: number;
+  workflowSlug: string;
+  initialLoadCents: number;
+  topupAmountCents: number;
+  topupThresholdCents: number;
+  createdAt: string;
+};
+
+function dollarsToCentsInput(value: string, label: string, minUsd: number): number {
+  const trimmed = value.trim();
+  if (!trimmed) throw new Error(`${label} is required.`);
+  const dollars = Number(trimmed);
+  if (!Number.isFinite(dollars)) throw new Error(`${label} must be a valid dollar amount.`);
+  if (dollars < minUsd) throw new Error(`${label} must be at least ${fmtUsd0(minUsd)}.`);
+  return Math.round(dollars * 100);
+}
+
+function readPendingWalletLaunch(): PendingWalletLaunch {
+  const raw = window.sessionStorage.getItem(WALLET_PENDING_KEY);
+  if (!raw) {
+    throw new Error("Wallet checkout returned, but the pending launch state is missing. Campaign was not launched.");
+  }
+  const parsed = JSON.parse(raw) as Partial<PendingWalletLaunch>;
+  if (
+    parsed.version !== 1 ||
+    typeof parsed.brandId !== "string" ||
+    typeof parsed.orgId !== "string" ||
+    typeof parsed.brandUrl !== "string" ||
+    typeof parsed.hostname !== "string" ||
+    (parsed.outcome !== "signups" && parsed.outcome !== "meetings") ||
+    typeof parsed.budgetUsd !== "number" ||
+    typeof parsed.workflowSlug !== "string" ||
+    typeof parsed.initialLoadCents !== "number" ||
+    typeof parsed.topupAmountCents !== "number" ||
+    typeof parsed.topupThresholdCents !== "number" ||
+    typeof parsed.createdAt !== "string"
+  ) {
+    throw new Error("Wallet checkout returned with an invalid pending launch state. Campaign was not launched.");
+  }
+  return parsed as PendingWalletLaunch;
+}
+
 // Coerce a stored profile field (string | string[]) to a string[] of trimmed items.
 function toStringList(value: unknown): string[] {
   if (Array.isArray(value)) return value.map((v) => String(v).trim()).filter(Boolean);
@@ -216,6 +275,10 @@ export function BetaOnboarding() {
   // reshuffles the cards (the old $/day-tier bug).
   const [selectedCount, setSelectedCount] = useState<number | null>(null);
   const [customCount, setCustomCount] = useState("");
+  const [walletBudgetUsd, setWalletBudgetUsd] = useState<number | null>(null);
+  const [initialLoadUsd, setInitialLoadUsd] = useState("25");
+  const [walletTopupAmountUsd, setWalletTopupAmountUsd] = useState("25");
+  const [walletTopupThresholdUsd, setWalletTopupThresholdUsd] = useState("5");
 
   // Loading-sequence + real fetch coordination. We only advance past the loader once
   // BOTH the animation finished AND the brand exists + its data is fetched.
@@ -227,6 +290,7 @@ export function BetaOnboarding() {
   const orgIdRef = useRef<string | null>(null);
   const fetchDoneRef = useRef(false);
   const animDoneRef = useRef(false);
+  const walletResumeStartedRef = useRef(false);
 
   const projectionRef = useRef<WorkflowProjectionResponse | null>(null);
   const econRef = useRef<EffectiveSalesEconomics | null>(null);
@@ -395,7 +459,57 @@ export function BetaOnboarding() {
     }
   }
 
-  async function launch() {
+  async function buildFeatureInputsForLaunch(id: string): Promise<Record<string, string>> {
+    const inputs =
+      salesInputsRef.current.length > 0
+        ? salesInputsRef.current
+        : (await getFeature(SALES_FEATURE_SLUG)).feature.inputs ?? [];
+    salesInputsRef.current = inputs;
+    const prefilled = prefillToStringMap(
+      (await prefillFeatureInputs(SALES_FEATURE_SLUG, [id])).prefilled,
+    );
+    const featureInputs: Record<string, string> = {};
+    for (const input of inputs) {
+      const val = prefilled[input.key]?.trim();
+      if (val) featureInputs[input.key] = val;
+    }
+    return featureInputs;
+  }
+
+  async function completeLaunchAfterWallet(pending: PendingWalletLaunch) {
+    const featureInputs = await buildFeatureInputsForLaunch(pending.brandId);
+    const { campaign } = await createCampaign({
+      name: `${pending.hostname} — ${OUTCOMES.find((o) => o.key === pending.outcome)?.label ?? "Outreach"}`,
+      workflowSlug: pending.workflowSlug,
+      brandUrls: [pending.brandUrl],
+      featureSlug: SALES_FEATURE_SLUG,
+      featureInputs,
+      maxBudgetDailyUsd: String(pending.budgetUsd),
+    });
+    posthog.capture("onboarding_completed", {
+      flow: "beta",
+      outcome: pending.outcome,
+      budget: pending.budgetUsd,
+      wallet_initial_load_cents: pending.initialLoadCents,
+      wallet_topup_amount_cents: pending.topupAmountCents,
+      wallet_topup_threshold_cents: pending.topupThresholdCents,
+    });
+    // Mark onboarding complete ONLY now — the flow is genuinely finished (a real
+    // campaign launched). This is the edge-gate signal proxy.ts reads; setting it
+    // earlier (at brand creation) let a mid-flow refresh bypass the rest of the
+    // wizard onto the dashboard (DIS-111 / first-run gate). (#1770)
+    await fetch("/api/onboarding/complete", { method: "POST" }).catch((e) =>
+      console.error("[dashboard] failed to mark onboarding complete:", e),
+    );
+    // Re-mint the session token so the fresh `orgMeta.onboardingComplete` claim is
+    // in the cookie the edge gate reads BEFORE we navigate — otherwise the stale
+    // JWT loops the next navigation back to /onboarding (DIS-111).
+    await session?.getToken({ skipCache: true }).catch(() => {});
+    window.sessionStorage.removeItem(WALLET_PENDING_KEY);
+    router.push(`/orgs/${pending.orgId}/brands/${pending.brandId}?launched=${campaign.id}`);
+  }
+
+  function continueToWallet() {
     const id = brandIdRef.current;
     const orgId = orgIdRef.current;
     const proj = projectionRef.current;
@@ -406,9 +520,32 @@ export function BetaOnboarding() {
       setError("No outreach workflow is available for this brand yet.");
       return;
     }
+    const suggested = String(Math.max(25, budget));
+    setWalletBudgetUsd(budget);
+    setInitialLoadUsd(suggested);
+    setWalletTopupAmountUsd(suggested);
+    setWalletTopupThresholdUsd("5");
+    setError(null);
+    setStep("wallet");
+  }
+
+  async function beginWalletCheckout() {
+    const id = brandIdRef.current;
+    const orgId = orgIdRef.current;
+    const proj = projectionRef.current;
+    const budget = walletBudgetUsd ?? derivedBudget();
+    if (!id || !orgId || !proj || budget == null) return;
+    const workflowSlug = proj.recommendedWorkflowDynastySlug;
+    if (!workflowSlug) {
+      setError("No outreach workflow is available for this brand yet.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
+      const initialLoadCents = dollarsToCentsInput(initialLoadUsd, "Initial load", MIN_INITIAL_LOAD_USD);
+      const topupAmountCents = dollarsToCentsInput(walletTopupAmountUsd, "Auto-topup reload amount", MIN_TOPUP_USD);
+      const topupThresholdCents = dollarsToCentsInput(walletTopupThresholdUsd, "Auto-topup trigger threshold", MIN_THRESHOLD_USD);
       // Persist the brand profile edits (incl. services) + the agency consent.
       const trimmed = url.trim();
       const brandUrl = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
@@ -418,41 +555,88 @@ export function BetaOnboarding() {
         consentedChannels: ["email"],
         agencyConsentAt: new Date().toISOString(),
       });
-      const prefilled = prefillToStringMap(
-        (await prefillFeatureInputs(SALES_FEATURE_SLUG, [id])).prefilled,
-      );
-      const featureInputs: Record<string, string> = {};
-      for (const input of salesInputsRef.current) {
-        const val = prefilled[input.key]?.trim();
-        if (val) featureInputs[input.key] = val;
-      }
-      const { campaign } = await createCampaign({
-        name: `${hostname} — ${OUTCOMES.find((o) => o.key === outcome)?.label ?? "Outreach"}`,
+      await saveBrandDailyBudget(id, Math.round(budget * 100));
+
+      const pending: PendingWalletLaunch = {
+        version: 1,
+        brandId: id,
+        orgId,
+        brandUrl,
+        hostname,
+        outcome,
+        budgetUsd: budget,
         workflowSlug,
-        brandUrls: [brandUrl],
-        featureSlug: SALES_FEATURE_SLUG,
-        featureInputs,
-        maxBudgetDailyUsd: String(budget),
+        initialLoadCents,
+        topupAmountCents,
+        topupThresholdCents,
+        createdAt: new Date().toISOString(),
+      };
+      window.sessionStorage.setItem(WALLET_PENDING_KEY, JSON.stringify(pending));
+
+      const successUrl = new URL(`${window.location.origin}${window.location.pathname}`);
+      successUrl.searchParams.set("success", "true");
+      successUrl.searchParams.set("wallet_setup", "success");
+      const cancelUrl = new URL(`${window.location.origin}${window.location.pathname}`);
+      cancelUrl.searchParams.set("wallet_setup", "cancelled");
+
+      const session = await createCheckoutSession({
+        topup_amount_cents: initialLoadCents,
+        success_url: successUrl.toString(),
+        cancel_url: cancelUrl.toString(),
       });
-      posthog.capture("onboarding_completed", { flow: "beta", outcome, budget });
-      // Mark onboarding complete ONLY now — the flow is genuinely finished (a real
-      // campaign launched). This is the edge-gate signal proxy.ts reads; setting it
-      // earlier (at brand creation) let a mid-flow refresh bypass the rest of the
-      // wizard onto the dashboard (DIS-111 / first-run gate). (#1770)
-      await fetch("/api/onboarding/complete", { method: "POST" }).catch((e) =>
-        console.error("[dashboard] failed to mark onboarding complete:", e),
-      );
-      // Re-mint the session token so the fresh `orgMeta.onboardingComplete` claim is
-      // in the cookie the edge gate reads BEFORE we navigate — otherwise the stale
-      // JWT loops the next navigation back to /onboarding (DIS-111).
-      await session?.getToken({ skipCache: true }).catch(() => {});
-      router.push(`/orgs/${orgId}/brands/${id}?launched=${campaign.id}`);
+      window.location.href = session.url;
     } catch (err) {
       posthog.capture("onboarding_launch_failed", { flow: "beta" });
-      setError(err instanceof Error ? err.message : "Launch failed. Please try again.");
+      setError(err instanceof Error ? err.message : "Wallet setup failed. Campaign was not launched.");
       setBusy(false);
     }
   }
+
+  async function resumeWalletCheckout() {
+    setBusy(true);
+    setError(null);
+    try {
+      const pending = readPendingWalletLaunch();
+      setWalletBudgetUsd(pending.budgetUsd);
+      setInitialLoadUsd(String(pending.initialLoadCents / 100));
+      setWalletTopupAmountUsd(String(pending.topupAmountCents / 100));
+      setWalletTopupThresholdUsd(String(pending.topupThresholdCents / 100));
+      setStep("wallet");
+
+      await configureAutoTopup(pending.topupAmountCents, pending.topupThresholdCents);
+      await saveBrandDailyBudget(pending.brandId, Math.round(pending.budgetUsd * 100));
+      await completeLaunchAfterWallet(pending);
+    } catch (err) {
+      posthog.capture("onboarding_launch_failed", { flow: "beta", stage: "wallet_return" });
+      const detail = err instanceof Error ? err.message : "unknown error";
+      setError(`Wallet checkout returned, but setup could not finish: ${detail} Backend support for paid top-up checkout plus auto-topup configuration is required; campaign was not launched.`);
+      setBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    const walletSetup = searchParams.get("wallet_setup");
+    if (walletResumeStartedRef.current) return;
+    if (walletSetup === "success") {
+      walletResumeStartedRef.current = true;
+      void resumeWalletCheckout();
+      return;
+    }
+    if (walletSetup === "cancelled") {
+      walletResumeStartedRef.current = true;
+      try {
+        const pending = readPendingWalletLaunch();
+        setWalletBudgetUsd(pending.budgetUsd);
+        setInitialLoadUsd(String(pending.initialLoadCents / 100));
+        setWalletTopupAmountUsd(String(pending.topupAmountCents / 100));
+        setWalletTopupThresholdUsd(String(pending.topupThresholdCents / 100));
+        setStep("wallet");
+        setError("Wallet checkout was canceled. Your campaign was not launched; load the org wallet to continue.");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Wallet checkout was canceled. Campaign was not launched.");
+      }
+    }
+  }, [searchParams]);
 
   // ── Per-outcome economics for the budget cards ──────────────────
   // The recommended workflow's funnel projection (counts at PROJECTION_REF_BUDGET).
@@ -571,6 +755,7 @@ export function BetaOnboarding() {
   if (step === "loading") {
     return (
       <div className={card}>
+        <BrandStepHeader domain={domain} hostname={hostname} />
         <div className="mb-2 text-center text-lg font-semibold text-gray-950">{loadDone ? "Your strategy is ready." : "Building your strategy…"}</div>
         <p className="mb-6 text-center text-sm text-gray-500">Reading <span className="font-medium text-gray-700">{hostname}</span></p>
         <div className="space-y-2">
@@ -597,6 +782,7 @@ export function BetaOnboarding() {
   if (step === "services") {
     return (
       <div className={card}>
+        <BrandStepHeader domain={domain} hostname={hostname} />
         <h2 className="font-display text-2xl font-bold text-gray-900">What services do you want to promote with us?</h2>
         <p className="mt-2 mb-6 text-gray-500">We drafted these from <span className="font-medium text-gray-700">{hostname}</span>. Add or remove until the list matches what you sell.</p>
         {setupIssues.extraction && <SetupWarning />}
@@ -631,6 +817,7 @@ export function BetaOnboarding() {
     return (
       <div className={card}>
         <BackButton onClick={() => setStep("services")} />
+        <BrandStepHeader domain={domain} hostname={hostname} />
         <h2 className="font-display text-2xl font-bold text-gray-900">What is your primary sales goal?</h2>
         <p className="mt-2 mb-6 text-gray-500">Pick the one outcome this campaign optimizes for. The budget is shown per this outcome.</p>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -648,6 +835,7 @@ export function BetaOnboarding() {
     return (
       <div className={card}>
         <BackButton onClick={() => setStep("objective")} />
+        <BrandStepHeader domain={domain} hostname={hostname} />
         <h2 className="font-display text-2xl font-bold text-gray-900">Your conversion rates.</h2>
         <p className="mt-2 mb-6 text-gray-500">We pre-filled this from your profile. An estimate is fine — tweak anytime.</p>
         {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
@@ -681,6 +869,8 @@ export function BetaOnboarding() {
     return (
       <OnboardingPersonas
         brandId={brandId}
+        brandDomain={domain}
+        hostname={hostname}
         personaSuggestionFailed={setupIssues.persona}
         onBack={() => setStep("rates")}
         onContinue={() => setStep("consent")}
@@ -692,6 +882,7 @@ export function BetaOnboarding() {
     return (
       <div className={card}>
         <BackButton onClick={() => setStep("personas")} />
+        <BrandStepHeader domain={domain} hostname={hostname} />
         <div className="mb-4 flex items-center gap-2">
           <ShieldCheckIcon className="h-5 w-5 text-brand-600" />
           <h2 className="font-display text-2xl font-bold text-gray-900">We reach out on your behalf.</h2>
@@ -708,20 +899,125 @@ export function BetaOnboarding() {
     );
   }
 
+  if (step === "wallet") {
+    const activeBudget = walletBudgetUsd ?? derivedBudget();
+    return (
+      <div className={card}>
+        <BackButton onClick={() => setStep("pricing")} />
+        <div className="mb-4 flex items-center gap-2">
+          <CreditCardIcon className="h-5 w-5 text-brand-600" />
+          <h2 className="font-display text-2xl font-bold text-gray-900">Set up your org wallet.</h2>
+        </div>
+        <p className="text-sm leading-6 text-gray-500">
+          Credits live at the organization level and can fund work across brands. The{" "}
+          <strong className="font-semibold text-gray-800">
+            {activeBudget != null ? `${fmtUsd0(activeBudget)} / day` : "selected"} brand daily budget
+          </strong>{" "}
+          is only this brand&apos;s daily spend cap.
+        </p>
+
+        <div className="mt-5 flex items-start gap-3 rounded-xl border border-brand-200 bg-brand-50 p-4">
+          <GiftIcon className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />
+          <p className="text-sm leading-6 text-brand-800">
+            <strong>Your first load is matched dollar-for-dollar up to $25 free.</strong> Load the
+            org wallet now, then auto-topup keeps the campaign from stopping when the balance runs low.
+          </p>
+        </div>
+
+        <div className="mt-5 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-900">Initial load amount</label>
+            <div className="mt-1 flex items-center rounded-xl border border-gray-200 px-3 py-2 focus-within:ring-2 focus-within:ring-brand-300">
+              <span className="text-sm text-gray-400">$</span>
+              <input
+                type="number"
+                min={MIN_INITIAL_LOAD_USD}
+                step="1"
+                value={initialLoadUsd}
+                onChange={(e) => setInitialLoadUsd(e.target.value)}
+                className="w-full bg-transparent px-2 text-sm text-gray-900 focus:outline-none"
+              />
+            </div>
+            <p className="mt-1 text-xs leading-5 text-gray-400">
+              This creates a paid top-up checkout for the org wallet.
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-900">Auto-topup trigger threshold</label>
+              <div className="mt-1 flex items-center rounded-xl border border-gray-200 px-3 py-2 focus-within:ring-2 focus-within:ring-brand-300">
+                <span className="text-sm text-gray-400">$</span>
+                <input
+                  type="number"
+                  min={MIN_THRESHOLD_USD}
+                  step="1"
+                  value={walletTopupThresholdUsd}
+                  onChange={(e) => setWalletTopupThresholdUsd(e.target.value)}
+                  className="w-full bg-transparent px-2 text-sm text-gray-900 focus:outline-none"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-900">Auto-topup reload amount</label>
+              <div className="mt-1 flex items-center rounded-xl border border-gray-200 px-3 py-2 focus-within:ring-2 focus-within:ring-brand-300">
+                <span className="text-sm text-gray-400">$</span>
+                <input
+                  type="number"
+                  min={MIN_TOPUP_USD}
+                  step="1"
+                  value={walletTopupAmountUsd}
+                  onChange={(e) => setWalletTopupAmountUsd(e.target.value)}
+                  className="w-full bg-transparent px-2 text-sm text-gray-900 focus:outline-none"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p className="mt-5 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-xs leading-5 text-gray-500">
+          Auto-topup is required for the campaign to continue running. You can pause the campaign at any time.
+        </p>
+
+        {error && <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+
+        <button
+          onClick={beginWalletCheckout}
+          disabled={busy || activeBudget == null}
+          className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {busy ? (
+            <>
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+              Finishing wallet setup…
+            </>
+          ) : (
+            <>
+              Load wallet & launch campaign <CursorArrowRaysIcon className="h-4 w-4" />
+            </>
+          )}
+        </button>
+      </div>
+    );
+  }
+
   // pricing — outcome-count budget
   const unitCost = outcomeUnitCost();
   const selectedBudget = derivedBudget();
   return (
     <div className={card}>
       <BackButton onClick={() => setStep("consent")} />
+      <BrandStepHeader domain={domain} hostname={hostname} />
       <h2 className="font-display text-2xl font-bold text-gray-900">Your monthly target.</h2>
       <p className="mt-2 mb-5 text-gray-500">Pick how many <strong>{outcomeMeta.unit}</strong> you want each month — we set the daily budget to hit it.</p>
       {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
-      {/* First-week match callout */}
       <div className="mb-5 flex items-start gap-3 rounded-xl border border-brand-200 bg-brand-50 p-4">
-        <GiftIcon className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />
-        <p className="text-sm leading-6 text-brand-800"><strong>We double your first week — free.</strong> We match your spend dollar-for-dollar up to <strong>$25</strong>, so week one goes twice as far.</p>
+        <CreditCardIcon className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />
+        <p className="text-sm leading-6 text-brand-800">
+          This is the <strong>brand daily budget cap</strong>. Next you&apos;ll load the org wallet
+          and set auto-topup so the campaign can keep running.
+        </p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-4">
@@ -772,8 +1068,8 @@ export function BetaOnboarding() {
         </div>
       )}
 
-      <button onClick={launch} disabled={busy || selectedBudget == null} className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
-        {busy ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> Launching…</> : <>Launch campaign <CursorArrowRaysIcon className="h-4 w-4" /></>}
+      <button onClick={continueToWallet} disabled={busy || selectedBudget == null} className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
+        Continue to wallet setup <ArrowRightIcon className="h-4 w-4" />
       </button>
     </div>
   );
@@ -788,11 +1084,15 @@ const nextDraftId = () => `ob-draft-${++obDraftSeq}`;
 
 function OnboardingPersonas({
   brandId,
+  brandDomain,
+  hostname,
   personaSuggestionFailed,
   onBack,
   onContinue,
 }: {
   brandId: string | null;
+  brandDomain: string | null;
+  hostname: string;
   personaSuggestionFailed: boolean;
   onBack: () => void;
   onContinue: () => void;
@@ -845,6 +1145,7 @@ function OnboardingPersonas({
   return (
     <div className={card}>
       <BackButton onClick={onBack} />
+      <BrandStepHeader domain={brandDomain} hostname={hostname} />
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="font-display text-2xl font-bold text-gray-900">Who do you want to sell to?</h2>
@@ -898,6 +1199,26 @@ function OnboardingPersonas({
           invalidateKeys={[["personas", brandId]]}
         />
       )}
+    </div>
+  );
+}
+
+function BrandStepHeader({ domain, hostname }: { domain: string | null; hostname: string }) {
+  const label = domain ?? hostname;
+  return (
+    <div className="mb-5 flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-white">
+        <BrandLogo
+          domain={label}
+          size={28}
+          className="h-7 w-7 rounded-md object-contain"
+          fallbackClassName="h-5 w-5 text-gray-400"
+        />
+      </div>
+      <div className="min-w-0">
+        <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Brand</div>
+        <div className="truncate text-sm font-semibold text-gray-900">{label}</div>
+      </div>
     </div>
   );
 }
