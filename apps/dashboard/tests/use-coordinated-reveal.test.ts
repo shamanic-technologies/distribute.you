@@ -150,8 +150,6 @@ describe("feature pages adopt the coordinated body reveal", () => {
     expect(src).not.toMatch(/data !== undefined,\s*costData !== undefined/);
   });
 
-  it("legacy feature page reveals stats grid + campaigns list together", () => {
-    const src = read("../src/app/(authed)/(dashboard)/features/[featureId]/page.tsx");
-    expect(src).toContain("CoordinatedReveal");
-  });
+  // The legacy app-level feature page (`features/[featureId]/page.tsx`, the
+  // cross-brand "Campaigns" island) was removed in the #1768 follow-up.
 });
