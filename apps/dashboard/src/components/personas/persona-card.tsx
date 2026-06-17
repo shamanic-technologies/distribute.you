@@ -121,6 +121,7 @@ export function PersonaCard({
   checkNameTaken,
   onChange,
   onRemove,
+  showLifecycleActions = true,
 }: {
   persona: Persona;
   onSaveAsNew?: (name: string, filters: Filters) => void;
@@ -132,6 +133,8 @@ export function PersonaCard({
   onChange?: (name: string, filters: Filters) => void;
   /** Embedded remove affordance (X in the header). */
   onRemove?: () => void;
+  /** Hide pause/archive/restore actions where the lifecycle has not been explained. */
+  showLifecycleActions?: boolean;
 }) {
   const embedded = !!onChange;
   const isNew = persona.unsaved === true;
@@ -269,7 +272,7 @@ export function PersonaCard({
               <XIcon />
             </button>
           )
-        ) : !isNew ? (
+        ) : showLifecycleActions && !isNew ? (
           <div className="flex items-center gap-1 shrink-0">
             {isArchived ? (
               <button
