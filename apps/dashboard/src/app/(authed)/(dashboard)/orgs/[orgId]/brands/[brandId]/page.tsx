@@ -63,13 +63,13 @@ export default function BrandOverviewPage() {
   const featureStats = featureStatsData?.stats ?? {};
   const totalCostCents = featureStatsData?.systemStats?.totalCostInUsdCents ?? 0;
 
-  // Brand funnel config → gate the Meetings/Signups beta card pairs.
+  // Brand goal config → goal-specific stat card copy.
   const { data: economicsData } = useAuthQuery(
     ["brandSalesEconomics", brandId],
     () => getBrandSalesEconomics(brandId),
     { enabled, ...pollOptions },
   );
-  const funnelStages = economicsData?.salesEconomics?.funnelStages;
+  const optimizationGoal = economicsData?.salesEconomics?.optimizationGoal ?? "sales";
 
   // Per-card reveal (NOT one page-wide barrier): revenue (features-service) and
   // total-spend (runs-service) are two different cold chains — gate each on its
@@ -128,13 +128,13 @@ export default function BrandOverviewPage() {
         headerAction={<BrandStatusControl brandId={brandId} />}
         topRow={
           /* Outreach stat cards (GA + beta) — under the "Revenue & Conversions"
-             header, directly above the Pipeline-revenue hero. Funnel-stage-gated
-             beta pairs. */
+             header, directly above the Pipeline-revenue hero. Goal-specific copy
+             and beta outcome pair. */
           <OutreachStatCards
             stats={featureStats}
             totalCostCents={totalCostCents}
             pending={!statsRevealed}
-            funnelStages={funnelStages}
+            optimizationGoal={optimizationGoal}
           />
         }
       />
