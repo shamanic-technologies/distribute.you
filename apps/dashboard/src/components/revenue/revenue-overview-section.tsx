@@ -42,7 +42,7 @@ export function RevenueOverviewSection({
   headerAction?: ReactNode;
   /** Optional row rendered under the header, above the Pipeline-revenue hero. */
   topRow?: ReactNode;
-  /** features-service `/revenue` reveal — headline, chart, CAC/ROI, conversions. */
+  /** features-service `/revenue` reveal — headline, chart and conversions. */
   revenuePending?: boolean;
   /** runs-service cost-breakdown reveal — the Total-spent figure only. */
   costPending?: boolean;
@@ -98,13 +98,13 @@ export function RevenueOverviewSection({
           )}
         </div>
 
-        {/* Cost & efficiency — spend metrics (total / cost-of-acquisition / ROI).
+        {/* Cost & efficiency — spend metrics (actual total / cost-of-acquisition / ROI).
             Bottom card defaults to the brand-wide Top-3 cost-source list (the old
             Top-campaigns-by-ROI card was dropped with the campaign concept — there's
             no per-campaign detail page to link to anymore). */}
         <RevenueCostSummary
           costBreakdown={costBreakdown}
-          costEconomics={data?.costEconomics}
+          totalPipelineUsd={data?.totalPipelineUsd}
           pending={revenueLoading}
           costPending={costPending}
         />

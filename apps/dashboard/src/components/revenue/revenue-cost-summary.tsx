@@ -5,19 +5,16 @@ import { getPlatformPrices, type CostByName } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { ProviderLogo } from "@/components/provider-logo";
 import { Skeleton } from "@/components/skeleton";
-import type { CostEconomics } from "@/lib/revenue-view";
 
 /**
  * Cost & efficiency summary for the feature Overview — total spend, the top-3
  * cost sources (provider logo + share, no $ amounts), and the two cost/revenue
  * efficiency metrics:
- *   - Cost of acquisition = total cost ÷ expected revenue (a %; lower is better)
- *   - ROI                 = expected revenue ÷ total cost (a × multiple)
+ *   - Cost of acquisition = actual cost ÷ expected revenue (a %; lower is better)
+ *   - ROI                 = expected revenue ÷ actual cost (a × multiple)
  *
- * The two ratios come straight from features-service (`costEconomics` on
- * /revenue) — the single source per DIS-232. Total spend + the top-3 provider
- * breakdown stay client-side (the provider-domain decomposition lives in the
- * cost breakdown, not in features-service).
+ * The pipeline value comes from features-service; actual spend and provider
+ * breakdown come from runs-service's cost breakdown.
  */
 
 function formatCostName(name: string): string {
@@ -51,16 +48,16 @@ function InfoHint({ text }: { text: string }) {
 
 export function RevenueCostSummary({
   costBreakdown = [],
-  costEconomics,
+  totalPipelineUsd,
   pending = false,
   costPending,
   bottomCard,
 }: {
   costBreakdown?: CostByName[];
-  costEconomics?: CostEconomics;
+  totalPipelineUsd?: number | null;
   pending?: boolean;
   /** Reveal gate for the Total-spent figure (runs-service cost breakdown) when it
-   *  resolves on a DIFFERENT chain than `costEconomics` (features-service). The
+   *  resolves on a DIFFERENT chain than the pipeline (features-service). The
    *  feature Overview passes this so Total-spent never waits on the slower revenue
    *  call; other consumers omit it → falls back to `pending` (single reveal). */
   costPending?: boolean;
@@ -72,7 +69,7 @@ export function RevenueCostSummary({
   const totalSpentPending = costPending ?? pending;
   const { entries, totalCents } = useMemo(() => {
     const e = costBreakdown
-      .map((c) => ({ name: c.costName ?? "Unknown", cents: parseFloat(c.totalCostInUsdCents) || 0 }))
+      .map((c) => ({ name: c.costName ?? "Unknown", cents: parseFloat(c.actualCostInUsdCents) || 0 }))
       .filter((x) => x.cents > 0)
       .sort((a, b) => b.cents - a.cents);
     return { entries: e, totalCents: e.reduce((s, x) => s + x.cents, 0) };
@@ -99,10 +96,17 @@ export function RevenueCostSummary({
     domain: domainByCost.get(e.name) ?? null,
   }));
 
-  // CAC % + ROI × come from features-service (single source) — null per its
-  // documented semantics (pipeline null/0, or cost 0).
-  const cacPct = costEconomics?.costOfAcquisitionPct;
-  const roiMultiple = costEconomics?.roiMultiple;
+  // The features-service costEconomics currently uses total cost
+  // (actual + provisioned). This card is actual-spend-only, so derive the two
+  // ratios from the served pipeline value and the actual cost breakdown.
+  const cacPct =
+    totalPipelineUsd == null || totalPipelineUsd <= 0
+      ? null
+      : (totalCostUsd / totalPipelineUsd) * 100;
+  const roiMultiple =
+    totalPipelineUsd == null || totalPipelineUsd <= 0 || totalCostUsd <= 0
+      ? null
+      : totalPipelineUsd / totalCostUsd;
 
   // Right-of-chart column on the Overview: three stat cards (Total spent / Cost
   // of acquisition / ROI) replacing the old org/lead/event counters, plus a

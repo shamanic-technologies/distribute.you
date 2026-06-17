@@ -5,7 +5,7 @@ import * as path from "path";
 const SRC = path.join(__dirname, "../src");
 const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
 
-describe("Cost & efficiency card on feature Overview (served costEconomics)", () => {
+describe("Cost & efficiency card on feature Overview (actual spend)", () => {
   const card = read("components/revenue/revenue-cost-summary.tsx");
   // Feature flattened into the brand level — the brand root page IS the overview.
   const overview =
@@ -33,21 +33,23 @@ describe("Cost & efficiency card on feature Overview (served costEconomics)", ()
     // The cost cards now live in the right-of-chart column, replacing the old
     // org/lead/event counters.
     expect(section).toContain("RevenueCostSummary");
-    expect(section).toContain("costEconomics={data?.costEconomics}");
+    expect(section).toContain("totalPipelineUsd={data?.totalPipelineUsd}");
     expect(section).not.toContain("Converting organizations");
     expect(section).not.toContain("Lead conversions");
   });
 
-  it("CAC % and ROI × read the served costEconomics, not client arithmetic", () => {
-    // Single source: the two ratios come straight off the features-service prop
-    // (optional-chained — the card now renders its shell before data arrives).
-    expect(card).toContain("costEconomics?.costOfAcquisitionPct");
-    expect(card).toContain("costEconomics?.roiMultiple");
-    // Served nulls still render as an em dash.
+  it("Total spent and provider shares use actual costs only", () => {
+    expect(card).toContain("parseFloat(c.actualCostInUsdCents)");
+    expect(card).not.toContain("parseFloat(c.totalCostInUsdCents)");
+  });
+
+  it("CAC % and ROI × are derived from actual spend, not provisioned-inclusive costEconomics", () => {
+    expect(card).toContain("(totalCostUsd / totalPipelineUsd) * 100");
+    expect(card).toContain("totalPipelineUsd / totalCostUsd");
+    expect(card).not.toContain("costEconomics?.costOfAcquisitionPct");
+    expect(card).not.toContain("costEconomics?.roiMultiple");
     expect(card).toContain('cacPct == null ? "—"');
     expect(card).toContain('roiMultiple == null ? "—"');
-    // No re-derivation of the ratios from pipeline in the browser.
-    expect(card).not.toContain("totalPipelineUsd");
   });
 
   it("the /revenue parser threads costEconomics through the view-model", () => {

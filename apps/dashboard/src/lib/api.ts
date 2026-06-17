@@ -2413,7 +2413,10 @@ export async function createCampaignWithoutBrandEnrichment(
 // Billing — wire shape per billing-service post-rename hotfix.
 // `*_cents` string fields are full-precision decimal strings (e.g. "100.4200000000").
 // Use parseFloat for math; never Number().
-// `balance_cents` = spendable funds (credited minus usage); use it for depletion and budget checks.
+// `balance_cents` = spendable funds (credited minus usage incl. provisioned holds);
+// use it for depletion and budget checks.
+// `actual_balance_cents` = credited minus actualized usage only; use it for the
+// user-facing Credit Balance display when billing-service exposes it.
 // `credited_cents` = lifetime credited (paid topups + local promos); display-only for "total credited".
 // `topup_amount_cents` and `topup_threshold_cents` are integers in cents (or null).
 // Live spec: https://billing.distribute.you/openapi.json
@@ -2423,6 +2426,7 @@ export interface BillingAccount {
   credited_cents: string;
   usage_cents: string;
   balance_cents: string;
+  actual_balance_cents?: string;
   topup_amount_cents: number | null;
   topup_threshold_cents: number | null;
   has_payment_method: boolean;
