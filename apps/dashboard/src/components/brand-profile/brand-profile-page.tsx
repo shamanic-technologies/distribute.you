@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { SparklesIcon } from "@heroicons/react/20/solid";
+import { ChevronDownIcon, SparklesIcon } from "@heroicons/react/20/solid";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useIsBetaUser } from "@/lib/use-beta-user";
@@ -11,7 +11,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { DashboardPage } from "@/components/dashboard-page";
 import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
 import { getBrandProfile, saveBrandProfileVersion } from "@/lib/api";
-import { SECTIONS, cloneFields, fieldsEqual, FieldEditor, type ProfileFields } from "./field-editor";
+import { ALL_FIELDS, SECTIONS, cloneFields, fieldsEqual, FieldEditor, type FieldDef, type FieldSection, type ProfileFields } from "./field-editor";
 
 /**
  * Brand Profile — PURE-UI MOCKUP (beta).
@@ -33,6 +33,12 @@ import { SECTIONS, cloneFields, fieldsEqual, FieldEditor, type ProfileFields } f
 // Hidden for now — flip to surface the version-history panel (will move into
 // Brand Settings). Kept wired so the data shape is already version-aware.
 const SHOW_HISTORY = false;
+const CORE_FIELD_KEYS = ["companyOverview", "valueProposition", "callToAction"];
+const CORE_FIELDS = CORE_FIELD_KEYS.map((key) => ALL_FIELDS.find((field) => field.key === key)).filter((field): field is FieldDef => Boolean(field));
+const SECONDARY_SECTIONS: FieldSection[] = SECTIONS.map((section) => ({
+  ...section,
+  fields: section.fields.filter((field) => !CORE_FIELD_KEYS.includes(field.key)),
+})).filter((section) => section.fields.length > 0);
 
 function timeAgo(ts: number | string): string {
   const ms = typeof ts === "string" ? new Date(ts).getTime() : ts;
@@ -53,6 +59,7 @@ export function BrandProfilePage() {
   const brandId = params.brandId as string;
   const queryClient = useQueryClient();
   const [aiOpen, setAiOpen] = useState(false);
+  const [openSections, setOpenSections] = useState<string[]>([]);
   // null = following the saved baseline; an object = the user's working edits.
   const [draft, setDraft] = useState<ProfileFields | null>(null);
 
@@ -123,12 +130,43 @@ export function BrandProfilePage() {
   };
 
   const discard = () => setDraft(null);
+  const renderField = (field: FieldDef) => (
+    <FieldEditor
+      key={field.key}
+      field={field}
+      value={fields[field.key]}
+      onText={(v) => setText(field.key, v)}
+      onAdd={(v) => addItem(field.key, v)}
+      onRemove={(v) => removeItem(field.key, v)}
+    />
+  );
+
+  const fieldHasValue = (field: FieldDef) => {
+    const value = fields[field.key];
+    if (Array.isArray(value)) return value.length > 0;
+    return typeof value === "string" && value.trim().length > 0;
+  };
+
+  const fieldChanged = (field: FieldDef) => {
+    const current = fields[field.key];
+    const saved = baseline[field.key];
+    if (Array.isArray(current) || Array.isArray(saved)) {
+      const currentArr = Array.isArray(current) ? current : [];
+      const savedArr = Array.isArray(saved) ? saved : [];
+      return currentArr.length !== savedArr.length || currentArr.some((value, index) => value !== savedArr[index]);
+    }
+    return (current ?? "") !== (saved ?? "");
+  };
+
+  const toggleSection = (title: string) => {
+    setOpenSections((prev) => (prev.includes(title) ? prev.filter((item) => item !== title) : [...prev, title]));
+  };
 
   return (
     <DashboardPage width="narrow">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 mb-6">
-        <div>
+      <div className="flex flex-col gap-4 border-b border-gray-200 pb-6 md:flex-row md:items-start md:justify-between">
+        <div className="min-w-0">
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-semibold text-gray-900">Brand Profile</h1>
           </div>
@@ -136,8 +174,11 @@ export function BrandProfilePage() {
             Your brand’s own info — the audience lives in{" "}
             <span className="font-medium text-gray-600">Customer Personas</span>.
           </p>
+          <p className={`mt-2 text-xs ${dirty ? "text-amber-600" : "text-gray-400"}`}>
+            {dirty ? "Unsaved changes" : savedAt ? `Last saved ${timeAgo(savedAt)}` : "Not saved yet"}
+          </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           <button
             type="button"
             onClick={() => setAiOpen(true)}
@@ -146,11 +187,6 @@ export function BrandProfilePage() {
             <SparklesIcon className="w-4 h-4" />
             Edit with AI
           </button>
-          {dirty ? (
-            <span className="text-xs text-amber-600">Unsaved changes</span>
-          ) : (
-            <span className="text-xs text-gray-400">{savedAt ? `Saved ${timeAgo(savedAt)}` : "Not saved yet"}</span>
-          )}
           {dirty && (
             <button
               type="button"
@@ -160,36 +196,56 @@ export function BrandProfilePage() {
               Discard
             </button>
           )}
-          <button
-            type="button"
-            onClick={save}
-            disabled={!dirty}
-            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
-          >
-            Save
-          </button>
+          {dirty && (
+            <button
+              type="button"
+              onClick={save}
+              disabled={saveMut.isPending}
+              className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+            >
+              {saveMut.isPending ? "Saving..." : "Save"}
+            </button>
+          )}
         </div>
       </div>
 
       {/* Sections */}
-      <div className="space-y-4">
-        {SECTIONS.map((section) => (
-          <div key={section.title} className="bg-white rounded-xl border border-gray-200 p-5">
-            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">{section.title}</h2>
-            <div className="space-y-5">
-              {section.fields.map((field) => (
-                <FieldEditor
-                  key={field.key}
-                  field={field}
-                  value={fields[field.key]}
-                  onText={(v) => setText(field.key, v)}
-                  onAdd={(v) => addItem(field.key, v)}
-                  onRemove={(v) => removeItem(field.key, v)}
-                />
-              ))}
-            </div>
+      <div className="mt-8 space-y-8">
+        <section>
+          <div className="mb-4">
+            <h2 className="text-sm font-semibold text-gray-900">Core story</h2>
+            <p className="mt-1 text-sm text-gray-500">The few brand facts most workflows need first.</p>
           </div>
-        ))}
+          <div className="space-y-5">{CORE_FIELDS.map(renderField)}</div>
+        </section>
+
+        <section className="divide-y divide-gray-200 border-y border-gray-200">
+          {SECONDARY_SECTIONS.map((section) => {
+            const open = openSections.includes(section.title);
+            const filledCount = section.fields.filter(fieldHasValue).length;
+            const changed = section.fields.some(fieldChanged);
+
+            return (
+              <div key={section.title}>
+                <button
+                  type="button"
+                  onClick={() => toggleSection(section.title)}
+                  className="flex w-full items-center justify-between gap-4 py-4 text-left"
+                >
+                  <span>
+                    <span className="block text-sm font-semibold text-gray-900">{section.title}</span>
+                    <span className="mt-1 block text-xs text-gray-400">
+                      {filledCount}/{section.fields.length} fields filled
+                      {changed ? " · edited" : ""}
+                    </span>
+                  </span>
+                  <ChevronDownIcon className={`h-5 w-5 text-gray-400 transition ${open ? "rotate-180" : ""}`} />
+                </button>
+                {open && <div className="space-y-5 pb-6">{section.fields.map(renderField)}</div>}
+              </div>
+            );
+          })}
+        </section>
       </div>
 
       {/* Version history — hidden this round (SHOW_HISTORY=false); moves into
