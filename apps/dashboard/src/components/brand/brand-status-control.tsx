@@ -2,6 +2,7 @@
 
 import { useMutation } from "@tanstack/react-query";
 import { SparklesIcon, PauseIcon, PlayIcon } from "@heroicons/react/20/solid";
+import { Skeleton } from "@/components/skeleton";
 import {
   getBrandPause,
   setBrandPause,
@@ -51,7 +52,8 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
     () => getBrandSalesEconomics(brandId),
   );
 
-  const paused = pauseData?.paused ?? false;
+  const paused = pauseData?.paused;
+  const pauseReady = typeof paused === "boolean";
   const goal =
     econ === undefined
       ? null
@@ -79,7 +81,9 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
 
       <div className="flex items-center gap-3">
         {/* Budget / active indicator — mirrors the campaign-page status pill. */}
-        {paused ? (
+        {!pauseReady ? (
+          <Skeleton className="h-8 w-32 rounded-lg" />
+        ) : paused ? (
           <span className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-500">
             <span className="inline-flex h-2 w-2 rounded-full bg-current opacity-50" />
             Paused
@@ -108,27 +112,31 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
 
         {/* Pause / Restart toggle — in-flight label stays full opacity (CLAUDE.md
             mutation-button rule): fade only the genuinely-disabled state. */}
-        <button
-          onClick={() => mutate(!paused)}
-          disabled={saving}
-          className={`inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition ${
-            paused
-              ? "bg-brand-500 text-white hover:bg-brand-600"
-              : "bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200"
-          } ${saving ? "cursor-wait" : "disabled:opacity-40 disabled:cursor-not-allowed"}`}
-        >
-          {saving ? (
-            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-            </svg>
-          ) : paused ? (
-            <PlayIcon className="h-4 w-4" />
-          ) : (
-            <PauseIcon className="h-4 w-4" />
-          )}
-          {paused ? "Restart" : "Pause"}
-        </button>
+        {pauseReady ? (
+          <button
+            onClick={() => mutate(!paused)}
+            disabled={saving}
+            className={`inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition ${
+              paused
+                ? "bg-brand-500 text-white hover:bg-brand-600"
+                : "bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200"
+            } ${saving ? "cursor-wait" : "disabled:opacity-40 disabled:cursor-not-allowed"}`}
+          >
+            {saving ? (
+              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+            ) : paused ? (
+              <PlayIcon className="h-4 w-4" />
+            ) : (
+              <PauseIcon className="h-4 w-4" />
+            )}
+            {paused ? "Restart" : "Pause"}
+          </button>
+        ) : (
+          <Skeleton className="h-9 w-28 rounded-lg" />
+        )}
       </div>
     </div>
   );

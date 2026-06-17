@@ -31,6 +31,13 @@ describe("brand overview status control", () => {
     expect(control).toContain('["brandSalesEconomics", brandId]');
   });
 
+  it("does not default unresolved pause state to active", () => {
+    expect(control).not.toContain("pauseData?.paused ?? false");
+    expect(control).toContain('const pauseReady = typeof paused === "boolean"');
+    expect(control).toContain('!pauseReady ? (');
+    expect(control).toContain('<Skeleton className="h-8 w-32 rounded-lg" />');
+  });
+
   it("wires Pause / Restart to the brand pause API", () => {
     expect(control).toContain("Pause");
     expect(control).toContain("Restart");
