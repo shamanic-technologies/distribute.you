@@ -25,31 +25,6 @@ import { PersonaAvatar, PersonaCard, capWords, PlusIcon } from "./persona-card";
 let idCounter = 0;
 const nextId = () => `persona-${++idCounter}`;
 
-function statusPill(persona: Persona) {
-  if (persona.unsaved) {
-    return {
-      label: "Draft",
-      className: "border-brand-200 bg-brand-50 text-brand-600",
-    };
-  }
-  if (persona.status === "paused") {
-    return {
-      label: "Paused",
-      className: "border-amber-200 bg-amber-50 text-amber-700",
-    };
-  }
-  if (persona.status === "archived") {
-    return {
-      label: "Archived",
-      className: "border-gray-200 bg-gray-100 text-gray-500",
-    };
-  }
-  return {
-    label: "Active",
-    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  };
-}
-
 export function CustomerPersonasPage() {
   const featureSlug = useSoleFeatureSlug();
   const isBeta = useIsBetaUser();
@@ -267,7 +242,6 @@ export function CustomerPersonasPage() {
               </thead>
               <tbody>
                 {visible.map((persona) => {
-                  const pill = statusPill(persona);
                   const selected = selectedPersonaId === persona.id;
                   return (
                     <tr
@@ -295,12 +269,7 @@ export function CustomerPersonasPage() {
                             regenerating={avatarRegenerating && regeneratingAvatarId === persona.id}
                           />
                           <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="font-medium text-gray-900">{persona.name || "Untitled"}</p>
-                              <span className={`rounded-full border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide ${pill.className}`}>
-                                {pill.label}
-                              </span>
-                            </div>
+                            <p className="font-medium text-gray-900">{persona.name || "Untitled"}</p>
                           </div>
                         </div>
                       </td>

@@ -18,6 +18,8 @@ describe("Customer personas table", () => {
     for (const header of ["Targeting filters", "Expected revenue"]) {
       expect(src).not.toContain(header);
     }
+    expect(src).not.toContain("statusPill");
+    expect(src).not.toContain("pill.label");
     expect(src).not.toContain('font-medium">Filters');
     expect(src).not.toContain("grid grid-cols-1 lg:grid-cols-2 gap-5");
   });
