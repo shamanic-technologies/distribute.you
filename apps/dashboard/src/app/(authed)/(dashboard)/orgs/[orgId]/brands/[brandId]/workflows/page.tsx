@@ -20,6 +20,7 @@ import { MaturityBadge } from "@/components/maturity-badge";
 import { formatStatValue, sortDirectionForType } from "@/lib/format-stat";
 import { PlusIcon } from "@heroicons/react/20/solid";
 import { Skeleton } from "@/components/skeleton";
+import { DashboardPage } from "@/components/dashboard-page";
 
 function SortHeader({
   label,
@@ -189,16 +190,16 @@ export default function FeatureWorkflowsPage() {
 
   if (!ok) {
     return (
-      <div className="p-4 md:p-8">
+      <DashboardPage width="wide">
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-sm text-gray-400">
           This view isn&apos;t available yet.
         </div>
-      </div>
+      </DashboardPage>
     );
   }
 
   return (
-    <div className="p-4 md:p-8">
+    <DashboardPage width="wide">
       <div className="mb-6 flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -320,6 +321,6 @@ export default function FeatureWorkflowsPage() {
           </div>
         </div>
       )}
-    </div>
+    </DashboardPage>
   );
 }

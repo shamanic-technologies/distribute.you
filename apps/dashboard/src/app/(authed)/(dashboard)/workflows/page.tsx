@@ -5,6 +5,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { listWorkflows } from "@/lib/api";
 import { WorkflowCard } from "@/components/workflows/workflow-card";
 import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-panel";
+import { DashboardPage } from "@/components/dashboard-page";
 
 function SkeletonWorkflowCard() {
   return (
@@ -36,7 +37,7 @@ export default function WorkflowsPage() {
   const workflows = data?.workflows ?? [];
 
   return (
-    <div className="p-4 md:p-8">
+    <DashboardPage width="wide">
       {/* Header */}
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-gray-800">Workflows</h1>
@@ -82,6 +83,6 @@ export default function WorkflowsPage() {
           onClose={() => setSelectedWorkflowId(null)}
         />
       )}
-    </div>
+    </DashboardPage>
   );
 }

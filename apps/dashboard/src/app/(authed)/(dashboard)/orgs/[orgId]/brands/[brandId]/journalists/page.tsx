@@ -28,6 +28,7 @@ import { buildLatestQualificationMap, qualificationKey } from "@/lib/manual-qual
 import { EditManualQualificationModal } from "@/components/manual-qualification/edit-manual-qualification-modal";
 import { ManualQualificationBadge } from "@/components/leads/manual-qualification-badge";
 import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
+import { DashboardPage } from "@/components/dashboard-page";
 
 const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
 
@@ -164,7 +165,7 @@ export default function FeatureJournalistsPage() {
 
   if (isFirstLoad) {
     return (
-      <div className="p-4 md:p-8">
+      <DashboardPage width="wide">
         <div className="animate-pulse space-y-4">
           <div className="h-8 w-48 bg-gray-200 rounded" />
           <div className="h-10 w-64 bg-gray-100 rounded" />
@@ -172,7 +173,7 @@ export default function FeatureJournalistsPage() {
             <div key={i} className="h-16 bg-gray-100 rounded-xl" />
           ))}
         </div>
-      </div>
+      </DashboardPage>
     );
   }
 

@@ -8,6 +8,7 @@ import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { useAuthQuery } from "@/lib/use-auth-query";
+import { DashboardPage } from "@/components/dashboard-page";
 import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
 import { getBrandProfile, saveBrandProfileVersion } from "@/lib/api";
 import { SECTIONS, cloneFields, fieldsEqual, FieldEditor, type ProfileFields } from "./field-editor";
@@ -67,22 +68,22 @@ export function BrandProfilePage() {
 
   if (!isBeta || !revenueOk) {
     return (
-      <div className="p-4 md:p-8 max-w-7xl mx-auto">
+      <DashboardPage width="narrow">
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-sm text-gray-400">
           This view isn&apos;t available yet.
         </div>
-      </div>
+      </DashboardPage>
     );
   }
 
   if (isPending) {
     return (
-      <div className="p-4 md:p-8 max-w-5xl mx-auto">
+      <DashboardPage width="narrow">
         <div className="animate-pulse space-y-4">
           <div className="h-8 w-48 bg-gray-200 rounded" />
           <div className="h-64 bg-gray-100 rounded-xl" />
         </div>
-      </div>
+      </DashboardPage>
     );
   }
 
@@ -124,7 +125,7 @@ export function BrandProfilePage() {
   const discard = () => setDraft(null);
 
   return (
-    <div className="p-4 md:p-8 max-w-5xl mx-auto">
+    <DashboardPage width="narrow">
       {/* Header */}
       <div className="flex items-start justify-between gap-4 mb-6">
         <div>
@@ -233,6 +234,6 @@ export function BrandProfilePage() {
         }}
         invalidateKeys={[["brandProfile", brandId]]}
       />
-    </div>
+    </DashboardPage>
   );
 }
