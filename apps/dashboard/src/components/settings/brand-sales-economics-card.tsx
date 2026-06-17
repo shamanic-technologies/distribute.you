@@ -8,6 +8,7 @@ import {
   type BrandBusinessModel,
   type BrandFunnelStage,
   type BrandOptimizationGoal,
+  type BrandSalesEconomics,
   type BrandSalesEconomicsInput,
 } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
@@ -43,6 +44,32 @@ type FormState = {
   funnelStages: BrandFunnelStage[];
   optimizationGoal: BrandOptimizationGoal;
 };
+
+type SalesEconomicsQueryData = { salesEconomics: BrandSalesEconomics | null };
+
+function defaultForm(): FormState {
+  return {
+    ...DEFAULTS,
+    businessModel: null,
+    funnelStages: [],
+    optimizationGoal: "sales_meetings",
+  };
+}
+
+function formFromEconomics(e: BrandSalesEconomics | null | undefined): FormState {
+  if (!e) return defaultForm();
+  return {
+    lifetimeRevenueUsd: String(e.lifetimeRevenueUsd),
+    replyToMeetingPct: String(e.replyToMeetingPct),
+    visitToMeetingPct: String(e.visitToMeetingPct),
+    meetingToClosePct: String(e.meetingToClosePct),
+    visitToSignupPct: String(e.visitToSignupPct),
+    signupToPaidClientPct: String(e.signupToPaidClientPct),
+    businessModel: e.businessModel,
+    funnelStages: e.funnelStages,
+    optimizationGoal: e.optimizationGoal,
+  };
+}
 
 // The funnel elements a brand can have (multi-select).
 const FUNNEL_STAGES: { value: BrandFunnelStage; label: string; tip: string }[] = [
@@ -110,43 +137,30 @@ const toPctNumber = (v: string) => parseFloat(v) || 0;
 
 export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
   const queryClient = useQueryClient();
+  const initialData = queryClient.getQueryData<SalesEconomicsQueryData>([
+    "brandSalesEconomics",
+    brandId,
+  ]);
 
-  const { data, isPending } = useAuthQuery(
+  const { data } = useAuthQuery(
     ["brandSalesEconomics", brandId],
     () => getBrandSalesEconomics(brandId),
   );
 
-  const [form, setForm] = useState<FormState | null>(null);
+  const [form, setForm] = useState<FormState>(() =>
+    formFromEconomics(initialData?.salesEconomics),
+  );
   const [dirty, setDirty] = useState(false);
   const [saved, setSaved] = useState(false);
-  const hydrated = useRef(false);
+  const dirtyRef = useRef(false);
+  const hydrated = useRef(initialData !== undefined);
 
-  // Seed the form once from the saved set (or defaults when unset). Mark hydrated even
-  // when unset so a later background refetch never clobbers in-progress edits.
+  // The editor paints immediately from cache/defaults; the backend read only hydrates
+  // it once, and never clobbers an edit the user has already started.
   useEffect(() => {
     if (hydrated.current || data === undefined) return;
-    const e = data.salesEconomics;
-    setForm(
-      e
-        ? {
-            lifetimeRevenueUsd: String(e.lifetimeRevenueUsd),
-            replyToMeetingPct: String(e.replyToMeetingPct),
-            visitToMeetingPct: String(e.visitToMeetingPct),
-            meetingToClosePct: String(e.meetingToClosePct),
-            visitToSignupPct: String(e.visitToSignupPct),
-            signupToPaidClientPct: String(e.signupToPaidClientPct),
-            businessModel: e.businessModel,
-            funnelStages: e.funnelStages,
-            optimizationGoal: e.optimizationGoal,
-          }
-        : {
-            ...DEFAULTS,
-            businessModel: null,
-            funnelStages: [],
-            optimizationGoal: "sales_meetings",
-          },
-    );
     hydrated.current = true;
+    if (!dirtyRef.current) setForm(formFromEconomics(data.salesEconomics));
   }, [data]);
 
   const { mutate, isPending: saving, error } = useMutation({
@@ -158,20 +172,25 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
       queryClient.setQueryData(["brandSalesEconomics", brandId], res);
       // Economics drive the server-computed revenue overview — nudge it to refetch.
       queryClient.invalidateQueries({ queryKey: ["featureRevenue"] });
+      dirtyRef.current = false;
       setDirty(false);
       setSaved(true);
     },
   });
 
-  function update<K extends keyof FormState>(key: K, value: FormState[K]) {
-    setForm((f) => (f ? { ...f, [key]: value } : f));
+  function markDirty() {
+    dirtyRef.current = true;
     setDirty(true);
     setSaved(false);
   }
 
+  function update<K extends keyof FormState>(key: K, value: FormState[K]) {
+    setForm((f) => ({ ...f, [key]: value }));
+    markDirty();
+  }
+
   function toggleFunnelStage(stage: BrandFunnelStage) {
     setForm((f) => {
-      if (!f) return f;
       const funnelStages = f.funnelStages.includes(stage)
         ? f.funnelStages.filter((s) => s !== stage)
         : [...f.funnelStages, stage];
@@ -196,12 +215,10 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
           : nextVisibleGoal?.value ?? "sales_meetings",
       };
     });
-    setDirty(true);
-    setSaved(false);
+    markDirty();
   }
 
   function handleSave() {
-    if (!form) return;
     mutate({
       lifetimeRevenueUsd: toInt(form.lifetimeRevenueUsd),
       replyToMeetingPct: toPctNumber(form.replyToMeetingPct),
@@ -224,22 +241,6 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
   const visibleGoals = OPTIMIZATION_GOALS.filter(
     (g) => selectedFunnelStages.length === 0 || isRelevant(g.stages),
   );
-
-  if (isPending || !form) {
-    return (
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <div className="h-4 w-48 bg-gray-100 rounded animate-pulse mb-4" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i}>
-              <div className="h-3 w-32 bg-gray-100 rounded animate-pulse mb-2" />
-              <div className="h-9 w-full bg-gray-100 rounded-lg animate-pulse" />
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="bg-white rounded-xl border border-gray-200">
