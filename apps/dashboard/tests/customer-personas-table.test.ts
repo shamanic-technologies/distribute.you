@@ -11,9 +11,11 @@ describe("Customer personas table", () => {
   it("renders personas as a stats table instead of an inline card grid", () => {
     expect(src).toContain("personaMockCost");
     expect(src).toContain("<table");
-    for (const header of ["Clicks", "Cost per click", "Signups", "Cost per signup", "Expected revenue", "Filters"]) {
+    for (const header of ["Clicks", "Cost per click", "Signups", "Cost per signup"]) {
       expect(src).toContain(header);
     }
+    expect(src).not.toContain("Expected revenue");
+    expect(src).not.toContain('font-medium">Filters');
     expect(src).not.toContain("grid grid-cols-1 lg:grid-cols-2 gap-5");
   });
 
