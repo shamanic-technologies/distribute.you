@@ -119,47 +119,51 @@ describe("BrandSalesEconomicsCard component", () => {
     expect(content).toContain('invalidateQueries({ queryKey: ["featureRevenue"] })');
   });
 
-  it("renders the funnel + business model + the decomposed self-serve steps + Save", () => {
+  it("renders the goal-driven economics fields + Save", () => {
     expect(content).toContain("Customer Lifetime Revenue");
     expect(content).toContain("Positive reply → meeting");
     expect(content).toContain("Website visit → meeting");
-    expect(content).toContain("Meeting → close");
-    // self-serve close is now two steps, not "Website visit → close"
     expect(content).toContain("Website visit → signup");
-    expect(content).toContain("Signup → paid client");
+    expect(content).not.toContain("Meeting → close");
+    expect(content).not.toContain("Signup → paid client");
     expect(content).not.toContain("Website visit → close");
-    expect(content).toContain("Business model");
     expect(content).toContain("Save");
   });
 
-  it("renders the Sales-funnel multi-select with the 2 funnel elements (no Website Signup)", () => {
-    expect(content).toContain("Sales funnel");
-    expect(content).toContain("Website Purchase");
-    expect(content).toContain("Sales Meeting");
+  it("removes the business-model and Sales-funnel controls", () => {
+    expect(content).not.toContain("Business model");
+    expect(content).not.toContain("Sales funnel");
+    expect(content).not.toContain("Website Purchase");
+    expect(content).not.toContain('label: "Sales Meeting"');
     expect(content).not.toContain("Website Signup");
-    expect(content).toContain("toggleFunnelStage");
   });
 
-  it("renders the Optimization-goal single-choice (# Signups / # Sales Meetings)", () => {
+  it("always renders the Optimization-goal single-choice (# Signups / # Sales Meetings)", () => {
     expect(content).toContain("Optimization goal");
     expect(content).toContain("# Signups");
     expect(content).toContain("# Sales Meetings");
     expect(content).not.toContain("$ Sales");
+    expect(content).toContain("OPTIMIZATION_GOALS.map");
   });
 
   it("keeps fractional conversion percentages instead of rounding them before save", () => {
-    expect(content).toContain("const toPctNumber = (v: string) => parseFloat(v) || 0");
-    expect(content).toContain("visitToSignupPct: toPctNumber(form.visitToSignupPct)");
+    expect(content).toContain("const toPctOrDefault = (v: string, fallback: string) =>");
+    expect(content).toContain("visitToSignupPct: toPctOrDefault(");
     expect(content).toContain('step="0.1"');
   });
 
-  it("shows only the fields + goals relevant to the selected funnel (dynamic display)", () => {
+  it("shows only the conversion fields relevant to the selected optimization goal", () => {
     expect(content).toContain("visiblePctFields");
-    expect(content).toContain("visibleGoals");
-    expect(content).toContain("isRelevant");
-    // each conversion field + goal carries the funnel stages that make it relevant
-    expect(content).toContain('stages: ["sales_meeting"]');
-    expect(content).toContain('stages: ["website_purchase"]');
+    expect(content).toContain("f.goals.includes(form.optimizationGoal)");
+    expect(content).toContain('goals: ["sales_meetings"]');
+    expect(content).toContain('goals: ["signups"]');
+  });
+
+  it("validates the selected goal fields before saving and derives funnelStages from the goal", () => {
+    expect(content).toContain("REQUIRED_FIELDS_BY_GOAL");
+    expect(content).toContain("setValidationError");
+    expect(content).toContain("FUNNEL_STAGES_BY_GOAL");
+    expect(content).toContain("funnelStages: [...FUNNEL_STAGES_BY_GOAL[form.optimizationGoal]]");
   });
 });
 
@@ -171,5 +175,11 @@ describe("Brand Settings page", () => {
   it("renders the Sales Economics section with the editor card", () => {
     expect(content).toContain("Sales Economics");
     expect(content).toContain("<BrandSalesEconomicsCard brandId={brandId} />");
+  });
+
+  it("does not render the brand transfer danger zone", () => {
+    expect(content).not.toContain("Danger Zone");
+    expect(content).not.toContain("Transfer brand");
+    expect(content).not.toContain("Transfer History");
   });
 });

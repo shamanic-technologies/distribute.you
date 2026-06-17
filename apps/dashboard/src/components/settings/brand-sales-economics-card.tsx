@@ -5,8 +5,6 @@ import { useMutation } from "@tanstack/react-query";
 import {
   getBrandSalesEconomics,
   saveBrandSalesEconomics,
-  type BrandBusinessModel,
-  type BrandFunnelStage,
   type BrandOptimizationGoal,
   type BrandSalesEconomics,
   type BrandSalesEconomicsInput,
@@ -32,6 +30,11 @@ type PctKey =
   | "meetingToClosePct"
   | "visitToSignupPct"
   | "signupToPaidClientPct";
+type RequiredFieldKey =
+  | "lifetimeRevenueUsd"
+  | "replyToMeetingPct"
+  | "visitToMeetingPct"
+  | "visitToSignupPct";
 
 type FormState = {
   lifetimeRevenueUsd: string;
@@ -40,8 +43,6 @@ type FormState = {
   meetingToClosePct: string;
   visitToSignupPct: string;
   signupToPaidClientPct: string;
-  businessModel: BrandBusinessModel | null;
-  funnelStages: BrandFunnelStage[];
   optimizationGoal: BrandOptimizationGoal;
 };
 
@@ -50,8 +51,6 @@ type SalesEconomicsQueryData = { salesEconomics: BrandSalesEconomics | null };
 function defaultForm(): FormState {
   return {
     ...DEFAULTS,
-    businessModel: null,
-    funnelStages: [],
     optimizationGoal: "sales_meetings",
   };
 }
@@ -65,75 +64,66 @@ function formFromEconomics(e: BrandSalesEconomics | null | undefined): FormState
     meetingToClosePct: String(e.meetingToClosePct),
     visitToSignupPct: String(e.visitToSignupPct),
     signupToPaidClientPct: String(e.signupToPaidClientPct),
-    businessModel: e.businessModel,
-    funnelStages: e.funnelStages,
     optimizationGoal: e.optimizationGoal,
   };
 }
 
-// The funnel elements a brand can have (multi-select).
-const FUNNEL_STAGES: { value: BrandFunnelStage; label: string; tip: string }[] = [
-  {
-    value: "website_purchase",
-    label: "Website Purchase",
-    tip: "Visitors buy directly on your website (self-serve).",
-  },
-  {
-    value: "sales_meeting",
-    label: "Sales Meeting",
-    tip: "Leads book a sales meeting before becoming customers.",
-  },
-];
-
-// The single metric the brand optimises for. `stages` = which funnel stages make
-// this goal relevant.
 const OPTIMIZATION_GOALS: {
   value: BrandOptimizationGoal;
   label: string;
-  stages: BrandFunnelStage[];
 }[] = [
-  { value: "signups", label: "# Signups", stages: ["website_purchase"] },
-  { value: "sales_meetings", label: "# Sales Meetings", stages: ["sales_meeting"] },
+  { value: "signups", label: "# Signups" },
+  { value: "sales_meetings", label: "# Sales Meetings" },
 ];
 
-// Each conversion rate belongs to a funnel path; `stages` drives which fields show
-// for the selected funnel. The self-serve path is now two steps (visit→signup,
-// signup→paid client) — their product replaces the old visit→close rate.
-const PCT_FIELDS: { key: PctKey; label: string; tip: string; stages: BrandFunnelStage[] }[] = [
+const PCT_FIELDS: {
+  key: PctKey;
+  label: string;
+  tip: string;
+  goals: BrandOptimizationGoal[];
+}[] = [
   {
     key: "replyToMeetingPct",
     label: "Positive reply → meeting",
     tip: "Of leads who reply positively, the share you turn into a booked meeting.",
-    stages: ["sales_meeting"],
+    goals: ["sales_meetings"],
   },
   {
     key: "visitToMeetingPct",
     label: "Website visit → meeting",
     tip: "Of leads who click through to your website, the share that book a meeting.",
-    stages: ["sales_meeting"],
-  },
-  {
-    key: "meetingToClosePct",
-    label: "Meeting → close",
-    tip: "Of booked meetings, the share that become paying customers.",
-    stages: ["sales_meeting"],
+    goals: ["sales_meetings"],
   },
   {
     key: "visitToSignupPct",
     label: "Website visit → signup",
     tip: "Of leads who visit your website, the share that sign up.",
-    stages: ["website_purchase"],
-  },
-  {
-    key: "signupToPaidClientPct",
-    label: "Signup → paid client",
-    tip: "Of signups, the share that become paying customers.",
-    stages: ["website_purchase"],
+    goals: ["signups"],
   },
 ];
 
-const toInt = (v: string) => Math.round(parseFloat(v) || 0);
-const toPctNumber = (v: string) => parseFloat(v) || 0;
+const REQUIRED_FIELDS_BY_GOAL: Record<BrandOptimizationGoal, RequiredFieldKey[]> = {
+  signups: ["visitToSignupPct"],
+  sales_meetings: ["replyToMeetingPct", "visitToMeetingPct"],
+};
+
+const FUNNEL_STAGES_BY_GOAL = {
+  signups: ["website_purchase"],
+  sales_meetings: ["sales_meeting"],
+} as const;
+
+const REQUIRED_FIELD_LABELS: Record<RequiredFieldKey, string> = {
+  lifetimeRevenueUsd: "Customer Lifetime Revenue",
+  replyToMeetingPct: "Positive reply → meeting",
+  visitToMeetingPct: "Website visit → meeting",
+  visitToSignupPct: "Website visit → signup",
+};
+
+const hasNumericValue = (v: string) => v.trim() !== "" && Number.isFinite(Number(v));
+const toIntOrDefault = (v: string, fallback: string) =>
+  Math.round(hasNumericValue(v) ? Number(v) : Number(fallback));
+const toPctOrDefault = (v: string, fallback: string) =>
+  hasNumericValue(v) ? Number(v) : Number(fallback);
 
 export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
   const queryClient = useQueryClient();
@@ -152,6 +142,7 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
   );
   const [dirty, setDirty] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const dirtyRef = useRef(false);
   const hydrated = useRef(initialData !== undefined);
 
@@ -182,6 +173,7 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
     dirtyRef.current = true;
     setDirty(true);
     setSaved(false);
+    setValidationError(null);
   }
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -189,121 +181,66 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
     markDirty();
   }
 
-  function toggleFunnelStage(stage: BrandFunnelStage) {
-    setForm((f) => {
-      const funnelStages = f.funnelStages.includes(stage)
-        ? f.funnelStages.filter((s) => s !== stage)
-        : [...f.funnelStages, stage];
-      // If the selected optimization goal no longer maps to a chosen funnel stage,
-      // fall back to a visible goal so no hidden goal stays selected.
-      const goalDef = OPTIMIZATION_GOALS.find((g) => g.value === f.optimizationGoal);
-      const goalStillRelevant =
-        !goalDef ||
-        goalDef.stages.length === 0 ||
-        goalDef.stages.some((s) => funnelStages.includes(s));
-      const nextVisibleGoal = OPTIMIZATION_GOALS.find(
-        (g) =>
-          funnelStages.length === 0 ||
-          g.stages.length === 0 ||
-          g.stages.some((s) => funnelStages.includes(s)),
-      );
-      return {
-        ...f,
-        funnelStages,
-        optimizationGoal: goalStillRelevant
-          ? f.optimizationGoal
-          : nextVisibleGoal?.value ?? "sales_meetings",
-      };
-    });
-    markDirty();
-  }
-
   function handleSave() {
+    const requiredFields: RequiredFieldKey[] = [
+      "lifetimeRevenueUsd",
+      ...REQUIRED_FIELDS_BY_GOAL[form.optimizationGoal],
+    ];
+    const missing = requiredFields.filter((key) => !hasNumericValue(form[key]));
+    if (missing.length > 0) {
+      setValidationError(
+        `Fill ${missing.map((key) => REQUIRED_FIELD_LABELS[key]).join(", ")} before saving.`,
+      );
+      return;
+    }
+
     mutate({
-      lifetimeRevenueUsd: toInt(form.lifetimeRevenueUsd),
-      replyToMeetingPct: toPctNumber(form.replyToMeetingPct),
-      visitToMeetingPct: toPctNumber(form.visitToMeetingPct),
-      meetingToClosePct: toPctNumber(form.meetingToClosePct),
-      visitToSignupPct: toPctNumber(form.visitToSignupPct),
-      signupToPaidClientPct: toPctNumber(form.signupToPaidClientPct),
-      businessModel: form.businessModel,
-      funnelStages: form.funnelStages,
+      lifetimeRevenueUsd: toIntOrDefault(
+        form.lifetimeRevenueUsd,
+        DEFAULTS.lifetimeRevenueUsd,
+      ),
+      replyToMeetingPct: toPctOrDefault(
+        form.replyToMeetingPct,
+        DEFAULTS.replyToMeetingPct,
+      ),
+      visitToMeetingPct: toPctOrDefault(
+        form.visitToMeetingPct,
+        DEFAULTS.visitToMeetingPct,
+      ),
+      meetingToClosePct: toPctOrDefault(
+        form.meetingToClosePct,
+        DEFAULTS.meetingToClosePct,
+      ),
+      visitToSignupPct: toPctOrDefault(
+        form.visitToSignupPct,
+        DEFAULTS.visitToSignupPct,
+      ),
+      signupToPaidClientPct: toPctOrDefault(
+        form.signupToPaidClientPct,
+        DEFAULTS.signupToPaidClientPct,
+      ),
+      funnelStages: [...FUNNEL_STAGES_BY_GOAL[form.optimizationGoal]],
       optimizationGoal: form.optimizationGoal,
     });
   }
 
-  // Show only the fields/goals relevant to the selected funnel stage(s). Nothing
-  // selected → no conversion fields yet, but keep the goal picker available.
-  const isRelevant = (stages: BrandFunnelStage[]) =>
-    stages.length === 0 || stages.some((s) => form?.funnelStages.includes(s));
-  const visiblePctFields = PCT_FIELDS.filter((f) => isRelevant(f.stages));
-  const selectedFunnelStages = form?.funnelStages ?? [];
-  const visibleGoals = OPTIMIZATION_GOALS.filter(
-    (g) => selectedFunnelStages.length === 0 || isRelevant(g.stages),
+  const visiblePctFields = PCT_FIELDS.filter((f) =>
+    f.goals.includes(form.optimizationGoal),
   );
 
   return (
     <div className="bg-white rounded-xl border border-gray-200">
       <div className="p-5">
         <p className="text-sm text-gray-500 mb-4">
-          Customer value + conversion funnel, reused across every sales campaign for this
+          Customer value + conversion rates, reused across every sales campaign for this
           brand. These power the revenue projections.
         </p>
-
-        {/* Business model */}
-        <div className="mb-5">
-          <label className="block text-xs text-gray-500 mb-1.5">Business model</label>
-          <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5">
-            {(["b2c", "b2b"] as const).map((m) => {
-              const active = form.businessModel === m;
-              return (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => update("businessModel", m)}
-                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition ${
-                    active
-                      ? "bg-white shadow-sm text-brand-700 ring-1 ring-brand-200"
-                      : "text-gray-500 hover:text-gray-700"
-                  }`}
-                >
-                  {m.toUpperCase()}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Sales funnel elements (multi-select) */}
-        <div className="mb-5">
-          <label className="block text-xs text-gray-500 mb-1.5">Sales funnel</label>
-          <div className="flex flex-wrap gap-2">
-            {FUNNEL_STAGES.map((s) => {
-              const active = form.funnelStages.includes(s.value);
-              return (
-                <button
-                  key={s.value}
-                  type="button"
-                  title={s.tip}
-                  onClick={() => toggleFunnelStage(s.value)}
-                  className={`px-4 py-1.5 text-sm font-medium rounded-lg border transition ${
-                    active
-                      ? "bg-brand-50 border-brand-200 text-brand-700 ring-1 ring-brand-200"
-                      : "bg-white border-gray-200 text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}
-                >
-                  {s.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
 
         {/* Optimization goal (single-choice) */}
         <div className="mb-5">
           <label className="block text-xs text-gray-500 mb-1.5">Optimization goal</label>
           <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5">
-            {visibleGoals.map((g) => {
+            {OPTIMIZATION_GOALS.map((g) => {
               const active = form.optimizationGoal === g.value;
               return (
                 <button
@@ -347,7 +284,7 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
             </div>
           </div>
 
-          {/* Conversion rates — only those relevant to the selected funnel */}
+          {/* Conversion rates — only those relevant to the selected goal */}
           {visiblePctFields.map((f) => (
             <div key={f.key}>
               <label className="block text-xs text-gray-500 mb-1" title={f.tip}>
@@ -375,6 +312,9 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
           <p className="mt-4 text-sm text-red-600">
             Could not save: {error instanceof Error ? error.message : "unknown error"}
           </p>
+        )}
+        {validationError && (
+          <p className="mt-4 text-sm text-red-600">{validationError}</p>
         )}
 
         <div className="mt-5 flex items-center gap-3">
