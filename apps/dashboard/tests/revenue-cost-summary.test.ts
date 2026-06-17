@@ -44,6 +44,12 @@ describe("Cost summary card on feature Overview (actual spend)", () => {
     expect(card).not.toContain("parseFloat(c.totalCostInUsdCents)");
   });
 
+  it("Total spent only keeps cents below ten dollars", () => {
+    expect(card).toContain("const fractionDigits = usd < 10 ? 2 : 0");
+    expect(card).toContain("minimumFractionDigits: fractionDigits");
+    expect(card).toContain("maximumFractionDigits: fractionDigits");
+  });
+
   it("Overview replaces the bottom cost-source card with real top personas", () => {
     const api = read("lib/api.ts");
     const personaCard = read("components/revenue/top-personas-card.tsx");
