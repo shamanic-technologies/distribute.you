@@ -97,4 +97,10 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain("Set up your org wallet.");
     expect(src).toContain("Your first load is matched dollar-for-dollar up to $25 free.");
   });
+
+  it("lets a filled Other budget card be reselected after choosing another tier", () => {
+    expect(src).toContain("const selectCustomCount = () =>");
+    expect(src).toContain("if (isCustom) setSelectedCount(customN)");
+    expect(src).toContain("onClick={selectCustomCount}");
+  });
 });
