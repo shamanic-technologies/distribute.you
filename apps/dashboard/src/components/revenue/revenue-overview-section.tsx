@@ -10,10 +10,7 @@ import type { RevenueOverview } from "@/lib/revenue-view";
 
 function formatOutcomeCount(n: number | null): string {
   if (n === null) return "—";
-  if (n > 0 && n < 0.01) return "<0.01";
-  return n.toLocaleString("en-US", {
-    maximumFractionDigits: n >= 10 ? 0 : 2,
-  });
+  return Math.round(n).toLocaleString("en-US");
 }
 
 /**
