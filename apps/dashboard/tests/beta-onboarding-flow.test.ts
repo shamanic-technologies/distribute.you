@@ -65,7 +65,9 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain("Who do you want to sell to?");
     expect(src).toContain("EditWithAIChat");
     expect(src).toContain("listPersonas");
+    expect(src).toContain("showLifecycleActions={false}");
     expect(src).toContain('configKey="persona-editor"');
+    expect(src).not.toContain("pause, resume and archive your personas");
   });
 
   it("does not fail the whole onboarding when optional AI suggestions 502", () => {
