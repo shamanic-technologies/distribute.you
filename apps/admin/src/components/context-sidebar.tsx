@@ -453,9 +453,6 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
   // moved under Brand Settings — see BrandSettingsLevelSidebar.
   const featuresAlphaOk = useFeatureFlag(FEATURE_GATES["brand-features"].flag);
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
-  const topItems: SidebarItem[] = [
-    { id: "overview", label: "Overview", href: explicitHierarchyHref(basePath), icon: <HomeIcon /> },
-  ];
 
   // Every feature except the GA exceptions renders under the brand-features
   // alpha gate; the exceptions stay GA (no flag, no badge).
@@ -547,55 +544,54 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
           numbers are a finer sub-group via badgePending. */}
       {!defsReady ? (
         <>
-          {[0].map((i) => <SidebarNavRowSkeleton key={`top-${i}`} />)}
-          <div className="pt-2 mt-2 border-t border-gray-100">
-            {[0, 1, 2, 3, 4, 5].map((i) => <SidebarNavRowSkeleton key={`feat-${i}`} />)}
+          <div>
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <SidebarNavRowSkeleton key={`feat-${i}`} />
+            ))}
           </div>
           <div className="pt-2 mt-2 border-t border-gray-100">
             <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Database</h4>
-            {[0, 1, 2, 3, 4].map((i) => <SidebarNavRowSkeleton key={`db-${i}`} />)}
+            {[0, 1, 2, 3, 4].map((i) => (
+              <SidebarNavRowSkeleton key={`db-${i}`} />
+            ))}
           </div>
         </>
       ) : (
         <>
-      {topItems.map((item) => (
-        <SidebarLink
-          key={item.id}
-          item={item}
-          isActive={item.id === "overview" ? pathname === item.href : pathname.startsWith(item.href)}
-        />
-      ))}
-      {featureSections.map((section) => (
-        <div key={section.title} className="pt-2 mt-2 border-t border-gray-100">
-          <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{section.title}</h4>
-          {section.items.map((item) => (
-            <SidebarLink
-              key={item.id}
-              item={item}
-              isActive={pathname.startsWith(item.href)}
-            />
+          {featureSections.map((section, index) => (
+            <div
+              key={section.title}
+              className={index === 0 ? "" : "pt-2 mt-2 border-t border-gray-100"}
+            >
+              <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{section.title}</h4>
+              {section.items.map((item) => (
+                <SidebarLink
+                  key={item.id}
+                  item={item}
+                  isActive={pathname.startsWith(item.href)}
+                />
+              ))}
+            </div>
           ))}
-        </div>
-      ))}
-      {outcomeItems.length > 0 && (
-        <div className="pt-2 mt-2 border-t border-gray-100">
-          <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Database</h4>
-          {outcomeItems.map((item) => (
+          {outcomeItems.length > 0 && (
+            <div className="pt-2 mt-2 border-t border-gray-100">
+              <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Database</h4>
+              {outcomeItems.map((item) => (
+                <SidebarLink
+                  key={item.id}
+                  item={item}
+                  badgePending={!badgesRevealed}
+                  isActive={pathname.startsWith(item.href)}
+                />
+              ))}
+            </div>
+          )}
+          <div className="pt-2 mt-2 border-t border-gray-100">
             <SidebarLink
-              key={item.id}
-              item={item}
-              badgePending={!badgesRevealed}
-              isActive={pathname.startsWith(item.href)}
+              item={{ id: "settings", label: "Brand Settings", href: `${basePath}/settings`, icon: <SettingsIcon /> }}
+              isActive={pathname.startsWith(`${basePath}/settings`)}
             />
-          ))}
-        </div>
-      )}
-      <div className="pt-2 mt-2 border-t border-gray-100">
-        <SidebarLink
-          item={{ id: "settings", label: "Brand Settings", href: `${basePath}/settings`, icon: <SettingsIcon /> }}
-          isActive={pathname.startsWith(`${basePath}/settings`)}
-        />
-      </div>
+          </div>
         </>
       )}
     </SidebarSection>

@@ -12,6 +12,7 @@ import {
 import { useBillingGuard } from "@/lib/billing-guard";
 import { formatBillingCents } from "@/lib/format-number";
 import { pollOptions } from "@/lib/query-options";
+import { DashboardPage } from "@/components/dashboard-page";
 
 const TOPUP_AMOUNTS = [1000, 2500, 5000, 10000]; // cents
 
@@ -93,6 +94,7 @@ export default function BillingPage() {
   const hasValidationError = !!(thresholdError || customAmountError || topupAmountError);
 
   const isDepleted = account ? parseFloat(account.balance_cents) <= 0 : false;
+  const creditBalanceCents = account?.actual_balance_cents ?? account?.balance_cents ?? "0";
   const hasAutoTopup = account?.has_auto_topup ?? false;
 
   // Pre-fill auto-topup fields from existing config
@@ -225,7 +227,7 @@ export default function BillingPage() {
 
   if (accountLoading) {
     return (
-      <div className="p-4 md:p-8">
+      <DashboardPage width="standard">
         <div className="mb-6">
           <h1 className="font-display text-2xl font-bold text-gray-800">Billing</h1>
           <p className="text-gray-600">Manage your credits and payment method.</p>
@@ -235,12 +237,12 @@ export default function BillingPage() {
           <div className="bg-white rounded-xl border border-gray-200 p-5 h-48" />
           <div className="bg-white rounded-xl border border-gray-200 p-5 h-64" />
         </div>
-      </div>
+      </DashboardPage>
     );
   }
 
   return (
-    <div className="p-4 md:p-8">
+    <DashboardPage width="standard">
       <div className="mb-6 flex max-w-2xl flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold text-gray-800">Billing</h1>
@@ -287,7 +289,7 @@ export default function BillingPage() {
             <div>
               <p className="text-sm text-gray-500">Credit Balance</p>
               <p className={`text-3xl font-bold mt-1 ${isDepleted ? "text-red-600" : "text-gray-900"}`}>
-                {formatBillingCents(account?.balance_cents ?? "0")}
+                {formatBillingCents(creditBalanceCents)}
               </p>
               {hasAutoTopup && (
                 <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
@@ -506,6 +508,6 @@ export default function BillingPage() {
           </div>
         )}
       </div>
-    </div>
+    </DashboardPage>
   );
 }

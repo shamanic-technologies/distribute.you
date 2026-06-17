@@ -9,6 +9,7 @@ import {
   formatScore,
   formatSentiment,
 } from "@/components/visibility/score-card";
+import { DashboardPage } from "@/components/dashboard-page";
 import { DetailTabs } from "@/components/visibility/detail-tabs";
 import { METRIC_INFO, MetricLabel } from "@/components/visibility/metric-info";
 import {
@@ -48,7 +49,7 @@ export function VisibilityCompetitorsView({
   const placeholderRows = Array.from({ length: 5 });
 
   return (
-    <div className="p-4 md:p-8" data-testid="competitors-page">
+    <DashboardPage width="wide" data-testid="competitors-page">
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-gray-800">Competitors</h1>
         <p className="text-sm text-gray-500 mt-1">
@@ -146,7 +147,7 @@ export function VisibilityCompetitorsView({
           </div>
         </>
       )}
-    </div>
+    </DashboardPage>
   );
 }
 

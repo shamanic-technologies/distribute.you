@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { DashboardPage } from "@/components/dashboard-page";
 
 interface ErrorProps {
   error: Error & { digest?: string };
@@ -13,7 +14,7 @@ export default function DashboardError({ error, reset }: ErrorProps) {
   }, [error]);
 
   return (
-    <div className="p-4 md:p-8 max-w-2xl mx-auto">
+    <DashboardPage width="narrow">
       <div className="bg-white rounded-xl border border-red-200 p-6">
         <h2 className="font-display text-xl font-bold text-red-700 mb-2">
           This page hit an unexpected error
@@ -48,6 +49,6 @@ export default function DashboardError({ error, reset }: ErrorProps) {
           </button>
         </div>
       </div>
-    </div>
+    </DashboardPage>
   );
 }

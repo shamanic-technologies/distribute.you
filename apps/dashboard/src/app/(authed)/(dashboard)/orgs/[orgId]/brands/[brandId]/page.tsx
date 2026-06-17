@@ -12,6 +12,7 @@ import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-se
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { BrandStatusControl } from "@/components/brand/brand-status-control";
+import { DashboardPage } from "@/components/dashboard-page";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 
 /**
@@ -99,7 +100,7 @@ export default function BrandOverviewPage() {
   if (!brandLoading && !brand) {
     // Reached e.g. via a stale last-brand cookie pointing at a deleted brand.
     return (
-      <div className="p-4 md:p-8">
+      <DashboardPage width="wide">
         <p className="text-gray-500 mb-3">Brand not found</p>
         <Link
           href={`/orgs/${orgId}/brands`}
@@ -107,32 +108,32 @@ export default function BrandOverviewPage() {
         >
           ← Back to brands
         </Link>
-      </div>
+      </DashboardPage>
     );
   }
 
   if (!enabled) {
     return (
-      <div className="p-4 md:p-8 max-w-7xl mx-auto">
+      <DashboardPage width="wide">
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-sm text-gray-400">
           This view isn&apos;t available yet.
         </div>
-      </div>
+      </DashboardPage>
     );
   }
 
   // Only once revenue resolves do we know the brand has no pipeline yet.
   if (revenueRevealed && data && data.totalPipelineUsd === null) {
     return (
-      <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-4">
+      <DashboardPage width="wide" className="space-y-4">
         <BrandStatusControl brandId={brandId} />
         <RevenueEmptyState />
-      </div>
+      </DashboardPage>
     );
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-4">
+    <DashboardPage width="wide" className="space-y-4">
       <RevenueOverviewSection
         data={revenueRevealed ? data : undefined}
         pipelineActivity={activityRevealed ? pipelineActivity : undefined}
@@ -156,6 +157,6 @@ export default function BrandOverviewPage() {
           />
         }
       />
-    </div>
+    </DashboardPage>
   );
 }
