@@ -53,7 +53,7 @@ function SidebarLink({
     <Link
       href={item.href}
       className={`
-        flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs transition
+        flex min-w-0 items-center gap-3 px-3 py-2.5 rounded-lg text-xs transition
         ${item.comingSoon
           ? "text-gray-400 opacity-60 hover:opacity-80"
           : isActive
@@ -62,10 +62,10 @@ function SidebarLink({
         }
       `}
     >
-      <span className={`w-5 h-5 ${item.comingSoon ? "text-gray-300" : isActive ? "text-brand-600" : "text-gray-400"}`}>
+      <span className={`h-5 w-5 shrink-0 ${item.comingSoon ? "text-gray-300" : isActive ? "text-brand-600" : "text-gray-400"}`}>
         {item.icon}
       </span>
-      <span className="flex-1">{item.label}</span>
+      <span className="min-w-0 flex-1 truncate">{item.label}</span>
       {item.maturity && <MaturityBadge level={item.maturity} />}
       {badgePending ? (
         <Skeleton className="h-4 w-6 rounded-full" />
@@ -116,7 +116,7 @@ function SidebarSection({ title, backHref, backLabel, children, footer }: {
   footer?: React.ReactNode;
 }) {
   return (
-    <aside className="w-56 bg-white border-r border-gray-200 flex flex-col flex-shrink-0 h-full">
+    <aside className="h-full w-56 max-w-[85vw] flex-shrink-0 flex-col border-r border-gray-200 bg-white flex">
       {(title || backHref) && (
         <div className="px-4 py-3 border-b border-gray-100">
           {backHref && backLabel && <BackLink href={backHref} label={backLabel} />}

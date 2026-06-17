@@ -94,7 +94,7 @@ function OutletRow({ outlet, displayStatus, costCents, domainRating, isSelected,
     <button
       type="button"
       onClick={onClick}
-      className={`w-full text-left flex items-center gap-3 p-4 rounded-xl border hover:border-brand-300 hover:shadow-sm transition bg-white cursor-pointer ${
+      className={`flex w-full flex-wrap items-center gap-3 rounded-xl border bg-white p-4 text-left transition hover:border-brand-300 hover:shadow-sm cursor-pointer ${
         isSelected ? "border-brand-500 ring-1 ring-brand-500" : "border-gray-200"
       }`}
     >
@@ -102,7 +102,7 @@ function OutletRow({ outlet, displayStatus, costCents, domainRating, isSelected,
         <BrandLogo domain={outlet.outletDomain} size={24} className="rounded" fallbackClassName="w-5 h-5 text-gray-400" />
       </div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-0.5">
+        <div className="mb-0.5 flex min-w-0 flex-wrap items-center gap-2">
           <span className="font-medium text-sm text-gray-800 truncate">{outlet.outletName}</span>
           <span className={`text-[10px] px-1.5 py-0.5 rounded-full border flex-shrink-0 ${statusBadgeColor(displayStatus)}`}>
             {statusLabel(displayStatus)}
@@ -113,13 +113,13 @@ function OutletRow({ outlet, displayStatus, costCents, domainRating, isSelected,
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
           <p className="text-xs text-gray-400 truncate">{outlet.outletDomain}</p>
           <span className="text-xs text-gray-300">&middot;</span>
           <span className="text-xs text-gray-400 flex-shrink-0">{outlet.campaigns.length} campaign{outlet.campaigns.length !== 1 ? "s" : ""}</span>
         </div>
       </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="ml-11 flex w-full flex-wrap items-center gap-2 sm:ml-0 sm:w-auto sm:flex-shrink-0">
         {domainRating != null && (
           <span className="text-xs text-gray-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
             DR {domainRating}
@@ -152,8 +152,8 @@ function CampaignDetailCard({ campaign, counts }: { campaign: OutletCampaign; co
   const displayStatus = deriveDisplayStatusFromCounts(counts);
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <span className="text-xs font-mono text-gray-500 bg-gray-50 px-2 py-0.5 rounded">{campaign.featureSlug}</span>
           <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${statusBadgeColor(displayStatus)}`}>
             {statusLabel(displayStatus)}
@@ -164,12 +164,12 @@ function CampaignDetailCard({ campaign, counts }: { campaign: OutletCampaign; co
             </span>
           )}
         </div>
-        <span className={`text-xs font-medium px-2 py-1 rounded-full border ${relevanceColor(campaign.relevanceScore)}`}>
+        <span className={`self-start rounded-full border px-2 py-1 text-xs font-medium ${relevanceColor(campaign.relevanceScore)}`}>
           {campaign.relevanceScore}%
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 text-sm mb-2">
+      <div className="mb-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
         <div>
           <span className="text-gray-500 text-xs">Campaign ID</span>
           <p className="text-xs font-mono text-gray-700 truncate">{campaign.campaignId}</p>
@@ -279,8 +279,8 @@ function OutletDetailPanel({
       <div className="p-4 md:p-6 space-y-4">
         {/* High-level outlet info */}
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-medium text-gray-800">{outlet.outletName}</h3>
+          <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="break-words font-medium text-gray-800">{outlet.outletName}</h3>
             <span className={`text-xs font-medium px-2 py-1 rounded-full border ${relevanceColor(outlet.relevanceScore)}`}>
               {outlet.relevanceScore}% relevance
             </span>
@@ -673,18 +673,18 @@ export default function FeatureOutletsPage() {
   );
 
   return (
-    <div className="flex flex-col md:flex-row h-full relative">
-      <div className={`${selected ? "hidden md:block md:w-1/2" : "w-full"} p-4 md:p-8 overflow-y-auto transition-all`}>
+    <div className="relative flex h-full min-h-0 flex-col md:flex-row">
+      <div className={`${selected ? "hidden md:block md:w-1/2" : "w-full"} min-w-0 overflow-y-auto p-4 transition-all md:p-8`}>
         <OutreachStatCardsAuto />
         {/* Header */}
-        <div className="flex items-start justify-between gap-3 mb-6">
-          <div className="flex items-center gap-3">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
             <div className="w-10 h-10 bg-brand-50 rounded-lg flex items-center justify-center text-brand-600">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
             </div>
-            <div>
+            <div className="min-w-0">
               <h1 className="text-2xl font-semibold text-gray-900">Outlets</h1>
               {isPending && !data ? (
                 <Skeleton className="h-4 w-48 mt-1" />
@@ -743,12 +743,12 @@ export default function FeatureOutletsPage() {
             <div className="min-w-0 flex-1">
               <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by outlet name or domain..." resultCount={filteredOutlets.length} totalCount={displayedOutlets.length} className="" />
             </div>
-            <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:shrink-0 sm:flex-row">
               <button
                 type="button"
                 onClick={() => fetchPageMonthlyVisitsMutation.mutate(currentPageDomainsMissingTraffic)}
                 disabled={isDomainTrafficHistoriesPending || fetchPageMonthlyVisitsMutation.isPending || currentPageDomainsMissingTraffic.length === 0}
-                className="h-10 shrink-0 rounded-lg border border-brand-200 bg-brand-50 px-3 text-sm font-medium text-brand-700 transition hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-brand-50"
+                className="h-10 shrink-0 rounded-lg border border-brand-200 bg-brand-50 px-3 text-sm font-medium text-brand-700 transition hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-brand-50 w-full sm:w-auto"
               >
                 {fetchPageMonthlyVisitsMutation.isPending ? "Fetching..." : `Get Monthly Visits (${currentPageDomainsMissingTraffic.length})`}
               </button>
@@ -756,7 +756,7 @@ export default function FeatureOutletsPage() {
                 type="button"
                 onClick={() => fetchPageDomainRatingsMutation.mutate(currentPageDomainsMissingDr)}
                 disabled={isDomainDrStatusesPending || fetchPageDomainRatingsMutation.isPending || currentPageDomainsMissingDr.length === 0}
-                className="h-10 shrink-0 rounded-lg border border-brand-200 bg-brand-50 px-3 text-sm font-medium text-brand-700 transition hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-brand-50"
+                className="h-10 shrink-0 rounded-lg border border-brand-200 bg-brand-50 px-3 text-sm font-medium text-brand-700 transition hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-brand-50 w-full sm:w-auto"
               >
                 {fetchPageDomainRatingsMutation.isPending ? "Fetching..." : `Get Domain Ratings (${currentPageDomainsMissingDr.length})`}
               </button>
@@ -767,7 +767,7 @@ export default function FeatureOutletsPage() {
                   requestPurchasePricesMutation.mutate(paginatedOutlets.pageItems.map((outlet) => outlet.id));
                 }}
                 disabled={requestPurchasePricesMutation.isPending || paginatedOutlets.pageItems.length === 0}
-                className="h-10 shrink-0 rounded-lg border border-brand-200 bg-brand-50 px-3 text-sm font-medium text-brand-700 transition hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-brand-50"
+                className="h-10 shrink-0 rounded-lg border border-brand-200 bg-brand-50 px-3 text-sm font-medium text-brand-700 transition hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-brand-50 w-full sm:w-auto"
               >
                 {requestPurchasePricesMutation.isPending ? "Requesting..." : `Ask Purchase Price (${paginatedOutlets.pageItems.length})`}
               </button>
