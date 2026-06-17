@@ -57,6 +57,12 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain('"unknown"');
   });
 
+  it("uses landing-only extraction for the blocking services step", () => {
+    expect(src).toContain('extractBrandFields([newBrandId], SERVICES_PROFILE_FIELDS, { urlStrategy: "landing" })');
+    expect(src).toContain("hydrateOnboardingInBackground");
+    expect(src).toContain("extractBrandFields([id], SALES_PROFILE_FIELDS)");
+  });
+
   it("offers the two sales goals and prices in the chosen unit", () => {
     expect(src).toContain("What is your primary sales goal?");
     for (const unit of ["signups", "meetings"]) {
