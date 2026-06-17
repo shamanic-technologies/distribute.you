@@ -231,10 +231,9 @@ const SettingsIcon = () => (
 // brand: no `/features/[featureSlug]` segment. Brand-level sections live directly
 // under `/orgs/[orgId]/brands/[brandId]/...`.
 interface NavigationLevel {
-  type: "app" | "appFeature" | "org" | "brand" | "brandSettings";
+  type: "app" | "org" | "brand" | "brandSettings";
   orgId?: string;
   brandId?: string;
-  featureId?: string;
 }
 
 function getNavigationLevel(segments: string[]): NavigationLevel {
@@ -259,10 +258,6 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
       return { type: "brand", orgId, brandId };
     }
     return { type: "org", orgId };
-  }
-  // App-level feature: /features/[featureId] or /features/[featureId]/new
-  if (segments[0] === "features" && segments[1]) {
-    return { type: "appFeature", featureId: segments[1] };
   }
   return { type: "app" };
 }
@@ -618,46 +613,6 @@ function BrandSettingsLevelSidebar({ orgId, brandId, pathname }: {
   );
 }
 
-// App-level Feature Sidebar — shows feature-specific sub-menus at /features/[featureId]
-function AppFeatureLevelSidebar({ featureId, pathname }: {
-  featureId: string;
-  pathname: string;
-}) {
-  const { getFeature } = useFeatures();
-  const basePath = `/features/${featureId}`;
-  const feature = getFeature(featureId);
-  const title = feature?.name ?? featureId;
-  // Workflows is alpha (staff-only) everywhere. Default-hidden until PostHog resolves.
-  const workflowsOk = useFeatureFlag(FEATURE_GATES["workflows"].flag);
-
-  const items: SidebarItem[] = [
-    { id: "campaigns", label: "Campaigns", href: basePath, icon: <EnvelopeIcon /> },
-    ...(workflowsOk
-      ? [
-          {
-            id: "workflows",
-            label: "Workflows",
-            href: `${basePath}/workflows`,
-            icon: <WorkflowIcon />,
-            maturity: FEATURE_GATES["workflows"].maturity,
-          } satisfies SidebarItem,
-        ]
-      : []),
-  ];
-
-  return (
-    <SidebarSection title={title} backHref="/" backLabel="Dashboard">
-      {items.map((item) => (
-        <SidebarLink
-          key={item.id}
-          item={item}
-          isActive={item.id === "campaigns" ? pathname === item.href : pathname.startsWith(item.href)}
-        />
-      ))}
-    </SidebarSection>
-  );
-}
-
 export function ContextSidebar() {
   const pathname = usePathname();
   const segments = pathname.split("/").filter(Boolean);
@@ -666,8 +621,6 @@ export function ContextSidebar() {
   switch (level.type) {
     case "app":
       return <AppLevelSidebar />;
-    case "appFeature":
-      return <AppFeatureLevelSidebar featureId={level.featureId!} pathname={pathname} />;
     case "org":
       return <OrgLevelSidebar orgId={level.orgId!} pathname={pathname} />;
     case "brand":

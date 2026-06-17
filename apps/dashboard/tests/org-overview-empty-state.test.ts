@@ -14,12 +14,16 @@ describe("Org overview page empty state", () => {
     expect(content).not.toContain("`/orgs/${orgId}/brands`");
   });
 
-  it("should show a CTA to launch first campaign when no brands exist", () => {
-    expect(content).toContain("Launch your first campaign");
+  it("should show a CTA to set up the first brand when no brands exist", () => {
+    expect(content).toContain("Set up your first brand");
     expect(content).toContain("Set up your first brand to get started");
   });
 
-  it("should link to campaign creation for the CTA", () => {
-    expect(content).toContain("/features/sales-email-cold-outreach/new");
+  it("should link to onboarding for the CTA (empty org has no brand to launch under)", () => {
+    // The app-level `/features/[featureId]/new` create page was removed (#1768
+    // follow-up); the launch funnel now lives under an existing brand
+    // (`/brands/[brandId]/launch`). An empty org with no brand sends the user to
+    // onboarding to create their first brand.
+    expect(content).toContain("/onboarding?new=1");
   });
 });

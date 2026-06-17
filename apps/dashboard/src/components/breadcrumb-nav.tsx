@@ -5,9 +5,6 @@ import Link from "next/link";
 import { useOrganization, useOrganizationList, useUser } from "@clerk/nextjs";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { isAdminEmail } from "@/lib/admin-allowlist";
-import { useFeatures } from "@/lib/features-context";
-import { useFeatureFlag } from "@/lib/use-feature-flag";
-import { FEATURE_GATES, GA_BRAND_FEATURES } from "@/lib/feature-gates";
 import { workflowDisplayName } from "@/lib/workflow-display-name";
 import { BrandLogo } from "./brand-logo";
 import { explicitHierarchyHref } from "@/lib/last-brand";
@@ -101,14 +98,6 @@ export function BreadcrumbNav() {
   // real security boundary is the `isAdminEmail` 403 on the /api/admin/* routes.
   const { user } = useUser();
   const isStaff = isAdminEmail(user?.primaryEmailAddress?.emailAddress);
-  const { features, getFeature } = useFeatures();
-  // Gate the feature switcher exactly like the sidebar + brand overview: a
-  // non-staff viewer sees only GA features, staff (flag on) sees all. Without
-  // this the breadcrumb dropdown leaked every alpha feature to non-staff.
-  const featuresAlphaOk = useFeatureFlag(FEATURE_GATES["brand-features"].flag);
-  const visibleFeatures = features.filter(
-    (f) => GA_BRAND_FEATURES.has(f.slug) || featuresAlphaOk,
-  );
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -120,7 +109,6 @@ export function BreadcrumbNav() {
 
   // Parse path structure: /orgs/[orgId]/brands/[brandId]/<section>/[id]
   // The product ships ONE feature → no `/features/[featureSlug]` segment.
-  // Also handles app-level: /features/[featureId] and /features/[featureId]/new
   const pathParts = pathname.split("/").filter(Boolean);
   const orgId = pathParts[0] === "orgs" && pathParts[1] ? pathParts[1] : null;
   const brandId = orgId && pathParts[2] === "brands" && pathParts[3] ? pathParts[3] : null;
@@ -129,9 +117,6 @@ export function BreadcrumbNav() {
     brandId && section === "workflows" && pathParts[5] && pathParts[5] !== "new"
       ? pathParts[5]
       : null;
-  // App-level feature path: /features/[featureId] or /features/[featureId]/new
-  const appFeatureId = !orgId && pathParts[0] === "features" && pathParts[1] ? pathParts[1] : null;
-  const appFeatureSubpage = appFeatureId && pathParts[2] ? pathParts[2] : null;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -251,13 +236,6 @@ export function BreadcrumbNav() {
   };
 
   const currentBrand = brands.find((b) => b.id === brandId);
-  const appFeatureDef = appFeatureId ? getFeature(appFeatureId) : null;
-  const appFeatureLabel = appFeatureDef ? (appFeatureDef.name) : appFeatureId;
-
-  const handleAppFeatureSwitch = (newFeatureId: string) => {
-    setOpenDropdown(null);
-    router.push(`/features/${newFeatureId}`);
-  };
 
   const Chevron = ({ open }: { open: boolean }) => (
     <svg className={`w-3 h-3 text-gray-400 transition ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -364,53 +342,6 @@ export function BreadcrumbNav() {
           </div>
         )}
       </div>
-
-      {/* APP-LEVEL FEATURE */}
-      {appFeatureId && (
-        <>
-          <Sep />
-          <div className="relative flex items-center">
-            <Link href={`/features/${appFeatureId}`} className="px-2 py-1 rounded-md hover:bg-gray-100 transition font-medium text-gray-800 truncate max-w-[200px]">
-              {appFeatureLabel}
-            </Link>
-            <button onClick={() => toggleDropdown("appFeature")} className="p-1 hover:bg-gray-100 rounded transition">
-              <Chevron open={openDropdown === "appFeature"} />
-            </button>
-            {openDropdown === "appFeature" && (
-              <div className="absolute left-0 top-full mt-1 w-56 bg-white rounded-lg border border-gray-200 shadow-xl py-1 z-50">
-                <div className="px-3 py-2 border-b border-gray-100">
-                  <p className="text-xs text-gray-500 font-medium">Switch feature</p>
-                </div>
-                {visibleFeatures.map((f) => {
-                  return (
-                  <button
-                    key={f.slug}
-                    onClick={() => handleAppFeatureSwitch(f.slug)}
-                    className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition ${
-                      appFeatureId === f.slug ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
-                    }`}
-                  >
-                    <span className="truncate">{f.name}</span>
-                    {appFeatureId === f.slug && (
-                      <svg className="w-4 h-4 text-brand-600 ml-auto flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                  </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-          {/* Subpage label for the launch funnel. */}
-          {appFeatureSubpage === "new" && (
-            <>
-              <Sep />
-              <span className="px-2 py-1 text-gray-600">Launch</span>
-            </>
-          )}
-        </>
-      )}
 
       {/* BRAND */}
       {brandId && orgId && (

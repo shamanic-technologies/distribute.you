@@ -6,7 +6,7 @@ import { DefaultOnboarding } from "@/components/onboarding/default-onboarding";
 import { BetaOnboarding } from "@/components/onboarding/beta-onboarding";
 
 // Beta team (allowlist) gets the new stepped flow ported from the app.distribute.you
-// mockup — animated build sequence + strategy review → straight into campaigns/new.
+// mockup — animated build sequence + strategy review → straight into the brand launch flow.
 // Everyone else gets the default flow. Gate on the Clerk email; render nothing until
 // the user resolves so neither flow flashes before the allowlist is known.
 export default function OnboardingPage() {

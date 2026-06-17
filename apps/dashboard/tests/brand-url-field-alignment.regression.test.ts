@@ -17,12 +17,6 @@ const newCampaignPagePath = path.resolve(
 );
 const newCampaignPage = fs.readFileSync(newCampaignPagePath, "utf-8");
 
-const legacyNewPagePath = path.resolve(
-  __dirname,
-  "../src/app/(authed)/(dashboard)/features/[featureId]/new/page.tsx",
-);
-const legacyNewPage = fs.readFileSync(legacyNewPagePath, "utf-8");
-
 describe("Brand URL field alignment (regression: Go button disabled)", () => {
   describe("api.ts", () => {
     it("Brand uses `url` not `brandUrl`", () => {
@@ -51,15 +45,6 @@ describe("Brand URL field alignment (regression: Go button disabled)", () => {
   // The "brand detail page renders brand.url for href" case was removed: the
   // brand root page is now the (sole) feature's Revenue overview and no longer
   // displays a brand-URL link (the feature segment was flattened into the brand).
-
-  describe("legacy features/[featureId]/new page", () => {
-    it("reads b.url for the selected brand lookup", () => {
-      expect(legacyNewPage).toContain("?.url ?? \"\"");
-      expect(legacyNewPage).not.toMatch(/\.find\([^)]+\)\?\.brandUrl/);
-    });
-
-    it("reads b.url in the brand option label fallback chain", () => {
-      expect(legacyNewPage).toContain("b.name || b.domain || b.url");
-    });
-  });
+  // The legacy app-level `features/[featureId]/new` create page was removed in
+  // the #1768 follow-up (the launch funnel lives at the brand launch page above).
 });
