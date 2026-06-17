@@ -117,7 +117,6 @@ export default function BrandOverviewPage() {
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-4">
-      <BrandStatusControl brandId={brandId} />
       <RevenueOverviewSection
         data={revenueRevealed ? data : undefined}
         revenuePending={!revenueRevealed}
@@ -126,6 +125,7 @@ export default function BrandOverviewPage() {
         brandId={brandId}
         featureSlug={featureSlug}
         basePath={basePath}
+        headerAction={<BrandStatusControl brandId={brandId} />}
         topRow={
           /* Outreach stat cards (GA + beta) — under the "Revenue & Conversions"
              header, directly above the Pipeline-revenue hero. Funnel-stage-gated
