@@ -10,8 +10,12 @@ import {
   getBrandCostBreakdown,
   fetchFeatureStats,
   getBrandSalesEconomics,
+  getBrandDailyBudget,
   getFeaturePipelineActivity,
   fetchFeaturePersonaStats,
+  getWorkflowProjection,
+  keepLastGoodWorkflowProjection,
+  type WorkflowProjectionResponse,
 } from "@/lib/api";
 import { pollOptions, pollOptionsSlow } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
@@ -98,6 +102,56 @@ export default function BrandOverviewPage() {
   const personaStatsGoal = optimizationGoal === "signups" ? "signup" : "meetingBooked";
   const personaStatsMetric = personaStatsGoal === "signup" ? "cpc" : "cppr";
 
+  const { data: budgetData } = useAuthQuery(
+    ["brandDailyBudget", brandId],
+    () => getBrandDailyBudget(brandId),
+    { enabled, ...pollOptions },
+  );
+  const monthlyBudgetUsd =
+    budgetData?.dailyBudgetCents != null && budgetData.dailyBudgetCents > 0
+      ? (budgetData.dailyBudgetCents / 100) * 30
+      : null;
+
+  const { data: outcomeProjection } = useAuthQuery(
+    ["workflowProjection", brandId, featureSlug, "overview-outcome", optimizationGoal, monthlyBudgetUsd],
+    () =>
+      getWorkflowProjection({
+        featureSlug,
+        brandId,
+        objective: optimizationGoal === "signups" ? "self-serve" : "meeting-booked",
+        budgetUsd: monthlyBudgetUsd ?? undefined,
+      }),
+    {
+      enabled: enabled && economicsData !== undefined && monthlyBudgetUsd != null,
+      structuralSharing: (prev, next) =>
+        keepLastGoodWorkflowProjection(
+          prev as WorkflowProjectionResponse | undefined,
+          next as WorkflowProjectionResponse,
+        ),
+    },
+  );
+
+  const activeOutcomeProjection = useMemo(() => {
+    if (!outcomeProjection) return null;
+    const recommended = outcomeProjection.recommendedWorkflowDynastySlug
+      ? outcomeProjection.workflows.find(
+          (w) => w.workflowDynastySlug === outcomeProjection.recommendedWorkflowDynastySlug,
+        )
+      : outcomeProjection.workflows[0];
+    return (recommended ?? outcomeProjection.workflows[0])?.projection ?? null;
+  }, [outcomeProjection]);
+
+  const expectedMonthlyOutcome = useMemo(() => {
+    if (optimizationGoal === "signups") {
+      const visits = activeOutcomeProjection?.visits;
+      const visitToSignupPct = economicsData?.salesEconomics?.visitToSignupPct;
+      return visits != null && visitToSignupPct != null
+        ? visits * (visitToSignupPct / 100)
+        : null;
+    }
+    return activeOutcomeProjection?.meetings ?? null;
+  }, [activeOutcomeProjection, economicsData?.salesEconomics?.visitToSignupPct, optimizationGoal]);
+
   // Real persona-level cost evidence from features-service. This replaces the
   // old provider-cost-source list; no dashboard-side mock/hash persona split.
   const { data: personaStatsData } = useAuthQuery(
@@ -118,6 +172,11 @@ export default function BrandOverviewPage() {
   const costRevealed = useCoordinatedReveal([costData !== undefined]);
   const statsRevealed = useCoordinatedReveal([featureStatsData !== undefined]);
   const personaStatsRevealed = useCoordinatedReveal([personaStatsData !== undefined]);
+  const outcomeRevealed = useCoordinatedReveal([
+    budgetData !== undefined,
+    economicsData !== undefined,
+    monthlyBudgetUsd == null || outcomeProjection !== undefined,
+  ]);
 
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
 
@@ -163,6 +222,17 @@ export default function BrandOverviewPage() {
         pipelineActivity={activityRevealed ? pipelineActivity : undefined}
         revenuePending={!revenueRevealed}
         activityPending={!activityRevealed}
+        expectedOutcome={
+          outcomeRevealed
+            ? {
+                value: expectedMonthlyOutcome,
+                label:
+                  optimizationGoal === "signups"
+                    ? "expected signups / month"
+                    : "expected sales meetings / month",
+              }
+            : undefined
+        }
         costPending={!costRevealed}
         costBreakdown={costData?.costs ?? []}
         brandId={brandId}

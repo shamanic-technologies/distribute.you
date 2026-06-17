@@ -122,6 +122,7 @@ describe("Beta onboarding wallet setup", () => {
     expect(content).toContain("createBrandAndFetchServices");
     expect(content).toContain("const hydration = hydrateOnboardingInBackground(newBrandId)");
     expect(content).toContain("hydrationPromiseRef.current = hydration");
+    expect(content).toContain("Adding your brand");
     expect(content).toContain("Extracting your services");
   });
 
