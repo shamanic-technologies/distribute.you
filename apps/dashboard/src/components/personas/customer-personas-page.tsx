@@ -33,11 +33,6 @@ function formatCount(n: number): string {
   return n.toLocaleString("en-US");
 }
 
-function formatUsd(n: number): string {
-  if (n > 0 && Math.round(n) === 0) return "<$1";
-  return `$${Math.round(n).toLocaleString("en-US")}`;
-}
-
 function formatUsdDecimal(n: number): string {
   return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
@@ -268,7 +263,7 @@ export function CustomerPersonasPage() {
         }
         return (
           <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-            <table className="min-w-[920px] w-full text-sm">
+            <table className="min-w-[760px] w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
                   <th className="px-4 py-3 font-medium">Persona</th>
@@ -276,8 +271,6 @@ export function CustomerPersonasPage() {
                   <th className="px-4 py-3 text-right font-medium">Cost per click</th>
                   <th className="px-4 py-3 text-right font-medium">Signups</th>
                   <th className="px-4 py-3 text-right font-medium">Cost per signup</th>
-                  <th className="px-4 py-3 text-right font-medium">Expected revenue</th>
-                  <th className="px-4 py-3 text-right font-medium">Filters</th>
                 </tr>
               </thead>
               <tbody>
@@ -328,8 +321,6 @@ export function CustomerPersonasPage() {
                       <td className="px-4 py-3 text-right text-gray-600">{formatUsdDecimal(stats.cpcUsd)}</td>
                       <td className="px-4 py-3 text-right font-medium text-gray-800">{formatCount(stats.signups)}</td>
                       <td className="px-4 py-3 text-right text-gray-600">{formatUsdDecimal(stats.costPerSignupUsd)}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-gray-900">{formatUsd(stats.expectedRevenueUsd)}</td>
-                      <td className="px-4 py-3 text-right text-gray-500">{filterCount}</td>
                     </tr>
                   );
                 })}
@@ -447,12 +438,11 @@ function PersonaDetailPanel({
         </div>
 
         <div className="space-y-4 p-4 md:p-5">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <PersonaStat label="Clicks" value={formatCount(stats.clicks)} />
             <PersonaStat label="Cost per click" value={formatUsdDecimal(stats.cpcUsd)} />
             <PersonaStat label="Signups" value={formatCount(stats.signups)} />
             <PersonaStat label="Cost per signup" value={formatUsdDecimal(stats.costPerSignupUsd)} />
-            <PersonaStat label="Expected revenue" value={formatUsd(stats.expectedRevenueUsd)} />
           </div>
           <PersonaCard
             key={persona.id}
