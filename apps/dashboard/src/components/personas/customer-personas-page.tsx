@@ -229,10 +229,22 @@ export function CustomerPersonasPage() {
         open={aiOpen}
         onClose={() => setAiOpen(false)}
         title="Edit personas with AI"
-        intro="Hi — I can create, duplicate, pause, resume and archive your personas. What would you like to change?"
+        intro="Hi — I can review, create, duplicate, pause, resume and archive your personas. What would you like to change?"
         suggestions={["Create a persona named Mid-market RevOps", "Duplicate Scaling SaaS Founders", "Archive Early Marketing Buyers"]}
         configKey="persona-editor"
         brandId={brandId}
+        sessionVersion="live-context-v1"
+        context={{
+          personaCount: personas.length,
+          activePersonaCount: personas.filter((p) => p.status !== "archived").length,
+          personas: personas.map((p) => ({
+            id: p.id,
+            name: p.name,
+            status: p.status,
+            filters: p.filters,
+            persisted: !p.unsaved,
+          })),
+        }}
         invalidateKeys={[["personas", brandId]]}
       />
     </div>

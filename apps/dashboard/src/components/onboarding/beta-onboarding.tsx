@@ -1158,7 +1158,6 @@ function OnboardingPersonas({
   const commitNew = (id: string, name: string, filters: Filters) =>
     createMut.mutate({ name: capWords(name), filters }, { onSuccess: () => removeDraft(id) });
   const saveAsNew = (name: string, filters: Filters) => createMut.mutate({ name: capWords(name), filters });
-
   const card = "min-w-0 rounded-2xl border border-gray-200 bg-white p-5 sm:p-8 md:p-12";
   return (
     <div className={card}>
@@ -1214,6 +1213,18 @@ function OnboardingPersonas({
           suggestions={["Add a persona for mid-market RevOps leaders", "Narrow the main persona to Series A+ SaaS", "Add fintech founders in the US"]}
           configKey="persona-editor"
           brandId={brandId}
+          sessionVersion="live-context-v1"
+          context={{
+            personaCount: personas.length,
+            activePersonaCount: personas.filter((p) => p.status !== "archived").length,
+            personas: personas.map((p) => ({
+              id: p.id,
+              name: p.name,
+              status: p.status,
+              filters: p.filters,
+              persisted: !p.unsaved,
+            })),
+          }}
           invalidateKeys={[["personas", brandId]]}
         />
       )}
