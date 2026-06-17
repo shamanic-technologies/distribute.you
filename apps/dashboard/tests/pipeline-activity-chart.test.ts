@@ -36,6 +36,8 @@ describe("Brand overview pipeline activity chart", () => {
     expect(chart).toContain("dataKey={`${metric.key}Actual`}");
     expect(chart).toContain("dataKey={`${metric.key}ExpectedRemaining`}");
     expect(chart).toContain("Math.max(expected - actual, 0)");
+    expect(chart).toContain("function visiblePointSize");
+    expect(chart).toContain("minPointSize={visiblePointSize}");
     expect(chart).toContain("value.conversionPct");
   });
 });

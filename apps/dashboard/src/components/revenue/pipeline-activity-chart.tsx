@@ -69,6 +69,10 @@ function formatAxis(n: number): string {
   return n.toFixed(1).replace(/\\.0$/, "");
 }
 
+function visiblePointSize(value: unknown): number {
+  return typeof value === "number" && value > 0 ? 3 : 0;
+}
+
 function buildChartData(days: PipelineActivityDay[]): ChartDatum[] {
   return days.map((day) => {
     const datum: Partial<ChartDatum> = {
@@ -179,6 +183,7 @@ export function PipelineActivityChart({ data }: { data: PipelineActivityResponse
                   fill={metric.actual}
                   radius={[3, 3, 0, 0]}
                   maxBarSize={18}
+                  minPointSize={visiblePointSize}
                   isAnimationActive
                 />
               ))}
@@ -190,6 +195,7 @@ export function PipelineActivityChart({ data }: { data: PipelineActivityResponse
                   fill={metric.expected}
                   radius={[3, 3, 0, 0]}
                   maxBarSize={18}
+                  minPointSize={visiblePointSize}
                   isAnimationActive
                 />
               ))}
