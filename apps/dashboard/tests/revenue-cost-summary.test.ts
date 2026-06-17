@@ -5,7 +5,7 @@ import * as path from "path";
 const SRC = path.join(__dirname, "../src");
 const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
 
-describe("Cost summary card on feature Overview", () => {
+describe("Cost summary card on feature Overview (actual spend)", () => {
   const card = read("components/revenue/revenue-cost-summary.tsx");
   // Feature flattened into the brand level — the brand root page IS the overview.
   const overview =
@@ -37,6 +37,11 @@ describe("Cost summary card on feature Overview", () => {
     expect(section).not.toContain("costEconomics={data?.costEconomics}");
     expect(section).not.toContain("Converting organizations");
     expect(section).not.toContain("Lead conversions");
+  });
+
+  it("Total spent and provider shares use actual costs only", () => {
+    expect(card).toContain("parseFloat(c.actualCostInUsdCents)");
+    expect(card).not.toContain("parseFloat(c.totalCostInUsdCents)");
   });
 
   it("does not derive hidden cost efficiency ratios in the browser", () => {

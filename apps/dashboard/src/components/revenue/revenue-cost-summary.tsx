@@ -7,7 +7,7 @@ import { ProviderLogo } from "@/components/provider-logo";
 import { Skeleton } from "@/components/skeleton";
 
 /**
- * Cost summary for the feature Overview — total spend and the top-3 cost
+ * Cost summary for the feature Overview — actual spend and the top-3 cost
  * sources (provider logo + share, no $ amounts).
  */
 
@@ -42,7 +42,7 @@ export function RevenueCostSummary({
   const totalSpentPending = costPending ?? pending;
   const { entries, totalCents } = useMemo(() => {
     const e = costBreakdown
-      .map((c) => ({ name: c.costName ?? "Unknown", cents: parseFloat(c.totalCostInUsdCents) || 0 }))
+      .map((c) => ({ name: c.costName ?? "Unknown", cents: parseFloat(c.actualCostInUsdCents) || 0 }))
       .filter((x) => x.cents > 0)
       .sort((a, b) => b.cents - a.cents);
     return { entries: e, totalCents: e.reduce((s, x) => s + x.cents, 0) };
