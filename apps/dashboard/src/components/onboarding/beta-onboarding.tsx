@@ -510,7 +510,7 @@ export function BetaOnboarding() {
     // Extract only the service list before moving forward. The heavier profile,
     // persona, economics and projection work continues after the services step is usable.
     const servicesStartedAt = performance.now();
-    const serviceFields = await extractBrandFields([newBrandId], SERVICES_PROFILE_FIELDS).catch((e) => {
+    const serviceFields = await extractBrandFields([newBrandId], SERVICES_PROFILE_FIELDS, { urlStrategy: "landing" }).catch((e) => {
       console.error("[dashboard] extractBrandFields failed:", e);
       captureSetupMilestone("services_extract_failed", servicesStartedAt);
       setSetupIssues((prev) => ({ ...prev, extraction: true }));
