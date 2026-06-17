@@ -77,6 +77,14 @@ describe("Billing API wrappers", () => {
     expect(content).toContain("topup_amount_cents: number");
   });
 
+  it("should export setupBillingWallet for first-load match wallet setup", () => {
+    expect(content).toContain("export async function setupBillingWallet");
+    expect(content).toContain("/billing/accounts/wallet_setup");
+    expect(content).toContain("initial_load_amount_cents: number");
+    expect(content).toContain("first_load_match_applied: boolean");
+    expect(content).toContain("first_load_match_cents: string");
+  });
+
   it("should export createPortalSession function", () => {
     expect(content).toContain("export async function createPortalSession");
     expect(content).toContain("/billing/portal-sessions");

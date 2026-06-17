@@ -42,8 +42,8 @@ import {
   getFeature,
   prefillFeatureInputs,
   prefillToStringMap,
-  configureAutoTopup,
   createCheckoutSession,
+  setupBillingWallet,
   createCampaignWithoutBrandEnrichment,
   saveBrandDailyBudget,
   type EffectiveSalesEconomics,
@@ -160,7 +160,7 @@ const LOADING_STEPS = [
 ];
 const LAUNCH_STEPS = [
   { id: "wallet", label: "Confirming wallet payment" },
-  { id: "topup", label: "Activating auto-topup" },
+  { id: "topup", label: "Applying wallet match" },
   { id: "campaign", label: "Launching campaign" },
   { id: "access", label: "Opening dashboard access" },
   { id: "dashboard", label: "Opening your dashboard" },
@@ -682,7 +682,7 @@ export function BetaOnboarding() {
       cancelUrl.searchParams.set("wallet_setup", "cancelled");
 
       const session = await createCheckoutSession({
-        topup_amount_cents: initialLoadCents,
+        mode: "setup",
         success_url: successUrl.toString(),
         cancel_url: cancelUrl.toString(),
       });
@@ -708,12 +708,16 @@ export function BetaOnboarding() {
       setStep("launching");
 
       setLaunchStep(1);
-      await configureAutoTopup(pending.topupAmountCents, pending.topupThresholdCents);
+      await setupBillingWallet({
+        initial_load_amount_cents: pending.initialLoadCents,
+        topup_amount_cents: pending.topupAmountCents,
+        topup_threshold_cents: pending.topupThresholdCents,
+      });
       await completeLaunchAfterWallet(pending);
     } catch (err) {
       posthog.capture("onboarding_launch_failed", { flow: "beta", stage: "wallet_return" });
       const detail = err instanceof Error ? err.message : "unknown error";
-      setError(`Wallet checkout returned, but setup could not finish: ${detail} Backend support for paid top-up checkout plus auto-topup configuration is required; campaign was not launched.`);
+      setError(`Wallet checkout returned, but setup could not finish: ${detail} Backend support for first-load wallet setup is required; campaign was not launched.`);
       setStep("wallet");
       setBusy(false);
     }
@@ -1082,7 +1086,7 @@ export function BetaOnboarding() {
               />
             </div>
             <p className="mt-1 text-xs leading-5 text-gray-400">
-              This creates a paid top-up checkout for the org wallet.
+              Stripe securely saves your card first, then the org wallet is loaded and matched after checkout.
             </p>
           </div>
 
