@@ -81,9 +81,4 @@ describe("static-shell-first: pages pass `pending`, not a whole-body skeleton sw
   // The campaigns LIST page was removed with the campaign concept; the brand
   // overview block above is the surviving per-card-barrier guard.
 
-  it("launch budget cards do not wait for the economics badge query", () => {
-    const launch = read(`${APP}/launch/page.tsx`);
-    const budgetReadyLine = launch.match(/const budgetReady = [^;]+;/)?.[0];
-    expect(budgetReadyLine).toBe("const budgetReady = projReady && !workflowsLoading;");
-  });
 });

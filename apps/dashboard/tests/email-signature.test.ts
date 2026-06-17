@@ -8,7 +8,6 @@ const componentPath = "../src/components/email-signature.tsx";
 
 // Every surface where a sent / example email body is displayed to the user.
 const renderSurfaces = [
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/launch/page.tsx",
   "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/emails/page.tsx",
 ];
 

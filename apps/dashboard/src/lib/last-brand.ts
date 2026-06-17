@@ -70,6 +70,6 @@ export function resolveLandingBrand(
 
 // A bare brand URL always lands on the brand Overview. The product ships ONE
 // feature AND ONE subscription per brand, so there's no "skip into the feature /
-// route to create-campaign" decision to make — the Overview is the home and the
-// launch funnel lives at `/launch`. (The old `resolveFeatureLanding` campaign
-// branch was removed when the campaign concept was hidden from the UI.)
+// route to create-campaign" decision to make — the Overview is the home. (The old
+// `resolveFeatureLanding` campaign branch was removed when the campaign concept
+// was hidden from the UI.)

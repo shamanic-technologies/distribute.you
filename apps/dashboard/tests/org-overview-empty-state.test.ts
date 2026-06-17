@@ -19,11 +19,10 @@ describe("Org overview page empty state", () => {
     expect(content).toContain("Set up your first brand to get started");
   });
 
-  it("should link to onboarding for the CTA (empty org has no brand to launch under)", () => {
+  it("should link to onboarding for the CTA", () => {
     // The app-level `/features/[featureId]/new` create page was removed (#1768
-    // follow-up); the launch funnel now lives under an existing brand
-    // (`/brands/[brandId]/launch`). An empty org with no brand sends the user to
-    // onboarding to create their first brand.
+    // follow-up). An empty org with no brand sends the user to onboarding to
+    // create their first brand.
     expect(content).toContain("/onboarding?new=1");
   });
 });

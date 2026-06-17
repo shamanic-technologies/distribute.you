@@ -64,7 +64,6 @@ describe("chat components wire ContextUsageGauge", () => {
   const components = [
     "src/components/workflows/workflow-chat.tsx",
     "src/components/press-kits/press-kit-chat.tsx",
-    "src/components/campaigns/campaign-prefill-chat.tsx",
   ];
 
   for (const rel of components) {

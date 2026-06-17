@@ -24,10 +24,6 @@ describe("Feature pages use featureSlug for API calls", () => {
     __dirname,
     "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
   );
-  const campaignNewPath = path.join(
-    __dirname,
-    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/launch/page.tsx",
-  );
   const workflowsPath = path.join(
     __dirname,
     "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/workflows/page.tsx",
@@ -37,19 +33,6 @@ describe("Feature pages use featureSlug for API calls", () => {
     const content = fs.readFileSync(featurePagePath, "utf-8");
     expect(content).toContain("featureSlug");
     expect(content).toContain("fetchFeatureStats(featureSlug");
-  });
-
-  it("campaign creation page uses featureSlug directly for API calls", () => {
-    const content = fs.readFileSync(campaignNewPath, "utf-8");
-    expect(content).toContain("featureSlug");
-    expect(content).toContain("fetchFeatureStats(featureSlug");
-    expect(content).toContain("listWorkflows({ featureSlug })");
-    expect(content).toContain("prefillFeatureInputs(featureSlug");
-  });
-
-  it("campaign creation page shows error UI when feature not found", () => {
-    const content = fs.readFileSync(campaignNewPath, "utf-8");
-    expect(content).toContain("Feature not found");
   });
 
   it("workflows page uses featureSlug directly for API calls", () => {

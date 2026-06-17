@@ -163,7 +163,7 @@ describe("org landing page — client fallback redirect", () => {
 // `resolveFeatureLanding` helper were removed when the campaign concept was
 // hidden from the UI: a bare brand URL always lands on the brand Overview (one
 // feature + one subscription per brand → no feature/create-campaign choice to
-// make). The launch funnel lives at `/launch`.
+// make).
 
 describe("hierarchy links — breadcrumb, header, sidebar", () => {
   const breadcrumb = fs.readFileSync(
