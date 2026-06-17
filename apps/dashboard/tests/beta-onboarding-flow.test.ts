@@ -19,6 +19,19 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain("getWorkflowProjection");
   });
 
+  it("welcome step shows value propositions instead of indicative price cards", () => {
+    for (const copy of [
+      "Drop your URL",
+      "We run outreach",
+      "You get outcomes",
+      "Finds leads and contacts buyers across the best channels.",
+    ]) {
+      expect(src).toContain(copy);
+    }
+    expect(src).not.toContain('v: "~$15"');
+    expect(src).not.toContain('v: "~$90"');
+  });
+
   it("persists rates, personas, profile and launches a real campaign", () => {
     expect(src).toContain("saveBrandSalesEconomics");
     expect(src).toContain("createPersona");

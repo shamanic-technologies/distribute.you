@@ -17,8 +17,11 @@ import {
   ChevronLeftIcon,
   CursorArrowRaysIcon,
   GiftIcon,
+  MagnifyingGlassIcon,
+  PaperAirplaneIcon,
   PlusIcon,
   ShieldCheckIcon,
+  TrophyIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { SparklesIcon } from "@heroicons/react/20/solid";
@@ -494,14 +497,30 @@ export function BetaOnboarding() {
         <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-brand-600">Beta</span>
         <h1 className="mt-4 font-display text-3xl font-bold leading-tight text-gray-950">Pay per outcome,<br />like Google Ads.</h1>
         <p className="mt-3 text-sm leading-6 text-gray-500">Drop your product URL and a daily budget. We find your leads, reach out across the best channels on your behalf, and turn them into signups, meetings and sales.</p>
-        <div className="mt-7 grid gap-3 sm:grid-cols-2">
+        <div className="mt-7 grid gap-3 sm:grid-cols-3">
           {[
-            { v: "~$15", l: "/ signup" },
-            { v: "~$90", l: "/ meeting" },
+            {
+              title: "Drop your URL",
+              desc: "We read your product and buyer profile.",
+              Icon: MagnifyingGlassIcon,
+            },
+            {
+              title: "We run outreach",
+              desc: "Finds leads and contacts buyers across the best channels.",
+              Icon: PaperAirplaneIcon,
+            },
+            {
+              title: "You get outcomes",
+              desc: "Signups, meetings, and sales land back with you.",
+              Icon: TrophyIcon,
+            },
           ].map((f) => (
-            <div key={f.l} className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-              <div className="text-2xl font-bold text-gray-950">{f.v}</div>
-              <div className="mt-1 text-xs text-gray-500">{f.l}</div>
+            <div key={f.title} className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-brand-100 bg-white text-brand-600">
+                <f.Icon className="h-4 w-4" />
+              </div>
+              <div className="mt-3 text-sm font-semibold text-gray-950">{f.title}</div>
+              <div className="mt-1 text-xs leading-5 text-gray-500">{f.desc}</div>
             </div>
           ))}
         </div>
