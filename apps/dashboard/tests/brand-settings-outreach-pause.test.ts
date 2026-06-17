@@ -24,7 +24,13 @@ describe("Brand Settings outreach pause card", () => {
 
   it("renders an already-paused state instead of another active pause CTA", () => {
     expect(settingsPage).toContain("Your outreach is already paused.");
+    expect(settingsPage).toContain("No new emails go out while inactive");
     expect(settingsPage).toContain('paused ? "Paused" :');
     expect(settingsPage).toContain("disabled={paused || saving}");
+  });
+
+  it("reassures active brands that the daily budget remains the spend cap", () => {
+    expect(settingsPage).toContain("Outreach is active.");
+    expect(settingsPage).toContain("daily budget above remains the hard cap");
   });
 });

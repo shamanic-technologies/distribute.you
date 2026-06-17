@@ -11,8 +11,14 @@ const centsToDollars = (cents: number | null): string =>
 const dollarsToCents = (dollars: string): number =>
   Math.round((parseFloat(dollars) || 0) * 100);
 
-export function BrandDailyBudgetCard({ brandId }: { brandId: string }) {
+type BrandDailyBudgetCardProps = {
+  brandId: string;
+  variant?: "card" | "section";
+};
+
+export function BrandDailyBudgetCard({ brandId, variant = "card" }: BrandDailyBudgetCardProps) {
   const queryClient = useQueryClient();
+  const isSection = variant === "section";
 
   const { data, isPending } = useAuthQuery(
     ["brandDailyBudget", brandId],
@@ -61,7 +67,7 @@ export function BrandDailyBudgetCard({ brandId }: { brandId: string }) {
 
   if (isPending || dollars === null) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
+      <div className={isSection ? "p-5" : "bg-white rounded-xl border border-gray-200 p-5"}>
         <div className="h-4 w-48 bg-gray-100 rounded animate-pulse mb-4" />
         <div className="h-3 w-32 bg-gray-100 rounded animate-pulse mb-2" />
         <div className="h-9 w-48 bg-gray-100 rounded-lg animate-pulse" />
@@ -70,8 +76,9 @@ export function BrandDailyBudgetCard({ brandId }: { brandId: string }) {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200">
-      <div className="p-5">
+    <div className={isSection ? "p-5" : "bg-white rounded-xl border border-gray-200"}>
+      <div className={isSection ? "" : "p-5"}>
+        <h3 className="mb-1 text-sm font-semibold text-gray-900">Daily Budget</h3>
         <p className="text-sm text-gray-500 mb-4">
           The most this brand spends per day across its active campaigns. Used to pace
           outreach — separate from your credit balance.
