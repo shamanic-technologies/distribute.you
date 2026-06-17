@@ -101,6 +101,13 @@ describe("BrandSalesEconomicsCard component", () => {
     expect(content).toContain('["brandSalesEconomics", brandId]');
   });
 
+  it("renders immediately from cache/defaults instead of blocking behind the backend read", () => {
+    expect(content).toContain("queryClient.getQueryData<SalesEconomicsQueryData>");
+    expect(content).toContain("useState<FormState>(() =>");
+    expect(content).toContain("formFromEconomics(initialData?.salesEconomics)");
+    expect(content).not.toContain("if (isPending || !form)");
+  });
+
   it("writes the saved row to cache and invalidates the revenue overview on success", () => {
     expect(content).toContain('queryClient.setQueryData(["brandSalesEconomics", brandId], res)');
     expect(content).toContain('invalidateQueries({ queryKey: ["featureRevenue"] })');
