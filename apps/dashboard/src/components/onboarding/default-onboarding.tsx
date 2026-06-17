@@ -188,12 +188,12 @@ export function DefaultOnboarding() {
   if (step === "booking-intro") {
     return (
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl shadow-gray-200/60">
-        <div className="border-b border-gray-100 px-7 py-7 md:px-10">
-          <div className="flex items-center gap-4">
+        <div className="border-b border-gray-100 px-5 py-5 sm:px-7 sm:py-7 md:px-10">
+          <div className="flex items-start gap-3 sm:gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gray-950 text-white">
               <CalendarDaysIcon className="h-6 w-6" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h1 className="font-display text-2xl font-bold text-gray-950">
                 Book your onboarding call
               </h1>
@@ -204,12 +204,12 @@ export function DefaultOnboarding() {
           </div>
         </div>
 
-        <div className="px-7 py-8 md:px-10">
-          <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="mb-6 rounded-xl bg-gray-50 p-5">
+        <div className="px-5 py-6 sm:px-7 sm:py-8 md:px-10">
+          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+            <div className="mb-5 rounded-xl bg-gray-50 p-4 sm:mb-6 sm:p-5">
               <div className="flex items-start gap-3">
                 <PhoneIcon className="mt-0.5 h-5 w-5 shrink-0 text-gray-500" />
-                <div>
+                <div className="min-w-0">
                   <h2 className="text-lg font-semibold text-gray-950">
                     Free strategy session
                   </h2>
@@ -224,11 +224,11 @@ export function DefaultOnboarding() {
               {onboardingBenefits.map((benefit) => {
                 const Icon = benefit.icon;
                 return (
-                  <div key={benefit.title} className="flex items-center gap-4 py-4 first:pt-0 last:pb-0">
+                  <div key={benefit.title} className="flex items-start gap-3 py-4 first:pt-0 last:pb-0 sm:gap-4">
                     <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${benefit.iconClassName}`}>
                       <Icon className="h-6 w-6" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-lg font-semibold text-gray-950">{benefit.title}</p>
                       <p className="mt-0.5 text-sm text-gray-500">{benefit.description}</p>
                     </div>
@@ -243,7 +243,7 @@ export function DefaultOnboarding() {
           </p>
         </div>
 
-        <div className="border-t border-gray-100 px-7 py-7 md:px-10">
+        <div className="border-t border-gray-100 px-5 py-5 sm:px-7 sm:py-7 md:px-10">
           <a
             href={ONBOARDING_CALL_URL}
             target="_blank"
@@ -254,7 +254,7 @@ export function DefaultOnboarding() {
                 booking_url: ONBOARDING_CALL_URL,
               });
             }}
-            className="flex w-full items-center justify-center gap-2 rounded-full bg-gray-950 px-6 py-4 text-base font-semibold text-white transition hover:bg-gray-800"
+            className="flex w-full items-center justify-center gap-2 rounded-full bg-gray-950 px-5 py-4 text-base font-semibold text-white transition hover:bg-gray-800 sm:px-6"
           >
             Pick a time
             <ArrowTopRightOnSquareIcon className="h-5 w-5" />
@@ -311,7 +311,7 @@ export function DefaultOnboarding() {
   // Step 2: Type Selection
   if (step === "type-selection") {
     return (
-      <div className="bg-white rounded-2xl border border-gray-200 p-8 md:p-12">
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-8 md:p-12">
         <button
           onClick={() => setStep("booking-intro")}
           className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 mb-6 transition"
@@ -325,10 +325,10 @@ export function DefaultOnboarding() {
         <p className="text-gray-500 mb-8">
           This helps us set up your workspace correctly.
         </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <button
             onClick={() => handleTypeSelect("agency")}
-            className="text-left bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-brand-400 hover:shadow-md transition group"
+            className="group rounded-xl border-2 border-gray-200 bg-white p-5 text-left transition hover:border-brand-400 hover:shadow-md sm:p-6"
           >
             <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-purple-200 transition">
               <BuildingOffice2Icon className="h-6 w-6 text-purple-600" />
@@ -340,7 +340,7 @@ export function DefaultOnboarding() {
           </button>
           <button
             onClick={() => handleTypeSelect("company")}
-            className="text-left bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-brand-400 hover:shadow-md transition group"
+            className="group rounded-xl border-2 border-gray-200 bg-white p-5 text-left transition hover:border-brand-400 hover:shadow-md sm:p-6"
           >
             <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-teal-200 transition">
               <BriefcaseIcon className="h-6 w-6 text-teal-600" />
@@ -357,7 +357,7 @@ export function DefaultOnboarding() {
 
   // Step 3: URL Input — creates org + brand, redirects to brand page
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-8 md:p-12">
+    <div className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-8 md:p-12">
       <button
         onClick={() => setStep("type-selection")}
         className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 mb-6 transition"
