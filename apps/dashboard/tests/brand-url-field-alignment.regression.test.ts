@@ -11,12 +11,6 @@ import * as path from "path";
 const apiPath = path.resolve(__dirname, "../src/lib/api.ts");
 const apiContent = fs.readFileSync(apiPath, "utf-8");
 
-const legacyNewPagePath = path.resolve(
-  __dirname,
-  "../src/app/(authed)/(dashboard)/features/[featureId]/new/page.tsx",
-);
-const legacyNewPage = fs.readFileSync(legacyNewPagePath, "utf-8");
-
 describe("Brand URL field alignment (regression: Go button disabled)", () => {
   describe("api.ts", () => {
     it("Brand uses `url` not `brandUrl`", () => {
@@ -30,22 +24,13 @@ describe("Brand URL field alignment (regression: Go button disabled)", () => {
     });
   });
 
-  // The new-campaign-page case (where this bug was reported) was removed with the
-  // campaigns/new create form; the api.ts normalization + the legacy features/new
-  // page below still guard the `url` vs `brandUrl` wire-field alignment.
+  // The new-campaign/launch page case (where this bug was reported) was removed
+  // with the manual launch/create flow; api.ts normalization remains the guard
+  // for `url` vs `brandUrl` wire-field alignment.
 
   // The "brand detail page renders brand.url for href" case was removed: the
   // brand root page is now the (sole) feature's Revenue overview and no longer
   // displays a brand-URL link (the feature segment was flattened into the brand).
-
-  describe("legacy features/[featureId]/new page", () => {
-    it("reads b.url for the selected brand lookup", () => {
-      expect(legacyNewPage).toContain("?.url ?? \"\"");
-      expect(legacyNewPage).not.toMatch(/\.find\([^)]+\)\?\.brandUrl/);
-    });
-
-    it("reads b.url in the brand option label fallback chain", () => {
-      expect(legacyNewPage).toContain("b.name || b.domain || b.url");
-    });
-  });
+  // The legacy app-level `features/[featureId]/new` create page was removed in
+  // the #1768 follow-up.
 });

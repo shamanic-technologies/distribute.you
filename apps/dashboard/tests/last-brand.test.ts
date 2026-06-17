@@ -8,7 +8,6 @@ import {
   matchOrgLanding,
   matchBrandPath,
   resolveLandingBrand,
-  resolveFeatureLanding,
 } from "../src/lib/last-brand";
 
 describe("lastBrandCookieName — org-scoped", () => {
@@ -160,43 +159,11 @@ describe("org landing page — client fallback redirect", () => {
   });
 });
 
-describe("resolveFeatureLanding — auto-skip into the single GA feature", () => {
-  const sales = { slug: "sales-cold-email-outreach" };
-  const journalists = { slug: "journalists-quotes" };
-
-  it("routes to the feature when its campaign(s) exist", () => {
-    expect(
-      resolveFeatureLanding([sales], [{ featureSlug: "sales-cold-email-outreach" }]),
-    ).toEqual({ featureSlug: "sales-cold-email-outreach", needsCampaign: false });
-  });
-
-  it("routes to new-campaign when the brand has no campaign for it", () => {
-    expect(resolveFeatureLanding([sales], [])).toEqual({
-      featureSlug: "sales-cold-email-outreach",
-      needsCampaign: true,
-    });
-  });
-
-  it("ignores campaigns belonging to other features when deciding needsCampaign", () => {
-    expect(
-      resolveFeatureLanding([sales], [{ featureSlug: "journalists-quotes" }]),
-    ).toEqual({ featureSlug: "sales-cold-email-outreach", needsCampaign: true });
-  });
-
-  it("returns null with 2+ GA features (overview renders the choice)", () => {
-    expect(resolveFeatureLanding([sales, journalists], [])).toBeNull();
-  });
-
-  it("returns null with no GA features", () => {
-    expect(resolveFeatureLanding([], [])).toBeNull();
-  });
-});
-
-// The "brand overview page — auto-skip into the feature" describe block was
-// removed: the single-feature flatten dropped the brand-overview redirect into
-// `/features/[slug]` (resolveFeatureLanding / willRedirect / GA_BRAND_FEATURES
-// gating). The brand root now IS the overview and renders inline, no redirect.
-// The pure `resolveFeatureLanding` helper is still covered by its own block above.
+// The "brand overview page — auto-skip into the feature" + the pure
+// `resolveFeatureLanding` helper were removed when the campaign concept was
+// hidden from the UI: a bare brand URL always lands on the brand Overview (one
+// feature + one subscription per brand → no feature/create-campaign choice to
+// make).
 
 describe("hierarchy links — breadcrumb, header, sidebar", () => {
   const breadcrumb = fs.readFileSync(
@@ -211,10 +178,7 @@ describe("hierarchy links — breadcrumb, header, sidebar", () => {
     path.join(__dirname, "../src/components/context-sidebar.tsx"),
     "utf-8",
   );
-  const campaignSidebar = fs.readFileSync(
-    path.join(__dirname, "../src/components/campaign-sidebar.tsx"),
-    "utf-8",
-  );
+  // campaign-sidebar.tsx was removed with the campaign concept.
 
   it("marks logo and breadcrumb parent links as explicit hierarchy navigation", () => {
     expect(header).toContain('explicitHierarchyHref("/")');
@@ -226,6 +190,5 @@ describe("hierarchy links — breadcrumb, header, sidebar", () => {
     expect(contextSidebar).toContain("href={explicitHierarchyHref(href)}");
     expect(contextSidebar).toContain("explicitHierarchyHref(`/orgs/${orgId}`)");
     expect(contextSidebar).toContain("explicitHierarchyHref(basePath)");
-    expect(campaignSidebar).toContain("explicitHierarchyHref(");
   });
 });

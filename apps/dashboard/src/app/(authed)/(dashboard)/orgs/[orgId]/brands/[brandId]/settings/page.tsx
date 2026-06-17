@@ -7,9 +7,12 @@ import {
   transferBrand,
   listOutgoingTransfers,
   listIncomingTransfers,
+  listCampaignsByBrand,
   type BrandTransfer,
 } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
+import { pollOptions } from "@/lib/query-options";
+import { useStopCampaign } from "@/lib/use-stop-campaign";
 import { BrandSalesEconomicsCard } from "@/components/settings/brand-sales-economics-card";
 import { BrandDailyBudgetCard } from "@/components/settings/brand-daily-budget-card";
 
@@ -78,6 +81,12 @@ export default function BrandSettingsPage() {
       <div className="mb-10">
         <h2 className="text-lg font-semibold text-gray-900 mb-3">Sales Economics</h2>
         <BrandSalesEconomicsCard brandId={brandId} />
+      </div>
+
+      {/* Outreach */}
+      <div className="mb-10">
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">Outreach</h2>
+        <PauseOutreachCard brandId={brandId} />
       </div>
 
       {/* Danger Zone */}
@@ -268,6 +277,86 @@ export default function BrandSettingsPage() {
                     )}
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Pause the brand's running outreach. The product runs ONE subscription
+ * (campaign) per brand, so this finds the single active (non-"stopped") campaign
+ * and pauses it. Re-homed here from the deleted campaign overview page.
+ */
+function PauseOutreachCard({ brandId }: { brandId: string }) {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const stop = useStopCampaign();
+
+  const { data, isPending } = useAuthQuery(
+    ["campaigns", { brandId }],
+    () => listCampaignsByBrand(brandId),
+    pollOptions,
+  );
+  const active = (data?.campaigns ?? []).find((c) => c.status !== "stopped") ?? null;
+
+  const handlePause = () => {
+    if (!active) return;
+    stop.mutate(active, { onSettled: () => setConfirmOpen(false) });
+  };
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900">Pause outreach</h3>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {isPending
+              ? "Checking your outreach status…"
+              : active
+                ? "Stop sending. You can launch again anytime — no email goes out while paused."
+                : "Your outreach is already paused. Launch again from your brand overview."}
+          </p>
+        </div>
+        <button
+          onClick={() => setConfirmOpen(true)}
+          disabled={!active || stop.isPending}
+          className="shrink-0 ml-4 px-4 py-1.5 text-sm font-medium rounded-md border border-red-600 text-red-600 hover:bg-red-600 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-red-600 transition"
+        >
+          {stop.isPending ? "Pausing…" : "Pause"}
+        </button>
+      </div>
+
+      {confirmOpen && active && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/40 z-40"
+            onClick={() => !stop.isPending && setConfirmOpen(false)}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Pause outreach?</h3>
+              <p className="text-sm text-gray-600 mb-6">
+                We&apos;ll stop sending immediately. Leads already contacted stay in your
+                dashboard, and you can launch again whenever you&apos;re ready.
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setConfirmOpen(false)}
+                  disabled={stop.isPending}
+                  className="px-4 py-2 text-sm font-medium rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handlePause}
+                  disabled={stop.isPending}
+                  className="px-4 py-2 text-sm font-medium rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition"
+                >
+                  {stop.isPending ? "Pausing…" : "Pause outreach"}
+                </button>
               </div>
             </div>
           </div>

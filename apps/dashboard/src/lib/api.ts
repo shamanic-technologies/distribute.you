@@ -9,7 +9,6 @@ import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "./org-desync";
 import { keepLastGoodFields, keepLastGoodList } from "./keep-last-good";
 import type { RevenueOverview } from "./revenue-view";
 import { parseFeatureRevenue } from "./revenue-parse";
-import type { OutcomeLens } from "./outcome-lens";
 import { withAverageCampaignRelevanceScores } from "./outlet-relevance";
 
 const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
@@ -1148,6 +1147,7 @@ export interface CachedField {
 
 /** Core sales profile fields — reproduces the old /sales-profile extraction */
 export const SALES_PROFILE_FIELDS: ExtractFieldDef[] = [
+  { key: "services", description: "Specific services, products or offerings the brand sells and wants to promote — list each as a short phrase (e.g. 'SEO audits', 'Fractional CFO', 'Logo design')" },
   { key: "companyOverview", description: "Company overview" },
   { key: "valueProposition", description: "Core value proposition" },
   { key: "targetAudience", description: "Target audience description" },
@@ -1446,84 +1446,6 @@ export async function getFeatureRevenue(
   if (campaignId) query.set("campaignId", campaignId);
   const raw = await apiCall<unknown>(`/features/${featureSlug}/revenue?${query.toString()}`, { token });
   return parseFeatureRevenue(raw, "getFeatureRevenue");
-}
-
-// ─── Outcome lenses (Signups / Booked Meetings / Sales) ──────────────────────
-// Same /revenue endpoint with `?lens=`. features-service filters leads to the
-// lens signal and computes the per-lead conversion probability + expected
-// revenue (probability × the brand's lifetime revenue). The dashboard renders
-// the returned `leads[]` (each carrying `conversionProbabilityPct`) and the
-// `totalPipelineUsd` headline — NO client-side math. See `outcome-lens.ts`.
-/**
- * GET /features/:slug/revenue?lens=<lens> — leads + per-lead probability for one
- * outcome lens. Pass `campaignId` to scope the lens to a single campaign (still an
- * overview response, just campaign-filtered) — used to rank campaigns by their
- * server-computed cost-per-conversion (no client-side math).
- */
-export async function getFeatureOutcomes(
-  featureSlug: string,
-  brandId: string,
-  lens: OutcomeLens,
-  campaignId?: string,
-  token?: string,
-): Promise<RevenueOverview> {
-  const query = new URLSearchParams({ brandId, lens });
-  if (campaignId) query.set("campaignId", campaignId);
-  const raw = await apiCall<unknown>(`/features/${featureSlug}/revenue?${query.toString()}`, { token });
-  return parseFeatureRevenue(raw, "getFeatureOutcomes");
-}
-
-// ─── Per-campaign revenue ROI (grouped) ──────────────────────────────────────
-// GET /features/:slug/revenue?groupBy=campaignId → one lean group per campaign
-// that has runs for the brand+feature: { campaignId, totalPipelineUsd, roiMultiple }.
-// A single call returns every campaign's ROI (no per-campaign fan-out). ROI =
-// expected pipeline ÷ run cost (features-service is the single source). safeParse
-// → shape rot becomes a caught fetch-error, never a render crash (CLAUDE.md #1213).
-const FeatureRevenueByCampaignSchema = z.object({
-  featureSlug: z.string(),
-  groupBy: z.literal("campaignId"),
-  groups: z.array(
-    z.object({
-      campaignId: z.string(),
-      headline: z.object({ totalPipelineUsd: z.number().nullable() }),
-      costEconomics: z.object({
-        totalCostUsd: z.number(),
-        costOfAcquisitionPct: z.number().nullable(),
-        roiMultiple: z.number().nullable(),
-      }),
-    }),
-  ),
-});
-
-export interface CampaignRevenueGroup {
-  campaignId: string;
-  totalPipelineUsd: number | null;
-  totalCostUsd: number;
-  /** totalPipelineUsd / totalCostUsd. Null when cost is 0 or pipeline is null. */
-  roiMultiple: number | null;
-}
-
-/** GET /features/:slug/revenue?groupBy=campaignId — per-campaign ROI for a brand+feature. */
-export async function getFeatureRevenueByCampaign(
-  featureSlug: string,
-  brandId: string,
-  token?: string,
-): Promise<CampaignRevenueGroup[]> {
-  const query = new URLSearchParams({ brandId, groupBy: "campaignId" });
-  const raw = await apiCall<unknown>(`/features/${featureSlug}/revenue?${query.toString()}`, { token });
-  const parsed = FeatureRevenueByCampaignSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getFeatureRevenueByCampaign: response shape mismatch", {
-      issues: parsed.error.issues,
-    });
-    throw new Error("[dashboard] getFeatureRevenueByCampaign: invalid response shape");
-  }
-  return parsed.data.groups.map((g) => ({
-    campaignId: g.campaignId,
-    totalPipelineUsd: g.headline.totalPipelineUsd,
-    totalCostUsd: g.costEconomics.totalCostUsd,
-    roiMultiple: g.costEconomics.roiMultiple,
-  }));
 }
 
 /** POST /brands — upsert brand by URL, returns brandId */

@@ -13,36 +13,25 @@ const FEATURE_DIR =
 
 describe("Feature landing defaults to Overview (item 1)", () => {
   const indexPage = read(`${FEATURE_DIR}/page.tsx`);
-  const campaignsPage = read(`${FEATURE_DIR}/campaigns/page.tsx`);
-  const sidebar = read("components/context-sidebar.tsx");
 
-  it("brand root page IS the Overview (renders the revenue section inline, not the campaigns list)", () => {
+  it("brand root page IS the Overview (renders the revenue section inline)", () => {
     // No redirect-decider anymore — the brand root renders the overview directly.
     expect(indexPage).toContain("RevenueOverviewSection");
     // Overview shown for revenue features (GA — no flag gate).
     expect(indexPage).toContain("isRevenueFeature");
-    // The campaigns list must NOT live in the overview page.
+    // The overview does not fetch the campaign list (the campaign concept is gone).
     expect(indexPage).not.toContain("listCampaignsByBrand");
   });
 
-  it("campaigns list moved to /campaigns route", () => {
-    expect(campaignsPage).toContain("listCampaignsByBrand");
-    // Manual campaign creation was removed — no "New Campaign" entry point.
-    expect(campaignsPage).not.toContain("New Campaign");
-  });
-
-  it("sidebar Campaigns nav points at the /campaigns route", () => {
-    expect(sidebar).toContain(
-      '{ id: "campaigns", label: "Campaigns", href: `${basePath}/campaigns`, icon: <EnvelopeIcon /> },',
-    );
-  });
+  // The campaigns LIST route + its sidebar nav entry were removed with the
+  // campaign concept; the brand root IS the overview.
 });
 
 describe("Revenue empty state (item 2)", () => {
   const emptyState = read("components/revenue/revenue-empty-state.tsx");
-  it("messages 'no metrics yet' with no manual campaign-creation CTA", () => {
+  it("messages 'no metrics yet' with no manual launch CTA", () => {
     expect(emptyState).toContain("No metrics yet");
-    // Manual campaign creation was removed — no CTA link out of the empty state.
+    expect(emptyState).not.toContain("Launch outreach");
     expect(emptyState).not.toContain("Create a campaign");
     expect(emptyState).not.toContain("Set up sales economics");
   });

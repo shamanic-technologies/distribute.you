@@ -3,7 +3,8 @@ import * as fs from "fs";
 import * as path from "path";
 
 // Source-substring guard for the beta guided onboarding. Pins the load-bearing
-// wiring (live endpoints, per-outcome pricing, agency consent) so a refactor that
+// wiring (live endpoints, services step, goal-driven rate, outcome-count budget,
+// server-backed personas + Edit-with-AI, agency consent) so a refactor that
 // silently drops a real fetch / the launch is caught. Beta-gated via isBetaEmail.
 describe("Beta onboarding guided flow", () => {
   const src = fs.readFileSync(
@@ -18,6 +19,19 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain("getWorkflowProjection");
   });
 
+  it("welcome step shows value propositions instead of indicative price cards", () => {
+    for (const copy of [
+      "Drop your URL",
+      "We run outreach",
+      "You get outcomes",
+      "Finds leads and contacts buyers across the best channels.",
+    ]) {
+      expect(src).toContain(copy);
+    }
+    expect(src).not.toContain('v: "~$15"');
+    expect(src).not.toContain('v: "~$90"');
+  });
+
   it("persists rates, personas, profile and launches a real campaign", () => {
     expect(src).toContain("saveBrandSalesEconomics");
     expect(src).toContain("createPersona");
@@ -25,28 +39,54 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain("createCampaign");
   });
 
-  it("offers the six outcomes and prices in the chosen unit", () => {
-    for (const unit of ["page-visits", "signups", "purchases", "conversations", "meetings", "sales-revenue"]) {
+  it("asks which services to promote and persists them on the brand profile", () => {
+    expect(src).toContain("What services do you want to promote with us?");
+    expect(src).toContain("services");
+  });
+
+  it("offers the two sales goals and prices in the chosen unit", () => {
+    expect(src).toContain("What is your primary sales goal?");
+    for (const unit of ["signups", "meetings"]) {
       expect(src).toContain(unit);
     }
     expect(src).toContain("outcomeUnitCost");
+    // Collapsed away from the old six-outcome list.
+    expect(src).not.toContain("sales-revenue");
+    expect(src).not.toContain("conversations");
   });
 
-  it("only the two funnels Website Purchase + Sales Meeting", () => {
-    expect(src).toContain("Website Purchase");
-    expect(src).toContain("Sales Meeting");
-    expect(src).not.toContain("Website Signups");
+  it("asks exactly one conversion rate, driven by the goal", () => {
+    expect(src).toContain("RATE_FOR_OUTCOME");
+    expect(src).toContain("Website visits to signup rate");
+    expect(src).toContain("Positive reply to sales meeting");
   });
 
-  it("agency-channel consent: cold email locked, others Coming soon", () => {
-    expect(src).toContain("Coming soon");
+  it("server-backed personas with Edit-with-AI (no draft-only model)", () => {
+    expect(src).toContain("Who do you want to sell to?");
+    expect(src).toContain("EditWithAIChat");
+    expect(src).toContain("listPersonas");
+    expect(src).toContain('configKey="persona-editor"');
+  });
+
+  it("does not fail the whole onboarding when optional AI suggestions 502", () => {
+    expect(src).toContain("suggestPersonas(newBrandId, 1).catch");
+    expect(src).toContain("extractBrandFields failed");
+    expect(src).toContain("GENERIC_AI_SETUP_ERROR");
+    expect(src).toContain("displaySetupError");
+  });
+
+  it("agency consent with no channel checkboxes", () => {
     expect(src).toContain("on your behalf");
-    // Email channel is non-toggleable.
-    expect(src).toContain('key === "email"');
-  });
-
-  it("persists channel consent on the brand profile (no backend field needed)", () => {
     expect(src).toContain("consentedChannels");
     expect(src).toContain("agencyConsentAt");
+    // The channels checkbox grid was removed.
+    expect(src).not.toContain("Coming soon");
+    expect(src).not.toContain("Always on");
+  });
+
+  it("budget is picked as outcome-count tiers with the first-week match callout", () => {
+    expect(src).toContain("COUNT_TIERS");
+    expect(src).toContain("budgetForCount");
+    expect(src).toContain("double your first week");
   });
 });

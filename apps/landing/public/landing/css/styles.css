@@ -629,13 +629,12 @@ section  { padding: 6rem 0; }
 .pricing-h { color: var(--text); margin-bottom: 1rem; }
 .pricing-body { color: var(--sub); max-width: 38rem; margin: 0 auto 1.5rem; }
 .pricing-indicative {
-  display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.5rem;
+  display: grid; justify-items: center; gap: 0.375rem;
   font-family: 'JetBrains Mono', monospace; font-size: var(--fs-sm); color: var(--muted);
   margin-bottom: 2rem;
 }
 .pricing-indicative strong { color: var(--text); font-weight: 700; }
-.pricing-dot { color: var(--border-hi); }
-.pricing-vary { color: var(--accent); margin-left: 0.25rem; }
+.pricing-vary { color: var(--accent); }
 .pricing-form { display: flex; gap: 0.625rem; max-width: 480px; margin: 0 auto; }
 .pricing-input {
   flex: 1; min-width: 0; padding: 0.8rem 1rem; border-radius: var(--r-md);

@@ -22,20 +22,16 @@ describe("Context sidebar", () => {
 
   it("should handle all navigation levels", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    // The feature/featureSettings levels were removed (single-feature product —
-    // feature nav flattened into the brand level).
+    // The feature/featureSettings, campaign AND app-level feature ("Campaigns"
+    // island) levels were removed (single-feature product + one subscription per
+    // brand — everything flattens to the brand). Nav is now app → org → brand →
+    // brandSettings only.
     expect(content).toContain('"app"');
-    expect(content).toContain('"appFeature"');
     expect(content).toContain('"org"');
     expect(content).toContain('"brand"');
     expect(content).toContain('"brandSettings"');
-    expect(content).toContain('"campaign"');
-  });
-
-  it("should return null for campaign level (defers to CampaignSidebar)", () => {
-    const content = fs.readFileSync(sidebarPath, "utf-8");
-    expect(content).toContain('case "campaign"');
-    expect(content).toContain("return null");
+    expect(content).not.toContain('"campaign"');
+    expect(content).not.toContain('"appFeature"');
   });
 
   it("should render no app-level nav (root only redirects to /orgs)", () => {
@@ -64,12 +60,14 @@ describe("Context sidebar", () => {
 
   it("should have brand-level items (single-feature nav flattened into the brand)", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    // The feature segment is gone; the brand sidebar absorbs the feature nav:
-    // Overview, Campaigns + the entity Database. "Create Campaign" and the old
-    // "Conversions" page were removed (#beta outcome lenses replaced them).
-    expect(content).toContain('label: "Campaigns"');
+    // The feature segment + the campaign concept are gone from the BRAND sidebar:
+    // it's Overview + the entity Database + Brand Settings. The brand "Campaigns"
+    // entry (`${basePath}/campaigns`), "Create Campaign" and "Conversions" were
+    // all removed. (The app-level feature "Campaigns" island at
+    // `/features/[featureId]` was also removed — #1768 follow-up.)
     expect(content).toContain('label: "Overview"');
     expect(content).toContain("Database");
+    expect(content).not.toContain('href: `${basePath}/campaigns`');
     expect(content).not.toContain('label: "Create Campaign"');
     expect(content).not.toContain('href: `${basePath}/conversions`');
   });
@@ -111,15 +109,10 @@ describe("Context sidebar", () => {
     expect(content).toContain('`/orgs/${orgId}/api-keys`');
   });
 
-  it("should have Workflows link in app feature sidebar", () => {
-    const content = fs.readFileSync(sidebarPath, "utf-8");
-    expect(content).toContain('"Workflows"');
-    expect(content).toContain('`${basePath}/workflows`');
-  });
-
   it("keeps the Workflows route (folded into Brand Settings, staff-only alpha)", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    expect(content).toContain('`${basePath}/workflows`');
+    expect(content).toContain('"Workflows"');
+    expect(content).toContain('`${brandBase}/workflows`');
     expect(content).toContain('FEATURE_GATES["workflows"]');
   });
 });

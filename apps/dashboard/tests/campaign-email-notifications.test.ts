@@ -29,26 +29,6 @@ describe("sendCampaignEmail function", () => {
   });
 });
 
-describe("campaign_created email on campaign relaunch", () => {
-  const campaignPagePath = path.resolve(
-    __dirname,
-    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/[id]/page.tsx",
-  );
-  const content = fs.readFileSync(campaignPagePath, "utf-8");
-
-  it("should import sendCampaignEmail", () => {
-    expect(content).toContain("sendCampaignEmail");
-  });
-
-  it("should fire campaign_created email after successful relaunch", () => {
-    expect(content).toContain('sendCampaignEmail("campaign_created"');
-  });
-
-  it("should be best-effort (catch errors silently)", () => {
-    expect(content).toMatch(/sendCampaignEmail\([\s\S]*\)\.catch\(\(\) => \{\}\)/);
-  });
-});
-
 describe("campaign_stopped email via useStopCampaign hook", () => {
   const hookPath = path.resolve(__dirname, "../src/lib/use-stop-campaign.ts");
   const content = fs.readFileSync(hookPath, "utf-8");

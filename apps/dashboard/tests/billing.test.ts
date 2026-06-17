@@ -8,7 +8,6 @@ const billingPagePath = path.resolve(__dirname, "../src/app/(authed)/(dashboard)
 const billingGuardPath = path.resolve(__dirname, "../src/lib/billing-guard.tsx");
 const layoutPath = path.resolve(__dirname, "../src/app/(authed)/(dashboard)/layout.tsx");
 const sidebarPath = path.resolve(__dirname, "../src/components/context-sidebar.tsx");
-const campaignNewFeaturePath = path.resolve(__dirname, "../src/app/(authed)/(dashboard)/features/[featureId]/new/page.tsx");
 
 describe("Billing API wrappers", () => {
   const content = fs.readFileSync(apiPath, "utf-8");
@@ -421,42 +420,8 @@ describe("Billing guard auto-topup in modal", () => {
   });
 });
 
-// The org-scoped campaign-creation proactive-credit-check block was removed with
-// the campaigns/new create form. The feature-scoped variant below (features/
-// [featureId]/new) still exists and guards the same billing-guard wiring.
-
-describe("Proactive credit check in campaign creation (feature-scoped)", () => {
-  const content = fs.readFileSync(campaignNewFeaturePath, "utf-8");
-
-  it("should import getBillingAccount", () => {
-    expect(content).toContain("getBillingAccount");
-  });
-
-  it("should import useBillingGuard", () => {
-    expect(content).toContain("useBillingGuard");
-    expect(content).toContain("showPaymentRequired");
-  });
-
-  it("should check if budget exceeds balance before creating campaign", () => {
-    expect(content).toContain("budgetCents > parseFloat(account.balance_cents)");
-  });
-
-  it("should show proactive modal with onAutoTopupConfigured callback", () => {
-    expect(content).toContain("proactive: true");
-    expect(content).toContain("onAutoTopupConfigured");
-  });
-
-  it("should save campaign intent to sessionStorage before showing modal", () => {
-    expect(content).toContain("saveCampaignIntent");
-    expect(content).toContain('sessionStorage.setItem("pendingCampaign"');
-  });
-
-  it("should auto-launch campaign on return from Stripe checkout", () => {
-    expect(content).toContain('searchParams.get("pending_campaign")');
-    expect(content).toContain('sessionStorage.getItem("pendingCampaign")');
-    expect(content).toContain("pendingCampaignHandled");
-  });
-});
+// The org-scoped launch proactive-credit-check block was removed with the manual
+// launch/create flow.
 
 describe("Billing sidebar link", () => {
   const content = fs.readFileSync(sidebarPath, "utf-8");

@@ -105,7 +105,7 @@ export default function BrandOverviewPage() {
     );
   }
 
-  // Only once revenue resolves do we know the brand has no pipeline yet → full CTA.
+  // Only once revenue resolves do we know the brand has no pipeline yet.
   if (revenueRevealed && data && data.totalPipelineUsd === null) {
     return (
       <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-4">
@@ -128,8 +128,8 @@ export default function BrandOverviewPage() {
         basePath={basePath}
         topRow={
           /* Outreach stat cards (GA + beta) — under the "Revenue & Conversions"
-             header, directly above the Pipeline-revenue hero (mirrors the
-             Campaigns page). Funnel-stage-gated beta pairs. */
+             header, directly above the Pipeline-revenue hero. Funnel-stage-gated
+             beta pairs. */
           <OutreachStatCards
             stats={featureStats}
             totalCostCents={totalCostCents}
