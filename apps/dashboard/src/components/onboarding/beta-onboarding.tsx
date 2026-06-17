@@ -53,6 +53,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { type Filters, type Persona } from "@/lib/mock-personas";
 import { PersonaCard, capWords } from "@/components/personas/persona-card";
 import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
+import { BrandLogo } from "@/components/brand-logo";
 
 /**
  * Beta onboarding (allowlist only — see `beta-allowlist.ts`). A guided flow ported
@@ -571,6 +572,7 @@ export function BetaOnboarding() {
   if (step === "loading") {
     return (
       <div className={card}>
+        <BrandStepHeader domain={domain} hostname={hostname} />
         <div className="mb-2 text-center text-lg font-semibold text-gray-950">{loadDone ? "Your strategy is ready." : "Building your strategy…"}</div>
         <p className="mb-6 text-center text-sm text-gray-500">Reading <span className="font-medium text-gray-700">{hostname}</span></p>
         <div className="space-y-2">
@@ -597,6 +599,7 @@ export function BetaOnboarding() {
   if (step === "services") {
     return (
       <div className={card}>
+        <BrandStepHeader domain={domain} hostname={hostname} />
         <h2 className="font-display text-2xl font-bold text-gray-900">What services do you want to promote with us?</h2>
         <p className="mt-2 mb-6 text-gray-500">We drafted these from <span className="font-medium text-gray-700">{hostname}</span>. Add or remove until the list matches what you sell.</p>
         {setupIssues.extraction && <SetupWarning />}
@@ -631,6 +634,7 @@ export function BetaOnboarding() {
     return (
       <div className={card}>
         <BackButton onClick={() => setStep("services")} />
+        <BrandStepHeader domain={domain} hostname={hostname} />
         <h2 className="font-display text-2xl font-bold text-gray-900">What is your primary sales goal?</h2>
         <p className="mt-2 mb-6 text-gray-500">Pick the one outcome this campaign optimizes for. The budget is shown per this outcome.</p>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -648,6 +652,7 @@ export function BetaOnboarding() {
     return (
       <div className={card}>
         <BackButton onClick={() => setStep("objective")} />
+        <BrandStepHeader domain={domain} hostname={hostname} />
         <h2 className="font-display text-2xl font-bold text-gray-900">Your conversion rates.</h2>
         <p className="mt-2 mb-6 text-gray-500">We pre-filled this from your profile. An estimate is fine — tweak anytime.</p>
         {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
@@ -681,6 +686,8 @@ export function BetaOnboarding() {
     return (
       <OnboardingPersonas
         brandId={brandId}
+        brandDomain={domain}
+        hostname={hostname}
         personaSuggestionFailed={setupIssues.persona}
         onBack={() => setStep("rates")}
         onContinue={() => setStep("consent")}
@@ -692,6 +699,7 @@ export function BetaOnboarding() {
     return (
       <div className={card}>
         <BackButton onClick={() => setStep("personas")} />
+        <BrandStepHeader domain={domain} hostname={hostname} />
         <div className="mb-4 flex items-center gap-2">
           <ShieldCheckIcon className="h-5 w-5 text-brand-600" />
           <h2 className="font-display text-2xl font-bold text-gray-900">We reach out on your behalf.</h2>
@@ -714,6 +722,7 @@ export function BetaOnboarding() {
   return (
     <div className={card}>
       <BackButton onClick={() => setStep("consent")} />
+      <BrandStepHeader domain={domain} hostname={hostname} />
       <h2 className="font-display text-2xl font-bold text-gray-900">Your monthly target.</h2>
       <p className="mt-2 mb-5 text-gray-500">Pick how many <strong>{outcomeMeta.unit}</strong> you want each month — we set the daily budget to hit it.</p>
       {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
@@ -788,11 +797,15 @@ const nextDraftId = () => `ob-draft-${++obDraftSeq}`;
 
 function OnboardingPersonas({
   brandId,
+  brandDomain,
+  hostname,
   personaSuggestionFailed,
   onBack,
   onContinue,
 }: {
   brandId: string | null;
+  brandDomain: string | null;
+  hostname: string;
   personaSuggestionFailed: boolean;
   onBack: () => void;
   onContinue: () => void;
@@ -845,6 +858,7 @@ function OnboardingPersonas({
   return (
     <div className={card}>
       <BackButton onClick={onBack} />
+      <BrandStepHeader domain={brandDomain} hostname={hostname} />
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="font-display text-2xl font-bold text-gray-900">Who do you want to sell to?</h2>
@@ -898,6 +912,26 @@ function OnboardingPersonas({
           invalidateKeys={[["personas", brandId]]}
         />
       )}
+    </div>
+  );
+}
+
+function BrandStepHeader({ domain, hostname }: { domain: string | null; hostname: string }) {
+  const label = domain ?? hostname;
+  return (
+    <div className="mb-5 flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-white">
+        <BrandLogo
+          domain={label}
+          size={28}
+          className="h-7 w-7 rounded-md object-contain"
+          fallbackClassName="h-5 w-5 text-gray-400"
+        />
+      </div>
+      <div className="min-w-0">
+        <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Brand</div>
+        <div className="truncate text-sm font-semibold text-gray-900">{label}</div>
+      </div>
     </div>
   );
 }
