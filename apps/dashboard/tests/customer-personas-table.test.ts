@@ -8,13 +8,13 @@ describe("Customer personas table", () => {
     "utf-8",
   );
 
-  it("renders personas as a stats table instead of an inline card grid", () => {
-    expect(src).toContain("personaMockCost");
+  it("renders personas without fake performance metrics", () => {
     expect(src).toContain("<table");
-    for (const header of ["Clicks", "Cost per click", "Signups", "Cost per signup"]) {
-      expect(src).toContain(header);
+    expect(src).toContain("Targeting filters");
+    expect(src).not.toContain("personaMockCost");
+    for (const header of ["Clicks", "Cost per click", "Signups", "Cost per signup", "Expected revenue"]) {
+      expect(src).not.toContain(header);
     }
-    expect(src).not.toContain("Expected revenue");
     expect(src).not.toContain('font-medium">Filters');
     expect(src).not.toContain("grid grid-cols-1 lg:grid-cols-2 gap-5");
   });
