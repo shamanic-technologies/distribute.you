@@ -46,9 +46,9 @@ describe("api.ts — brand sales-economics businessModel wiring", () => {
     expect(content).toContain("signupToPaidClientPct: z.number()");
   });
 
-  it("exposes a BrandOptimizationGoal type (signups | booked_meetings | sales)", () => {
+  it("exposes a BrandOptimizationGoal type (signups | sales_meetings)", () => {
     expect(content).toContain(
-      'export type BrandOptimizationGoal = "signups" | "booked_meetings" | "sales"',
+      'export type BrandOptimizationGoal = "signups" | "sales_meetings"',
     );
   });
 
@@ -65,7 +65,9 @@ describe("api.ts — brand sales-economics businessModel wiring", () => {
   it("the Zod schema parses funnelStages (2-value array enum) + optimizationGoal (enum)", () => {
     expect(content).toContain("funnelStages: z.array(");
     expect(content).toContain('z.literal("website_purchase")');
-    expect(content).toContain('z.literal("booked_meetings")');
+    expect(content).toContain('z.literal("sales_meetings")');
+    const removedRevenueGoalLiteral = ["z.literal(\"sal", "es\")"].join("");
+    expect(content).not.toContain(removedRevenueGoalLiteral);
   });
 
   it("PUT body sends the decomposed self-serve steps + omits derived visitToClosePct", () => {
@@ -125,11 +127,11 @@ describe("BrandSalesEconomicsCard component", () => {
     expect(content).toContain("toggleFunnelStage");
   });
 
-  it("renders the Optimization-goal single-choice (# Signups / # Booked Meetings / $ Sales)", () => {
+  it("renders the Optimization-goal single-choice (# Signups / # Sales Meetings)", () => {
     expect(content).toContain("Optimization goal");
     expect(content).toContain("# Signups");
-    expect(content).toContain("# Booked Meetings");
-    expect(content).toContain("$ Sales");
+    expect(content).toContain("# Sales Meetings");
+    expect(content).not.toContain("$ Sales");
   });
 
   it("keeps fractional conversion percentages instead of rounding them before save", () => {

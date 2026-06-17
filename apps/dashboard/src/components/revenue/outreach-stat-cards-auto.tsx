@@ -52,7 +52,8 @@ export function OutreachStatCardsAuto() {
 
   const featureStats = featureStatsData?.stats ?? {};
   const totalCostCents = featureStatsData?.systemStats?.totalCostInUsdCents ?? 0;
-  const optimizationGoal = economicsData?.salesEconomics?.optimizationGoal ?? "sales";
+  const optimizationGoal =
+    economicsData?.salesEconomics?.optimizationGoal ?? "sales_meetings";
 
   return (
     <OutreachStatCards
