@@ -98,6 +98,15 @@ describe("Beta onboarding wallet setup", () => {
     expect(content).not.toContain('mode: "subscription"');
     expect(content).not.toContain('mode: "setup"');
   });
+
+  it("can retry checkout from the pending wallet launch after Stripe cancel", () => {
+    expect(content).toContain("readPendingWalletLaunchOrNull");
+    expect(content).toContain("const storedPending = readPendingWalletLaunchOrNull()");
+    expect(content).toContain("storedPending?.workflowSlug");
+    expect(content).toContain("storedPending?.brandUrl");
+    expect(content).toContain("setBusy(false);");
+    expect(content).toContain('throw new Error("Wallet setup state is missing. Go back to pricing and try again.")');
+  });
 });
 
 describe("Onboarding layout", () => {

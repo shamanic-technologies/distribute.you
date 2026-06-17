@@ -237,6 +237,11 @@ function readPendingWalletLaunch(): PendingWalletLaunch {
   return parsed as PendingWalletLaunch;
 }
 
+function readPendingWalletLaunchOrNull(): PendingWalletLaunch | null {
+  if (!window.sessionStorage.getItem(WALLET_PENDING_KEY)) return null;
+  return readPendingWalletLaunch();
+}
+
 // Coerce a stored profile field (string | string[]) to a string[] of trimmed items.
 function toStringList(value: unknown): string[] {
   if (Array.isArray(value)) return value.map((v) => String(v).trim()).filter(Boolean);
@@ -305,6 +310,13 @@ export function BetaOnboarding() {
     posthog.capture("onboarding_step_viewed", { step, flow: "beta" });
   }, [step]);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
+  useEffect(() => {
+    function handlePageShow(event: PageTransitionEvent) {
+      if (event.persisted) setBusy(false);
+    }
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
 
   function maybeAdvancePastLoading() {
     if (animDoneRef.current && fetchDoneRef.current) setStep("services");
@@ -530,31 +542,36 @@ export function BetaOnboarding() {
   }
 
   async function beginWalletCheckout() {
-    const id = brandIdRef.current;
-    const orgId = orgIdRef.current;
-    const proj = projectionRef.current;
-    const budget = walletBudgetUsd ?? derivedBudget();
-    if (!id || !orgId || !proj || budget == null) return;
-    const workflowSlug = proj.recommendedWorkflowDynastySlug;
-    if (!workflowSlug) {
-      setError("No outreach workflow is available for this brand yet.");
-      return;
-    }
     setBusy(true);
     setError(null);
     try {
+      const storedPending = readPendingWalletLaunchOrNull();
+      const id = brandIdRef.current ?? storedPending?.brandId ?? null;
+      const orgId = orgIdRef.current ?? storedPending?.orgId ?? null;
+      const budget = walletBudgetUsd ?? storedPending?.budgetUsd ?? derivedBudget();
+      const workflowSlug = projectionRef.current?.recommendedWorkflowDynastySlug ?? storedPending?.workflowSlug ?? null;
+      const trimmed = url.trim();
+      const normalizedCurrentUrl = trimmed ? (/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`) : null;
+      const brandUrl = normalizedCurrentUrl ?? storedPending?.brandUrl ?? null;
+      const launchHostname = hostname || storedPending?.hostname || "";
+      const launchOutcome = brandIdRef.current ? outcome : storedPending?.outcome ?? outcome;
+      if (!id || !orgId || !workflowSlug || budget == null || !brandUrl || !launchHostname) {
+        throw new Error("Wallet setup state is missing. Go back to pricing and try again.");
+      }
       const initialLoadCents = dollarsToCentsInput(initialLoadUsd, "Initial load", MIN_INITIAL_LOAD_USD);
       const topupAmountCents = dollarsToCentsInput(walletTopupAmountUsd, "Auto-topup reload amount", MIN_TOPUP_USD);
       const topupThresholdCents = dollarsToCentsInput(walletTopupThresholdUsd, "Auto-topup trigger threshold", MIN_THRESHOLD_USD);
-      // Persist the brand profile edits (incl. services) + the agency consent.
-      const trimmed = url.trim();
-      const brandUrl = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-      await saveBrandProfileVersion(id, {
-        ...profile,
-        services,
-        consentedChannels: ["email"],
-        agencyConsentAt: new Date().toISOString(),
-      });
+      if (brandIdRef.current === id && normalizedCurrentUrl) {
+        // Persist current wizard edits only when the live wizard state is mounted.
+        // After a Stripe cancel reload, pending storage is the source of truth; do
+        // not overwrite the saved profile with empty initial component state.
+        await saveBrandProfileVersion(id, {
+          ...profile,
+          services,
+          consentedChannels: ["email"],
+          agencyConsentAt: new Date().toISOString(),
+        });
+      }
       await saveBrandDailyBudget(id, Math.round(budget * 100));
 
       const pending: PendingWalletLaunch = {
@@ -562,8 +579,8 @@ export function BetaOnboarding() {
         brandId: id,
         orgId,
         brandUrl,
-        hostname,
-        outcome,
+        hostname: launchHostname,
+        outcome: launchOutcome,
         budgetUsd: budget,
         workflowSlug,
         initialLoadCents,
@@ -624,6 +641,7 @@ export function BetaOnboarding() {
     }
     if (walletSetup === "cancelled") {
       walletResumeStartedRef.current = true;
+      setBusy(false);
       try {
         const pending = readPendingWalletLaunch();
         setWalletBudgetUsd(pending.budgetUsd);
