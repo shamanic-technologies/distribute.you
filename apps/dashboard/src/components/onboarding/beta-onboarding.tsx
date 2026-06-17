@@ -1182,8 +1182,14 @@ export function BetaOnboarding() {
           const isCustom = customCount !== "" && customN > 0;
           const active = isCustom && selectedCount === customN;
           const b = isCustom ? budgetForCount(customN) : null;
+          const selectCustomCount = () => {
+            if (isCustom) setSelectedCount(customN);
+          };
           return (
-            <div className={`rounded-xl border-2 p-4 transition ${active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white"}`}>
+            <div
+              onClick={selectCustomCount}
+              className={`rounded-xl border-2 p-4 transition ${isCustom ? "cursor-pointer" : ""} ${active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white"}`}
+            >
               <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">Other</div>
               <input
                 type="number"
