@@ -3,16 +3,17 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useOrganizationList, useOrganization } from "@clerk/nextjs";
+import { useMutation } from "@tanstack/react-query";
 import {
   transferBrand,
   listOutgoingTransfers,
   listIncomingTransfers,
-  listCampaignsByBrand,
+  getBrandPause,
+  setBrandPause,
   type BrandTransfer,
 } from "@/lib/api";
-import { useAuthQuery } from "@/lib/use-auth-query";
+import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
-import { useStopCampaign } from "@/lib/use-stop-campaign";
 import { BrandSalesEconomicsCard } from "@/components/settings/brand-sales-economics-card";
 import { BrandDailyBudgetCard } from "@/components/settings/brand-daily-budget-card";
 
@@ -286,25 +287,28 @@ export default function BrandSettingsPage() {
   );
 }
 
-/**
- * Pause the brand's running outreach. This finds the active (non-"stopped")
- * campaign for the brand and pauses it. Re-homed here from the deleted campaign
- * overview page.
- */
+/** Pause the brand's running outreach using the same brand-level state as Overview. */
 function PauseOutreachCard({ brandId }: { brandId: string }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const stop = useStopCampaign();
+  const queryClient = useQueryClient();
 
-  const { data, isPending } = useAuthQuery(
-    ["campaigns", { brandId }],
-    () => listCampaignsByBrand(brandId),
+  const { data: pauseData, isPending } = useAuthQuery(
+    ["brandPause", brandId],
+    () => getBrandPause(brandId),
     pollOptions,
   );
-  const active = (data?.campaigns ?? []).find((c) => c.status !== "stopped") ?? null;
+  const paused = pauseData?.paused ?? true;
+  const { mutate, isPending: saving } = useMutation({
+    mutationFn: () => setBrandPause(brandId, true),
+    onSuccess: (res) => {
+      queryClient.setQueryData(["brandPause", brandId], res);
+    },
+    onSettled: () => setConfirmOpen(false),
+  });
 
   const handlePause = () => {
-    if (!active) return;
-    stop.mutate(active, { onSettled: () => setConfirmOpen(false) });
+    if (paused) return;
+    mutate();
   };
 
   return (
@@ -315,25 +319,25 @@ function PauseOutreachCard({ brandId }: { brandId: string }) {
           <p className="text-sm text-gray-500 mt-0.5">
             {isPending
               ? "Checking your outreach status…"
-              : active
-                ? "Stop sending. You can launch again anytime — no email goes out while paused."
-                : "Your outreach is already paused. Launch again from your brand overview."}
+              : paused
+                ? "Your outreach is already paused."
+                : "Stop sending. You can launch again anytime — no email goes out while paused."}
           </p>
         </div>
         <button
           onClick={() => setConfirmOpen(true)}
-          disabled={!active || stop.isPending}
+          disabled={paused || saving}
           className="shrink-0 ml-4 px-4 py-1.5 text-sm font-medium rounded-md border border-red-600 text-red-600 hover:bg-red-600 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-red-600 transition"
         >
-          {stop.isPending ? "Pausing…" : "Pause"}
+          {saving ? "Pausing…" : paused ? "Paused" : "Pause"}
         </button>
       </div>
 
-      {confirmOpen && active && (
+      {confirmOpen && !paused && (
         <>
           <div
             className="fixed inset-0 bg-black/40 z-40"
-            onClick={() => !stop.isPending && setConfirmOpen(false)}
+            onClick={() => !saving && setConfirmOpen(false)}
           />
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
@@ -345,17 +349,17 @@ function PauseOutreachCard({ brandId }: { brandId: string }) {
               <div className="flex justify-end gap-3">
                 <button
                   onClick={() => setConfirmOpen(false)}
-                  disabled={stop.isPending}
+                  disabled={saving}
                   className="px-4 py-2 text-sm font-medium rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handlePause}
-                  disabled={stop.isPending}
+                  disabled={saving}
                   className="px-4 py-2 text-sm font-medium rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition"
                 >
-                  {stop.isPending ? "Pausing…" : "Pause outreach"}
+                  {saving ? "Pausing…" : "Pause outreach"}
                 </button>
               </div>
             </div>
