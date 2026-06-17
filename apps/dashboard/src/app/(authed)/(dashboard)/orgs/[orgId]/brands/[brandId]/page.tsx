@@ -4,13 +4,22 @@ import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getBrand, getFeatureRevenue, getBrandCostBreakdown, fetchFeatureStats, getBrandSalesEconomics, getFeaturePipelineActivity } from "@/lib/api";
+import {
+  getBrand,
+  getFeatureRevenue,
+  getBrandCostBreakdown,
+  fetchFeatureStats,
+  getBrandSalesEconomics,
+  getFeaturePipelineActivity,
+  fetchFeaturePersonaStats,
+} from "@/lib/api";
 import { pollOptions, pollOptionsSlow } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
+import { TopPersonasCard } from "@/components/revenue/top-personas-card";
 import { BrandStatusControl } from "@/components/brand/brand-status-control";
 import { DashboardPage } from "@/components/dashboard-page";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
@@ -86,6 +95,20 @@ export default function BrandOverviewPage() {
   );
   const optimizationGoal =
     economicsData?.salesEconomics?.optimizationGoal ?? "sales_meetings";
+  const personaStatsGoal = optimizationGoal === "signups" ? "signup" : "meetingBooked";
+  const personaStatsMetric = personaStatsGoal === "signup" ? "cpc" : "cppr";
+
+  // Real persona-level cost evidence from features-service. This replaces the
+  // old provider-cost-source list; no dashboard-side mock/hash persona split.
+  const { data: personaStatsData } = useAuthQuery(
+    ["featurePersonaStats", featureSlug, brandId, personaStatsGoal],
+    () => fetchFeaturePersonaStats(featureSlug, {
+      brandId,
+      goal: personaStatsGoal,
+      limit: 3,
+    }),
+    { enabled, ...pollOptions },
+  );
 
   // Per-card reveal (NOT one page-wide barrier): revenue (features-service) and
   // total-spend (runs-service) are two different cold chains — gate each on its
@@ -94,6 +117,7 @@ export default function BrandOverviewPage() {
   const activityRevealed = useCoordinatedReveal([pipelineActivity !== undefined]);
   const costRevealed = useCoordinatedReveal([costData !== undefined]);
   const statsRevealed = useCoordinatedReveal([featureStatsData !== undefined]);
+  const personaStatsRevealed = useCoordinatedReveal([personaStatsData !== undefined]);
 
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
 
@@ -145,6 +169,13 @@ export default function BrandOverviewPage() {
         featureSlug={featureSlug}
         basePath={basePath}
         headerAction={<BrandStatusControl brandId={brandId} />}
+        costBottomCard={
+          <TopPersonasCard
+            data={personaStatsRevealed ? personaStatsData : undefined}
+            pending={!personaStatsRevealed}
+            metric={personaStatsMetric}
+          />
+        }
         topRow={
           /* Outreach stat cards (GA + beta) — under the "Revenue & Conversions"
              header, directly above the Pipeline-revenue hero. Goal-specific copy

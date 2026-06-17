@@ -1414,6 +1414,75 @@ export interface PipelineActivityResponse {
   summary: PipelineActivitySummary;
 }
 
+export type FeaturePersonaStatsGoal = "signup" | "meetingBooked" | "purchase";
+export type FeaturePersonaStatsSortMetric = "cpc" | "cppr";
+
+export interface FeaturePersonaStatsRow {
+  customerProfileId: string;
+  brandProfileId: string | null;
+  persona: {
+    id: string;
+    name: string;
+    status: PersonaStatusWire;
+    filters: Record<string, string[]>;
+  };
+  evidence: {
+    totalCostInUsdCents: number;
+    completedRuns: number;
+    firstRunAt: string | null;
+    lastRunAt: string | null;
+    contacted: number;
+    websiteClicks: number;
+    positiveReplies: number;
+  };
+  metrics: {
+    cpcCents: number | null;
+    cpprCents: number | null;
+  };
+}
+
+export interface FeaturePersonaStatsResponse {
+  featureSlug: string;
+  brandId: string;
+  goal: FeaturePersonaStatsGoal;
+  brandProfileId: string | null;
+  sortMetric: FeaturePersonaStatsSortMetric;
+  personas: FeaturePersonaStatsRow[];
+}
+
+const FeaturePersonaStatsRowSchema = z.object({
+  customerProfileId: z.string(),
+  brandProfileId: z.string().nullable(),
+  persona: z.object({
+    id: z.string(),
+    name: z.string(),
+    status: z.union([z.literal("active"), z.literal("paused"), z.literal("archived")]),
+    filters: z.record(z.string(), z.array(z.string())),
+  }),
+  evidence: z.object({
+    totalCostInUsdCents: z.number(),
+    completedRuns: z.number(),
+    firstRunAt: z.string().nullable(),
+    lastRunAt: z.string().nullable(),
+    contacted: z.number(),
+    websiteClicks: z.number(),
+    positiveReplies: z.number(),
+  }),
+  metrics: z.object({
+    cpcCents: z.number().nullable(),
+    cpprCents: z.number().nullable(),
+  }),
+});
+
+const FeaturePersonaStatsResponseSchema = z.object({
+  featureSlug: z.string(),
+  brandId: z.string(),
+  goal: z.union([z.literal("signup"), z.literal("meetingBooked"), z.literal("purchase")]),
+  brandProfileId: z.string().nullable(),
+  sortMetric: z.union([z.literal("cpc"), z.literal("cppr")]),
+  personas: z.array(FeaturePersonaStatsRowSchema),
+});
+
 /** GET /features — list all features */
 export async function listFeatures(
   params?: { implemented?: boolean },
@@ -1465,6 +1534,27 @@ export async function fetchFeatureStats(
   if (params?.workflowDynastySlug) query.set("workflowDynastySlug", params.workflowDynastySlug);
   const qs = query.toString();
   return apiCall<FeatureStatsResponse>(`/features/${featureSlug}/stats${qs ? `?${qs}` : ""}`, { token });
+}
+
+/** GET /features/:featureSlug/persona-stats — real persona-level cost/outcome evidence. */
+export async function fetchFeaturePersonaStats(
+  featureSlug: string,
+  params: { brandId: string; goal: FeaturePersonaStatsGoal; brandProfileId?: string; limit?: number },
+  token?: string,
+): Promise<FeaturePersonaStatsResponse> {
+  const query = new URLSearchParams({ brandId: params.brandId, goal: params.goal });
+  if (params.brandProfileId) query.set("brandProfileId", params.brandProfileId);
+  if (params.limit !== undefined) query.set("limit", String(params.limit));
+  const raw = await apiCall<unknown>(`/features/${featureSlug}/persona-stats?${query.toString()}`, { token });
+  const parsed = FeaturePersonaStatsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] fetchFeaturePersonaStats: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] fetchFeaturePersonaStats: invalid response shape");
+  }
+  return parsed.data;
 }
 
 /** GET /features/stats — global stats cross-features */
