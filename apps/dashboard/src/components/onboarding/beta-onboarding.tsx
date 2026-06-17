@@ -50,6 +50,7 @@ import {
   type WorkflowProjectionResponse,
   type PersonaDraft,
   type FeatureInput,
+  regeneratePersonaAvatar,
 } from "@/lib/api";
 import { extractDomain } from "@/lib/extract-domain";
 import { useAuthQuery } from "@/lib/use-auth-query";
@@ -1259,6 +1260,7 @@ function OnboardingPersonas({
   const queryClient = useQueryClient();
   const [drafts, setDrafts] = useState<Persona[]>([]);
   const [aiOpen, setAiOpen] = useState(false);
+  const requestedAvatarIds = useRef<Set<string>>(new Set());
 
   const { data, isPending } = useAuthQuery(
     ["personas", brandId ?? ""],
@@ -1272,11 +1274,26 @@ function OnboardingPersonas({
       createPersona(brandId as string, { name: i.name, filters: i.filters as Record<string, string[]> }),
     onSuccess: invalidate,
   });
+  const {
+    mutate: regenerateAvatar,
+    isPending: avatarRegenerating,
+    variables: regeneratingAvatarId,
+  } = useMutation({
+    mutationFn: (personaId: string) => regeneratePersonaAvatar(brandId as string, personaId),
+    onSuccess: invalidate,
+  });
 
   const serverPersonas: Persona[] = (data?.personas ?? [])
     .filter((p) => p.status !== "archived")
-    .map((p) => ({ id: p.id, name: p.name, filters: p.filters, status: p.status }));
+    .map((p) => ({ id: p.id, name: p.name, filters: p.filters, status: p.status, avatarUrl: p.avatarUrl ?? null }));
   const personas: Persona[] = [...drafts, ...serverPersonas];
+  const missingAvatarId = serverPersonas.find((p) => !p.avatarUrl && !requestedAvatarIds.current.has(p.id))?.id;
+
+  useEffect(() => {
+    if (!missingAvatarId || avatarRegenerating) return;
+    requestedAvatarIds.current.add(missingAvatarId);
+    regenerateAvatar(missingAvatarId);
+  }, [missingAvatarId, avatarRegenerating, regenerateAvatar]);
 
   const isNameTaken = (name: string, exceptId?: string) => {
     const needle = name.trim().toLowerCase();
@@ -1333,6 +1350,8 @@ function OnboardingPersonas({
               onCommitNew={(name, filters) => commitNew(persona.id, name, filters)}
               onCancelNew={() => removeDraft(persona.id)}
               showLifecycleActions={false}
+              onRegenerateAvatar={!persona.unsaved ? () => regenerateAvatar(persona.id) : undefined}
+              regeneratingAvatar={avatarRegenerating && regeneratingAvatarId === persona.id}
               checkNameTaken={(n) => isNameTaken(n, persona.unsaved ? persona.id : undefined)}
             />
           ))

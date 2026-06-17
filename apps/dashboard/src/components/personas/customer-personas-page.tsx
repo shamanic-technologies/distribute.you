@@ -10,13 +10,13 @@ import { useIsBetaUser } from "@/lib/use-beta-user";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { DashboardPage } from "@/components/dashboard-page";
 import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
-import { listPersonas, createPersona, setPersonaStatus } from "@/lib/api";
+import { listPersonas, createPersona, setPersonaStatus, regeneratePersonaAvatar } from "@/lib/api";
 import {
   type Filters,
   type Persona,
   personaMockCost,
 } from "@/lib/mock-personas";
-import { PersonaCard, capWords, PlusIcon } from "./persona-card";
+import { PersonaAvatar, PersonaCard, capWords, PlusIcon } from "./persona-card";
 
 /**
  * Customer Personas (beta).
@@ -99,12 +99,21 @@ export function CustomerPersonasPage() {
     mutationFn: (i: { id: string; status: Persona["status"] }) => setPersonaStatus(brandId, i.id, i.status),
     onSuccess: invalidate,
   });
+  const {
+    mutate: regenerateAvatar,
+    isPending: avatarRegenerating,
+    variables: regeneratingAvatarId,
+  } = useMutation({
+    mutationFn: (personaId: string) => regeneratePersonaAvatar(brandId, personaId),
+    onSuccess: invalidate,
+  });
 
   const serverPersonas: Persona[] = (data?.personas ?? []).map((p) => ({
     id: p.id,
     name: p.name,
     filters: p.filters,
     status: p.status,
+    avatarUrl: p.avatarUrl ?? null,
   }));
   // Drafts first (top of the list), then persisted personas.
   const personas: Persona[] = [...drafts, ...serverPersonas];
@@ -295,16 +304,24 @@ export function CustomerPersonasPage() {
                       }`}
                     >
                       <td className="px-4 py-3">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium text-gray-900">{persona.name || "Untitled"}</p>
-                            <span className={`rounded-full border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide ${pill.className}`}>
-                              {pill.label}
-                            </span>
+                        <div className="flex min-w-0 items-center gap-3">
+                          <PersonaAvatar
+                            name={persona.name}
+                            avatarUrl={persona.avatarUrl}
+                            onRegenerate={!persona.unsaved ? () => regenerateAvatar(persona.id) : undefined}
+                            regenerating={avatarRegenerating && regeneratingAvatarId === persona.id}
+                          />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-gray-900">{persona.name || "Untitled"}</p>
+                              <span className={`rounded-full border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide ${pill.className}`}>
+                                {pill.label}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-xs text-gray-400">
+                              {filterCount} {filterCount === 1 ? "targeting filter" : "targeting filters"}
+                            </p>
                           </div>
-                          <p className="mt-1 text-xs text-gray-400">
-                            {filterCount} {filterCount === 1 ? "targeting filter" : "targeting filters"}
-                          </p>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right font-medium text-gray-800">{formatCount(stats.clicks)}</td>
@@ -340,6 +357,12 @@ export function CustomerPersonasPage() {
           if (!selectedPersona) return;
           setStatus(selectedPersona.id, status);
         }}
+        onRegenerateAvatar={
+          selectedPersona && !selectedPersona.unsaved ? () => regenerateAvatar(selectedPersona.id) : undefined
+        }
+        regeneratingAvatar={Boolean(
+          selectedPersona && avatarRegenerating && regeneratingAvatarId === selectedPersona.id,
+        )}
         checkNameTaken={(name) => isNameTaken(name, selectedPersona?.unsaved ? selectedPersona.id : undefined)}
       />
 
@@ -376,6 +399,8 @@ function PersonaDetailPanel({
   onCommitNew,
   onCancelNew,
   onSetStatus,
+  onRegenerateAvatar,
+  regeneratingAvatar,
   checkNameTaken,
 }: {
   persona: Persona | null;
@@ -384,6 +409,8 @@ function PersonaDetailPanel({
   onCommitNew: (name: string, filters: Filters) => void;
   onCancelNew: () => void;
   onSetStatus: (status: Persona["status"]) => void;
+  onRegenerateAvatar?: () => void;
+  regeneratingAvatar?: boolean;
   checkNameTaken: (name: string) => boolean;
 }) {
   useEffect(() => {
@@ -434,6 +461,8 @@ function PersonaDetailPanel({
             onCommitNew={onCommitNew}
             onCancelNew={onCancelNew}
             onSetStatus={onSetStatus}
+            onRegenerateAvatar={onRegenerateAvatar}
+            regeneratingAvatar={regeneratingAvatar}
             checkNameTaken={checkNameTaken}
           />
         </div>

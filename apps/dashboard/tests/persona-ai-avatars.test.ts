@@ -1,0 +1,42 @@
+import { describe, expect, it } from "vitest";
+import * as fs from "fs";
+import * as path from "path";
+
+describe("Persona AI avatars", () => {
+  const api = fs.readFileSync(path.join(__dirname, "../src/lib/api.ts"), "utf-8");
+  const betaOnboarding = fs.readFileSync(
+    path.join(__dirname, "../src/components/onboarding/beta-onboarding.tsx"),
+    "utf-8",
+  );
+  const personasPage = fs.readFileSync(
+    path.join(__dirname, "../src/components/personas/customer-personas-page.tsx"),
+    "utf-8",
+  );
+  const personaCard = fs.readFileSync(
+    path.join(__dirname, "../src/components/personas/persona-card.tsx"),
+    "utf-8",
+  );
+
+  it("accepts optional persona avatar URLs from the API contract", () => {
+    expect(api).toContain("avatarUrl?: string | null");
+    expect(api).toContain("avatarUrl: z.string().nullable().optional()");
+  });
+
+  it("routes regeneration through the persona avatar endpoint", () => {
+    expect(api).toContain("regeneratePersonaAvatar");
+    expect(api).toContain("/avatar/regenerate");
+    expect(betaOnboarding).toContain("regeneratePersonaAvatar");
+    expect(personasPage).toContain("regeneratePersonaAvatar");
+  });
+
+  it("shows a hover/focus regenerate control on persisted persona avatars", () => {
+    expect(personaCard).toContain("Regenerate ${name || \"persona\"} avatar");
+    expect(personaCard).toContain("group-hover/avatar:opacity-100");
+    expect(personaCard).toContain("onRegenerate={!isNew ? onRegenerateAvatar : undefined}");
+  });
+
+  it("does not introduce an OpenAI fallback in the dashboard wiring", () => {
+    const touched = [api, betaOnboarding, personasPage, personaCard].join("\n");
+    expect(touched).not.toMatch(/openai|open ai/i);
+  });
+});

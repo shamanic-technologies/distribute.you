@@ -944,6 +944,7 @@ export interface PersonaWire {
   name: string;
   filters: Record<string, string[]>;
   status: PersonaStatusWire;
+  avatarUrl?: string | null;
   createdAt: string;
 }
 
@@ -953,6 +954,7 @@ const PersonaSchema = z.object({
   name: z.string(),
   filters: z.record(z.string(), z.array(z.string())),
   status: z.union([z.literal("active"), z.literal("paused"), z.literal("archived")]),
+  avatarUrl: z.string().nullable().optional(),
   createdAt: z.string(),
 });
 
@@ -986,6 +988,25 @@ export async function createPersona(
   if (!parsed.success) {
     console.error("[dashboard] createPersona: response shape mismatch", { issues: parsed.error.issues, raw });
     throw new Error("[dashboard] createPersona: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** POST /brands/:brandId/personas/:personaId/avatar/regenerate — replace the generated persona avatar. */
+export async function regeneratePersonaAvatar(
+  brandId: string,
+  personaId: string,
+  token?: string,
+): Promise<{ persona: PersonaWire }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/personas/${personaId}/avatar/regenerate`, {
+    token,
+    method: "POST",
+    body: {},
+  });
+  const parsed = PersonaResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] regeneratePersonaAvatar: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] regeneratePersonaAvatar: invalid response shape");
   }
   return parsed.data;
 }
