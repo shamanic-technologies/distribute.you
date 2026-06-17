@@ -117,6 +117,10 @@ function renderBarLabel(
         fontSize={10}
         fontWeight={700}
         fill="#475569"
+        stroke="#ffffff"
+        strokeWidth={3}
+        paintOrder="stroke"
+        pointerEvents="none"
       >
         {formatValue(expected, metricKey)}
       </text>
@@ -132,6 +136,10 @@ function renderBarLabel(
       fontSize={10}
       fontWeight={700}
       fill="#475569"
+      stroke="#ffffff"
+      strokeWidth={3}
+      paintOrder="stroke"
+      pointerEvents="none"
     >
       {formatValue(actual, metricKey)}
     </text>
@@ -226,7 +234,7 @@ export function PipelineActivityChart({ data }: { data: PipelineActivityResponse
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={chartData}
-              margin={{ top: 28, right: 16, left: 0, bottom: 0 }}
+              margin={{ top: 36, right: 16, left: 0, bottom: 0 }}
               barCategoryGap="18%"
               barGap={4}
             >
@@ -254,7 +262,7 @@ export function PipelineActivityChart({ data }: { data: PipelineActivityResponse
                   radius={[3, 3, 0, 0]}
                   maxBarSize={28}
                   minPointSize={visiblePointSize}
-                  isAnimationActive
+                  isAnimationActive={false}
                 >
                   <LabelList content={(props) => renderBarLabel(props, metric.key, "actual")} />
                 </Bar>
@@ -268,7 +276,7 @@ export function PipelineActivityChart({ data }: { data: PipelineActivityResponse
                   radius={[3, 3, 0, 0]}
                   maxBarSize={28}
                   minPointSize={visiblePointSize}
-                  isAnimationActive
+                  isAnimationActive={false}
                 >
                   <LabelList content={(props) => renderBarLabel(props, metric.key, "expected")} />
                 </Bar>
