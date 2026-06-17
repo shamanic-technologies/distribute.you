@@ -23,6 +23,9 @@ describe("Brand overview pipeline activity chart", () => {
   it("replaces the revenue area chart with the 7-day activity bar chart", () => {
     expect(section).toContain("Pipeline activity next 7 days");
     expect(section).toContain("PipelineActivityChart");
+    expect(section).toContain("expectedOutcome");
+    expect(section).toContain("formatOutcomeCount");
+    expect(section).not.toContain("expected pipeline</p>");
     expect(section).not.toContain("RevenueChart");
   });
 
@@ -41,6 +44,9 @@ describe("Brand overview pipeline activity chart", () => {
     expect(chart).toContain("LabelList");
     expect(chart).toContain("renderBarLabel");
     expect(chart).toContain("value.conversionPct");
+    expect(chart).toContain('stroke="#ffffff"');
+    expect(chart).toContain('paintOrder="stroke"');
+    expect(chart).toContain("isAnimationActive={false}");
   });
 
   it("uses metric-color legend labels and reserves room for visible bar values", () => {
@@ -49,8 +55,20 @@ describe("Brand overview pipeline activity chart", () => {
     expect(chart).toContain('h-[300px]');
     expect(chart).toContain("maxBarSize={28}");
     expect(chart).toContain('barCategoryGap="18%"');
+    expect(chart).toContain("margin={{ top: 36");
     expect(chart).not.toContain(">Actual<");
     expect(chart).not.toContain(">Expected<");
     expect(chart).not.toContain("Timezone:");
+  });
+
+  it("shows the goal-specific expected monthly outcome instead of pipeline revenue", () => {
+    expect(page).toContain("getBrandDailyBudget");
+    expect(page).toContain("getWorkflowProjection");
+    expect(page).toContain('"overview-outcome"');
+    expect(page).toContain('objective: optimizationGoal === "signups" ? "self-serve" : "meeting-booked"');
+    expect(page).toContain("visits * (visitToSignupPct / 100)");
+    expect(page).toContain("activeOutcomeProjection?.meetings");
+    expect(page).toContain('"expected signups / month"');
+    expect(page).toContain('"expected sales meetings / month"');
   });
 });
