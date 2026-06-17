@@ -10,7 +10,7 @@ import { useIsBetaUser } from "@/lib/use-beta-user";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
-import { listPersonas, createPersona, setPersonaStatus } from "@/lib/api";
+import { listPersonas, createPersona, setPersonaStatus, regeneratePersonaAvatar } from "@/lib/api";
 import {
   type Filters,
   type Persona,
@@ -57,6 +57,14 @@ export function CustomerPersonasPage() {
     mutationFn: (i: { id: string; status: Persona["status"] }) => setPersonaStatus(brandId, i.id, i.status),
     onSuccess: invalidate,
   });
+  const {
+    mutate: regenerateAvatar,
+    isPending: avatarRegenerating,
+    variables: regeneratingAvatarId,
+  } = useMutation({
+    mutationFn: (personaId: string) => regeneratePersonaAvatar(brandId, personaId),
+    onSuccess: invalidate,
+  });
 
   if (!isBeta || !revenueOk) {
     return (
@@ -73,6 +81,7 @@ export function CustomerPersonasPage() {
     name: p.name,
     filters: p.filters,
     status: p.status,
+    avatarUrl: p.avatarUrl ?? null,
   }));
   // Drafts first (top of the list), then persisted personas.
   const personas: Persona[] = [...drafts, ...serverPersonas];
@@ -218,6 +227,8 @@ export function CustomerPersonasPage() {
                 onCommitNew={(name, filters) => commitNew(persona.id, name, filters)}
                 onCancelNew={() => removePersona(persona.id)}
                 onSetStatus={(s) => setStatus(persona.id, s)}
+                onRegenerateAvatar={!persona.unsaved ? () => regenerateAvatar(persona.id) : undefined}
+                regeneratingAvatar={avatarRegenerating && regeneratingAvatarId === persona.id}
                 checkNameTaken={(n) => isNameTaken(n, persona.unsaved ? persona.id : undefined)}
               />
             ))}
