@@ -120,6 +120,10 @@ describe("context-sidebar — alpha gating + maturity badges", () => {
     expect(brandSettings).toMatch(/FEATURE_GATES\["brand-info"\]/);
   });
 
+  it("BrandLevelSidebar does not render a brand Overview nav row", () => {
+    expect(brand).not.toMatch(/label:\s*"Overview"/);
+  });
+
   it("BrandLevelSidebar gates features behind brand-features alpha flag + GA set", () => {
     expect(brand).toMatch(/FEATURE_GATES\["brand-features"\]/);
     expect(brand).toMatch(/GA_BRAND_FEATURES/);
