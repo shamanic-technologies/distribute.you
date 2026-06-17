@@ -23,6 +23,7 @@ describe("Org switch cross-org isolation framework", () => {
 
   const invalidatorPath = "src/components/org-cache-invalidator.tsx";
   const layoutPath = "src/app/(authed)/(dashboard)/layout.tsx";
+  const orgActivatorPath = "src/components/org-activator.tsx";
   const breadcrumbPath = "src/components/breadcrumb-nav.tsx";
   const queryProviderPath = "src/lib/query-provider.tsx";
   const useAuthQueryPath = "src/lib/use-auth-query.ts";
@@ -76,6 +77,21 @@ describe("Org switch cross-org isolation framework", () => {
     expect(navIdx).toBeGreaterThanOrEqual(0);
     expect(providerIdx).toBeGreaterThanOrEqual(0);
     expect(navIdx).toBeLessThan(providerIdx);
+  });
+
+  it("OrgActivator activates the URL org on direct org deep links", () => {
+    const content = read(orgActivatorPath);
+    expect(content).toContain("usePathname");
+    expect(content).toContain("const targetOrgId = urlOrgId");
+    expect(content).toContain("m.organization.id === targetOrgId");
+    expect(content).toContain("setActive({ organization: targetOrgId })");
+  });
+
+  it("OrgActivator lets staff direct-link into customer orgs through the secured join route", () => {
+    const content = read(orgActivatorPath);
+    expect(content).toContain("isAdminEmail");
+    expect(content).toContain("!isMember && !isStaff");
+    expect(content).toContain("`/api/admin/orgs/${targetOrgId}/join`");
   });
 
   // --- Server choke point: fail-closed proxy guard -------------------------
