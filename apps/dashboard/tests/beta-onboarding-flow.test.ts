@@ -55,6 +55,13 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain('configKey="persona-editor"');
   });
 
+  it("does not fail the whole onboarding when optional AI suggestions 502", () => {
+    expect(src).toContain("suggestPersonas(newBrandId, 1).catch");
+    expect(src).toContain("extractBrandFields failed");
+    expect(src).toContain("GENERIC_AI_SETUP_ERROR");
+    expect(src).toContain("displaySetupError");
+  });
+
   it("agency consent with no channel checkboxes", () => {
     expect(src).toContain("on your behalf");
     expect(src).toContain("consentedChannels");
