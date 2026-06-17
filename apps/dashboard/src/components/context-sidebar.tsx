@@ -469,7 +469,7 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
 
   // Revenue surface (Overview) — only on revenue features (sales-cold-email
   // today). GA. Overview is the brand root. Customer Personas / Brand Profile
-  // below are BETA (Kevin + Adam only, email allowlist).
+  // are still gated to the email allowlist.
   const revenueOk = isRevenueFeature(featureSlug);
   const topItems: SidebarItem[] = [
     ...(revenueOk
@@ -482,7 +482,7 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
           } satisfies SidebarItem,
         ]
       : []),
-    // Customer Personas — beta mockup (Apollo-style targeting cards). Beta gate.
+    // Customer Personas — Apollo-style targeting cards. Email-allowlist gate.
     ...(revenueOk && isBeta
       ? [
           {
@@ -490,14 +490,12 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
             label: "Customer Personas",
             href: `${basePath}/personas`,
             icon: <PersonasIcon />,
-            maturity: "beta",
           } satisfies SidebarItem,
           {
             id: "brand-profile",
             label: "Brand Profile",
             href: `${basePath}/brand-profile`,
             icon: <BrandProfileIcon />,
-            maturity: "beta",
           } satisfies SidebarItem,
         ]
       : []),

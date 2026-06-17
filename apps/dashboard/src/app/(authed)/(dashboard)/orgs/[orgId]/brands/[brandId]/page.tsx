@@ -1,9 +1,10 @@
 "use client";
 
+import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getBrand, getFeatureRevenue, getBrandCostBreakdown, fetchFeatureStats, getBrandSalesEconomics } from "@/lib/api";
+import { getBrand, getFeatureRevenue, getBrandCostBreakdown, fetchFeatureStats, getBrandSalesEconomics, getFeaturePipelineActivity } from "@/lib/api";
 import { pollOptions, pollOptionsSlow } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
@@ -27,6 +28,13 @@ export default function BrandOverviewPage() {
   const brandId = params.brandId as string;
   const featureSlug = useSoleFeatureSlug();
   const enabled = isRevenueFeature(featureSlug);
+  const timezone = useMemo(() => {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    } catch {
+      return "UTC";
+    }
+  }, []);
 
   // isPending (not isLoading): a query suspended by the org-consistency gate
   // reports isLoading:false while still unresolved, which would flash "Brand
@@ -42,6 +50,12 @@ export default function BrandOverviewPage() {
     ["featureRevenue", brandId, featureSlug],
     () => getFeatureRevenue(featureSlug, brandId),
     { enabled, ...pollOptionsSlow },
+  );
+
+  const { data: pipelineActivity } = useAuthQuery(
+    ["featurePipelineActivity", brandId, featureSlug, timezone],
+    () => getFeaturePipelineActivity(featureSlug, { brandId, days: 7, timezone }),
+    { enabled, ...pollOptions },
   );
 
   // Cost breakdown (runs-service) → total spend + top-3 provider sources for the
@@ -76,6 +90,7 @@ export default function BrandOverviewPage() {
   // total-spend (runs-service) are two different cold chains — gate each on its
   // own query so the fast cost card isn't held by the slower revenue call.
   const revenueRevealed = useCoordinatedReveal([data !== undefined]);
+  const activityRevealed = useCoordinatedReveal([pipelineActivity !== undefined]);
   const costRevealed = useCoordinatedReveal([costData !== undefined]);
   const statsRevealed = useCoordinatedReveal([featureStatsData !== undefined]);
 
@@ -120,7 +135,9 @@ export default function BrandOverviewPage() {
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-4">
       <RevenueOverviewSection
         data={revenueRevealed ? data : undefined}
+        pipelineActivity={activityRevealed ? pipelineActivity : undefined}
         revenuePending={!revenueRevealed}
+        activityPending={!activityRevealed}
         costPending={!costRevealed}
         costBreakdown={costData?.costs ?? []}
         brandId={brandId}

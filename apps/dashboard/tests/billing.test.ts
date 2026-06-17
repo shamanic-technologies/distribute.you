@@ -88,13 +88,14 @@ describe("Billing API wrappers", () => {
   });
 
   // BillingAccount response shape — billing-service post-rename hotfix.
-  // balance_cents = spendable, credited_cents = lifetime credited, usage_cents unchanged.
+  // balance_cents = spendable, actual_balance_cents = user-facing actual-only credit balance.
   it("should expose BillingAccount fields in snake_case (post-rename wire shape)", () => {
     expect(content).toContain("id: string");
     expect(content).toContain("org_id: string");
     expect(content).toContain("credited_cents: string");
     expect(content).toContain("usage_cents: string");
     expect(content).toContain("balance_cents: string");
+    expect(content).toContain("actual_balance_cents?: string");
     expect(content).toContain("topup_amount_cents: number | null");
     expect(content).toContain("topup_threshold_cents: number | null");
     expect(content).toContain("has_payment_method: boolean");
@@ -232,7 +233,9 @@ describe("Billing page", () => {
     expect(content).not.toContain("disableAutoReload");
   });
 
-  it("should display credit balance via balance_cents (spendable, post-rename)", () => {
+  it("should display credit balance via actual_balance_cents when present", () => {
+    expect(content).toContain("actual_balance_cents");
+    expect(content).toContain("creditBalanceCents");
     expect(content).toContain("balance_cents");
     expect(content).toContain("Credit Balance");
   });

@@ -93,6 +93,7 @@ export default function BillingPage() {
   const hasValidationError = !!(thresholdError || customAmountError || topupAmountError);
 
   const isDepleted = account ? parseFloat(account.balance_cents) <= 0 : false;
+  const creditBalanceCents = account?.actual_balance_cents ?? account?.balance_cents ?? "0";
   const hasAutoTopup = account?.has_auto_topup ?? false;
 
   // Pre-fill auto-topup fields from existing config
@@ -287,7 +288,7 @@ export default function BillingPage() {
             <div>
               <p className="text-sm text-gray-500">Credit Balance</p>
               <p className={`text-3xl font-bold mt-1 ${isDepleted ? "text-red-600" : "text-gray-900"}`}>
-                {formatBillingCents(account?.balance_cents ?? "0")}
+                {formatBillingCents(creditBalanceCents)}
               </p>
               {hasAutoTopup && (
                 <p className="text-xs text-green-600 mt-1 flex items-center gap-1">

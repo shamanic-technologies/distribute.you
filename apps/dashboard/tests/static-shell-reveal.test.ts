@@ -55,8 +55,8 @@ describe("static-shell-first: cards accept `pending` and skeleton only values", 
     const src = read("components/revenue/revenue-cost-summary.tsx");
     // Labels are static text; values swap to Skeleton when pending.
     expect(src).toContain("Total spent");
-    expect(src).toContain("Cost of acquisition");
-    expect(src).toMatch(/pending \? \(\s*<Skeleton/);
+    expect(src).toContain("Top cost sources");
+    expect(src).toMatch(/totalSpentPending \? \(\s*<Skeleton/);
   });
 });
 
