@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { ScoreCard } from "@/components/visibility/score-card";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { useIsBetaUser } from "@/lib/use-beta-user";
-import type { BrandFunnelStage } from "@/lib/api";
+import type { BrandOptimizationGoal } from "@/lib/api";
 
 function formatCount(n: number): string {
   return Number(n).toLocaleString("en-US");
@@ -15,7 +15,7 @@ function formatCount(n: number): string {
 function costPer(totalCostCents: number, denom: number): string {
   if (denom <= 0) return "—";
   const usd = totalCostCents / 100 / denom;
-  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 // Each card is a fixed-min-width flex item so the whole set stays on ONE strict
@@ -29,18 +29,11 @@ function Cell({ children }: { children: ReactNode }) {
  * Top-of-page outreach stat cards, shared across every brand- and campaign-scoped
  * surface (one source → no drift, CLAUDE.md "keep surfaces in lockstep").
  *
- * GA cards (everyone): Impressions / Clicks / CPC.
- * Beta cards (allowlist only — `useIsBetaUser`): Meetings / CPM / Signups / CPS
- * / Sales / CAC, each badged `beta`. Four are placeholders (`—`) until the data
- * lands (signups stored in DB, sales tracked); meetings + CPM are live now off
- * `leadsRepliesMeetingBooked`. Gated rather than badged-only because the `—`
- * placeholders would read as broken to a non-beta customer. Drop the gate to GA.
- *
- * Funnel-stage gating: when `funnelStages` is provided (the brand's configured
- * sales funnel), the Meetings/CPM pair shows only if the brand books sales
- * meetings (`sales_meeting`), and the Signups/CPS pair only if it sells
- * self-serve (`website_purchase`). Sales/CAC always show (objective-agnostic).
- * `undefined` → show all beta cards (economics not yet resolved / not gated).
+ * GA cards (everyone): Outreach / Opens + the leading metric for the brand's
+ * optimization goal (Clicks/CPC for signups or sales, Positive Replies/CPPR for
+ * booked meetings).
+ * Beta cards (allowlist only — `useIsBetaUser`): the goal outcome pair
+ * (Signups/CPS, Sales Meetings/CPSM, or Sales/CAC), each badged `beta`.
  *
  * All values derive from already-fetched featureStats + systemStats cost — no
  * new query. Static-shell-first: labels paint instantly, values skeleton until
@@ -50,98 +43,106 @@ export function OutreachStatCards({
   stats,
   totalCostCents,
   pending,
-  funnelStages,
+  optimizationGoal,
 }: {
   stats: Record<string, number>;
   totalCostCents: number;
   pending: boolean;
-  funnelStages?: BrandFunnelStage[];
+  optimizationGoal?: BrandOptimizationGoal;
 }) {
   const isBeta = useIsBetaUser();
+  const goal = optimizationGoal ?? "sales";
+  const outreach = stats.leadsSent ?? stats.recipientsSent ?? 0;
+  const opens = stats.recipientsOpened ?? 0;
   const clicks = stats.recipientsClicked ?? 0;
-  const meetings = stats.leadsRepliesMeetingBooked ?? 0;
+  const positiveReplies = stats.leadsRepliesPositive ?? 0;
   const beta = <MaturityBadge level="beta" />;
 
-  // No funnel config → show every beta card; otherwise gate each pair on its stage.
-  const showMeetings = funnelStages === undefined || funnelStages.includes("sales_meeting");
-  const showSignups = funnelStages === undefined || funnelStages.includes("website_purchase");
+  const primaryMetric =
+    goal === "booked_meetings"
+      ? {
+          label: "Positive Replies",
+          tooltip:
+            "Number of leads having shared interest to know more about your brand within our conversation with them.",
+          value: formatCount(positiveReplies),
+          costLabel: "CPPR",
+          costTooltip: "Cost per positive reply.",
+          costValue: costPer(totalCostCents, positiveReplies),
+        }
+      : {
+          label: "Clicks",
+          tooltip:
+            "Number of visits on your website via a click in the link shared in the conversation with the lead.",
+          value: formatCount(clicks),
+          costLabel: "CPC",
+          costTooltip: "Cost per click — total spent divided by link clicks.",
+          costValue: costPer(totalCostCents, clicks),
+        };
+
+  const outcomeMetric =
+    goal === "booked_meetings"
+      ? {
+          label: "Sales Meetings",
+          costLabel: "CPSM",
+          costTooltip: "Cost per Sales Meetings.",
+        }
+      : goal === "signups"
+        ? {
+            label: "Signups",
+            costLabel: "CPS",
+            costTooltip: "Cost per signup — total spent divided by signups. Coming soon.",
+          }
+        : {
+            label: "Sales",
+            costLabel: "CAC",
+            costTooltip:
+              "Cost of acquisition — total spent divided by customers acquired. Coming soon.",
+          };
 
   return (
     <div className="flex flex-nowrap gap-3 overflow-x-auto mb-6">
       <Cell>
         <ScoreCard
-          label="Impressions"
-          value={formatCount(stats.recipientsOpened ?? 0)}
+          label="Outreach"
+          value={formatCount(outreach)}
           pending={pending}
         />
       </Cell>
       <Cell>
-        <ScoreCard label="Clicks" value={formatCount(clicks)} pending={pending} />
+        <ScoreCard label="Opens" value={formatCount(opens)} pending={pending} />
       </Cell>
       <Cell>
         <ScoreCard
-          label="CPC"
-          tooltip="Cost per click — total spent divided by link clicks."
-          value={costPer(totalCostCents, clicks)}
+          label={primaryMetric.label}
+          tooltip={primaryMetric.tooltip}
+          value={primaryMetric.value}
           pending={pending}
         />
       </Cell>
-
-      {isBeta && showMeetings && (
-        <>
-          <Cell>
-            <ScoreCard
-              label="Meetings"
-              badge={beta}
-              value={formatCount(meetings)}
-              pending={pending}
-            />
-          </Cell>
-          <Cell>
-            <ScoreCard
-              label="CPM"
-              badge={beta}
-              tooltip="Cost per attended meeting — total spent divided by meetings booked."
-              value={costPer(totalCostCents, meetings)}
-              pending={pending}
-            />
-          </Cell>
-        </>
-      )}
-
-      {isBeta && showSignups && (
-        <>
-          <Cell>
-            <ScoreCard label="Signups" badge={beta} value="—" pending={pending} />
-          </Cell>
-          <Cell>
-            <ScoreCard
-              label="CPS"
-              badge={beta}
-              tooltip="Cost per signup — total spent divided by signups. Coming soon."
-              value="—"
-              pending={pending}
-            />
-          </Cell>
-        </>
-      )}
+      <Cell>
+        <ScoreCard
+          label={primaryMetric.costLabel}
+          tooltip={primaryMetric.costTooltip}
+          value={primaryMetric.costValue}
+          pending={pending}
+        />
+      </Cell>
 
       {isBeta && (
         <>
           <Cell>
             <ScoreCard
-              label="Sales"
+              label={outcomeMetric.label}
               badge={beta}
-              tooltip="Revenue from tracked sales. Coming soon."
               value="—"
               pending={pending}
             />
           </Cell>
           <Cell>
             <ScoreCard
-              label="CAC"
+              label={outcomeMetric.costLabel}
               badge={beta}
-              tooltip="Cost of acquisition — total spent divided by customers acquired. Coming soon."
+              tooltip={outcomeMetric.costTooltip}
               value="—"
               pending={pending}
             />

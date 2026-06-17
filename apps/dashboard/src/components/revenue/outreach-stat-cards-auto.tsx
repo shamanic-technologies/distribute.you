@@ -14,7 +14,7 @@ import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
  * content page (leads, emails, journalists, outlets, articles, quote-pitches,
  * visibility-runs, …). Reads its scope from the route params — `id` present →
  * campaign-scoped stats, else brand-scoped — and fetches its own featureStats,
- * cost, and sales-economics funnel. All three queries reuse the same keys the
+ * cost, and sales-economics goal. All three queries reuse the same keys the
  * Overview/Campaigns pages use, so React Query dedupes to a single poll per
  * scope (no extra network cost on a page that already shows them).
  *
@@ -38,7 +38,7 @@ export function OutreachStatCardsAuto() {
     { enabled, ...pollOptions },
   );
 
-  // Brand funnel config gates the Meetings/Signups beta pairs. Shares the brand
+  // Brand goal config drives the stat-card copy. Shares the brand
   // settings + campaign-creation query key → one fetch.
   const { data: economicsData } = useAuthQuery(
     ["brandSalesEconomics", brandId],
@@ -52,14 +52,14 @@ export function OutreachStatCardsAuto() {
 
   const featureStats = featureStatsData?.stats ?? {};
   const totalCostCents = featureStatsData?.systemStats?.totalCostInUsdCents ?? 0;
-  const funnelStages = economicsData?.salesEconomics?.funnelStages;
+  const optimizationGoal = economicsData?.salesEconomics?.optimizationGoal ?? "sales";
 
   return (
     <OutreachStatCards
       stats={featureStats}
       totalCostCents={totalCostCents}
       pending={!statsRevealed}
-      funnelStages={funnelStages}
+      optimizationGoal={optimizationGoal}
     />
   );
 }

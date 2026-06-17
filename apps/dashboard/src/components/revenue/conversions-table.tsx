@@ -152,8 +152,8 @@ function TableShell({
     );
   }
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <table className="w-full text-sm">
+    <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+      <table className="min-w-[640px] w-full text-sm">
         <thead>
           <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
             {headers.map((h, i) => (
