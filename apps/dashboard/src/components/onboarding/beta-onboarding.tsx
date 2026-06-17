@@ -189,6 +189,7 @@ const TAG_TONES = [
 
 // Outcome-count budget tiers (per month). "Other" is a custom count.
 const COUNT_TIERS = [5, 25, 125];
+type BudgetSelection = "tier" | "custom";
 
 let personaSeq = 0;
 const nextPersonaId = () => `ob-persona-${++personaSeq}`;
@@ -298,6 +299,7 @@ export function BetaOnboarding() {
   // (the projection unit cost), never from the selection — so clicking a card never
   // reshuffles the cards (the old $/day-tier bug).
   const [selectedCount, setSelectedCount] = useState<number | null>(null);
+  const [budgetSelection, setBudgetSelection] = useState<BudgetSelection | null>(null);
   const [customCount, setCustomCount] = useState("");
   const [walletBudgetUsd, setWalletBudgetUsd] = useState<number | null>(null);
   const [initialLoadUsd, setInitialLoadUsd] = useState("25");
@@ -771,6 +773,18 @@ export function BetaOnboarding() {
     return rec && rec > 0 ? Math.round(rec) : null;
   }
 
+  function selectTierCount(n: number) {
+    setBudgetSelection("tier");
+    setCustomCount("");
+    setSelectedCount(n);
+  }
+
+  function selectCustomCount(nextCustomCount = customCount) {
+    setBudgetSelection("custom");
+    const v = Number(nextCustomCount);
+    setSelectedCount(v > 0 ? v : null);
+  }
+
   const card = "min-w-0 rounded-2xl border border-gray-200 bg-white p-5 sm:p-8 md:p-12";
   const outcomeMeta = OUTCOMES.find((o) => o.key === outcome)!;
 
@@ -1152,9 +1166,9 @@ export function BetaOnboarding() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {COUNT_TIERS.map((n, i) => {
           const b = budgetForCount(n);
-          const active = selectedCount === n;
+          const active = budgetSelection === "tier" && selectedCount === n;
           return (
-            <button key={n} onClick={() => setSelectedCount(n)} className={`rounded-xl border-2 p-4 text-left transition ${active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"}`}>
+            <button key={n} type="button" onClick={() => selectTierCount(n)} className={`rounded-xl border-2 p-4 text-left transition ${active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"}`}>
               {i === 1 ? <div className="mb-1 inline-block rounded-full bg-brand-100 px-2 py-0.5 text-[10px] font-semibold text-brand-700">Recommended</div> : <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">{i === 0 ? "Starter" : "Growth"}</div>}
               <div className="text-xl font-bold text-gray-950">{fmtCount(n)}</div>
               <div className="text-xs text-gray-500">{outcomeMeta.unit} / mo</div>
@@ -1166,26 +1180,27 @@ export function BetaOnboarding() {
         {(() => {
           const customN = Number(customCount);
           const isCustom = customCount !== "" && customN > 0;
-          const active = isCustom && selectedCount === customN;
+          const active = budgetSelection === "custom";
           const b = isCustom ? budgetForCount(customN) : null;
           return (
-            <div className={`rounded-xl border-2 p-4 transition ${active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white"}`}>
-              <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">Other</div>
+            <label onClick={() => selectCustomCount()} className={`block cursor-text rounded-xl border-2 p-4 transition ${active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"}`}>
+              <div className={`mb-1 text-[10px] font-semibold uppercase tracking-wide ${active ? "text-brand-700" : "text-gray-400"}`}>Other</div>
               <input
                 type="number"
                 min={1}
                 value={customCount}
+                onFocus={() => selectCustomCount()}
                 onChange={(e) => {
-                  setCustomCount(e.target.value);
-                  const v = Number(e.target.value);
-                  setSelectedCount(v > 0 ? v : null);
+                  const next = e.target.value;
+                  setCustomCount(next);
+                  selectCustomCount(next);
                 }}
                 placeholder="Custom"
                 className="w-full bg-transparent text-xl font-bold text-gray-950 placeholder-gray-300 focus:outline-none"
               />
               <div className="text-xs text-gray-500">{outcomeMeta.unit} / mo</div>
               <div className="mt-2 text-xs text-gray-400">{b != null ? `~${fmtUsd0(b)} / day` : "—"}</div>
-            </div>
+            </label>
           );
         })()}
       </div>

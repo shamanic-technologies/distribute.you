@@ -30,6 +30,7 @@ import { useSoleFeatureSlug } from "@/lib/sole-feature";
 
 const PROJECTION_REF_BUDGET = 100;
 const COUNT_TIERS = [5, 25, 125] as const;
+type BudgetSelection = "tier" | "custom";
 
 const DEFAULT_SALES_ECONOMICS = {
   lifetimeRevenueUsd: 4000,
@@ -135,6 +136,7 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
     useState<BrandOptimizationGoal>("sales_meetings");
   const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
   const [selectedCount, setSelectedCount] = useState<number | null>(null);
+  const [budgetSelection, setBudgetSelection] = useState<BudgetSelection | null>(null);
   const [customCount, setCustomCount] = useState("");
 
   const { data: pauseData } = useAuthQuery(
@@ -225,6 +227,7 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
 
   function openBudgetDialog() {
     setSelectedCount(null);
+    setBudgetSelection(null);
     setCustomCount("");
     setBudgetDialogOpen(true);
   }
@@ -250,6 +253,18 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
   function budgetForCount(n: number): number | null {
     if (unitCost == null || unitCost <= 0) return null;
     return Math.max(1, Math.round((n * unitCost) / 30));
+  }
+
+  function selectTierCount(n: number) {
+    setBudgetSelection("tier");
+    setCustomCount("");
+    setSelectedCount(n);
+  }
+
+  function selectCustomCount(nextCustomCount = customCount) {
+    setBudgetSelection("custom");
+    const v = Number(nextCustomCount);
+    setSelectedCount(v > 0 ? v : null);
   }
 
   const selectedBudget =
@@ -476,15 +491,12 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {COUNT_TIERS.map((n, i) => {
                   const b = budgetForCount(n);
-                  const active = selectedCount === n;
+                  const active = budgetSelection === "tier" && selectedCount === n;
                   return (
                     <button
                       key={n}
                       type="button"
-                      onClick={() => {
-                        setSelectedCount(n);
-                        setCustomCount("");
-                      }}
+                      onClick={() => selectTierCount(n)}
                       className={`rounded-xl border-2 p-4 text-left transition ${
                         active
                           ? "border-brand-400 bg-brand-50"
@@ -514,27 +526,33 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
                 {(() => {
                   const customN = Number(customCount);
                   const isCustom = customCount !== "" && customN > 0;
-                  const active = isCustom && selectedCount === customN;
+                  const active = budgetSelection === "custom";
                   const b = isCustom ? budgetForCount(customN) : null;
                   return (
-                    <div
-                      className={`rounded-xl border-2 p-4 transition ${
+                    <label
+                      onClick={() => selectCustomCount()}
+                      className={`block cursor-text rounded-xl border-2 p-4 transition ${
                         active
                           ? "border-brand-400 bg-brand-50"
-                          : "border-gray-200 bg-white"
+                          : "border-gray-200 bg-white hover:border-gray-300"
                       }`}
                     >
-                      <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                      <div
+                        className={`mb-1 text-[10px] font-semibold uppercase tracking-wide ${
+                          active ? "text-brand-700" : "text-gray-400"
+                        }`}
+                      >
                         Other
                       </div>
                       <input
                         type="number"
                         min={1}
                         value={customCount}
+                        onFocus={() => selectCustomCount()}
                         onChange={(e) => {
-                          setCustomCount(e.target.value);
-                          const v = Number(e.target.value);
-                          setSelectedCount(v > 0 ? v : null);
+                          const next = e.target.value;
+                          setCustomCount(next);
+                          selectCustomCount(next);
                         }}
                         placeholder="Custom"
                         className="w-full bg-transparent text-xl font-bold text-gray-950 placeholder-gray-300 focus:outline-none"
@@ -545,7 +563,7 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
                       <div className="mt-2 text-xs text-gray-400">
                         {b != null ? `~${fmtUsd0(b)} / day` : "-"}
                       </div>
-                    </div>
+                    </label>
                   );
                 })()}
               </div>
