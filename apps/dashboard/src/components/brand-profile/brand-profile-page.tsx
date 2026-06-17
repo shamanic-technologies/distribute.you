@@ -218,6 +218,21 @@ export function BrandProfilePage() {
         suggestions={["Set Value proposition to …", "Add Stripe to Competitors", "Save"]}
         configKey="brand-profile-editor"
         brandId={brandId}
+        sessionVersion="live-context-v1"
+        context={{
+          currentBrandProfile: fields,
+          savedBrandProfile: baseline,
+          fieldDefinitions: SECTIONS.flatMap((section) =>
+            section.fields.map((field) => ({
+              key: field.key,
+              label: field.label,
+              kind: field.kind,
+              description: field.placeholder,
+            })),
+          ),
+          versionCount: versions.length,
+          savedAt,
+        }}
         invalidateKeys={[["brandProfile", brandId]]}
       />
     </div>

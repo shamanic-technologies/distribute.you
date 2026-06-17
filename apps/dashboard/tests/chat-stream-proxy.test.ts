@@ -121,6 +121,23 @@ async function processStream(
         writer.write({ type: "reasoning-end", id: reasoningPartId });
         break;
       }
+      case "tool_result": {
+        const toolCallId = (event.id || "") as string;
+        const rawResult = event.result ?? null;
+        const output =
+          typeof rawResult === "string"
+            ? rawResult
+            : JSON.stringify(rawResult ?? "");
+
+        writer.write({
+          type: "tool-output-available",
+          toolCallId,
+          output,
+        });
+        writer.write({ type: "finish-step" });
+        writer.write({ type: "start-step" });
+        break;
+      }
       case "error": {
         const errorCode = event.code as string | undefined;
         if (errorCode) {
