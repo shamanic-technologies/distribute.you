@@ -143,7 +143,7 @@ export function DefaultOnboarding() {
       });
       // No billing step at onboarding: card + auto-topup are configured later, on
       // first campaign launch (billing-guard modal). Create the brand inline so the
-      // $2 welcome credit is never tripped by an auto-topup threshold the brand-new
+      // $5 welcome credit is never tripped by an auto-topup threshold the brand-new
       // balance already sits below, then land straight on the brand.
       posthog.capture("brand_create_started", { source: "onboarding" });
       const { brandId: newBrandId } = await upsertBrand(brandUrl);
