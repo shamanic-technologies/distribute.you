@@ -53,7 +53,9 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
 
   const paused = pauseData?.paused ?? false;
   const goal =
-    econ === undefined ? null : econ.salesEconomics?.optimizationGoal ?? "sales_meetings";
+    econ === undefined
+      ? null
+      : econ.salesEconomics?.optimizationGoal ?? "sales_meetings";
   const budget = budgetLabel(budgetData?.dailyBudgetCents ?? null);
 
   const { mutate, isPending: saving } = useMutation({
