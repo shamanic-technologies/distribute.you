@@ -113,28 +113,37 @@ const RATE_KEYS_FOR_OUTCOME: Record<Outcome, RateKey[]> = { signups: ["v2s"], me
 
 // ── Rate-input formatting ────────────────────────────────────────────
 // Number fields render as TEXT (not <input type="number">) so we can show
-// thousands separators ("2,500"), allow decimals ("0.5"), and reformat each
-// keystroke — which also kills the leading-zero bug (typing over "0" → "1",
-// never "01"). The numeric value is parsed back out for persistence.
+// thousands separators ("2,500") and allow decimals ("0.5"). User input is
+// intentionally not reformatted on each keystroke; normalizing while typing
+// breaks ordinary edits like turning "3" into "0.3".
 function groupInt(intStr: string): string {
   return intStr.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
-// Sanitize a raw input string → { display text, numeric value }.
-function formatRateInput(raw: string): { text: string; value: number } {
-  let s = raw.replace(/[^\d.]/g, "");
-  const firstDot = s.indexOf(".");
-  if (firstDot !== -1) {
-    s = s.slice(0, firstDot + 1) + s.slice(firstDot + 1).replace(/\./g, "");
+function parseRateTextInput(raw: string, key: RateKey): number {
+  const label = RATE_META[key].label;
+  const trimmed = raw.trim();
+  if (!trimmed) throw new Error(`${label} is required.`);
+
+  if (RATE_META[key].suffix === "%") {
+    const compact = trimmed.replace(/\s/g, "").replace(",", ".");
+    if (!/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(compact)) {
+      throw new Error(`${label} must be a decimal number.`);
+    }
+    const value = Number(compact);
+    if (!Number.isFinite(value)) throw new Error(`${label} must be a decimal number.`);
+    if (value < 0 || value > 100) throw new Error(`${label} must be between 0 and 100%.`);
+    return value;
   }
-  if (s === "") return { text: "", value: 0 };
-  const [intPart, decPart] = s.split(".");
-  let intClean = intPart.replace(/^0+(?=\d)/, "");
-  if (intClean === "") intClean = "0";
-  const grouped = groupInt(intClean);
-  const text = decPart !== undefined ? `${grouped}.${decPart}` : grouped;
-  const value = parseFloat(`${intClean}.${decPart ?? ""}`.replace(/\.$/, "")) || 0;
-  return { text, value };
+
+  const compact = trimmed.replace(/\s/g, "");
+  if (!/^(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?$/.test(compact)) {
+    throw new Error(`${label} must be a decimal dollar amount.`);
+  }
+  const value = Number(compact.replace(/,/g, ""));
+  if (!Number.isFinite(value)) throw new Error(`${label} must be a decimal dollar amount.`);
+  if (value < 0) throw new Error(`${label} must be 0 or more.`);
+  return value;
 }
 
 function rateToText(n: number): string {
@@ -556,15 +565,33 @@ export function BetaOnboarding() {
   async function saveRatesAndContinue() {
     const id = brandIdRef.current;
     if (!id) return;
+    const rateKeys = RATE_KEYS_FOR_OUTCOME[outcome];
+    let nextRates: Record<RateKey, number>;
+    try {
+      nextRates = { ...rates };
+      for (const key of rateKeys) {
+        nextRates[key] = parseRateTextInput(rateText[key], key);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Please enter valid decimal numbers.");
+      return;
+    }
+
+    setError(null);
+    setRates(nextRates);
+    setRateText((current) => ({
+      ...current,
+      ...Object.fromEntries(rateKeys.map((key) => [key, rateToText(nextRates[key])])),
+    }));
     setBusy(true);
     try {
       await saveBrandSalesEconomics(id, {
-        lifetimeRevenueUsd: rates.ltv,
-        replyToMeetingPct: rates.r2m,
-        visitToMeetingPct: rates.v2m,
-        meetingToClosePct: rates.m2c,
-        visitToSignupPct: rates.v2s,
-        signupToPaidClientPct: rates.s2c,
+        lifetimeRevenueUsd: nextRates.ltv,
+        replyToMeetingPct: nextRates.r2m,
+        visitToMeetingPct: nextRates.v2m,
+        meetingToClosePct: nextRates.m2c,
+        visitToSignupPct: nextRates.v2s,
+        signupToPaidClientPct: nextRates.s2c,
       });
       // Recompute the projection from the rates we just saved (loading-time
       // projection ran on the brand's DEFAULT economics). Best-effort +
@@ -1009,11 +1036,9 @@ export function BetaOnboarding() {
                   inputMode="decimal"
                   value={rateText[k]}
                   onChange={(e) => {
-                    const { text, value } = formatRateInput(e.target.value);
                     ratesEditedRef.current = true;
                     launchFeatureInputsRef.current = null;
-                    setRateText((t) => ({ ...t, [k]: text }));
-                    setRates((r) => ({ ...r, [k]: value }));
+                    setRateText((t) => ({ ...t, [k]: e.target.value }));
                   }}
                   className="w-full bg-transparent text-right text-sm text-gray-900 focus:outline-none sm:w-20"
                 />
