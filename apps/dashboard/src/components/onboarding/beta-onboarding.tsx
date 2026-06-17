@@ -209,6 +209,8 @@ type PendingWalletLaunch = {
   topupAmountCents: number;
   topupThresholdCents: number;
   featureInputs?: Record<string, string>;
+  profile?: Record<string, string | string[]>;
+  services?: string[];
   createdAt: string;
 };
 
@@ -218,6 +220,19 @@ function isStringRecord(value: unknown): value is Record<string, string> {
     typeof value === "object" &&
     !Array.isArray(value) &&
     Object.values(value).every((v) => typeof v === "string")
+  );
+}
+
+function isStringList(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((v) => typeof v === "string");
+}
+
+function isProfileRecord(value: unknown): value is Record<string, string | string[]> {
+  return (
+    !!value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    Object.values(value).every((v) => typeof v === "string" || isStringList(v))
   );
 }
 
@@ -249,6 +264,8 @@ function readPendingWalletLaunch(): PendingWalletLaunch {
     typeof parsed.topupAmountCents !== "number" ||
     typeof parsed.topupThresholdCents !== "number" ||
     (parsed.featureInputs !== undefined && !isStringRecord(parsed.featureInputs)) ||
+    (parsed.profile !== undefined && !isProfileRecord(parsed.profile)) ||
+    (parsed.services !== undefined && !isStringList(parsed.services)) ||
     typeof parsed.createdAt !== "string"
   ) {
     throw new Error("Wallet checkout returned with an invalid pending launch state. Campaign was not launched.");
@@ -563,6 +580,15 @@ export function BetaOnboarding() {
   }
 
   async function completeLaunchAfterWallet(pending: PendingWalletLaunch) {
+    if (pending.profile && pending.services) {
+      await saveBrandProfileVersion(pending.brandId, {
+        ...pending.profile,
+        services: pending.services,
+        consentedChannels: ["email"],
+        agencyConsentAt: new Date().toISOString(),
+      });
+    }
+    await saveBrandDailyBudget(pending.brandId, Math.round(pending.budgetUsd * 100));
     setLaunchStep(2);
     const featureInputs = pending.featureInputs ?? await buildFeatureInputsForLaunch(pending.brandId);
     const { campaign } = await createCampaignWithoutBrandEnrichment({
@@ -637,27 +663,10 @@ export function BetaOnboarding() {
       const initialLoadCents = dollarsToCentsInput(initialLoadUsd, "Initial load", MIN_INITIAL_LOAD_USD);
       const topupAmountCents = dollarsToCentsInput(walletTopupAmountUsd, "Auto-topup reload amount", MIN_TOPUP_USD);
       const topupThresholdCents = dollarsToCentsInput(walletTopupThresholdUsd, "Auto-topup trigger threshold", MIN_THRESHOLD_USD);
-      await waitForOnboardingHydration();
       const workflowSlug = projectionRef.current?.recommendedWorkflowDynastySlug ?? storedPending?.workflowSlug ?? null;
       if (!workflowSlug) {
         throw new Error("Campaign workflow setup is still missing. Please try again.");
       }
-      if (brandIdRef.current === id && normalizedCurrentUrl) {
-        // Persist current wizard edits only when the live wizard state is mounted.
-        // After a Stripe cancel reload, pending storage is the source of truth; do
-        // not overwrite the saved profile with empty initial component state.
-        await saveBrandProfileVersion(id, {
-          ...profile,
-          services,
-          consentedChannels: ["email"],
-          agencyConsentAt: new Date().toISOString(),
-        });
-      }
-      await saveBrandDailyBudget(id, Math.round(budget * 100));
-      const featureInputs =
-        brandIdRef.current === id
-          ? await buildFeatureInputsForLaunch(id)
-          : storedPending?.featureInputs ?? await buildFeatureInputsForLaunch(id);
 
       const pending: PendingWalletLaunch = {
         version: 1,
@@ -671,7 +680,9 @@ export function BetaOnboarding() {
         initialLoadCents,
         topupAmountCents,
         topupThresholdCents,
-        featureInputs,
+        featureInputs: storedPending?.featureInputs,
+        profile: brandIdRef.current === id && normalizedCurrentUrl ? profile : storedPending?.profile,
+        services: brandIdRef.current === id && normalizedCurrentUrl ? services : storedPending?.services,
         createdAt: new Date().toISOString(),
       };
       window.sessionStorage.setItem(WALLET_PENDING_KEY, JSON.stringify(pending));

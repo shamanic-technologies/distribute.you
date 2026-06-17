@@ -104,6 +104,19 @@ describe("Beta onboarding wallet setup", () => {
     expect(content).not.toContain("configureAutoTopup(pending.topupAmountCents, pending.topupThresholdCents)");
   });
 
+  it("opens Stripe checkout without waiting for launch setup work", () => {
+    const beginStart = content.indexOf("async function beginWalletCheckout()");
+    const beginEnd = content.indexOf("async function resumeWalletCheckout()");
+    expect(beginStart).toBeGreaterThan(-1);
+    expect(beginEnd).toBeGreaterThan(beginStart);
+    const beginWalletCheckout = content.slice(beginStart, beginEnd);
+    expect(beginWalletCheckout).toContain("createCheckoutSession");
+    expect(beginWalletCheckout).not.toContain("waitForOnboardingHydration");
+    expect(beginWalletCheckout).not.toContain("saveBrandProfileVersion");
+    expect(beginWalletCheckout).not.toContain("saveBrandDailyBudget");
+    expect(beginWalletCheckout).not.toContain("buildFeatureInputsForLaunch");
+  });
+
   it("blocks the initial analysis only on service extraction", () => {
     expect(content).toContain("SERVICES_PROFILE_FIELDS");
     expect(content).toContain("createBrandAndFetchServices");
