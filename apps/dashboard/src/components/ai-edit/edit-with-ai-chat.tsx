@@ -19,7 +19,7 @@ import {
  * Edit-with-AI — REAL LLM chat (replaces the client-side interpreter mock).
  *
  * POSTs to /api/v1/chat (api-service → chat-service) with a `configKey`
- * ("persona-editor" | "brand-profile-editor") and `context: { brandId }`.
+ * ("persona-editor" | "brand-profile-editor") and live request context.
  * chat-service resolves the config's system prompt + tools and streams tool
  * calls back; the tools read/edit the brand's personas / brand profile in
  * brand-service. We render streamed tool calls generically and, whenever a turn
@@ -28,6 +28,8 @@ import {
  */
 
 const STORAGE_PREFIX = "edit-with-ai-chat";
+type EditChatContext = Record<string, unknown>;
+
 function loadSessionId(k: string): string | null {
   try { return localStorage.getItem(`${STORAGE_PREFIX}-session:${k}`); } catch { return null; }
 }
@@ -43,6 +45,8 @@ export function EditWithAIChat({
   suggestions,
   configKey,
   brandId,
+  context,
+  sessionVersion,
   invalidateKeys,
 }: {
   open: boolean;
@@ -52,6 +56,9 @@ export function EditWithAIChat({
   suggestions: string[];
   configKey: "persona-editor" | "brand-profile-editor";
   brandId: string;
+  context?: EditChatContext;
+  /** Optional storage namespace bump to avoid replaying stale backend sessions after config/context changes. */
+  sessionVersion?: string;
   /** React Query keys to invalidate after each turn (so the cards reflect AI edits). */
   invalidateKeys: unknown[][];
 }) {
@@ -60,7 +67,16 @@ export function EditWithAIChat({
   const [draft, setDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const sessionIdRef = useRef<string | null>(null);
-  const chatKey = `${configKey}:${brandId}`;
+  const chatKey = sessionVersion ? `${configKey}:${sessionVersion}:${brandId}` : `${configKey}:${brandId}`;
+  const requestContext = useMemo<EditChatContext>(
+    () => ({ brandId, ...(context ?? {}) }),
+    [brandId, context],
+  );
+  const contextRef = useRef(requestContext);
+
+  useEffect(() => {
+    contextRef.current = requestContext;
+  }, [requestContext]);
 
   useEffect(() => {
     sessionIdRef.current = loadSessionId(chatKey);
@@ -103,11 +119,11 @@ export function EditWithAIChat({
                 ?.parts?.find((p): p is { type: "text"; text: string } => p.type === "text")?.text || "",
             configKey,
             ...(sessionIdRef.current ? { sessionId: sessionIdRef.current } : {}),
-            context: { brandId },
+            context: contextRef.current,
           },
         }),
       }),
-    [billingFetch, configKey, brandId],
+    [billingFetch, configKey],
   );
 
   const { messages, sendMessage, status, stop, error } = useChat({
@@ -219,7 +235,7 @@ export function EditWithAIChat({
 
           {error && (
             <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
-              {error.message || "Something went wrong."}
+              {error.message ?? "Something went wrong."}
             </div>
           )}
 
