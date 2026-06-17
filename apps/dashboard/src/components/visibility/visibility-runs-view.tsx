@@ -28,6 +28,7 @@ import {
   parseDecimal,
 } from "@/components/visibility/score-card";
 import { METRIC_INFO, MetricLabel } from "@/components/visibility/metric-info";
+import { DashboardPage } from "@/components/dashboard-page";
 
 interface ChartPoint {
   ts: number;
@@ -88,7 +89,7 @@ export function VisibilityRunsView({
 
   if (!pending && runs.length === 0) {
     return (
-      <div className="p-4 md:p-8" data-testid="visibility-runs-page">
+      <DashboardPage width="wide" data-testid="visibility-runs-page">
         <div className="mb-6">
           <h1 className="font-display text-2xl font-bold text-gray-800">
             Visibility runs
@@ -98,14 +99,14 @@ export function VisibilityRunsView({
           </p>
         </div>
         <EmptyState />
-      </div>
+      </DashboardPage>
     );
   }
 
   const rowFrames = runs.length > 0 ? runs : Array.from({ length: 5 }).map(() => null);
 
   return (
-    <div className="p-4 md:p-8" data-testid="visibility-runs-page">
+    <DashboardPage width="wide" data-testid="visibility-runs-page">
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-gray-800">
           Visibility runs
@@ -271,7 +272,7 @@ export function VisibilityRunsView({
           </tbody>
         </table>
       </section>
-    </div>
+    </DashboardPage>
   );
 }
 

@@ -5,19 +5,10 @@ import { getPlatformPrices, type CostByName } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { ProviderLogo } from "@/components/provider-logo";
 import { Skeleton } from "@/components/skeleton";
-import type { CostEconomics } from "@/lib/revenue-view";
 
 /**
- * Cost & efficiency summary for the feature Overview — total spend, the top-3
- * cost sources (provider logo + share, no $ amounts), and the two cost/revenue
- * efficiency metrics:
- *   - Cost of acquisition = total cost ÷ expected revenue (a %; lower is better)
- *   - ROI                 = expected revenue ÷ total cost (a × multiple)
- *
- * The two ratios come straight from features-service (`costEconomics` on
- * /revenue) — the single source per DIS-232. Total spend + the top-3 provider
- * breakdown stay client-side (the provider-domain decomposition lives in the
- * cost breakdown, not in features-service).
+ * Cost summary for the feature Overview — actual spend and the top-3 cost
+ * sources (provider logo + share, no $ amounts).
  */
 
 function formatCostName(name: string): string {
@@ -30,37 +21,16 @@ function formatUsd(usd: number): string {
   return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-function InfoHint({ text }: { text: string }) {
-  return (
-    <span className="relative group inline-flex items-center align-middle">
-      <svg
-        className="w-3.5 h-3.5 text-gray-300 hover:text-gray-500 cursor-help"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <circle cx="12" cy="12" r="9" strokeWidth={2} />
-        <path strokeLinecap="round" strokeWidth={2} d="M12 16v-4M12 8h.01" />
-      </svg>
-      <span className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-1.5 w-56 -translate-x-1/2 rounded-lg bg-gray-900 px-2.5 py-1.5 text-[11px] leading-snug text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
-        {text}
-      </span>
-    </span>
-  );
-}
-
 export function RevenueCostSummary({
   costBreakdown = [],
-  costEconomics,
   pending = false,
   costPending,
   bottomCard,
 }: {
   costBreakdown?: CostByName[];
-  costEconomics?: CostEconomics;
   pending?: boolean;
   /** Reveal gate for the Total-spent figure (runs-service cost breakdown) when it
-   *  resolves on a DIFFERENT chain than `costEconomics` (features-service). The
+   *  resolves on a DIFFERENT chain than the revenue data (features-service). The
    *  feature Overview passes this so Total-spent never waits on the slower revenue
    *  call; other consumers omit it → falls back to `pending` (single reveal). */
   costPending?: boolean;
@@ -72,7 +42,7 @@ export function RevenueCostSummary({
   const totalSpentPending = costPending ?? pending;
   const { entries, totalCents } = useMemo(() => {
     const e = costBreakdown
-      .map((c) => ({ name: c.costName ?? "Unknown", cents: parseFloat(c.totalCostInUsdCents) || 0 }))
+      .map((c) => ({ name: c.costName ?? "Unknown", cents: parseFloat(c.actualCostInUsdCents) || 0 }))
       .filter((x) => x.cents > 0)
       .sort((a, b) => b.cents - a.cents);
     return { entries: e, totalCents: e.reduce((s, x) => s + x.cents, 0) };
@@ -99,18 +69,11 @@ export function RevenueCostSummary({
     domain: domainByCost.get(e.name) ?? null,
   }));
 
-  // CAC % + ROI × come from features-service (single source) — null per its
-  // documented semantics (pipeline null/0, or cost 0).
-  const cacPct = costEconomics?.costOfAcquisitionPct;
-  const roiMultiple = costEconomics?.roiMultiple;
-
-  // Right-of-chart column on the Overview: three stat cards (Total spent / Cost
-  // of acquisition / ROI) replacing the old org/lead/event counters, plus a
-  // compact top-3 cost-source list. Card markup matches the existing overview
-  // stat cards so the column stays visually consistent.
+  // Right-of-chart column on the Overview: Total spent plus a compact top-3
+  // cost-source list.
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         {/* Card frames + labels render instantly; only the value waits. */}
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <p className="text-xs text-gray-400">Total spent</p>
@@ -118,32 +81,6 @@ export function RevenueCostSummary({
             <Skeleton className="mt-1 h-7 w-24" />
           ) : (
             <p className="mt-1 text-xl font-bold text-gray-900">{formatUsd(totalCostUsd)}</p>
-          )}
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <p className="flex items-center gap-1 text-xs text-gray-400">
-            Cost of acquisition
-            <InfoHint text="Share of expected pipeline revenue spent to generate it: total cost ÷ expected revenue. Lower is better." />
-          </p>
-          {pending ? (
-            <Skeleton className="mt-1 h-7 w-16" />
-          ) : (
-            <p className="mt-1 text-xl font-bold text-gray-900">
-              {cacPct == null ? "—" : `${Math.round(cacPct)}%`}
-            </p>
-          )}
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <p className="flex items-center gap-1 text-xs text-gray-400">
-            ROI
-            <InfoHint text="Return multiple on spend: expected revenue ÷ total cost. 3× means each $1 spent is expected to return $3." />
-          </p>
-          {pending ? (
-            <Skeleton className="mt-1 h-7 w-16" />
-          ) : (
-            <p className="mt-1 text-xl font-bold text-gray-900">
-              {roiMultiple == null ? "—" : `${roiMultiple.toFixed(1)}×`}
-            </p>
           )}
         </div>
       </div>

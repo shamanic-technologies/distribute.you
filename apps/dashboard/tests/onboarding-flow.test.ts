@@ -53,7 +53,7 @@ describe("Onboarding flow", () => {
 
   it("should create the brand inline and land on it, with no billing/top-up step", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    // No card-capture / auto-topup step at onboarding — it tripped the $2 welcome
+    // No card-capture / auto-topup step at onboarding — it tripped the $5 welcome
     // credit because the brand-new balance sits below the top-up threshold. Card +
     // auto-topup are set up later, on first campaign launch (billing-guard modal).
     expect(content).not.toContain('"billing-setup"');
@@ -90,15 +90,18 @@ describe("Beta onboarding wallet setup", () => {
     expect(content).toContain("Auto-topup is required for the campaign to continue running. You can pause the campaign at any time.");
   });
 
-  it("uses paid top-up checkout and persists auto-topup before launching", () => {
+  it("uses setup checkout then wallet setup so the first-load match is applied", () => {
     expect(content).toContain("createCheckoutSession");
-    expect(content).toContain("topup_amount_cents: initialLoadCents");
-    expect(content).toContain("configureAutoTopup(pending.topupAmountCents, pending.topupThresholdCents)");
+    expect(content).toContain('mode: "setup"');
+    expect(content).toContain("setupBillingWallet");
+    expect(content).toContain("initial_load_amount_cents: pending.initialLoadCents");
+    expect(content).toContain("topup_amount_cents: pending.topupAmountCents");
+    expect(content).toContain("topup_threshold_cents: pending.topupThresholdCents");
     expect(content).toContain("saveBrandDailyBudget");
     expect(content).toContain("featureInputs,");
     expect(content).toContain("createCampaignWithoutBrandEnrichment");
     expect(content).not.toContain('mode: "subscription"');
-    expect(content).not.toContain('mode: "setup"');
+    expect(content).not.toContain("configureAutoTopup(pending.topupAmountCents, pending.topupThresholdCents)");
   });
 
   it("blocks the initial analysis only on service extraction", () => {
@@ -113,7 +116,7 @@ describe("Beta onboarding wallet setup", () => {
     expect(content).toContain('| "launching"');
     expect(content).toContain("LAUNCH_STEPS");
     expect(content).toContain("Confirming wallet payment");
-    expect(content).toContain("Activating auto-topup");
+    expect(content).toContain("Applying wallet match");
     expect(content).toContain("Launching campaign");
     expect(content).toContain("Opening your dashboard");
     expect(content).toContain('setStep("launching")');
@@ -131,6 +134,7 @@ describe("Beta onboarding wallet setup", () => {
 
 describe("Onboarding layout", () => {
   const layoutPath = path.join(__dirname, "../src/app/(authed)/onboarding/layout.tsx");
+  const creditGatePath = path.join(__dirname, "../src/components/onboarding/onboarding-credit-gate.tsx");
 
   it("should have an onboarding layout", () => {
     expect(fs.existsSync(layoutPath)).toBe(true);
@@ -139,5 +143,13 @@ describe("Onboarding layout", () => {
   it("should use QueryProvider", () => {
     const content = fs.readFileSync(layoutPath, "utf-8");
     expect(content).toContain("QueryProvider");
+  });
+
+  it("should initialize welcome credits before rendering onboarding", () => {
+    const layout = fs.readFileSync(layoutPath, "utf-8");
+    const gate = fs.readFileSync(creditGatePath, "utf-8");
+    expect(layout).toContain("OnboardingCreditGate");
+    expect(gate).toContain("getBillingAccount");
+    expect(gate).toContain("Unable to initialize signup credits");
   });
 });

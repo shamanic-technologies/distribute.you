@@ -14,6 +14,7 @@ import {
 } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
+import { DashboardPage } from "@/components/dashboard-page";
 import { BrandSalesEconomicsCard } from "@/components/settings/brand-sales-economics-card";
 import { BrandDailyBudgetCard } from "@/components/settings/brand-daily-budget-card";
 
@@ -69,25 +70,22 @@ export default function BrandSettingsPage() {
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-3xl">
+    <DashboardPage width="narrow">
       <h1 className="text-2xl font-semibold text-gray-900 mb-8">Brand Settings</h1>
 
-      {/* Daily Budget */}
+      {/* Outreach & Budget */}
       <div className="mb-10">
-        <h2 className="text-lg font-semibold text-gray-900 mb-3">Daily Budget</h2>
-        <BrandDailyBudgetCard brandId={brandId} />
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">Outreach & Budget</h2>
+        <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
+          <BrandDailyBudgetCard brandId={brandId} variant="section" />
+          <PauseOutreachCard brandId={brandId} />
+        </div>
       </div>
 
       {/* Sales Economics */}
       <div className="mb-10">
         <h2 className="text-lg font-semibold text-gray-900 mb-3">Sales Economics</h2>
         <BrandSalesEconomicsCard brandId={brandId} />
-      </div>
-
-      {/* Outreach */}
-      <div className="mb-10">
-        <h2 className="text-lg font-semibold text-gray-900 mb-3">Outreach</h2>
-        <PauseOutreachCard brandId={brandId} />
       </div>
 
       {/* Danger Zone */}
@@ -283,7 +281,7 @@ export default function BrandSettingsPage() {
           </div>
         </>
       )}
-    </div>
+    </DashboardPage>
   );
 }
 
@@ -311,17 +309,30 @@ function PauseOutreachCard({ brandId }: { brandId: string }) {
     mutate();
   };
 
+  const statusLabel = isPending ? "Checking" : paused ? "Inactive" : "Active";
+  const statusClass = isPending
+    ? "bg-gray-100 text-gray-600"
+    : paused
+      ? "bg-amber-100 text-amber-800"
+      : "bg-green-100 text-green-700";
+  const statusCopy = isPending
+    ? "Checking your outreach status before changing sending controls."
+    : paused
+      ? "Your outreach is already paused. No new emails go out while inactive, and your daily budget stays saved for when you restart."
+      : "Outreach is active. Sending can continue, but the daily budget above remains the hard cap for this brand.";
+
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="p-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-gray-900">Pause outreach</h3>
-          <p className="text-sm text-gray-500 mt-0.5">
-            {isPending
-              ? "Checking your outreach status…"
-              : paused
-                ? "Your outreach is already paused."
-                : "Stop sending. You can launch again anytime — no email goes out while paused."}
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-sm font-semibold text-gray-900">Outreach status</h3>
+            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusClass}`}>
+              {statusLabel}
+            </span>
+          </div>
+          <p className="mt-1 text-sm text-gray-500">
+            {statusCopy}
           </p>
         </div>
         <button

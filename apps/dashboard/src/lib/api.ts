@@ -1406,6 +1406,104 @@ export interface GlobalStatsResponse {
   groups?: StatsGroup[];
 }
 
+export type PipelineActivityMetricKey = "outreach" | "opens" | "clicks" | "signups";
+
+export interface PipelineActivityMetric {
+  actual: number | null;
+  expected: number | null;
+  conversionPct?: number | null;
+}
+
+export interface PipelineActivityDay {
+  date: string;
+  isToday: boolean;
+  metrics: Record<PipelineActivityMetricKey, PipelineActivityMetric>;
+}
+
+export interface PipelineActivitySummary {
+  dailyBudgetUsd: number | null;
+  openRatePct: number | null;
+  clickToSignupPct: number | null;
+}
+
+export interface PipelineActivityResponse {
+  featureSlug: string;
+  brandId: string;
+  timezone: string;
+  generatedAt: string;
+  days: PipelineActivityDay[];
+  summary: PipelineActivitySummary;
+}
+
+export type FeaturePersonaStatsGoal = "signup" | "meetingBooked" | "purchase";
+export type FeaturePersonaStatsSortMetric = "cpc" | "cppr";
+
+export interface FeaturePersonaStatsRow {
+  customerProfileId: string;
+  brandProfileId: string | null;
+  persona: {
+    id: string;
+    name: string;
+    status: PersonaStatusWire;
+    filters: Record<string, string[]>;
+  };
+  evidence: {
+    totalCostInUsdCents: number;
+    completedRuns: number;
+    firstRunAt: string | null;
+    lastRunAt: string | null;
+    contacted: number;
+    websiteClicks: number;
+    positiveReplies: number;
+  };
+  metrics: {
+    cpcCents: number | null;
+    cpprCents: number | null;
+  };
+}
+
+export interface FeaturePersonaStatsResponse {
+  featureSlug: string;
+  brandId: string;
+  goal: FeaturePersonaStatsGoal;
+  brandProfileId: string | null;
+  sortMetric: FeaturePersonaStatsSortMetric;
+  personas: FeaturePersonaStatsRow[];
+}
+
+const FeaturePersonaStatsRowSchema = z.object({
+  customerProfileId: z.string(),
+  brandProfileId: z.string().nullable(),
+  persona: z.object({
+    id: z.string(),
+    name: z.string(),
+    status: z.union([z.literal("active"), z.literal("paused"), z.literal("archived")]),
+    filters: z.record(z.string(), z.array(z.string())),
+  }),
+  evidence: z.object({
+    totalCostInUsdCents: z.number(),
+    completedRuns: z.number(),
+    firstRunAt: z.string().nullable(),
+    lastRunAt: z.string().nullable(),
+    contacted: z.number(),
+    websiteClicks: z.number(),
+    positiveReplies: z.number(),
+  }),
+  metrics: z.object({
+    cpcCents: z.number().nullable(),
+    cpprCents: z.number().nullable(),
+  }),
+});
+
+const FeaturePersonaStatsResponseSchema = z.object({
+  featureSlug: z.string(),
+  brandId: z.string(),
+  goal: z.union([z.literal("signup"), z.literal("meetingBooked"), z.literal("purchase")]),
+  brandProfileId: z.string().nullable(),
+  sortMetric: z.union([z.literal("cpc"), z.literal("cppr")]),
+  personas: z.array(FeaturePersonaStatsRowSchema),
+});
+
 /** GET /features — list all features */
 export async function listFeatures(
   params?: { implemented?: boolean },
@@ -1459,6 +1557,27 @@ export async function fetchFeatureStats(
   return apiCall<FeatureStatsResponse>(`/features/${featureSlug}/stats${qs ? `?${qs}` : ""}`, { token });
 }
 
+/** GET /features/:featureSlug/persona-stats — real persona-level cost/outcome evidence. */
+export async function fetchFeaturePersonaStats(
+  featureSlug: string,
+  params: { brandId: string; goal: FeaturePersonaStatsGoal; brandProfileId?: string; limit?: number },
+  token?: string,
+): Promise<FeaturePersonaStatsResponse> {
+  const query = new URLSearchParams({ brandId: params.brandId, goal: params.goal });
+  if (params.brandProfileId) query.set("brandProfileId", params.brandProfileId);
+  if (params.limit !== undefined) query.set("limit", String(params.limit));
+  const raw = await apiCall<unknown>(`/features/${featureSlug}/persona-stats?${query.toString()}`, { token });
+  const parsed = FeaturePersonaStatsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] fetchFeaturePersonaStats: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] fetchFeaturePersonaStats: invalid response shape");
+  }
+  return parsed.data;
+}
+
 /** GET /features/stats — global stats cross-features */
 export async function fetchGlobalStats(
   params?: { groupBy?: string; brandId?: string },
@@ -1486,6 +1605,60 @@ export async function getFeatureRevenue(
   if (campaignId) query.set("campaignId", campaignId);
   const raw = await apiCall<unknown>(`/features/${featureSlug}/revenue?${query.toString()}`, { token });
   return parseFeatureRevenue(raw, "getFeatureRevenue");
+}
+
+const PipelineActivityMetricSchema = z.object({
+  actual: z.number().nullable(),
+  expected: z.number().nullable(),
+  conversionPct: z.number().nullable().optional(),
+});
+
+const PipelineActivityResponseSchema = z.object({
+  featureSlug: z.string(),
+  brandId: z.string(),
+  timezone: z.string(),
+  generatedAt: z.string(),
+  days: z.array(
+    z.object({
+      date: z.string(),
+      isToday: z.boolean(),
+      metrics: z.object({
+        outreach: PipelineActivityMetricSchema,
+        opens: PipelineActivityMetricSchema,
+        clicks: PipelineActivityMetricSchema,
+        signups: PipelineActivityMetricSchema,
+      }),
+    }),
+  ),
+  summary: z.object({
+    dailyBudgetUsd: z.number().nullable(),
+    openRatePct: z.number().nullable(),
+    clickToSignupPct: z.number().nullable(),
+  }),
+});
+
+/** GET /features/:slug/pipeline-activity — 7-day actual + expected funnel activity. */
+export async function getFeaturePipelineActivity(
+  featureSlug: string,
+  params: { brandId: string; days?: number; timezone?: string },
+  token?: string,
+): Promise<PipelineActivityResponse> {
+  const query = new URLSearchParams({ brandId: params.brandId });
+  if (params.days != null) query.set("days", String(params.days));
+  if (params.timezone) query.set("timezone", params.timezone);
+  const raw = await apiCall<unknown>(
+    `/features/${encodeURIComponent(featureSlug)}/pipeline-activity?${query.toString()}`,
+    { token },
+  );
+  const parsed = PipelineActivityResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getFeaturePipelineActivity: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getFeaturePipelineActivity: invalid response shape");
+  }
+  return parsed.data;
 }
 
 /** POST /brands — upsert brand by URL, returns brandId */
@@ -2434,7 +2607,10 @@ export async function createCampaignWithoutBrandEnrichment(
 // Billing — wire shape per billing-service post-rename hotfix.
 // `*_cents` string fields are full-precision decimal strings (e.g. "100.4200000000").
 // Use parseFloat for math; never Number().
-// `balance_cents` = spendable funds (credited minus usage); use it for depletion and budget checks.
+// `balance_cents` = spendable funds (credited minus usage incl. provisioned holds);
+// use it for depletion and budget checks.
+// `actual_balance_cents` = credited minus actualized usage only; use it for the
+// user-facing Credit Balance display when billing-service exposes it.
 // `credited_cents` = lifetime credited (paid topups + local promos); display-only for "total credited".
 // `topup_amount_cents` and `topup_threshold_cents` are integers in cents (or null).
 // Live spec: https://billing.distribute.you/openapi.json
@@ -2444,6 +2620,7 @@ export interface BillingAccount {
   credited_cents: string;
   usage_cents: string;
   balance_cents: string;
+  actual_balance_cents?: string;
   topup_amount_cents: number | null;
   topup_threshold_cents: number | null;
   has_payment_method: boolean;
@@ -2461,6 +2638,14 @@ export interface CheckoutSession {
   url: string;
   session_id: string;
 }
+
+export type WalletSetupResult = BillingAccount & {
+  initial_load_amount_cents: number;
+  initial_load_payment_intent_id: string;
+  first_load_match_applied: boolean;
+  first_load_match_cents: string;
+  first_load_match_local_promo_id: string | null;
+};
 
 export async function getBillingAccount(token?: string): Promise<BillingAccount> {
   return apiCall<BillingAccount>("/billing/accounts", { token });
@@ -2485,13 +2670,30 @@ export async function disableAutoTopup(token?: string): Promise<BillingAccount> 
 }
 
 export async function createCheckoutSession(
-  params: { topup_amount_cents: number; success_url: string; cancel_url: string },
+  params:
+    | { topup_amount_cents: number; mode?: "payment"; success_url: string; cancel_url: string }
+    | { mode: "setup"; success_url: string; cancel_url: string },
   token?: string
 ): Promise<CheckoutSession> {
   return apiCall<CheckoutSession>("/billing/checkout-sessions", {
     token,
     method: "POST",
     body: params as unknown as Record<string, unknown>,
+  });
+}
+
+export async function setupBillingWallet(
+  params: {
+    initial_load_amount_cents: number;
+    topup_amount_cents: number;
+    topup_threshold_cents: number;
+  },
+  token?: string
+): Promise<WalletSetupResult> {
+  return apiCall<WalletSetupResult>("/billing/accounts/wallet_setup", {
+    token,
+    method: "POST",
+    body: params,
   });
 }
 

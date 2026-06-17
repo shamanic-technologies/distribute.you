@@ -7,6 +7,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { listBrands } from "@/lib/api";
 import { hasExplicitHierarchyIntent, resolveLandingBrand } from "@/lib/last-brand";
 import { BrandLogo } from "@/components/brand-logo";
+import { DashboardPage } from "@/components/dashboard-page";
 import { pollOptions } from "@/lib/query-options";
 
 export default function OrgOverviewPage() {
@@ -48,7 +49,7 @@ export default function OrgOverviewPage() {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto">
+    <DashboardPage width="wide">
       <h1 className="text-2xl font-semibold text-gray-900 mb-6">Overview</h1>
 
       {/* Brands Summary */}
@@ -84,6 +85,6 @@ export default function OrgOverviewPage() {
           </div>
         )}
       </div>
-    </div>
+    </DashboardPage>
   );
 }

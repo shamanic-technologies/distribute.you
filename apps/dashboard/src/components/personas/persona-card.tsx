@@ -124,7 +124,7 @@ function personaInitials(name: string): string {
   return words.slice(0, 2).map((w) => w[0]?.toUpperCase()).join("");
 }
 
-function PersonaAvatar({
+export function PersonaAvatar({
   name,
   avatarUrl,
   onRegenerate,
@@ -152,7 +152,10 @@ function PersonaAvatar({
       {onRegenerate && (
         <button
           type="button"
-          onClick={onRegenerate}
+          onClick={(event) => {
+            event.stopPropagation();
+            onRegenerate();
+          }}
           disabled={regenerating}
           aria-label={`Regenerate ${name || "persona"} avatar`}
           title="Regenerate avatar"

@@ -20,6 +20,7 @@ import {
 } from "@/lib/api";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 import { pollOptions } from "@/lib/query-options";
+import { DashboardPage } from "@/components/dashboard-page";
 
 /** Providers that should always appear in the BYOK section, even if no workflow requires them yet. */
 const ALWAYS_VISIBLE_PROVIDERS = ["serper-dev"] as const;
@@ -229,7 +230,7 @@ export default function OrgApiKeysPage() {
   ]);
 
   return (
-    <div className="p-4 md:p-8">
+    <DashboardPage width="wide">
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-gray-800">Keys</h1>
         <p className="text-gray-600">Manage API and provider keys for this organization.</p>
@@ -512,6 +513,6 @@ const client = new DistributeClient({
           </div>
         )}
       </div>
-    </div>
+    </DashboardPage>
   );
 }

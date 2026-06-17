@@ -1,16 +1,27 @@
 "use client";
 
+import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getBrand, getFeatureRevenue, getBrandCostBreakdown, fetchFeatureStats, getBrandSalesEconomics } from "@/lib/api";
+import {
+  getBrand,
+  getFeatureRevenue,
+  getBrandCostBreakdown,
+  fetchFeatureStats,
+  getBrandSalesEconomics,
+  getFeaturePipelineActivity,
+  fetchFeaturePersonaStats,
+} from "@/lib/api";
 import { pollOptions, pollOptionsSlow } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
+import { TopPersonasCard } from "@/components/revenue/top-personas-card";
 import { BrandStatusControl } from "@/components/brand/brand-status-control";
+import { DashboardPage } from "@/components/dashboard-page";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 
 /**
@@ -27,6 +38,13 @@ export default function BrandOverviewPage() {
   const brandId = params.brandId as string;
   const featureSlug = useSoleFeatureSlug();
   const enabled = isRevenueFeature(featureSlug);
+  const timezone = useMemo(() => {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    } catch {
+      return "UTC";
+    }
+  }, []);
 
   // isPending (not isLoading): a query suspended by the org-consistency gate
   // reports isLoading:false while still unresolved, which would flash "Brand
@@ -42,6 +60,12 @@ export default function BrandOverviewPage() {
     ["featureRevenue", brandId, featureSlug],
     () => getFeatureRevenue(featureSlug, brandId),
     { enabled, ...pollOptionsSlow },
+  );
+
+  const { data: pipelineActivity } = useAuthQuery(
+    ["featurePipelineActivity", brandId, featureSlug, timezone],
+    () => getFeaturePipelineActivity(featureSlug, { brandId, days: 7, timezone }),
+    { enabled, ...pollOptions },
   );
 
   // Cost breakdown (runs-service) → total spend + top-3 provider sources for the
@@ -71,20 +95,36 @@ export default function BrandOverviewPage() {
   );
   const optimizationGoal =
     economicsData?.salesEconomics?.optimizationGoal ?? "sales_meetings";
+  const personaStatsGoal = optimizationGoal === "signups" ? "signup" : "meetingBooked";
+  const personaStatsMetric = personaStatsGoal === "signup" ? "cpc" : "cppr";
+
+  // Real persona-level cost evidence from features-service. This replaces the
+  // old provider-cost-source list; no dashboard-side mock/hash persona split.
+  const { data: personaStatsData } = useAuthQuery(
+    ["featurePersonaStats", featureSlug, brandId, personaStatsGoal],
+    () => fetchFeaturePersonaStats(featureSlug, {
+      brandId,
+      goal: personaStatsGoal,
+      limit: 3,
+    }),
+    { enabled, ...pollOptions },
+  );
 
   // Per-card reveal (NOT one page-wide barrier): revenue (features-service) and
   // total-spend (runs-service) are two different cold chains — gate each on its
   // own query so the fast cost card isn't held by the slower revenue call.
   const revenueRevealed = useCoordinatedReveal([data !== undefined]);
+  const activityRevealed = useCoordinatedReveal([pipelineActivity !== undefined]);
   const costRevealed = useCoordinatedReveal([costData !== undefined]);
   const statsRevealed = useCoordinatedReveal([featureStatsData !== undefined]);
+  const personaStatsRevealed = useCoordinatedReveal([personaStatsData !== undefined]);
 
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
 
   if (!brandLoading && !brand) {
     // Reached e.g. via a stale last-brand cookie pointing at a deleted brand.
     return (
-      <div className="p-4 md:p-8">
+      <DashboardPage width="wide">
         <p className="text-gray-500 mb-3">Brand not found</p>
         <Link
           href={`/orgs/${orgId}/brands`}
@@ -92,41 +132,50 @@ export default function BrandOverviewPage() {
         >
           ← Back to brands
         </Link>
-      </div>
+      </DashboardPage>
     );
   }
 
   if (!enabled) {
     return (
-      <div className="p-4 md:p-8 max-w-7xl mx-auto">
+      <DashboardPage width="wide">
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-sm text-gray-400">
           This view isn&apos;t available yet.
         </div>
-      </div>
+      </DashboardPage>
     );
   }
 
   // Only once revenue resolves do we know the brand has no pipeline yet.
   if (revenueRevealed && data && data.totalPipelineUsd === null) {
     return (
-      <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-4">
+      <DashboardPage width="wide" className="space-y-4">
         <BrandStatusControl brandId={brandId} />
         <RevenueEmptyState />
-      </div>
+      </DashboardPage>
     );
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-4">
+    <DashboardPage width="wide" className="space-y-4">
       <RevenueOverviewSection
         data={revenueRevealed ? data : undefined}
+        pipelineActivity={activityRevealed ? pipelineActivity : undefined}
         revenuePending={!revenueRevealed}
+        activityPending={!activityRevealed}
         costPending={!costRevealed}
         costBreakdown={costData?.costs ?? []}
         brandId={brandId}
         featureSlug={featureSlug}
         basePath={basePath}
         headerAction={<BrandStatusControl brandId={brandId} />}
+        costBottomCard={
+          <TopPersonasCard
+            data={personaStatsRevealed ? personaStatsData : undefined}
+            pending={!personaStatsRevealed}
+            metric={personaStatsMetric}
+          />
+        }
         topRow={
           /* Outreach stat cards (GA + beta) — under the "Revenue & Conversions"
              header, directly above the Pipeline-revenue hero. Goal-specific copy
@@ -139,6 +188,6 @@ export default function BrandOverviewPage() {
           />
         }
       />
-    </div>
+    </DashboardPage>
   );
 }

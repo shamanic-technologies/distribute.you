@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrand, extractBrandFields, listExtractedFields, SALES_PROFILE_FIELDS, listBrandRuns, type BrandRun, type RunCost } from "@/lib/api";
 import { pollOptions } from "@/lib/query-options";
+import { DashboardPage } from "@/components/dashboard-page";
 
 /** Check if a field value has meaningful content */
 function hasContent(value: unknown): boolean {
@@ -165,30 +166,30 @@ export default function BrandInfoPage() {
 
   if (brandLoading || fieldsLoading) {
     return (
-      <div className="p-4 md:p-8">
+      <DashboardPage width="standard">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-gray-200 rounded w-48"></div>
           <div className="h-64 bg-gray-200 rounded"></div>
         </div>
-      </div>
+      </DashboardPage>
     );
   }
 
   if (!brand) {
     return (
-      <div className="p-4 md:p-8">
+      <DashboardPage width="standard">
         <p className="text-gray-500">Brand not found</p>
-      </div>
+      </DashboardPage>
     );
   }
 
   if (error) {
     return (
-      <div className="p-4 md:p-8">
+      <DashboardPage width="standard">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <p className="text-red-600">Error: {error}</p>
         </div>
-      </div>
+      </DashboardPage>
     );
   }
 
@@ -204,7 +205,7 @@ export default function BrandInfoPage() {
   );
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto">
+    <DashboardPage width="standard">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-semibold text-gray-900">Brand Info</h1>
         <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:gap-4">
@@ -519,6 +520,6 @@ export default function BrandInfoPage() {
           </div>
         </>
       )}
-    </div>
+    </DashboardPage>
   );
 }

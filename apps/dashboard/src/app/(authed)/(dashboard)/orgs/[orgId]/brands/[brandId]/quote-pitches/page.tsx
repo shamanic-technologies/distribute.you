@@ -13,6 +13,7 @@ import {
 } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
+import { DashboardPage } from "@/components/dashboard-page";
 
 const STATUS_STYLES: Record<QuotePitchStatus, string> = {
   drafted: "bg-gray-100 text-gray-700 border-gray-200",
@@ -89,7 +90,7 @@ export default function FeatureQuotePitchesPage() {
   }, [brandPitches, search]);
 
   return (
-    <div className="p-4 md:p-8" data-testid="feature-quote-pitches-page">
+    <DashboardPage width="wide" data-testid="feature-quote-pitches-page">
       <OutreachStatCardsAuto />
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
@@ -137,7 +138,7 @@ export default function FeatureQuotePitchesPage() {
           ))}
         </div>
       )}
-    </div>
+    </DashboardPage>
   );
 }
 

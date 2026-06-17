@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { SparklesIcon } from "@heroicons/react/20/solid";
@@ -8,27 +8,68 @@ import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { MaturityBadge } from "@/components/maturity-badge";
+import { DashboardPage } from "@/components/dashboard-page";
 import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
 import { listPersonas, createPersona, setPersonaStatus, regeneratePersonaAvatar } from "@/lib/api";
 import {
   type Filters,
   type Persona,
+  personaMockCost,
 } from "@/lib/mock-personas";
-import { PersonaCard, capWords, PlusIcon } from "./persona-card";
+import { PersonaAvatar, PersonaCard, capWords, PlusIcon } from "./persona-card";
 
 /**
- * Customer Personas — PURE-UI MOCKUP (beta).
+ * Customer Personas (beta).
  *
- * Apollo-style targeting cards: each persona is a short name (≤4 words) plus a
- * set of B2B targeting filters (industry, headcount, revenue, location, …) shown
- * as deletable / addable chips. Create / edit / delete are all client-side state
- * — there is NO backend wiring. A refresh resets to the seeded examples. This is
- * a first visual draft; the data layer comes later.
+ * Personas are listed as a stats table. Selecting a row opens the existing
+ * Apollo-style targeting editor in a right panel, so lifecycle and edit behavior
+ * stay in one component.
  */
 
 let idCounter = 0;
 const nextId = () => `persona-${++idCounter}`;
+
+function formatCount(n: number): string {
+  return n.toLocaleString("en-US");
+}
+
+function formatUsd(n: number): string {
+  if (n > 0 && Math.round(n) === 0) return "<$1";
+  return `$${Math.round(n).toLocaleString("en-US")}`;
+}
+
+function formatUsdDecimal(n: number): string {
+  return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function totalFilters(persona: Persona): number {
+  return Object.values(persona.filters).reduce((sum, values) => sum + (values?.length ?? 0), 0);
+}
+
+function statusPill(persona: Persona) {
+  if (persona.unsaved) {
+    return {
+      label: "Draft",
+      className: "border-brand-200 bg-brand-50 text-brand-600",
+    };
+  }
+  if (persona.status === "paused") {
+    return {
+      label: "Paused",
+      className: "border-amber-200 bg-amber-50 text-amber-700",
+    };
+  }
+  if (persona.status === "archived") {
+    return {
+      label: "Archived",
+      className: "border-gray-200 bg-gray-100 text-gray-500",
+    };
+  }
+  return {
+    label: "Active",
+    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  };
+}
 
 export function CustomerPersonasPage() {
   const featureSlug = useSoleFeatureSlug();
@@ -44,6 +85,7 @@ export function CustomerPersonasPage() {
   const [drafts, setDrafts] = useState<Persona[]>([]);
   const [tab, setTab] = useState<"active" | "archived">("active");
   const [aiOpen, setAiOpen] = useState(false);
+  const [selectedPersonaId, setSelectedPersonaId] = useState<string | null>(null);
 
   const { data, isPending } = useAuthQuery(["personas", brandId], () => listPersonas(brandId));
 
@@ -66,16 +108,6 @@ export function CustomerPersonasPage() {
     onSuccess: invalidate,
   });
 
-  if (!isBeta || !revenueOk) {
-    return (
-      <div className="p-4 md:p-8 max-w-7xl mx-auto">
-        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-sm text-gray-400">
-          This view isn&apos;t available yet.
-        </div>
-      </div>
-    );
-  }
-
   const serverPersonas: Persona[] = (data?.personas ?? []).map((p) => ({
     id: p.id,
     name: p.name,
@@ -85,12 +117,20 @@ export function CustomerPersonasPage() {
   }));
   // Drafts first (top of the list), then persisted personas.
   const personas: Persona[] = [...drafts, ...serverPersonas];
+  const selectedPersona = selectedPersonaId
+    ? personas.find((p) => p.id === selectedPersonaId) ?? null
+    : null;
+
+  useEffect(() => {
+    if (selectedPersonaId && !selectedPersona) setSelectedPersonaId(null);
+  }, [selectedPersonaId, selectedPersona]);
 
   // A brand-new persona starts as an UNSAVED draft card — Saved (POST) or
   // Cancelled away before it's ever persisted.
   const addPersona = (name = "New Persona") => {
     const created = { id: nextId(), name: uniqueName(capWords(name)), filters: {}, status: "active" as const, unsaved: true };
     setDrafts((prev) => [created, ...prev]);
+    setSelectedPersonaId(created.id);
     return created;
   };
 
@@ -126,29 +166,38 @@ export function CustomerPersonasPage() {
   const saveAsNew = (name: string, filters: Filters) =>
     createMut.mutate({ name: capWords(name), filters });
 
+  if (!isBeta || !revenueOk) {
+    return (
+      <DashboardPage width="wide">
+        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-sm text-gray-400">
+          This view isn&apos;t available yet.
+        </div>
+      </DashboardPage>
+    );
+  }
+
   if (isPending && personas.length === 0) {
     return (
-      <div className="p-4 md:p-8 max-w-7xl mx-auto">
+      <DashboardPage width="wide">
         <div className="animate-pulse space-y-4">
           <div className="h-7 w-48 bg-gray-200 rounded" />
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            {[0, 1].map((i) => (
-              <div key={i} className="h-56 bg-gray-100 rounded-xl" />
+          <div className="rounded-xl border border-gray-200 bg-white p-4">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <div key={i} className="mb-3 h-9 rounded bg-gray-100 last:mb-0" />
             ))}
           </div>
         </div>
-      </div>
+      </DashboardPage>
     );
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
+    <DashboardPage width="wide" className="space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-semibold text-gray-900">Customer Personas</h1>
-            <MaturityBadge level="beta" />
           </div>
           <p className="text-sm text-gray-500 mt-1">
             Define who you sell to. Each persona is a set of Apollo-style targeting
@@ -194,7 +243,7 @@ export function CustomerPersonasPage() {
         })}
       </div>
 
-      {/* Cards grid */}
+      {/* Personas table */}
       {(() => {
         const visible = personas.filter((p) =>
           tab === "archived" ? p.status === "archived" : p.status !== "archived",
@@ -218,23 +267,104 @@ export function CustomerPersonasPage() {
           );
         }
         return (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            {visible.map((persona) => (
-              <PersonaCard
-                key={persona.id}
-                persona={persona}
-                onSaveAsNew={(name, filters) => saveAsNew(name, filters)}
-                onCommitNew={(name, filters) => commitNew(persona.id, name, filters)}
-                onCancelNew={() => removePersona(persona.id)}
-                onSetStatus={(s) => setStatus(persona.id, s)}
-                onRegenerateAvatar={!persona.unsaved ? () => regenerateAvatar(persona.id) : undefined}
-                regeneratingAvatar={avatarRegenerating && regeneratingAvatarId === persona.id}
-                checkNameTaken={(n) => isNameTaken(n, persona.unsaved ? persona.id : undefined)}
-              />
-            ))}
+          <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+            <table className="min-w-[920px] w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
+                  <th className="px-4 py-3 font-medium">Persona</th>
+                  <th className="px-4 py-3 text-right font-medium">Clicks</th>
+                  <th className="px-4 py-3 text-right font-medium">Cost per click</th>
+                  <th className="px-4 py-3 text-right font-medium">Signups</th>
+                  <th className="px-4 py-3 text-right font-medium">Cost per signup</th>
+                  <th className="px-4 py-3 text-right font-medium">Expected revenue</th>
+                  <th className="px-4 py-3 text-right font-medium">Filters</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visible.map((persona) => {
+                  const stats = personaMockCost(persona.id);
+                  const pill = statusPill(persona);
+                  const selected = selectedPersonaId === persona.id;
+                  const filterCount = totalFilters(persona);
+                  return (
+                    <tr
+                      key={persona.id}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Open ${persona.name || "Untitled"} persona details`}
+                      onClick={() => setSelectedPersonaId(persona.id)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          setSelectedPersonaId(persona.id);
+                        }
+                      }}
+                      className={`cursor-pointer border-t border-gray-100 transition hover:bg-gray-50/70 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-300 ${
+                        selected ? "bg-brand-50/60" : ""
+                      }`}
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <PersonaAvatar
+                            name={persona.name}
+                            avatarUrl={persona.avatarUrl}
+                            onRegenerate={!persona.unsaved ? () => regenerateAvatar(persona.id) : undefined}
+                            regenerating={avatarRegenerating && regeneratingAvatarId === persona.id}
+                          />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-gray-900">{persona.name || "Untitled"}</p>
+                              <span className={`rounded-full border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide ${pill.className}`}>
+                                {pill.label}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-xs text-gray-400">
+                              {filterCount} {filterCount === 1 ? "targeting filter" : "targeting filters"}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium text-gray-800">{formatCount(stats.clicks)}</td>
+                      <td className="px-4 py-3 text-right text-gray-600">{formatUsdDecimal(stats.cpcUsd)}</td>
+                      <td className="px-4 py-3 text-right font-medium text-gray-800">{formatCount(stats.signups)}</td>
+                      <td className="px-4 py-3 text-right text-gray-600">{formatUsdDecimal(stats.costPerSignupUsd)}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-gray-900">{formatUsd(stats.expectedRevenueUsd)}</td>
+                      <td className="px-4 py-3 text-right text-gray-500">{filterCount}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         );
       })()}
+
+      <PersonaDetailPanel
+        persona={selectedPersona}
+        onClose={() => setSelectedPersonaId(null)}
+        onSaveAsNew={(name, filters) => saveAsNew(name, filters)}
+        onCommitNew={(name, filters) => {
+          if (!selectedPersona) return;
+          commitNew(selectedPersona.id, name, filters);
+          setSelectedPersonaId(null);
+        }}
+        onCancelNew={() => {
+          if (!selectedPersona) return;
+          removePersona(selectedPersona.id);
+          setSelectedPersonaId(null);
+        }}
+        onSetStatus={(status) => {
+          if (!selectedPersona) return;
+          setStatus(selectedPersona.id, status);
+        }}
+        onRegenerateAvatar={
+          selectedPersona && !selectedPersona.unsaved ? () => regenerateAvatar(selectedPersona.id) : undefined
+        }
+        regeneratingAvatar={Boolean(
+          selectedPersona && avatarRegenerating && regeneratingAvatarId === selectedPersona.id,
+        )}
+        checkNameTaken={(name) => isNameTaken(name, selectedPersona?.unsaved ? selectedPersona.id : undefined)}
+      />
 
       <EditWithAIChat
         open={aiOpen}
@@ -258,6 +388,94 @@ export function CustomerPersonasPage() {
         }}
         invalidateKeys={[["personas", brandId]]}
       />
+    </DashboardPage>
+  );
+}
+
+function PersonaDetailPanel({
+  persona,
+  onClose,
+  onSaveAsNew,
+  onCommitNew,
+  onCancelNew,
+  onSetStatus,
+  onRegenerateAvatar,
+  regeneratingAvatar,
+  checkNameTaken,
+}: {
+  persona: Persona | null;
+  onClose: () => void;
+  onSaveAsNew: (name: string, filters: Filters) => void;
+  onCommitNew: (name: string, filters: Filters) => void;
+  onCancelNew: () => void;
+  onSetStatus: (status: Persona["status"]) => void;
+  onRegenerateAvatar?: () => void;
+  regeneratingAvatar?: boolean;
+  checkNameTaken: (name: string) => boolean;
+}) {
+  useEffect(() => {
+    if (!persona) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [persona, onClose]);
+
+  if (!persona) return null;
+
+  const stats = personaMockCost(persona.id);
+  return (
+    <div className="fixed inset-0 z-[90]" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-gray-900/30" onClick={onClose} />
+      <aside className="absolute right-0 top-0 h-full w-full max-w-xl overflow-y-auto border-l border-gray-200 bg-gray-50 shadow-xl">
+        <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-gray-200 bg-white px-5 py-4">
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Persona details</p>
+            <h2 className="mt-1 truncate text-base font-semibold text-gray-900">{persona.name || "Untitled"}</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="shrink-0 rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="space-y-4 p-4 md:p-5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+            <PersonaStat label="Clicks" value={formatCount(stats.clicks)} />
+            <PersonaStat label="Cost per click" value={formatUsdDecimal(stats.cpcUsd)} />
+            <PersonaStat label="Signups" value={formatCount(stats.signups)} />
+            <PersonaStat label="Cost per signup" value={formatUsdDecimal(stats.costPerSignupUsd)} />
+            <PersonaStat label="Expected revenue" value={formatUsd(stats.expectedRevenueUsd)} />
+          </div>
+          <PersonaCard
+            key={persona.id}
+            persona={persona}
+            onSaveAsNew={onSaveAsNew}
+            onCommitNew={onCommitNew}
+            onCancelNew={onCancelNew}
+            onSetStatus={onSetStatus}
+            onRegenerateAvatar={onRegenerateAvatar}
+            regeneratingAvatar={regeneratingAvatar}
+            checkNameTaken={checkNameTaken}
+          />
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function PersonaStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white p-3">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">{label}</p>
+      <p className="mt-1 text-sm font-semibold text-gray-900">{value}</p>
     </div>
   );
 }

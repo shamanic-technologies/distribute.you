@@ -1,11 +1,11 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { RevenueChart } from "@/components/revenue/revenue-chart";
+import { PipelineActivityChart } from "@/components/revenue/pipeline-activity-chart";
 import { ConversionsTabs } from "@/components/revenue/conversions-tabs";
 import { RevenueCostSummary } from "@/components/revenue/revenue-cost-summary";
 import { Skeleton } from "@/components/skeleton";
-import type { CostByName } from "@/lib/api";
+import type { CostByName, PipelineActivityResponse } from "@/lib/api";
 import type { RevenueOverview } from "@/lib/revenue-view";
 
 function formatUsd(n: number | null): string {
@@ -14,7 +14,7 @@ function formatUsd(n: number | null): string {
 }
 
 /**
- * Revenue-centric overview block — expected pipeline headline, revenue-over-time
+ * Revenue-centric overview block — expected pipeline headline, 7-day activity
  * chart, and the Organizations / Leads / Events conversion tabs (same set as the
  * dedicated Conversions page; each table paginates 20/page). Pure render — the
  * page owns the gate + query.
@@ -27,12 +27,16 @@ export function RevenueOverviewSection({
   basePath,
   headerAction,
   topRow,
+  pipelineActivity,
+  costBottomCard,
   revenuePending = false,
+  activityPending = false,
   costPending = false,
   hideHeader = false,
   conversions,
 }: {
   data?: RevenueOverview;
+  pipelineActivity?: PipelineActivityResponse;
   costBreakdown: CostByName[];
   brandId: string;
   featureSlug: string;
@@ -42,8 +46,12 @@ export function RevenueOverviewSection({
   headerAction?: ReactNode;
   /** Optional row rendered under the header, above the Pipeline-revenue hero. */
   topRow?: ReactNode;
-  /** features-service `/revenue` reveal — headline, chart, CAC/ROI, conversions. */
+  /** Optional bottom card rendered under the cost-efficiency stat cards. */
+  costBottomCard?: ReactNode;
+  /** features-service `/revenue` reveal — headline and conversions. */
   revenuePending?: boolean;
+  /** features-service pipeline-activity reveal — 7-day actual/expected chart. */
+  activityPending?: boolean;
   /** runs-service cost-breakdown reveal — the Total-spent figure only. */
   costPending?: boolean;
   /** Hide the "Revenue & Conversions" header (the Signups page provides its own
@@ -59,6 +67,7 @@ export function RevenueOverviewSection({
   // drives every region fed by features-service `/revenue`; the Total-spent figure
   // (runs-service) reveals on its own `costPending` so it never waits on revenue.
   const revenueLoading = revenuePending || !data;
+  const activityLoading = activityPending || !pipelineActivity;
   return (
     <div className="space-y-4">
       {!hideHeader && (
@@ -76,10 +85,10 @@ export function RevenueOverviewSection({
       {topRow}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Headline + chart */}
+        {/* Headline + activity chart */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-4 md:p-6">
           <div className="flex items-baseline justify-between mb-4">
-            <h3 className="font-medium text-gray-800">Pipeline revenue over time</h3>
+            <h3 className="font-medium text-gray-800">Pipeline activity next 7 days</h3>
             <div className="text-right">
               {revenueLoading ? (
                 <Skeleton className="h-8 w-28" />
@@ -91,22 +100,22 @@ export function RevenueOverviewSection({
               <p className="text-[11px] text-gray-400 mt-1">expected pipeline</p>
             </div>
           </div>
-          {revenueLoading ? (
+          {activityLoading ? (
             <Skeleton className="h-[260px] w-full rounded" />
           ) : (
-            <RevenueChart series={data.timeSeries} />
+            <PipelineActivityChart data={pipelineActivity} />
           )}
         </div>
 
-        {/* Cost & efficiency — spend metrics (total / cost-of-acquisition / ROI).
+        {/* Cost summary — actual spend and source breakdown.
             Bottom card defaults to the brand-wide Top-3 cost-source list (the old
             Top-campaigns-by-ROI card was dropped with the campaign concept — there's
             no per-campaign detail page to link to anymore). */}
         <RevenueCostSummary
           costBreakdown={costBreakdown}
-          costEconomics={data?.costEconomics}
           pending={revenueLoading}
           costPending={costPending}
+          bottomCard={costBottomCard}
         />
       </div>
 
