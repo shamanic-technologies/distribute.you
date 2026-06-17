@@ -27,7 +27,11 @@ function formatCostName(name: string): string {
 function formatUsd(usd: number): string {
   if (usd <= 0) return "$0";
   if (usd < 0.01) return "<$0.01";
-  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const fractionDigits = usd < 10 ? 2 : 0;
+  return `$${usd.toLocaleString("en-US", {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  })}`;
 }
 
 function InfoHint({ text }: { text: string }) {

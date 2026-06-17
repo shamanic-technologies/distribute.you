@@ -68,6 +68,7 @@ describe("Brand overview pipeline activity chart", () => {
     expect(page).toContain('objective: optimizationGoal === "signups" ? "self-serve" : "meeting-booked"');
     expect(page).toContain("visits * (visitToSignupPct / 100)");
     expect(page).toContain("activeOutcomeProjection?.meetings");
+    expect(section).toContain("return Math.round(n).toLocaleString");
     expect(page).toContain('"expected signups / month"');
     expect(page).toContain('"expected sales meetings / month"');
   });

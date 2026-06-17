@@ -19,6 +19,16 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain("getWorkflowProjection");
   });
 
+  it("shows sequential setup milestones instead of double-active loading steps", () => {
+    expect(src).toContain("Preparing your workspace");
+    expect(src).toContain("Adding your brand");
+    expect(src).toContain("Extracting your services");
+    expect(src).toContain("setLoadStep(1)");
+    expect(src).toContain("setLoadStep(2)");
+    expect(src).toContain("const isActive = !isDone && i === loadStep");
+    expect(src).not.toContain("loadStep === 1 && i === 2");
+  });
+
   it("welcome step shows value propositions instead of indicative price cards", () => {
     for (const copy of [
       "Drop your URL",
@@ -42,6 +52,9 @@ describe("Beta onboarding guided flow", () => {
   it("asks which services to promote and persists them on the brand profile", () => {
     expect(src).toContain("What services do you want to promote with us?");
     expect(src).toContain("services");
+    expect(src).toContain("normalizeServices");
+    expect(src).toContain("NON_SERVICE_LABELS");
+    expect(src).toContain('"unknown"');
   });
 
   it("offers the two sales goals and prices in the chosen unit", () => {
