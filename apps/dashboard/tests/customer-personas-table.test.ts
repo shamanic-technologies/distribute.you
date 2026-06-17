@@ -8,11 +8,14 @@ describe("Customer personas table", () => {
     "utf-8",
   );
 
-  it("renders personas without fake performance metrics", () => {
+  it("renders personas with real-metric columns and placeholders", () => {
     expect(src).toContain("<table");
-    expect(src).toContain("Targeting filters");
+    for (const header of ["Clicks", "Cost per click", "Signups", "Cost per signup"]) {
+      expect(src).toContain(header);
+    }
+    expect(src).toContain('text-gray-500">-</td>');
     expect(src).not.toContain("personaMockCost");
-    for (const header of ["Clicks", "Cost per click", "Signups", "Cost per signup", "Expected revenue"]) {
+    for (const header of ["Targeting filters", "Expected revenue"]) {
       expect(src).not.toContain(header);
     }
     expect(src).not.toContain('font-medium">Filters');

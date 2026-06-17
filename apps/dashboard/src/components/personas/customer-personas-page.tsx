@@ -25,10 +25,6 @@ import { PersonaAvatar, PersonaCard, capWords, PlusIcon } from "./persona-card";
 let idCounter = 0;
 const nextId = () => `persona-${++idCounter}`;
 
-function totalFilters(persona: Persona): number {
-  return Object.values(persona.filters).reduce((sum, values) => sum + (values?.length ?? 0), 0);
-}
-
 function statusPill(persona: Persona) {
   if (persona.unsaved) {
     return {
@@ -259,18 +255,20 @@ export function CustomerPersonasPage() {
         }
         return (
           <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-            <table className="min-w-[560px] w-full text-sm">
+            <table className="min-w-[760px] w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
                   <th className="px-4 py-3 font-medium">Persona</th>
-                  <th className="px-4 py-3 text-right font-medium">Targeting filters</th>
+                  <th className="px-4 py-3 text-right font-medium">Clicks</th>
+                  <th className="px-4 py-3 text-right font-medium">Cost per click</th>
+                  <th className="px-4 py-3 text-right font-medium">Signups</th>
+                  <th className="px-4 py-3 text-right font-medium">Cost per signup</th>
                 </tr>
               </thead>
               <tbody>
                 {visible.map((persona) => {
                   const pill = statusPill(persona);
                   const selected = selectedPersonaId === persona.id;
-                  const filterCount = totalFilters(persona);
                   return (
                     <tr
                       key={persona.id}
@@ -306,7 +304,10 @@ export function CustomerPersonasPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right font-medium text-gray-800">{filterCount}</td>
+                      <td className="px-4 py-3 text-right font-medium text-gray-500">-</td>
+                      <td className="px-4 py-3 text-right font-medium text-gray-500">-</td>
+                      <td className="px-4 py-3 text-right font-medium text-gray-500">-</td>
+                      <td className="px-4 py-3 text-right font-medium text-gray-500">-</td>
                     </tr>
                   );
                 })}
