@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { SparklesIcon } from "@heroicons/react/20/solid";
@@ -11,11 +11,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { DashboardPage } from "@/components/dashboard-page";
 import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
 import { listPersonas, createPersona, setPersonaStatus, regeneratePersonaAvatar } from "@/lib/api";
-import {
-  type Filters,
-  type Persona,
-  personaMockCost,
-} from "@/lib/mock-personas";
+import { type Filters, type Persona } from "@/lib/mock-personas";
 import { PersonaAvatar, PersonaCard, capWords, PlusIcon } from "./persona-card";
 
 /**
@@ -28,14 +24,6 @@ import { PersonaAvatar, PersonaCard, capWords, PlusIcon } from "./persona-card";
 
 let idCounter = 0;
 const nextId = () => `persona-${++idCounter}`;
-
-function formatCount(n: number): string {
-  return n.toLocaleString("en-US");
-}
-
-function formatUsdDecimal(n: number): string {
-  return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
 
 function totalFilters(persona: Persona): number {
   return Object.values(persona.filters).reduce((sum, values) => sum + (values?.length ?? 0), 0);
@@ -81,6 +69,7 @@ export function CustomerPersonasPage() {
   const [tab, setTab] = useState<"active" | "archived">("active");
   const [aiOpen, setAiOpen] = useState(false);
   const [selectedPersonaId, setSelectedPersonaId] = useState<string | null>(null);
+  const requestedAvatarIds = useRef<Set<string>>(new Set());
 
   const { data, isPending } = useAuthQuery(["personas", brandId], () => listPersonas(brandId));
 
@@ -112,9 +101,16 @@ export function CustomerPersonasPage() {
   }));
   // Drafts first (top of the list), then persisted personas.
   const personas: Persona[] = [...drafts, ...serverPersonas];
+  const missingAvatarId = serverPersonas.find((p) => !p.avatarUrl && !requestedAvatarIds.current.has(p.id))?.id;
   const selectedPersona = selectedPersonaId
     ? personas.find((p) => p.id === selectedPersonaId) ?? null
     : null;
+
+  useEffect(() => {
+    if (!missingAvatarId || avatarRegenerating) return;
+    requestedAvatarIds.current.add(missingAvatarId);
+    regenerateAvatar(missingAvatarId);
+  }, [missingAvatarId, avatarRegenerating, regenerateAvatar]);
 
   useEffect(() => {
     if (selectedPersonaId && !selectedPersona) setSelectedPersonaId(null);
@@ -263,19 +259,15 @@ export function CustomerPersonasPage() {
         }
         return (
           <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-            <table className="min-w-[760px] w-full text-sm">
+            <table className="min-w-[560px] w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
                   <th className="px-4 py-3 font-medium">Persona</th>
-                  <th className="px-4 py-3 text-right font-medium">Clicks</th>
-                  <th className="px-4 py-3 text-right font-medium">Cost per click</th>
-                  <th className="px-4 py-3 text-right font-medium">Signups</th>
-                  <th className="px-4 py-3 text-right font-medium">Cost per signup</th>
+                  <th className="px-4 py-3 text-right font-medium">Targeting filters</th>
                 </tr>
               </thead>
               <tbody>
                 {visible.map((persona) => {
-                  const stats = personaMockCost(persona.id);
                   const pill = statusPill(persona);
                   const selected = selectedPersonaId === persona.id;
                   const filterCount = totalFilters(persona);
@@ -311,16 +303,10 @@ export function CustomerPersonasPage() {
                                 {pill.label}
                               </span>
                             </div>
-                            <p className="mt-1 text-xs text-gray-400">
-                              {filterCount} {filterCount === 1 ? "targeting filter" : "targeting filters"}
-                            </p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right font-medium text-gray-800">{formatCount(stats.clicks)}</td>
-                      <td className="px-4 py-3 text-right text-gray-600">{formatUsdDecimal(stats.cpcUsd)}</td>
-                      <td className="px-4 py-3 text-right font-medium text-gray-800">{formatCount(stats.signups)}</td>
-                      <td className="px-4 py-3 text-right text-gray-600">{formatUsdDecimal(stats.costPerSignupUsd)}</td>
+                      <td className="px-4 py-3 text-right font-medium text-gray-800">{filterCount}</td>
                     </tr>
                   );
                 })}
@@ -415,7 +401,6 @@ function PersonaDetailPanel({
 
   if (!persona) return null;
 
-  const stats = personaMockCost(persona.id);
   return (
     <div className="fixed inset-0 z-[90]" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-gray-900/30" onClick={onClose} />
@@ -438,12 +423,6 @@ function PersonaDetailPanel({
         </div>
 
         <div className="space-y-4 p-4 md:p-5">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <PersonaStat label="Clicks" value={formatCount(stats.clicks)} />
-            <PersonaStat label="Cost per click" value={formatUsdDecimal(stats.cpcUsd)} />
-            <PersonaStat label="Signups" value={formatCount(stats.signups)} />
-            <PersonaStat label="Cost per signup" value={formatUsdDecimal(stats.costPerSignupUsd)} />
-          </div>
           <PersonaCard
             key={persona.id}
             persona={persona}
@@ -457,15 +436,6 @@ function PersonaDetailPanel({
           />
         </div>
       </aside>
-    </div>
-  );
-}
-
-function PersonaStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-gray-200 bg-white p-3">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">{label}</p>
-      <p className="mt-1 text-sm font-semibold text-gray-900">{value}</p>
     </div>
   );
 }
