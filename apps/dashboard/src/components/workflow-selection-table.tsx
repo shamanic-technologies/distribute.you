@@ -43,12 +43,12 @@ export function WorkflowSelectionTable({ featureSlug, onSelect, selectedWorkflow
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
       <div className="px-5 py-3 border-b border-gray-100">
         <h3 className="text-sm font-medium text-gray-700">Available Workflows</h3>
         <p className="text-xs text-gray-400 mt-0.5">Select a workflow variant to use for this feature</p>
       </div>
-      <table className="w-full">
+      <table className="min-w-[520px] w-full">
         <thead>
           <tr className="border-b border-gray-100 text-xs text-gray-500 uppercase tracking-wide">
             <th className="text-left px-5 py-2.5 font-medium">Variant</th>
@@ -72,11 +72,11 @@ export function WorkflowSelectionTable({ featureSlug, onSelect, selectedWorkflow
                 `}
               >
                 <td className="px-5 py-3">
-                  <div className="flex items-center gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
                     {isSelected && (
                       <div className="w-2 h-2 bg-brand-500 rounded-full flex-shrink-0" />
                     )}
-                    <span className={`text-sm font-medium ${isSelected ? "text-brand-700" : "text-gray-900"}`}>
+                    <span className={`min-w-0 truncate text-sm font-medium ${isSelected ? "text-brand-700" : "text-gray-900"}`}>
                       {workflowDisplayName(wf)}
                     </span>
                     {idx === 0 && (
@@ -86,7 +86,7 @@ export function WorkflowSelectionTable({ featureSlug, onSelect, selectedWorkflow
                     )}
                   </div>
                   {wf.description && (
-                    <p className="text-xs text-gray-400 mt-0.5 ml-4">{wf.description}</p>
+                    <p className="ml-4 mt-0.5 truncate text-xs text-gray-400">{wf.description}</p>
                   )}
                 </td>
                 <td className="px-5 py-3 text-sm text-gray-400 text-right">

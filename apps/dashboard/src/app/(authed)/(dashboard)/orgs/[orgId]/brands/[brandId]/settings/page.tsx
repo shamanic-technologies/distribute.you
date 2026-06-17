@@ -94,18 +94,18 @@ export default function BrandSettingsPage() {
       <div>
         <h2 className="text-lg font-semibold text-gray-900 mb-3">Danger Zone</h2>
         <div className="border border-red-300 rounded-lg divide-y divide-red-300">
-          <div className="flex items-center justify-between p-4">
-            <div>
+          <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
               <h3 className="text-sm font-semibold text-gray-900">Transfer brand</h3>
               <p className="text-sm text-gray-500 mt-0.5">
                 Transfer this brand to another organization you are a member of.
               </p>
             </div>
-            <div className="flex items-center gap-3 shrink-0 ml-4">
+            <div className="flex w-full flex-col gap-3 sm:ml-4 sm:w-auto sm:shrink-0 sm:flex-row sm:items-center">
               <select
                 value={selectedOrgId}
                 onChange={(e) => setSelectedOrgId(e.target.value)}
-                className="text-sm border border-gray-300 rounded-md px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                className="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500 sm:w-auto"
               >
                 <option value="">Select organization...</option>
                 {otherOrgs.map((org) => (
@@ -117,7 +117,7 @@ export default function BrandSettingsPage() {
               <button
                 onClick={() => setConfirmOpen(true)}
                 disabled={!selectedOrgId || transferring}
-                className="px-4 py-1.5 text-sm font-medium rounded-md border border-red-600 text-red-600 hover:bg-red-600 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-red-600 transition"
+                className="w-full rounded-md border border-red-600 px-4 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-red-600 sm:w-auto"
               >
                 Transfer
               </button>
@@ -127,9 +127,9 @@ export default function BrandSettingsPage() {
       </div>
 
       {error && (
-        <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-center justify-between">
+        <div className="mt-4 flex flex-col gap-2 rounded-lg border border-red-200 bg-red-50 p-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-red-600">{error}</p>
-          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 text-sm ml-4">
+          <button onClick={() => setError(null)} className="self-start text-sm text-red-400 hover:text-red-600 sm:ml-4">
             Dismiss
           </button>
         </div>
@@ -181,18 +181,18 @@ export default function BrandSettingsPage() {
               <p className="text-sm text-gray-500 mb-6">
                 All campaigns, runs, and associated data will move with the brand. This action cannot be undone.
               </p>
-              <div className="flex justify-end gap-3">
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                 <button
                   onClick={() => setConfirmOpen(false)}
                   disabled={transferring}
-                  className="px-4 py-2 text-sm font-medium rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition"
+                  className="w-full rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50 sm:w-auto"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleTransfer}
                   disabled={transferring}
-                  className="px-4 py-2 text-sm font-medium rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition"
+                  className="w-full rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-50 sm:w-auto"
                 >
                   {transferring ? "Transferring..." : "Transfer brand"}
                 </button>
@@ -237,15 +237,15 @@ export default function BrandSettingsPage() {
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 uppercase tracking-wide">Source Org</p>
-                  <p className="text-sm text-gray-900 font-mono">{selectedTransfer.sourceOrgId}</p>
+                  <p className="break-all font-mono text-sm text-gray-900">{selectedTransfer.sourceOrgId}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 uppercase tracking-wide">Target Org</p>
-                  <p className="text-sm text-gray-900 font-mono">{selectedTransfer.targetOrgId}</p>
+                  <p className="break-all font-mono text-sm text-gray-900">{selectedTransfer.targetOrgId}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 uppercase tracking-wide">Initiated By</p>
-                  <p className="text-sm text-gray-900 font-mono">{selectedTransfer.initiatedByUserId}</p>
+                  <p className="break-all font-mono text-sm text-gray-900">{selectedTransfer.initiatedByUserId}</p>
                 </div>
               </div>
 
@@ -253,8 +253,8 @@ export default function BrandSettingsPage() {
               <div className="space-y-2">
                 {Object.entries(selectedTransfer.serviceResults).map(([service, result]) => (
                   <div key={service} className="border border-gray-200 rounded-lg p-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium text-gray-900">{service}</span>
+                    <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                      <span className="break-all text-sm font-medium text-gray-900">{service}</span>
                       {"error" in result ? (
                         <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">failed</span>
                       ) : "skipped" in result ? (
@@ -269,8 +269,8 @@ export default function BrandSettingsPage() {
                     {"updatedTables" in result && result.updatedTables.length > 0 && (
                       <div className="mt-1.5 space-y-0.5">
                         {result.updatedTables.map((t) => (
-                          <div key={t.tableName} className="flex justify-between text-xs text-gray-600">
-                            <span className="font-mono">{t.tableName}</span>
+                          <div key={t.tableName} className="flex flex-col gap-0.5 text-xs text-gray-600 sm:flex-row sm:justify-between">
+                            <span className="break-all font-mono">{t.tableName}</span>
                             <span>{t.count} row{t.count !== 1 ? "s" : ""}</span>
                           </div>
                         ))}
@@ -313,8 +313,8 @@ function PauseOutreachCard({ brandId }: { brandId: string }) {
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h3 className="text-sm font-semibold text-gray-900">Pause outreach</h3>
           <p className="text-sm text-gray-500 mt-0.5">
             {isPending
@@ -327,7 +327,7 @@ function PauseOutreachCard({ brandId }: { brandId: string }) {
         <button
           onClick={() => setConfirmOpen(true)}
           disabled={paused || saving}
-          className="shrink-0 ml-4 px-4 py-1.5 text-sm font-medium rounded-md border border-red-600 text-red-600 hover:bg-red-600 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-red-600 transition"
+          className="w-full rounded-md border border-red-600 px-4 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-red-600 sm:ml-4 sm:w-auto sm:shrink-0"
         >
           {saving ? "Pausing…" : paused ? "Paused" : "Pause"}
         </button>
@@ -346,18 +346,18 @@ function PauseOutreachCard({ brandId }: { brandId: string }) {
                 We&apos;ll stop sending immediately. Leads already contacted stay in your
                 dashboard, and you can launch again whenever you&apos;re ready.
               </p>
-              <div className="flex justify-end gap-3">
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                 <button
                   onClick={() => setConfirmOpen(false)}
                   disabled={saving}
-                  className="px-4 py-2 text-sm font-medium rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition"
+                  className="w-full rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50 sm:w-auto"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handlePause}
                   disabled={saving}
-                  className="px-4 py-2 text-sm font-medium rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition"
+                  className="w-full rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-50 sm:w-auto"
                 >
                   {saving ? "Pausing…" : "Pause outreach"}
                 </button>
@@ -395,8 +395,8 @@ function TransferList({
               onClick={() => onSelect(t)}
               className="w-full text-left p-4 hover:bg-gray-50 transition"
             >
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
                   <p className="text-sm font-medium text-gray-900">
                     {new Date(t.createdAt).toLocaleDateString("en-US", {
                       year: "numeric",
@@ -410,7 +410,7 @@ function TransferList({
                     {t.sourceOrgId.slice(0, 8)} → {t.targetOrgId.slice(0, 8)}
                   </p>
                 </div>
-                <div className="flex items-center gap-2 text-xs">
+                <div className="flex flex-wrap items-center gap-2 text-xs">
                   {successCount > 0 && (
                     <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-700">
                       {successCount} migrated

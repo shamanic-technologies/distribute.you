@@ -66,7 +66,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       <UserResolver />
       <Header />
       <CreditAlerts />
-      <div className="flex flex-1 overflow-hidden relative">
+      <div className="relative flex min-h-0 flex-1 overflow-hidden">
         {/* Mobile sidebar overlay */}
         {isOpen && (
           <div
@@ -88,7 +88,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
           <ContextSidebar />
         </div>
 
-        <main className="flex-1 overflow-y-auto">
+        <main className="min-w-0 flex-1 overflow-y-auto">
           {showContent ? children : <div className="h-full bg-gray-50" />}
         </main>
       </div>
