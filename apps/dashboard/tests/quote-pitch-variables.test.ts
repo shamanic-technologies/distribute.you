@@ -319,20 +319,6 @@ describe("expert-quote-pitch consumers send the new all-required contract", () =
     expect(apiLib).not.toContain("buildBrandVariableFromInputs");
   });
 
-  it("public-report draft route extracts the brand+expert fields and builds the new contract", () => {
-    const route = read(
-      "../src/app/api/report/[orgId]/[brandId]/[featureSlug]/draft/route.ts",
-    );
-    expect(route).toContain("buildExpertQuotePitchVariables");
-    expect(route).toContain("/brands/extract-fields");
-    expect(route).toContain("expertPhotoUrl");
-    expect(route).toContain("brandHeadquartersLocation");
-    // No legacy contract keys, no removed builders.
-    expect(route).not.toContain("buildQuoteRequestVariable");
-    expect(route).not.toContain("buildAdditionalContextVariable");
-    expect(route).not.toContain("CLIENT_SUPPLIED_VARS");
-  });
-
   it("shared helper no longer exports the legacy builders", () => {
     const helper = read("../src/lib/quote-pitch-variables.ts");
     expect(helper).not.toContain("buildBrandVariableFromInputs");

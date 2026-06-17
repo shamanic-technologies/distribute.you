@@ -13,10 +13,6 @@ const outletPages = {
     __dirname,
     "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/outlets/page.tsx",
   ),
-  campaign: path.resolve(
-    __dirname,
-    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/[id]/outlets/page.tsx",
-  ),
 };
 
 describe("buildOutletCsv helper", () => {

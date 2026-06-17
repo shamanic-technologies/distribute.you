@@ -7,6 +7,7 @@ import { POLL_INTERVAL } from "@/lib/query-options";
 import { listBrandEmails, type Email } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 import { EmailSignature } from "@/components/email-signature";
+import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
 
 function getEmailBody(email: Email): { html: string | null; text: string | null } {
   if (email.bodyHtml || email.bodyText) {
@@ -129,6 +130,7 @@ export default function FeatureEmailsPage() {
     <div className="flex flex-col md:flex-row h-full relative">
       {/* Email List */}
       <div className={`${selectedEmail ? 'hidden md:block md:w-1/2' : 'w-full'} p-4 md:p-8 overflow-y-auto transition-all`}>
+        <OutreachStatCardsAuto />
         <div className="flex items-center justify-between mb-6">
           <h1 className="font-display text-xl font-bold text-gray-800">
             Emails

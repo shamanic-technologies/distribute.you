@@ -8,12 +8,8 @@ const componentPath = "../src/components/email-signature.tsx";
 
 // Every surface where a sent / example email body is displayed to the user.
 const renderSurfaces = [
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/new/page.tsx",
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/[id]/emails/page.tsx",
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/launch/page.tsx",
   "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/emails/page.tsx",
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/emails/page.tsx",
-  "../src/components/report/public-leads-view.tsx",
-  "../src/components/report/emails-table.tsx",
 ];
 
 describe("EmailSignature component", () => {

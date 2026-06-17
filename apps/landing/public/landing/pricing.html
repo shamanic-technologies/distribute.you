@@ -3,16 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>distribute: pricing — pay per email sent | $0.07/contact</title>
-  <meta name="description" content="$0.07 per contact. Research, writing, delivery included. 50 emails free to start.">
+  <title>distribute: pricing — outcome-based | $4-7 per click</title>
+  <meta name="description" content="$4-7 per click, $70-250 per sales meeting. Research, writing, delivery included. $25 free credits to start.">
   <link rel="canonical" href="https://distribute.you/pricing">
-  <meta property="og:type"        content="website">
-  <meta property="og:url"         content="https://distribute.you/pricing">
-  <meta property="og:title"       content="distribute: pricing — pay per email sent">
-  <meta property="og:description" content="$0.07 per contact. Research, writing, delivery included. 50 emails free to start.">
-  <meta property="og:image"       content="https://distribute.you/opengraph-image">
-  <meta name="twitter:card"       content="summary_large_image">
-  <meta name="twitter:image"      content="https://distribute.you/opengraph-image">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:site_name" content="distribute">
+  <meta property="og:url" content="https://distribute.you/pricing">
+  <meta property="og:title" content="distribute pricing — outcome-based | $4-7 per click">
+  <meta property="og:description" content="$4-7 per click, $70-250 per sales meeting. Research, writing, delivery included. $25 free credits to start.">
+  <meta property="og:image" content="https://distribute.you/opengraph-image">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="distribute - AI cold email, done for you">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@distribute_you">
+  <meta name="twitter:creator" content="@distribute_you">
+  <meta name="twitter:title" content="distribute pricing — outcome-based | $4-7 per click">
+  <meta name="twitter:description" content="$4-7 per click, $70-250 per sales meeting. Research, writing, delivery included. $25 free credits to start.">
+  <meta name="twitter:image" content="https://distribute.you/opengraph-image">
+  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","name":"distribute","legalName":"Shamanic Technologies","url":"https://distribute.you","logo":"https://distribute.you/landing/logo/logo-distribute.svg","image":"https://distribute.you/landing/logo/logo-distribute.svg","sameAs":["https://github.com/distribute-you","https://twitter.com/distribute_you"],"contactPoint":{"@type":"ContactPoint","email":"support@distribute.you","contactType":"customer service"}},{"@type":"WebSite","name":"distribute","url":"https://distribute.you/pricing","description":"Outcome-based pricing: $4-7 per click, $70-250 per sales meeting. Research, writing, and delivery included.","publisher":{"@type":"Organization","name":"distribute","logo":"https://distribute.you/landing/logo/logo-distribute.svg"}},{"@type":"FAQPage","mainEntity":[{"@type":"Question","name":"How does billing work exactly?","acceptedAnswer":{"@type":"Answer","text":"You buy credits upfront. Each credit covers one contact: we find them, write their email, and send it. Credits are consumed when an email reaches an inbox. Invalid addresses and hard bounces are filtered before sending and don't count against your balance."}},{"@type":"Question","name":"Is there a free trial?","acceptedAnswer":{"@type":"Answer","text":"For every $1 you spend, we credit $1 back — up to $25. Your first $25 is matched dollar for dollar, so a small campaign effectively costs half."}},{"@type":"Question","name":"Do credits expire?","acceptedAnswer":{"@type":"Answer","text":"Unused credits stay valid for 12 months. Recurring daily campaigns use auto-topup to stay funded, so sending never pauses — you set the daily cap and can pause anytime from your dashboard."}},{"@type":"Question","name":"Can I top up mid-campaign?","acceptedAnswer":{"@type":"Answer","text":"Yes. Buy more credits from your dashboard at any time. They're added instantly and active campaigns continue without interruption."}},{"@type":"Question","name":"Do you need access to my domain or inbox?","acceptedAnswer":{"@type":"Answer","text":"No. Distribute uses its own pre-warmed sending infrastructure. You don't need to touch your domain or connect any mailbox to get started."}},{"@type":"Question","name":"Are the emails GDPR and CAN-SPAM compliant?","acceptedAnswer":{"@type":"Answer","text":"Every email includes a working opt-out. Unsubscribes are processed automatically and the contact is permanently suppressed across all future campaigns. You remain the sender of record and are responsible for targeting prospects with a legitimate business purpose."}}]}]}</script>
   <link rel="stylesheet" href="css/styles.css">
   <script>document.documentElement.setAttribute('data-theme','light')</script>
   <style>
@@ -103,7 +113,7 @@
   }
 
   .calc-metrics {
-    display: grid; grid-template-columns: repeat(4, 1fr);
+    display: grid; grid-template-columns: repeat(2, 1fr);
     background: var(--border); border: 1px solid var(--border);
     border-radius: 12px; overflow: hidden; gap: 1px;
     margin-bottom: 1.75rem;
@@ -165,7 +175,7 @@
     letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-bottom: 0.75rem;
   }
   .px-h2 { font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 800; color: var(--text); margin-bottom: 0.6rem; line-height: 1.2; }
-  .px-lead { font-size: var(--fs-md); color: var(--sub); line-height: 1.65; }
+  .px-lead { font-size: var(--fs-base); color: var(--sub); line-height: 1.65; }
 
   /* ── Compare ── */
   .px-compare { padding: 5rem 0; background: var(--bg-alt); }
@@ -239,7 +249,12 @@
     <div class="wrap">
       <div class="px-eyebrow">Pricing</div>
       <h1 class="t-hero">Any budget.<br>Real prospects.</h1>
-      <p class="px-hero-sub">Move the slider to see exactly what your budget gets you. $0.07 per contact reached. No monthly fee.</p>
+      <p class="px-hero-sub">Move the slider to see exactly what your budget gets you. $4-7 per click, $70-250 per sales meeting. No monthly fee.</p>
+      <form class="pricing-form" id="pricing-form" style="margin-top:2rem">
+        <input type="text" id="pricing-url" class="pricing-input" placeholder="yourcompany.com" autocomplete="url" aria-label="Your website" />
+        <button type="submit" class="btn btn-p btn-lg" id="pricing-cta">Get my custom pricing →</button>
+      </form>
+      <p class="pricing-hint">$25 in free credits — we match your first $25 spent.</p>
     </div>
   </section>
 
@@ -251,64 +266,53 @@
         <div class="calc-top">
           <span class="calc-card-label">Monthly budget</span>
           <div class="calc-quick" role="group" aria-label="Quick budget amounts">
-            <button class="calc-qbtn" data-budget="20">$20</button>
-            <button class="calc-qbtn" data-budget="50">$50</button>
-            <button class="calc-qbtn active" data-budget="100">$100</button>
             <button class="calc-qbtn" data-budget="250">$250</button>
-            <button class="calc-qbtn" data-budget="500">$500</button>
+            <button class="calc-qbtn active" data-budget="500">$500</button>
+            <button class="calc-qbtn" data-budget="1000">$1,000</button>
+            <button class="calc-qbtn" data-budget="2500">$2,500</button>
           </div>
         </div>
 
         <div class="calc-budget-row">
-          <div class="calc-budget-val" id="calc-budget">$100</div>
+          <div class="calc-budget-val" id="calc-budget">$500</div>
           <div class="calc-budget-per">/ month</div>
         </div>
 
         <div class="calc-slider-wrap">
           <input
             type="range" class="calc-slider" id="calc-slider"
-            min="20" max="1000" value="100" step="5"
+            min="250" max="5000" value="500" step="50"
             aria-label="Monthly budget"
           >
         </div>
 
         <div class="calc-metrics" role="region" aria-label="Estimated results">
           <div class="calc-metric">
-            <div class="calc-metric-num" id="calc-contacts">1.4k</div>
-            <div class="calc-metric-name">contacts</div>
-            <div class="calc-metric-rate">$0.07 each</div>
+            <div class="calc-metric-num" id="calc-clicks">90</div>
+            <div class="calc-metric-name">clicks</div>
+            <div class="calc-metric-rate">$4-7 each</div>
           </div>
           <div class="calc-metric">
-            <div class="calc-metric-num" id="calc-opens">499</div>
-            <div class="calc-metric-name">opens</div>
-            <div class="calc-metric-rate">35% rate</div>
-          </div>
-          <div class="calc-metric">
-            <div class="calc-metric-num" id="calc-replies">71</div>
-            <div class="calc-metric-name">replies</div>
-            <div class="calc-metric-rate">5% rate</div>
-          </div>
-          <div class="calc-metric">
-            <div class="calc-metric-num" id="calc-leads">28</div>
-            <div class="calc-metric-name">qualified</div>
-            <div class="calc-metric-rate">of replies</div>
+            <div class="calc-metric-num" id="calc-convos">3</div>
+            <div class="calc-metric-name">sales meetings</div>
+            <div class="calc-metric-rate">$70-250 each</div>
           </div>
         </div>
 
         <div class="calc-footer">
           <div class="calc-stats">
-            <span>Cost per contact: <b>$0.07</b></span>
-            <span>Est. cost per lead: <b id="calc-cpl">$3.57</b></span>
+            <span>Cost per click: <b>$4-7</b></span>
+            <span>Cost per sales meeting: <b>$70-250</b></span>
           </div>
           <div style="display:flex; gap:0.625rem; flex-wrap:wrap;">
-            <a href="/sign-up" class="btn btn-p">Send 50 free emails</a>
+            <a href="/sign-up" class="btn btn-p">Get $25 free credits</a>
             <a href="/how-it-works" class="btn btn-g">How it works</a>
           </div>
         </div>
 
         <p class="calc-disclaimer">
-          Based on 35% open rate and 5% reply rate from active campaigns.
-          "Qualified" = positive or interested replies. Individual results vary by industry and offer.
+          Based on a $4-7 cost per click and $70-250 per sales meeting,
+          in line with B2B industry benchmarks. Individual results vary by industry and offer.
         </p>
 
       </div>
@@ -363,8 +367,8 @@
     <div class="wrap-narrow">
       <div style="margin-bottom:2.5rem; max-width:540px;">
         <p class="px-label">Cost comparison</p>
-        <h2 class="px-h2">Cold email is the cheapest B2B channel. By far.</h2>
-        <p class="px-lead">At $0.07 per contact, Distribute costs 100 to 200 times less than LinkedIn Ads or an in-house SDR.</p>
+        <h2 class="px-h2">Cold email delivers outcomes for less.</h2>
+        <p class="px-lead">At $4-7 per click and $70-250 per sales meeting, Distribute delivers the same outcomes as LinkedIn Ads or an in-house SDR — done for you, no retainer.</p>
       </div>
       <div class="compare-wrap">
         <table class="compare-table">
@@ -378,8 +382,8 @@
           </thead>
           <tbody>
             <tr>
-              <td>Cost per contact reached</td>
-              <td class="td-dist td-win">$0.07</td>
+              <td>Cost per click</td>
+              <td class="td-dist td-win">$4-7</td>
               <td>$8–25</td>
               <td>$50–150</td>
             </tr>
@@ -427,11 +431,11 @@
         </details>
         <details class="faq-item">
           <summary>Is there a free trial?</summary>
-          <div class="faq-body">New accounts start with 50 free emails, no card required. That's enough to run a small campaign and see real opens and replies before spending anything.</div>
+          <div class="faq-body">For every $1 you spend, we credit $1 back — up to $25. Your first $25 is matched dollar for dollar, so a small campaign effectively costs half.</div>
         </details>
         <details class="faq-item">
           <summary>Do credits expire?</summary>
-          <div class="faq-body">Credits are valid for 12 months from purchase. Each new credit pack gets its own 12-month window. No auto-renew, no surprise charges.</div>
+          <div class="faq-body">Unused credits stay valid for 12 months. Recurring daily campaigns use auto-topup to stay funded, so sending never pauses — you set the daily cap and can pause anytime from your dashboard.</div>
         </details>
         <details class="faq-item">
           <summary>Can I top up mid-campaign?</summary>
@@ -454,12 +458,12 @@
     <div class="wrap">
       <div class="r">
         <h2 class="t-hero">Start your first campaign today.</h2>
-        <p>50 emails free. No card required. Takes five minutes.</p>
+        <p>$25 free credits. Cancel anytime. Takes five minutes.</p>
         <div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;margin-bottom:1rem">
-          <a href="/sign-up" class="btn btn-p btn-lg">Send 50 free emails</a>
+          <a href="/sign-up" class="btn btn-p btn-lg">Get $25 free credits</a>
           <a href="/how-it-works" class="btn btn-g-dark btn-lg">See how it works</a>
         </div>
-        <p class="t-lbl" style="color:oklch(58% 0.016 264);opacity:0.8;font-size:var(--fs-2xs)">No monthly fee &nbsp;·&nbsp; No setup cost &nbsp;·&nbsp; Credits never auto-renew</p>
+        <p class="t-lbl" style="color:oklch(58% 0.016 264);opacity:0.8;font-size:var(--fs-xs)">No monthly fee &nbsp;·&nbsp; No setup cost &nbsp;·&nbsp; Pause anytime</p>
       </div>
     </div>
   </section>
@@ -471,19 +475,14 @@
 
 <script>
 (function () {
-  var COST    = 0.07;
-  var OPEN    = 0.35;
-  var REPLY   = 0.05;
-  var QUALIFY = 0.40;
-  var MIN = 20, MAX = 1000;
+  var CPC   = 5.5;   // $4-7 per click, midpoint
+  var CONVO = 160;   // $70-250 per sales meeting, midpoint
+  var MIN = 250, MAX = 5000;
 
-  var slider     = document.getElementById('calc-slider');
-  var budgetEl   = document.getElementById('calc-budget');
-  var contactsEl = document.getElementById('calc-contacts');
-  var opensEl    = document.getElementById('calc-opens');
-  var repliesEl  = document.getElementById('calc-replies');
-  var leadsEl    = document.getElementById('calc-leads');
-  var cplEl      = document.getElementById('calc-cpl');
+  var slider    = document.getElementById('calc-slider');
+  var budgetEl  = document.getElementById('calc-budget');
+  var clicksEl  = document.getElementById('calc-clicks');
+  var convosEl  = document.getElementById('calc-convos');
 
   function fmt(n) {
     if (n >= 10000) return Math.round(n / 1000) + 'k';
@@ -492,18 +491,12 @@
   }
 
   function update(budget) {
-    var contacts = Math.floor(budget / COST);
-    var opens    = Math.floor(contacts * OPEN);
-    var replies  = Math.floor(contacts * REPLY);
-    var leads    = Math.floor(replies * QUALIFY);
-    var cpl      = leads > 0 ? '$' + (budget / leads).toFixed(2) : '<$1';
+    var clicks = Math.floor(budget / CPC);
+    var convos = Math.floor(budget / CONVO);
 
-    budgetEl.textContent   = '$' + budget;
-    contactsEl.textContent = fmt(contacts);
-    opensEl.textContent    = fmt(opens);
-    repliesEl.textContent  = fmt(replies);
-    leadsEl.textContent    = leads > 0 ? leads : '1';
-    cplEl.textContent      = cpl;
+    budgetEl.textContent = '$' + budget;
+    clicksEl.textContent = fmt(clicks);
+    convosEl.textContent = convos > 0 ? convos : 1;
 
     var pct = ((budget - MIN) / (MAX - MIN) * 100).toFixed(2) + '%';
     slider.style.setProperty('--pct', pct);
@@ -530,7 +523,7 @@
     });
   });
 
-  update(100);
+  update(500);
 })();
 </script>
 

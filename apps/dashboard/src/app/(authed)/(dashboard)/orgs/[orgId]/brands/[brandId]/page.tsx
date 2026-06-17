@@ -1,14 +1,16 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getBrand, getFeatureRevenue, getBrandCostBreakdown } from "@/lib/api";
+import { getBrand, getFeatureRevenue, getBrandCostBreakdown, fetchFeatureStats, getBrandSalesEconomics } from "@/lib/api";
 import { pollOptions, pollOptionsSlow } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
+import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
+import { CampaignLaunchModal } from "@/components/campaign/campaign-launch-modal";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 
 /**
@@ -21,10 +23,16 @@ import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
  */
 export default function BrandOverviewPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
   const featureSlug = useSoleFeatureSlug();
   const enabled = isRevenueFeature(featureSlug);
+
+  // Re-homed launch-progress modal: after a launch the funnel redirects here
+  // with `?launched=<campaignId>`. The modal is self-gating (lead-based +
+  // status ongoing + no contacted lead + sessionStorage escape).
+  const launchedId = searchParams.get("launched");
 
   // isPending (not isLoading): a query suspended by the org-consistency gate
   // reports isLoading:false while still unresolved, which would flash "Brand
@@ -51,11 +59,30 @@ export default function BrandOverviewPage() {
     { enabled, ...pollOptions },
   );
 
+  // Feature-level stats (Impressions / Clicks / CPC cards). Shares the Campaigns
+  // page's query key + 5s cadence so both observers refetch one cache entry.
+  const { data: featureStatsData } = useAuthQuery(
+    ["featureStats", featureSlug, brandId],
+    () => fetchFeatureStats(featureSlug, { brandId }),
+    { enabled, ...pollOptions },
+  );
+  const featureStats = featureStatsData?.stats ?? {};
+  const totalCostCents = featureStatsData?.systemStats?.totalCostInUsdCents ?? 0;
+
+  // Brand funnel config → gate the Meetings/Signups beta card pairs.
+  const { data: economicsData } = useAuthQuery(
+    ["brandSalesEconomics", brandId],
+    () => getBrandSalesEconomics(brandId),
+    { enabled, ...pollOptions },
+  );
+  const funnelStages = economicsData?.salesEconomics?.funnelStages;
+
   // Per-card reveal (NOT one page-wide barrier): revenue (features-service) and
   // total-spend (runs-service) are two different cold chains — gate each on its
   // own query so the fast cost card isn't held by the slower revenue call.
   const revenueRevealed = useCoordinatedReveal([data !== undefined]);
   const costRevealed = useCoordinatedReveal([costData !== undefined]);
+  const statsRevealed = useCoordinatedReveal([featureStatsData !== undefined]);
 
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
 
@@ -88,22 +115,35 @@ export default function BrandOverviewPage() {
   if (revenueRevealed && data && data.totalPipelineUsd === null) {
     return (
       <div className="p-4 md:p-8 max-w-7xl mx-auto">
-        <RevenueEmptyState setupHref={`${basePath}/campaigns/new`} />
+        {launchedId && <CampaignLaunchModal campaignId={launchedId} />}
+        <RevenueEmptyState setupHref={`${basePath}/launch`} />
       </div>
     );
   }
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
+      {launchedId && <CampaignLaunchModal campaignId={launchedId} />}
       <RevenueOverviewSection
         data={revenueRevealed ? data : undefined}
         revenuePending={!revenueRevealed}
         costPending={!costRevealed}
-        newCampaignHref={`${basePath}/campaigns/new`}
+        newCampaignHref={`${basePath}/launch`}
         costBreakdown={costData?.costs ?? []}
         brandId={brandId}
         featureSlug={featureSlug}
         basePath={basePath}
+        topRow={
+          /* Outreach stat cards (GA + beta) — under the "Revenue & Conversions"
+             header, directly above the Pipeline-revenue hero (mirrors the
+             Campaigns page). Funnel-stage-gated beta pairs. */
+          <OutreachStatCards
+            stats={featureStats}
+            totalCostCents={totalCostCents}
+            pending={!statsRevealed}
+            funnelStages={funnelStages}
+          />
+        }
       />
     </div>
   );

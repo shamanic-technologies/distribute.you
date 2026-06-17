@@ -195,7 +195,6 @@ if (dashEl) {
     [
       { target: 45,   prefix: '',  suffix: 'x', decimals: 0, delay: 200 },
       { target: 9800, prefix: '$', suffix: '',  decimals: 0, delay: 260 },
-      { target: 0.07, prefix: '$', suffix: '',  decimals: 2, delay: 320 },
     ].forEach((d, i) => {
       const el = roiVals[i + 1]; // +1 because index 0 is budget (managed by loop)
       if (el) {
@@ -233,9 +232,9 @@ if (postProgress) {
 (function () {
   var ARTICLES = [
     { url: '/cold-email-cost-guide/cold-email-cost-per-contact', tag: 'Cost breakdown', title: 'Cold email cost per contact: the real numbers', desc: 'DIY stacks, agencies, and distribute. What each approach actually costs once you count everything.' },
-    { url: '/cold-email-cost-guide/linkedin-inmail-cost-vs-cold-email', tag: 'Channel comparison', title: 'LinkedIn InMail cost vs cold email: what the math says', desc: 'Sales Navigator at $3-5 per message vs cold email at $0.07. The full cost-per-reply breakdown.' },
+    { url: '/cold-email-cost-guide/linkedin-inmail-cost-vs-cold-email', tag: 'Channel comparison', title: 'LinkedIn InMail cost vs cold email: what the math says', desc: 'Sales Navigator at $3-5 per message vs cold email at $4-7 per click. The full cost-per-reply breakdown.' },
     { url: '/cold-email-cost-guide/cold-email-roi', tag: 'ROI analysis', title: 'Cold email ROI: how to calculate real returns', desc: 'The formula, benchmarks, and sensitivity table. How deal size changes everything.' },
-    { url: '/cold-email-for-saas-founders/ai-cold-email-saas-founders', tag: 'AI outreach', title: 'AI cold email for SaaS founders: does it actually work?', desc: 'Per-prospect research at $0.07 per contact with a 27% open rate. Real campaign numbers.' },
+    { url: '/cold-email-for-saas-founders/ai-cold-email-saas-founders', tag: 'AI outreach', title: 'AI cold email for SaaS founders: does it actually work?', desc: 'Per-prospect research priced on outcomes — $4-7 per click — with a 27% open rate. Real campaign numbers.' },
     { url: '/cold-email-for-saas-founders/cold-email-subject-lines-saas', tag: 'Subject lines', title: 'Cold email subject lines for SaaS founders', desc: 'The patterns that get 30%+ open rates. With real examples for SaaS outreach.' },
     { url: '/cold-email-for-saas-founders/b2b-cold-email-reply-rate', tag: 'Benchmarks', title: 'B2B cold email reply rate benchmarks', desc: 'What 4% means and how to push it higher. Benchmarks by ICP specificity.' },
     { url: '/cold-email-vs-linkedin/cold-email-vs-linkedin-ads', tag: 'Channel comparison', title: 'Cold email vs LinkedIn ads: which converts better?', desc: 'CPL, conversion rates, and time to first lead. A direct comparison for B2B outbound.' },

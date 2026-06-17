@@ -8,8 +8,7 @@ const billingPagePath = path.resolve(__dirname, "../src/app/(authed)/(dashboard)
 const billingGuardPath = path.resolve(__dirname, "../src/lib/billing-guard.tsx");
 const layoutPath = path.resolve(__dirname, "../src/app/(authed)/(dashboard)/layout.tsx");
 const sidebarPath = path.resolve(__dirname, "../src/components/context-sidebar.tsx");
-const campaignNewOrgPath = path.resolve(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/new/page.tsx");
-const campaignNewFeaturePath = path.resolve(__dirname, "../src/app/(authed)/(dashboard)/features/[featureId]/new/page.tsx");
+const campaignNewOrgPath = path.resolve(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/launch/page.tsx");
 
 describe("Billing API wrappers", () => {
   const content = fs.readFileSync(apiPath, "utf-8");
@@ -117,11 +116,6 @@ describe("Billing API wrappers", () => {
     expect(content).not.toContain("reloadAmountCents");
     expect(content).not.toContain("reloadThresholdCents");
     expect(content).not.toContain("creditBalanceCents");
-  });
-
-  it("should export listOrgRuns function for the Runs ledger", () => {
-    expect(content).toContain("export async function listOrgRuns");
-    expect(content).toContain("/runs");
   });
 });
 
@@ -344,11 +338,6 @@ describe("Billing page", () => {
     expect(content).toContain("createPortalSession");
   });
 
-  it("should render a Runs ledger section", () => {
-    expect(content).toContain("listOrgRuns");
-    expect(content).toContain(">Runs<");
-  });
-
   it("should have loading skeleton state", () => {
     expect(content).toContain("animate-pulse");
     expect(content).toContain("accountLoading");
@@ -462,39 +451,6 @@ describe("Proactive credit check in campaign creation (org-scoped)", () => {
 
   it("should NOT call legacy configureAutoReload", () => {
     expect(content).not.toContain("configureAutoReload");
-  });
-
-  it("should show proactive modal with onAutoTopupConfigured callback", () => {
-    expect(content).toContain("proactive: true");
-    expect(content).toContain("onAutoTopupConfigured");
-  });
-
-  it("should save campaign intent to sessionStorage before showing modal", () => {
-    expect(content).toContain("saveCampaignIntent");
-    expect(content).toContain('sessionStorage.setItem("pendingCampaign"');
-  });
-
-  it("should auto-launch campaign on return from Stripe checkout", () => {
-    expect(content).toContain('searchParams.get("pending_campaign")');
-    expect(content).toContain('sessionStorage.getItem("pendingCampaign")');
-    expect(content).toContain("pendingCampaignHandled");
-  });
-});
-
-describe("Proactive credit check in campaign creation (feature-scoped)", () => {
-  const content = fs.readFileSync(campaignNewFeaturePath, "utf-8");
-
-  it("should import getBillingAccount", () => {
-    expect(content).toContain("getBillingAccount");
-  });
-
-  it("should import useBillingGuard", () => {
-    expect(content).toContain("useBillingGuard");
-    expect(content).toContain("showPaymentRequired");
-  });
-
-  it("should check if budget exceeds balance before creating campaign", () => {
-    expect(content).toContain("budgetCents > parseFloat(account.balance_cents)");
   });
 
   it("should show proactive modal with onAutoTopupConfigured callback", () => {

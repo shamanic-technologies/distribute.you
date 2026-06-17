@@ -731,6 +731,72 @@ export async function saveBrandSalesEconomics(
   return parsed.data;
 }
 
+// ── Daily budget (per-brand spend pacing) ──
+// A per-day spend ceiling campaign-service uses to pace a brand's work. Separate
+// from org credit balance / top-up (that's affordability; this is allocation).
+// Wire value is cents as a decimal string (Postgres numeric serializes as string,
+// per CLAUDE.md numeric-string rule) → coerce. null = never set (a 200, not a 404).
+export interface BrandDailyBudget {
+  brandId: string;
+  dailyBudgetCents: number | null;
+  updatedAt: string | null;
+}
+
+// READ: dailyBudgetCents null when unset; updatedAt null until first save.
+const GetBrandDailyBudgetResponseSchema = z.object({
+  brandId: z.string(),
+  dailyBudgetCents: z.coerce.number().nullable(),
+  updatedAt: z.string().nullable(),
+});
+
+// WRITE: the row was just persisted, so the value + updatedAt are always present;
+// the write response adds orgId. Per-verb schema (narrower/different than read).
+const SaveBrandDailyBudgetResponseSchema = z.object({
+  brandId: z.string(),
+  orgId: z.string(),
+  dailyBudgetCents: z.coerce.number(),
+  updatedAt: z.string(),
+});
+
+/** GET /brands/:brandId/daily-budget — saved cents or null when never set. */
+export async function getBrandDailyBudget(
+  brandId: string,
+  token?: string,
+): Promise<BrandDailyBudget> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/daily-budget`, { token });
+  const parsed = GetBrandDailyBudgetResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getBrandDailyBudget: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getBrandDailyBudget: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** PATCH /brands/:brandId/daily-budget — set the per-day cents ceiling (0 = pause). */
+export async function saveBrandDailyBudget(
+  brandId: string,
+  dailyBudgetCents: number,
+  token?: string,
+): Promise<{ brandId: string; orgId: string; dailyBudgetCents: number; updatedAt: string }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/daily-budget`, {
+    token,
+    method: "PATCH",
+    body: { dailyBudgetCents },
+  });
+  const parsed = SaveBrandDailyBudgetResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] saveBrandDailyBudget: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] saveBrandDailyBudget: invalid response shape");
+  }
+  return parsed.data;
+}
+
 // The welcome signup gift is NOT front-end editable. Its grant amount is
 // code-owned and pinned at boot by instrumentation.ts (WELCOME_GIFT_CENTS →
 // PATCH /v1/promo-codes/welcome). No dashboard read/write helper exists by design.
@@ -788,6 +854,193 @@ export async function getSalesEconomicsEffective(
   return parsed.data;
 }
 
+// ── Personas + Brand Profile (beta) ───────────────────────────────
+// Persisted per brand in brand-service via api-service /v1/brands/:id/personas
+// and /v1/brands/:id/brand-profile (same gateway convention as sales-economics).
+// Personas are immutable except status (edit = create a new one) and names are
+// unique per brand. Brand-profile saves are immutable forked versions.
+export type PersonaStatusWire = "active" | "paused" | "archived";
+
+export interface PersonaWire {
+  id: string;
+  brandId: string;
+  name: string;
+  filters: Record<string, string[]>;
+  status: PersonaStatusWire;
+  createdAt: string;
+}
+
+const PersonaSchema = z.object({
+  id: z.string(),
+  brandId: z.string(),
+  name: z.string(),
+  filters: z.record(z.string(), z.array(z.string())),
+  status: z.union([z.literal("active"), z.literal("paused"), z.literal("archived")]),
+  createdAt: z.string(),
+});
+
+const ListPersonasResponseSchema = z.object({ personas: z.array(PersonaSchema) });
+const PersonaResponseSchema = z.object({ persona: PersonaSchema });
+
+/** GET /brands/:brandId/personas — all personas for the brand (optionally status-filtered). */
+export async function listPersonas(
+  brandId: string,
+  status?: PersonaStatusWire,
+  token?: string,
+): Promise<{ personas: PersonaWire[] }> {
+  const query = status ? `?status=${status}` : "";
+  const raw = await apiCall<unknown>(`/brands/${brandId}/personas${query}`, { token });
+  const parsed = ListPersonasResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] listPersonas: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] listPersonas: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** POST /brands/:brandId/personas — create. 409 when the name is already used for the brand. */
+export async function createPersona(
+  brandId: string,
+  input: { name: string; filters: Record<string, string[]> },
+  token?: string,
+): Promise<{ persona: PersonaWire }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/personas`, { token, method: "POST", body: input });
+  const parsed = PersonaResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] createPersona: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] createPersona: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** POST /brands/:brandId/personas/:personaId/duplicate — new persona (name auto-uniquified). */
+export async function duplicatePersona(
+  brandId: string,
+  personaId: string,
+  name?: string,
+  token?: string,
+): Promise<{ persona: PersonaWire }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/personas/${personaId}/duplicate`, {
+    token,
+    method: "POST",
+    body: name ? { name } : {},
+  });
+  const parsed = PersonaResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] duplicatePersona: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] duplicatePersona: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** PATCH /brands/:brandId/personas/:personaId/status — pause / resume / archive / restore. */
+export async function setPersonaStatus(
+  brandId: string,
+  personaId: string,
+  status: PersonaStatusWire,
+  token?: string,
+): Promise<{ persona: PersonaWire }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/personas/${personaId}/status`, {
+    token,
+    method: "PATCH",
+    body: { status },
+  });
+  const parsed = PersonaResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] setPersonaStatus: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] setPersonaStatus: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** A persona DRAFT proposed by the backend — no id/status/createdAt (not persisted). */
+export interface PersonaDraft {
+  name: string;
+  filters: Record<string, string[]>;
+}
+
+const SuggestPersonasResponseSchema = z.object({
+  personas: z.array(z.object({
+    name: z.string(),
+    filters: z.record(z.string(), z.array(z.string())),
+  })),
+});
+
+/**
+ * POST /brands/:brandId/personas/suggest — generate persona DRAFTS from the brand
+ * profile (does NOT persist). Used by the beta onboarding to propose personas the
+ * user edits, then saves the kept ones via `createPersona`.
+ */
+export async function suggestPersonas(
+  brandId: string,
+  count?: number,
+  token?: string,
+): Promise<{ personas: PersonaDraft[] }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/personas/suggest`, {
+    token,
+    method: "POST",
+    body: count ? { count } : {},
+  });
+  const parsed = SuggestPersonasResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] suggestPersonas: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] suggestPersonas: invalid response shape");
+  }
+  return parsed.data;
+}
+
+export interface BrandProfileVersionWire {
+  id: string;
+  brandId: string;
+  version: number;
+  fields: Record<string, string | string[]>;
+  createdAt: string;
+}
+
+const BrandProfileVersionSchema = z.object({
+  id: z.string(),
+  brandId: z.string(),
+  version: z.number(),
+  fields: z.record(z.string(), z.union([z.string(), z.array(z.string())])),
+  createdAt: z.string(),
+});
+
+const GetBrandProfileResponseSchema = z.object({
+  current: BrandProfileVersionSchema.nullable(),
+  versions: z.array(z.object({ id: z.string(), version: z.number(), createdAt: z.string() })),
+});
+
+const SaveBrandProfileResponseSchema = z.object({ version: BrandProfileVersionSchema });
+
+/** GET /brands/:brandId/brand-profile — latest (or derived v1) + version list. */
+export async function getBrandProfile(
+  brandId: string,
+  token?: string,
+): Promise<{ current: BrandProfileVersionWire | null; versions: { id: string; version: number; createdAt: string }[] }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/brand-profile`, { token });
+  const parsed = GetBrandProfileResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getBrandProfile: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] getBrandProfile: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** POST /brands/:brandId/brand-profile — save a new immutable version. */
+export async function saveBrandProfileVersion(
+  brandId: string,
+  fields: Record<string, string | string[]>,
+  token?: string,
+): Promise<{ version: BrandProfileVersionWire }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/brand-profile`, { token, method: "POST", body: { fields } });
+  const parsed = SaveBrandProfileResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] saveBrandProfileVersion: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] saveBrandProfileVersion: invalid response shape");
+  }
+  return parsed.data;
+}
+
 // Brand field extraction
 export interface ExtractFieldDef {
   key: string;
@@ -836,6 +1089,7 @@ export interface CachedField {
 
 /** Core sales profile fields — reproduces the old /sales-profile extraction */
 export const SALES_PROFILE_FIELDS: ExtractFieldDef[] = [
+  { key: "services", description: "Specific services, products or offerings the brand sells and wants to promote — list each as a short phrase (e.g. 'SEO audits', 'Fractional CFO', 'Logo design')" },
   { key: "companyOverview", description: "Company overview" },
   { key: "valueProposition", description: "Core value proposition" },
   { key: "targetAudience", description: "Target audience description" },
@@ -1134,59 +1388,6 @@ export async function getFeatureRevenue(
   if (campaignId) query.set("campaignId", campaignId);
   const raw = await apiCall<unknown>(`/features/${featureSlug}/revenue?${query.toString()}`, { token });
   return parseFeatureRevenue(raw, "getFeatureRevenue");
-}
-
-// ─── Per-campaign revenue ROI (grouped) ──────────────────────────────────────
-// GET /features/:slug/revenue?groupBy=campaignId → one lean group per campaign
-// that has runs for the brand+feature: { campaignId, totalPipelineUsd, roiMultiple }.
-// A single call returns every campaign's ROI (no per-campaign fan-out). ROI =
-// expected pipeline ÷ run cost (features-service is the single source). safeParse
-// → shape rot becomes a caught fetch-error, never a render crash (CLAUDE.md #1213).
-const FeatureRevenueByCampaignSchema = z.object({
-  featureSlug: z.string(),
-  groupBy: z.literal("campaignId"),
-  groups: z.array(
-    z.object({
-      campaignId: z.string(),
-      headline: z.object({ totalPipelineUsd: z.number().nullable() }),
-      costEconomics: z.object({
-        totalCostUsd: z.number(),
-        costOfAcquisitionPct: z.number().nullable(),
-        roiMultiple: z.number().nullable(),
-      }),
-    }),
-  ),
-});
-
-export interface CampaignRevenueGroup {
-  campaignId: string;
-  totalPipelineUsd: number | null;
-  totalCostUsd: number;
-  /** totalPipelineUsd / totalCostUsd. Null when cost is 0 or pipeline is null. */
-  roiMultiple: number | null;
-}
-
-/** GET /features/:slug/revenue?groupBy=campaignId — per-campaign ROI for a brand+feature. */
-export async function getFeatureRevenueByCampaign(
-  featureSlug: string,
-  brandId: string,
-  token?: string,
-): Promise<CampaignRevenueGroup[]> {
-  const query = new URLSearchParams({ brandId, groupBy: "campaignId" });
-  const raw = await apiCall<unknown>(`/features/${featureSlug}/revenue?${query.toString()}`, { token });
-  const parsed = FeatureRevenueByCampaignSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getFeatureRevenueByCampaign: response shape mismatch", {
-      issues: parsed.error.issues,
-    });
-    throw new Error("[dashboard] getFeatureRevenueByCampaign: invalid response shape");
-  }
-  return parsed.data.groups.map((g) => ({
-    campaignId: g.campaignId,
-    totalPipelineUsd: g.headline.totalPipelineUsd,
-    totalCostUsd: g.costEconomics.totalCostUsd,
-    roiMultiple: g.costEconomics.roiMultiple,
-  }));
 }
 
 /** POST /brands — upsert brand by URL, returns brandId */
@@ -2150,32 +2351,6 @@ export async function getBillingAccount(token?: string): Promise<BillingAccount>
 
 export async function getBillingBalance(token?: string): Promise<BillingBalance> {
   return apiCall<BillingBalance>("/billing/accounts/balance", { token });
-}
-
-// Org-wide runs ledger (runs-service /v1/runs via api-service proxy).
-// Used by the billing page Runs tab. List endpoint returns one item per run with
-// own-cost totals only — per-cost-name breakdown is on GET /v1/runs/{id}.
-// Per runs-service: id is required, default sort is startedAt DESC.
-export interface OrgRun {
-  id: string;
-  status: string;
-  startedAt: string | null;
-  completedAt: string | null;
-  ownCostInUsdCents: string | null;
-  serviceName: string | null;
-  taskName: string | null;
-}
-
-export async function listOrgRuns(
-  limit: number,
-  offset: number,
-  token?: string,
-): Promise<{ runs: OrgRun[]; offset: number; limit?: number }> {
-  const qs = new URLSearchParams({ limit: String(limit), offset: String(offset) });
-  return apiCall<{ runs: OrgRun[]; offset: number; limit?: number }>(
-    `/runs?${qs.toString()}`,
-    { token },
-  );
 }
 
 export async function configureAutoTopup(

@@ -30,7 +30,7 @@ export function BenchmarkCTA({ copy, signUpUrl, variant = "primary" }: Benchmark
           {copy.cta}
         </LinkButton>
         <p className="dy-mono mt-4 text-xs text-[var(--dy-muted)]">
-          50 free emails. No subscription. No credit card to try.
+          $25 free credits. Cancel anytime.
         </p>
       </div>
     </section>

@@ -1,38 +1,59 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   OrgConversionsTable,
   LeadConversionsTable,
 } from "@/components/revenue/conversions-table";
+import {
+  ConversionDetailPanel,
+  type ConversionDetail,
+} from "@/components/revenue/conversion-detail-panel";
 import { Skeleton } from "@/components/skeleton";
 import type { RevenueOverview } from "@/lib/revenue-view";
 
-type ConversionTab = "organizations" | "leads";
-const CONVERSION_TABS: { id: ConversionTab; label: string }[] = [
+type ConversionTab = "extra" | "organizations" | "leads";
+const BASE_TABS: { id: ConversionTab; label: string }[] = [
   { id: "organizations", label: "Organizations" },
   { id: "leads", label: "Leads" },
 ];
+
+/** Optional row-select handler — undefined when detail is disabled (Overview). */
+export type ConversionSelect = ((d: ConversionDetail) => void) | undefined;
 
 /**
  * The Organizations / Leads conversion tabs — shared by the feature Overview
  * and the campaign page so both render the identical table set (each table
  * paginates 20/page). The tab bar is static shell (renders on the first paint);
  * only the table body skeletons while `pending` or data is absent.
+ *
+ * `extraFirstTab` (optional) prepends a caller-supplied tab, selected by default
+ * — the Signups page uses it for a "Personas" tab (its `content` is a render-prop
+ * receiving the same row-select handler). `enableDetail` makes every row open a
+ * right-hand detail panel. Overview passes neither → unchanged.
  */
 export function ConversionsTabs({
   data,
   pending = false,
+  extraFirstTab,
+  enableDetail = false,
 }: {
   data?: RevenueOverview;
   pending?: boolean;
+  extraFirstTab?: { label: string; content: (onSelect: ConversionSelect) => ReactNode };
+  enableDetail?: boolean;
 }) {
-  const [tab, setTab] = useState<ConversionTab>("organizations");
+  const tabs = extraFirstTab
+    ? [{ id: "extra" as const, label: extraFirstTab.label }, ...BASE_TABS]
+    : BASE_TABS;
+  const [tab, setTab] = useState<ConversionTab>(tabs[0].id);
+  const [selected, setSelected] = useState<ConversionDetail | null>(null);
+  const onSelect: ConversionSelect = enableDetail ? setSelected : undefined;
   const loading = pending || !data;
   return (
     <div className="space-y-3">
       <div className="inline-flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg p-1">
-        {CONVERSION_TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
@@ -56,9 +77,14 @@ export function ConversionsTabs({
         </div>
       ) : (
         <>
-          {tab === "organizations" && <OrgConversionsTable orgs={data.organizations} />}
-          {tab === "leads" && <LeadConversionsTable leads={data.leads} />}
+          {tab === "extra" && extraFirstTab?.content(onSelect)}
+          {tab === "organizations" && <OrgConversionsTable orgs={data.organizations} onSelect={onSelect} />}
+          {tab === "leads" && <LeadConversionsTable leads={data.leads} onSelect={onSelect} />}
         </>
+      )}
+
+      {enableDetail && (
+        <ConversionDetailPanel detail={selected} onClose={() => setSelected(null)} />
       )}
     </div>
   );

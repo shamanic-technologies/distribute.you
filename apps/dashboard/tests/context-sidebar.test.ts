@@ -22,28 +22,24 @@ describe("Context sidebar", () => {
 
   it("should handle all navigation levels", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    // The feature/featureSettings levels were removed (single-feature product —
-    // feature nav flattened into the brand level).
+    // The feature/featureSettings, campaign AND app-level feature ("Campaigns"
+    // island) levels were removed (single-feature product + one subscription per
+    // brand — everything flattens to the brand). Nav is now app → org → brand →
+    // brandSettings only.
     expect(content).toContain('"app"');
-    expect(content).toContain('"appFeature"');
     expect(content).toContain('"org"');
     expect(content).toContain('"brand"');
     expect(content).toContain('"brandSettings"');
-    expect(content).toContain('"campaign"');
+    expect(content).not.toContain('"campaign"');
+    expect(content).not.toContain('"appFeature"');
   });
 
-  it("should return null for campaign level (defers to CampaignSidebar)", () => {
+  it("should render no app-level nav (root only redirects to /orgs)", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    expect(content).toContain('case "campaign"');
-    expect(content).toContain("return null");
-  });
-
-  it("should have focused app-level public analytics links instead of feature links", () => {
-    const content = fs.readFileSync(sidebarPath, "utf-8");
-    expect(content).toContain("Unique visitors");
-    expect(content).toContain("Signup conversions");
-    expect(content).toContain("Cards added");
-    expect(content).toContain("/?view=landing");
+    // The build-in-public "public metrics" analytics links were removed; the
+    // app-level sidebar now renders nothing.
+    expect(content).not.toContain("Unique visitors");
+    expect(content).not.toContain("/?view=landing");
     expect(content).not.toContain('href: `/features/${f.slug}`');
   });
 
@@ -64,12 +60,16 @@ describe("Context sidebar", () => {
 
   it("should have brand-level items (single-feature nav flattened into the brand)", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    // The feature segment is gone; the brand sidebar absorbs the feature nav:
-    // Overview, Campaigns, Create Campaign, Conversions + the entity Database.
-    expect(content).toContain('label: "Campaigns"');
-    expect(content).toContain('label: "Create Campaign"');
+    // The feature segment + the campaign concept are gone from the BRAND sidebar:
+    // it's Overview + the entity Database + Brand Settings. The brand "Campaigns"
+    // entry (`${basePath}/campaigns`), "Create Campaign" and "Conversions" were
+    // all removed. (The app-level feature "Campaigns" island at
+    // `/features/[featureId]` was also removed — #1768 follow-up.)
     expect(content).toContain('label: "Overview"');
     expect(content).toContain("Database");
+    expect(content).not.toContain('href: `${basePath}/campaigns`');
+    expect(content).not.toContain('label: "Create Campaign"');
+    expect(content).not.toContain('href: `${basePath}/conversions`');
   });
 
   it("should grey out coming soon items with a tag (SidebarLink primitive)", () => {
@@ -85,9 +85,9 @@ describe("Context sidebar", () => {
     expect(content).not.toContain('"All Organizations"');
   });
 
-  it("should have Brands link at org level", () => {
+  it("should NOT have a Brands link at org level (brands list removed)", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    expect(content).toContain('`/orgs/${orgId}/brands`');
+    expect(content).not.toContain('label: "Brands"');
   });
 
   it("should NOT have a Tools section in brand sidebar (outlets and journalists moved to campaign modules)", () => {
@@ -97,10 +97,10 @@ describe("Context sidebar", () => {
     expect(content).not.toContain("/tools/press-kits");
   });
 
-  it("should have brand back link point to brands page", () => {
+  it("should have brand back link point to the org overview", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    expect(content).toContain('backLabel="Brands"');
-    expect(content).toContain('`/orgs/${orgId}/brands`');
+    expect(content).toContain('backLabel="Overview"');
+    expect(content).toContain('backHref={`/orgs/${orgId}`}');
   });
 
   it("should have unified Keys entry at org level", () => {
@@ -109,15 +109,10 @@ describe("Context sidebar", () => {
     expect(content).toContain('`/orgs/${orgId}/api-keys`');
   });
 
-  it("should have Workflows link in app feature sidebar", () => {
-    const content = fs.readFileSync(sidebarPath, "utf-8");
-    expect(content).toContain('"Workflows"');
-    expect(content).toContain('`${basePath}/workflows`');
-  });
-
   it("keeps the Workflows route (folded into Brand Settings, staff-only alpha)", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    expect(content).toContain('`${basePath}/workflows`');
+    expect(content).toContain('"Workflows"');
+    expect(content).toContain('`${brandBase}/workflows`');
     expect(content).toContain('FEATURE_GATES["workflows"]');
   });
 });

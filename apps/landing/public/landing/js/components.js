@@ -11,7 +11,6 @@ const NAV_HTML = `
     </a>
     <ul class="nav-links">
       <li><a href="/how-it-works" data-path="/how-it-works">How it works</a></li>
-      <li><a href="/use-cases" data-path="/use-cases">Use cases</a></li>
       <li><a href="/pricing">Pricing</a></li>
     </ul>
     <div class="nav-right">
@@ -35,7 +34,6 @@ const NAV_HTML = `
   </div>
   <ul class="nav-mobile-links">
     <li><a href="/how-it-works">How it works</a></li>
-    <li><a href="/use-cases">Use cases</a></li>
     <li><a href="/pricing">Pricing</a></li>
   </ul>
   <div class="nav-mobile-actions">
@@ -60,7 +58,6 @@ const FOOTER_HTML = `
         <h4>Product</h4>
         <ul>
           <li><a href="/how-it-works">How it works</a></li>
-          <li><a href="/use-cases">Use cases</a></li>
           <li><a href="/pricing">Pricing</a></li>
         </ul>
       </div>

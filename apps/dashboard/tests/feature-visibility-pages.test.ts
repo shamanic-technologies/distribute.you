@@ -9,7 +9,6 @@ const FEATURE_ROOT = path.resolve(
   __dirname,
   "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]",
 );
-const CAMPAIGN_ROOT = path.join(FEATURE_ROOT, "campaigns/[id]");
 const VIEWS_ROOT = path.resolve(__dirname, "../src/components/visibility");
 
 const read = (p: string) => fs.readFileSync(p, "utf-8");
@@ -101,22 +100,9 @@ describe("Feature-level AI-visibility pages (union across the brand's campaigns)
   }
 });
 
-describe("Campaign-level AI-visibility pages render the SAME shared views", () => {
-  const cases = [
-    { file: "visibility-runs/page.tsx", view: "VisibilityRunsView" },
-    { file: "visibility-runs/[runId]/page.tsx", view: "VisibilityRunDetailView" },
-    { file: "prompts/page.tsx", view: "VisibilityPromptsView" },
-    { file: "competitors/page.tsx", view: "VisibilityCompetitorsView" },
-  ] as const;
-
-  for (const c of cases) {
-    it(`campaign ${c.file} renders ${c.view} with a campaign-scoped query`, () => {
-      const content = read(path.join(CAMPAIGN_ROOT, c.file));
-      expect(content).toContain(c.view);
-      expect(content).toContain("campaignId");
-    });
-  }
-});
+// The campaign-level AI-visibility pages were removed with the campaign concept;
+// the feature/brand-level pages above (which render the same shared views) are
+// the survivors.
 
 describe("Shared visibility view components own the display", () => {
   const cases = [

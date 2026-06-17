@@ -26,7 +26,7 @@ ${channelList}
 - Campaigns: running instances with budget limits
 
 ## Quick Start
-1. Sign up at dashboard.distribute.you (50 free emails)
+1. Sign up at dashboard.distribute.you ($25 free credits)
 2. Get API key (dist_xxx format)
 3. Install MCP: claude mcp add distribute -- npx @distribute/mcp --api-key=YOUR_KEY
 4. "Create a brand for acme.com"

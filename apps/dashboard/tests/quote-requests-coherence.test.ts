@@ -22,26 +22,12 @@ import * as path from "path";
 const read = (rel: string) =>
   fs.readFileSync(path.join(__dirname, rel), "utf-8");
 
-const sidebarWrapper = read(
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/[id]/sidebar-wrapper.tsx",
-);
 const contextSidebar = read("../src/components/context-sidebar.tsx");
 
 describe("quote-requests badge ↔ page coherence (gold catalog single source)", () => {
-  describe("campaign sidebar (sidebar-wrapper.tsx)", () => {
-    it("imports listAllRankedOpportunities (the gold GET /orgs/opportunities reader, full pagination)", () => {
-      expect(sidebarWrapper).toContain("listAllRankedOpportunities");
-    });
-
-    it("sources the quote-requests badge from the OPEN (non-pitched) gold opportunities (badge == page)", () => {
-      // The page hides already-pitched opportunities; the badge must count the
-      // same open set, not the raw catalog total, or badge ≠ page recurs.
-      expect(sidebarWrapper).toContain("isOpportunityOpen");
-      expect(sidebarWrapper).toMatch(/"quote-requests":[\s\S]*?isOpportunityOpen/);
-    });
-  });
-
-  describe("feature sidebar (context-sidebar.tsx FeatureLevelSidebar)", () => {
+  // The campaign sidebar (sidebar-wrapper.tsx) was deleted with the campaign
+  // concept; the brand-level sidebar is the survivor.
+  describe("brand sidebar (context-sidebar.tsx BrandLevelSidebar)", () => {
     it("imports listAllRankedOpportunities", () => {
       expect(contextSidebar).toContain("listAllRankedOpportunities");
     });

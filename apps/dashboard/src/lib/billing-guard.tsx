@@ -21,6 +21,9 @@ interface PaymentRequiredInfo {
   proactive?: boolean;
   /** Callback invoked after the user dismisses the modal having set up auto-topup (proactive flow only) */
   onAutoTopupConfigured?: () => void;
+  /** Suggested auto-topup reload amount (cents) — proactive flow pre-fills the "Top-up amount"
+   *  field with this (= campaign daily price × 10) instead of the flat $25 default. */
+  suggestedTopupCents?: number;
   /** Depletion variant (non-proactive): balance is exhausted and campaigns have
    *  stopped. Tailors the modal copy from "needed for this action" to the
    *  arrival-time "all campaigns stopped" message. */
@@ -128,6 +131,11 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
     } else {
       setSelectedAmount(2500);
       setTopupAmount("25");
+    }
+    // Proactive (campaign-launch) flow: default the auto-topup reload to the campaign's
+    // daily price × 10 (passed as suggestedTopupCents), overriding the chip-derived amount.
+    if (paymentInfo.suggestedTopupCents !== undefined && paymentInfo.suggestedTopupCents > 0) {
+      setTopupAmount(Math.round(paymentInfo.suggestedTopupCents / 100).toString());
     }
     setCustomAmount("");
     setCustomAmountError(null);

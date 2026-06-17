@@ -11,7 +11,7 @@ describe("campaign-prefill-chat", () => {
   );
   const campaignNewPagePath = path.join(
     SRC,
-    "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/new/page.tsx",
+    "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/launch/page.tsx",
   );
   const instrumentationPath = path.join(SRC, "src/instrumentation.ts");
 

@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     "cold email dashboard",
     "AI reply qualification",
     "pay-as-you-go cold email",
-    "no subscription cold email",
+    "pay-as-you-go cold email",
     "distribute.you",
   ],
   authors: [{ name: "distribute" }],
@@ -90,10 +90,10 @@ const jsonLd = {
   offers: [
     {
       "@type": "Offer",
-      name: "50 free emails",
+      name: "$25 free credits",
       price: "0",
       priceCurrency: "USD",
-      description: "50 free emails. No subscription. No credit card. Launch in 5 minutes.",
+      description: "$25 free credits. Cancel anytime. Launch in 5 minutes.",
     },
   ],
   provider: {
@@ -129,7 +129,7 @@ const websiteJsonLd = {
 const howToJsonLd = {
   "@context": "https://schema.org",
   "@type": "HowTo",
-  name: "From your URL to 100 buyer conversations",
+  name: "From your URL to 100 sales meetings",
   description: "Three steps. No setup. No software to learn. No SDR to hire.",
   step: [
     {

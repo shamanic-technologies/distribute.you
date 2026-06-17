@@ -7,7 +7,7 @@ import * as path from "path";
  * the domain from the user's URL input and uses it as the Clerk org name.
  */
 describe("Onboarding uses URL domain as org name", () => {
-  const pagePath = path.join(__dirname, "../src/app/(authed)/onboarding/page.tsx");
+  const pagePath = path.join(__dirname, "../src/components/onboarding/default-onboarding.tsx");
   const content = fs.readFileSync(pagePath, "utf-8");
 
   it("should extract domain from URL input", () => {

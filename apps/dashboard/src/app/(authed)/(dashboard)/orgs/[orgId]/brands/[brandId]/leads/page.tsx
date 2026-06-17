@@ -12,6 +12,7 @@ import { EntitySearchBar } from "@/components/entity-search-bar";
 import { WorkflowTag } from "@/components/report/workflow-tag";
 import { ManualQualificationBadge } from "@/components/leads/manual-qualification-badge";
 import { EditLeadStatusModal } from "@/components/leads/edit-lead-status-modal";
+import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
 import { useManualQualifications } from "@/lib/use-manual-qualification";
 import { buildLatestQualificationMap, qualificationKey } from "@/lib/manual-qualification";
 
@@ -126,8 +127,8 @@ function LeadsTable({ leads, selectedLead, onSelectLead, statusOf }: {
     );
   }
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <table className="w-full text-sm">
+    <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+      <table className="w-full min-w-[480px] text-sm">
         <thead>
           <tr className="border-b border-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
             <th className="px-4 py-3">Company</th>
@@ -295,16 +296,12 @@ export default function FeatureLeadsPage() {
     { key: "all", label: "All", count: sortedLeads.length },
   ];
 
-  if (isPending && !data) {
-    return (
-      <div className="p-4 md:p-8">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 w-32 bg-gray-200 rounded" />
-          {[1, 2, 3].map((i) => <div key={i} className="h-12 bg-gray-100 rounded-lg" />)}
-        </div>
-      </div>
-    );
-  }
+  // Static-shell-first (CLAUDE.md "Page composition: shell+nav+header render
+  // instantly; each card owns its skeleton"). The shell (stat cards, h1, tabs,
+  // search) paints immediately; only the table region skeletons while the slow
+  // `brandLeads` fetch (lead-service is the bottleneck) is still cold. Gating the
+  // WHOLE page on this blanked the screen for the entire load.
+  const loading = isPending && !data;
 
   const selectedFull = selectedLead?.lead ?? null;
   const selectedOrg = selectedFull?.organization ?? null;
@@ -315,10 +312,11 @@ export default function FeatureLeadsPage() {
   return (
     <div className="flex flex-col md:flex-row h-full relative">
       <div className={`${selectedLead ? 'hidden md:block md:w-1/2' : 'w-full'} p-4 md:p-8 overflow-y-auto transition-all`}>
+        <OutreachStatCardsAuto />
         <div className="flex items-start justify-between mb-4">
           <h1 className="font-display text-xl font-bold text-gray-800">
             Leads
-            <span className="ml-2 text-sm font-normal text-gray-500">({leads.length.toLocaleString("en-US")} across all campaigns)</span>
+            {!loading && <span className="ml-2 text-sm font-normal text-gray-500">({leads.length.toLocaleString("en-US")} across all campaigns)</span>}
           </h1>
         </div>
 
@@ -341,7 +339,13 @@ export default function FeatureLeadsPage() {
 
         <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by name, company, title, or email..." resultCount={filteredLeads.length} totalCount={activeList.length} />
 
-        {leads.length === 0 ? (
+        {loading ? (
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="animate-pulse divide-y divide-gray-100">
+              {[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-14 bg-gray-50" />)}
+            </div>
+          </div>
+        ) : leads.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
             <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No leads yet</h3>
             <p className="text-gray-600 text-sm">Leads will appear here once campaigns run.</p>

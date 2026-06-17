@@ -9,7 +9,7 @@ import * as path from "path";
 // rendered — the button "did nothing". See campaign-service DB (only ongoing/stopped exist).
 const pagePath = path.resolve(
   __dirname,
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/new/page.tsx"
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/launch/page.tsx"
 );
 const content = fs.readFileSync(pagePath, "utf-8");
 

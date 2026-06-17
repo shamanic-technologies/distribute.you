@@ -55,7 +55,7 @@ describe("consumers adopt the coordinated reveal", () => {
   const featurePage = fs.readFileSync(
     path.join(
       __dirname,
-      "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/page.tsx",
+      "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
     ),
     "utf-8",
   );
@@ -108,14 +108,15 @@ describe("CoordinatedReveal — reusable component wrapper", () => {
 describe("route-transition loading.tsx boundaries (instant nav skeletons)", () => {
   const authed =
     "../src/app/(authed)/(dashboard)/orgs/[orgId]";
+  // The campaign segment (campaigns/[id]) was removed with the campaign concept,
+  // so its loading.tsx boundary is gone too — the dashboard now has org + brand
+  // levels only.
   const boundaries = [
     `${authed}/loading.tsx`,
     `${authed}/brands/[brandId]/loading.tsx`,
-    `${authed}/brands/[brandId]/loading.tsx`,
-    `${authed}/brands/[brandId]/campaigns/[id]/loading.tsx`,
   ];
 
-  it("ships a loading.tsx at every dashboard segment level (org/brand/feature/campaign)", () => {
+  it("ships a loading.tsx at every dashboard segment level (org/brand)", () => {
     for (const rel of boundaries) {
       const p = path.join(__dirname, rel);
       expect(fs.existsSync(p), `${rel} must exist`).toBe(true);
@@ -149,8 +150,6 @@ describe("feature pages adopt the coordinated body reveal", () => {
     expect(src).not.toMatch(/data !== undefined,\s*costData !== undefined/);
   });
 
-  it("legacy feature page reveals stats grid + campaigns list together", () => {
-    const src = read("../src/app/(authed)/(dashboard)/features/[featureId]/page.tsx");
-    expect(src).toContain("CoordinatedReveal");
-  });
+  // The legacy app-level feature page (`features/[featureId]/page.tsx`, the
+  // cross-brand "Campaigns" island) was removed in the #1768 follow-up.
 });
