@@ -2391,6 +2391,25 @@ export async function createCampaign(
   return { campaign: enriched };
 }
 
+export async function createCampaignWithoutBrandEnrichment(
+  params: {
+    name: string;
+    workflowSlug: string;
+    brandUrls: string[];
+    maxBudgetDailyUsd?: string;
+    maxBudgetWeeklyUsd?: string;
+    maxBudgetMonthlyUsd?: string;
+    maxBudgetTotalUsd?: string;
+  } & Record<string, unknown>,
+  token?: string
+): Promise<{ campaign: RawCampaign }> {
+  return apiCall<{ campaign: RawCampaign }>("/campaigns", {
+    token,
+    method: "POST",
+    body: params as unknown as Record<string, unknown>,
+  });
+}
+
 // Billing — wire shape per billing-service post-rename hotfix.
 // `*_cents` string fields are full-precision decimal strings (e.g. "100.4200000000").
 // Use parseFloat for math; never Number().
