@@ -37,7 +37,6 @@ import {
   saveBrandSalesEconomics,
   suggestPersonas,
   createPersona,
-  setPersonaStatus,
   listPersonas,
   getWorkflowProjection,
   getFeature,
@@ -45,7 +44,7 @@ import {
   prefillToStringMap,
   configureAutoTopup,
   createCheckoutSession,
-  createCampaign,
+  createCampaignWithoutBrandEnrichment,
   saveBrandDailyBudget,
   type EffectiveSalesEconomics,
   type WorkflowProjectionResponse,
@@ -86,7 +85,8 @@ type Step =
   | "personas"
   | "consent"
   | "pricing"
-  | "wallet";
+  | "wallet"
+  | "launching";
 
 // The two sales goals (Kevin): Signups or Sales Meetings. Each maps to a
 // projection count so the budget cards show the chosen unit, never "closes".
@@ -152,11 +152,18 @@ const AGENCY_BENEFITS = [
   "Test demand before revealing your brand on niche markets.",
 ];
 
+const SERVICES_PROFILE_FIELDS = SALES_PROFILE_FIELDS.filter((f) => f.key === "services");
 const LOADING_STEPS = [
-  { id: "ls-1", label: "Reading your product", delay: 1400 },
-  { id: "ls-2", label: "Extracting your services and personas", delay: 1600 },
-  { id: "ls-3", label: "Selecting outreach strategy", delay: 1400 },
-  { id: "ls-4", label: "Projecting your economics", delay: 1400 },
+  { id: "ls-1", label: "Reading your product", delay: 500 },
+  { id: "ls-2", label: "Extracting your services", delay: 700 },
+  { id: "ls-3", label: "Preparing your workspace", delay: 500 },
+];
+const LAUNCH_STEPS = [
+  { id: "wallet", label: "Confirming wallet payment" },
+  { id: "topup", label: "Activating auto-topup" },
+  { id: "campaign", label: "Launching campaign" },
+  { id: "access", label: "Opening dashboard access" },
+  { id: "dashboard", label: "Opening your dashboard" },
 ];
 
 const GENERIC_AI_SETUP_ERROR = "Our AI analysis service had a temporary issue. Your workspace is ready, but some suggestions may need to be filled in manually.";
@@ -200,8 +207,18 @@ type PendingWalletLaunch = {
   initialLoadCents: number;
   topupAmountCents: number;
   topupThresholdCents: number;
+  featureInputs?: Record<string, string>;
   createdAt: string;
 };
+
+function isStringRecord(value: unknown): value is Record<string, string> {
+  return (
+    !!value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    Object.values(value).every((v) => typeof v === "string")
+  );
+}
 
 function dollarsToCentsInput(value: string, label: string, minUsd: number): number {
   const trimmed = value.trim();
@@ -230,6 +247,7 @@ function readPendingWalletLaunch(): PendingWalletLaunch {
     typeof parsed.initialLoadCents !== "number" ||
     typeof parsed.topupAmountCents !== "number" ||
     typeof parsed.topupThresholdCents !== "number" ||
+    (parsed.featureInputs !== undefined && !isStringRecord(parsed.featureInputs)) ||
     typeof parsed.createdAt !== "string"
   ) {
     throw new Error("Wallet checkout returned with an invalid pending launch state. Campaign was not launched.");
@@ -257,6 +275,7 @@ function toStringList(value: unknown): string[] {
 export function BetaOnboarding() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const { organization } = useOrganization();
   const { createOrganization, setActive } = useOrganizationList();
   const { session } = useSession();
@@ -284,9 +303,12 @@ export function BetaOnboarding() {
   const [initialLoadUsd, setInitialLoadUsd] = useState("25");
   const [walletTopupAmountUsd, setWalletTopupAmountUsd] = useState("25");
   const [walletTopupThresholdUsd, setWalletTopupThresholdUsd] = useState("5");
+  const [personaSeeding, setPersonaSeeding] = useState(false);
+  const [launchStep, setLaunchStep] = useState(0);
+  const [launchingBrand, setLaunchingBrand] = useState<{ domain: string | null; hostname: string } | null>(null);
 
   // Loading-sequence + real fetch coordination. We only advance past the loader once
-  // BOTH the animation finished AND the brand exists + its data is fetched.
+  // BOTH the short animation and the blocking service-list extraction are done.
   const [loadStep, setLoadStep] = useState(0);
   const [loadDone, setLoadDone] = useState(false);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -299,6 +321,10 @@ export function BetaOnboarding() {
 
   const projectionRef = useRef<WorkflowProjectionResponse | null>(null);
   const econRef = useRef<EffectiveSalesEconomics | null>(null);
+  const launchFeatureInputsRef = useRef<Record<string, string> | null>(null);
+  const hydrationPromiseRef = useRef<Promise<void> | null>(null);
+  const servicesEditedRef = useRef(false);
+  const ratesEditedRef = useRef(false);
   // The sales feature's declared input definitions — needed to build the
   // `featureInputs` map the /campaigns create endpoint requires at launch.
   const salesInputsRef = useRef<FeatureInput[]>([]);
@@ -343,8 +369,76 @@ export function BetaOnboarding() {
     timers.current.push(last);
   }
 
-  // Create the brand for real, then fetch everything the later steps render.
-  async function createBrandAndFetch(): Promise<void> {
+  async function seedOnboardingPersonaFromBrandInfo(id: string): Promise<void> {
+    setPersonaSeeding(true);
+    try {
+      const sug = await suggestPersonas(id, 1);
+      const first: PersonaDraft | undefined = sug.personas[0];
+      if (first?.name?.trim()) {
+        await createPersona(id, { name: capWords(first.name.trim()), filters: first.filters });
+        await queryClient.invalidateQueries({ queryKey: ["personas", id] });
+      }
+    } catch (e) {
+      console.error("[dashboard] suggest/create persona (onboarding seed) failed:", e);
+      setSetupIssues((prev) => ({ ...prev, persona: true }));
+    } finally {
+      setPersonaSeeding(false);
+    }
+  }
+
+  async function hydrateOnboardingInBackground(id: string): Promise<void> {
+    setPersonaSeeding(true);
+    await extractBrandFields([id], SALES_PROFILE_FIELDS).catch((e) => {
+      console.error("[dashboard] extractBrandFields (background) failed:", e);
+      setSetupIssues((prev) => ({ ...prev, extraction: true }));
+    });
+    // Persona drafting is the next latency-sensitive AI task, so start it as
+    // soon as brand-profile extraction is done instead of bundling it behind
+    // projection/economics hydration.
+    const personaSeed = seedOnboardingPersonaFromBrandInfo(id);
+
+    const [prof, econRes, proj, feat] = await Promise.all([
+      getBrandProfile(id),
+      getSalesEconomicsEffective(id),
+      getWorkflowProjection({ featureSlug: SALES_FEATURE_SLUG, brandId: id, objective: "self-serve", budgetUsd: PROJECTION_REF_BUDGET }),
+      getFeature(SALES_FEATURE_SLUG),
+    ]);
+
+    salesInputsRef.current = feat.feature.inputs ?? [];
+    if (prof.current) {
+      const fields = prof.current.fields;
+      const nextServices = toStringList(fields.services);
+      setProfile((prev) => ({
+        ...fields,
+        services: servicesEditedRef.current ? prev.services ?? fields.services : fields.services,
+      }));
+      if (!servicesEditedRef.current) setServices(nextServices);
+    }
+    if (econRes.economics && !ratesEditedRef.current) {
+      const e = econRes.economics;
+      econRef.current = e;
+      const loaded: Record<RateKey, number> = {
+        ltv: e.lifetimeRevenueUsd,
+        v2s: e.visitToSignupPct,
+        s2c: e.signupToPaidClientPct,
+        v2m: e.visitToMeetingPct,
+        r2m: e.replyToMeetingPct,
+        m2c: e.meetingToClosePct,
+      };
+      setRates(loaded);
+      setRateText(Object.fromEntries((Object.keys(loaded) as RateKey[]).map((k) => [k, rateToText(loaded[k])])) as Record<RateKey, string>);
+    }
+    projectionRef.current = proj;
+    await personaSeed;
+  }
+
+  async function waitForOnboardingHydration(): Promise<void> {
+    if (!hydrationPromiseRef.current) return;
+    await hydrationPromiseRef.current;
+  }
+
+  // Create the brand for real, then block only on the services needed by the next step.
+  async function createBrandAndFetchServices(): Promise<void> {
     const trimmed = url.trim();
     const brandUrl = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
     const reuseOrg = !forceNew && !!organization?.id;
@@ -365,57 +459,27 @@ export function BetaOnboarding() {
     // at brand creation set the edge-gate signal 6 steps early, so a mid-flow
     // refresh / manual dashboard-URL nav slipped past proxy.ts onto a half-set-up
     // dashboard (no rates/personas/consent/campaign). See launch(). (#1770)
-    // Extract brand fields (populates the brand profile + services), then fetch all.
-    await extractBrandFields([newBrandId], SALES_PROFILE_FIELDS).catch((e) => {
+    // Extract only the service list before moving forward. The heavier profile,
+    // persona, economics and projection work continues after the services step is usable.
+    const serviceFields = await extractBrandFields([newBrandId], SERVICES_PROFILE_FIELDS).catch((e) => {
       console.error("[dashboard] extractBrandFields failed:", e);
       setSetupIssues((prev) => ({ ...prev, extraction: true }));
+      return null;
     });
     brandIdRef.current = newBrandId;
     orgIdRef.current = targetOrgId;
     setBrandId(newBrandId);
     posthog.capture("onboarding_brand_created", { flow: "beta", org_id: targetOrgId, brand_id: newBrandId });
-
-    const [prof, econRes, sug, proj, feat] = await Promise.all([
-      getBrandProfile(newBrandId),
-      getSalesEconomicsEffective(newBrandId),
-      suggestPersonas(newBrandId, 1).catch((e) => {
-        console.error("[dashboard] suggestPersonas (onboarding seed) failed:", e);
-        setSetupIssues((prev) => ({ ...prev, persona: true }));
-        return { personas: [] as PersonaDraft[] };
-      }),
-      getWorkflowProjection({ featureSlug: SALES_FEATURE_SLUG, brandId: newBrandId, objective: "self-serve", budgetUsd: PROJECTION_REF_BUDGET }),
-      getFeature(SALES_FEATURE_SLUG),
-    ]);
-
-    salesInputsRef.current = feat.feature.inputs ?? [];
-    if (prof.current) {
-      setProfile(prof.current.fields);
-      setServices(toStringList(prof.current.fields.services));
+    const serviceValue = serviceFields?.fields.services?.value;
+    if (serviceValue != null) {
+      setProfile((prev) => ({ ...prev, services: serviceValue as string | string[] }));
+      setServices(toStringList(serviceValue));
     }
-    if (econRes.economics) {
-      const e = econRes.economics;
-      econRef.current = e;
-      const loaded: Record<RateKey, number> = {
-        ltv: e.lifetimeRevenueUsd,
-        v2s: e.visitToSignupPct,
-        s2c: e.signupToPaidClientPct,
-        v2m: e.visitToMeetingPct,
-        r2m: e.replyToMeetingPct,
-        m2c: e.meetingToClosePct,
-      };
-      setRates(loaded);
-      setRateText(Object.fromEntries((Object.keys(loaded) as RateKey[]).map((k) => [k, rateToText(loaded[k])])) as Record<RateKey, string>);
-    }
-    // Persist the ONE suggested persona right away so the personas step is
-    // server-backed (Edit-with-AI + the persona cards read/write live data).
-    const first: PersonaDraft | undefined = sug.personas[0];
-    if (first?.name?.trim()) {
-      await createPersona(newBrandId, { name: capWords(first.name.trim()), filters: first.filters }).catch((e) =>
-        console.error("[dashboard] createPersona (onboarding seed) failed:", e),
-      );
-    }
-    projectionRef.current = proj;
     fetchDoneRef.current = true;
+    const hydration = hydrateOnboardingInBackground(newBrandId).catch((e) => {
+      console.error("[dashboard] onboarding background hydrate failed:", e);
+    });
+    hydrationPromiseRef.current = hydration;
   }
 
   async function startAnalyze() {
@@ -426,7 +490,7 @@ export function BetaOnboarding() {
     runLoadingAnimation();
     posthog.capture("onboarding_workspace_create_started", { flow: "beta", domain });
     try {
-      await createBrandAndFetch();
+      await createBrandAndFetchServices();
       maybeAdvancePastLoading();
     } catch (err) {
       posthog.capture("onboarding_workspace_create_failed", { flow: "beta", domain });
@@ -472,6 +536,8 @@ export function BetaOnboarding() {
   }
 
   async function buildFeatureInputsForLaunch(id: string): Promise<Record<string, string>> {
+    if (launchFeatureInputsRef.current) return launchFeatureInputsRef.current;
+    await waitForOnboardingHydration();
     const inputs =
       salesInputsRef.current.length > 0
         ? salesInputsRef.current
@@ -485,12 +551,14 @@ export function BetaOnboarding() {
       const val = prefilled[input.key]?.trim();
       if (val) featureInputs[input.key] = val;
     }
+    launchFeatureInputsRef.current = featureInputs;
     return featureInputs;
   }
 
   async function completeLaunchAfterWallet(pending: PendingWalletLaunch) {
-    const featureInputs = await buildFeatureInputsForLaunch(pending.brandId);
-    const { campaign } = await createCampaign({
+    setLaunchStep(2);
+    const featureInputs = pending.featureInputs ?? await buildFeatureInputsForLaunch(pending.brandId);
+    const { campaign } = await createCampaignWithoutBrandEnrichment({
       name: `${pending.hostname} — ${OUTCOMES.find((o) => o.key === pending.outcome)?.label ?? "Outreach"}`,
       workflowSlug: pending.workflowSlug,
       brandUrls: [pending.brandUrl],
@@ -498,6 +566,7 @@ export function BetaOnboarding() {
       featureInputs,
       maxBudgetDailyUsd: String(pending.budgetUsd),
     });
+    setLaunchStep(3);
     posthog.capture("onboarding_completed", {
       flow: "beta",
       outcome: pending.outcome,
@@ -518,6 +587,7 @@ export function BetaOnboarding() {
     // JWT loops the next navigation back to /onboarding (DIS-111).
     await session?.getToken({ skipCache: true }).catch(() => {});
     window.sessionStorage.removeItem(WALLET_PENDING_KEY);
+    setLaunchStep(4);
     router.push(`/orgs/${pending.orgId}/brands/${pending.brandId}?launched=${campaign.id}`);
   }
 
@@ -549,18 +619,22 @@ export function BetaOnboarding() {
       const id = brandIdRef.current ?? storedPending?.brandId ?? null;
       const orgId = orgIdRef.current ?? storedPending?.orgId ?? null;
       const budget = walletBudgetUsd ?? storedPending?.budgetUsd ?? derivedBudget();
-      const workflowSlug = projectionRef.current?.recommendedWorkflowDynastySlug ?? storedPending?.workflowSlug ?? null;
       const trimmed = url.trim();
       const normalizedCurrentUrl = trimmed ? (/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`) : null;
       const brandUrl = normalizedCurrentUrl ?? storedPending?.brandUrl ?? null;
       const launchHostname = hostname || storedPending?.hostname || "";
       const launchOutcome = brandIdRef.current ? outcome : storedPending?.outcome ?? outcome;
-      if (!id || !orgId || !workflowSlug || budget == null || !brandUrl || !launchHostname) {
+      if (!id || !orgId || budget == null || !brandUrl || !launchHostname) {
         throw new Error("Wallet setup state is missing. Go back to pricing and try again.");
       }
       const initialLoadCents = dollarsToCentsInput(initialLoadUsd, "Initial load", MIN_INITIAL_LOAD_USD);
       const topupAmountCents = dollarsToCentsInput(walletTopupAmountUsd, "Auto-topup reload amount", MIN_TOPUP_USD);
       const topupThresholdCents = dollarsToCentsInput(walletTopupThresholdUsd, "Auto-topup trigger threshold", MIN_THRESHOLD_USD);
+      await waitForOnboardingHydration();
+      const workflowSlug = projectionRef.current?.recommendedWorkflowDynastySlug ?? storedPending?.workflowSlug ?? null;
+      if (!workflowSlug) {
+        throw new Error("Campaign workflow setup is still missing. Please try again.");
+      }
       if (brandIdRef.current === id && normalizedCurrentUrl) {
         // Persist current wizard edits only when the live wizard state is mounted.
         // After a Stripe cancel reload, pending storage is the source of truth; do
@@ -573,6 +647,10 @@ export function BetaOnboarding() {
         });
       }
       await saveBrandDailyBudget(id, Math.round(budget * 100));
+      const featureInputs =
+        brandIdRef.current === id
+          ? await buildFeatureInputsForLaunch(id)
+          : storedPending?.featureInputs ?? await buildFeatureInputsForLaunch(id);
 
       const pending: PendingWalletLaunch = {
         version: 1,
@@ -586,6 +664,7 @@ export function BetaOnboarding() {
         initialLoadCents,
         topupAmountCents,
         topupThresholdCents,
+        featureInputs,
         createdAt: new Date().toISOString(),
       };
       window.sessionStorage.setItem(WALLET_PENDING_KEY, JSON.stringify(pending));
@@ -618,15 +697,18 @@ export function BetaOnboarding() {
       setInitialLoadUsd(String(pending.initialLoadCents / 100));
       setWalletTopupAmountUsd(String(pending.topupAmountCents / 100));
       setWalletTopupThresholdUsd(String(pending.topupThresholdCents / 100));
-      setStep("wallet");
+      setLaunchingBrand({ domain: extractDomain(pending.brandUrl), hostname: pending.hostname });
+      setLaunchStep(0);
+      setStep("launching");
 
+      setLaunchStep(1);
       await configureAutoTopup(pending.topupAmountCents, pending.topupThresholdCents);
-      await saveBrandDailyBudget(pending.brandId, Math.round(pending.budgetUsd * 100));
       await completeLaunchAfterWallet(pending);
     } catch (err) {
       posthog.capture("onboarding_launch_failed", { flow: "beta", stage: "wallet_return" });
       const detail = err instanceof Error ? err.message : "unknown error";
       setError(`Wallet checkout returned, but setup could not finish: ${detail} Backend support for paid top-up checkout plus auto-topup configuration is required; campaign was not launched.`);
+      setStep("wallet");
       setBusy(false);
     }
   }
@@ -704,9 +786,15 @@ export function BetaOnboarding() {
     const value = raw.trim();
     setServiceDraft("");
     if (!value) return;
-    setServices((prev) => (prev.some((s) => s.toLowerCase() === value.toLowerCase()) ? prev : [...prev, value]));
+    servicesEditedRef.current = true;
+    launchFeatureInputsRef.current = null;
+    setServices((prev) => {
+      return prev.some((s) => s.toLowerCase() === value.toLowerCase()) ? prev : [...prev, value];
+    });
   }
   function removeService(value: string) {
+    servicesEditedRef.current = true;
+    launchFeatureInputsRef.current = null;
     setServices((prev) => prev.filter((s) => s !== value));
   }
 
@@ -870,6 +958,8 @@ export function BetaOnboarding() {
               value={rateText[k]}
               onChange={(e) => {
                 const { text, value } = formatRateInput(e.target.value);
+                ratesEditedRef.current = true;
+                launchFeatureInputsRef.current = null;
                 setRateText((t) => ({ ...t, [k]: text }));
                 setRates((r) => ({ ...r, [k]: value }));
               }}
@@ -890,6 +980,7 @@ export function BetaOnboarding() {
         brandDomain={domain}
         hostname={hostname}
         personaSuggestionFailed={setupIssues.persona}
+        personaSeeding={personaSeeding}
         onBack={() => setStep("rates")}
         onContinue={() => setStep("consent")}
       />
@@ -913,6 +1004,33 @@ export function BetaOnboarding() {
         </ul>
         <p className="text-[11px] leading-5 text-gray-400">By continuing you authorize distribute to contact prospects on your behalf, representing your brand, per our <a href="https://distribute.you/terms" target="_blank" rel="noreferrer" className="underline">Terms</a>.</p>
         <NextButton onClick={() => setStep("pricing")} label="Continue" />
+      </div>
+    );
+  }
+
+  if (step === "launching") {
+    const brand = launchingBrand ?? { domain, hostname };
+    return (
+      <div className={card}>
+        <BrandStepHeader domain={brand.domain} hostname={brand.hostname} />
+        <div className="mb-2 text-center text-lg font-semibold text-gray-950">Launching your campaign...</div>
+        <p className="mb-6 text-center text-sm text-gray-500">Keep this tab open while we finish setup.</p>
+        <div className="space-y-2">
+          {LAUNCH_STEPS.map((s, i) => {
+            const isDone = i < launchStep;
+            const isActive = i === launchStep;
+            return (
+              <div key={s.id} className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition ${isActive ? "border-brand-200 bg-brand-50" : "border-gray-100 bg-white"} ${isDone || isActive ? "opacity-100" : "opacity-40"}`}>
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center">
+                  {isDone ? <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-600"><CheckIcon className="h-3.5 w-3.5" /></span>
+                    : isActive ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
+                    : <span className="h-2.5 w-2.5 rounded-full bg-gray-300" />}
+                </span>
+                <span className={`text-sm ${isActive ? "font-medium text-gray-900" : "text-gray-600"}`}>{s.label}</span>
+              </div>
+            );
+          })}
+        </div>
       </div>
     );
   }
@@ -1096,7 +1214,7 @@ export function BetaOnboarding() {
 // ── Personas step — server-backed (mirrors the Customer Personas page) ──────
 // The brand exists by now (created during loading) and the AI-suggested persona
 // was already persisted, so this reads/writes live personas: PersonaCard with the
-// full save / archive lifecycle + an Edit-with-AI chat, exactly like the page.
+// save lifecycle + an Edit-with-AI chat.
 let obDraftSeq = 0;
 const nextDraftId = () => `ob-draft-${++obDraftSeq}`;
 
@@ -1105,6 +1223,7 @@ function OnboardingPersonas({
   brandDomain,
   hostname,
   personaSuggestionFailed,
+  personaSeeding,
   onBack,
   onContinue,
 }: {
@@ -1112,6 +1231,7 @@ function OnboardingPersonas({
   brandDomain: string | null;
   hostname: string;
   personaSuggestionFailed: boolean;
+  personaSeeding: boolean;
   onBack: () => void;
   onContinue: () => void;
 }) {
@@ -1129,10 +1249,6 @@ function OnboardingPersonas({
   const createMut = useMutation({
     mutationFn: (i: { name: string; filters: Filters }) =>
       createPersona(brandId as string, { name: i.name, filters: i.filters as Record<string, string[]> }),
-    onSuccess: invalidate,
-  });
-  const statusMut = useMutation({
-    mutationFn: (i: { id: string; status: Persona["status"] }) => setPersonaStatus(brandId as string, i.id, i.status),
     onSuccess: invalidate,
   });
 
@@ -1158,7 +1274,6 @@ function OnboardingPersonas({
   const commitNew = (id: string, name: string, filters: Filters) =>
     createMut.mutate({ name: capWords(name), filters }, { onSuccess: () => removeDraft(id) });
   const saveAsNew = (name: string, filters: Filters) => createMut.mutate({ name: capWords(name), filters });
-
   const card = "min-w-0 rounded-2xl border border-gray-200 bg-white p-5 sm:p-8 md:p-12";
   return (
     <div className={card}>
@@ -1181,8 +1296,11 @@ function OnboardingPersonas({
       {personaSuggestionFailed && <SetupWarning className="mt-4" />}
 
       <div className="mt-6 space-y-3">
-        {isPending && personas.length === 0 ? (
-          <div className="h-56 animate-pulse rounded-xl bg-gray-100" />
+        {(isPending || personaSeeding) && personas.length === 0 ? (
+          <div className="flex h-56 items-center justify-center rounded-xl bg-gray-50 text-sm text-gray-400">
+            <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
+            Drafting your first persona...
+          </div>
         ) : personas.length === 0 ? (
           <div className="rounded-xl border border-dashed border-gray-300 p-10 text-center text-sm text-gray-500">No personas yet.</div>
         ) : (
@@ -1193,7 +1311,7 @@ function OnboardingPersonas({
               onSaveAsNew={(name, filters) => saveAsNew(name, filters)}
               onCommitNew={(name, filters) => commitNew(persona.id, name, filters)}
               onCancelNew={() => removeDraft(persona.id)}
-              onSetStatus={(s) => statusMut.mutate({ id: persona.id, status: s })}
+              showLifecycleActions={false}
               checkNameTaken={(n) => isNameTaken(n, persona.unsaved ? persona.id : undefined)}
             />
           ))
@@ -1210,10 +1328,22 @@ function OnboardingPersonas({
           open={aiOpen}
           onClose={() => setAiOpen(false)}
           title="Edit personas with AI"
-          intro="Hi — I can create, duplicate, pause, resume and archive your personas. What would you like to change?"
+          intro="Hi — I can create, duplicate and refine your personas. What would you like to change?"
           suggestions={["Add a persona for mid-market RevOps leaders", "Narrow the main persona to Series A+ SaaS", "Add fintech founders in the US"]}
           configKey="persona-editor"
           brandId={brandId}
+          sessionVersion="live-context-v1"
+          context={{
+            personaCount: personas.length,
+            activePersonaCount: personas.filter((p) => p.status !== "archived").length,
+            personas: personas.map((p) => ({
+              id: p.id,
+              name: p.name,
+              status: p.status,
+              filters: p.filters,
+              persisted: !p.unsaved,
+            })),
+          }}
           invalidateKeys={[["personas", brandId]]}
         />
       )}

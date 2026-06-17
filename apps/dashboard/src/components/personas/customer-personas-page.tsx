@@ -8,7 +8,6 @@ import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { MaturityBadge } from "@/components/maturity-badge";
 import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
 import { listPersonas, createPersona, setPersonaStatus } from "@/lib/api";
 import {
@@ -139,7 +138,6 @@ export function CustomerPersonasPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-semibold text-gray-900">Customer Personas</h1>
-            <MaturityBadge level="beta" />
           </div>
           <p className="text-sm text-gray-500 mt-1">
             Define who you sell to. Each persona is a set of Apollo-style targeting
@@ -229,10 +227,22 @@ export function CustomerPersonasPage() {
         open={aiOpen}
         onClose={() => setAiOpen(false)}
         title="Edit personas with AI"
-        intro="Hi — I can create, duplicate, pause, resume and archive your personas. What would you like to change?"
+        intro="Hi — I can review, create, duplicate, pause, resume and archive your personas. What would you like to change?"
         suggestions={["Create a persona named Mid-market RevOps", "Duplicate Scaling SaaS Founders", "Archive Early Marketing Buyers"]}
         configKey="persona-editor"
         brandId={brandId}
+        sessionVersion="live-context-v1"
+        context={{
+          personaCount: personas.length,
+          activePersonaCount: personas.filter((p) => p.status !== "archived").length,
+          personas: personas.map((p) => ({
+            id: p.id,
+            name: p.name,
+            status: p.status,
+            filters: p.filters,
+            persisted: !p.unsaved,
+          })),
+        }}
         invalidateKeys={[["personas", brandId]]}
       />
     </div>

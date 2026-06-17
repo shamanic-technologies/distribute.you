@@ -127,10 +127,13 @@ describe("Platform config registration at startup", () => {
       expect(content).toContain("/platform-chat/config");
     });
 
-    it("should register all three chat config keys", () => {
+    it("should register all dashboard chat config keys", () => {
       expect(content).toContain('key: "workflow"');
       expect(content).toContain('key: "press-kit"');
       expect(content).toContain('key: "feature"');
+      expect(content).toContain('key: "campaign-prefill"');
+      expect(content).not.toContain('key: "persona-editor"');
+      expect(content).not.toContain('key: "brand-profile-editor"');
     });
 
     it("should include the workflow editor system prompt", () => {
@@ -149,6 +152,7 @@ describe("Platform config registration at startup", () => {
       expect(content).toContain("WORKFLOW_ALLOWED_TOOLS");
       expect(content).toContain("PRESS_KIT_ALLOWED_TOOLS");
       expect(content).toContain("FEATURE_ALLOWED_TOOLS");
+      expect(content).toContain("CAMPAIGN_PREFILL_ALLOWED_TOOLS");
     });
 
     it("should instruct the model to use workflowId from context for all tool calls", () => {

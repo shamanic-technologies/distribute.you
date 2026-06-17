@@ -1385,6 +1385,35 @@ export interface GlobalStatsResponse {
   groups?: StatsGroup[];
 }
 
+export type PipelineActivityMetricKey = "outreach" | "opens" | "clicks" | "signups";
+
+export interface PipelineActivityMetric {
+  actual: number | null;
+  expected: number | null;
+  conversionPct?: number | null;
+}
+
+export interface PipelineActivityDay {
+  date: string;
+  isToday: boolean;
+  metrics: Record<PipelineActivityMetricKey, PipelineActivityMetric>;
+}
+
+export interface PipelineActivitySummary {
+  dailyBudgetUsd: number | null;
+  openRatePct: number | null;
+  clickToSignupPct: number | null;
+}
+
+export interface PipelineActivityResponse {
+  featureSlug: string;
+  brandId: string;
+  timezone: string;
+  generatedAt: string;
+  days: PipelineActivityDay[];
+  summary: PipelineActivitySummary;
+}
+
 /** GET /features — list all features */
 export async function listFeatures(
   params?: { implemented?: boolean },
@@ -1465,6 +1494,60 @@ export async function getFeatureRevenue(
   if (campaignId) query.set("campaignId", campaignId);
   const raw = await apiCall<unknown>(`/features/${featureSlug}/revenue?${query.toString()}`, { token });
   return parseFeatureRevenue(raw, "getFeatureRevenue");
+}
+
+const PipelineActivityMetricSchema = z.object({
+  actual: z.number().nullable(),
+  expected: z.number().nullable(),
+  conversionPct: z.number().nullable().optional(),
+});
+
+const PipelineActivityResponseSchema = z.object({
+  featureSlug: z.string(),
+  brandId: z.string(),
+  timezone: z.string(),
+  generatedAt: z.string(),
+  days: z.array(
+    z.object({
+      date: z.string(),
+      isToday: z.boolean(),
+      metrics: z.object({
+        outreach: PipelineActivityMetricSchema,
+        opens: PipelineActivityMetricSchema,
+        clicks: PipelineActivityMetricSchema,
+        signups: PipelineActivityMetricSchema,
+      }),
+    }),
+  ),
+  summary: z.object({
+    dailyBudgetUsd: z.number().nullable(),
+    openRatePct: z.number().nullable(),
+    clickToSignupPct: z.number().nullable(),
+  }),
+});
+
+/** GET /features/:slug/pipeline-activity — 7-day actual + expected funnel activity. */
+export async function getFeaturePipelineActivity(
+  featureSlug: string,
+  params: { brandId: string; days?: number; timezone?: string },
+  token?: string,
+): Promise<PipelineActivityResponse> {
+  const query = new URLSearchParams({ brandId: params.brandId });
+  if (params.days != null) query.set("days", String(params.days));
+  if (params.timezone) query.set("timezone", params.timezone);
+  const raw = await apiCall<unknown>(
+    `/features/${encodeURIComponent(featureSlug)}/pipeline-activity?${query.toString()}`,
+    { token },
+  );
+  const parsed = PipelineActivityResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getFeaturePipelineActivity: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getFeaturePipelineActivity: invalid response shape");
+  }
+  return parsed.data;
 }
 
 /** POST /brands — upsert brand by URL, returns brandId */
@@ -2389,6 +2472,25 @@ export async function createCampaign(
   });
   const [enriched] = await enrichCampaignsWithBrandUrls([campaign], token);
   return { campaign: enriched };
+}
+
+export async function createCampaignWithoutBrandEnrichment(
+  params: {
+    name: string;
+    workflowSlug: string;
+    brandUrls: string[];
+    maxBudgetDailyUsd?: string;
+    maxBudgetWeeklyUsd?: string;
+    maxBudgetMonthlyUsd?: string;
+    maxBudgetTotalUsd?: string;
+  } & Record<string, unknown>,
+  token?: string
+): Promise<{ campaign: RawCampaign }> {
+  return apiCall<{ campaign: RawCampaign }>("/campaigns", {
+    token,
+    method: "POST",
+    body: params as unknown as Record<string, unknown>,
+  });
 }
 
 // Billing — wire shape per billing-service post-rename hotfix.

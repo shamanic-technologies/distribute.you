@@ -53,7 +53,7 @@ describe("Onboarding flow", () => {
 
   it("should create the brand inline and land on it, with no billing/top-up step", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
-    // No card-capture / auto-topup step at onboarding — it tripped the $2 welcome
+    // No card-capture / auto-topup step at onboarding — it tripped the $5 welcome
     // credit because the brand-new balance sits below the top-up threshold. Card +
     // auto-topup are set up later, on first campaign launch (billing-guard modal).
     expect(content).not.toContain('"billing-setup"');
@@ -95,8 +95,28 @@ describe("Beta onboarding wallet setup", () => {
     expect(content).toContain("topup_amount_cents: initialLoadCents");
     expect(content).toContain("configureAutoTopup(pending.topupAmountCents, pending.topupThresholdCents)");
     expect(content).toContain("saveBrandDailyBudget");
+    expect(content).toContain("featureInputs,");
+    expect(content).toContain("createCampaignWithoutBrandEnrichment");
     expect(content).not.toContain('mode: "subscription"');
     expect(content).not.toContain('mode: "setup"');
+  });
+
+  it("blocks the initial analysis only on service extraction", () => {
+    expect(content).toContain("SERVICES_PROFILE_FIELDS");
+    expect(content).toContain("createBrandAndFetchServices");
+    expect(content).toContain("const hydration = hydrateOnboardingInBackground(newBrandId)");
+    expect(content).toContain("hydrationPromiseRef.current = hydration");
+    expect(content).toContain("Extracting your services");
+  });
+
+  it("shows a real launch progress screen after Stripe success", () => {
+    expect(content).toContain('| "launching"');
+    expect(content).toContain("LAUNCH_STEPS");
+    expect(content).toContain("Confirming wallet payment");
+    expect(content).toContain("Activating auto-topup");
+    expect(content).toContain("Launching campaign");
+    expect(content).toContain("Opening your dashboard");
+    expect(content).toContain('setStep("launching")');
   });
 
   it("can retry checkout from the pending wallet launch after Stripe cancel", () => {
@@ -111,6 +131,7 @@ describe("Beta onboarding wallet setup", () => {
 
 describe("Onboarding layout", () => {
   const layoutPath = path.join(__dirname, "../src/app/(authed)/onboarding/layout.tsx");
+  const creditGatePath = path.join(__dirname, "../src/components/onboarding/onboarding-credit-gate.tsx");
 
   it("should have an onboarding layout", () => {
     expect(fs.existsSync(layoutPath)).toBe(true);
@@ -119,5 +140,13 @@ describe("Onboarding layout", () => {
   it("should use QueryProvider", () => {
     const content = fs.readFileSync(layoutPath, "utf-8");
     expect(content).toContain("QueryProvider");
+  });
+
+  it("should initialize welcome credits before rendering onboarding", () => {
+    const layout = fs.readFileSync(layoutPath, "utf-8");
+    const gate = fs.readFileSync(creditGatePath, "utf-8");
+    expect(layout).toContain("OnboardingCreditGate");
+    expect(gate).toContain("getBillingAccount");
+    expect(gate).toContain("Unable to initialize signup credits");
   });
 });

@@ -8,7 +8,6 @@ import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { MaturityBadge } from "@/components/maturity-badge";
 import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
 import { getBrandProfile, saveBrandProfileVersion } from "@/lib/api";
 import { SECTIONS, cloneFields, fieldsEqual, FieldEditor, type ProfileFields } from "./field-editor";
@@ -131,7 +130,6 @@ export function BrandProfilePage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-semibold text-gray-900">Brand Profile</h1>
-            <MaturityBadge level="beta" />
           </div>
           <p className="mt-1 text-sm text-gray-500">
             Your brand’s own info — the audience lives in{" "}
@@ -218,6 +216,21 @@ export function BrandProfilePage() {
         suggestions={["Set Value proposition to …", "Add Stripe to Competitors", "Save"]}
         configKey="brand-profile-editor"
         brandId={brandId}
+        sessionVersion="live-context-v1"
+        context={{
+          currentBrandProfile: fields,
+          savedBrandProfile: baseline,
+          fieldDefinitions: SECTIONS.flatMap((section) =>
+            section.fields.map((field) => ({
+              key: field.key,
+              label: field.label,
+              kind: field.kind,
+              description: field.placeholder,
+            })),
+          ),
+          versionCount: versions.length,
+          savedAt,
+        }}
         invalidateKeys={[["brandProfile", brandId]]}
       />
     </div>
