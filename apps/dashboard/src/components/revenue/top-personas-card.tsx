@@ -4,10 +4,12 @@ import { Skeleton } from "@/components/skeleton";
 import type {
   FeaturePersonaStatsResponse,
   FeaturePersonaStatsSortMetric,
+  FeaturePersonaStatsRow,
+  PersonaWire,
 } from "@/lib/api";
 
 function formatCents(cents: number | null): string {
-  if (cents == null) return "—";
+  if (cents == null) return "-";
   if (cents <= 0) return "$0.00";
   const usd = cents / 100;
   if (usd < 0.01) return "<$0.01";
@@ -48,14 +50,29 @@ function InfoHint({ text }: { text: string }) {
 
 export function TopPersonasCard({
   data,
+  personas = [],
   pending = false,
   metric,
 }: {
   data?: FeaturePersonaStatsResponse;
+  personas?: PersonaWire[];
   pending?: boolean;
   metric: FeaturePersonaStatsSortMetric;
 }) {
-  const rows = data?.personas ?? [];
+  const statsRows = (data?.personas ?? []).slice(0, 3);
+  const seenPersonaIds = new Set(
+    statsRows.flatMap((row) => [row.customerProfileId, row.persona.id]),
+  );
+  const fallbackRows = personas
+    .filter((persona) => !seenPersonaIds.has(persona.id))
+    .slice(0, Math.max(0, 3 - statsRows.length));
+  const rows: Array<
+    | { kind: "stats"; row: FeaturePersonaStatsRow }
+    | { kind: "persona"; persona: PersonaWire }
+  > = [
+    ...statsRows.map((row) => ({ kind: "stats" as const, row })),
+    ...fallbackRows.map((persona) => ({ kind: "persona" as const, persona })),
+  ];
   const activeMetric = data?.sortMetric ?? metric;
   const label = metricLabel(activeMetric);
 
@@ -77,28 +94,34 @@ export function TopPersonasCard({
             <Skeleton className="h-4 w-16" />
           </div>
         ))
-      ) : rows.length > 0 ? (
-        rows.map((row, index) => {
-          const value = activeMetric === "cpc" ? row.metrics.cpcCents : row.metrics.cpprCents;
-          const count =
-            activeMetric === "cpc"
-              ? `${row.evidence.websiteClicks.toLocaleString("en-US")} clicks`
-              : `${row.evidence.positiveReplies.toLocaleString("en-US")} replies`;
+      ) : (
+        rows.map((item, index) => {
+          const isStats = item.kind === "stats";
+          const name = isStats ? item.row.persona.name : item.persona.name;
+          const key = isStats ? item.row.customerProfileId : item.persona.id;
+          const value = isStats
+            ? activeMetric === "cpc"
+              ? item.row.metrics.cpcCents
+              : item.row.metrics.cpprCents
+            : null;
+          const count = isStats
+            ? activeMetric === "cpc"
+              ? `${item.row.evidence.websiteClicks.toLocaleString("en-US")} clicks`
+              : `${item.row.evidence.positiveReplies.toLocaleString("en-US")} replies`
+            : "-";
           return (
-            <div key={row.customerProfileId} className="flex items-center gap-2">
+            <div key={key} className="flex items-center gap-2">
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[11px] font-semibold text-brand-700">
                 {index + 1}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm text-gray-700">{row.persona.name}</span>
+                <span className="block truncate text-sm text-gray-700">{name}</span>
                 <span className="block truncate text-[11px] text-gray-400">{count}</span>
               </span>
               <span className="text-sm font-medium text-gray-800 tabular-nums">{formatCents(value)}</span>
             </div>
           );
         })
-      ) : (
-        <p className="text-sm text-gray-400">No persona-tagged results yet.</p>
       )}
     </div>
   );

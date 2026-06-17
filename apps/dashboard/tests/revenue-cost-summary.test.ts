@@ -54,15 +54,19 @@ describe("Cost summary card on feature Overview (actual spend)", () => {
     const api = read("lib/api.ts");
     const personaCard = read("components/revenue/top-personas-card.tsx");
     expect(overview).toContain("fetchFeaturePersonaStats");
+    expect(overview).toContain("listPersonas(brandId, \"active\")");
     expect(overview).toContain("featurePersonaStats");
     expect(overview).toContain("<TopPersonasCard");
+    expect(overview).toContain("personas={personaStatsRevealed ? personasData?.personas : undefined}");
     expect(overview).toContain("costBottomCard=");
     expect(api).toContain("export async function fetchFeaturePersonaStats");
     expect(api).toContain("`/features/${featureSlug}/persona-stats?");
     expect(personaCard).toContain("Top 3 personas");
+    expect(personaCard).toContain("fallbackRows");
     expect(personaCard).toContain("row.metrics.cpcCents");
     expect(personaCard).toContain("row.metrics.cpprCents");
-    expect(personaCard).toContain("No persona-tagged results yet.");
+    expect(personaCard).toContain('if (cents == null) return "-";');
+    expect(personaCard).not.toContain("No persona-tagged results yet.");
   });
 
   it("does not derive hidden cost efficiency ratios in the browser", () => {
