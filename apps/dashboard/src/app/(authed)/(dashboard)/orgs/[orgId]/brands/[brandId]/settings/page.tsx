@@ -287,9 +287,9 @@ export default function BrandSettingsPage() {
 }
 
 /**
- * Pause the brand's running outreach. The product runs ONE subscription
- * (campaign) per brand, so this finds the single active (non-"stopped") campaign
- * and pauses it. Re-homed here from the deleted campaign overview page.
+ * Pause the brand's running outreach. This finds the active (non-"stopped")
+ * campaign for the brand and pauses it. Re-homed here from the deleted campaign
+ * overview page.
  */
 function PauseOutreachCard({ brandId }: { brandId: string }) {
   const [confirmOpen, setConfirmOpen] = useState(false);

@@ -21,7 +21,7 @@ import {
  * backend signal, not a timer — then closes the instant the first lead is
  * contacted.
  *
- * Self-contained: it takes ONLY the new subscription's `campaignId` (read from
+ * Self-contained: it takes ONLY the new campaign's `campaignId` (read from
  * the brand-overview `?launched=` marker) and fetches the campaign (for status +
  * brand URLs) and leads itself — no campaign context needed, so it mounts on the
  * brand Overview.
@@ -96,7 +96,7 @@ export function CampaignLaunchModal({
 }: {
   campaignId: string;
 }) {
-  // Fetch the just-launched subscription for its status + brand URLs (the
+  // Fetch the just-launched campaign for its status + brand URLs (the
   // brand-overview ?launched= marker pre-seeds the ["campaign", id] cache, so
   // this paints instantly). Reuse the campaign-detail query keys so any other
   // observer dedupes.

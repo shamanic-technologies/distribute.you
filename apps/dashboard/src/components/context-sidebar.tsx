@@ -340,9 +340,9 @@ function getEntitySidebarIcon(iconName: string): React.ReactNode {
   return iconFn ? iconFn() : <WorkflowIcon />;
 }
 
-// Brand Level Sidebar — the product ships ONE feature AND ONE subscription
-// (campaign) per brand, so everything collapses to the brand level: Overview,
-// the entity Database, and the Brand Settings entry. The sole feature's slug is
+// Brand Level Sidebar — the product ships the primary feature at the brand level,
+// so everything collapses to the brand level: Overview, the entity Database,
+// and the Brand Settings entry. The sole feature's slug is
 // resolved from features-context (no `/features/[featureSlug]` segment, no
 // campaign level).
 function BrandLevelSidebar({ orgId, brandId, pathname }: {

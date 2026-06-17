@@ -13,10 +13,10 @@ const DEPLETED_MODAL_SESSION_KEY = "credit-depleted-modal-shown";
  * App-shell credit guard. Two reassurance-vs-nag surfaces over data already on
  * the wire (billing account + org campaigns), no backend dependency:
  *
- *  1. A persistent top banner when an active recurring campaign is about to run
+ *  1. A persistent top banner when an active daily-budget campaign is about to run
  *     out of credit AND auto-topup is off — amber ≤3 days, red ≤1 day. CTA pushes
  *     auto-topup (the friction-free "never stops again" fix). Suppressed once
- *     auto-topup is on or no recurring campaign is running.
+ *     auto-topup is on or no active daily-budget campaign is running.
  *  2. A one-per-session modal on arrival when the balance is already exhausted
  *     and the org has campaigns — "all campaigns stopped, add credit / set up
  *     auto-topup".
@@ -66,7 +66,7 @@ export function CreditAlerts() {
   const severity = runwaySeverity(status, account.has_auto_topup);
   if (!severity) return null;
 
-  const plural = status.recurringCount > 1;
+  const plural = status.activeDailyBudgetCount > 1;
   const subject = plural ? "campaigns" : "campaign";
   const verbHave = plural ? "have" : "has";
 
