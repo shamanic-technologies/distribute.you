@@ -785,6 +785,7 @@ export async function saveBrandDailyBudget(
     token,
     method: "PATCH",
     body: { dailyBudgetCents },
+    headers: { "x-run-id": globalThis.crypto.randomUUID() },
   });
   const parsed = SaveBrandDailyBudgetResponseSchema.safeParse(raw);
   if (!parsed.success) {
