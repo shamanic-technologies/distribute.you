@@ -95,8 +95,28 @@ describe("Beta onboarding wallet setup", () => {
     expect(content).toContain("topup_amount_cents: initialLoadCents");
     expect(content).toContain("configureAutoTopup(pending.topupAmountCents, pending.topupThresholdCents)");
     expect(content).toContain("saveBrandDailyBudget");
+    expect(content).toContain("featureInputs,");
+    expect(content).toContain("createCampaignWithoutBrandEnrichment");
     expect(content).not.toContain('mode: "subscription"');
     expect(content).not.toContain('mode: "setup"');
+  });
+
+  it("blocks the initial analysis only on service extraction", () => {
+    expect(content).toContain("SERVICES_PROFILE_FIELDS");
+    expect(content).toContain("createBrandAndFetchServices");
+    expect(content).toContain("const hydration = hydrateOnboardingInBackground(newBrandId)");
+    expect(content).toContain("hydrationPromiseRef.current = hydration");
+    expect(content).toContain("Extracting your services");
+  });
+
+  it("shows a real launch progress screen after Stripe success", () => {
+    expect(content).toContain('| "launching"');
+    expect(content).toContain("LAUNCH_STEPS");
+    expect(content).toContain("Confirming wallet payment");
+    expect(content).toContain("Activating auto-topup");
+    expect(content).toContain("Launching campaign");
+    expect(content).toContain("Opening your dashboard");
+    expect(content).toContain('setStep("launching")');
   });
 
   it("can retry checkout from the pending wallet launch after Stripe cancel", () => {
