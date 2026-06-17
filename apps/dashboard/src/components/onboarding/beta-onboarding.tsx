@@ -37,7 +37,6 @@ import {
   saveBrandSalesEconomics,
   suggestPersonas,
   createPersona,
-  setPersonaStatus,
   listPersonas,
   getWorkflowProjection,
   getFeature,
@@ -276,6 +275,7 @@ function toStringList(value: unknown): string[] {
 export function BetaOnboarding() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const { organization } = useOrganization();
   const { createOrganization, setActive } = useOrganizationList();
   const { session } = useSession();
@@ -369,20 +369,37 @@ export function BetaOnboarding() {
     timers.current.push(last);
   }
 
+  async function seedOnboardingPersonaFromBrandInfo(id: string): Promise<void> {
+    setPersonaSeeding(true);
+    try {
+      const sug = await suggestPersonas(id, 1);
+      const first: PersonaDraft | undefined = sug.personas[0];
+      if (first?.name?.trim()) {
+        await createPersona(id, { name: capWords(first.name.trim()), filters: first.filters });
+        await queryClient.invalidateQueries({ queryKey: ["personas", id] });
+      }
+    } catch (e) {
+      console.error("[dashboard] suggest/create persona (onboarding seed) failed:", e);
+      setSetupIssues((prev) => ({ ...prev, persona: true }));
+    } finally {
+      setPersonaSeeding(false);
+    }
+  }
+
   async function hydrateOnboardingInBackground(id: string): Promise<void> {
+    setPersonaSeeding(true);
     await extractBrandFields([id], SALES_PROFILE_FIELDS).catch((e) => {
       console.error("[dashboard] extractBrandFields (background) failed:", e);
       setSetupIssues((prev) => ({ ...prev, extraction: true }));
     });
+    // Persona drafting is the next latency-sensitive AI task, so start it as
+    // soon as brand-profile extraction is done instead of bundling it behind
+    // projection/economics hydration.
+    const personaSeed = seedOnboardingPersonaFromBrandInfo(id);
 
-    const [prof, econRes, sug, proj, feat] = await Promise.all([
+    const [prof, econRes, proj, feat] = await Promise.all([
       getBrandProfile(id),
       getSalesEconomicsEffective(id),
-      suggestPersonas(id, 1).catch((e) => {
-        console.error("[dashboard] suggestPersonas (onboarding seed) failed:", e);
-        setSetupIssues((prev) => ({ ...prev, persona: true }));
-        return { personas: [] as PersonaDraft[] };
-      }),
       getWorkflowProjection({ featureSlug: SALES_FEATURE_SLUG, brandId: id, objective: "self-serve", budgetUsd: PROJECTION_REF_BUDGET }),
       getFeature(SALES_FEATURE_SLUG),
     ]);
@@ -411,16 +428,8 @@ export function BetaOnboarding() {
       setRates(loaded);
       setRateText(Object.fromEntries((Object.keys(loaded) as RateKey[]).map((k) => [k, rateToText(loaded[k])])) as Record<RateKey, string>);
     }
-    const first: PersonaDraft | undefined = sug.personas[0];
-    if (first?.name?.trim()) {
-      setPersonaSeeding(true);
-      await createPersona(id, { name: capWords(first.name.trim()), filters: first.filters }).catch((e) => {
-        console.error("[dashboard] createPersona (onboarding seed) failed:", e);
-        setSetupIssues((prev) => ({ ...prev, persona: true }));
-      });
-      setPersonaSeeding(false);
-    }
     projectionRef.current = proj;
+    await personaSeed;
   }
 
   async function waitForOnboardingHydration(): Promise<void> {
@@ -467,12 +476,10 @@ export function BetaOnboarding() {
       setServices(toStringList(serviceValue));
     }
     fetchDoneRef.current = true;
-    setPersonaSeeding(true);
     const hydration = hydrateOnboardingInBackground(newBrandId).catch((e) => {
       console.error("[dashboard] onboarding background hydrate failed:", e);
     });
     hydrationPromiseRef.current = hydration;
-    void hydration.finally(() => setPersonaSeeding(false));
   }
 
   async function startAnalyze() {
@@ -1207,7 +1214,7 @@ export function BetaOnboarding() {
 // ── Personas step — server-backed (mirrors the Customer Personas page) ──────
 // The brand exists by now (created during loading) and the AI-suggested persona
 // was already persisted, so this reads/writes live personas: PersonaCard with the
-// full save / archive lifecycle + an Edit-with-AI chat, exactly like the page.
+// save lifecycle + an Edit-with-AI chat.
 let obDraftSeq = 0;
 const nextDraftId = () => `ob-draft-${++obDraftSeq}`;
 
@@ -1242,10 +1249,6 @@ function OnboardingPersonas({
   const createMut = useMutation({
     mutationFn: (i: { name: string; filters: Filters }) =>
       createPersona(brandId as string, { name: i.name, filters: i.filters as Record<string, string[]> }),
-    onSuccess: invalidate,
-  });
-  const statusMut = useMutation({
-    mutationFn: (i: { id: string; status: Persona["status"] }) => setPersonaStatus(brandId as string, i.id, i.status),
     onSuccess: invalidate,
   });
 
@@ -1308,7 +1311,7 @@ function OnboardingPersonas({
               onSaveAsNew={(name, filters) => saveAsNew(name, filters)}
               onCommitNew={(name, filters) => commitNew(persona.id, name, filters)}
               onCancelNew={() => removeDraft(persona.id)}
-              onSetStatus={(s) => statusMut.mutate({ id: persona.id, status: s })}
+              showLifecycleActions={false}
               checkNameTaken={(n) => isNameTaken(n, persona.unsaved ? persona.id : undefined)}
             />
           ))
@@ -1325,7 +1328,7 @@ function OnboardingPersonas({
           open={aiOpen}
           onClose={() => setAiOpen(false)}
           title="Edit personas with AI"
-          intro="Hi — I can create, duplicate, pause, resume and archive your personas. What would you like to change?"
+          intro="Hi — I can create, duplicate and refine your personas. What would you like to change?"
           suggestions={["Add a persona for mid-market RevOps leaders", "Narrow the main persona to Series A+ SaaS", "Add fintech founders in the US"]}
           configKey="persona-editor"
           brandId={brandId}

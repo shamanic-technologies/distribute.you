@@ -65,11 +65,14 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain("Who do you want to sell to?");
     expect(src).toContain("EditWithAIChat");
     expect(src).toContain("listPersonas");
+    expect(src).toContain("showLifecycleActions={false}");
     expect(src).toContain('configKey="persona-editor"');
+    expect(src).not.toContain("pause, resume and archive your personas");
   });
 
   it("does not fail the whole onboarding when optional AI suggestions 502", () => {
-    expect(src).toContain("suggestPersonas(id, 1).catch");
+    expect(src).toContain("seedOnboardingPersonaFromBrandInfo");
+    expect(src).toContain("suggest/create persona (onboarding seed) failed");
     expect(src).toContain("hydrateOnboardingInBackground");
     expect(src).toContain("extractBrandFields failed");
     expect(src).toContain("GENERIC_AI_SETUP_ERROR");

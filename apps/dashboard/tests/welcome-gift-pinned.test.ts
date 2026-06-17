@@ -37,9 +37,7 @@ describe("welcome gift is not front-end editable", () => {
 
 describe("welcome gift is pinned at boot by instrumentation", () => {
   it("declares the code-owned grant amount constant", () => {
-    expect(instrumentationContent).toMatch(
-      /WELCOME_GIFT_CENTS\s*=\s*\d+/,
-    );
+    expect(instrumentationContent).toContain("WELCOME_GIFT_CENTS = 500");
   });
 
   it("PATCHes the pinned amount to /v1/promo-codes/welcome on boot", () => {
