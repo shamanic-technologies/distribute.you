@@ -88,6 +88,10 @@ describe("Beta onboarding guided flow", () => {
   it("budget is picked as outcome-count tiers before wallet setup", () => {
     expect(src).toContain("COUNT_TIERS");
     expect(src).toContain("budgetForCount");
+    expect(src).toContain("budgetSelection");
+    expect(src).toContain("selectCustomCount");
+    expect(src).toContain('const active = budgetSelection === "custom"');
+    expect(src).toContain("onFocus={() => selectCustomCount()}");
     expect(src).toContain("Continue to wallet setup");
     expect(src).toContain("Set up your org wallet.");
     expect(src).toContain("Your first load is matched dollar-for-dollar up to $25 free.");

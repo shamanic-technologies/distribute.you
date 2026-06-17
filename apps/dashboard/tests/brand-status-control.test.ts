@@ -70,6 +70,10 @@ describe("brand overview status control", () => {
     expect(control).toContain("openBudgetDialog");
     expect(control).toContain("COUNT_TIERS = [5, 25, 125]");
     expect(control).toContain("Other");
+    expect(control).toContain("budgetSelection");
+    expect(control).toContain("selectCustomCount");
+    expect(control).toContain('const active = budgetSelection === "custom"');
+    expect(control).toContain("onFocus={() => selectCustomCount()}");
     expect(control).toContain("getWorkflowProjection");
     expect(control).toContain("budgetForCount");
     expect(control).toContain("saveBudget(selectedBudget)");
