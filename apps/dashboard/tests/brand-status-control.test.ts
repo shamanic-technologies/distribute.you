@@ -25,7 +25,9 @@ describe("brand overview status control", () => {
     expect(control).toContain("getBrandPause");
     expect(control).toContain("setBrandPause");
     expect(control).toContain("getBrandDailyBudget");
+    expect(control).toContain("saveBrandDailyBudget");
     expect(control).toContain("getBrandSalesEconomics");
+    expect(control).toContain("saveBrandSalesEconomics");
     expect(control).toContain('["brandPause", brandId]');
     expect(control).toContain('["brandDailyBudget", brandId]');
     expect(control).toContain('["brandSalesEconomics", brandId]');
@@ -45,5 +47,31 @@ describe("brand overview status control", () => {
     expect(api).toContain("export async function setBrandPause");
     expect(api).toContain("`/brands/${brandId}/pause`");
     expect(api).toContain('method: "PATCH"');
+  });
+
+  it("opens an overview modal to edit the optimization goal", () => {
+    expect(control).toContain("goalDialogOpen");
+    expect(control).toContain("openGoalDialog");
+    expect(control).toContain("Optimization goal");
+    expect(control).toContain("GOAL_OPTIONS.map");
+    expect(control).toContain("saveGoal(selectedGoal)");
+  });
+
+  it("keeps goal saves aligned with Brand Settings sales economics fields", () => {
+    expect(control).toContain("salesEconomicsInputForGoal");
+    expect(control).toContain("DEFAULT_SALES_ECONOMICS");
+    expect(control).toContain("businessModel: current?.businessModel ?? null");
+    expect(control).toContain("funnelStages");
+    expect(control).toContain("optimizationGoal");
+  });
+
+  it("opens an onboarding-style budget modal from the status pill", () => {
+    expect(control).toContain("budgetDialogOpen");
+    expect(control).toContain("openBudgetDialog");
+    expect(control).toContain("COUNT_TIERS = [5, 25, 125]");
+    expect(control).toContain("Other");
+    expect(control).toContain("getWorkflowProjection");
+    expect(control).toContain("budgetForCount");
+    expect(control).toContain("saveBudget(selectedBudget)");
   });
 });
