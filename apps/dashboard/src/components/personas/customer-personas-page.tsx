@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { SparklesIcon } from "@heroicons/react/20/solid";
@@ -69,6 +69,7 @@ export function CustomerPersonasPage() {
   const [tab, setTab] = useState<"active" | "archived">("active");
   const [aiOpen, setAiOpen] = useState(false);
   const [selectedPersonaId, setSelectedPersonaId] = useState<string | null>(null);
+  const requestedAvatarIds = useRef<Set<string>>(new Set());
 
   const { data, isPending } = useAuthQuery(["personas", brandId], () => listPersonas(brandId));
 
@@ -100,9 +101,16 @@ export function CustomerPersonasPage() {
   }));
   // Drafts first (top of the list), then persisted personas.
   const personas: Persona[] = [...drafts, ...serverPersonas];
+  const missingAvatarId = serverPersonas.find((p) => !p.avatarUrl && !requestedAvatarIds.current.has(p.id))?.id;
   const selectedPersona = selectedPersonaId
     ? personas.find((p) => p.id === selectedPersonaId) ?? null
     : null;
+
+  useEffect(() => {
+    if (!missingAvatarId || avatarRegenerating) return;
+    requestedAvatarIds.current.add(missingAvatarId);
+    regenerateAvatar(missingAvatarId);
+  }, [missingAvatarId, avatarRegenerating, regenerateAvatar]);
 
   useEffect(() => {
     if (selectedPersonaId && !selectedPersona) setSelectedPersonaId(null);

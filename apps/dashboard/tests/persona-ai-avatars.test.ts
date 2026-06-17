@@ -29,6 +29,12 @@ describe("Persona AI avatars", () => {
     expect(personasPage).toContain("regeneratePersonaAvatar");
   });
 
+  it("auto-generates missing persisted avatars on the personas page after reload", () => {
+    expect(personasPage).toContain("requestedAvatarIds");
+    expect(personasPage).toContain("const missingAvatarId = serverPersonas.find((p) => !p.avatarUrl");
+    expect(personasPage).toContain("regenerateAvatar(missingAvatarId)");
+  });
+
   it("shows a hover/focus regenerate control on persisted persona avatars", () => {
     expect(personaCard).toContain("Regenerate ${name || \"persona\"} avatar");
     expect(personaCard).toContain("group-hover/avatar:opacity-100");
