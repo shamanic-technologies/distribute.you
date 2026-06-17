@@ -15,8 +15,7 @@ import { pollOptions } from "@/lib/query-options";
 // What the brand is currently maximising — the brand-level optimization goal.
 const GOAL_LABEL: Record<BrandOptimizationGoal, string> = {
   signups: "Maximising signups conversions",
-  booked_meetings: "Maximising booked meetings",
-  sales: "Maximising Sales value",
+  sales_meetings: "Maximising sales meetings",
 };
 
 function budgetLabel(cents: number | null): string | null {
@@ -54,7 +53,9 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
 
   const paused = pauseData?.paused ?? false;
   const goal =
-    econ === undefined ? null : econ.salesEconomics?.optimizationGoal ?? "sales";
+    econ === undefined
+      ? null
+      : econ.salesEconomics?.optimizationGoal ?? "sales_meetings";
   const budget = budgetLabel(budgetData?.dailyBudgetCents ?? null);
 
   const { mutate, isPending: saving } = useMutation({

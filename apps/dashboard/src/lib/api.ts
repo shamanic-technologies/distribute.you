@@ -600,9 +600,9 @@ export type BrandBusinessModel = "b2c" | "b2b";
 // (never null — a brand that never set it reads []).
 export type BrandFunnelStage = "website_purchase" | "sales_meeting";
 
-// The single metric the brand wants to optimise for. Server default "sales"
-// (revenue) when never set; GET/PUT responses always include a non-null value.
-export type BrandOptimizationGoal = "signups" | "booked_meetings" | "sales";
+// The single metric the brand wants to optimise for. Server default
+// "sales_meetings" when never set; GET/PUT responses always include a non-null value.
+export type BrandOptimizationGoal = "signups" | "sales_meetings";
 
 export interface BrandSalesEconomics {
   lifetimeRevenueUsd: number;
@@ -655,8 +655,7 @@ const BrandSalesEconomicsSchema = z.object({
   ),
   optimizationGoal: z.union([
     z.literal("signups"),
-    z.literal("booked_meetings"),
-    z.literal("sales"),
+    z.literal("sales_meetings"),
   ]),
   updatedAt: z.string(),
 });

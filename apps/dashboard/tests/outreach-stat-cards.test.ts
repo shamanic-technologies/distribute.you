@@ -15,7 +15,7 @@ describe("OutreachStatCards goal-specific copy", () => {
   it("accepts the brand optimization goal instead of the old funnel-stage gate", () => {
     expect(cards).toContain("type { BrandOptimizationGoal }");
     expect(cards).toContain("optimizationGoal?: BrandOptimizationGoal");
-    expect(cards).toContain('optimizationGoal ?? "sales"');
+    expect(cards).toContain('optimizationGoal ?? "sales_meetings"');
     expect(cards).not.toContain("funnelStages");
   });
 
@@ -35,22 +35,22 @@ describe("OutreachStatCards goal-specific copy", () => {
     expect(cards).toContain('costLabel: "CPC"');
   });
 
-  it("uses Positive Replies/CPPR for booked-meetings goals", () => {
-    expect(cards).toContain('goal === "booked_meetings"');
+  it("uses Positive Replies/CPPR for sales-meetings goals", () => {
+    expect(cards).toContain('goal === "sales_meetings"');
     expect(cards).toContain('label: "Positive Replies"');
     expect(cards).toContain("stats.leadsRepliesPositive ?? 0");
     expect(cards).toContain('costLabel: "CPPR"');
     expect(cards).toContain("Cost per positive reply.");
   });
 
-  it("shows the goal outcome beta pair for signups, booked meetings, and sales", () => {
+  it("shows the goal outcome beta pair for signups and sales meetings", () => {
     expect(cards).toContain('label: "Sales Meetings"');
     expect(cards).toContain('costLabel: "CPSM"');
     expect(cards).toContain("Cost per Sales Meetings.");
     expect(cards).toContain('label: "Signups"');
     expect(cards).toContain('costLabel: "CPS"');
-    expect(cards).toContain('label: "Sales"');
-    expect(cards).toContain('costLabel: "CAC"');
+    expect(cards).not.toContain('label: "Sales"');
+    expect(cards).not.toContain('costLabel: "CAC"');
   });
 
   it("formats cost-per metrics with two decimal places", () => {
@@ -60,11 +60,11 @@ describe("OutreachStatCards goal-specific copy", () => {
 
   it("passes optimizationGoal from both overview call sites", () => {
     expect(page).toContain(
-      'const optimizationGoal = economicsData?.salesEconomics?.optimizationGoal ?? "sales"',
+      'economicsData?.salesEconomics?.optimizationGoal ?? "sales_meetings"',
     );
     expect(page).toContain("optimizationGoal={optimizationGoal}");
     expect(auto).toContain(
-      'const optimizationGoal = economicsData?.salesEconomics?.optimizationGoal ?? "sales"',
+      'economicsData?.salesEconomics?.optimizationGoal ?? "sales_meetings"',
     );
     expect(auto).toContain("optimizationGoal={optimizationGoal}");
   });

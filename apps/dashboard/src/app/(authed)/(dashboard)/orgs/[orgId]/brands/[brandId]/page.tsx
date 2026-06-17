@@ -69,7 +69,8 @@ export default function BrandOverviewPage() {
     () => getBrandSalesEconomics(brandId),
     { enabled, ...pollOptions },
   );
-  const optimizationGoal = economicsData?.salesEconomics?.optimizationGoal ?? "sales";
+  const optimizationGoal =
+    economicsData?.salesEconomics?.optimizationGoal ?? "sales_meetings";
 
   // Per-card reveal (NOT one page-wide barrier): revenue (features-service) and
   // total-spend (runs-service) are two different cold chains — gate each on its

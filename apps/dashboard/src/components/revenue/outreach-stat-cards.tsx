@@ -30,10 +30,10 @@ function Cell({ children }: { children: ReactNode }) {
  * surface (one source → no drift, CLAUDE.md "keep surfaces in lockstep").
  *
  * GA cards (everyone): Outreach / Opens + the leading metric for the brand's
- * optimization goal (Clicks/CPC for signups or sales, Positive Replies/CPPR for
- * booked meetings).
+ * optimization goal (Clicks/CPC for signups, Positive Replies/CPPR for sales
+ * meetings).
  * Beta cards (allowlist only — `useIsBetaUser`): the goal outcome pair
- * (Signups/CPS, Sales Meetings/CPSM, or Sales/CAC), each badged `beta`.
+ * (Signups/CPS or Sales Meetings/CPSM), each badged `beta`.
  *
  * All values derive from already-fetched featureStats + systemStats cost — no
  * new query. Static-shell-first: labels paint instantly, values skeleton until
@@ -51,7 +51,7 @@ export function OutreachStatCards({
   optimizationGoal?: BrandOptimizationGoal;
 }) {
   const isBeta = useIsBetaUser();
-  const goal = optimizationGoal ?? "sales";
+  const goal = optimizationGoal ?? "sales_meetings";
   const outreach = stats.leadsSent ?? stats.recipientsSent ?? 0;
   const opens = stats.recipientsOpened ?? 0;
   const clicks = stats.recipientsClicked ?? 0;
@@ -59,7 +59,7 @@ export function OutreachStatCards({
   const beta = <MaturityBadge level="beta" />;
 
   const primaryMetric =
-    goal === "booked_meetings"
+    goal === "sales_meetings"
       ? {
           label: "Positive Replies",
           tooltip:
@@ -80,24 +80,17 @@ export function OutreachStatCards({
         };
 
   const outcomeMetric =
-    goal === "booked_meetings"
+    goal === "sales_meetings"
       ? {
           label: "Sales Meetings",
           costLabel: "CPSM",
           costTooltip: "Cost per Sales Meetings.",
         }
-      : goal === "signups"
-        ? {
-            label: "Signups",
-            costLabel: "CPS",
-            costTooltip: "Cost per signup — total spent divided by signups. Coming soon.",
-          }
-        : {
-            label: "Sales",
-            costLabel: "CAC",
-            costTooltip:
-              "Cost of acquisition — total spent divided by customers acquired. Coming soon.",
-          };
+      : {
+          label: "Signups",
+          costLabel: "CPS",
+          costTooltip: "Cost per signup — total spent divided by signups. Coming soon.",
+        };
 
   return (
     <div className="flex flex-nowrap gap-3 overflow-x-auto mb-6">
