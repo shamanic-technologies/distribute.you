@@ -4,6 +4,7 @@ import { SyncNowButton } from "./_components/sync-now-button";
 import { MessagesList, type MessagesPage, type GoogleMessage } from "./_components/messages-list";
 import { ContactsList, type ContactsPage } from "./_components/contacts-list";
 import type { GoogleContactRow } from "./_components/parse-google-contact";
+import { DashboardPage } from "@/components/dashboard-page";
 
 const API_URL =
   process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
@@ -116,7 +117,7 @@ export default async function GoogleCrmPage({ params, searchParams }: PageProps)
   }
 
   return (
-    <div className="p-4 md:p-8">
+    <DashboardPage width="standard">
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-gray-800">Google CRM</h1>
         <p className="text-gray-600">
@@ -199,6 +200,6 @@ export default async function GoogleCrmPage({ params, searchParams }: PageProps)
           </div>
         </div>
       )}
-    </div>
+    </DashboardPage>
   );
 }

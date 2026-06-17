@@ -8,6 +8,7 @@ import { listAllRankedOpportunities, type RankedOpportunity } from "@/lib/api";
 import { isOpportunityOpen } from "@/lib/quote-pitch-status";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
+import { DashboardPage } from "@/components/dashboard-page";
 
 // Reads the SAME gold catalog (GET /orgs/opportunities, scored above
 // SCORE_THRESHOLD) that the sidebar badge counts and the campaign HITL queue
@@ -45,7 +46,7 @@ export default function FeatureQuoteRequestsPage() {
   }, [opportunities, search]);
 
   return (
-    <div className="p-4 md:p-8" data-testid="feature-quote-requests-page">
+    <DashboardPage width="wide" data-testid="feature-quote-requests-page">
       <OutreachStatCardsAuto />
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-gray-800">
@@ -91,7 +92,7 @@ export default function FeatureQuoteRequestsPage() {
           </table>
         </div>
       )}
-    </div>
+    </DashboardPage>
   );
 }
 

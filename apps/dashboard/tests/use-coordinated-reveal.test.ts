@@ -129,7 +129,13 @@ describe("route-transition loading.tsx boundaries (instant nav skeletons)", () =
       path.join(__dirname, "../src/components/dashboard-page-skeleton.tsx"),
       "utf-8",
     );
-    expect(skel).toContain("p-4 md:p-8 max-w-7xl mx-auto");
+    const page = fs.readFileSync(
+      path.join(__dirname, "../src/components/dashboard-page.tsx"),
+      "utf-8",
+    );
+    expect(skel).toContain('<DashboardPage width="wide">');
+    expect(page).toContain("p-4 md:p-8");
+    expect(page).toContain('wide: "max-w-7xl"');
   });
 });
 

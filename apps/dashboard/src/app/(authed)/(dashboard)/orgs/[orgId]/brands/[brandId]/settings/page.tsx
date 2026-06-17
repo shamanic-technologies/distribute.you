@@ -14,6 +14,7 @@ import {
 } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
+import { DashboardPage } from "@/components/dashboard-page";
 import { BrandSalesEconomicsCard } from "@/components/settings/brand-sales-economics-card";
 import { BrandDailyBudgetCard } from "@/components/settings/brand-daily-budget-card";
 
@@ -69,7 +70,7 @@ export default function BrandSettingsPage() {
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-3xl">
+    <DashboardPage width="narrow">
       <h1 className="text-2xl font-semibold text-gray-900 mb-8">Brand Settings</h1>
 
       {/* Daily Budget */}
@@ -283,7 +284,7 @@ export default function BrandSettingsPage() {
           </div>
         </>
       )}
-    </div>
+    </DashboardPage>
   );
 }
 

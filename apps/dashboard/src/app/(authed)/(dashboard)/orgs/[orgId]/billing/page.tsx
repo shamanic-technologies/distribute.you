@@ -12,6 +12,7 @@ import {
 import { useBillingGuard } from "@/lib/billing-guard";
 import { formatBillingCents } from "@/lib/format-number";
 import { pollOptions } from "@/lib/query-options";
+import { DashboardPage } from "@/components/dashboard-page";
 
 const TOPUP_AMOUNTS = [1000, 2500, 5000, 10000]; // cents
 
@@ -225,7 +226,7 @@ export default function BillingPage() {
 
   if (accountLoading) {
     return (
-      <div className="p-4 md:p-8">
+      <DashboardPage width="standard">
         <div className="mb-6">
           <h1 className="font-display text-2xl font-bold text-gray-800">Billing</h1>
           <p className="text-gray-600">Manage your credits and payment method.</p>
@@ -235,12 +236,12 @@ export default function BillingPage() {
           <div className="bg-white rounded-xl border border-gray-200 p-5 h-48" />
           <div className="bg-white rounded-xl border border-gray-200 p-5 h-64" />
         </div>
-      </div>
+      </DashboardPage>
     );
   }
 
   return (
-    <div className="p-4 md:p-8">
+    <DashboardPage width="standard">
       <div className="mb-6 flex max-w-2xl flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold text-gray-800">Billing</h1>
@@ -506,6 +507,6 @@ export default function BillingPage() {
           </div>
         )}
       </div>
-    </div>
+    </DashboardPage>
   );
 }

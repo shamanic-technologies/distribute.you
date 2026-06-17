@@ -1,4 +1,5 @@
 import { Skeleton } from "@/components/skeleton";
+import { DashboardPage } from "@/components/dashboard-page";
 
 /**
  * Generic content-area skeleton rendered by the route-segment `loading.tsx`
@@ -9,14 +10,14 @@ import { Skeleton } from "@/components/skeleton";
  * RSC + chunk resolve. Without a `loading.tsx`, a click on a DYNAMIC dashboard
  * route blocks on a full server roundtrip with the old page frozen on screen.
  *
- * Shape-matches the dense-page container (`p-4 md:p-8 max-w-7xl mx-auto`,
+ * Shape-matches the dense-page container (`<DashboardPage width="wide">`,
  * header + stat-card row + a main block) so the transition into each page's own
  * per-card React-Query skeletons is seamless (no layout shift / double flash).
  * It only shows during the navigation fetch; warm-cache pages reveal instantly.
  */
 export function DashboardPageSkeleton() {
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto">
+    <DashboardPage width="wide">
       {/* Header */}
       <div className="mb-6 space-y-2">
         <Skeleton className="h-7 w-56" />
@@ -37,6 +38,6 @@ export function DashboardPageSkeleton() {
       </div>
       {/* Main block */}
       <Skeleton className="h-64 w-full rounded-xl" />
-    </div>
+    </DashboardPage>
   );
 }

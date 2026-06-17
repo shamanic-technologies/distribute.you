@@ -14,6 +14,7 @@ import {
 } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
+import { DashboardPage } from "@/components/dashboard-page";
 
 function getArticleTitle(item: ArticleDiscoveryItem): string {
   return item.article.ogTitle || item.article.twitterTitle || item.article.snippet?.slice(0, 80) || "Untitled";
@@ -101,14 +102,14 @@ export default function FeatureArticlesPage() {
 
   if (isPending && !data) {
     return (
-      <div className="p-4 md:p-8">
+      <DashboardPage width="wide">
         <div className="animate-pulse space-y-4">
           <div className="h-8 w-32 bg-gray-200 rounded" />
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-16 bg-gray-100 rounded-xl" />
           ))}
         </div>
-      </div>
+      </DashboardPage>
     );
   }
 

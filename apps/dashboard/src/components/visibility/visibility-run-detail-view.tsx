@@ -16,6 +16,7 @@ import { DetailTabs } from "@/components/visibility/detail-tabs";
 import { METRIC_INFO, MetricLabel } from "@/components/visibility/metric-info";
 import { getDetailTabs, getRunDebugFields } from "@/lib/visibility-detail";
 import { DebugSection } from "@/components/visibility/prompt-detail-pane";
+import { DashboardPage } from "@/components/dashboard-page";
 
 /**
  * Single visibility-run detail. The run is fetched by id only
@@ -39,13 +40,13 @@ export function VisibilityRunDetailView({ basePath }: { basePath: string }) {
 
   if (isLoading || !data || !activeTab) {
     return (
-      <div className="p-4 md:p-8">
+      <DashboardPage width="wide">
         <div className="animate-pulse space-y-3">
           <div className="h-8 w-48 bg-gray-200 rounded" />
           <div className="h-32 bg-gray-100 rounded-lg" />
           <div className="h-64 bg-gray-100 rounded-lg" />
         </div>
-      </div>
+      </DashboardPage>
     );
   }
 
@@ -57,7 +58,7 @@ export function VisibilityRunDetailView({ basePath }: { basePath: string }) {
       : `aggregated across ${data.by_provider.length} judge${data.by_provider.length === 1 ? "" : "s"}`;
 
   return (
-    <div className="p-4 md:p-8" data-testid="visibility-run-detail-page">
+    <DashboardPage width="wide" data-testid="visibility-run-detail-page">
       <div className="mb-4">
         <Link
           href={`${basePath}/visibility-runs`}
@@ -232,6 +233,6 @@ export function VisibilityRunDetailView({ basePath }: { basePath: string }) {
           </div>
         </section>
       )}
-    </div>
+    </DashboardPage>
   );
 }

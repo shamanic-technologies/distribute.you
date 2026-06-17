@@ -5,6 +5,7 @@ import { Skeleton } from "../skeleton";
 import { useLatestVisibilityRunDetail } from "@/lib/use-latest-visibility-run";
 import { type ListVisibilityRunsParams } from "@/lib/api";
 import { DetailTabs } from "@/components/visibility/detail-tabs";
+import { DashboardPage } from "@/components/dashboard-page";
 import { ProviderModelBadge } from "@/components/visibility/provider-label";
 import { PromptDetailPane } from "@/components/visibility/prompt-detail-pane";
 import { METRIC_INFO, MetricLabel } from "@/components/visibility/metric-info";
@@ -40,7 +41,7 @@ export function VisibilityPromptsView({
   const placeholderCount = 5;
 
   return (
-    <div className="p-4 md:p-8" data-testid="prompts-page">
+    <DashboardPage width="wide" data-testid="prompts-page">
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-gray-800">Prompts</h1>
         <p className="text-sm text-gray-500 mt-1">
@@ -108,7 +109,7 @@ export function VisibilityPromptsView({
         prompt={selectedPrompt}
         onClose={() => setSelectedPrompt(null)}
       />
-    </div>
+    </DashboardPage>
   );
 }
 

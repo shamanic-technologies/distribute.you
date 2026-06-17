@@ -9,6 +9,7 @@ import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { MaturityBadge } from "@/components/maturity-badge";
+import { DashboardPage } from "@/components/dashboard-page";
 import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
 import { listPersonas, createPersona, setPersonaStatus } from "@/lib/api";
 import {
@@ -60,11 +61,11 @@ export function CustomerPersonasPage() {
 
   if (!isBeta || !revenueOk) {
     return (
-      <div className="p-4 md:p-8 max-w-7xl mx-auto">
+      <DashboardPage width="wide">
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-sm text-gray-400">
           This view isn&apos;t available yet.
         </div>
-      </div>
+      </DashboardPage>
     );
   }
 
@@ -119,7 +120,7 @@ export function CustomerPersonasPage() {
 
   if (isPending && personas.length === 0) {
     return (
-      <div className="p-4 md:p-8 max-w-7xl mx-auto">
+      <DashboardPage width="wide">
         <div className="animate-pulse space-y-4">
           <div className="h-7 w-48 bg-gray-200 rounded" />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -128,12 +129,12 @@ export function CustomerPersonasPage() {
             ))}
           </div>
         </div>
-      </div>
+      </DashboardPage>
     );
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
+    <DashboardPage width="wide" className="space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -247,6 +248,6 @@ export function CustomerPersonasPage() {
         }}
         invalidateKeys={[["personas", brandId]]}
       />
-    </div>
+    </DashboardPage>
   );
 }
