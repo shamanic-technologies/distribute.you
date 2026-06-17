@@ -38,6 +38,19 @@ describe("Brand overview pipeline activity chart", () => {
     expect(chart).toContain("Math.max(expected - actual, 0)");
     expect(chart).toContain("function visiblePointSize");
     expect(chart).toContain("minPointSize={visiblePointSize}");
+    expect(chart).toContain("LabelList");
+    expect(chart).toContain("renderBarLabel");
     expect(chart).toContain("value.conversionPct");
+  });
+
+  it("uses metric-color legend labels and reserves room for visible bar values", () => {
+    expect(chart).toContain("{metric.label}");
+    expect(chart).toContain('min-w-[1120px]');
+    expect(chart).toContain('h-[300px]');
+    expect(chart).toContain("maxBarSize={28}");
+    expect(chart).toContain('barCategoryGap="18%"');
+    expect(chart).not.toContain(">Actual<");
+    expect(chart).not.toContain(">Expected<");
+    expect(chart).not.toContain("Timezone:");
   });
 });
