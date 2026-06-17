@@ -58,8 +58,8 @@ const FUNNEL_STAGES: { value: BrandFunnelStage; label: string; tip: string }[] =
   },
 ];
 
-// The single metric the brand optimises for. Sales meetings is the default. `stages` =
-// which funnel stages make this goal relevant; [] = always relevant.
+// The single metric the brand optimises for. `stages` = which funnel stages make
+// this goal relevant.
 const OPTIMIZATION_GOALS: {
   value: BrandOptimizationGoal;
   label: string;
@@ -176,16 +176,24 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
         ? f.funnelStages.filter((s) => s !== stage)
         : [...f.funnelStages, stage];
       // If the selected optimization goal no longer maps to a chosen funnel stage,
-      // fall back to the default sales-meetings goal so no hidden goal stays selected.
+      // fall back to a visible goal so no hidden goal stays selected.
       const goalDef = OPTIMIZATION_GOALS.find((g) => g.value === f.optimizationGoal);
       const goalStillRelevant =
         !goalDef ||
         goalDef.stages.length === 0 ||
         goalDef.stages.some((s) => funnelStages.includes(s));
+      const nextVisibleGoal = OPTIMIZATION_GOALS.find(
+        (g) =>
+          funnelStages.length === 0 ||
+          g.stages.length === 0 ||
+          g.stages.some((s) => funnelStages.includes(s)),
+      );
       return {
         ...f,
         funnelStages,
-        optimizationGoal: goalStillRelevant ? f.optimizationGoal : "sales_meetings",
+        optimizationGoal: goalStillRelevant
+          ? f.optimizationGoal
+          : nextVisibleGoal?.value ?? "sales_meetings",
       };
     });
     setDirty(true);
@@ -208,14 +216,14 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
   }
 
   // Show only the fields/goals relevant to the selected funnel stage(s). Nothing
-  // selected → show every goal so the default never disappears from the control.
+  // selected → no conversion fields yet, but keep the goal picker available.
   const isRelevant = (stages: BrandFunnelStage[]) =>
     stages.length === 0 || stages.some((s) => form?.funnelStages.includes(s));
   const visiblePctFields = PCT_FIELDS.filter((f) => isRelevant(f.stages));
-  const visibleGoals =
-    (form?.funnelStages.length ?? 0) === 0
-      ? OPTIMIZATION_GOALS
-      : OPTIMIZATION_GOALS.filter((g) => isRelevant(g.stages));
+  const selectedFunnelStages = form?.funnelStages ?? [];
+  const visibleGoals = OPTIMIZATION_GOALS.filter(
+    (g) => selectedFunnelStages.length === 0 || isRelevant(g.stages),
+  );
 
   if (isPending || !form) {
     return (

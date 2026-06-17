@@ -49,6 +49,7 @@ describe("OutreachStatCards goal-specific copy", () => {
     expect(cards).toContain("Cost per Sales Meetings.");
     expect(cards).toContain('label: "Signups"');
     expect(cards).toContain('costLabel: "CPS"');
+    expect(cards).not.toContain('label: "Sales"');
     expect(cards).not.toContain('costLabel: "CAC"');
   });
 
