@@ -28,6 +28,7 @@ export function RevenueOverviewSection({
   headerAction,
   topRow,
   pipelineActivity,
+  costBottomCard,
   revenuePending = false,
   activityPending = false,
   costPending = false,
@@ -45,6 +46,8 @@ export function RevenueOverviewSection({
   headerAction?: ReactNode;
   /** Optional row rendered under the header, above the Pipeline-revenue hero. */
   topRow?: ReactNode;
+  /** Optional bottom card rendered under the cost-efficiency stat cards. */
+  costBottomCard?: ReactNode;
   /** features-service `/revenue` reveal — headline and conversions. */
   revenuePending?: boolean;
   /** features-service pipeline-activity reveal — 7-day actual/expected chart. */
@@ -112,6 +115,7 @@ export function RevenueOverviewSection({
           costBreakdown={costBreakdown}
           pending={revenueLoading}
           costPending={costPending}
+          bottomCard={costBottomCard}
         />
       </div>
 

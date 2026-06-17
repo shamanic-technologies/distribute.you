@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import { type CategoryKey, type Filters, type Persona } from "@/lib/mock-personas";
 
 // ---------------------------------------------------------------------------
@@ -102,6 +103,75 @@ function filtersEqual(a: Filters, b: Filters): boolean {
   return true;
 }
 
+const AVATAR_TONES = [
+  "bg-indigo-50 text-indigo-700 border-indigo-100",
+  "bg-emerald-50 text-emerald-700 border-emerald-100",
+  "bg-amber-50 text-amber-700 border-amber-100",
+  "bg-rose-50 text-rose-700 border-rose-100",
+  "bg-sky-50 text-sky-700 border-sky-100",
+  "bg-violet-50 text-violet-700 border-violet-100",
+];
+
+function hashIndex(value: string, modulo: number): number {
+  let hash = 0;
+  for (let i = 0; i < value.length; i++) hash = (Math.imul(hash, 31) + value.charCodeAt(i)) | 0;
+  return Math.abs(hash) % modulo;
+}
+
+function personaInitials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "P";
+  return words.slice(0, 2).map((w) => w[0]?.toUpperCase()).join("");
+}
+
+export function PersonaAvatar({
+  name,
+  avatarUrl,
+  onRegenerate,
+  regenerating,
+}: {
+  name: string;
+  avatarUrl?: string | null;
+  onRegenerate?: () => void;
+  regenerating?: boolean;
+}) {
+  const tone = AVATAR_TONES[hashIndex(name || "Persona", AVATAR_TONES.length)];
+  return (
+    <div className="group/avatar relative h-11 w-11 shrink-0">
+      {avatarUrl ? (
+        <img
+          src={avatarUrl}
+          alt=""
+          className="h-11 w-11 rounded-xl border border-gray-200 bg-white object-cover"
+        />
+      ) : (
+        <div className={`flex h-11 w-11 items-center justify-center rounded-xl border text-sm font-semibold ${tone}`}>
+          {personaInitials(name)}
+        </div>
+      )}
+      {onRegenerate && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onRegenerate();
+          }}
+          disabled={regenerating}
+          aria-label={`Regenerate ${name || "persona"} avatar`}
+          title="Regenerate avatar"
+          className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:border-brand-200 hover:bg-brand-50 hover:text-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-300 disabled:cursor-wait disabled:opacity-70 sm:opacity-0 sm:group-hover/avatar:opacity-100 sm:focus:opacity-100"
+        >
+          {regenerating ? (
+            <span className="h-3 w-3 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
+          ) : (
+            <ArrowPathIcon className="h-3.5 w-3.5" />
+          )}
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Persona card — edits NEVER mutate the saved persona. A brand-new persona is
 // an unsaved draft you Save or Cancel; editing an existing persona surfaces
@@ -121,6 +191,8 @@ export function PersonaCard({
   checkNameTaken,
   onChange,
   onRemove,
+  onRegenerateAvatar,
+  regeneratingAvatar = false,
   showLifecycleActions = true,
 }: {
   persona: Persona;
@@ -133,6 +205,9 @@ export function PersonaCard({
   onChange?: (name: string, filters: Filters) => void;
   /** Embedded remove affordance (X in the header). */
   onRemove?: () => void;
+  /** Persisted personas can replace their generated avatar. */
+  onRegenerateAvatar?: () => void;
+  regeneratingAvatar?: boolean;
   /** Hide pause/archive/restore actions where the lifecycle has not been explained. */
   showLifecycleActions?: boolean;
 }) {
@@ -211,51 +286,59 @@ export function PersonaCard({
     <div className={`bg-white rounded-xl border p-5 flex flex-col gap-4 ${showSaveBar ? "border-brand-300 ring-1 ring-brand-200" : "border-gray-200"}`}>
       {/* Card header */}
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          {editingName && editable ? (
-            <div>
-              <input
-                autoFocus
-                value={name}
-                onChange={(e) => updateName(e.target.value)}
-                onBlur={() => setEditingName(false)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === "Escape") setEditingName(false);
-                }}
-                placeholder="Persona name"
-                className="w-full text-base font-semibold text-gray-900 border-b border-brand-300 pb-0.5 focus:outline-none focus:border-brand-500"
-              />
-              <p className="mt-1 text-[10px] text-gray-400">{wordCount}/4 words</p>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => editable && setEditingName(true)}
-              disabled={!editable}
-              className="group flex items-center gap-1.5 text-left"
-            >
-              <span className="text-base font-semibold text-gray-900 truncate">{name || "Untitled"}</span>
-              {editable && <PencilIcon className="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-500 shrink-0" />}
-            </button>
-          )}
-          <p className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-gray-400">
-            <span>{totalFilters} {totalFilters === 1 ? "filter" : "filters"}</span>
-            {!embedded && isNew && (
-              <span className="rounded-full bg-brand-50 text-brand-600 border border-brand-200 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide">
-                Draft
-              </span>
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          <PersonaAvatar
+            name={name}
+            avatarUrl={persona.avatarUrl}
+            onRegenerate={!isNew ? onRegenerateAvatar : undefined}
+            regenerating={regeneratingAvatar}
+          />
+          <div className="min-w-0 flex-1">
+            {editingName && editable ? (
+              <div>
+                <input
+                  autoFocus
+                  value={name}
+                  onChange={(e) => updateName(e.target.value)}
+                  onBlur={() => setEditingName(false)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === "Escape") setEditingName(false);
+                  }}
+                  placeholder="Persona name"
+                  className="w-full text-base font-semibold text-gray-900 border-b border-brand-300 pb-0.5 focus:outline-none focus:border-brand-500"
+                />
+                <p className="mt-1 text-[10px] text-gray-400">{wordCount}/4 words</p>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => editable && setEditingName(true)}
+                disabled={!editable}
+                className="group flex items-center gap-1.5 text-left"
+              >
+                <span className="text-base font-semibold text-gray-900 truncate">{name || "Untitled"}</span>
+                {editable && <PencilIcon className="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-500 shrink-0" />}
+              </button>
             )}
-            {!isNew && persona.status === "paused" && (
-              <span className="rounded-full bg-amber-50 text-amber-600 border border-amber-200 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide">
-                Paused
-              </span>
-            )}
-            {persona.status === "archived" && (
-              <span className="rounded-full bg-gray-100 text-gray-500 border border-gray-200 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide">
-                Archived
-              </span>
-            )}
-          </p>
+            <p className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-gray-400">
+              <span>{totalFilters} {totalFilters === 1 ? "filter" : "filters"}</span>
+              {!embedded && isNew && (
+                <span className="rounded-full bg-brand-50 text-brand-600 border border-brand-200 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide">
+                  Draft
+                </span>
+              )}
+              {!isNew && persona.status === "paused" && (
+                <span className="rounded-full bg-amber-50 text-amber-600 border border-amber-200 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide">
+                  Paused
+                </span>
+              )}
+              {persona.status === "archived" && (
+                <span className="rounded-full bg-gray-100 text-gray-500 border border-gray-200 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide">
+                  Archived
+                </span>
+              )}
+            </p>
+          </div>
         </div>
 
         {/* Lifecycle actions — never hard-delete. New drafts have none (Save /

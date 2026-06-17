@@ -36,13 +36,16 @@ describe("ConversionsTabs — extracted + reused (single source for the tabs)", 
   });
 });
 
-describe("RevenueCostSummary — default Top cost sources bottom card", () => {
+describe("RevenueCostSummary — replaceable bottom card", () => {
   const card = read("components/revenue/revenue-cost-summary.tsx");
+  const overview = read("app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx");
   it("accepts a bottomCard prop and renders it when provided", () => {
     expect(card).toContain("bottomCard");
     expect(card).toContain("bottomCard !== undefined ? bottomCard");
   });
-  it("keeps the default Top cost sources path for the Overview", () => {
+  it("keeps Top cost sources as the generic fallback only", () => {
     expect(card).toContain("Top cost sources");
+    expect(overview).toContain("costBottomCard=");
+    expect(overview).toContain("<TopPersonasCard");
   });
 });

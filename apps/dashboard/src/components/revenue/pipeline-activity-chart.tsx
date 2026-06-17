@@ -4,6 +4,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  LabelList,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -34,6 +35,14 @@ type ChartDatum = {
   raw: PipelineActivityDay["metrics"];
 } & Record<`${PipelineActivityMetricKey}Actual`, number> &
   Record<`${PipelineActivityMetricKey}ExpectedRemaining`, number>;
+
+type BarLabelProps = {
+  x?: number | string;
+  y?: number | string;
+  width?: number | string;
+  value?: unknown;
+  payload?: ChartDatum;
+};
 
 function finite(n: number | null | undefined): number {
   return typeof n === "number" && Number.isFinite(n) ? Math.max(0, n) : 0;
@@ -67,6 +76,66 @@ function formatAxis(n: number): string {
   if (n >= 10) return String(Math.round(n));
   if (n === 0) return "0";
   return n.toFixed(1).replace(/\\.0$/, "");
+}
+
+function visiblePointSize(value: unknown): number {
+  return typeof value === "number" && value > 0 ? 3 : 0;
+}
+
+function numericCoord(n: number | string | undefined): number | null {
+  if (typeof n === "number" && Number.isFinite(n)) return n;
+  if (typeof n === "string") {
+    const parsed = Number(n);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function renderBarLabel(
+  props: BarLabelProps,
+  metricKey: PipelineActivityMetricKey,
+  kind: "actual" | "expected",
+) {
+  const day = props.payload;
+  const x = numericCoord(props.x);
+  const y = numericCoord(props.y);
+  const width = numericCoord(props.width);
+  if (!day || x == null || y == null || width == null) return null;
+
+  const actual = finite(day.raw[metricKey].actual);
+  const expected = finite(day.raw[metricKey].expected);
+  const expectedRemaining = day[`${metricKey}ExpectedRemaining`];
+  const renderedValue = typeof props.value === "number" ? props.value : 0;
+
+  if (kind === "expected") {
+    if (renderedValue <= 0 || expected <= 0) return null;
+    return (
+      <text
+        x={x + width / 2}
+        y={Math.max(10, y - 6)}
+        textAnchor="middle"
+        fontSize={10}
+        fontWeight={700}
+        fill="#475569"
+      >
+        {formatValue(expected, metricKey)}
+      </text>
+    );
+  }
+
+  if (actual <= 0 || expectedRemaining > 0) return null;
+  return (
+    <text
+      x={x + width / 2}
+      y={Math.max(10, y - 6)}
+      textAnchor="middle"
+      fontSize={10}
+      fontWeight={700}
+      fill="#475569"
+    >
+      {formatValue(actual, metricKey)}
+    </text>
+  );
 }
 
 function buildChartData(days: PipelineActivityDay[]): ChartDatum[] {
@@ -142,20 +211,25 @@ export function PipelineActivityChart({ data }: { data: PipelineActivityResponse
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-gray-500">
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-sm bg-gray-800" />
-          Actual
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-sm bg-gray-200" />
-          Expected
-        </span>
-        <span className="text-gray-400">Timezone: {data.timezone}</span>
+        {METRICS.map((metric) => (
+          <span key={metric.key} className="inline-flex items-center gap-1.5">
+            <span className="inline-flex h-2.5 w-4 overflow-hidden rounded-sm border border-white/60">
+              <span className="h-full flex-1" style={{ backgroundColor: metric.actual }} />
+              <span className="h-full flex-1" style={{ backgroundColor: metric.expected }} />
+            </span>
+            {metric.label}
+          </span>
+        ))}
       </div>
       <div className="overflow-x-auto">
-        <div className="h-[260px] min-w-[760px]">
+        <div className="h-[300px] min-w-[1120px]">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <BarChart
+              data={chartData}
+              margin={{ top: 28, right: 16, left: 0, bottom: 0 }}
+              barCategoryGap="18%"
+              barGap={4}
+            >
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
               <XAxis
                 dataKey="label"
@@ -178,9 +252,12 @@ export function PipelineActivityChart({ data }: { data: PipelineActivityResponse
                   stackId={metric.key}
                   fill={metric.actual}
                   radius={[3, 3, 0, 0]}
-                  maxBarSize={18}
+                  maxBarSize={28}
+                  minPointSize={visiblePointSize}
                   isAnimationActive
-                />
+                >
+                  <LabelList content={(props) => renderBarLabel(props, metric.key, "actual")} />
+                </Bar>
               ))}
               {METRICS.map((metric) => (
                 <Bar
@@ -189,9 +266,12 @@ export function PipelineActivityChart({ data }: { data: PipelineActivityResponse
                   stackId={metric.key}
                   fill={metric.expected}
                   radius={[3, 3, 0, 0]}
-                  maxBarSize={18}
+                  maxBarSize={28}
+                  minPointSize={visiblePointSize}
                   isAnimationActive
-                />
+                >
+                  <LabelList content={(props) => renderBarLabel(props, metric.key, "expected")} />
+                </Bar>
               ))}
             </BarChart>
           </ResponsiveContainer>

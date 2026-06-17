@@ -42,14 +42,15 @@ import {
   getFeature,
   prefillFeatureInputs,
   prefillToStringMap,
-  configureAutoTopup,
   createCheckoutSession,
+  setupBillingWallet,
   createCampaignWithoutBrandEnrichment,
   saveBrandDailyBudget,
   type EffectiveSalesEconomics,
   type WorkflowProjectionResponse,
   type PersonaDraft,
   type FeatureInput,
+  regeneratePersonaAvatar,
 } from "@/lib/api";
 import { extractDomain } from "@/lib/extract-domain";
 import { useAuthQuery } from "@/lib/use-auth-query";
@@ -63,7 +64,7 @@ import { BrandLogo } from "@/components/brand-logo";
  * from the app.distribute.you mockup: welcome → URL → an ANIMATED build sequence that
  * runs WHILE the brand is created AND its profile / services / personas / economics /
  * pricing projection are fetched for real → services to promote → sales goal →
- * one conversion rate → review the AI-proposed persona (server-backed, Edit-with-AI)
+ * conversion rates → review the AI-proposed persona (server-backed, Edit-with-AI)
  * → agency-channel consent → outcome-count budget → launches a real campaign.
  * Everything is wired to live endpoints.
  */
@@ -103,12 +104,12 @@ const RATE_META: Record<RateKey, { label: string; suffix: "$" | "%"; hint: strin
   ltv: { label: "Lifetime revenue / paid client", suffix: "$", hint: "Average revenue a customer brings over their lifetime." },
   v2s: { label: "Website visits to signup rate", suffix: "%", hint: "Of visitors who land on your site, how many sign up." },
   s2c: { label: "Signup → paid client", suffix: "%", hint: "Of signups, how many become paying customers." },
-  v2m: { label: "Website visit → meeting", suffix: "%", hint: "Of visitors, how many book a meeting." },
-  r2m: { label: "Positive reply to sales meeting", suffix: "%", hint: "Of positive replies, how many book a meeting." },
+  v2m: { label: "Website visit → sales meeting", suffix: "%", hint: "Only set this above 0 if prospects can book a meeting directly from your website. If every meeting needs a reply first, use 0%." },
+  r2m: { label: "Positive reply → sales meeting", suffix: "%", hint: "Of prospects who reply with real buying interest, the share that become a booked meeting after your follow-up or calendar link." },
   m2c: { label: "Meeting booked → close won", suffix: "%", hint: "Of booked meetings, how many close." },
 };
-// The single rate each goal asks for.
-const RATE_FOR_OUTCOME: Record<Outcome, RateKey> = { signups: "v2s", meetings: "r2m" };
+// The rate fields each goal asks for.
+const RATE_KEYS_FOR_OUTCOME: Record<Outcome, RateKey[]> = { signups: ["v2s"], meetings: ["r2m", "v2m"] };
 
 // ── Rate-input formatting ────────────────────────────────────────────
 // Number fields render as TEXT (not <input type="number">) so we can show
@@ -154,13 +155,13 @@ const AGENCY_BENEFITS = [
 
 const SERVICES_PROFILE_FIELDS = SALES_PROFILE_FIELDS.filter((f) => f.key === "services");
 const LOADING_STEPS = [
-  { id: "ls-1", label: "Reading your product", delay: 500 },
-  { id: "ls-2", label: "Extracting your services", delay: 700 },
-  { id: "ls-3", label: "Preparing your workspace", delay: 500 },
+  { id: "workspace", label: "Preparing your workspace" },
+  { id: "reading", label: "Reading your product" },
+  { id: "services", label: "Extracting your services" },
 ];
 const LAUNCH_STEPS = [
   { id: "wallet", label: "Confirming wallet payment" },
-  { id: "topup", label: "Activating auto-topup" },
+  { id: "topup", label: "Applying wallet match" },
   { id: "campaign", label: "Launching campaign" },
   { id: "access", label: "Opening dashboard access" },
   { id: "dashboard", label: "Opening your dashboard" },
@@ -307,16 +308,16 @@ export function BetaOnboarding() {
   const [launchStep, setLaunchStep] = useState(0);
   const [launchingBrand, setLaunchingBrand] = useState<{ domain: string | null; hostname: string } | null>(null);
 
-  // Loading-sequence + real fetch coordination. We only advance past the loader once
-  // BOTH the short animation and the blocking service-list extraction are done.
+  // Loading-sequence + real fetch coordination. The visible checks follow real
+  // client milestones; the website read + service extraction happen inside one
+  // backend call, so both stay active until that call returns.
   const [loadStep, setLoadStep] = useState(0);
-  const [loadDone, setLoadDone] = useState(false);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const [brandId, setBrandId] = useState<string | null>(null);
   const brandIdRef = useRef<string | null>(null);
   const orgIdRef = useRef<string | null>(null);
   const fetchDoneRef = useRef(false);
-  const animDoneRef = useRef(false);
+  const loadingStartedAtRef = useRef<number | null>(null);
   const walletResumeStartedRef = useRef(false);
 
   const projectionRef = useRef<WorkflowProjectionResponse | null>(null);
@@ -345,28 +346,24 @@ export function BetaOnboarding() {
   }, []);
 
   function maybeAdvancePastLoading() {
-    if (animDoneRef.current && fetchDoneRef.current) setStep("services");
+    if (fetchDoneRef.current) setStep("services");
   }
 
-  function runLoadingAnimation() {
+  function resetLoadingProgress() {
     timers.current.forEach(clearTimeout);
     timers.current = [];
-    setLoadDone(false);
     setLoadStep(0);
-    animDoneRef.current = false;
-    let elapsed = 0;
-    LOADING_STEPS.forEach((s, i) => {
-      const t = setTimeout(() => setLoadStep(i), elapsed);
-      timers.current.push(t);
-      elapsed += s.delay;
-    });
-    const last = setTimeout(() => {
-      setLoadStep(LOADING_STEPS.length - 1);
-      setLoadDone(true);
-      animDoneRef.current = true;
-      maybeAdvancePastLoading();
-    }, elapsed);
-    timers.current.push(last);
+    fetchDoneRef.current = false;
+    loadingStartedAtRef.current = performance.now();
+  }
+
+  function captureSetupMilestone(milestone: string, startedAt?: number) {
+    const now = performance.now();
+    const elapsedMs = loadingStartedAtRef.current == null ? null : Math.round(now - loadingStartedAtRef.current);
+    const durationMs = startedAt == null ? null : Math.round(now - startedAt);
+    const props = { flow: "beta", domain, milestone, elapsed_ms: elapsedMs, duration_ms: durationMs };
+    posthog.capture("onboarding_setup_milestone", props);
+    console.info("[dashboard] onboarding setup milestone", props);
   }
 
   async function seedOnboardingPersonaFromBrandInfo(id: string): Promise<void> {
@@ -441,6 +438,7 @@ export function BetaOnboarding() {
   async function createBrandAndFetchServices(): Promise<void> {
     const trimmed = url.trim();
     const brandUrl = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    const workspaceStartedAt = performance.now();
     const reuseOrg = !forceNew && !!organization?.id;
     let targetOrgId: string;
     if (reuseOrg) {
@@ -453,7 +451,11 @@ export function BetaOnboarding() {
       await setActive({ organization: org.id });
       targetOrgId = org.id;
     }
+    captureSetupMilestone("organization_ready", workspaceStartedAt);
+    const brandStartedAt = performance.now();
     const { brandId: newBrandId } = await upsertBrand(brandUrl);
+    captureSetupMilestone("brand_upserted", brandStartedAt);
+    setLoadStep(1);
     // NOTE: onboarding is marked complete only at the END of the flow (in
     // launch(), after the campaign is created) — NOT here. Marking it complete
     // at brand creation set the edge-gate signal 6 steps early, so a mid-flow
@@ -461,11 +463,14 @@ export function BetaOnboarding() {
     // dashboard (no rates/personas/consent/campaign). See launch(). (#1770)
     // Extract only the service list before moving forward. The heavier profile,
     // persona, economics and projection work continues after the services step is usable.
+    const servicesStartedAt = performance.now();
     const serviceFields = await extractBrandFields([newBrandId], SERVICES_PROFILE_FIELDS).catch((e) => {
       console.error("[dashboard] extractBrandFields failed:", e);
+      captureSetupMilestone("services_extract_failed", servicesStartedAt);
       setSetupIssues((prev) => ({ ...prev, extraction: true }));
       return null;
     });
+    if (serviceFields) captureSetupMilestone("services_extracted", servicesStartedAt);
     brandIdRef.current = newBrandId;
     orgIdRef.current = targetOrgId;
     setBrandId(newBrandId);
@@ -476,6 +481,7 @@ export function BetaOnboarding() {
       setServices(toStringList(serviceValue));
     }
     fetchDoneRef.current = true;
+    setLoadStep(LOADING_STEPS.length);
     const hydration = hydrateOnboardingInBackground(newBrandId).catch((e) => {
       console.error("[dashboard] onboarding background hydrate failed:", e);
     });
@@ -487,8 +493,9 @@ export function BetaOnboarding() {
     setError(null);
     setSetupIssues({ extraction: false, persona: false });
     setStep("loading");
-    runLoadingAnimation();
+    resetLoadingProgress();
     posthog.capture("onboarding_workspace_create_started", { flow: "beta", domain });
+    captureSetupMilestone("started");
     try {
       await createBrandAndFetchServices();
       maybeAdvancePastLoading();
@@ -676,7 +683,7 @@ export function BetaOnboarding() {
       cancelUrl.searchParams.set("wallet_setup", "cancelled");
 
       const session = await createCheckoutSession({
-        topup_amount_cents: initialLoadCents,
+        mode: "setup",
         success_url: successUrl.toString(),
         cancel_url: cancelUrl.toString(),
       });
@@ -702,12 +709,16 @@ export function BetaOnboarding() {
       setStep("launching");
 
       setLaunchStep(1);
-      await configureAutoTopup(pending.topupAmountCents, pending.topupThresholdCents);
+      await setupBillingWallet({
+        initial_load_amount_cents: pending.initialLoadCents,
+        topup_amount_cents: pending.topupAmountCents,
+        topup_threshold_cents: pending.topupThresholdCents,
+      });
       await completeLaunchAfterWallet(pending);
     } catch (err) {
       posthog.capture("onboarding_launch_failed", { flow: "beta", stage: "wallet_return" });
       const detail = err instanceof Error ? err.message : "unknown error";
-      setError(`Wallet checkout returned, but setup could not finish: ${detail} Backend support for paid top-up checkout plus auto-topup configuration is required; campaign was not launched.`);
+      setError(`Wallet checkout returned, but setup could not finish: ${detail} Backend support for first-load wallet setup is required; campaign was not launched.`);
       setStep("wallet");
       setBusy(false);
     }
@@ -859,15 +870,16 @@ export function BetaOnboarding() {
   }
 
   if (step === "loading") {
+    const loadingComplete = fetchDoneRef.current || loadStep >= LOADING_STEPS.length;
     return (
       <div className={card}>
         <BrandStepHeader domain={domain} hostname={hostname} />
-        <div className="mb-2 text-center text-lg font-semibold text-gray-950">{loadDone ? "Your strategy is ready." : "Building your strategy…"}</div>
+        <div className="mb-2 text-center text-lg font-semibold text-gray-950">{loadingComplete ? "Your strategy is ready." : "Building your strategy…"}</div>
         <p className="mb-6 text-center text-sm text-gray-500">Reading <span className="font-medium text-gray-700">{hostname}</span></p>
         <div className="space-y-2">
           {LOADING_STEPS.map((s, i) => {
-            const isDone = (loadDone && fetchDoneRef.current) || i < loadStep;
-            const isActive = !isDone && i === loadStep;
+            const isDone = loadingComplete || i < loadStep;
+            const isActive = !isDone && (i === loadStep || (loadStep === 1 && i === 2));
             return (
               <div key={s.id} className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition ${isActive ? "border-brand-200 bg-brand-50" : "border-gray-100 bg-white"} ${isDone || isActive ? "opacity-100" : "opacity-40"}`}>
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center">
@@ -880,7 +892,7 @@ export function BetaOnboarding() {
             );
           })}
         </div>
-        {loadDone && !fetchDoneRef.current && <p className="mt-5 text-center text-xs text-gray-400">Finishing setup…</p>}
+        {!loadingComplete && loadStep >= 1 && <p className="mt-5 text-center text-xs text-gray-400">Reading and extracting services can take a minute for a new domain.</p>}
       </div>
     );
   }
@@ -937,7 +949,7 @@ export function BetaOnboarding() {
   }
 
   if (step === "rates") {
-    const k = RATE_FOR_OUTCOME[outcome];
+    const rateKeys = RATE_KEYS_FOR_OUTCOME[outcome];
     return (
       <div className={card}>
         <BackButton onClick={() => setStep("objective")} />
@@ -945,28 +957,32 @@ export function BetaOnboarding() {
         <h2 className="font-display text-2xl font-bold text-gray-900">Your conversion rates.</h2>
         <p className="mt-2 mb-6 text-gray-500">We pre-filled this from your profile. An estimate is fine — tweak anytime.</p>
         {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
-        <div className="flex flex-col items-stretch gap-4 rounded-xl border border-gray-200 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <div className="text-sm font-medium text-gray-900">{RATE_META[k].label}</div>
-            <div className="mt-0.5 text-xs text-gray-500">{RATE_META[k].hint}</div>
-          </div>
-          <div className="flex w-full items-center gap-1 rounded-lg border border-gray-200 px-2 py-1 sm:w-auto sm:shrink-0">
-            {RATE_META[k].suffix === "$" && <span className="text-sm text-gray-400">$</span>}
-            <input
-              type="text"
-              inputMode="decimal"
-              value={rateText[k]}
-              onChange={(e) => {
-                const { text, value } = formatRateInput(e.target.value);
-                ratesEditedRef.current = true;
-                launchFeatureInputsRef.current = null;
-                setRateText((t) => ({ ...t, [k]: text }));
-                setRates((r) => ({ ...r, [k]: value }));
-              }}
-              className="w-full bg-transparent text-right text-sm text-gray-900 focus:outline-none sm:w-20"
-            />
-            {RATE_META[k].suffix === "%" && <span className="text-sm text-gray-400">%</span>}
-          </div>
+        <div className="space-y-3">
+          {rateKeys.map((k) => (
+            <div key={k} className="flex flex-col items-stretch gap-4 rounded-xl border border-gray-200 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-gray-900">{RATE_META[k].label}</div>
+                <div className="mt-0.5 text-xs leading-5 text-gray-500">{RATE_META[k].hint}</div>
+              </div>
+              <div className="flex w-full items-center gap-1 rounded-lg border border-gray-200 px-2 py-1 sm:w-auto sm:shrink-0">
+                {RATE_META[k].suffix === "$" && <span className="text-sm text-gray-400">$</span>}
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={rateText[k]}
+                  onChange={(e) => {
+                    const { text, value } = formatRateInput(e.target.value);
+                    ratesEditedRef.current = true;
+                    launchFeatureInputsRef.current = null;
+                    setRateText((t) => ({ ...t, [k]: text }));
+                    setRates((r) => ({ ...r, [k]: value }));
+                  }}
+                  className="w-full bg-transparent text-right text-sm text-gray-900 focus:outline-none sm:w-20"
+                />
+                {RATE_META[k].suffix === "%" && <span className="text-sm text-gray-400">%</span>}
+              </div>
+            </div>
+          ))}
         </div>
         <NextButton onClick={saveRatesAndContinue} busy={busy} label="Continue" />
       </div>
@@ -1075,7 +1091,7 @@ export function BetaOnboarding() {
               />
             </div>
             <p className="mt-1 text-xs leading-5 text-gray-400">
-              This creates a paid top-up checkout for the org wallet.
+              Stripe securely saves your card first, then the org wallet is loaded and matched after checkout.
             </p>
           </div>
 
@@ -1175,8 +1191,14 @@ export function BetaOnboarding() {
           const isCustom = customCount !== "" && customN > 0;
           const active = isCustom && selectedCount === customN;
           const b = isCustom ? budgetForCount(customN) : null;
+          const selectCustomCount = () => {
+            if (isCustom) setSelectedCount(customN);
+          };
           return (
-            <div className={`rounded-xl border-2 p-4 transition ${active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white"}`}>
+            <div
+              onClick={selectCustomCount}
+              className={`rounded-xl border-2 p-4 transition ${isCustom ? "cursor-pointer" : ""} ${active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white"}`}
+            >
               <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">Other</div>
               <input
                 type="number"
@@ -1238,6 +1260,7 @@ function OnboardingPersonas({
   const queryClient = useQueryClient();
   const [drafts, setDrafts] = useState<Persona[]>([]);
   const [aiOpen, setAiOpen] = useState(false);
+  const requestedAvatarIds = useRef<Set<string>>(new Set());
 
   const { data, isPending } = useAuthQuery(
     ["personas", brandId ?? ""],
@@ -1251,11 +1274,26 @@ function OnboardingPersonas({
       createPersona(brandId as string, { name: i.name, filters: i.filters as Record<string, string[]> }),
     onSuccess: invalidate,
   });
+  const {
+    mutate: regenerateAvatar,
+    isPending: avatarRegenerating,
+    variables: regeneratingAvatarId,
+  } = useMutation({
+    mutationFn: (personaId: string) => regeneratePersonaAvatar(brandId as string, personaId),
+    onSuccess: invalidate,
+  });
 
   const serverPersonas: Persona[] = (data?.personas ?? [])
     .filter((p) => p.status !== "archived")
-    .map((p) => ({ id: p.id, name: p.name, filters: p.filters, status: p.status }));
+    .map((p) => ({ id: p.id, name: p.name, filters: p.filters, status: p.status, avatarUrl: p.avatarUrl ?? null }));
   const personas: Persona[] = [...drafts, ...serverPersonas];
+  const missingAvatarId = serverPersonas.find((p) => !p.avatarUrl && !requestedAvatarIds.current.has(p.id))?.id;
+
+  useEffect(() => {
+    if (!missingAvatarId || avatarRegenerating) return;
+    requestedAvatarIds.current.add(missingAvatarId);
+    regenerateAvatar(missingAvatarId);
+  }, [missingAvatarId, avatarRegenerating, regenerateAvatar]);
 
   const isNameTaken = (name: string, exceptId?: string) => {
     const needle = name.trim().toLowerCase();
@@ -1312,6 +1350,8 @@ function OnboardingPersonas({
               onCommitNew={(name, filters) => commitNew(persona.id, name, filters)}
               onCancelNew={() => removeDraft(persona.id)}
               showLifecycleActions={false}
+              onRegenerateAvatar={!persona.unsaved ? () => regenerateAvatar(persona.id) : undefined}
+              regeneratingAvatar={avatarRegenerating && regeneratingAvatarId === persona.id}
               checkNameTaken={(n) => isNameTaken(n, persona.unsaved ? persona.id : undefined)}
             />
           ))

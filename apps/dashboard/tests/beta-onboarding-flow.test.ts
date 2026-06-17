@@ -55,10 +55,12 @@ describe("Beta onboarding guided flow", () => {
     expect(src).not.toContain("conversations");
   });
 
-  it("asks exactly one conversion rate, driven by the goal", () => {
-    expect(src).toContain("RATE_FOR_OUTCOME");
+  it("asks the conversion rates that feed the selected goal", () => {
+    expect(src).toContain("RATE_KEYS_FOR_OUTCOME");
     expect(src).toContain("Website visits to signup rate");
-    expect(src).toContain("Positive reply to sales meeting");
+    expect(src).toContain("Positive reply → sales meeting");
+    expect(src).toContain("Website visit → sales meeting");
+    expect(src).toContain("Only set this above 0 if prospects can book a meeting directly from your website");
   });
 
   it("server-backed personas with Edit-with-AI (no draft-only model)", () => {
@@ -94,5 +96,11 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain("Continue to wallet setup");
     expect(src).toContain("Set up your org wallet.");
     expect(src).toContain("Your first load is matched dollar-for-dollar up to $25 free.");
+  });
+
+  it("lets a filled Other budget card be reselected after choosing another tier", () => {
+    expect(src).toContain("const selectCustomCount = () =>");
+    expect(src).toContain("if (isCustom) setSelectedCount(customN)");
+    expect(src).toContain("onClick={selectCustomCount}");
   });
 });

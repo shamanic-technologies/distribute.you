@@ -60,6 +60,7 @@ export interface Persona {
   name: string;
   filters: Filters;
   status: PersonaStatus;
+  avatarUrl?: string | null;
   /** A freshly-created persona not yet saved — shown as a draft card with
    *  Save / Cancel, removable before it's ever persisted. */
   unsaved?: boolean;

@@ -944,6 +944,7 @@ export interface PersonaWire {
   name: string;
   filters: Record<string, string[]>;
   status: PersonaStatusWire;
+  avatarUrl?: string | null;
   createdAt: string;
 }
 
@@ -953,6 +954,7 @@ const PersonaSchema = z.object({
   name: z.string(),
   filters: z.record(z.string(), z.array(z.string())),
   status: z.union([z.literal("active"), z.literal("paused"), z.literal("archived")]),
+  avatarUrl: z.string().nullable().optional(),
   createdAt: z.string(),
 });
 
@@ -986,6 +988,25 @@ export async function createPersona(
   if (!parsed.success) {
     console.error("[dashboard] createPersona: response shape mismatch", { issues: parsed.error.issues, raw });
     throw new Error("[dashboard] createPersona: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** POST /brands/:brandId/personas/:personaId/avatar/regenerate — replace the generated persona avatar. */
+export async function regeneratePersonaAvatar(
+  brandId: string,
+  personaId: string,
+  token?: string,
+): Promise<{ persona: PersonaWire }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/personas/${personaId}/avatar/regenerate`, {
+    token,
+    method: "POST",
+    body: {},
+  });
+  const parsed = PersonaResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] regeneratePersonaAvatar: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] regeneratePersonaAvatar: invalid response shape");
   }
   return parsed.data;
 }
@@ -1414,6 +1435,75 @@ export interface PipelineActivityResponse {
   summary: PipelineActivitySummary;
 }
 
+export type FeaturePersonaStatsGoal = "signup" | "meetingBooked" | "purchase";
+export type FeaturePersonaStatsSortMetric = "cpc" | "cppr";
+
+export interface FeaturePersonaStatsRow {
+  customerProfileId: string;
+  brandProfileId: string | null;
+  persona: {
+    id: string;
+    name: string;
+    status: PersonaStatusWire;
+    filters: Record<string, string[]>;
+  };
+  evidence: {
+    totalCostInUsdCents: number;
+    completedRuns: number;
+    firstRunAt: string | null;
+    lastRunAt: string | null;
+    contacted: number;
+    websiteClicks: number;
+    positiveReplies: number;
+  };
+  metrics: {
+    cpcCents: number | null;
+    cpprCents: number | null;
+  };
+}
+
+export interface FeaturePersonaStatsResponse {
+  featureSlug: string;
+  brandId: string;
+  goal: FeaturePersonaStatsGoal;
+  brandProfileId: string | null;
+  sortMetric: FeaturePersonaStatsSortMetric;
+  personas: FeaturePersonaStatsRow[];
+}
+
+const FeaturePersonaStatsRowSchema = z.object({
+  customerProfileId: z.string(),
+  brandProfileId: z.string().nullable(),
+  persona: z.object({
+    id: z.string(),
+    name: z.string(),
+    status: z.union([z.literal("active"), z.literal("paused"), z.literal("archived")]),
+    filters: z.record(z.string(), z.array(z.string())),
+  }),
+  evidence: z.object({
+    totalCostInUsdCents: z.number(),
+    completedRuns: z.number(),
+    firstRunAt: z.string().nullable(),
+    lastRunAt: z.string().nullable(),
+    contacted: z.number(),
+    websiteClicks: z.number(),
+    positiveReplies: z.number(),
+  }),
+  metrics: z.object({
+    cpcCents: z.number().nullable(),
+    cpprCents: z.number().nullable(),
+  }),
+});
+
+const FeaturePersonaStatsResponseSchema = z.object({
+  featureSlug: z.string(),
+  brandId: z.string(),
+  goal: z.union([z.literal("signup"), z.literal("meetingBooked"), z.literal("purchase")]),
+  brandProfileId: z.string().nullable(),
+  sortMetric: z.union([z.literal("cpc"), z.literal("cppr")]),
+  personas: z.array(FeaturePersonaStatsRowSchema),
+});
+
 /** GET /features — list all features */
 export async function listFeatures(
   params?: { implemented?: boolean },
@@ -1465,6 +1555,27 @@ export async function fetchFeatureStats(
   if (params?.workflowDynastySlug) query.set("workflowDynastySlug", params.workflowDynastySlug);
   const qs = query.toString();
   return apiCall<FeatureStatsResponse>(`/features/${featureSlug}/stats${qs ? `?${qs}` : ""}`, { token });
+}
+
+/** GET /features/:featureSlug/persona-stats — real persona-level cost/outcome evidence. */
+export async function fetchFeaturePersonaStats(
+  featureSlug: string,
+  params: { brandId: string; goal: FeaturePersonaStatsGoal; brandProfileId?: string; limit?: number },
+  token?: string,
+): Promise<FeaturePersonaStatsResponse> {
+  const query = new URLSearchParams({ brandId: params.brandId, goal: params.goal });
+  if (params.brandProfileId) query.set("brandProfileId", params.brandProfileId);
+  if (params.limit !== undefined) query.set("limit", String(params.limit));
+  const raw = await apiCall<unknown>(`/features/${featureSlug}/persona-stats?${query.toString()}`, { token });
+  const parsed = FeaturePersonaStatsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] fetchFeaturePersonaStats: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] fetchFeaturePersonaStats: invalid response shape");
+  }
+  return parsed.data;
 }
 
 /** GET /features/stats — global stats cross-features */
@@ -2528,6 +2639,14 @@ export interface CheckoutSession {
   session_id: string;
 }
 
+export type WalletSetupResult = BillingAccount & {
+  initial_load_amount_cents: number;
+  initial_load_payment_intent_id: string;
+  first_load_match_applied: boolean;
+  first_load_match_cents: string;
+  first_load_match_local_promo_id: string | null;
+};
+
 export async function getBillingAccount(token?: string): Promise<BillingAccount> {
   return apiCall<BillingAccount>("/billing/accounts", { token });
 }
@@ -2551,13 +2670,30 @@ export async function disableAutoTopup(token?: string): Promise<BillingAccount> 
 }
 
 export async function createCheckoutSession(
-  params: { topup_amount_cents: number; success_url: string; cancel_url: string },
+  params:
+    | { topup_amount_cents: number; mode?: "payment"; success_url: string; cancel_url: string }
+    | { mode: "setup"; success_url: string; cancel_url: string },
   token?: string
 ): Promise<CheckoutSession> {
   return apiCall<CheckoutSession>("/billing/checkout-sessions", {
     token,
     method: "POST",
     body: params as unknown as Record<string, unknown>,
+  });
+}
+
+export async function setupBillingWallet(
+  params: {
+    initial_load_amount_cents: number;
+    topup_amount_cents: number;
+    topup_threshold_cents: number;
+  },
+  token?: string
+): Promise<WalletSetupResult> {
+  return apiCall<WalletSetupResult>("/billing/accounts/wallet_setup", {
+    token,
+    method: "POST",
+    body: params,
   });
 }
 
