@@ -270,10 +270,11 @@ export function BetaOnboarding() {
       targetOrgId = org.id;
     }
     const { brandId: newBrandId } = await upsertBrand(brandUrl);
-    await fetch("/api/onboarding/complete", { method: "POST" }).catch((e) =>
-      console.error("[dashboard] failed to mark onboarding complete:", e),
-    );
-    await session?.getToken({ skipCache: true }).catch(() => {});
+    // NOTE: onboarding is marked complete only at the END of the flow (in
+    // launch(), after the campaign is created) — NOT here. Marking it complete
+    // at brand creation set the edge-gate signal 6 steps early, so a mid-flow
+    // refresh / manual dashboard-URL nav slipped past proxy.ts onto a half-set-up
+    // dashboard (no rates/personas/consent/campaign). See launch(). (#1770)
     // Extract brand fields (populates the brand profile + services), then fetch all.
     await extractBrandFields([newBrandId], SALES_PROFILE_FIELDS).catch((e) =>
       console.error("[dashboard] extractBrandFields failed:", e),
@@ -413,6 +414,17 @@ export function BetaOnboarding() {
         maxBudgetDailyUsd: String(budget),
       });
       posthog.capture("onboarding_completed", { flow: "beta", outcome, budget });
+      // Mark onboarding complete ONLY now — the flow is genuinely finished (a real
+      // campaign launched). This is the edge-gate signal proxy.ts reads; setting it
+      // earlier (at brand creation) let a mid-flow refresh bypass the rest of the
+      // wizard onto the dashboard (DIS-111 / first-run gate). (#1770)
+      await fetch("/api/onboarding/complete", { method: "POST" }).catch((e) =>
+        console.error("[dashboard] failed to mark onboarding complete:", e),
+      );
+      // Re-mint the session token so the fresh `orgMeta.onboardingComplete` claim is
+      // in the cookie the edge gate reads BEFORE we navigate — otherwise the stale
+      // JWT loops the next navigation back to /onboarding (DIS-111).
+      await session?.getToken({ skipCache: true }).catch(() => {});
       router.push(`/orgs/${orgId}/brands/${id}?launched=${campaign.id}`);
     } catch (err) {
       posthog.capture("onboarding_launch_failed", { flow: "beta" });
