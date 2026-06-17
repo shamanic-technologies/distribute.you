@@ -2618,6 +2618,14 @@ export interface CheckoutSession {
   session_id: string;
 }
 
+export type WalletSetupResult = BillingAccount & {
+  initial_load_amount_cents: number;
+  initial_load_payment_intent_id: string;
+  first_load_match_applied: boolean;
+  first_load_match_cents: string;
+  first_load_match_local_promo_id: string | null;
+};
+
 export async function getBillingAccount(token?: string): Promise<BillingAccount> {
   return apiCall<BillingAccount>("/billing/accounts", { token });
 }
@@ -2641,13 +2649,30 @@ export async function disableAutoTopup(token?: string): Promise<BillingAccount> 
 }
 
 export async function createCheckoutSession(
-  params: { topup_amount_cents: number; success_url: string; cancel_url: string },
+  params:
+    | { topup_amount_cents: number; mode?: "payment"; success_url: string; cancel_url: string }
+    | { mode: "setup"; success_url: string; cancel_url: string },
   token?: string
 ): Promise<CheckoutSession> {
   return apiCall<CheckoutSession>("/billing/checkout-sessions", {
     token,
     method: "POST",
     body: params as unknown as Record<string, unknown>,
+  });
+}
+
+export async function setupBillingWallet(
+  params: {
+    initial_load_amount_cents: number;
+    topup_amount_cents: number;
+    topup_threshold_cents: number;
+  },
+  token?: string
+): Promise<WalletSetupResult> {
+  return apiCall<WalletSetupResult>("/billing/accounts/wallet_setup", {
+    token,
+    method: "POST",
+    body: params,
   });
 }
 

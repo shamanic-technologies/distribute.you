@@ -90,15 +90,18 @@ describe("Beta onboarding wallet setup", () => {
     expect(content).toContain("Auto-topup is required for the campaign to continue running. You can pause the campaign at any time.");
   });
 
-  it("uses paid top-up checkout and persists auto-topup before launching", () => {
+  it("uses setup checkout then wallet setup so the first-load match is applied", () => {
     expect(content).toContain("createCheckoutSession");
-    expect(content).toContain("topup_amount_cents: initialLoadCents");
-    expect(content).toContain("configureAutoTopup(pending.topupAmountCents, pending.topupThresholdCents)");
+    expect(content).toContain('mode: "setup"');
+    expect(content).toContain("setupBillingWallet");
+    expect(content).toContain("initial_load_amount_cents: pending.initialLoadCents");
+    expect(content).toContain("topup_amount_cents: pending.topupAmountCents");
+    expect(content).toContain("topup_threshold_cents: pending.topupThresholdCents");
     expect(content).toContain("saveBrandDailyBudget");
     expect(content).toContain("featureInputs,");
     expect(content).toContain("createCampaignWithoutBrandEnrichment");
     expect(content).not.toContain('mode: "subscription"');
-    expect(content).not.toContain('mode: "setup"');
+    expect(content).not.toContain("configureAutoTopup(pending.topupAmountCents, pending.topupThresholdCents)");
   });
 
   it("blocks the initial analysis only on service extraction", () => {
@@ -113,7 +116,7 @@ describe("Beta onboarding wallet setup", () => {
     expect(content).toContain('| "launching"');
     expect(content).toContain("LAUNCH_STEPS");
     expect(content).toContain("Confirming wallet payment");
-    expect(content).toContain("Activating auto-topup");
+    expect(content).toContain("Applying wallet match");
     expect(content).toContain("Launching campaign");
     expect(content).toContain("Opening your dashboard");
     expect(content).toContain('setStep("launching")');
