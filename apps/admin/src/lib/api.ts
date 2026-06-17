@@ -683,6 +683,73 @@ export async function saveBrandSalesEconomics(
   return parsed.data;
 }
 
+// ── Daily budget (per-brand spend pacing) ──
+// A per-day spend ceiling campaign-service uses to pace a brand's work. Separate
+// from org credit balance / top-up (that's affordability; this is allocation).
+// Wire value is cents as a decimal string (Postgres numeric serializes as string,
+// per CLAUDE.md numeric-string rule) -> coerce. null = never set (a 200, not a 404).
+export interface BrandDailyBudget {
+  brandId: string;
+  dailyBudgetCents: number | null;
+  updatedAt: string | null;
+}
+
+// READ: dailyBudgetCents null when unset; updatedAt null until first save.
+const GetBrandDailyBudgetResponseSchema = z.object({
+  brandId: z.string(),
+  dailyBudgetCents: z.coerce.number().nullable(),
+  updatedAt: z.string().nullable(),
+});
+
+// WRITE: the row was just persisted, so the value + updatedAt are always present;
+// the write response adds orgId. Per-verb schema (narrower/different than read).
+const SaveBrandDailyBudgetResponseSchema = z.object({
+  brandId: z.string(),
+  orgId: z.string(),
+  dailyBudgetCents: z.coerce.number(),
+  updatedAt: z.string(),
+});
+
+/** GET /brands/:brandId/daily-budget - saved cents or null when never set. */
+export async function getBrandDailyBudget(
+  brandId: string,
+  token?: string,
+): Promise<BrandDailyBudget> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/daily-budget`, { token });
+  const parsed = GetBrandDailyBudgetResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getBrandDailyBudget: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getBrandDailyBudget: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** PATCH /brands/:brandId/daily-budget - set the per-day cents ceiling (0 = pause). */
+export async function saveBrandDailyBudget(
+  brandId: string,
+  dailyBudgetCents: number,
+  token?: string,
+): Promise<{ brandId: string; orgId: string; dailyBudgetCents: number; updatedAt: string }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/daily-budget`, {
+    token,
+    method: "PATCH",
+    body: { dailyBudgetCents },
+    headers: { "x-run-id": globalThis.crypto.randomUUID() },
+  });
+  const parsed = SaveBrandDailyBudgetResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] saveBrandDailyBudget: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] saveBrandDailyBudget: invalid response shape");
+  }
+  return parsed.data;
+}
+
 // The welcome signup gift is NOT front-end editable. Its grant amount is
 // code-owned and pinned at boot by instrumentation.ts (WELCOME_GIFT_CENTS →
 // PATCH /v1/promo-codes/welcome). No dashboard read/write helper exists by design.

@@ -51,6 +51,13 @@ describe("API proxy route", () => {
     expect(content).toContain("clerkUserId");
   });
 
+  it("should forward x-run-id when client helpers provide a run context", () => {
+    const content = fs.readFileSync(proxyPath, "utf-8");
+    expect(content).toContain('"x-run-id"');
+    expect(content).toContain("req.headers.get(key)");
+    expect(content).toContain("headers[key] = value");
+  });
+
   it("should forward user contact info as x-email, x-first-name, x-last-name headers", () => {
     const content = fs.readFileSync(proxyPath, "utf-8");
     expect(content).toContain('"x-email"');
