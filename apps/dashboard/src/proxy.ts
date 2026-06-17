@@ -21,6 +21,9 @@ const isAuthRoute = createRouteMatcher([
   "/sign-up(.*)",
   "/claim(.*)",
 ]);
+const isSessionTaskRoute = createRouteMatcher([
+  "/session-tasks(.*)",
+]);
 
 // Routes the first-run gate must NOT redirect: the onboarding flow itself and
 // every API route (the onboarding / brand-create flow calls /api/* — redirecting
@@ -30,10 +33,22 @@ const isApiRoute = createRouteMatcher(["/api(.*)"]);
 
 export default clerkMiddleware(
   async (auth, req) => {
-    const { userId, sessionClaims } = await auth();
+    const { userId, sessionClaims, sessionStatus } = await auth();
     const pathname = req.nextUrl.pathname;
     const isExplicitDashboardRoot =
       pathname === "/" && hasExplicitHierarchyIntent(req.nextUrl.searchParams);
+
+    // Clerk keeps users in a pending session when personal accounts are
+    // disabled and an org still needs to be chosen. Let only pending sessions
+    // reach the task UI; signed-out users go to auth and active users go home.
+    if (isSessionTaskRoute(req)) {
+      if (sessionStatus === "pending") {
+        return NextResponse.next();
+      }
+      return NextResponse.redirect(
+        new URL(userId ? "/orgs" : "/sign-in", req.url),
+      );
+    }
 
     // Redirect authenticated users away from auth pages
     if (isAuthRoute(req) && userId) {
@@ -55,6 +70,11 @@ export default clerkMiddleware(
 
     // Protect non-public routes
     if (!isPublicRoute(req) && !userId) {
+      if (sessionStatus === "pending") {
+        return NextResponse.redirect(
+          new URL("/session-tasks/choose-organization", req.url),
+        );
+      }
       return NextResponse.redirect(new URL("/sign-in", req.url));
     }
 
