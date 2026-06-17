@@ -1,9 +1,6 @@
 /**
- * Mock persona data — shared between the Customer Personas page (the editable
- * cards) and the signups "Cost by persona" card, so both show the SAME persona
- * names. PURE MOCKUP: personas aren't persisted or attributed in the backend
- * yet, so the per-persona cost numbers below are deterministic placeholders.
- * Replace with real per-persona attribution once the data layer lands.
+ * Persona type helpers shared by the Customer Personas page and any embedded
+ * persona editor surfaces.
  */
 
 export type CategoryKey =
@@ -109,47 +106,3 @@ export const SEED_PERSONAS: Persona[] = [
     status: "active",
   },
 ];
-
-/** Stable hash of a string → 0..1, so mock numbers don't change between renders. */
-function hash01(s: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  // >>> 0 → unsigned; divide by max uint32 → [0, 1).
-  return (h >>> 0) / 0xffffffff;
-}
-
-/**
- * Deterministic mock signups economics for a persona (placeholder until the
- * backend attributes real spend + conversions per persona). Plausible
- * cold-email ranges: CPC ~$0.04–$0.16, cost per signup ~$9–$45, a few hundred
- * clicks, a single-digit-to-low-double-digit expected signups, and the signup
- * pipeline revenue that implies.
- */
-export function personaMockCost(personaId: string): {
-  cpcUsd: number;
-  costPerSignupUsd: number;
-  clicks: number;
-  signups: number;
-  expectedRevenueUsd: number;
-} {
-  const a = hash01(personaId);
-  const b = hash01(`${personaId}:signup`);
-  const c = hash01(`${personaId}:clicks`);
-  const cpcUsd = 0.04 + a * 0.12;
-  const costPerSignupUsd = 9 + b * 36;
-  const clicks = Math.round(120 + c * 680); // ~120–800 clicks
-  // ~2.5%–7% click→signup, so signups scales off clicks.
-  const signups = Math.max(1, Math.round(clicks * (0.025 + a * 0.045)));
-  // Signup worth ~$120–$320 LTR (mock), pipeline = signups × value.
-  const signupValueUsd = 120 + b * 200;
-  return {
-    cpcUsd,
-    costPerSignupUsd,
-    clicks,
-    signups,
-    expectedRevenueUsd: signups * signupValueUsd,
-  };
-}
