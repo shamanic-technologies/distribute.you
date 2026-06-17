@@ -76,6 +76,13 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain("Only set this above 0 if prospects can book a meeting directly from your website");
   });
 
+  it("keeps rate inputs editable as text and validates decimals on continue", () => {
+    expect(src).toContain("parseRateTextInput");
+    expect(src).toContain("nextRates[key] = parseRateTextInput(rateText[key], key)");
+    expect(src).toContain("setRateText((t) => ({ ...t, [k]: e.target.value }))");
+    expect(src).not.toContain("formatRateInput(e.target.value)");
+  });
+
   it("server-backed personas with Edit-with-AI (no draft-only model)", () => {
     expect(src).toContain("Who do you want to sell to?");
     expect(src).toContain("EditWithAIChat");
