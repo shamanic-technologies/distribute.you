@@ -156,7 +156,7 @@ const AGENCY_BENEFITS = [
 const SERVICES_PROFILE_FIELDS = SALES_PROFILE_FIELDS.filter((f) => f.key === "services");
 const LOADING_STEPS = [
   { id: "workspace", label: "Preparing your workspace" },
-  { id: "reading", label: "Reading your product" },
+  { id: "brand", label: "Adding your brand" },
   { id: "services", label: "Extracting your services" },
 ];
 const LAUNCH_STEPS = [
@@ -290,6 +290,26 @@ function toStringList(value: unknown): string[] {
   return [];
 }
 
+const NON_SERVICE_LABELS = new Set([
+  "unknown",
+  "n/a",
+  "na",
+  "none",
+  "not applicable",
+  "not available",
+  "unclear",
+  "unspecified",
+]);
+
+function isUsefulServiceLabel(value: string): boolean {
+  const normalized = value.trim().toLowerCase().replace(/[.!]+$/g, "");
+  return normalized.length > 1 && !NON_SERVICE_LABELS.has(normalized);
+}
+
+function normalizeServices(value: unknown): string[] {
+  return toStringList(value).filter(isUsefulServiceLabel);
+}
+
 export function BetaOnboarding() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -326,8 +346,7 @@ export function BetaOnboarding() {
   const [launchingBrand, setLaunchingBrand] = useState<{ domain: string | null; hostname: string } | null>(null);
 
   // Loading-sequence + real fetch coordination. The visible checks follow real
-  // client milestones; the website read + service extraction happen inside one
-  // backend call, so both stay active until that call returns.
+  // client milestones: org ready, brand upserted, then service extraction.
   const [loadStep, setLoadStep] = useState(0);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const [brandId, setBrandId] = useState<string | null>(null);
@@ -421,12 +440,12 @@ export function BetaOnboarding() {
     salesInputsRef.current = feat.feature.inputs ?? [];
     if (prof.current) {
       const fields = prof.current.fields;
-      const nextServices = toStringList(fields.services);
+      const nextServices = normalizeServices(fields.services);
       setProfile((prev) => ({
         ...fields,
-        services: servicesEditedRef.current ? prev.services ?? fields.services : fields.services,
+        services: servicesEditedRef.current || nextServices.length === 0 ? prev.services ?? nextServices : nextServices,
       }));
-      if (!servicesEditedRef.current) setServices(nextServices);
+      if (!servicesEditedRef.current && nextServices.length > 0) setServices(nextServices);
     }
     if (econRes.economics && !ratesEditedRef.current) {
       const e = econRes.economics;
@@ -469,10 +488,11 @@ export function BetaOnboarding() {
       targetOrgId = org.id;
     }
     captureSetupMilestone("organization_ready", workspaceStartedAt);
+    setLoadStep(1);
     const brandStartedAt = performance.now();
     const { brandId: newBrandId } = await upsertBrand(brandUrl);
     captureSetupMilestone("brand_upserted", brandStartedAt);
-    setLoadStep(1);
+    setLoadStep(2);
     // NOTE: onboarding is marked complete only at the END of the flow (in
     // launch(), after the campaign is created) — NOT here. Marking it complete
     // at brand creation set the edge-gate signal 6 steps early, so a mid-flow
@@ -494,8 +514,15 @@ export function BetaOnboarding() {
     posthog.capture("onboarding_brand_created", { flow: "beta", org_id: targetOrgId, brand_id: newBrandId });
     const serviceValue = serviceFields?.fields.services?.value;
     if (serviceValue != null) {
-      setProfile((prev) => ({ ...prev, services: serviceValue as string | string[] }));
-      setServices(toStringList(serviceValue));
+      const nextServices = normalizeServices(serviceValue);
+      if (nextServices.length > 0) {
+        setProfile((prev) => ({ ...prev, services: nextServices }));
+        setServices(nextServices);
+      } else {
+        setSetupIssues((prev) => ({ ...prev, extraction: true }));
+      }
+    } else {
+      setSetupIssues((prev) => ({ ...prev, extraction: true }));
     }
     fetchDoneRef.current = true;
     setLoadStep(LOADING_STEPS.length);
@@ -890,7 +917,7 @@ export function BetaOnboarding() {
         <div className="space-y-2">
           {LOADING_STEPS.map((s, i) => {
             const isDone = loadingComplete || i < loadStep;
-            const isActive = !isDone && (i === loadStep || (loadStep === 1 && i === 2));
+            const isActive = !isDone && i === loadStep;
             return (
               <div key={s.id} className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition ${isActive ? "border-brand-200 bg-brand-50" : "border-gray-100 bg-white"} ${isDone || isActive ? "opacity-100" : "opacity-40"}`}>
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center">
@@ -903,7 +930,7 @@ export function BetaOnboarding() {
             );
           })}
         </div>
-        {!loadingComplete && loadStep >= 1 && <p className="mt-5 text-center text-xs text-gray-400">Reading and extracting services can take a minute for a new domain.</p>}
+        {!loadingComplete && loadStep >= 2 && <p className="mt-5 text-center text-xs text-gray-400">Service extraction can take a minute for a new domain.</p>}
       </div>
     );
   }
