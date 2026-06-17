@@ -797,6 +797,64 @@ export async function saveBrandDailyBudget(
   return parsed.data;
 }
 
+// ── Brand pause (per-brand Pause / Restart) ──
+// A single brand-level boolean honored by campaign-service's scheduler: when
+// paused, none of the brand's ongoing campaigns are run (HELD, not stopped) so a
+// Restart resumes them with zero re-launch. No outreach = no usage = no auto-topup
+// charge, so this also "pauses the spend". paused defaults false when never set.
+export interface BrandPause {
+  brandId: string;
+  orgId: string;
+  paused: boolean;
+  updatedAt: string | null;
+}
+
+const BrandPauseSchema = z.object({
+  brandId: z.string(),
+  orgId: z.string(),
+  paused: z.boolean(),
+  updatedAt: z.string().nullable(),
+});
+
+/** GET /brands/:brandId/pause — current pause state (paused=false when never set). */
+export async function getBrandPause(
+  brandId: string,
+  token?: string,
+): Promise<BrandPause> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/pause`, { token });
+  const parsed = BrandPauseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getBrandPause: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getBrandPause: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** PATCH /brands/:brandId/pause — pause (true) or restart (false) the brand. */
+export async function setBrandPause(
+  brandId: string,
+  paused: boolean,
+  token?: string,
+): Promise<BrandPause> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/pause`, {
+    token,
+    method: "PATCH",
+    body: { paused },
+  });
+  const parsed = BrandPauseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] setBrandPause: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] setBrandPause: invalid response shape");
+  }
+  return parsed.data;
+}
+
 // The welcome signup gift is NOT front-end editable. Its grant amount is
 // code-owned and pinned at boot by instrumentation.ts (WELCOME_GIFT_CENTS →
 // PATCH /v1/promo-codes/welcome). No dashboard read/write helper exists by design.

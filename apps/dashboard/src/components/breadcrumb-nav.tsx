@@ -406,12 +406,6 @@ export function BreadcrumbNav() {
           <span className="px-2 py-1 text-gray-600">Brand Info</span>
         </>
       )}
-      {brandId && orgId && section === "launch" && (
-        <>
-          <Sep />
-          <span className="px-2 py-1 text-gray-600">Launch</span>
-        </>
-      )}
       {brandId && orgId && section === "workflows" && !pathParts[5] && (
         <>
           <Sep />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrand, getFeatureRevenue, getBrandCostBreakdown, fetchFeatureStats, getBrandSalesEconomics } from "@/lib/api";
@@ -10,7 +10,7 @@ import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
-import { CampaignLaunchModal } from "@/components/campaign/campaign-launch-modal";
+import { BrandStatusControl } from "@/components/brand/brand-status-control";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 
 /**
@@ -23,16 +23,10 @@ import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
  */
 export default function BrandOverviewPage() {
   const params = useParams();
-  const searchParams = useSearchParams();
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
   const featureSlug = useSoleFeatureSlug();
   const enabled = isRevenueFeature(featureSlug);
-
-  // Re-homed launch-progress modal: after a launch the funnel redirects here
-  // with `?launched=<campaignId>`. The modal is self-gating (lead-based +
-  // status ongoing + no contacted lead + sessionStorage escape).
-  const launchedId = searchParams.get("launched");
 
   // isPending (not isLoading): a query suspended by the org-consistency gate
   // reports isLoading:false while still unresolved, which would flash "Brand
@@ -111,32 +105,31 @@ export default function BrandOverviewPage() {
     );
   }
 
-  // Only once revenue resolves do we know the brand has no pipeline yet → full CTA.
+  // Only once revenue resolves do we know the brand has no pipeline yet.
   if (revenueRevealed && data && data.totalPipelineUsd === null) {
     return (
-      <div className="p-4 md:p-8 max-w-7xl mx-auto">
-        {launchedId && <CampaignLaunchModal campaignId={launchedId} />}
-        <RevenueEmptyState setupHref={`${basePath}/launch`} />
+      <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-4">
+        <BrandStatusControl brandId={brandId} />
+        <RevenueEmptyState />
       </div>
     );
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto">
-      {launchedId && <CampaignLaunchModal campaignId={launchedId} />}
+    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-4">
+      <BrandStatusControl brandId={brandId} />
       <RevenueOverviewSection
         data={revenueRevealed ? data : undefined}
         revenuePending={!revenueRevealed}
         costPending={!costRevealed}
-        newCampaignHref={`${basePath}/launch`}
         costBreakdown={costData?.costs ?? []}
         brandId={brandId}
         featureSlug={featureSlug}
         basePath={basePath}
         topRow={
           /* Outreach stat cards (GA + beta) — under the "Revenue & Conversions"
-             header, directly above the Pipeline-revenue hero (mirrors the
-             Campaigns page). Funnel-stage-gated beta pairs. */
+             header, directly above the Pipeline-revenue hero. Funnel-stage-gated
+             beta pairs. */
           <OutreachStatCards
             stats={featureStats}
             totalCostCents={totalCostCents}

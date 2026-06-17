@@ -2,64 +2,12 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
+// Multi-brand support on the api.ts client surface + its live callers. (The
+// campaigns/new create form that drove the brand picker was removed; its
+// page-level guards went with it — the wire-shape guards below remain.)
 describe("Multi-brand campaign support", () => {
-  const pageRel = "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/launch/page.tsx";
-  const content = fs.readFileSync(path.join(__dirname, pageRel), "utf-8");
-
   const apiRel = "../src/lib/api.ts";
   const apiContent = fs.readFileSync(path.join(__dirname, apiRel), "utf-8");
-
-  it("tracks additional brand IDs in state", () => {
-    expect(content).toContain("additionalBrandIds");
-    expect(content).toContain("setAdditionalBrandIds");
-  });
-
-  it("fetches all org brands for the picker", () => {
-    expect(content).toContain("listBrands()");
-    expect(content).toContain("availableBrands");
-  });
-
-  it("builds brandUrls array from primary + additional brands", () => {
-    expect(content).toContain("formData.brandUrl");
-    expect(content).toContain("additionalBrands.map((b) => b.url)");
-    expect(content).toContain("brandUrls");
-  });
-
-  it("sends brandUrls in the campaign payload body (not headers)", () => {
-    // No header-based approach — brandUrls goes in the body
-    expect(content).not.toContain('"x-brand-id"');
-    expect(content).toContain("brandUrls,");
-  });
-
-  it("renders additional brands with an 'Additional' tag", () => {
-    expect(content).toContain(">Additional</span>");
-  });
-
-  it("allows removing additional brands", () => {
-    expect(content).toContain("prev.filter((id) => id !== ab.id)");
-  });
-
-  it("re-runs prefill when additionalBrandIds change while form is open", () => {
-    // A useEffect should watch additionalBrandIds and re-prefill when showForm is true
-    expect(content).toContain("// Re-run prefill when brands change while form is already open");
-    // The effect must check showForm before firing
-    expect(content).toContain("if (!showForm");
-  });
-
-  it("includes additionalBrandIds in the handleGo dependency array", () => {
-    // The handleGo useCallback must include additionalBrandIds in its deps
-    // so prefill uses the latest selected brands, not a stale closure
-    const handleGoStart = content.indexOf("const handleGo = useCallback");
-    const handleGoEnd = content.indexOf("];", handleGoStart);
-    const handleGoBlock = content.slice(handleGoStart, handleGoEnd);
-    expect(handleGoBlock).toContain("additionalBrandIds");
-  });
-
-  it("shows a brand picker dropdown from the three-dot menu", () => {
-    expect(content).toContain("EllipsisVerticalIcon");
-    expect(content).toContain("showBrandPicker");
-    expect(content).toContain("Add a co-brand");
-  });
 
   it("createCampaign in api.ts uses brandUrls: string[] and no custom headers param", () => {
     // Extract just the createCampaign function block

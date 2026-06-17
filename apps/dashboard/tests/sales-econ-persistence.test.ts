@@ -6,14 +6,12 @@ import * as path from "path";
 // The 5 metrics auto-upsert per brand via api-service /v1/brands/:id/sales-economics
 // (brand-service store). READ returns the saved set or null (→ defaults); WRITE is an
 // idempotent PUT. Source-substring guards — tsc cannot catch copy / key / wiring drift.
+// (The campaigns/new create form that consumed these readers was removed; only the
+// api.ts client surface is guarded here.)
 
 describe("Brand sales-economics persistence", () => {
   const apiRel = "../src/lib/api.ts";
   const apiContent = fs.readFileSync(path.join(__dirname, apiRel), "utf-8");
-
-  const pageRel =
-    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/launch/page.tsx";
-  const pageContent = fs.readFileSync(path.join(__dirname, pageRel), "utf-8");
 
   it("api.ts exposes a getBrandSalesEconomics reader on the locked path", () => {
     expect(apiContent).toContain("export async function getBrandSalesEconomics");
@@ -53,45 +51,13 @@ describe("Brand sales-economics persistence", () => {
     }
   });
 
-  it("prefills from the effective endpoint in ONE call (source-aware)", () => {
+  it("exposes the source-aware effective-economics reader in ONE call", () => {
     expect(apiContent).toContain("export async function getSalesEconomicsEffective");
     expect(apiContent).toContain("/sales-economics-effective");
-    expect(pageContent).toContain("getSalesEconomicsEffective");
-    expect(pageContent).toContain("saveBrandSalesEconomics");
-  });
-
-  it("page registers the effective query gated to the sales funnel", () => {
-    expect(pageContent).toContain('["salesEconomicsEffective", brandId]');
-    expect(pageContent).toContain("enabled: isSalesFunnel");
-  });
-
-  it("distinguishes estimate vs saved via the source field", () => {
-    expect(pageContent).toContain('"cross-brand-average"');
-    expect(pageContent).toContain("econSource");
   });
 
   it("no client-side cross-brand-average fallback remains (server owns it now)", () => {
     expect(apiContent).not.toContain("getSalesEconomicsAverage");
     expect(apiContent).not.toContain("/sales-economics-average");
-    expect(pageContent).not.toContain("getSalesEconomicsAverage");
-  });
-
-  it("mutation writes the fresh entity into the single-entity cache (rule #1090)", () => {
-    expect(pageContent).toContain("useMutation");
-    expect(pageContent).toContain('setQueryData(["brandSalesEconomics", brandId]');
-  });
-
-  it("auto-upserts on a debounce (no Save button)", () => {
-    expect(pageContent).toContain("econSaveTimer");
-    expect(pageContent).toContain("setTimeout");
-    expect(pageContent).toContain("clearTimeout");
-  });
-
-  it("has no Save-metrics button — persistence is auto-upsert", () => {
-    expect(pageContent).not.toContain("Save metrics");
-  });
-
-  it("keeps the hard-coded defaults for the unset fallback", () => {
-    expect(pageContent).toContain("SALES_ECON_DEFAULTS");
   });
 });

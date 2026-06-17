@@ -251,10 +251,9 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
       ) {
         return { type: "brandSettings", orgId, brandId };
       }
-      // Everything else → brand sidebar: root overview, the launch funnel
-      // (/launch), and every entity page (leads / emails / outlets /
-      // journalists / articles / competitors / prompts / quote-pitches /
-      // quote-requests / visibility-runs).
+      // Everything else → brand sidebar: root overview and every entity page
+      // (leads / emails / outlets / journalists / articles / competitors /
+      // prompts / quote-pitches / quote-requests / visibility-runs).
       return { type: "brand", orgId, brandId };
     }
     return { type: "org", orgId };
@@ -345,7 +344,7 @@ function getEntitySidebarIcon(iconName: string): React.ReactNode {
 // (campaign) per brand, so everything collapses to the brand level: Overview,
 // the entity Database, and the Brand Settings entry. The sole feature's slug is
 // resolved from features-context (no `/features/[featureSlug]` segment, no
-// campaign level). The launch funnel lives at `/launch`.
+// campaign level).
 function BrandLevelSidebar({ orgId, brandId, pathname }: {
   orgId: string;
   brandId: string;

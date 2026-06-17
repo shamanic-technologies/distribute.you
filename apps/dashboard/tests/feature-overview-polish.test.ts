@@ -24,15 +24,15 @@ describe("Feature landing defaults to Overview (item 1)", () => {
   });
 
   // The campaigns LIST route + its sidebar nav entry were removed with the
-  // campaign concept; the brand root IS the overview and the launch funnel lives
-  // at /launch.
+  // campaign concept; the brand root IS the overview.
 });
 
-describe("Revenue empty state reframed to launch-first (item 2)", () => {
+describe("Revenue empty state (item 2)", () => {
   const emptyState = read("components/revenue/revenue-empty-state.tsx");
-  it("messages 'no metrics yet, launch outreach' with explicit button", () => {
+  it("messages 'no metrics yet' with no manual launch CTA", () => {
     expect(emptyState).toContain("No metrics yet");
-    expect(emptyState).toContain("Launch outreach");
+    expect(emptyState).not.toContain("Launch outreach");
+    expect(emptyState).not.toContain("Create a campaign");
     expect(emptyState).not.toContain("Set up sales economics");
   });
 });

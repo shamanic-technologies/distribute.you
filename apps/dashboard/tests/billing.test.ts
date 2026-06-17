@@ -8,7 +8,6 @@ const billingPagePath = path.resolve(__dirname, "../src/app/(authed)/(dashboard)
 const billingGuardPath = path.resolve(__dirname, "../src/lib/billing-guard.tsx");
 const layoutPath = path.resolve(__dirname, "../src/app/(authed)/(dashboard)/layout.tsx");
 const sidebarPath = path.resolve(__dirname, "../src/components/context-sidebar.tsx");
-const campaignNewOrgPath = path.resolve(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/launch/page.tsx");
 
 describe("Billing API wrappers", () => {
   const content = fs.readFileSync(apiPath, "utf-8");
@@ -421,54 +420,8 @@ describe("Billing guard auto-topup in modal", () => {
   });
 });
 
-describe("Proactive credit check in campaign creation (org-scoped)", () => {
-  const content = fs.readFileSync(campaignNewOrgPath, "utf-8");
-
-  it("should import getBillingAccount", () => {
-    expect(content).toContain("getBillingAccount");
-  });
-
-  it("should import useBillingGuard", () => {
-    expect(content).toContain("useBillingGuard");
-    expect(content).toContain("showPaymentRequired");
-  });
-
-  it("should check if budget exceeds balance before creating campaign", () => {
-    // Balance is ceil'd to match the ceil'd displayed balance, then compared per period
-    // (a $1.996 balance shown as "$2.00" must not false-trigger for a $2 one-off).
-    expect(content).toContain("Math.ceil(parseFloat(account.balance_cents))");
-    // One-off only blocks when the first period isn't covered.
-    expect(content).toContain("balanceCents < budgetCents");
-  });
-
-  it("should force auto-topup for recurring (mandatory, no launch-anyway)", () => {
-    // Recurring REQUIRES auto-topup regardless of current balance — no runway/onProceed escape.
-    expect(content).toContain('budgetFrequency !== "one-off"');
-    expect(content).toContain("isRecurring && !account.has_auto_topup");
-    expect(content).not.toContain("onProceed");
-    expect(content).not.toContain("runwayPeriods");
-  });
-
-  it("should NOT call legacy configureAutoReload", () => {
-    expect(content).not.toContain("configureAutoReload");
-  });
-
-  it("should show proactive modal with onAutoTopupConfigured callback", () => {
-    expect(content).toContain("proactive: true");
-    expect(content).toContain("onAutoTopupConfigured");
-  });
-
-  it("should save campaign intent to sessionStorage before showing modal", () => {
-    expect(content).toContain("saveCampaignIntent");
-    expect(content).toContain('sessionStorage.setItem("pendingCampaign"');
-  });
-
-  it("should auto-launch campaign on return from Stripe checkout", () => {
-    expect(content).toContain('searchParams.get("pending_campaign")');
-    expect(content).toContain('sessionStorage.getItem("pendingCampaign")');
-    expect(content).toContain("pendingCampaignHandled");
-  });
-});
+// The org-scoped launch proactive-credit-check block was removed with the manual
+// launch/create flow.
 
 describe("Billing sidebar link", () => {
   const content = fs.readFileSync(sidebarPath, "utf-8");
