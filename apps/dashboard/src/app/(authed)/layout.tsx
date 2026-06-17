@@ -18,7 +18,12 @@ import { PostHogAuthTracker } from "@/components/posthog-auth-tracker";
  */
 export default function AuthedLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ClerkProvider dynamic>
+    <ClerkProvider
+      dynamic
+      taskUrls={{
+        "choose-organization": "/session-tasks/choose-organization",
+      }}
+    >
       <PostHogAuthTracker />
       {children}
     </ClerkProvider>
