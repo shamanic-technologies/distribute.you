@@ -129,7 +129,7 @@ const websiteJsonLd = {
 const howToJsonLd = {
   "@context": "https://schema.org",
   "@type": "HowTo",
-  name: "From your URL to 100 buyer conversations",
+  name: "From your URL to 100 sales meetings",
   description: "Three steps. No setup. No software to learn. No SDR to hire.",
   step: [
     {
