@@ -603,6 +603,22 @@ export type BrandFunnelStage = "website_purchase" | "sales_meeting";
 // The single metric the brand wants to optimise for. Server default
 // "sales_meetings" when never set; GET/PUT responses always include a non-null value.
 export type BrandOptimizationGoal = "signups" | "sales_meetings";
+type BrandOptimizationGoalWire =
+  | BrandOptimizationGoal
+  | "booked_meetings"
+  | "sales";
+
+function normalizeBrandOptimizationGoal(
+  goal: BrandOptimizationGoalWire,
+): BrandOptimizationGoal {
+  return goal === "signups" ? "signups" : "sales_meetings";
+}
+
+function serializeBrandOptimizationGoal(
+  goal: BrandOptimizationGoal,
+): "signups" | "booked_meetings" {
+  return goal === "signups" ? "signups" : "booked_meetings";
+}
 
 export interface BrandSalesEconomics {
   lifetimeRevenueUsd: number;
@@ -656,7 +672,9 @@ const BrandSalesEconomicsSchema = z.object({
   optimizationGoal: z.union([
     z.literal("signups"),
     z.literal("sales_meetings"),
-  ]),
+    z.literal("booked_meetings"),
+    z.literal("sales"),
+  ]).transform(normalizeBrandOptimizationGoal),
   updatedAt: z.string(),
 });
 
@@ -716,7 +734,7 @@ export async function saveBrandSalesEconomics(
         ? { funnelStages: input.funnelStages }
         : {}),
       ...(input.optimizationGoal !== undefined
-        ? { optimizationGoal: input.optimizationGoal }
+        ? { optimizationGoal: serializeBrandOptimizationGoal(input.optimizationGoal) }
         : {}),
     },
   });
