@@ -23,7 +23,7 @@ describe("Context sidebar", () => {
   it("should handle all navigation levels", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
     // The feature/featureSettings, campaign AND app-level feature ("Campaigns"
-    // island) levels were removed (single-feature product + one subscription per
+    // island) levels were removed (single-feature product at the brand level per
     // brand — everything flattens to the brand). Nav is now app → org → brand →
     // brandSettings only.
     expect(content).toContain('"app"');

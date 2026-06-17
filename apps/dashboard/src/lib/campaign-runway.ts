@@ -1,10 +1,9 @@
 import type { Campaign, BillingAccount } from "./api";
 
 /**
- * Credit-runway logic — pure, client-side. Mirrors the runway math the
- * campaign-creation modal already does (`campaigns/new/page.tsx`): a campaign's
- * MAX budget is the worst-case daily burn, so `balance ÷ burn` is the SHORTEST
- * runway (we warn early rather than late — conservative on purpose).
+ * Credit-runway logic — pure, client-side. A campaign's active daily budget is
+ * the worst-case daily burn, so `balance ÷ burn` is the SHORTEST runway (we warn
+ * early rather than late — conservative on purpose).
  *
  * All money is handled in CENTS to match `account.balance_cents`. Campaign
  * `maxBudget*Usd` fields are USD strings → ×100 to cents.
@@ -23,8 +22,8 @@ const DAYS_PER_MONTH = 30;
 const STOPPED_STATUS = "stopped";
 
 /**
- * Per-day budget of a campaign in cents, or null when it carries no recurring
- * budget (one-off / total-only campaigns don't burn on a daily cadence).
+ * Per-day budget of a campaign in cents, or null when it carries no daily cadence
+ * budget (one-off / total-only campaigns don't burn every day).
  */
 export function campaignDailyBudgetCents(c: Campaign): number | null {
   if (c.maxBudgetDailyUsd != null) {
@@ -40,22 +39,22 @@ export function campaignDailyBudgetCents(c: Campaign): number | null {
 }
 
 /**
- * A campaign that is both still running (`status !== "stopped"`) and recurring
- * (has a daily/weekly/monthly budget). These are the campaigns that keep
- * burning credit day after day — the ones a depletion would silently halt.
+ * A campaign that is both still running (`status !== "stopped"`) and has a
+ * daily/weekly/monthly budget. These are the campaigns that keep burning credit
+ * day after day — the ones a depletion would silently halt.
  */
-export function isActiveRecurringCampaign(c: Campaign): boolean {
+export function isActiveDailyBudgetCampaign(c: Campaign): boolean {
   if (c.status === STOPPED_STATUS) return false;
   return campaignDailyBudgetCents(c) !== null;
 }
 
 export interface RunwayStatus {
-  /** Combined daily burn (cents/day) of all active recurring campaigns. */
+  /** Combined daily burn (cents/day) of all active daily-budget campaigns. */
   dailyBurnCents: number;
   /** Whole days the balance covers at the current burn; null when burn is 0. */
   runwayDays: number | null;
-  /** Count of active recurring campaigns. */
-  recurringCount: number;
+  /** Count of active daily-budget campaigns. */
+  activeDailyBudgetCount: number;
   /** Balance is exhausted (≤ 0). */
   depleted: boolean;
 }
@@ -64,8 +63,8 @@ export function computeRunway(
   campaigns: Campaign[],
   account: Pick<BillingAccount, "balance_cents">,
 ): RunwayStatus {
-  const recurring = campaigns.filter(isActiveRecurringCampaign);
-  const dailyBurnCents = recurring.reduce(
+  const activeDailyBudgetCampaigns = campaigns.filter(isActiveDailyBudgetCampaign);
+  const dailyBurnCents = activeDailyBudgetCampaigns.reduce(
     (sum, c) => sum + (campaignDailyBudgetCents(c) ?? 0),
     0,
   );
@@ -75,7 +74,7 @@ export function computeRunway(
   return {
     dailyBurnCents,
     runwayDays,
-    recurringCount: recurring.length,
+    activeDailyBudgetCount: activeDailyBudgetCampaigns.length,
     depleted: balanceCents <= 0,
   };
 }
@@ -93,14 +92,14 @@ export const WARNING_RUNWAY_DAYS = 3;
  *
  * Suppressed entirely when auto-topup is on (the safety net is in place — the
  * whole point of the banner is to push the user toward enabling it) or when no
- * recurring campaign is running (nothing to stop).
+ * active daily-budget campaign is running (nothing to stop).
  */
 export function runwaySeverity(
   status: RunwayStatus,
   hasAutoTopup: boolean,
 ): RunwaySeverity | null {
   if (hasAutoTopup) return null;
-  if (status.recurringCount === 0) return null;
+  if (status.activeDailyBudgetCount === 0) return null;
   if (status.runwayDays === null) return null;
   if (status.runwayDays <= URGENT_RUNWAY_DAYS) return "urgent";
   if (status.runwayDays <= WARNING_RUNWAY_DAYS) return "warning";

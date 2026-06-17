@@ -66,6 +66,40 @@ describe("Onboarding flow", () => {
   });
 });
 
+describe("Beta onboarding wallet setup", () => {
+  const pagePath = path.join(__dirname, "../src/components/onboarding/beta-onboarding.tsx");
+  const content = fs.readFileSync(pagePath, "utf-8");
+
+  it("shows a dedicated wallet setup step after budget selection", () => {
+    expect(content).toContain('| "wallet"');
+    expect(content).toContain("Continue to wallet setup");
+    expect(content).toContain("Set up your org wallet.");
+    expect(content).toContain("Initial load amount");
+    expect(content).toContain("Auto-topup trigger threshold");
+    expect(content).toContain("Auto-topup reload amount");
+  });
+
+  it("states org-level wallet credits and brand-level daily budget", () => {
+    expect(content).toContain("Credits live at the organization level");
+    expect(content).toContain("brand daily budget");
+    expect(content).toContain("daily spend cap");
+  });
+
+  it("states the first load match and required auto-topup pause copy", () => {
+    expect(content).toContain("Your first load is matched dollar-for-dollar up to $25 free.");
+    expect(content).toContain("Auto-topup is required for the campaign to continue running. You can pause the campaign at any time.");
+  });
+
+  it("uses paid top-up checkout and persists auto-topup before launching", () => {
+    expect(content).toContain("createCheckoutSession");
+    expect(content).toContain("topup_amount_cents: initialLoadCents");
+    expect(content).toContain("configureAutoTopup(pending.topupAmountCents, pending.topupThresholdCents)");
+    expect(content).toContain("saveBrandDailyBudget");
+    expect(content).not.toContain('mode: "subscription"');
+    expect(content).not.toContain('mode: "setup"');
+  });
+});
+
 describe("Onboarding layout", () => {
   const layoutPath = path.join(__dirname, "../src/app/(authed)/onboarding/layout.tsx");
 

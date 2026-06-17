@@ -162,7 +162,7 @@ describe("Billing guard provider", () => {
 
   it("should render a modal with insufficient credits message or proactive warning", () => {
     expect(content).toContain("Insufficient Credits");
-    expect(content).toContain("Turn it on. Leave it on.");
+    expect(content).toContain("Keep the wallet funded.");
   });
 
   it("should offer quick top-up amount buttons in the modal", () => {
@@ -381,12 +381,14 @@ describe("Billing guard auto-topup in modal", () => {
 
   it("should support proactive mode with an inspiring, sell-forward title and description", () => {
     expect(content).toContain("proactive");
-    expect(content).toContain("Turn it on. Leave it on.");
-    expect(content).toContain("Auto-top-up keeps it running non-stop");
+    expect(content).toContain("Keep the wallet funded.");
+    expect(content).toContain("Your credits live in an org-level wallet.");
   });
 
-  it("should frame the proactive budget positively (runs on / per cycle), not a deficit alarm", () => {
-    expect(content).toContain("Your campaign runs on");
+  it("should frame the proactive budget as a brand daily budget cap, not a campaign price", () => {
+    expect(content).toContain("Brand daily budget cap");
+    expect(content).toContain("/ day");
+    expect(content).not.toContain("/ cycle");
     expect(content).not.toContain("Campaign May Exceed Credits");
     expect(content).not.toContain("Recurring Campaign Needs Auto-Topup");
   });
@@ -397,15 +399,15 @@ describe("Billing guard auto-topup in modal", () => {
     expect(content).toContain("onAutoTopupConfigured");
   });
 
-  it("should center the proactive modal on auto-topup (no one-time Add Credits)", () => {
+  it("should center the proactive modal on auto-topup config", () => {
     // Add Credits presets are hard-block (non-proactive) only.
     expect(content).toContain("!isProactive");
-    // Proactive CTA is the auto-topup enable, never the dollar top-up button.
     expect(content).toContain("Turn on auto-top-up");
   });
 
-  it("should capture a card with a no-charge setup-mode checkout when no payment method", () => {
-    expect(content).toContain('mode: "setup"');
+  it("should use paid top-up checkout when no payment method", () => {
+    expect(content).toContain("topup_amount_cents: effectiveAmountCents");
+    expect(content).not.toContain('mode: "setup"');
     expect(content).toContain("!account?.has_payment_method");
   });
 
