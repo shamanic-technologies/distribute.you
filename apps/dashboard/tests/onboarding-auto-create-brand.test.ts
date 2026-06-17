@@ -30,7 +30,7 @@ describe("Onboarding page creates the brand inline (no /brands?autoCreate hop)",
     expect(content).toContain("/orgs/${targetOrgId}/brands/${newBrandId}");
   });
 
-  it("should NOT configure auto-topup at onboarding (would trip the $2 welcome credit)", () => {
+  it("should NOT configure auto-topup at onboarding (would trip the $5 welcome credit)", () => {
     expect(content).not.toContain("configureAutoTopup");
     expect(content).not.toContain("pending_topup");
     expect(content).not.toContain("createCheckoutSession");

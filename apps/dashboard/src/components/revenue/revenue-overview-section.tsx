@@ -104,13 +104,12 @@ export function RevenueOverviewSection({
           )}
         </div>
 
-        {/* Cost & efficiency — spend metrics (total / cost-of-acquisition / ROI).
+        {/* Cost summary — total spend and source breakdown.
             Bottom card defaults to the brand-wide Top-3 cost-source list (the old
             Top-campaigns-by-ROI card was dropped with the campaign concept — there's
             no per-campaign detail page to link to anymore). */}
         <RevenueCostSummary
           costBreakdown={costBreakdown}
-          costEconomics={data?.costEconomics}
           pending={revenueLoading}
           costPending={costPending}
         />

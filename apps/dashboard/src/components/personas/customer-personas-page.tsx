@@ -8,7 +8,6 @@ import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { MaturityBadge } from "@/components/maturity-badge";
 import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
 import { listPersonas, createPersona, setPersonaStatus } from "@/lib/api";
 import {
@@ -189,7 +188,6 @@ export function CustomerPersonasPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-semibold text-gray-900">Customer Personas</h1>
-            <MaturityBadge level="beta" />
           </div>
           <p className="text-sm text-gray-500 mt-1">
             Define who you sell to. Each persona is a set of Apollo-style targeting
