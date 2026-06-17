@@ -8,7 +8,6 @@ import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { MaturityBadge } from "@/components/maturity-badge";
 import { DashboardPage } from "@/components/dashboard-page";
 import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
 import { getBrandProfile, saveBrandProfileVersion } from "@/lib/api";
@@ -132,7 +131,6 @@ export function BrandProfilePage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-semibold text-gray-900">Brand Profile</h1>
-            <MaturityBadge level="beta" />
           </div>
           <p className="mt-1 text-sm text-gray-500">
             Your brand’s own info — the audience lives in{" "}
