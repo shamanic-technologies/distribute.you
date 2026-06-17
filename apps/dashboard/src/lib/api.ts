@@ -589,7 +589,8 @@ export async function getBrand(brandId: string, token?: string): Promise<{ brand
 // Persisted per brand in brand-service via api-service /v1/brands/:id/sales-economics.
 // READ returns the saved set or null (unset → the page uses its hard-coded defaults).
 // WRITE is an idempotent full-set upsert that returns the saved row (never null).
-// Conversion rates are integer percents (0–100); lifetimeRevenueUsd is whole US dollars.
+// Conversion rates are numeric percents (0–100, decimals allowed);
+// lifetimeRevenueUsd is whole US dollars.
 // businessModel (b2c | b2b | null) is part of the saved set: it picks which funnel
 // the revenue-overview pipeline applies. Both GET and PUT responses always include it.
 export type BrandBusinessModel = "b2c" | "b2b";

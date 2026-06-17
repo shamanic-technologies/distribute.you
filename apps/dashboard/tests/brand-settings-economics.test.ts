@@ -132,6 +132,12 @@ describe("BrandSalesEconomicsCard component", () => {
     expect(content).toContain("$ Sales");
   });
 
+  it("keeps fractional conversion percentages instead of rounding them before save", () => {
+    expect(content).toContain("const toPctNumber = (v: string) => parseFloat(v) || 0");
+    expect(content).toContain("visitToSignupPct: toPctNumber(form.visitToSignupPct)");
+    expect(content).toContain('step="0.1"');
+  });
+
   it("shows only the fields + goals relevant to the selected funnel (dynamic display)", () => {
     expect(content).toContain("visiblePctFields");
     expect(content).toContain("visibleGoals");
