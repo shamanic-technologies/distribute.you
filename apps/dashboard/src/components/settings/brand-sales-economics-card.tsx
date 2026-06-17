@@ -107,6 +107,7 @@ const PCT_FIELDS: { key: PctKey; label: string; tip: string; stages: BrandFunnel
 ];
 
 const toInt = (v: string) => Math.round(parseFloat(v) || 0);
+const toPctNumber = (v: string) => parseFloat(v) || 0;
 
 export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
   const queryClient = useQueryClient();
@@ -196,11 +197,11 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
     if (!form) return;
     mutate({
       lifetimeRevenueUsd: toInt(form.lifetimeRevenueUsd),
-      replyToMeetingPct: toInt(form.replyToMeetingPct),
-      visitToMeetingPct: toInt(form.visitToMeetingPct),
-      meetingToClosePct: toInt(form.meetingToClosePct),
-      visitToSignupPct: toInt(form.visitToSignupPct),
-      signupToPaidClientPct: toInt(form.signupToPaidClientPct),
+      replyToMeetingPct: toPctNumber(form.replyToMeetingPct),
+      visitToMeetingPct: toPctNumber(form.visitToMeetingPct),
+      meetingToClosePct: toPctNumber(form.meetingToClosePct),
+      visitToSignupPct: toPctNumber(form.visitToSignupPct),
+      signupToPaidClientPct: toPctNumber(form.signupToPaidClientPct),
       businessModel: form.businessModel,
       funnelStages: form.funnelStages,
       optimizationGoal: form.optimizationGoal,
@@ -346,7 +347,7 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
                   type="number"
                   min="0"
                   max="100"
-                  step="1"
+                  step="0.1"
                   value={form[f.key]}
                   onChange={(e) => update(f.key, e.target.value)}
                   className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300"
