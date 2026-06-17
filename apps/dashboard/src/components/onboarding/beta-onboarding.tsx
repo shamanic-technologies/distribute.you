@@ -63,7 +63,7 @@ import { BrandLogo } from "@/components/brand-logo";
  * from the app.distribute.you mockup: welcome → URL → an ANIMATED build sequence that
  * runs WHILE the brand is created AND its profile / services / personas / economics /
  * pricing projection are fetched for real → services to promote → sales goal →
- * one conversion rate → review the AI-proposed persona (server-backed, Edit-with-AI)
+ * conversion rates → review the AI-proposed persona (server-backed, Edit-with-AI)
  * → agency-channel consent → outcome-count budget → launches a real campaign.
  * Everything is wired to live endpoints.
  */
@@ -103,12 +103,12 @@ const RATE_META: Record<RateKey, { label: string; suffix: "$" | "%"; hint: strin
   ltv: { label: "Lifetime revenue / paid client", suffix: "$", hint: "Average revenue a customer brings over their lifetime." },
   v2s: { label: "Website visits to signup rate", suffix: "%", hint: "Of visitors who land on your site, how many sign up." },
   s2c: { label: "Signup → paid client", suffix: "%", hint: "Of signups, how many become paying customers." },
-  v2m: { label: "Website visit → meeting", suffix: "%", hint: "Of visitors, how many book a meeting." },
-  r2m: { label: "Positive reply to sales meeting", suffix: "%", hint: "Of positive replies, how many book a meeting." },
+  v2m: { label: "Website visit → sales meeting", suffix: "%", hint: "Only set this above 0 if prospects can book a meeting directly from your website. If every meeting needs a reply first, use 0%." },
+  r2m: { label: "Positive reply → sales meeting", suffix: "%", hint: "Of prospects who reply with real buying interest, the share that become a booked meeting after your follow-up or calendar link." },
   m2c: { label: "Meeting booked → close won", suffix: "%", hint: "Of booked meetings, how many close." },
 };
-// The single rate each goal asks for.
-const RATE_FOR_OUTCOME: Record<Outcome, RateKey> = { signups: "v2s", meetings: "r2m" };
+// The rate fields each goal asks for.
+const RATE_KEYS_FOR_OUTCOME: Record<Outcome, RateKey[]> = { signups: ["v2s"], meetings: ["r2m", "v2m"] };
 
 // ── Rate-input formatting ────────────────────────────────────────────
 // Number fields render as TEXT (not <input type="number">) so we can show
@@ -944,7 +944,7 @@ export function BetaOnboarding() {
   }
 
   if (step === "rates") {
-    const k = RATE_FOR_OUTCOME[outcome];
+    const rateKeys = RATE_KEYS_FOR_OUTCOME[outcome];
     return (
       <div className={card}>
         <BackButton onClick={() => setStep("objective")} />
@@ -952,28 +952,32 @@ export function BetaOnboarding() {
         <h2 className="font-display text-2xl font-bold text-gray-900">Your conversion rates.</h2>
         <p className="mt-2 mb-6 text-gray-500">We pre-filled this from your profile. An estimate is fine — tweak anytime.</p>
         {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
-        <div className="flex flex-col items-stretch gap-4 rounded-xl border border-gray-200 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <div className="text-sm font-medium text-gray-900">{RATE_META[k].label}</div>
-            <div className="mt-0.5 text-xs text-gray-500">{RATE_META[k].hint}</div>
-          </div>
-          <div className="flex w-full items-center gap-1 rounded-lg border border-gray-200 px-2 py-1 sm:w-auto sm:shrink-0">
-            {RATE_META[k].suffix === "$" && <span className="text-sm text-gray-400">$</span>}
-            <input
-              type="text"
-              inputMode="decimal"
-              value={rateText[k]}
-              onChange={(e) => {
-                const { text, value } = formatRateInput(e.target.value);
-                ratesEditedRef.current = true;
-                launchFeatureInputsRef.current = null;
-                setRateText((t) => ({ ...t, [k]: text }));
-                setRates((r) => ({ ...r, [k]: value }));
-              }}
-              className="w-full bg-transparent text-right text-sm text-gray-900 focus:outline-none sm:w-20"
-            />
-            {RATE_META[k].suffix === "%" && <span className="text-sm text-gray-400">%</span>}
-          </div>
+        <div className="space-y-3">
+          {rateKeys.map((k) => (
+            <div key={k} className="flex flex-col items-stretch gap-4 rounded-xl border border-gray-200 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-gray-900">{RATE_META[k].label}</div>
+                <div className="mt-0.5 text-xs leading-5 text-gray-500">{RATE_META[k].hint}</div>
+              </div>
+              <div className="flex w-full items-center gap-1 rounded-lg border border-gray-200 px-2 py-1 sm:w-auto sm:shrink-0">
+                {RATE_META[k].suffix === "$" && <span className="text-sm text-gray-400">$</span>}
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={rateText[k]}
+                  onChange={(e) => {
+                    const { text, value } = formatRateInput(e.target.value);
+                    ratesEditedRef.current = true;
+                    launchFeatureInputsRef.current = null;
+                    setRateText((t) => ({ ...t, [k]: text }));
+                    setRates((r) => ({ ...r, [k]: value }));
+                  }}
+                  className="w-full bg-transparent text-right text-sm text-gray-900 focus:outline-none sm:w-20"
+                />
+                {RATE_META[k].suffix === "%" && <span className="text-sm text-gray-400">%</span>}
+              </div>
+            </div>
+          ))}
         </div>
         <NextButton onClick={saveRatesAndContinue} busy={busy} label="Continue" />
       </div>
