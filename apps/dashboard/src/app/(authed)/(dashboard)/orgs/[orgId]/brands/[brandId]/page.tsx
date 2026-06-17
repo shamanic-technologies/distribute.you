@@ -13,6 +13,7 @@ import {
   getBrandDailyBudget,
   getFeaturePipelineActivity,
   fetchFeaturePersonaStats,
+  listPersonas,
   getWorkflowProjection,
   keepLastGoodWorkflowProjection,
   type WorkflowProjectionResponse,
@@ -164,6 +165,12 @@ export default function BrandOverviewPage() {
     { enabled, ...pollOptions },
   );
 
+  const { data: personasData } = useAuthQuery(
+    ["personas", brandId, "active"],
+    () => listPersonas(brandId, "active"),
+    { enabled, ...pollOptions },
+  );
+
   // Per-card reveal (NOT one page-wide barrier): revenue (features-service) and
   // total-spend (runs-service) are two different cold chains — gate each on its
   // own query so the fast cost card isn't held by the slower revenue call.
@@ -171,7 +178,10 @@ export default function BrandOverviewPage() {
   const activityRevealed = useCoordinatedReveal([pipelineActivity !== undefined]);
   const costRevealed = useCoordinatedReveal([costData !== undefined]);
   const statsRevealed = useCoordinatedReveal([featureStatsData !== undefined]);
-  const personaStatsRevealed = useCoordinatedReveal([personaStatsData !== undefined]);
+  const personaStatsRevealed = useCoordinatedReveal([
+    personaStatsData !== undefined,
+    personasData !== undefined,
+  ]);
   const outcomeRevealed = useCoordinatedReveal([
     budgetData !== undefined,
     economicsData !== undefined,
@@ -242,6 +252,7 @@ export default function BrandOverviewPage() {
         costBottomCard={
           <TopPersonasCard
             data={personaStatsRevealed ? personaStatsData : undefined}
+            personas={personaStatsRevealed ? personasData?.personas : undefined}
             pending={!personaStatsRevealed}
             metric={personaStatsMetric}
           />
