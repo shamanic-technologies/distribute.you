@@ -49,8 +49,8 @@ describe("Brand Settings page", () => {
     "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/settings/page.tsx",
   );
 
-  it("renders the Daily Budget section with the editor card", () => {
-    expect(content).toContain("Daily Budget");
-    expect(content).toContain("<BrandDailyBudgetCard brandId={brandId} />");
+  it("renders the fused Outreach & Budget section with the budget editor", () => {
+    expect(content).toContain("Outreach & Budget");
+    expect(content).toContain('<BrandDailyBudgetCard brandId={brandId} variant="section" />');
   });
 });
