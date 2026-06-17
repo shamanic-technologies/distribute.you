@@ -154,9 +154,9 @@ const AGENCY_BENEFITS = [
 
 const SERVICES_PROFILE_FIELDS = SALES_PROFILE_FIELDS.filter((f) => f.key === "services");
 const LOADING_STEPS = [
-  { id: "ls-1", label: "Reading your product", delay: 500 },
-  { id: "ls-2", label: "Extracting your services", delay: 700 },
-  { id: "ls-3", label: "Preparing your workspace", delay: 500 },
+  { id: "workspace", label: "Preparing your workspace" },
+  { id: "reading", label: "Reading your product" },
+  { id: "services", label: "Extracting your services" },
 ];
 const LAUNCH_STEPS = [
   { id: "wallet", label: "Confirming wallet payment" },
@@ -307,16 +307,16 @@ export function BetaOnboarding() {
   const [launchStep, setLaunchStep] = useState(0);
   const [launchingBrand, setLaunchingBrand] = useState<{ domain: string | null; hostname: string } | null>(null);
 
-  // Loading-sequence + real fetch coordination. We only advance past the loader once
-  // BOTH the short animation and the blocking service-list extraction are done.
+  // Loading-sequence + real fetch coordination. The visible checks follow real
+  // client milestones; the website read + service extraction happen inside one
+  // backend call, so both stay active until that call returns.
   const [loadStep, setLoadStep] = useState(0);
-  const [loadDone, setLoadDone] = useState(false);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const [brandId, setBrandId] = useState<string | null>(null);
   const brandIdRef = useRef<string | null>(null);
   const orgIdRef = useRef<string | null>(null);
   const fetchDoneRef = useRef(false);
-  const animDoneRef = useRef(false);
+  const loadingStartedAtRef = useRef<number | null>(null);
   const walletResumeStartedRef = useRef(false);
 
   const projectionRef = useRef<WorkflowProjectionResponse | null>(null);
@@ -345,28 +345,24 @@ export function BetaOnboarding() {
   }, []);
 
   function maybeAdvancePastLoading() {
-    if (animDoneRef.current && fetchDoneRef.current) setStep("services");
+    if (fetchDoneRef.current) setStep("services");
   }
 
-  function runLoadingAnimation() {
+  function resetLoadingProgress() {
     timers.current.forEach(clearTimeout);
     timers.current = [];
-    setLoadDone(false);
     setLoadStep(0);
-    animDoneRef.current = false;
-    let elapsed = 0;
-    LOADING_STEPS.forEach((s, i) => {
-      const t = setTimeout(() => setLoadStep(i), elapsed);
-      timers.current.push(t);
-      elapsed += s.delay;
-    });
-    const last = setTimeout(() => {
-      setLoadStep(LOADING_STEPS.length - 1);
-      setLoadDone(true);
-      animDoneRef.current = true;
-      maybeAdvancePastLoading();
-    }, elapsed);
-    timers.current.push(last);
+    fetchDoneRef.current = false;
+    loadingStartedAtRef.current = performance.now();
+  }
+
+  function captureSetupMilestone(milestone: string, startedAt?: number) {
+    const now = performance.now();
+    const elapsedMs = loadingStartedAtRef.current == null ? null : Math.round(now - loadingStartedAtRef.current);
+    const durationMs = startedAt == null ? null : Math.round(now - startedAt);
+    const props = { flow: "beta", domain, milestone, elapsed_ms: elapsedMs, duration_ms: durationMs };
+    posthog.capture("onboarding_setup_milestone", props);
+    console.info("[dashboard] onboarding setup milestone", props);
   }
 
   async function seedOnboardingPersonaFromBrandInfo(id: string): Promise<void> {
@@ -441,6 +437,7 @@ export function BetaOnboarding() {
   async function createBrandAndFetchServices(): Promise<void> {
     const trimmed = url.trim();
     const brandUrl = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    const workspaceStartedAt = performance.now();
     const reuseOrg = !forceNew && !!organization?.id;
     let targetOrgId: string;
     if (reuseOrg) {
@@ -453,7 +450,11 @@ export function BetaOnboarding() {
       await setActive({ organization: org.id });
       targetOrgId = org.id;
     }
+    captureSetupMilestone("organization_ready", workspaceStartedAt);
+    const brandStartedAt = performance.now();
     const { brandId: newBrandId } = await upsertBrand(brandUrl);
+    captureSetupMilestone("brand_upserted", brandStartedAt);
+    setLoadStep(1);
     // NOTE: onboarding is marked complete only at the END of the flow (in
     // launch(), after the campaign is created) — NOT here. Marking it complete
     // at brand creation set the edge-gate signal 6 steps early, so a mid-flow
@@ -461,11 +462,14 @@ export function BetaOnboarding() {
     // dashboard (no rates/personas/consent/campaign). See launch(). (#1770)
     // Extract only the service list before moving forward. The heavier profile,
     // persona, economics and projection work continues after the services step is usable.
+    const servicesStartedAt = performance.now();
     const serviceFields = await extractBrandFields([newBrandId], SERVICES_PROFILE_FIELDS).catch((e) => {
       console.error("[dashboard] extractBrandFields failed:", e);
+      captureSetupMilestone("services_extract_failed", servicesStartedAt);
       setSetupIssues((prev) => ({ ...prev, extraction: true }));
       return null;
     });
+    if (serviceFields) captureSetupMilestone("services_extracted", servicesStartedAt);
     brandIdRef.current = newBrandId;
     orgIdRef.current = targetOrgId;
     setBrandId(newBrandId);
@@ -476,6 +480,7 @@ export function BetaOnboarding() {
       setServices(toStringList(serviceValue));
     }
     fetchDoneRef.current = true;
+    setLoadStep(LOADING_STEPS.length);
     const hydration = hydrateOnboardingInBackground(newBrandId).catch((e) => {
       console.error("[dashboard] onboarding background hydrate failed:", e);
     });
@@ -487,8 +492,9 @@ export function BetaOnboarding() {
     setError(null);
     setSetupIssues({ extraction: false, persona: false });
     setStep("loading");
-    runLoadingAnimation();
+    resetLoadingProgress();
     posthog.capture("onboarding_workspace_create_started", { flow: "beta", domain });
+    captureSetupMilestone("started");
     try {
       await createBrandAndFetchServices();
       maybeAdvancePastLoading();
@@ -859,15 +865,16 @@ export function BetaOnboarding() {
   }
 
   if (step === "loading") {
+    const loadingComplete = fetchDoneRef.current || loadStep >= LOADING_STEPS.length;
     return (
       <div className={card}>
         <BrandStepHeader domain={domain} hostname={hostname} />
-        <div className="mb-2 text-center text-lg font-semibold text-gray-950">{loadDone ? "Your strategy is ready." : "Building your strategy…"}</div>
+        <div className="mb-2 text-center text-lg font-semibold text-gray-950">{loadingComplete ? "Your strategy is ready." : "Building your strategy…"}</div>
         <p className="mb-6 text-center text-sm text-gray-500">Reading <span className="font-medium text-gray-700">{hostname}</span></p>
         <div className="space-y-2">
           {LOADING_STEPS.map((s, i) => {
-            const isDone = (loadDone && fetchDoneRef.current) || i < loadStep;
-            const isActive = !isDone && i === loadStep;
+            const isDone = loadingComplete || i < loadStep;
+            const isActive = !isDone && (i === loadStep || (loadStep === 1 && i === 2));
             return (
               <div key={s.id} className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition ${isActive ? "border-brand-200 bg-brand-50" : "border-gray-100 bg-white"} ${isDone || isActive ? "opacity-100" : "opacity-40"}`}>
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center">
@@ -880,7 +887,7 @@ export function BetaOnboarding() {
             );
           })}
         </div>
-        {loadDone && !fetchDoneRef.current && <p className="mt-5 text-center text-xs text-gray-400">Finishing setup…</p>}
+        {!loadingComplete && loadStep >= 1 && <p className="mt-5 text-center text-xs text-gray-400">Reading and extracting services can take a minute for a new domain.</p>}
       </div>
     );
   }
